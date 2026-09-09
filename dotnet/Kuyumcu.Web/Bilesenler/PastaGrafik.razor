@@ -1,0 +1,62 @@
+@* Recharts PieChart karşılığı — saf SVG dilimler + lejant *@
+<div class="grafik-sar" role="img" aria-label="@Aciklama">
+    <svg viewBox="0 0 220 220" style="max-width:220px;margin:0 auto">
+        @foreach (var dilim in Dilimler)
+        {
+            <path d="@dilim.Yol" fill="@dilim.Renk" />
+        }
+    </svg>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem 1rem;justify-content:center;margin-top:.5rem">
+        @foreach (var dilim in Dilimler)
+        {
+            <span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.75rem;color:var(--slate-600)">
+                <span style="width:10px;height:10px;border-radius:2px;background:@dilim.Renk" aria-hidden="true"></span>
+                @dilim.Etiket (%@dilim.Yuzde.ToString("F0"))
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<GrafikNokta> Noktalar { get; set; } = [];
+    [Parameter] public string Aciklama { get; set; } = "";
+
+    private static readonly string[] Renkler = ["#b45309", "#059669", "#1d4ed8", "#dc2626", "#7c3aed", "#0891b2"];
+
+    private record DilimVeri(string Yol, string Renk, string Etiket, decimal Yuzde);
+
+    private List<DilimVeri> Dilimler
+    {
+        get
+        {
+            var toplam = Noktalar.Sum(n => n.Deger);
+            if (toplam <= 0) return [];
+            var sonuc = new List<DilimVeri>();
+            double aci = -90;
+            for (var i = 0; i < Noktalar.Count; i++)
+            {
+                var pay = (double)(Noktalar[i].Deger / toplam);
+                var bitis = aci + pay * 360;
+                sonuc.Add(new DilimVeri(
+                    DilimYolu(aci, bitis), Renkler[i % Renkler.Length],
+                    Noktalar[i].Etiket, Noktalar[i].Deger / toplam * 100));
+                aci = bitis;
+            }
+            return sonuc;
+        }
+    }
+
+    private static string DilimYolu(double bas, double bit)
+    {
+        const double cx = 110, cy = 110, r = 90;
+        var (x1, y1) = Kord(bas); var (x2, y2) = Kord(bit);
+        var buyuk = bit - bas > 180 ? 1 : 0;
+        return $"M {cx:F1} {cy:F1} L {x1:F1} {y1:F1} A {r} {r} 0 {buyuk} 1 {x2:F1} {y2:F1} Z";
+
+        static (double, double) Kord(double derece)
+        {
+            var rad = derece * Math.PI / 180;
+            return (110 + 90 * Math.Cos(rad), 110 + 90 * Math.Sin(rad));
+        }
+    }
+}

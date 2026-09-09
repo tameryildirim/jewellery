@@ -1,0 +1,8 @@
+@if (!string.IsNullOrEmpty(Mesaj))
+{
+    <div class="bant bant-basari" role="status">@Mesaj</div>
+}
+
+@code {
+    [Parameter] public string? Mesaj { get; set; }
+}

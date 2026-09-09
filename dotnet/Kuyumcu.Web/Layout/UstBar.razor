@@ -1,0 +1,131 @@
+@inject DilServisi Dil
+@inject ApiIstemci Api
+@inject OturumServisi Oturum
+@inject CanliKurServisi Canli
+@inject NavigationManager Nav
+@implements IDisposable
+
+<header class="ust-bar">
+    <h1>@SayfaBasligi</h1>
+    <div class="ust-sag">
+        @if (Canli.Son is { } kur)
+        {
+            <div class="kur-bandi" role="status" aria-label="@Dil.T.Kur.Canli">
+                <span aria-hidden="true">📈</span>
+                @if (GramAltin is decimal g)
+                {
+                    <span class="kur-oge">
+                        <span class="etiket">@Dil.T.Kur.GramAltin</span>
+                        <span class="deger sayi">@Bicim.Tl(g)</span>
+                    </span>
+                }
+                <span class="kur-oge">
+                    <span class="etiket">@Dil.T.Kur.HasAltin</span>
+                    <span class="deger sayi">@Bicim.Tl(kur.AltinHasFiyati)</span>
+                </span>
+                @if (kur.UsdTry is decimal usd)
+                {
+                    <span class="kur-oge">
+                        <span class="etiket">@Dil.T.Kur.Usd</span>
+                        <span class="deger sayi">@Bicim.Tl(usd)</span>
+                    </span>
+                }
+                @if (kur.EurTry is decimal eur)
+                {
+                    <span class="kur-oge">
+                        <span class="etiket">@Dil.T.Kur.Eur</span>
+                        <span class="deger sayi">@Bicim.Tl(eur)</span>
+                    </span>
+                }
+                @if (kur.GbpTry is decimal gbp)
+                {
+                    <span class="kur-oge">
+                        <span class="etiket">@Dil.T.Kur.Gbp</span>
+                        <span class="deger sayi">@Bicim.Tl(gbp)</span>
+                    </span>
+                }
+            </div>
+        }
+        @if (YetkiliGuncelle)
+        {
+            <button class="kur-guncelle-btn @(guncelleniyor ? "donuyor" : null)"
+                    title="@(guncelleniyor ? Dil.T.Kur.Guncelleniyor : Dil.T.Kur.Guncelle)"
+                    aria-label="@Dil.T.Kur.Guncelle"
+                    disabled="@guncelleniyor" @onclick="KuruGuncelle">⟳</button>
+        }
+    </div>
+</header>
+@if (hata is not null)
+{
+    <div class="kur-hata" role="alert">@hata</div>
+}
+
+@code {
+    private bool guncelleniyor;
+    private string? hata;
+
+    // Gram altın (24 ayar piyasa fiyatı); dış kaynak yoksa has fiyatına düşer
+    private decimal? GramAltin => Canli.Son?.GramAltinFiyati ?? Canli.Son?.AltinHasFiyati;
+
+    // Dış kaynaktan kur çekmeye yalnız SAHIP/MUDUR yetkili (POST /kur/guncelle)
+    private bool YetkiliGuncelle => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+
+    private string SayfaBasligi
+    {
+        get
+        {
+            var yol = new Uri(Nav.Uri).AbsolutePath.TrimEnd('/');
+            var t = Dil.T;
+            return yol switch
+            {
+                "" or "/" => t.Nav.Panel,
+                "/cariler" => t.Nav.Cariler,
+                "/urunler" => t.Nav.Urunler,
+                "/islemler" => t.Nav.Islemler,
+                "/kasalar" => t.Nav.Kasalar,
+                "/banka" => t.Nav.Banka,
+                "/faturalar" => t.Nav.Faturalar,
+                "/raporlar" => t.Nav.Raporlar,
+                "/kullanicilar" => t.Nav.Kullanicilar,
+                "/yetkiler" => t.Nav.Yetkiler,
+                "/kilavuz" => t.Nav.Kilavuz,
+                "/ayarlar" => t.Nav.Ayarlar,
+                _ => "Kuyumcu",
+            };
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Canli.Degisti += Yenile;          // push geldiğinde çubuğu tazele
+        Nav.LocationChanged += KonumDegisti;
+        await Canli.BaslatAsync();         // ilk REST + canlı push aboneliği (tek bağlantı)
+    }
+
+    // Dış kaynaktan (truncgil) anlık kur çek; yanıt anında uygulanır, ayrıca sunucu push eder
+    private async Task KuruGuncelle()
+    {
+        if (guncelleniyor) return;
+        guncelleniyor = true;
+        hata = null;
+        StateHasChanged();
+        try
+        {
+            Canli.Uygula(await Api.PostAsync<CanliKurServisi.KurAnlik>("/kur/guncelle"));
+        }
+        catch (ApiHata ex) { hata = $"{Dil.T.Kur.Guncellenemedi}: {ex.Message}"; }
+        catch { hata = Dil.T.Kur.Guncellenemedi; }
+        guncelleniyor = false;
+        StateHasChanged();
+    }
+
+    private void KonumDegisti(object? s, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => Yenile();
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Canli.Degisti -= Yenile;
+        Nav.LocationChanged -= KonumDegisti;
+    }
+}

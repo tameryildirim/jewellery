@@ -1,0 +1,9 @@
+@page "/kilavuz"
+@inject DilServisi Dil
+
+@* Kullanım kılavuzu — wwwroot/kilavuz.html statik dosyasını uygulama kabuğu içinde gösterir. *@
+
+<PageTitle>@Dil.T.Nav.Kilavuz — Kuyumcu ERP</PageTitle>
+
+<iframe src="/kilavuz.html" title="@Dil.T.Nav.Kilavuz"
+        style="display:block; width:100%; height:calc(100vh - 6.5rem); border:1px solid var(--slate-200); border-radius:var(--radius-md); background:#fff"></iframe>

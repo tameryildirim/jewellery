@@ -1,0 +1,12 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.AnaYerlesim)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Kuyumcu ERP</PageTitle>
+        <LayoutView Layout="@typeof(Layout.AnaYerlesim)">
+            <p role="alert">Sayfa bulunamadı.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

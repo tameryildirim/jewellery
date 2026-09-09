@@ -1,0 +1,60 @@
+@* Recharts BarChart karşılığı — iki serili saf SVG (yeşil=1. seri, amber=2. seri).
+   Not: <text> Razor'da rezerve olduğundan eksen etiketleri MarkupString ile basılır. *@
+<div class="grafik-sar" role="img" aria-label="@Aciklama">
+    <svg viewBox="0 0 @G @Y" preserveAspectRatio="none" style="height:@(Y)px">
+        @Cubuklar
+        @EksenIsaretlemesi
+    </svg>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<CiftNokta> Noktalar { get; set; } = [];
+    [Parameter] public string Aciklama { get; set; } = "";
+
+    private const int G = 600, Y = 220, KenarUst = 12, KenarAlt = 22;
+    private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
+
+    private decimal Maks => Math.Max(1m,
+        Noktalar.Count == 0 ? 1m : Noktalar.Max(n => Math.Max(n.Deger1, n.Deger2)));
+
+    private double GrupGen => Noktalar.Count == 0 ? G : (double)G / Noktalar.Count;
+    private double CubukGen => Math.Max(2, GrupGen * 0.35);
+    private double YKord(decimal v) => KenarUst + (double)(1 - v / Maks) * (Y - KenarUst - KenarAlt);
+    private double Yukseklik(decimal v) => (double)(v / Maks) * (Y - KenarUst - KenarAlt);
+
+    private MarkupString Cubuklar
+    {
+        get
+        {
+            var sb = new System.Text.StringBuilder();
+            for (var i = 0; i < Noktalar.Count; i++)
+            {
+                var n = Noktalar[i];
+                var grupX = i * GrupGen + (GrupGen - 2 * CubukGen - 2) / 2;
+                sb.Append(Dikdortgen(grupX, n.Deger1, "#059669"));
+                sb.Append(Dikdortgen(grupX + CubukGen + 2, n.Deger2, "#b45309"));
+            }
+            return new MarkupString(sb.ToString());
+        }
+    }
+
+    private string Dikdortgen(double x, decimal deger, string renk) =>
+        string.Create(Inv,
+            $"<rect x=\"{x:F1}\" y=\"{YKord(deger):F1}\" width=\"{CubukGen:F1}\" height=\"{Yukseklik(deger):F1}\" rx=\"2\" fill=\"{renk}\" />");
+
+    private MarkupString EksenIsaretlemesi
+    {
+        get
+        {
+            var sb = new System.Text.StringBuilder();
+            var adim = Math.Max(1, (int)Math.Ceiling(Noktalar.Count / 10.0));
+            for (var i = 0; i < Noktalar.Count; i += adim)
+            {
+                var x = (i * GrupGen + GrupGen / 2).ToString("F1", Inv);
+                var etiket = System.Net.WebUtility.HtmlEncode(Noktalar[i].Etiket);
+                sb.Append($"<text x=\"{x}\" y=\"{Y - 4}\" font-size=\"9\" fill=\"#64748b\" text-anchor=\"middle\">{etiket}</text>");
+            }
+            return new MarkupString(sb.ToString());
+        }
+    }
+}

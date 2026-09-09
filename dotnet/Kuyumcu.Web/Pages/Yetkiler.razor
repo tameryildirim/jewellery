@@ -1,0 +1,167 @@
+@page "/yetkiler"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Rol → modül (ekran) yetki matrisi. Yalnız SAHIP (API de doğrular).
+   SAHIP satırı kilitli/tam yetkilidir; MÜDÜR/MUHASEBE/TEZGÂHTAR ayarlanabilir. *@
+
+<PageTitle>@Dil.T.Yetki.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    <p class="metin-soluk">@Dil.T.Yetki.Aciklama</p>
+
+    <HataBandi Mesaj="@hata" />
+    @if (basari)
+    {
+        <BasariBandi Mesaj="@Dil.T.Yetki.Kaydedildi" />
+    }
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        <div class="kart">
+            <div class="tablo-sar">
+                <table class="veri-tablosu">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.Yetki.Rol</th>
+                            @foreach (var m in moduller)
+                            {
+                                <th scope="col" style="text-align:center">@ModulAd(m)</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @* SAHIP — her zaman tam yetkili (kilitli) *@
+                        <tr style="background:var(--amber-50)">
+                            <td class="hucre-vurgu">
+                                @RolEtiket("SAHIP")
+                                <span class="metin-soluk metin-kucuk">(@Dil.T.Yetki.TamYetkili)</span>
+                            </td>
+                            @foreach (var m in moduller)
+                            {
+                                <td style="text-align:center"><input type="checkbox" checked disabled /></td>
+                            }
+                        </tr>
+                        @foreach (var rol in roller)
+                        {
+                            var r = rol;
+                            <tr>
+                                <td class="hucre-vurgu">@RolEtiket(r)</td>
+                                @foreach (var m in moduller)
+                                {
+                                    var mm = m;
+                                    <td style="text-align:center">
+                                        <input type="checkbox" checked="@Secili(r, mm)"
+                                               @onchange="@(e => Degistir(r, mm, Convert.ToBoolean(e.Value)))" />
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="satir" style="justify-content:flex-end">
+            <button class="btn btn-birincil" disabled="@kaydediliyor" @onclick="Kaydet">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    }
+</div>
+
+@code {
+    private sealed record YetkiMatrisi(string[] Moduller, string[] Roller, Dictionary<string, string[]> Matris);
+
+    private string[] moduller = [];
+    private string[] roller = [];
+    private Dictionary<string, HashSet<string>> secili = new();
+
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private bool basari;
+    private int basariJeton;
+    private string? hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            var m = await Api.GetAsync<YetkiMatrisi>("/yetkiler");
+            moduller = m.Moduller;
+            roller = m.Roller;
+            secili = m.Roller.ToDictionary(
+                r => r,
+                r => new HashSet<string>(m.Matris.TryGetValue(r, out var arr) ? arr : []));
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    private bool Secili(string rol, string modul) =>
+        secili.TryGetValue(rol, out var s) && s.Contains(modul);
+
+    private void Degistir(string rol, string modul, bool acik)
+    {
+        if (!secili.TryGetValue(rol, out var s)) { s = []; secili[rol] = s; }
+        if (acik) s.Add(modul); else s.Remove(modul);
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            var matris = secili.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray());
+            await Api.PutAsync("/yetkiler", new { matris });
+            _ = BasariGoster();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task BasariGoster()
+    {
+        basari = true;
+        var jeton = ++basariJeton;
+        StateHasChanged();
+        await Task.Delay(3000);
+        if (jeton == basariJeton) { basari = false; StateHasChanged(); }
+    }
+
+    private string ModulAd(string m) => m switch
+    {
+        "cari" => Dil.T.Nav.Cariler,
+        "urun" => Dil.T.Nav.Urunler,
+        "islem" => Dil.T.Nav.Islemler,
+        "kasa" => Dil.T.Nav.Kasalar,
+        "banka" => Dil.T.Nav.Banka,
+        "fatura" => Dil.T.Nav.Faturalar,
+        "rapor" => Dil.T.Nav.Raporlar,
+        "kullanici" => Dil.T.Nav.Kullanicilar,
+        _ => m,
+    };
+
+    private string RolEtiket(string rol) => rol switch
+    {
+        "SAHIP" => Dil.T.Kullanici.RolSahip,
+        "MUDUR" => Dil.T.Kullanici.RolMudur,
+        "MUHASEBE" => Dil.T.Kullanici.RolMuhasebe,
+        _ => Dil.T.Kullanici.RolTezgahtar,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

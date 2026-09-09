@@ -1,0 +1,350 @@
+@page "/faturalar"
+@using System.Globalization
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/FaturaPage.tsx — Kasalar.razor desenini izler. *@
+
+<PageTitle>@Dil.T.Fatura.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    @* ── Araç çubuğu: durum filtresi + yeni fatura ── *@
+    <div class="satir-arasi">
+        <select class="secim" aria-label="@Dil.T.Fatura.Durum" @bind="durumFiltre" @bind:after="Yukle">
+            <option value="">@Dil.T.Ortak.Tumu</option>
+            <option value="TASLAK">@Dil.T.Fatura.Taslak</option>
+            <option value="KESILDI">@Dil.T.Fatura.Kesildi</option>
+            <option value="ODENDI">@Dil.T.Fatura.Odendi</option>
+            <option value="IPTAL">@Dil.T.Fatura.Iptal</option>
+        </select>
+        <button class="btn btn-birincil" @onclick="YeniModalAc">+ @Dil.T.Fatura.YeniFatura</button>
+    </div>
+
+    <HataBandi Mesaj="@listeHata" />
+
+    @* ── Liste ── *@
+    <div class="kart">
+        @if (yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (faturalar.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.Fatura.FaturaBulunamadi" />
+        }
+        else
+        {
+            <div class="tablo-sar">
+                <table class="veri-tablosu">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.Fatura.FaturaNo</th>
+                            <th scope="col">@Dil.T.Ortak.Tarih</th>
+                            <th scope="col">@Dil.T.Rapor.CariBasligi</th>
+                            <th scope="col">@Dil.T.Fatura.Tur</th>
+                            <th scope="col">@Dil.T.Fatura.AraToplam</th>
+                            <th scope="col">@Dil.T.Fatura.KdvTutar</th>
+                            <th scope="col">@Dil.T.Ortak.Toplam</th>
+                            <th scope="col">@Dil.T.Fatura.Kaynak</th>
+                            <th scope="col">@Dil.T.Fatura.Durum</th>
+                            <th scope="col"><span class="gorunmez">@Dil.T.Ortak.Eylemler</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in faturalar)
+                        {
+                            <tr>
+                                <td class="hucre-vurgu sayi metin-kucuk">@f.FaturaNo</td>
+                                <td class="metin-soluk">@Bicim.Tarih(f.Tarih, Dil.Locale)</td>
+                                <td class="hucre-vurgu">@f.CariAd</td>
+                                <td>
+                                    <Rozet Renk="@(f.Tur == "SATIS" ? "yesil" : "amber")">
+                                        @(f.Tur == "SATIS" ? Dil.T.Fatura.Satis : Dil.T.Fatura.Alis)
+                                    </Rozet>
+                                </td>
+                                <td class="sayi">@Bicim.Tl(f.AraToplam)</td>
+                                <td class="sayi">
+                                    @Bicim.Tl(f.KdvTutar)
+                                    <span class="metin-kucuk metin-soluk">(%@KdvYuzde(f.KdvOran))</span>
+                                </td>
+                                <td class="hucre-vurgu sayi">@Bicim.Tl(f.Toplam)</td>
+                                <td class="metin-kucuk">
+                                    @if (!string.IsNullOrEmpty(f.BankaHareketId))
+                                    {
+                                        <span class="satir" style="gap:.25rem;color:var(--mavi-700)">
+                                            <span aria-hidden="true">🏛️</span> @Dil.T.Fatura.KaynakBanka
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="satir metin-soluk" style="gap:.25rem">
+                                            <span aria-hidden="true">📄</span> @Dil.T.Fatura.Manuel
+                                        </span>
+                                    }
+                                </td>
+                                <td><Rozet Renk="@DurumRenk(f.Durum)">@DurumMetin(f.Durum)</Rozet></td>
+                                <td>
+                                    <div class="satir" style="gap:.5rem">
+                                        @if (f.Durum == "TASLAK")
+                                        {
+                                            <button class="btn btn-ikincil btn-kucuk" disabled="@guncelleniyor"
+                                                    @onclick='() => DurumGuncelle(f.Id, "KESILDI")'>@Dil.T.Fatura.Kes</button>
+                                        }
+                                        @if (f.Durum == "KESILDI")
+                                        {
+                                            <button class="btn btn-ikincil btn-kucuk metin-yesil" disabled="@guncelleniyor"
+                                                    @onclick='() => DurumGuncelle(f.Id, "ODENDI")'>@Dil.T.Fatura.OdendiIsaretle</button>
+                                        }
+                                        @if (f.Durum is "TASLAK" or "KESILDI")
+                                        {
+                                            <button class="btn btn-ikincil btn-kucuk metin-kirmizi" disabled="@guncelleniyor"
+                                                    @onclick='() => DurumGuncelle(f.Id, "IPTAL")'>@Dil.T.Fatura.IptalEt</button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── Yeni fatura modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Fatura.YeniFatura" Kapat="() => yeniModalAcik = false">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="fatura-cari">@Dil.T.Rapor.CariBasligi</label>
+            <select id="fatura-cari" class="secim" @bind="formCariId">
+                <option value="">@Dil.T.Cari.CariSecin</option>
+                @foreach (var c in cariler)
+                {
+                    <option value="@c.Id">@c.Ad</option>
+                }
+            </select>
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="fatura-tur">@Dil.T.Fatura.Tur</label>
+                <select id="fatura-tur" class="secim" @bind="formTur">
+                    <option value="SATIS">@Dil.T.Fatura.Satis</option>
+                    <option value="ALIS">@Dil.T.Fatura.Alis</option>
+                </select>
+            </div>
+            <div class="alan">
+                <label for="fatura-kdv">@Dil.T.Fatura.KdvOran</label>
+                <select id="fatura-kdv" class="secim" @bind="formKdv">
+                    <option value="0">%0</option>
+                    <option value="0.01">%1</option>
+                    <option value="0.10">%10</option>
+                    <option value="0.20">%20</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="fatura-kdvturu">@Dil.T.Fatura.KdvTuru</label>
+                <select id="fatura-kdvturu" class="secim" @bind="formKdvTuru">
+                    <option value="STANDART">@Dil.T.Fatura.KdvStandart</option>
+                    <option value="KUYUM">@Dil.T.Fatura.KdvKuyum</option>
+                </select>
+            </div>
+            @if (Kuyum)
+            {
+                <div class="alan">
+                    <label for="fatura-hasdeger">@Dil.T.Fatura.HasDeger</label>
+                    <input id="fatura-hasdeger" class="girdi sayi" type="number" step="0.01" min="0" @bind="formHasDeger" />
+                    <span class="metin-kucuk metin-soluk">@Dil.T.Fatura.HasDegerIpucu</span>
+                </div>
+            }
+        </div>
+        <div class="alan">
+            <label for="fatura-toplam">@Dil.T.Fatura.Toplam</label>
+            <input id="fatura-toplam" class="girdi sayi" type="number" step="0.01" min="0.01" @bind="formToplam" />
+        </div>
+        @if (formToplam > 0)
+        {
+            @* KDV önizleme: girilen toplam KDV dahildir *@
+            <div class="metin-kucuk metin-soluk" style="background:var(--slate-50);border-radius:var(--radius-md);padding:.75rem">
+                @if (Kuyum)
+                {
+                    @* KUYUM: has altın KDV'siz; KDV yalnız matraha (işçilik+kâr) *@
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.HasDeger</span>
+                        <span class="sayi">@Bicim.Tl(formHasDeger)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.Matrah</span>
+                        <span class="sayi">@Bicim.Tl(OnizlemeMatrah)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.KdvTutar</span>
+                        <span class="sayi">@Bicim.Tl(OnizlemeKdvTutar)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.AraToplam</span>
+                        <span class="sayi">@Bicim.Tl(OnizlemeAraToplam)</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.AraToplam</span>
+                        <span class="sayi">@Bicim.Tl(OnizlemeAraToplam)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.KdvTutar</span>
+                        <span class="sayi">@Bicim.Tl(OnizlemeKdvTutar)</span>
+                    </div>
+                }
+            </div>
+        }
+        <div class="alan">
+            <label for="fatura-aciklama">@Dil.T.Ortak.Aciklama</label>
+            <input id="fatura-aciklama" class="girdi" @bind="formAciklama" />
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => yeniModalAcik = false">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1"
+                    disabled="@(kaydediliyor || string.IsNullOrEmpty(formCariId) || formToplam <= 0)"
+                    @onclick="FaturaOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@code {
+    // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
+    private sealed record FaturaVeri(
+        string Id, string FaturaNo, string CariAd, string Tur,
+        decimal AraToplam, decimal KdvOran, decimal KdvTutar, decimal Toplam,
+        string Durum, string? BankaHareketId, DateTime Tarih);
+    private sealed record FaturaYaniti(List<FaturaVeri> Faturalar);
+    private sealed record CariVeri(string Id, string Ad);
+
+    private List<FaturaVeri> faturalar = [];
+    private List<CariVeri> cariler = [];
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private bool guncelleniyor;
+    private string? modalHata;
+    private string? listeHata;
+
+    private string durumFiltre = "";
+
+    // ── yeni fatura formu ──
+    private bool yeniModalAcik;
+    private string formCariId = "";
+    private string formTur = "SATIS";
+    private string formKdv = "0.20";
+    private string formKdvTuru = "STANDART";
+    private decimal formHasDeger;
+    private decimal formToplam;
+    private string formAciklama = "";
+
+    private decimal FormKdvOran => decimal.Parse(formKdv, CultureInfo.InvariantCulture);
+    private bool Kuyum => formKdvTuru == "KUYUM";
+
+    // ── KDV önizleme (sunucu ile aynı formül) ──
+    //  STANDART → KDV tüm tutara ; KUYUM → KDV yalnız (toplam − hasDeger) matrahına
+    private decimal OnizlemeMatrah => formToplam - formHasDeger;
+    private decimal OnizlemeKdvTutar => Kuyum
+        ? OnizlemeMatrah - OnizlemeMatrah / (1m + FormKdvOran)
+        : formToplam - formToplam / (1m + FormKdvOran);
+    private decimal OnizlemeAraToplam => formToplam - OnizlemeKdvTutar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try
+        {
+            var yol = string.IsNullOrEmpty(durumFiltre) ? "/faturalar" : $"/faturalar?durum={durumFiltre}";
+            faturalar = (await Api.GetAsync<FaturaYaniti>(yol)).Faturalar;
+        }
+        catch (ApiHata) { faturalar = []; }
+        yukleniyor = false;
+    }
+
+    private async Task YeniModalAc()
+    {
+        modalHata = null;
+        formCariId = "";
+        formTur = "SATIS";
+        formKdv = "0.20";
+        formKdvTuru = "STANDART";
+        formHasDeger = 0;
+        formToplam = 0;
+        formAciklama = "";
+        yeniModalAcik = true;
+        try { cariler = await Api.GetAsync<List<CariVeri>>("/cari?limit=200"); }
+        catch (ApiHata) { cariler = []; }
+    }
+
+    private async Task FaturaOlustur()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/faturalar", new
+            {
+                cariId = formCariId,
+                tur = formTur,
+                toplam = formToplam,
+                kdvOran = FormKdvOran,
+                kdvTuru = formKdvTuru,
+                hasDeger = Kuyum ? (decimal?)formHasDeger : null,
+                aciklama = string.IsNullOrWhiteSpace(formAciklama) ? null : formAciklama,
+            });
+            yeniModalAcik = false;
+            await Yukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task DurumGuncelle(string id, string durum)
+    {
+        listeHata = null;
+        guncelleniyor = true;
+        try
+        {
+            await Api.PatchAsync<JsonElement>($"/faturalar/{id}/durum", new { durum });
+            await Yukle();
+        }
+        catch (ApiHata ex) { listeHata = ex.Message; }
+        guncelleniyor = false;
+    }
+
+    // ── durum rozeti: TASLAK gri, KESILDI mavi, ODENDI yesil, IPTAL kirmizi ──
+    private static string DurumRenk(string durum) => durum switch
+    {
+        "KESILDI" => "mavi",
+        "ODENDI" => "yesil",
+        "IPTAL" => "kirmizi",
+        _ => "gri",
+    };
+
+    private string DurumMetin(string durum) => durum switch
+    {
+        "TASLAK" => Dil.T.Fatura.Taslak,
+        "KESILDI" => Dil.T.Fatura.Kesildi,
+        "ODENDI" => Dil.T.Fatura.Odendi,
+        "IPTAL" => Dil.T.Fatura.Iptal,
+        _ => durum,
+    };
+
+    private static string KdvYuzde(decimal oran) =>
+        (oran * 100).ToString("0", CultureInfo.InvariantCulture);
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

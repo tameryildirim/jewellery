@@ -1,0 +1,251 @@
+@page "/giris"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/LoginPage.tsx — split-screen giriş/kayıt sayfası.
+   AnaYerlesim /giris'te kenar çubuğu çizmez; tam ekranı bu sayfa kurar. *@
+
+<PageTitle>@Dil.T.Auth.GirisYap — Kuyumcu ERP</PageTitle>
+
+<div class="giris-sayfa">
+
+    @* ── Sol panel: marka + pırlanta yüzük illüstrasyonu ── *@
+    <div class="giris-panel">
+        <svg viewBox="0 0 400 400" aria-hidden="true" preserveAspectRatio="xMidYMid slice"
+             style="position:absolute;inset:0;width:100%;height:100%;opacity:.9">
+            <defs>
+                <linearGradient id="altinGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#fcd34d" />
+                    <stop offset="50%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#92400e" />
+                </linearGradient>
+                <linearGradient id="tasGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffffff" />
+                    <stop offset="45%" stop-color="#dbeafe" />
+                    <stop offset="100%" stop-color="#93c5fd" />
+                </linearGradient>
+                <radialGradient id="parilti" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#fef3c7" stop-opacity="0.9" />
+                    <stop offset="100%" stop-color="#fef3c7" stop-opacity="0" />
+                </radialGradient>
+            </defs>
+
+            @* Arka parıltı *@
+            <circle cx="200" cy="215" r="150" fill="url(#parilti)" opacity="0.35" />
+
+            @* Yüzük halkası *@
+            <circle cx="200" cy="245" r="88" fill="none" stroke="url(#altinGrad)" stroke-width="16" />
+            <circle cx="200" cy="245" r="88" fill="none" stroke="#fff7ed" stroke-width="3" opacity="0.5" />
+
+            @* Taş yuvası *@
+            <path d="M182 158 L200 138 L218 158 Z" fill="url(#altinGrad)" />
+
+            @* Pırlanta (fasetli) *@
+            <g>
+                <path d="M200 60 L242 96 L200 150 L158 96 Z" fill="url(#tasGrad)" stroke="#bfdbfe" stroke-width="1.5" />
+                <path d="M200 60 L200 150 M158 96 L242 96 M200 60 L179 96 L200 150 M200 60 L221 96 L200 150"
+                      fill="none" stroke="#93c5fd" stroke-width="1" opacity="0.8" />
+                <path d="M158 96 L179 96 L200 60 Z" fill="#ffffff" opacity="0.55" />
+            </g>
+
+            @* Işıltılar *@
+            <g fill="#fef3c7">
+                <path d="M96 120 l4 12 12 4 -12 4 -4 12 -4 -12 -12 -4 12 -4 Z" opacity="0.9" />
+                <path d="M310 180 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3 Z" opacity="0.7" />
+                <path d="M120 300 l2.5 7.5 7.5 2.5 -7.5 2.5 -2.5 7.5 -2.5 -7.5 -7.5 -2.5 7.5 -2.5 Z" opacity="0.6" />
+                <path d="M292 320 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2 Z" opacity="0.5" />
+                <path d="M250 70 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2 Z" opacity="0.8" />
+            </g>
+        </svg>
+
+        <div class="giris-panel-icerik">
+            @* Marka *@
+            <div class="satir">
+                <span aria-hidden="true"
+                      style="display:inline-flex;background:var(--amber-400);border-radius:var(--radius-lg);padding:.5rem;font-size:1.5rem">💎</span>
+                <div>
+                    <p style="font-size:1.25rem;font-weight:700;color:#fff">@Dil.T.Auth.UygulamaAdi</p>
+                    <p class="metin-kucuk" style="color:var(--amber-300)">@Dil.T.Auth.Slogan</p>
+                </div>
+            </div>
+
+            @* Başlık + özellikler *@
+            <div style="max-width:28rem">
+                <h1>@Dil.T.Auth.PanelBaslik</h1>
+                <p class="alt-metin">@Dil.T.Auth.PanelAlt</p>
+                <ul style="list-style:none;margin:0;padding:0">
+                    @foreach (var ozellik in Ozellikler)
+                    {
+                        <li class="giris-ozellik">
+                            <span class="onay" aria-hidden="true">✓</span>
+                            <span>@ozellik</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            @* Alt bilgi *@
+            <p class="metin-kucuk" style="color:var(--slate-400)">© @DateTime.Now.Year @Dil.T.Auth.UygulamaAdi</p>
+        </div>
+    </div>
+
+    @* ── Sağ sütun: dil seçici + form ── *@
+    <div class="giris-form-sutun">
+        <div style="display:flex;justify-content:flex-end;padding:1rem">
+            <DilSecici />
+        </div>
+
+        <div class="giris-form-sar">
+            <div class="giris-form">
+                <h2>@(sekme == "giris" ? Dil.T.Auth.GirisYap : Dil.T.Auth.IsletmeKur)</h2>
+                <p class="alt">@Dil.T.Auth.Slogan</p>
+
+                @* Sekmeler — pill stili *@
+                <div class="pill-grubu mb-2">
+                    <button type="button" class="pill @(sekme == "giris" ? "secili" : "")"
+                            aria-pressed="@(sekme == "giris")"
+                            @onclick='() => SekmeSec("giris")'>@Dil.T.Auth.GirisYap</button>
+                    <button type="button" class="pill @(sekme == "kayit" ? "secili" : "")"
+                            aria-pressed="@(sekme == "kayit")"
+                            @onclick='() => SekmeSec("kayit")'>@Dil.T.Auth.IsletmeKur</button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(hata))
+                {
+                    <div class="mb-2"><HataBandi Mesaj="@hata" /></div>
+                }
+
+                @if (sekme == "giris")
+                {
+                    <form class="form-dikey" @onsubmit="GirisYap" @onsubmit:preventDefault>
+                        <div class="alan">
+                            <label for="giris-eposta">@Dil.T.Auth.Eposta</label>
+                            <input id="giris-eposta" class="girdi" type="email" @bind="email"
+                                   placeholder="ornek@@isletme.com" autocomplete="email" required />
+                        </div>
+                        <div class="alan">
+                            <label for="giris-sifre">@Dil.T.Auth.Sifre</label>
+                            <input id="giris-sifre" class="girdi" type="password" @bind="sifre"
+                                   placeholder="••••••••" autocomplete="current-password" required />
+                        </div>
+                        <button type="submit" class="btn btn-birincil btn-buyuk btn-tam" disabled="@yukleniyor">
+                            @Dil.T.Auth.GirisYap
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <form class="form-dikey" @onsubmit="KayitOl" @onsubmit:preventDefault>
+                        <div class="alan">
+                            <label for="kayit-isletme">@Dil.T.Auth.IsletmeAdi</label>
+                            <input id="kayit-isletme" class="girdi" @bind="kayitIsletmeAdi"
+                                   placeholder="Altın Dünyası Kuyumculuk" autocomplete="organization" required />
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                            <div class="alan">
+                                <label for="kayit-ad">@Dil.T.Auth.Ad</label>
+                                <input id="kayit-ad" class="girdi" @bind="kayitAd"
+                                       autocomplete="given-name" required />
+                            </div>
+                            <div class="alan">
+                                <label for="kayit-soyad">@Dil.T.Auth.Soyad</label>
+                                <input id="kayit-soyad" class="girdi" @bind="kayitSoyad"
+                                       autocomplete="family-name" required />
+                            </div>
+                        </div>
+                        <div class="alan">
+                            <label for="kayit-eposta">@Dil.T.Auth.Eposta</label>
+                            <input id="kayit-eposta" class="girdi" type="email" @bind="kayitEmail"
+                                   autocomplete="email" required />
+                        </div>
+                        <div class="alan">
+                            <label for="kayit-sifre">@Dil.T.Auth.Sifre</label>
+                            <input id="kayit-sifre" class="girdi" type="password" @bind="kayitSifre"
+                                   placeholder="@Dil.T.Auth.SifrePlaceholder" autocomplete="new-password" required />
+                        </div>
+                        <button type="submit" class="btn btn-birincil btn-buyuk btn-tam" disabled="@yukleniyor">
+                            @Dil.T.Auth.IsletmeKur
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
+    private sealed record AuthYaniti(string AccessToken, string RefreshToken, OturumKullanici? Kullanici = null);
+
+    private string sekme = "giris";
+    private bool yukleniyor;
+    private string? hata;
+
+    // Giriş formu
+    private string email = "";
+    private string sifre = "";
+
+    // Kayıt formu
+    private string kayitIsletmeAdi = "";
+    private string kayitAd = "";
+    private string kayitSoyad = "";
+    private string kayitEmail = "";
+    private string kayitSifre = "";
+
+    private string[] Ozellikler => [Dil.T.Auth.Ozellik1, Dil.T.Auth.Ozellik2, Dil.T.Auth.Ozellik3];
+
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+
+    private void SekmeSec(string s)
+    {
+        sekme = s;
+        hata = null;
+    }
+
+    private async Task GirisYap()
+    {
+        hata = null;
+        yukleniyor = true;
+        try
+        {
+            var yanit = await Api.PostAsync<AuthYaniti>("/auth/giris", new { email, sifre });
+            await Oturum.TokenKaydetAsync(yanit.AccessToken, yanit.RefreshToken);
+            if (yanit.Kullanici is not null) Oturum.KullaniciAta(yanit.Kullanici);
+            Nav.NavigateTo("/");
+            return; // yönlendirme sırasında buton kilitli kalsın
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch { hata = Dil.T.Auth.GirisBasarisiz; }
+        yukleniyor = false;
+    }
+
+    private async Task KayitOl()
+    {
+        hata = null;
+        yukleniyor = true;
+        try
+        {
+            var yanit = await Api.PostAsync<AuthYaniti>("/auth/kayit", new
+            {
+                isletmeAdi = kayitIsletmeAdi,
+                ad = kayitAd,
+                soyad = kayitSoyad,
+                email = kayitEmail,
+                sifre = kayitSifre,
+            });
+            await Oturum.TokenKaydetAsync(yanit.AccessToken, yanit.RefreshToken);
+            if (yanit.Kullanici is not null) Oturum.KullaniciAta(yanit.Kullanici);
+            Nav.NavigateTo("/");
+            return;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch { hata = Dil.T.Auth.KayitBasarisiz; }
+        yukleniyor = false;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

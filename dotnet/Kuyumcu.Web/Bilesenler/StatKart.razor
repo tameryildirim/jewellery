@@ -1,0 +1,18 @@
+<div class="kart stat-kart @Renk">
+    <div class="kart-govde">
+        <p class="stat-etiket">@Etiket</p>
+        <p class="stat-deger">@Deger</p>
+        @if (!string.IsNullOrEmpty(Alt))
+        {
+            <p class="stat-alt">@Alt</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Etiket { get; set; } = "";
+    [Parameter] public string Deger { get; set; } = "";
+    [Parameter] public string? Alt { get; set; }
+    /// <summary>"" (amber) | yesil | kirmizi | mavi</summary>
+    [Parameter] public string Renk { get; set; } = "";
+}

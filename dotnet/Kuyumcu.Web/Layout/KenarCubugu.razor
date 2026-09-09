@@ -1,0 +1,96 @@
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject YetkiServisi Yetki
+@inject NavigationManager Nav
+@implements IDisposable
+
+<aside class="kenar-cubugu">
+    <div class="kenar-logo">
+        <span class="marka">💎 Kuyumcu</span>
+        <DilSecici Koyu="true" />
+    </div>
+
+    <nav class="kenar-nav">
+        <NavLink href="/" Match="NavLinkMatch.All" ActiveClass="aktif">📊 @Dil.T.Nav.Panel</NavLink>
+        @if (Yetki.Erisebilir("cari"))
+        {
+            <NavLink href="/cariler" ActiveClass="aktif">👥 @Dil.T.Nav.Cariler</NavLink>
+        }
+        @if (Yetki.Erisebilir("urun"))
+        {
+            <NavLink href="/urunler" ActiveClass="aktif">📦 @Dil.T.Nav.Urunler</NavLink>
+        }
+        @if (Yetki.Erisebilir("islem"))
+        {
+            <NavLink href="/islemler" ActiveClass="aktif">💰 @Dil.T.Nav.Islemler</NavLink>
+        }
+        @if (Yetki.Erisebilir("kasa"))
+        {
+            <NavLink href="/kasalar" ActiveClass="aktif">🏦 @Dil.T.Nav.Kasalar</NavLink>
+        }
+        @if (Yetki.Erisebilir("banka"))
+        {
+            <NavLink href="/banka" ActiveClass="aktif">🏛️ @Dil.T.Nav.Banka</NavLink>
+        }
+        @if (Yetki.Erisebilir("fatura"))
+        {
+            <NavLink href="/faturalar" ActiveClass="aktif">🧾 @Dil.T.Nav.Faturalar</NavLink>
+        }
+        @if (Yetki.Erisebilir("rapor"))
+        {
+            <NavLink href="/raporlar" ActiveClass="aktif">📈 @Dil.T.Nav.Raporlar</NavLink>
+        }
+        @if (Yetki.Erisebilir("kullanici"))
+        {
+            <NavLink href="/kullanicilar" ActiveClass="aktif">🔑 @Dil.T.Nav.Kullanicilar</NavLink>
+        }
+        @if (Oturum.Kullanici?.Rol == "SAHIP")
+        {
+            <NavLink href="/yetkiler" ActiveClass="aktif">🛡️ @Dil.T.Nav.Yetkiler</NavLink>
+        }
+    </nav>
+
+    <div class="kenar-alt">
+        @if (Oturum.Kullanici is not null)
+        {
+            <p class="kullanici-ad">@Oturum.Kullanici.Ad @Oturum.Kullanici.Soyad</p>
+            <p class="kullanici-rol">@Oturum.Kullanici.Rol</p>
+        }
+        <div class="kenar-alt-butonlar">
+            <a href="/kilavuz">📖 @Dil.T.Nav.Kilavuz</a>
+            <a href="/ayarlar">⚙️ @Dil.T.Nav.Ayarlar</a>
+            <button @onclick="CikisYap">🚪 @Dil.T.Ortak.CikisYap</button>
+        </div>
+    </div>
+</aside>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += OturumDegisti;
+        Yetki.Degisti += Yenile;
+        _ = Yetki.HazirlaAsync();
+    }
+
+    // Oturum değişince (profil yüklenince / kullanıcı değişince) yetkileri tazele
+    private async void OturumDegisti()
+    {
+        await Yetki.HazirlaAsync();
+        Yenile();
+    }
+
+    private async Task CikisYap()
+    {
+        await Oturum.CikisAsync();
+        Nav.NavigateTo("/giris");
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= OturumDegisti;
+        Yetki.Degisti -= Yenile;
+    }
+}

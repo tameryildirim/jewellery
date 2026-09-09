@@ -1,0 +1,689 @@
+@page "/islemler"
+@using System.Globalization
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject CanliKurServisi Canli
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   İşlemler (Satış / Alış / Hurda Alış / İşçilik / Takas / Transfer)
+   • Kur: /kur/guncel → id = kurSnapshotId; 60 sn'de bir tazelenir, her POST'ta
+     zorunlu gönderilir.
+   • SATIS/ALIS: API kalem başına tek işlem kaydeder — kalemler sırayla POST'lanır.
+   • VERESIYE'de kasa seçimi devre dışıdır ve kasaId null gönderilir.
+   • TAKAS: fark = yeni değer − eski değer; pozitif → müşteri öder (kasa
+     kullanılır), negatif → müşteriye iade (cariye yazılır). Önizleme istemcide
+     Kuyumcu.Core HasHesap ile hesaplanır, sunucu aynı formülü uygular.
+   • TRANSFER: şubeler arası stok — cari/kasa gerekmez, MUDUR+ yetki ister.
+   Kaynak: apps/web/src/pages/SatisPage.tsx + SatisModulu.cs sözleşmesi
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Dil.T.Islem.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk" style="max-width:48rem;margin:0 auto">
+
+    @* ── İşlem türü sekmeleri ── *@
+    <div class="sekme-grubu" role="group" aria-label="@Dil.T.Islem.Baslik">
+        @foreach (var (deger, etiket) in TurListesi)
+        {
+            <button class="sekme @(tur == deger ? "secili" : null)"
+                    aria-pressed="@(tur == deger ? "true" : "false")"
+                    @onclick="() => TurSec(deger)">@etiket</button>
+        }
+    </div>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        <div class="kart">
+            <div class="kart-baslik">
+                <h2>@TurEtiket(tur) @Dil.T.Islem.Formu</h2>
+            </div>
+            <div class="kart-govde form-dikey">
+
+                @* ── Cari seçimi (transferde gerekmez) ── *@
+                @if (tur != "TRANSFER")
+                {
+                    <div class="alan">
+                        <label for="islem-cari">@Dil.T.Cari.Baslik</label>
+                        <select id="islem-cari" class="secim" required @bind="cariId">
+                            <option value="">@Dil.T.Cari.CariSecin</option>
+                            @foreach (var c in cariler)
+                            {
+                                <option value="@c.Id">@c.Ad</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                @* ── Ödeme türü (yalnız satış) + kasa (transferde yok) ── *@
+                @if (tur == "SATIS")
+                {
+                    <div class="form-grid-2">
+                        <div class="alan">
+                            <label for="islem-odeme">@Dil.T.Islem.OdemeTuru</label>
+                            <select id="islem-odeme" class="secim" @bind="odemeTuru">
+                                @foreach (var (deger, etiket) in OdemeListesi)
+                                {
+                                    <option value="@deger">@etiket</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="alan">
+                            <label for="islem-kasa">@Dil.T.Islem.Kasa</label>
+                            <select id="islem-kasa" class="secim" disabled="@KasaKilitli" @bind="kasaId">
+                                <option value="">@Dil.T.Islem.KasaSecin</option>
+                                @foreach (var k in kasalar)
+                                {
+                                    <option value="@k.Id">@k.Ad (@k.ParaBirimi)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                }
+                else if (tur != "TRANSFER")
+                {
+                    <div class="alan">
+                        <label for="islem-kasa">@Dil.T.Islem.Kasa</label>
+                        <select id="islem-kasa" class="secim" @bind="kasaId">
+                            <option value="">@Dil.T.Islem.KasaSecin</option>
+                            @foreach (var k in kasalar)
+                            {
+                                <option value="@k.Id">@k.Ad (@k.ParaBirimi)</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                @* ── Kalem ekleme (SATIS / ALIS) ── *@
+                @if (tur is "SATIS" or "ALIS")
+                {
+                    <div class="satir" style="align-items:flex-end">
+                        <div class="alan" style="flex:1">
+                            <label for="islem-urun">@Dil.T.Islem.Urun</label>
+                            <select id="islem-urun" class="secim" @bind="secilenUrunId" @bind:after="UrunSecildi">
+                                <option value="">@Dil.T.Urun.UrunSecin</option>
+                                @foreach (var u in urunler)
+                                {
+                                    <option value="@u.Id">@u.Ad (@(u.AyarId ?? u.Ayar))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="alan" style="width:5rem">
+                            <label for="islem-adet">@Dil.T.Ortak.Adet</label>
+                            <input id="islem-adet" class="girdi sayi" type="number" min="1" @bind="adet" />
+                        </div>
+                        <div class="alan" style="width:9rem">
+                            <label for="islem-birimfiyat">@Dil.T.Islem.BirimFiyat</label>
+                            <input id="islem-birimfiyat" class="girdi sayi" type="number" step="0.01" @bind="birimFiyat" />
+                        </div>
+                        <button class="btn btn-birincil" disabled="@KalemEklenemez" @onclick="KalemEkle">@Dil.T.Ortak.Ekle</button>
+                    </div>
+
+                    @if (kalemler.Count > 0)
+                    {
+                        <div class="tablo-sar">
+                            <table class="veri-tablosu">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">@Dil.T.Islem.Urun</th>
+                                        <th scope="col">@Dil.T.Ortak.Adet</th>
+                                        <th scope="col">@Dil.T.Islem.Birim</th>
+                                        <th scope="col">@Dil.T.Ortak.Toplam</th>
+                                        <th scope="col"><span class="gorunmez">@Dil.T.Ortak.Eylemler</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var k in kalemler)
+                                    {
+                                        <tr>
+                                            <td>@k.UrunAdi</td>
+                                            <td class="sayi">@k.Adet</td>
+                                            <td class="sayi">@Bicim.Tl(k.BirimFiyat)</td>
+                                            <td class="sayi hucre-vurgu">@Bicim.Tl(k.Adet * k.BirimFiyat)</td>
+                                            <td>
+                                                <button class="btn btn-ikincil btn-kucuk metin-kirmizi"
+                                                        aria-label="@($"{k.UrunAdi} — {Dil.T.Ortak.Sil}")"
+                                                        @onclick="() => KalemSil(k)">@Dil.T.Ortak.Sil</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                    <tr style="background:var(--amber-50)">
+                                        <td colspan="3" class="hucre-vurgu">@Dil.T.Ortak.Toplam.ToUpper(CultureInfo.GetCultureInfo(Dil.Locale))</td>
+                                        <td class="sayi hucre-vurgu metin-amber">@Bicim.Tl(ToplamTl)</td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                }
+
+                @* ── Hurda alış alanları ── *@
+                @if (tur == "HURDA_ALIS")
+                {
+                    <div class="form-grid-3">
+                        <div class="alan">
+                            <label for="hurda-gram">@Dil.T.Urun.GramAgirlik</label>
+                            <input id="hurda-gram" class="girdi sayi" type="number" step="0.001" @bind="hurdaGram" />
+                        </div>
+                        <div class="alan">
+                            <label for="hurda-ayar">@Dil.T.Urun.Ayar</label>
+                            <select id="hurda-ayar" class="secim" @bind="hurdaAyar">
+                                @foreach (var a in AyarSecenekleri)
+                                {
+                                    <option value="@a">@a</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="alan">
+                            <label for="hurda-fiyat">@Dil.T.Islem.HasGramFiyati</label>
+                            <input id="hurda-fiyat" class="girdi sayi" type="number" step="0.01" @bind="hurdaFiyat" />
+                        </div>
+                    </div>
+                }
+
+                @* ── İşçilik alanı ── *@
+                @if (tur == "ISCILIK")
+                {
+                    <div class="alan">
+                        <label for="iscilik-tutar">@Dil.T.Islem.IscilikTutari</label>
+                        <input id="iscilik-tutar" class="girdi sayi" type="number" step="0.01" @bind="iscilikTutar" />
+                    </div>
+                }
+
+                @* ── Takas alanları ── *@
+                @if (tur == "TAKAS")
+                {
+                    <p class="hucre-vurgu metin-soluk metin-kucuk" style="text-transform:uppercase;letter-spacing:.04em">
+                        @Dil.T.Islem.TakasEskiUrun
+                    </p>
+                    <div class="form-grid-3">
+                        <div class="alan">
+                            <label for="takas-eski-ayar">@Dil.T.Urun.Ayar</label>
+                            <select id="takas-eski-ayar" class="secim" @bind="takasEskiAyar">
+                                @foreach (var a in AyarSecenekleri)
+                                {
+                                    <option value="@a">@a</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="alan">
+                            <label for="takas-eski-gram">@Dil.T.Urun.GramAgirlik</label>
+                            <input id="takas-eski-gram" class="girdi sayi" type="number" step="0.001" @bind="takasEskiGram" />
+                        </div>
+                        <div class="alan">
+                            <label for="takas-eski-fiyat">@Dil.T.Islem.HasGramFiyati</label>
+                            <input id="takas-eski-fiyat" class="girdi sayi" type="number" step="0.01" @bind="takasEskiFiyat" />
+                        </div>
+                    </div>
+
+                    <p class="hucre-vurgu metin-soluk metin-kucuk" style="text-transform:uppercase;letter-spacing:.04em">
+                        @Dil.T.Islem.TakasYeniUrun
+                    </p>
+                    <div class="form-grid-3">
+                        <div class="alan" style="grid-column:span 1">
+                            <label for="takas-yeni-urun">@Dil.T.Islem.Urun</label>
+                            <select id="takas-yeni-urun" class="secim" @bind="takasYeniUrunId" @bind:after="TakasYeniUrunSecildi">
+                                <option value="">@Dil.T.Urun.UrunSecin</option>
+                                @foreach (var u in urunler)
+                                {
+                                    <option value="@u.Id">@u.Ad (@(u.AyarId ?? u.Ayar))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="alan">
+                            <label for="takas-yeni-adet">@Dil.T.Ortak.Adet</label>
+                            <input id="takas-yeni-adet" class="girdi sayi" type="number" min="1" @bind="takasYeniAdet" />
+                        </div>
+                        <div class="alan">
+                            <label for="takas-yeni-fiyat">@Dil.T.Islem.BirimFiyat</label>
+                            <input id="takas-yeni-fiyat" class="girdi sayi" type="number" step="0.01" @bind="takasYeniFiyat" />
+                        </div>
+                    </div>
+
+                    @* Fark önizlemesi — sunucuyla aynı formül *@
+                    @if (TakasFark is decimal fark)
+                    {
+                        <div class="kart" style="background:var(--slate-50)">
+                            <div class="kart-govde" style="padding:.75rem 1rem">
+                                <div class="satir-arasi metin-kucuk metin-soluk">
+                                    <span>@Dil.T.Islem.TakasEskiUrun</span>
+                                    <span class="sayi">@Bicim.Has(TakasEskiHas) · @Bicim.Tl(TakasEskiDeger)</span>
+                                </div>
+                                <div class="satir-arasi metin-kucuk metin-soluk">
+                                    <span>@Dil.T.Islem.TakasYeniUrun</span>
+                                    <span class="sayi">@Bicim.Tl(TakasYeniDeger)</span>
+                                </div>
+                                <div class="satir-arasi hucre-vurgu" style="margin-top:.25rem">
+                                    <span>@Dil.T.Islem.Fark</span>
+                                    <span class="sayi @(fark >= 0 ? "metin-yesil" : "metin-kirmizi")">
+                                        @Bicim.Tl(Math.Abs(fark)) — @(fark >= 0 ? Dil.T.Islem.FarkMusteriOder : Dil.T.Islem.FarkIadeEdilir)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @* ── Transfer alanları ── *@
+                @if (tur == "TRANSFER")
+                {
+                    <div class="form-grid-2">
+                        <div class="alan">
+                            <label for="transfer-kaynak">@Dil.T.Islem.KaynakSube</label>
+                            <select id="transfer-kaynak" class="secim" @bind="transferKaynakId">
+                                <option value="">@Dil.T.Islem.SubeSecin</option>
+                                @foreach (var s in subeler)
+                                {
+                                    <option value="@s.Id">@s.Ad</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="alan">
+                            <label for="transfer-hedef">@Dil.T.Islem.HedefSube</label>
+                            <select id="transfer-hedef" class="secim" @bind="transferHedefId">
+                                <option value="">@Dil.T.Islem.SubeSecin</option>
+                                @foreach (var s in subeler.Where(x => x.Id != transferKaynakId))
+                                {
+                                    <option value="@s.Id">@s.Ad</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="satir" style="align-items:flex-end">
+                        <div class="alan" style="flex:1">
+                            <label for="transfer-urun">@Dil.T.Islem.Urun</label>
+                            <select id="transfer-urun" class="secim" @bind="transferUrunId">
+                                <option value="">@Dil.T.Urun.UrunSecin</option>
+                                @foreach (var u in urunler)
+                                {
+                                    <option value="@u.Id">@u.Ad (@(u.AyarId ?? u.Ayar))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="alan" style="width:6rem">
+                            <label for="transfer-adet">@Dil.T.Ortak.Adet</label>
+                            <input id="transfer-adet" class="girdi sayi" type="number" min="1" @bind="transferAdet" />
+                        </div>
+                    </div>
+                }
+
+                <div class="alan">
+                    <label for="islem-aciklama">@Dil.T.Ortak.Aciklama</label>
+                    <input id="islem-aciklama" class="girdi" @bind="aciklama" />
+                </div>
+
+                <HataBandi Mesaj="@hata" />
+                @if (basarili)
+                {
+                    <BasariBandi Mesaj="@Dil.T.Islem.Basarili" />
+                }
+
+                <button class="btn btn-birincil btn-buyuk btn-tam"
+                        disabled="@(kaydediliyor || !Gonderilebilir)"
+                        @onclick="Kaydet">
+                    @(kaydediliyor ? Dil.T.Ortak.Yukleniyor : $"{TurEtiket(tur)} {Dil.T.Islem.Kaydet}")
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
+    private sealed record CariVeri(string Id, string Ad);
+    private sealed record UrunVeri(
+        string Id, string Ad, string? AyarId, string? Ayar,
+        decimal HasGrami, decimal? IscilikTl, decimal? SatisFiyati);
+    private sealed record KasaVeri(string Id, string Ad, string ParaBirimi, bool Aktif);
+    private sealed record SubeVeri(string Id, string Ad, bool Aktif);
+
+    private sealed class Kalem
+    {
+        public required string UrunId { get; init; }
+        public required string UrunAdi { get; init; }
+        public int Adet { get; set; }
+        public decimal BirimFiyat { get; init; }
+    }
+
+    private static readonly string[] AyarSecenekleri = ["K8", "K14", "K18", "K21", "K22", "K24", "G800", "G925", "G950"];
+
+    // ── durum ──
+    private List<CariVeri> cariler = [];
+    private List<UrunVeri> urunler = [];
+    private List<KasaVeri> kasalar = [];
+    private List<SubeVeri> subeler = [];
+    private string? kurId;                     // kurSnapshotId — her istekte zorunlu
+    private decimal hasFiyati;                 // güncel 24k has TL/gram — otomatik fiyat için
+
+    private string tur = "SATIS";
+    private string cariId = "";
+    private string kasaId = "";
+    private string odemeTuru = "NAKIT";
+    private readonly List<Kalem> kalemler = [];
+    private string secilenUrunId = "";
+    private int adet = 1;
+    private decimal? birimFiyat;
+    private string aciklama = "";
+
+    private decimal? hurdaGram;
+    private string hurdaAyar = "K18";
+    private decimal? hurdaFiyat;
+    private decimal? iscilikTutar;
+
+    // takas
+    private string takasEskiAyar = "K22";
+    private decimal? takasEskiGram;
+    private decimal? takasEskiFiyat;
+    private string takasYeniUrunId = "";
+    private int takasYeniAdet = 1;
+    private decimal? takasYeniFiyat;
+
+    // transfer
+    private string transferKaynakId = "";
+    private string transferHedefId = "";
+    private string transferUrunId = "";
+    private int transferAdet = 1;
+
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private bool basarili;
+    private int basariJeton;                   // yeni kayıt eski 3 sn sayacını geçersiz kılar
+    private string? hata;
+
+    // ── türetilmiş durum ──
+    private (string Deger, string Etiket)[] TurListesi =>
+    [
+        ("SATIS", Dil.T.Islem.Satis),
+        ("ALIS", Dil.T.Islem.Alis),
+        ("HURDA_ALIS", Dil.T.Islem.HurdaAlis),
+        ("ISCILIK", Dil.T.Islem.Iscilik),
+        ("TAKAS", Dil.T.Islem.Takas),
+        ("TRANSFER", Dil.T.Islem.Transfer),
+    ];
+
+    private (string Deger, string Etiket)[] OdemeListesi =>
+    [
+        ("NAKIT", Dil.T.Islem.OdemeNakit),
+        ("KART", Dil.T.Islem.OdemeKart),
+        ("HAVALE", Dil.T.Islem.OdemeHavale),
+        ("ALTIN", Dil.T.Islem.OdemeAltin),
+        ("VERESIYE", Dil.T.Islem.OdemeVeresiye),
+    ];
+
+    private string TurEtiket(string t) => t switch
+    {
+        "SATIS" => Dil.T.Islem.Satis,
+        "ALIS" => Dil.T.Islem.Alis,
+        "HURDA_ALIS" => Dil.T.Islem.HurdaAlis,
+        "TAKAS" => Dil.T.Islem.Takas,
+        "TRANSFER" => Dil.T.Islem.Transfer,
+        _ => Dil.T.Islem.Iscilik,
+    };
+
+    private bool KasaKilitli => tur == "SATIS" && odemeTuru == "VERESIYE";
+    private bool KasaGerekli => tur is "ALIS" or "HURDA_ALIS" || (tur == "SATIS" && !KasaKilitli);
+    private bool CariGerekli => tur != "TRANSFER";
+    private bool KalemEklenemez => string.IsNullOrEmpty(secilenUrunId) || birimFiyat is null or <= 0;
+    private decimal ToplamTl => kalemler.Sum(k => k.Adet * k.BirimFiyat);
+
+    // Takas fark önizlemesi — SatisModulu.Takas ile aynı formül
+    private decimal TakasEskiHas =>
+        takasEskiGram is > 0 && Kuyumcu.Core.Domain.Ayarlar.Bul(takasEskiAyar) is { } ayar
+            ? HasHesap.ToHasGram(takasEskiGram.Value, ayar)
+            : 0m;
+    private decimal TakasEskiDeger => TakasEskiHas * (takasEskiFiyat ?? 0m);
+    private decimal TakasYeniDeger => takasYeniAdet * (takasYeniFiyat ?? 0m);
+    private decimal? TakasFark =>
+        takasEskiGram is > 0 && takasEskiFiyat is > 0 && takasYeniFiyat is > 0
+            ? TakasYeniDeger - TakasEskiDeger
+            : null;
+
+    private bool Gonderilebilir =>
+        (!CariGerekli || !string.IsNullOrEmpty(cariId))
+        && !string.IsNullOrEmpty(kurId)
+        && (!KasaGerekli || !string.IsNullOrEmpty(kasaId))
+        && tur switch
+        {
+            "SATIS" or "ALIS" => kalemler.Count > 0,
+            "HURDA_ALIS" => hurdaGram is > 0 && hurdaFiyat is > 0,
+            "TAKAS" => takasEskiGram is > 0 && takasEskiFiyat is > 0
+                       && !string.IsNullOrEmpty(takasYeniUrunId)
+                       && takasYeniAdet > 0 && takasYeniFiyat is > 0,
+            "TRANSFER" => !string.IsNullOrEmpty(transferKaynakId)
+                          && !string.IsNullOrEmpty(transferHedefId)
+                          && transferKaynakId != transferHedefId
+                          && !string.IsNullOrEmpty(transferUrunId)
+                          && transferAdet > 0,
+            _ => iscilikTutar is > 0,
+        };
+
+    // ── yaşam döngüsü ──
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Canli.Degisti += KurYansit;      // canlı kur push geldiğinde kurId/has tazele
+        try
+        {
+            cariler = await Api.GetAsync<List<CariVeri>>("/cari?limit=200");
+            urunler = await Api.GetAsync<List<UrunVeri>>("/urunler?limit=200");
+            subeler = (await Api.GetAsync<List<SubeVeri>>("/subeler")).Where(s => s.Aktif).ToList();
+            await KasalariYukle();
+            await Canli.BaslatAsync();   // SignalR push + ilk kur değeri
+            KurYansit();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    private async Task KasalariYukle() =>
+        kasalar = (await Api.GetAsync<List<KasaVeri>>("/kasalar")).Where(k => k.Aktif).ToList();
+
+    // Canlı kur servisinden kurSnapshotId + has fiyatını yansıt (push geldiğinde de çağrılır)
+    private void KurYansit()
+    {
+        kurId = Canli.Son?.Id;
+        hasFiyati = Canli.Son?.AltinHasFiyati ?? 0m;
+        InvokeAsync(StateHasChanged);
+    }
+
+    // Ürün seçilince birim fiyatı otomatik doldur ("İkisi de" kuralı):
+    //   • Ürünün sabit satış fiyatı varsa onu kullan
+    //   • Yoksa has × güncel kur + işçilik ile hesapla
+    // Kullanıcı isterse alanı elle değiştirebilir.
+    private decimal? OtomatikFiyat(UrunVeri u)
+    {
+        if (u.SatisFiyati is > 0) return u.SatisFiyati;
+        if (hasFiyati > 0) return Math.Round(u.HasGrami * hasFiyati + (u.IscilikTl ?? 0m), 2);
+        return null;
+    }
+
+    private void UrunSecildi()
+    {
+        var u = urunler.FirstOrDefault(x => x.Id == secilenUrunId);
+        if (u is not null) birimFiyat = OtomatikFiyat(u);
+    }
+
+    private void TakasYeniUrunSecildi()
+    {
+        var u = urunler.FirstOrDefault(x => x.Id == takasYeniUrunId);
+        if (u is not null) takasYeniFiyat = OtomatikFiyat(u);
+    }
+
+    // ── etkileşim ──
+    private void TurSec(string yeni)
+    {
+        tur = yeni;
+        kalemler.Clear();
+        hata = null;
+    }
+
+    private void KalemEkle()
+    {
+        if (KalemEklenemez) return;
+        if (adet < 1) adet = 1;
+
+        var mevcut = kalemler.FirstOrDefault(k => k.UrunId == secilenUrunId);
+        if (mevcut is not null)
+        {
+            mevcut.Adet += adet;
+        }
+        else
+        {
+            kalemler.Add(new Kalem
+            {
+                UrunId = secilenUrunId,
+                UrunAdi = urunler.FirstOrDefault(u => u.Id == secilenUrunId)?.Ad ?? "",
+                Adet = adet,
+                BirimFiyat = birimFiyat!.Value,
+            });
+        }
+        secilenUrunId = "";
+        birimFiyat = null;
+        adet = 1;
+    }
+
+    private void KalemSil(Kalem k) => kalemler.Remove(k);
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        basarili = false;
+        if (string.IsNullOrEmpty(kurId)) { hata = Dil.T.Islem.BilgiKontrol; return; }
+
+        kaydediliyor = true;
+        var kaydedildi = false;
+        try
+        {
+            var kasa = string.IsNullOrEmpty(kasaId) ? null : kasaId;
+            var acikl = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama;
+
+            if (tur is "SATIS" or "ALIS")
+            {
+                // API kalem başına tek işlem kaydeder — sırayla gönder
+                foreach (var k in kalemler)
+                {
+                    if (tur == "SATIS")
+                        await Api.PostAsync("/islemler/satis", new
+                        {
+                            cariId,
+                            urunId = k.UrunId,
+                            adet = k.Adet,
+                            birimFiyatTl = k.BirimFiyat,
+                            odemeTuru,
+                            kasaId = odemeTuru == "VERESIYE" ? null : kasa,
+                            kurSnapshotId = kurId,
+                            aciklama = acikl,
+                        });
+                    else
+                        await Api.PostAsync("/islemler/alis", new
+                        {
+                            cariId,
+                            urunId = k.UrunId,
+                            adet = k.Adet,
+                            birimFiyatTl = k.BirimFiyat,
+                            kasaId = kasa,
+                            kurSnapshotId = kurId,
+                            aciklama = acikl,
+                        });
+                }
+            }
+            else if (tur == "HURDA_ALIS")
+            {
+                await Api.PostAsync("/islemler/hurda-alis", new
+                {
+                    cariId,
+                    ayarId = hurdaAyar,
+                    gramAgirlik = hurdaGram!.Value,
+                    birimFiyatTlHasGram = hurdaFiyat!.Value,
+                    kasaId = kasa,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                });
+            }
+            else if (tur == "TAKAS")
+            {
+                await Api.PostAsync("/islemler/takas", new
+                {
+                    cariId,
+                    eskiUrunAyarId = takasEskiAyar,
+                    eskiUrunGram = takasEskiGram!.Value,
+                    eskiUrunBirimFiyatTlHasGram = takasEskiFiyat!.Value,
+                    yeniUrunId = takasYeniUrunId,
+                    yeniUrunAdet = takasYeniAdet,
+                    yeniUrunBirimFiyatTl = takasYeniFiyat!.Value,
+                    kasaId = kasa,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                });
+            }
+            else if (tur == "TRANSFER")
+            {
+                await Api.PostAsync("/islemler/transfer", new
+                {
+                    kaynakSubeId = transferKaynakId,
+                    hedefSubeId = transferHedefId,
+                    urunId = transferUrunId,
+                    adet = transferAdet,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                });
+            }
+            else // ISCILIK
+            {
+                await Api.PostAsync("/islemler/iscilik", new
+                {
+                    cariId,
+                    iscilikTl = iscilikTutar!.Value,
+                    kasaId = kasa,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                });
+            }
+            kaydedildi = true;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+        if (!kaydedildi) return;
+
+        // başarı: formu sıfırla, kasa bakiyelerini tazele, bandı 3 sn göster
+        kalemler.Clear();
+        cariId = "";
+        aciklama = "";
+        hurdaGram = null;
+        hurdaFiyat = null;
+        iscilikTutar = null;
+        takasEskiGram = null;
+        takasEskiFiyat = null;
+        takasYeniUrunId = "";
+        takasYeniAdet = 1;
+        takasYeniFiyat = null;
+        transferKaynakId = "";
+        transferHedefId = "";
+        transferUrunId = "";
+        transferAdet = 1;
+        try { await KasalariYukle(); } catch (ApiHata) { /* bakiye tazelenemedi, kritik değil */ }
+
+        basarili = true;
+        var jeton = ++basariJeton;
+        StateHasChanged();
+        await Task.Delay(3000);
+        if (jeton == basariJeton)
+        {
+            basarili = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Canli.Degisti -= KurYansit;
+    }
+}

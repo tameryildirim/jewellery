@@ -1,0 +1,431 @@
+@page "/kullanicilar"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* Kullanıcı yönetimi — API: /api/v1/kullanicilar (SAHIP, MUDUR).
+   Rol hiyerarşisi: SAHIP(4) > MUDUR(3) > MUHASEBE(2) > TEZGAHTAR(1).
+   • Düzenle: kendi profilini (ad/soyad/e-posta) veya kendinden düşük roldeki kullanıcıyı (+ rol/durum) günceller.
+   • Şifre: kendine "Şifre Değiştir" (mevcut şifre ister), başkasına "Şifre Sıfırla" (admin). *@
+
+<PageTitle>@Dil.T.Kullanici.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    <div class="satir" style="justify-content:flex-end">
+        <button class="btn btn-birincil" @onclick="YeniModalAc">+ @Dil.T.Kullanici.YeniKullanici</button>
+    </div>
+
+    <HataBandi Mesaj="@listeHata" />
+    @if (basari)
+    {
+        <BasariBandi Mesaj="@basariMesaj" />
+    }
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (liste.Count == 0)
+    {
+        <div class="kart"><BosDurum Mesaj="@Dil.T.Kullanici.KullaniciBulunamadi" /></div>
+    }
+    else
+    {
+        <div class="kart">
+            <div class="tablo-sar">
+                <table class="veri-tablosu">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.Kullanici.AdSoyad</th>
+                            <th scope="col">@Dil.T.Kullanici.Eposta</th>
+                            <th scope="col">@Dil.T.Kullanici.Rol</th>
+                            <th scope="col">@Dil.T.Kullanici.Durum</th>
+                            <th scope="col">@Dil.T.Kullanici.SonGiris</th>
+                            <th scope="col"><span class="gorunmez">@Dil.T.Ortak.Eylemler</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var k in liste)
+                        {
+                            <tr>
+                                <td class="hucre-vurgu">
+                                    @k.Ad @k.Soyad
+                                    @if (k.Id == BenimId)
+                                    {
+                                        <span class="metin-soluk metin-kucuk"> (@Dil.T.Auth.Hosgeldin.TrimEnd(','))</span>
+                                    }
+                                </td>
+                                <td>@k.Email</td>
+                                <td><Rozet Renk="@RolRengi(k.Rol)">@RolEtiket(k.Rol)</Rozet></td>
+                                <td>
+                                    <Rozet Renk="@(k.Aktif ? "yesil" : "gri")">
+                                        @(k.Aktif ? Dil.T.Kullanici.Aktif : Dil.T.Kullanici.Pasif)
+                                    </Rozet>
+                                </td>
+                                <td class="metin-soluk metin-kucuk">
+                                    @(k.SonGiris is DateTime sg ? Bicim.Tarih(sg, Dil.Locale) : Dil.T.Kullanici.GirisYok)
+                                </td>
+                                <td>
+                                    @if (k.Id == BenimId || UzerindeIslemYapabilir(k))
+                                    {
+                                        <div class="satir" style="gap:.375rem;justify-content:flex-end">
+                                            <button class="btn btn-ikincil btn-kucuk" @onclick="() => DuzenleModalAc(k)">
+                                                @Dil.T.Kullanici.Duzenle
+                                            </button>
+                                            <button class="btn btn-ikincil btn-kucuk" @onclick="() => SifreModalAc(k)">
+                                                @(k.Id == BenimId ? Dil.T.Kullanici.SifreDegistir : Dil.T.Kullanici.SifreSifirla)
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="metin-soluk">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@* ── Yeni kullanıcı modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Kullanici.YeniKullanici" Kapat="() => yeniModalAcik = false">
+    <div class="form-dikey">
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="k-ad">@Dil.T.Auth.Ad</label>
+                <input id="k-ad" class="girdi" @bind="yeniAd" />
+            </div>
+            <div class="alan">
+                <label for="k-soyad">@Dil.T.Auth.Soyad</label>
+                <input id="k-soyad" class="girdi" @bind="yeniSoyad" />
+            </div>
+        </div>
+        <div class="alan">
+            <label for="k-eposta">@Dil.T.Kullanici.Eposta</label>
+            <input id="k-eposta" class="girdi" type="email" @bind="yeniEmail" />
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="k-rol">@Dil.T.Kullanici.Rol</label>
+                <select id="k-rol" class="secim" @bind="yeniRol">
+                    @foreach (var r in AtanabilirRoller)
+                    {
+                        <option value="@r">@RolEtiket(r)</option>
+                    }
+                </select>
+            </div>
+            <div class="alan">
+                <label for="k-sifre">@Dil.T.Kullanici.Sifre</label>
+                <input id="k-sifre" class="girdi" type="password" placeholder="@Dil.T.Kullanici.SifreIpucu" @bind="yeniSifre" />
+            </div>
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => yeniModalAcik = false">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1"
+                    disabled="@(kaydediliyor || !YeniGecerli)"
+                    @onclick="KullaniciOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Kullanıcı düzenle modalı ── *@
+<ModalPencere Acik="duzenleHedef is not null" Baslik="@Dil.T.Kullanici.Duzenle" Kapat="() => duzenleHedef = null">
+    @if (duzenleHedef is not null)
+    {
+        <div class="form-dikey">
+            <div class="form-grid-2">
+                <div class="alan">
+                    <label for="d-ad">@Dil.T.Auth.Ad</label>
+                    <input id="d-ad" class="girdi" @bind="dAd" />
+                </div>
+                <div class="alan">
+                    <label for="d-soyad">@Dil.T.Auth.Soyad</label>
+                    <input id="d-soyad" class="girdi" @bind="dSoyad" />
+                </div>
+            </div>
+            <div class="alan">
+                <label for="d-eposta">@Dil.T.Kullanici.Eposta</label>
+                <input id="d-eposta" class="girdi" type="email" @bind="dEmail" />
+            </div>
+            @if (duzenleHedef.Id != BenimId)
+            {
+                <div class="form-grid-2">
+                    <div class="alan">
+                        <label for="d-rol">@Dil.T.Kullanici.Rol</label>
+                        <select id="d-rol" class="secim" @bind="dRol">
+                            @foreach (var r in AtanabilirRoller)
+                            {
+                                <option value="@r">@RolEtiket(r)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="alan">
+                        <label for="d-durum">@Dil.T.Kullanici.Durum</label>
+                        <select id="d-durum" class="secim" @bind="dAktif">
+                            <option value="true">@Dil.T.Kullanici.Aktif</option>
+                            <option value="false">@Dil.T.Kullanici.Pasif</option>
+                        </select>
+                    </div>
+                </div>
+            }
+            <HataBandi Mesaj="@modalHata" />
+            <div class="satir">
+                <button class="btn btn-ikincil" style="flex:1" @onclick="() => duzenleHedef = null">@Dil.T.Ortak.Iptal</button>
+                <button class="btn btn-birincil" style="flex:1"
+                        disabled="@(kaydediliyor || string.IsNullOrWhiteSpace(dAd) || string.IsNullOrWhiteSpace(dSoyad) || string.IsNullOrWhiteSpace(dEmail))"
+                        @onclick="DuzenleKaydet">@Dil.T.Ortak.Kaydet</button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@* ── Şifre modalı (kendine değiştir / başkasına sıfırla) ── *@
+<ModalPencere Acik="sifreHedef is not null"
+              Baslik="@(SifreHedefKendim ? Dil.T.Kullanici.SifreDegistir : Dil.T.Kullanici.SifreSifirla)"
+              Kapat="() => sifreHedef = null">
+    @if (sifreHedef is not null)
+    {
+        <div class="form-dikey">
+            <p class="metin-soluk">@sifreHedef.Ad @sifreHedef.Soyad</p>
+            @if (SifreHedefKendim)
+            {
+                <div class="alan">
+                    <label for="s-mevcut">@Dil.T.Kullanici.MevcutSifre</label>
+                    <input id="s-mevcut" class="girdi" type="password" @bind="sMevcut" />
+                </div>
+            }
+            <div class="alan">
+                <label for="s-yeni">@Dil.T.Kullanici.YeniSifre</label>
+                <input id="s-yeni" class="girdi" type="password" placeholder="@Dil.T.Kullanici.SifreIpucu" @bind="sYeni" />
+            </div>
+            <div class="alan">
+                <label for="s-tekrar">@Dil.T.Auth.SifreTekrar</label>
+                <input id="s-tekrar" class="girdi" type="password" @bind="sTekrar" />
+            </div>
+            <HataBandi Mesaj="@modalHata" />
+            <div class="satir">
+                <button class="btn btn-ikincil" style="flex:1" @onclick="() => sifreHedef = null">@Dil.T.Ortak.Iptal</button>
+                <button class="btn btn-birincil" style="flex:1"
+                        disabled="@(kaydediliyor || string.IsNullOrEmpty(sYeni) || (SifreHedefKendim && string.IsNullOrEmpty(sMevcut)))"
+                        @onclick="SifreKaydet">@Dil.T.Ortak.Kaydet</button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@code {
+    private sealed record KullaniciVeri(
+        string Id, string Ad, string Soyad, string Email, string Rol,
+        bool Aktif, DateTime? SonGiris);
+
+    private List<KullaniciVeri> liste = [];
+    private bool yukleniyor = true;
+    private string? listeHata;
+
+    private bool basari;
+    private string basariMesaj = "";
+    private int basariJeton;
+
+    private bool kaydediliyor;
+    private string? modalHata;
+
+    // yeni kullanıcı
+    private bool yeniModalAcik;
+    private string yeniAd = "";
+    private string yeniSoyad = "";
+    private string yeniEmail = "";
+    private string yeniSifre = "";
+    private string yeniRol = "TEZGAHTAR";
+
+    // düzenle
+    private KullaniciVeri? duzenleHedef;
+    private string dAd = "";
+    private string dSoyad = "";
+    private string dEmail = "";
+    private string dRol = "TEZGAHTAR";
+    private string dAktif = "true";
+
+    // şifre
+    private KullaniciVeri? sifreHedef;
+    private string sMevcut = "";
+    private string sYeni = "";
+    private string sTekrar = "";
+    private bool SifreHedefKendim => sifreHedef?.Id == BenimId;
+
+    private string BenimId => Oturum.Kullanici?.Id ?? "";
+    private string BenimRol => Oturum.Kullanici?.Rol ?? "TEZGAHTAR";
+
+    private static int Seviye(string rol) => rol switch
+    {
+        "SAHIP" => 4, "MUDUR" => 3, "MUHASEBE" => 2, _ => 1,
+    };
+
+    // Kendinden düşük roldeki BAŞKA kullanıcılar üzerinde tam işlem yapılabilir
+    private bool UzerindeIslemYapabilir(KullaniciVeri k) =>
+        k.Id != BenimId && Seviye(BenimRol) > Seviye(k.Rol);
+
+    private string[] AtanabilirRoller =>
+        new[] { "MUDUR", "MUHASEBE", "TEZGAHTAR" }.Where(r => Seviye(BenimRol) > Seviye(r)).ToArray();
+
+    private bool YeniGecerli =>
+        !string.IsNullOrWhiteSpace(yeniAd) && !string.IsNullOrWhiteSpace(yeniSoyad)
+        && !string.IsNullOrWhiteSpace(yeniEmail) && (yeniSifre?.Length ?? 0) >= 8;
+
+    private string RolEtiket(string rol) => rol switch
+    {
+        "SAHIP" => Dil.T.Kullanici.RolSahip,
+        "MUDUR" => Dil.T.Kullanici.RolMudur,
+        "MUHASEBE" => Dil.T.Kullanici.RolMuhasebe,
+        _ => Dil.T.Kullanici.RolTezgahtar,
+    };
+
+    private static string RolRengi(string rol) => rol switch
+    {
+        "SAHIP" => "amber",
+        "MUDUR" => "mavi",
+        "MUHASEBE" => "yesil",
+        _ => "gri",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try { liste = await Api.GetAsync<List<KullaniciVeri>>("/kullanicilar"); }
+        catch (ApiHata ex) { liste = []; listeHata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    private void YeniModalAc()
+    {
+        modalHata = null;
+        yeniAd = yeniSoyad = yeniEmail = yeniSifre = "";
+        yeniRol = AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR";
+        yeniModalAcik = true;
+    }
+
+    private async Task KullaniciOlustur()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/kullanicilar", new
+            {
+                ad = yeniAd.Trim(),
+                soyad = yeniSoyad.Trim(),
+                email = yeniEmail.Trim(),
+                sifre = yeniSifre,
+                rol = yeniRol,
+            });
+            yeniModalAcik = false;
+            await Yukle();
+            _ = BasariGoster(Dil.T.Kullanici.Olusturuldu);
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── düzenle ──
+    private void DuzenleModalAc(KullaniciVeri k)
+    {
+        modalHata = null;
+        duzenleHedef = k;
+        dAd = k.Ad;
+        dSoyad = k.Soyad;
+        dEmail = k.Email;
+        dRol = AtanabilirRoller.Contains(k.Rol) ? k.Rol : (AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR");
+        dAktif = k.Aktif ? "true" : "false";
+    }
+
+    private async Task DuzenleKaydet()
+    {
+        if (duzenleHedef is null) return;
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            if (duzenleHedef.Id == BenimId)
+            {
+                // Kendi profili — /ben (rol/aktif değiştirilemez)
+                await Api.PatchAsync("/kullanicilar/ben",
+                    new { ad = dAd.Trim(), soyad = dSoyad.Trim(), email = dEmail.Trim() });
+                // Yan menüdeki ad anında güncellensin
+                if (Oturum.Kullanici is not null)
+                    Oturum.KullaniciAta(Oturum.Kullanici with
+                    {
+                        Ad = dAd.Trim(), Soyad = dSoyad.Trim(), Email = dEmail.Trim(),
+                    });
+            }
+            else
+            {
+                var eskiRol = duzenleHedef.Rol;
+                await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}", new
+                {
+                    ad = dAd.Trim(), soyad = dSoyad.Trim(), email = dEmail.Trim(), aktif = dAktif == "true",
+                });
+                if (dRol != eskiRol)
+                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol });
+            }
+            duzenleHedef = null;
+            await Yukle();
+            _ = BasariGoster(Dil.T.Kullanici.Guncellendi);
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── şifre ──
+    private void SifreModalAc(KullaniciVeri k)
+    {
+        modalHata = null;
+        sifreHedef = k;
+        sMevcut = sYeni = sTekrar = "";
+    }
+
+    private async Task SifreKaydet()
+    {
+        if (sifreHedef is null) return;
+        modalHata = null;
+        if (sYeni != sTekrar) { modalHata = Dil.T.Ayarlar.SifrelerEslesmiyor; return; }
+        kaydediliyor = true;
+        try
+        {
+            if (SifreHedefKendim)
+                await Api.PatchAsync("/kullanicilar/ben/sifre",
+                    new { mevcutSifre = sMevcut, yeniSifre = sYeni, yeniSifreTekrar = sTekrar });
+            else
+                await Api.PatchAsync($"/kullanicilar/{sifreHedef.Id}/sifre",
+                    new { yeniSifre = sYeni, yeniSifreTekrar = sTekrar });
+            sifreHedef = null;
+            _ = BasariGoster(Dil.T.Kullanici.SifreSifirlandi);
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task BasariGoster(string mesaj)
+    {
+        basariMesaj = mesaj;
+        basari = true;
+        var jeton = ++basariJeton;
+        StateHasChanged();
+        await Task.Delay(3000);
+        if (jeton == basariJeton) { basari = false; StateHasChanged(); }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

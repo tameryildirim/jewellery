@@ -1,0 +1,540 @@
+@page "/banka"
+@using System.Globalization
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/BankaPage.tsx — Kasalar.razor desenini izler. *@
+
+<PageTitle>@Dil.T.Banka.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    <div class="stat-izgara">
+        <StatKart Renk="yesil" Etiket="@Dil.T.Banka.ToplamBakiye" Deger="@Bicim.Tl(ToplamTry)" />
+        <StatKart Renk="mavi" Etiket="@Dil.T.Banka.HesapSayisi" Deger="@hesaplar.Count.ToString()" />
+    </div>
+
+    <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-birincil" @onclick="YeniHesapModalAc">+ @Dil.T.Banka.YeniHesap</button>
+    </div>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (hesaplar.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Banka.HesapBulunamadi" />
+    }
+    else
+    {
+        @* ── Hesap sekmeleri ── *@
+        <div class="sekme-grubu">
+            @foreach (var h in hesaplar)
+            {
+                var secili = h.Id == AktifHesapId;
+                <button class="sekme @(secili ? "secili" : null)"
+                        aria-pressed="@(secili ? "true" : "false")"
+                        @onclick="() => HesapSec(h.Id)">
+                    <span aria-hidden="true">🏛️</span>
+                    @h.BankaAdi — @h.HesapAdi
+                    <span class="hucre-vurgu sayi">@Bicim.Tl(h.Bakiye)</span>
+                </button>
+            }
+        </div>
+
+        @* ── Hareket listesi ── *@
+        @if (AktifHesap is not null)
+        {
+            <div class="kart">
+                <div class="kart-baslik satir-arasi">
+                    <div>
+                        <h2>@Dil.T.Banka.Hareketler</h2>
+                        @if (!string.IsNullOrEmpty(AktifHesap.HesapSahibi))
+                        {
+                            <p class="metin-soluk metin-kucuk">
+                                @Dil.T.Banka.HesapSahibi: <span class="hucre-vurgu">@AktifHesap.HesapSahibi</span>
+                            </p>
+                        }
+                        <p class="metin-soluk metin-kucuk sayi">@AktifHesap.Iban</p>
+                    </div>
+                    <div class="satir" style="gap:.5rem">
+                        <button class="btn btn-ikincil btn-kucuk" @onclick="() => DuzenleModalAc(AktifHesap)">
+                            <span aria-hidden="true">✏️</span> @Dil.T.Banka.HesabiDuzenle
+                        </button>
+                        <button class="btn btn-birincil btn-kucuk" @onclick="DekontModalAc">+ @Dil.T.Banka.DekontGir</button>
+                    </div>
+                </div>
+
+                @if (hareketYukleniyor)
+                {
+                    <Yukleniyor />
+                }
+                else if (hareketler.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Cari.HareketYok" />
+                }
+                else
+                {
+                    <div class="tablo-sar">
+                        <table class="veri-tablosu">
+                            <thead>
+                                <tr>
+                                    <th scope="col">@Dil.T.Ortak.Tarih</th>
+                                    <th scope="col">@Dil.T.Banka.Yon</th>
+                                    <th scope="col">@Dil.T.Banka.KarsiTaraf</th>
+                                    <th scope="col">@Dil.T.Ortak.Aciklama</th>
+                                    <th scope="col">@Dil.T.Ortak.Tutar</th>
+                                    <th scope="col">@Dil.T.Fatura.Durum</th>
+                                    <th scope="col"><span class="gorunmez">@Dil.T.Ortak.Eylemler</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var h in hareketler)
+                                {
+                                    <tr>
+                                        <td class="metin-soluk">@Bicim.Tarih(h.Tarih, Dil.Locale)</td>
+                                        <td>
+                                            <Rozet Renk="@(h.Yon == "GELEN" ? "yesil" : "kirmizi")">
+                                                @(h.Yon == "GELEN" ? $"↓ {Dil.T.Banka.Gelen}" : $"↑ {Dil.T.Banka.Giden}")
+                                            </Rozet>
+                                        </td>
+                                        <td>@(h.KarsiTarafAd ?? "—")</td>
+                                        <td class="metin-soluk">@(h.Aciklama ?? "—")</td>
+                                        <td class="hucre-vurgu sayi @(h.Yon == "GELEN" ? "metin-yesil" : "metin-kirmizi")">
+                                            @(h.Yon == "GELEN" ? "+" : "-")@Bicim.Tl(h.Tutar)
+                                        </td>
+                                        <td><Rozet Renk="@DurumRenk(h.Durum)">@DurumMetin(h.Durum)</Rozet></td>
+                                        <td>
+                                            @if (h.Yon == "GELEN" && h.Durum != "FATURALANDI")
+                                            {
+                                                <button class="btn btn-ikincil btn-kucuk" @onclick="() => DonusturModalAc(h)">
+                                                    <span aria-hidden="true">🧾</span> @Dil.T.Banka.FaturayaDonustur
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@* ── Yeni hesap modalı ── *@
+<ModalPencere Acik="yeniHesapModalAcik" Baslik="@Dil.T.Banka.YeniHesap" Kapat="() => yeniHesapModalAcik = false">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="hesap-banka">@Dil.T.Banka.BankaAdi</label>
+            <input id="hesap-banka" class="girdi" @bind="hesapBankaAdi" placeholder="Ziraat Bankası" />
+        </div>
+        <div class="alan">
+            <label for="hesap-ad">@Dil.T.Banka.HesapAdi</label>
+            <input id="hesap-ad" class="girdi" @bind="hesapHesapAdi" placeholder="Ana Hesap" />
+        </div>
+        <div class="alan">
+            <label for="hesap-sahibi">@Dil.T.Banka.HesapSahibi</label>
+            <input id="hesap-sahibi" class="girdi" @bind="hesapSahibi" placeholder="Ahmet Yılmaz / X Kuyumculuk Ltd." />
+        </div>
+        <div class="alan">
+            <label for="hesap-iban">@Dil.T.Banka.Iban</label>
+            <input id="hesap-iban" class="girdi" @bind="hesapIban" placeholder="TR000000000000000000000000" />
+        </div>
+        <div class="alan">
+            <label for="hesap-doviz">@Dil.T.Kasa.Doviz</label>
+            <select id="hesap-doviz" class="secim" @bind="hesapParaBirimi">
+                @foreach (var d in new[] { "TRY", "USD", "EUR", "GBP" })
+                {
+                    <option value="@d">@d</option>
+                }
+            </select>
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => yeniHesapModalAcik = false">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1"
+                    disabled="@(kaydediliyor || string.IsNullOrWhiteSpace(hesapBankaAdi) || string.IsNullOrWhiteSpace(hesapHesapAdi) || string.IsNullOrWhiteSpace(hesapIban))"
+                    @onclick="HesapOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Hesap düzenle modalı ── *@
+<ModalPencere Acik="duzenleHesap is not null" Baslik="@Dil.T.Banka.HesabiDuzenle" Kapat="() => duzenleHesap = null">
+    @if (duzenleHesap is not null)
+    {
+        <div class="form-dikey">
+            <div class="alan">
+                <label for="d-banka">@Dil.T.Banka.BankaAdi</label>
+                <input id="d-banka" class="girdi" @bind="dBankaAdi" />
+            </div>
+            <div class="alan">
+                <label for="d-hesapad">@Dil.T.Banka.HesapAdi</label>
+                <input id="d-hesapad" class="girdi" @bind="dHesapAdi" />
+            </div>
+            <div class="alan">
+                <label for="d-sahibi">@Dil.T.Banka.HesapSahibi</label>
+                <input id="d-sahibi" class="girdi" @bind="dHesapSahibi" />
+            </div>
+            <div class="alan">
+                <label for="d-iban">@Dil.T.Banka.Iban</label>
+                <input id="d-iban" class="girdi" @bind="dIban" />
+            </div>
+            <div class="alan">
+                <label for="d-doviz">@Dil.T.Kasa.Doviz</label>
+                <select id="d-doviz" class="secim" @bind="dParaBirimi">
+                    @foreach (var d in new[] { "TRY", "USD", "EUR", "GBP" })
+                    {
+                        <option value="@d">@d</option>
+                    }
+                </select>
+            </div>
+            <HataBandi Mesaj="@modalHata" />
+            <div class="satir">
+                <button class="btn btn-ikincil" style="flex:1" @onclick="() => duzenleHesap = null">@Dil.T.Ortak.Iptal</button>
+                <button class="btn btn-birincil" style="flex:1"
+                        disabled="@(kaydediliyor || string.IsNullOrWhiteSpace(dBankaAdi) || string.IsNullOrWhiteSpace(dHesapAdi) || string.IsNullOrWhiteSpace(dIban))"
+                        @onclick="HesapGuncelle">@Dil.T.Ortak.Kaydet</button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@* ── Dekont giriş modalı ── *@
+<ModalPencere Acik="dekontModalAcik" Baslik="@Dil.T.Banka.DekontGir" Kapat="() => dekontModalAcik = false">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="dekont-yon">@Dil.T.Banka.Yon</label>
+            <select id="dekont-yon" class="secim" @bind="dekontYon">
+                <option value="GELEN">@Dil.T.Banka.Gelen</option>
+                <option value="GIDEN">@Dil.T.Banka.Giden</option>
+            </select>
+        </div>
+        <div class="alan">
+            <label for="dekont-tutar">@Dil.T.Ortak.Tutar</label>
+            <input id="dekont-tutar" class="girdi sayi" type="number" step="0.01" min="0.01" @bind="dekontTutar" />
+        </div>
+        <div class="alan">
+            <label for="dekont-karsi">@Dil.T.Banka.KarsiTaraf</label>
+            <input id="dekont-karsi" class="girdi" @bind="dekontKarsiTaraf" />
+        </div>
+        <div class="alan">
+            <label for="dekont-aciklama">@Dil.T.Ortak.Aciklama</label>
+            <input id="dekont-aciklama" class="girdi" @bind="dekontAciklama" />
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => dekontModalAcik = false">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1" disabled="@(kaydediliyor || dekontTutar <= 0)"
+                    @onclick="DekontKaydet">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Faturaya dönüştür modalı ── *@
+<ModalPencere Acik="donusturHareket is not null" Baslik="@Dil.T.Banka.FaturayaDonustur" Kapat="() => donusturHareket = null">
+    @if (donusturHareket is not null)
+    {
+        <div class="form-dikey">
+            <div style="background:var(--amber-50);border:1px solid var(--amber-200);border-radius:var(--radius-md);padding:1rem">
+                <div class="satir-arasi mb-1">
+                    <span class="metin-soluk">@Dil.T.Ortak.Tutar</span>
+                    <span class="hucre-vurgu sayi metin-amber">@Bicim.Tl(donusturHareket.Tutar)</span>
+                </div>
+                @if (!string.IsNullOrEmpty(donusturHareket.KarsiTarafAd))
+                {
+                    <div class="satir-arasi">
+                        <span class="metin-soluk">@Dil.T.Banka.KarsiTaraf</span>
+                        <span class="hucre-vurgu">@donusturHareket.KarsiTarafAd</span>
+                    </div>
+                }
+            </div>
+
+            <div class="alan">
+                <label for="donustur-cari">@Dil.T.Cari.Baslik — @Dil.T.Banka.CariSecInfo</label>
+                <select id="donustur-cari" class="secim" @bind="donusturCariId">
+                    <option value="">@Dil.T.Cari.CariSecin</option>
+                    @foreach (var c in cariler)
+                    {
+                        <option value="@c.Id">@c.Ad</option>
+                    }
+                </select>
+            </div>
+
+            <div class="alan">
+                <label for="donustur-kdv">@Dil.T.Fatura.KdvOran</label>
+                <select id="donustur-kdv" class="secim" @bind="donusturKdv">
+                    <option value="0">%0</option>
+                    <option value="0.01">%1</option>
+                    <option value="0.10">%10</option>
+                    <option value="0.20">%20</option>
+                </select>
+            </div>
+
+            @* KDV önizleme *@
+            <div class="metin-kucuk metin-soluk" style="background:var(--slate-50);border-radius:var(--radius-md);padding:.75rem">
+                <div class="satir-arasi">
+                    <span>@Dil.T.Fatura.AraToplam</span>
+                    <span class="sayi">@Bicim.Tl(DonusturAraToplam)</span>
+                </div>
+                <div class="satir-arasi">
+                    <span>@Dil.T.Fatura.KdvTutar</span>
+                    <span class="sayi">@Bicim.Tl(donusturHareket.Tutar - DonusturAraToplam)</span>
+                </div>
+                <div class="satir-arasi hucre-vurgu" style="color:var(--slate-700)">
+                    <span>@Dil.T.Fatura.Toplam</span>
+                    <span class="sayi">@Bicim.Tl(donusturHareket.Tutar)</span>
+                </div>
+            </div>
+
+            <HataBandi Mesaj="@modalHata" />
+            <div class="satir">
+                <button class="btn btn-ikincil" style="flex:1" @onclick="() => donusturHareket = null">@Dil.T.Ortak.Iptal</button>
+                <button class="btn btn-birincil" style="flex:1"
+                        disabled="@(kaydediliyor || string.IsNullOrEmpty(donusturCariId))"
+                        @onclick="Donustur">
+                    <span aria-hidden="true">🧾</span> @Dil.T.Banka.FaturayaDonustur
+                </button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@code {
+    // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
+    private sealed record HesapVeri(
+        string Id, string BankaAdi, string HesapAdi, string? HesapSahibi, string Iban,
+        string ParaBirimi, decimal Bakiye, bool Aktif);
+    private sealed record HesapYaniti(List<HesapVeri> Hesaplar);
+    private sealed record HareketVeri(
+        string Id, string Yon, decimal Tutar, string? KarsiTarafAd,
+        string? Aciklama, string Durum, DateTime Tarih);
+    private sealed record HareketYaniti(List<HareketVeri> Hareketler);
+    private sealed record CariVeri(string Id, string Ad);
+
+    private List<HesapVeri> hesaplar = [];
+    private List<HareketVeri> hareketler = [];
+    private List<CariVeri> cariler = [];
+    private bool yukleniyor = true;
+    private bool hareketYukleniyor;
+    private bool kaydediliyor;
+    private string? modalHata;
+
+    private string? seciliHesapId;
+    private string? AktifHesapId => seciliHesapId ?? hesaplar.FirstOrDefault()?.Id;
+    private HesapVeri? AktifHesap => hesaplar.FirstOrDefault(h => h.Id == AktifHesapId);
+    private decimal ToplamTry => hesaplar.Where(h => h.ParaBirimi == "TRY").Sum(h => h.Bakiye);
+
+    // ── yeni hesap formu ──
+    private bool yeniHesapModalAcik;
+    private string hesapBankaAdi = "";
+    private string hesapHesapAdi = "";
+    private string hesapSahibi = "";
+    private string hesapIban = "";
+    private string hesapParaBirimi = "TRY";
+
+    // ── hesap düzenle formu ──
+    private HesapVeri? duzenleHesap;
+    private string dBankaAdi = "";
+    private string dHesapAdi = "";
+    private string dHesapSahibi = "";
+    private string dIban = "";
+    private string dParaBirimi = "TRY";
+
+    // ── dekont formu ──
+    private bool dekontModalAcik;
+    private string dekontYon = "GELEN";
+    private decimal dekontTutar;
+    private string dekontKarsiTaraf = "";
+    private string dekontAciklama = "";
+
+    // ── faturaya dönüştür formu ──
+    private HareketVeri? donusturHareket;
+    private string donusturCariId = "";
+    private string donusturKdv = "0.20";
+    private decimal DonusturKdvOran => decimal.Parse(donusturKdv, CultureInfo.InvariantCulture);
+    private decimal DonusturAraToplam =>
+        donusturHareket is null ? 0m : donusturHareket.Tutar / (1m + DonusturKdvOran);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await HesaplariYukle();
+        if (AktifHesapId is not null) await HareketleriYukle();
+    }
+
+    private async Task HesaplariYukle()
+    {
+        yukleniyor = true;
+        try { hesaplar = (await Api.GetAsync<HesapYaniti>("/bankalar")).Hesaplar; }
+        catch (ApiHata) { hesaplar = []; }
+        yukleniyor = false;
+    }
+
+    private async Task HareketleriYukle()
+    {
+        if (AktifHesapId is null) { hareketler = []; return; }
+        hareketYukleniyor = true;
+        try { hareketler = (await Api.GetAsync<HareketYaniti>($"/bankalar/{AktifHesapId}/hareketler")).Hareketler; }
+        catch (ApiHata) { hareketler = []; }
+        hareketYukleniyor = false;
+    }
+
+    private async Task HesapSec(string id)
+    {
+        seciliHesapId = id;
+        await HareketleriYukle();
+    }
+
+    // ── yeni hesap ──
+    private void YeniHesapModalAc()
+    {
+        modalHata = null;
+        hesapBankaAdi = "";
+        hesapHesapAdi = "";
+        hesapSahibi = "";
+        hesapIban = "";
+        hesapParaBirimi = "TRY";
+        yeniHesapModalAcik = true;
+    }
+
+    private async Task HesapOlustur()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/bankalar", new
+            {
+                bankaAdi = hesapBankaAdi,
+                hesapAdi = hesapHesapAdi,
+                hesapSahibi = string.IsNullOrWhiteSpace(hesapSahibi) ? null : hesapSahibi.Trim(),
+                iban = hesapIban.ToUpperInvariant().Replace(" ", ""),
+                paraBirimi = hesapParaBirimi,
+            });
+            yeniHesapModalAcik = false;
+            await HesaplariYukle();
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── hesap düzenle ──
+    private void DuzenleModalAc(HesapVeri h)
+    {
+        modalHata = null;
+        duzenleHesap = h;
+        dBankaAdi = h.BankaAdi;
+        dHesapAdi = h.HesapAdi;
+        dHesapSahibi = h.HesapSahibi ?? "";
+        dIban = h.Iban;
+        dParaBirimi = h.ParaBirimi;
+    }
+
+    private async Task HesapGuncelle()
+    {
+        if (duzenleHesap is null) return;
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/bankalar/{duzenleHesap.Id}", new
+            {
+                bankaAdi = dBankaAdi.Trim(),
+                hesapAdi = dHesapAdi.Trim(),
+                hesapSahibi = dHesapSahibi.Trim(),   // boş → sunucu null'a çevirir
+                iban = dIban.ToUpperInvariant().Replace(" ", ""),
+                paraBirimi = dParaBirimi,
+            });
+            duzenleHesap = null;
+            await HesaplariYukle();
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── dekont ──
+    private void DekontModalAc()
+    {
+        modalHata = null;
+        dekontYon = "GELEN";
+        dekontTutar = 0;
+        dekontKarsiTaraf = "";
+        dekontAciklama = "";
+        dekontModalAcik = true;
+    }
+
+    private async Task DekontKaydet()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/bankalar/{AktifHesapId}/hareket", new
+            {
+                yon = dekontYon,
+                tutar = dekontTutar,
+                karsiTarafAd = string.IsNullOrWhiteSpace(dekontKarsiTaraf) ? null : dekontKarsiTaraf,
+                aciklama = string.IsNullOrWhiteSpace(dekontAciklama) ? null : dekontAciklama,
+            });
+            dekontModalAcik = false;
+            await HesaplariYukle();
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── faturaya dönüştür ──
+    private async Task DonusturModalAc(HareketVeri hareket)
+    {
+        modalHata = null;
+        donusturCariId = "";
+        donusturKdv = "0.20";
+        donusturHareket = hareket;
+        try { cariler = await Api.GetAsync<List<CariVeri>>("/cari?limit=200"); }
+        catch (ApiHata) { cariler = []; }
+    }
+
+    private async Task Donustur()
+    {
+        if (donusturHareket is null) return;
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/bankalar/hareketler/{donusturHareket.Id}/faturaya-donustur", new
+            {
+                cariId = donusturCariId,
+                kdvOran = DonusturKdvOran,
+            });
+            donusturHareket = null;
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── durum rozeti ──
+    private static string DurumRenk(string durum) => durum switch
+    {
+        "FATURALANDI" => "yesil",
+        "ESLESTI" => "mavi",
+        _ => "sari",
+    };
+
+    private string DurumMetin(string durum) => durum switch
+    {
+        "FATURALANDI" => Dil.T.Banka.Faturalandi,
+        "ESLESTI" => Dil.T.Banka.Eslesti,
+        _ => Dil.T.Banka.Bekliyor,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

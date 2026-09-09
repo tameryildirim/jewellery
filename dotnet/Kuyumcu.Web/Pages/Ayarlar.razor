@@ -1,0 +1,154 @@
+@page "/ayarlar"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/AyarlarPage.tsx *@
+
+<PageTitle>@Dil.T.Ayarlar.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk" style="max-width:32rem">
+
+    @* ── Dil seçimi ── *@
+    <div class="kart">
+        <div class="kart-baslik"><h2>@Dil.T.Ayarlar.Dil</h2></div>
+        <div class="kart-govde">
+            <div class="satir">
+                @foreach (var secenek in DilSecenekleri)
+                {
+                    <button class="sekme @(Dil.Dil == secenek.Kod ? "secili" : null)" style="flex:1"
+                            aria-pressed="@(Dil.Dil == secenek.Kod ? "true" : "false")"
+                            @onclick="() => Dil.DegistirAsync(secenek.Kod)">
+                        <span aria-hidden="true" style="font-size:1.25rem">@secenek.Bayrak</span> @secenek.Ad
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Profil bilgileri ── *@
+    <div class="kart">
+        <div class="kart-baslik"><h2>@Dil.T.Ayarlar.ProfilBilgileri</h2></div>
+        <div class="kart-govde">
+            <dl class="form-dikey" style="gap:.5rem">
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@Dil.T.Auth.AdSoyad</dt>
+                    <dd class="hucre-vurgu">@AdSoyad</dd>
+                </div>
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@Dil.T.Auth.Eposta</dt>
+                    <dd class="hucre-vurgu">@(Oturum.Kullanici?.Email ?? "")</dd>
+                </div>
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@Dil.T.Auth.Rol</dt>
+                    <dd class="hucre-vurgu">@(Oturum.Kullanici?.Rol ?? "")</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    @* ── Şifre değiştir ── *@
+    <div class="kart">
+        <div class="kart-baslik"><h2>@Dil.T.Ayarlar.SifreDegistir</h2></div>
+        <div class="kart-govde">
+            <form class="form-dikey" @onsubmit="SifreGuncelle" @onsubmit:preventDefault>
+                <div class="alan">
+                    <label for="mevcut-sifre">@Dil.T.Ayarlar.MevcutSifre</label>
+                    <input id="mevcut-sifre" class="girdi" type="password" autocomplete="current-password"
+                           required @bind="mevcutSifre" @bind:event="oninput" />
+                </div>
+                <div class="alan">
+                    <label for="yeni-sifre">@Dil.T.Ayarlar.YeniSifre</label>
+                    <input id="yeni-sifre" class="girdi" type="password" autocomplete="new-password"
+                           required @bind="yeniSifre" @bind:event="oninput" />
+                </div>
+                <div class="alan">
+                    <label for="yeni-sifre-tekrar">@Dil.T.Auth.SifreTekrar</label>
+                    <input id="yeni-sifre-tekrar" class="girdi @(Eslesmiyor ? "hatali" : null)" type="password"
+                           autocomplete="new-password" required
+                           aria-invalid="@(Eslesmiyor ? "true" : "false")"
+                           aria-describedby="@(Eslesmiyor ? "sifre-hata" : null)"
+                           @bind="yeniSifreTekrar" @bind:event="oninput" />
+                    @if (Eslesmiyor)
+                    {
+                        <span id="sifre-hata" class="hata-metni">@Dil.T.Ayarlar.SifrelerEslesmiyor</span>
+                    }
+                </div>
+                <HataBandi Mesaj="@hata" />
+                <BasariBandi Mesaj="@(basarili ? Dil.T.Ayarlar.SifreGuncellendi : null)" />
+                <button type="submit" class="btn btn-birincil btn-tam" disabled="@(kaydediliyor || Eslesmiyor)">
+                    @Dil.T.Ayarlar.SifreyiGuncelle
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ── dil kartları (React: DILLER sabiti) ──
+    private sealed record DilSecenegi(string Kod, string Ad, string Bayrak);
+
+    private List<DilSecenegi> DilSecenekleri =>
+    [
+        new("tr", Dil.T.Ayarlar.Turkce, "🇹🇷"),
+        new("en", Dil.T.Ayarlar.Ingilizce, "🇬🇧"),
+    ];
+
+    // ── şifre formu durumu ──
+    private string mevcutSifre = "";
+    private string yeniSifre = "";
+    private string yeniSifreTekrar = "";
+    private bool kaydediliyor;
+    private bool basarili;
+    private string? hata;
+    private readonly CancellationTokenSource iptalKaynagi = new();
+
+    private bool Eslesmiyor => yeniSifre != yeniSifreTekrar && yeniSifreTekrar.Length > 0;
+    private string AdSoyad => $"{Oturum.Kullanici?.Ad ?? ""} {Oturum.Kullanici?.Soyad ?? ""}".Trim();
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += Yenile;
+    }
+
+    private async Task SifreGuncelle()
+    {
+        if (kaydediliyor || Eslesmiyor
+            || string.IsNullOrEmpty(mevcutSifre) || string.IsNullOrEmpty(yeniSifre) || string.IsNullOrEmpty(yeniSifreTekrar))
+            return;
+
+        hata = null;
+        basarili = false;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<JsonElement>("/kullanicilar/ben/sifre", new { mevcutSifre, yeniSifre, yeniSifreTekrar });
+            mevcutSifre = yeniSifre = yeniSifreTekrar = "";
+            basarili = true;
+            kaydediliyor = false;
+            StateHasChanged();
+
+            // React'teki setTimeout(3000) karşılığı: başarı bandını 3 sn sonra gizle
+            await Task.Delay(3000, iptalKaynagi.Token);
+            basarili = false;
+        }
+        catch (TaskCanceledException) { /* sayfa kapatıldı, durum güncellenmez */ }
+        catch (ApiHata ex)
+        {
+            hata = string.IsNullOrWhiteSpace(ex.Message) ? Dil.T.Ayarlar.SifreDegistirilemedi : ex.Message;
+            kaydediliyor = false;
+        }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= Yenile;
+        iptalKaynagi.Cancel();
+        iptalKaynagi.Dispose();
+    }
+}

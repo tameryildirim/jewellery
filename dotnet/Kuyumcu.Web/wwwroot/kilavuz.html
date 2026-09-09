@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kuyumcu ERP — Kullanım Kılavuzu</title>
+<style>
+  :root{
+    --amber-50:#fffbeb; --amber-100:#fef3c7; --amber-200:#fde68a; --amber-500:#f59e0b;
+    --amber-600:#d97706; --amber-700:#b45309; --amber-800:#92400e;
+    --slate-50:#f8fafc; --slate-100:#f1f5f9; --slate-200:#e2e8f0; --slate-300:#cbd5e1;
+    --slate-400:#94a3b8; --slate-500:#64748b; --slate-600:#475569; --slate-700:#334155;
+    --slate-800:#1e293b; --slate-900:#0f172a;
+    --yesil:#16a34a; --yesil-bg:#dcfce7; --kirmizi:#dc2626; --kirmizi-bg:#fee2e2;
+    --mavi:#2563eb; --mavi-bg:#dbeafe; --gri-bg:#e2e8f0;
+    --golge:0 1px 3px rgba(15,23,42,.1),0 1px 2px rgba(15,23,42,.06);
+    --golge-lg:0 10px 25px rgba(15,23,42,.12);
+    --r:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:1rem}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--slate-800); background:var(--slate-100); line-height:1.65; font-size:15px;
+  }
+  .duzen{display:grid; grid-template-columns:280px 1fr; max-width:1280px; margin:0 auto; min-height:100vh}
+
+  /* ── İçindekiler (sabit sol) ── */
+  .toc{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    background:var(--slate-900); color:var(--slate-300); padding:1.25rem 0;
+  }
+  .toc .marka{display:flex;align-items:center;gap:.5rem;font-weight:700;color:#fff;font-size:1.15rem;padding:0 1.25rem 1rem}
+  .toc .marka .altbaslik{display:block;font-size:.7rem;font-weight:400;color:var(--amber-200);letter-spacing:.04em}
+  .toc nav{display:flex;flex-direction:column}
+  .toc a{color:var(--slate-300);text-decoration:none;padding:.42rem 1.25rem;font-size:.85rem;border-left:3px solid transparent;transition:.15s}
+  .toc a:hover{background:rgba(255,255,255,.05);color:#fff}
+  .toc a.bolum{margin-top:.9rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--amber-500);font-weight:700;pointer-events:none;padding-bottom:.2rem}
+  .toc a.alt{padding-left:2rem;font-size:.8rem;color:var(--slate-400)}
+
+  /* ── İçerik ── */
+  main{padding:0 2.5rem 5rem; background:var(--slate-50); min-width:0}
+  .kapak{
+    background:linear-gradient(135deg,var(--amber-700),var(--amber-500));
+    color:#fff; margin:0 -2.5rem 2.5rem; padding:3rem 2.5rem 2.5rem;
+    box-shadow:var(--golge);
+  }
+  .kapak h1{font-size:2.1rem;font-weight:800;letter-spacing:-.02em}
+  .kapak p{opacity:.95;margin-top:.5rem;max-width:60ch}
+  .kapak .rozetler{margin-top:1.25rem;display:flex;flex-wrap:wrap;gap:.5rem}
+  .kapak .rozetler span{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
+    padding:.25rem .7rem;border-radius:999px;font-size:.78rem}
+
+  section{scroll-margin-top:1rem; padding-top:2.5rem; border-top:1px solid var(--slate-200); margin-top:2.5rem}
+  section:first-of-type{border-top:0;margin-top:0;padding-top:1rem}
+  h2{font-size:1.5rem;color:var(--slate-900);font-weight:800;display:flex;align-items:center;gap:.55rem}
+  h2 .no{background:var(--amber-100);color:var(--amber-800);font-size:.9rem;width:1.9rem;height:1.9rem;
+    display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:800;flex-shrink:0}
+  h3{font-size:1.08rem;color:var(--slate-800);font-weight:700;margin:1.5rem 0 .5rem}
+  p{margin:.6rem 0}
+  ul,ol{margin:.5rem 0 .5rem 1.3rem}
+  li{margin:.3rem 0}
+  code{background:var(--slate-200);padding:.1rem .38rem;border-radius:5px;font-size:.85em;
+    font-family:"SF Mono",Consolas,Menlo,monospace;color:var(--slate-800)}
+  strong{color:var(--slate-900)}
+  a.ic{color:var(--amber-700);font-weight:600;text-decoration:none;border-bottom:1px dotted var(--amber-500)}
+  a.ic:hover{border-bottom-style:solid}
+
+  /* Adım listesi */
+  ol.adimlar{counter-reset:s;list-style:none;margin-left:0}
+  ol.adimlar>li{counter-increment:s;position:relative;padding:.35rem 0 .35rem 2.4rem;margin:.35rem 0}
+  ol.adimlar>li::before{content:counter(s);position:absolute;left:0;top:.3rem;background:var(--amber-600);color:#fff;
+    width:1.7rem;height:1.7rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:.82rem;font-weight:700}
+
+  /* Bilgi kutuları */
+  .kutu{border-radius:var(--r);padding:.9rem 1.1rem;margin:1rem 0;font-size:.9rem;border:1px solid;display:flex;gap:.6rem}
+  .kutu .ik{font-size:1.1rem;line-height:1.4}
+  .kutu.ipucu{background:var(--amber-50);border-color:var(--amber-200);color:var(--amber-800)}
+  .kutu.bilgi{background:var(--mavi-bg);border-color:#bfdbfe;color:#1e40af}
+  .kutu.uyari{background:var(--kirmizi-bg);border-color:#fecaca;color:#991b1b}
+  .kutu.kavram{background:var(--slate-100);border-color:var(--slate-200);color:var(--slate-700)}
+
+  /* ── Uygulama figürü (ekran temsili) ── */
+  figure{margin:1.25rem 0}
+  figcaption{font-size:.78rem;color:var(--slate-500);text-align:center;margin-top:.5rem;font-style:italic}
+  .ekran{border:1px solid var(--slate-300);border-radius:12px;overflow:hidden;box-shadow:var(--golge-lg);background:#fff}
+  .ekran .cubuk{background:var(--slate-200);padding:.5rem .8rem;display:flex;gap:.4rem;align-items:center}
+  .ekran .cubuk i{width:.7rem;height:.7rem;border-radius:50%;display:inline-block}
+  .ekran .cubuk .u{font-size:.72rem;color:var(--slate-500);margin-left:.6rem}
+  .nokta-k{background:#ff5f57}.nokta-s{background:#febc2e}.nokta-y{background:#28c840}
+
+  .app{display:grid;grid-template-columns:150px 1fr}
+  .app .yan{background:var(--slate-900);color:var(--slate-300);padding:.7rem 0;font-size:.72rem}
+  .app .yan .mk{color:#fff;font-weight:700;padding:0 .8rem .6rem;font-size:.8rem}
+  .app .yan a,.app .yan div.nl{display:block;padding:.28rem .8rem;color:var(--slate-300);text-decoration:none}
+  .app .yan .aktif{background:var(--amber-600);color:#fff;font-weight:600}
+  .app .icerik{background:var(--slate-50);min-height:170px}
+
+  .ust{background:#fff;border-bottom:1px solid var(--slate-200);padding:.55rem .9rem;display:flex;
+    justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+  .ust h4{font-size:.95rem;color:var(--slate-900)}
+  .kurbar{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;background:var(--amber-50);
+    border:1px solid var(--amber-200);border-radius:8px;padding:.28rem .55rem;font-size:.68rem}
+  .kurbar .oge{display:inline-flex;gap:.28rem;align-items:center;white-space:nowrap}
+  .kurbar .oge+.oge{border-left:1px solid var(--amber-200);padding-left:.45rem}
+  .kurbar .et{color:var(--slate-500)}
+  .kurbar .dg{font-weight:700;color:var(--amber-700)}
+  .kurbar .yenile{background:var(--amber-100);border:1px solid var(--amber-200);border-radius:6px;
+    width:1.3rem;height:1.3rem;color:var(--amber-700);display:inline-flex;align-items:center;justify-content:center;font-size:.8rem}
+
+  .govde{padding:.9rem}
+  .statlar{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:.8rem}
+  .stat{background:#fff;border:1px solid var(--slate-200);border-radius:8px;padding:.6rem .7rem}
+  .stat .e{font-size:.66rem;color:var(--slate-500)}
+  .stat .v{font-size:1rem;font-weight:800;color:var(--slate-900);margin-top:.1rem}
+  .stat .v.amber{color:var(--amber-700)}.stat .v.yesil{color:var(--yesil)}
+
+  table.mini{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--slate-200);
+    border-radius:8px;overflow:hidden;font-size:.74rem}
+  table.mini th{background:var(--slate-100);text-align:left;padding:.4rem .55rem;color:var(--slate-600);font-weight:600}
+  table.mini td{padding:.4rem .55rem;border-top:1px solid var(--slate-100)}
+  .sag{text-align:right}
+  .rozet{display:inline-block;padding:.08rem .5rem;border-radius:999px;font-size:.66rem;font-weight:600}
+  .r-yesil{background:var(--yesil-bg);color:#15803d}.r-kirmizi{background:var(--kirmizi-bg);color:#b91c1c}
+  .r-mavi{background:var(--mavi-bg);color:#1d4ed8}.r-amber{background:var(--amber-100);color:var(--amber-800)}
+  .r-gri{background:var(--gri-bg);color:var(--slate-600)}.r-sari{background:#fef9c3;color:#a16207}
+
+  .btn{display:inline-block;padding:.3rem .7rem;border-radius:7px;font-size:.72rem;font-weight:600;border:1px solid}
+  .btn-b{background:var(--amber-600);color:#fff;border-color:var(--amber-600)}
+  .btn-i{background:#fff;color:var(--slate-700);border-color:var(--slate-300)}
+
+  .form{background:#fff;border:1px solid var(--slate-200);border-radius:8px;padding:.8rem;max-width:340px}
+  .form .alan{margin-bottom:.55rem}
+  .form label{display:block;font-size:.68rem;color:var(--slate-600);margin-bottom:.2rem;font-weight:600}
+  .form .girdi{background:var(--slate-50);border:1px solid var(--slate-300);border-radius:6px;
+    padding:.32rem .5rem;font-size:.75rem;color:var(--slate-800)}
+  .form .girdi.bos{color:var(--slate-400)}
+  .form .satir{display:flex;gap:.5rem;margin-top:.6rem}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+
+  .anahtar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem;margin:1rem 0}
+  .anahtar .k{background:#fff;border:1px solid var(--slate-200);border-radius:8px;padding:.7rem .8rem}
+  .anahtar .k b{color:var(--amber-700)}
+
+  .ust-not{background:var(--amber-100);color:var(--amber-800);border:1px solid var(--amber-200);
+    border-radius:8px;padding:.5rem .8rem;font-size:.82rem;margin:1rem 0}
+  footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--slate-200);color:var(--slate-500);font-size:.82rem}
+  .ust-link{position:fixed;right:1.2rem;bottom:1.2rem;background:var(--amber-600);color:#fff;width:2.6rem;height:2.6rem;
+    border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:var(--golge-lg);font-size:1.1rem}
+
+  @media (max-width:860px){
+    .duzen{grid-template-columns:1fr}
+    .toc{position:static;height:auto}
+    main{padding:0 1.1rem 3rem}
+    .kapak{margin:0 -1.1rem 1.5rem;padding:2rem 1.1rem}
+    .statlar{grid-template-columns:repeat(2,1fr)}
+    .app{grid-template-columns:110px 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="duzen">
+
+  <!-- ═══════════ İÇİNDEKİLER ═══════════ -->
+  <aside class="toc">
+    <div class="marka">💎 Kuyumcu ERP<span class="altbaslik">Kullanım Kılavuzu</span></div>
+    <nav>
+      <a class="bolum">Başlangıç</a>
+      <a href="#tanitim">Tanıtım &amp; kavramlar</a>
+      <a href="#baslat">Uygulamayı başlatma</a>
+      <a href="#giris">Giriş yapma</a>
+      <a href="#arayuz">Arayüz turu</a>
+      <a href="#kur">Kur çubuğu (canlı)</a>
+
+      <a class="bolum">Günlük Kullanım</a>
+      <a href="#panel">Panel</a>
+      <a href="#cariler">Cariler</a>
+      <a href="#urunler">Ürünler</a>
+      <a href="#islemler">İşlemler</a>
+      <a class="alt" href="#satis">— Satış &amp; otomatik fiyat</a>
+      <a class="alt" href="#alis">— Alış / Hurda / İşçilik</a>
+      <a class="alt" href="#takas">— Takas</a>
+      <a class="alt" href="#transfer">— Transfer</a>
+      <a href="#kasalar">Kasalar</a>
+      <a href="#banka">Banka</a>
+      <a href="#faturalar">Faturalar (KDV)</a>
+      <a href="#raporlar">Raporlar</a>
+
+      <a class="bolum">Yönetim</a>
+      <a href="#kullanicilar">Kullanıcılar</a>
+      <a href="#ayarlar">Ayarlar &amp; Dil</a>
+
+      <a class="bolum">Ek</a>
+      <a href="#sozluk">Kavramlar sözlüğü</a>
+      <a href="#sss">Sık sorulanlar</a>
+    </nav>
+  </aside>
+
+  <!-- ═══════════ İÇERİK ═══════════ -->
+  <main>
+    <div class="kapak">
+      <h1>Kuyumcu ERP — Kullanım Kılavuzu</h1>
+      <p>Kuyumculuk işletmeniz için satış, alış, cari, stok, kasa, banka ve fatura yönetimini tek ekranda toplayan
+         .NET / Blazor uygulamasının adım adım rehberi.</p>
+      <div class="rozetler">
+        <span>TL + Has gram paralel defter</span>
+        <span>Canlı altın/döviz kuru (SignalR)</span>
+        <span>Kuyum-KDV</span>
+        <span>Çoklu şube · kasa · banka</span>
+        <span>TR / EN</span>
+      </div>
+    </div>
+
+    <!-- ── TANITIM ── -->
+    <section id="tanitim">
+      <h2><span class="no">i</span> Tanıtım &amp; temel kavramlar</h2>
+      <p>Kuyumcu ERP, her işlemi <strong>hem Türk Lirası hem de has (24 ayar) gram</strong> cinsinden kaydeder — buna
+         <em>paralel defter</em> denir. Böylece bir müşterinin hem TL bakiyesini hem de size olan gram altın borcunu/alacağını
+         aynı anda görürsünüz.</p>
+      <div class="anahtar">
+        <div class="k"><b>Paralel defter</b><br>Her hareket TL + has gram olarak iki ayrı bakiyede tutulur.</div>
+        <div class="k"><b>Has gram</b><br>(gram − taş) × milyem / 1000 ile 24 ayara indirgenmiş saf altın miktarı.</div>
+        <div class="k"><b>Gerçek milyem</b><br>İmalattaki fiili saflık (ör. 0,922) — ayarın standart milyeminden farklı olabilir.</div>
+        <div class="k"><b>Kuyum-KDV</b><br>KDV yalnız işçilik+kâra uygulanır; has altın değeri KDV dışıdır.</div>
+      </div>
+      <p>Tam tanımlar için <a class="ic" href="#sozluk">Kavramlar sözlüğü</a> bölümüne bakabilirsiniz.</p>
+    </section>
+
+    <!-- ── BAŞLATMA ── -->
+    <section id="baslat">
+      <h2><span class="no">1</span> Uygulamayı başlatma</h2>
+      <p>Uygulama tek bir web adresinden çalışır: <code>http://localhost:5000</code>. Sunucu (API) hem veriyi yönetir
+         hem de arayüzü (Blazor) aynı adresten sunar.</p>
+      <ol class="adimlar">
+        <li>Proje klasöründeki <code>start.bat</code> dosyasına çift tıklayın.</li>
+        <li>Betik önce MySQL veritabanını (Docker) başlatır, ardından uygulamayı ayağa kaldırır.</li>
+        <li>~20 saniye sonra tarayıcı <code>http://localhost:5000</code> adresinde otomatik açılır.</li>
+        <li>Kapatmak için <code>stop.bat</code> dosyasını çalıştırın (veritabanı arka planda çalışmaya devam eder).</li>
+      </ol>
+      <div class="kutu bilgi"><span class="ik">💡</span><div>İlk açılışta derleme yapıldığı için birkaç saniye daha bekleyebilirsiniz.
+        Sonraki açılışlar hızlıdır. Docker yoksa MySQL'i elle çalıştırmanız gerekir (<code>localhost:3306</code>).</div></div>
+    </section>
+
+    <!-- ── GİRİŞ ── -->
+    <section id="giris">
+      <h2><span class="no">2</span> Giriş yapma</h2>
+      <figure>
+        <div class="ekran">
+          <div class="cubuk"><i class="nokta-k"></i><i class="nokta-s"></i><i class="nokta-y"></i><span class="u">localhost:5000</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr">
+            <div style="background:linear-gradient(135deg,var(--amber-700),var(--amber-500));color:#fff;padding:1.3rem">
+              <div style="font-weight:800">💎 Kuyumcu ERP</div>
+              <div style="font-size:.72rem;opacity:.9;margin-top:.3rem">Kuyumunuz güvenli ellerde</div>
+              <ul style="font-size:.7rem;margin-top:.8rem;opacity:.95">
+                <li>TL + has gram paralel defter</li><li>Canlı altın kuru takibi</li><li>Çoklu şube, kasa ve banka</li>
+              </ul>
+            </div>
+            <div style="padding:1.1rem;background:#fff">
+              <div style="font-weight:700;font-size:.85rem;margin-bottom:.5rem">Giriş Yap</div>
+              <div class="form" style="border:0;padding:0;max-width:none">
+                <div class="alan"><label>E-posta</label><div class="girdi">ornek@isletme.com</div></div>
+                <div class="alan"><label>Şifre</label><div class="girdi">••••••••</div></div>
+                <span class="btn btn-b" style="width:100%;text-align:center">Giriş Yap</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>Giriş ekranı — e-posta ve şifre ile oturum açma</figcaption>
+      </figure>
+      <ol class="adimlar">
+        <li>E-posta ve şifrenizi girin, <strong>Giriş Yap</strong>'a basın.</li>
+        <li>İlk kez kuruyorsanız <strong>İşletme Kur</strong> ile işletme ve ilk (Sahip) kullanıcıyı oluşturun.</li>
+        <li>Sağ üstteki <strong>TR / EN</strong> ile giriş öncesi bile dili değiştirebilirsiniz.</li>
+      </ol>
+    </section>
+
+    <!-- ── ARAYÜZ ── -->
+    <section id="arayuz">
+      <h2><span class="no">3</span> Arayüz turu</h2>
+      <p>Uygulama üç bölümden oluşur: solda <strong>menü</strong>, üstte <strong>başlık + kur çubuğu</strong>,
+         ortada <strong>çalışma alanı</strong>.</p>
+      <figure>
+        <div class="ekran">
+          <div class="cubuk"><i class="nokta-k"></i><i class="nokta-s"></i><i class="nokta-y"></i><span class="u">localhost:5000</span></div>
+          <div class="app">
+            <div class="yan">
+              <div class="mk">💎 Kuyumcu</div>
+              <div class="nl aktif">📊 Panel</div><div class="nl">👥 Cariler</div><div class="nl">📦 Ürünler</div>
+              <div class="nl">💰 İşlemler</div><div class="nl">🏦 Kasalar</div><div class="nl">🏛️ Banka</div>
+              <div class="nl">🧾 Faturalar</div><div class="nl">📈 Raporlar</div><div class="nl">🔑 Kullanıcılar</div>
+            </div>
+            <div class="icerik">
+              <div class="ust">
+                <h4>Panel</h4>
+                <div class="kurbar">
+                  <span class="oge">📈</span>
+                  <span class="oge"><span class="et">Gram Altın</span><span class="dg">₺6.168,06</span></span>
+                  <span class="oge"><span class="et">Has Altın</span><span class="dg">₺6.137,22</span></span>
+                  <span class="oge"><span class="et">Dolar</span><span class="dg">₺47,38</span></span>
+                  <span class="yenile">⟳</span>
+                </div>
+              </div>
+              <div class="govde" style="font-size:.72rem;color:var(--slate-500)">Seçilen ekranın içeriği burada görünür.</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>Genel yerleşim — sol menü, üst başlık + kur çubuğu, çalışma alanı</figcaption>
+      </figure>
+      <ul>
+        <li><strong>Sol menü:</strong> tüm ekranlara buradan geçilir. <strong>🔑 Kullanıcılar</strong> yalnız Sahip/Müdür rollerine görünür.</li>
+        <li><strong>Alt kısım:</strong> adınız, rolünüz, <strong>⚙️ Ayarlar</strong> ve <strong>🚪 Çıkış</strong>.</li>
+        <li><strong>Üst başlık:</strong> bulunduğunuz ekranın adı ve canlı kur çubuğu.</li>
+      </ul>
+    </section>
+
+    <!-- ── KUR ── -->
+    <section id="kur">
+      <h2><span class="no">4</span> Kur çubuğu (canlı)</h2>
+      <p>Üstteki çubuk <strong>Gram Altın, Has Altın, Dolar, Euro, Sterlin</strong> değerlerini gösterir ve her ekranda
+         görünür. Veriler canlıdır — değiştiğinde <strong>anında</strong> güncellenir (SignalR ile; sayfayı yenilemeye gerek yok).</p>
+      <figure>
+        <div style="max-width:520px;margin:auto">
+          <div class="kurbar" style="font-size:.78rem;padding:.4rem .7rem">
+            <span class="oge">📈</span>
+            <span class="oge"><span class="et">Gram Altın</span><span class="dg">₺6.168,06</span></span>
+            <span class="oge"><span class="et">Has Altın</span><span class="dg">₺6.137,22</span></span>
+            <span class="oge"><span class="et">Dolar</span><span class="dg">₺47,38</span></span>
+            <span class="oge"><span class="et">Euro</span><span class="dg">₺53,95</span></span>
+            <span class="oge"><span class="et">Sterlin</span><span class="dg">₺63,27</span></span>
+            <span class="yenile" style="width:1.5rem;height:1.5rem">⟳</span>
+          </div>
+        </div>
+        <figcaption>Kur çubuğu — sağdaki ⟳ ile anlık güncelleme (Sahip/Müdür)</figcaption>
+      </figure>
+      <h3>Kur nasıl güncellenir?</h3>
+      <ul>
+        <li><strong>Otomatik:</strong> her gün 08:00–20:59 arası, ~5 dakikada bir dış kaynaktan (piyasa) çekilir.</li>
+        <li><strong>Elle:</strong> çubuğun sağındaki <strong>⟳</strong> düğmesiyle (Sahip/Müdür) o an çekilir.</li>
+        <li><strong>Manuel:</strong> internet yoksa Sahip/Müdür fiyatı elle de girebilir.</li>
+      </ul>
+      <div class="kutu ipucu"><span class="ik">🔔</span><div>Kur güncellenince tüm açık ekranlara (ör. iki ayrı tezgâhtaki bilgisayara)
+        aynı anda düşer. Satış ekranında ürün seçtiğinizde birim fiyat bu güncel kura göre hesaplanır.</div></div>
+    </section>
+
+    <!-- ── PANEL ── -->
+    <section id="panel">
+      <h2><span class="no">5</span> Panel</h2>
+      <p>Açılış ekranı; günün özetini ve kasa durumunu gösterir.</p>
+      <figure>
+        <div class="ekran"><div class="govde">
+          <div class="statlar">
+            <div class="stat"><div class="e">Günlük Satış</div><div class="v">₺0,00</div></div>
+            <div class="stat"><div class="e">Günlük Alış</div><div class="v">₺0,00</div></div>
+            <div class="stat"><div class="e">Net Has Gram</div><div class="v amber">6,0410 has</div></div>
+            <div class="stat"><div class="e">Net Kasa</div><div class="v yesil">₺931.086</div></div>
+          </div>
+          <table class="mini"><thead><tr><th>Kasa</th><th class="sag">Bakiye</th></tr></thead>
+            <tbody>
+              <tr><td>Ana Kasa (Merkez)</td><td class="sag">672.006,20 TRY</td></tr>
+              <tr><td>POS Kasa (Vakıfbank)</td><td class="sag">259.080,00 TRY</td></tr>
+            </tbody></table>
+        </div></div>
+        <figcaption>Panel — günlük özet kartları ve kasa durumu</figcaption>
+      </figure>
+      <p>Kartlar: <strong>Günlük Satış / Alış</strong>, <strong>Net Has Gram</strong> (paralel defter),
+         <strong>Net Kasa</strong>, son 7 günlük satış grafiği ve kasa özeti.</p>
+    </section>
+
+    <!-- ── CARİLER ── -->
+    <section id="cariler">
+      <h2><span class="no">6</span> Cariler</h2>
+      <p>Müşteri, tedarikçi, atölye ve sarraf hesaplarının tutulduğu ekran. Her cari için <strong>TL bakiye</strong>
+         ve <strong>has gram bakiye</strong> ayrı görünür.</p>
+      <figure>
+        <div class="ekran"><div class="govde">
+          <div style="display:flex;gap:.4rem;margin-bottom:.6rem">
+            <span class="girdi" style="flex:1;background:var(--slate-50);border:1px solid var(--slate-300);border-radius:6px;padding:.3rem .5rem;font-size:.72rem;color:var(--slate-400)">Ad, telefon veya e-posta ara…</span>
+            <span class="btn btn-b">+ Yeni Cari</span>
+          </div>
+          <table class="mini"><thead><tr><th>Ad</th><th>Tür</th><th class="sag">TL Bakiye</th><th class="sag">Has Gram</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Hüseyin Arslan</td><td><span class="rozet r-mavi">MÜŞTERİ</span></td><td class="sag" style="color:var(--yesil)">128.500,00 <span class="rozet r-yesil">Alacak</span></td><td class="sag">12,40 has</td><td><span class="btn btn-i">Detay</span></td></tr>
+              <tr><td>İstanbul Altın Rafinerisi</td><td><span class="rozet r-amber">TEDARİKÇİ</span></td><td class="sag" style="color:var(--kirmizi)">−45.000,00 <span class="rozet r-kirmizi">Borç</span></td><td class="sag">0,00 has</td><td><span class="btn btn-i">Detay</span></td></tr>
+              <tr><td>Ayşe Yılmaz</td><td><span class="rozet r-yesil">HER İKİSİ</span></td><td class="sag">0,00</td><td class="sag">3,20 has</td><td><span class="btn btn-i">Detay</span></td></tr>
+            </tbody></table>
+        </div></div>
+        <figcaption>Cari listesi — tür rozetleri, TL + has bakiye, Detay düğmesi</figcaption>
+      </figure>
+      <h3>Yeni cari ekleme</h3>
+      <ol class="adimlar">
+        <li><strong>+ Yeni Cari</strong>'ye basın.</li>
+        <li>Ad, <strong>Tür</strong> (Müşteri / Tedarikçi / <strong>Her İkisi</strong>), telefon, e-posta, adres girin.</li>
+        <li><strong>Kaydet</strong>. Yeni cari listeye eklenir.</li>
+      </ol>
+      <div class="kutu ipucu"><span class="ik">🖱️</span><div><strong>Detay penceresi taşınabilir:</strong> Cari detayını açtığınızda pencereyi
+        başlığından tutup fareyle sürükleyerek arka plandaki listeyi görecek şekilde kenara alabilirsiniz.</div></div>
+      <p>Detayda cari <strong>ekstresi</strong> (tüm hareketler, TL ve has olarak) listelenir.</p>
+    </section>
+
+    <!-- ── ÜRÜNLER ── -->
+    <section id="urunler">
+      <h2><span class="no">7</span> Ürünler</h2>
+      <p>Stok kartları. Her ürünün ayarı, gram/taş ağırlığı ve <strong>has grami</strong> otomatik hesaplanır.</p>
+      <figure>
+        <div class="ekran"><div class="govde" style="display:flex;gap:1rem;flex-wrap:wrap">
+          <div class="form">
+            <div style="font-weight:700;font-size:.8rem;margin-bottom:.5rem">Yeni Ürün</div>
+            <div class="alan"><label>Ürün Adı</label><div class="girdi">Burma Bilezik 22 Ayar</div></div>
+            <div class="g2">
+              <div class="alan"><label>Ayar</label><div class="girdi">K22</div></div>
+              <div class="alan"><label>Gerçek Milyem</label><div class="girdi bos">boş = standart</div></div>
+            </div>
+            <div class="g2">
+              <div class="alan"><label>Gram Ağırlık (g)</label><div class="girdi">18,500</div></div>
+              <div class="alan"><label>Taş Ağırlık (g)</label><div class="girdi">0,000</div></div>
+            </div>
+            <div class="g2">
+              <div class="alan"><label>İşçilik Tutarı (₺)</label><div class="girdi">1.500,00</div></div>
+              <div class="alan"><label>Satış Fiyatı (₺)</label><div class="girdi bos">boş = hesapla</div></div>
+            </div>
+            <div class="satir"><span class="btn btn-i">İptal</span><span class="btn btn-b">Kaydet</span></div>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <p style="font-size:.78rem;color:var(--slate-600)"><strong>Alanların anlamı:</strong></p>
+            <ul style="font-size:.76rem;color:var(--slate-600)">
+              <li><b>Gerçek Milyem:</b> imalattaki fiili saflık (ör. 922). Boşsa ayarın standardı kullanılır.</li>
+              <li><b>Satış Fiyatı:</b> sabit fiyat. Boşsa satışta <em>has × kur + işçilik</em> otomatik hesaplanır.</li>
+            </ul>
+          </div>
+        </div></div>
+        <figcaption>Yeni ürün formu — gerçek milyem ve opsiyonel sabit satış fiyatı</figcaption>
+      </figure>
+      <ol class="adimlar">
+        <li><strong>+ Yeni Ürün</strong> ile formu açın; ad, kod, ayar, gram/taş ağırlığı girin.</li>
+        <li>İsterseniz <strong>Gerçek Milyem</strong> ve <strong>Satış Fiyatı</strong> girin (ikisi de opsiyonel).</li>
+        <li><strong>Kaydet</strong>. Has gram otomatik hesaplanır. Satır sonundaki <strong>📦 Stok</strong> ile şube stoklarını görün.</li>
+      </ol>
+    </section>
+
+    <!-- ── İŞLEMLER ── -->
+    <section id="islemler">
+      <h2><span class="no">8</span> İşlemler</h2>
+      <p>Tüm alışverişler bu ekrandan yapılır. Üstteki sekmeler: <strong>Satış · Alış · Hurda Alış · İşçilik · Takas · Transfer</strong>.
+         Her işlem o anki kur anlık görüntüsüyle (kurSnapshot) kaydedilir.</p>
+
+      <h3 id="satis">Satış &amp; otomatik fiyat</h3>
+      <figure>
+        <div class="ekran"><div class="govde">
+          <div style="display:flex;gap:.35rem;margin-bottom:.7rem;flex-wrap:wrap">
+            <span class="btn btn-b">Satış</span><span class="btn btn-i">Alış</span><span class="btn btn-i">Hurda Alış</span>
+            <span class="btn btn-i">İşçilik</span><span class="btn btn-i">Takas</span><span class="btn btn-i">Transfer</span>
+          </div>
+          <div class="form" style="max-width:none">
+            <div class="g2">
+              <div class="alan"><label>Cari</label><div class="girdi">Hüseyin Arslan</div></div>
+              <div class="alan"><label>Ödeme Türü</label><div class="girdi">Nakit</div></div>
+            </div>
+            <div class="alan"><label>Kasa</label><div class="girdi">Ana Kasa (Merkez) (TRY)</div></div>
+            <div style="display:flex;gap:.4rem;align-items:flex-end">
+              <div class="alan" style="flex:1;margin:0"><label>Ürün</label><div class="girdi">Burma Bilezik 22 Ayar (K22)</div></div>
+              <div class="alan" style="width:3rem;margin:0"><label>Adet</label><div class="girdi">1</div></div>
+              <div class="alan" style="width:6rem;margin:0"><label>Birim Fiyat (₺)</label><div class="girdi" style="color:var(--amber-700);font-weight:700">80.298,90</div></div>
+              <span class="btn btn-b">Ekle</span>
+            </div>
+          </div>
+        </div></div>
+        <figcaption>Satış — ürün seçilince <strong>Birim Fiyat otomatik dolar</strong></figcaption>
+      </figure>
+      <ol class="adimlar">
+        <li>Sekmelerden <strong>Satış</strong>'ı seçin.</li>
+        <li><strong>Cari</strong>, <strong>Ödeme Türü</strong> (Nakit / Kart / Havale / Altın / Veresiye) ve <strong>Kasa</strong> seçin.
+          <em>Veresiye'de kasa istenmez; borç cariye yazılır.</em></li>
+        <li><strong>Ürün</strong>'ü seçin — birim fiyat otomatik dolar: ürünün <b>sabit satış fiyatı</b> varsa o, yoksa
+          <b>has × güncel kur + işçilik</b>. İsterseniz elle değiştirin.</li>
+        <li>Adet girip <strong>Ekle</strong>. Birden çok kalem ekleyebilirsiniz; toplam altta görünür.</li>
+        <li><strong>Satış Kaydet</strong>. Stok düşer, kasa/cari bakiyeleri güncellenir.</li>
+      </ol>
+
+      <h3 id="alis">Alış · Hurda Alış · İşçilik</h3>
+      <ul>
+        <li><strong>Alış:</strong> tedarikçiden ürün girişi (satışın tersi; stok artar, kasa/cari azalır).</li>
+        <li><strong>Hurda Alış:</strong> ayar + gram + has gram fiyatı girilir; hurda has olarak deftere işlenir.</li>
+        <li><strong>İşçilik:</strong> yalnız işçilik bedeli tahsil edilir (ürün/stok hareketi olmadan).</li>
+      </ul>
+
+      <h3 id="takas">Takas</h3>
+      <p>Müşteriden eski ürün alıp yeni ürün verdiğiniz işlem. <strong>Eski ürün</strong> (ayar, gram, has fiyatı) ve
+         <strong>yeni ürün</strong> girilir; sistem <strong>farkı</strong> hesaplar.</p>
+      <ul>
+        <li>Fark <strong>pozitifse</strong> → müşteri öder (kasa kullanılır).</li>
+        <li>Fark <strong>negatifse</strong> → müşteriye iade / cariye yazılır.</li>
+      </ul>
+      <div class="kutu ipucu"><span class="ik">📈</span><div>Fark önizlemesi form doldurulurken anlık görünür; kaydettiğinizde sunucu aynı formülü uygular.</div></div>
+
+      <h3 id="transfer">Transfer</h3>
+      <p>Şubeler arası stok aktarımı. <strong>Kaynak şube</strong>, <strong>hedef şube</strong>, ürün ve adet seçilir.
+         Cari/kasa gerekmez; Müdür+ yetkisi ister.</p>
+    </section>
+
+    <!-- ── KASALAR ── -->
+    <section id="kasalar">
+      <h2><span class="no">9</span> Kasalar</h2>
+      <p>Nakit ve döviz kasalarınız. Her kasanın para birimi ve bakiyesi ayrı tutulur.</p>
+      <ol class="adimlar">
+        <li><strong>+ Yeni Kasa</strong> ile kasa adı ve döviz (TRY/USD/EUR/GBP) girerek kasa açın.</li>
+        <li><strong>Hareket Gir</strong> ile elle gelir/gider/tahsilat/ödeme kaydı ekleyin.</li>
+        <li>Kasa adını değiştirmek için kartın <strong>sağ üstündeki ✏️ düzenle</strong> düğmesini kullanın.</li>
+      </ol>
+      <div class="kutu bilgi"><span class="ik">🏦</span><div>Satışta Havale/Kart/Altın ile gelen tahsilatlar da (banka entegrasyonu olmadan)
+        doğrudan seçtiğiniz kasaya işlenir — bilinçli, manuel bir akıştır.</div></div>
+    </section>
+
+    <!-- ── BANKA ── -->
+    <section id="banka">
+      <h2><span class="no">10</span> Banka</h2>
+      <p>Banka hesaplarınızı ve dekont hareketlerini izlediğiniz ekran. Gelen para <strong>faturaya dönüştürülebilir</strong>.</p>
+      <figure>
+        <div class="ekran"><div class="govde">
+          <div class="ust" style="border:1px solid var(--slate-200);border-radius:8px;background:#fff;margin-bottom:.6rem">
+            <div>
+              <h4 style="font-size:.85rem">Hareketler</h4>
+              <div style="font-size:.7rem;color:var(--slate-500)">Hesap Sahibi: <b style="color:var(--slate-700)">Tamer Yıldırım Kuyumculuk Ltd.</b></div>
+              <div style="font-size:.7rem;color:var(--slate-400)">TR33 0006 4000 0011 2345 6789 01</div>
+            </div>
+            <div style="display:flex;gap:.4rem"><span class="btn btn-i">✏️ Hesabı Düzenle</span><span class="btn btn-b">+ Dekont Gir</span></div>
+          </div>
+          <table class="mini"><thead><tr><th>Tarih</th><th>Yön</th><th>Karşı Taraf</th><th class="sag">Tutar</th><th>Durum</th></tr></thead>
+            <tbody>
+              <tr><td>25.07.2026</td><td><span class="rozet r-yesil">↓ Gelen</span></td><td>Mustafa Aydın</td><td class="sag" style="color:var(--yesil)">+47.400,00</td><td><span class="rozet r-yesil">Faturalandı</span></td></tr>
+              <tr><td>25.07.2026</td><td><span class="rozet r-kirmizi">↑ Giden</span></td><td>İst. Altın Rafinerisi</td><td class="sag" style="color:var(--kirmizi)">−250.000,00</td><td><span class="rozet r-sari">Bekliyor</span></td></tr>
+            </tbody></table>
+        </div></div>
+        <figcaption>Banka — <strong>Hesap Sahibi</strong> bilgisi ve <strong>✏️ Hesabı Düzenle</strong> düğmesi</figcaption>
+      </figure>
+      <h3>Hesap ekleme ve düzenleme</h3>
+      <ol class="adimlar">
+        <li><strong>+ Yeni Hesap</strong>: Banka Adı, Hesap Adı, <strong>Hesap Sahibi</strong>, IBAN ve döviz girin.</li>
+        <li>Var olan bir hesabı değiştirmek için <strong>✏️ Hesabı Düzenle</strong>'ye basın; alanları güncelleyip <strong>Kaydet</strong>.</li>
+        <li><strong>+ Dekont Gir</strong> ile gelen/giden hareket ekleyin (banka entegrasyonu olmadan manuel).</li>
+      </ol>
+      <h3>Gelen parayı faturaya dönüştürme</h3>
+      <ol class="adimlar">
+        <li>Bir <strong>Gelen</strong> hareketin satır sonundaki <strong>🧾 Faturaya Dönüştür</strong>'e basın.</li>
+        <li>Faturanın kesileceği <strong>cariyi</strong> ve <strong>KDV oranını</strong> seçin (tutar KDV dahil kabul edilir).</li>
+        <li>Onaylayın — <code>FTR-yıl-sıra</code> numaralı fatura oluşur, hareket "Faturalandı" olur.</li>
+      </ol>
+    </section>
+
+    <!-- ── FATURALAR ── -->
+    <section id="faturalar">
+      <h2><span class="no">11</span> Faturalar &amp; Kuyum-KDV</h2>
+      <p>Kesilen satış/alış faturaları. Kuyumculukta KDV <strong>yalnız işçilik+kâra</strong> uygulanır; has altın değeri KDV dışıdır —
+         buna <strong>Kuyum-KDV</strong> denir.</p>
+      <div class="anahtar">
+        <div class="k"><b>KDV Türü</b><br>Standart (tüm tutara) veya <b>Kuyum</b> (has hariç).</div>
+        <div class="k"><b>Has Değeri</b><br>Faturadaki has altının TL karşılığı — KDV'siz.</div>
+        <div class="k"><b>Matrah</b><br>Satış − Has değeri = işçilik+kâr. KDV bunun üzerinden.</div>
+      </div>
+      <div class="kutu kavram"><span class="ik">🧮</span><div><strong>Örnek:</strong> 48.000 ₺ satış, 42.594 ₺ has değeri, %20 →
+        matrah 5.406 ₺, KDV ≈ <b>901 ₺</b> (standart olsaydı 8.000 ₺ olurdu). Fark büyüktür; doğru KDV türünü seçmek önemlidir.</div></div>
+      <p>Faturayı <strong>Kes</strong>, <strong>Ödendi işaretle</strong> veya <strong>İptal Et</strong> ile durumunu yönetin.</p>
+    </section>
+
+    <!-- ── RAPORLAR ── -->
+    <section id="raporlar">
+      <h2><span class="no">12</span> Raporlar</h2>
+      <p>İşletmenin durumunu özetleyen ekran.</p>
+      <ul>
+        <li><strong>Aylık Satış / Alış</strong> ve <strong>Kâr</strong> (satış − alış).</li>
+        <li><strong>Net Has Gram</strong> — paralel defterin altın tarafı.</li>
+        <li><strong>Stok Dağılımı</strong> (ayara göre) ve <strong>Cari Yaşlandırma</strong> (0–30, 31–60, 61–90, 90+ gün).</li>
+        <li><strong>İşçilik geliri</strong> ve <strong>hurda alış</strong> toplamları.</li>
+      </ul>
+    </section>
+
+    <!-- ── KULLANICILAR ── -->
+    <section id="kullanicilar">
+      <h2><span class="no">13</span> Kullanıcılar</h2>
+      <p>Personel hesaplarının yönetimi. Yalnız <strong>Sahip</strong> ve <strong>Müdür</strong> görebilir.
+         Roller: <strong>Sahip &gt; Müdür &gt; Muhasebe &gt; Tezgâhtar</strong>.</p>
+      <figure>
+        <div class="ekran"><div class="govde">
+          <div style="text-align:right;margin-bottom:.5rem"><span class="btn btn-b">+ Yeni Kullanıcı</span></div>
+          <table class="mini"><thead><tr><th>Ad Soyad</th><th>E-posta</th><th>Rol</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Tamer Yıldırım <span style="color:var(--slate-400)">(siz)</span></td><td>tamer@…</td><td><span class="rozet r-amber">Sahip</span></td><td><span class="rozet r-yesil">Aktif</span></td><td style="color:var(--slate-400)">—</td></tr>
+              <tr><td>Ayşe Demir</td><td>ayse@…</td><td><span class="rozet r-yesil">Muhasebe</span></td><td><span class="rozet r-yesil">Aktif</span></td>
+                <td><span class="btn btn-i">Rol</span> <span class="btn btn-i">Şifre</span> <span class="btn btn-i">Pasifleştir</span></td></tr>
+            </tbody></table>
+        </div></div>
+        <figcaption>Kullanıcılar — rol değiştir, şifre sıfırla, aktif/pasif (kendinize işlem yapılamaz)</figcaption>
+      </figure>
+      <ol class="adimlar">
+        <li><strong>+ Yeni Kullanıcı</strong>: ad, e-posta, rol ve şifre girin. Yalnız kendinizden <em>düşük</em> roller atanabilir.</li>
+        <li><strong>Rol Değiştir</strong> / <strong>Şifre Sıfırla</strong> / <strong>Pasifleştir</strong> düğmeleri her satırda.</li>
+      </ol>
+      <div class="kutu uyari"><span class="ik">🔒</span><div>Güvenlik: Kendi hesabınıza (rol/pasif) işlem yapamazsınız ve kendinizden
+        yüksek/eşit roldeki kullanıcıları değiştiremezsiniz.</div></div>
+    </section>
+
+    <!-- ── AYARLAR ── -->
+    <section id="ayarlar">
+      <h2><span class="no">14</span> Ayarlar &amp; Dil</h2>
+      <ul>
+        <li><strong>Profil:</strong> ad-soyad bilgilerinizi güncelleyin.</li>
+        <li><strong>Şifre Değiştir:</strong> mevcut + yeni şifre ile kendi şifrenizi değiştirin.</li>
+        <li><strong>Dil:</strong> Türkçe / English. Sol menü, üst çubuk ve giriş ekranında da değiştirilebilir; seçim kaydedilir.</li>
+      </ul>
+    </section>
+
+    <!-- ── SÖZLÜK ── -->
+    <section id="sozluk">
+      <h2><span class="no">📖</span> Kavramlar sözlüğü</h2>
+      <div class="anahtar">
+        <div class="k"><b>Paralel defter</b><br>Her hareketin TL ve has gram olarak iki ayrı bakiyede tutulması.</div>
+        <div class="k"><b>Has gram</b><br>(gram − taş) × milyem / 1000. 24 ayara (saf altın) indirgenmiş miktar.</div>
+        <div class="k"><b>Milyem</b><br>1000 tabanlı saflık. K22 = 916, K14 = 585, K24 = 1000.</div>
+        <div class="k"><b>Gerçek milyem</b><br>İmalattaki fiili saflık (ör. 0,922). Standart ayardan farklı olabilir.</div>
+        <div class="k"><b>Kuyum-KDV</b><br>KDV yalnız işçilik+kâra uygulanır; has altın değeri KDV dışıdır.</div>
+        <div class="k"><b>Matrah</b><br>KDV'nin hesaplandığı taban: Satış − Has değeri.</div>
+        <div class="k"><b>Kur anlık görüntüsü</b><br>İşlem anındaki kur kaydı (kurSnapshot); her işleme bağlanır.</div>
+        <div class="k"><b>Cari</b><br>Müşteri / tedarikçi / atölye / sarraf hesabı. "Her İkisi" hem alıcı hem satıcıdır.</div>
+      </div>
+    </section>
+
+    <!-- ── SSS ── -->
+    <section id="sss">
+      <h2><span class="no">?</span> Sık sorulanlar</h2>
+      <h3>Kur çubuğundaki rakamlar eski görünüyor, ne yapmalıyım?</h3>
+      <p>Sağdaki <strong>⟳</strong> düğmesine basarak anlık çekin. Hafta içi/sonu 08:00–20:59 arası zaten otomatik güncellenir.
+         İnternet yoksa manuel kur girebilirsiniz.</p>
+      <h3>Satışta birim fiyat neden kendiliğinden doldu?</h3>
+      <p>Ürünün <strong>sabit satış fiyatı</strong> varsa o kullanılır; yoksa <strong>has × güncel kur + işçilik</strong> ile hesaplanır.
+         Dilerseniz alanı elle değiştirebilirsiniz.</p>
+      <h3>Havaleyle gelen para neden kasaya işlendi?</h3>
+      <p>Şu an banka entegrasyonu olmadan manuel akış tercih edilmiştir: satıştaki Havale/Kart/Altın tahsilatı seçtiğiniz kasaya girer.</p>
+      <h3>"Kullanıcılar" menüsünü göremiyorum.</h3>
+      <p>Bu ekran yalnız <strong>Sahip</strong> ve <strong>Müdür</strong> rollerine görünür.</p>
+
+      <footer>
+        <p>Kuyumcu ERP · .NET 8 (ASP.NET Core API) + Blazor WebAssembly · MySQL · SignalR canlı kur.
+           Bu kılavuz uygulamanın güncel sürümüne göre hazırlanmıştır.</p>
+      </footer>
+    </section>
+
+  </main>
+</div>
+<a class="ust-link" href="#" title="Başa dön">↑</a>
+</body>
+</html>

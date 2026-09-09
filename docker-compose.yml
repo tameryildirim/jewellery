@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: kuyumcu-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 8yIXtcIoxE9t9V01DIvIry9uxcZLr3
+      MYSQL_DATABASE: kuyumcu
+    ports:
+      - "3306:3306"
+    volumes:
+      - kuyumcu_mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_turkish_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p8yIXtcIoxE9t9V01DIvIry9uxcZLr3"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  kuyumcu_mysql_data:

@@ -1,0 +1,171 @@
+@page "/"
+@using System.Globalization
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/DashboardPage.tsx — günlük özet paneli.
+   Veri: GET /raporlar/gunluk?tarih=YYYY-MM-DD (+ grafik için /raporlar/aylik denenir). *@
+
+<PageTitle>@Dil.T.Nav.Panel — Kuyumcu ERP</PageTitle>
+
+@if (yukleniyor)
+{
+    <Yukleniyor />
+}
+else
+{
+    <div class="dikey-bosluk">
+        <HataBandi Mesaj="@hata" />
+
+        @* ── Günlük istatistikler ── *@
+        <div class="stat-izgara">
+            <StatKart Renk="yesil" Etiket="@Dil.T.Panel.GunlukSatis" Deger="@Bicim.Tl(SatisTl)" />
+            <StatKart Etiket="@Dil.T.Panel.GunlukAlis" Deger="@Bicim.Tl(AlisTl)" />
+            <StatKart Renk="mavi" Etiket="@Dil.T.Panel.NetHasGram" Deger="@Bicim.Has(NetHas)" Alt="@Dil.T.Panel.ParalelDefter" />
+            <StatKart Renk="@(NetKasaTl >= 0 ? "yesil" : "kirmizi")" Etiket="@Dil.T.Panel.NetKasa" Deger="@Bicim.Tl(NetKasaTl)" />
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">
+            @* ── Satış grafiği ── *@
+            <div class="kart" style="flex:2;min-width:320px">
+                <div class="kart-baslik">
+                    <h2>@Dil.T.Panel.Son7Gun</h2>
+                </div>
+                <div class="kart-govde">
+                    <AlanGrafik Noktalar="grafikNoktalari" Aciklama="@Dil.T.Panel.Son7Gun" />
+                </div>
+            </div>
+
+            @* ── Sağ kolon ── *@
+            <div class="dikey-bosluk" style="flex:1;min-width:260px">
+                <div class="kart">
+                    <div class="kart-baslik">
+                        <h2>@Dil.T.Panel.BugunOzet</h2>
+                    </div>
+                    <div class="kart-govde">
+                        <dl>
+                            <div class="satir-arasi" style="padding:.25rem 0">
+                                <dt class="metin-soluk">@Dil.T.Panel.Satis</dt>
+                                <dd class="hucre-vurgu sayi metin-yesil">@Bicim.Tl(SatisTl)</dd>
+                            </div>
+                            <div class="satir-arasi" style="padding:.25rem 0">
+                                <dt class="metin-soluk">@Dil.T.Panel.Alis</dt>
+                                <dd class="hucre-vurgu sayi metin-amber">@Bicim.Tl(AlisTl)</dd>
+                            </div>
+                            <div class="satir-arasi" style="padding:.25rem 0">
+                                <dt class="metin-soluk">@Dil.T.Islem.HurdaAlis</dt>
+                                <dd class="hucre-vurgu sayi metin-kirmizi">@Bicim.Tl(HurdaTl)</dd>
+                            </div>
+                            <div class="satir-arasi" style="padding:.25rem 0">
+                                <dt class="metin-soluk">@Dil.T.Panel.HasGram</dt>
+                                <dd class="hucre-vurgu sayi">@Bicim.Has(NetHas)</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                @if (Kasalar.Count > 0)
+                {
+                    <div class="kart">
+                        <div class="kart-baslik">
+                            <h2>@Dil.T.Panel.KasaOzeti</h2>
+                        </div>
+                        <div class="kart-govde">
+                            @foreach (var k in Kasalar)
+                            {
+                                <div class="satir-arasi" style="padding:.25rem 0">
+                                    <span class="metin-soluk">@k.Ad</span>
+                                    <span class="hucre-vurgu sayi">@k.Bakiye.ToString("N2") <span class="metin-soluk metin-kucuk">@k.ParaBirimi</span></span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="kart">
+                    <div class="kart-govde">
+                        <p class="metin-soluk metin-kucuk mb-1">@Dil.T.Panel.Kur24k</p>
+                        <p class="metin-amber sayi" style="font-size:1.5rem;font-weight:700">@Dil.T.Panel.Canli</p>
+                        <p class="metin-soluk metin-kucuk mt-1">@Dil.T.Panel.KurTakip</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ── veri modelleri (sayfaya özel; JSON camelCase otomatik eşleşir,
+    //    Web ayarı sayesinde string gelen sayılar da decimal'e okunur) ──
+    private sealed record IslemOzet(int Adet, decimal ToplamTl, decimal ToplamHas);
+    private sealed record HurdaOzet(decimal ToplamHas, decimal OdenenTl);
+    private sealed record KasaOzet(string Ad, decimal Bakiye, string ParaBirimi);
+    private sealed record GunlukOzet(
+        string? Tarih,
+        IslemOzet? Satis,
+        IslemOzet? Alis,
+        HurdaOzet? Hurda,
+        decimal NetHasGramHareketi,
+        int HareketSayisi,
+        List<KasaOzet>? Kasalar);
+    private sealed record AylikGun(string? Tarih, decimal SatisTl);
+    private sealed record AylikYanit(List<AylikGun>? Gunler);
+
+    private GunlukOzet? ozet;
+    private List<GrafikNokta> grafikNoktalari = [];
+    private bool yukleniyor = true;
+    private string? hata;
+
+    private decimal SatisTl => ozet?.Satis?.ToplamTl ?? 0m;
+    private decimal AlisTl => ozet?.Alis?.ToplamTl ?? 0m;
+    private decimal HurdaTl => ozet?.Hurda?.OdenenTl ?? 0m;
+    private decimal NetHas => ozet?.NetHasGramHareketi ?? 0m;
+    private decimal NetKasaTl => SatisTl - AlisTl - HurdaTl;
+    private List<KasaOzet> Kasalar => ozet?.Kasalar ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try { ozet = await Api.GetAsync<GunlukOzet>($"/raporlar/gunluk?tarih={DateTime.Today:yyyy-MM-dd}"); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        await GrafikYukle();
+        yukleniyor = false;
+    }
+
+    private async Task GrafikYukle()
+    {
+        try
+        {
+            var bugun = DateTime.Today;
+            var aylik = await Api.GetAsync<AylikYanit>($"/raporlar/aylik?yil={bugun.Year}&ay={bugun.Month}");
+            if (aylik?.Gunler is { Count: > 0 } gunler)
+            {
+                grafikNoktalari = gunler
+                    .Select(g => new GrafikNokta(GunEtiketi(g.Tarih), g.SatisTl))
+                    .ToList();
+                return;
+            }
+        }
+        catch (ApiHata) { /* aylık veri yoksa aşağıdaki son 7 gün dolgusu kullanılır */ }
+
+        grafikNoktalari = Enumerable.Range(0, 7)
+            .Select(i => new GrafikNokta(DateTime.Today.AddDays(i - 6).ToString("dd.MM"), 0m))
+            .ToList();
+    }
+
+    private static string GunEtiketi(string? tarih) =>
+        DateTime.TryParse(tarih, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t)
+            ? t.ToString("dd.MM")
+            : tarih ?? "";
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

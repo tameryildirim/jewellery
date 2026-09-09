@@ -1,0 +1,242 @@
+@page "/raporlar"
+@using System.Globalization
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/RaporPage.tsx — aylık özet + günlük satış/alış grafiği,
+   stok dağılımı pastası, cari yaşlandırma ve stok değeri tabloları.
+   Veri (Nest şekilleri, rapor.service.ts):
+   • GET /raporlar/aylik?yil=&ay=  → { satis:{sayisi,toplamTl,toplamHas}, alis:{...}, karTl, gunler? }
+   • GET /raporlar/cari-yaslandirma → { yaslananCariler:[{cariAd,tlBakiye,dilim,...}], ozetTl }
+   • GET /raporlar/stok-degeri      → { urunler:[{ad,ayarId,adet,toplamHas,...}], toplamHas } *@
+
+<PageTitle>@Dil.T.Rapor.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    <HataBandi Mesaj="@hata" />
+
+    @* ── Dönem seçimi ── *@
+    <div class="satir">
+        <select class="secim" aria-label="@(Dil.Dil == "tr" ? "Yıl" : "Year")"
+                @bind="yil" @bind:after="AylikYukle">
+            @foreach (var y in Yillar)
+            {
+                <option value="@y">@y</option>
+            }
+        </select>
+        <select class="secim" aria-label="@(Dil.Dil == "tr" ? "Ay" : "Month")"
+                @bind="ay" @bind:after="AylikYukle">
+            @for (var i = 1; i <= 12; i++)
+            {
+                <option value="@i">@Dil.T.Aylar[i - 1]</option>
+            }
+        </select>
+    </div>
+
+    @* ── Aylık özetler ── *@
+    @if (aylikYukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        <div class="stat-izgara">
+            <StatKart Renk="yesil" Etiket="@Dil.T.Rapor.AylikSatis" Deger="@Bicim.Tl(SatisTl)" />
+            <StatKart Etiket="@Dil.T.Rapor.AylikAlis" Deger="@Bicim.Tl(AlisTl)" />
+            <StatKart Renk="@(KarTl >= 0 ? "yesil" : "kirmizi")" Etiket="@Dil.T.Rapor.Kar" Deger="@Bicim.Tl(KarTl)" />
+            <StatKart Renk="mavi" Etiket="@Dil.T.Rapor.NetHasGram" Deger="@Bicim.Has(NetHas)" />
+        </div>
+    }
+
+    @* ── Grafikler: günlük çubuk + stok pastası ── *@
+    @if (CubukNoktalari.Count > 0 || StokPasta.Count > 0)
+    {
+        <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">
+            @if (CubukNoktalari.Count > 0)
+            {
+                <div class="kart" style="flex:1;min-width:320px">
+                    <div class="kart-baslik">
+                        <h2>@Dil.T.Rapor.GunlukSatisAlis</h2>
+                    </div>
+                    <div class="kart-govde">
+                        <CubukGrafik Noktalar="CubukNoktalari" Aciklama="@Dil.T.Rapor.GunlukSatisAlis" />
+                    </div>
+                </div>
+            }
+            @if (StokPasta.Count > 0)
+            {
+                <div class="kart" style="flex:1;min-width:320px">
+                    <div class="kart-baslik">
+                        <h2>@Dil.T.Rapor.StokDagilimi</h2>
+                    </div>
+                    <div class="kart-govde">
+                        <PastaGrafik Noktalar="StokPasta" Aciklama="@Dil.T.Rapor.StokDagilimi" />
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @* ── Cari yaşlandırma ── *@
+    @if (yaslananlar.Count > 0)
+    {
+        <div class="kart">
+            <div class="kart-baslik">
+                <h2>@Dil.T.Rapor.CariYaslandirma</h2>
+            </div>
+            <div class="tablo-sar">
+                <table class="veri-tablosu">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.Rapor.CariBasligi</th>
+                            <th scope="col">@Dil.T.Rapor.Gun_0_30</th>
+                            <th scope="col">@Dil.T.Rapor.Gun_31_60</th>
+                            <th scope="col">@Dil.T.Rapor.Gun_61_90</th>
+                            <th scope="col">@Dil.T.Rapor.Gun_90_plus</th>
+                            <th scope="col">@Dil.T.Ortak.Toplam</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var y in yaslananlar)
+                        {
+                            <tr>
+                                <td class="hucre-vurgu">@y.CariAd</td>
+                                <td class="sayi" style="color:#047857">@Bicim.Tl(Dilim(y, "0-30"))</td>
+                                <td class="sayi" style="color:#a16207">@Bicim.Tl(Dilim(y, "31-60"))</td>
+                                <td class="sayi" style="color:#c2410c">@Bicim.Tl(Dilim(y, "61-90"))</td>
+                                <td class="sayi" style="color:#b91c1c">@Bicim.Tl(Dilim(y, "90+"))</td>
+                                <td class="sayi hucre-vurgu">@Bicim.Tl(y.TlBakiye)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ── Stok değeri ── *@
+    @if (stokUrunleri.Count > 0)
+    {
+        <div class="kart">
+            <div class="kart-baslik">
+                <h2>@Dil.T.Rapor.StokDegeri</h2>
+            </div>
+            <div class="tablo-sar">
+                <table class="veri-tablosu">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.Islem.Urun</th>
+                            <th scope="col">@Dil.T.Urun.Ayar</th>
+                            <th scope="col">@Dil.T.Rapor.ToplamAdet</th>
+                            <th scope="col">@Dil.T.Urun.ToplamHas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in stokUrunleri)
+                        {
+                            <tr>
+                                <td class="hucre-vurgu">@s.Ad</td>
+                                <td class="metin-soluk">@(string.IsNullOrEmpty(s.AyarId) ? "—" : s.AyarId)</td>
+                                <td class="sayi hucre-vurgu">@s.Adet.ToString("0.##")</td>
+                                <td class="sayi hucre-vurgu metin-amber">@Bicim.Has(s.ToplamHas)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // ── veri modelleri (sayfaya özel; JSON camelCase otomatik eşleşir,
+    //    Web ayarı sayesinde string gelen sayılar da decimal'e okunur) ──
+    private sealed record IslemToplam(int Sayisi, decimal ToplamTl, decimal ToplamHas);
+    private sealed record AylikGun(string? Tarih, decimal SatisTl, decimal AlisTl);
+    private sealed record AylikYanit(
+        int Yil, int Ay,
+        IslemToplam? Satis, IslemToplam? Alis,
+        decimal KarTl, decimal? NetHasGram,
+        List<AylikGun>? Gunler);
+    private sealed record YaslananCari(
+        string CariId, string CariAd, string? CariTur,
+        decimal TlBakiye, decimal HasGramBakiye, int? GunSayisi, string? Dilim);
+    private sealed record YaslandirmaYaniti(List<YaslananCari>? YaslananCariler);
+    private sealed record StokUrun(string UrunId, string? Kod, string Ad, string? AyarId, decimal Adet, decimal ToplamHas);
+    private sealed record StokYaniti(List<StokUrun>? Urunler, decimal ToplamHas);
+
+    private AylikYanit? aylik;
+    private List<YaslananCari> yaslananlar = [];
+    private List<StokUrun> stokUrunleri = [];
+    private bool aylikYukleniyor = true;
+    private string? hata;
+
+    private int yil = DateTime.Today.Year;
+    private int ay = DateTime.Today.Month;
+    private static int[] Yillar => [DateTime.Today.Year - 1, DateTime.Today.Year];
+
+    private decimal SatisTl => aylik?.Satis?.ToplamTl ?? 0m;
+    private decimal AlisTl => aylik?.Alis?.ToplamTl ?? 0m;
+    private decimal KarTl => aylik?.KarTl ?? 0m;
+    // API netHasGram göndermiyorsa alış-satış has farkından türetilir (net metal hareketi).
+    private decimal NetHas => aylik?.NetHasGram
+        ?? (aylik?.Alis?.ToplamHas ?? 0m) - (aylik?.Satis?.ToplamHas ?? 0m);
+
+    private List<CiftNokta> CubukNoktalari =>
+        (aylik?.Gunler ?? [])
+            .Select(g => new CiftNokta(GunEtiketi(g.Tarih), g.SatisTl, g.AlisTl))
+            .ToList();
+
+    // Stok pastası — ayara göre adet toplamı
+    private List<GrafikNokta> StokPasta =>
+        stokUrunleri
+            .GroupBy(s => string.IsNullOrEmpty(s.AyarId) ? "—" : s.AyarId)
+            .Select(g => new GrafikNokta(g.Key, g.Sum(x => x.Adet)))
+            .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await AylikYukle();
+        await DigerleriniYukle();
+    }
+
+    private async Task AylikYukle()
+    {
+        aylikYukleniyor = true;
+        hata = null;
+        try { aylik = await Api.GetAsync<AylikYanit>($"/raporlar/aylik?yil={yil}&ay={ay}"); }
+        catch (ApiHata ex) { aylik = null; hata = ex.Message; }
+        aylikYukleniyor = false;
+    }
+
+    private async Task DigerleriniYukle()
+    {
+        try
+        {
+            var yanit = await Api.GetAsync<YaslandirmaYaniti>("/raporlar/cari-yaslandirma");
+            yaslananlar = yanit.YaslananCariler ?? [];
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+
+        try
+        {
+            var yanit = await Api.GetAsync<StokYaniti>("/raporlar/stok-degeri");
+            stokUrunleri = yanit.Urunler ?? [];
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    // Cari, yalnızca kendi dilim sütununda bakiyesini gösterir; diğer sütunlar 0.
+    private static decimal Dilim(YaslananCari y, string dilim) =>
+        y.Dilim == dilim ? y.TlBakiye : 0m;
+
+    private static string GunEtiketi(string? tarih) =>
+        DateTime.TryParse(tarih, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t)
+            ? t.ToString("dd.MM")
+            : tarih ?? "";
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

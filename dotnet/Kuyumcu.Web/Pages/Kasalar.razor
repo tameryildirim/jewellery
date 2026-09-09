@@ -1,0 +1,282 @@
+@page "/kasalar"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ÖRNEK SAYFA — diğer sayfalar bu deseni izler:
+   • Veri: ApiIstemci.GetAsync → JsonElement; liste uçları çıplak dizi döner.
+   • Çeviri: Dil.T.{Bolum}.{Anahtar}; Dil.Degisti aboneliği + Dispose.
+   • Para/tarih: Bicim.Tl / Bicim.Has / Bicim.Tarih(t, Dil.Locale).
+   • Hata/başarı: HataBandi / BasariBandi; modallar ModalPencere.
+   Kaynak: apps/web/src/pages/KasaPage.tsx
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Dil.T.Kasa.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    <div class="stat-izgara">
+        <StatKart Renk="yesil" Etiket="@Dil.T.Kasa.ToplamTlBakiye" Deger="@Bicim.Tl(ToplamTry)" />
+        <StatKart Renk="mavi" Etiket="@Dil.T.Kasa.KasaSayisi" Deger="@KasaListesi.Count.ToString()" />
+        <StatKart Etiket="@Dil.T.Kasa.AktifKasa" Deger="@KasaListesi.Count(k => k.Aktif).ToString()" />
+    </div>
+
+    <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-birincil" @onclick="() => yeniModalAcik = true">+ @Dil.T.Kasa.YeniKasa</button>
+    </div>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (KasaListesi.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Kasa.KasaBulunamadi" />
+    }
+    else
+    {
+        <div class="stat-izgara">
+            @foreach (var kasa in KasaListesi)
+            {
+                <div class="kart">
+                    <div class="kart-govde">
+                        <div class="satir-arasi mb-1">
+                            <strong>@kasa.Ad</strong>
+                            <div class="satir" style="gap:.5rem">
+                                <button type="button" class="kasa-duzenle-btn"
+                                        aria-label="@($"{kasa.Ad} — {Dil.T.Kasa.AdDuzenle}")"
+                                        title="@Dil.T.Kasa.AdDuzenle"
+                                        @onclick="() => DuzenlemeyiAc(kasa)">✏️</button>
+                                <Rozet Renk="@(kasa.Aktif ? "yesil" : "gri")">
+                                    @(kasa.Aktif ? kasa.ParaBirimi : $"{kasa.ParaBirimi} · {Dil.T.Ortak.Pasif}")
+                                </Rozet>
+                            </div>
+                        </div>
+                        <p class="stat-deger sayi mb-2">@kasa.Bakiye.ToString("N2") <span class="metin-soluk metin-kucuk">@kasa.ParaBirimi</span></p>
+                        <div class="satir">
+                            <button class="btn btn-ikincil btn-kucuk" style="flex:1"
+                                    @onclick="() => HareketModalAc(kasa.Id)">+ @Dil.T.Kasa.Hareket</button>
+                            <button class="btn btn-ikincil btn-kucuk" style="flex:1"
+                                    @onclick="() => GecmisAc(kasa.Id)">@Dil.T.Ortak.Gecmis</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* ── Yeni kasa modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Kasa.YeniKasa" Kapat="() => yeniModalAcik = false">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="kasa-ad">@Dil.T.Kasa.KasaAdi</label>
+            <input id="kasa-ad" class="girdi" @bind="yeniAd" />
+        </div>
+        <div class="alan">
+            <label for="kasa-doviz">@Dil.T.Kasa.Doviz</label>
+            <select id="kasa-doviz" class="secim" @bind="yeniDoviz">
+                @foreach (var d in new[] { "TRY", "USD", "EUR", "GBP" })
+                {
+                    <option value="@d">@d</option>
+                }
+            </select>
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => yeniModalAcik = false">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1" disabled="@kaydediliyor" @onclick="KasaOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Kasa düzenleme modalı ── *@
+<ModalPencere Acik="duzenleKasaId is not null" Baslik="@Dil.T.Kasa.Duzenle" Kapat="() => duzenleKasaId = null">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="d-ad">@Dil.T.Kasa.KasaAdi</label>
+            <input id="d-ad" class="girdi" @bind="duzenleAd" @bind:event="oninput" />
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => duzenleKasaId = null">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1"
+                    disabled="@(kaydediliyor || duzenleAd.Trim().Length < 2 || duzenleAd.Trim() == duzenleEskiAd)"
+                    @onclick="KasaGuncelle">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Hareket giriş modalı ── *@
+<ModalPencere Acik="hareketKasaId is not null" Baslik="@Dil.T.Kasa.KasaHareketi" Kapat="() => hareketKasaId = null">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="h-tur">@Dil.T.Kasa.HareketTuru</label>
+            <select id="h-tur" class="secim" @bind="hareketYon">
+                <option value="GIRIS">@Dil.T.Kasa.Gelir</option>
+                <option value="CIKIS">@Dil.T.Kasa.Gider</option>
+            </select>
+        </div>
+        <div class="alan">
+            <label for="h-tutar">@Dil.T.Ortak.Tutar</label>
+            <input id="h-tutar" class="girdi sayi" type="number" step="0.01" @bind="hareketTutar" />
+        </div>
+        <div class="alan">
+            <label for="h-aciklama">@Dil.T.Ortak.Aciklama</label>
+            <input id="h-aciklama" class="girdi" @bind="hareketAciklama" />
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => hareketKasaId = null">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1" disabled="@(kaydediliyor || hareketTutar <= 0)"
+                    @onclick="HareketGir">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Geçmiş modalı ── *@
+<ModalPencere Acik="gecmisKasaId is not null" Baslik="@Dil.T.Kasa.KasaGecmisi" Kapat="() => gecmisKasaId = null">
+    @if (gecmis.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Cari.HareketYok" />
+    }
+    else
+    {
+        @foreach (var h in gecmis)
+        {
+            <div class="satir-arasi" style="padding:.5rem 0;border-bottom:1px solid var(--slate-100)">
+                <div>
+                    <span class="hucre-vurgu">@h.OdemeTuru</span>
+                    <p class="metin-soluk metin-kucuk">@Bicim.Tarih(h.Tarih, Dil.Locale)</p>
+                </div>
+                <span class="hucre-vurgu sayi @(h.Tutar >= 0 ? "metin-yesil" : "metin-kirmizi")">@Bicim.Tl(h.Tutar)</span>
+            </div>
+        }
+    }
+</ModalPencere>
+
+@code {
+    // ── veri modelleri (sayfaya özel, JSON camelCase otomatik eşleşir) ──
+    private sealed record KasaVeri(string Id, string Ad, string ParaBirimi, decimal Bakiye, bool Aktif);
+    private sealed record HareketVeri(string Id, decimal Tutar, string OdemeTuru, DateTime Tarih);
+    private sealed record HareketYaniti(List<HareketVeri> Hareketler);
+
+    private List<KasaVeri> KasaListesi = [];
+    private List<HareketVeri> gecmis = [];
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private string? modalHata;
+
+    private bool yeniModalAcik;
+    private string yeniAd = "";
+    private string yeniDoviz = "TRY";
+
+    private string? hareketKasaId;
+    private string hareketYon = "GIRIS";
+    private decimal hareketTutar;
+    private string hareketAciklama = "";
+
+    private string? duzenleKasaId;
+    private string duzenleAd = "";
+    private string duzenleEskiAd = "";
+
+    private string? gecmisKasaId;
+
+    private decimal ToplamTry => KasaListesi.Where(k => k.ParaBirimi == "TRY").Sum(k => k.Bakiye);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try { KasaListesi = await Api.GetAsync<List<KasaVeri>>("/kasalar"); }
+        catch (ApiHata) { KasaListesi = []; }
+        yukleniyor = false;
+    }
+
+    private async Task KasaOlustur()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // subeId: kullanıcının şubesi yoksa ilk şube
+            var subeler = await Api.GetAsync<List<JsonElement>>("/subeler");
+            var subeId = subeler.FirstOrDefault().TryGetProperty("id", out var s) ? s.GetString() : null;
+            await Api.PostAsync("/kasalar", new { ad = yeniAd, subeId, paraBirimi = yeniDoviz });
+            yeniModalAcik = false;
+            yeniAd = "";
+            await Yukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private void DuzenlemeyiAc(KasaVeri k)
+    {
+        modalHata = null;
+        duzenleAd = k.Ad;
+        duzenleEskiAd = k.Ad;
+        duzenleKasaId = k.Id;
+    }
+
+    private async Task KasaGuncelle()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/kasalar/{duzenleKasaId}", new { ad = duzenleAd.Trim() });
+            duzenleKasaId = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private void HareketModalAc(string kasaId)
+    {
+        modalHata = null;
+        hareketTutar = 0;
+        hareketAciklama = "";
+        hareketKasaId = kasaId;
+    }
+
+    private async Task HareketGir()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/kasalar/{hareketKasaId}/hareket", new
+            {
+                yon = hareketYon,
+                tutar = hareketTutar,
+                odemeTuru = "NAKIT",
+                aciklama = string.IsNullOrWhiteSpace(hareketAciklama) ? null : hareketAciklama,
+            });
+            hareketKasaId = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task GecmisAc(string kasaId)
+    {
+        gecmisKasaId = kasaId;
+        try
+        {
+            var yanit = await Api.GetAsync<HareketYaniti>($"/kasalar/{kasaId}/hareketler");
+            gecmis = yanit.Hareketler;
+        }
+        catch (ApiHata) { gecmis = []; }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

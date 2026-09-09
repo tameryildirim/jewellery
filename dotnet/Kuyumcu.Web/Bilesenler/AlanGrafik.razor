@@ -1,0 +1,52 @@
+@* Recharts AreaChart karşılığı — saf SVG, bağımlılıksız.
+   Not: <text> Razor'da rezerve olduğundan eksen etiketleri MarkupString ile basılır. *@
+<div class="grafik-sar" role="img" aria-label="@Aciklama">
+    <svg viewBox="0 0 @G @Y" preserveAspectRatio="none" style="height:@(Y)px">
+        <defs>
+            <linearGradient id="@GradId" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stop-color="#f59e0b" stop-opacity="0.25" />
+                <stop offset="95%" stop-color="#f59e0b" stop-opacity="0" />
+            </linearGradient>
+        </defs>
+        @if (Noktalar.Count > 1)
+        {
+            <polygon points="@AlanNoktalari" fill="url(#@GradId)" />
+            <polyline points="@CizgiNoktalari" fill="none" stroke="#b45309" stroke-width="2" />
+        }
+        @EksenIsaretlemesi
+    </svg>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<GrafikNokta> Noktalar { get; set; } = [];
+    [Parameter] public string Aciklama { get; set; } = "";
+
+    private const int G = 600, Y = 220, KenarUst = 12, KenarAlt = 22;
+    private readonly string GradId = $"g{Guid.NewGuid():N}";
+
+    private decimal Maks => Math.Max(1m, Noktalar.Count == 0 ? 1m : Noktalar.Max(n => n.Deger));
+    private double X(int i) => Noktalar.Count <= 1 ? 0 : (double)i / (Noktalar.Count - 1) * G;
+    private double YKord(decimal v) => KenarUst + (double)(1 - v / Maks) * (Y - KenarUst - KenarAlt);
+
+    private string CizgiNoktalari => string.Join(" ",
+        Noktalar.Select((n, i) => string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{X(i):F1},{YKord(n.Deger):F1}")));
+
+    private string AlanNoktalari => $"0,{Y - KenarAlt} {CizgiNoktalari} {G},{Y - KenarAlt}";
+
+    private MarkupString EksenIsaretlemesi
+    {
+        get
+        {
+            var sb = new System.Text.StringBuilder();
+            var adim = Math.Max(1, (int)Math.Ceiling(Noktalar.Count / 8.0));
+            for (var i = 0; i < Noktalar.Count; i += adim)
+            {
+                var x = X(i).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                var etiket = System.Net.WebUtility.HtmlEncode(Noktalar[i].Etiket);
+                sb.Append($"<text x=\"{x}\" y=\"{Y - 4}\" font-size=\"10\" fill=\"#64748b\" text-anchor=\"middle\">{etiket}</text>");
+            }
+            return new MarkupString(sb.ToString());
+        }
+    }
+}

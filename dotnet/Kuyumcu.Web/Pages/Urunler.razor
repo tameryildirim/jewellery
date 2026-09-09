@@ -1,0 +1,309 @@
+@page "/urunler"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/UrunPage.tsx — React'teki "kategori" kavramı .NET API'de "tip". *@
+
+<PageTitle>@Dil.T.Urun.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    @* ── Arama + ayar filtresi + yeni ürün ── *@
+    <div class="satir">
+        <input type="search" class="girdi" style="flex:1"
+               aria-label="@Dil.T.Urun.AraPlaceholder" placeholder="@Dil.T.Urun.AraPlaceholder"
+               @bind="arama" @bind:event="oninput" @bind:after="Yukle" />
+        <select class="secim" aria-label="@Dil.T.Urun.Ayar" @bind="ayarFil" @bind:after="Yukle">
+            <option value="">@Dil.T.Urun.TumAyarlar</option>
+            @foreach (var a in Ayarlar)
+            {
+                <option value="@a">@a</option>
+            }
+        </select>
+        <button class="btn btn-birincil" @onclick="YeniModalAc">+ @Dil.T.Urun.YeniUrun</button>
+    </div>
+
+    @* ── Ürün tablosu ── *@
+    <div class="kart">
+        @if (yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (listeHata is not null)
+        {
+            <div class="kart-govde"><HataBandi Mesaj="@listeHata" /></div>
+        }
+        else if (UrunListesi.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.Urun.UrunBulunamadi" />
+        }
+        else
+        {
+            <div class="tablo-sar">
+                <table class="veri-tablosu">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.Urun.UrunAdi</th>
+                            <th scope="col">@Dil.T.Urun.Barkod</th>
+                            <th scope="col">@Dil.T.Urun.Kategori</th>
+                            <th scope="col">@Dil.T.Urun.Ayar</th>
+                            <th scope="col">@Dil.T.Urun.Gram</th>
+                            <th scope="col">@Dil.T.Urun.HasGram</th>
+                            <th scope="col">@Dil.T.Urun.Durum</th>
+                            <th scope="col"><span class="gorunmez">@Dil.T.Ortak.Eylemler</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in UrunListesi)
+                        {
+                            <tr>
+                                <td class="hucre-vurgu">@u.Ad</td>
+                                <td class="metin-soluk metin-kucuk">@(string.IsNullOrEmpty(u.Barkod) ? "—" : u.Barkod)</td>
+                                <td class="metin-soluk">@u.Tip</td>
+                                <td><Rozet Renk="amber">@u.AyarId</Rozet></td>
+                                <td class="sayi">@Bicim.Gram(u.GramAgirlik)</td>
+                                <td class="sayi hucre-vurgu metin-amber">@Bicim.Has(u.HasGrami)</td>
+                                <td>
+                                    <Rozet Renk="@(u.Aktif ? "yesil" : "gri")">
+                                        @(u.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)
+                                    </Rozet>
+                                </td>
+                                <td>
+                                    <button class="btn btn-ikincil btn-kucuk" @onclick="() => StokAc(u.Id)">
+                                        <span aria-hidden="true">📦</span> @Dil.T.Urun.Stok
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── Yeni ürün modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Urun.YeniUrun" Kapat="() => yeniModalAcik = false">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="u-ad">@Dil.T.Urun.UrunAdi</label>
+            <input id="u-ad" class="girdi" @bind="yeniAd" />
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="u-kod">Kod</label>
+                <input id="u-kod" class="girdi" @bind="yeniKod" />
+            </div>
+            <div class="alan">
+                <label for="u-barkod">@Dil.T.Urun.Barkod</label>
+                <input id="u-barkod" class="girdi" @bind="yeniBarkod" />
+            </div>
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="u-tip">@Dil.T.Urun.Kategori</label>
+                <select id="u-tip" class="secim" @bind="yeniTip">
+                    @foreach (var t in Tipler)
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="alan">
+                <label for="u-ayar">@Dil.T.Urun.Ayar</label>
+                <select id="u-ayar" class="secim" @bind="yeniAyar">
+                    @foreach (var a in Ayarlar)
+                    {
+                        <option value="@a">@a</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="alan">
+            <label for="u-gercek-milyem">@Dil.T.Urun.GercekMilyem</label>
+            <input id="u-gercek-milyem" class="girdi sayi" type="number" step="0.01" min="1" max="1000" @bind="yeniGercekMilyem" />
+            <span class="metin-soluk metin-kucuk">@Dil.T.Urun.GercekMilyemIpucu</span>
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="u-gram">@Dil.T.Urun.GramAgirlik</label>
+                <input id="u-gram" class="girdi sayi" type="number" step="0.001" min="0" @bind="yeniGram" />
+            </div>
+            <div class="alan">
+                <label for="u-tas">@Dil.T.Urun.TasAgirlik</label>
+                <input id="u-tas" class="girdi sayi" type="number" step="0.001" min="0" @bind="yeniTas" />
+            </div>
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label for="u-iscilik">@Dil.T.Islem.IscilikTutari</label>
+                <input id="u-iscilik" class="girdi sayi" type="number" step="0.01" min="0" @bind="yeniIscilik" />
+            </div>
+            <div class="alan">
+                <label for="u-satis-fiyati">@Dil.T.Urun.SatisFiyati</label>
+                <input id="u-satis-fiyati" class="girdi sayi" type="number" step="0.01" min="0" @bind="yeniSatisFiyati" />
+                <span class="metin-soluk metin-kucuk">@Dil.T.Urun.SatisFiyatiIpucu</span>
+            </div>
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => yeniModalAcik = false">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1"
+                    disabled="@(kaydediliyor || string.IsNullOrWhiteSpace(yeniAd) || string.IsNullOrWhiteSpace(yeniKod) || yeniGram <= 0)"
+                    @onclick="UrunOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Şube stokları modalı ── *@
+<ModalPencere Acik="stokUrunId is not null" Baslik="@Dil.T.Urun.SubeStoklari" Kapat="() => stokUrunId = null">
+    @if (stokHata is not null)
+    {
+        <HataBandi Mesaj="@stokHata" />
+    }
+    else if (stoklar.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Urun.StokYok" />
+    }
+    else
+    {
+        <div class="tablo-sar">
+            <table class="veri-tablosu">
+                <thead>
+                    <tr>
+                        <th scope="col">@Dil.T.Urun.Sube</th>
+                        <th scope="col">@Dil.T.Ortak.Adet</th>
+                        <th scope="col">@Dil.T.Urun.ToplamHas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in stoklar)
+                    {
+                        <tr>
+                            <td class="metin-soluk metin-kucuk">@s.SubeId</td>
+                            <td class="hucre-vurgu sayi">@s.Adet</td>
+                            <td class="sayi metin-amber">@Bicim.Has(s.ToplamHasGram)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</ModalPencere>
+
+@code {
+    // ── veri modelleri (sayfaya özel, JSON camelCase otomatik eşleşir) ──
+    private sealed record UrunVeri(
+        string Id, string Tip, string Kod, string Ad, string AyarId,
+        decimal GramAgirlik, decimal TasAgirlik, decimal HasGrami, string? Barkod, bool Aktif);
+    private sealed record StokVeri(string SubeId, int Adet, decimal ToplamHasGram);
+    private sealed record StokYaniti(List<StokVeri> Stok);
+
+    private static readonly string[] Tipler = ["ZIYNET", "KULCE", "HURDA", "SIKKE", "PIRLANTA", "SAAT", "GUMUS"];
+    private static readonly string[] Ayarlar = ["K8", "K14", "K18", "K21", "K22", "K24", "G800", "G925", "G950"];
+
+    private List<UrunVeri> UrunListesi = [];
+    private bool yukleniyor = true;
+    private string? listeHata;
+
+    private string arama = "";
+    private string ayarFil = "";
+
+    private bool yeniModalAcik;
+    private bool kaydediliyor;
+    private string? modalHata;
+    private string yeniAd = "";
+    private string yeniKod = "";
+    private string yeniBarkod = "";
+    private string yeniTip = "ZIYNET";
+    private string yeniAyar = "K18";
+    private decimal yeniGram;
+    private decimal yeniTas;
+    private decimal yeniIscilik;
+    private decimal? yeniGercekMilyem;
+    private decimal? yeniSatisFiyati;
+
+    private string? stokUrunId;
+    private List<StokVeri> stoklar = [];
+    private string? stokHata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try
+        {
+            var sorgu = new List<string>();
+            if (!string.IsNullOrWhiteSpace(arama)) sorgu.Add($"q={Uri.EscapeDataString(arama.Trim())}");
+            if (!string.IsNullOrEmpty(ayarFil)) sorgu.Add($"ayarId={Uri.EscapeDataString(ayarFil)}");
+            var yol = sorgu.Count > 0 ? $"/urunler?{string.Join("&", sorgu)}" : "/urunler";
+            UrunListesi = await Api.GetAsync<List<UrunVeri>>(yol);
+        }
+        catch (ApiHata ex) { UrunListesi = []; listeHata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    private void YeniModalAc()
+    {
+        modalHata = null;
+        yeniAd = "";
+        yeniKod = "";
+        yeniBarkod = "";
+        yeniTip = "ZIYNET";
+        yeniAyar = "K18";
+        yeniGram = 0;
+        yeniTas = 0;
+        yeniIscilik = 0;
+        yeniGercekMilyem = null;
+        yeniSatisFiyati = null;
+        yeniModalAcik = true;
+    }
+
+    private async Task UrunOlustur()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/urunler", new
+            {
+                tip = yeniTip,
+                kod = yeniKod.Trim(),
+                ad = yeniAd.Trim(),
+                ayarId = yeniAyar,
+                gramAgirlik = yeniGram,
+                tasAgirlik = yeniTas,
+                iscilikTl = yeniIscilik,
+                satisFiyati = yeniSatisFiyati,
+                barkod = string.IsNullOrWhiteSpace(yeniBarkod) ? null : yeniBarkod.Trim(),
+                gercekMilyem = yeniGercekMilyem,
+            });
+            yeniModalAcik = false;
+            await Yukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task StokAc(string urunId)
+    {
+        stokHata = null;
+        stoklar = [];
+        stokUrunId = urunId;
+        try
+        {
+            var yanit = await Api.GetAsync<StokYaniti>($"/urunler/{urunId}/stok");
+            stoklar = yanit.Stok;
+        }
+        catch (ApiHata ex) { stokHata = ex.Message; }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

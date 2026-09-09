@@ -1,0 +1,66 @@
+@inherits LayoutComponentBase
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@inject ApiIstemci Api
+@implements IDisposable
+
+@if (GirisSayfasinda)
+{
+    @Body
+}
+else if (!Oturum.GirisYapildi)
+{
+    @* Token yok → girişe yönlendirilir (OnInitialized) *@
+}
+else
+{
+    <div class="uygulama">
+        <KenarCubugu />
+        <div class="icerik-sutunu">
+            <UstBar />
+            <main class="ana-icerik">
+                @Body
+            </main>
+        </div>
+    </div>
+}
+
+@code {
+    private bool GirisSayfasinda =>
+        new Uri(Nav.Uri).AbsolutePath.TrimEnd('/') is "/giris";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Oturum.Degisti += DurumaGoreYenile;
+        Nav.LocationChanged += (_, _) => KontrolEt();
+        KontrolEt();
+
+        // Profil persist edilmez — token varsa /auth/ben ile geri yükle
+        if (Oturum.GirisYapildi && Oturum.Kullanici is null)
+        {
+            try
+            {
+                var ben = await Api.GetAsync("/auth/ben");
+                Oturum.KullaniciAta(new OturumKullanici(
+                    ben.GetProperty("id").GetString()!,
+                    ben.GetProperty("ad").GetString()!,
+                    ben.GetProperty("soyad").GetString()!,
+                    ben.GetProperty("email").GetString()!,
+                    ben.GetProperty("rol").GetString()!,
+                    ben.TryGetProperty("subeId", out var s) ? s.GetString() : null));
+            }
+            catch { /* 401 ise ApiIstemci zaten girişe yönlendirir */ }
+        }
+    }
+
+    private void KontrolEt()
+    {
+        if (!Oturum.GirisYapildi && !GirisSayfasinda)
+            Nav.NavigateTo("/giris");
+        else if (Oturum.GirisYapildi && GirisSayfasinda)
+            Nav.NavigateTo("/");
+    }
+
+    private void DurumaGoreYenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Oturum.Degisti -= DurumaGoreYenile;
+}

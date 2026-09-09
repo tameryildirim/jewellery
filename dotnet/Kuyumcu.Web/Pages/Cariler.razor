@@ -1,0 +1,321 @@
+@page "/cariler"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/CariPage.tsx — Kasalar.razor desenini izler. *@
+
+<PageTitle>@Dil.T.Cari.Baslik — Kuyumcu ERP</PageTitle>
+
+<div class="dikey-bosluk">
+    @* ── Araç çubuğu ── *@
+    <div class="satir">
+        <input type="search" class="girdi" style="flex:1"
+               aria-label="@Dil.T.Cari.AraPlaceholder"
+               placeholder="@Dil.T.Cari.AraPlaceholder"
+               @bind="arama" @bind:event="oninput" @bind:after="Yukle" />
+        <select class="secim" aria-label="@Dil.T.Cari.Tur" @bind="turFiltre" @bind:after="Yukle">
+            <option value="">@Dil.T.Ortak.Tumu</option>
+            <option value="MUSTERI">@Dil.T.Cari.Musteri</option>
+            <option value="TEDARIKCI">@Dil.T.Cari.Tedarikci</option>
+        </select>
+        <button class="btn btn-birincil" @onclick="YeniModalAc">+ @Dil.T.Cari.YeniCari</button>
+    </div>
+
+    <HataBandi Mesaj="@listeHata" />
+
+    @* ── Liste ── *@
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (CariListesi.Count == 0)
+    {
+        <div class="kart">
+            <BosDurum Mesaj="@Dil.T.Cari.CariBulunamadi" />
+        </div>
+    }
+    else
+    {
+        <div class="kart">
+            <div class="tablo-sar">
+                <table class="veri-tablosu">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.Auth.Ad</th>
+                            <th scope="col">@Dil.T.Cari.Tur</th>
+                            <th scope="col">@Dil.T.Cari.Telefon</th>
+                            <th scope="col">@Dil.T.Cari.TlBakiye</th>
+                            <th scope="col">@Dil.T.Cari.HasGram</th>
+                            <th scope="col"><span class="gorunmez">@Dil.T.Ortak.Eylemler</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in CariListesi)
+                        {
+                            <tr>
+                                <td class="hucre-vurgu">@c.Ad</td>
+                                <td><Rozet Renk="@TurRengi(c.Tur)">@c.Tur.Replace("_", " ")</Rozet></td>
+                                <td>@(string.IsNullOrEmpty(c.Telefon) ? "—" : c.Telefon)</td>
+                                <td class="hucre-vurgu sayi @(c.TlBakiye < 0 ? "metin-kirmizi" : null)">
+                                    <span class="satir" style="gap:.5rem">
+                                        @Bicim.Tl(c.TlBakiye)
+                                        @if (c.TlBakiye > 0)
+                                        {
+                                            <Rozet Renk="yesil">@Dil.T.Cari.Alacak</Rozet>
+                                        }
+                                        else if (c.TlBakiye < 0)
+                                        {
+                                            <Rozet Renk="kirmizi">@Dil.T.Cari.Borc</Rozet>
+                                        }
+                                    </span>
+                                </td>
+                                <td class="sayi">@Bicim.Has(c.HasGramBakiye)</td>
+                                <td>
+                                    <button class="btn btn-ikincil btn-kucuk" @onclick="() => DetayAc(c)">
+                                        @Dil.T.Ortak.Detay
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@* ── Yeni cari modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Cari.YeniCari" Kapat="() => yeniModalAcik = false">
+    <div class="form-dikey">
+        <div class="alan">
+            <label for="cari-ad">@Dil.T.Cari.AdFirma</label>
+            <input id="cari-ad" class="girdi" @bind="yeniAd" />
+        </div>
+        <div class="alan">
+            <label for="cari-tur">@Dil.T.Cari.Tur</label>
+            <select id="cari-tur" class="secim" @bind="yeniTur">
+                <option value="MUSTERI">@Dil.T.Cari.Musteri</option>
+                <option value="TEDARIKCI">@Dil.T.Cari.Tedarikci</option>
+                <option value="HER_IKISI">@Dil.T.Cari.HerIkisi</option>
+            </select>
+        </div>
+        <div class="alan">
+            <label for="cari-telefon">@Dil.T.Cari.Telefon</label>
+            <input id="cari-telefon" class="girdi" type="tel" @bind="yeniTelefon" />
+        </div>
+        <div class="alan">
+            <label for="cari-eposta">@Dil.T.Auth.Eposta</label>
+            <input id="cari-eposta" class="girdi" type="email" @bind="yeniEmail" />
+        </div>
+        <div class="alan">
+            <label for="cari-adres">@Dil.T.Cari.Adres</label>
+            <input id="cari-adres" class="girdi" @bind="yeniAdres" />
+        </div>
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => yeniModalAcik = false">@Dil.T.Ortak.Iptal</button>
+            <button class="btn btn-birincil" style="flex:1"
+                    disabled="@(kaydediliyor || string.IsNullOrWhiteSpace(yeniAd))"
+                    @onclick="CariOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Cari detay modalı (başlığından tutup taşınabilir) ── *@
+<ModalPencere Acik="detayCari is not null" Baslik="@(detayCari?.Ad ?? Dil.T.Cari.CariDetay)" Kapat="DetayKapat" Suruklenebilir="true">
+    @if (detayCari is not null)
+    {
+        <div class="form-dikey">
+            <div class="form-grid-2">
+                <div class="kart">
+                    <div class="kart-govde" style="text-align:center">
+                        <p class="metin-soluk metin-kucuk">@Dil.T.Cari.TlBakiye</p>
+                        <p class="stat-deger sayi @(DetayTl < 0 ? "metin-kirmizi" : "metin-yesil")">@Bicim.Tl(DetayTl)</p>
+                        @if (DetayTl > 0)
+                        {
+                            <Rozet Renk="yesil">@Dil.T.Cari.Alacak</Rozet>
+                        }
+                        else if (DetayTl < 0)
+                        {
+                            <Rozet Renk="kirmizi">@Dil.T.Cari.Borc</Rozet>
+                        }
+                    </div>
+                </div>
+                <div class="kart">
+                    <div class="kart-govde" style="text-align:center">
+                        <p class="metin-soluk metin-kucuk">@Dil.T.Cari.HasGram</p>
+                        <p class="stat-deger sayi metin-amber">@Bicim.Has(DetayHas)</p>
+                    </div>
+                </div>
+            </div>
+
+            <HataBandi Mesaj="@detayHata" />
+
+            <div>
+                <h3 class="metin-soluk metin-kucuk mb-1">@Dil.T.Cari.Hareketler</h3>
+                @if (ekstreYukleniyor)
+                {
+                    <Yukleniyor />
+                }
+                else if (DetayHareketler.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Cari.HareketYok" />
+                }
+                else
+                {
+                    <div style="max-height:15rem;overflow-y:auto">
+                        @foreach (var h in DetayHareketler)
+                        {
+                            <div class="satir-arasi" style="padding:.5rem 0;border-bottom:1px solid var(--slate-100)">
+                                <div>
+                                    <span class="hucre-vurgu">@h.Tur</span>
+                                    @if (!string.IsNullOrEmpty(h.Aciklama))
+                                    {
+                                        <span class="metin-soluk metin-kucuk"> — @h.Aciklama</span>
+                                    }
+                                    <p class="metin-soluk metin-kucuk">@Bicim.Tarih(h.Olusturuldu, Dil.Locale)</p>
+                                </div>
+                                <div style="text-align:right">
+                                    <p class="hucre-vurgu sayi @(h.TlTutari >= 0 ? "metin-yesil" : "metin-kirmizi")">@Bicim.Tl(h.TlTutari)</p>
+                                    @if (h.HasGrami != 0)
+                                    {
+                                        <p class="metin-amber metin-kucuk sayi">@Bicim.Has(h.HasGrami)</p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@code {
+    // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
+    private sealed record CariVeri(
+        string Id, string Ad, string Tur, string? Telefon, string? Email,
+        decimal TlBakiye, decimal HasGramBakiye);
+    private sealed record BakiyeVeri(decimal TlBakiye, decimal HasGramBakiye);
+    private sealed record EkstreHareket(
+        string Id, string Tur, decimal TlTutari, decimal HasGrami,
+        string? Aciklama, DateTime Olusturuldu);
+    private sealed record EkstreYaniti(BakiyeVeri Bakiye, List<EkstreHareket> Hareketler);
+
+    private List<CariVeri> CariListesi = [];
+    private bool yukleniyor = true;
+    private string? listeHata;
+
+    private string arama = "";
+    private string turFiltre = "";
+
+    // yeni cari formu
+    private bool yeniModalAcik;
+    private bool kaydediliyor;
+    private string? modalHata;
+    private string yeniAd = "";
+    private string yeniTur = "MUSTERI";
+    private string yeniTelefon = "";
+    private string yeniEmail = "";
+    private string yeniAdres = "";
+
+    // detay modalı
+    private CariVeri? detayCari;
+    private EkstreYaniti? ekstre;
+    private bool ekstreYukleniyor;
+    private string? detayHata;
+
+    private decimal DetayTl => ekstre?.Bakiye.TlBakiye ?? detayCari?.TlBakiye ?? 0;
+    private decimal DetayHas => ekstre?.Bakiye.HasGramBakiye ?? detayCari?.HasGramBakiye ?? 0;
+    private List<EkstreHareket> DetayHareketler => ekstre?.Hareketler ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private static string TurRengi(string tur) => tur switch
+    {
+        "MUSTERI" => "mavi",
+        "TEDARIKCI" => "amber",
+        _ => "yesil",
+    };
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try
+        {
+            var sorgu = new List<string> { "limit=100" };
+            if (!string.IsNullOrWhiteSpace(arama))
+                sorgu.Add($"q={Uri.EscapeDataString(arama.Trim())}");
+            if (!string.IsNullOrEmpty(turFiltre))
+                sorgu.Add($"tur={turFiltre}");
+            CariListesi = await Api.GetAsync<List<CariVeri>>($"/cari?{string.Join("&", sorgu)}");
+        }
+        catch (ApiHata ex)
+        {
+            CariListesi = [];
+            listeHata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private void YeniModalAc()
+    {
+        modalHata = null;
+        yeniAd = "";
+        yeniTur = "MUSTERI";
+        yeniTelefon = "";
+        yeniEmail = "";
+        yeniAdres = "";
+        yeniModalAcik = true;
+    }
+
+    private async Task CariOlustur()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/cari", new
+            {
+                ad = yeniAd.Trim(),
+                tur = yeniTur,
+                telefon = BosIseNull(yeniTelefon),
+                email = BosIseNull(yeniEmail),
+                adres = BosIseNull(yeniAdres),
+            });
+            yeniModalAcik = false;
+            await Yukle();
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task DetayAc(CariVeri cari)
+    {
+        detayCari = cari;
+        detayHata = null;
+        ekstre = null;
+        ekstreYukleniyor = true;
+        try { ekstre = await Api.GetAsync<EkstreYaniti>($"/cari/{cari.Id}/ekstre"); }
+        catch (ApiHata ex) { detayHata = ex.Message; }
+        ekstreYukleniyor = false;
+    }
+
+    private void DetayKapat()
+    {
+        detayCari = null;
+        ekstre = null;
+        detayHata = null;
+    }
+
+    private static string? BosIseNull(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

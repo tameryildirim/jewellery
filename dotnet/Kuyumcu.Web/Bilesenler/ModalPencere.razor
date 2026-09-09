@@ -1,0 +1,54 @@
+@inject DilServisi Dil
+@inject IJSRuntime JS
+
+@if (Acik)
+{
+    <div class="modal-arka" @onclick="KapatIstegi">
+        <div class="modal-panel @(Suruklenebilir ? "suruklenebilir" : null)" role="dialog" aria-modal="true"
+             aria-labelledby="@BaslikId" @ref="panelRef"
+             @onclick:stopPropagation="true" @onkeydown="TusYakala" tabindex="-1">
+            <div class="modal-baslik" @ref="baslikRef">
+                <h2 id="@BaslikId">@Baslik</h2>
+                <button class="modal-kapat" aria-label="@Dil.T.Ortak.Kapat" @onclick="KapatIstegi">&times;</button>
+            </div>
+            <div class="modal-govde">
+                @ChildContent
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public string Baslik { get; set; } = "";
+    [Parameter] public EventCallback Kapat { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>true ise pencere başlığından tutulup mouse/dokunmatikle taşınabilir.</summary>
+    [Parameter] public bool Suruklenebilir { get; set; }
+
+    private readonly string BaslikId = $"modal-{Guid.NewGuid():N}";
+    private ElementReference panelRef;
+    private ElementReference baslikRef;
+    private bool suruklemeKuruldu;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!Suruklenebilir) return;
+
+        if (Acik && !suruklemeKuruldu)
+        {
+            suruklemeKuruldu = true;
+            try { await JS.InvokeVoidAsync("kuyumcuSurukle.baslat", panelRef, baslikRef); }
+            catch { /* JS yüklenmediyse modal yine de normal çalışır */ }
+        }
+        else if (!Acik && suruklemeKuruldu)
+        {
+            suruklemeKuruldu = false;   // sonraki açılışta yeniden kurulur (konum sıfırlanır)
+        }
+    }
+
+    private Task KapatIstegi() => Kapat.InvokeAsync();
+
+    private Task TusYakala(KeyboardEventArgs e) =>
+        e.Key == "Escape" ? Kapat.InvokeAsync() : Task.CompletedTask;
+}

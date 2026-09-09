@@ -1,0 +1,21 @@
+@inject DilServisi Dil
+@implements IDisposable
+
+<div class="dil-secici @(Koyu ? "koyu" : "")">
+    <button class="@(Dil.Dil == "tr" ? "secili" : "")" aria-pressed="@(Dil.Dil == "tr")"
+            @onclick='() => Dil.DegistirAsync("tr")'>
+        <span aria-hidden="true">🇹🇷</span> TR
+    </button>
+    <button class="@(Dil.Dil == "en" ? "secili" : "")" aria-pressed="@(Dil.Dil == "en")"
+            @onclick='() => Dil.DegistirAsync("en")'>
+        <span aria-hidden="true">🇬🇧</span> EN
+    </button>
+</div>
+
+@code {
+    [Parameter] public bool Koyu { get; set; }
+
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}
