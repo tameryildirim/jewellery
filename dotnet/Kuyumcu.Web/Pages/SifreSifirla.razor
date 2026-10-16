@@ -1,0 +1,382 @@
+@page "/sifre-sifirla"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET AUTH-SIFIRLA — "Parolamı unuttum" (kurul 5 engeli). Giriş ekranının
+   İKİ PANEL düzeni AYNEN kullanılır (S1-e sınıfları; yeni CSS yok).
+
+   İki adım, TEK birincil düğme:
+     (a) Bağlantı iste — e-posta → POST /auth/parola-sifirlama/istek. Yanıt hesap
+         VAR/YOK fark etmeksizin aynıdır (ekip oyu md.1).
+     (b) Yeni parola — e-postadaki bağlantı "#jeton=…" PARÇASIYLA gelir (parça
+         sunucuya/günlüğe gitmez) → POST /auth/parola-sifirlama/tamamla.
+         Oturum AÇILMAZ (md.5: MFA atlanmaz) — kullanıcı girişe döner.
+   Kanal kapalıysa (md.6 · 503 ya da durum.acik=false) form ÇİZİLMEZ; ekran
+   doğru yolu yazar ("işletme sahibine/destek hattına başvur" + yönetici yolu).
+
+   Düzenleme yolu (UX-S1/S25 · P-06): bu ekranın yazdığı tek kullanıcı verisi PAROLADIR;
+   sonradan değişikliği Ayarlar.razor (kendi parolası · PATCH /kullanicilar/ben/sifre)
+   ya da yönetici Kullanicilar.razor'dan yapılır → data-duzenleme-yolu="Ayarlar.razor".
+   Sıfırlama bağlantısı tek kullanımlık güvenlik kaydıdır, düzenlenmez (DoD sözleşmesi).
+   id'ler 'sifirla-<alan>'.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(M.IstekBaslik)</PageTitle>
+
+<div class="giris-sayfa giris-iki-panel" id="sifirla-sayfa">
+    <main class="giris-sol" id="sifirla-sol">
+        <div class="giris-kart" id="sifirla-kart">
+            <div class="giris-kart-ust">
+                <div class="giris-marka" id="sifirla-marka">
+                    <span class="giris-marka-rozet" aria-hidden="true"><Ikon Ad="@Ikonlar.Marka" /></span>
+                    <p class="giris-marka-ad">@KabukTuvalSozlugu.MarkaYazimi</p>
+                </div>
+                <div class="giris-dil" id="sifirla-dil"><DilSecici /></div>
+            </div>
+
+            <SayfaBasi Anahtar="sifirla"
+                       Baslik="@(jeton is null ? M.IstekBaslik : M.YeniBaslik)"
+                       Aciklama="@(jeton is null ? M.IstekAciklama : M.YeniAciklama)" />
+
+            @if (!string.IsNullOrEmpty(hata))
+            {
+                <HataBandi Mesaj="@hata" Id="sifirla-hata" />
+            }
+            @if (!string.IsNullOrEmpty(basari))
+            {
+                <BasariBandi Mesaj="@basari" Id="sifirla-basari" />
+            }
+
+            @if (jeton is not null)
+            {
+                @if (jetonReddedildi)
+                {
+                    @* Tur 2 (tasarım hakemi): reddedilen bağlantıda işe yaramayan form KALMAZ;
+                       TEK birincil eylem "Yeni bağlantı iste" → istek adımına döner. *@
+                    <button type="button" @onclick="YeniBaglantiIste" id="sifirla-yeni-baglanti"
+                            class="btn btn-birincil btn-buyuk btn-tam giris-gonder">@M.YeniBaglantiIste</button>
+                }
+                else if (!tamamlandi)
+                {
+                    <form class="form-dikey giris-form-alan" id="sifirla-yeni-form" novalidate data-duzenleme-yolu="Ayarlar.razor"
+                          @onsubmit="Tamamla" @onsubmit:preventDefault>
+                        <Sifre ElemanId="sifirla-yeni-sifre" Etiket="@M.YeniParola" Zorunlu="true" EnFazla="@Kuyumcu.Core.Domain.Girdi.ParolaKurali.EnCok"
+                               OtoTamamla="new-password" Ipucu="@(form.Mesaj("sifirla-yeni-sifre") is null ? M.ParolaKurali : null)"
+                               GosterEtiketi="@M.Goster" GizleEtiketi="@M.Gizle"
+                               Deger="@yeniSifre" DegerChanged="@(v => yeniSifre = v ?? "")"
+                               Durum="form" HataAlani="sifirla-yeni-sifre" />
+                        <Sifre ElemanId="sifirla-yeni-tekrar" Etiket="@M.YeniParolaTekrar" Zorunlu="true" EnFazla="@Kuyumcu.Core.Domain.Girdi.ParolaKurali.EnCok"
+                               OtoTamamla="new-password"
+                               GosterEtiketi="@M.Goster" GizleEtiketi="@M.Gizle"
+                               Deger="@yeniTekrar" DegerChanged="@(v => yeniTekrar = v ?? "")"
+                               Durum="form" HataAlani="sifirla-yeni-tekrar" />
+                        <button type="submit" class="btn btn-birincil btn-buyuk btn-tam giris-gonder" id="sifirla-kaydet" disabled="@yukleniyor">
+                            @(yukleniyor ? M.GonderiliyorKilit : M.ParolayiKaydet)
+                        </button>
+                    </form>
+                }
+                <div class="giris-baglar" id="sifirla-baglar">
+                    <a class="giris-bag" id="sifirla-girise-don" href="/giris">@M.GiriseDon</a>
+                </div>
+            }
+            else if (durumHatasi is not null)
+            {
+                @* UX-S28: hata 'kapalı' ya da boş form gibi görünmez — ayrı metin. *@
+                <p class="giris-yardim" id="sifirla-durum-hata" role="alert">@durumHatasi</p>
+                <div class="giris-baglar"><a class="giris-bag" id="sifirla-girise-don" href="/giris">@M.GiriseDon</a></div>
+            }
+            else if (acik is null)
+            {
+                <p class="giris-surum" id="sifirla-yukleniyor" role="status">@M.DurumYukleniyor</p>
+            }
+            else if (acik == false)
+            {
+                <div class="giris-yardim" id="sifirla-kapali" role="status">
+                    <p id="sifirla-kapali-baslik"><strong>@M.KapaliBaslik</strong></p>
+                    <p id="sifirla-kapali-mesaj">@M.KapaliMesaj</p>
+                    <p id="sifirla-kapali-yonetici">@GirisSozlugu.ParolaYardim(Dil.Dil)</p>
+                </div>
+                <div class="giris-baglar"><a class="giris-bag" id="sifirla-girise-don" href="/giris">@M.GiriseDon</a></div>
+            }
+            else
+            {
+                @if (!istekGonderildi)
+                {
+                    <form class="form-dikey giris-form-alan" id="sifirla-istek-form" novalidate
+                          @onsubmit="Iste" @onsubmit:preventDefault>
+                        <Eposta ElemanId="sifirla-eposta" Etiket="@Dil.T.Auth.Eposta" Zorunlu="true"
+                                YerTutucu="@("ornek@isletme.com")"
+                                Deger="@email" DegerChanged="@(v => email = v ?? "")"
+                                Durum="form" HataAlani="sifirla-eposta" />
+                        <button type="submit" class="btn btn-birincil btn-buyuk btn-tam giris-gonder" id="sifirla-gonder" disabled="@yukleniyor">
+                            @(yukleniyor ? M.GonderiliyorKilit : M.BaglantiGonder)
+                        </button>
+                    </form>
+                }
+                <div class="giris-baglar" id="sifirla-baglar">
+                    <a class="giris-bag" id="sifirla-girise-don" href="/giris">@M.GiriseDon</a>
+                </div>
+            }
+        </div>
+    </main>
+
+    <aside class="giris-sag" id="sifirla-panel">
+        <div class="giris-sekil giris-sekil-1" aria-hidden="true"></div>
+        <div class="giris-sekil giris-sekil-2" aria-hidden="true"></div>
+        <div class="giris-sekil giris-sekil-3" aria-hidden="true"></div>
+        <div class="giris-sag-icerik">
+            <p class="giris-sag-baslik" id="sifirla-panel-baslik">@GirisSozlugu.PanelBaslik(Dil.Dil)</p>
+            <p class="giris-sag-alt" id="sifirla-panel-alt">@GirisSozlugu.PanelAlt(Dil.Dil)</p>
+        </div>
+    </aside>
+</div>
+
+@code {
+    private AuthSifirlaMetinleri M => AuthSifirlaSozlugu.Al(Dil.Dil);
+
+    /// <summary>Bağlantıdaki jeton (yalnız bellekte; depoya yazılmaz). null = istek adımı.</summary>
+    private string? jeton;
+
+    private bool? acik;
+    private string? durumHatasi;
+
+    private string email = "";
+    private string yeniSifre = "";
+    private string yeniTekrar = "";
+
+    private bool yukleniyor;
+    private bool istekGonderildi;
+    private bool tamamlandi;
+    private bool jetonReddedildi;
+    private string? hata;
+    private string? basari;
+
+    private readonly FormDurumu form = new();
+
+    /// <summary>Sunucu alan adı → ekran id (400 alan sözlüğü).</summary>
+    private static readonly Dictionary<string, string> Esleme = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["email"] = "sifirla-eposta",
+        ["yeniSifre"] = "sifirla-yeni-sifre",
+        ["yeniSifreTekrar"] = "sifirla-yeni-tekrar",
+    };
+
+    /// <summary>"#jeton=abc" parçasından jetonu okur; yoksa null.</summary>
+    public static string? JetonuOku(string uri)
+    {
+        var parca = new Uri(uri).Fragment;
+        if (string.IsNullOrEmpty(parca)) return null;
+        foreach (var bolum in parca.TrimStart('#').Split('&'))
+        {
+            var esit = bolum.IndexOf('=');
+            if (esit > 0 && bolum[..esit] == "jeton")
+            {
+                var deger = Uri.UnescapeDataString(bolum[(esit + 1)..]).Trim();
+                return deger.Length is > 0 and <= 200 ? deger : null;
+            }
+        }
+        return null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Nav.LocationChanged += KonumDegisti;
+        jeton = JetonuOku(Nav.Uri);
+        if (jeton is not null)
+        {
+            ParcayiTemizle();   // jeton bellekte kalır, adres çubuğundan/geçmişten silinir
+            return;             // yeni parola adımı durum sormaz: sunucu jetonu doğrular
+        }
+        await DurumOku();
+    }
+
+    /// <summary>
+    /// Tur 2 (doğrulayıcı bulgusu): "#jeton=…" parçası okunduktan sonra adres çubuğundan
+    /// ve tarayıcı geçmişinden silinir (replace: geçmişe yeni kayıt eklenmez). Jeton
+    /// yalnız bu bileşenin belleğinde kalır.
+    /// </summary>
+    private void ParcayiTemizle() => Nav.NavigateTo("/sifre-sifirla", replace: true);
+
+    /// <summary>Teknik ayrıntı EKRANA değil tarayıcı konsoluna yazılır (jargon yasağı; gizlenmez).</summary>
+    private static void Gunluk(string yer, Exception ex) =>
+        Console.Error.WriteLine($"[sifre-sifirla] {yer}: {ex.GetType().Name}: {ex.Message}");
+
+    /// <summary>429 → "N dakika sonra yeniden dene" (süre Retry-After'dan; saniye yazılmaz).</summary>
+    private string HizSiniriMetni(OranSinirHatasi ex) =>
+        M.HizSiniri((int)Math.Ceiling(ex.KalanSaniye / 60.0));
+
+    /// <summary>
+    /// Bağlantı AÇIK sekmede açılırsa (yalnız #parça değişir, sayfa yeniden yüklenmez)
+    /// jeton yine okunur — canlı ölçümde yakalandı: aksi hâlde istek formu kalıyordu.
+    /// </summary>
+    private void KonumDegisti(object? kaynak, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        var yeni = JetonuOku(e.Location);
+        if (yeni is null || yeni == jeton) return;
+        jeton = yeni;
+        tamamlandi = false;
+        jetonReddedildi = false;
+        hata = null;
+        basari = null;
+        yeniSifre = "";
+        yeniTekrar = "";
+        form.Temizle();
+        _ = InvokeAsync(() =>
+        {
+            ParcayiTemizle();
+            StateHasChanged();
+        });
+    }
+
+    private async Task DurumOku()
+    {
+        try
+        {
+            var d = await Api.GetAsync("/auth/parola-sifirlama/durum");
+            acik = d.TryGetProperty("acik", out var a) && a.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+        catch (Exception ex)
+        {
+            Gunluk("durum", ex);
+            durumHatasi = M.DurumHatasi;
+        }
+    }
+
+    private async Task OdakIlkHataya()
+    {
+        if (form.IlkHatali is not { } ilk) return;
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", ilk); }
+        catch { /* JS yoksa mesaj yine görünür */ }
+    }
+
+    private async Task Iste()
+    {
+        hata = null;
+        basari = null;
+        form.Temizle();
+        form.Zorunlu("sifirla-eposta", email, Dil);
+        form.Eposta("sifirla-eposta", email, Dil);
+        if (!form.Gecerli)
+        {
+            hata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+
+        yukleniyor = true;
+        try
+        {
+            await Api.PostAsync("/auth/parola-sifirlama/istek", new { email = email.Trim() });
+            // Madde (1): sonuç hesap var/yok ayrımı YAPMAZ — sabit metin.
+            basari = M.IstekBasari;
+            istekGonderildi = true;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 503)
+        {
+            acik = false;   // madde (6): kanal kapalı → doğru yolu yaz, "gönderildi" deme
+        }
+        catch (OranSinirHatasi ex)
+        {
+            // Madde (3): deneme sınırı — genel "yoğunluk/Yeniden dene" metni DEĞİL, bu ekranın durumu.
+            hata = HizSiniriMetni(ex);
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, Esleme);
+            hata = FormDurumu.BantMesaji(ex, Dil, Esleme) ?? Dil.T.Kabuk.FormEksik;
+        }
+        catch (Exception ex)
+        {
+            Gunluk("istek", ex);
+            hata = M.DurumHatasi;
+        }
+        yukleniyor = false;
+        await OdakIlkHataya();
+    }
+
+    private async Task Tamamla()
+    {
+        hata = null;
+        basari = null;
+        form.Temizle();
+        form.Zorunlu("sifirla-yeni-sifre", yeniSifre, Dil);
+        form.Zorunlu("sifirla-yeni-tekrar", yeniTekrar, Dil);
+        if (form.Gecerli && !ParolaKuralinaUyar(yeniSifre))
+            form.Ekle("sifirla-yeni-sifre", M.ParolaKurali);
+        if (form.Gecerli && !string.Equals(yeniSifre, yeniTekrar, StringComparison.Ordinal))
+            form.Ekle("sifirla-yeni-tekrar", M.ParolalarAyniDegil);
+        if (!form.Gecerli)
+        {
+            hata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+
+        yukleniyor = true;
+        try
+        {
+            await Api.PostAsync("/auth/parola-sifirlama/tamamla",
+                new { jeton, yeniSifre, yeniSifreTekrar = yeniTekrar });
+            basari = M.TamamBasari;
+            tamamlandi = true;
+            yeniSifre = "";
+            yeniTekrar = "";
+        }
+        catch (OranSinirHatasi ex)
+        {
+            hata = HizSiniriMetni(ex);
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, Esleme);
+            hata = FormDurumu.BantMesaji(ex, Dil, Esleme);
+            // Alan dışı 400 = bağlantı geçersiz/kullanılmış/süresi dolmuş → form gizlenir,
+            // bant AYNI ekrandaki eylemi gösterir (tur 2: "giriş ekranından iste" çelişkisi kalktı).
+            jetonReddedildi = hata is not null && ex.StatusCode == 400;
+            if (jetonReddedildi)
+            {
+                hata = M.BaglantiGecersiz;
+                yeniSifre = "";
+                yeniTekrar = "";
+            }
+            hata ??= Dil.T.Kabuk.FormEksik;
+        }
+        catch (Exception ex)
+        {
+            Gunluk("tamamla", ex);
+            hata = M.DurumHatasi;
+        }
+        yukleniyor = false;
+        await OdakIlkHataya();
+    }
+
+    /// <summary>
+    /// Sunucu kuralı (8-72, harf + rakam). PAKET GOC-D: istemci aynası yerine Core ParolaKurali
+    /// (kayıt ekranı ve sunucu kayıt ucu da AYNI sınıfı çağırır — tek kural).
+    /// </summary>
+    public static bool ParolaKuralinaUyar(string? p) => Kuyumcu.Core.Domain.Girdi.ParolaKurali.Gecerli(p);
+
+    private async Task YeniBaglantiIste()
+    {
+        jeton = null;
+        jetonReddedildi = false;
+        hata = null;
+        basari = null;
+        form.Temizle();
+        Nav.NavigateTo("/sifre-sifirla", replace: true);
+        if (acik is null && durumHatasi is null) await DurumOku();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Nav.LocationChanged -= KonumDegisti;
+    }
+}

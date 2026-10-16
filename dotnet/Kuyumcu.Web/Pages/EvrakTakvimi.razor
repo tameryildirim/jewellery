@@ -1,0 +1,194 @@
+@page "/evraklar/takvim"
+@using System.Text.Json
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   VADE TAKVİMİ — paket 29 Faz A.
+
+   ⚠ SUNUCU SATIR DÖNDÜRMEZ, GÜN TOPLAMI DÖNDÜRÜR (TB-19): GROUP BY sunucuda
+     yapılır. Binlerce evrakı istemciye indirip burada toplamak, ekranı
+     veri büyüdükçe çökertirdi.
+
+   ⚠ Yanıt tipi Kuyumcu.Core.Sozlesmeler'den gelir; burada yeni istemci
+     tipi TANIMLANMAZ (S-2 tavanı).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Evrak.TakvimBaslik)</PageTitle>
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Vadetakvimi (BİREBİR); özgün ekran (tarih aralığı, gün
+   toplamları) yalnız "Tüm ayrıntılar"da (data-yz-ozgun). Öteki 8 şemada AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizTakvim B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    <SayfaBasi Anahtar="evrak-takvimi" Baslik="@Dil.T.Evrak.TakvimBaslik"
+               Aciklama="@Dil.T.Evrak.TakvimAciklama">
+        <Filtreler>
+            <a class="dugme dugme-kucuk dugme-ikincil" id="evrak-takvim-listeye" href="/evraklar">@Dil.T.Evrak.ListeyeGit</a>
+        </Filtreler>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" />
+
+    <div class="kart">
+        <div class="kart-govde form-grid-2">
+            @* PAKET GOC-B (envanter C satır 31/32, K8e): yıl 2000..bugün+1 yazılamaz dışı; ters aralık bitişin altında
+               (eskiden yalnız sunucu bandı) ve İSTEK YOK. Sunucu aynı pencere + 366 gün tavanı. *@
+            <Tarih ElemanId="evrak-takvim-bas" Etiket="@Dil.T.Ortak.Baslangic" Tur="TarihTuru.Rapor"
+                   Deger="@bas" DegerChanged="@(async (DateOnly? v) => { bas = v; await Yukle(); })" />
+            <Tarih ElemanId="evrak-takvim-bit" Etiket="@Dil.T.Ortak.Bitis" Tur="TarihTuru.Rapor" Hata="@AralikHatasi"
+                   Deger="@bit" DegerChanged="@(async (DateOnly? v) => { bit = v; await Yukle(); })" />
+        </div>
+    </div>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (takvim is { } t)
+    {
+        <div class="stat-izgara">
+            <StatKart Renk="mavi" Etiket="@Dil.T.Evrak.Adet" Deger="@Bicim.Makine(t.ToplamAdet)" />
+            <StatKart Etiket="@Dil.T.Evrak.Tutar" Deger="@Bicim.Para(t.ToplamTutar, "TRY")" />
+        </div>
+
+        @if (t.Kalemler.Count == 0)
+        {
+            @* QA turu 5 (YÜKSEK): portföyde evrak varken "Portföyde evrak yok"
+               yazıyordu. İki durum artık AYRIDIR (Anayasa md.1 · UX-S28). *@
+            <div class="kart">
+                <div class="kart-govde">
+                    @if (t.PortfoyAdet > 0)
+                    {
+                        <BosDurum Mesaj="@Dil.T.Evrak.AralikBosBaslik" />
+                        <p class="metin-kucuk metin-soluk" id="evrak-takvim-bos">@Dil.T.Evrak.AralikBosAciklama</p>
+                        <p class="metin-kucuk" id="evrak-takvim-portfoy">
+                            <strong>@Dil.T.Evrak.PortfoyToplami:</strong>
+                            @Bicim.Makine(t.PortfoyAdet) · @Bicim.Para(t.PortfoyTutar, "TRY")
+                        </p>
+                        <button class="dugme dugme-ikincil" id="evrak-takvim-genislet" disabled="@(!PortfoyeGenisletilebilir)"
+                                @onclick="PortfoyeGenislet">@Dil.T.Evrak.TumPortfoyuGoster</button>
+                        @if (!PortfoyeGenisletilebilir)
+                        {
+                            <span class="metin-kucuk metin-soluk" id="evrak-takvim-genislet-kilit">@GenisletKilitSebebi</span>
+                        }
+                    }
+                    else
+                    {
+                        <BosDurum Mesaj="@Dil.T.Evrak.KayitYok" />
+                        <p class="metin-kucuk metin-soluk" id="evrak-takvim-bos">@Dil.T.Evrak.KayitYokAciklama</p>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            @* PAKET GOC-B — ORTAK IZGARA (grid:evrak-takvimi:evrak-takvim-gun). Liste TAM (gün toplamı, ≤ 366 gün) →
+               yerel sıralama. Mevcut id'ler korunur (#evrak-takvim-gun-{gün}, #evrak-takvim-bag-{gün}); gün artık
+               ekranda gg.aa.yyyy (makine biçimi yalnız bağlantıda). *@
+            <div class="kart">
+                <Izgara T="EvrakTakvimGunu" Ekran="evrak-takvimi" GridId="evrak-takvim-gun" Kolonlar="@GunKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(t.Kalemler, gunSira, GunKolonlari)"
+                        SatirId="@(g => $"evrak-takvim-gun-{Bicim.Makine(g.Gun)}")"
+                        SatirSinif="@(g => g.Gun < Bugun ? "satir-kirmizi" : null)"
+                        Baslik="@Dil.T.Evrak.TakvimBaslik" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@(x => gunSira = x)" GecerliSiralama="@gunSira" />
+            </div>
+        }
+    }
+
+    @* UX-S25: takvim TÜRETİLMİŞ bir görünümdür; satırı burada düzeltilmez. *@
+    <DegismezIpucu Varlik="EvrakTakvimi"
+                   Gerekce="@Dil.T.Duzeltme.TuretilmisGerekce"
+                   AlternatifYol="@Dil.T.Evrak.ListeyeGit" />
+</div>
+}
+
+@code {
+    private Core.Sozlesmeler.EvrakTakvimi? takvim;
+    private bool yukleniyor = true;
+    private string? hata;
+    private DateOnly? bas;
+    private DateOnly? bit;
+
+    private static DateOnly Bugun => DateOnly.FromDateTime(DateTime.Now);
+
+    // ── PAKET GOC-B — ortak ızgara + aralık kuralı ──
+    private IzgaraSiralama? gunSira;
+    private string? AralikHatasi =>
+        TarihPenceresi.AralikDenetle(bas, bit) is { } h ? GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+
+    private IReadOnlyList<IzgaraKolonu<EvrakTakvimGunu>> GunKolonlari =>
+    [
+        new() { Anahtar = "gun", Baslik = Dil.T.Evrak.VadeGunu, ZorunluGorunur = true, SunucuSiralamaAdi = "gun",
+                HucreSinif = _ => "hucre-vurgu", Deger = g => g.Gun,
+                // UX-S23: sayı gösteren her yer O KAYITLARA gider.
+                Hucre = g => @<a id="@($"evrak-takvim-bag-{Bicim.Makine(g.Gun)}")"
+                                 href="@($"/evraklar?vadeBas={Bicim.Makine(g.Gun)}&vadeBit={Bicim.Makine(g.Gun)}")">@Bicim.Gun(g.Gun)</a> },
+        new() { Anahtar = "adet", Baslik = Dil.T.Evrak.Adet, SunucuSiralamaAdi = "adet", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = g => g.Adet, Hucre = g => @<text>@Bicim.Makine(g.Adet)</text> },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Evrak.Tutar, ZorunluGorunur = true, SunucuSiralamaAdi = "tutar",
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = g => g.Tutar },
+    ];
+
+    // ── QA turu 5 (YÜKSEK): "Aralığı tüm portföye genişlet" ───────────────
+    // Sunucu takvim aralığını AzamiGun ile sınırlar; sınır aşılıyorsa düğme
+    // kilitlenir ve SEBEBİ yazılır (UX-S30) — sessiz 400 üretilmez.
+    private int PortfoyGunSayisi =>
+        takvim is { PortfoyIlkVade: { } i, PortfoySonVade: { } s } ? s.DayNumber - i.DayNumber + 1 : 0;
+
+    private bool PortfoyeGenisletilebilir =>
+        takvim is { PortfoyIlkVade: not null, PortfoySonVade: not null }
+        && PortfoyGunSayisi > 0 && PortfoyGunSayisi <= (takvim?.AzamiGun ?? 366);
+
+    private string GenisletKilitSebebi =>
+        string.Format(Dil.T.Evrak.GenisletmeSiniri, takvim?.AzamiGun ?? 366);
+
+    private async Task PortfoyeGenislet()
+    {
+        if (!PortfoyeGenisletilebilir || takvim is null) return;
+        bas = takvim.PortfoyIlkVade;
+        bit = takvim.PortfoySonVade;
+        await Yukle();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        bas ??= Bugun;
+        bit ??= Bugun.AddDays(30);
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        if (AralikHatasi is not null) return;   // PAKET GOC-B: bozuk aralıkta istek atılmaz
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            var sorgu = new List<string>();
+            if (bas is { } b) sorgu.Add($"bas={Bicim.Makine(b)}");
+            if (bit is { } s) sorgu.Add($"bit={Bicim.Makine(s)}");
+            var yol = sorgu.Count == 0 ? "/evraklar/takvim" : $"/evraklar/takvim?{string.Join("&", sorgu)}";
+            takvim = await Api.GetAsync<Core.Sozlesmeler.EvrakTakvimi>(yol);
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28: hata boş duruma çevrilmez; önceki veri korunur, bant yazılır.
+            hata = ex.Message;
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

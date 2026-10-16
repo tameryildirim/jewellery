@@ -1,0 +1,72 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-1 — İADE ALANLARI ═══════════════════════════════════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). İade bağımsız bir işlem
+   DEĞİLDİR: hangi işlemi tersine çevirdiği seçilmeden tutar bile hesaplanamaz.
+   Bileşen istek ATMAZ: aday listesi (GET /islemler/iade-adaylari) ve iade
+   gövdesi sayfadadır. Mevcut element id'leri DEĞİŞMEDİ. *@
+<div class="alan">
+    <Secici ElemanId="iade-kaynak"
+            Etiket="@Dil.T.Islem.IadeEdilecekIslem"
+            Secenekler="@KaynakSecenekleri"
+            Deger="@KaynakId"
+            DegerChanged="@((string? v) => KaynakSecildi.InvokeAsync(v))"
+            BosSecenekMetni="@Dil.T.Islem.IslemSecin" />
+    @if (Adaylar.Count == 0)
+    {
+        <span class="metin-soluk metin-kucuk">@Dil.T.Islem.IadeIslemiYok</span>
+    }
+</div>
+
+@if (Secili is not null)
+{
+    @if (!string.IsNullOrEmpty(Secili.CariId))
+    {
+        @* t11 (tasarım hakemi YÜKSEK — UX-S21/S24): müşteri KAYNAK fişten gelir, kilitlidir, ayrıca sorulmaz
+           (sayfa bu durumda müşteri seçicisini çizmez; gövdedeki cariId kaynaktan — IadeKaynakSecildi). *@
+        <SaltOkunur ElemanId="islem-iade-musteri" Etiket="@Kuyumcu.Core.I18n.SatisEkraniSozlugu.Al(Dil.Dil).MusteriEtiketi"
+                    Deger="@MusteriAdi" BosMetin="@Dil.T.Ortak.DegerYok"
+                    KaynakRozeti="@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).IadeMusteriKaynak" />
+    }
+    <div class="form-grid-3">
+        @* t11 (tasarım hakemi YÜKSEK): değer etiketinden kopuk, kutunun solunda duruyordu — ham <label>+<p> yerine
+           Sayi ile AYNI alan kabuğu (SaltOkunur): etiket üstte, değer altında, üç sütun aynı hizada (K7). *@
+        <SaltOkunur ElemanId="iade-kalan" Etiket="@Dil.T.Islem.KalanIadeHakki"
+                    Deger="@Secili.KalanAdet.ToString("0.###", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))"
+                    MakineDeger="@Secili.KalanAdet.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)" />
+        <Sayi ElemanId="iade-adet" Zorunlu="true" Etiket="@Dil.T.Islem.IadeAdedi"
+              EnAz="0" EnCok="@Secili.KalanAdet"
+              Deger="@Adet"
+              DegerChanged="@(v => AdetChanged.InvokeAsync(v ?? 0m))" />
+        <SaltOkunur ElemanId="iade-orantili" Etiket="@Dil.T.Islem.OrantiliTutar" Deger="@Bicim.Tl(OrantiliTutar)"
+                    MakineDeger="@OrantiliTutar.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" />
+    </div>
+}
+
+@code {
+    /// <summary>Tersine çevrilebilecek işlemler — sayfa yükler.</summary>
+    [Parameter, EditorRequired] public List<IadeAdayi> Adaylar { get; set; } = [];
+    [Parameter] public string? KaynakId { get; set; }
+    /// <summary>Kaynak seçildi — sayfa seçili adayı ve varsayılan adedi (kalanın tamamı) atar.</summary>
+    [Parameter] public EventCallback<string?> KaynakSecildi { get; set; }
+    [Parameter] public IadeAdayi? Secili { get; set; }
+    [Parameter] public decimal Adet { get; set; }
+    [Parameter] public EventCallback<decimal> AdetChanged { get; set; }
+    /// <summary>t11: kaynak fişin müşterisinin adı (sayfanın cari listesinden) — yalnız gösterim.</summary>
+    [Parameter] public string? MusteriAdi { get; set; }
+
+    private IReadOnlyList<SecenekOgesi> KaynakSecenekleri =>
+        [.. Adaylar.Select(h => new SecenekOgesi(
+            h.Id,
+            $"{Bicim.TarihSaat(h.Tarih)} · {h.UrunAdi ?? "—"} · {Bicim.Tl(Math.Abs(h.TlTutari))}"))];
+
+    /// <summary>
+    /// İade edilecek tutar — sunucudaki hesabın AYNISI: orijinal tutarın
+    /// iade edilen adede düşen payı. Sunucu bu tavanı ayrıca doğrular.
+    /// </summary>
+    private decimal OrantiliTutar => Secili is null || Secili.ToplamAdet <= 0m
+        ? 0m
+        : Math.Round(Math.Abs(Secili.TlTutari) * Adet / Secili.ToplamAdet, 2,
+            MidpointRounding.AwayFromZero);
+}

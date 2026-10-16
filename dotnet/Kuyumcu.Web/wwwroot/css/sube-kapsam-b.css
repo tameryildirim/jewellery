@@ -1,0 +1,38 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET ŞUBE-KAPSAM-B tur 3 — görünüm rozeti, kapanmış-şube bandı, menü seçicisi
+   (şerit dosyası; yalnız bu paketin sınıfları + kenar menüsündeki şube seçicisi).
+   Sabit renk YOK — yalnız belirteç (var()).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Rozet: 12 px hap yerine gövde ölçeğinde düz satır (doğrulayıcı: ≥ 14 px). */
+.gorunum-rozeti {
+  margin: 0 0 var(--bosluk-3);
+  font-size: var(--yazi-md);
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--metin);
+}
+.gorunum-rozeti-metin { overflow-wrap: anywhere; }
+
+/* Kapanmış-şube bandı: metin + "Tamam" aynı satırda, dar ekranda alta sarar. */
+.gorunum-gecersiz,
+.bant-sube {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--bosluk-2);
+}
+
+/* Hurda: "satış kendi şubenizden" bilgisi — uyarı (sarı) değil, bilgi zemini. */
+.bant-sube {
+  background: var(--vurgu-yuzey);
+  border-color: var(--vurgu-kenar);
+  color: var(--metin);
+}
+
+/* Kenar menüsü şube seçicisi: içerik boyuna göre daralıp ortalanmasın — "Tüm
+   şubeler" ile bir şube arasında genişlik zıplamaz (app.css .sube-secici
+   align-items:center kalıtımı kenar menüsünde geçersiz kılınır). */
+.kenar-kullanici-menu .sube-secici { align-items: stretch; }
+.kenar-kullanici-menu .sube-secici .secici-alan { width: 100%; }

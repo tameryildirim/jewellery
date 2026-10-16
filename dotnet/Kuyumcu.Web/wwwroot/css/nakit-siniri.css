@@ -1,0 +1,50 @@
+/* ═══ PAKET YASAL-2 — nakit sınırı (tahsilat kilidi · Uyum sekmesi · Panel satırı · dilekçe)
+   Yalnız var() belirteçleri; sabit renk ve satır içi stil yok. ═══ */
+
+.nakit-siniri-eylem { display: flex; flex-wrap: wrap; gap: var(--bosluk-2, .5rem); margin-top: .5rem; }
+.nakit-siniri-neden { margin-top: .5rem; }
+.nakit-siniri-neden summary { cursor: pointer; color: var(--metin-soluk); }
+
+.nakit-siniri-liste { list-style: none; margin: .75rem 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.nakit-siniri-satir {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "bilgi tutar son" "eylem eylem eylem";
+    gap: .35rem .75rem;
+    align-items: center;
+    padding: .75rem;
+    border: 1px solid var(--ayrac);
+    border-radius: 10px;
+    background: var(--yuzey);
+}
+.nakit-siniri-bilgi { grid-area: bilgi; display: flex; flex-direction: column; min-width: 0; }
+.nakit-siniri-ad { overflow-wrap: anywhere; }
+.nakit-siniri-neden-satir { color: var(--metin); overflow-wrap: anywhere; }
+.nakit-siniri-tutar { grid-area: tutar; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.nakit-siniri-son { grid-area: son; white-space: nowrap; color: var(--metin-soluk); }
+.nakit-siniri-son--gecti { color: var(--tehlike-vurgu); }
+.nakit-siniri-satir .nakit-siniri-eylem { grid-area: eylem; margin-top: 0; }
+
+@media (max-width: 640px) {
+    .nakit-siniri-satir {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "bilgi tutar" "son son" "eylem eylem";
+    }
+    .nakit-siniri-son { white-space: normal; }
+}
+
+.nakit-siniri-arac { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.nakit-siniri-dilekce { margin-top: .5rem; }
+.nakit-siniri-imza { margin-top: 3rem; text-align: right; color: var(--metin-soluk); }
+.nakit-siniri-panel { margin: 0 0 1rem; }
+.nakit-siniri-panel-satir { display: flex; flex-wrap: wrap; gap: .25rem .75rem; align-items: baseline; justify-content: space-between; margin: 0; }
+.nakit-siniri-panel-satir + .nakit-siniri-panel-satir { margin-top: .35rem; }
+.nakit-siniri-degismez { margin-top: .75rem; }
+
+/* Yazdırırken yalnız dilekçe kâğıda çıkar (ayrı rota açılmadı — rota kapsamı sayacı sabit). */
+@media print {
+    body:has(#nsa-dilekce) * { visibility: hidden; }
+    body:has(#nsa-dilekce) #nsa-dilekce,
+    body:has(#nsa-dilekce) #nsa-dilekce * { visibility: visible; }
+    body:has(#nsa-dilekce) #nsa-dilekce { position: absolute; left: 0; top: 0; width: 100%; }
+}

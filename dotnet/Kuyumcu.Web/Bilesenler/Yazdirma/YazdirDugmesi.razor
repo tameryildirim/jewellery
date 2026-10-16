@@ -1,0 +1,82 @@
+@inject DilServisi Dil
+@inject IJSRuntime JS
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-17 (Y-6) — YAZDIRMANIN TEK ÇAĞRI NOKTASI.
+
+   NEDEN VAR: 2026-09-21 ölçümünde `window.print` üç ayrı razor dosyasında
+   ÜÇ AYRI şekilde çağrılıyordu — biri hatayı yutuyor, biri banda yazıyor,
+   biri hiç kontrol etmiyordu. Aynı iş için üç davranış demek, dördüncü
+   ekranda dördüncü davranış demektir.
+
+   ⚠ Bu bileşen `denetim.sh` `ORTAK_SABLON_DISI_PRINT` sayacının beyaz
+     listesindeki TEK genel amaçlı çağrı noktasıdır. `Pages/` altına yeni bir
+     `window.print` yazılırsa sayaç KIRILIR (termal etiket ailesi hariç).
+
+   ⚠ UX-S30 — kilitli düğme sebebini SÖYLER: `Kilit` doluysa düğme disabled
+     olur ve sebebi yanında yazar. "Tıklanınca hiçbir şey olmayan" düğme yok.
+   ⚠ UX-S28 — hata yutulmaz: yazdırma motoru cevap vermezse hata metni
+     `HataOlustu` ile çağırana döner, sessizce boş geçilmez.
+   ⚠ `disabled="@(...)"` BOOL ifadesidir; "false" DİZGESİ yazılmaz.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yazdir-kutu yazdirma-gizle">
+    <button type="button" class="dugme dugme-birincil" id="@Id"
+            disabled="@(!string.IsNullOrWhiteSpace(Kilit))"
+            @onclick="Yazdir">
+        @* ⚠ Emoji YOK: Bilesenler/ altında emoji ikon yasaktır (denetim.sh
+           "Layout+Bilesenler emoji ikon = 0") — her platformda başka çizilir,
+           CSS ile renklenmez ve çoğu yazıcıda kâğıda çıkmaz. *@
+        @(Etiket ?? Dil.T.Cikti.Yazdir)
+    </button>
+    @if (!string.IsNullOrWhiteSpace(Kilit))
+    {
+        <span class="metin-kucuk metin-soluk" id="@($"{Id}-kilit")">@Kilit</span>
+    }
+</div>
+
+@code {
+    /// <summary>Düğmenin element kimliği — çağıran verir ('<önek>-yazdir').</summary>
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+
+    /// <summary>Boş değilse düğme KAPALIDIR ve bu metin sebebi olarak yazılır (UX-S30).</summary>
+    [Parameter] public string? Kilit { get; set; }
+
+    /// <summary>Düğme etiketi; boşsa sözlükteki ortak "Yazdır".</summary>
+    [Parameter] public string? Etiket { get; set; }
+
+    /// <summary>Yazdırma motoru hata verirse çağıran bandına yazsın diye.</summary>
+    [Parameter] public EventCallback<string> HataOlustu { get; set; }
+
+    /// <summary>
+    /// PAKET S2-5b — true ise belge çizildikten SONRA (Kilit boşken) BİR KEZ
+    /// kendiliğinden yazdırır. Aynı tek çağrı noktası (Yazdir) kullanılır; ikinci
+    /// bir window.print yazılmaz. Varsayılan false: diğer çağıranlar değişmez.
+    /// </summary>
+    [Parameter] public bool Otomatik { get; set; }
+
+    private bool otomatikYapildi;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!Otomatik || otomatikYapildi || !string.IsNullOrWhiteSpace(Kilit)) return;
+        otomatikYapildi = true;
+        await Yazdir();
+    }
+
+    private async Task Yazdir()
+    {
+        if (!string.IsNullOrWhiteSpace(Kilit)) return;
+        try
+        {
+            await JS.InvokeVoidAsync("window.print");
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException)
+        {
+            // Anayasa md.1: başarısızlık gizlenmez. Tarayıcı menüsünden
+            // yazdırma yolu da metinde söylenir.
+            if (HataOlustu.HasDelegate)
+                await HataOlustu.InvokeAsync($"{Dil.T.Cikti.YazdirilamadI} ({ex.Message})");
+        }
+    }
+}

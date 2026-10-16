@@ -1,0 +1,62 @@
+%% UML Kullanim Senaryosu (Use Case) Diyagrami — Kuyumcu ERP
+%% Roller uretim kodundaki rol matrisinden alinmistir (RolGerekli / ModulYetkisi).
+flowchart LR
+    sahip(("Sahip"))
+    mudur(("Mudur"))
+    muhasebe(("Muhasebe"))
+    tezgahtar(("Tezgahtar"))
+    masak(("MASAK<br/>Online<br/><i>dis sistem</i>"))
+
+    subgraph sistem["Kuyumcu ERP"]
+        direction TB
+        UC1["Satis / alis yap"]
+        UC2["Hurda alimi yap"]
+        UC3["Cari islem<br/>veresiye - tahsilat"]
+        UC4["Kasa - banka<br/>hareketi"]
+        UC5["Stok yonet"]
+        UC6["Fatura kes"]
+        UC7["Gider pusulasi<br/>duzenle ve yazdir"]
+        UC8["Gun sonu<br/>mutabakat"]
+        UC9["Kimlik tespiti<br/>kaydet"]
+        UC10["Supheli islem<br/>bildir"]
+        UC11["Saklama suresi<br/>maskele"]
+        UC12["Denetim izini<br/>goruntule"]
+        UC13["Kullanici ve<br/>yetki yonet"]
+        UC14["Rapor al"]
+    end
+
+    tezgahtar --> UC1
+    tezgahtar --> UC2
+    tezgahtar --> UC3
+    tezgahtar --> UC5
+
+    mudur --> UC1
+    mudur --> UC4
+    mudur --> UC5
+    mudur --> UC14
+
+    muhasebe --> UC6
+    muhasebe --> UC7
+    muhasebe --> UC8
+    muhasebe --> UC14
+
+    sahip --> UC12
+    sahip --> UC13
+    sahip --> UC11
+    sahip --> UC14
+
+    UC1 -. "&laquo;include&raquo;<br/>esik asilirsa" .-> UC9
+    UC2 -. "&laquo;include&raquo;<br/>her zaman" .-> UC9
+    UC2 -. "&laquo;include&raquo;" .-> UC7
+    UC3 -. "&laquo;include&raquo;<br/>esik asilirsa" .-> UC9
+
+    UC10 -. "elle gonderim<br/>API YOK" .-> masak
+
+    classDef aktor fill:#08427b,stroke:#052e56,color:#fff
+    classDef uc fill:#e8f0fa,stroke:#4a7ab5,color:#000
+    classDef uyum fill:#fdf0d5,stroke:#c9a227,color:#000
+    classDef dis fill:#999,stroke:#666,color:#fff
+    class sahip,mudur,muhasebe,tezgahtar aktor
+    class UC1,UC2,UC3,UC4,UC5,UC6,UC8,UC13,UC14 uc
+    class UC7,UC9,UC10,UC11,UC12 uyum
+    class masak dis

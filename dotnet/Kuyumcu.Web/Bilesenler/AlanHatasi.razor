@@ -1,0 +1,25 @@
+@* ═══════════════════════════════════════════════════════════════════════════
+   ALAN HATASI — paket UX-1 Faz C adım C0 (ortak form altyapısı).
+
+   "Sessiz etkisizlik" yasağının ekran karşılığı: boş/geçersiz gönderimde
+   alanın ALTINA Türkçe mesaj yazılır. Mesajın kaynağı ya istemci kuralı ya da
+   sunucunun alan→mesaj sözlüğüdür (ApiHata.Alanlar, UX-4d madde 8) — ikisi de
+   FormDurumu'nda birleşir, bu bileşen yalnız ÇİZER.
+
+   id sözleşmesi (K4: yalnız EKLENEN id): #alan-hata-{Alan}
+   Mesaj yoksa HİÇBİR ŞEY çizilmez — boş bir <span> bile bırakılmaz ki
+   "hata var" görüntüsü doğmasın.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@if (Durum?.Mesaj(Alan) is { Length: > 0 } mesaj)
+{
+    <span class="hata-metni alan-hata" id="@($"alan-hata-{Alan}")" role="alert">@mesaj</span>
+}
+
+@code {
+    /// <summary>Alan anahtarı — id ekini üretir ve FormDurumu'nda aranır.</summary>
+    [Parameter, EditorRequired] public string Alan { get; set; } = "";
+
+    /// <summary>Formun hata defteri. null ise bileşen sessizdir.</summary>
+    [Parameter] public FormDurumu? Durum { get; set; }
+}

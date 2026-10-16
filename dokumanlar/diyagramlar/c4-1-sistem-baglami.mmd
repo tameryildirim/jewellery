@@ -1,0 +1,29 @@
+%% C4 Seviye 1 — System Context
+%% Kuyumcu ERP'nin dis dunyayla iliskisi. Kaynak: c4model.com
+flowchart TB
+    kuyumcu["<b>Kuyumcu / Sahip</b><br/><i>[Kisi]</i><br/>Isletmeyi yonetir, raporlari<br/>ve denetim izini gorur"]
+    tezgahtar["<b>Tezgahtar</b><br/><i>[Kisi]</i><br/>Satis, alis, hurda alimi yapar"]
+    muhasebe["<b>Muhasebe</b><br/><i>[Kisi]</i><br/>Fatura, mutabakat,<br/>gider pusulasi"]
+
+    sistem["<b>Kuyumcu ERP</b><br/><i>[Yazilim Sistemi]</i><br/>Cok kiracili kuyumculuk<br/>isletme yonetimi ve<br/>yasal uyum sistemi"]
+
+    kur["<b>Kur Saglayicilari</b><br/><i>[Dis Sistem]</i><br/>Canli altin ve doviz kuru"]
+    masak["<b>MASAK Online</b><br/><i>[Dis Sistem]</i><br/>Supheli islem bildirimi<br/>(XML yukleme, API YOK)"]
+    gib["<b>GIB / Ozel Entegrator</b><br/><i>[Dis Sistem]</i><br/>e-Fatura / e-Arsiv"]
+
+    kuyumcu -->|"Yonetir, denetler"| sistem
+    tezgahtar -->|"Islem girer"| sistem
+    muhasebe -->|"Belge duzenler"| sistem
+
+    sistem -->|"Kur ceker<br/>[HTTPS]"| kur
+    sistem -.->|"SIB hazirlar<br/><b>gonderim ELLE</b>"| masak
+    sistem -.->|"<b>HENUZ BAGLI DEGIL</b><br/>K1: sozlesme bekliyor"| gib
+
+    classDef kisi fill:#08427b,stroke:#052e56,color:#fff
+    classDef ana fill:#1168bd,stroke:#0b4884,color:#fff
+    classDef dis fill:#999,stroke:#6b6b6b,color:#fff
+    classDef yok fill:#c9c9c9,stroke:#8a8a8a,color:#333,stroke-dasharray: 5 5
+    class kuyumcu,tezgahtar,muhasebe kisi
+    class sistem ana
+    class kur,masak dis
+    class gib yok

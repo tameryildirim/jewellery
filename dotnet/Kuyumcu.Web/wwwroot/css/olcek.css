@@ -1,0 +1,1049 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET OLCEK-1 — TEK ÖLÇEK (2026-09-25)
+   Kurucu 25.09 ~11:45 (Emanet BASİT ve PRO iki görüntü): "ikisi de aynı ekran
+   biri basit biri profesyonel, emanet al butonuna bi bak boyut değişiyor
+   resmen … ben bu kadar basit konular için bile test yapacaksam rezil olurum".
+
+   SÖZLEŞME:
+   (1) MOD ÖLÇÜ DEĞİŞTİRMEZ. Aynı öğe BASİT ve PROFESYONEL'de aynı boy / yazı /
+       dolgu / köşe / kalınlık taşır. Mod yalnız NE görüneceğini belirler.
+       Kök neden belirtecler.css'teki mod bloklarıydı (orada nötrlendi).
+   (2) DÜĞME AİLESİ ÜÇ BOY: kontrol (--dugme-yuksekligi, 44 px) · küçük satır
+       içi eylem (--dugme-yuksekligi-kucuk, 34 px) · büyük-tam
+       (--dugme-yuksekligi-buyuk, 52 px). Telefonda (≤480) kontrol ve küçük
+       44 px'tir (belirtecler.css K3 kilidi), büyük-tam 52 px kalır — iki modda
+       da aynı (v6 düzeltmesi: eski yorum "hepsi 44" diyordu, büyük kilitte yok).
+   (3) Bu dosya YALNIZ ölçü yazar; renk yazmaz (sabit renk 0, yalnız var()).
+       app.css'e yazılmaz; sayfa dosyalarına dokunulmaz. Şerit dosyalarının
+       (tuval-*.css) moda bağlı ölçülerini daha özgül seçiciyle EZER.
+   Yükleme: index.html'de ortak.css'ten HEMEN ÖNCE (ORTAK-1 testi O1 ortak.css'in
+   EN SONDA kalmasını ister; bu dosyanın kuralları sıraya değil özgüllüğe dayanır).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── (0) TEK ÖLÇEK BELİRTEÇLERİ ─────────────────────────────────────────────
+   Yükseklikler belirtecler.css'te (P-39 bloğu) TEK tanımdır:
+     --dugme-yuksekligi (= --kontrol-yuksekligi, 44 px) · --dugme-yuksekligi-kucuk
+     (34 px) · --dugme-yuksekligi-buyuk (52 px).
+   YAZI (v5, doğrulayıcı 27.09 KRİTİK): kontrol metni tek tanım değildi (#cari-arama
+   14, #e-cari 16 px) ve tuvalden küçüktü (tuval Musteriler/Profesyonel kutuları
+   16–18 px). ÜÇ yazı boyu, gövde ölçeğine bağlı (kullanıcı tercihi 16/18/20 KALIR):
+     kontrol 16 px (girdi, seçici, normal düğme, sekme)
+     küçük   14 px (34 px satır içi düğme, etiket, rozet)
+     büyük   17 px (52 px büyük-tam düğme)   — gövde 18 px'te.
+   TABLO (v5, KRİTİK): /cariler aynı hücre BASİT 18 px · dolgu 0 20 · 500, PRO 14 px
+   · 8 8 · 600 idi. Tek ölçek, iki modda aynı: hücre 15 px, başlık 13 px (büyük
+   harf), dolgu 8 px, satır en az 61 px (v8; 52 idi). Neden 16 değil 15: 16 px + 12/16 dolgu
+   denendi — PRO /urunler ve /cariler tabloları 1440'ta kendi kabından 49 px taştı,
+   ürün adı 3–4 satıra bölündü (ölçüm + ekran görüntüsü, rapor § 5). 15 px + 8 px
+   dolgu 42 rotada v4 ile aynı taşma sayısını verir. */
+:root {
+  --yazi-kontrol:       calc(var(--yazi-govde) * 16 / 18);
+  --yazi-kontrol-kucuk: calc(var(--yazi-govde) * 14 / 18);
+  --yazi-kontrol-buyuk: calc(var(--yazi-govde) * 17 / 18);
+  --yazi-alt:           calc(var(--yazi-govde) * 17 / 18);   /* tarih/hava alt satırı (tuval Panel 17) */
+  --yazi-selam:         calc(var(--yazi-govde) * 32 / 18);   /* panel selamı (tuval Panel 32 / 700) */
+  --yazi-cekmece-baslik: calc(var(--yazi-govde) * 21 / 18);   /* v9: müşteri çekmecesi başlığı (tuval Musteriler <aside> 21 / 600) */
+  --yazi-etiket:        calc(var(--yazi-govde) * 15 / 18);   /* v9: çekmece alan etiketi (tuval Musteriler 15, soluk) */
+  --yazi-kur-deger:     calc(var(--yazi-govde) * 19 / 18);   /* v11: üst çubuk kur değeri (tuval Panel 19; § 6) */
+  --tablo-yazi:         calc(var(--yazi-govde) * 15 / 18);
+  --tablo-baslik-yazi:  calc(var(--yazi-govde) * 13 / 18);
+  --tablo-dolgu:        .5rem .5rem;
+  --tablo-satir-boyu:   calc(var(--kontrol-yuksekligi) + 1rem + 1px);   /* v8: 61 px — satır içi düzenleyici (44) + 2×8 dolgu + 1 px ayraç; tuval Musteriler 62 */
+  --yaricap-hap:        999px;
+  --yaricap-kontrol:    var(--radius-md);
+  /* .btn / .dugme 1 px kenarlık taşır (üst + alt = 2 px). Dolgu hesabı bunu
+     düşmezse kutu belirteçten 2 px büyük çıkar (ölçüm: 44 yerine 46, 34 yerine 36). */
+  --dugme-kenar-payi:   2px;
+}
+
+/* ── (0b) Temel kontrol sınıflarının YAZISI — tek tanım (v5) ─────────────────
+   app.css .btn / .dugme / .girdi / .secim = .875rem (14), .btn-kucuk / .dugme-kucuk
+   = .8125rem (13), .btn-buyuk = 1rem. :where(.ana-icerik) özgüllüğü DÜŞÜK tutar
+   (0,2,1): sayfa/şerit dosyalarının bilinçli özel yazıları ve bu dosyadaki daha
+   özgül kurallar (§ 1e, § 3, § 4) kendi değerini korur. Küçük sınıf kuralı genel
+   kuraldan SONRA gelir (aynı özgüllük → sıra). */
+html[data-mod] :where(.ana-icerik) .btn,
+html[data-mod] :where(.ana-icerik) .dugme,
+html[data-mod] :where(.ana-icerik) .girdi,
+html[data-mod] :where(.ana-icerik) .secim,
+html[data-mod] :where(.ana-icerik) .secici-tetik { font-size: var(--yazi-kontrol); }
+html[data-mod] :where(.ana-icerik) .btn-kucuk,
+html[data-mod] :where(.ana-icerik) .dugme-kucuk { font-size: var(--yazi-kontrol-kucuk); }
+html[data-mod] :where(.ana-icerik) .btn-buyuk { font-size: var(--yazi-kontrol-buyuk); }
+
+/* ── (1) Sayfa başı eylem şeridi ─────────────────────────────────────────
+   app.css `.sayfa-basi-eylem .btn { height: var(--dokunma-hedefi) }` şeritteki
+   HER kontrolü (arama, seçici, düğme — btn-kucuk dahil) tek hizaya, kontrol
+   boyuna (44 px) çeker. Bu bilinçli ve moddan bağımsızdır: /emanet "+ Emanet Al"
+   (btn-kucuk) BASİT'te 44, PRO'da 32 px idi; artık iki modda da 44 px, yanındaki
+   arama/seçici kutularıyla aynı. Şerit dışındaki btn-kucuk küçük boydadır. */
+
+/* ── (1b) Ana alan düğmesi = belirteç, KENARLIK DAHİL ─────────────────────
+   Doğrulayıcı ölçümü (25.09): app.css `.ana-icerik .btn` dolgusu
+   (H − 1.3em) / 2 kenarlığı saymıyordu → şerit dışındaki .btn 46 px, şeritteki
+   (height: 44) 44 px; aynı /emanet sayfasında "+ Emanet Al" 44, "↩ İade Et" 46.
+   btn-kucuk da 34 yerine 36 px. Dolgu kenarlığı düşer → kontrol TAM 44,
+   küçük TAM 34 (telefonda ikisi de 44). Daha özel kurallar (aşağıda: gk-alt,
+   musteri-sade, barkod, btn-buyuk) aynı özgüllükte SONRA geldiği için kendi
+   ölçülerini korur. */
+html[data-mod] .ana-icerik .btn:not(.btn-kucuk) {
+  line-height: 1.3;
+  padding-top: calc((var(--dugme-yuksekligi) - 1.3em - var(--dugme-kenar-payi)) / 2);
+  padding-bottom: calc((var(--dugme-yuksekligi) - 1.3em - var(--dugme-kenar-payi)) / 2);
+}
+html[data-mod] .ana-icerik .btn.btn-kucuk {
+  line-height: 1.3;
+  padding-top: calc((var(--dugme-yuksekligi-kucuk) - 1.3em - var(--dugme-kenar-payi)) / 2);
+  padding-bottom: calc((var(--dugme-yuksekligi-kucuk) - 1.3em - var(--dugme-kenar-payi)) / 2);
+}
+
+/* ── (1c) Sekme = kontrol boyu, TAM 44 px ──────────────────────────────────
+   Ölçüm (25.09, 42 rota): .sekme 44 px (×78) ama /ayarlar TR/EN 45 px (satır
+   yüksekliği "normal" + .5rem dolgu) ve /islemler PRO sekme şeridi 42 px
+   (tuval-satis.css `min-height: 0; padding: 9px`). Dikey dolgu sıfırlanır, boy
+   belirteçten gelir, yazı dikeyde ortalanır; iki satıra sarılırsa kutu büyür
+   (kırpma yok). Yazı boyu ve yatay dolgu şeritte kalır. */
+html[data-mod] .ana-icerik .sekme,
+html[data-mod] .tuval-pro .tuval-pro-sekmeler > .sekme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--dugme-yuksekligi);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Sekme yazısı TEK boy (v3 ölçümü 42 rota: .sekme /ayarlar 14 px, .sekmeler-sekme
+   /kur ve /yedekler 15 px, diğer 7 ekran ve /islemler 16 px). Sekme kontrol boyunda
+   (44) ve tuvaldeki sekme metni 16 px'tir → --yazi-kontrol (v5: 16 px). */
+html[data-mod] .ana-icerik .sekme,
+html[data-mod] .ana-icerik .sekmeler-sekme { font-size: var(--yazi-kontrol); }
+
+/* ── (1d) Panel araç çubuğundaki METİNLİ küçük düğme ────────────────────────
+   app.css `.karsilama-araclar button { min-height: --dokunma-hedefi }` ikon
+   düğmeleri içindir; "Düzeni düzenle" (dugme-kucuk) bu yüzden 44 px çıkıyordu
+   (dugme-kucuk ailesinin geri kalanı 34). Küçük düğme boyuna döner.
+   ⚠ Kayıt seçicinin "Ara" düğmesi (secici-arama, K7-e) BİTİŞİK kutunun boyunu
+   alır (44) — tek bileşik kontroldür, bilinçli kalır (rapor § 7.1). */
+html[data-mod] .karsilama-araclar button.dugme-kucuk { min-height: var(--dugme-yuksekligi-kucuk); }
+
+/* ── (1e) KONTROL BOYUNA çekilen küçük düğmenin YAZISI da kontrol yazısıdır ─────
+   v3 (doğrulayıcı 25.09): 44 px düğmelerde yazı 13 / 14 / 16 px karışıktı —
+   sayfa başı şeridindeki btn-kucuk / dugme-kucuk (kasa-yeni, banka-yeni,
+   kur-simdi-cek …) ve seçicinin "Ara" düğmesi 44 px boyda ama 13 px yazıyla,
+   /islemler "Elle ekle" ve "Vazgeç" 16 px yazıyla çiziliyordu. Kural: 44 px
+   (kontrol) düğmenin yazısı --yazi-kontrol (v5: 16 px), 34 px (küçük) düğmeninki
+   --yazi-kontrol-kucuk (v5: 14 px), 52 px (büyük-tam) düğmeninki
+   --yazi-kontrol-buyuk (v5: 17 px). */
+html[data-mod] .sayfa-basi-eylem .btn-kucuk,
+html[data-mod] .sayfa-basi-eylem .dugme-kucuk,
+html[data-mod] .sayfa-basi-filtre .btn-kucuk,
+html[data-mod] .sayfa-basi-filtre .dugme-kucuk,
+html[data-mod] .tuval-pro #islem-diger-ac.islem-diger-dugme,
+html[data-mod] .secici-arama > .btn-kucuk,
+html[data-mod] .secici-arama > .dugme-kucuk,
+html[data-mod] .tuval-tezgah #islem-elle > summary.btn,
+html[data-mod] .tuval-pro .fis-pro-giris #islem-elle > summary.btn { font-size: var(--yazi-kontrol); }
+
+/* ── (2) /ayarlar görünüm kartı alt düğmeleri (gk-alt-dugme) ───────────────
+   13 px dikey dolgu + 16 px yazı → 50 px (normal düğme 44–46). Normal düğme
+   ölçüsüne bağlanır; yazı ve köşe kontrol belirtecinden. */
+html[data-mod] .ana-icerik .btn.gk-alt-dugme {
+  min-height: var(--dugme-yuksekligi);
+  line-height: 1.3;
+  font-size: var(--yazi-kontrol);
+  border-radius: var(--yaricap-kontrol);
+  padding-top: calc((var(--dugme-yuksekligi) - 1.3em - var(--dugme-kenar-payi)) / 2);
+  padding-bottom: calc((var(--dugme-yuksekligi) - 1.3em - var(--dugme-kenar-payi)) / 2);
+}
+
+/* ── (3) /cariler — BASİT yüz (.musteri-sade, tuval-panel-musteri.css) ──────
+   Aynı öğeler (#cari-arama, #cari-yeni-ac, satır Tahsilat/Düzenle/⋯) BASİT'te
+   50/38 px · 17/15 px, PROFESYONEL'de 44/36 px · 14/13 px çiziliyordu.
+   Tek ölçeğe bağlanır; kutunun çerçevesi (.musteri-ara) ve ikon DURUR. */
+/* v3 (doğrulayıcı 25.09): kutu (#cari-arama) BASİT'te 42, PRO'da 44 px idi — çerçevenin
+   1 px kenarlığı içeriği 42'ye düşürüyordu. Çerçeve çizgisi kenarlık yerine İÇ GÖLGE
+   ile çizilir (aynı renk, aynı 1 px; yer kaplamaz) → kutunun kendisi de TAM 44. */
+html[data-mod] .musteri-sade .sayfa-basi-filtre > .musteri-ara {
+  height: var(--kontrol-yuksekligi);
+  gap: 0;
+  border-width: 0;
+  box-shadow: inset 0 0 0 1px var(--ayrac);
+  border-radius: var(--yaricap-kontrol);
+}
+html[data-mod] .musteri-sade .musteri-ara .girdi.girdi-arama {
+  height: var(--kontrol-yuksekligi);
+  font-size: var(--yazi-kontrol);
+  padding: 0 12px;
+}
+html[data-mod] .musteri-sade .btn.musteri-yeni {
+  height: var(--dugme-yuksekligi);
+  min-height: var(--dugme-yuksekligi);
+  line-height: 1.3;
+  padding: calc((var(--dugme-yuksekligi) - 1.3em - var(--dugme-kenar-payi)) / 2) 16px;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol);
+  font-weight: 500;
+}
+html[data-mod] .musteri-sade .musteri-tablo .satir-eylem > .btn,
+html[data-mod] .musteri-sade .musteri-tablo .satir-eylem > button {
+  min-height: var(--dugme-yuksekligi-kucuk);
+  line-height: 1.3;
+  padding: calc((var(--dugme-yuksekligi-kucuk) - 1.3em - var(--dugme-kenar-payi)) / 2) 12px;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol-kucuk);
+  font-weight: 500;
+}
+html[data-mod] .musteri-sade .musteri-tablo .satir-eylem > .satir-menu-ac { font-weight: 600; }
+
+/* ── (4) /islemler — iki tuval yüzü (BASİT .tuval-tezgah · PRO .tuval-pro) ──
+   Aynı kimlikli kontroller iki yüzde farklı ölçüdeydi: #islem-cari 52↔46,
+   #islem-barkod 56↔46, #islem-aciklama 50↔44, #islem-kaydet 50↔46, etiket
+   15↔14 px. Kontroller tek ölçeğe bağlanır; YERLEŞİM (karo ızgarası ↔ sekme
+   şeridi, iki sütun ↔ tek sütun) mod işidir ve DEĞİŞMEZ.
+   İşlem türü seçimi BASİT'te `.ekran-karo` (Tezgah tuvali karosu, 2×4 ızgara),
+   PRO'da `.sekme` (tek şerit) bileşenidir; ikisi AYNI id'leri taşır
+   (#islem-tur-SATIS …). v3 (doğrulayıcı 25.09, kurucu "ikisi de aynı ekran"):
+   karo 70 px / köşe 10 / dolgu 0 8 / kalınlık 500-600 ↔ sekme 44 / 8 / 0 16 /
+   400-500 idi. YERLEŞİM (ızgara ↔ şerit) mod işi olarak kalır; ÖLÇÜ tektir:
+   kontrol boyu (44), kontrol köşesi, yatay dolgu 12 px, yazı 16 px, kalınlık
+   500 (seçili 600). Karo sarmak zorunda kalırsa büyür (kırpma yok). */
+html[data-mod] .tuval-tezgah .tuval-karo-izgara > .ekran-karo,
+html[data-mod] .tuval-pro .tuval-pro-sekmeler > .sekme {
+  height: auto;
+  min-height: var(--dugme-yuksekligi);
+  padding: 0 12px;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol);
+  font-weight: 500;
+  line-height: 1.3;
+}
+html[data-mod] .tuval-tezgah .tuval-karo-izgara > .ekran-karo.ekran-karo-birincil,
+html[data-mod] .tuval-pro .tuval-pro-sekmeler > .sekme.secili { font-weight: 600; }
+html[data-mod] .tuval-tezgah .fis-ust-satir .secici-tetik,
+html[data-mod] .tuval-tezgah .fis-salt-kutu,
+html[data-mod] .tuval-pro #islem-ust-satir .secici-tetik,
+html[data-mod] .tuval-pro #islem-ust-satir .fis-salt-kutu {
+  height: var(--kontrol-yuksekligi);
+  min-height: var(--kontrol-yuksekligi);
+  padding-left: 12px;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol);
+}
+html[data-mod] .tuval-tezgah .fis-ust-satir .alan-etiket,
+html[data-mod] .tuval-tezgah .fis-ust-satir .secici-alan > label,
+html[data-mod] .tuval-pro #islem-ust-satir .alan-etiket,
+html[data-mod] .tuval-pro #islem-ust-satir .secici-alan > label {
+  font-size: var(--yazi-kontrol-kucuk);
+}
+html[data-mod] .tuval-tezgah .barkod-satiri .girdi-arama,
+html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri .girdi-arama {
+  height: var(--kontrol-yuksekligi);
+  min-height: var(--kontrol-yuksekligi);
+  padding: 0 14px 0 46px;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol);
+}
+html[data-mod] .tuval-tezgah .barkod-satiri > .btn,
+html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri > .btn {
+  left: 2px;
+  width: 42px;
+  height: var(--kontrol-yuksekligi);
+  min-height: var(--kontrol-yuksekligi);
+  padding: 0;
+}
+/* Görünmez "Barkod okut" etiketi ve kutunun yanındaki "Elle ekle" özeti de aynı ölçü. */
+html[data-mod] .tuval-tezgah .barkod-satiri label,
+html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri label { font-size: var(--yazi-kontrol); }
+html[data-mod] .tuval-tezgah #islem-elle > summary,
+html[data-mod] .tuval-pro .fis-pro-giris #islem-elle > summary {
+  height: var(--kontrol-yuksekligi);
+  min-height: var(--kontrol-yuksekligi);
+  border-radius: var(--yaricap-kontrol);
+}
+/* Düğmenin ekran okuyucu metni (görünmez) düğmenin dikey ortasında dursun:
+   sikisma-olc K12 PRO'da bunu "yazı ortada değil" sayıyordu (taban ölçümde de vardı). */
+html[data-mod] .tuval-tezgah .barkod-satiri .barkod-dugme-metin,
+html[data-mod] .tuval-pro .fis-pro-giris .barkod-dugme-metin {
+  top: 0;
+  bottom: 0;
+  height: auto;
+  display: flex;
+  align-items: center;
+}
+html[data-mod] .tuval-tezgah .barkod-satiri > .btn .ikon,
+html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri > .btn .ikon { width: 18px; height: 18px; }
+html[data-mod] .tuval-tezgah .islem-alt-satir .girdi {
+  height: var(--kontrol-yuksekligi);
+  min-height: var(--kontrol-yuksekligi);
+  padding: 0 12px;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol);
+}
+html[data-mod] .tuval-tezgah .islem-alt-satir > .btn,
+html[data-mod] .tuval-pro .islem-alt-satir > .btn {
+  height: var(--dugme-yuksekligi);
+  min-height: var(--dugme-yuksekligi);
+  border-radius: var(--yaricap-kontrol);
+}
+html[data-mod] .tuval-tezgah #islem-vazgec,
+html[data-mod] .tuval-pro #islem-vazgec { padding: 0 18px; font-size: var(--yazi-kontrol); }
+/* Kaydet ve yazdır = büyük-tam düğme (üçüncü boy). */
+html[data-mod] .tuval-tezgah .islem-alt-satir > #islem-kaydet,
+html[data-mod] .tuval-pro .islem-alt-satir > #islem-kaydet,
+html[data-mod] .ana-icerik .btn.btn-buyuk {
+  height: var(--dugme-yuksekligi-buyuk);
+  min-height: var(--dugme-yuksekligi-buyuk);
+  padding: 0 22px;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol-buyuk);
+  font-weight: 600;
+}
+/* PRO "Diğer ▾" (41 px) normal düğme boyuna. */
+html[data-mod] .tuval-pro #islem-diger-ac.islem-diger-dugme { min-height: var(--dugme-yuksekligi); }
+
+/* ── (5) TABLO — tek ölçek (v5, doğrulayıcı 27.09 KRİTİK) ─────────────────────
+   Ölçüm (1440): /cariler aynı müşteri hücresi BASİT (.musteri-sade, tuval-panel-
+   musteri.css) 18 px · dolgu 0 20 · 500 · satır 62–73 px; PRO (app.css .veri-tablosu
+   + .tablo-sik) 14 px · 8 8 · 600; başlık 14→12 px; /urunler satır 51→55/57 px.
+   Kural: hücre yazısı --tablo-yazi (15), başlık --tablo-baslik-yazi (13, 600),
+   dolgu --tablo-dolgu (8 px), satır en az --tablo-satir-boyu (v8: 61 = kontrol 44 + 2×8 dolgu + 1 px ayraç; border-box,
+   dolgu dahil). Sayı hücresi kırılmaz ("15,200 / g"), kayıt adı en az 9em.
+   Satır BOYU yine içerikle büyüyebilir: PRO'nun fazladan gösterdiği sütunlar
+   (tedarikçi rozeti, telefon düğmesi, eylem düğmeleri) sütunları daraltır —
+   bu içerik farkıdır, ölçü farkı değildir (yazı/dolgu/kalınlık iki modda aynı). İki yüz aynı sınıfı
+   taşır (BASİT tablo `veri-tablosu musteri-tablo`).
+   v6 (doğrulayıcı 28.09 ORTA — 375 px /cariler td BASİT 18 px, PRO 14 px): YAZI ve
+   KALINLIK her genişlikte tektir (aşağıdaki medyasız blok). DOLGU ve SATIR BOYU
+   yalnız masaüstünde (≥ 769) yazılır: telefonda BASİT /cariler (musteri-sade) ve
+   q10-yigin tabloları KART YIĞINIDIR (satırın dolgusu kartın kendisinde, hücre
+   dolgusu 0), PRO /cariler ise yatay kayan TABLODUR (hücre dolgusu app.css
+   .tablo-sik = 8 px = --tablo-dolgu). Kart ↔ tablo bir YERLEŞİM farkıdır (satır
+   kutusu hücrede mi kartta mı), yazı/kalınlık farkı değildir; rapor § 6.5. */
+html[data-mod] .ana-icerik .veri-tablosu > tbody > tr > td,
+html[data-mod] .ana-icerik .veri-tablosu > tfoot > tr > td { font-size: var(--tablo-yazi); }
+html[data-mod] .ana-icerik .veri-tablosu > thead > tr > th { font-size: var(--tablo-baslik-yazi); font-weight: 600; }
+html[data-mod] .ana-icerik .musteri-sade .musteri-tablo > tbody > tr > td:first-child,
+html[data-mod] .ana-icerik .musteri-sade .musteri-tablo > tbody > tr > td.hucre-vurgu { font-weight: 600; }
+@media (min-width: 769px) {
+  html[data-mod] .ana-icerik .veri-tablosu > tbody > tr > td,
+  html[data-mod] .ana-icerik .veri-tablosu > tfoot > tr > td {
+    padding: var(--tablo-dolgu);
+    height: var(--tablo-satir-boyu);
+    box-sizing: border-box;
+    vertical-align: middle;
+  }
+  html[data-mod] .ana-icerik .veri-tablosu > tbody > tr > td.sayi { white-space: nowrap; }
+  /* Kayıt adı (hücre-vurgu) sütunu dar tabloda 3–4 satıra bölünmesin (ölçüm: /urunler PRO 1440). */
+  html[data-mod] .ana-icerik .veri-tablosu > tbody > tr > td.hucre-vurgu:not(.sayi) { min-width: 9em; }
+  html[data-mod] .ana-icerik .veri-tablosu > thead > tr > th { padding: var(--tablo-dolgu); }
+}
+
+/* ── (5b) İki yüzlü TEKİL öğeler (aynı id, iki modda iki ayrı şerit kuralı) ──────
+   /islemler #islem-cari-bakiye: Tezgah 28 px · 14 · 0 12 · hap · 500; PRO 24 ·
+   13 · 3 10 · köşe 12 · 400 (tuval-satis.css). Tek rozet ölçüsü: küçük yazı, hap.
+   PRO dar sütunda iki satıra sarabilir → boy auto, en az 28.
+   / #panel-selam: BASİT 32 / 700 (tuval Panel), PRO 28 / 600 → tuval değeri.
+   / #panel-hava-sehir, #panel-hava-derece: BASİT 17 px, PRO 14 px (derece 700) →
+   tuval alt satırı 17 px, 400. */
+html[data-mod] .ana-icerik #islem-cari-bakiye {
+  height: auto;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--yaricap-hap);
+  font-size: var(--yazi-kontrol-kucuk);
+  font-weight: 500;
+}
+html[data-mod] .ana-icerik .rozet-satir:has(> #islem-cari-bakiye) { font-size: var(--yazi-kontrol-kucuk); }
+/* Seçici kutusunun metni: PRO'da rozet payı için satır yüksekliği 1.15 idi (22↔18 px). */
+html[data-mod] .ana-icerik .secici-tetik > .secici-metin { line-height: 1.3; }
+/* "+ Ayrıntı ekle" özeti: Tezgah 15, PRO 14 px → küçük yazı. */
+html[data-mod] .ana-icerik #islem-diger-ayrinti-ac { font-size: var(--yazi-kontrol-kucuk); }
+/* Karo/sekme İÇİNDEKİ ad (.ekran-karo-ad): karo 16 / 500, sekme 14 / 400 idi → kapsayıcıdan alır. */
+html[data-mod] .tuval-tezgah .tuval-karo-izgara > .ekran-karo .ekran-karo-ad,
+html[data-mod] .tuval-pro .tuval-pro-sekmeler > .sekme .ekran-karo-ad { font-size: inherit; font-weight: inherit; }
+html[data-mod] .ana-icerik #panel-selam {
+  font-size: var(--yazi-selam);
+  font-weight: var(--kalin-cok);
+  line-height: 1.2;
+}
+html[data-mod] .ana-icerik #panel-hava-sehir,
+html[data-mod] .ana-icerik #panel-hava-derece {
+  font-size: var(--yazi-alt);
+  font-weight: 400;
+}
+
+/* ── (6) Üst çubuk (main DIŞI, aynı ekran) ─────────────────────────────────
+   Doğrulayıcı (25.09): app.css (≥769 px) PRO'da Yardım 16→15, kur değeri 19→18,
+   kur etiketi / son sorgu 14→13 px; tuval-kabuk.css PRO'da kur saati 14→13 px
+   küçültüyordu. Kurucu "ikisi de aynı ekran" diye TÜM ekranı karşılaştırdı →
+   üst çubuk yazıları iki modda BASİT değerinde (tuval Panel.dc.html ölçüsü).
+   Seçiciler `html[data-mod] body …`: app.css/tuval-kabuk.css'teki
+   `html[data-mod="profesyonel"] …` kuralından bir öğe fazla özgül, iki modu
+   birden kapsar. PRO'nun kur şeridinde FAZLADAN gösterdiği öğeler (EUR, kaynak)
+   ve bu yüzden sıkılaşan ARALIK (column-gap) içerik farkıdır, ölçü değildir.
+   v11 (son doğrulama DÜŞÜK, 28.09): değerler sabit px yazılıydı (14/19/16) → tek ölçek
+   BELİRTEÇLERİNE bağlandı (gövde 18 px'te yine 14/19/16; kullanıcının yazı ölçeği 16/20
+   üst çubuğu da iki modda birlikte büyütür/küçültür). */
+@media (min-width: 769px) {
+  html[data-mod] body .ust-kur-serit .kur-bandi .etiket,
+  html[data-mod] body .ust-kur-serit .son-sorgu,
+  html[data-mod] body .ust-kur-serit .son-sorgu.kur-guncelle-saat { font-size: var(--yazi-kontrol-kucuk); }
+  html[data-mod] body .ust-kur-serit .kur-bandi .deger { font-size: var(--yazi-kur-deger); }
+  html[data-mod] body .ust-yardim { font-size: var(--yazi-kontrol); }
+}
+
+/* ── (7) DOLU FORM ve KATMAN durumları (v6, tasarım hakemi 28.09 — 4 KRİTİK) ───────
+   v5 ölçümleri yalnız ekranların AÇILIŞ durumunu ölçüyordu. Hakem senaryoları
+   (/islemler ürün eklenip ödeme bölündü · /cariler → Düzenle çekmecesi açık)
+   aynı id'lerde iki modda farklı ölçü buldu. Kural aynı: ölçü moddan bağımsız,
+   düğme ailesi kontrol 44 · küçük 34 · büyük 52 (telefonda kontrol/küçük 44). */
+
+/* (7a) Müşteri çekmecesi BASİT yüzü (#cekmece-cari, tuval-panel-musteri.css):
+   girdi/düğme 50 px · 17 px · köşe 9, kapat 38 px, "Daha fazla" 52 px idi; PRO (ortak
+   Cekmece + katman.css öğe yazısı) girdi/düğme/kapat 44 px · 18 px · köşe 8.
+   Tek ölçek: kontrol boyu, çekmece öğe yazısı (--katman-oge-boyu, KATMAN'ın tek
+   tanımı), kontrol köşesi, app.css .girdi / .dugme dolgusu. Çok satırlı adres
+   kutusu yüksekliği serbest (yazı ve köşe tek). Çekmecenin GENİŞLİĞİ (BASİT yan
+   panel 440 px, liste solunda görünür kalır · PRO örtü çekmece 480 px) ve karartma
+   (yan panelde yok, örtüde var) YERLEŞİM farkıdır, kontrol ölçüsü değil — rapor § 0. */
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .girdi,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .secim,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .secici-tetik,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .cekmece-alt > .dugme,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .form-daha-fazla {
+  font-size: var(--katman-oge-boyu, var(--yazi-govde));
+  border-radius: var(--yaricap-kontrol);
+}
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .girdi:not(textarea),
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .secim,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .secici-tetik {
+  height: var(--kontrol-yuksekligi);
+  min-height: var(--kontrol-yuksekligi);
+  padding: .5rem .75rem;
+}
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari textarea.girdi { min-height: var(--kontrol-yuksekligi); padding: .5rem .75rem; }
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .cekmece-alt > .dugme {
+  height: var(--dugme-yuksekligi);
+  min-height: var(--dugme-yuksekligi);
+  padding: 0 1rem;
+}
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .form-daha-fazla {
+  min-height: var(--kontrol-yuksekligi);
+  padding: 0 1rem;
+}
+/* × kapat: iki yüzde dokunma hedefi kare (44), köşe --yaricap (katman.css PRO kalıbı). */
+html[data-mod] .cekmece .cekmece-bas .cekmece-kapat,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .cekmece-kapat {
+  width: var(--dokunma-hedefi);
+  height: var(--dokunma-hedefi);
+  min-width: var(--dokunma-hedefi);
+  min-height: var(--dokunma-hedefi);
+  padding: 0;
+  border-radius: var(--yaricap);
+  font-size: var(--katman-oge-boyu, var(--yazi-govde));
+}
+
+/* (7b) /islemler dolu fiş — ikon düğmeleri ve satır içi eylemler.
+   Hakem ölçümü (1440): #islem-bacak-sil-0 BASİT 30 px (tuval-satis.css ızgara sütunu
+   30 px), PRO 44 px (kutu boyu); #islem-kalem-sil-0 BASİT 32 px, 375'te 28 px (<44).
+   Ödeme bacağının sil düğmesi bacağın 44 px kutularının yanındadır → KONTROL boyu,
+   kare (iki modda 44). Kalem satırındaki sil (✕) tablo satırı eylemidir → KÜÇÜK boy
+   (34, telefonda K3 kilidiyle 44), PRO'daki kalem düzenle/sil (btn-kucuk) ile aynı. */
+html[data-mod] .ana-icerik .bacak-satiri > [id^="islem-bacak-sil-"],
+html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id^="islem-bacak-sil-"] {
+  width: var(--kontrol-yuksekligi);
+  min-width: var(--kontrol-yuksekligi);
+  height: var(--kontrol-yuksekligi);
+  min-height: var(--kontrol-yuksekligi);
+  padding: 0;
+  justify-content: center;
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol);
+}
+html[data-mod] .tuval-tezgah .fis-tuval-sil,
+html[data-mod] .ana-icerik [id^="islem-kalem-sil-"] {
+  min-width: var(--dugme-yuksekligi-kucuk);
+  height: var(--dugme-yuksekligi-kucuk);
+  min-height: var(--dugme-yuksekligi-kucuk);
+  border-radius: var(--yaricap-kontrol);
+  font-size: var(--yazi-kontrol-kucuk);
+}
+html[data-mod] .tuval-tezgah .fis-tuval-sil { width: var(--dugme-yuksekligi-kucuk); padding: 0; }
+
+/* (7c) BASİT fiş ödeme bacağı ızgarası (≥ 1400 px, tuval-satis.css): tutar sütunu
+   112 px idi; kontrol yazısı 16 px'e çıkınca "97.552,04" kesiliyordu (görünür 97 <
+   içerik 103 px). Tutar sütunu 7 haneli tutarı ("1.234.567,89" + dolgu) sığdıracak
+   genişlikte, sil sütunu kontrol boyu (44). Başlık satırı (.fis-tuval-bacak-baslik) aynı ızgarayı paylaşır.
+   v14 (tasarım hakemi t3 YÜKSEK): 8,5 kat (136 px) YETMİYORDU — kutu 123 px, görünür 121 < içerik 127
+   ("1.234.567,8" görünüyordu): içerik = yazı 103 + iç dolgu 2 × 12 (+ kenarlık 2) ve sütunda kutunun
+   yanında ₺ son eki payı (≈ 13 px) var. 9,5 kat (152 px) → kutu 139, görünür 137 ≥ 127 (10 px pay). */
+@media (min-width: 1400px) {
+  html[data-mod] .tuval-tezgah .fis-tuval-bacak-baslik,
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri {
+    grid-template-columns: minmax(84px, 1fr) minmax(0, 1.2fr) calc(var(--yazi-kontrol) * 9.5) var(--kontrol-yuksekligi);
+  }
+  /* v14: tutar sütunu genişleyince araç seçicisinin SATIS-3 en az genişliği (150 px, tuval-satis.css —
+     en uzun ad "Döviz (efektif)" tek satır) 1440'ta satıra sığmıyordu: 150 + 152 + 44 + 2 × 8 = 362 >
+     332 px satır → seçici tutar kutusunun üstüne biniyordu (8,5 katta da 12 px biniyordu). Bu ızgarada
+     seçici sütununa uyar (en az 0) ve uzun ad kelime sınırında İKİ satıra sarar (SATIS-3'ün 375 px
+     kalıbı, tuval-satis.css "dar ekranda seçici büyür, metin sarar"): 2 × 16 × 1,15 = 37 px < 44 kontrol
+     boyu, üç nokta yok, kutu boyu değişmez. Kısa adlar (Nakit, Kart, Havale, Veresiye, Eski altın) tek satır. */
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri [id^="islem-bacak-"][id$="-arac"]:not(#olcek-kimlik-agirligi) { min-width: 0; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri [id^="islem-bacak-"][id$="-arac"]:not(#olcek-kimlik-agirligi) > .secici-metin {
+    white-space: normal;
+    overflow-wrap: normal;
+    text-overflow: clip;
+    line-height: 1.15;
+  }
+}
+
+/* (7d) Kontrol ailesine bağlanan tekil öğeler (hakem: dolu fişte 6 boy).
+   · Katlanır başlık (Katlanir.razor — /islemler "Son satışlar" vb.): 48 px → kontrol.
+   · PRO fiş özeti düğmesi (#islem-ust-ozet): 46 px · 15 → kontrol, sarınca büyür.
+   · PRO "Tek ödeme" bağı (#islem-pro-tek): 40 px · 15 → kontrol.
+   · /cariler BASİT "Diğer süzgeçler" bağlantı düğmesi (#cari-suzgec-daha): 20 px
+     metin → küçük boy dokunma hedefi (telefonda 44), görünüm bağlantı olarak kalır. */
+html[data-mod] .katlanir-baslik {
+  min-height: var(--kontrol-yuksekligi);
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: var(--yazi-kontrol);
+}
+html[data-mod] .tuval-pro .fis-ust-ozet {
+  height: auto;
+  min-height: var(--kontrol-yuksekligi);
+  font-size: var(--yazi-kontrol);
+  border-radius: var(--yaricap-kontrol);
+}
+html[data-mod] .tuval-pro .fis-pro-odeme-hap > .fis-pro-odeme-bag {
+  min-height: var(--kontrol-yuksekligi);
+  font-size: var(--yazi-kontrol);
+}
+html[data-mod] .ana-icerik .musteri-baglanti {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dugme-yuksekligi-kucuk);
+}
+
+/* ── (8) Doğrulayıcı turu 28.09 v7 — dolu fiş 375, PRO fiş eylemleri, dar ızgara ─────────
+   v7 ölçümü (sen2/sen3 senaryoları + tutarlilik.mjs 1440/960/375) kalan dört ayrışmayı
+   buldu; kural yine aynı: ölçü moddan bağımsız, düğme ailesi 34/44/52 (telefonda 44/44/52). */
+
+/* (8a) PRO kalem satırı "düzenle" (✎, #islem-kalem-duzenle-*, tuval-satis.css .fis-pro-duzenle
+   sabit 34 px) telefonda 34 kalıyordu (< 44 dokunma hedefi); kalem sil (7b) ile aynı küçük boy
+   belirtecine bağlanır: masaüstü 34, telefonda K3 kilidiyle 44. */
+html[data-mod] .tuval-pro .fis-pro-duzenle,
+html[data-mod] .ana-icerik [id^="islem-kalem-duzenle-"] {
+  width: var(--dugme-yuksekligi-kucuk);
+  min-width: var(--dugme-yuksekligi-kucuk);
+  height: var(--dugme-yuksekligi-kucuk);
+  min-height: var(--dugme-yuksekligi-kucuk);
+  border-radius: var(--yaricap-kontrol);
+}
+
+/* (8b) PRO ödeme özeti düğmesi (#islem-pro-odeme-degistir, 40 px) ve "Diğer ▾" (#islem-diger-ac,
+   min 0 · dolgu 9) kontrol boyuna bağlanır; ikisi de iki satırlı özet taşıyabildiği için
+   yükseklik sabitlenmez, yalnız alt sınır kontrol boyudur (fis-ust-ozet ile aynı gerekçe). */
+html[data-mod] .tuval-pro .fis-pro-odeme-degistir,
+html[data-mod] .tuval-pro #islem-diger-ac.islem-diger-dugme {
+  min-height: var(--kontrol-yuksekligi);
+  font-size: var(--yazi-kontrol);
+  border-radius: var(--yaricap-kontrol);
+}
+
+/* (8c) Telefon (≤ 600): barkod kutusunun iç dolgusu SATIS-3'ün PRO kuralı (tuval-satis.css
+   "SATIS-2 r2", yer tutucu kesilmesin diye 40/8) ile BASİT yüzü (46/14) ayrışıyordu
+   (tutarlilik 375: #islem-barkod dolgu 0 46 ↔ 0 40). İki yüz aynı dar dolguyu alır;
+   büyüteç düğmesi dolguyla hizalı 38 px (metin simgenin üstüne binmez). */
+@media (max-width: 600px) {
+  html[data-mod] .tuval-tezgah .barkod-satiri #islem-barkod.girdi-arama,
+  html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri #islem-barkod.girdi-arama {
+    padding-left: 40px;
+    padding-right: 8px;
+  }
+  html[data-mod] .tuval-tezgah .barkod-satiri > .btn,
+  html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri > .btn { width: 38px; }
+}
+
+/* (8d) /pos/tahsilatlar "Banka yatmasıyla eşleştir" (#pos-eslestir-uygula, sınıfsız .dugme)
+   769–1100 px'te üç sütunlu ızgarada iki satıra sarıp 68 px oluyordu (iki modda aynı, ama
+   aile dışı boy). Bu aralıkta kart iki sütun: seçici tam satır, iki düğme yan yana. */
+@media (min-width: 769px) and (max-width: 1100px) {
+  html[data-mod] .ana-icerik .form-grid-3:has(#pos-eslestir-uygula) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-mod] .ana-icerik .form-grid-3:has(#pos-eslestir-uygula) > :first-child { grid-column: 1 / -1; }
+}
+
+/* ── (9) v8 (28.09, devir sonrası yeniden ölçüm — olcek-senaryo.mjs 1440/960/375 + koyu) ──────
+   v7 kurallarıyla dolu fiş / çekmece / emanet senaryosunda kalan ayrışmalar kapatılır.
+   Kural yine aynı: ölçü moddan (ve genişlikten) bağımsız; düğme ailesi 34 / 44 / 52. */
+
+/* (9a) Ödeme bacağı: araç seçicisi ve tutar kutusu BASİT'te (tuval-satis.css, yalnız ≥ 1400 px)
+   500 / 600, PRO'da ve BASİT < 1400'de 400 idi → her genişlikte ve iki modda tuval Tezgah
+   değeri: araç 500, tutar 600 (tutar satırın okunacak değeridir). Şerit kuralı
+   `.tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .girdi` bir kimlik taşır (1,4,0);
+   `:not(#olcek-kimlik-agirligi)` (sayfada olmayan kimlik) özgüllüğe bir kimlik ekler, sıraya dayanmaz. */
+html[data-mod] .ana-icerik .bacak-satiri [id^="islem-bacak-"][id$="-arac"]:not(#olcek-kimlik-agirligi) { font-weight: 500; }
+html[data-mod] .ana-icerik .bacak-satiri [id^="islem-bacak-"][id$="-tutar"]:not(#olcek-kimlik-agirligi) { font-weight: 600; }
+
+/* (9b) Müşteri çekmecesi BASİT yüzü (7a'nın tamamlayıcısı): tek satırlı kutunun dikey dolgusu
+   PRO ile aynı (0 — boy belirteçten gelir); not kutusu (#duz-notlar) şeritteki sabit 50 px
+   yerine EN AZ iki satır boyundadır (PRO 60 px). Satır sayısı Cariler.razor'da moda göre
+   (Sade 1 · PRO 2) verilir; CSS en az boyu iki satıra ve satır aralığını 1.3'e eşitler
+   (BASİT 24 px, PRO 21 px satır idi) → iki modda aynı kutu, iki yüz için tek kural.
+   Kaydet kalınlığı ortak çekmece düğmesiyle aynı (500; şerit `#cekmece-cari-kaydet` kimlikle
+   --kalin veriyordu), "Daha fazla" telefonda da kontrol boyu (şeritteki 50 px). */
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .girdi:not(textarea),
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .secim,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .secici-tetik { padding-top: 0; padding-bottom: 0; }
+html[data-mod] textarea#duz-notlar.girdi:not(#olcek-kimlik-agirligi) { height: auto; line-height: 1.3; min-height: calc(2lh + 1rem + 2px); }
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .cekmece-alt > .dugme,
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .cekmece-alt > #cekmece-cari-kaydet { font-weight: 500; }
+html[data-mod] .musteri-panel-kap--sade #cekmece-cari .form-daha-fazla { height: var(--kontrol-yuksekligi); }
+
+/* (9c) İşaretsiz <summary> açıcıları (metin bağlantısı görünümü): /islemler "+ Ayrıntı ekle"
+   (#islem-diger-ayrinti-ac, 23 px) ve /emanet "i Bilgi" (#e-bilgi-ac, 32 px) iki modda aynı ama
+   aile dışı boydaydı → küçük boy dokunma hedefi (34, telefonda K3 kilidiyle 44); görünüm
+   bağlantı olarak kalır (zemin/kenarlık yok). */
+html[data-mod] .ana-icerik #islem-diger-ayrinti-ac,
+html[data-mod] .ana-icerik #e-bilgi-ac {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dugme-yuksekligi-kucuk);
+  font-size: var(--yazi-kontrol-kucuk);
+}
+
+/* ── (10) v9 (28.09, tasarım hakemi tur 3 — 3 KRİTİK + 2 DÜŞÜK) ────────────────────────────
+   Hakem senaryoları (/cariler → Düzenle çekmecesi; /islemler iki kalemli dolu fiş + MASAK;
+   /cariler 960 px) aynı öğede iki modda farklı ölçü buldu. Kural değişmedi: ölçü moddan
+   bağımsızdır; mod yalnız NE görüneceğini belirler. */
+
+/* (10a) Müşteri çekmecesi (#cekmece-cari) — İKİ yüzde tuval Musteriler <aside> ölçüsü:
+   genişlik 440 · dolgu 24/26 · aralık 18 · başlık 21 px / 600 · etiket 15 px / 400 · alt şerit
+   kenarsız · Kaydet esnek (flex-grow 1). RENK (başlık/etiket rengi, alt şerit zemini) olcek.css'e
+   YAZILMAZ (OL6: bu dosya yalnız ölçü yazar) — kalan renk farkı rapor § 9'da sahibine. Önce PRO yüzü ortak Cekmece
+   ölçüsündeydi (başlık 18, etiket 18/500, dolgu 12/16, alt şerit gri, Kaydet içerik boyu 93 px ↔
+   BASİT 282 px). Etiket METNİ farkı ("Ad soyad" ↔ "Ad / Firma Adı") Cariler.razor'dadır (sayfa
+   sahibi, rapor § 9). ≤ 1023 px'te BASİT yan panel tam ekran, PRO örtü 480 px — yerleşim. */
+@media (min-width: 1024px) {
+  html[data-mod] .musteri-panel-kap .cekmece#cekmece-cari { width: min(440px, 100vw); }
+}
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-bas { padding: 24px 26px 0; border-bottom: 0; }
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-bas h2 {
+  font-size: var(--yazi-cekmece-baslik);
+  font-weight: var(--kalin);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-govde { padding: 18px 26px 0; }
+html[data-mod] .musteri-panel-kap #cekmece-cari .alan-etiket {
+  font-size: var(--yazi-etiket);
+  font-weight: 400;
+}
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-alt {
+  padding: 18px 26px 24px;
+  border-top: 0;
+  gap: 10px;
+}
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-alt > #cekmece-cari-kaydet { flex: 1 1 auto; }
+/* Kilit sebebi ("Kaydet kilitli: Ad / Firma Adı") PRO'da düğmelerin YANINA giriyor, Kaydet'i 93 px'e
+   daraltıyordu (hakem görüntüsü 07-cari-cekmece-hata); iki yüzde tam satır, düğmelerin altında. */
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-alt { flex-wrap: nowrap; }
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-alt:has(> .cekmece-kilit-sebep) { flex-wrap: wrap; }
+html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-alt > .cekmece-kilit-sebep { flex: 1 1 100%; }
+@media (max-width: 768px) {
+  html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-bas { padding: 16px 16px 0; }
+  html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-govde { padding: 14px 16px 0; }
+  html[data-mod] .musteri-panel-kap #cekmece-cari .cekmece-alt { padding: 14px 16px 16px; }
+}
+
+/* (10b) /islemler fiş KALEM satırı — iki yüzün iki ayrı tablosu (BASİT #islem-kalem-tablo
+   .fis-tuval-tablo, PRO #islem-kalem-pro .fis-pro-tablo) aynı satırı gösterir. Ölçüm 1440:
+   BASİT 18 px · dolgu 14/10 · satır 71; PRO 15 px (§ 5 genel tablo kuralı) · 8 · 61; 375'te
+   16 ↔ 15. Tek ölçü: hücre yazısı kontrol yazısı (16 px), dolgu genel tablo dolgusu (8 px; ilk, son ve
+   ürün adı hücresi 16), satır tablo satır boyu (61 = satır içi düzenleyici 44 + 2 × 8 + 1; PRO
+   gram/has/milyem hücreleri satır içi düzenleyicidir). Eylem sütunu küçük düğme + dolgu. Neden 18 değil: PRO satırı 10 sütunludur
+   (barkod · ürün · ayar · milyem · gram · has · adet · işçilik · tutar · eylem); kalem kartı
+   1440'ta 786 px — 18 px'te tutar/işçilik/has sütunları ürün adını ~60 px'e indirir (tuval
+   Profesyonel satırı da 1440'ta üst üste biner, tuval-satis.css § T-S2 notu). 16 px BASİT'in
+   ≤ 1399 px değeri ve PRO şeridinin kendi değeridir (--tp-16). Sayı sütunları 16 px'te 7
+   haneli tutarı ve 4 haneli has'ı kesmeyecek genişlikte (tutar 8,5 · işçilik 5,5 · has 5,25 ·
+   gram 4 × kontrol yazısı). PRO barkod hücresi (yalnız PRO'da) 14 px tabular kalır. */
+html[data-mod] .ana-icerik .fis-tuval-tablo > tbody > tr > td,
+html[data-mod] .ana-icerik .fis-pro-tablo > tbody > tr:not(.fis-pro-ayrinti) > td:not(.fis-pro-barkod) { font-size: var(--yazi-kontrol); }
+html[data-mod] .ana-icerik .fis-tuval-tablo > tbody > tr > td,
+html[data-mod] .ana-icerik .fis-pro-tablo > tbody > tr:not(.fis-pro-ayrinti) > td {
+  padding: var(--tablo-dolgu);
+  height: var(--tablo-satir-boyu);
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+html[data-mod] .ana-icerik .fis-tuval-tablo > tbody > tr > td:first-child,
+html[data-mod] .ana-icerik .fis-pro-tablo > tbody > tr:not(.fis-pro-ayrinti) > td:first-child,
+html[data-mod] .ana-icerik .fis-tuval-tablo > tbody > tr > td.fis-tuval-ad,
+html[data-mod] .ana-icerik .fis-pro-tablo > tbody > tr:not(.fis-pro-ayrinti) > td.fis-pro-ad { padding-left: 1rem; }
+html[data-mod] .ana-icerik .fis-tuval-tablo > tbody > tr > td:last-child,
+html[data-mod] .ana-icerik .fis-pro-tablo > tbody > tr:not(.fis-pro-ayrinti) > td:last-child { padding-right: 1rem; }
+html[data-mod] .ana-icerik .fis-pro-tablo > thead > tr > th:nth-child(5) { width: calc(var(--yazi-kontrol) * 4); }
+html[data-mod] .ana-icerik .fis-pro-tablo > thead > tr > th:nth-child(6) { width: calc(var(--yazi-kontrol) * 5.25); }
+html[data-mod] .ana-icerik .fis-pro-tablo > thead > tr > th:nth-child(8) { width: calc(var(--yazi-kontrol) * 5.5); }
+html[data-mod] .ana-icerik .fis-pro-tablo > thead > tr > th:nth-child(9) { width: calc(var(--yazi-kontrol) * 8.5); }
+html[data-mod] .ana-icerik .fis-pro-tablo > thead > tr > th:nth-child(10) { width: calc(var(--dugme-yuksekligi-kucuk) + 1.5rem); }
+
+/* (10c) MASAK kimlik kartı başlığı ve "Neden?" açıcısı: aynı bileşen, iki yüzde kapsayıcı
+   yazısından türüyordu (h3 1.17em → BASİT 21,06 ↔ PRO 18,72 px; "Neden?" 15 ↔ 14 px, 21 ↔ 19 px
+   yükseklik — aile dışı boy). Başlık tek boy (--yazi-lg = 18 px), "Neden?" küçük boy dokunma
+   hedefi (34, telefonda 44; § 9c ile aynı kalıp, görünüm bağlantı olarak kalır). */
+html[data-mod] .ana-icerik .kart--masak > .kart-baslik > h3 { font-size: var(--yazi-lg); }
+html[data-mod] .ana-icerik #islem-tevsik-durum #islem-tevsik-neden {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dugme-yuksekligi-kucuk);
+  font-size: var(--yazi-kontrol-kucuk);
+}
+/* PRO sağ sütun "Yasal kapılar uygun" açıcısı (#islem-pro-yasal-uygun, yalnız PRO yüzünde) 21 px idi
+   (aile dışı boy, 1440/960 ölçümü) → aynı küçük boy açıcı kalıbı. */
+html[data-mod] .tuval-pro .fis-pro-yasal-ayrinti > summary {
+  min-height: var(--dugme-yuksekligi-kucuk);
+  font-size: var(--yazi-kontrol-kucuk);
+}
+
+/* (10d) /cariler 960 px: tablo kabından geniştir (kendi içinde kayar) ve her sütun en az
+   içerik genişliğine iner; ad sütunu genel "kayıt adı en az 9em" kuralıyla 144 px kalıyor,
+   24 karakterlik ad ("Hasan Hüseyin Çelikkanat") iki satıra bölünüyordu (hakem K3). Müşteri
+   adı sütunu (yalnız /cariler: .tablo-sik--kimlik) 14 × tablo yazısı (≈ 210 px): 24 karaktere
+   kadar ad tek satır, daha uzunu kelime sınırında sarar (kırpma yok). Tablo 960 px'te kabından
+   geniş kalır ve KENDİ kabında kayar (v8: 703/642, olcek.css kapalıyken 907/642; şimdi 768/642,
+   sayfa yatay kaydırması 0). Eylemlerin dar ekranda "⋯" altında toplanması Cariler.razor /
+   SatirEylemleri işidir (rapor § 9); satır eylemini 3 satıra sarmak (denendi: satır 131 px) reddedildi. */
+@media (min-width: 769px) {
+  html[data-mod] .ana-icerik .veri-tablosu.tablo-sik--kimlik > tbody > tr > td:first-child { min-width: calc(var(--tablo-yazi) * 14); }
+}
+/* (10g) v14 (tasarım hakemi t3 KRİTİK, 28.09 23:36) — PRO /cariler 1440'ta tablo kabını taşırıyordu:
+   tablo 1196 > kap 1122, "Düzenle" kesik, ⋯ sağ kenarı 1481 > 1440 (olcek.css kapalıyken 1122 = kap).
+   Sütunlar en az içerik genişliğindeydi; en geniş iki sayı sütunu tutar + rozetin YAN YANA genişliği
+   ("10.307,76 ₺ Alacak" 147 px, "-9,1600 has Borç" 136 px; app.css .cari-bakiye inline-flex nowrap).
+   Kural: bakiye kabı SARABİLİR — yer yetmediğinde rozet tutarın ALTINA iner (tutarın kendisi
+   kırılmaz: td.sayi nowrap, § 5); yer varsa tablo algoritması sütunu açar ve rozet yanda kalır.
+   Satır boyu değişmez: 21 + 2 + 21 = 44 = kontrol boyu, satır 61. Yazı/dolgu/kalınlık aynı (ölçü
+   değil yerleşim). İki yüz aynı sınıfı taşır (BASİT tablo da .tablo-sik--kimlik) → moddan bağımsız.
+   1280 ve 960'ta PRO tablosu (8 sütun) olcek.css kapalıyken de kabından geniştir (1104 > 962,
+   hakem A/B); kendi kabında kayar, sayfa yatay kaydırması 0 — kalan taşma Cariler/SatirEylemleri
+   (⋯ altında toplama) işidir, rapor § v14-8. */
+@media (min-width: 769px) {
+  html[data-mod] .ana-icerik .veri-tablosu.tablo-sik--kimlik > tbody > tr > td .cari-bakiye {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 2px;
+  }
+}
+
+/* (10e) Sekme yazısı: sade.css `#kur-sekme-seridi .sekmeler-sekme` / `#yd-sekme-seridi …` 15 px
+   yazıyordu (kimlikli, § 1c'yi eziyordu; iki modda aynı ama "sekme yazısı tek boy" değildi).
+   Bir kimlik ağırlığı eklenir → /kur ve /yedekler sekmeleri de 16 px. */
+html[data-mod] .ana-icerik .sekmeler-sekme:not(#olcek-kimlik-agirligi) { font-size: var(--yazi-kontrol); }
+
+/* (10f) /bildirimler sınıfsız düğmeler (Bildirimler.razor `secili`/`ikincil` eski sınıfları —
+   stil taşımayan yerli düğme, 30 px · dolgu 1/6 · köşe 0): sekmeler ve ayar kaydet/varsayılan
+   kontrol boyuna bağlanır (sayfa dosyasına dokunmadan). */
+html[data-mod] .ana-icerik #bildirim-sekme-acik,
+html[data-mod] .ana-icerik #bildirim-sekme-kapali,
+html[data-mod] .ana-icerik #bildirim-sekme-tumu,
+html[data-mod] .ana-icerik #is-ayar-kaydet,
+html[data-mod] .ana-icerik #is-ayar-varsayilan {
+  min-height: var(--dugme-yuksekligi);
+  padding: 0 1rem;
+  font-size: var(--yazi-kontrol);
+  border-radius: var(--yaricap-kontrol);
+}
+
+/* ── (11) v10 (28.09, son doğrulama bulguları — 1 ORTA + 2 DÜŞÜK) ──────────────────────────────
+   Doğrulayıcı canlı ölçümü (BASİT, '/' ve /cariler, /urunler PRO): aile dışı boylar ve 375'te 44 altı
+   dokunma hedefi. Yalnız BASİT yüzünde olan öğeler de aileye bağlanır (sözleşme (2)). */
+
+/* (11a) Panel "Kim borçlu?" satır eylemi (#panel-borclu-eylem-*: "Tahsil et" / "Öde"): tuval-panel-musteri.css
+   `height: auto; padding: 8px 0` → 38 px · 15 px, telefonda da 38 (K3 kilidi height:auto'ya işlemiyordu).
+   Küçük boy: 34 px · 14 px, telefonda belirteç kilidiyle 44. Sütun genişliği (110 px) tuvalden kalır. */
+html[data-mod] .ana-icerik #panel-soru-borclu .panel-liste-satir > .dugme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--dugme-yuksekligi-kucuk);
+  min-height: var(--dugme-yuksekligi-kucuk);
+  padding-block: 0;
+  font-size: var(--yazi-kontrol-kucuk);
+}
+
+/* (11b) Altın pozisyonu kartı: "Ayrıntı" açıcısı (#pozisyon-ayrinti) ve kırılım öğeleri (#pozisyon-vitrin,
+   #pozisyon-alacak, #pozisyon-borc, #pozisyon-hurda) düz metin boyunda (20 px · 15 px) — tıklanan öğe,
+   aile dışı boy. Küçük boy dokunma hedefi (34, telefonda 44); görünüm bağlantı olarak kalır (renk/zemin
+   yazılmaz). Kırılım satırı taban çizgisi hizasını korur (app.css align-items: baseline). */
+html[data-mod] .ana-icerik #pozisyon-kart #pozisyon-ayrinti,
+html[data-mod] .ana-icerik #pozisyon-kart .pozisyon-kirilim-oge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dugme-yuksekligi-kucuk);
+  padding-block: 0;
+  font-size: var(--yazi-kontrol-kucuk);
+}
+
+/* (11c) Panel "+ Yeni Satış" (#panel-yeni-satis, yalnız BASİT yüzü): tuval Panel 54 px · 18 px → büyük-tam
+   boy 52 px · 17 px (üç boy kuralı; tuvale ±2 px). */
+html[data-mod] .ana-icerik #panel-yeni-satis {
+  height: var(--dugme-yuksekligi-buyuk);
+  min-height: var(--dugme-yuksekligi-buyuk);
+  font-size: var(--yazi-kontrol-buyuk);
+}
+
+/* (11d) /cariler BASİT segment düğmeleri (#cari-segment-*) 34 px ama yazı 15 px (hap kabının
+   calc(--yazi-govde * .8333) yazısını miras alıyordu) ve "Diğer süzgeçler" (#cari-suzgec-daha, .musteri-baglanti)
+   15 px. 34 px düğmenin yazısı küçük kontrol yazısıdır (14 px); boy belirteçten (telefonda 44). */
+html[data-mod] .ana-icerik .musteri-segment > .musteri-segment-oge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dugme-yuksekligi-kucuk);
+  padding-block: 0;
+  font-size: var(--yazi-kontrol-kucuk);
+}
+html[data-mod] .ana-icerik .musteri-baglanti { font-size: var(--yazi-kontrol-kucuk); }
+
+/* (11e) /urunler ürün adı sütunu: PRO'da fazladan barkod/grup/durum sütunlarıyla ad sütunu 1280'de 135 px'e
+   iniyor, 15–21 karakterlik standart adlar ("22 Ayar Burma Bilezik", "925 Gümüş Kolye") iki satıra
+   kırılıyordu (doğrulayıcı K3 = 8; olcek.css kapalıyken 34 — paketten önce de vardı). § 10d ile aynı
+   kalıp: ad sütunu en az 14 × tablo yazısı (≈ 210 px); daha uzun ad kelime sınırında sarar, kırpma yok;
+   tablo gerekirse KENDİ kabında kayar (sayfa yatay kaydırması 0). ≤ 768 px'te kart düzeni korunur.
+   ≥ 1400 px'te UYGULANMAZ: orada tablo 9em ile kabına tam sığıyor (1440: 1122/1122) ve kısa adlar tek satır;
+   210 px en az genişlik tabloyu 43 px taşırıp satır eylemini (⋯) kabın dışına itiyordu (A/B ölçümü, rapor § 0).
+   v15: 14 → 13 × tablo yazısı (769–1399'da yazı 14 px → ≈ 182 px; § 13a — 1280'de 14 × tabloyu kabından taşırıyordu). */
+@media (min-width: 769px) and (max-width: 1399px) {
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td.hucre-vurgu:nth-child(2) { min-width: calc(var(--tablo-yazi) * 13); }
+}
+
+/* ── (12) v11 (28.09 akşam, son doğrulama DÜŞÜK/ORTA + genişletilmiş yazı-aile ölçümü) ─────────────
+   Ölçüm (v11/prob.mjs "yaziAile": 34 px → 14, 44 px → 16 [telefonda 14|16], 52 px → 17; 41 rota × 2 mod).
+   (12a) Eski `class="ikincil"` düğmeler (app.css `button.ikincil:not(.dugme):not(.btn)`: 44 px boy ama
+   .875rem = 14 px yazı) — /bildirimler #bildirim-yenile, #bildirim-bos-cta, #is-calistir-*, /vezne
+   #vz-yenile … iki modda 44/14 idi. Kontrol boyundaki düğmenin yazısı kontrol yazısıdır (§ 1e kuralı);
+   § 10f'deki kimlikli köprünün genel hâli (sayfa dosyasına dokunmadan). */
+html[data-mod] .ana-icerik button.ikincil:not(.dugme):not(.btn) { font-size: var(--yazi-kontrol); }
+
+/* (12b) BİLİNÇLİ KURAL YOK — satır içi düzenleme açıcısı (SatirIciDuzenle `.si-tetik`, ör. /cariler PRO
+   telefon hücresi #si-cari-telefon-*-ac): 44 px DOKUNMA kutusu, 15 px yazı. Doğrulayıcı "44 px'te 15 px
+   yazı" dedi. Karar (ölçümle): bu öğe düğme GÖRÜNÜMÜ taşımaz (kenarlık saydam, zemin yok — app.css
+   `.si-tetik { background: none; border: 1px dashed transparent; font: inherit }`); kullanıcı hücredeki
+   DEĞERİ görür ve o değer bulunduğu hücrenin yazısıyla çizilir: /cariler tablosunda 15 px (§ 5 tablo
+   ölçeği), /islemler fiş kaleminde 16 px (§ 10b). 16 px'e çekmek AYNI numarayı BASİT'te (düz hücre metni,
+   15 px) ve PRO'da (açıcı, 16 px) iki boyda gösterirdi — paketin kapattığı mod farkını yeniden açardı —
+   ve aynı satırda iki yazı boyu yaratırdı. Kural: `.si-tetik` yazısı HÜCREDEN gelir (font: inherit);
+   bu dosya onu ezmez (OL24 sınar). Aile denetimi (prob.mjs) saydam değer açıcısını "tablo değeri"
+   sayar ve hücre yazısıyla karşılaştırır. */
+
+/* (12c) v12 (28.09 gece, doğrulayıcı DÜŞÜK ×2) — /ayarlar seçim kartları seçilince BÜYÜMEZ.
+   Ölçüm: #gk-mod-basit seçiliyken 68, değilken 66 px (app.css `.gk-secenek.secili { border: 2px }`
+   ↔ 1 px); tema kartları #gk-sema-* seçili satırda 118, öbür satırda 114 px (`.gk-sema.secili
+   { border: 3px }` ↔ 1 px; ızgara satırı en yüksek karta uzar). Tıklayınca kart 2–4 px zıplıyordu.
+   Kural: kenarlık HER durumda 1 px; seçili kalınlık içe gölgeyle çizilir (görünen çizgi aynı:
+   mod 2 px, tema 3 px) → kutu boyu seçimden bağımsız. Renk app.css kuralından (bu dosya renk yazmaz, OL6); gölge rengi belirteç. */
+html[data-mod] .gk .gk-secenek,
+html[data-mod] .gk .gk-sema { border-width: 1px; }
+html[data-mod] .gk .gk-secenek.secili { box-shadow: inset 0 0 0 1px var(--vurgu); }
+html[data-mod] .gk .gk-sema.secili { box-shadow: inset 0 0 0 2px var(--vurgu); }
+/* Dar ekranda (≤ 960) "Seçili" rozeti ad satırını sardığında seçili kartın SATIRI 4 px uzuyordu (960: 140 ↔ 136;
+   375: 114 ↔ 111) — başka tema seçilince satırlar yer değiştiriyordu. Izgara satırları eşit boy: en uzun kart ölçü. */
+html[data-mod] .gk .gk-sema-izgara { grid-auto-rows: 1fr; }
+
+/* ── (13) v15 (29.09, son doğrulama: 1 KRİTİK + 1 ORTA) ──────────────────────────────────────────
+   (13a) KRİTİK — 1280 PRO'da tablolar kabından taşıyordu (doğrulayıcı A/B, rozetsiz temiz veri):
+   /cariler olcek açık 1049 > kap 962 (ekran dışı düğme 8), kapalı 962; /urunler 1143 > 962, kapalı 962.
+   Kök neden (v15 sütun ölçümü): 1440'a göre kurulan tablo ölçeği (15 px yazı, 8 px dolgu, ad sütunu
+   en az 14 × yazı = 210 px) 962 px'lik kaba sütun başına 4–50 px fazla geliyordu; olcek kapalıyken
+   sığmasının sebebi ürün/müşteri adının 98–160 px'e ezilip 2–3 satıra kırılmasıydı (SATIS-3 hakemi K3).
+   Kural (MOD değil GENİŞLİK — iki mod aynı ölçüyü alır): 769–1399 px'te liste tablolarının ölçeği
+   aynı belirteçlerden bir basamak küçük türetilir — hücre 14, başlık 12 px (gövde 18'de), dolgu
+   8 × 4 px (sütun arası 8 px); ad sütunu en az 13 × yazı (≈ 182 px: 24 karakterlik ad tek satır, K3); satır boyu 61
+   (değişmez). Fiş kalem tablosu (.fis-pro-tablo, § 10b) kendi ölçüsünde kalır.
+   Sonuç (v15, temiz veri): 1280 /cariler 962 = kap, /urunler 962 = kap, iki modda; ekran dışı 0. */
+@media (min-width: 769px) and (max-width: 1399px) {
+  html[data-mod] .ana-icerik .veri-tablosu:not(.fis-pro-tablo) {
+    --tablo-yazi:        calc(var(--yazi-govde) * 14 / 18);
+    --tablo-baslik-yazi: calc(var(--yazi-govde) * 12 / 18);
+    --tablo-dolgu:       .5rem .25rem;
+  }
+  /* Müşteri adı sütunu: ≥ 1400'de § 10d (14 ×) kalır; burada 13 × (ürün adı § 11e ile aynı). */
+  html[data-mod] .ana-icerik .veri-tablosu.tablo-sik--kimlik > tbody > tr > td:first-child { min-width: calc(var(--tablo-yazi) * 13); }
+  /* Satır eylemi düğmeleri (SatirEylemleri, küçük boy 34 px): yatay iç dolgu 12 → 8 px (boy/yazı aynı). */
+  html[data-mod] .ana-icerik .veri-tablosu .satir-eylem > .btn { padding-inline: .5rem; }
+  /* (13b) Emniyet: veri daha genişse (uzun barkod, 10 sütunlu /faturalar, 769–1099 px) tablo KENDİ kabında
+     kayar (sayfa yatay kaydırması 0) ve satır EYLEMLERİ sütunu sağa YAPIŞIR — Düzenle / ⋯ hiçbir genişlikte
+     ekran dışına düşmez (özellik silinmez, gizlenmez). Zemin belirteçle, iç gölge olarak çizilir (bu dosya
+     background yazmaz, OL6): gövde --yuzey, üzerine gelince --yuzey-2 (app.css satır vurgusu), başlık --yuzey-2; sol kenarda 1 px
+     --ayrac çizgisi (kayan içerik düğmenin altından geçerken sınır görünür — v15 960 görüntüsü; ek iç pay
+     denendi, 1280 /urunler'i 965 > 962 taşırdı). */
+  html[data-mod] .ana-icerik .veri-tablosu > tbody > tr > td:last-child:has(> .satir-eylem) {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    box-shadow: inset 0 0 0 100vmax var(--yuzey), -1px 0 0 0 var(--ayrac);
+  }
+  html[data-mod] .ana-icerik .veri-tablosu > tbody > tr:hover > td:last-child:has(> .satir-eylem) { box-shadow: inset 0 0 0 100vmax var(--yuzey-2), -1px 0 0 0 var(--ayrac); }
+  html[data-mod] .ana-icerik .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead > tr > th:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    box-shadow: inset 0 0 0 100vmax var(--yuzey-2), -1px 0 0 0 var(--ayrac);
+  }
+}
+/* (13c) Satır eylemi düğmesindeki EMOJİ (SatirEylemleri `<span aria-hidden>💵</span>`): tuval kuralı "ikon ince
+   çizgi (Ikon), emoji YOK"; BASİT /cariler satırında hiç yoktu, PRO'da vardı (tasarım hakemi: mod farkı) ve
+   PRO /cariler ile /urunler'de eylem sütununu 44 px genişletiyordu. Yalnız süs (aria-hidden, düğme adı
+   yanında) — gizlenir; ince çizgi Ikon (<svg>) gelirse :has(svg) onu KORUR (KATMAN devri). Her genişlikte. */
+html[data-mod] .ana-icerik .veri-tablosu .satir-eylem > .btn > span[aria-hidden="true"]:not(:has(svg)) { display: none; }
+/* (13d) ORTA — PRO /cariler 1280'de üst çubuk iki satıra sarıyordu (93 px; BASİT 68; olcek kapalıyken 68).
+   Neden: § 6'daki kur değeri 19 px (tuval Panel 1440 ölçüsü) + PRO'nun FAZLADAN gösterdiği EUR öğesi
+   "Müşteriler" gibi uzun başlıkla tek satıra sığmıyordu; en uzun başlıkta (/gider-pusulalari 180 px) olcek.css
+   KAPALIYKEN de sarıyordu (en geniş içerik 998 > 956 px). 769–1439 px'te (iki modda aynı): kur değeri kontrol
+   yazısı (16 px), çubuk yan dolgusu 28 → 20, aralıklar 18 → 12 ve şerit içi 14/24 → 10 px, şerit sol payı 0
+   → 1280'de 42 rotada iki modda tek satır (68 px). 769–1279 px'te tek satır HİÇBİR modda sığmaz (BASİT 2,
+   PRO 3 satırdı: 93 ↔ 125): düzen iki satırdır — üstte başlık + Yardım/mod, altta kur şeridi tam genişlik
+   (öğe kaybolmaz, taşma gizlenmez) → iki modda aynı boy. ≥ 1440 tuval ölçüsü (19 px, 26/24 aralık). */
+@media (min-width: 769px) and (max-width: 1439px) {
+  html[data-mod] body .ust-kur-serit .kur-bandi .deger { font-size: var(--yazi-kontrol); }
+  html[data-mod] body .ust-bar { column-gap: 12px; padding-inline: 20px; }
+  html[data-mod] body .ust-kur-serit { margin-left: 0; }
+  html[data-mod] body .ust-kur-serit,
+  html[data-mod] body .ust-kur-serit .kur-bandi { column-gap: 10px; }
+}
+@media (min-width: 769px) and (max-width: 1279px) {
+  html[data-mod] body .ust-bar { flex-wrap: wrap; }
+  html[data-mod] body .ust-bar > .ust-kur-serit { order: 3; flex-basis: 100%; }
+  html[data-mod] body .ust-bar > .ust-sag { margin-left: auto; }
+}
+/* (13e) v17 (29.09, son doğrulama YÜKSEK — tasarım hakemi hk.mjs/ab.mjs 960): (13b)'deki yapışık eylem
+   sütunu Müşteriler listesinde tutarların ÜSTÜNE biniyordu (K9 = 6, iki modda): BASİT tablo 665 > kap 642,
+   PRO 896 > 642; "-3.840 ₺ Borç" → "Bor", "0,0000 has" → "0,0000 h". PRO'nun 7 veri sütunu (ad 182 · tür
+   74 · telefon 127 · TL 89 · has 88 · döviz 92 · durum 54 = 706 px) eylemler çıkarılsa bile 642'ye
+   sığmaz; sütun gizlemek bilgi siler (YASAK). Kural (MOD değil GENİŞLİK — iki modda aynı düzen):
+   769–1099 px'te Müşteriler (#cari-liste-sar) ve Ürünler (#urun-liste-sar) listelerinde
+   satır eylemleri ([Tahsilat|Stok] · Düzenle · ⋯) veri satırının ALTINDA, adın hizasında KENDİ satırındadır.
+   Tablo ızgaraya çevrilir (thead/tbody/tr `display: contents`; sütun sayısı başlıktan): eylem hücresi
+   `grid-column: 1 / -1` ile yeni ızgara satırına düşer → hiçbir yazının üstüne binmez (yapışma yok, K9 0),
+   düğmeler hep ekranın solunda görünür (ekran dışı eylem 0). Veri sütunları kaba sığmazsa (PRO) tablo
+   KENDİ kabında kayar (sayfa yatay kaydırması 0) — kayan içerikte örtülen yazı yoktur. Düğme boyu 34 px
+   (küçük); kayıt ayracı EYLEM satırının altında (veri ile eylem arası çizgisiz — iki satır tek kayıttır). Başlık
+   zemini ve satır vurgusu belirteçten iç gölge (bu dosya background yazmaz, OL6). */
+@media (min-width: 769px) and (max-width: 1099px) {
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) {
+    display: grid;
+    grid-template-columns: repeat(var(--eylem-alti-sutun, 7), auto);
+    min-width: 0;
+  }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(4)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(4)) { --eylem-alti-sutun: 3; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(5)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(5)) { --eylem-alti-sutun: 4; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(6)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(6)) { --eylem-alti-sutun: 5; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(7)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(7)) { --eylem-alti-sutun: 6; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(8)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(8)) { --eylem-alti-sutun: 7; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(9)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(9)) { --eylem-alti-sutun: 8; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(10)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(10)) { --eylem-alti-sutun: 9; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(11)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(11)) { --eylem-alti-sutun: 10; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(12)),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(12)) { --eylem-alti-sutun: 11; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead,
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > tbody,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > tbody,
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead > tr,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead > tr,
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > tbody > tr,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > tbody > tr { display: contents; }
+  /* Başlık hücreleri: zemin thead'den gelmez (display: contents) → iç gölge; yazı dikey ortada. */
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu > thead > tr > th,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > thead > tr > th {
+    box-shadow: inset 0 0 0 100vmax var(--yuzey-2), 0 1px 0 0 var(--ayrac);
+    align-content: center;
+  }
+  /* Eylem başlığı yalnız ekran okuyucu içindir (metni .gorunmez) → ızgarada sütun AÇMAZ. */
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead > tr > th:last-child,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead > tr > th:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    box-shadow: none;
+  }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu > tbody > tr > td,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td {
+    height: auto;
+    min-height: var(--tablo-satir-boyu);
+    align-content: center;
+    border-block-width: 0;
+  }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu > tbody > tr > td[colspan],
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td[colspan] { grid-column: 1 / -1; }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu > tbody > tr > td:last-child:has(> .satir-eylem),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td:last-child:has(> .satir-eylem) {
+    grid-column: 1 / -1;
+    position: static;
+    min-height: 0;
+    padding: 0 .25rem .5rem;
+    border-top: 0;
+    border-bottom: 1px solid var(--ayrac);
+    box-shadow: none;
+  }
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu > tbody > tr > td:last-child > .satir-eylem,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td:last-child > .satir-eylem { justify-content: flex-start; }
+  /* Satır vurgusu (app.css `tbody tr:hover` zemini, tr kutusu yok): aynı satırın hücrelerine iç gölge. */
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu > tbody > tr:hover > td,
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr:hover > td,
+  html[data-mod] .ana-icerik #cari-liste-sar > .veri-tablosu > tbody > tr:hover > td:last-child:has(> .satir-eylem),
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr:hover > td:last-child:has(> .satir-eylem) { box-shadow: inset 0 0 0 100vmax var(--yuzey-2); }
+}
+/* (13f) v17 — taşma İŞARETİ: (13e) düzeninde veri sütunları kaba sığmazsa (960 PRO: /cariler 705 > 642,
+   /urunler 795 > 642) kabın sağ kenarı 2rem boyunca SOLAR ("devamı var, yana kaydır"); sona kaydırılınca
+   solma kalkar. Kaydırma zaman çizelgesi (animation-timeline: scroll) — kap kaymıyorsa zaman çizelgesi
+   etkin değildir, solma HİÇ uygulanmaz (sığan BASİT tablo solmaz). Maske yalnız saydamlık taşır; renk
+   değil (gradyanın opak ucu herhangi bir belirteç — OL6). Desteklemeyen tarayıcıda kural yok sayılır. */
+@supports (animation-timeline: scroll()) {
+  @media (min-width: 769px) and (max-width: 1099px) {
+    html[data-mod] .ana-icerik #cari-liste-sar,
+    html[data-mod] .ana-icerik #urun-liste-sar {
+      animation: olcek-tasma-solma linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+}
+@keyframes olcek-tasma-solma {
+  0%, 96% { mask-image: linear-gradient(to left, transparent 0, var(--metin) 2rem); }
+  100%    { mask-image: none; }
+}
+
+/* ── (TOPLU-7B) İkincil/küçük düğme TEK ÖLÇEK: 44 px / 16 px ─────────────────
+   Ölçüm (tutarlilik.mjs 1440): aynı ekranda /kur "Şimdi çek" 44/16 iken "Manuel Kur Gir" ve
+   "Sütunlar" 34/14; /kasalar "+ Yeni Kasa" 44/16 iken kart düğmeleri 34/14; /gider "+ Not ekle"
+   34/14 iken "Gideri kaydet" 44/16. Kural: ana alandaki ve çekmecedeki HER küçük düğme kontrol boyundadır
+   (44 px, yazı --yazi-kontrol). Tek istisna tablo satırı içi eylem ve satır menüsü (yoğun liste):
+   orada küçük ölçek kalır, çünkü yanında 44 px'lik kardeş düğme olmaz. Değişken ELEMANIN üstünde
+   yeniden tanımlanır → app.css/olcek.css'teki padding ve min-height hesapları kendiliğinden uyar. */
+html[data-mod] .ana-icerik .btn-kucuk:not(td *):not(th *):not(.satir-menu *),
+html[data-mod] .ana-icerik .dugme-kucuk:not(td *):not(th *):not(.satir-menu *),
+html[data-mod] .cekmece .btn-kucuk:not(td *):not(th *):not(.satir-menu *),
+html[data-mod] .cekmece .dugme-kucuk:not(td *):not(th *):not(.satir-menu *) {
+  --dugme-yuksekligi-kucuk: var(--dugme-yuksekligi);
+  font-size: var(--yazi-kontrol);
+}
+
+/* Çekmece alt çubuğu ve gövdesindeki düğmelerin yazısı da kontrol yazısıdır (ölçüm: çekmece düğmeleri 44 px
+   boyda ama 18 px yazı; ana alanda 16 px). Yükseklik zaten 44 — yalnız yazı hizalanır. */
+html[data-mod] .cekmece .btn,
+html[data-mod] .cekmece .dugme { font-size: var(--yazi-kontrol); }

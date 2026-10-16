@@ -1,0 +1,99 @@
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══ PAKET YASAL-3 — PANEL UYUM BANTLARI (yalnız SAHİP) ═══════════════════════
+   • Mavi (katlanır): "N kaydın kimlik bilgisi 30 gün içinde gizlenecek" — ayrıntıda
+     Uyum → Saklama bağlantısı (bekletme oradan).
+   • Sarı: yasal liste 14 günden eski (ya da hiç yüklenmemiş — fail-closed).
+   • Kırmızı: açık yasal liste eşleşmesi (tam + ad benzerliği).
+   • Rakamlar SUNUCUDAN (/masak/uyum-ozet); yetkisiz rolde istek ATILMAZ.
+   • UX-S28: istek hatası "sorun yok"a çevrilmez — hata bandı çizilir.
+   • Oturum hazır olunca yükler (NakitSiniriPanelSatiri deseni).
+   ════════════════════════════════════════════════════════════════════════════ *@
+@if (hata is not null)
+{
+    <p class="bant bant-hata yasal-bant" id="uyb-hata" role="alert">@hata</p>
+}
+else if (veri is { } v && !Gorunmez)
+{
+    @if (v.AcikTam + v.AcikBenzerlik > 0)
+    {
+        <div class="uyari-kutu uyari-kirmizi" id="uyb-eslesme" role="alert">
+            <p class="yasal-bant">
+                <span>@string.Format(M.PanelEslesme, v.AcikTam + v.AcikBenzerlik)</span>
+                <a class="yasal-bant-bag" href="/uyum?sekme=risk" id="uyb-eslesme-git">@M.PanelGit →</a>
+            </p>
+        </div>
+    }
+    @if (v.ListeEski)
+    {
+        @* TOPLU-3 (demo bulgusu): liste gerçekten yüklenmemişse bu DOĞRU bir yasal uyarıdır
+           (fail-closed) — GİZLENMEZ. Dil sade ve eyleme dönük; ayrıntı Uyum → Risk'teki
+           yasal liste panelinde (tarih/kaynak). Koşul ve sayım DEĞİŞMEDİ. *@
+        @* TOPLU-6 (YASAL-LISTE-DEMO hakemi ORTA "çıkmaz sokak"): ekranda numarası olmayan "destek hattını
+           arayın" yazılmaz; bağlantı ne yaptığını söyler ve Uyum → Risk'teki liste paneline gider (orada kimin
+           yüklediği yazılı). Koşul, sayım ve fail-closed uyarı AYNEN. *@
+        <p class="bant bant-uyari yasal-bant" id="uyb-liste" role="status">
+            <span>@(v.ListeYasiGun is { } g ? string.Format(T6.PanelListeEski, g) : T6.PanelListeYok)</span>
+            <a class="yasal-bant-bag" href="/uyum?sekme=risk" id="uyb-liste-git">@T6.PanelListeGit →</a>
+        </p>
+    }
+    @if (v.SaklamaYaklasan > 0)
+    {
+        <details class="bant yasal-bant yasal-bant--bilgi" id="uyb-saklama">
+            <summary id="uyb-saklama-ozet">@string.Format(v.SaklamaKuru ? M.PanelSaklamaKuru : M.PanelSaklama, v.SaklamaYaklasan, v.SaklamaGun)</summary>
+            <span class="metin-kucuk">@M.BekletmeAciklama</span>
+            <a class="yasal-bant-bag" href="/uyum?sekme=saklama" id="uyb-saklama-git">@M.PanelGit →</a>
+        </details>
+    }
+}
+
+@code {
+    private UyumYasalOzet? veri;
+    private string? hata;
+    private bool yuklemeBasladi;
+
+    private Yasal3Metinleri M => Yasal3Sozlugu.Al(Dil.Dil);
+    private Toplu6Metinleri T6 => Toplu6Sozlugu.Al(Dil.Dil);
+    private bool Yetkili => Oturum.Kullanici?.Rol is "SAHIP";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Oturum.Degisti += OturumDegisti;
+        Dil.Degisti += DilDegisti;
+        await YukleGerekirse();
+    }
+
+    private async Task YukleGerekirse()
+    {
+        if (!Yetkili || yuklemeBasladi) return;
+        yuklemeBasladi = true;
+        try { veri = await Api.GetAsync<UyumYasalOzet>("/masak/uyum-ozet"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = string.Format(M.PanelHata, ex.Message); }
+        // Panel "Bekleyen işler" kutusu bantlardaki işi bilir → "iş yok" DEMEZ (YASAL-2 t3 deseni).
+        if (veri is { } v) await SayiDegisti.InvokeAsync(v.AcikTam + v.AcikBenzerlik + (v.ListeEski ? 1 : 0) + v.SaklamaYaklasan);
+        if (veri is { } o) await OzetDegisti.InvokeAsync(o);
+    }
+
+    /// <summary>PAKET RAPOR-3: yüklenen özet — "Bekleyen iş" kartı işleri SATIR olarak çizer (BekleyenUyumSatirlari);
+    /// ikinci istek atılmaz.</summary>
+    [Parameter] public EventCallback<UyumYasalOzet> OzetDegisti { get; set; }
+
+    /// <summary>PAKET RAPOR-3: true iken bantlar çizilmez (iş kartın kendi satırlarında); hata bandı YİNE çizilir (UX-S28).</summary>
+    [Parameter] public bool Gorunmez { get; set; }
+
+    /// <summary>Bantlarda gösterilen iş sayısı (Panel'in "Bekleyen işler" kutusu için).</summary>
+    [Parameter] public EventCallback<int> SayiDegisti { get; set; }
+
+    private void OturumDegisti() => _ = InvokeAsync(async () => { await YukleGerekirse(); StateHasChanged(); });
+    private void DilDegisti() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Oturum.Degisti -= OturumDegisti;
+        Dil.Degisti -= DilDegisti;
+    }
+}

@@ -1,0 +1,987 @@
+@page "/gider-pusulalari"
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject UyumServisi Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@inject ApiIstemci Istemci
+@inject IJSRuntime Js
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   GİDER PUSULALARI — PLAN-2 Adım 1.
+   VUK md.234 belgesi üretiliyordu ama kuyumcu onu YAZDIRAMIYORDU: uçlar
+   yalnız curl ile erişilebilirdi.
+
+   • Listede TCKN MASKELİ; tam değer yalnız detayda (okuma izi düşer).
+   • Yazdırma AYRI ROUTE: /gider-pusulalari/{id}/belge — sade yerleşim,
+     @@media print. Sunucuda PDF kütüphanesi YOK (ADR-0007).
+   • 7 günlük düzenleme süresi (VUK md.234) satır renkleriyle uyarır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Pusula.Baslik)</PageTitle>
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Giderpusulalari (BİREBİR); özgün ekran (tarih süzgeci,
+   süre takibi, stopaj dönemleri) yalnız "Tüm ayrıntılar"da (data-yz-ozgun). Detay/iptal/yeniden düzenleme çekmeceleri ORTAK. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk zo-belge" id="gp-sayfa">
+    @* UX-1-C3: sayfa başı (başlık + tek birincil eylem). Açıklama metni
+       KALDIRILMADI, SayfaBasi'nın Aciklama yuvasına taşındı. *@
+    <SayfaBasi Anahtar="gider-pusulalari" AciklamaKatli="true" Baslik="@Dil.T.Pusula.Baslik"
+               Aciklama="@Dil.T.Pusula.Aciklama">
+        <Eylem>
+            @* Pusula tek başına AÇILMAZ: hurda alımı işlemiyle birlikte doğar.
+               Bu yüzden "+ Yeni pusula" düğmesi yoktur; birincil eylem, pusulayı
+               üreten ekrana gider (DoD: her düğme gerçek bir şey yapar). *@
+            <button class="dugme dugme-birincil dugme-kucuk" id="gp-hurda-alimi"
+                    @onclick="@(() => Nav.NavigateTo(HurdaAlimiAdresi))">
+                @Dil.T.Pusula.HurdaAlimiGir
+            </button>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" />
+
+    @* PAKET YASAL-4 / Y4-A: eski kırmızı "gecikmiş" kartı 7 günden eski HER pusulayı
+       sayıyordu (yanlış alarm — pusula alışla aynı anda düzenlenir). Kartlar artık
+       YALNIZ iptal edilip yerine yenisi düzenlenmeyen belge varken çizilir
+       (zorunlu önce: iş yoksa kart yok). *@
+    @if (sure is not null && (sure.YaklasanSayisi > 0 || sure.GecikmisSayisi > 0))
+    {
+        <div class="stat-izgara" id="gp-sure-kartlari">
+            <StatKart Etiket="@Y4.KartBekleyen" Deger="@sure.YaklasanSayisi.ToString()"
+                      Renk="@(sure.YaklasanSayisi > 0 ? "amber" : "")"
+                      Alt="@(sure.EnYakinSonGun is { } eg ? string.Format(Y4.KartSonGun, Gun(eg)) : null)" />
+            @if (sure.GecikmisSayisi > 0)
+            {
+                <StatKart Etiket="@Y4.KartBelgesiz" Deger="@sure.GecikmisSayisi.ToString()" Renk="kirmizi" />
+            }
+            <StatKart Etiket="@Dil.T.Pusula.SureGun" Deger="@sure.Sure.Gun.ToString()" />
+        </div>
+        @foreach (var b in sure.Gecikmis ?? [])
+        {
+            <div class="uyari-kutu" id="@($"gp-belgesiz-{b.Id}")"><p><Ikon Ad="@Ikonlar.Uyari" /> @string.Format(Y4.BelgesizSatir, b.PusulaNo, Gun(b.SonGun))</p></div>
+        }
+        @if (sure.SinirdaMi)
+        {
+            <p class="metin-kucuk metin-soluk" id="gp-sure-sinir">@string.Format(Y4.SinirUyari, sure.Sinir)</p>
+        }
+    }
+    @* § 4.1 madde 2 (hasım bulgusu 01.10): mükellef satıcıdan alışta belge satıcının
+       faturasıdır; numarası boşsa yalnız BİLGİ (süre teyitsiz → geri sayım yok). *@
+    @if (sure is { FaturaBekleyenSayisi: > 0 })
+    {
+        <div id="gp-fatura-bekleyen">
+            <p><strong>@string.Format(Y4.FaturaBekleyenSatir, sure.FaturaBekleyenSayisi)</strong></p>
+            <p class="metin-kucuk metin-soluk">@Y4.FaturaBekleyenAciklama</p>
+        </div>
+    }
+    @foreach (var u in sure?.Uyarilar ?? [])
+    {
+        <div class="uyari-kutu"><p><Ikon Ad="@Ikonlar.Uyari" /> @u</p></div>
+    }
+
+    <BasariBandi Mesaj="@ydBasari" Jeton="@ydBasariJeton" SureliMs="8000" Id="gp-yd-basari" />
+
+    @* PAKET YASAL-4 / Y4-B: Pusulalar ve Stopaj iki sekme (sayfa aşağı uzamasın). *@
+    <Sekmeler Onek="gp" Liste="@GpSekmeleri" Etiket="@Dil.T.Pusula.Baslik" SeciliDegisti="SekmeDegisti">
+        <Panel Context="gpKod">
+    @if (gpKod == "stopaj")
+    {
+        @StopajPaneli
+    }
+    else
+    {
+
+    <div class="kart">
+        <div class="kart-govde form-grid-3">
+            @* PAKET GOC-A (envanter C · p-bas/p-bit "içerik denetimi YOK" + § A acil hata "bitiş günündeki pusulalar
+               listede görünmüyor"): ortak TarihAralik (K8e; id'ler korunur: p-bas · p-bit). Bitiş GÜNÜ artık sunucuda
+               gün sonuna kadar dahil (HurdaServisi.Listele); ters aralık 400 + alan altı hata, istek ATILMAZ. *@
+<Tarih ElemanId="p-bas" Etiket="@Dil.T.Pusula.Baslangic" Tur="TarihTuru.Rapor"
+                   Deger="@AralikBas" DegerChanged="@AralikBasDegisti" />
+            <Tarih ElemanId="p-bit" Etiket="@Dil.T.Pusula.Bitis" Tur="TarihTuru.Rapor" Hata="@AralikHatasi"
+                   Deger="@AralikBit" DegerChanged="@AralikBitDegisti" />
+        </div>
+    </div>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (pusulalar.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Pusula.KayitYok" />
+    }
+    else
+    {
+        <div class="kart">
+            @* KESIF-P3 (#11, P7 devri K3): 960'ta yapışkan eylem sütunu NET ÖDENEN'i örtüyordu;
+               1440'ta tutar ve kişi adı iki satıra bölünüyordu. Faturalar/Evraklar'daki ZO-BELGE
+               kalıbı: kap 1060 px'ten darsa satır KART olur (hücre etiketi data-etiket), genişte
+               tablo; TCKN satıcının ALT satırında (sütun 9 → 8), tutar/ad/numara tek satır. *@
+            @* PAKET GOC-A — ORTAK IZGARA (grid:gider-pusulalari:gp-liste — "gp-basari" sayfa bandıyla çakışmasın; tablo kimliği TabloId ile). Tablo kimliği "gp-tablo" korunur; KESIF-P3 kart
+               kalıbı (q10-yigin zo-yigin-dar) ve satır renkleri AYNEN. Liste tarih süzgeçli ve sunucu sınırlı (istemci limit=PusulaSiniri=100 ister; uç tavanı 500) →
+               sınırın altında tam liste, yerel sıralama; sınıra değdiyse sıralama düğmesi ÇIKMAZ + sınır notu (G1, UX-S29). *@
+            <Izgara T="PusulaSatir" Ekran="gider-pusulalari" GridId="gp-liste" TabloId="gp-tablo" Zo="golge" Kolonlar="@PusulaKolonlari"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(pusulalar, PusulaListeTam ? pusulaSira : null, PusulaKolonlari)"
+                    SatirSinif="@(p => p.Gecikti == true ? "satir-kirmizi" : p.KalanGun is <= 2 ? "satir-amber" : null)"
+                    TabloSinif="tablo-sik q10-yigin zo-yigin-dar" Baslik="@Dil.T.Pusula.Baslik" YapiskanIlkSutun="false"
+                    SiralamaDegisti="@PusulaSiralandi" GecerliSiralama="@pusulaSira" TercihIstemcisi="@GpTercih" />
+            @if (!PusulaListeTam)
+            {
+                <p class="metin-kucuk metin-soluk" id="gp-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, PusulaSiniri)</p>
+            }
+        </div>
+        <p class="metin-soluk metin-kucuk"><Ikon Ad="@Ikonlar.Kilit" /> @Dil.T.Pusula.MaskeNotu</p>
+    }
+    }
+        </Panel>
+    </Sekmeler>
+</div>
+}
+
+@* UX-1-C3 / K6: detay modal kabuğu ÇEKMECEYE çevrildi (Esc kapatır, odak
+   hapsi, kapanınca tetikleyiciye döner). İçteki alan adları AYNEN kaldı.
+   PAKET S-3d / DP4 (QA turu 4 KRİTİK "hiçbir alanı düzenlenemiyor"): çekmece
+   ARTIK MALİ KİMLİK DIŞI iki alanı yerinde düzeltir (satıcı adresi · mal
+   açıklaması). Belgenin mali hüviyetini taşıyan alanlar (satıcı tipi, ad,
+   TCKN, ayar/gram/has, brüt/stopaj/net, teslim ve son tarih) DEĞİŞMEZ kalır;
+   gerekçesi ve doğru yol DegismezIpucu'nda yazılıdır (UX-S25).
+   İptal edilmiş belgede düzenleme kapalıdır ve sebebi yazar (UX-S30). *@
+<Cekmece Acik="@(detay is not null)" Varlik="gider-pusulasi" Baslik="@P.CekmeceBaslik"
+         KaydetGoster="@(detay is not null)" KaydetAktif="@(DuzenlemeGecerli && !kaydediliyor)"
+         Kaydediliyor="@kaydediliyor"
+         KilitSebebi="@DuzenlemeKilitSebebi"
+         Kaydet="DuzenlemeKaydet"
+         Kapat="CekmeceKapat">
+    @if (detay is { } d)
+    {
+        <div class="form-dikey">
+            @* BELGE-KALAN tur 2 (tasarım hakemi KRİTİK): PRO'daki okuma izi notu (KVKK md.12)
+               çekmecenin tepesinden kalktı; artık kapalı #gp-degismez ipucunun içinde. *@
+            @if (SureGecti(d))
+            {
+                @* P-55: süre sonrası düzeltmenin mevzuata uygunluğu birincil kaynakla
+                   DOĞRULANAMADI → kilit KONMADI (sunucu da kilitlemiyor), dürüst uyarı. *@
+                <div class="uyari-kutu" id="gp-sure-gecti"><p><Ikon Ad="@Ikonlar.Uyari" /> @P.SureGectiUyari</p></div>
+            }
+            @if (duzenlemeKipi)
+            {
+                @DuzenlenebilirBlok(d)
+            }
+            @* KESIF-P3 tasarım hakemi tur 2 (01.10): etiket/değer aralıksız alt alta akıyordu ve
+               her kilitli alanın altında 6 satırlık değişmez kutusu vardı. Artık iki sütunlu
+               etiket/değer ızgarası (zo-belge.css .zo-tanim-izgara); kilit gerekçeleri listenin
+               ALTINDA tek, KAPALI ipucunda (#gp-degismez). *@
+            <dl class="tanim-listesi zo-tanim-izgara" id="gp-detay-liste">
+                <dt>@Dil.T.Pusula.PusulaNo</dt><dd><strong>@d.PusulaNo</strong></dd>
+                <dt>@Dil.T.Pusula.Satici</dt>
+                <dd>@d.SaticiAdSoyad</dd>
+                <dt>@Dil.T.Pusula.Tckn</dt>
+                <dd><strong>@d.SaticiTckn</strong></dd>
+                @* UX-S31: ham kod (NIHAI_TUKETICI) ekrana basılmaz; belge sayfasıyla
+                   AYNI görünen ad kullanılır. *@
+                <dt>@Dil.T.Pusula.SaticiTipi</dt><dd>@Dil.T.SayfaDuzeltme.SaticiTipiAdi(d.SaticiTipi)</dd>
+                <dt>@Dil.T.Pusula.Mal</dt>
+                @* Has tek biçimden (karar 5): Bicim.Has — 4 ondalık. *@
+                @* BELGE-KALAN tur 2: gram listeyle (#gp-mal-*) AYNI 2 ondalıkla. *@
+                <dd id="gp-detay-mal" title="@d.AyarId">@KurKaynakAdi.AyarAdi(d.AyarId) · @Bicim.BelgeSayisi(d.GramAgirlik, Dil.Locale, 2) g → @Bicim.Has(d.HasGrami)</dd>
+                <dt>@Dil.T.Pusula.Brut</dt><dd>@Para(d.BrutTutar)</dd>
+                <dt>@Dil.T.Pusula.Stopaj</dt>
+                <dd>@Para(d.StopajTutar) (%@((d.StopajOran * 100m).ToString("0.##", Kultur)))</dd>
+                <dt>@Dil.T.Pusula.Net</dt>
+                <dd><strong>@Para(d.NetOdenen)</strong></dd>
+                <dt>@Dil.T.Pusula.TeslimTarihi</dt><dd>@Bicim.TarihTam(d.TeslimTarihi)</dd>
+                <dt>@Dil.T.Pusula.SonTarih</dt>
+                <dd>@Bicim.TarihTam(d.DuzenlemeSonTarihi)</dd>
+            </dl>
+            @if (d.IptalEdildi)
+            {
+                <dl class="tanim-listesi">
+                    <dt>@Dil.T.Pusula.IptalEdildiRozet</dt>
+                    <dd id="@($"gp-iptal-gerekce-{d.Id}")"><strong>@d.IptalGerekce</strong></dd>
+                </dl>
+            }
+
+            @if (!duzenlemeKipi)
+            {
+                @DuzenlenebilirBlok(d)
+            }
+
+            @* UX-S25: MALİ alanlarda yerinde düzenleme YOK (VUK md.234 belgesi);
+               düzeltme yolu gerekçeli iptal + yeni pusula. Gerekçe metni bunu anlatır.
+               KESIF-P3 tur 2: bütün değişmezlik gerekçeleri TEK kapalı ipucunda. BASİT: tek sade
+               cümle (madde numarası yok). PRO: genel gerekçe + kilitli dört alanın (P-55) her biri. *@
+            <details class="zo-kapali-ipucu" id="gp-degismez">
+                <summary><Ikon Ad="@Ikonlar.Kilit" /> @P3.PusulaDegismezOzet</summary>
+                @* BELGE-KALAN tur 2: "neyi düzeltebilirim" açıklaması ve PRO okuma izi notu da
+                   çekmece gövdesinde değil, bu kapalı ipucunda. *@
+                @if (!d.IptalEdildi)
+                {
+                    <p class="metin-kucuk metin-soluk" id="gp-duzenlenebilir-aciklama">@P3.PusulaDuzenlenebilirAciklama</p>
+                }
+                @if (!Dil.BasitMi)
+                {
+                    <p class="metin-kucuk metin-soluk" id="gp-okuma-izi-notu"><Ikon Ad="@Ikonlar.Kilit" /> @Dil.T.Pusula.OkumaIziNotu</p>
+                }
+                @if (Dil.BasitMi)
+                {
+                    <DegismezIpucu Varlik="GiderPusulasi" Gerekce="@P3.PusulaDegismezSade" />
+                }
+                else
+                {
+                    <DegismezIpucu Varlik="GiderPusulasi"
+                                   Gerekce="@Dil.T.Duzeltme.PusulaGerekce"
+                                   AlternatifYol="@Dil.T.SayfaDuzeltme.PusulaDuzeltmeYolu" />
+                    @* P-55: kilitli dört alanın HER BİRİ gerekçe + düzeltme yolu taşır (UX-S25). *@
+                    <DegismezIpucu Varlik="GiderPusulasi-Satici" Gerekce="@P.KilitliSatici" AlternatifYol="@DuzeltmeYolu" />
+                    <DegismezIpucu Varlik="GiderPusulasi-Tckn" Gerekce="@P.KilitliTckn" AlternatifYol="@DuzeltmeYolu" />
+                    <DegismezIpucu Varlik="GiderPusulasi-Tutar" Gerekce="@P.KilitliTutar" AlternatifYol="@DuzeltmeYolu" />
+                    <DegismezIpucu Varlik="GiderPusulasi-Tarih" Gerekce="@P.KilitliTarih" AlternatifYol="@DuzeltmeYolu" />
+                }
+            </details>
+
+            <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="6000" Id="gp-basari" />
+
+            @* BELGE-KALAN tur 2 (tasarım hakemi KRİTİK): çekmecede TEK birincil düğme alt çubuktaki
+               Kaydet'tir. Yazdır ikincil; yıkıcı iptal dolu kırmızı değil, ikincil + tehlike yazısı
+               (zo-belge.css .zo-ikincil-tehlike) ve ortak onay modalını açar. Yasal madde numarası
+               düğme adında değil, PRO'da title ipucunda. *@
+            <div class="dugme-satir">
+                <button class="dugme dugme-ikincil" id="@($"gp-yazdir-{d.Id}")"
+                        @onclick="() => Yazdir(d.Id)">@Dil.T.Pusula.Yazdir</button>
+                @* DoD EK madde 1: düğme ya istek atar ya kilitlidir + sebebi yazar. *@
+                <button class="dugme dugme-ikincil zo-ikincil-tehlike" disabled="@d.IptalEdildi"
+                        title="@(Dil.BasitMi ? null : Dil.T.Pusula.IptalEt)"
+                        id="@($"gp-iptal-{d.Id}")" @onclick="() => IptalIste(d)">@P3.PusulaIptalEtSade</button>
+            </div>
+        </div>
+    }
+</Cekmece>
+
+@* ── PUSULA İPTALİ (VUK md.234) — DoD EK madde 4: yıkıcı eylem ortak onay modalı ── *@
+<ModalPencere Acik="iptalPusula is not null" Baslik="@Dil.T.Pusula.IptalBaslik" Kapat="IptalKapat">
+    <div class="form-dikey">
+        <p id="gp-iptal-onay">@Dil.T.Pusula.IptalOnay</p>
+        <GerekceAlani Id="gp-iptal-gerekce-alan" Etiket="@Dil.T.Kabuk.StornoGerekce" @bind-Deger="iptalGerekce">
+            <div class="satir">
+                <button class="dugme dugme-ikincil esnek" id="gp-iptal-vazgec" @onclick="IptalKapat"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+                <button class="dugme dugme-tehlike esnek" disabled="@(kaydediliyor || !context)"
+                        id="gp-iptal-onayla" @onclick="IptalUygula">@Dil.T.Kabuk.Onayla</button>
+            </div>
+            @if (!context)
+            {
+                <span class="metin-kucuk metin-soluk" id="gp-iptal-kilit">@string.Format(Dil.T.Duzeltme.EnAzKarakter, 20)</span>
+            }
+        </GerekceAlani>
+        <HataBandi Mesaj="@iptalHata" />
+    </div>
+</ModalPencere>
+
+@* ── PAKET YASAL-4 / Y4-A — YENİDEN DÜZENLE (çok alanlı → TEK KALIP: Cekmece) ──
+   Aynı alış için yeni pusula; mali alanlar eski belgeden (değişmez, DegismezIpucu).
+   Sunucu POST /gider-pusulalari/{id}/yeniden-duzenle; son gün geçtiyse 409. *@
+<Cekmece Acik="@(ydPusula is not null)" Varlik="gider-pusulasi-yeniden" Baslik="@Y4.YdBaslik"
+         KaydetAktif="@(YdGecerli && !ydKaydediliyor)" Kaydediliyor="@ydKaydediliyor"
+         KilitSebebi="@(YdGecerli ? null : YdTcknAlgoritmaHatasi ?? Y4.YdKilit)"
+         Kaydet="YenidenDuzenleKaydet" Kapat="YenidenDuzenleKapat">
+    @if (ydPusula is { } yd)
+    {
+        <div class="form-dikey" id="gp-yd-form">
+            <p class="metin-kucuk metin-soluk" id="gp-yd-aciklama">@Y4.YdAciklama</p>
+            <dl class="tanim-listesi zo-tanim-izgara" id="gp-yd-ozet">
+                <dt>@Dil.T.Pusula.PusulaNo</dt><dd><strong>@yd.PusulaNo</strong></dd>
+                <dt>@Dil.T.Pusula.Mal</dt><dd>@KurKaynakAdi.AyarAdi(yd.AyarId) · @Bicim.BelgeSayisi(yd.GramAgirlik, Dil.Locale, 2) g</dd>
+                <dt>@Dil.T.Pusula.Net</dt><dd>@Para(yd.NetOdenen)</dd>
+                <dt>@Dil.T.Pusula.TeslimTarihi</dt><dd>@Bicim.TarihTam(yd.TeslimTarihi)</dd>
+            </dl>
+            @* PAKET GOC-A (envanter C · gp-yd-ad): ortak AdSoyad (K19: en az 2, en az bir harf) — sunucu GiderPusulasiKapisi AYNI kural. *@
+            <AdSoyad ElemanId="gp-yd-ad" Etiket="@Dil.T.Pusula.Satici" Zorunlu="true"
+                   @bind-Deger="ydAd" Hata="@(ydDenendi && string.IsNullOrWhiteSpace(ydAd) ? Y4.YdAdZorunlu : null)"
+                   HataKimligi="gp-yd-ad-hata" />
+            @* PAKET GOC-A: genel Metin → ortak TcKimlikNo (TCKN-DOGRULAMA kuralı; harf yazılamaz, 11 hanede algoritma). *@
+            <TcKimlikNo ElemanId="gp-yd-tckn" Etiket="@Dil.T.Pusula.Tckn" Zorunlu="true"
+                   @bind-Deger="ydTckn" Hata="@(YdTcknAlgoritmaHatasi ?? (ydDenendi && !TcknBicimi(ydTckn) ? Y4.YdTcknZorunlu : null))"
+                   HataKimligi="gp-yd-tckn-hata" />
+            @* K21 adres eşiği (10) TEYİTSİZ — UYGULANMADI (GIRDI-AILESI-2 sapma 3); yalnız sunucu sınırı (500) aynı sabitten. *@
+            <Metin ElemanId="gp-yd-adres" Etiket="@Dil.T.Pusula.Adres" Zorunlu="true" EnFazla="@AlanSinirlari.Adres"
+                   @bind-Deger="ydAdres" Hata="@(ydDenendi && string.IsNullOrWhiteSpace(ydAdres) ? Dil.T.Pusula.AdresZorunlu : null)"
+                   HataKimligi="gp-yd-adres-hata" />
+            <Metin ElemanId="gp-yd-mal" Etiket="@Dil.T.Pusula.MalAciklamasi" EnFazla="@AlanSinirlari.PusulaMal" @bind-Deger="ydMal" />
+            <DegismezIpucu Varlik="GiderPusulasi-YenidenDuzenle" Gerekce="@Y4.YdDegismez" />
+            <HataBandi Mesaj="@ydHata" Id="gp-yd-hata" />
+        </div>
+    }
+</Cekmece>
+
+@* ── PAKET YASAL-4 / Y4-B — STOPAJ ÖDEMESİ (çok alanlı → Cekmece) ── *@
+<Cekmece Acik="@(odDonem is not null)" Varlik="stopaj-odemesi" Baslik="@Y4.OdBaslik"
+         KaydetAktif="@(OdGecerli && !odKaydediliyor)" Kaydediliyor="@odKaydediliyor"
+         KilitSebebi="@OdKilitSebebi"
+         Kaydet="StopajOdemeKaydet" Kapat="StopajOdemeKapat">
+    @if (odDonem is { } od)
+    {
+        <div class="form-dikey" id="sp-od-form">
+            <dl class="tanim-listesi zo-tanim-izgara">
+                <dt>@Y4.StopajDonem</dt><dd><strong id="sp-od-donem">@AyAdi(od.Donem)</strong></dd>
+                <dt>@Y4.StopajKalan</dt><dd id="sp-od-kalan">@Bicim.Para(od.KalanTl, "TRY")</dd>
+            </dl>
+            @if (TlKasalar.Count == 0)
+            {
+                <div class="uyari-kutu" id="sp-od-kasa-yok"><p>@Y4.OdKasaYok</p></div>
+            }
+            else if (TlKasalar.Count == 1)
+            {
+                @* UX-S22: tek kasa → seçici yok, salt okunur satır. *@
+                <p class="metin-kucuk" id="sp-od-kasa-tek">@string.Format(Y4.OdKasaTek, TlKasalar[0].Ad)</p>
+            }
+            else
+            {
+                <Secici ElemanId="sp-od-kasa" Etiket="@Y4.OdKasa" Secenekler="@KasaSecenekleri"
+                        @bind-Deger="odKasaId" BosSecenekMetni="—" />
+            }
+            @* PAKET GOC-A (envanter ortak kök 3 · sp-od-tutar "0,004 iki taraftan geçer, 0,00 TL'lik ödeme satırı"): K9 Pozitif
+               (en az 0,01, 2 ondalık; eksi yazılamaz) — sunucu YUVARLAMADAN ÖNCE AYNI kural. *@
+            <Para ElemanId="sp-od-tutar" Etiket="@Y4.OdTutar" ParaBirimi="TRY" Tur="TutarTuru.Pozitif" Zorunlu="true"
+                  @bind-Deger="odTutar" Ipucu="@Y4.OdTutarIpucu"
+                  Hata="@(odDenendi && !TutarGecerli ? Y4.OdTutarHata : null)" HataKimligi="sp-od-tutar-hata" />
+            <Metin ElemanId="sp-od-fis" Etiket="@Y4.OdFisNo" EnFazla="@AlanSinirlari.StopajFisNo" @bind-Deger="odFisNo" />
+            <HataBandi Mesaj="@odHata" Id="sp-od-hata" />
+        </div>
+    }
+</Cekmece>
+
+@* Yıkıcı eylem (ödemeyi geri al) — ortak onay modalı + gerekçe; geri dönüş: yeni ödeme. *@
+<ModalPencere Acik="geriAlOdeme is not null" Baslik="@Y4.StopajGeriAlBaslik" Kapat="GeriAlKapat">
+    <div class="form-dikey">
+        <p id="sp-geri-al-onay">@Y4.StopajGeriAlOnay</p>
+        <GerekceAlani Id="sp-geri-al-gerekce" Etiket="@Dil.T.Kabuk.StornoGerekce" @bind-Deger="geriAlGerekce">
+            <div class="satir">
+                <button class="dugme dugme-ikincil esnek" id="sp-geri-al-vazgec" @onclick="GeriAlKapat"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+                <button class="dugme dugme-tehlike esnek" disabled="@(odKaydediliyor || !context)"
+                        id="sp-geri-al-onayla" @onclick="GeriAlUygula">@Dil.T.Kabuk.Onayla</button>
+            </div>
+            @if (!context)
+            {
+                <span class="metin-kucuk metin-soluk" id="sp-geri-al-kilit">@string.Format(Dil.T.Duzeltme.EnAzKarakter, 20)</span>
+            }
+        </GerekceAlani>
+        <HataBandi Mesaj="@geriAlHata" Id="sp-geri-al-hata" />
+    </div>
+</ModalPencere>
+
+@code {
+    /// <summary>
+    /// PAKET S1-i: "Hurda alımı gir" satış ekranını HURDA ALIŞ türüyle açar
+    /// (derin bağlantı; /islemler ?tur= sorgusunu SorgudanSuzgecOku ile okur).
+    /// </summary>
+    public const string HurdaAlimiAdresi = "/islemler?tur=HURDA_ALIS";
+
+    private List<PusulaSatir> pusulalar = [];
+
+    // ── PAKET GOC-A — tarih aralığı (TarihAralik; bozuk aralıkta istek ATILMAZ) ──────────
+    private DateOnly? AralikBas => baslangic is { } b ? DateOnly.FromDateTime(b) : null;
+    private DateOnly? AralikBit => bitis is { } b ? DateOnly.FromDateTime(b) : null;
+    private string? AralikHatasi => TarihPenceresi.AralikDenetle(AralikBas, AralikBit) is { } h ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+    private async Task AralikBasDegisti(DateOnly? v)
+    {
+        baslangic = v?.ToDateTime(TimeOnly.MinValue);
+        if (TarihPenceresi.AralikDenetle(AralikBas, AralikBit) is null) await Yukle();
+    }
+    private async Task AralikBitDegisti(DateOnly? v)
+    {
+        bitis = v?.ToDateTime(TimeOnly.MinValue);
+        if (TarihPenceresi.AralikDenetle(AralikBas, AralikBit) is null) await Yukle();
+    }
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:gider-pusulalari:*) ─────────────────────
+    private IzgaraTercihIstemcisi? gpTercih;
+    private IzgaraTercihIstemcisi GpTercih => gpTercih ??= new IzgaraTercihIstemcisi(Istemci);
+    private IzgaraSiralama? pusulaSira, stopajSira;
+    private void PusulaSiralandi(IzgaraSiralama? s) => pusulaSira = s;
+    // G1 (hasım 08.10): liste en çok PusulaSiniri satır gelir; sınıra değen liste TAM sayılmaz → sıralama kapalı.
+    private const int PusulaSiniri = 100;
+    private bool PusulaListeTam => pusulalar.Count < PusulaSiniri;
+    private string? PusulaSiraAdi(string ad) => PusulaListeTam ? ad : null;
+    private void StopajSiralandi(IzgaraSiralama? s) => stopajSira = s;
+
+    private IReadOnlyList<IzgaraKolonu<PusulaSatir>> PusulaKolonlari =>
+    [
+        new() { Anahtar = "no", Baslik = Dil.T.Pusula.PusulaNo, ZorunluGorunur = true, SunucuSiralamaAdi = PusulaSiraAdi("no"),
+                HucreSinif = _ => "hucre-tek-satir", Deger = p => p.PusulaNo,
+                Hucre = p => @<text><code>@p.PusulaNo</code>@if (p.IptalEdildi) {<span class="rozet rozet-kirmizi" id="@($"gp-iptal-rozet-{p.Id}")">@Dil.T.Pusula.IptalEdildiRozet</span>}</text> },
+        new() { Anahtar = "satici", Baslik = Dil.T.Pusula.Satici, SunucuSiralamaAdi = PusulaSiraAdi("satici"), HucreSinif = _ => "hucre-tek-satir",
+                Deger = p => p.SaticiAdSoyad,
+                Hucre = p => @<text><span>@p.SaticiAdSoyad</span>
+                    <span class="zo-alt-satir metin-soluk" id="@($"gp-tckn-{p.Id}")" title="@Dil.T.Pusula.Tckn"><code>@p.SaticiTckn</code></span></text> },
+        // KESIF-P3 (#64): ham ayar kodu (K22) görünmez — tek kaynak KurKaynakAdi.AyarAdi.
+        new() { Anahtar = "mal", Baslik = Dil.T.Pusula.Mal, HucreSinif = _ => "metin-kucuk hucre-tek-satir", Deger = p => p.GramAgirlik,
+                Hucre = p => @<span title="@p.AyarId" id="@($"gp-mal-{p.Id}")">@KurKaynakAdi.AyarAdi(p.AyarId) · @Bicim.BelgeSayisi(p.GramAgirlik, Dil.Locale, 2) g</span> },
+        new() { Anahtar = "brut", Baslik = Dil.T.Pusula.Brut, SunucuSiralamaAdi = PusulaSiraAdi("brut"), BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi hucre-tek-satir", Deger = p => p.BrutTutar, Hucre = p => @<text>@Para(p.BrutTutar)</text> },
+        // ORTAK-1: tutar ve oran TEK satırda; QA turu 2: tek gösterim.
+        new() { Anahtar = "stopaj", Baslik = Dil.T.Pusula.Stopaj, SunucuSiralamaAdi = PusulaSiraAdi("stopaj"), BaslikSinif = "zo-sag",
+                HucreSinif = _ => "hucre-tek-satir sayi", Deger = p => p.StopajTutar,
+                Hucre = p => @<text><span>@Para(p.StopajTutar)</span>
+                    <span class="metin-kucuk metin-soluk">%@((p.StopajOran * 100m).ToString("0.##", Kultur))</span></text> },
+        new() { Anahtar = "net", Baslik = Dil.T.Pusula.Net, ZorunluGorunur = true, SunucuSiralamaAdi = PusulaSiraAdi("net"), BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi hucre-tek-satir", Deger = p => p.NetOdenen,
+                Hucre = p => @<strong id="@($"gp-net-{p.Id}")">@Para(p.NetOdenen)</strong> },
+        // Y4-A: geri sayım YALNIZ iptal edilmiş + yerine yenisi olmayan belgede.
+        new() { Anahtar = "son-tarih", Baslik = Dil.T.Pusula.SonTarih, SunucuSiralamaAdi = PusulaSiraAdi("son-tarih"), HucreSinif = _ => "hucre-tek-satir",
+                Deger = p => (object?)p.SonGun ?? p.DuzenlemeSonTarihi,
+                Hucre = p => @<text>@if (p.SonGun is { } sg)
+                {
+                    @Gun(sg)
+                    @if (p.Gecikti == true)
+                    {
+                        <span class="rozet rozet-kirmizi" id="@($"gp-sure-gecti-{p.Id}")">@Y4.SatirSureGecti</span>
+                    }
+                    else if (p.KalanGun is { } kg)
+                    {
+                        <span class="rozet rozet-amber" id="@($"gp-kalan-{p.Id}")">@string.Format(Y4.SatirGunKaldi, kg)</span>
+                    }
+                }
+                else
+                {
+                    @Bicim.TarihTam(p.DuzenlemeSonTarihi)
+                }</text> },
+        // P-55 / P-61: satır eylemleri ortak SatirEylemleri (gp-detay-*, gp-yazdir-*).
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-yigin-eylem",
+                Hucre = p => @<SatirEylemleri Onek="gp" SatirId="@p.Id" SatirAdi="@p.PusulaNo" Eylemler="@PusulaEylemleri(p)" /> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi>> StopajKolonlari =>
+    [
+        new() { Anahtar = "donem", Baslik = Y4.StopajDonem, ZorunluGorunur = true, SunucuSiralamaAdi = "donem",
+                HucreSinif = _ => "hucre-tek-satir", Deger = d => d.Donem, Hucre = d => @<strong>@AyAdi(d.Donem)</strong> },
+        new() { Anahtar = "kesilen", Baslik = Y4.StopajKesilen, SunucuSiralamaAdi = "kesilen", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi hucre-tek-satir", Deger = d => d.KesilenTl,
+                Hucre = d => @<span id="@($"sp-kesilen-{d.Donem}")">@Bicim.Para(d.KesilenTl, "TRY")</span> },
+        new() { Anahtar = "odenen", Baslik = Y4.StopajOdenen, SunucuSiralamaAdi = "odenen", BaslikSinif = "zo-sag",
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", HucreSinif = _ => "sayi hucre-tek-satir", Deger = d => d.OdenenTl },
+        new() { Anahtar = "kalan", Baslik = Y4.StopajKalan, ZorunluGorunur = true, SunucuSiralamaAdi = "kalan", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi hucre-tek-satir", Deger = d => d.KalanTl,
+                Hucre = d => @<text><strong id="@($"sp-kalan-{d.Donem}")">@Bicim.Para(d.KalanTl, "TRY")</strong>@if (d.KalanTl < 0m) {<span class="rozet rozet-kirmizi" id="@($"sp-fazla-{d.Donem}")">@Y4.StopajFazlaOdeme</span>}</text> },
+        new() { Anahtar = "son-gun", Baslik = Y4.StopajSonGun, SunucuSiralamaAdi = "son-gun", HucreSinif = _ => "hucre-tek-satir",
+                Deger = d => d.SonGun,
+                Hucre = d => @<text>@if (d.SonGun is { } sg)
+                {
+                    <span>@Gun(sg)</span>
+                    @if (d.SonGunGecti) {<span class="rozet rozet-kirmizi">@Y4.StopajGecti</span>}
+                    @if (d.SonGunTeyit is "TEYITSIZ") {<span class="zo-alt-satir metin-kucuk metin-soluk">@Y4.StopajTeyitBekliyor</span>}
+                }
+                else
+                {
+                    <span class="metin-soluk">@Y4.StopajSonGunYok</span>
+                }</text> },
+        new() { Anahtar = "pusula", Baslik = Y4.StopajPusulaSayisi, SunucuSiralamaAdi = "pusula", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi", Deger = d => d.PusulaSayisi },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-yigin-eylem",
+                Hucre = d => @<SatirEylemleri Onek="sp" SatirId="@d.Donem" SatirAdi="@AyAdi(d.Donem)" Eylemler="@StopajEylemleri(d)" /> },
+    ];
+    private SureTakip? sure;
+    private PusulaDetay? detay;
+    private bool yukleniyor = true;
+    private string? hata;
+    private DateTime? baslangic;
+    private DateTime? bitis;
+
+    private System.Globalization.CultureInfo Kultur => new(Dil.Locale);
+    // P-36b: biçim TEK yerden — Servisler/Bicim.cs. Çıktı birebir aynı.
+    private string Para(decimal d) => Bicim.BelgeParasi(d, Dil.Locale);
+
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+    public void Dispose() => Dil.Degisti -= Yenile;
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Yukle();
+        // Y4-B: stopaj yalnız sekmesi açıkken yüklenir (derin bağlantı ?sekme=stopaj dahil).
+        if (Nav.Uri.Contains("sekme=stopaj", StringComparison.Ordinal))
+        {
+            if (OdeDonem is { Length: 7 } od && int.TryParse(od[..4], out var odYil)) stopajYil = odYil;
+            await StopajYukle();
+            // Kalanı olan dönemse çekmece açılır; kalan yoksa (ör. bu arada ödendi) tablo yeter.
+            if (stopaj?.Donemler.FirstOrDefault(d => d.Donem == OdeDonem && d.KalanTl > 0m) is { } odD)
+                await StopajOdemeAc(odD);
+        }
+        // P-55: belge ekranından dönüş — hangi pusuladan gelindiyse o açılır.
+        if (!string.IsNullOrWhiteSpace(DuzenleId)) await DuzenleAc(DuzenleId);
+        else if (!string.IsNullOrWhiteSpace(AcId)) await Detay(AcId);
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            sure = await Api.SureTakibi();
+            pusulalar = await Api.PusulalariGetir(baslangic, bitis, PusulaSiniri);
+        }
+        catch (Exception ex) { hata = ex.Message; }
+        finally { yukleniyor = false; }
+    }
+
+    // ⚠ PREFETCH YASAK — tekil uç okuma izi düşürür (KVKK md.12).
+    private async Task Detay(string id)
+    {
+        try
+        {
+            detay = await Api.PusulaGetir(id);
+            duzenlemeKipi = false;
+            // DP4 — düzenlenebilir alanlar sunucudan gelen değerle DOLDURULUR
+            // (UX-S26: oluşturma/düzenleme aynı alan kümesi, boş form açılmaz).
+            duzenlenenAdres = detay.SaticiAdres;
+            duzenlenenMalAciklamasi = detay.MalAciklamasi;
+            duzenlemeHata = null;
+        }
+        catch (Exception ex) { hata = ex.Message; }
+    }
+
+    // ── DP4 — mali kimlik DIŞI alanlarda yerinde düzeltme ────────────────────
+    private string? duzenlenenAdres, duzenlenenMalAciklamasi, duzenlemeHata;
+
+    // QA turu 5 (YÜKSEK): boş adres/mal açıklaması ile kaydediliyordu. Kural
+    // sunucuda (HurdaModulu.Guncelle) VE ekranda AYNI (UX-S31); kilitli düğme
+    // sebebini söyler (UX-S30).
+    private bool AdresBos =>
+        detay is { IptalEdildi: false } && string.IsNullOrWhiteSpace(duzenlenenAdres);
+    private bool MalBos =>
+        detay is { IptalEdildi: false } && string.IsNullOrWhiteSpace(duzenlenenMalAciklamasi);
+    private bool DuzenlemeGecerli =>
+        detay is { IptalEdildi: false } && !AdresBos && !MalBos;
+    private string? DuzenlemeKilitSebebi =>
+        detay is { IptalEdildi: true } ? Dil.T.Pusula.IptalliDuzenlenemez
+        : AdresBos ? Dil.T.Pusula.AdresZorunlu
+        : MalBos ? Dil.T.Pusula.MalAciklamasiZorunlu
+        : null;
+
+    private async Task DuzenlemeKaydet()
+    {
+        if (detay is not { IptalEdildi: false } d || kaydediliyor) return;
+        if (!DuzenlemeGecerli) { duzenlemeHata = DuzenlemeKilitSebebi; return; }
+        duzenlemeHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // ⚠ Sunucu yanıtı OKUNMADAN ATILMAZ (UX-S27): ekran sunucunun
+            //   döndürdüğü kaydı gösterir, kendi yazdığını değil.
+            detay = await Api.PusulaGuncelle(d.Id, Bos(duzenlenenAdres), Bos(duzenlenenMalAciklamasi));
+            duzenlenenAdres = detay.SaticiAdres;
+            duzenlenenMalAciklamasi = detay.MalAciklamasi;
+            basari = $"{Dil.T.Pusula.PusulaGuncellendi} ({detay.PusulaNo})";
+            basariJeton++;
+            await Yukle();
+        }
+        catch (Exception ex) { duzenlemeHata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    // ── P-55 — satırda Düzenle · belge ekranından dönüş · kilit gerekçeleri ──
+    private GiderPusulasiDuzenMetinleri P => GiderPusulasiSozlugu.Al(Dil.Dil);
+    private KesifP3Metinleri P3 => KesifP3Sozlugu.Al(Dil.Dil);
+
+    // ── P-61 — satır eylemleri TEK kaynaktan (SatirEylemleri bileşeni) ──
+    private EventCallback Cb(Func<Task> f) => EventCallback.Factory.Create(this, f);
+    private EventCallback Cb(Action f) => EventCallback.Factory.Create(this, f);
+
+    private IReadOnlyList<SatirEylemleri.Eylem> PusulaEylemleri(PusulaSatir p) => p.YenidenDuzenlenebilir
+        // Y4-A: iptal edilmiş ve yerine yenisi olmayan belgede BİRİNCİL eylem "Yeniden düzenle".
+        ? [
+            new($"gp-yeniden-{p.Id}", Y4.SatirYenidenDuzenle, Cb(() => YenidenDuzenleAc(p.Id)),
+                ariaEtiket: string.Format(Y4.SatirYenidenDuzenleEtiket, p.PusulaNo)),
+            new($"gp-detay-{p.Id}", Dil.T.Pusula.Detay, Cb(() => Detay(p.Id))),
+            new($"gp-yazdir-{p.Id}", Dil.T.Pusula.Yazdir, Cb(() => Yazdir(p.Id))),
+        ]
+        : [
+            new($"gp-detay-{p.Id}", Dil.T.Pusula.Detay, Cb(() => Detay(p.Id))),
+            new($"gp-duzenle-{p.Id}", P.Duzenle, Cb(() => DuzenleAc(p.Id)),
+                ariaEtiket: string.Format(P.DuzenleEtiket, p.PusulaNo)),
+            new($"gp-yazdir-{p.Id}", Dil.T.Pusula.Yazdir, Cb(() => Yazdir(p.Id))),
+        ];
+    // BELGE-KALAN tur 2: düzeltme yolu ekrandaki düğmenin GÖRÜNEN adını anar (madde no title'da).
+    private string DuzeltmeYolu => string.Format(P.DuzeltmeYolu, P3.PusulaIptalEtSade);
+
+    /// <summary>Çekmece "Düzenle" ile açıldıysa düzeltilebilir alanlar EN ÜSTTE çizilir.</summary>
+    private bool duzenlemeKipi;
+
+    // Belge ekranından dönüş (P-55): /gider-pusulalari?ac={id} detay,
+    // ?duzenle={id} düzenleme kipinde çekmeceyi açar. Kullanıcı eylemidir
+    // (bağlantı tıklandı) → okuma izi düşmesi doğrudur; prefetch DEĞİLDİR.
+    [SupplyParameterFromQuery(Name = "ac")] public string? AcId { get; set; }
+    [SupplyParameterFromQuery(Name = "duzenle")] public string? DuzenleId { get; set; }
+    // Y4-B § 4.5: Panel'in "Ödendi olarak kaydet" tek dokunuşu — o dönemin ödeme çekmecesi açık gelir.
+    [SupplyParameterFromQuery(Name = "ode")] public string? OdeDonem { get; set; }
+
+    private Task CekmeceKapat()
+    {
+        detay = null;
+        duzenlemeHata = null;
+        duzenlemeKipi = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task DuzenleAc(string id)
+    {
+        await Detay(id);
+        if (detay is not null) duzenlemeKipi = true;
+    }
+
+    // Y4-A: "süre geçti" yalnız iptal edilmiş + yerine yenisi olmayan belgede anlamlı
+    // (sunucunun liste satırındaki hesap — ekran kendi saatiyle hesaplamaz).
+    private bool SureGecti(PusulaDetay d) => pusulalar.Any(p => p.Id == d.Id && p.Gecikti == true);
+
+    private RenderFragment DuzenlenebilirBlok(PusulaDetay d) => @<div class="form-dikey" id="gp-duzenlenebilir">
+        @* ── DÜZENLENEBİLİR ALANLAR (DP4) — mali kimlik DIŞI ────────────
+           Sunucu PATCH /gider-pusulalari/{id} yalnız bu ikisini kabul eder. *@
+        <h3 class="metin-kucuk" id="gp-duzenlenebilir-baslik">@P.DuzenlenebilirBaslik</h3>
+        @* BELGE-KALAN tur 2: açıklama cümlesi (#gp-duzenlenebilir-aciklama) kapalı #gp-degismez ipucuna taşındı. *@
+        @if (!d.IptalEdildi)
+        {
+            @* QA turu 5 (YÜKSEK): ikisi de BOŞALTILIP kaydedilebiliyordu. VUK md.234
+               zorunlu unsuru — düzeltilebilir ama silinemez; kural sunucuda da var. *@
+            <Metin ElemanId="gp-duz-adres" Etiket="@Dil.T.Pusula.Adres" Zorunlu="true" EnFazla="@AlanSinirlari.Adres"
+                   @bind-Deger="duzenlenenAdres"
+                   Hata="@(AdresBos ? Dil.T.Pusula.AdresZorunlu : null)"
+                   HataKimligi="gp-duz-adres-hata" />
+            <Metin ElemanId="gp-duz-mal" Etiket="@Dil.T.Pusula.MalAciklamasi" Zorunlu="true" EnFazla="@AlanSinirlari.PusulaMal"
+                   @bind-Deger="duzenlenenMalAciklamasi"
+                   Hata="@(MalBos ? Dil.T.Pusula.MalAciklamasiZorunlu : null)"
+                   HataKimligi="gp-duz-mal-hata" />
+            <HataBandi Mesaj="@duzenlemeHata" Id="gp-duzenleme-hata" />
+        }
+        else
+        {
+            <dl class="tanim-listesi">
+                @if (!string.IsNullOrEmpty(d.SaticiAdres)) { <dt>@Dil.T.Pusula.Adres</dt><dd>@d.SaticiAdres</dd> }
+                @if (!string.IsNullOrEmpty(d.MalAciklamasi)) { <dt>@Dil.T.Pusula.MalAciklamasi</dt><dd>@d.MalAciklamasi</dd> }
+            </dl>
+        }
+    </div>;
+
+    private static string? Bos(string? m) => string.IsNullOrWhiteSpace(m) ? null : m.Trim();
+
+    private void Yazdir(string id) => Nav.NavigateTo($"/gider-pusulalari/{id}/belge");
+
+    // ── İPTAL (VUK md.234 düzeltme yolu) — PAKET S-3b ────────────────────────
+    private PusulaDetay? iptalPusula;
+    private string iptalGerekce = "";
+    private string? iptalHata;
+    private bool kaydediliyor;
+    private string? basari;
+    private int basariJeton;
+
+    private void IptalIste(PusulaDetay d)
+    {
+        if (d.IptalEdildi) return;   // kilitli düğme sessizce iş yapmaz
+        iptalHata = null;
+        iptalGerekce = "";
+        iptalPusula = d;
+    }
+
+    private void IptalKapat() { iptalPusula = null; iptalGerekce = ""; }
+
+    private async Task IptalUygula()
+    {
+        if (iptalPusula is not { } d) return;
+        iptalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // UX-S27: sunucunun döndürdüğü sonuç (doğru düzeltme yolu) banda yazılır.
+            var sonuc = await Api.PusulaIptal(d.Id, iptalGerekce.Trim());
+            iptalPusula = null;
+            basari = $"{Dil.T.Pusula.IptalYapildi} ({sonuc.PusulaNo})";
+            basariJeton++;
+            detay = await Api.PusulaGetir(d.Id);
+            await Yukle();
+        }
+        catch (ApiHata ex) { iptalHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        catch (Exception ex) { iptalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+    // ═════════════════════════════════════════════════════════════════════════
+    // PAKET YASAL-4
+    // ═════════════════════════════════════════════════════════════════════════
+    private Kuyumcu.Core.I18n.Yasal4Metinleri Y4 => Kuyumcu.Core.I18n.Yasal4Sozlugu.Al(Dil.Dil);
+    private static string Gun(DateOnly g) => Bicim.Gun(g);   // TOPLU-1 TARIH-TEK: tek biçim kaynağı
+
+    private IReadOnlyList<SekmeTanimi> GpSekmeleri =>
+    [
+        new("pusulalar", Y4.SekmePusulalar),
+        new("stopaj", Y4.SekmeStopaj,
+            stopajGecikmis > 0 ? stopajGecikmis.ToString() : null, stopajGecikmis > 0 ? "kirmizi" : null),
+    ];
+
+    // ── Y4-A: yeniden düzenle ────────────────────────────────────────────────
+    private PusulaDetay? ydPusula;
+    private string? ydAd, ydTckn, ydAdres, ydMal, ydHata, ydBasari;
+    private bool ydKaydediliyor, ydDenendi;
+    private int ydBasariJeton;
+
+    private static bool TcknBicimi(string? t) => t is { Length: 11 } && t.All(char.IsAsciiDigit);
+    private bool YdGecerli => !string.IsNullOrWhiteSpace(ydAd) && TcknBicimi(ydTckn?.Trim()) && YdTcknAlgoritmaHatasi is null && !string.IsNullOrWhiteSpace(ydAdres);
+    /// <summary>PAKET TCKN-DOGRULAMA: 11 hane yazılmış ama TC kimlik no doğrulama kuralından geçmiyor → anında alan altı + kilit sebebi.</summary>
+    private string? YdTcknAlgoritmaHatasi =>
+        TcknBicimi(ydTckn?.Trim()) && !KimlikNoDogrulayici.TcknGecerli(ydTckn!.Trim()) ? KimlikNoSozlugu.Al(Dil.Dil).TcknGecersiz : null;
+
+    // Kullanıcı eylemi: tekil GET (tam TCKN, okuma izi düşer — prefetch değildir).
+    private async Task YenidenDuzenleAc(string id)
+    {
+        ydHata = null; ydDenendi = false;
+        try
+        {
+            var d = await Api.PusulaGetir(id);
+            ydPusula = d;
+            // UX-S21: bilinen değerler doldurulur; kullanıcı yalnız yanlışı düzeltir.
+            ydAd = d.SaticiAdSoyad; ydTckn = d.SaticiTckn; ydAdres = d.SaticiAdres; ydMal = d.MalAciklamasi;
+        }
+        catch (Exception ex) { hata = ex.Message; }
+    }
+
+    private Task YenidenDuzenleKapat() { ydPusula = null; ydHata = null; ydDenendi = false; return Task.CompletedTask; }
+
+    private async Task YenidenDuzenleKaydet()
+    {
+        if (ydPusula is not { } eski || ydKaydediliyor) return;
+        ydDenendi = true;
+        if (!YdGecerli) { ydHata = Y4.YdKilit; return; }
+        ydHata = null; ydKaydediliyor = true;
+        try
+        {
+            // UX-S27: sunucunun döndürdüğü YENİ belge numarası banda yazılır.
+            var yeni = await Api.PusulaYenidenDuzenle(eski.Id, ydAd!.Trim(), ydTckn!.Trim(), ydAdres!.Trim(),
+                string.IsNullOrWhiteSpace(ydMal) ? null : ydMal.Trim());
+            ydPusula = null;
+            ydBasari = string.Format(Y4.YdBasari, yeni.PusulaNo, eski.PusulaNo);
+            ydBasariJeton++;
+            await Yukle();
+        }
+        catch (ApiHata ex) { ydHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        catch (Exception ex) { ydHata = ex.Message; }
+        finally { ydKaydediliyor = false; }
+    }
+
+    // ── Y4-B: stopaj sekmesi ─────────────────────────────────────────────────
+    private Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemleriYaniti? stopaj;
+    private string? stopajHata, stopajBasari;
+    private int stopajBasariJeton, stopajGecikmis;
+    private int stopajYil = DateTime.Today.Year;
+    private bool stopajYukleniyor;
+    private List<Kuyumcu.Contracts.Sayfalar.Kasalar.KasaVeri> kasalar = [];
+
+    private async Task SekmeDegisti(string kod)
+    {
+        if (kod == "stopaj" && stopaj is null && !stopajYukleniyor) await StopajYukle();
+    }
+
+    private async Task StopajYukle()
+    {
+        stopajYukleniyor = true; stopajHata = null;
+        try
+        {
+            var y = await Api.StopajDonemleri(stopajYil);
+            stopaj = y with { Donemler = y.Donemler ?? [] };
+            stopajGecikmis = stopaj.Donemler.Count(d => d.SonGunGecti);
+        }
+        // UX-S28: hata "kayıt yok"a çevrilmez — ayrı bant.
+        catch (Exception ex) { stopajHata = string.Format(Y4.StopajHata, ex.Message); }
+        finally { stopajYukleniyor = false; }
+    }
+
+    private string AyAdi(string donem)
+    {
+        if (!DateTime.TryParseExact(donem + "-01", "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var t)) return donem;
+        return Bicim.GunBicim(t, "MMMM yyyy", Kultur);
+    }
+
+    private IReadOnlyList<SecenekOgesi> YilSecenekleri =>
+        [.. Enumerable.Range(DateTime.Today.Year - 4, 5).Reverse().Select(y => new SecenekOgesi(y.ToString(), y.ToString()))];
+
+    private async Task YilDegisti(string? v)
+    {
+        if (int.TryParse(v, out var y)) { stopajYil = y; await StopajYukle(); }
+    }
+
+    // PAKET GOC-A: StopajDonemSatiri → StopajKolonlari (ortak ızgara; hücre içerikleri ve id'ler AYNEN taşındı).
+
+    private IReadOnlyList<SatirEylemleri.Eylem> StopajEylemleri(Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi d)
+    {
+        var liste = new List<SatirEylemleri.Eylem>();
+        if (d.KalanTl > 0m)
+            liste.Add(new($"sp-ode-{d.Donem}", Y4.StopajOde, Cb(() => StopajOdemeAc(d)),
+                ariaEtiket: string.Format(Y4.StopajOdeEtiket, AyAdi(d.Donem))));
+        if (d.PusulaSayisi > 0)
+            liste.Add(new($"sp-liste-{d.Donem}", Y4.StopajListe, Cb(() => StopajListeIndir(d.Donem)),
+                ariaEtiket: string.Format(Y4.StopajListeEtiket, AyAdi(d.Donem))));
+        return liste;
+    }
+
+    private RenderFragment StopajPaneli => @<div class="dikey-bosluk" id="sp-panel">
+        <p class="metin-soluk metin-kucuk" id="sp-aciklama">@Y4.StopajAciklama</p>
+        <div class="form-grid-3">
+            <Secici ElemanId="sp-yil" Etiket="@Y4.StopajYil" Secenekler="@YilSecenekleri"
+                    Deger="@stopajYil.ToString()" DegerChanged="YilDegisti" />
+        </div>
+        <HataBandi Mesaj="@stopajHata" Id="sp-hata" />
+        <BasariBandi Mesaj="@stopajBasari" Jeton="@stopajBasariJeton" SureliMs="8000" Id="sp-basari" />
+        @if (stopajYukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (stopaj is { } sj && stopajHata is null)
+        {
+            // Fazla ödeme (eksi kalan) da yapılacak iştir (mahsup/iade) → açık tabloda kalır.
+            var acik = sj.Donemler.Where(d => d.KalanTl != 0m).ToList();
+            var odenmis = sj.Donemler.Where(d => d.KalanTl == 0m).ToList();
+            if (sj.Donemler.Count == 0)
+            {
+                <BosDurum Mesaj="@Y4.StopajBos" />
+            }
+            @if (acik.Count > 0)
+            {
+                <div class="kart">
+                    @* PAKET GOC-A — ORTAK IZGARA (grid:gider-pusulalari:sp-donem; tablo kimliği sp-tablo korunur). *@
+                    <Izgara T="Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi" Ekran="gider-pusulalari" GridId="sp-donem" Zo="golge"
+                            KimlikOneki="sp-donem-acik" TabloId="sp-tablo" Kolonlar="@StopajKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(acik, stopajSira, StopajKolonlari)"
+                            SatirId="@(d => $"sp-satir-{d.Donem}")" SatirSinif="@(d => d.SonGunGecti ? "satir-kirmizi" : null)"
+                            TabloSinif="tablo-sik q10-yigin zo-yigin-dar" Baslik="@Y4.StopajDonem" YapiskanIlkSutun="false"
+                            SiralamaDegisti="@StopajSiralandi" GecerliSiralama="@stopajSira" TercihIstemcisi="@GpTercih" />
+                </div>
+            }
+            @if (odenmis.Count > 0)
+            {
+                @* Geçmiş kayıtlar KAPALI akordeon (kurucu kuralı). *@
+                <Katlanir Id="sp-odenmis" Baslik="@Y4.StopajGecmis" Sayi="@odenmis.Count">
+                    <Izgara T="Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi" Ekran="gider-pusulalari" GridId="sp-donem" Zo="golge"
+                            KimlikOneki="sp-donem-odenmis" TabloId="sp-tablo-odenmis" Kolonlar="@StopajKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(odenmis, stopajSira, StopajKolonlari)"
+                            SatirId="@(d => $"sp-satir-{d.Donem}")" SatirSinif="@(d => d.SonGunGecti ? "satir-kirmizi" : null)"
+                            TabloSinif="tablo-sik q10-yigin zo-yigin-dar" Baslik="@Y4.StopajGecmis" YapiskanIlkSutun="false"
+                            SiralamaDegisti="@StopajSiralandi" GecerliSiralama="@stopajSira" TercihIstemcisi="@GpTercih" />
+                </Katlanir>
+            }
+            @if (sj.Donemler.Any(d => d.Odemeler.Count > 0))
+            {
+                <Katlanir Id="sp-odemeler" Baslik="@Y4.StopajOdemeler" Sayi="@sj.Donemler.Sum(d => d.Odemeler.Count)">
+                    <ul class="liste-sade" id="sp-odeme-listesi">
+                        @foreach (var o in sj.Donemler.SelectMany(d => d.Odemeler))
+                        {
+                            <li class="satir-arasi" id="@($"sp-odeme-{o.Id}")">
+                                <span>@AyAdi(o.Donem) · @Bicim.Para(o.TutarTl, "TRY") · @Bicim.TarihTam(o.OdemeTarihi) · @o.KasaAdi</span>
+                                @if (o.GeriAlindi)
+                                {
+                                    <span class="rozet" id="@($"sp-geri-alindi-{o.Id}")">@Y4.StopajGeriAlindi</span>
+                                }
+                                else
+                                {
+                                    <button class="dugme dugme-ikincil dugme-kucuk zo-ikincil-tehlike" id="@($"sp-geri-al-{o.Id}")"
+                                            @onclick="() => GeriAlIste(o)">@Y4.StopajGeriAl</button>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <DegismezIpucu Varlik="StopajOdemesi" Gerekce="@Y4.StopajOdemeDegismez" AlternatifYol="@Y4.StopajOdemeDegismezYol" />
+                </Katlanir>
+            }
+        }
+    </div>;
+
+    // PAKET GOC-A: StopajTabloBasligi → ortak ızgara başlığı (StopajKolonlari).
+
+    // ── Y4-B: ödeme çekmecesi ────────────────────────────────────────────────
+    private Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi? odDonem;
+    private string? odKasaId, odFisNo, odHata;
+    private decimal? odTutar;
+    private bool odKaydediliyor, odDenendi;
+
+    private List<Kuyumcu.Contracts.Sayfalar.Kasalar.KasaVeri> TlKasalar =>
+        [.. kasalar.Where(k => k.Aktif && k.ParaBirimi == "TRY")];
+    private IReadOnlyList<SecenekOgesi> KasaSecenekleri =>
+        [.. TlKasalar.Select(k => new SecenekOgesi(k.Id, $"{k.Ad} · {Bicim.Para(k.Bakiye, k.ParaBirimi)}"))];
+    private string? SeciliKasa => TlKasalar.Count == 1 ? TlKasalar[0].Id : odKasaId;
+    private bool TutarGecerli => odTutar is > 0m && odDonem is { } d && odTutar <= d.KalanTl;
+    private bool OdGecerli => !string.IsNullOrEmpty(SeciliKasa) && TutarGecerli;
+    private string? OdKilitSebebi =>
+        TlKasalar.Count == 0 ? Y4.OdKasaYok
+        : string.IsNullOrEmpty(SeciliKasa) ? Y4.OdKasaSec
+        : !TutarGecerli ? Y4.OdTutarHata
+        : null;
+
+    private async Task StopajOdemeAc(Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi d)
+    {
+        odHata = null; odDenendi = false; odFisNo = null; odKasaId = null;
+        odTutar = d.KalanTl;   // UX-S21: sistemin bildiği kalan doldurulur
+        try { kasalar = await Istemci.GetAsync<List<Kuyumcu.Contracts.Sayfalar.Kasalar.KasaVeri>>("/kasalar"); }
+        catch (Exception ex) { odHata = ex.Message; }
+        odDonem = d;
+    }
+
+    private Task StopajOdemeKapat() { odDonem = null; odHata = null; return Task.CompletedTask; }
+
+    private async Task StopajOdemeKaydet()
+    {
+        if (odDonem is not { } d || odKaydediliyor) return;
+        odDenendi = true;
+        if (!OdGecerli) { odHata = OdKilitSebebi; return; }
+        odHata = null; odKaydediliyor = true;
+        try
+        {
+            var r = await Api.StopajOde(d.Donem, SeciliKasa!, odTutar, string.IsNullOrWhiteSpace(odFisNo) ? null : odFisNo.Trim());
+            odDonem = null;
+            stopajBasari = string.Format(Y4.OdBasari, AyAdi(r.Donem), Bicim.Para(r.TutarTl, "TRY"), Bicim.Para(r.KalanTl, "TRY"));
+            stopajBasariJeton++;
+            await StopajYukle();
+        }
+        catch (ApiHata ex) { odHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        catch (Exception ex) { odHata = ex.Message; }
+        finally { odKaydediliyor = false; }
+    }
+
+    private async Task StopajListeIndir(string donem)
+    {
+        stopajHata = null;
+        try
+        {
+            var (veri, ad) = await Api.StopajListesi(donem);
+            await Js.InvokeVoidAsync("kuyumcuIndir", ad ?? $"stopaj-{donem}.csv", Convert.ToBase64String(veri), "text/csv");
+            stopajBasari = string.Format(Y4.StopajListeIndirildi, ad ?? $"stopaj-{donem}.csv");
+            stopajBasariJeton++;
+        }
+        catch (Exception ex) { stopajHata = string.Format(Y4.StopajHata, ex.Message); }
+    }
+
+    // ── Y4-B: ödemeyi geri al (kasa stornosu) ────────────────────────────────
+    private Kuyumcu.Contracts.Sayfalar.Stopaj.StopajOdemeSatiri? geriAlOdeme;
+    private string geriAlGerekce = "";
+    private string? geriAlHata;
+
+    private void GeriAlIste(Kuyumcu.Contracts.Sayfalar.Stopaj.StopajOdemeSatiri o) { geriAlHata = null; geriAlGerekce = ""; geriAlOdeme = o; }
+    private void GeriAlKapat() { geriAlOdeme = null; geriAlGerekce = ""; }
+
+    private async Task GeriAlUygula()
+    {
+        if (geriAlOdeme is not { } o) return;
+        geriAlHata = null; odKaydediliyor = true;
+        try
+        {
+            await Api.StopajGeriAl(o.Id, geriAlGerekce.Trim());
+            geriAlOdeme = null;
+            stopajBasari = string.Format(Y4.StopajGeriAlBasari, AyAdi(o.Donem));
+            stopajBasariJeton++;
+            await StopajYukle();
+        }
+        catch (ApiHata ex) { geriAlHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        catch (Exception ex) { geriAlHata = ex.Message; }
+        finally { odKaydediliyor = false; }
+    }
+}

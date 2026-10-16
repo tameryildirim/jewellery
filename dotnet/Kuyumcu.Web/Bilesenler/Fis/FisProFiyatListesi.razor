@@ -1,0 +1,34 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET T-S2 — tuval Profesyonel.dc.html alan satırı: "Fiyat listesi" kutusu ═══
+   UX-S21/S22: fiyatı veren listeyi SUNUCU çözer (müşteriye atanmış liste, yoksa
+   varsayılan — FiyatServisi.ListeCoz). Ekran onu SALT OKUNUR yazar ve nereden
+   geldiğini rozetle söyler; seçici açılmaz (fişte tek cevap). Liste
+   Fiyatlandırma ekranında değişir (title). Okunamadıysa sebep yazılır (UX-S28).
+   ⚠ Bileşen İSTEK ATMAZ: liste adını sayfa verir (GET /fiyat/listeler + cari listesi). *@
+<div class="alan fis-salt-alan" id="islem-fiyat-listesi-sar" title="@P.FiyatListesiIpucu">
+    <span class="alan-etiket" id="islem-fiyat-listesi-etiket">@P.AlanFiyatListesi</span>
+    <output class="fis-salt-kutu" id="islem-fiyat-listesi" aria-labelledby="islem-fiyat-listesi-etiket">
+        <span class="fis-pro-liste-ad">@(Ad ?? (Hata is null ? P.FiyatListesiYok : "—"))</span>
+        @if (Ad is not null)
+        {
+            <span class="rozet rozet-gri fis-pro-liste-kaynak" id="islem-fiyat-listesi-kaynak">@(Caridan ? P.FiyatListesiCariden : P.FiyatListesiVarsayilan)</span>
+        }
+    </output>
+    @if (Hata is not null)
+    {
+        <span class="metin-kucuk metin-amber" id="islem-fiyat-listesi-hata" role="alert">@string.Format(P.FiyatListesiOkunamadi, Hata)</span>
+    }
+</div>
+
+@code {
+    /// <summary>Çözülen listenin adı; null = liste yok ya da okunamadı.</summary>
+    [Parameter] public string? Ad { get; set; }
+    /// <summary>Liste müşteriye atanmış olandan mı geldi (değilse varsayılan).</summary>
+    [Parameter] public bool Caridan { get; set; }
+    /// <summary>Liste okunamadıysa sunucu mesajı.</summary>
+    [Parameter] public string? Hata { get; set; }
+
+    private SatisProMetinleri P => SatisProSozlugu.Al(Dil.Dil);
+}

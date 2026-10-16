@@ -1,0 +1,270 @@
+@using Kuyumcu.Contracts.Arama
+@inject DilServisi Dil
+@inject ApiIstemci Api
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-15 — ŞUBE SEÇİCİ (kimlik Y-29)
+
+   NE YAPAR: kabuğun ŞUBE KAPSAMINI tek yerden söyler ve — yetkisi varsa —
+   daraltır. ŞUBE-KAPSAM-B: daraltma `KabukServisi.GorunumSubesi`'ne yazılır ve
+   SUNUCUYA tercih olarak kaydedilir (yenilemede/başka bilgisayarda kalır);
+   arama bileşenleri ve şubeli ekranlar (SubeliSorgu) aynı değeri okur. SON SÖZ SUNUCUNUNDUR:
+   şubeye kilitli bir kullanıcı başka şube isterse uç 403 döner (P-04 bağlamı),
+   sessizce kendi şubesine düşürülmez.
+
+   ⚠ UX-S21: şube OTURUMDAN gelir, kullanıcıdan istenmez. Nereden geldiği
+     rozetle söylenir.
+   ⚠ UX-S22: TEK seçenek varsa seçici GÖSTERİLMEZ — değer salt okunur satır
+     olarak yazılır.
+   ⚠ UX-S28: liste çekilemezse "şube yok" denmez; hata bandı görünür ve
+     bilinen bağlam (oturumun şubesi) yazılı kalır.
+   ⚠ BU BİR YETKİ DEĞİLDİR: kapsamın tabanı P-04 global sorgu filtresidir.
+   ═══════════════════════════════════════════════════════════════════════ *@
+
+@* ── PAKET S1-g — İKİ YÜZEY (kurucu bulgusu: "Şube kapsamı" iki kez yazıyordu) ──
+   ÖNCE: üst barda küçük "Şube kapsamı" etiketi + seçicinin KENDİ etiketi
+   ("Şube kapsamı") → aynı söz iki kez; tek şubede bile üst barda salt
+   okunur satır + rozet. TUVAL (Profesyonel.dc.html): üst barda şube YOK,
+   şube kullanıcı kartında ("Sahip · Merkez şube").
+   ŞİMDİ:
+   • KartIci=false (üst bar): YALNIZ seçim gerçekten varken (çoklu şube +
+     tüm-şube yetkili rol) seçici çizilir, TEK etiketle (Secici'nin kendi
+     etiketi). Tek seçenekte hiçbir şey çizilmez (UX-S22). Hata bandı yalnız
+     burada çizilir (id tekrarı olmasın).
+   • KartIci=true (kullanıcı kartı, PRO): seçici YOKKEN şube adı salt okunur
+     " · <şube>" olarak yazılır (#ust-sube-sabit — id DEĞİŞMEDİ). *@
+@if (KartIci)
+{
+    @* Tahmin YOK (Anayasa md.1): şube adı ancak BİLİNİYORSA yazılır — liste
+       okunamadıysa ya da oturumun şubesi listede yoksa kart yalnız rolü yazar. *@
+    @if (yuklendi && !SeciciGorunur && KartMetni is { Length: > 0 } kartMetni)
+    {
+        <span class="sube-sabit" id="ust-sube-sabit"
+              title="@Dil.T.Kabuk.SubeOturumdan">@(MenuAdlari.Icin(Dil.Dil).KartAyraci + kartMetni)</span>
+    }
+    else if (SeciciGorunur && GorunumKartMetni is { Length: > 0 } gorunum)
+    {
+        @* TOPLU-4 (ŞUBE-KAPSAM-B t2 DÜŞÜK): çok şubeli tüm-şube yetkili rolde kart şubeyi HİÇ yazmıyordu
+           (seçici menüde). Kart artık BAKILAN şubeyi (ya da "Tüm şubeler") salt okunur yazar; seçim
+           yine menüdeki seçicidedir. Ad bilinmiyorsa (liste okunamadı) yazılmaz — tahmin yok. *@
+        <span class="sube-sabit" id="ust-sube-gorunum"
+              title="@Toplu4Sozlugu.Al(Dil.Dil).KartGorunumIpucu">@(MenuAdlari.Icin(Dil.Dil).KartAyraci + gorunum)</span>
+    }
+}
+else if (hata is not null || kayitHata is not null || TercihHata is not null || SeciciGorunur)
+{
+<div class="sube-secici" id="ust-sube-secici">
+    @if (hata is not null)
+    {
+        <HataBandi Mesaj="@hata" Id="ust-sube-hata" />
+    }
+    @* ŞUBE-KAPSAM-B K-9: seçim sunucuya yazılamadıysa seçici ESKİ değere döner
+       ve sebep burada yazar (görünen = kaydedilen). *@
+    @if (kayitHata is not null)
+    {
+        <HataBandi Mesaj="@(string.Format(SubeKapsamBSozlugu.Al(Dil.Dil).KayitHatasi, kayitHata))" Id="ust-sube-kayit-hata" />
+    }
+    @* Tercih okunamadı: seçici GİZLİ kalır (sunucu "tüm şube" demeden seçim vaat
+       edilmez) ve sebep görünür (UX-S28). *@
+    @if (TercihHata is not null)
+    {
+        <HataBandi Mesaj="@TercihHata" Id="ust-sube-tercih-hata" />
+    }
+
+    @if (SeciciGorunur)
+    {
+        @* P-36 göç dalgası 0 (pilot): ham <select> → ortak <Secici>.
+           id BİREBİR korundu (ust-sube-secim) — mevcut kimlikler değişmez. *@
+        @* Tur 3 (doğrulayıcı ORTA): etiket sade soru ("Hangi şube?"); "Tüm şubeler"
+           BOŞ seçenek değil GERÇEK seçenektir (değer TUMU) — boş seçenek Secici'de
+           gri yer-tutucu çiziliyor, "seçim yapılmamış" izlenimi veriyordu. *@
+        <Secici ElemanId="ust-sube-secim" Etiket="@SKB.HangiSube"
+                Secenekler="@SubeSecenekleri"
+                Deger="@SecilenSube"
+                DegerChanged="@SubeSecildi" />
+    }
+</div>
+}
+
+@code {
+    private static KabukServisi Kabuk => KabukServisi.Ortak;
+
+    /// <summary>
+    /// S1-g: true = kullanıcı kartındaki salt okunur şube adı; false = üst
+    /// bardaki seçici (yalnız gerçek seçim varken çizilir).
+    /// </summary>
+    [Parameter] public bool KartIci { get; set; }
+
+    /// <summary>
+    /// PAKET T-K2 — seçici üst bardan kullanıcı kartının menüsüne TAŞINDI.
+    /// Menü kapalıyken hata bandı görünmez kalırdı (UX-S28 ihlali); liste
+    /// okunamayınca bu geri çağrı true, okununca false bildirir ve kart menüsü
+    /// hata varken kendiliğinden açık durur.
+    /// </summary>
+    [Parameter] public EventCallback<bool> HataDegisti { get; set; }
+
+    /// <summary>
+    /// Şube listesi — sunucudan; ULID ekrana basılmaz, ad basılır.
+    /// ⚠ Tip TEK KAYNAKTAN: <c>Kuyumcu.Core.Sozlesmeler.SubeOzeti</c> zaten
+    ///   vardır (Id/Ad/Aktif) ve yeniden TANIMLANMAZ (PLAN § 1 md.9,
+    ///   denetim.sh CONTRACTS_DISI_MODEL).
+    /// </summary>
+    private List<Kuyumcu.Core.Sozlesmeler.SubeOzeti> subeler = [];
+    private string? hata;
+    private bool yuklendi;
+
+    /// <summary>
+    /// Seçici yalnız (a) TÜM ŞUBELER ayrıcalığı olan rolde ve (b) birden çok
+    /// aktif şube varken çizilir. Aksi hâlde soru anlamsızdır (UX-S22).
+    /// ⚠ ŞUBE-KAPSAM-B (§ 4.3.5): istemcideki rol listesi kopyası KALDIRILDI —
+    ///   "tüm şubeler" yetkisi sunucunun TEK kaynağından (SubeYetkisi) gelir:
+    ///   <c>GET /tercihler/benim → gorunumSubesi.tumSubeler</c>. Okunamazsa
+    ///   seçici GİZLİ kalır (tutucu taraf — sunucunun reddedeceği vaat edilmez).
+    /// </summary>
+    private bool TumSubeler => Kabuk.GorunumIcin(Oturum)?.TumSubeler == true;
+
+    /// <summary>Tercih okunamadıysa sebep (UX-S28) — seçici gizli, bant görünür.</summary>
+    private string? TercihHata => KartIci ? null : Kabuk.GorunumIcin(Oturum)?.Hata;
+
+    /// <summary>Son seçimin sunucuya yazılamama sebebi (K-9).</summary>
+    private string? kayitHata;
+
+    private bool SeciciGorunur => yuklendi && !yetkiYok && TumSubeler && subeler.Count > 1;
+
+    // S1-g: eski `SabitMetin` (üst barda salt okunur satır + rozet) KALDIRILDI;
+    // yerini kullanıcı kartındaki KartMetni aldı. Eski metin şube listesi
+    // okunamadığında "Tüm şubeler"/"Tek şube" TAHMİN ediyordu.
+
+    /// <summary>
+    /// S1-g — kullanıcı kartındaki şube adı; BİLİNMİYORSA null (tahmin yok).
+    /// Tek şube → o şubenin adı; oturumun şubesi listede → onun adı; tüm-şube
+    /// yetkili rol ve birden çok şube (seçici üst barda) → "Tüm şubeler".
+    /// </summary>
+    private string? KartMetni
+    {
+        get
+        {
+            if (hata is not null || yetkiYok) return null;
+            if (subeler.Count == 1) return subeler[0].Ad;
+            var kendi = subeler.FirstOrDefault(s => s.Id == Oturum.Kullanici?.SubeId)?.Ad;
+            if (kendi is not null) return kendi;
+            return TumSubeler && subeler.Count > 1 ? Dil.T.Kabuk.SubeTumu : null;
+        }
+    }
+
+    /// <summary>
+    /// TOPLU-4 — çok şubeli görünümde kartta yazan ad: seçili görünüm şubesi ya da "Tüm şubeler".
+    /// Seçili kimlik listede yoksa null (tahmin yok).
+    /// </summary>
+    private string? GorunumKartMetni =>
+        SecilenSube == KabukServisi.TumSubelerDegeri
+            ? Dil.T.Kabuk.SubeTumu
+            : subeler.FirstOrDefault(s => s.Id == SecilenSube)?.Ad;
+
+    /// <summary>P-36: ortak Secici'nin veri sözleşmesi — ULID Deger'de kalır, ad görünür.</summary>
+    private IReadOnlyList<SecenekOgesi> SubeSecenekleri =>
+        [new SecenekOgesi(KabukServisi.TumSubelerDegeri, Dil.T.Kabuk.SubeTumu),
+         .. subeler.Select(s => new SecenekOgesi(s.Id, s.Ad))];
+
+    private SubeKapsamBMetinleri SKB => SubeKapsamBSozlugu.Al(Dil.Dil);
+
+    /// <summary>Seçili değer: şube ULID'i ya da TUMU (tüm şubeler — gerçek seçenek).</summary>
+    private string SecilenSube => Kabuk.GorunumSubesiIcin(Oturum) ?? KabukServisi.TumSubelerDegeri;
+
+    /// <summary>
+    /// Seçim → sunucuya tercih yazımı. Başarısızsa KabukServisi eski değere
+    /// döner; burada yalnız sebep banda yazılır ve kart menüsü açık tutulur.
+    /// </summary>
+    private async Task SubeSecildi(string? v)
+    {
+        // TUMU = tüm şubeler (KabukServisi null bekler; sunucuya yine TUMU yazılır).
+        if (v == KabukServisi.TumSubelerDegeri) v = null;
+        kayitHata = await Kabuk.GorunumSubesiAtaAsync(Api, Oturum, v);
+        if (HataDegisti.HasDelegate) await HataDegisti.InvokeAsync(hata is not null || kayitHata is not null);
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += OturumDegisti;
+        Kabuk.Degisti += Yenile;
+        // ŞUBE-KAPSAM-B: görünüm durumu (tercih okundu, seçim/geri alma) — yalnız BU oturum.
+        Kabuk.GorunumDurumuDegisti += GorunumDurumuDegisti;
+        // Tercih okuması (oturum başına bir kez, uçuştaki okuma paylaşılır) şube
+        // listesiyle PARALEL başlar; sayfalar ilk isteklerinden önce onu bekler.
+        var tercih = Kabuk.GorunumHazirla(Api, Oturum);
+        await Yukle();
+        await tercih;
+        TercihHatasiBildir();
+    }
+
+    /// <summary>Kullanıcı sonradan geldiyse (sayfa yenileme) tercih o an okunur.</summary>
+    private void OturumDegisti()
+    {
+        var tercih = Kabuk.GorunumHazirla(Api, Oturum);
+        if (yuklendi) Kabuk.SubeListesiAta(Oturum, subeler);
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await tercih;
+            if (yuklendi) Kabuk.SubeListesiAta(Oturum, subeler);
+            TercihHatasiBildir();
+            StateHasChanged();
+        });
+    }
+
+    private void TercihHatasiBildir()
+    {
+        if (TercihHata is not null && HataDegisti.HasDelegate) _ = HataDegisti.InvokeAsync(true);
+    }
+
+    /// <summary>Şube listesi okunamadı ve sebebi YETKİ — bant basılmaz, kapsam yazılı kalır.</summary>
+    private bool yetkiYok;
+
+    private async Task Yukle()
+    {
+        // ⚠ P-11 sözleşmesi: catch İÇİNDE veri DÜŞÜRÜLMEZ. Durum try'dan ÖNCE
+        //   sıfırlanır; hata hâlinde son bilinen liste OLDUĞU GİBİ kalır ve
+        //   sebep ayrı bantta görünür (UX-S28 / Anayasa md.1).
+        hata = null;
+        yetkiYok = false;
+        try
+        {
+            var gelen = await Api.GetAsync<List<Kuyumcu.Core.Sozlesmeler.SubeOzeti>>("/subeler");
+            subeler = gelen.Where(s => s.Aktif).ToList();
+            // Rozet şube ADINI buradan okur (tek liste — ikinci /subeler çekimi yok).
+            Kabuk.SubeListesiAta(Oturum, subeler);
+        }
+        catch (ApiHata ex) when (ex.StatusCode is 401 or 403)
+        {
+            // Yetki yoksa kapsam yine bellidir (oturumun şubesi); bant basılmaz.
+            yetkiYok = true;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata "şube yok"a çevrilmez.
+            hata = ex.Message;
+        }
+        yuklendi = true;
+        if (HataDegisti.HasDelegate) await HataDegisti.InvokeAsync(hata is not null);
+        StateHasChanged();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    private void GorunumDurumuDegisti(object sahip)
+    {
+        if (ReferenceEquals(sahip, Oturum)) InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= OturumDegisti;
+        Kabuk.Degisti -= Yenile;
+        Kabuk.GorunumDurumuDegisti -= GorunumDurumuDegisti;
+    }
+}

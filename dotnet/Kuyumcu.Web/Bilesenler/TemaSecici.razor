@@ -1,0 +1,49 @@
+@using Kuyumcu.Contracts.Bilesenler.TemaSecici
+@inject TemaServisi Tema
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Sistem / Aydınlık / Karanlık üçlüsü — DilSecici.razor'un pill deseni.
+   id sözleşmesi: #tema-sistem · #tema-aydinlik · #tema-karanlik (UX-S4).
+   Renk tek başına anlam taşımaz (UX-S7): seçili düğme hem dolgu hem
+   aria-pressed ile bildirilir. *@
+
+<div class="sekme-grubu" role="group" aria-label="@Dil.T.Tema.Baslik">
+    @foreach (var secenek in Secenekler)
+    {
+        <button type="button"
+                id="tema-@secenek.Kod"
+                class="sekme @(Tema.Mod == secenek.Kod ? "secili" : null)"
+                aria-pressed="@(Tema.Mod == secenek.Kod ? "true" : "false")"
+                @onclick="() => Sec(secenek.Kod)">
+            <Ikon Ad="@secenek.Ikon" /> @secenek.Ad
+        </button>
+    }
+</div>
+
+@code {
+
+    private List<TemaSecenegi> Secenekler =>
+    [
+        new(TemaServisi.Sistem, Dil.T.Tema.Sistem, Ikonlar.TemaSistem),
+        new(TemaServisi.Aydinlik, Dil.T.Tema.Aydinlik, Ikonlar.TemaAydinlik),
+        new(TemaServisi.Karanlik, Dil.T.Tema.Karanlik, Ikonlar.TemaKaranlik),
+    ];
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot.
+    private Task Sec(string kod) => Tema.DegistirAsync(kod);
+
+    protected override void OnInitialized()
+    {
+        Tema.Degisti += Yenile;
+        Dil.Degisti += Yenile;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Tema.Degisti -= Yenile;
+        Dil.Degisti -= Yenile;
+    }
+}

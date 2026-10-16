@@ -1,0 +1,361 @@
+@* ═════════════════════════════════════════════════════════════════════════
+   PAKET S1-f — AYARLAR → GÖRÜNÜM KARTI · tuval Ayarlar.dc.html (artboard 7)
+
+   Tuval notu n4: "her kullanıcı kendi temasını, aydınlık/karanlık tercihini,
+   yazı boyutunu (16/18/20 px) ve basit/profesyonel modu seçer; sahip dükkân
+   varsayılanını belirler. Kâğıt daima beyaz."
+
+   ⚠ KARAR SUNUCUNUNDUR: seçili durum, kaynak rozeti ve etkin değerler
+     /api/v1/kullanici/gorunum yanıtından okunur; kart çözümü TEKRARLAMAZ.
+   ⚠ Kart ApiIstemci ENJEKTE ETMEZ; istekler servislerden geçer (Aşkın K2).
+   ⚠ Satır içi style YOK, sabit renk YOK: şema önizlemesi tokenları
+     `.gorunum-sema-onizleme[data-sema]` üzerinden belirtecler.css'ten alır.
+   ═════════════════════════════════════════════════════════════════════════ *@
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject ArayuzModuServisi Modu
+@inject GorunumServisi Gorunum
+@inject KullaniciGorunumServisi BenimGorunum
+@implements IDisposable
+
+<div class="gk" id="ayar-gorunum-karti">
+
+    <section class="gk-bolum" aria-labelledby="gk-tema-baslik">
+        <div class="gk-bolum-bas">
+            <h2 class="gk-bolum-baslik" id="gk-tema-baslik">@M.TemaBaslik</h2>
+            <span class="gk-kaynak" id="gk-sema-kaynak">@Kaynak(Durum?.SemaKaynagi)</span>
+            <span class="gk-bosluk"></span>
+            <span class="gk-bolum-alt" id="gk-tema-alt">@M.TemaAltMetin</span>
+        </div>
+        <div class="gk-sema-izgara">
+            @foreach (var kod in GorunumServisi.Semalar)
+            {
+                var secili = Durum?.Sema == kod;
+                <button type="button" id="@($"gk-sema-{kod}")" class="gk-sema @(secili ? "secili" : null)"
+                        aria-pressed="@(secili ? "true" : "false")" disabled="@Kilitli" aria-describedby="@Aciklayan(null)"
+                        title="@GorunumSozlugu.Aciklama(GorunumSozlugu.Semalar, kod, Dil.Dil)"
+                        @onclick="() => SemaSec(kod)">
+                    <span class="gk-onizleme gorunum-sema-onizleme" data-sema="@kod" aria-hidden="true">
+                        <span class="gk-onizleme-menu"></span>
+                        <span class="gk-onizleme-govde">
+                            <span class="gk-onizleme-kart"></span>
+                            <span class="gk-onizleme-vurgu"></span>
+                        </span>
+                    </span>
+                    <span class="gk-sema-alt">
+                        @* KESIF-P1 (#44): 960 px'te "Fildişi (açık menü)" kelime ortasından kırılıyordu.
+                           Kartta ADI yazar; parantezli niteleyici ("açık menü") adın ALTINDA kendi
+                           satırındadır (aşağıda) — ad hiçbir genişlikte bölünmez. *@
+                        <span class="gk-sema-ad">@AdParcalari(GorunumSozlugu.Ad(GorunumSozlugu.Semalar, kod, Dil.Dil))[0]</span>
+                        @* Tur 3 (orkestratör 18:10) TEK İŞARET KALIBI: seçili işaret her kartta başlık
+                           satırının SAĞINDA ayrı öğedir (gk-sema-alt = flex, space-between, gap 8 px);
+                           her kartta yalnız ✓ ("Seçili" sözcüğü ekran okuyucu için gorsel-gizli; kesif-p1.css). *@
+                        @if (secili)
+                        {
+                            <span class="gk-secili-rozet gk-isaret"><Ikon Ad="@Ikonlar.Onay" Sinif="gk-tik" /><span class="gorsel-gizli">@M.Secili</span></span>
+                        }
+                    </span>
+                    @if (AdParcalari(GorunumSozlugu.Ad(GorunumSozlugu.Semalar, kod, Dil.Dil)) is [_, var nitel])
+                    {
+                        <span class="metin-kucuk metin-soluk" id="@($"gk-sema-{kod}-nitel")">@nitel</span>
+                    }
+                </button>
+            }
+        </div>
+    </section>
+
+    <div class="gk-uclu">
+        <section class="gk-bolum" aria-labelledby="gk-tema-modu-baslik">
+            <div class="gk-bolum-bas">
+                <h2 class="gk-bolum-baslik" id="gk-tema-modu-baslik">@M.AydinlikKaranlikBaslik</h2>
+                <span class="gk-kaynak" id="gk-tema-kaynak">@Kaynak(Durum?.TemaModuKaynagi)</span>
+            </div>
+            <div class="gk-secenekler">
+                @foreach (var kod in TemaSirasi)
+                {
+                    var secili = Durum?.TemaModu == kod;
+                    <button type="button" id="@($"gk-tema-{kod}")" class="gk-secenek @(secili ? "secili" : null)"
+                            aria-pressed="@(secili ? "true" : "false")" disabled="@Kilitli" aria-describedby="@Aciklayan(null)"
+                            @onclick="() => TemaSec(kod)">
+                        @* Tek satırlı düğme kendisi flex + space-between: ad solda, ✓ SAĞDA ayrı öğe. *@
+                        <span class="hucre-tek-satir">@GorunumSozlugu.Ad(GorunumSozlugu.TemaModlari, kod, Dil.Dil)</span>
+                        @if (secili)
+                        {
+                            <span class="gk-isaret"><Ikon Ad="@Ikonlar.Onay" Sinif="gk-tik" /></span>
+                        }
+                    </button>
+                }
+            </div>
+            <p class="gk-not" id="gk-kagit-notu">@M.KagitNotu</p>
+        </section>
+
+        <section class="gk-bolum" aria-labelledby="gk-yazi-baslik">
+            <div class="gk-bolum-bas">
+                <h2 class="gk-bolum-baslik" id="gk-yazi-baslik">@M.YaziBaslik</h2>
+                <span class="gk-kaynak" id="gk-yazi-kaynak">@Kaynak(Durum?.YaziBoyutuKaynagi)</span>
+            </div>
+            <div class="gk-secenekler">
+                @foreach (var kod in GorunumServisi.Olcekler)
+                {
+                    var punto = int.Parse(kod, System.Globalization.CultureInfo.InvariantCulture);
+                    var secili = Durum?.YaziBoyutu == punto;
+                    @* KESIF-P1 (#44): ad + piksel yan yana 960 px'te "Çok büyük"ü ikiye bölüyordu →
+                       ekran modu düğmeleriyle AYNI iki satırlı kalıp (gk-secenek-iki). *@
+                    <button type="button" id="@($"gk-yazi-{kod}")" class="@($"gk-secenek gk-secenek-iki gk-yazi-{kod}") @(secili ? "secili" : null)"
+                            aria-pressed="@(secili ? "true" : "false")" disabled="@Kilitli" aria-describedby="@Aciklayan(null)"
+                            @onclick="() => YaziSec(punto)">
+                        <span class="gk-sema-alt">
+                            <span class="hucre-tek-satir">@GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, kod, Dil.Dil)</span>
+                            @if (secili)
+                            {
+                                <span class="gk-isaret"><Ikon Ad="@Ikonlar.Onay" Sinif="gk-tik" /></span>
+                            }
+                        </span>
+                        <span class="gk-piksel">@string.Format(System.Globalization.CultureInfo.InvariantCulture, M.Piksel, punto)</span>
+                    </button>
+                }
+            </div>
+            <p class="gk-not" id="gk-yazi-notu">@M.YaziNotu</p>
+        </section>
+
+        <section class="gk-bolum" aria-labelledby="gk-mod-baslik">
+            <div class="gk-bolum-bas">
+                <h2 class="gk-bolum-baslik" id="gk-mod-baslik">@M.ModBaslik</h2>
+                <span class="gk-kaynak" id="gk-mod-kaynak">@Kaynak(ModKaynagi)</span>
+            </div>
+            <div class="gk-secenekler">
+                <button type="button" id="gk-mod-basit" class="gk-secenek gk-secenek-iki @(Modu.BasitMi ? "secili" : null)"
+                        aria-pressed="@(Modu.BasitMi ? "true" : "false")" disabled="@Kilitli" aria-describedby="@Aciklayan(null)"
+                        @onclick="ModBasit">
+                    <span class="gk-sema-alt">
+                        <span class="gk-mod-ad">@Dil.T.Arayuz.Basit</span>
+                        @if (Modu.BasitMi)
+                        {
+                            <span class="gk-isaret"><Ikon Ad="@Ikonlar.Onay" Sinif="gk-tik" /></span>
+                        }
+                    </span>
+                    <span class="gk-mod-aciklama">@M.ModBasitAciklama</span>
+                </button>
+                <button type="button" id="gk-mod-profesyonel" class="gk-secenek gk-secenek-iki @(Modu.ProfesyonelMi ? "secili" : null)"
+                        aria-pressed="@(Modu.ProfesyonelMi ? "true" : "false")" disabled="@Kilitli" aria-describedby="@Aciklayan(null)"
+                        @onclick="ModProfesyonel">
+                    <span class="gk-sema-alt">
+                        <span class="gk-mod-ad">@Dil.T.Arayuz.Profesyonel</span>
+                        @if (Modu.ProfesyonelMi)
+                        {
+                            <span class="gk-isaret"><Ikon Ad="@Ikonlar.Onay" Sinif="gk-tik" /></span>
+                        }
+                    </span>
+                    <span class="gk-mod-aciklama">@M.ModProfesyonelAciklama</span>
+                </button>
+            </div>
+            <p class="gk-not" id="gk-mod-notu">@M.ModNotu</p>
+        </section>
+    </div>
+
+    @* KESIF-P1 (#44): not düğmelerle AYNI satırdayken 960 px'te 75 px'lik sütuna sıkışıyordu
+       (dar sütun); not kendi satırında, düğmeler altında. *@
+    <p class="gk-alt-not" id="gk-alt-not">@M.AltNot</p>
+    <div class="gk-alt">
+        <span class="gk-bosluk"></span>
+        <button type="button" id="gk-dukkana-don" class="btn btn-ikincil gk-alt-dugme"
+                disabled="@DonKilitli" aria-describedby="@Aciklayan(DonKilitSebebi is null ? null : "gk-dukkana-don-kilit")"
+                @onclick="DukkanaDon">@M.DukkanaDon</button>
+        <button type="button" id="gk-varsayilan-yap" class="btn btn-birincil gk-alt-dugme"
+                disabled="@YapKilitli" aria-describedby="@Aciklayan(YapKilitSebebi is null ? null : "gk-varsayilan-yap-kilit")"
+                @onclick="VarsayilanYap">@M.VarsayilanYap</button>
+    </div>
+
+    @if (KilitSebebi is not null)
+    {
+        <p class="gk-kilit-sebebi" id="gk-kilit" role="status">@KilitSebebi</p>
+    }
+    @if (DonKilitSebebi is not null)
+    {
+        <p class="gk-kilit-sebebi" id="gk-dukkana-don-kilit">@DonKilitSebebi</p>
+    }
+    @if (YapKilitSebebi is not null)
+    {
+        <p class="gk-kilit-sebebi" id="gk-varsayilan-yap-kilit">@YapKilitSebebi</p>
+    }
+
+    <BasariBandi Mesaj="@basari" Jeton="@jeton" SureliMs="4000" Id="gk-basari" />
+    <HataBandi Mesaj="@hata" Id="gk-hata" />
+</div>
+
+@code {
+    private string? basari;
+    private string? hata;
+    private int jeton;
+    private bool calisiyor;
+
+    private GorunumKartiMetinleri M => GorunumKartiSozlugu.Al(Dil.Dil);
+
+    /// <summary>KESIF-P1 (#44): "Fildişi (açık menü)" → ["Fildişi", "(açık menü)"]; parantezsiz ad tek parça.</summary>
+    public static IReadOnlyList<string> AdParcalari(string ad)
+    {
+        var i = ad.IndexOf(" (", StringComparison.Ordinal);
+        return i > 0 ? [ad[..i], ad[(i + 1)..]] : [ad];
+    }
+
+    private Kuyumcu.Contracts.Sayfalar.Gorunum.KullaniciGorunumAyari? Durum => BenimGorunum.Durum;
+
+    /// <summary>Tuvaldeki sıra: Aydınlık · Karanlık · Bilgisayara uy.</summary>
+    private static readonly string[] TemaSirasi = [TemaServisi.Aydinlik, TemaServisi.Karanlik, TemaServisi.Sistem];
+
+    private bool SahipMi => Oturum.Kullanici?.Rol == "SAHIP";
+
+    /// <summary>Sunucudan okunmadıysa HİÇBİR seçim istek atmaz; sebebi yazılır (UX-S30).</summary>
+    private bool Kilitli => !BenimGorunum.Yuklendi || calisiyor;
+
+    private string? KilitSebebi =>
+        BenimGorunum.Yuklendi ? null
+        : BenimGorunum.OkumaDenendi ? Dil.T.Gorunum.Yuklenmedi
+        : M.Okunuyor;
+
+    /// <summary>Kullanıcının kendi satırında EN AZ BİR seçim var mı? Yoksa "dön" düğmesi işsizdir.</summary>
+    private bool KendiGorunumuVar =>
+        Durum is { } d && (d.OzelSema is not null || d.OzelTemaModu is not null || d.OzelYaziBoyutu is not null);
+
+    private bool KendiSecimiVar => KendiGorunumuVar || Modu.KullaniciModu is not null;
+
+    private bool DonKilitli => Kilitli || !KendiSecimiVar;
+
+    private string? DonKilitSebebi => BenimGorunum.Yuklendi && !KendiSecimiVar ? M.DukkanaDonKilit : null;
+
+    private bool YapKilitli => Kilitli || !SahipMi;
+
+    /// <summary>Kilitli düğmenin sebebini gösteren öğe (UX-S30): özel sebep, yoksa genel kilit.</summary>
+    private string? Aciklayan(string? ozel) => ozel ?? (KilitSebebi is null ? null : "gk-kilit");
+
+    private string? YapKilitSebebi => !SahipMi ? M.VarsayilanYapKilitSahip : null;
+
+    /// <summary>
+    /// Mod kaynağı (UX-S21): oturumdaki KENDİ tercih (sunucunun /auth/ben'de
+    /// döndürdüğü arayuzModu) doluysa "kullanici", boşsa dükkândan devralınıyor.
+    /// Oturum yoksa rozet yazılmaz (tahmin yok).
+    /// </summary>
+    private string? ModKaynagi =>
+        Oturum.Kullanici is null ? null
+        : Modu.KullaniciModu is not null ? KullaniciGorunumServisi.KaynakKullanici
+        : KullaniciGorunumServisi.KaynakKiraci;
+
+    private string Kaynak(string? kaynak) =>
+        kaynak is null ? "" : GorunumSozlugu.Ad(GorunumSozlugu.Kaynaklar, kaynak, Dil.Dil);
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    private Task SemaSec(string kod) => Kaydet(() => BenimGorunum.SemaSecAsync(kod), null);
+    private Task TemaSec(string kod) => Kaydet(() => BenimGorunum.TemaModuSecAsync(kod), null);
+    private Task YaziSec(int punto) => Kaydet(() => BenimGorunum.YaziBoyutuSecAsync(punto), null);
+    // Mod: DAR "kendi modum" ucu (PATCH /kullanicilar/ben/arayuz-modu) — her rol
+    // yazabilir; /kullanicilar/ben tezgâhtara 403 döner (rapor § Sapmalar).
+    private Task ModBasit() => Kaydet(() => Modu.KendiModunuYazAsync(ArayuzModuServisi.Basit), null);
+    private Task ModProfesyonel() => Kaydet(() => Modu.KendiModunuYazAsync(ArayuzModuServisi.Profesyonel), null);
+
+    /// <summary>
+    /// "Dükkân varsayılanına dön": üç görünüm alanı TEK istekte null; kendi modu
+    /// varsa mod da devredilir. İkinci adım düşerse ne olduğu AYRI söylenir
+    /// (md.1 — "hepsi döndü" denmez).
+    /// </summary>
+    private async Task DukkanaDon()
+    {
+        if (DonKilitli) return;
+        var gorunumDonecek = KendiGorunumuVar;
+        var modDonecek = Modu.KullaniciModu is not null;
+        await Kaydet(async () =>
+        {
+            if (gorunumDonecek) await BenimGorunum.HepsiniDevretAsync();
+            if (!modDonecek) return;
+            try { await Modu.KendiModunuYazAsync(null); }
+            catch (ApiHata h) when (gorunumDonecek)
+            {
+                throw new ApiHata(h.StatusCode, string.Format(M.DonModHatasi, h.Message));
+            }
+        }, M.DukkanaDonuldu);
+    }
+
+    /// <summary>
+    /// SAHİP: kullanıcının ETKİN üç görünüm seçimi TEK PATCH ile (/gorunum),
+    /// etkin modu da /admin/tenant ile dükkân varsayılanı olur. Bant sunucunun
+    /// YAZDIĞI değerleri söyler (UX-S27); ikinci adım düşerse ayrı söylenir.
+    /// </summary>
+    private async Task VarsayilanYap()
+    {
+        if (YapKilitli || Durum is not { } d) return;
+        var mod = Modu.EtkinMod;
+        string? ozet = null;
+        await Kaydet(async () =>
+        {
+            var g = await Gorunum.VarsayilanYapAsync(
+                d.Sema,
+                d.YaziBoyutu.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                d.TemaModu);
+            string? yazilanMod;
+            try { yazilanMod = await Modu.DukkanVarsayilaniYapAsync(mod); }
+            catch (ApiHata h)
+            {
+                await BenimGorunum.YukleAsync();
+                throw new ApiHata(h.StatusCode, string.Format(M.YapModHatasi, h.Message));
+            }
+            ozet = Ozet(g, yazilanMod);
+            await BenimGorunum.YukleAsync();   // kaynak rozetleri tazelenir
+        }, null);
+        if (hata is null && ozet is not null)
+            basari = $"{M.VarsayilanYapildi} ({ozet})";
+    }
+
+    private string Ozet(Kuyumcu.Contracts.Sayfalar.Gorunum.GorunumAyari g, string? mod)
+    {
+        var parcalar = new List<string>(4)
+        {
+            GorunumSozlugu.Ad(GorunumSozlugu.Semalar, g.Sema, Dil.Dil),
+            GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, g.YaziOlcegi, Dil.Dil),
+        };
+        if (g.TemaModu is not null) parcalar.Add(GorunumSozlugu.Ad(GorunumSozlugu.TemaModlari, g.TemaModu, Dil.Dil));
+        if (mod == ArayuzModuServisi.Basit) parcalar.Add(Dil.T.Arayuz.Basit);
+        else if (mod == ArayuzModuServisi.Profesyonel) parcalar.Add(Dil.T.Arayuz.Profesyonel);
+        return string.Join(" · ", parcalar.Where(p => p.Length > 0));
+    }
+
+    /// <summary>
+    /// UX-S27 — her yazma bantla biter; UX-S28 — hata "kayıt yok"a çevrilmez,
+    /// kendi bandında yazar. Bantlar DENEMEDEN ÖNCE temizlenir (P-11 sayacı).
+    /// </summary>
+    private async Task Kaydet(Func<Task> istek, string? mesaj)
+    {
+        if (Kilitli) return;
+        basari = null;
+        hata = null;
+        calisiyor = true;
+        try
+        {
+            await istek();
+            basari = mesaj ?? Dil.T.Gorunum.Kaydedildi;
+            jeton++;
+        }
+        catch (ApiHata h)
+        {
+            hata = h.Message;
+        }
+        finally
+        {
+            calisiyor = false;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Modu.Degisti += Yenile;
+        BenimGorunum.Degisti += Yenile;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+        BenimGorunum.Degisti -= Yenile;
+    }
+}

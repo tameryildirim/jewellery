@@ -1,0 +1,130 @@
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET ŞUBE-KAPSAM-B (§ 4.3.4) — GÖRÜNÜM ROZETİ
+
+   NE YAPAR: sayfa başlığının altında TEK satırla kullanıcının neye baktığını
+   söyler ("Gösterilen şube: Merkez" / "Gösterilen: tüm şubeler"). Sayfa
+   `Degisti` verirse görünüm şubesi değişince o geri çağrıyı çağırır — sayfa
+   listelerini seçili şubeye göre YENİDEN yükler (her sayfada aynı abonelik
+   kalıbı tekrar yazılmasın diye burada).
+
+   ⚠ SADE YÜZ (K-14): tek şubeli dükkânda ve şubeye kilitli rolde (tezgâhtar)
+     HİÇBİR ŞEY çizilmez — seçim yoksa söylenecek bir şey de yoktur (UX-S22).
+   ⚠ Kayıtlı şube kapandıysa sarı bant: "kendi şubenize dönüldü" (§ 4.4).
+   ⚠ KiraciGeneli=true: ekran müşteri hesabı gibi şubeye bölünmeyen veri
+     gösteriyorsa rozet bunu söyler (§ 4.2.3).
+   ═══════════════════════════════════════════════════════════════════════ *@
+
+@if (Durum is { } d && d.TumSubeler)
+{
+    @* Kapanmış-şube bandı sayfa rozetinindir; kiracı geneli / kart (ikinci) rozet tekrar etmez. *@
+    @* Tur 3 (doğrulayıcı YÜKSEK): bant KAPATILABİLİR ("Tamam" — bütün sayfalarda
+       kalkar); kayıtlı tercih açılışta zaten temizlendi, bir sonraki açılışta çıkmaz.
+       Metin ayrı span'dadır (#gorunum-gecersiz-metin) — düğme metni ona karışmaz. *@
+    @if (d.GecersizTercih && !KiraciGeneli && Id == VarsayilanId)
+    {
+        <div class="bant bant-uyari gorunum-gecersiz" role="status" id="gorunum-gecersiz">
+            <span id="gorunum-gecersiz-metin">@GecersizMetni(d)</span>
+            <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="gorunum-gecersiz-kapat"
+                    @onclick="BandiKapat">@M.BandiKapat</button>
+        </div>
+        @if (d.TemizlemeHatasi is { } th)
+        {
+            <HataBandi Mesaj="@(string.Format(M.GecersizTemizlenemedi, th))" Id="gorunum-gecersiz-hata" />
+        }
+    }
+    @* Tur 3 (doğrulayıcı YÜKSEK): 12 px hap yerine gövde ölçeğinde (≥ 14 px) düz
+       satır — sınıf sube-kapsam-b.css'te; mevcut id'ler DEĞİŞMEDİ. *@
+    @if (d.CokluGorunum)
+    {
+        <p class="gorunum-rozeti" id="@Id">
+            <span class="gorunum-rozeti-metin" id="@($"{Id}-metin")">@Metin(d)</span>
+        </p>
+    }
+}
+
+@code {
+    private static KabukServisi Kabuk => KabukServisi.Ortak;
+    private SubeKapsamBMetinleri M => SubeKapsamBSozlugu.Al(Dil.Dil);
+
+    /// <summary>Görünüm şubesi değişince sayfanın yeniden yükleyicisi.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    /// <summary>Ekran şubeye bölünmeyen (kiracı geneli) veri gösteriyor.</summary>
+    [Parameter] public bool KiraciGeneli { get; set; }
+
+    /// <summary>
+    /// Öğe kimliği (varsayılan "gorunum-rozeti" — mevcut id DEĞİŞMEZ). Aynı sayfada
+    /// sekme düzeyinde ikinci (kiracı geneli) rozet kendi önekini verir: kimlik çakışmaz.
+    /// </summary>
+    [Parameter] public string Id { get; set; } = VarsayilanId;
+
+    /// <summary>Sayfa rozetinin kimliği; kapanmış-şube bandını YALNIZ o çizer (kart rozetleri tekrar etmez).</summary>
+    public const string VarsayilanId = "gorunum-rozeti";
+
+    /// <summary>
+    /// Tur 3 (doğrulayıcı YÜKSEK — "rozet gösterilen veriyi söylemiyor"): sayfanın
+    /// KENDİ şube süzgeci varsa (İşlem defteri, Reyon stok) rozet görünüm şubesini
+    /// değil, ekrandaki verinin GERÇEKTEN süzüldüğü şubeyi yazar. true iken
+    /// <see cref="SuzgecSubeId"/> kullanılır (boş/null = tüm şubeler).
+    /// </summary>
+    [Parameter] public bool SuzgecKullan { get; set; }
+
+    /// <summary>Sayfa süzgecinin şubesi (SuzgecKullan=true iken).</summary>
+    [Parameter] public string? SuzgecSubeId { get; set; }
+
+    private GorunumDurumu? Durum => Kabuk.GorunumIcin(Oturum);
+
+    private string Metin(GorunumDurumu d)
+    {
+        if (KiraciGeneli) return M.RozetMusteriHesaplari;
+        var sube = SuzgecKullan
+            ? (string.IsNullOrEmpty(SuzgecSubeId) ? null : SuzgecSubeId)
+            : d.SubeId;
+        if (sube is null) return M.RozetTumu;
+        // Ad BİLİNMİYORSA tahmin yok: ULID ekrana basılmaz, "tüm şubeler" de
+        // denmez (daraltma VAR) — ad yerine "değer yok" işareti (Anayasa md.1).
+        var ad = d.Subeler.FirstOrDefault(s => s.Id == sube)?.Ad;
+        return string.Format(M.RozetSube, ad ?? Dil.T.Ortak.DegerYok);
+    }
+
+    private void BandiKapat() => Kabuk.GecersizBandiKapat(Oturum);
+
+    private string GecersizMetni(GorunumDurumu d) =>
+        d.SubeId is null ? M.GecersizTercihTumune : M.GecersizTercihSubeye;
+
+    protected override void OnInitialized()
+    {
+        Kabuk.GorunumDegisti += GorunumDegisti;
+        Kabuk.GorunumDurumuDegisti += DurumDegisti;
+        Dil.Degisti += Yenile;
+    }
+
+    private void GorunumDegisti(object sahip)
+    {
+        // Yalnız BU oturumun değişimi (paralel bUnit bağlamları birbirini tetiklemez).
+        if (!ReferenceEquals(sahip, Oturum)) return;
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (Degisti.HasDelegate) await Degisti.InvokeAsync();
+        });
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    private void DurumDegisti(object sahip)
+    {
+        if (ReferenceEquals(sahip, Oturum)) InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Kabuk.GorunumDegisti -= GorunumDegisti;
+        Kabuk.GorunumDurumuDegisti -= DurumDegisti;
+        Dil.Degisti -= Yenile;
+    }
+}

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- PAKET S1-h: İngilizce dilli tarayıcıda da tr-TR biçimi (₺6.754,91, "TRY6,754.91" değil).
+         Varsayılan: Blazor WASM yalnız tarayıcı kültürünün ICU parçasını yükler (en-* → icudt_EFIGS.dat,
+         Türkçe YOK). Kaynak: learn.microsoft.com/aspnet/core/blazor/globalization-localization
+         ("To load all globalization data, set BlazorWebAssemblyLoadAllGlobalizationData to true"). -->
+    <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.26" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.26" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.26" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kuyumcu.Contracts\Kuyumcu.Contracts.csproj" />
+    <ProjectReference Include="..\Kuyumcu.Core\Kuyumcu.Core.csproj" />
+  </ItemGroup>
+
+</Project>

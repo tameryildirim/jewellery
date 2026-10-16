@@ -1,0 +1,28 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — VERGİ KİMLİK NO (K4, kontrol hanesi TEYİTSİZ). Kural TCKN-DOGRULAMA'nın KimlikNoDogrulayici'si (KimlikKurali köprüsü);
+   rakam dışı tuş yazılamaz, yapıştırmada temizlenir, en çok 10 hane; hane dolunca algoritma → alan altı
+   hata + Kaydet kilidi (aynı metin). *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="text" inputmode="numeric" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@YerTutucu" maxlength="10" autocomplete="off"
+           data-maske="rakam" data-hane="10"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    /// <summary>girdi-maske.js 'rakam' ile AYNI: yalnız ASCII rakam, en çok 10.</summary>
+    protected override string Temizle(string? g)
+    {
+        var r = Kuyumcu.Core.Domain.KimlikNoDogrulayici.Rakamlar(g);
+        return r.Length > 10 ? r[..10] : r;
+    }
+    protected override GirdiHatasi? TamDenetle(string t) => KimlikKurali.Vkn(t);
+    protected override GirdiHatasi? YazarkenDenetle(string t) => t.Length >= 10 ? KimlikKurali.Vkn(t) : null;
+}

@@ -1,0 +1,42 @@
+@inject DilServisi Dil
+
+@* ─────────────────────────────────────────────────────────────────────────────
+   DEĞİŞMEZ İPUCU — paket UX-1 Faz A.
+
+   SALT_OKUNUR (ve ters kayıt yolu henüz açılmamış STORNO) politikalı kayıtlarda
+   'Düzenle' düğmesinin YERİNE çizilir.
+
+   ⚠ İŞ KURALI (UX-1): burada DEVRE DIŞI DÜĞME DE ÇİZİLMEZ. Devre dışı düğme
+     kullanıcıya "bir yolu var ama sana kapalı" der; doğru mesaj "bu kaydın
+     doğası gereği değiştirilemez, düzeltme şöyle yapılır"dır. Bu yüzden bu
+     bileşen HİÇ <button> üretmez — DuzeltmeEkranTestleri bunu zorlar.
+
+   ⚠ Gerekçe metni ÇAĞIRANDAN gelir; çağıran onu politika haritasının
+     GerekceAnahtari'ndan sözlükle (TR+EN) çözer. Çıplak metin yazılmaz.
+   ───────────────────────────────────────────────────────────────────────────── *@
+
+<div class="degismez-ipucu" id="@($"degismez-ipucu-{Varlik}")" role="note">
+    <Ikon Ad="@Ikonlar.Kilit" Sinif="degismez-kilit" />
+    <div class="degismez-govde">
+        <p class="degismez-baslik">@Dil.T.Duzeltme.DuzenlenemezBaslik</p>
+        <p class="degismez-gerekce">@Gerekce</p>
+        @if (!string.IsNullOrWhiteSpace(AlternatifYol))
+        {
+            <p class="degismez-alternatif">
+                <span class="metin-soluk">@Dil.T.Duzeltme.AlternatifYol</span>
+                @AlternatifYol
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Varlık adı — id ekini üretir (#degismez-ipucu-DenetimKaydi).</summary>
+    [Parameter, EditorRequired] public string Varlik { get; set; } = "";
+
+    /// <summary>Tek cümlelik gerekçe (sözlükten çözülmüş hâli).</summary>
+    [Parameter, EditorRequired] public string Gerekce { get; set; } = "";
+
+    /// <summary>Varsa düzeltmenin yapılabildiği yol — düz METİN, çağrılabilir uç değil.</summary>
+    [Parameter] public string? AlternatifYol { get; set; }
+}

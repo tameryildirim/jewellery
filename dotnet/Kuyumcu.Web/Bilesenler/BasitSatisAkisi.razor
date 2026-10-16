@@ -1,0 +1,36 @@
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   BasitSatisAkisi — basit moddaki POS'un yasal kapı bandı.
+
+   ⚠ Bertan KOŞUL 4 (BAĞLAYICI): bu bileşen SUNUCUYA HİÇBİR ŞEY GÖNDERMEZ.
+     Gövde kurulumu ve kapı çağrıları Pages/Islemler.razor'da TEK YERDE kalır.
+     Burada ne ApiIstemci ne de herhangi bir HttpClient vardır.
+
+   ⚠ PAKET T-S1 (tuval Tezgah.dc.html): tuvalde ADIM ŞERİDİ YOK — 1-4 adım
+     göstergesi (#islem-adim-serit) ve ipucu satırı kaldırıldı; ekranın kendisi
+     (üst satır → barkod → fiş → Kaydet) sırayı söyler. Yasal kapı bandı
+     KALDI: bir yasal kapı (tevsik / MASAK / sunucunun 400'ü) açıldığında
+     kullanıcı neden ek alan gördüğünü okumalıdır (UX-S30).
+
+   ⚠ Yasal kapı bandı SUNUCU KAYNAKLIDIR: sayfa, tevsik önizlemesinden ya da
+     sunucunun 400'ünden gelen bayrağı geçirir. Eşik SAYISI buraya gömülmez.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@if (KapiAcik)
+{
+    <div class="bant bant-uyari" id="islem-yasal-kapi" role="status">
+        @(Mesaj ?? Dil.T.Arayuz.YasalKapiAcildi)
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Sunucu kaynaklı bir yasal kapı tetiklendi mi (tevsik önizlemesi, MASAK
+    /// eşiği ya da POST'un 400'ü). Yalnız bilgi bandı çizdirir.
+    /// </summary>
+    [Parameter] public bool KapiAcik { get; set; }
+
+    /// <summary>SATIS-3 t3: tetiklenen kuralın sade adı (sayfa verir; sunucu bayrağından). null → genel metin.</summary>
+    [Parameter] public string? Mesaj { get; set; }
+}

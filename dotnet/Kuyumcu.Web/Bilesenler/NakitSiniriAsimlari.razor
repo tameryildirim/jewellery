@@ -1,0 +1,348 @@
+@using Kuyumcu.Contracts.Sayfalar.NakitSiniri
+@using Kuyumcu.Web.Bilesenler.Yazdirma
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject ArayuzModuServisi Modu
+
+@* ═══ PAKET YASAL-2 (TB-16) — UYUM → "Nakit sınırı aşımları" SEKMESİ ═════════════
+   • Liste: tarih · müşteri · nakit · son gün (geri sayım) · durum. Satırda önce
+     "Dilekçeyi yazdır" (ekran başına tek birincil düğme kuralı: satır düğmeleri ikincil);
+     "Bildirildi olarak işaretle"; SAHİP'e "Yanlış kayıt".
+   • Kapanmış kayıtlar KAPALI akordeonda (Katlanir — geçmiş kayıtlar katlanır kuralı).
+   • Yön metni (şartname § 3.1 M-6): ODEME → son gün + geri sayım; TAHSILAT → "mali
+     müşavirinize danışın" (geri sayım YOK — muafiyet ödeyene aittir).
+   • Düzenleme: çok alanlı kapatma formu Cekmece; "Yanlış kayıt" yıkıcıdır → OnayKipi.
+     Tutar/gün defterden türetilir → DegismezIpucu (UX-S25).
+   • Dilekçe AYRI ROTA DEĞİL (rota kapsamı sayacı sabit): liste yerine belge çizilir;
+     yazdırırken yalnız belge kâğıda çıkar (css/nakit-siniri.css @media print).
+   • UX-S28: hata "kayıt yok"a çevrilmez; UX-S29: sunucu sınırı yazılır.
+   • Jargon yok: "tevsik", "459", "355" yalnız katlanır "Neden?" / dayanak satırında.
+   ════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="nakit-siniri-sekme" id="nsa">
+    <HataBandi Mesaj="@hata" Id="nsa-hata" />
+    @if (basari is not null) { <BasariBandi Mesaj="@basari" Id="nsa-basari" /> }
+
+    @if (dilekce is { } d)
+    {
+        <div class="nakit-siniri-arac yazdirma-gizle">
+            <button type="button" class="dugme dugme-ikincil" id="nsa-dilekce-geri" @onclick="DilekceKapat">← @T.DilekceListeyeDon</button>
+            <YazdirDugmesi Id="nsa-dilekce-yazdir" Etiket="@T.DilekceYazdir" HataOlustu="@(m => hata = m)" />
+        </div>
+        <article class="belge nakit-siniri-dilekce" id="nsa-dilekce">
+            <p class="belge-uyari" id="nsa-dilekce-taslak">@T.DilekceTaslak</p>
+            <h1 class="hucre-tek-satir">@T.DilekceBaslik</h1>
+            <p id="nsa-dilekce-muhatap">@(d.Isletme.VergiDairesi is { Length: > 0 } vd ? $"{vd} — {T.DilekceMuhatap}" : T.DilekceMuhatap)</p>
+            <p><strong>@T.DilekceKonu</strong></p>
+            <p id="nsa-dilekce-govde">@string.Format(d.Ihlal.Yon == "ODEME" ? T.DilekceGovdeOdeme : T.DilekceGovdeTahsilat,
+                NakitSiniriBicim.Gun(d.Ihlal.IhlalGunu, Dil.Dil), Bicim.Para(d.Ihlal.NakitToplamTl, "TRY"), Bicim.Para(d.Ihlal.HadTl, "TRY"))</p>
+            <section class="belge-taraflar">
+                <div>
+                    <h2>@T.DilekceIsletme</h2>
+                    <p><strong id="nsa-dilekce-isletme">@(d.Isletme.Unvan ?? "—")</strong></p>
+                    @if (!string.IsNullOrEmpty(d.Isletme.VergiNo)) { <p>@Dil.T.SayfaDuzeltme.VergiDairesi: @d.Isletme.VergiDairesi · @d.Isletme.VergiNo</p> }
+                    @if (!string.IsNullOrEmpty(d.Isletme.Adres)) { <p>@d.Isletme.Adres</p> }
+                </div>
+                <div>
+                    <h2>@T.DilekceKarsiTaraf</h2>
+                    <p><strong id="nsa-dilekce-karsi">@(d.KarsiTaraf.Ad ?? "—")</strong></p>
+                    @if (!string.IsNullOrEmpty(d.KarsiTaraf.VergiNo)) { <p>@d.KarsiTaraf.VergiNo</p> }
+                    @if (!string.IsNullOrEmpty(d.KarsiTaraf.Adres)) { <p>@d.KarsiTaraf.Adres</p> }
+                </div>
+            </section>
+            <h2>@T.DilekceIslemler</h2>
+            <div class="tablo-sar">
+                <table class="veri-tablosu" id="nsa-dilekce-islemler">
+                    <thead><tr><th>@T.DilekceTarih</th><th>@T.DilekceTur</th><th class="sayi">@T.DilekceTutar</th><th class="sayi">@T.DilekceNakit</th></tr></thead>
+                    <tbody>
+                        @foreach (var h in d.Hareketler ?? [])
+                        {
+                            <tr>
+                                <td>@Bicim.Tarih(h.Tarih, Dil.Dil == "en" ? "en-GB" : "tr-TR")</td>
+                                <td>@IslemAdi(h.Tur)</td>
+                                <td class="sayi">@Bicim.Para(h.TutarTl, "TRY")</td>
+                                <td class="sayi">@Bicim.Para(h.NakitTl, "TRY")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="belge-dayanak">@T.DilekceDayanak: @d.Dayanak</p>
+            <p class="nakit-siniri-imza">@T.DilekceImza</p>
+        </article>
+    }
+    else if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (veri is not null)
+    {
+        @* Tur 3 (orkestratör 22:20, zorunlu-önce): açılışta açıklama satırı YOK — liste doğrudan
+           görünür; açıklama, bayram notu ve değişmezlik kutusu en altta KAPALI "Bu liste nasıl oluşur?" *@
+        @if (Acik.Count == 0)
+        {
+            <BosDurum Mesaj="@T.Bos" />
+        }
+        else
+        {
+            <ul class="nakit-siniri-liste" id="nsa-liste">
+                @foreach (var (s, sira) in Acik.Select((x, i) => (x, i)))
+                {
+                    <li class="nakit-siniri-satir" id="@($"nsa-satir-{s.Id}")">
+                        <div class="nakit-siniri-bilgi">
+                            <span class="nakit-siniri-ad"><strong>@(s.CariAd ?? "—")</strong></span>
+                            <span class="metin-soluk metin-kucuk">
+                                @NakitSiniriBicim.Gun(s.IhlalGunu, Dil.Dil) · @T.Yon(s.Yon)@(Modu.ProfesyonelMi ? $" · {T.Tur(s.Tur)}" : "")
+                            </span>
+                            @* Tur 2 (K14): NEDEN aşım sayıldığı iki modda da tek satır *@
+                            <span class="metin-kucuk nakit-siniri-neden-satir" id="@($"nsa-neden-{s.Id}")">@NedenMetni(s)</span>
+                        </div>
+                        <span class="nakit-siniri-tutar sayi" id="@($"nsa-tutar-{s.Id}")">@Bicim.Para(s.NakitToplamTl, "TRY")</span>
+                        <span class="nakit-siniri-son @(s.Durum == "SURE_DOLDU" ? "nakit-siniri-son--gecti" : null)" id="@($"nsa-son-{s.Id}")">@SonGunMetni(s)</span>
+                        <div class="nakit-siniri-eylem">
+                            @* Ekran başına tek birincil: en acil (ilk) satırın dilekçesi *@
+                            <button type="button" class="dugme @(sira == 0 ? "dugme-birincil" : "dugme-ikincil") dugme-kucuk" id="@($"nsa-dilekce-{s.Id}")"
+                                    disabled="@calisiyor" @onclick="@(() => DilekceAc(s))">@T.DilekceYazdir</button>
+                            <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="@($"nsa-bildirildi-{s.Id}")"
+                                    disabled="@calisiyor" @onclick="@(() => BildirildiAc(s))">@T.BildirildiIsaretle</button>
+                            @if (Sahip)
+                            {
+                                <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="@($"nsa-gecersiz-{s.Id}")"
+                                        disabled="@calisiyor" @onclick="@(() => GecersizAc(s))">@T.GecersizSay</button>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+        @if (veri.DahaVar)
+        {
+            <p class="metin-soluk metin-kucuk" id="nsa-daha-var">@string.Format(T.DahaFazlaVar, veri.Sinir)</p>
+        }
+
+        @if (Kapali.Count > 0)
+        {
+            <Katlanir Id="nsa-kapali" Baslik="@T.KapaliGrup" Sayi="@Kapali.Count">
+                <ul class="nakit-siniri-liste" id="nsa-kapali-liste">
+                    @foreach (var s in Kapali)
+                    {
+                        <li class="nakit-siniri-satir" id="@($"nsa-kapali-{s.Id}")">
+                            <div class="nakit-siniri-bilgi">
+                                <span class="nakit-siniri-ad"><strong>@(s.CariAd ?? "—")</strong></span>
+                                <span class="metin-soluk metin-kucuk">@NakitSiniriBicim.Gun(s.IhlalGunu, Dil.Dil) · @T.Yon(s.Yon)</span>
+                            </div>
+                            <span class="nakit-siniri-tutar sayi">@Bicim.Para(s.NakitToplamTl, "TRY")</span>
+                            <span class="nakit-siniri-son">@T.Durum(s.Durum)@(s.Gec ? $" ({T.GecBildirim})" : "")</span>
+                        </li>
+                    }
+                </ul>
+            </Katlanir>
+        }
+        @* K-A (tur 2, ekip oyu): kaynağı bilinmeyen borçtan alınan nakit — ihlal DEĞİL,
+           salt okunur; yalnız varsa, KAPALI akordeonda. Hata "kayıt yok"a çevrilmez. *@
+        <HataBandi Mesaj="@dogHata" Id="nsa-dog-hata" />
+        @if (dog?.Satirlar is { Count: > 0 } dl)
+        {
+            <Katlanir Id="nsa-dog" Baslik="@T.DogrulanamayanBaslik" Sayi="@dl.Count">
+                <p class="metin-soluk metin-kucuk" id="nsa-dog-aciklama">@T.DogrulanamayanAciklama</p>
+                <ul class="nakit-siniri-liste" id="nsa-dog-liste">
+                    @foreach (var g in dl)
+                    {
+                        <li class="nakit-siniri-satir" id="@($"nsa-dog-{g.Id}")">
+                            <div class="nakit-siniri-bilgi">
+                                <span class="nakit-siniri-ad"><strong>@(g.CariAd ?? "—")</strong></span>
+                                <span class="metin-soluk metin-kucuk">@Bicim.Tarih(g.Tarih, Dil.Dil == "en" ? "en-GB" : "tr-TR") · @(g.Kaynak == "EVRAK" ? T.DogrulanamayanEvrak : T.DogrulanamayanTahsilat)</span>
+                                <span class="metin-kucuk nakit-siniri-neden-satir" id="@($"nsa-dog-tutar-{g.Id}")">@string.Format(T.DogrulanamayanSatir, Bicim.Para(g.NakitTl ?? 0m, "TRY"), Bicim.Para(g.DogrulanamayanTl ?? 0m, "TRY"))</span>
+                            </div>
+                        </li>
+                    }
+                </ul>
+                @if (dog.DahaVar)
+                {
+                    <p class="metin-soluk metin-kucuk" id="nsa-dog-daha-var">@string.Format(T.DahaFazlaVar, dog.Sinir)</p>
+                }
+            </Katlanir>
+        }
+        <Katlanir Id="nsa-nasil" Baslik="@T.NasilCalisir">
+            <p class="metin-soluk metin-kucuk" id="nsa-aciklama">@T.Aciklama</p>
+            @if (veri.BayramEksik)
+            {
+                <p class="metin-soluk metin-kucuk" id="nsa-bayram-eksik">@T.BayramEksik</p>
+            }
+            <div class="nakit-siniri-degismez">
+                <DegismezIpucu Varlik="TevsikIhlali" Gerekce="@T.DegismezGerekce" AlternatifYol="@T.DegismezYol" />
+            </div>
+        </Katlanir>
+    }
+</div>
+
+@* ── Kapatma: bildirildi (çok alanlı → Cekmece) ── *@
+<Cekmece Acik="@(bildirildiHedef is not null)" Varlik="nsa-bildirildi" Baslik="@T.BildirildiIsaretle"
+         Kapat="@(() => bildirildiHedef = null)" Kaydet="BildirildiKaydet" Kaydediliyor="calisiyor"
+         KaydetAktif="@(GerekceUzunluk >= Asgari && bildirimTarihi is not null)"
+         KilitSebebi="@(bildirimTarihi is null ? T.BildirimTarihiGerekli : GerekceKilidi)"
+         IptalMetni="@T.Vazgec">
+    <div class="form-dikey">
+        <Tarih ElemanId="nsa-bildirim-tarihi" Etiket="@T.BildirimTarihi" Zorunlu="true"
+               Deger="@bildirimTarihi" DegerChanged="@(v => bildirimTarihi = v)" EnGec="@Bugun" />
+        <Metin ElemanId="nsa-evrak-no" Etiket="@T.EvrakNo" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.NakitSiniriEvrakNo"
+               Deger="@evrakNo" DegerChanged="@(v => evrakNo = v ?? "")" />
+        @* Tur 2 (K18): tek sayaç — "n/20" yalnız Kaydet'in kilit sebebinde; alan sayacı kapalı *@
+        <CokSatir ElemanId="nsa-gerekce" Etiket="@T.Gerekce" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.NakitSiniriGerekce" Zorunlu="true" SayacGoster="false"
+                  Deger="@gerekce" DegerChanged="@(v => gerekce = v ?? "")" />
+        <HataBandi Mesaj="@formHata" Id="nsa-form-hata" />
+    </div>
+</Cekmece>
+
+@* ── Kapatma: yanlış kayıt (gerekçe → onay) ── *@
+<Cekmece Acik="@(gecersizHedef is not null && !gecersizOnay)" Varlik="nsa-gecersiz" Baslik="@T.GecersizSay"
+         Kapat="@(() => gecersizHedef = null)" Kaydet="@(() => gecersizOnay = true)" Kaydediliyor="calisiyor"
+         KaydetAktif="@(GerekceUzunluk >= Asgari)"
+         KilitSebebi="@GerekceKilidi"
+         IptalMetni="@T.Vazgec">
+    <div class="form-dikey">
+        <CokSatir ElemanId="nsa-gecersiz-gerekce" Etiket="@T.Gerekce" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.NakitSiniriGerekce" Zorunlu="true" SayacGoster="false"
+                  Deger="@gerekce" DegerChanged="@(v => gerekce = v ?? "")" />
+        <HataBandi Mesaj="@formHata" Id="nsa-gecersiz-hata" />
+    </div>
+</Cekmece>
+<OnayKipi Acik="@(gecersizHedef is not null && gecersizOnay)" Kimlik="nsa-gecersiz-onay"
+          Eylem="@T.GecersizOnayBaslik" OnayMetni="@T.GecersizSay" VazgecMetni="@T.Vazgec"
+          Aciklama="@T.GecersizOnayMetin" Hedef="@gecersizHedef?.CariAd" Calisiyor="calisiyor" Hata="@formHata"
+          Onayla="GecersizKaydet" Vazgec="@(() => gecersizOnay = false)" />
+
+@code {
+    private const int Asgari = 20;
+
+    private TevsikTaksitMetinleri T => TevsikTaksitSozlugu.Al(Dil.Dil);
+    private bool Sahip => Oturum.Kullanici?.Rol == "SAHIP";
+    private DateOnly Bugun => DateOnly.FromDateTime(DateTime.Now);
+
+    private TevsikIhlalListesi? veri;
+    private TevsikDilekceVeri? dilekce;
+    private bool yukleniyor = true;
+    private bool calisiyor;
+    private string? hata;
+    private string? basari;
+    private string? formHata;
+
+    private TevsikIhlalSatiri? bildirildiHedef;
+    private TevsikIhlalSatiri? gecersizHedef;
+    private bool gecersizOnay;
+    private DateOnly? bildirimTarihi;
+    private string evrakNo = "";
+    private string gerekce = "";
+    private int GerekceUzunluk => gerekce.Trim().Length;
+    /// <summary>Kaydet kilidinin TEK sebep metni (alan altında ikinci sayaç yok).</summary>
+    private string? GerekceKilidi => GerekceUzunluk >= Asgari ? null : string.Format(T.GerekceKisaKilit, GerekceUzunluk, Asgari);
+
+    private TevsikDogrulanamayanListesi? dog;
+    private string? dogHata;
+
+    private List<TevsikIhlalSatiri> Tumu => veri?.Ihlaller ?? [];
+    /// <summary>Açık kayıtlar EN ACİL önce: ödeme yönü son güne göre, sonra tahsilat yönü.</summary>
+    private List<TevsikIhlalSatiri> Acik => Tumu.Where(s => s.Kapanmamis)
+        .OrderBy(s => s.Yon == "ODEME" ? 0 : 1).ThenBy(s => s.BildirimSonGunu).ThenByDescending(s => s.IhlalGunu).ToList();
+    private List<TevsikIhlalSatiri> Kapali => Tumu.Where(s => !s.Kapanmamis).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Yukle();
+        await DogrulanamayanYukle();
+    }
+
+    private async Task DogrulanamayanYukle()
+    {
+        dogHata = null;
+        try { dog = await Api.GetAsync<TevsikDogrulanamayanListesi>("/tevsik/ihlaller/dogrulanamayanlar"); }
+        catch (ApiHata ex) { dogHata = string.Format(T.DogrulanamayanHata, ex.Message); }   // UX-S28
+    }
+
+    /// <summary>Satırın NEDEN aşım sayıldığı — tür ekrana kodla değil cümleyle yazılır.</summary>
+    private string NedenMetni(TevsikIhlalSatiri s) => s.Tur switch
+    {
+        "ISLEM_TUTARI" when s.IslemToplamTl is { } t =>
+            string.Format(T.GerekceIslem, Bicim.Para(t, "TRY"), Bicim.Para(s.NakitToplamTl, "TRY"), Bicim.Para(s.HadTl, "TRY")),
+        "TAKSIT" when s.KaynakGunu is { } g =>
+            string.Format(T.GerekceTaksit, NakitSiniriBicim.Gun(g, Dil.Dil), Bicim.Para(s.HadTl, "TRY"), Bicim.Para(s.NakitToplamTl, "TRY")),
+        "GUNLUK_KUMULATIF" =>
+            string.Format(T.GerekceGunluk, Bicim.Para(s.NakitToplamTl, "TRY"), Bicim.Para(s.HadTl, "TRY")),
+        _ => T.Tur(s.Tur),
+    };
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try { veri = await Api.GetAsync<TevsikIhlalListesi>("/tevsik/ihlaller"); }
+        catch (ApiHata ex) { hata = string.Format(T.YuklemeHata, ex.Message); }   // UX-S28: eldeki veri düşürülmez
+        finally { yukleniyor = false; }
+    }
+
+    private string SonGunMetni(TevsikIhlalSatiri s) =>
+        s.Yon != "ODEME" ? T.DanisinKisa
+        : s.Durum == "SURE_DOLDU" ? $"{NakitSiniriBicim.Gun(s.BildirimSonGunu, Dil.Dil)} · {T.SureDoldu}"
+        : $"{NakitSiniriBicim.Gun(s.BildirimSonGunu, Dil.Dil)} · {string.Format(T.KalanIsGunu, s.KalanIsGunu)}";
+
+    private string IslemAdi(string tur) => T.Islem(tur);
+
+    private async Task DilekceAc(TevsikIhlalSatiri s)
+    {
+        hata = null; basari = null; calisiyor = true;
+        try { dilekce = await Api.GetAsync<TevsikDilekceVeri>($"/tevsik/ihlaller/{s.Id}/dilekce"); }
+        catch (ApiHata ex) { hata = string.Format(T.DilekceHata, ex.Message); }
+        calisiyor = false;
+    }
+
+    private void DilekceKapat() => dilekce = null;
+
+    private void BildirildiAc(TevsikIhlalSatiri s)
+    {
+        formHata = null; basari = null;
+        bildirildiHedef = s; bildirimTarihi = Bugun; evrakNo = ""; gerekce = "";
+    }
+
+    private void GecersizAc(TevsikIhlalSatiri s)
+    {
+        formHata = null; basari = null;
+        gecersizHedef = s; gecersizOnay = false; gerekce = "";
+    }
+
+    private async Task BildirildiKaydet()
+    {
+        if (bildirildiHedef is null) return;
+        if (GerekceUzunluk < Asgari || bildirimTarihi is null) { formHata = string.Format(T.GerekceSayac, GerekceUzunluk, Asgari); return; }
+        calisiyor = true; formHata = null;
+        try
+        {
+            var y = await Api.PostAsync<TevsikKapatmaYaniti>($"/tevsik/ihlaller/{bildirildiHedef.Id}/bildirildi", new
+            {
+                bildirimTarihi = Bicim.Makine(bildirimTarihi.Value),
+                evrakNo = string.IsNullOrWhiteSpace(evrakNo) ? null : evrakNo.Trim(),
+                gerekce = gerekce.Trim(),
+            });
+            basari = string.Format(T.BildirildiBasari, T.Durum(y.Durum) + (y.Gec ? $" — {T.GecBildirim}" : ""));
+            bildirildiHedef = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { formHata = ex.Message; }
+        calisiyor = false;
+    }
+
+    private async Task GecersizKaydet()
+    {
+        if (gecersizHedef is null) return;
+        calisiyor = true; formHata = null;
+        try
+        {
+            await Api.PostAsync<TevsikKapatmaYaniti>($"/tevsik/ihlaller/{gecersizHedef.Id}/gecersiz", new { gerekce = gerekce.Trim() });
+            basari = T.GecersizBasari;
+            gecersizHedef = null; gecersizOnay = false;
+            await Yukle();
+        }
+        catch (ApiHata ex) { formHata = ex.Message; }
+        calisiyor = false;
+    }
+
+}

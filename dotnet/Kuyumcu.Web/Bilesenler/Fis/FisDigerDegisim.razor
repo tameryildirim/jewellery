@@ -1,0 +1,90 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-6 — ÜRÜN DEĞİŞİMİ (P-21 · Y-19) ═══
+   Uç: POST /islemler/degisim (iade bacağı + satış bacağı TEK fiş, TEK transaction).
+   Kaynak satış listesi sayfanın ZATEN yüklediği son satışlardır (yeni istek yok).
+   ⚠ Fark KARTLA kapanmaz (sunucu DegisimDto: NAKIT|VERESIYE) — seçenek hiç
+     sunulmaz, sebebi yazılır (UX-S30). Storno taklidi DEĞİLDİR (mühür 2).
+   ⚠ İstek atmaz — niyet DigerIstek ile sayfaya gider. *@
+<div class="form-dikey" id="degisim-form">
+    @if (KaynakSecenekleri.Count == 0)
+    {
+        <BosDurum Mesaj="@M.SatisYok" />
+    }
+    else
+    {
+        @* SATIS-3 (ölçüm: PRO 1440 açılış 1,21 ekran): alanlar üç satırda — geri gelen · yeni ürün · fark/kasa.
+           id'ler, sıra ve gövde AYNEN; yalnız yerleşim (form-izgara, css/tuval-satis.css). *@
+        <div class="form-izgara">
+            <Secici ElemanId="degisim-kaynak" Etiket="@M.KaynakSatis" Zorunlu="true" YerTutucu="@Satis3Sozlugu.Al(Dil.Dil).SatisSecin"
+                    Secenekler="@KaynakSecenekleri" Deger="@D.KaynakHareketId" DegerChanged="@(v => D.KaynakHareketId = v)"
+                    Hata="@Hata("kaynak")" />
+            <Sayi ElemanId="degisim-geri-adet" Etiket="@M.GeriGelenAdet" Zorunlu="true" EnAz="0.001m" EnCokOndalik="3"
+                  Deger="@D.GeriAlinanAdet" DegerChanged="@(v => D.GeriAlinanAdet = v)" Hata="@Hata("geri-adet")" />
+        </div>
+        <div class="form-izgara">
+            <Secici ElemanId="degisim-yeni-urun" Etiket="@M.YeniUrun" Zorunlu="true" YerTutucu="@Satis3Sozlugu.Al(Dil.Dil).UrunSecin"
+                    Secenekler="@(Baglam.Urunler.Select(u => new SecenekOgesi(u.Id, u.Ad)).ToList())"
+                    Deger="@D.YeniUrunId" DegerChanged="@(v => D.YeniUrunId = v)" Hata="@Hata("yeni-urun")" />
+            <Sayi ElemanId="degisim-yeni-adet" Etiket="@M.YeniAdet" Zorunlu="true" EnAz="0.001m" EnCokOndalik="3"
+                  Deger="@D.YeniAdet" DegerChanged="@(v => D.YeniAdet = v)" Hata="@Hata("yeni-adet")" />
+            <Para ElemanId="degisim-yeni-fiyat" Etiket="@M.YeniFiyat" Zorunlu="true" EnAz="0m" ParaBirimi="TRY"
+                  Deger="@D.YeniBirimFiyat" DegerChanged="@(v => D.YeniBirimFiyat = v)" Hata="@Hata("yeni-fiyat")" />
+        </div>
+        <div class="form-izgara">
+            <Secici ElemanId="degisim-fark" Etiket="@M.FarkNasil" Zorunlu="true"
+                    Secenekler="@FarkSecenekleri" Deger="@D.FarkOdemeTuru" DegerChanged="@(v => D.FarkOdemeTuru = v ?? "NAKIT")" />
+            @if (D.FarkOdemeTuru == "NAKIT")
+            {
+                <FisDigerKasa Durum="Durum" Baglam="Baglam" Onek="degisim" Hata="@Hata("kasa")" />
+            }
+        </div>
+        @* t10 (hakem): açıklama satırı açılışta durmaz — katlı "Bilgi" ipucunda (UX-S30 metni ve id'si korunur). *@
+        <details class="fis-bilgi" id="degisim-bilgi"><summary class="metin-kucuk">@Satis3Sozlugu.Al(Dil.Dil).BilgiIpucu</summary>
+        <p class="metin-kucuk metin-soluk" id="degisim-kart-kapali" role="note">@M.KartKapali</p>
+        </details>
+        <details class="fis-diger-ayrinti" id="degisim-ayrinti" open="@(!string.IsNullOrEmpty(D.Aciklama))">   @* SATIS-3: isteğe bağlı alanlar "+ Ayrıntı ekle" altında KATLI (kurucu 11:35) *@
+            <summary id="degisim-ayrinti-ac">@SatisSadeSozlugu.Al(Dil.Dil).DigerAyrintilar</summary>
+            <Metin ElemanId="degisim-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IslemAciklama"
+                   Deger="@D.Aciklama" DegerChanged="@(v => D.Aciklama = v ?? "")" />
+        </details>
+        <FisDigerEylem Id="degisim-kaydet" Metin="@M.DegisimKaydet" Mesgul="Durum.Mesgul" KurVar="Baglam.KurVar" Tikla="Kaydet" Red="@KaydetRed"
+                       Eksik="@FisDigerEylem.Etiketler(D.Hatalar(M, Durum.EtkinKasa(Baglam)), ("kaynak", M.KaynakSatis), ("geri-adet", M.GeriGelenAdet), ("yeni-urun", M.YeniUrun), ("yeni-adet", M.YeniAdet), ("yeni-fiyat", M.YeniFiyat), ("kasa", M.Kasa))" />   @* t10 *@
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DigerIslemDurumu Durum { get; set; } = new();
+    [Parameter, EditorRequired] public DigerBaglam Baglam { get; set; } = new([], [], [], [], false, null);
+    [Parameter] public EventCallback<DigerIstek> Istek { get; set; }
+
+    /// <summary>SATIS-3 t22: sunucunun nakit farka verdiği tevsik reddi — düğmenin yanında kısa metin (fark sunucuda hesaplanır).</summary>
+    private string? KaydetRed => Durum.Red is { } r && r.Eylem == DigerEylemler.Degisim ? r.Metin : null;
+
+    private FisDigerMetinleri M => FisDigerSozlugu.Al(Dil.Dil);
+    private DegisimGirisi D => Durum.Degisim;
+    private static readonly System.Globalization.CultureInfo Kultur = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    /// <summary>İade hakkı kalan satışlar — kalan adet etikette (sessiz kırpma yok).</summary>
+    private IReadOnlyList<SecenekOgesi> KaynakSecenekleri =>
+        Baglam.SonSatislar.Where(s => s.KalanAdet > 0m)
+            .Select(s => new SecenekOgesi(s.Id,
+                $"{Bicim.TarihTam(s.Tarih)} · {s.UrunAdi ?? "—"} · {Baglam.CariAdi(s.CariId)}",
+                string.Format(M.KalanHak, s.KalanAdet.ToString("0.###", Kultur))))
+            .ToList();
+
+    /// <summary>Tek dizi: DegisimGirisi.FarkTurleri (KART yok).</summary>
+    private IReadOnlyList<SecenekOgesi> FarkSecenekleri =>
+        DegisimGirisi.FarkTurleri.Select(t => new SecenekOgesi(t, t == "NAKIT" ? M.Nakit : M.AcikHesap)).ToList();
+
+    private string? Hata(string alan) =>
+        Durum.Denenen.Contains(DigerEylemler.Degisim) ? D.Hatalar(M, Durum.EtkinKasa(Baglam)).GetValueOrDefault(alan) : null;
+
+    private async Task Kaydet()
+    {
+        Durum.Denenen.Add(DigerEylemler.Degisim);
+        if (D.Hatalar(M, Durum.EtkinKasa(Baglam)).Count > 0) return;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.Degisim));
+    }
+}

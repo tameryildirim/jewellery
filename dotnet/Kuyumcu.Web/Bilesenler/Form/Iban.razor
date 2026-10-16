@@ -1,0 +1,98 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — IBAN (K1 · TCMB Tebliğ 2008/6 md.4 + ISO 7064 MOD 97-10).
+   Yazarken: TR öneki kendiliğinden, banka kodu/rezerv bölümüne harf yazılamaz, 4'lü
+   gruplar; 26. karakterde kontrol hanesi denetlenir → alan altında hata + Kaydet kilidi
+   (sebep aynı metin). Çağırana BOŞLUKSUZ büyük harf IBAN gider. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="text" class="girdi iban-girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@(YerTutucu ?? GirdiSozlugu.Al(Dil.Dil).IbanYerTutucu)"
+           maxlength="@AlanSinirlari.IbanGorunen" autocomplete="off" spellcheck="false" autocapitalize="characters"
+           data-maske="iban"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    // Tur 3 (tasarım hakemi): varsayılan ipucu satırı KALDIRILDI ("26 karakter; 4'lü gruplar …"
+    // tuvalde yok; yabancı IBAN'da da yanlış). Biçimi maske ve yer tutucu anlatır; alan altında yalnız hata.
+
+    /// <summary>girdi-maske.js 'iban' ile AYNI: büyük harf, TR öneki, konum kuralı, 4'lü grup.</summary>
+    public static string Maskele(string? girdi)
+    {
+        if (string.IsNullOrEmpty(girdi)) return "";
+        var b = new System.Text.StringBuilder(34);
+        foreach (var ch in BaslangicaKes(girdi))
+        {
+            var c = ch;
+            var harf = c is >= 'A' and <= 'Z';
+            var rakam = c is >= '0' and <= '9';
+            if (!harf && !rakam) continue;
+            if (b.Length < 2)
+            {
+                if (harf) { b.Append(c); continue; }
+                if (b.Length == 0) b.Append("TR");   // rakamla başlayan yazım → TR öneki
+                else continue;                       // "T5" gibi: ülke koduna rakam yazılamaz
+            }
+            var tr = b[0] == 'T' && b[1] == 'R';
+            var sinir = tr ? IbanDogrulayici.TrUzunluk : AlanSinirlari.Iban;
+            if (b.Length >= sinir) break;
+            if (tr && b.Length < 10 && !rakam) continue;   // kontrol hanesi + banka kodu + rezerv: yalnız rakam
+            if (!tr && b.Length < 4 && !rakam) continue;   // yabancı: kontrol hanesi rakam
+            b.Append(c);
+        }
+        return Grupla(b.ToString(), 4, 4, 4, 4, 4, 4, 4, 4, 4);
+    }
+
+    /// <summary>
+    /// Yapıştırma temizliği (doğrulayıcı tur 1): "IBAN: TR33-0006 …" gibi ön ekli metinde
+    /// 'IBAN' sözcüğünün harfleri ülke kodu sayılmasın diye IBAN'ın BAŞLANGICI aranır.
+    /// Metin zaten 2 harf + 2 rakamla başlıyorsa olduğu gibi; değilse ilk "TR"+2 rakam,
+    /// o da yoksa ilk 2 harf + 2 rakam. Hiçbiri yoksa metin olduğu gibi (yazma sürüyor).
+    /// girdi-maske.js 'baslangicaKes' ile AYNI.
+    /// </summary>
+    public static string BaslangicaKes(string girdi)
+    {
+        var b = new System.Text.StringBuilder(girdi.Length);
+        foreach (var ch in girdi.ToUpperInvariant())
+            if (ch is >= 'A' and <= 'Z' or >= '0' and <= '9') b.Append(ch);
+        var s = b.ToString();
+        static bool Bas(string s, int i, bool yalnizTr) =>
+            i + 4 <= s.Length && s[i] is >= 'A' and <= 'Z' && s[i + 1] is >= 'A' and <= 'Z'
+            && s[i + 2] is >= '0' and <= '9' && s[i + 3] is >= '0' and <= '9'
+            && (!yalnizTr || (s[i] == 'T' && s[i + 1] == 'R'));
+        if (Bas(s, 0, false)) return s;
+        for (var i = 1; i + 4 <= s.Length; i++) if (Bas(s, i, true)) return s[i..];
+        for (var i = 1; i + 4 <= s.Length; i++) if (Bas(s, i, false)) return s[i..];
+        return s;
+    }
+
+    protected override string Temizle(string? girdi) => Maskele(girdi);
+
+    private static string Duz(string s) => IbanDogrulayici.Normallestir(s);
+
+    protected override string Kayit(string temiz) => Duz(temiz);
+
+    protected override GirdiHatasi? TamDenetle(string temiz) => IbanDogrulayici.Denetle(Duz(temiz));
+
+    /// <summary>
+    /// TR: 26. karakterde mod-97 anında. Yabancı (doğrulayıcı tur 1): ülke uzunluk çizelgesi
+    /// birincil kaynaktan (SWIFT ISO 13616 kaydı) DOĞRULANAMADIĞI için uzunluk sabit yazılmaz;
+    /// ülke kodu + kontrol hanesi yazıldıktan sonra (4+ karakter) tam kural geçene dek alan
+    /// altında "henüz tamamlanmadı ya da kontrol hanesi tutmuyor" yazar ve Kaydet KİLİTLİ kalır
+    /// (fail-closed). Geçerli olduğu an hata kalkar.
+    /// </summary>
+    protected override GirdiHatasi? YazarkenDenetle(string temiz)
+    {
+        var d = Duz(temiz);
+        if (d.StartsWith("TR", StringComparison.Ordinal))
+            return d.Length >= IbanDogrulayici.TrUzunluk ? IbanDogrulayici.Denetle(d) : null;
+        if (d.Length < 4) return null;
+        return IbanDogrulayici.Denetle(d) is null ? null : new GirdiHatasi(GirdiKodu.IbanEksik, d.Length);
+    }
+}

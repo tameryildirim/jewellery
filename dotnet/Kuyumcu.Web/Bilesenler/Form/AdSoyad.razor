@@ -1,0 +1,37 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — AD / SOYAD (K19): kırpılır, çift boşluk teke iner; en az 2 karakter, en az bir harf. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="text" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@YerTutucu" maxlength="@EnFazla" autocomplete="off"
+           data-maske="ad"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    [Parameter] public int EnFazla { get; set; } = AlanSinirlari.Ad;
+    /// <summary>Çift boşluk teke (girdi-maske.js 'ad' ile AYNI); baştaki boşluk yazılmaz.</summary>
+    public static string Maskele(string? g)
+    {
+        if (string.IsNullOrEmpty(g)) return "";
+        var b = new System.Text.StringBuilder(g.Length);
+        foreach (var ch in g)
+        {
+            var c = char.IsWhiteSpace(ch) ? ' ' : ch;
+            if (char.IsControl(c)) continue;
+            if (c == ' ' && (b.Length == 0 || b[^1] == ' ')) continue;
+            b.Append(c);
+        }
+        return b.ToString();
+    }
+    protected override string Temizle(string? g) => Maskele(g);
+    protected override string CikisBicimi(string t) => AdKurali.Normallestir(t);
+    protected override string Kayit(string t) => t;
+    protected override GirdiHatasi? TamDenetle(string t) => AdKurali.Denetle(t, EnFazla);
+}

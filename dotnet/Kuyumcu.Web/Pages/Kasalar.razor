@@ -1,0 +1,1243 @@
+@page "/kasalar"
+@using Kuyumcu.Contracts.Sayfalar.Kasalar
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ÖRNEK SAYFA — diğer sayfalar bu deseni izler:
+   • Veri: ApiIstemci.GetAsync → JsonElement; liste uçları çıplak dizi döner.
+   • Çeviri: Dil.T.{Bolum}.{Anahtar}; Dil.Degisti aboneliği + Dispose.
+   • Para/tarih: Bicim.Tl / Bicim.Has / Bicim.Tarih(t, Dil.Locale).
+   • Hata/başarı: HataBandi / BasariBandi; modallar ModalPencere.
+   Kaynak: apps/web/src/pages/KasaPage.tsx
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Kasa.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* ═══ PAKET S3-6 — LİSTE + ÇEKMECE ŞABLONU (taslak n3, plan § 6 S-3) ═══════════
+   • İlk bakışta ≤ 5 öğe: başlık şeridi (tek birincil düğme) · tek özet (TL toplam)
+     · kasa kartları. Kasa sayısı / aktif kasa kartları ProAlan'da (özellik
+     SİLİNMEDİ, profesyonel yüzde aynen).
+   • Kartta ≤ 3 eylem + "⋯": [Hareket | Aktife al] · Geçmiş · Günü Kapat · ⋯
+     (Düzenle, Pasife Al). Pencere yerli HTML `popover` — JS YOK, CSP istisnası
+     YOK; içerik DOM'da hep durur (bUnit id ile bulur). Cariler (S3-2) deseni.
+   • Çok alanlı her form Cekmece'de (DoD EK md.2): yeni kasa, hareket, gün
+     sonu, geçmiş. ModalPencere yalnız YIKICI onay: storno ve pasife alma.
+   • Mevcut id'lerin HİÇBİRİ değişmedi (kasa-yeni, kasa-hareket-*, kasa-gecmis-*,
+     kasa-gun-kapat-*, kasa-pasife-al-*, kasa-aktife-al-*, kasa-pasif-not-*,
+     kasa-ad, kasa-doviz, kasa-olustur, d-*, h-*, gun-*, kh-*, kasa-pasif-*).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Kasalar (BİREBİR); özgün liste yalnız "Tüm ayrıntılar"
+   görünümünde çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Çekmeceler (gün sonu, hareket, geçmiş) aşağıda ORTAK.
+   Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizOzet B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    <SayfaBasi Anahtar="kasalar" AciklamaKatli="true" Baslik="@Dil.T.Kasa.Baslik" Aciklama="@Dil.T.Kasa.SayfaAciklama">
+        <Eylem>
+            <button @onclick="YeniAc" class="btn btn-birincil btn-kucuk" id="kasa-yeni">+ @Dil.T.Kasa.YeniKasa</button>
+        </Eylem>
+    </SayfaBasi>
+    @* ŞUBE-KAPSAM-B: seçili şubenin kasaları; seçim değişince liste yeniden yüklenir. *@
+    <GorunumRozeti Degisti="Yukle" />
+
+    <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (listeHata is null && KasaListesi.Count == 0)
+    {
+        @* Boş durum = 1 cümle + 1 düğme (orkestratör koşulu). UX-S28: yalnız
+           istek BAŞARILI ve liste gerçekten boşken çizilir; hata bandı ayrıdır. *@
+        <div class="dikey-bosluk ortala" id="kasa-bos">
+            <BosDurum Mesaj="@M.BosDurum" />
+            <button @onclick="YeniAc" type="button" class="btn btn-birincil" id="kasa-bos-yeni">+ @Dil.T.Kasa.YeniKasa</button>
+        </div>
+    }
+    else
+    {
+        @* UX-S32: toplam kartı HANGİ para birimini topladığını etiketinde söyler. *@
+        <div class="stat-izgara">
+            @* PAKET Q9-5 (QA turu 9): eksi toplam YEŞİL şeritle gösterilmez. *@
+            @* P-DIL-BORC-KASA (Y8): TL kasaların hepsinin nakit ayrımı okunduysa büyük rakam çekmecedeki nakit;
+               toplam (kart+havale dahil) alt satırda. Okunamadıysa eski toplam ve eski etiket. *@
+            @if (TryNakitToplami is { } tryNakit)
+            {
+                <StatKart Renk="@(tryNakit < 0m ? "kirmizi" : "yesil")" Etiket="@KasaNakitSozlugu.CekmecedekiNakitTl(Dil.Dil)" Deger="@Bicim.Para(tryNakit, "TRY")"
+                          Alt="@(ToplamTry < 0m ? Q.EksiOzetAlt : tryNakit != ToplamTry ? KasaNakitSozlugu.ToplamAlt(Bicim.Para(ToplamTry, "TRY"), Dil.Dil) : null)" />
+            }
+            else
+            {
+                <StatKart Renk="@(ToplamTry < 0m ? "kirmizi" : "yesil")" Etiket="@Dil.T.Kasa.ToplamTlBakiye" Deger="@Bicim.Para(ToplamTry, "TRY")"
+                          Alt="@(ToplamTry < 0m ? Q.EksiOzetAlt : null)" />
+            }
+            <ProAlan>
+                <StatKart Renk="mavi" Etiket="@Dil.T.Kasa.KasaSayisi" Deger="@KasaListesi.Count.ToString()" />
+                <StatKart Etiket="@Dil.T.Kasa.AktifKasa" Deger="@KasaListesi.Count(k => k.Aktif).ToString()" />
+            </ProAlan>
+        </div>
+
+        @* PAKET Q9-5 (QA turu 9, YÜKSEK): eksi bakiyeli kasa SESSİZ durmaz —
+           sayfa düzeyinde uyarı + kartta rozet ve düzeltme yolu. *@
+        @if (EksiKasaSayisi > 0)
+        {
+            <div class="bant bant-uyari" role="status" id="kasa-eksi-ozet">
+                <p class="mb-1">@string.Format(Q.EksiOzetUyari, EksiKasaSayisi)</p>
+                <a class="btn btn-ikincil btn-kucuk" href="/raporlar/kasa" id="kasa-eksi-rapor">@Dil.T.Gider.KasaRaporunaGit</a>
+            </div>
+        }
+
+        <div class="stat-izgara" id="kasa-liste">
+            @foreach (var kasa in KasaListesi)
+            {
+                <div class="kart" id="@($"kasa-kart-{kasa.Id}")">
+                    <div class="kart-govde">
+                        <div class="satir-arasi mb-1">
+                            <strong>@kasa.Ad</strong>
+                            @* ŞUBE-KAPSAM-B § 4.4: "tüm şubeler" görünümünde kasanın şubesi
+                               yazar (Basit yüzde katlı — ProAlan). *@
+                            @if (TumSubeGorunumu && SubeAdi(kasa.SubeId) is { } kasaSubesi)
+                            {
+                                <ProAlan><span class="metin-kucuk metin-soluk" id="@($"kasa-sube-{kasa.Id}")">@SK.SubeSutunu: @kasaSubesi</span></ProAlan>
+                            }
+                            @* UX-S31: para birimi KODU basılmaz; okunur ad. *@
+                            <Rozet Renk="@(kasa.Aktif ? "yesil" : "gri")">
+                                @(kasa.Aktif ? ParaAdi(kasa.ParaBirimi) : $"{ParaAdi(kasa.ParaBirimi)} · {Dil.T.Ortak.Pasif}")
+                            </Rozet>
+                        </div>
+                        @* UX-S32 — tutar kendi para birimiyle basılır; "varsayılan TL" yok. *@
+                        @* P-DIL-BORC-KASA (Y8): büyük rakam ÇEKMECEDEKİ NAKİT; kart ve havale alt satırda adlarıyla.
+                           Ayrım okunamazsa kasa toplamı yazılır ve etiketi bunu söyler (nakit diye basılmaz). *@
+                        @{ var kartAyrim = nakitAyrimlari.GetValueOrDefault(kasa.Id); var buyuk = BuyukRakam(kasa.Bakiye, kartAyrim); }
+                        <p class="metin-kucuk metin-soluk mb-0" id="@($"kasa-buyuk-etiket-{kasa.Id}")">@(kartAyrim is not null ? KasaNakitSozlugu.CekmecedekiNakit(Dil.Dil) : KasaNakitSozlugu.KasaToplami(Dil.Dil))</p>
+                        <p class="stat-deger sayi mb-2 @(buyuk < 0m ? "metin-kirmizi" : null)" id="@($"kasa-bakiye-{kasa.Id}")">@Bicim.Para(buyuk, kasa.ParaBirimi)</p>
+                        @* PARA-DEMO-2 (madde 4): kasada kart/havale payı varsa alt satır "Nakit X · Kart/Havale Y" — bakiye
+                           çekmecedeki nakit sanılmaz. Pay yoksa satır çizilmez (zorunlu önce); okunamazsa kısa hata satırı (UX-S28). *@
+                        @if (nakitAyrimlari.GetValueOrDefault(kasa.Id) is { } ay && (ay.Kart != 0m || ay.Havale != 0m))
+                        {
+                            <p class="metin-kucuk metin-soluk mb-2" id="@($"kasa-ayrim-{kasa.Id}")">@KasaNakitSozlugu.AyrimSatiri(Bicim.Para(ay.Kart, kasa.ParaBirimi), Bicim.Para(ay.Havale, kasa.ParaBirimi), Bicim.Para(kasa.Bakiye, kasa.ParaBirimi), Dil.Dil)</p>
+                        }
+                        else if (nakitAyrimHata is not null && kasa.Aktif)
+                        {
+                            <p class="metin-kucuk metin-amber mb-2" id="@($"kasa-ayrim-hata-{kasa.Id}")">@string.Format(PD2.KasaAyrimHata, nakitAyrimHata)</p>
+                        }
+                        @if (kasa.Bakiye < 0m)
+                        {
+                            <div class="mb-2" id="@($"kasa-eksi-{kasa.Id}")" role="status">
+                                <Rozet Renk="kirmizi">@Dil.T.Gider.KasaBakiyeEksi</Rozet>
+                                <p class="metin-kucuk metin-kirmizi" id="@($"kasa-eksi-not-{kasa.Id}")">@Q.EksiKartUyari</p>
+                                @if (kasa.Aktif)
+                                {
+                                    <button @onclick="() => EksiKasayaGirisAc(kasa)" type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-eksi-giris-{kasa.Id}")">+ @Q.EksiKasayaGiris</button>
+                                }
+                            </div>
+                        }
+                        @if (!kasa.Aktif)
+                        {
+                            <p class="metin-soluk metin-kucuk" id="@($"kasa-pasif-not-{kasa.Id}")">@Dil.T.Kasa.PasifKasaUyari</p>
+                        }
+                        @* SON-KALANLAR (hasım YÜKSEK, B1440__14): bugünkü günü kapanmış kasa kartında rozet + sebep;
+                           "+ Hareket" ve "Günü kapat" kilitli (UX-S30: sebep kartta yazılı). Sunucu kilidi GunKapanisiKapisi. *@
+                        @if (kasa.Aktif && BugunKapali(kasa))
+                        {
+                            <div class="mb-2" id="@($"kasa-gun-kapali-{kasa.Id}")" role="status">
+                                <Rozet Renk="amber">@SKL.GunKapandiRozet</Rozet>
+                                <p class="metin-kucuk metin-soluk" id="@($"kasa-gun-kapali-not-{kasa.Id}")">@SKL.GunKapandiSebep</p>
+                            </div>
+                        }
+                        <div class="satir-eylemler" id="@($"kasa-eylem-{kasa.Id}")">
+                            @if (kasa.Aktif && BugunKapali(kasa))
+                            {
+                                <button disabled type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-hareket-{kasa.Id}")"
+                                        title="@SKL.GunKapandiSebep" aria-describedby="@($"kasa-gun-kapali-not-{kasa.Id}")">+ @Dil.T.Kasa.Hareket</button>
+                            }
+                            else if (kasa.Aktif)
+                            {
+                                <button @onclick="() => HareketModalAc(kasa)" type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-hareket-{kasa.Id}")">+ @Dil.T.Kasa.Hareket</button>
+                            }
+                            else
+                            {
+                                @* UX-4d md.13 / UX-S25 — pasife alınan kasa GERİ AÇILABİLİR;
+                                   pasif kartta geri dönüş yolu İLK eylemdir. *@
+                                <button @onclick="() => KasaAktifeAl(kasa)" disabled="@kaydediliyor" type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-aktife-al-{kasa.Id}")"><Ikon Ad="@Ikonlar.Onay" /> @Dil.T.Kabuk.AktifeAl</button>
+                            }
+                            <button @onclick="() => GecmisAc(kasa)" type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-gecmis-{kasa.Id}")">@Dil.T.Ortak.Gecmis</button>
+                            @if (kasa.Aktif && BugunKapali(kasa))
+                            {
+                                <button disabled type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-gun-kapat-{kasa.Id}")"
+                                        title="@SKL.GunKapandiSebep" aria-describedby="@($"kasa-gun-kapali-not-{kasa.Id}")"><Ikon Ad="@Ikonlar.Saat" /> @Dil.T.Kasa.GunKapat</button>
+                            }
+                            else if (kasa.Aktif)
+                            {
+                                <button @onclick="() => GunKapanisAc(kasa)" type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-gun-kapat-{kasa.Id}")"><Ikon Ad="@Ikonlar.Saat" /> @Dil.T.Kasa.GunKapat</button>
+                            }
+                            <button type="button" class="btn btn-ikincil btn-kucuk satir-menu-ac" id="@($"kasa-menu-ac-{kasa.Id}")" popovertarget="@($"kasa-menu-{kasa.Id}")"
+                                    aria-haspopup="dialog" title="@M.DigerIslemler"
+                                    aria-label="@($"{kasa.Ad} — {M.DigerIslemler}")">⋯</button>
+                        </div>
+                        <div popover="auto" class="satir-menu" id="@($"kasa-menu-{kasa.Id}")"
+                             role="dialog" aria-labelledby="@($"kasa-menu-{kasa.Id}-baslik")">
+                            <p class="satir-menu-baslik" id="@($"kasa-menu-{kasa.Id}-baslik")">@string.Format(M.MenuBaslik, kasa.Ad)</p>
+                            <div class="satir-menu-ogeler">
+                                @if (!kasa.Aktif)
+                                {
+                                    @* UX-S30: pasif kasada hareket girilemez; sebep kartta yazılı. *@
+                                    <button disabled type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-hareket-{kasa.Id}")"
+                                            title="@Dil.T.Kasa.PasifKasaUyari">+ @Dil.T.Kasa.Hareket</button>
+                                }
+                                <button @onclick="() => DuzenlemeyiAc(kasa)" type="button" class="btn btn-ikincil btn-kucuk kasa-duzenle-btn" id="@($"kasa-duzenle-{kasa.Id}")"
+                                        popovertarget="@($"kasa-menu-{kasa.Id}")" popovertargetaction="hide"
+                                        aria-label="@($"{kasa.Ad} — {Dil.T.Kasa.AdDuzenle}")"><Ikon Ad="@Ikonlar.Kalem" /> @Dil.T.Ortak.Duzenle</button>
+                                @* Kasa kapatma. BAKİYELİ kasa kapatılamaz: içinde para varken
+                                   kapatılan kasa, "o para nereye gitti" sorusunu cevapsız bırakır.
+                                   Geri dönüş: pasif kartta görünen "Aktife al". *@
+                                @if (kasa.Aktif)
+                                {
+                                    <button @onclick="() => pasifKasa = kasa" disabled="@(kasa.Bakiye != 0)" type="button" class="btn btn-tehlike btn-kucuk" id="@($"kasa-pasife-al-{kasa.Id}")"
+                                            title="@(kasa.Bakiye != 0 ? Dil.T.Kasa.BakiyeliKasaUyarisi : null)"
+                                            popovertarget="@($"kasa-menu-{kasa.Id}")" popovertargetaction="hide"><Ikon Ad="@Ikonlar.Carpi" /> @Dil.T.Kasa.PasifeAl</button>
+                                    @if (kasa.Bakiye != 0)
+                                    {
+                                        <p class="metin-soluk metin-kucuk" id="@($"kasa-bakiyeli-not-{kasa.Id}")">@Dil.T.Kasa.BakiyeliKasaUyarisi</p>
+                                    }
+                                }
+                                <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"kasa-menu-kapat-{kasa.Id}")" popovertarget="@($"kasa-menu-{kasa.Id}")" popovertargetaction="hide">@Dil.T.Ortak.Kapat</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+}
+
+@* ── Yeni kasa ÇEKMECESİ (DoD EK md.2; eski modal kabuğu çevrildi, iç id'ler AYNEN) ──
+   UX-S26: oluşturma formu düzenleme formuyla AYNI alan kümesini taşır (ad,
+   döviz, şube). UX-S22: tek şube varsa seçici GİZLİ, değer salt okunur satırda
+   yazar ve gövdeye otomatik girer. *@
+<Cekmece Acik="yeniModalAcik" Varlik="kasa-yeni" Baslik="@Dil.T.Kasa.YeniKasa"
+         Kapat="() => yeniModalAcik = false" KaydetGoster="false">
+    <ChildContent>
+    <div class="form-dikey">
+        <Metin ElemanId="kasa-ad" Etiket="@Dil.T.Kasa.KasaAdi" Zorunlu="true" EnFazla="@AlanSinirlari.KasaAdi"
+               Deger="@yeniAd" DegerChanged="@(v => yeniAd = v ?? "")"
+               Durum="yeniForm" HataAlani="kasa-ad" />
+        <div class="alan">
+            <Secici ElemanId="kasa-doviz"
+                    Etiket="@Dil.T.Kasa.Doviz"
+                    Secenekler="@DovizSecenekleri"
+                    @bind-Deger="yeniDoviz" />
+        </div>
+        @if (subeler.Count > 1)
+        {
+            <div class="alan">
+                <Secici ElemanId="kasa-sube"
+                        Etiket="@Dil.T.Kasa.Sube"
+                        Secenekler="@(subeler.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                        @bind-Deger="yeniSube" />
+            </div>
+        }
+        else if (subeler.Count == 1)
+        {
+            <p class="metin-kucuk metin-soluk" id="kasa-sube-tek">@string.Format(M.SubeOtomatik, subeler[0].Ad)</p>
+        }
+        <HataBandi Mesaj="@modalHata" />
+    </div>
+    </ChildContent>
+    <Alt>
+        @* TOPLU-7B: Kaydet altbilgide, İptal'in yanında; kimlik/olay AYNEN. *@
+        <button @onclick="KasaOlustur" disabled="@kaydediliyor" type="button" class="btn btn-birincil" id="kasa-olustur">@Dil.T.Ortak.Kaydet</button>
+    </Alt>
+</Cekmece>
+
+@* ── Kasa düzenleme ÇEKMECESİ (K6; eski modal kabuğu çevrildi, iç id'ler AYNEN) ──
+   UX-1-B devri: sunucu KasaGuncelleDto artık ad + paraBirimi + subeId + aktif
+   alıyor; ekran bu üç alanı da sunar. Mehmet K4 kapısı (bakiye/hareket/gün
+   kapanışı varken döviz-şube değişmez) sunucudadır; ekran SEBEBİNİ yazar. *@
+<Cekmece Acik="duzenleKasaId is not null" Varlik="kasa" Baslik="@Dil.T.Kasa.Duzenle"
+         Kapat="() => duzenleKasaId = null" Kaydet="KasaGuncelle" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(!kaydediliyor)">
+    <div class="form-dikey">
+        <Metin ElemanId="d-ad" Etiket="@Dil.T.Kasa.KasaAdi" Zorunlu="true" EnFazla="@AlanSinirlari.KasaAdi"
+               Deger="@duzenleAd" DegerChanged="@(v => duzenleAd = v ?? "")"
+               Durum="duzenleForm" HataAlani="d-ad" />
+        @* PAKET Q9-5 (QA turu 9, YÜKSEK): döviz ve şube eskiden ProAlan içindeydi —
+           basit modda çekmecede YALNIZ ad görünüyor, yanlış şubeye açılan kasa
+           düzeltilemiyordu. Mod bir yetki değildir: oluşturma formunda olan alan
+           (UX-S26) düzenlemede de iki modda görünür. Geçmişi olan kasada alanlar
+           KİLİTLİDİR (sunucu kuralı, Mehmet K4) ve sebep kaydetmeden ÖNCE yazılır. *@
+        @if (kilitYukleniyor)
+        {
+            <Yukleniyor />
+        }
+        <div class="alan">
+            <Secici ElemanId="d-doviz"
+                    Etiket="@Dil.T.Kasa.Doviz"
+                    Secenekler="@DovizSecenekleri"
+                    @bind-Deger="duzenleDoviz"
+                    Devredisi="@DegisimKilitli" />
+            <AlanHatasi Alan="d-doviz" Durum="duzenleForm" />
+        </div>
+        @* Mevcut id (#d-sube) korunur: seçici tek şubede de çizilir (DOM sözleşmesi). *@
+        <div class="alan">
+            <Secici ElemanId="d-sube"
+                    Etiket="@Dil.T.Kasa.Sube"
+                    Secenekler="@(subeler.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                    @bind-Deger="duzenleSube"
+                    BosSecenekMetni="—"
+                    Devredisi="@DegisimKilitli" />
+            <AlanHatasi Alan="d-sube" Durum="duzenleForm" />
+        </div>
+        @if (DegisimKilitli && !kilitYukleniyor)
+        {
+            <DegismezIpucu Varlik="kasa-sube" Gerekce="@KilitGerekcesi" AlternatifYol="@Q.KilitYol" />
+            <a class="btn btn-ikincil btn-kucuk" href="/gider?sekme=virman" id="d-kilit-virman-yol">@Q.KilitYolBaglanti</a>
+        }
+        else if (!kilitYukleniyor)
+        {
+            <p class="metin-soluk metin-kucuk" id="d-doviz-kilit">@Dil.T.Kasa.DovizKilit</p>
+        }
+        <HataBandi Mesaj="@modalHata" />
+    </div>
+</Cekmece>
+
+@* ── Hareket giriş ÇEKMECESİ ── *@
+@* UX-S22/S27: hangi KASAYA hareket girildiği başlıkta yazar (QA turu 3: kullanıcı
+   önceki kasanın formunu görüp yanlış kasaya kayıt attı). *@
+<Cekmece Acik="hareketKasaId is not null" Varlik="kasa-hareket" Baslik="@string.Format(Dil.T.Kasa.HareketModalBaslik, hareketKasaAd)"
+         Kapat="() => hareketKasaId = null" Kaydet="HareketGir" Kaydediliyor="kaydediliyor"
+         KaydetAktif="@(!sayiKapisi.OnekleVar("h-"))" KaydetMetni="@Dil.T.Ortak.Kaydet" KaydetElemanId="h-kaydet">
+    @* SON-KALANLAR (hasım ORTA, B1440__06 ↔ B1440__04): aynı sayfada TEK çekmece düzeni — birincil "Kaydet"
+       gövdede değil, Gün Kapat gibi ALTLIKTA (İptal → Kaydet). Kimlik #h-kaydet AYNEN. *@
+    <div class="form-dikey">
+        <div class="alan">
+            <Secici ElemanId="h-tur"
+                    Etiket="@Dil.T.Kasa.HareketTuru"
+                    Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("GIRIS", Dil.T.Kasa.Gelir), new SecenekOgesi("CIKIS", Dil.T.Kasa.Gider) })"
+                    @bind-Deger="hareketYon" />
+        </div>
+        @* PAKET GOC-A (envanter C · h-tutar "3. ondalık sessizce yuvarlanıyor"): K9 Pozitif — sunucu AYNI kural (400, yuvarlama yok). *@
+        <Para ElemanId="h-tutar" Etiket="@Dil.T.Ortak.Tutar" Zorunlu="true" Tur="TutarTuru.Pozitif"
+              ParaBirimi="@hareketParaBirimi"
+              Deger="@hareketTutar" DegerChanged="@(v => hareketTutar = v ?? 0m)"
+              Durum="hareketForm" HataAlani="h-tutar" />
+        <Metin ElemanId="h-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+               Deger="@hareketAciklama" DegerChanged="@(v => hareketAciklama = v ?? "")"
+               Durum="hareketForm" HataAlani="h-aciklama" />
+        <HataBandi Mesaj="@modalHata" />
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="h-" ElemanId="h-sayi-kilit" />
+    </div>
+</Cekmece>
+
+@* ── Geçmiş ÇEKMECESİ (liste bağlamı kaybolmaz) ──
+   UX-1-C2: her satır ya STORNO edilebilir ya da NEDEN edilemediğini yazar
+   (UX-S25/S30). Elle girilen kasa hareketi bir defter işlemine bağlı değildir
+   (kasa_hareketleri.hareket_id NULL) — 48-A motoru ona ters kayıt üretemez;
+   düğme GÖRÜNÜR ama kilitlidir ve gerçek gerekçesi altında yazar.
+   ⚠ S3-6: storno onayı açılınca çekmece GİZLENİR (iki odak tuzağı üst üste
+     binmez); vazgeçilince ya da storno bitince aynı kasanın geçmişi geri gelir. *@
+<Cekmece Acik="@(gecmisKasaId is not null && gecmisAcik)" Varlik="kasa-gecmis" Baslik="@string.Format(M.GecmisBaslik, gecmisKasaAd)"
+         Kapat="GecmisKapat" KaydetGoster="false">
+    <HataBandi Mesaj="@gecmisHata" />
+    @if (gecmisHata is null && gecmis.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Cari.HareketYok" />
+    }
+    else
+    {
+        @foreach (var h in gecmis)
+        {
+            <div class="satir-arasi liste-satiri">
+                <div>
+                    <span class="hucre-vurgu">@OdemeEtiketi(h.OdemeTuru)</span>
+                    @* PAKET S-3b: girilen açıklama artık SAKLANIYOR ve burada görünüyor.
+                       PAKET P-12 (B-41): ve artık DÜZELTİLEBİLİR — tek alanlı
+                       düzeltme kalıbı SatirIciDuzenle'dir (DoD EK md.2). Finansal
+                       alan (tutar/ödeme türü) burada DEĞİL; onun yolu storno. *@
+                    <p class="metin-kucuk" id="@($"kh-aciklama-{h.Id}")">
+                        @if (AciklamaDuzenlenebilir(h))
+                        {
+                            @* PAKET GOC-A: ekran sınırı = sunucu (KasaHareketDuzeltDto MaxLength 500). *@
+                            <SatirIciDuzenle Varlik="kasa-hareket" Alan="aciklama" Id="@h.Id"
+                                             Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+                                             Deger="@h.Aciklama" BosOlabilir="true"
+                                             Kaydediliyor="@(satirKaydedilen == h.Id)"
+                                             Kaydedildi="@(y => HareketAciklamaKaydet(h, y))" />
+                            <AlanHatasi Alan="@($"si-kasa-hareket-aciklama-{h.Id}")" Durum="hareketForm" />
+                        }
+                        else
+                        {
+                            @(string.IsNullOrWhiteSpace(h.Aciklama) ? Dil.T.Kasa.HareketAciklamaYok : h.Aciklama)
+                        }
+                    </p>
+                    <p class="metin-soluk metin-kucuk">@Bicim.Tarih(h.Tarih, Dil.Locale)</p>
+                    @if (h.StornoKaynakId is not null || Stornolandi(h))
+                    {
+                        <Rozet Renk="gri">@Dil.T.Kabuk.StornoluKayit</Rozet>
+                    }
+                    @* PAKET P-19 (Y-11) — sapma S1 kapanışı. Sunucu bu satırın tek
+                       bacak stornosunu 409 ile reddediyordu; ekran o reddi ÖNCEDEN
+                       söyler ve doğru yola bağlantı verir (UX-S25 · UX-S30 · DoD EK md.1:
+                       kilitli düğmenin yanında sebebi ve alternatif yolu YAZILI). *@
+                    @if (h.KarsiBacakId is not null)
+                    {
+                        <Rozet Renk="sari">@Dil.T.Kabuk.VirmanBacagi</Rozet>
+                        <p class="metin-kucuk metin-soluk" id="@($"kh-virman-gerekce-{h.Id}")">@Dil.T.Kabuk.VirmanBacagiGerekce</p>
+                        <a class="btn btn-ikincil btn-kucuk" href="/gider?sekme=virman"
+                           id="@($"kh-virman-yol-{h.Id}")">@Dil.T.Kabuk.VirmanStornosunaGit</a>
+                    }
+                </div>
+                <div class="satir-eylemler">
+                    <span class="hucre-vurgu sayi @(h.Tutar >= 0 ? "metin-yesil" : "metin-kirmizi")">@Bicim.Para(h.Tutar, gecmisParaBirimi)</span>
+                    <button @onclick="() => StornoIste(h)" disabled="@(!StornoAcik(h))" type="button" class="btn btn-ikincil btn-kucuk"
+                            id="@($"kh-storno-{h.Id}")">@Dil.T.Kabuk.Storno</button>
+                </div>
+            </div>
+        }
+        @if (gecmis.Any(x => !StornoAcik(x)))
+        {
+            @* UX-S25/S30 — kilitli kalan satırın sebebi YAZILI. Elle hareket artık
+               kilitli değil; kalan kilitler: defter bacağı (kur yoksa) ve
+               zaten stornolanmış / ters kayıt satırları. *@
+            <DegismezIpucu Varlik="KasaHareketi"
+                           Gerekce="@(kurId is null && gecmis.Any(x => x.HareketId is { Length: > 0 }) ? Dil.T.Kabuk.StornoKurYok : Dil.T.Kasa.HareketStornoYok)"
+                           AlternatifYol="@Dil.T.Kasa.HareketStornoYolu" />
+            @if (kurOkumaHatasi is not null && kurId is null)
+            {
+                <p class="metin-kucuk metin-soluk" id="kh-kur-hata">@kurOkumaHatasi</p>
+            }
+        }
+    }
+</Cekmece>
+
+@* ── STORNO onayı (48-A motoruna bağlanır; gerekçe ≥ 20 karakter) ─────────── *@
+<ModalPencere Acik="stornoHareket is not null" Baslik="@Dil.T.Kabuk.StornoBaslik" Kapat="StornoKapat">
+    <div class="form-dikey">
+        <p id="kh-storno-onay">@(stornoHareket?.HareketId is { Length: > 0 } ? Dil.T.Kabuk.StornoOnay : Dil.T.Kasa.HareketStornoOnay)</p>
+        <GerekceAlani Id="kh-storno-gerekce" Etiket="@Dil.T.Kabuk.StornoGerekce"
+                      @bind-Deger="stornoGerekce">
+            <div class="satir">
+                <button class="btn btn-ikincil esnek" id="kh-storno-vazgec" @onclick="StornoKapat"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+                <button @onclick="StornoUygula" class="btn btn-tehlike esnek" id="kh-storno-onayla"
+                        disabled="@(kaydediliyor || !context)">@Dil.T.Kabuk.Onayla</button>
+            </div>
+            @if (!context)
+            {
+                <span class="metin-kucuk metin-soluk" id="kh-storno-kilit">@string.Format(Dil.T.Duzeltme.EnAzKarakter, 20)</span>
+            }
+        </GerekceAlani>
+        <HataBandi Mesaj="@stornoHata" />
+    </div>
+</ModalPencere>
+
+@* ── Kasa pasife alma onayı ── *@
+<ModalPencere Acik="pasifKasa is not null" Baslik="@Dil.T.Kasa.PasifeAl" Kapat="() => pasifKasa = null">
+    <div class="form-dikey">
+        <p>@Dil.T.Kasa.PasifeAlOnay</p>
+        <p class="hucre-vurgu">@pasifKasa?.Ad</p>
+        <HataBandi Mesaj="@pasifHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esnek" id="kasa-pasif-vazgec" @onclick="() => pasifKasa = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button @onclick="KasaPasifeAl" class="btn btn-tehlike esnek" id="kasa-pasif-onayla" disabled="@kaydediliyor">@Dil.T.Kasa.PasifeAl</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Gün sonu kapanışı ÇEKMECESİ (sayım formu; yıkıcı değil — sunucu fark
+   varsa gerekçe ister, yeniden açma yolu KasaModulu'nde gerekçelidir) ── *@
+<Cekmece Acik="gunKasa is not null" Varlik="kasa-gun" Baslik="@Dil.T.Kasa.GunKapanisi"
+         Kapat="() => gunKasa = null" Kaydet="GunKapat" Kaydediliyor="kaydediliyor"
+         KaydetAktif="@(GunKapatKilidi is null && !sayiKapisi.OnekleVar("gun-"))" KilitSebebi="@GunKapatKilidi"
+         KaydetMetni="@Dil.T.Kasa.GunKapat" KaydetElemanId="gun-kapat-onayla" KilitElemanId="gun-kapat-kilit"
+         IptalMetni="@PD2.Vazgec">
+    <div class="form-dikey">
+        @* PAKET PARA-DEMO (madde 1): sayım NAKİT defteriyle karşılaştırılır. Kasaya yazılmış
+           kart ve havale çekmecede durmaz → ayrı satır, sayıma girmez (sunucu: KasaNakitAyrimi,
+           GET /kasalar/{id}/gun-kapanisi/onizleme). Kart/havale yoksa ekran eskisi gibi TEK satır
+           (zorunlu önce). Önizleme alınamazsa hata bandı + Kapat kilitli (UX-S28/S30, fail-closed). *@
+        @if (gunOnizlemeHata is not null)
+        {
+            <HataBandi Mesaj="@string.Format(PD.OnizlemeHata, gunOnizlemeHata)" Id="gun-onizleme-hata" />
+        }
+        else if (gunOnizleme is null)
+        {
+            <Yukleniyor />
+        }
+        else if (gunOnizleme.KartToplam != 0m || gunOnizleme.HavaleToplam != 0m)
+        {
+            <div class="satir-arasi" id="gun-toplam-satir">
+                <span class="metin-soluk">@PD.KasaToplam</span>
+                <span class="sayi" id="gun-toplam">@Bicim.Para(gunOnizleme.ToplamBakiye, gunKasa?.ParaBirimi)</span>
+            </div>
+            @if (gunOnizleme.KartToplam != 0m)
+            {
+                <div class="satir-arasi" id="gun-kart-satir">
+                    <span class="metin-soluk">@PD.KartSayimaGirmez</span>
+                    <span class="sayi metin-soluk" id="gun-kart">@Bicim.Para(gunOnizleme.KartToplam, gunKasa?.ParaBirimi)</span>
+                </div>
+            }
+            @if (gunOnizleme.HavaleToplam != 0m)
+            {
+                <div class="satir-arasi" id="gun-havale-satir">
+                    <span class="metin-soluk">@PD.HavaleSayimaGirmez</span>
+                    <span class="sayi metin-soluk" id="gun-havale">@Bicim.Para(gunOnizleme.HavaleToplam, gunKasa?.ParaBirimi)</span>
+                </div>
+            }
+            <div class="satir-arasi" id="gun-nakit-satir">
+                <span class="metin-soluk">@PD.SayilacakNakit</span>
+                <span class="hucre-vurgu sayi" id="gun-nakit-defter">@Bicim.Para(gunOnizleme.NakitDefter, gunKasa?.ParaBirimi)</span>
+            </div>
+            <p class="metin-kucuk metin-soluk" id="gun-nakit-not">@PD.NakitAyrimNotu</p>
+        }
+        else
+        {
+            <div class="satir-arasi" id="gun-nakit-satir">
+                <span class="metin-soluk">@Dil.T.Kasa.DefterBakiye</span>
+                <span class="hucre-vurgu sayi" id="gun-nakit-defter">@Bicim.Para(gunOnizleme.NakitDefter, gunKasa?.ParaBirimi)</span>
+            </div>
+        }
+        @* PARA-DEMO-2 (madde 2): sayılan nakit ZORUNLU ve BOŞ gelir; fark ve gerekçe yalnız sayı
+           girilince görünür (açılışta kırmızı sahte fark yok). Kilit sebebi TEK kez, altlıkta. *@
+        @* PAKET GOC-A (envanter C · gun-sayilan "eksi sayım ekranda kabul edilir"): K9a sıfır olabilir — eksi yazılamaz,
+           2 ondalık; sunucu AYNI kural (KasaRaporu kr-sayim-tutar ile iki ekran tutarlı). *@
+        <Para ElemanId="gun-sayilan" Etiket="@Dil.T.Kasa.SayilanNakit" Tur="TutarTuru.SifirOlabilir" Zorunlu="true"
+              ParaBirimi="@gunKasa?.ParaBirimi"
+              Deger="@gunSayilan" DegerChanged="@(v => gunSayilan = v)"
+              Durum="gunForm" HataAlani="gun-sayilan" />
+        @if (gunSayilan is not null && gunOnizleme is not null)
+        {
+        <div class="satir-arasi" id="gun-fark-satir">
+            <span class="metin-soluk">@Dil.T.Kasa.Fark</span>
+            @* SON-KALANLAR (hasım DÜŞÜK, B1440__03): farkın YÖNÜ yazılır — "X ₺ fazla" / "X ₺ eksik";
+               işaretsiz kırmızı sayıdan tezgâhtar kasanın fazla mı eksik mi olduğunu anlayamıyordu. *@
+            <span class="sayi @(GunFark == 0 ? "metin-yesil" : "metin-kirmizi")" id="gun-fark">
+                @GunFarkMetni
+            </span>
+        </div>
+        }
+        @* Fark varsa gerekçe ZORUNLU — sunucu da reddeder. *@
+        @if (gunSayilan is not null && gunOnizleme is not null && GunFark != 0m)
+        {
+            @* PAKET GOC-A (envanter C · gun-aciklama "tek harfle geçer; ekran 500 / sunucu 1000"): K30 en az 20, en çok
+               1000 (gün açma ve storno ile AYNI kural); alan altı sözlük metni, Kaydet kilidi aynı cümle (GunKilitSebebi). *@
+            <Metin ElemanId="gun-aciklama" Etiket="@Dil.T.Kasa.FarkGerekcesi" Zorunlu="true" EnFazla="@AlanSinirlari.GerekceEnCok"
+                   Hata="@GunGerekceHatasi"
+                   Deger="@gunAciklama" DegerChanged="@(v => gunAciklama = v ?? "")"
+                   Durum="gunForm" HataAlani="gun-aciklama" />   @* PARA-DEMO-2: sebep altlıkta TEK kez *@
+        }
+        <HataBandi Mesaj="@gunHata" />
+        @* Sayı kutusu anlaşılamıyorsa sebep BURADA (altlıktaki satır o durumda boş kalır — tek kez). *@
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="gun-" ElemanId="gun-sayi-kilit" />
+    </div>
+</Cekmece>
+</CascadingValue>
+
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    private List<KasaVeri> KasaListesi = [];
+    private List<HareketVeri> gecmis = [];
+    // UX-4c madde 13 / UX-S28: sunucu hatası "kasa bulunamadı" boş durumuna
+    // ÇEVRİLMEZ; ayrı alanda tutulur ve sayfanın üstünde banda basılır.
+    private string? listeHata;
+    private string? gecmisHata;
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private string? modalHata;
+
+    private bool yeniModalAcik;
+    private string yeniAd = "";
+    private string yeniDoviz = "TRY";
+
+    private string? hareketKasaId;
+    private string hareketKasaAd = "";
+    private string hareketYon = "GIRIS";
+    private decimal hareketTutar;
+    private string hareketAciklama = "";
+
+    private string? duzenleKasaId;
+    private string duzenleAd = "";
+    private string duzenleEskiAd = "";
+    private string duzenleDoviz = "TRY";
+    private string duzenleSube = "";
+
+    // ── PAKET Q9-5 — şube/para birimi kilidi (GET /kasalar/{id}/degisim-kilidi) ──
+    /// <summary>Kilit sebebi kodu: null = serbest · BAKIYE · HAREKET · GUN_KAPANISI · BILINMIYOR (okunamadı → fail-closed).</summary>
+    private string? kilitSebebi;
+    private bool kilitYukleniyor;
+    private bool DegisimKilitli => kilitYukleniyor || kilitSebebi is not null;
+    private KasaSubeKilitMetinleri Q => KasaSubeKilitSozlugu.Al(Dil.Dil);
+    private string KilitGerekcesi => kilitSebebi switch
+    {
+        "BAKIYE" => Q.KilitBakiye,
+        "HAREKET" => Q.KilitHareket,
+        "GUN_KAPANISI" => Q.KilitGunKapanisi,
+        _ => Q.KilitBilinmiyor,
+    };
+    private int EksiKasaSayisi => KasaListesi.Count(k => k.Bakiye < 0m);
+
+    /// <summary>Eksi kasanın düzeltme yolu: hareket çekmecesi GİRİŞ yönünde açılır (P-50 ile aynı yol).</summary>
+    private void EksiKasayaGirisAc(KasaVeri kasa)
+    {
+        HareketModalAc(kasa);
+        hareketYon = "GIRIS";
+    }
+
+    private string? gecmisKasaId;
+    private string? gecmisParaBirimi;
+
+    // ── UX-1-C0/C2 ortak form altyapısı ──────────────────────────────────────
+    private readonly FormDurumu yeniForm = new();
+    private readonly FormDurumu duzenleForm = new();
+    private readonly FormDurumu hareketForm = new();
+    private string? basari;
+    private int basariJeton;
+
+    private static readonly string[] Dovizler = ["TRY", "USD", "EUR", "GBP"];
+    private List<(string Id, string Ad)> subeler = [];
+
+    // ── PAKET S3-6 — liste + çekmece şablonu ─────────────────────────────────
+    /// <summary>Bu paketin metinleri (ayrı sözlük dosyası; TR + EN).</summary>
+    private KasaBildirimMetinleri M => KasaBildirimSozlugu.Al(Dil.Dil);
+
+    /// <summary>UX-S31: para birimi kodu ekrana basılmaz — okunur ad (tek kaynak).</summary>
+    private string ParaAdi(string? kod) => KasaBildirimSozlugu.ParaAdi(M, kod);
+
+    /// <summary>
+    /// UX-S26: yeni kasa ve düzenleme çekmecesi AYNI diziden beslenir. Değer
+    /// kod (gövdeye TRY gider), görünen metin okunur ad.
+    /// </summary>
+    private List<SecenekOgesi> DovizSecenekleri =>
+        // KAT-1 (K5): TRY seçeneği "₺ Türk lirası" okunur; değer (gövde) "TRY" kalır.
+        Dovizler.Select(d => new SecenekOgesi(d, d == "TRY" ? KatalogSozlugu.ParaSecenegi(d, Dil.Dil) : ParaAdi(d))).ToList();
+
+    /// <summary>Yeni kasanın şubesi. Tek şubede seçici gizli, değer otomatik (UX-S22).</summary>
+    private string yeniSube = "";
+
+    /// <summary>Hareket çekmecesinde tutarın para birimi — kasadan türetilir (UX-S21).</summary>
+    private string? hareketParaBirimi;
+
+    /// <summary>Geçmiş çekmecesi görünür mü? Storno onayı açıkken gizlenir; kasa bağlamı (gecmisKasaId) KORUNUR.</summary>
+    private bool gecmisAcik;
+    private string gecmisKasaAd = "";
+
+    private void YeniAc()
+    {
+        modalHata = null;
+        yeniForm.Temizle();
+        yeniAd = "";
+        yeniDoviz = "TRY";
+        // ŞUBE-KAPSAM-B: yeni kasanın şubesi varsayılan olarak BAKILAN şubedir
+        // (görünüm "Merkez" iken açılan kasa Merkez'e düşer); yoksa ilk şube.
+        var gorunen = SubeliSorgu.Sube(Oturum);
+        yeniSube = gorunen is not null && subeler.Any(x => x.Id == gorunen) ? gorunen
+            : subeler.Count > 0 ? subeler[0].Id : "";
+        yeniModalAcik = true;
+    }
+
+    private void GecmisKapat()
+    {
+        gecmisAcik = false;
+        gecmisKasaId = null;
+    }
+
+    // ── Storno (48-A motoru) ─────────────────────────────────────────────────
+    private HareketVeri? stornoHareket;
+    private string stornoGerekce = "";
+    private string? stornoHata;
+
+    /// <summary>
+    /// Storno ters kaydının bağlanacağı kur anlık görüntüsünün KİMLİĞİ.
+    /// MÜHÜR 5 KOŞUL 3 gereği yeni istemci yanıt tipi açılmaz — JsonElement
+    /// okunur; kur yoksa null kalır ve storno düğmesi KİLİTLİ olur (sebebiyle).
+    /// </summary>
+    private string? kurId;
+
+    /// <summary>S3-6: kur okunamadıysa sebebi (sessiz yutma yok — geçmiş çekmecesinde yazılır).</summary>
+    private string? kurOkumaHatasi;
+
+    /// <summary>Bu satır daha önce stornolandı mı (listede ters kaydı var mı)?</summary>
+    private bool Stornolandi(HareketVeri h) => gecmis.Any(x => x.StornoKaynakId == h.Id);
+
+    /// <summary>
+    /// PAKET S-3b — kurul tur 3 / engel 1: ELLE girilen kasa hareketi artık
+    /// düzeltilebilir (tek motor: StornoServisi.KasaHareketiStorno). Kapalı
+    /// kalanlar: ters kaydın KENDİSİ, zaten stornolanmış satır ve defter fişinin
+    /// kasa bacağı (onun yolu fişin kendi stornosudur — kur gerektirir).
+    /// </summary>
+    private bool StornoAcik(HareketVeri h)
+    {
+        if (h.StornoKaynakId is not null || Stornolandi(h)) return false;
+        // PAKET P-19 (Y-11): VİRMAN BACAĞI tek başına stornolanamaz — sunucudaki
+        // kuralın (StornoServisi.KasaHareketiStorno) EKRANDAKİ AYNISI. Kilidin
+        // sebebi ve doğru yol satırın yanında yazılıdır (UX-S30).
+        if (h.KarsiBacakId is not null) return false;
+        // Elle hareket: kur GEREKMEZ (defter/has bacağı yoktur).
+        return h.HareketId is { Length: > 0 } ? kurId is not null : true;
+    }
+
+    // ── PAKET P-12 (B-41) — kasa hareketi açıklaması düzeltilebilir ──────────
+    /// <summary>Satır içi kaydetme sırasında kilitlenen satırın kimliği.</summary>
+    private string? satirKaydedilen;
+
+    /// <summary>
+    /// Açıklama hangi satırda düzeltilebilir? Sunucudaki kuralın AYNISI
+    /// (KasaServisi.HareketDuzelt): ters kaydın kendisi ve stornolanmış satır
+    /// kilitlidir — birinin açıklaması storno GEREKÇESİDİR, diğerininki
+    /// hükümsüz kılınmış bir kaydın tarihsel notudur.
+    /// </summary>
+    private bool AciklamaDuzenlenebilir(HareketVeri h) =>
+        h.StornoKaynakId is null && !Stornolandi(h);
+
+    /// <summary>
+    /// PATCH /kasalar/{kasaId}/hareket/{id} — YALNIZ açıklama gider
+    /// (üç durumlu sözleşme: gönderilmeyen alan değişmedi demektir).
+    /// </summary>
+    private async Task HareketAciklamaKaydet(HareketVeri h, string yeni)
+    {
+        if (gecmisKasaId is null) return;
+        satirKaydedilen = h.Id;
+        gecmisHata = null;
+        hareketForm.Temizle();
+        try
+        {
+            await Api.PatchAsync($"/kasalar/{gecmisKasaId}/hareket/{h.Id}",
+                new { aciklama = string.IsNullOrWhiteSpace(yeni) ? null : yeni });
+            BasariGoster(Dil.T.Kasa.HareketAciklamaGuncellendi);
+            await GecmisTazele();
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28: hata "kayıt yok"a çevrilmez — liste DURUR, bant çıkar.
+            gecmisHata = FormDurumu.SunucuMesaji(ex, Dil);
+            hareketForm.Ekle($"si-kasa-hareket-aciklama-{h.Id}", FormDurumu.SunucuMesaji(ex, Dil));
+        }
+        satirKaydedilen = null;
+    }
+
+    /// <summary>UX-S31 — ham ödeme kodu ekrana basılmaz.</summary>
+    private string OdemeEtiketi(string? kod) => kod switch
+    {
+        "NAKIT" => Dil.T.Cari.Nakit,
+        "KART" => Dil.T.Cari.Kart,
+        "HAVALE" => Dil.T.Cari.Havale,
+        null or "" => "—",
+        _ => kod,
+    };
+
+    private void BasariGoster(string m) { basari = m; basariJeton++; }
+
+    private decimal ToplamTry => KasaListesi.Where(k => k.ParaBirimi == "TRY").Sum(k => k.Bakiye);
+    /// <summary>P-DIL-BORC-KASA (Y8): TL kasaların çekmecedeki nakdi — biri bile okunamadıysa null (uydurulmaz).</summary>
+    private decimal? TryNakitToplami
+    {
+        get
+        {
+            var tl = KasaListesi.Where(k => k.ParaBirimi == "TRY").ToList();
+            if (tl.Count == 0 || tl.Any(k => !nakitAyrimlari.ContainsKey(k.Id))) return null;
+            return tl.Sum(k => nakitAyrimlari[k.Id].Nakit);
+        }
+    }
+
+    /// <summary>
+    /// PAKET P-50 — negatif kasadan çıkış yolu: /gider'deki yetersiz bakiye
+    /// bandının "Kasaya giriş yap" bağlantısı (/kasalar?kasa={id}&amp;yon=giris)
+    /// o kasanın hareket formunu GİRİŞ yönünde açar. Tanınmayan kasa kimliği
+    /// sessizce yok sayılır (liste açılır, yanlış kasaya form açılmaz).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "kasa")]
+    public string? KasaSorgu { get; set; }
+
+    [SupplyParameterFromQuery(Name = "yon")]
+    public string? YonSorgu { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+        if (!string.IsNullOrWhiteSpace(KasaSorgu)
+            && KasaListesi.FirstOrDefault(k => k.Id == KasaSorgu && k.Aktif) is { } sorguKasasi)
+        {
+            HareketModalAc(sorguKasasi);
+            hareketYon = string.Equals(YonSorgu, "cikis", StringComparison.OrdinalIgnoreCase) ? "CIKIS" : "GIRIS";
+        }
+        // Şube listesi ZATEN bu sayfada çekiliyordu (KasaOlustur içinde); tek
+        // yere alındı — yeni uç açılmadı, çağrı sayısı AZALDI.
+        // MÜHÜR 5 KOŞUL 3 (sözleşme dondurma): Pages altında YENİ istemci
+        // yanıt tipi açılmaz — şube özeti JsonElement'ten okunur (eski kod da böyleydi).
+        try
+        {
+            subeler = (await Api.GetAsync<List<JsonElement>>("/subeler"))
+                .Select(x => (Id: x.TryGetProperty("id", out var i) ? i.GetString() ?? "" : "",
+                              Ad: x.TryGetProperty("ad", out var a) ? a.GetString() ?? "" : ""))
+                .Where(x => x.Id.Length > 0)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { listeHata ??= ex.Message; }
+        // Kur, storno ters kaydının bağlanacağı anlık görüntüdür.
+        try
+        {
+            var k = await Api.GetAsync<JsonElement>("/kur/guncel");
+            kurId = k.ValueKind == JsonValueKind.Object && k.TryGetProperty("id", out var ki)
+                ? ki.GetString() : null;
+        }
+        // Kur okunamazsa kurId null KALIR (başlangıç değeri); defter bacaklı storno
+        // kilitli olur ve sebebi yazılır (UX-S30). Catch içinde alan silinmez.
+        catch (Exception ex) when (ex is ApiHata or JsonException) { kurOkumaHatasi = ex.Message; }
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
+            KasaListesi = await Api.GetAsync<List<KasaVeri>>(SubeliSorgu.Ekle("/kasalar", Oturum));
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // PAKET S3-6 / UX-S28: hata "kasa yok"a ÇEVRİLMEZ ve son bilinen liste
+            // SİLİNMEZ (eskiden `KasaListesi = []` idi). Bant sayfanın üstünde.
+            listeHata = ex.Message;
+        }
+        // PARA-DEMO-2 (madde 4): nakit/kart ayrımı ZENGİNLEŞTİRMEDİR — okunamazsa liste durur, kısa hata satırı çıkar.
+        nakitAyrimHata = null;
+        try
+        {
+            nakitAyrimlari = (await Api.GetAsync<List<KasaNakitAyrimiOzeti>>(SubeliSorgu.Ekle("/kasalar/nakit-ayrimi", Oturum)) ?? [])
+                .Where(a => !string.IsNullOrEmpty(a.KasaId)).GroupBy(a => a.KasaId).ToDictionary(g => g.Key, g => g.First());
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { nakitAyrimHata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    private async Task KasaOlustur()
+    {
+        // Sessiz etkisizlik YASAK: boş ad artık sunucuya gönderilmeden
+        // alanın altında Türkçe mesaj verir (QA turu 2: "The Ad field is required").
+        yeniForm.Temizle();
+        yeniForm.Zorunlu("kasa-ad", yeniAd, Dil);
+        if (!yeniForm.Gecerli) { modalHata = Dil.T.Kabuk.FormEksik; return; }
+
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // UX-S22: tek şubede seçici gizli, şube OTOMATİK; çok şubede seçilen.
+            var subeId = string.IsNullOrEmpty(yeniSube)
+                ? (subeler.Count > 0 ? subeler[0].Id : null)
+                : yeniSube;
+            await Api.PostAsync("/kasalar", new { ad = yeniAd.Trim(), subeId, paraBirimi = yeniDoviz });
+            yeniModalAcik = false;
+            yeniAd = "";
+            BasariGoster(Dil.T.Kasa.KasaKaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { modalHata = yeniForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string> { ["Ad"] = "kasa-ad" }); }   // TOPLU-7B: aynı ret alan altında TAM, bantta kısa genel cümle
+        kaydediliyor = false;
+    }
+
+    // ── Gün sonu kapanışı ──
+    private KasaVeri? gunKasa;
+    private decimal? gunSayilan;
+    private string gunAciklama = "";
+
+    /// <summary>PAKET GOC-A — kasa farkı gerekçesi K30 (Core GerekceKurali; sunucu GirdiKapisi.Gerekce ile AYNI metin).</summary>
+    private string? GunGerekceHatasi =>
+        string.IsNullOrWhiteSpace(gunAciklama) ? null
+        : GerekceKurali.Denetle(gunAciklama) is { } h ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+    private string? gunHata;
+
+    /// <summary>
+    /// sayılan − NAKİT defteri (PARA-DEMO madde 1). Pozitif fazla, negatif eksik.
+    /// Kasa bakiyesi (nakit + kart + havale) ile KARŞILAŞTIRILMAZ: kart ve havale çekmecede yok.
+    /// </summary>
+    private decimal GunFark => Math.Round((gunSayilan ?? 0m) - (gunOnizleme?.NakitDefter ?? 0m), 2,
+        MidpointRounding.AwayFromZero);
+
+    private ParaDemoMetinleri PD => ParaDemoSozlugu.Al(Dil.Dil);
+    private ParaDemo2Metinleri PD2 => ParaDemo2Sozlugu.Al(Dil.Dil);
+    private Dictionary<string, KasaNakitAyrimiOzeti> nakitAyrimlari = [];
+    private string? nakitAyrimHata;
+
+    /// <summary>
+    /// PARA-DEMO-2 (madde 2) — Günü Kapat kilidinin TEK sebebi (UX-S30), öncelik sırasıyla:
+    /// önizleme okunamadı · hesaplanıyor · sayım girilmedi · fark var ve gerekçe yok. Sayı kutusu
+    /// anlaşılamıyorsa sebep kutunun altında yazar (SayiKapisiSebebi) → burada null (ikinci kez yazılmaz).
+    /// </summary>
+    private string? GunKapatKilidi =>
+        gunOnizlemeHata is not null ? PD.OnizlemeKilit
+        : gunOnizleme is null ? PD2.GunOnizlemeYukleniyor
+        : sayiKapisi.OnekleVar("gun-") ? null
+        : gunSayilan is null ? PD2.GunSayimBekleniyor
+        : GunFark != 0m && string.IsNullOrWhiteSpace(gunAciklama) ? Dil.T.Kasa.FarkGerekcesiZorunlu
+        : GunFark != 0m && GunGerekceHatasi is { } gerekceHatasi ? gerekceHatasi
+        : null;
+
+    /// <summary>PARA-DEMO — sunucunun gün kapanışı önizlemesi (sayılacak nakit ve sayıma girmeyenler).</summary>
+    private GunKapanisiOnizleme? gunOnizleme;
+    private string? gunOnizlemeHata;
+
+    private async Task GunKapanisAc(KasaVeri k)
+    {
+        gunHata = null;
+        gunForm.Temizle();
+        gunKasa = k;
+        // Sayım alanı BOŞ başlar: defter bakiyesiyle doldurulsaydı kullanıcı
+        // saymadan Kaydet'e basar ve fark hiç görünmezdi.
+        gunSayilan = null;   // PARA-DEMO-2: BOŞ (0 değil) — sayılmadan fark gösterilmez
+        gunAciklama = "";
+        gunOnizleme = null;
+        gunOnizlemeHata = null;
+        // UX-S28: hata "0 TL nakit"e çevrilmez — bant + kilitli düğme.
+        try { gunOnizleme = await Api.GetAsync<GunKapanisiOnizleme>($"/kasalar/{k.Id}/gun-kapanisi/onizleme"); }
+        catch (ApiHata ex) { gunOnizlemeHata = ex.Message; }
+        catch (System.Text.Json.JsonException ex) { gunOnizlemeHata = ex.Message; }   // okunamayan yanıt da "0 TL" sayılmaz
+    }
+
+    private async Task GunKapat()
+    {
+        if (sayiKapisi.OnekleVar("gun-") || gunOnizleme is null || GunKapatKilidi is not null) return;   // ORTAK-1: POST YOK (düğme pasif, sebep yazılı) · PARA-DEMO: nakit defteri bilinmeden kapanış yok
+        gunHata = null;
+        gunForm.Temizle();
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/kasalar/{gunKasa!.Id}/gun-kapanisi", new
+            {
+                sayilanNakit = gunSayilan,
+                aciklama = string.IsNullOrWhiteSpace(gunAciklama) ? null : gunAciklama.Trim(),
+            });
+            gunKasa = null;
+            BasariGoster(Dil.T.Kasa.GunKapatildi);
+            await Yukle();
+        }
+        // SON-KALANLAR: alan hatası (sayilanNakit / aciklama) alanın ALTINDA, bantta tekrar edilmez. Gerekçe alanı
+        // yalnız ekranda farkı varken çizilir — çizili değilse (önizleme eskimiş) mesaj bantta kalır (UX-S28).
+        catch (ApiHata ex) { gunHata = gunForm.SunucuHatasi(ex, Dil, GunEsleme); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>SON-KALANLAR — Gün Kapat formunun alan defteri (sunucu 400 alanları).</summary>
+    private readonly FormDurumu gunForm = new();
+
+    /// <summary>Sunucu alanı → ekrandaki ÇİZİLİ alan (gerekçe yalnız fark varken çizilir).</summary>
+    private Dictionary<string, string> GunEsleme
+    {
+        get
+        {
+            var e = new Dictionary<string, string> { ["SayilanNakit"] = "gun-sayilan" };
+            if (gunSayilan is not null && gunOnizleme is not null && GunFark != 0m) e["Aciklama"] = "gun-aciklama";
+            return e;
+        }
+    }
+
+    /// <summary>SON-KALANLAR — fark yönüyle: 0 ise tutar, değilse "X fazla" / "X eksik" (tutar mutlak).</summary>
+    private string GunFarkMetni => GunFark switch
+    {
+        > 0m => string.Format(SKL.FarkFazla, Bicim.Para(GunFark, gunKasa?.ParaBirimi)),
+        < 0m => string.Format(SKL.FarkEksik, Bicim.Para(-GunFark, gunKasa?.ParaBirimi)),
+        _ => Bicim.Para(0m, gunKasa?.ParaBirimi),
+    };
+
+    private SonKalanlarMetinleri SKL => SonKalanlarSozlugu.Al(Dil.Dil);
+
+    /// <summary>SON-KALANLAR — kasanın bugünkü günü kapalı mı (sunucu /kasalar/nakit-ayrimi · BugunKapali).</summary>
+    private bool BugunKapali(KasaVeri k) => nakitAyrimlari.GetValueOrDefault(k.Id) is { BugunKapali: true };
+
+    private KasaVeri? pasifKasa;
+    private string? pasifHata;
+
+    /// <summary>
+    /// Kasayı pasife alır (soft delete). Geçmiş kasa hareketleri korunur;
+    /// kasa yalnız yeni işlemde seçilemez hâle gelir.
+    /// </summary>
+    private async Task KasaPasifeAl()
+    {
+        pasifHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.DeleteAsync<object>($"/kasalar/{pasifKasa!.Id}");
+            pasifKasa = null;
+            BasariGoster(Dil.T.Kabuk.PasifeAlindi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { pasifHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private async Task DuzenlemeyiAc(KasaVeri k)
+    {
+        modalHata = null;
+        duzenleForm.Temizle();
+        duzenleAd = k.Ad;
+        duzenleEskiAd = k.Ad;
+        duzenleDoviz = k.ParaBirimi;
+        duzenleSube = k.SubeId ?? "";
+        duzenleKasaId = k.Id;
+        // PAKET Q9-5: kilit KAYDETMEDEN önce okunur (UX-S30). Okunamazsa alanlar
+        // kilitli kalır ve sebep "okunamadı" yazar — hata "serbest"e çevrilmez.
+        kilitSebebi = null;
+        kilitYukleniyor = true;
+        try
+        {
+            var y = await Api.GetAsync<JsonElement>($"/kasalar/{k.Id}/degisim-kilidi");
+            var kilitli = y.ValueKind == JsonValueKind.Object
+                && y.TryGetProperty("kilitli", out var kl) && kl.ValueKind == JsonValueKind.True;
+            kilitSebebi = !kilitli ? null
+                : y.TryGetProperty("sebep", out var sb) && sb.ValueKind == JsonValueKind.String
+                    ? sb.GetString() : "BILINMIYOR";
+        }
+        catch (ApiHata) { kilitSebebi = "BILINMIYOR"; }
+        kilitYukleniyor = false;
+    }
+
+    /// <summary>
+    /// PATCH sözleşmesi: yalnız DEĞİŞEN alan gövdeye konur (gönderilmeyen alan
+    /// korunur). Döviz/şube değişikliği Mehmet K4 kapısına takılırsa sunucu 409
+    /// döner; ekran bunu "iş kuralı" diye gösterir (403 = yetki ile karışmaz).
+    /// </summary>
+    private async Task KasaGuncelle()
+    {
+        duzenleForm.Temizle();
+        duzenleForm.Zorunlu("d-ad", duzenleAd, Dil);
+        if (duzenleAd.Trim().Length is > 0 and < 2) duzenleForm.Ekle("d-ad", Dil.T.Kabuk.ZorunluAlan);
+        if (!duzenleForm.Gecerli) { modalHata = Dil.T.Kabuk.FormEksik; return; }
+
+        var kasa = KasaListesi.FirstOrDefault(x => x.Id == duzenleKasaId);
+        var govde = new Dictionary<string, object?>();
+        if (duzenleAd.Trim() != duzenleEskiAd) govde["ad"] = duzenleAd.Trim();
+        // Q9-5: kilitli kasada döviz/şube gövdeye KONMAZ (alan zaten kilitli).
+        if (!DegisimKilitli && kasa is not null && duzenleDoviz != kasa.ParaBirimi) govde["paraBirimi"] = duzenleDoviz;
+        if (!DegisimKilitli && kasa is not null && duzenleSube != (kasa.SubeId ?? "")) govde["subeId"] = duzenleSube;
+        if (govde.Count == 0) { modalHata = Dil.T.Kabuk.DegisiklikYok; return; }
+
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/kasalar/{duzenleKasaId}", govde);
+            duzenleKasaId = null;
+            BasariGoster(Dil.T.Kasa.KasaKaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            // TOPLU-7B: aynı ret alan altında TAM, bantta kısa genel cümle (tek yazım).
+            modalHata = duzenleForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string>
+            {
+                ["Ad"] = "d-ad", ["ParaBirimi"] = "d-doviz", ["SubeId"] = "d-sube",
+            });
+        }
+        kaydediliyor = false;
+    }
+
+    /// <summary>UX-S25 — pasife alınan kasa geri açılır (DELETE'in tersi, aynı PATCH).</summary>
+    private async Task KasaAktifeAl(KasaVeri k)
+    {
+        listeHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/kasalar/{k.Id}", new { aktif = true });
+            BasariGoster(Dil.T.Kabuk.AktifeAlindi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { listeHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// QA turu 3 (/kasalar, YÜKSEK): modal önceki kasadaki 'Gider' seçimini
+    /// HATIRLIYORDU — yeni bir kasada yalnız tutar girilince kayıt YANLIŞ YÖNDE
+    /// oluşuyordu. Form her açılışta TÜMÜYLE sıfırlanır (yön dâhil).
+    /// </summary>
+    private void HareketModalAc(KasaVeri kasa)
+    {
+        modalHata = null;
+        hareketForm.Temizle();
+        hareketYon = "GIRIS";
+        hareketTutar = 0;
+        hareketAciklama = "";
+        hareketKasaAd = kasa.Ad;
+        hareketParaBirimi = kasa.ParaBirimi;
+        hareketKasaId = kasa.Id;
+    }
+
+    private async Task HareketGir()
+    {
+        if (sayiKapisi.OnekleVar("h-")) return;   // ORTAK-1: POST YOK
+        // QA turu 2: "Tutar 0 → Kaydet: istek yok, modal açık, mesaj yok".
+        hareketForm.Temizle();
+        hareketForm.Pozitif("h-tutar", hareketTutar, Dil);
+        if (!hareketForm.Gecerli) { modalHata = Dil.T.Kabuk.FormEksik; return; }
+
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            var kasaVeri = KasaListesi.FirstOrDefault(x => x.Id == hareketKasaId);
+            var yanit = await Api.PostAsync<JsonElement>($"/kasalar/{hareketKasaId}/hareket", new
+            {
+                yon = hareketYon,
+                tutar = hareketTutar,
+                odemeTuru = "NAKIT",
+                aciklama = string.IsNullOrWhiteSpace(hareketAciklama) ? null : hareketAciklama,
+            });
+            // UX-S27: POST yanıtı OKUNUR — kaydedilen YÖN ve yeni bakiye banda yazılır
+            // (QA turu 3: kullanıcı hangi yönde kayıt oluştuğunu göremiyordu).
+            var yeniBakiye = yanit.TryGetProperty("bakiye", out var b) && b.TryGetDecimal(out var bd)
+                ? Bicim.Para(bd, kasaVeri?.ParaBirimi) : "—";
+            var yonAdi = hareketYon == "GIRIS" ? Dil.T.Kasa.Gelir : Dil.T.Kasa.Gider;
+            hareketKasaId = null;
+            BasariGoster(string.Format(Dil.T.Kasa.HareketSonuc, yonAdi,
+                Bicim.Para(hareketTutar, kasaVeri?.ParaBirimi), yeniBakiye));
+            await Yukle();
+        }
+        // PARA-DEMO-3 (hakem KRİTİK): kasa kapısı reddi ("bakiyesi yetersiz" / "nakit yetersiz") sözlükten, tr-TR biçimle.
+        // Tur 2 (doğrulayıcı DÜŞÜK): elle çıkış NAKİT'tir — kasada kart/havale payı varsa toplam reddi "kasada X var"
+        // demez, çekmecedeki nakdi ve kart/havale payını ayrı yazar (nakit kapısıyla aynı cümle).
+        // SON-KALANLAR (hasım ORTA): sunucu alan hatası (tutar/açıklama) YALNIZ alanın altında — bantta tekrar yok
+        // (FormDurumu.SunucuHatasi tek kalıp). Kasa kapısı reddi sözlükten biçimlenip bantta kalır (alan altına inmez).
+        catch (ApiHata ex)
+        {
+            var bant = hareketForm.SunucuHatasi(ex, Dil, new Dictionary<string, string> { ["Tutar"] = "h-tutar", ["Aciklama"] = "h-aciklama" });
+            var kasaRed = KasaBakiyeMesaji.Bicimle(ex.Message, Dil, hareketKasaId is { } hk && nakitAyrimlari.TryGetValue(hk, out var hay) ? hay : null);
+            if (kasaRed is not null) { hareketForm.Sil("h-tutar"); hareketForm.Sil("h-aciklama"); }
+            modalHata = kasaRed ?? bant;
+        }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// PAKET P-12: açık geçmiş listesini YENİDEN çeker. Hata hâlinde liste
+    /// DÜŞÜRÜLMEZ (UX-S28 / Anayasa md.1) — kullanıcı düzeltmeden önceki
+    /// satırları görmeye devam eder, bant ayrıca çıkar.
+    /// </summary>
+    private async Task GecmisTazele()
+    {
+        if (gecmisKasaId is null) return;
+        try
+        {
+            var yanit = await Api.GetAsync<HareketYaniti>($"/kasalar/{gecmisKasaId}/hareketler");
+            gecmis = yanit.Hareketler;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            gecmisHata = ex.Message;
+        }
+    }
+
+    private async Task GecmisAc(KasaVeri kasa)
+    {
+        // BAŞKA bir kasanın geçmişi açılıyorsa önceki kasanın satırları bu
+        // kasanın başlığı altında GÖSTERİLMEZ — liste istekten ÖNCE boşaltılır
+        // (catch içinde değil: hata olursa bant çıkar, boş durum çizilmez).
+        if (gecmisKasaId != kasa.Id) gecmis = [];
+        gecmisKasaId = kasa.Id;
+        gecmisKasaAd = kasa.Ad;
+        gecmisParaBirimi = kasa.ParaBirimi;   // UX-S32: geçmiş ₺ ile basılmaz
+        gecmisHata = null;
+        gecmisAcik = true;
+        try
+        {
+            var yanit = await Api.GetAsync<HareketYaniti>($"/kasalar/{kasa.Id}/hareketler");
+            gecmis = yanit.Hareketler;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            gecmisHata = ex.Message;
+        }
+    }
+
+    // ── STORNO (paket 48-A motoru) ───────────────────────────────────────────
+
+    private void StornoIste(HareketVeri h)
+    {
+        if (!StornoAcik(h)) return;           // kilitli düğme sessizce iş yapmaz
+        stornoHata = null;
+        stornoGerekce = "";
+        stornoHareket = h;
+        // S3-6: onay açılırken geçmiş çekmecesi gizlenir (iki odak tuzağı üst üste
+        // binmez); kasa bağlamı (gecmisKasaId) korunur, storno ucu onu kullanır.
+        gecmisAcik = false;
+    }
+
+    /// <summary>Vazgeç: onay kapanır, aynı kasanın geçmişi GERİ gelir (liste kaybolmaz).</summary>
+    private void StornoKapat()
+    {
+        stornoHareket = null;
+        stornoGerekce = "";
+        if (gecmisKasaId is not null) gecmisAcik = true;
+    }
+
+    /// <summary>
+    /// Ters kaydı 48-A motoru yazar. "Ters iade" taklidi YAPILMAZ: ekran
+    /// yalnız storno ucunu çağırır, kendi ters kaydını üretmez.
+    /// </summary>
+    private async Task StornoUygula()
+    {
+        if (stornoHareket is not { } h) return;
+        // Defter bacağı bugünün kuruyla terslenir; elle hareketin kur bacağı yoktur.
+        var defterBacagi = h.HareketId is { Length: > 0 };
+        if (defterBacagi && kurId is null) return;
+        stornoHata = null;
+        kaydediliyor = true;
+        try
+        {
+            var yanit = defterBacagi
+                ? await Api.PostAsync<JsonElement>($"/islemler/{h.HareketId}/storno", new
+                {
+                    gerekce = stornoGerekce.Trim(),
+                    kurSnapshotId = kurId,
+                    kasaId = gecmisKasaId,
+                })
+                // PAKET S-3b: elle hareketin ters kaydı KENDİ ucundan, AYNI motordan.
+                : await Api.PostAsync<JsonElement>(
+                    $"/kasalar/{gecmisKasaId}/hareket/{h.Id}/storno",
+                    new { gerekce = stornoGerekce.Trim() });
+            // UX-S27: sunucunun döndürdüğü sonuç BANDA yazılır, atılmaz.
+            // 48-A motoru ters kaydın KİMLİĞİNİ döndürür (stornoHareketId);
+            // POST yanıtı okunmadan atılmaz (UX-S27).
+            var fis = yanit.TryGetProperty("stornoKasaHareketId", out var kh) ? kh.GetString()
+                    : yanit.TryGetProperty("stornoHareketId", out var sh) ? sh.GetString()
+                    : yanit.TryGetProperty("fisNo", out var f) ? f.GetString()
+                    : yanit.TryGetProperty("id", out var i) ? i.GetString() : null;
+            BasariGoster(string.Format(Dil.T.Kabuk.StornoYapildi, fis ?? "—"));
+            stornoHareket = null;
+            var kasa = KasaListesi.FirstOrDefault(x => x.Id == gecmisKasaId);
+            await Yukle();
+            if (kasa is not null) await GecmisAc(kasa);
+        }
+        catch (ApiHata ex) { stornoHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    // ── ŞUBE-KAPSAM-B ───────────────────────────────────────────────────────
+    private SubeKapsamBMetinleri SK => SubeKapsamBSozlugu.Al(Dil.Dil);
+
+    /// <summary>Çok şubeli kiracıda "tüm şubeler" görünümü (kasa kartı şubesini yazar).</summary>
+    private bool TumSubeGorunumu =>
+        KabukServisi.Ortak.GorunumIcin(Oturum) is { CokluGorunum: true, SubeId: null };
+
+    private string? SubeAdi(string? subeId) =>
+        subeId is null ? null : subeler.FirstOrDefault(x => x.Id == subeId).Ad is { Length: > 0 } ad ? ad : null;
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

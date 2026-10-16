@@ -1,0 +1,623 @@
+@page "/pos"
+@using System.Globalization
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject Kuyumcu.Web.Servisler.PosServisi PosApi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   POS CİHAZLARI — paket 31 Faz A (+ Faz B taksit oranları)
+
+   ⚠ TİP İKİZLENMESİ YOK: bu sayfa KENDİ record'unu tanımlamaz; tüm yanıt
+     tipleri Servisler/PosServisi.cs içindedir (kurul engel 11).
+   ⚠ ErrorBoundary sayfa kökündedir: tek bir deserialize hatası render
+     ağacını öldürmesin, kullanıcı boş beyaz ekran görmesin.
+   DoD: her düğme ya istek atar ya disabled + sebep taşır; düzenleme TEK
+     KALIPTA (Cekmece); yıkıcı eylem (pasife al) onay modalı ister.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Pos.Baslik)</PageTitle>
+
+<ErrorBoundary>
+    <ChildContent>
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_POScihazlari (BİREBİR; boş durum) — dolu liste tuval
+   liste kalıbında; özgün ekran (taksit oranları, kasa göçü, pasife alma) yalnız "Tüm ayrıntılar"da (data-yz-ozgun). *@
+@if (YildizMi)
+{
+    @if (YildizBosMu) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizBos B="@YildizBosBaglami" /> }
+    else { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+}
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* PAKET SADE-1 (göz #63): basit yüzde "valör günü … YOKTUR" jargonu yerine tek sade
+       cümle; bankacılık ayrıntısı (tatil takvimi yok) PROFESYONEL yüzde aynen durur. *@
+    <SayfaBasi Anahtar="pos" AciklamaKatli="true" Baslik="@Dil.T.Pos.Baslik"
+               Aciklama="@(Dil.BasitMi ? SadeSozlugu.Al(Dil.Dil).PosAciklamaBasit : Dil.T.Pos.TatilUyarisi)">
+        <Eylem>
+            <button class="dugme dugme-birincil" id="pos-yeni-ac" @onclick="YeniAc">
+                @Dil.T.Pos.YeniCihaz
+            </button>
+            <a class="dugme dugme-ikincil" id="pos-tahsilatlara-git" href="/pos/tahsilatlar">
+                @Dil.T.Pos.TahsilatBaslik
+            </a>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" Id="pos-hata" />
+    <BasariBandi Mesaj="@basari" Id="pos-basari" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        <div class="stat-izgara">
+            @* UX-S32: tutar para birimiyle taşınır; POS yalnız TRY'dir (PAKET-15). *@
+            <StatKart Renk="mavi" Etiket="@Dil.T.Pos.BekleyenAlacak"
+                      Deger="@Bicim.Para(cihazlar.Sum(c => c.BekleyenAlacak), "TRY")"
+                      Alt="@Dil.T.Pos.DonemdenBagimsiz" />
+            <StatKart Etiket="@Dil.T.Pos.BugunYatacak"
+                      Deger="@Bicim.Para(cihazlar.Sum(c => c.BugunYatacakNet), "TRY")"
+                      Alt="@Dil.T.Pos.DonemdenBagimsiz" />
+            <StatKart Etiket="@Dil.T.Pos.CihazSayisi" Deger="@Bicim.Makine(cihazlar.Count)" />
+        </div>
+
+        @if (cihazlar.Count == 0)
+        {
+            @* UX-S28: boş durum YALNIZ istek başarılı ve sonuç gerçekten boşken. *@
+            <BosDurum Mesaj="@Dil.T.Pos.CihazYok" />
+        }
+        else
+        {
+            <div class="kart">
+                @* PAKET GOC-A — ORTAK IZGARA (grid:pos:pos-cihaz). Tur 3 düzeni korunur: ad + banka TEK hücrede,
+                   valör komisyonun alt satırında, eylem kümesi .satir-eylem (q10-th-tek q10-yigin sınıfları);
+                   hücre/satır id'leri AYNI. Sıralama: tam liste → yerel (ad, bekleyen alacak). *@
+                <Izgara T="Kuyumcu.Web.Servisler.PosCihazSatir" Ekran="pos" GridId="pos-cihaz" Kolonlar="@CihazKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(cihazlar, cihazSira, CihazKolonlari)"
+                        SatirId="@(c => $"pos-satir-{c.Id}")" TabloSinif="q10-th-tek q10-yigin"
+                        Baslik="@Dil.T.Pos.Baslik" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@CihazSiralandi" GecerliSiralama="@cihazSira" TercihIstemcisi="@PosTercih" />
+            </div>
+        }
+    }
+</div>
+}
+
+@* ── Yeni cihaz / düzenleme — TEK DÜZENLEME KALIBI: Cekmece ───────────────── *@
+@* KESIF-P1: geçersiz sayı kapısı — "1.500" / "1,5" gün Kaydet'i kilitler, sebep görünür (UX-S30). *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+<Cekmece Acik="@cekmeceAcik" Varlik="pos-cihaz"
+         Baslik="@(duzenlenen is null ? Dil.T.Pos.YeniCihaz : Dil.T.Pos.Duzenle)"
+         Kapat="CekmeceKapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@KaydetAktif" KilitSebebi="@KilitSebebi">
+    <div class="form-dikey">
+        @* PAKET GOC-A (envanter C · pos-cihaz-ad/banka): ham <input> → ortak bileşen. Ekran sınırı = sunucu
+           MaxLength (AlanSinirlari.PosCihazAd = 100; 101+ karakter eskiden yalnız sunucu 400'üyle dönüyordu).
+           Banka adı K20 ünvan kuralı (en az 2, en az bir harf — tek harf banka adı iki tarafta da geçiyordu). *@
+        <Metin ElemanId="pos-cihaz-ad" Etiket="@Dil.T.Pos.CihazAdi" Zorunlu="true" EnFazla="@AlanSinirlari.PosCihazAd"
+               Deger="@fAd" DegerChanged="@(v => fAd = v ?? "")"
+               Hata="@(fAd.Trim().Length is > 0 and < 2 ? Dil.T.Pos.AdCokKisa : null)" HataKimligi="pos-cihaz-ad-hata" />
+        <Unvan ElemanId="pos-cihaz-banka" Etiket="@Dil.T.Pos.BankaAdi" Zorunlu="true" EnFazla="@AlanSinirlari.PosCihazAd"
+               Deger="@fBanka" DegerChanged="@(v => fBanka = v ?? "")" />
+        @* KESIF-P1 (#31 · #5): komisyon YÜZDE girilir ('1,85' → gövdede 0,0185) ve tabloda
+           "%1,85" okunur; yerli type=number (en-US '1.5', '1,5'→'1') yerine ortak Sayi kutusu
+           (tr-TR ayrıştırma, "1.500" belirsiz → alan hatası + Kaydet kilidi). Kimlikler AYNI. *@
+        <Sayi ElemanId="pos-cihaz-oran" Etiket="@P1.PosKomisyonYuzde" Birim="%" Zorunlu="true" EnCokOndalik="2"
+              @bind-Deger="fOranYuzde" EnAz="0" EnCok="100"
+              Hata="@(fOranYuzde is < 0m or > 100m ? P1.PosKomisyonAralik : null)" />
+        <span class="metin-kucuk metin-soluk" id="pos-cihaz-oran-aciklama">@P1.PosKomisyonYuzdeAciklama</span>
+        <Sayi ElemanId="pos-cihaz-valor" Etiket="@Dil.T.Pos.ValorGun" TamSayi="true" Zorunlu="true"
+              @bind-Deger="fValor" EnAz="0" EnCok="90"
+              Hata="@(fValor is < 0m or > 90m ? P1.PosValorAralik : null)" />
+        <span class="metin-kucuk metin-soluk" id="pos-cihaz-valor-aciklama">@Dil.T.Pos.ValorAciklama</span>
+        @* UX-S22: TEK kasa varsa seçici GİZLENİR, değer salt okunur yazılır.
+           QA turu 5 (YÜKSEK): düzenlemede seçici HİÇ çizilmiyordu ve gösterilen
+           düzeltme yolu bu alanla ilgisizdi. Kasa bağı artık cihazın henüz
+           tahsilatı yokken DÜZENLENEBİLİR; tahsilatı varsa kilit ve SEBEP
+           bu alana özgü metinle yazılır (UX-S25 · UX-S30). *@
+        @if (duzenlenen is null || KasaDegistirilebilir)
+        {
+            @if (kasalar.Count == 1)
+            {
+                <div class="alan">
+                    <label for="pos-cihaz-kasa-sabit">@Dil.T.Pos.BagliKasa</label>
+                    <p id="pos-cihaz-kasa-sabit" class="metin-soluk">@kasalar[0].Ad</p>
+                </div>
+            }
+            else
+            {
+                @* PAKET GOC-A: ham <select> → ortak Secici (id aynı: pos-cihaz-kasa). *@
+                <div class="alan">
+                    <Secici ElemanId="pos-cihaz-kasa" Etiket="@Dil.T.Pos.BagliKasa"
+                            Secenekler="@(kasalar.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                            Deger="@fKasaId" DegerChanged="@((string? v) => fKasaId = v ?? "")" BosSecenekMetni="—" />
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alan">
+                <label for="pos-cihaz-kasa-kilit">@Dil.T.Pos.BagliKasa</label>
+                <p id="pos-cihaz-kasa-kilit" class="metin-soluk">@BagliKasaAdi</p>
+            </div>
+            @* PAKET P-22 / B-55: ÇIKMAZ KALDIRILDI. Tahsilat varken de kasa
+               TAŞINABİLİR — gerekçeli, tutanaklı, geçmişe dokunmadan. Bu yüzden
+               burada artık "değişmez" ipucu değil, GERÇEK BİR YOL duruyor
+               (UX-S25: "sunucuda uç var, ekranda düğme yok" kabul edilmez). *@
+            <div class="alan">
+                <p class="metin-kucuk metin-soluk" id="pos-kasa-goc-aciklama">@Dil.T.Pos.KasaGocAciklama</p>
+                <button type="button" @onclick="KasaGocAc"
+                        class="dugme dugme-ikincil" id="pos-kasa-goc-ac">@Dil.T.Pos.KasaGocBaslat</button>
+            </div>
+        }
+        <ProAlan>
+            @* PAKET GOC-A: ham <input> → ortak Metin; sınır sunucu MaxLength(50) ile AYNI sabit. Karakter
+               kümesi (üye işyeri no rakamsal mı) TEYİTSİZ banka biçimi — kural EKLENMEDİ (bugünkü davranış). *@
+            <Metin ElemanId="pos-cihaz-uye" Etiket="@Dil.T.Pos.UyeIsyeriNo" EnFazla="@AlanSinirlari.PosKod"
+                   Deger="@fUye" DegerChanged="@(v => fUye = v ?? "")" />
+            <Metin ElemanId="pos-cihaz-terminal" Etiket="@Dil.T.Pos.TerminalNo" EnFazla="@AlanSinirlari.PosKod"
+                   Deger="@fTerminal" DegerChanged="@(v => fTerminal = v ?? "")" />
+        </ProAlan>
+
+        @if (duzenlenen is not null)
+        {
+            <div class="kart">
+                <div class="kart-baslik"><h3>@Dil.T.Pos.TaksitOranlari</h3></div>
+                <div class="kart-govde">
+                    @if (oranlar.Count == 0)
+                    {
+                        <BosDurum Mesaj="@Dil.T.Pos.TaksitOranlari" />
+                    }
+                    else
+                    {
+                        @* PAKET GOC-A — ORTAK IZGARA (grid:pos:pos-taksit). Oran satır içi düzenlemesi (tek kalıp) aynen. *@
+                        <Izgara T="Kuyumcu.Web.Servisler.PosTaksitOranSatir" Ekran="pos" GridId="pos-taksit" Kolonlar="@TaksitKolonlari"
+                                Ogeler="@IzgaraYerelSiralama.Uygula(oranlar, taksitSira, TaksitKolonlari)"
+                                TabloSinif="q10-th-tek" Baslik="@Dil.T.Pos.TaksitOranlari" YapiskanIlkSutun="false"
+                                SiralamaDegisti="@TaksitSiralandi" GecerliSiralama="@taksitSira" TercihIstemcisi="@PosTercih" />
+                    }
+                    @* KESIF-P1 (#30): üç sütunlu satır çekmecede 124 px'lik sütunlara düşüp
+                       "Komisyon Oranı" etiketini ve düğmeyi iki satıra kırıyordu. İki alan yan
+                       yana, düğme ALTTA kendi satırında. Taksit adedi TAM SAYI, oran YÜZDE. *@
+                    <div class="form-grid-2">
+                        <Sayi ElemanId="pos-taksit-adet" Etiket="@Dil.T.Pos.Taksit" TamSayi="true" Zorunlu="true"
+                              @bind-Deger="fTaksit" EnAz="2" EnCok="12"
+                              Hata="@(fTaksit is < 2m or > 12m ? P1.PosTaksitAralik : null)" />
+                        <Sayi ElemanId="pos-taksit-oran" Etiket="@P1.PosKomisyonYuzde" Birim="%" Zorunlu="true" EnCokOndalik="2"
+                              @bind-Deger="fTaksitOranYuzde" EnAz="0" EnCok="100"
+                              Hata="@(fTaksitOranYuzde is < 0m or > 100m ? P1.PosKomisyonAralik : null)" />
+                    </div>
+                    <div class="alan">
+                        <button @onclick="TaksitEkle" class="dugme dugme-ikincil" id="pos-taksit-ekle"
+                                disabled="@(!TaksitEklenebilir)"
+                                title="@(TaksitKilitSebebi ?? Dil.T.Pos.TaksitOranEkle)"
+                                aria-disabled="@(TaksitEklenebilir ? "false" : "true")"
+                                >@Dil.T.Pos.TaksitOranEkle</button>
+                        @if (!TaksitEklenebilir && TaksitKilitSebebi is { } tks)
+                        {
+                            <p class="metin-kucuk metin-soluk" id="pos-taksit-ekle-kilit">@tks</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</Cekmece>
+</CascadingValue>
+
+@* ── Pasife alma onayı (yıkıcı eylem) ─────────────────────────────────────── *@
+<ModalPencere Acik="@(pasifAdayi is not null)" Baslik="@Dil.T.Pos.PasifeAl"
+              Kapat="() => pasifAdayi = null">
+    <p id="pos-pasif-onay-metin">@Dil.T.Pos.PasifeAlOnay</p>
+    <p class="metin-kucuk metin-soluk">@pasifAdayi?.Ad</p>
+    <div class="modal-alt">
+        <button @onclick="PasifeAl" class="dugme dugme-birincil" id="pos-pasif-onayla"
+                disabled="@kaydediliyor" aria-disabled="@(kaydediliyor ? "true" : "false")"
+                title="@Dil.T.Pos.PasifeAl" >@Dil.T.Pos.PasifeAl</button>
+        <button @onclick="() => pasifAdayi = null" class="dugme dugme-ikincil" id="pos-pasif-vazgec"
+                ><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+    </div>
+</ModalPencere>
+    </ChildContent>
+    <ErrorContent>
+        <KabukHatasi />
+    </ErrorContent>
+</ErrorBoundary>
+
+@* ── B-55: kasa göçü ÇOK ALANLI BİR FORMDUR (yeni kasa + gerekçe) → TEK
+      DÜZENLEME KALIBI: Cekmece (DoD EK md.2). ── *@
+<Cekmece Acik="@(gocCihaz is not null)" Varlik="pos-kasa-goc"
+         Baslik="@Dil.T.Pos.KasaGocBaslik" Kapat="() => gocCihaz = null"
+         Kaydet="KasaGocUygula" Kaydediliyor="@gocKaydediliyor"
+         KaydetAktif="@GocVerilebilir" KilitSebebi="@Dil.T.Pos.KasaGocSebep">
+    @if (gocCihaz is { } gc)
+    {
+        <div class="form-dikey">
+            <p id="pos-goc-mevcut" class="metin-kucuk metin-soluk">
+                @Dil.T.Pos.BagliKasa: @BagliKasaAdi
+            </p>
+            <p id="pos-goc-uyari">@Dil.T.Pos.KasaGocUyari</p>
+            @* PAKET GOC-A: ham <select> → ortak Secici (id aynı: pos-goc-kasa). *@
+            <div class="alan">
+                <Secici ElemanId="pos-goc-kasa" Etiket="@Dil.T.Pos.YeniKasa"
+                        Secenekler="@(kasalar.Where(x => x.Id != gc.KasaId).Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                        Deger="@gocKasaId" DegerChanged="@((string? v) => gocKasaId = v ?? "")" BosSecenekMetni="—" />
+            </div>
+            <GerekceAlani Id="pos-goc-gerekce" AsgariUzunluk="20" AzamiUzunluk="500"
+                          Etiket="@Dil.T.Pos.KasaGocGerekce" @bind-Deger="gocGerekce" />
+            <HataBandi Mesaj="@gocHata" />
+        </div>
+    }
+</Cekmece>
+
+@code {
+    private List<Kuyumcu.Web.Servisler.PosCihazSatir> cihazlar = [];
+
+    // ── PAKET GOC-A — ORTAK IZGARA kolonları (grid:pos:*) ─────────────────────
+    private IzgaraTercihIstemcisi? posTercih;
+    private IzgaraTercihIstemcisi PosTercih => posTercih ??= new IzgaraTercihIstemcisi(Api);
+    private IzgaraSiralama? cihazSira, taksitSira;
+    private void CihazSiralandi(IzgaraSiralama? s) => cihazSira = s;
+    private void TaksitSiralandi(IzgaraSiralama? s) => taksitSira = s;
+
+    private IReadOnlyList<IzgaraKolonu<Kuyumcu.Web.Servisler.PosCihazSatir>> CihazKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = P1.PosCihazBanka, ZorunluGorunur = true, SunucuSiralamaAdi = "ad", Deger = c => c.Ad,
+                HucreOznitelikleri = null,
+                Hucre = c => @<div id="@($"pos-ad-{c.Id}")">
+                                <div class="hucre-vurgu">@c.Ad</div>
+                                <div class="metin-kucuk metin-soluk" id="@($"pos-banka-{c.Id}")">@c.BankaAdi</div>
+                            </div> },
+        new() { Anahtar = "oran", Baslik = Dil.T.Pos.KomisyonOran, SunucuSiralamaAdi = "oran", Deger = c => c.PesinKomisyonOran,
+                Hucre = c => @<div>
+                                <div class="hucre-tek-satir" id="@($"pos-oran-{c.Id}")">@Yuzde(c.PesinKomisyonOran)</div>
+                                <div class="metin-kucuk metin-soluk hucre-tek-satir" id="@($"pos-valor-{c.Id}")">@string.Format(P1.PosValorAlt, c.ValorGun)</div>
+                            </div> },
+        // UX-S23: sayı gösteren yer o kayıtlara GÖTÜRÜR. UX-S32: para birimi tutarla.
+        new() { Anahtar = "alacak", Baslik = Dil.T.Pos.BekleyenAlacak, ZorunluGorunur = true, SunucuSiralamaAdi = "alacak",
+                Tur = IzgaraHucreTuru.Para, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = c => c.BekleyenAlacak,
+                Hucre = c => @<a id="@($"pos-alacak-{c.Id}")" href="@($"/pos/tahsilatlar?cihazId={c.Id}")">@Bicim.Para(c.BekleyenAlacak, c.ParaBirimi)</a> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Pos.Durum, Tur = IzgaraHucreTuru.Rozet,
+                Deger = c => c.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif,
+                Hucre = c => @<Rozet Renk="@(c.Aktif ? "yesil" : "gri")">@(c.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)</Rozet> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Pos.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-yigin-eylem",
+                Hucre = c => @<div class="satir-eylem" id="@($"pos-eylem-{c.Id}")">
+                    <button @onclick="() => DuzenleAc(c)" class="dugme dugme-kucuk" id="@($"pos-duzenle-{c.Id}")">@Dil.T.Pos.Duzenle</button>
+                    @if (c.Aktif)
+                    {
+                        @* Yıkıcı eylem → ortak onay modalı (DoD EK md.4). SADE-1 (göz #64): geri alınabilir → nötr düğme. *@
+                        <button @onclick="() => PasifOnayAc(c)" class="dugme dugme-kucuk dugme-ikincil"
+                                id="@($"pos-pasif-{c.Id}")"
+                                disabled="@(c.BekleyenAlacak != 0m)"
+                                title="@(c.BekleyenAlacak != 0m ? Dil.T.Pos.AcikAlacakUyarisi : Dil.T.Pos.PasifeAl)"
+                                aria-disabled="@(c.BekleyenAlacak != 0m ? "true" : "false")">@Dil.T.Pos.PasifeAl</button>
+                    }
+                    else
+                    {
+                        @* UX-S25: pasife alınan kayıt GERİ AÇILABİLİR. *@
+                        <button @onclick="() => Aktiflestir(c)" class="dugme dugme-kucuk" id="@($"pos-aktif-{c.Id}")">@Dil.T.Pos.Aktiflestir</button>
+                    }
+                </div> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<Kuyumcu.Web.Servisler.PosTaksitOranSatir>> TaksitKolonlari =>
+    [
+        new() { Anahtar = "taksit", Baslik = Dil.T.Pos.Taksit, ZorunluGorunur = true, SunucuSiralamaAdi = "taksit", Deger = o => o.TaksitAdedi },
+        // Tek alanlı düzenleme → SatirIciDuzenle (tek kalıp). KESIF-P1 (#31): satır içi düzenleme de YÜZDE.
+        new() { Anahtar = "oran", Baslik = P1.PosKomisyonYuzde, ZorunluGorunur = true, SunucuSiralamaAdi = "oran", Deger = o => o.KomisyonOran,
+                Hucre = o => @<SatirIciDuzenle Varlik="pos-taksit" Alan="oran" Id="@o.Id"
+                                               Etiket="@P1.PosKomisyonYuzde"
+                                               Deger="@Bicim.Girdi(o.KomisyonOran * 100m)"
+                                               Kaydedildi="@(d => OranKaydet(o.Id, d))" /> },
+        new() { Anahtar = "valor", Baslik = Dil.T.Pos.ValorGun, SunucuSiralamaAdi = "valor", Deger = o => o.ValorGun,
+                Hucre = o => @<text>@(o.ValorGun?.ToString(CultureInfo.InvariantCulture) ?? "—")</text> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Pos.Durum, Tur = IzgaraHucreTuru.Rozet,
+                Deger = o => o.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif,
+                Hucre = o => @<Rozet Renk="@(o.Aktif ? "yesil" : "gri")">@(o.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)</Rozet> },
+    ];
+    private List<Kuyumcu.Web.Servisler.PosTaksitOranSatir> oranlar = [];
+    private List<Kuyumcu.Web.Servisler.PosKasaSecenegi> kasalar = [];
+
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private string? hata;
+    private string? basari;
+
+    private bool cekmeceAcik;
+    private Kuyumcu.Web.Servisler.PosCihazSatir? duzenlenen;
+    private Kuyumcu.Web.Servisler.PosCihazSatir? pasifAdayi;
+
+    private string fAd = "";
+    private string fBanka = "";
+    // KESIF-P1 (#31 · #5): komisyon ekranda YÜZDE (1,85), gövdede KESİR (0,0185);
+    // valör/taksit TAM SAYI. Boş/geçersiz kutu = null → Kaydet kilitli (sessiz 0 yok).
+    private decimal? fOranYuzde;
+    private decimal? fValor;
+    private string fKasaId = "";
+    private string fUye = "";
+    private string fTerminal = "";
+    private decimal? fTaksit = 3;
+    private decimal? fTaksitOranYuzde;
+
+    private KesifP1Metinleri P1 => KesifP1Sozlugu.Al(Dil.Dil);
+
+    /// <summary>KESIF-P1: formun geçersiz sayı kapısı ("1.500", "1,5" gün) — Kaydet'i kilitler.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    /// <summary>Yüzde → kesir (gövdeye giden): 1,85 → 0,0185.</summary>
+    private static decimal Kesir(decimal yuzde) => yuzde / 100m;
+
+    /// <summary>
+    /// KESIF-P1 tur 2 (doğrulayıcı KRİTİK): yüzde 0..100 VE en çok 2 ondalık — kesir 4 haneye
+    /// (kolon decimal(5,4)) birebir sığar; '1,855' sessizce 0,0186 olarak KAYDEDİLMEZ.
+    /// Kutu (EnCokOndalik=2) hatayı yazar; bu koşul düğme kilidinin ikinci savunmasıdır.
+    /// </summary>
+    private static bool YuzdeGecerli(decimal? y) => y is >= 0m and <= 100m && decimal.Round(y.Value, 2) == y.Value;
+
+    private bool TaksitEklenebilir => !kaydediliyor && TaksitKilitSebebi is null;
+
+    /// <summary>UX-S30: taksit ekle düğmesinin kilit sebebi (null = açık).</summary>
+    private string? TaksitKilitSebebi =>
+        sayiKapisi.Sebep(Dil.Dil, "pos-taksit-")
+        ?? (fTaksit is not (>= 2m and <= 12m) ? P1.PosTaksitAralik
+        : !YuzdeGecerli(fTaksitOranYuzde) ? P1.PosKomisyonAralik
+        : null);
+
+    private bool KaydetAktif => !kaydediliyor && fAd.Trim().Length >= 2
+                                && fBanka.Trim().Length > 0
+                                && !sayiKapisi.OnekleVar("pos-cihaz-")
+                                && YuzdeGecerli(fOranYuzde) && fValor is >= 0m and <= 90m
+                                && (duzenlenen is not null || KasaSecildi);
+
+    private bool KasaSecildi => kasalar.Count == 1 || !string.IsNullOrEmpty(fKasaId);
+
+    /// <summary>UX-S30: kilitli düğme SEBEBİNİ söyler.</summary>
+    private string KilitSebebi =>
+        fAd.Trim().Length < 2 ? Dil.T.Pos.CihazAdi
+        : fBanka.Trim().Length == 0 ? Dil.T.Pos.BankaAdi
+        : sayiKapisi.Sebep(Dil.Dil, "pos-cihaz-") is { } sayiSebep ? sayiSebep
+        : !YuzdeGecerli(fOranYuzde) ? P1.PosKomisyonAralik
+        : fValor is not (>= 0m and <= 90m) ? P1.PosValorAralik
+        : !KasaSecildi ? Dil.T.Pos.BagliKasa
+        : Dil.T.Pos.Kaydedildi;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            cihazlar = await PosApi.CihazlariGetir();
+            kasalar = (await Api.GetAsync<List<Kuyumcu.Web.Servisler.PosKasaSecenegi>>("/kasalar"))
+                .Where(k => k.Aktif && k.ParaBirimi == "TRY").ToList();
+        }
+        // ⚠ UX-S28: hata "kayıt yok"a ÇEVRİLMEZ. Liste boşaltılmaz; hata bandı ayrıdır.
+        catch (ApiHata ex) { hata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    // ── QA turu 5 (YÜKSEK): bağlı kasa düzenlenebilirliği ───────────────────
+    // Kural SUNUCUDAN gelir (PosCihazSatir.TahsilatVar) — ekran tahmin etmez.
+    private bool KasaDegistirilebilir => duzenlenen is { TahsilatVar: false };
+
+    private string BagliKasaAdi =>
+        duzenlenen is { } d
+            ? kasalar.FirstOrDefault(k => k.Id == d.KasaId)?.Ad ?? "—"
+            : "—";
+
+    private void YeniAc()
+    {
+        duzenlenen = null;
+        oranlar = [];
+        fAd = ""; fBanka = ""; fOranYuzde = 0m; fValor = 1m;
+        fTaksit = 3m; fTaksitOranYuzde = null;
+        sayiKapisi.Temizle();
+        fKasaId = kasalar.Count == 1 ? kasalar[0].Id : "";
+        fUye = ""; fTerminal = "";
+        basari = null; hata = null;
+        cekmeceAcik = true;
+    }
+
+    private async Task DuzenleAc(Kuyumcu.Web.Servisler.PosCihazSatir c)
+    {
+        duzenlenen = c;
+        fAd = c.Ad; fBanka = c.BankaAdi; fOranYuzde = c.PesinKomisyonOran * 100m; fValor = c.ValorGun;
+        fTaksit = 3m; fTaksitOranYuzde = null;
+        sayiKapisi.Temizle();
+        fKasaId = c.KasaId; fUye = c.UyeIsyeriNo ?? ""; fTerminal = c.TerminalNo ?? "";
+        basari = null; hata = null;
+        cekmeceAcik = true;
+        try { oranlar = (await PosApi.CihazGetir(c.Id)).Oranlar; }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    private void CekmeceKapat()
+    {
+        cekmeceAcik = false;
+        duzenlenen = null;
+    }
+
+    private async Task Kaydet()
+    {
+        if (!KaydetAktif) return;
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            if (duzenlenen is null)
+            {
+                var kasaId = kasalar.Count == 1 ? kasalar[0].Id : fKasaId;
+                var sube = kasalar.First(k => k.Id == kasaId).SubeId;
+                await PosApi.CihazOlustur(new
+                {
+                    ad = fAd.Trim(), bankaAdi = fBanka.Trim(), subeId = sube, kasaId,
+                    uyeIsyeriNo = Bos(fUye), terminalNo = Bos(fTerminal),
+                    pesinKomisyonOran = Kesir(fOranYuzde!.Value), valorGun = (int)fValor!.Value,
+                });
+            }
+            else
+            {
+                // PATCH: yalnız bu alanlar gönderilir; gönderilmeyenler SUNUCUDA KORUNUR.
+                // QA turu 5 (YÜKSEK): kasa bağı da gönderilir — YALNIZ değiştirilebilirse.
+                // PATCH sözleşmesi: alan gövdede yoksa sunucuda AYNEN KALIR.
+                var kasaGovde = KasaDegistirilebilir
+                    ? (kasalar.Count == 1 ? kasalar[0].Id : fKasaId)
+                    : null;
+                await PosApi.CihazGuncelle(duzenlenen.Id, new
+                {
+                    ad = fAd.Trim(), bankaAdi = fBanka.Trim(),
+                    uyeIsyeriNo = Bos(fUye), terminalNo = Bos(fTerminal),
+                    pesinKomisyonOran = Kesir(fOranYuzde!.Value), valorGun = (int)fValor!.Value,
+                    kasaId = string.IsNullOrWhiteSpace(kasaGovde) ? null : kasaGovde,
+                });
+            }
+            // UX-S27: sonuç SUNUCU ONAYINDAN SONRA yazılır.
+            basari = Dil.T.Pos.Kaydedildi;
+            cekmeceAcik = false;
+            duzenlenen = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ═══ PAKET P-22 / B-55 — POS KASA GÖÇÜ ═════════════════════════════════
+
+    private Kuyumcu.Web.Servisler.PosCihazSatir? gocCihaz;
+    private string gocKasaId = "", gocGerekce = "";
+    private string? gocHata;
+    private bool gocKaydediliyor;
+
+    /// <summary>Sunucu kuralının aynası: kasa seçili VE gerekçe ≥ 20 karakter.</summary>
+    private bool GocVerilebilir =>
+        !string.IsNullOrEmpty(gocKasaId) && gocGerekce.Trim().Length >= 20;
+
+    private void KasaGocAc()
+    {
+        gocHata = null;
+        gocKasaId = "";
+        gocGerekce = "";
+        gocCihaz = duzenlenen;
+    }
+
+    private async Task KasaGocUygula()
+    {
+        if (gocCihaz is not { } c) return;
+        gocHata = null;
+        gocKaydediliyor = true;
+        try
+        {
+            // UX-S27: POST yanıtı OKUNUR; kaç tahsilatın eski kasada kaldığı banda yazılır.
+            var y = await Api.PostAsync($"/pos/cihazlar/{c.Id}/kasa-goc", new
+            {
+                yeniKasaId = gocKasaId,
+                gerekce = gocGerekce.Trim(),
+            });
+            var adet = y.TryGetProperty("tahsilatSayisi", out var t)
+                       && t.ValueKind == System.Text.Json.JsonValueKind.Number ? t.GetInt32() : 0;
+            basari = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                                   Dil.T.Pos.KasaGocTamam, adet);
+            gocCihaz = null;
+            cekmeceAcik = false;
+            duzenlenen = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { gocHata = ex.Message; }
+        finally { gocKaydediliyor = false; }
+    }
+
+    private void PasifOnayAc(Kuyumcu.Web.Servisler.PosCihazSatir c) => pasifAdayi = c;
+
+    private async Task PasifeAl()
+    {
+        if (pasifAdayi is null) return;
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var s = await PosApi.CihazPasifeAl(pasifAdayi.Id);
+            basari = s.Mesaj ?? Dil.T.Pos.Kaydedildi;
+            pasifAdayi = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task Aktiflestir(Kuyumcu.Web.Servisler.PosCihazSatir c)
+    {
+        hata = null;
+        try
+        {
+            await PosApi.CihazGuncelle(c.Id, new { aktif = true });
+            basari = Dil.T.Pos.Kaydedildi;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    private async Task TaksitEkle()
+    {
+        if (duzenlenen is null || !TaksitEklenebilir) return;
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            oranlar = (await PosApi.TaksitOranEkle(duzenlenen.Id,
+                new { taksitAdedi = (int)fTaksit!.Value, komisyonOran = Kesir(fTaksitOranYuzde!.Value) })).Oranlar;
+            basari = Dil.T.Pos.Kaydedildi;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task OranKaydet(string oranId, string yeniDeger)
+    {
+        if (duzenlenen is null) return;
+        hata = null;
+        // P-78: tr-TR tek merkez ("0,0275" = 0,0275; eskiden "0,0275" = 275 okunup reddediliyordu).
+        // KESIF-P1 (#31): satır içi değer YÜZDEDİR ('1,85') → gövdeye kesir (0,0185).
+        var cozum = FormAlani.SayiCoz(yeniDeger);
+        if (cozum.Deger is not { } yuzde || yuzde is < 0m or > 100m)
+        {
+            hata = cozum.Mesaj(Dil.Dil) ?? P1.PosKomisyonAralik;
+            return;
+        }
+        if (!YuzdeGecerli(yuzde))
+        {
+            // KESIF-P1 tur 2: satır içinde de 3+ ondalık sessizce yuvarlanmaz; istek 0.
+            hata = string.Format(CultureInfo.InvariantCulture, P1.OndalikSiniri, 2);
+            return;
+        }
+        try
+        {
+            oranlar = (await PosApi.TaksitOranGuncelle(duzenlenen.Id, oranId,
+                new { komisyonOran = Kesir(yuzde) })).Oranlar;
+            basari = Dil.T.Pos.Kaydedildi;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    private static string? Bos(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    /// <summary>
+    /// KESIF-P1 (#31): oran (kesir) ekranda tr-TR YÜZDE okunur — 0,0185 → "%1,85".
+    /// Eskiden InvariantCulture "1.85 %" basıyordu; biçim tek kaynaktan (Bicim.Yuzde).
+    /// </summary>
+    private static string Yuzde(decimal oran) => Bicim.Yuzde(oran * 100m);
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

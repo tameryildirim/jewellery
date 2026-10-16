@@ -1,0 +1,93 @@
+@using Kuyumcu.Web.Servisler
+@inherits FormAlani
+
+@* SEÇİM (radyo) — 2-5 seçenekli kapalı liste (paket P-36b).
+   ⚠ NEDEN <Secici> DEĞİL: az seçenekte açılır liste bir tıklama FAZLADAN
+     ister ve seçenekleri gizler. Sözleşme aynı (SecenekOgesi), görünüm farklı.
+   ⚠ UX-S22: TEK seçenek varsa radyo grubu çizilmez; değer salt okunur satır
+     olarak yazılır ve zaten seçilidir. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@GorunenHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    @if (Tek is { } tek)
+    {
+        <p class="alan-tek-secenek" id="@($"{ElemanId}-tek")">@tek.Ad</p>
+    }
+    else
+    {
+        <div class="secim-grubu" role="radiogroup" id="@ElemanId"
+             aria-required="@(Zorunlu ? "true" : "false")"
+             aria-invalid="@(Hatali ? "true" : "false")"
+             aria-describedby="@AciklayanId" aria-label="@Etiket">
+            @for (var i = 0; i < Secenekler.Count; i++)
+            {
+                var o = Secenekler[i];
+                var id = $"{ElemanId}-secenek-{i}";
+                <label class="secim-secenek @(o.Deger == Gorunen ? "secili" : null) @(o.Pasif ? "pasif" : null)" for="@id">
+                    <input type="radio" class="secim-radyo" id="@id" name="@ElemanId"
+                           value="@o.Deger" checked="@(o.Deger == Gorunen)"
+                           disabled="@(Kilitli || o.Pasif)" @onchange="() => Sec(o)" />
+                    <span class="secim-ad">
+                        @o.Ad
+                        @if (o.AltBilgi is { Length: > 0 } alt)
+                        {
+                            <span class="alan-ipucu">@alt</span>
+                        }
+                    </span>
+                </label>
+            }
+        </div>
+    }
+</AlanKabugu>
+
+@code {
+    [Parameter] public string? Deger { get; set; }
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<SecenekOgesi> Secenekler { get; set; } = [];
+
+    /// <summary>UX-S22 — tek seçenek varsa seçici gizlenir.</summary>
+    private SecenekOgesi? Tek => Secenekler.Count == 1 ? Secenekler[0] : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Tek seçenek varsa değer OTOMATİK konur: kullanıcıya sorulmayan soru
+        // gövdede boş kalmaz (UX-S22 ikinci cümle).
+        if (Tek is { } t && Deger != t.Deger)
+        {
+            Deger = t.Deger;
+            await DegerChanged.InvokeAsync(Deger);
+        }
+    }
+
+    // ═══ KESIF-P1 (#7) — "SEÇİM BİR ADIM GERİDEN" ═══════════════════════════
+    // Canlı ölçüm (5168, ağ gecikmesi 800 ms): radyo tıklanınca tarayıcı yeni
+    // radyoyu doldurur; çağıranın kaydı (PATCH) sürerken çağıran ESKİ Deger ile
+    // yeniden çizer → `.secili` eski seçenekte, dolu radyo yenide kalıyordu
+    // (render ağacı eskiyle aynı olduğu için Blazor DOM'daki radyoyu düzeltmez).
+    // Çözüm: istek SÜRERKEN görünen değer kullanıcının seçtiğidir (bekleyen);
+    // istek bitince çağıranın Deger'i (sunucu sonucu) TEK doğru olur — başarısız
+    // kayıtta ekran eski değere döner. Radyo ile `.secili` aynı değerden çizilir.
+    private bool bekliyor;
+    private string? bekleyen;
+
+    /// <summary>Radyo ve `.secili` bu TEK değerden çizilir.</summary>
+    private string? Gorunen => bekliyor ? bekleyen : Deger;
+
+    private async Task Sec(SecenekOgesi o)
+    {
+        if (o.Pasif) return;
+        DefterdenSil();
+        bekleyen = o.Deger;
+        bekliyor = true;
+        Deger = o.Deger;
+        try
+        {
+            await DegerChanged.InvokeAsync(o.Deger);
+        }
+        finally
+        {
+            bekliyor = false;
+            bekleyen = null;
+        }
+    }
+}

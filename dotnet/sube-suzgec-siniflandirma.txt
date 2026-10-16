@@ -1,0 +1,85 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# PAKET P-04 (kimlik Y-1) — `SubeId ==` NOKTALARININ SINIFLANDIRMA TABLOSU
+# MÜHÜR: 2026-09-18 · Taşkın (03 Backend) · Bertan K2 + Mehmet koşulu
+#
+# BU TABLO KOD DEĞİŞİMİNDEN ÖNCE YAYIMLANDI. denetim.sh (P-04 bloğu) burayı
+# okur: Modules altındaki her `SubeId ==` satırının metni bu listede OLMAK
+# ZORUNDADIR. Listede olmayan yeni bir satır = elle yazılmış izolasyon süzgeci
+# = GUVENLIK_ELLE_IZOLASYON > 0 = DENETİM KIRMIZI.
+#
+# Eşleşme SATIR METNİ iledir, satır numarası ile DEĞİL (numaralar kayar).
+#
+# KATEGORİLER (PLAN § 2 P-04 DoD):
+#   a = kimlikten gelen SubeId ile YETKİ amaçlı süzgeç  → KALDIRILDI
+#       (3 nokta: Vezne/VezneModulu.cs Kuyruk ×2 + Bul ×1; yerine tek mekanizma
+#        Data/SubeSuzgeci.cs → OturumSubesinde(). Bugün bu kategoride 0 satır var.)
+#   b = parametreyle gelen KULLANICI SEÇİMLİ rapor/liste süzgeci → DOKUNULMAZ
+#   c = iç eşleştirme / işlemin yürüdüğü şubenin satırını bulma → DOKUNULMAZ
+#   d = Yerlesim/YerlesimServisi.cs — çağıranın verdiği çalışma şubesi (c ile
+#       aynı doğa; PLAN ayrı sınıflandırılmasını istediği için ayrı etiket)
+#
+# ÖLÇÜM (bugün, taze): toplam 48 · a=0 · b=18 · c=19 · d=11
+# PLAN "63" diyordu; bugünkü depoda ölçülen 51 idi, 3'ü (a) kaldırıldıktan sonra 48.
+# Sapmanın gerekçesi uygulama raporunda § Sapmalar.
+# ═══════════════════════════════════════════════════════════════════════════
+b|Denetim/DenetimModulu.cs:73|if (!string.IsNullOrWhiteSpace(subeId)) sorgu = sorgu.Where(d => d.SubeId == subeId);
+b|Maliyet/KarZararServisi.cs:238|if (!string.IsNullOrEmpty(subeId)) temel = temel.Where(h => h.SubeId == subeId);
+b|Maliyet/KarZararServisi.cs:285|if (!string.IsNullOrEmpty(subeId)) tuketimSorgu = tuketimSorgu.Where(t => t.SubeId == subeId);
+b|Maliyet/KarZararServisi.cs:373|if (!string.IsNullOrEmpty(subeId)) temel = temel.Where(h => h.SubeId == subeId);
+b|Maliyet/KarZararServisi.cs:381|if (!string.IsNullOrEmpty(subeId)) tuketimSorgu = tuketimSorgu.Where(t => t.SubeId == subeId);
+b|Maliyet/KarZararServisi.cs:484|if (!string.IsNullOrEmpty(subeId)) sorgu = sorgu.Where(p => p.SubeId == subeId);
+b|Siparis/SiparisModulu.cs:211|if (!string.IsNullOrWhiteSpace(subeId)) sorgu = sorgu.Where(s => s.SubeId == subeId);
+b|Urun/KategoriModulu.cs:235|if (!string.IsNullOrEmpty(subeId)) q = q.Where(r => r.SubeId == subeId);
+c|Kasa/KasaModulu.cs:126|k.TenantId == islem.TenantId && k.SubeId == dto.SubeId && k.Ad == dto.Ad);
+c|Kasa/KasaModulu.cs:174|k.TenantId == islem.TenantId && k.SubeId == hedefSube && k.Ad == ad && k.Id != id);
+c|Maliyet/MaliyetMotoru.cs:307|.Where(p => p.TenantId == tenantId && p.SubeId == subeId
+c|Maliyet/MaliyetMotoru.cs:320|.Where(p => p.TenantId == tenantId && p.SubeId == subeId
+c|Pos/PosModulu.cs:804|.Where(x => x.TenantId == tenantId && x.SubeId == subeId && x.Aktif)
+c|Rapor/RaporModulu.cs:960|var y = yerlesikGrup.FirstOrDefault(x => x.SubeId == sg.SubeId && x.AyarId == sg.AyarId);
+c|Satis/SatisModulu.cs:878|if (dto.KaynakSubeId == dto.HedefSubeId)
+c|Satis/SatisModulu.cs:1779|.FirstOrDefaultAsync(s => s.UrunId == urunId && s.SubeId == subeId && s.TenantId == tenantId)
+c|Satis/SatisModulu.cs:1798|.FirstOrDefault(s => s.UrunId == urunId && s.SubeId == subeId && s.TenantId == tenantId)
+c|Satis/SatisModulu.cs:1800|.FirstOrDefaultAsync(s => s.UrunId == urunId && s.SubeId == subeId && s.TenantId == tenantId);
+c|Sayim/SayimModulu.cs:55|if (await db.SayimOturumlari.AnyAsync(s => s.TenantId == islem.TenantId && s.SubeId == dto.SubeId && s.Durum == "ACIK"))
+c|Sayim/SayimModulu.cs:77|.Where(s => s.TenantId == islem.TenantId && s.SubeId == dto.SubeId && urunIdler.Contains(s.UrunId))
+c|Sayim/SayimModulu.cs:132|.Where(s => s.TenantId == islem.TenantId && s.SubeId == oturum.SubeId && urunIdler.Contains(s.UrunId))
+c|Sayim/SayimModulu.cs:137|.Where(h => h.TenantId == islem.TenantId && h.SubeId == oturum.SubeId && h.UrunId != null
+c|Sayim/SayimModulu.cs:200|.Where(h => h.TenantId == islem.TenantId && h.Tur == "SAYIM_DUZELTME" && h.UrunId == s.UrunId && h.SubeId == oturum.SubeId)
+c|Sayim/SayimModulu.cs:205|.Where(h => h.TenantId == islem.TenantId && h.Tur == "SAYIM_DUZELTME" && h.UrunId == s.UrunId && h.SubeId == oturum.SubeId && !oncesi.Contains(h.Id))
+c|Urun/KategoriModulu.cs:278|.AnyAsync(r => r.TenantId == islem.TenantId && r.SubeId == dto.SubeId && r.Ad == dto.Ad.Trim());
+c|Urun/KategoriModulu.cs:320|r.TenantId == islem.TenantId && r.SubeId == reyon.SubeId
+c|Urun/UrunModulu.cs:829|.FirstOrDefaultAsync(s => s.UrunId == id && s.SubeId == subeId
+d|Yerlesim/YerlesimServisi.cs:41|.Where(y => y.TenantId == tenantId && y.SubeId == subeId && y.UrunId == urunId)
+d|Yerlesim/YerlesimServisi.cs:46|.Where(y => y.TenantId == tenantId && y.SubeId == subeId && y.UrunId == urunId)
+d|Yerlesim/YerlesimServisi.cs:51|.Where(y => y.TenantId == tenantId && y.SubeId == subeId && y.UrunId == urunId)
+d|Yerlesim/YerlesimServisi.cs:65|(db.Stoklar.Local.FirstOrDefault(s => s.TenantId == tenantId && s.SubeId == subeId && s.UrunId == urunId)
+d|Yerlesim/YerlesimServisi.cs:67|.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SubeId == subeId && s.UrunId == urunId))
+d|Yerlesim/YerlesimServisi.cs:102|y.TenantId == tenantId && y.SubeId == subeId && y.UrunId == urunId && y.ReyonId == reyonId)
+d|Yerlesim/YerlesimServisi.cs:104|y.TenantId == tenantId && y.SubeId == subeId && y.UrunId == urunId && y.ReyonId == reyonId);
+d|Yerlesim/YerlesimServisi.cs:243|.Where(y => y.TenantId == tenantId && y.SubeId == subeId && y.UrunId == urunId)
+d|Yerlesim/YerlesimServisi.cs:287|if (varsayilan is { Aktif: true } && varsayilan.SubeId == subeId)
+d|Yerlesim/YerlesimServisi.cs:393|var stokAdet = stoklar.FirstOrDefault(s => s.SubeId == subeId)?.Adet ?? 0m;
+d|Yerlesim/YerlesimServisi.cs:394|var satirlar = yerlesimler.Where(y => y.SubeId == subeId)
+b|Arama/AramaModulu.cs|        if (sube is not null) temel = temel.Where(h => h.SubeId == sube);
+# ── PAKET P-19 (Y-12), 2026-09-21 — kâr-zarar gider kırılımının ŞUBE süzgeci.
+#    Sınıf b: subeId KULLANICI SEÇİMİDİR (kâr-zarar ekranının şube filtresi),
+#    yetki süzgeci DEĞİLDİR. Kiracı izolasyonu global filtreden gelir; burada
+#    yalnız "hangi şubenin kasaları" sorusu cevaplanır (kasa_hareketleri'nde
+#    sube_id kolonu YOKTUR, şube KASADAN türetilir).
+b|Gider/GiderOlcumu.cs|                .Where(k => k.TenantId == tenantId && k.SubeId == subeId)
+c|Satis/SatisModulu.P21.cs (StokSatiriIzlenen)|s => s.UrunId == urunId && s.SubeId == subeId && s.TenantId == tenantId)
+
+# ── PAKET P-25 (Y-16) — R15 stok yaşlandırma / devir hızı · 2026-09-22 ──────
+# Üçü de KATEGORİ b: kullanıcının EKRANDAN seçtiği şube süzgeci. Kimlikten
+# gelen oturum şubesi DEĞİLDİR (yetki süzgeci global filtrededir); boş
+# bırakılırsa tüm şubeler döner ve bu bilinçlidir — sahibin "hangi şubede ne
+# kadar süredir mal bekliyor" sorusu şube üstüdür.
+
+# ── PAKET ŞUBE-KAPSAM-A — 2026-09-30 · GÖRÜNÜM ŞUBESİ TEK YARDIMCI ─────────
+#    Kullanıcı seçimli rapor/liste daraltması (sınıf b) artık TEK yerde:
+#    Common/GorunumSubesi.cs → Daralt<T>() (+ Coz: kilitli rol başka şube 403,
+#    pasif/yabancı şube 404). Kasa/Pos/Rapor altındaki 13 elle yazılmış b satırı
+#    bu yardımcıya taşındı ve tablodan ÇIKARILDI (b: 23 → 11, K-12 "az ya da eşit").
+#    Common/ denetim.sh'ın taradığı Modules/ dışındadır; satır belge amaçlı
+#    burada durur (tek b satırı).
+b|Common/GorunumSubesi.cs (Daralt)|string.IsNullOrEmpty(subeId) ? q : q.Where(e => e.SubeId == subeId);

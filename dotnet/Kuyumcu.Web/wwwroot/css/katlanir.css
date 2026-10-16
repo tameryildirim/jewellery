@@ -1,0 +1,56 @@
+/* ═══ PAKET SATIS-2 — KATLANIR (Bilesenler/Katlanir.razor) ═══════════════════
+   Tuval kart dili: 1 px ayraç kenar · 10 px köşe · yüzey zemin · başlık 16 px
+   yarı kalın. Kapalıyken kart yalnız başlık satırıdır (tek satır, ~52 px).
+   Renkler YALNIZ belirteçten (8 tema çalışır). app.css'e dokunulmaz. */
+.katlanir {
+  border: 1px solid var(--ayrac); border-radius: 10px; background: var(--yuzey);
+  box-shadow: none; min-width: 0; margin: 0;
+}
+.katlanir-h { margin: 0; font-size: 1rem; font-weight: 600; line-height: 1.3; }
+.katlanir-baslik {
+  width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border: 0; border-radius: 10px; background: transparent;
+  color: var(--metin); font: inherit; text-align: left; cursor: pointer;
+}
+.katlanir-baslik:hover { background: var(--yuzey-hover); }
+.katlanir-baslik:focus-visible { outline: var(--odak-halka-kalinlik, 2px) solid var(--odak-halka); outline-offset: -2px; }
+/* KESIF-P7 (K10, keşif #56 /evraklar 375 "Ek bilgiler (banka, keşide, bo…"): başlık ÜÇ NOKTAYLA
+   KESİLMEZ — dar kartta ikinci satıra sarar (tam metin ayrıca title'da). Kök neden: nowrap + ellipsis. */
+.katlanir-ad { flex: 0 1 auto; min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; }
+.katlanir-sayi { flex: 0 0 auto; font-weight: 500; }
+.katlanir-ok { flex: 0 0 auto; margin-left: auto; color: var(--metin-soluk); }
+.katlanir-acik > .katlanir-h > .katlanir-baslik { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--ayrac); }
+.katlanir-govde { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* ── TOPLU-7B · K17: katlı sayfa açıklaması (SayfaBasi AciklamaKatli) ─────────────────────────────────
+   Açıklama satırı ekranı doldurmaz: (i) bilgi düğmesi arkasında KAPALI; açılınca soluk metin kutusu. */
+.sayfa-basi-bilgi { margin: var(--bosluk-1) 0 0; }
+.sayfa-basi-bilgi-ac {
+  display: inline-flex; align-items: center; gap: var(--bosluk-2); min-height: 1.75rem;
+  list-style: none; cursor: pointer; color: var(--metin-soluk); font-size: var(--yazi-sm);
+}
+.sayfa-basi-bilgi-ac::-webkit-details-marker { display: none; }
+.sayfa-basi-bilgi-ac:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; border-radius: 6px; }
+.sayfa-basi-bilgi-i {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.25rem; height: 1.25rem; flex: 0 0 1.25rem;
+  border: 1.5px solid currentColor; border-radius: 50%;
+  font-size: .8125rem; font-weight: 700; line-height: 1; font-style: normal;
+}
+.sayfa-basi-bilgi > .sayfa-basi-aciklama {
+  margin: var(--bosluk-2) 0 0; padding: var(--bosluk-2) var(--bosluk-3); max-width: 60ch;
+  border: 1px solid var(--ayrac); border-radius: 10px; background: var(--yuzey-2); color: var(--metin);
+}
+
+/* ── TOPLU-7B: yeni fatura formunda kapalı "Fatura ayrıntıları" satırı (hazır seçili üç grup) ───────────── */
+.ayrinti-katli { border: 1px solid var(--ayrac); border-radius: 10px; background: var(--yuzey); }
+.ayrinti-katli-ac {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--bosluk-2);
+  min-height: var(--dugme-yuksekligi-kucuk, 2rem); padding: var(--bosluk-2) var(--bosluk-3);
+  list-style: none; cursor: pointer; color: var(--metin);
+}
+.ayrinti-katli-ac::-webkit-details-marker { display: none; }
+.ayrinti-katli-ac:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; border-radius: 10px; }
+.ayrinti-katli-baslik { min-width: 0; overflow-wrap: anywhere; }
+.ayrinti-katli[open] > .ayrinti-katli-ac .ayrinti-katli-ok { transform: rotate(180deg); }
+.ayrinti-katli-govde { padding: 0 var(--bosluk-3) var(--bosluk-3); }

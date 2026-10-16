@@ -1,0 +1,331 @@
+@page "/raporlar/satis-analizi"
+@using System.Globalization
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Contracts.Sayfalar.Raporlar
+@inject RaporServisi Rapor
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SATIŞ ANALİZİ — R12 ödeme aracı · R13 kaydeden kullanıcı · R14 şube.
+
+   Üç rapor TEK sayfada sekmelidir: menüye üç ayrı giriş eklemek reddedildi
+   (paket 34 § riskler — "menü şişmesi"). Sekme değişince YALNIZ o sekmenin
+   ucuna istek atılır; üçü birden çekilmez.
+
+   ⚠ R13 "KAYDEDEN" der, "SATAN" DEMEZ: hareketler.kullanici_id işlemi kaydeden
+     kişidir. Vezne modeli satan ile tahsil edeni ayrıştırana kadar bu sayı
+     prim kararına dayanak olamaz — uyarı ekranda YAZILI durur (M114).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Nav.SatisAnalizi)</PageTitle>
+
+<div class="dikey-bosluk">
+    <SayfaBasi Anahtar="satis-analizi" Baslik="@Dil.T.Nav.SatisAnalizi"
+               Aciklama="@Dil.T.RaporSeti.MerkezAciklama">
+        <Filtreler>
+            @* PAKET GOC-D (HAM_TARIH_GIRDISI): yerli type=date elle yazımda 6 haneli yıl kabul ediyordu.
+               Ortak Tarih (Tur=Rapor: gg.aa.yyyy maskesi, 2000..gelecek yıl) — id'ler AYNI (#sa-baslangic,
+               #sa-bitis). Ters aralık / 400 günü aşan dönem bitiş alanının altında (sunucuyla AYNI metin:
+               Core RaporDonemKurali) ve hatalı dönemde istek ATILMAZ. *@
+            <Tarih ElemanId="sa-baslangic" Etiket="@Dil.T.RaporSeti.Baslangic" Tur="TarihTuru.Rapor"
+                   Deger="@baslangic" DegerChanged="@BaslangicDegisti" />
+            <Tarih ElemanId="sa-bitis" Etiket="@Dil.T.RaporSeti.Bitis" Tur="TarihTuru.Rapor"
+                   Deger="@bitis" DegerChanged="@BitisDegisti"
+                   Hata="@donemHata" HataKimligi="sa-donem-hata" />
+        </Filtreler>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" />
+
+    @* ── Sekmeler — PAKET S1-i: elle yazılmış tablist ORTAK Sekmeler bileşenine
+       taşındı (WAI-ARIA kalıbı, klavye ← → Home End, ?sekme= derin bağlantı).
+       id'ler aynı (#sa-sekme-odeme/-personel/-sube); davranış aynı: sekme
+       değişince YALNIZ o sekmenin ucuna gidilir (SeciliDegisti → SekmeSec). ── *@
+    <Sekmeler Onek="sa" Liste="@SaSekmeleri" Etiket="@GS.SatisAnaliziSerit" SeciliDegisti="SekmeSec">
+        <Panel Context="saKod">
+    @if (saKod != sekme)
+    {
+        @* seçili olmayan panel boştur: veri yalnız açık sekme için çekilir *@
+    }
+    else if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (sekme == "odeme")
+    {
+        @if (odeme is { } o)
+        {
+            @* P-64: özet kartı yalnız GİRİŞ gösteriyordu; çıkış yalnız tabloda
+               kalıyordu. Kart artık iki yönü de söyler. Çıkış TL toplamı, sunucunun
+               girisTlToplam tanımıyla AYNI kuralla (yalnız TRY satırları) türetilir. *@
+            <div class="stat-izgara" id="sa-ozet">
+                @foreach (var a in o.Araclar ?? [])
+                {
+                    <StatKart Etiket="@KatalogSozlugu.OdemeAraci(a.Arac, Dil.Dil)"
+                              Deger="@($"{Dil.T.RaporSeti.Giris}: {Bicim.Tl(a.GirisTlToplam)}")"
+                              Alt="@($"{Dil.T.RaporSeti.Cikis}: {Bicim.Tl(CikisTl(a))} · {a.Adet} {Dil.T.RaporSeti.HareketSayisi}")" />
+                }
+                <StatKart Renk="amber" Etiket="@Dil.T.RaporSeti.VeresiyeDogan"
+                          Deger="@Bicim.Tl(o.Veresiye?.DoganTl ?? 0m)"
+                          Alt="@($"{Dil.T.RaporSeti.VeresiyeKapanan}: {Bicim.Tl(o.Veresiye?.KapananTl ?? 0m)}")" />
+            </div>
+
+            @* Anayasa md.1 — nakit payı bilinmeyen satır SIFIR sayılmaz, BEYAN edilir. *@
+            @if ((o.Bilinmeyen?.NakitPayiBilinmeyenSatir ?? 0) > 0)
+            {
+                <div class="bant bant-uyari" role="status" id="sa-bilinmeyen">
+                    @Dil.T.RaporSeti.Bilinmiyor: @o.Bilinmeyen!.NakitPayiBilinmeyenSatir —
+                    @Dil.T.RaporSeti.BilinmiyorAciklama
+                    (@Dil.T.RaporSeti.Guvenilirlik: @GuvenilirlikMetni(o.Guvenilirlik))
+                </div>
+            }
+
+            @if ((o.Araclar?.Count ?? 0) == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.RaporSeti.BosDurum" />
+            }
+            else
+            {
+                @* P-64: dönem bazlı giriş/çıkış çubuk grafiği (tur 8: bu sayfada hiç grafik yoktu). *@
+                <div class="kart" id="sa-grafik">
+                    <div class="kart-baslik"><h2>@G.GirisCikisGrafik</h2></div>
+                    <div class="kart-govde">
+                        <CubukGrafik Noktalar="@GirisCikisNoktalari(o)" Aciklama="@G.GirisCikisGrafik"
+                                     Seri1Adi="@Dil.T.RaporSeti.Giris" Seri2Adi="@Dil.T.RaporSeti.Cikis" />
+                        <p class="metin-soluk metin-kucuk">@G.GirisCikisNotu</p>
+                    </div>
+                </div>
+
+                <div class="kart">
+                    @* PAKET GOC-D — ortak ızgara (grid:satis-analizi:sa-odeme); tablo id'si AYNI. Satır = araç × para birimi. *@
+                    <Izgara T="SatisAnaliziOdemeSatiri" Ekran="satis-analizi" GridId="sa-odeme" TabloId="sa-odeme-tablo"
+                            Kolonlar="@OdemeKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(OdemeSatirlari(o), odemeSira, OdemeKolonlari)"
+                            SatirId="@(r => $"sa-odeme-{r.Kimlik}")" Baslik="@Dil.T.RaporSeti.AdOdemeAraci"
+                            SiralamaDegisti="@(x => odemeSira = x)" GecerliSiralama="@odemeSira" />
+                </div>
+            }
+        }
+    }
+    else if (sekme == "personel")
+    {
+        @if (personel is { } p)
+        {
+            @* M114 — ekranda "KAYDEDEN" yazar; uyarı gizlenmez. *@
+            <div class="bant bant-uyari" role="status" id="sa-personel-uyari">
+                @Dil.T.RaporSeti.KaydedenUyarisi
+            </div>
+
+            @if ((p.Satirlar?.Count ?? 0) == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.RaporSeti.BosDurum" />
+            }
+            else
+            {
+                <div class="kart">
+                    @* PAKET GOC-D — ortak ızgara (grid:satis-analizi:sa-personel); tablo id'si AYNI. *@
+                    <Izgara T="PersonelSatiri" Ekran="satis-analizi" GridId="sa-personel" TabloId="sa-personel-tablo"
+                            Kolonlar="@PersonelKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(p.Satirlar!, personelSira, PersonelKolonlari)"
+                            Baslik="@Dil.T.RaporSeti.AdPersonel"
+                            SiralamaDegisti="@(x => personelSira = x)" GecerliSiralama="@personelSira" />
+                </div>
+            }
+        }
+    }
+    else
+    {
+        @if (sube is { } sk)
+        {
+            <div class="bant bant-uyari" role="status" id="sa-transfer-notu">
+                @Dil.T.RaporSeti.TransferNotu
+            </div>
+
+            @if ((sk.Satirlar?.Count ?? 0) == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.RaporSeti.BosDurum" />
+            }
+            else
+            {
+                <div class="kart">
+                    @* PAKET GOC-D — ortak ızgara (grid:satis-analizi:sa-sube); tablo id'si AYNI. *@
+                    <Izgara T="SubeSatiri" Ekran="satis-analizi" GridId="sa-sube" TabloId="sa-sube-tablo"
+                            Kolonlar="@SubeKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(sk.Satirlar!, subeSira, SubeKolonlari)"
+                            Baslik="@Dil.T.RaporSeti.AdSubeKarsilastirma"
+                            SiralamaDegisti="@(x => subeSira = x)" GecerliSiralama="@subeSira" />
+                </div>
+            }
+        }
+    }
+
+        </Panel>
+    </Sekmeler>
+
+    @* TOPLU-2 (ORTAK-1 kuyruğu "Satış analizi BASİT'te Bu kayıt değiştirilemez kutusu"): gerekçe SİLİNMEDİ;
+       Rapor merkezi (#rp-duzeltme) ve İşlem defteri (#id-duzeltme) ile aynı kalıp — KAPALI katlanırda. *@
+    <Katlanir Id="sa-duzeltme" Baslik="@ZoBelgeSozlugu.Al(Dil.Dil).RaporDuzeltmeBaslik" Sinif="zo-bilgi">
+        <DegismezIpucu Varlik="Rapor"
+                       Gerekce="@Dil.T.Duzeltme.TuretilmisGerekce"
+                       AlternatifYol="@Dil.T.SayfaDuzeltme.RaporDuzeltmeYolu" />
+    </Katlanir>
+</div>
+
+@code {
+    private OdemeAraciYaniti? odeme;
+    private PersonelYaniti? personel;
+    private SubeKarsilastirmaYaniti? sube;
+
+    private string sekme = "odeme";
+    private bool yukleniyor = true;
+    private string? hata;
+
+    private DateOnly? baslangic = DateOnly.FromDateTime(Bicim.IsletmeBugun).AddDays(-29);
+    private DateOnly? bitis = DateOnly.FromDateTime(Bicim.IsletmeBugun);
+    /// <summary>PAKET GOC-D — dönem hatası (Core RaporDonemKurali; sunucunun 400 metniyle aynı).</summary>
+    private string? donemHata;
+
+    private async Task BaslangicDegisti(DateOnly? v) { baslangic = v; await Yukle(); }
+    private async Task BitisDegisti(DateOnly? v) { bitis = v; await Yukle(); }
+
+    // ── PAKET GOC-D — üç tablo ortak ızgarada; listeler TAMDIR (dönemin tüm araç/kullanıcı/şube satırları) ──
+    private IReadOnlyList<SatisAnaliziOdemeSatiri> OdemeSatirlari(OdemeAraciYaniti o) =>
+        [.. (o.Araclar ?? []).SelectMany(a => (a.ParaBirimleri ?? []).Select(pb =>
+            new SatisAnaliziOdemeSatiri($"{a.Arac}-{pb.ParaBirimi}", a.Arac, pb.ParaBirimi, pb.GirisTutar, pb.CikisTutar, pb.Adet)))];
+    private IzgaraSiralama? odemeSira, personelSira, subeSira;
+
+    private IReadOnlyList<IzgaraKolonu<SatisAnaliziOdemeSatiri>> OdemeKolonlari =>
+    [
+        new() { Anahtar = "arac", Baslik = Dil.T.RaporSeti.Arac, ZorunluGorunur = true, SunucuSiralamaAdi = "arac",
+                HucreSinif = _ => "hucre-vurgu", Deger = r => KatalogSozlugu.OdemeAraci(r.Arac, Dil.Dil) },
+        // UX-S32: tutar para birimiyle BİRLİKTE taşınır.
+        new() { Anahtar = "para-birimi", Baslik = Dil.T.RaporSeti.ParaBirimi, SunucuSiralamaAdi = "para-birimi",
+                HucreSinif = _ => "metin-kucuk", Deger = r => r.ParaBirimi is null ? null : Bicim.ParaIsareti(r.ParaBirimi) },
+        new() { Anahtar = "giris", Baslik = Dil.T.RaporSeti.Giris, ZorunluGorunur = true, SunucuSiralamaAdi = "giris", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.Giris, Hucre = r => @<text>@Bicim.Para(r.Giris, r.ParaBirimi)</text> },
+        new() { Anahtar = "cikis", Baslik = Dil.T.RaporSeti.Cikis, ZorunluGorunur = true, SunucuSiralamaAdi = "cikis", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.Cikis, Hucre = r => @<text>@Bicim.Para(r.Cikis, r.ParaBirimi)</text> },
+        new() { Anahtar = "adet", Baslik = Dil.T.RaporSeti.HareketSayisi, SunucuSiralamaAdi = "adet", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.Adet },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<PersonelSatiri>> PersonelKolonlari =>
+    [
+        new() { Anahtar = "kaydeden", Baslik = Dil.T.RaporSeti.KaydedenKullanici, ZorunluGorunur = true, SunucuSiralamaAdi = "kaydeden",
+                HucreSinif = _ => "hucre-vurgu", Deger = r => r.KaydedenAd },
+        new() { Anahtar = "islem", Baslik = Dil.T.RaporSeti.IslemSayisi, SunucuSiralamaAdi = "islem", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.IslemSayisi },
+        new() { Anahtar = "ciro", Baslik = Dil.T.RaporSeti.Ciro, ZorunluGorunur = true, SunucuSiralamaAdi = "ciro", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.CiroTl, Hucre = r => @<text>@Bicim.Tl(r.CiroTl)</text> },
+        new() { Anahtar = "ortalama", Baslik = Dil.T.RaporSeti.OrtalamaSepet, SunucuSiralamaAdi = "ortalama", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.OrtalamaSepetTl, Hucre = r => @<text>@Bicim.Tl(r.OrtalamaSepetTl)</text> },
+        new() { Anahtar = "iade-adet", Baslik = Dil.T.RaporSeti.IadeAdet, SunucuSiralamaAdi = "iade-adet", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.IadeAdet },
+        // Oran hesaplanamıyorsa "—" yazılır; %0 UYDURULMAZ.
+        new() { Anahtar = "iade-orani", Baslik = Dil.T.RaporSeti.IadeOrani, SunucuSiralamaAdi = "iade-orani", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.IadeOrani,
+                Hucre = r => @<text>@(r.IadeOrani is { } o2 ? Bicim.Yuzde(o2 * 100m) : "—")</text> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<SubeSatiri>> SubeKolonlari =>
+    [
+        new() { Anahtar = "sube", Baslik = Dil.T.RaporSeti.SubeAd, ZorunluGorunur = true, SunucuSiralamaAdi = "sube",
+                HucreSinif = _ => "hucre-vurgu", Deger = r => r.SubeAd },
+        new() { Anahtar = "satis-adet", Baslik = Dil.T.RaporSeti.SatisAdet, SunucuSiralamaAdi = "satis-adet", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.SatisAdet },
+        new() { Anahtar = "ciro", Baslik = Dil.T.RaporSeti.Ciro, ZorunluGorunur = true, SunucuSiralamaAdi = "ciro", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.CiroTl, Hucre = r => @<text>@Bicim.Tl(r.CiroTl)</text> },
+        new() { Anahtar = "alis", Baslik = Dil.T.RaporSeti.AlisTl, SunucuSiralamaAdi = "alis", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.AlisTl, Hucre = r => @<text>@Bicim.Tl(r.AlisTl)</text> },
+        new() { Anahtar = "hurda", Baslik = Dil.T.RaporSeti.HurdaTl, SunucuSiralamaAdi = "hurda", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.HurdaTl, Hucre = r => @<text>@Bicim.Tl(r.HurdaTl)</text> },
+        new() { Anahtar = "hurda-has", Baslik = Dil.T.RaporSeti.HurdaHas, SunucuSiralamaAdi = "hurda-has", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.HurdaHasGram, Hucre = r => @<text>@Bicim.Gram(r.HurdaHasGram)</text> },
+        new() { Anahtar = "mal-farki", Baslik = Dil.T.RaporSeti.MalFarki, SunucuSiralamaAdi = "mal-farki", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.MalFarkiTl, Hucre = r => @<text>@Bicim.Tl(r.MalFarkiTl)</text> },
+        new() { Anahtar = "transfer", Baslik = Dil.T.RaporSeti.TransferSutun, SunucuSiralamaAdi = "transfer", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi metin-soluk", Deger = r => r.TransferAdet },
+    ];
+
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    /// <summary>PAKET S1-i: sekme kodları = eski id sonekleri (#sa-sekme-&lt;kod&gt;).</summary>
+    private IReadOnlyList<SekmeTanimi> SaSekmeleri =>
+    [
+        new("odeme", Dil.T.RaporSeti.AdOdemeAraci),
+        new("personel", Dil.T.RaporSeti.AdPersonel),
+        new("sube", Dil.T.RaporSeti.AdSubeKarsilastirma),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        // PAKET S1-i: ?sekme= derin bağlantısı — Sekmeler bileşeniyle AYNI kaynak
+        // (URL); bilinmeyen kod tahmin edilmez, ilk sekme kalır.
+        if (DerinBaglanti.Oku(Nav.Uri, "sekme") is { } k && SaSekmeleri.Any(x => x.Kod == k)) sekme = k;
+        await Yukle();
+    }
+
+    private async Task SekmeSec(string yeni)
+    {
+        if (sekme == yeni) return;
+        sekme = yeni;
+        await Yukle();
+    }
+
+    /// <summary>Yalnız AÇIK sekmenin ucuna gider — üç rapor birden çekilmez.</summary>
+    private async Task Yukle()
+    {
+        hata = null;
+        // PAKET GOC-D: dönem ekranda sunucuyla AYNI kuralla denetlenir; bozuksa istek ATILMAZ (eski sonuç
+        // ekranda kalır, alan altı söyler). Boş uç da istek atmaz (Tarih alanı yazım sürüyor/hatalı).
+        donemHata = baslangic is { } b0 && bitis is { } s0
+            ? RaporDonemKurali.Denetle(b0, s0, DateOnly.FromDateTime(Bicim.IsletmeBugun), Dil.Dil)?.Mesaj
+            : null;
+        if (donemHata is not null || baslangic is null || bitis is null) { yukleniyor = false; return; }
+        yukleniyor = true;
+        var bas = baslangic.Value;
+        var bit = bitis.Value;
+        try
+        {
+            switch (sekme)
+            {
+                case "odeme": odeme = await Rapor.OdemeAraci(bas, bit); break;
+                case "personel": personel = await Rapor.Personel(bas, bit); break;
+                default: sube = await Rapor.SubeKarsilastirma(bas, bit); break;
+            }
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata "kayıt yok"a çevrilmez.
+            hata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private string GuvenilirlikMetni(string? kod) => kod switch
+    {
+        "TAM" => Dil.T.RaporSeti.GuvenilirlikTam,
+        "YUKSEK" => Dil.T.RaporSeti.GuvenilirlikYuksek,
+        "ORTA" => Dil.T.RaporSeti.GuvenilirlikOrta,
+        "DUSUK" => Dil.T.RaporSeti.GuvenilirlikDusuk,
+        _ => Dil.T.RaporSeti.GuvenilirlikVeriYok,
+    };
+
+    private RaporGrafikMetinleri G => RaporGrafikSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// Çıkış TL toplamı — sunucunun girisTlToplam kuralıyla AYNI: yalnız TRY
+    /// satırları toplanır; döviz TL'ye çevrilip EKLENMEZ (UX-S32).
+    /// </summary>
+    private static decimal CikisTl(OdemeAraciSatiri a)
+        => (a.ParaBirimleri ?? []).Where(p => p.ParaBirimi == "TRY").Sum(p => p.CikisTutar);
+
+    private List<CiftNokta> GirisCikisNoktalari(OdemeAraciYaniti o)
+        => (o.Araclar ?? []).Select(a => new CiftNokta(KatalogSozlugu.OdemeAraci(a.Arac, Dil.Dil), a.GirisTlToplam, CikisTl(a))).ToList();
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

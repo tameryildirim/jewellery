@@ -1,0 +1,157 @@
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SATIR EYLEMLERİ — paket P-61 (QA turu 8 triyajı, YÜKSEK)
+
+   Neden YENİ bileşen (önce SatirIciDuzenle denetlendi): SatirIciDuzenle TEK
+   ALANLI değer düzeltmesidir (girdi + Kaydet/İptal); satırın EYLEM kümesini
+   (Tahsilat, Düzenle, Pasife al …) taşımaz. DuzenlenebilirListe 0 sayfada.
+   S3-2 (Müşteriler), S3-3 (Ürünler) ve S3-6 (Kasalar) aynı "⋯" desenini ELLE
+   üç kez yazmıştı — bu bileşen o deseni TEK kaynağa toplar, id/öznitelik
+   sözleşmesini AYNEN korur:
+     kap        #{Onek}-eylem-{SatirId}      (.satir-eylem — satırda GÖRÜNEN)
+     "⋯" düğme  #{Onek}-menu-ac-{SatirId}    popovertarget → menü
+     menü       #{Onek}-menu-{SatirId}       popover="auto" (.satir-menu)
+     başlık     #{Onek}-menu-{SatirId}-baslik
+     kapat      #{Onek}-menu-kapat-{SatirId}
+
+   Dar sütun kipi (DarSutun=true, Birincil=1): 10 sütunlu /faturalar'da satırda
+   durumun TEK birincil eylemi + "⋯"; birincili aşan her eylem pencereye taşar.
+   KURAL: eylem sayısı BirincilSinir+1'i (3) aşmıyorsa HEPSİ satırda görünür,
+   "⋯" çizilmez (tek öğeli menü anlamsız). Aşıyorsa ilk BirincilSinir (2) eylem
+   satırda, geri kalan HER eylem "⋯" penceresinde — ÖZELLİK SİLİNMEZ.
+   → satırda görünen düğme en çok 3 (2 birincil + "⋯").
+
+   KLAVYE / ERİŞİLEBİLİRLİK: "⋯" gerçek <button> — Enter/Boşluk açar; pencere
+   yerli HTML popover: Esc ve dışarı tıklama tarayıcı tarafından kapatır, Tab
+   sırası düğmeden pencereye geçer. KATMAN-1: konum js/katman.js (açıcıya
+   bağlı, flip + clamp; biçim css/katman.css) — CSP istisnası YOK.
+   aria-expanded: pencerenin "toggle" olayı (yerli, kabarcıklanmaz; Blazor onu
+   yakalama evresinde dinler) her açılış/kapanışta durumu çevirir — Esc ile,
+   dışarı tıklamayla, öğe seçimiyle ya da Kapat ile kapanış hepsi aynı olaydan
+   geçer; tek doğruluk kaynağı tarayıcıdır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@{
+    var hepsi = Eylemler ?? [];
+    var birincil = Math.Clamp(Birincil ?? BirincilSinir, 0, BirincilSinir);
+    var tasiyor = DarSutun ? hepsi.Count > birincil : hepsi.Count > birincil + 1;
+    var gorunen = tasiyor ? hepsi.Take(birincil).ToList() : hepsi.ToList();
+    var tasan = tasiyor ? hepsi.Skip(birincil).ToList() : [];
+    var menuId = $"{Onek}-menu-{SatirId}";
+}
+
+<div class="satir-eylem" id="@($"{Onek}-eylem-{SatirId}")">
+    @foreach (var e in gorunen)
+    {
+        <button type="button" class="@Sinif(e)" id="@e.Id" disabled="@e.Kilitli"
+                title="@(e.Kilitli ? e.KilitNedeni : null)" aria-label="@e.AriaEtiket"
+                @onclick="e.Tikla">
+            @if (!string.IsNullOrEmpty(e.Ikon))
+            {
+                <span aria-hidden="true">@e.Ikon</span>
+            }
+            @e.Etiket
+        </button>
+    }
+    @if (tasiyor)
+    {
+        <button type="button" class="btn btn-ikincil btn-kucuk satir-menu-ac"
+                id="@($"{Onek}-menu-ac-{SatirId}")" popovertarget="@menuId"
+                aria-haspopup="dialog" aria-controls="@menuId"
+                aria-expanded="@(acik ? "true" : "false")"
+                title="@DigerEtiket"
+                aria-label="@($"{SatirAdi} — {DigerEtiket}")">⋯</button>
+    }
+</div>
+@if (tasiyor)
+{
+    <div popover="auto" class="satir-menu" id="@menuId"
+         role="dialog" aria-labelledby="@($"{menuId}-baslik")" @ontoggle="Degisti">
+        <p class="satir-menu-baslik" id="@($"{menuId}-baslik")">@(MenuBaslik ?? string.Format(S.MenuBaslik, SatirAdi))</p>
+        <p class="metin-kucuk metin-soluk">@(MenuIpucu ?? S.MenuIpucu)</p>
+        <div class="satir-menu-ogeler">
+            @foreach (var e in tasan)
+            {
+                <button type="button" class="@Sinif(e)" id="@e.Id" disabled="@e.Kilitli"
+                        title="@(e.Kilitli ? e.KilitNedeni : null)" aria-label="@e.AriaEtiket"
+                        popovertarget="@menuId" popovertargetaction="hide"
+                        @onclick="e.Tikla">
+                    @if (!string.IsNullOrEmpty(e.Ikon))
+                    {
+                        <span aria-hidden="true">@e.Ikon</span>
+                    }
+                    @e.Etiket
+                </button>
+            }
+            @MenuEk
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"{Onek}-menu-kapat-{SatirId}")"
+                    popovertarget="@menuId" popovertargetaction="hide">
+                @Dil.T.Ortak.Kapat
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Satırda "⋯" dışında görünen en çok eylem sayısı (P-61: 2 birincil + "⋯").</summary>
+    public const int BirincilSinir = 2;
+
+    /// <summary>
+    /// Tek satır eylemi. Tikla ebeveynde üretilir (EventCallback → ebeveyn yeniden çizilir).
+    /// ⚠ Kayıt tipi (C# rekor) DEĞİL, sınıf: denetim.sh istemci rekor cırcırı (tavan 3).
+    /// </summary>
+    public sealed class Eylem(
+        string id,
+        string etiket,
+        EventCallback tikla,
+        string? ikon = null,
+        bool tehlike = false,
+        bool kilitli = false,
+        string? kilitNedeni = null,
+        string? ariaEtiket = null,
+        string? ekSinif = null)
+    {
+        public string Id { get; } = id;
+        public string Etiket { get; } = etiket;
+        public EventCallback Tikla { get; } = tikla;
+        public string? Ikon { get; } = ikon;
+        public bool Tehlike { get; } = tehlike;
+        public bool Kilitli { get; } = kilitli;
+        public string? KilitNedeni { get; } = kilitNedeni;
+        public string? AriaEtiket { get; } = ariaEtiket;
+        public string? EkSinif { get; } = ekSinif;
+    }
+
+    /// <summary>id öneki (c, u, fk, gp …) — mevcut id sözleşmesi bununla korunur.</summary>
+    [Parameter, EditorRequired] public string Onek { get; set; } = "";
+    [Parameter, EditorRequired] public string SatirId { get; set; } = "";
+    /// <summary>Satırın insan adı (müşteri adı, fatura no) — "⋯" aria-label ve menü başlığı.</summary>
+    [Parameter] public string SatirAdi { get; set; } = "";
+    /// <summary>Sıralı eylemler: ilk BirincilSinir tanesi satırda, taşanlar "⋯" penceresinde.</summary>
+    [Parameter] public IReadOnlyList<Eylem>? Eylemler { get; set; }
+    /// <summary>Satırda görünen birincil eylem sayısı; BirincilSinir'i AŞAMAZ (0..BirincilSinir'e kırpılır).</summary>
+    [Parameter] public int? Birincil { get; set; }
+    /// <summary>
+    /// Dar sütun kipi (çok sütunlu tablolar, ör. /faturalar 10 sütun): birincil sayısını aşan
+    /// eylem HER ZAMAN "⋯"'ye taşar — tek öğeli pencere dahil — ki sütun genişliği sabit kalsın.
+    /// </summary>
+    [Parameter] public bool DarSutun { get; set; }
+    [Parameter] public string? MenuBaslik { get; set; }
+    [Parameter] public string? MenuIpucu { get; set; }
+    [Parameter] public string? DigerIslemler { get; set; }
+    /// <summary>Menü öğelerinin altına eklenen içerik (ör. kilitli düğmenin YAZILI sebebi — UX-S30).</summary>
+    [Parameter] public RenderFragment? MenuEk { get; set; }
+
+    private bool acik;
+
+    private SatirEylemMetinleri S => SatirEylemSozlugu.Al(Dil.Dil);
+    private string DigerEtiket => DigerIslemler ?? S.DigerIslemler;
+
+    private static string Sinif(Eylem e) =>
+        (e.Tehlike ? "btn btn-tehlike btn-kucuk" : "btn btn-ikincil btn-kucuk")
+        + (string.IsNullOrWhiteSpace(e.EkSinif) ? "" : " " + e.EkSinif);
+
+    /// <summary>Yerli popover her açılış/kapanışta bir "toggle" olayı atar → aria-expanded çevrilir.</summary>
+    private void Degisti() => acik = !acik;
+}

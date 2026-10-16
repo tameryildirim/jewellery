@@ -1,0 +1,207 @@
+@inherits LayoutComponentBase
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject ArayuzModuServisi Modu
+@inject IJSRuntime JS
+@inject IServiceProvider Hizmetler
+@using Kuyumcu.Web.Bilesenler.Kabuk
+@implements IDisposable
+
+@if (GirisOncesiSayfada)
+{
+    @* PAKET S-3a — giriş sayfası da hata sınırıyla sarılır: deserialize
+       hatası boş ekran değil, görünür bant üretir (kurul tur 3 engel 11). *@
+    <KabukHatasi>@Body</KabukHatasi>
+}
+else if (!Oturum.GirisYapildi)
+{
+    @* Token yok → girişe yönlendirilir (OnInitialized) *@
+}
+else if (VitrinEkraninda)
+{
+    @* PAKET EKSIK-KUCUK (B2-10) — VİTRİN DÜKKÂN EKRANI TAM EKRANDIR (her şemada):
+       kenar çubuğu/üst bar/üst menü çizilmez. /ekranlar'dan farkı: veri gösterir,
+       bu yüzden YETKİ KAPISI da aynen sarar (kur modülü yoksa tek durum). *@
+    <div class="uygulama-tam-ekran vitrin-tam-ekran" id="vitrin-tam-ekran-kabuk">
+        <KabukHatasi><YetkiKapisi ProfilDenendi="@profilDenendi">@Body</YetkiKapisi></KabukHatasi>
+    </div>
+}
+else if (TamEkranda && !YildizMi)
+{
+    @* PAKET S1-d — "Tüm ekranlar" karo sayfası TAM EKRANDIR: kurucunun tuvali
+       (Ekranlar.dc.html, 1440×900) kenar çubuğu ve üst bar çizmez; kendi koyu
+       başlık şeridini (marka → panel, başlık, arama) taşır. Pusula'nın karo
+       ana menüsünün karşılığıdır (tuval notu n2). Oturum kapısı YUKARIDA
+       aynen işler; hata sınırı aynen sarar. *@
+    <div class="uygulama-tam-ekran" id="uygulama-tam-ekran">
+        <KabukHatasi>@Body</KabukHatasi>
+    </div>
+}
+else if (YildizMi)
+{
+    @* ── PAKET YILDIZ-2 — "YILDIZ" KABUĞU (yalnız data-sema="yildiz") ──────────
+       Sol menü YOK: üst 5 kelime menü (YildizUstMenu) + sağda kur/saat/kullanıcı.
+       "Tüm ekranlar" bu şemada tam ekran DEĞİLDİR; üst menünün altında çizilir.
+       Sayfa gövdesi (hata sınırı + yetki kapısı + üst bar) varsayılan kabukla
+       AYNIDIR; öteki 8 şemada bu dal HİÇ çalışmaz. *@
+    <CascadingValue Value="sekmeYuvasi" IsFixed="true">
+    <div class="@($"uygulama yildiz-kabuk{(TamEkranRotasi(new Uri(Nav.Uri).AbsolutePath) ? " yildiz-tum-ekranlar" : "")}")" id="yildiz-kabuk">
+        <div class="icerik-sutunu">
+            <YildizUstMenu />
+            <UstBar BildirimSayisiDegisti="BildirimSayisiGeldi" />
+            <main class="ana-icerik">
+                <KabukHatasi><YetkiKapisi ProfilDenendi="@profilDenendi">@Body</YetkiKapisi></KabukHatasi>
+            </main>
+        </div>
+    </div>
+    </CascadingValue>
+}
+else
+{
+    <CascadingValue Value="sekmeYuvasi" IsFixed="true">
+    <div class="uygulama @(Kabuk.MenuAcik ? "menu-acik" : null)">
+        @* T-K2: açık bildirim sayısı üst bardan kenar çubuğuna (tuval: menüdeki
+           "Bildirimler" satırının kırmızı hapı). Yoklama TEK: UstBar. *@
+        <KenarCubugu BildirimSayisi="bildirimSayisi" />
+        @* Dar ekran çekmecesi açıkken arkaplan örtüsü: tıklayınca kapanır
+           (UX-2 A2 · KABUK). Geniş ekranda hiç çizilmez. *@
+        @if (Kabuk.MenuAcik)
+        {
+            <button type="button" class="kenar-ortu" id="kenar-ortu"
+                    aria-label="@Dil.T.Kabuk.MenuKapat" @onclick="MenuyuKapat"></button>
+        }
+        <div class="icerik-sutunu">
+            <UstBar BildirimSayisiDegisti="BildirimSayisiGeldi" />
+            <main class="ana-icerik">
+                @* PAKET S-3a — SAYFA KÖKÜ HATA SINIRI. Sayfa ağacı çökse bile
+                   kenar çubuğu ve üst bar ayakta kalır; kullanıcı boş ekran
+                   yerine hata bandı + yeniden deneme yolu görür. *@
+                @* KESIF-P1 (#72): rol kapısı — yetkisiz rolde sayfa ÇİZİLMEZ, tek durum
+                   gösterilir (sonsuz "Yükleniyor" yok). Harita MenuTanimi'nden okunur. *@
+                <KabukHatasi><YetkiKapisi ProfilDenendi="@profilDenendi">@Body</YetkiKapisi></KabukHatasi>
+            </main>
+        </div>
+    </div>
+    </CascadingValue>
+}
+
+@code {
+    private static KabukServisi Kabuk => KabukServisi.Ortak;
+
+    private bool GirisSayfasinda =>
+        new Uri(Nav.Uri).AbsolutePath.TrimEnd('/') is "/giris";
+
+    /// <summary>
+    /// PAKET AUTH-SIFIRLA: oturum İSTEMEYEN, kabuksuz çizilen giriş öncesi sayfalar.
+    /// /sifre-sifirla oturumsuz açılır (girişe atılmaz) ve oturum açıkken de "/"a
+    /// atılmaz (e-postadaki bağlantı her durumda çalışır).
+    /// </summary>
+    public static bool GirisOncesiRota(string mutlakYol) =>
+        mutlakYol.TrimEnd('/') is "/giris" or "/sifre-sifirla";
+
+    private bool GirisOncesiSayfada => GirisOncesiRota(new Uri(Nav.Uri).AbsolutePath);
+
+    /// <summary>S1-d: kabuksuz (tam ekran) çizilen rotalar — yalnız karo menü.</summary>
+    public static bool TamEkranRotasi(string mutlakYol) =>
+        mutlakYol.TrimEnd('/') is "/ekranlar";
+
+    private bool TamEkranda => TamEkranRotasi(new Uri(Nav.Uri).AbsolutePath);
+
+    /// <summary>PAKET EKSIK-KUCUK (B2-10): kabuksuz çizilen vitrin dükkân ekranı.</summary>
+    public static bool VitrinEkranRotasi(string mutlakYol) =>
+        mutlakYol.TrimEnd('/') is "/vitrin/ekran";
+
+    private bool VitrinEkraninda => VitrinEkranRotasi(new Uri(Nav.Uri).AbsolutePath);
+
+    /// <summary>PAKET YILDIZ-2: etkin şema Yıldız mı (üst menü kabuğu)?</summary>
+    private bool YildizMi => YildizKabuk.Mi(Hizmetler);
+    private GorunumServisi? kiraciGorunumu;
+    private KullaniciGorunumServisi? benimGorunumu;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Oturum.Degisti += DurumaGoreYenile;
+        Kabuk.Degisti += DurumaGoreYenile;
+        Modu.Degisti += DurumaGoreYenile;
+        // YILDIZ-2: şema değişince (Ayarlar › Görünüm) kabuk anında geçer.
+        kiraciGorunumu = Hizmetler.GetService(typeof(GorunumServisi)) as GorunumServisi;
+        benimGorunumu = Hizmetler.GetService(typeof(KullaniciGorunumServisi)) as KullaniciGorunumServisi;
+        if (kiraciGorunumu is not null) kiraciGorunumu.Degisti += DurumaGoreYenile;
+        if (benimGorunumu is not null) benimGorunumu.Degisti += DurumaGoreYenile;
+        Nav.LocationChanged += (_, _) => KontrolEt();
+        KontrolEt();
+
+        // Profil persist edilmez — token varsa /auth/ben ile geri yükle
+        if (Oturum.GirisYapildi && Oturum.Kullanici is null)
+        {
+            try
+            {
+                var ben = await Api.GetAsync("/auth/ben");
+                Oturum.KullaniciAta(new OturumKullanici(
+                    ben.GetProperty("id").GetString()!,
+                    ben.GetProperty("ad").GetString()!,
+                    ben.GetProperty("soyad").GetString()!,
+                    ben.GetProperty("email").GetString()!,
+                    ben.GetProperty("rol").GetString()!,
+                    ben.TryGetProperty("subeId", out var s) ? s.GetString() : null,
+                    // UX-3: etkin modu SUNUCU çözer. Alan yoksa (eski sunucu) tolere edilir
+                    // ve bugünkü ekran (PROFESYONEL) korunur — çökme yok.
+                    ben.TryGetProperty("arayuzModu", out var am) && am.ValueKind == JsonValueKind.String
+                        ? am.GetString() : null,
+                    ben.TryGetProperty("etkinArayuzModu", out var em) && em.ValueKind == JsonValueKind.String
+                        ? em.GetString()! : "PROFESYONEL"));
+            }
+            catch { /* 401 ise ApiIstemci zaten girişe yönlendirir */ }
+        }
+        // KESIF-P1 (#72): profil okuması DENENDİ — rol kapısı artık bekletmez.
+        profilDenendi = true;
+    }
+
+    /// <summary>KESIF-P1: /auth/ben denendi mi (başarılı ya da değil)?</summary>
+    private bool profilDenendi;
+
+    private void KontrolEt()
+    {
+        if (!Oturum.GirisYapildi && !GirisOncesiSayfada)
+            Nav.NavigateTo("/giris");
+        else if (Oturum.GirisYapildi && GirisSayfasinda)
+            Nav.NavigateTo("/");
+    }
+
+    private void MenuyuKapat() => Kabuk.Kapat();
+
+    /// <summary>T-K2: sayfaların üst bara sekme koyduğu yuva (UstBar + sayfa, cascade).</summary>
+    private readonly UstBarSekmeYuvasi sekmeYuvasi = new();
+
+    /// <summary>T-K2: üst barın yokladığı açık bildirim sayısı (kenar çubuğuna geçer).</summary>
+    private int bildirimSayisi;
+
+    private void BildirimSayisiGeldi(int sayi) => bildirimSayisi = sayi;
+
+    // ── html[data-mod] yazıcısı (UX-2 A2) ───────────────────────────────────
+    // Mod SUNUCUDAN gelir (etkinArayuzModu); JS yalnız BEYAZ LİSTELİ değeri
+    // yazar (js/tema.js → window.kuyumcuMod). Öznitelik yalnız ÖLÇÜ belirteci
+    // değiştirir; yetkiye HİÇ dokunmaz.
+    private string? yazilanMod;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var mod = Modu.BasitMi ? "basit" : "profesyonel";
+        if (mod == yazilanMod) return;
+        yazilanMod = mod;
+        try { await JS.InvokeVoidAsync("kuyumcuMod.uygula", mod); }
+        catch { /* betik yüklenmediyse ölçüler varsayılanda kalır */ }
+    }
+
+    private void DurumaGoreYenile() => InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        Oturum.Degisti -= DurumaGoreYenile;
+        Kabuk.Degisti -= DurumaGoreYenile;
+        Modu.Degisti -= DurumaGoreYenile;
+        if (kiraciGorunumu is not null) kiraciGorunumu.Degisti -= DurumaGoreYenile;
+        if (benimGorunumu is not null) benimGorunumu.Degisti -= DurumaGoreYenile;
+    }
+}

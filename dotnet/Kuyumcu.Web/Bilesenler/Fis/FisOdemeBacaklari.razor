@@ -1,0 +1,547 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@inject DilServisi Dil
+@inject CanliKurServisi Canli
+
+@* ═══ PAKET S2-1 — KARMA ÖDEME BACAKLARI (ALDIM sütunu) ═══════════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Bileşen POST ETMEZ ve
+   API istemcisi enjekte etmez: bacak listesi Islemler.razor'un nesnesidir, her
+   değişiklikten sonra Degisti çağrılır ki sayfa (Kaydet kilidi, FARK) yeniden
+   çizilsin. Mevcut element id'lerinin HİÇBİRİ değişmedi. *@
+@* SATIS-3 (KAYNAK 5, kurucu dili): başlık "Ödeme", ekleme "+ Başka ödeme ekle" — "bacak" kelimesi ekranda yok. *@
+@* YILDIZ-4C tur 3 (tasarım hakemi KRİTİK): Yıldız'da eski kart/.btn öğeleri ÇİZİLMEZ — satırlar tuvalin .sat kalıbında
+   ("Nakit · Ana Kasa …… tutar"); başlık ve "+ Başka ödeme ekle" Yıldız'ın kendi hapındadır (YildizTezgah). Kurallar, id'ler AYNI. *@
+<div class="@(Yildiz ? "yz-bacaklar" : "kart fis-odeme-kart")" id="islem-bacaklar">
+    @if (!Yildiz)
+    {
+    <div class="kart-baslik satir-arasi">
+        <h3 class="fis-odeme-baslik">@S3.OdemeBaslik</h3>
+        <button class="btn btn-ikincil btn-kucuk" id="islem-bacak-ekle"
+                disabled="@(Bacaklar.Count >= 5)" title="@(Bacaklar.Count >= 5 ? Dil.T.Islem.BacakEkle : null)" @onclick="BacakEkle">
+            @SS.BaskaOdemeEkle
+        </button>
+    </div>
+    }
+    <div class="@(Yildiz ? "yz-bacaklar-govde" : "kart-govde form-dikey")">
+        @* P-10 (UX-S28): POS cihaz listesi alınamadıysa sebebi burada. *@
+        <HataBandi Mesaj="@PosCihazHata" Id="islem-pos-hata" />
+        @* Bacaklar tabloyla DEĞİL div listesiyle çizilir: kalem
+           tablosuyla aynı seçicilere düşmesin, testler karışmasın. *@
+        @for (var i = 0; i < Bacaklar.Count; i++)
+        {
+            var ix = i;
+            <div class="bacak-satiri">
+                @if (Yildiz)
+                {
+                    @* Tuval .sat sol yarısı: araç + soluk "· Kasa" eki (kasa seçicisi çizilmiyorsa — değer otomatik, UX-S22). *@
+                    <div class="yz-bacak-ad">
+                        <Secici ElemanId="@($"islem-bacak-{ix}-arac")"
+                                Etiket="@Dil.T.Islem.BacakArac"
+                                Zorunlu="true"
+                                Secenekler="@BacakAracSecenekleri(ix)"
+                                @bind-Deger="Bacaklar[ix].Arac"
+                                @bind-Deger:after="() => AracDegisti(Bacaklar[ix])" />
+                        @if (YildizKasaEki(Bacaklar[ix]) is { } kasaEki)
+                        {
+                            <span class="yz-s yz-bacak-kasa" id="@($"yildiz-bacak-{ix}-kasa")">· @kasaEki</span>
+                        }
+                    </div>
+                }
+                else
+                {
+                <Secici ElemanId="@($"islem-bacak-{ix}-arac")"
+                        Etiket="@Dil.T.Islem.BacakArac"
+                        Zorunlu="true"
+                        Secenekler="@BacakAracSecenekleri(ix)"
+                        @bind-Deger="Bacaklar[ix].Arac"
+                        @bind-Deger:after="() => AracDegisti(Bacaklar[ix])" />
+                }
+                @if (Bacaklar[ix].Arac == "DOVIZ")
+                {
+                <Secici ElemanId="@($"islem-bacak-{ix}-birim")"
+                        Etiket="@Dil.T.Kasa.Doviz"
+                        Secenekler="@(DovizBirimleri.Select(pb => new SecenekOgesi(pb, pb)).ToList())"
+                        @bind-Deger="Bacaklar[ix].ParaBirimi"
+                        @bind-Deger:after="() => BirimDegisti(Bacaklar[ix])" />
+                    <Para ElemanId="@($"islem-bacak-{ix}-doviz")" Zorunlu="true"
+                          Etiket="@Dil.T.Islem.DovizMiktar" EnAz="0"
+                          ParaBirimi="@Bacaklar[ix].ParaBirimi"
+                          Deger="@Bacaklar[ix].DovizTutar"
+                          DegerChanged="@((decimal? _v) => DovizYaz(Bacaklar[ix], _v))" />
+                    @* TL SALT OKUNUR: kur kaydından türetilir, elle yazılamaz. *@
+                    <SaltOkunur ElemanId="@($"islem-bacak-{ix}-tutar")"
+                                Etiket="@Dil.T.Islem.DovizTlKarsiligi"
+                                Deger="@Bicim.Para(Bacaklar[ix].TutarTl, "TRY")"
+                                MakineDeger="@Bacaklar[ix].TutarTl.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                BosMetin="@Dil.T.Ortak.DegerYok"
+                                KaynakRozeti="@Dil.T.Islem.KurdanGeldi" />
+                    @if (Bacaklar[ix].DovizTutar > 0m && Bacaklar[ix].TutarTl <= 0m)
+                    {
+                        @* t21 (hasım doğrulayıcı KRİTİK): kur yokken döviz satırı DÜŞMEZ — sebep yazılır, Kaydet kilitli, kur elle yeniden istenir. *@
+                        <div class="bacak-kur-yok" id="@($"islem-bacak-{ix}-kur-yok")">
+                            <HataBandi Mesaj="@S3.DovizKuruYok" />
+                            <button type="button" class="@(Yildiz ? "yz-b2" : "btn btn-ikincil btn-kucuk")" id="@($"islem-bacak-{ix}-kur-tekrar")" @onclick="KurYenidenAl">@S3.DovizKuruTekrar</button>
+                        </div>
+                    }
+                }
+                else if (FisAltinBacagi.AltinMi(Bacaklar[ix]) && Bacaklar[ix].Altin is { } altinGiris)
+                {
+                    @* PAKET B-4 (B4-3, B4-31..35): eski altınla ödeme. TL GİRİŞ ALANI
+                       YOKTUR — ayar/gram/has fiyatından türetilir; satıcı kimliği
+                       ve FARK kilidi panelde, kasa seçicisi çizilmez (B4-5). *@
+                    <AltinBacagiPaneli @key="Bacaklar[ix]"
+                                       Ayarlar="AltinAyarlari"
+                                       HasFiyati="@Canli.Son?.AltinHasFiyati"
+                                       FisToplamTl="FisToplami"
+                                       DigerBacaklarTl="@DigerBacaklarTl(Bacaklar[ix])"
+                                       Giris="altinGiris" Basit="Basit" Musteri="Musteri"
+                                       Degisti="@((AltinBacagiDurumu d) => AltinDegisti(Bacaklar[ix], d))" />
+                }
+                else
+                {
+                    <Para ElemanId="@($"islem-bacak-{ix}-tutar")" Zorunlu="true"
+                          Etiket="@Dil.T.Ortak.Tutar" EnAz="0"
+                          Deger="@Bacaklar[ix].TutarTl"
+                          DegerChanged="@((decimal? _v) => TutarYaz(Bacaklar[ix], _v))" />
+                }
+                @if (FisAltinBacagi.KasaAlir(Bacaklar[ix]) && FisHesap.BacakKasalari(Bacaklar[ix], Kasalar).Count() > 1
+                     && (!Basit || string.IsNullOrEmpty(Bacaklar[ix].KasaId)))
+                {
+                    @* t3: BASİT'te varsayılan kasa atanmışsa seçici yok (KAYNAK 5); PRO'da değiştirilebilir. *@
+                    @* UX-4b madde 7(d) / UX-S22: bacağın para birimine uyan
+                       TEK kasa varsa seçici kilitlenir; değer BacakEkle /
+                       AracDegisti içinde otomatik atanır ve altına salt okunur
+                       satır yazılır. *@
+                    <Secici ElemanId="@($"islem-bacak-{ix}-kasa")"
+                            Etiket="@Dil.T.Islem.Kasa"
+                            Secenekler="@FisHesap.KasaSecenekleri(FisHesap.BacakKasalari(Bacaklar[ix], Kasalar))"
+                            @bind-Deger="Bacaklar[ix].KasaId"
+                            @bind-Deger:after="Bildir"
+                            Devredisi="@(FisHesap.BacakKasaTek(Bacaklar[ix], Kasalar) is not null)"
+                            DevredisiSebebi="@Dil.T.Islem.BacakKasaOtomatik"
+                            BosSecenekMetni="@Dil.T.Islem.KasaSecin" />
+                }
+                else if (FisAltinBacagi.KasaAlir(Bacaklar[ix]) && !Basit && FisHesap.BacakKasaTek(Bacaklar[ix], Kasalar) is { } tekKasa)
+                {
+                    @* SATIS-3 (KAYNAK 5): tek uygun kasa → seçici YOK, değer otomatik (UX-S22); PRO'da kısa salt okunur satır. *@
+                    {
+                        <span id="@($"islem-bacak-{ix}-kasa-tek")"
+                              class="metin-soluk metin-kucuk">
+                            @tekKasa.Ad   @* YASAL-KAPI-3: teknik not yok *@
+                        </span>
+                    }
+                }
+                @* ═══ PAKET P-10 (Y-3) — KART BACAĞI: POS CİHAZI + TAKSİT ═══
+                   OdemeBacagiDto.PosCihazId / PosTaksitAdedi sunucuda
+                   BAŞINDAN BERİ vardı; ekran hiç göndermiyordu, bu yüzden
+                   birden çok aktif cihazı olan dükkânda kart bacağı
+                   fail-closed REDDEDİLİYOR ve sebebi ekranda yazmıyordu.
+                   UX-S24: ödeme türü KART olunca alanlar AÇILIR.
+                   UX-S22: tek cihaz varsa seçici KİLİTLENİR, değeri otomatik yazılır. *@
+                @if (Bacaklar[ix].Arac == "KART")
+                {
+                    @* SATIS-3 (KAYNAK 2 md.6): POS cihazı yoksa seçici ve not HİÇ yok (gövde cihazsız gider —
+                       sunucu kuralı değişmedi); tek cihaz otomatik; birden çoksa sorulur (sunucu fail-closed).
+                       Taksit varsayılan 1 (tek çekim) → "+ Taksit" ile açılır. *@
+                    @if (PosCihazlari.Count > 1)
+                    {
+                    <Secici ElemanId="@($"islem-bacak-{ix}-pos")"
+                            Etiket="@Dil.T.Islem.BacakPosCihazi"
+                            Secenekler="@PosSecenekleri"
+                            @bind-Deger="Bacaklar[ix].PosCihazId"
+                            @bind-Deger:after="Bildir"
+                            BosSecenekMetni="@Dil.T.Islem.BacakPosCihazi" />
+                    }
+                    else if (PosCihazlari.Count == 1 && !Basit)
+                    {
+                        <span id="@($"islem-bacak-{ix}-pos-tek")" class="gorsel-gizli">   @* t10 hakem: tek cihaz görünür satır yazmaz (ekran okuyucuya kalır) *@
+                            @PosCihazlari[0].Ad — @Dil.T.Islem.BacakPosOtomatik
+                        </span>
+                    }
+                    @if (PosCihazlari.Count > 0 && (Bacaklar[ix].PosTaksitAdedi > 1 || taksitAcik.Contains(Bacaklar[ix])))
+                    {
+                    <Secici ElemanId="@($"islem-bacak-{ix}-taksit")"
+                            Etiket="@Dil.T.Islem.BacakTaksit"
+                            Secenekler="@TaksitSecenekListesi"
+                            Deger="@Bacaklar[ix].PosTaksitAdedi.ToString()"
+                            DegerChanged="@((string? _v) => TaksitYaz(Bacaklar[ix], _v))" />
+                    }
+                }
+                @if (Yildiz)
+                {
+                    @* Tuval .b2 ("Çıkar" — kalem satırıyla AYNI kalıp); ✕ ikonu tuvalde yok. *@
+                    <button type="button" class="yz-b2 yz-bacak-sil" id="@($"islem-bacak-sil-{ix}")"
+                            aria-label="@YildizTezgahSozlugu.OdemeSatiriCikar(ix + 1, Dil.Dil)"
+                            @onclick="() => BacakSil(ix)">@YildizTezgahSozlugu.Cikar(Dil.Dil)</button>
+                }
+                else
+                {
+                <button class="btn btn-ikincil btn-kucuk metin-kirmizi"
+                        id="@($"islem-bacak-sil-{ix}")"
+                        aria-label="@Dil.T.Islem.BacakSil"
+                        @onclick="() => BacakSil(ix)"><Ikon Ad="@Ikonlar.Carpi" /></button>
+                }
+                @if (AsimHatasi(Bacaklar[ix]) is { } asim)
+                {
+                    @* TOPLU-7A: ✕ düğmesi satırda KALIR — ileti ✕'den SONRA gelir (önce gelirse tam genişlikli ileti ✕'yi alt satıra iterdi). GOC-C-2 VERI-1: satır fiş toplamını aşıyorsa satırın ALTINDA söylenir (sessiz silme yok, Kaydet kilitli,
+                       "Kalanı ata" açık eylem). Dar tutar sütununa sıkışmasın diye satır genişliğinde (zo-islem.css .bacak-asim). *@
+                    <p class="hata-metni alan-hata bacak-asim" id="@($"islem-bacak-{ix}-asim")" role="alert">@asim</p>
+                }
+            </div>
+            @if (Bacaklar[ix].Arac == "KART" && PosCihazlari.Count > 0 && !(Bacaklar[ix].PosTaksitAdedi > 1 || taksitAcik.Contains(Bacaklar[ix])))
+            {
+                @* t11 (tasarım hakemi YÜKSEK "+ Taksit kırık"): bağlantı satırın İÇİNDE değil ALTINDA kendi satırında — ödeme aracı
+                   kutusuyla aynı sol hizada, kenarlıklı ikincil; satırdaki alanlar ve ✕ her satırda aynı sütunda kalır (K7). *@
+                <div class="bacak-ek-satiri">
+                    <button type="button" class="@(Yildiz ? "yz-b2" : "btn btn-ikincil btn-kucuk")" id="@($"islem-bacak-{ix}-taksit-ac")"
+                            @onclick="() => TaksitAc(Bacaklar[ix])">@S3.TaksitEkle</button>
+                </div>
+            }
+        }
+
+        @* t3 hakemi (ORTA "fark üç kez yazıyor"): BASİT'te fiş toplamı VERDİM sütununda, fark alt çubukta — burada tekrar yok;
+           kalan satırı yalnız 0 değilken görünür (DOM'da kalır). PRO'da bu bölüm tek kaynaktır, alt çubuk özeti gizlenir. *@
+        @if (!Basit && !Yildiz)   @* Yıldız: toplam ve fark tuvalin kendi blokları (sol Toplam · sağ Fark) *@
+        {
+        <div class="satir-arasi">
+            <span class="metin-soluk">@Dil.T.Islem.FisToplami</span>
+            <span class="hucre-vurgu sayi">@Bicim.Tl(FisToplami)</span>
+        </div>
+        <div class="satir-arasi">
+            <span class="metin-soluk">@S3.OdemeToplami</span>   @* SATIS-3: "bacak" kelimesi ekranda yok (BASİT ve PRO) *@
+            <span class="sayi">@Bicim.Tl(BacakToplami)</span>
+        </div>
+        }
+        <div class="satir-arasi" id="islem-bacak-fark" hidden="@(Basit && BacakKalan == 0)" data-deger="@Bicim.Makine(BacakKalan)">
+            <span class="metin-soluk">@Dil.T.Islem.Kalan</span>
+            <span class="sayi @(BacakKalan == 0 && !OdemeBelirsiz && !FisFark.DovizKuruEksik(Bacaklar) ? "metin-yesil" : "metin-kirmizi")" id="islem-bacak-fark-metin">
+                @FarkMetni
+            </span>
+        </div>
+        @if (BacakKalan != 0)
+        {
+            <button class="@(Yildiz ? "yz-b2" : "btn btn-metin btn-kucuk")" id="islem-bacak-kalan-ata"
+                    disabled="@(FisAltinBacagi.KalanHedefi(Bacaklar) is null)" @onclick="KalaniAta">
+                @Dil.T.Islem.KalaniAta
+            </button>
+        }
+
+        @* §4.1.2 — sunucu son sözü söyler; burası kullanıcıyı
+           hataya hiç sokmamak içindir. *@
+        @if (FisHesap.NakitKapali(TevsikNakitKapali, Bacaklar))
+        {
+            <HataBandi Mesaj="@S3.NakitAlinamaz" />   @* t3: "bacak" + büyük harf + eşik sayısı metinde yok *@
+        }
+        else if (TevsikKalan is not null && Bacaklar.Any(b => b.Arac == "NAKIT"))   @* t3: nakit ödeme yokken bu satır gürültü *@
+        {
+            <span class="@(Yildiz ? "yz-s yz-tezgah-not" : "metin-soluk metin-kucuk")" id="islem-bacak-nakit-hakki">
+                @Dil.T.Islem.KalanNakitHakki: @Bicim.Tl(TevsikKalan.Value)
+            </span>
+        }
+        @* PAKET S2-5 (PLAN 2.8, D7) — NAKİT bacaklarının toplamına para üstü. Gövdeye KONMAZ. *@
+        @if (!Yildiz)   @* Yıldız: para üstü tuvalin "+ Para üstü" hapında (aynı taban: NAKİT satırları) *@
+        {
+        <FisParaUstu Nakit="@Bacaklar.Where(b => b.Arac == "NAKIT").Sum(b => b.TutarTl)" Katli="true" />   @* t6: karmada kapalı *@
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>PAKET SATIS-3 — BASİT yüz: teknik açıklama satırları gizli (DOM'da kalır, PRO'da görünür).</summary>
+    [Parameter] public bool Basit { get; set; }
+
+    /// <summary>YILDIZ-4C tur 3: Yıldız tezgâhında çizim (eski kart/.btn yok; satırlar tuval .sat kalıbında). Kurallar AYNI.</summary>
+    [Parameter] public bool Yildiz { get; set; }
+
+    /// <summary>Yıldız satırının soluk kasa eki: kasa seçicisi çizilmiyorsa (değer otomatik) seçili kasanın adı; yoksa null.</summary>
+    private string? YildizKasaEki(FisBacagi b)
+    {
+        if (!FisAltinBacagi.KasaAlir(b)) return null;
+        var seciciVar = FisHesap.BacakKasalari(b, Kasalar).Count() > 1 && (!Basit || string.IsNullOrEmpty(b.KasaId));
+        if (seciciVar) return null;
+        var kasa = string.IsNullOrEmpty(b.KasaId) ? FisHesap.BacakKasaTek(b, Kasalar) : Kasalar.FirstOrDefault(k => k.Id == b.KasaId);
+        return kasa?.Ad;
+    }
+
+    /// <summary>Bacak listesi — SAHİBİ Islemler.razor (Kaydet gövdesi buradan okunur).</summary>
+    [Parameter, EditorRequired] public List<FisBacagi> Bacaklar { get; set; } = [];
+    /// <summary>Aktif kasalar (tüm para birimleri); bacak kendi birimine uyanı seçer.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<KasaVeri> Kasalar { get; set; } = [];
+    /// <summary>PAKET P-10 (Y-3): aktif POS cihazları.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<PosCihazSatir> PosCihazlari { get; set; } = [];
+    /// <summary>Fişin NET toplamı (iskonto düşülmüş) — FisHesap.Toplam.</summary>
+    [Parameter] public decimal FisToplami { get; set; }
+    [Parameter] public string? PosCihazHata { get; set; }
+    /// <summary>Sunucunun tevsik önizlemesi (/tevsik/gunluk) — eşik ekrana gömülmez.</summary>
+    [Parameter] public bool TevsikNakitKapali { get; set; }
+    [Parameter] public decimal? TevsikKalan { get; set; }
+    /// <summary>k2 (tasarım hakemi K19): bu fişte nakit kullanılamıyor (sayfa sunucu bilgisinden hesaplar) — "+ Başka ödeme
+    /// ekle" satırı Nakit açılmaz.</summary>
+    [Parameter] public bool Nakitsiz { get; set; }
+    /// <summary>k2: seçili gerçek müşteri (Peşin değil) — eski altın satıcı kimliği ondan dolar.</summary>
+    [Parameter] public CariVeri? Musteri { get; set; }
+    /// <summary>Her bacak değişikliğinden sonra — sayfa yeniden çizilir (Kaydet kilidi, kalan).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+    /// <summary>
+    /// PAKET B-4 — GET /islemler/altin-bacagi/ayarlar yanıtı (stopaj oranları,
+    /// ön-dolgu oranı). null = henüz yüklenmedi ya da yüklenemedi → panel kilitli
+    /// ve sebebini yazar. Yüklemeyi SAYFA yapar (bileşen istek atmaz).
+    /// </summary>
+    [Parameter] public AltinBacagiAyarlari? AltinAyarlari { get; set; }
+    /// <summary>PAKET B-4 — bir bacak ALTIN'a geçince; sayfa ayarları (bir kez) yükler.</summary>
+    [Parameter] public EventCallback AltinSecildi { get; set; }
+
+    private static readonly string[] DovizBirimleri = ["USD", "EUR", "GBP"];
+    private static readonly int[] TaksitSecenekleri = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    private decimal BacakToplami => FisHesap.BacakToplami(Bacaklar);
+
+    // ═══ PAKET SATIS-3 (KAYNAK 2 md.5) — OTOMATİK KALAN ════════════════════════
+    // Kurucu ekranı: Kart 113.363,16 + Eski altın 7.500 → "Fark 7.500". Yeni bacak
+    // eklenince / altın tutarı hesaplanınca / fiş toplamı değişince, kullanıcının ELLE
+    // DEĞİŞTİRMEDİĞİ son TL bacağı kalanı üstlenir (FisBacagi.ElleYazildi); elle
+    // yazılana dokunulmaz. Hedef yoksa fark kalır ve anlamı yazılır (Eksik / Fazla).
+    [Parameter] public string? VarsayilanKasaId { get; set; }
+    private Satis3Metinleri S3 => Satis3Sozlugu.Al(Dil.Dil);
+    private SatisSadeMetinleri SS => SatisSadeSozlugu.Al(Dil.Dil);
+    private readonly HashSet<FisBacagi> taksitAcik = [];
+
+    /// <summary>SATIS-3 t17: sayfanın geçersiz sayı kapısı — tutar kutusu anlaşılamıyorsa fark "tamam" denmez.</summary>
+    [CascadingParameter] public Kuyumcu.Web.Bilesenler.Form.GecersizAlanKapisi? GecersizKapi { get; set; }
+    private bool OdemeBelirsiz => GecersizKapi?.OnekleVar("islem-bacak-") == true;
+
+    private string FarkMetni => OdemeBelirsiz
+        ? string.Format(S3.AlanDuzeltin, string.Join(" · ", GecersizKapi!.Etiketler("islem-bacak-")))
+        : FisFark.DovizKuruEksik(Bacaklar) ? S3.DovizKuruYok   // t21: döviz TL'si bilinmiyorken fark "tamam" denmez
+        : FisFark.Durum(BacakKalan) switch
+    {
+        FarkDurumu.Tamam => S3.FarkTamam,
+        FarkDurumu.Eksik => string.Format(S3.FarkEksik, Bicim.Tl(BacakKalan)),
+        _ => string.Format(S3.FarkFazla, Bicim.Tl(-BacakKalan)),
+    };
+
+    private Task TaksitAc(FisBacagi b) { taksitAcik.Add(b); return Task.CompletedTask; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var kurDegisti = DovizleriYenile();   // t21: kur sonradan gelince döviz satırının TL'si türetilir, kalan yeniden dengelenir
+        if (FisHesap.OtoDengele(Bacaklar, FisToplami) || kurDegisti) await Degisti.InvokeAsync();
+    }
+    private decimal BacakKalan => FisToplami - BacakToplami;
+
+    /// <summary>
+    /// Sunucunun kabul ettiği bacak araçları — OdemeBacagiDto.Arac ile AYNI küme
+    /// (PAKET B-4, B4-1/B4-3: ALTIN = eski altınla ödeme; tek etiketli
+    /// OdemeTuru="ALTIN" sunucuda artık reddedilir, eski altın YALNIZ buradan alınır).
+    /// </summary>
+    internal (string Deger, string Etiket)[] BacakAraclari =>
+    [
+        ("NAKIT", Dil.T.Islem.OdemeNakit),
+        ("KART", Dil.T.Islem.OdemeKart),
+        ("HAVALE", Dil.T.Islem.OdemeHavale),
+        ("VERESIYE", Dil.T.Islem.OdemeVeresiye),
+        ("DOVIZ", Dil.T.Islem.OdemeDoviz),
+        (FisAltinBacagi.Arac, Kuyumcu.Core.I18n.EskiAltinSozlugu.Al(Dil.Dil).EskiAltin),   // S2-4: taslaktaki ad (UX-S31)
+    ];
+
+    /// <summary>B4-6: başka bacak zaten ALTIN ise bu bacağın listesinde ALTIN yoktur.</summary>
+    private IReadOnlyList<SecenekOgesi> BacakAracSecenekleri(int ix) =>
+        [.. FisAltinBacagi.AracSecenekleri(BacakAraclari, Bacaklar, ix)
+            .Select(x => new SecenekOgesi(x.Deger, x.Etiket))];
+
+    /// <summary>ALTIN bacağı dışındaki bacakların TL toplamı (panelin FARK hesabı için).</summary>
+    private decimal DigerBacaklarTl(FisBacagi altin) =>
+        Bacaklar.Where(b => !ReferenceEquals(b, altin)).Sum(b => b.TutarTl);
+
+    /// <summary>Panel bildirdi: bacağın TL'si türetilen nettir (B4-31); sayfa yeniden çizilir.</summary>
+    private Task AltinDegisti(FisBacagi b, AltinBacagiDurumu d)
+    {
+        FisAltinBacagi.DurumYaz(b, d);
+        return Bildir();
+    }
+
+    private IReadOnlyList<SecenekOgesi> PosSecenekleri =>
+        [.. PosCihazlari.Select(pc => new SecenekOgesi(pc.Id, $"{pc.Ad} — {pc.BankaAdi}"))];
+
+    private static IReadOnlyList<SecenekOgesi> TaksitSecenekListesi =>
+        [.. TaksitSecenekleri.Select(t => new SecenekOgesi(t.ToString(), t.ToString()))];
+
+    private Task Bildir()
+    {
+        FisHesap.OtoDengele(Bacaklar, FisToplami);
+        return Degisti.InvokeAsync();
+    }
+
+    /// <summary>
+    /// DOVIZ bacağının TL'si EKRANDA DEĞİL kur kaydından türetilir ve sunucu aynı
+    /// hesabı yapıp eşitlik arar. Kasiyer TL'yi elle yazabilseydi her fişte kendi
+    /// kurunu uygular, dükkân fiilen döviz alım-satımı yapmış olurdu (yetki
+    /// belgesiz kuyumcu için yasak — PAKET-15-DOVIZ-KARAR-2026-09-15.md).
+    /// Kur yoksa 0 döner ve bacak fişi kapatamaz; sunucu da reddeder (fail-closed).
+    /// </summary>
+    private decimal DovizTl(FisBacagi b)
+    {
+        var kur = b.ParaBirimi switch
+        {
+            "USD" => Canli.Son?.UsdTry, "EUR" => Canli.Son?.EurTry, "GBP" => Canli.Son?.GbpTry, _ => null,
+        };
+        return kur is { } k && k > 0m
+            ? Math.Round(b.DovizTutar * k, 2, MidpointRounding.AwayFromZero)
+            : 0m;
+    }
+
+    /// <summary>Döviz bacağı değişince TL'sini kur kaydından yeniden hesaplar.</summary>
+    private void DovizGuncelle(FisBacagi b) => b.TutarTl = DovizTl(b);
+
+    /// <summary>t21 — tüm döviz satırlarının TL'sini güncel kur kaydından yeniden türetir; değişen varsa true.</summary>
+    private bool DovizleriYenile()
+    {
+        var d = false;
+        foreach (var b in Bacaklar.Where(b => b.Arac == "DOVIZ"))
+        {
+            var tl = DovizTl(b);
+            if (tl != b.TutarTl) { b.TutarTl = tl; d = true; }
+        }
+        return d;
+    }
+
+    /// <summary>t21 (canlı ölçümde bulundu): döviz BİRİMİ değişince kasa yeniden sabitlenir — USD kasası EUR satırında kalmasın
+    /// (K6 araç değişiminin aynısı); TL karşılığı yeni birimin kurundan türetilir.</summary>
+    private Task BirimDegisti(FisBacagi b)
+    {
+        FisHesap.BacakKasaSabitle(b, Kasalar);
+        DovizGuncelle(b);
+        return Bildir();
+    }
+
+    /// <summary>t21 — "Kuru yeniden al": /kur/guncel'e TEK istek (CanliKurServisi.TazeleAsync); gelen kurla satırlar yeniden hesaplanır.</summary>
+    private async Task KurYenidenAl()
+    {
+        await Canli.TazeleAsync();
+        DovizleriYenile();
+        await Bildir();
+    }
+
+    private Task DovizYaz(FisBacagi b, decimal? deger)
+    {
+        b.DovizTutar = deger ?? 0m;
+        DovizGuncelle(b);
+        return Bildir();
+    }
+
+    private Task TutarYaz(FisBacagi b, decimal? deger)
+    {
+        b.TutarTl = deger ?? 0m;
+        b.ElleYazildi = true;   // SATIS-3: elle yazılan bacağa otomatik kalan dokunmaz
+        sonYazilan = b;
+        FisHesap.OtoDengele(Bacaklar, FisToplami);
+        // GOC-C-2 VERI-1 (tasarım hakemi, VERİ): t10'daki "otomatik 0'a inen satır düşer" KALDIRILDI. Rakam rakam
+        // yazarken (9 → 99 → … → 99999) ilk satırın (Kart) kalanı 0'a iniyor ve satır KULLANICI SORMADAN siliniyordu.
+        // Artık hiçbir satır kendiliğinden silinmez: 0 ₺'lik satır Kaydet'i kilitlemez ve sunucuya GİTMEZ
+        // (FisFark.Gonderilecek — k2), aşım alan altında yazar ve Kaydet kilitlidir; "Kalanı ata" açık eylemdir.
+        return Bildir();
+    }
+
+    /// <summary>GOC-C-2 VERI-1: son elle yazılan satır — aşım iletisi onun altına yazılır, "Kalanı ata" onu düzeltir.</summary>
+    private FisBacagi? sonYazilan;
+
+    /// <summary>GOC-C-2 VERI-1: ödemeler fiş toplamını aşıyorsa son yazılan TL satırının alan altı iletisi (fazla tutarla).</summary>
+    private string? AsimHatasi(FisBacagi b) =>
+        BacakKalan < 0m && ReferenceEquals(b, AsimHedefi)
+            ? string.Format(Kuyumcu.Core.I18n.GocC2Sozlugu.Al(Dil.Dil).OdemeAsimi, Bicim.Tl(-BacakKalan))
+            : null;
+
+    /// <summary>
+    /// Aşımın yazıldığı / "Kalanı ata"nın düzelttiği satır: son elle yazılan TL satırı — AMA TUTARI 0'dan büyükse
+    /// (TOPLU-7A: 0 ₺'lik satırın altına "tutarı aşıyor" yazmak yanıltıcıydı); sıfırsa tutarı olan son TL satırı; yoksa eski hedef.
+    /// </summary>
+    private FisBacagi? AsimHedefi
+    {
+        get
+        {
+            if (sonYazilan is { } s && Bacaklar.Contains(s) && s.Arac is not ("DOVIZ" or FisAltinBacagi.Arac) && s.TutarTl > 0m) return s;
+            return Bacaklar.LastOrDefault(b => b.Arac is not ("DOVIZ" or FisAltinBacagi.Arac) && b.TutarTl > 0m)
+                   ?? FisAltinBacagi.KalanHedefi(Bacaklar);
+        }
+    }
+
+    /// <summary>
+    /// Araç değişince kasa seçimi sıfırlanır: TL kasası döviz bacağına, döviz
+    /// kasası TL bacağına taşınmasın (K6). DOVIZ'e geçince TL kurdan türetilir.
+    /// </summary>
+    private async Task AracDegisti(FisBacagi b)
+    {
+        // UX-4b 7(d): tek uyan kasa varsa boş bırakmak yerine onu ata (UX-S22).
+        FisHesap.BacakKasaSabitle(b, Kasalar);
+        if (string.IsNullOrEmpty(b.KasaId) && !string.IsNullOrEmpty(VarsayilanKasaId)
+            && FisHesap.BacakKasalari(b, Kasalar).Any(k => k.Id == VarsayilanKasaId)) b.KasaId = VarsayilanKasaId;
+        if (b.Arac == "DOVIZ") DovizGuncelle(b);
+        // UX-S22: tek aktif cihaz varsa soru sorulmaz, atanır; KART dışına
+        // çıkıldığında cihaz/taksit temizlenir (nakit bacağında POS kaydı olmaz).
+        FisHesap.BacakPosSabitle(b, PosCihazlari);
+        // PAKET B-4: ALTIN'a geçen bacağın kasası boşalır (B4-5), girdileri açılır;
+        // ALTIN'dan çıkan bacağın altın girdileri temizlenir.
+        FisAltinBacagi.AracDegisti(b);
+        if (FisAltinBacagi.AltinMi(b)) await AltinSecildi.InvokeAsync();
+        await Bildir();
+    }
+
+    /// <summary>Taksit seçimi string gelir; sunucu sözleşmesi int (tip eşleşmesi).</summary>
+    private Task TaksitYaz(FisBacagi b, string? deger)
+    {
+        b.PosTaksitAdedi = int.TryParse(deger, out var t) && t >= 1 ? t : 1;
+        return Bildir();
+    }
+
+    private Task BacakEkle()
+    {
+        if (Bacaklar.Count >= 5) return Task.CompletedTask;
+        var yeni = new FisBacagi
+        {
+            // Kalan tutarı öner: tezgâhtar rakamı elle bölmek zorunda kalmasın.
+            TutarTl = BacakKalan > 0 ? BacakKalan : 0m,
+            Arac = FisFark.YeniBacakAraci(Bacaklar, Nakitsiz || TevsikNakitKapali),   // t10: aynı araçla açılmaz · k2: nakit yasaksa Nakit değil
+        };
+        FisHesap.BacakPosSabitle(yeni, PosCihazlari);
+        // Yeni bacak NAKIT doğar → TL kasası tekse otomatik atanır (UX-S22);
+        // SATIS-3: birden çok TL kasasında fişin seçili kasası önerilir (kasa her bacakta sorulmaz).
+        FisHesap.BacakKasaSabitle(yeni, Kasalar);
+        if (string.IsNullOrEmpty(yeni.KasaId) && !string.IsNullOrEmpty(VarsayilanKasaId)
+            && FisHesap.BacakKasalari(yeni, Kasalar).Any(k => k.Id == VarsayilanKasaId)) yeni.KasaId = VarsayilanKasaId;
+        Bacaklar.Add(yeni);
+        return Bildir();
+    }
+
+    private Task BacakSil(int ix)
+    {
+        Bacaklar.RemoveAt(ix);
+        return Bildir();
+    }
+
+    private Task KalaniAta()
+    {
+        // PAKET B-4: ALTIN bacağının TL'si türetilir (B4-31) — kalan ona yazılmaz.
+        // GOC-C-2 VERI-1: aşımda hedef son yazılan satırdır; tutar eksiye inmez (diğer satırlar tek başına aşıyorsa 0).
+        // Eksikte eski davranış birebir (son altın dışı satır kalanı alır).
+        if (BacakKalan < 0m)
+        {
+            // TOPLU-7A: aşım TEK tıkla kapanır. Önce hedef satır (formül AYNI: tutar + kalan, eksiye inmez); hedef tek başına
+            // yetmediyse (diğer satırlar da fazla) kalan fazla öteki TL satırlardan sondan başa düşülür. Hiçbir satır silinmez.
+            var fazla = -BacakKalan;
+            var sira = new List<FisBacagi>();
+            if (AsimHedefi is { } h) sira.Add(h);
+            sira.AddRange(Enumerable.Reverse(Bacaklar).Where(b => !ReferenceEquals(b, AsimHedefi)
+                                                                  && b.Arac is not ("DOVIZ" or FisAltinBacagi.Arac)));
+            foreach (var b in sira)
+            {
+                if (fazla <= 0m) break;
+                var dus = Math.Min(b.TutarTl, fazla);
+                b.TutarTl -= dus;
+                fazla -= dus;
+            }
+            return Bildir();
+        }
+        if (FisAltinBacagi.KalanHedefi(Bacaklar) is not { } hedef) return Task.CompletedTask;
+        hedef.TutarTl = Math.Max(0m, hedef.TutarTl + BacakKalan);
+        return Bildir();
+    }
+}

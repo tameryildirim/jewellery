@@ -1,0 +1,318 @@
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Pozisyon
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET B-2 — ALTIN POZİSYONU KARTI (panelin üçüncü kartı · tuval Panel.dc.html)
+
+   Taslak: "Altın pozisyonum · +312,8 g has · Vitrin 298,4 g · Alacak 14,4 g".
+   Sayı SUNUCUDA hesaplanır (GET /pozisyon); ekran toplama YAPMAZ (UX-S21).
+
+   • UX-S23: her kırılım sayısı kayıtlara gider — Vitrin → /urunler?maden=…,
+     Hurda → /hurda, Alacak/Borç → carilerin listesi (GET /pozisyon/cariler),
+     listedeki her cari → /cariler?cariId=….
+   • UX-S28: hata "kayıt yok"a çevrilmez; 403 ayrı bir yetki notudur.
+   • UX-S29: cari listesi sınırını ve "daha fazlası var" uyarısını yazar.
+   • UX-S33: kart dönemden bağımsızdır ve bunu yazar.
+   • UX-S25: türetilmiş değer — DegismezIpucu ile gerekçe + düzeltme yolu.
+   • K20-2 / P-45: diğer madenler AYRI satırda; altına EKLENMEZ.
+
+   ⚠ Panel.razor bu pakette AÇILMADI (DEMO şeridinin dosyası). Kart kendi
+     verisini kendisi çeker; panele yerleştirme tek satırdır:
+     <AltinPozisyonuKarti />
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* ═══ PAKET T-P1 — SADE KART (tuval Panel.dc.html, panelin basit yüzü) ═══════
+   Sade="true" iken kart tuvaldeki KISA karttır: "+312,8 g has" + "Vitrin ·
+   Alacak". Borç, hurda, "dönemden bağımsız" notu, konsinye/emanet notu, diğer
+   madenler ve DegismezIpucu SİLİNMEDİ — başlıktaki "Ayrıntı" düğmesi açar.
+   Defter farkı UYARISI ve hata/yetki/boş durumu her zaman görünür (UX-S28).
+   Sade verilmezse (Raporlar "Bugün", testler) kart B-2'deki gibi TAM çizilir.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<section class="kart @(Sade ? "pozisyon-kart--sade" : null)" id="pozisyon-kart" aria-labelledby="pozisyon-baslik">
+    <div class="kart-baslik">
+        <h2 id="pozisyon-baslik">@M.Baslik</h2>
+        @if (Sade && veri is not null)
+        {
+            <button type="button" class="pozisyon-ayrinti" id="pozisyon-ayrinti"
+                    aria-expanded="@(ayrintiAcik ? "true" : "false")"
+                    @onclick="AyrintiDegistir">@(ayrintiAcik ? T.AyrintiKapat : T.Ayrinti)</button>
+        }
+    </div>
+    <div class="kart-govde">
+        @if (yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (yetkiYok)
+        {
+            <p class="metin-soluk" id="pozisyon-yetki-yok">@M.YetkiYok</p>
+        }
+        else
+        {
+            <HataBandi Mesaj="@hata" Kimlik="@hataKimligi" Id="pozisyon-hata" />
+            @if (veri is not null)
+            {
+                var a = veri.Altin;
+                @* ORTAK-1 (B): uzunluk kademesi kart daralınca yazıyı sığdırır (css/ortak.css). *@
+                @* MADEN-2 (ilke "tek has biçimi"): altın pozisyonu Bicim.Has ile AYNI — binlik + 4 ondalık
+                   ("+1.312,8000 has"); Rapor merkezi/Panel'deki "0,0 g has" ile "33,2050 has" ikiliği kalktı. *@
+                <p class="stat-deger" id="pozisyon-net" data-deger-boy="@(DegerBoyu.Kademe(NetHas(a.NetGram)))">@NetHas(a.NetGram)</p>
+                @* PAKET S1-g (kurucu bulgusu): kırılım tuvaldeki gibi TEK SATIRLIK düz
+                   metin dizisidir ("Vitrin 298,4 g   Alacak 14,4 g"). ÖNCE Alacak/Borç
+                   düğme rozeti (dugme-kucuk) cümlenin ortasına düşüyor, satır
+                   space-between ile kırılıyordu. ŞİMDİ her öğe AYNI biçimde
+                   (.pozisyon-kirilim-oge), kırılmaz (nowrap) ve aralarında sabit
+                   boşluk vardır; sığmazsa BÜTÜN öğe alt satıra geçer, öğe içi kırılmaz.
+                   Düğme/bağlantı DAVRANIŞI aynı (UX-S23: her sayı kayda gider). *@
+                <div class="pozisyon-kirilim" id="pozisyon-kirilim">
+                    <a class="pozisyon-kirilim-oge" href="@($"/urunler?maden={a.Maden}")" id="pozisyon-vitrin"
+                       title="@M.VitrinBaglantiIpucu">@M.Vitrin @HasMiktar(a.VitrinGram)</a>
+                    <button type="button" class="pozisyon-kirilim-oge" id="pozisyon-alacak"
+                            @onclick="AlacakListesi">@M.Alacak @HasMiktar(a.CariAlacakGram)</button>
+                    @* PAKET RAPOR-2 (tutarlılık, tasarım ORTA): sade yüzde ana değer (Vitrin + Hurda + Alacak − Borç)
+                       alt kırılımla tutmuyordu ("+160,1812 has" altında yalnız Vitrin 159,2652 + Alacak 0) — sıfır
+                       olmayan Borç ve Hurda artık sade yüzde de kırılımda: gösterilen kalemlerin toplamı = ana değer. *@
+                    @if (a.CariBorcGram != 0m)
+                    {
+                        <button type="button" class="pozisyon-kirilim-oge" id="pozisyon-borc"
+                                @onclick="BorcListesi">@M.Borc @HasMiktar(a.CariBorcGram)</button>
+                    }
+                    @if (a.HurdaGram != 0m)
+                    {
+                        <a class="pozisyon-kirilim-oge" href="/hurda" id="pozisyon-hurda">@M.Hurda @HasMiktar(a.HurdaGram)</a>
+                    }
+                </div>
+                @* ŞUBE-KAPSAM-B tur 3 (doğrulayıcı KRİTİK): kart seçili şubenin VİTRİN ve
+                   HURDA'sını gösterir; alacak/borç müşteri hesabıdır, şubeye bölünmez —
+                   bunu Panel'in öteki kiracı geneli kartlarıyla AYNI notla söyler. *@
+                @if (veri.Kapsam == "SUBE")
+                {
+                    <p class="stat-alt metin-soluk" id="pozisyon-cari-kapsam">@CariKapsamNotu</p>
+                }
+                @if (Tam)
+                {
+                    <p class="stat-alt" id="pozisyon-donem">@M.DonemdenBagimsiz</p>
+                }
+
+                @if (TumuSifir(a) && veri.DigerMadenler.Count == 0)
+                {
+                    <BosDurum Mesaj="@M.Bos" />
+                }
+
+                @if (Tam && (a.KonsinyeGram != 0m || a.EmanetGram != 0m))
+                {
+                    <p class="metin-soluk metin-kucuk pozisyon-disarida" id="pozisyon-disarida">
+                        @if (a.KonsinyeGram != 0m)
+                        {
+                            <span id="pozisyon-konsinye">@M.Konsinye @HasMiktar(a.KonsinyeGram)</span>
+                        }
+                        @if (a.EmanetGram != 0m)
+                        {
+                            <span id="pozisyon-emanet">@M.Emanet @HasMiktar(a.EmanetGram)</span>
+                        }
+                        <span>— @M.PozisyonaGirmez</span>
+                    </p>
+                }
+
+                @if (veri.DefterBakiyeFarki != 0m)
+                {
+                    <div class="bant bant-uyari" role="alert" id="pozisyon-defter-farki">
+                        @string.Format(Dil.BasitMi ? KatalogSozlugu.Al(Dil.Dil).PozisyonDefterFarkiBasit : M.DefterFarki, Gram(veri.DefterBakiyeFarki))
+                    </div>
+                }
+
+                @if (Tam && veri.MadenlerToplanmaz)
+                {
+                    <div id="pozisyon-diger-madenler">
+                        <p class="stat-etiket">@M.DigerMadenlerBaslik</p>
+                        <ul>
+                            @foreach (var d in veri.DigerMadenler)
+                            {
+                                <li id="@($"pozisyon-maden-{d.Maden}")">
+                                    @PozisyonSozlugu.MadenAdi(d.Maden, Dil.Dil): @Isaretli(d.NetGram) g
+                                    <span class="metin-soluk metin-kucuk">(@M.Vitrin @Gram(d.VitrinGram) g · @M.Alacak @Gram(d.CariAlacakGram) g · @M.Borc @Gram(d.CariBorcGram) g)</span>
+                                </li>
+                            }
+                        </ul>
+                        <p class="metin-soluk metin-kucuk" id="pozisyon-toplanmaz">@M.MadenlerToplanmaz</p>
+                    </div>
+                }
+
+                @if (liste is not null)
+                {
+                    <div id="pozisyon-cari-liste">
+                        <p class="stat-etiket" id="pozisyon-cari-liste-baslik">
+                            @(liste.Yon == "BORC" ? M.BorcListesiBaslik : M.AlacakListesiBaslik)
+                        </p>
+                        @if (liste.Satirlar.Count == 0)
+                        {
+                            <BosDurum Mesaj="@M.ListeBos" />
+                        }
+                        else
+                        {
+                            <div class="tablo-sar">
+                                <table class="veri-tablosu">
+                                    <thead><tr><th>@M.CariSutun</th><th>@M.HasSutun</th></tr></thead>
+                                    <tbody>
+                                        @foreach (var s in liste.Satirlar)
+                                        {
+                                            <tr id="@($"pozisyon-cari-{s.CariId}")">
+                                                <td><a href="@($"/cariler?cariId={s.CariId}")">@s.CariAd</a></td>
+                                                <td>@HasMiktar(Math.Abs(s.HasGram))</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        <p class="metin-soluk metin-kucuk" id="pozisyon-cari-sinir">@string.Format(M.ListeSiniri, liste.Limit)</p>
+                        @if (liste.DahaFazlasiVar)
+                        {
+                            <div class="bant bant-uyari" id="pozisyon-cari-daha-fazla">
+                                @string.Format(M.DahaFazlasiVar, liste.ToplamSatir, liste.Satirlar.Count)
+                            </div>
+                        }
+                    </div>
+                }
+                <HataBandi Mesaj="@listeHata" Id="pozisyon-cari-hata" />
+
+                @if (Tam)
+                {
+                    <DegismezIpucu Varlik="AltinPozisyonu" Gerekce="@M.DegismezGerekce" AlternatifYol="@M.DuzeltmeYolu" />
+                }
+            }
+        }
+    </div>
+</section>
+
+@code {
+    /// <summary>Kırılım listesinin sayfa boyu — sunucu üst sınırı 500 (UX-S29).</summary>
+    public const int ListeLimiti = 50;
+
+    // PAKET CUMA-J: BASİT modda jargonsuz ("cari" yerine "müşteri") kopya; PRO aynen.
+    private PozisyonMetinleri M => CumaJSozlugu.Pozisyon(Dil.Dil, Dil.BasitMi);
+    private PanelTuvalMetinleri T => PanelTuvalSozlugu.Al(Dil.Dil);
+    private SubeKapsamBMetinleri SKB => SubeKapsamBSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// Tur 3 canlı göz: "Alacak: tüm şubeler birlikte" — sade yüzde borç satırı yok,
+    /// not da yalnız gördüğü kalemi söyler (Tam yüzde "Alacak · Borç").
+    /// </summary>
+    private string CariKapsamNotu =>
+        $"{M.Alacak}{(Tam ? " · " + M.Borc : "")}: {SKB.KartTumSubelerNotu.ToLower(Kultur)}";
+
+    /// <summary>T-P1 — panelin basit yüzü: tuvaldeki kısa kart; ayrıntı düğmeyle açılır.</summary>
+    [Parameter] public bool Sade { get; set; }
+
+    private bool ayrintiAcik;
+    /// <summary>Tam çizim: sade değilse daima; sadeyse "Ayrıntı" açıkken.</summary>
+    private bool Tam => !Sade || ayrintiAcik;
+    private void AyrintiDegistir() => ayrintiAcik = !ayrintiAcik;
+    private CultureInfo Kultur => Dil.Dil == "en" ? CultureInfo.GetCultureInfo("en-US") : CultureInfo.GetCultureInfo("tr-TR");
+
+    private bool yukleniyor = true;
+    private bool yetkiYok;
+    private string? hata;
+    private string? hataKimligi;
+    private AltinPozisyonuYaniti? veri;
+    private PozisyonCariSayfasi? liste;
+    private string? listeHata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        KabukServisi.Ortak.GorunumDegisti += GorunumDegisti;
+        await Yukle();
+    }
+
+    /// <summary>
+    /// ŞUBE-KAPSAM-B tur 3: görünüm şubesi değişince kart yeniden çekilir (yalnız BU
+    /// oturumun değişimi). Geç gelen ESKİ şube yanıtı yeni seçimin kartını ezmez.
+    /// </summary>
+    private void GorunumDegisti(object sahip)
+    {
+        if (!ReferenceEquals(sahip, Oturum)) return;
+        InvokeAsync(async () => { await Yukle(); StateHasChanged(); });
+    }
+
+    public void Dispose() => KabukServisi.Ortak.GorunumDegisti -= GorunumDegisti;
+
+    private async Task Yukle()
+    {
+        // UX-S28: yeniden yüklemede önceki sayı silinmez; hata ayrı bantta.
+        hata = null;
+        hataKimligi = null;
+        liste = null;
+        listeHata = null;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);
+            var istenen = SubeliSorgu.Sube(Oturum);
+            var gelen = await Api.GetAsync<AltinPozisyonuYaniti>(SubeliSorgu.Ekle("/pozisyon", Oturum));
+            if (istenen != SubeliSorgu.Sube(Oturum)) return;   // seçim değişti — yeni yükleme dolduracak
+            veri = gelen;
+            if (veri is null) hata = M.YuklemeHatasi;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403)
+        {
+            yetkiYok = true;
+        }
+        catch (ApiHata ex)
+        {
+            hata = $"{M.YuklemeHatasi}: {ex.Message}";
+            hataKimligi = ex.IstekKimligi;
+        }
+        catch (Exception ex)
+        {
+            hata = $"{M.YuklemeHatasi}: {ex.Message}";
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private Task AlacakListesi() => ListeYukle("ALACAK");
+    private Task BorcListesi() => ListeYukle("BORC");
+
+    private async Task ListeYukle(string yon)
+    {
+        // UX-S28: yeni istek önce eski listeyi kaldırır; hata olursa "boş liste"
+        // değil, ayrı hata bandı görünür (catch içinde veri alanı boşaltılmaz — P-11).
+        listeHata = null;
+        liste = null;
+        try
+        {
+            liste = await Api.GetAsync<PozisyonCariSayfasi>(
+                $"/pozisyon/cariler?maden={veri?.AnaMaden ?? "ALTIN"}&yon={yon}&limit={ListeLimiti}&ofset=0");
+        }
+        catch (Exception ex)
+        {
+            listeHata = $"{M.YuklemeHatasi}: {ex.Message}";
+        }
+    }
+
+    private static bool TumuSifir(MadenPozisyonu p) =>
+        p.VitrinGram == 0m && p.HurdaGram == 0m && p.CariAlacakGram == 0m && p.CariBorcGram == 0m
+        && p.KonsinyeGram == 0m && p.EmanetGram == 0m;
+
+    /// <summary>Gram — 1 ondalık, kültüre göre ayraç (298,4 / 298.4).</summary>
+    private string Gram(decimal n) => n.ToString("N1", Kultur);
+
+    /// <summary>İşaretli büyük sayı: +312,8 / −22,0 / 0,0.</summary>
+    private string Isaretli(decimal n) => n > 0m ? "+" + Gram(n) : n < 0m ? "−" + Gram(-n) : Gram(0m);
+
+    /// <summary>MADEN-2: net altın pozisyonu — işaretli <see cref="Bicim.Has"/> (tek has biçimi: "+312,8000 has").</summary>
+    private static string NetHas(decimal n) => n > 0m ? "+" + Bicim.Has(n) : n < 0m ? "−" + Bicim.Has(-n) : Bicim.Has(0m);
+
+    /// <summary>
+    /// MADEN-2 tur 2 (tasarım hakemi KRİTİK): kartın ALTIN kırılımları (Vitrin, Alacak, Borç, Hurda,
+    /// konsinye, emanet, cari listesi) ana değerle AYNI sayı dilinde — <see cref="Bicim.Has"/>
+    /// ("Vitrin 192,5316 has · Alacak 0,0000 has"). "N1 g" yalnız diğer madenlerin (gümüş…) satırında kalır:
+    /// has yalnız altın kavramıdır.
+    /// </summary>
+    private static string HasMiktar(decimal n) => Bicim.Has(n);
+}

@@ -1,0 +1,169 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-5A — "YILDIZ" LİSTE KALIBI (tuval Y_Emanet / Y_Siparisvetamir / Y_Bildirimler /
+   Y_Urunler / Y_Urunagaci / Y_Fiyatlisteleri · BİREBİR).
+
+   Yerleşim tuvalin <main>'idir: solda üst satır + 64 px ince başlık, ortada 420 px alt
+   çizgili arama, sağda tek beyaz hap; altında sekmeler (.sek); sütun başlığı ve kıl
+   çizgili satırlar; sağda satır eylemi (.b3); en altta soluk not.
+
+   ⚠ YALNIZ data-sema="yildiz" (BASİT ve PRO aynı yüz): sayfa bu bileşeni şema Yıldız iken
+     çizer; öteki 8 şemada özgün ekran AYNEN.
+   ⚠ İSTEK ATMAZ: arama/sekme/satır/eylem = sayfanın mevcut geri çağrıları.
+   ⚠ Mevcut id'ler korunur (arama, birincil düğme, sekme, satır eylemi kimlikleri sayfadan gelir).
+   ⚠ Satır içi style YOK: sütun ızgarası tema-yildiz.css'te .yz-liste--{Tur}.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="@($"yz yz-liste yz-liste--{B.Tur}{(B.AyrintiAcik ? " yz-liste--ayrinti" : "")}")" id="@B.Kok">
+    <div class="yz-liste-ana">
+        <div class="yz-bas">
+            <div class="yz-bas-sol">
+                <p class="yz-ust" id="@($"{B.Kok}-ust")">@B.Ust</p>
+                <h1 class="yz-ince yz-h1" id="@($"{B.Kok}-baslik")">@B.Baslik</h1>
+            </div>
+            @if (!B.AyrintiAcik && B.AramaId is { Length: > 0 } aramaId)
+            {
+                <div class="yz-alan yz-liste-ara" id="@($"{B.Kok}-ara")">
+                    <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
+                    <Kuyumcu.Web.Bilesenler.Form.Arama ElemanId="@aramaId"
+                        Etiket="@B.AramaEtiket" YerTutucu="@B.AramaYerTutucu"
+                        Deger="@B.Arama" DegerChanged="B.AramaDegisti" Enter="B.AramaEnter" />
+                </div>
+            }
+            @if (B.AyrintiAcik)
+            {
+                <button type="button" class="yz-b2" id="@($"{B.Kok}-listeye-don")" @onclick="B.AyrintiKapat">@YildizListeSozlugu.ListeyeDon(Dil.Dil)</button>
+            }
+            else if (B.B1Etiket is { Length: > 0 } b1)
+            {
+                <button type="button" class="yz-b1" id="@B.B1Id" disabled="@(B.B1KilitSebebi is not null)"
+                        title="@B.B1KilitSebebi" @onclick="B.B1Tikla">@b1</button>
+            }
+        </div>
+
+        @if (!B.AyrintiAcik)
+        {
+        @if (B.Sekmeler.Count > 0)
+        {
+            <div class="yz-liste-sek" id="@B.SekmelerId" role="group" aria-label="@B.Baslik">
+                @foreach (var s in B.Sekmeler)
+                {
+                    <button type="button" id="@($"{B.SekmeIdOneki ?? B.Kok + "-sekme-"}{s.Kod}")"
+                            class="@(s.Secili ? "yz-liste-sekme yz-liste-sekme--secili" : "yz-liste-sekme")"
+                            aria-pressed="@(s.Secili ? "true" : "false")" @onclick="() => B.SekmeSec.InvokeAsync(s.Kod)">@YildizListeBicim.Buyuk(s.Etiket, Dil.Dil)</button>
+                }
+            </div>
+        }
+
+        @B.Bantlar
+
+        @if (B.Yukleniyor && B.Satirlar.Count == 0)
+        {
+            <Yukleniyor />
+        }
+        else if (B.Satirlar.Count > 0)
+        {
+            <div class="yz-sayi yz-liste-tablo" id="@($"{B.Kok}-liste")">
+                <div class="yz-sat yz-liste-sat yz-liste-sat--bas" aria-hidden="true">
+                    @foreach (var c in B.Sutunlar)
+                    {
+                        <span class="@(c.Sag ? "yz-ust yz-liste-bas yz-sag" : "yz-ust yz-liste-bas")">@YildizListeBicim.Buyuk(c.Baslik, Dil.Dil)</span>
+                    }
+                    @if (B.EylemSutunu) { <span></span> }
+                </div>
+                @foreach (var r in B.Satirlar)
+                {
+                    <div class="@(r.Soluk ? "yz-sat yz-liste-sat yz-liste-sat--soluk" : "yz-sat yz-liste-sat")" id="@($"{B.Kok}-{r.Id}")">
+                        @for (var i = 0; i < r.Hucreler.Count; i++)
+                        {
+                            var h = r.Hucreler[i];
+                            var sag = i < B.Sutunlar.Count && B.Sutunlar[i].Sag;
+                            var sinif = HucreSinifi(h.Tur, sag);
+                            if (i == 0 && r.Ac.HasDelegate)
+                            {
+                                <button type="button" class="@(sinif + " yz-liste-ac")" id="@h.Id" aria-label="@r.AcEtiketi"
+                                        @onclick="r.Ac">@h.Metin</button>
+                            }
+                            else
+                            {
+                                <span class="@sinif" id="@h.Id">@IcMetin(h)</span>
+                            }
+                        }
+                        @if (B.EylemSutunu)
+                        {
+                            <span class="yz-liste-eylem">
+                                @if (r.Eylem is { } e)
+                                {
+                                    @if (e.Href is { Length: > 0 } href && e.KilitSebebi is null)
+                                    {
+                                        <a class="yz-b3" id="@e.Id" href="@href">@e.Etiket</a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="yz-b3" id="@e.Id" disabled="@(e.KilitSebebi is not null)"
+                                                title="@e.KilitSebebi" aria-label="@(e.KilitSebebi is null ? null : $"{e.Etiket} — {e.KilitSebebi}")"
+                                                @onclick="e.Tikla">@e.Etiket</button>
+                                    }
+                                }
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else if (B.BosMetni is { Length: > 0 } bos)
+        {
+            <p class="yz-s yz-bos" id="@($"{B.Kok}-bos")">@bos</p>
+        }
+
+        @if (B.SinirNotu is { } sinir)
+        {
+            <p class="yz-s yz-not" id="@($"{B.Kok}-sinir")" role="status">@sinir</p>
+        }
+        <div class="yz-liste-alt">
+            @if (B.Not is { Length: > 0 } not)
+            {
+                <p class="yz-s yz-liste-not" id="@($"{B.Kok}-not")">@not</p>
+            }
+            @if (B.AyrintiAc.HasDelegate)
+            {
+                <button type="button" class="yz-ekle" id="@($"{B.Kok}-ayrinti")" @onclick="B.AyrintiAc">
+                    <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@YildizListeSozlugu.TumAyrintilar(Dil.Dil)
+                </button>
+            }
+        </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizListeBaglami B { get; set; } = new();
+
+    /// <summary>Hücre sınıfı: tür + hizalama (tuval: ad 19/400 · değer 17/300 · soluk 17/300 .s).</summary>
+    public static string HucreSinifi(YildizHucreTuru tur, bool sag)
+    {
+        var s = tur switch
+        {
+            YildizHucreTuru.Ad => "yz-liste-ad",
+            YildizHucreTuru.Deger => "yz-liste-d",
+            YildizHucreTuru.Kotu => "yz-liste-d yz-kotu",
+            YildizHucreTuru.IcKotu or YildizHucreTuru.IcSoluk => "yz-liste-d",
+            _ => "yz-liste-d yz-s",
+        };
+        return sag ? s + " yz-sag" : s;
+    }
+
+    /// <summary>İç span'lı hücre metni (tuval Y_Sayim fark hücresi: dış hücre metin rengi, iç span renkli).</summary>
+    public static RenderFragment IcMetin(YildizHucre h) => b =>
+    {
+        if (h.Tur is YildizHucreTuru.IcKotu or YildizHucreTuru.IcSoluk)
+        {
+            b.OpenElement(0, "span");
+            b.AddAttribute(1, "class", h.Tur == YildizHucreTuru.IcKotu ? "yz-kotu" : "yz-s");
+            b.AddContent(2, h.Metin);
+            b.CloseElement();
+        }
+        else b.AddContent(3, h.Metin);
+    };
+}

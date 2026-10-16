@@ -1,0 +1,526 @@
+@using Kuyumcu.Contracts.Sayfalar.YasalSinirlar
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET YASAL-PARAM-EKRAN — ByGatech SİSTEM YÖNETİCİSİ formu (yasal sınır değişikliği).
+
+   • Kimlik: kiracı rolü DEĞİL, sunucunun mevcut SistemAnahtariKapisi'dır (yeni rol
+     icat edilmedi). Anahtar yalnız bu bileşenin belleğinde, yalnız istek başlığında;
+     kaydedilmez, kayıttan sonra alan boşaltılır. JWT ile (SAHİP dahil) sunucu 403 verir.
+   • Zorunlu önce: sınır, yeni değer, başlangıç (varsayılan BUGÜN), RG tarihi + sayısı,
+     kaynak adresi, gerekçe, anahtar, ad. Dayanak/teyit "Diğer bilgiler" katlanırında
+     (boşsa sunucu bugünkü dayanağı kullanır — UX-S21).
+   • İki adım: "Önizle" (hiçbir şey yazmaz) → ortak onay penceresi (eski → yeni,
+     geçerlilik, sıkılaştırma/gevşetme uyarısı, etkilenecek açık sipariş) → "Onayla ve
+     kaydet". Kayıt önizlemenin onay kodunu taşır (sunucu kodsuz kaydı 400 ile reddeder).
+   • Boş/geçersiz gönderimde alan altı Türkçe hata; sunucu hatası alanına ya da bantlara.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<section class="yasal-yonetim" id="ysy-bolum" aria-labelledby="ysy-baslik">
+    <h2 class="yasal-yonetim-baslik" id="ysy-baslik">@M.YonetimBaslik</h2>
+
+    <HataBandi Mesaj="@hata" Id="ysy-hata" />
+    <BasariBandi Mesaj="@basari" Id="ysy-basari" />
+
+    <div class="form-dikey">
+        <div class="form-grid-2">
+            <Secici ElemanId="ysy-sinir" Etiket="@M.AlanSinir" Zorunlu="true" YerTutucu="@M.SinirSecin"
+                    Secenekler="@SinirSecenekleri" Deger="@sinir" DegerChanged="SinirDegisti"
+                    Hata="@Hata("anahtar")" />
+            <Sayi ElemanId="ysy-deger" Etiket="@M.AlanYeniDeger" Zorunlu="true" EnAz="0"
+                  Deger="@deger" DegerChanged="@((decimal? v) => { deger = v; Temizle("degerSayi"); })"
+                  Hata="@Hata("degerSayi")" />
+        </div>
+        <div class="form-grid-3">
+            <Tarih ElemanId="ysy-baslangic" Etiket="@M.AlanBaslangic" Zorunlu="true" Ipucu="@M.BaslangicIpucu"
+                   EnErken="@BugunGun" Deger="@baslangic"
+                   DegerChanged="@((DateOnly? v) => { baslangic = v; Temizle("baslangic"); })"
+                   Hata="@Hata("baslangic")" />
+            <Tarih ElemanId="ysy-rg-tarihi" Etiket="@M.AlanRgTarihi" Zorunlu="true" EnGec="@BugunGun"
+                   Deger="@rgTarihi" DegerChanged="RgTarihiDegisti"
+                   Hata="@Hata("resmiGazeteTarihi")" />
+            <Metin ElemanId="ysy-rg-sayisi" Etiket="@M.AlanRgSayisi" Zorunlu="true" EnFazla="20" GirisModu="numeric"
+                   Deger="@rgSayisi" DegerChanged="@(v => { rgSayisi = v; Temizle("resmiGazeteSayisi"); })"
+                   Hata="@Hata("resmiGazeteSayisi")" />
+        </div>
+        <Metin ElemanId="ysy-kaynak" Etiket="@M.AlanKaynakUrl" Zorunlu="true" EnFazla="500" YerTutucu="@M.KaynakYerTutucu"
+               Deger="@kaynakUrl" DegerChanged="@(v => { kaynakUrl = v; Temizle("kaynakUrl"); })"
+               Hata="@Hata("kaynakUrl")" />
+        <CokSatir ElemanId="ysy-gerekce" Etiket="@M.AlanGerekce" Zorunlu="true" Satir="2" EnFazla="1000"
+                  Deger="@gerekce" DegerChanged="@(v => { gerekce = v; Temizle("gerekce"); })"
+                  Hata="@Hata("gerekce")" />
+        <div class="form-grid-2">
+            <Sifre ElemanId="ysy-anahtar" Etiket="@M.AlanAnahtar" Zorunlu="true" Ipucu="@M.AnahtarIpucu" OtoTamamla="off"
+                   Deger="@anahtar" DegerChanged="@(v => { anahtar = v; Temizle("sistemAnahtari"); })"
+                   Hata="@Hata("sistemAnahtari")" />
+            <Metin ElemanId="ysy-operator" Etiket="@M.AlanOperator" Zorunlu="true" EnFazla="50"
+                   Deger="@operatorAdi" DegerChanged="@(v => { operatorAdi = v; Temizle("operator"); })"
+                   Hata="@Hata("operator")" />
+        </div>
+
+        @if (DayanakZorunlu)
+        {
+            @* Seçilen sınırın bugünkü satırında dayanak yoksa sunucu türetemez → alan zorunlu ve açıkta. *@
+            <Metin ElemanId="ysy-dayanak" Etiket="@M.AlanDayanak" Zorunlu="true" EnFazla="300"
+                   Deger="@dayanak" DegerChanged="@(v => { dayanak = v; Temizle("dayanak"); })"
+                   Hata="@Hata("dayanak")" />
+        }
+        <Katlanir Id="ysy-diger" Baslik="@M.Diger" Sinif="yasal-katlanir">
+            <div class="form-dikey">
+                @if (!DayanakZorunlu)
+                {
+                    <Metin ElemanId="ysy-dayanak" Etiket="@M.AlanDayanak" Ipucu="@M.DayanakIpucu" EnFazla="300"
+                           Deger="@dayanak" DegerChanged="@(v => { dayanak = v; Temizle("dayanak"); })"
+                           Hata="@Hata("dayanak")" />
+                }
+                <Secici ElemanId="ysy-teyit" Etiket="@M.AlanTeyit" Secenekler="@TeyitSecenekleri"
+                        Deger="@teyit" DegerChanged="@(v => { teyit = v ?? "DOGRULANDI"; Temizle("teyit"); })"
+                        Hata="@Hata("teyit")" />
+            </div>
+        </Katlanir>
+
+        <div class="satir">
+            <button type="button" class="btn btn-birincil" id="ysy-onizle" @onclick="Onizle" disabled="@mesgul">
+                @(mesgul && onizleme is null ? M.Onizleniyor : M.Onizle)
+            </button>
+        </div>
+
+        @if (DuzeltilebilirSatirlar.Count > 0)
+        {
+            @* PAKET YASAL-PARAM-2: bugünden geçerli YANLIŞ giriş aynı gün düzeltilir (yalnız giren operatör,
+               gerekçe zorunlu, iki adımlı onay). Zorunlu önce kuralı: kapalı katlanır — yalnız gerekince açılır. *@
+            <Katlanir Id="ysy-dz" Baslik="@D.Baslik" Sinif="yasal-katlanir">
+                <div class="form-dikey">
+                    <p class="metin-soluk" id="ysy-dz-aciklama">@D.Aciklama</p>
+                    <HataBandi Mesaj="@dzHata" Id="ysy-dz-hata" />
+                    @if (DuzeltilebilirSatirlar.Count == 1)
+                    {
+                        @* UX-S22: tek seçenek → seçici yok, salt okunur satır. *@
+                        <p class="yasal-onay-deger" id="ysy-dz-satir-tek">@SatirEtiketi(DuzeltilebilirSatirlar[0])</p>
+                    }
+                    else
+                    {
+                        <Secici ElemanId="ysy-dz-satir" Etiket="@D.AlanSatir" Zorunlu="true" YerTutucu="@M.SinirSecin"
+                                Secenekler="@DuzeltSecenekleri" Deger="@dzSatirId"
+                                DegerChanged="@(v => { dzSatirId = v; dzHatalar.Remove("satir"); })"
+                                Hata="@DzHata("satir")" />
+                    }
+                    <div class="form-grid-2">
+                        <Sayi ElemanId="ysy-dz-deger" Etiket="@D.AlanDogruDeger" Zorunlu="true" EnAz="0"
+                              Deger="@dzDeger" DegerChanged="@((decimal? v) => { dzDeger = v; dzHatalar.Remove("degerSayi"); })"
+                              Hata="@DzHata("degerSayi")" />
+                        <Metin ElemanId="ysy-dz-operator" Etiket="@M.AlanOperator" Zorunlu="true" EnFazla="50"
+                               Deger="@dzOperator" DegerChanged="@(v => { dzOperator = v; dzHatalar.Remove("operator"); })"
+                               Hata="@DzHata("operator")" />
+                    </div>
+                    <CokSatir ElemanId="ysy-dz-gerekce" Etiket="@D.AlanGerekce" Zorunlu="true" Satir="2" EnFazla="1000"
+                              Deger="@dzGerekce" DegerChanged="@(v => { dzGerekce = v; dzHatalar.Remove("gerekce"); })"
+                              Hata="@DzHata("gerekce")" />
+                    <Sifre ElemanId="ysy-dz-anahtar" Etiket="@M.AlanAnahtar" Zorunlu="true" Ipucu="@M.AnahtarIpucu" OtoTamamla="off"
+                           Deger="@dzAnahtar" DegerChanged="@(v => { dzAnahtar = v; dzHatalar.Remove("sistemAnahtari"); })"
+                           Hata="@DzHata("sistemAnahtari")" />
+                    <div class="satir">
+                        <button type="button" class="btn btn-ikincil" id="ysy-dz-onizle" @onclick="DuzeltOnizle" disabled="@mesgul">
+                            @(mesgul && dzOnizleme is null ? D.Onizleniyor : D.Onizle)
+                        </button>
+                    </div>
+                </div>
+            </Katlanir>
+        }
+    </div>
+
+</section>
+
+<ModalPencere Acik="@(onizleme is not null)" Baslik="@M.OnayBaslik" Kapat="OnayKapat">
+    @if (onizleme is { } o)
+    {
+        <div class="form-dikey" id="ysy-onay">
+            <p class="yasal-onay-deger" id="ysy-onay-eski-yeni">@string.Format(M.OnayEskiYeni, SinirAdi(o.Anahtar), DegerMetni(o.EskiDeger, o.EskiMetin, o.Birim), DegerMetni(o.YeniDeger, o.YeniMetin, o.Birim))</p>
+            <p id="ysy-onay-gecerlilik">@string.Format(o.BugunMu ? M.OnayBugun : M.OnayIleri, YasalBicim.Tarih(o.Baslangic, Dil.Dil), YasalBicim.Tarih(o.ResmiGazeteTarihi, Dil.Dil), o.ResmiGazeteSayisi)</p>
+            @* Tur 3 (hasım DÜŞÜK): gönderilecek kaynak adresi onaydan önce görünür (önerilen eski RG adresi fark edilir). *@
+            <p class="metin-soluk yasal-onay-kaynak" id="ysy-onay-kaynak">@string.Format(M.OnayKaynak, kaynakUrl?.Trim())</p>
+            <p class="bant bant-uyari" role="note" id="ysy-onay-uyari">@YonMetni(o)</p>
+            @if (o.BuyukDegisim)
+            {
+                @* Tur 2 (hasım DÜŞÜK): değer 2 kat ve üstü değişiyorsa ek uyarı (yazım hatası koruması). *@
+                <p class="bant bant-uyari" role="note" id="ysy-onay-buyuk">@M.UyariBuyukDegisim</p>
+            }
+            <p class="metin-soluk" id="ysy-onay-acik">@(o.AcikIslemSayisi is { } n ? string.Format(M.AcikIslem, n.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))) : M.AcikIslemYok)</p>
+            @if (o.BugunMu)
+            {
+                @* Tur 2 (hasım DÜŞÜK): bugün başlayan değerin aynı gün düzeltme yolu önceden söylenir. *@
+                <DegismezIpucu Varlik="YasalParametreBugun" Gerekce="@M.AyniGunGerekce" AlternatifYol="@M.AyniGunYol" />
+            }
+            <HataBandi Mesaj="@onayHata" Id="ysy-onay-hata" />
+            <div class="satir yasal-onay-eylem">
+                <button type="button" class="btn btn-ikincil esnek" id="ysy-vazgec" @onclick="OnayKapat">@M.Vazgec</button>
+                <button type="button" class="btn btn-birincil esnek" id="ysy-kaydet" @onclick="Kaydet" disabled="@mesgul">
+                    @(mesgul ? M.Kaydediliyor : M.OnaylaKaydet)
+                </button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+<ModalPencere Acik="@(dzOnizleme is not null)" Baslik="@D.OnayBaslik" Kapat="DuzeltKapat">
+    @if (dzOnizleme is { } d)
+    {
+        <div class="form-dikey" id="ysy-dz-onay">
+            <p class="yasal-onay-deger" id="ysy-dz-onay-deger">@string.Format(D.OnayDeger, SinirAdi(d.Anahtar), DegerMetni(d.YanlisDeger, null, d.Birim), DegerMetni(d.YeniDeger, null, d.Birim))</p>
+            <p class="bant bant-uyari" role="note" id="ysy-dz-onay-etki">@string.Format(D.OnayEtki, d.YanlisSaati)</p>
+            @if (d.BuyukDegisim)
+            {
+                <p class="bant bant-uyari" role="note" id="ysy-dz-onay-buyuk">@M.UyariBuyukDegisim</p>
+            }
+            <HataBandi Mesaj="@dzOnayHata" Id="ysy-dz-onay-hata" />
+            <div class="satir yasal-onay-eylem">
+                <button type="button" class="btn btn-ikincil esnek" id="ysy-dz-vazgec" @onclick="DuzeltKapat">@M.Vazgec</button>
+                <button type="button" class="btn btn-birincil esnek" id="ysy-dz-kaydet" @onclick="Duzelt" disabled="@mesgul">
+                    @(mesgul ? D.Duzeltiliyor : D.OnaylaDuzelt)
+                </button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@code {
+    /// <summary>Değiştirilebilecek satırlar (programın kullandığı, KOD olmayan sınırlar).</summary>
+    [Parameter, EditorRequired] public List<YasalSatirVeri> Satirlar { get; set; } = [];
+
+    /// <summary>Sunucunun "bugün"ü (YYYY-MM-DD) — başlangıç varsayılanı ve alt sınırı.</summary>
+    [Parameter, EditorRequired] public string Bugun { get; set; } = "";
+
+    /// <summary>Kayıt başarılı olunca (liste yeniden okunur).</summary>
+    [Parameter] public EventCallback Kaydedildi { get; set; }
+
+    private YasalParamMetinleri M => YasalParamSozlugu.Al(Dil.Dil);
+    private YasalSinirMetinleri S => YasalSinirSozlugu.Al(Dil.Dil);
+    private YasalDuzeltMetinleri D => YasalDuzeltSozlugu.Al(Dil.Dil);
+
+    // ── PAKET YASAL-PARAM-2: aynı gün düzeltme ──
+    private string? dzSatirId, dzGerekce, dzAnahtar, dzOperator, dzHata, dzOnayHata;
+    private decimal? dzDeger;
+    private YasalDuzeltOnizlemeVeri? dzOnizleme;
+    private readonly Dictionary<string, string> dzHatalar = new(StringComparer.Ordinal);
+
+    /// <summary>Sunucunun "aynı gün düzeltilebilir" dediği satırlar (bugün, anlı yazılmış, yürürlükte).</summary>
+    private List<YasalSatirVeri> DuzeltilebilirSatirlar => Satirlar.Where(s => s.AyniGunDuzeltilebilir).ToList();
+
+    private IReadOnlyList<SecenekOgesi> DuzeltSecenekleri =>
+        DuzeltilebilirSatirlar.Select(s => new SecenekOgesi(s.Id, SatirEtiketi(s))).ToList();
+
+    private string SatirEtiketi(YasalSatirVeri s) =>
+        string.Format(D.SatirTek, YasalBicim.Ad(s.Anahtar, s.AciklamaSade, S),
+            DegerMetni(s.DegerSayi, s.DegerMetin, s.Birim), s.BaslangicSaati ?? "—");
+
+    private string? DzHata(string alan) => dzHatalar.TryGetValue(alan, out var h) ? h : null;
+
+    /// <summary>Tek satırsa seçici gizli (UX-S22) — o satır kullanılır.</summary>
+    private YasalSatirVeri? DzSatir =>
+        DuzeltilebilirSatirlar.Count == 1 ? DuzeltilebilirSatirlar[0]
+        : DuzeltilebilirSatirlar.FirstOrDefault(s => s.Id == dzSatirId);
+
+    private bool DzOnDenetim()
+    {
+        dzHatalar.Clear();
+        var satir = DzSatir;
+        if (satir is null) dzHatalar["satir"] = D.ZorunluSatir;
+        if (dzDeger is null) dzHatalar["degerSayi"] = D.ZorunluDeger;
+        else if (satir?.DegerSayi == dzDeger) dzHatalar["degerSayi"] = D.AyniDeger;
+        var g = dzGerekce?.Trim().Length ?? 0;
+        if (g < 20) dzHatalar["gerekce"] = string.Format(M.GerekceKisa, 20, g);
+        if (string.IsNullOrWhiteSpace(dzAnahtar)) dzHatalar["sistemAnahtari"] = M.ZorunluAnahtar;
+        if ((dzOperator?.Trim().Length ?? 0) < 3) dzHatalar["operator"] = M.ZorunluOperator;
+        return dzHatalar.Count == 0;
+    }
+
+    private object DzGovde(string? onayKodu) => new { degerSayi = dzDeger, gerekce = dzGerekce?.Trim(), onayKodu };
+
+    /// <summary>Sunucunun alan işaretli hatasını düzeltme alanının altına; alansızı banda yazar.</summary>
+    private string? DzSunucuHatasi(ApiHata ex)
+    {
+        var alanli = false;
+        foreach (var (alan, mesajlar) in ex.Alanlar)
+        {
+            if (mesajlar is { Length: > 0 }) { dzHatalar[alan] = mesajlar[0]; alanli = true; }
+        }
+        return alanli ? null : ex.Message;
+    }
+
+    private async Task DuzeltOnizle()
+    {
+        dzHata = null; basari = null;
+        if (!DzOnDenetim()) return;
+        mesgul = true;
+        dzOnizleme = null;
+        dzOnayHata = null;
+        try
+        {
+            dzOnizleme = await Api.SistemPostAsync<YasalDuzeltOnizlemeVeri>(
+                $"/sistem/yasal-parametreler/{Uri.EscapeDataString(DzSatir!.Id)}/duzeltme/onizleme",
+                dzAnahtar!.Trim(), dzOperator!.Trim(), DzGovde(null));
+        }
+        catch (ApiHata ex)
+        {
+            if (DzSunucuHatasi(ex) is { } m) dzHata = string.Format(D.HataOnizleme, m);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or FormatException)
+        {
+            dzHata = string.Format(D.HataOnizleme, M.HataAg);
+        }
+        finally { mesgul = false; }
+    }
+
+    private void DuzeltKapat()
+    {
+        dzOnizleme = null;
+        dzOnayHata = null;
+    }
+
+    private async Task Duzelt()
+    {
+        if (dzOnizleme is not { } o) return;
+        mesgul = true;
+        try
+        {
+            var sonuc = await Api.SistemPostAsync<YasalDuzeltSonucVeri>(
+                $"/sistem/yasal-parametreler/{Uri.EscapeDataString(o.Id)}/duzeltme",
+                dzAnahtar!.Trim(), dzOperator!.Trim(), DzGovde(o.OnayKodu));
+            basari = string.Format(D.Basari, SinirAdi(sonuc.Anahtar),
+                DegerMetni(sonuc.YanlisDeger, null, sonuc.Birim), DegerMetni(sonuc.DegerSayi, null, sonuc.Birim),
+                sonuc.DuzeltmeSaati, sonuc.YanlisSaati);
+            dzOnizleme = null;
+            dzAnahtar = null; dzDeger = null; dzGerekce = null; dzSatirId = null;
+            basariGorunsun = true;   // TOPLU-7B: sonuç bandı görünür bölgeye gelir
+            await Kaydedildi.InvokeAsync();
+        }
+        catch (ApiHata ex)
+        {
+            dzOnayHata = string.Format(D.HataKayit, DzSunucuHatasi(ex) ?? ex.Message);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or FormatException)
+        {
+            dzOnayHata = string.Format(D.HataKayit, M.HataAg);
+        }
+        finally { mesgul = false; }
+    }
+
+    /// <summary>
+    /// TOPLU-7B (YASAL-PARAM-2 devri DÜŞÜK "başarı bandı görünüm dışı"): kayıt/düzeltme düğmesi sayfanın
+    /// altındadır, başarı bandı bölümün ÜSTÜNDE; sonuç çizilince kullanıcı bandı göremiyordu. Kayıttan
+    /// sonra çizimin ardından band görünür bölgeye getirilir (JS kuyumcuOdak.alana, tek mekanizma).
+    /// </summary>
+    private bool basariGorunsun;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!basariGorunsun || string.IsNullOrEmpty(basari)) return;
+        basariGorunsun = false;
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", "ysy-basari"); }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException) { /* görsel yardım; kayıt etkilenmez */ }
+    }
+
+    private string? sinir, rgSayisi, kaynakUrl, gerekce, anahtar, operatorAdi, dayanak;
+    private string teyit = "DOGRULANDI";
+    private decimal? deger;
+    private DateOnly? baslangic, rgTarihi;
+    private bool mesgul;
+    private string? hata, basari, onayHata;
+    private YasalOnizlemeVeri? onizleme;
+    private readonly Dictionary<string, string> hatalar = new(StringComparer.Ordinal);
+
+    private DateOnly? BugunGun => YasalBicim.Gun(Bugun);
+
+    /// <summary>Seçilen sınırın bugünkü dayanağı boşsa dayanak zorunludur (sunucu uydurmaz).</summary>
+    private bool DayanakZorunlu =>
+        sinir is not null && string.IsNullOrWhiteSpace(Satirlar.FirstOrDefault(s => s.Anahtar == sinir)?.Dayanak);
+
+    protected override void OnParametersSet()
+    {
+        baslangic ??= BugunGun;
+        dzOperator ??= operatorAdi;
+    }
+
+    private IReadOnlyList<SecenekOgesi> SinirSecenekleri =>
+        Satirlar.Where(s => s.Birim != "KOD" && s.Birim != "TARIH")
+            .Select(s => new SecenekOgesi(s.Anahtar, YasalBicim.Ad(s.Anahtar, s.AciklamaSade, S))).ToList();
+
+    private IReadOnlyList<SecenekOgesi> TeyitSecenekleri =>
+    [
+        new("DOGRULANDI", S.RozetDogrulandi),
+        new("TEYITSIZ", S.RozetTeyitsiz),
+    ];
+
+    private string SinirAdi(string anahtar) =>
+        YasalBicim.Ad(anahtar, Satirlar.FirstOrDefault(s => s.Anahtar == anahtar)?.AciklamaSade, S);
+
+    private string DegerMetni(decimal? sayi, string? metin, string birim) =>
+        sayi is null && metin is null ? "—" : YasalBicim.Deger(sayi, metin, birim, S);
+
+    /// <summary>Yön uyarısı. Tur 2 (hasım DÜŞÜK): ileri tarihli değişiklikte "bugün" demez, başlangıç gününü söyler.</summary>
+    private string YonMetni(YasalOnizlemeVeri o)
+    {
+        if (o.Yon == "AYNI") return M.UyariAyni;
+        if (o.BugunMu)
+            return o.Yon switch
+            {
+                "SIKILASTIRMA" => M.UyariSikilastirma,
+                "GEVSETME" => M.UyariGevsetme,
+                _ => M.UyariDegisiklik,
+            };
+        var gun = YasalBicim.Tarih(o.Baslangic, Dil.Dil);
+        return string.Format(o.Yon switch
+        {
+            "SIKILASTIRMA" => M.UyariSikilastirmaIleri,
+            "GEVSETME" => M.UyariGevsetmeIleri,
+            _ => M.UyariDegisiklikIleri,
+        }, gun);
+    }
+
+    private string? Hata(string alan) => hatalar.TryGetValue(alan, out var h) ? h : null;
+
+    private void Temizle(string alan) => hatalar.Remove(alan);
+
+    /// <summary>Tur 3: önerilen (bugünkü satırın) kaynak adresi ve o satırın RG tarihi — kullanıcı adresi değiştirmediyse izlenir.</summary>
+    private string? onerilenKaynak, onerilenRgTarihi;
+
+    private void SinirDegisti(string? v)
+    {
+        sinir = v;
+        Temizle("anahtar");
+        // UX-S21: kaynak adresi boşsa seçilen sınırın bugünkü resmî kaynağı önerilir.
+        if (string.IsNullOrWhiteSpace(kaynakUrl) && Satirlar.FirstOrDefault(s => s.Anahtar == v) is { } s)
+        {
+            kaynakUrl = s.KaynakUrl;
+            onerilenKaynak = s.KaynakUrl;
+            onerilenRgTarihi = s.ResmiGazeteTarihi;
+            // Tur 3 (hasım ORTA): alan dolunca eski "https:// ile başlamalı" hatası BAYAT kalmaz.
+            Temizle("kaynakUrl");
+        }
+    }
+
+    /// <summary>
+    /// Tur 3 (hasım DÜŞÜK): önerilen adres BUGÜNKÜ satırın Resmî Gazete belgesidir. Kullanıcı başka bir RG
+    /// tarihi yazdıysa ve adrese dokunmadıysa öneri artık yanlış belgeyi gösterir → temizlenir (yeni adres istenir).
+    /// </summary>
+    private void RgTarihiDegisti(DateOnly? v)
+    {
+        rgTarihi = v;
+        Temizle("resmiGazeteTarihi");
+        if (onerilenKaynak is not null && kaynakUrl == onerilenKaynak
+            && (v is not { } r || Bicim.Makine(r) != onerilenRgTarihi))
+        {
+            kaynakUrl = null;
+            onerilenKaynak = null;
+            onerilenRgTarihi = null;
+        }
+    }
+
+    /// <summary>İstemci ön denetimi (sunucuyla aynı kurallar; son sözü sunucu söyler).</summary>
+    private bool OnDenetim()
+    {
+        hatalar.Clear();
+        if (string.IsNullOrWhiteSpace(sinir)) hatalar["anahtar"] = M.ZorunluSinir;
+        if (deger is null) hatalar["degerSayi"] = M.ZorunluDeger;
+        if (baslangic is null) hatalar["baslangic"] = M.ZorunluBaslangic;
+        else if (BugunGun is { } b && baslangic < b) hatalar["baslangic"] = M.GecmisBaslangic;
+        if (rgTarihi is null) hatalar["resmiGazeteTarihi"] = M.ZorunluRgTarihi;
+        if (string.IsNullOrWhiteSpace(rgSayisi)) hatalar["resmiGazeteSayisi"] = M.ZorunluRgSayisi;
+        if (string.IsNullOrWhiteSpace(kaynakUrl) || !kaynakUrl.Trim().StartsWith("https://", StringComparison.Ordinal))
+            hatalar["kaynakUrl"] = M.ZorunluUrl;
+        var g = gerekce?.Trim().Length ?? 0;
+        if (g < 20) hatalar["gerekce"] = string.Format(M.GerekceKisa, 20, g);
+        if (DayanakZorunlu && string.IsNullOrWhiteSpace(dayanak)) hatalar["dayanak"] = M.ZorunluDayanak;
+        if (string.IsNullOrWhiteSpace(anahtar)) hatalar["sistemAnahtari"] = M.ZorunluAnahtar;
+        if ((operatorAdi?.Trim().Length ?? 0) < 3) hatalar["operator"] = M.ZorunluOperator;
+        return hatalar.Count == 0;
+    }
+
+    private object Govde(string? onayKodu) => new
+    {
+        anahtar = sinir,
+        degerSayi = deger,
+        baslangic = baslangic is { } b ? Bicim.Makine(b) : null,
+        resmiGazeteTarihi = rgTarihi is { } r ? Bicim.Makine(r) : null,
+        resmiGazeteSayisi = rgSayisi?.Trim(),
+        kaynakUrl = kaynakUrl?.Trim(),
+        gerekce = gerekce?.Trim(),
+        dayanak = string.IsNullOrWhiteSpace(dayanak) ? null : dayanak.Trim(),
+        teyit,
+        onayKodu,
+    };
+
+    /// <summary>Sunucunun alan işaretli hatasını alanın altına; alansızı banda yazar.</summary>
+    private string? SunucuHatasi(ApiHata ex)
+    {
+        var alanli = false;
+        foreach (var (alan, mesajlar) in ex.Alanlar)
+        {
+            if (mesajlar is { Length: > 0 }) { hatalar[alan] = mesajlar[0]; alanli = true; }
+        }
+        return alanli ? null : ex.Message;
+    }
+
+    private async Task Onizle()
+    {
+        hata = null; basari = null;
+        if (!OnDenetim()) return;
+        mesgul = true;
+        onizleme = null;   // önceki önizleme yeni isteğin sonucuna taşınmaz (hata ≠ eski onay)
+        onayHata = null;
+        try
+        {
+            onizleme = await Api.SistemPostAsync<YasalOnizlemeVeri>(
+                "/sistem/yasal-parametreler/onizleme", anahtar!.Trim(), operatorAdi!.Trim(), Govde(null));
+        }
+        catch (ApiHata ex)
+        {
+            if (SunucuHatasi(ex) is { } m) hata = string.Format(M.HataOnizleme, m);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or FormatException)
+        {
+            // Tur 2 (tasarım hakemi KRİTİK): ağ/başlık hatası sayfayı DÜŞÜRMEZ — banda yazılır (UX-S28).
+            hata = string.Format(M.HataOnizleme, M.HataAg);
+        }
+        finally { mesgul = false; }
+    }
+
+    private void OnayKapat()
+    {
+        onizleme = null;
+        onayHata = null;
+    }
+
+    private async Task Kaydet()
+    {
+        if (onizleme is not { } o) return;
+        mesgul = true;
+        try
+        {
+            var sonuc = await Api.SistemPostAsync<YasalEkleSonucVeri>(
+                "/sistem/yasal-parametreler", anahtar!.Trim(), operatorAdi!.Trim(), Govde(o.OnayKodu));
+            basari = string.Format(M.Basari, SinirAdi(sonuc.Anahtar),
+                DegerMetni(sonuc.EskiDeger, null, sonuc.Birim), DegerMetni(sonuc.DegerSayi, sonuc.DegerMetin, sonuc.Birim),
+                YasalBicim.Tarih(sonuc.Baslangic, Dil.Dil));
+            onizleme = null;
+            // Anahtar bellekte bekletilmez.
+            anahtar = null;
+            deger = null; gerekce = null; rgSayisi = null; rgTarihi = null;
+            basariGorunsun = true;   // TOPLU-7B: sonuç bandı görünür bölgeye gelir
+            dzOperator ??= operatorAdi?.Trim();   // YASAL-PARAM-2: aynı gün düzeltmede ad yeniden istenmez
+            await Kaydedildi.InvokeAsync();
+        }
+        catch (ApiHata ex)
+        {
+            var m = SunucuHatasi(ex) ?? ex.Message;
+            onayHata = string.Format(M.HataKayit, m);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException or FormatException)
+        {
+            onayHata = string.Format(M.HataKayit, M.HataAg);
+        }
+        finally { mesgul = false; }
+    }
+}

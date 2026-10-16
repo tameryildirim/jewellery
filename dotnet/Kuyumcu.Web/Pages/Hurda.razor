@@ -1,0 +1,1337 @@
+@page "/hurda"
+@using Kuyumcu.Contracts.Sayfalar.Hurda
+@using KasaSz = Kuyumcu.Contracts.Sayfalar.Kasalar
+@using Kuyumcu.Contracts.Bilesenler.MasakFormu
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject CanliKurServisi Canli
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-20 (Y-10) — HURDA STOĞU / RAMAT ÇIKIŞI
+
+   Bu ekran hurdanın İKİ sorusunu tek yerde cevaplar:
+     • Elimizde ne kadar hurda var?  → defterden TÜRETİLİR (sunucu: HurdaStokKapisi)
+     • Ramata ne çıktı / ne çıkıyor? → HURDA_SATIS yazma yolu
+
+   UX sözleşmesi:
+     S21 sistemin bildiği alan sorulmaz: has fiyatı canlı kurdan gelir (rozetli),
+         tutar has × fiyat olarak TÜRETİLİR, bakiye sunucudan okunur.
+     S22 tek kasa / tek maden varsa seçici GİZLENİR, değer salt okunur yazılır.
+     S23 bakiye kartı tıklanınca form o madene ayarlanır (sayı → kayda gider).
+     S27 her yazma başarı bandıyla biter; sunucunun döndürdüğü KALAN bakiye,
+         tahsilat ve kasa bakiyesi banda yazılır.
+     S28 hata "kayıt yok"a çevrilmez: hata bandı ayrıdır, liste boşaltılmaz.
+     S29 sunucu sınırı (100 satır) ekranda yazar.
+     S30 kilitli düğmenin sebebi yanında yazar.
+     S25 hurda satışı stornolanmaz → DegismezIpucu ile gerekçe görünür.
+
+   ⚠ K-13 (karar geldi, 21 Eylül 2026) İKİYE AYRILDI:
+     1) ERİTME FİRESİ 1.0'a GİRMEZ (imalat/atölye kapsam dışı). Gerekçe metni
+        SUNUCUDAN gelir (/hurda/bakiye fireNotu) — ekranda uydurulmaz; 28.09'dan
+        beri (tasarım hakemi) EKRANDA ÇİZİLMEZ: geliştirici notudur.
+     2) TAHLİL / MUTABAKAT FARKI GİRER ve ZORUNLUDUR (paket P-20b): iki has
+        alanı AYRI durur (bizim kaydımız · alıcının kabul ettiği); fark ≠ 0 ise
+        gerekçesiyle ayrı bir defter bacağı yazılır, yönü (lehte/aleyhte)
+        ekranda görünür ve sonradan DÜZELTİLEBİLİR (çekmece → ek fark bacağı).
+     ⚠ İkisi aynı şey DEĞİLDİR: fark bir ölçüm mutabakatsızlığıdır, fire bir
+       üretim kaybıdır. Ekranda "fire" adıyla bir GİRDİ ALANI YOKTUR.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Hurda.Baslik)</PageTitle>
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Hurdaveramat (BİREBİR); özgün ekran (ramat formu,
+   defter, düzeltme) yalnız "Rafineriye gönder" / "Tüm ayrıntılar" görünümünde (data-yz-ozgun). Öteki 8 şemada AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizOzet B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* ZO-ISLEM-A 28.09 (tasarım hakemi): başlık menüdeki adla AYNI (UX-S31 tek ad) ve
+       başlık altı açıklama satırı YOK (tuvalde yok; "kolon/satırlarından türetilir"
+       geliştirici notuydu). *@
+    <SayfaBasi Anahtar="hurda" Baslik="@MenuAdlari.Icin(Dil.T).HurdaRamat.Ad" />
+    @* ŞUBE-KAPSAM-B: bakiye kartları ve defter seçili şubeye göre; seçim değişince yeniden yüklenir. *@
+    <GorunumRozeti Degisti="Yukle" />
+
+    <HataBandi Mesaj="@hata" Id="hrd-hata" />
+    <BasariBandi Mesaj="@basari" Id="hrd-basari" Jeton="@basariJeton" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        @* ── ELİMİZDEKİ HURDA (UX-S21: sunucudan okunur, ekranda türetilmez) ── *@
+        @* ZO-ISLEM-A 28.09: şube atanmamışsa sebep ve çözüm üstteki bantta TEK kez
+           yazılır; bakiye kartı HİÇ çizilmez (gövdesiz başlık kalmaz). "Defterden
+           türetildi" etiketi kaldırıldı (tasarım hakemi: geliştirici notu). *@
+        @if (!(!veriGeldi && SubeYok && hata == SubeYokMetni))
+        {
+        <div class="kart" id="hrd-bakiye-kart">
+            <div class="kart-baslik satir-arasi">
+                <h3>@Dil.T.Hurda.BakiyeBasligi</h3>
+            </div>
+
+            @if (!veriGeldi)
+            {
+                @* PAKET SADE-1 (göz #23): istek düştüğünde kart yalnız başlıktan
+                   ibaret BOŞ kalıyordu. Veri yoksa boş durum, istek düştüyse bu satır. *@
+                <p class="metin-soluk" id="hrd-bakiye-okunamadi">@SD.HurdaBakiyeOkunamadi</p>
+            }
+            else if (bakiyeler.Count == 0)
+            {
+                @* ŞUBE-KAPSAM-B (SK-A açık kalan 1): birleşik görünümde "bu şubede" denmez. *@
+                <BosDurum Mesaj="@(TumSubelerKapsami ? SK.HurdaTumSubelerBos : Dil.T.Hurda.BakiyeYok)" />
+            }
+            else
+            {
+                <div class="stat-izgara" id="hrd-bakiye-listesi">
+                    @foreach (var b in bakiyeler)
+                    {
+                        @* UX-S23: sayı gösteren yer o kayda GÖTÜRÜR — karta basınca
+                           form o madene ayarlanır (gerçek bir iş yapar, süs değil). *@
+                        <button type="button" @onclick="() => MadenSec(b.Maden)" class="dugme dugme-ikincil hurda-bakiye-kart" id="@($"hrd-bakiye-{b.Maden}")">
+                            <span class="metin-kucuk metin-soluk">@KurKaynakAdi.MadenAdi(b.Maden, b.MadenAdi)</span>
+                            <strong>@HassasGram(b.HasGram)</strong>
+                            <span class="metin-kucuk metin-soluk">
+                                @Dil.T.Hurda.GirenHas: @HassasGram(b.GirenHas) ·
+                                @Dil.T.Hurda.CikanHas: @HassasGram(b.CikanHas)
+                                @* P-20b: kartın aritmetiği TUTAR — fark ayrı kalem
+                                   olarak yazılır, "çıkan"ın içine saklanmaz. *@
+                                @if (b.TahlilFarkiHas != 0m)
+                                {
+                                    <text> · @TahlilFarkiMetni: @HassasGram(b.TahlilFarkiHas)</text>
+                                }
+                            </span>
+                        </button>
+                    }
+                </div>
+            }
+
+            @* ŞUBE-KAPSAM-B tur 2 (§ 4.4 "Tüm şubeler: Hurda'da şube sütunu"): birleşik
+               görünümde sunucunun şube kırılımı (HurdaBakiyeYaniti.Subeler) çizilir —
+               PRO'da açık tablo, BASİT'te kapalı katlanır (kurucu: isteğe bağlı olan kapalı). *@
+            @if (veriGeldi && TumSubelerKapsami && subeKirilimi.Count > 0)
+            {
+                <ProAlan>
+                    <ChildContent>
+                        <h4 class="metin-kucuk" id="hrd-sube-kirilimi-baslik">@SK.HurdaSubeKirilimi</h4>
+                        @SubeKirilimTablosu
+                    </ChildContent>
+                    <BasitAlternatif>
+                        <Katlanir Id="hrd-sube-kirilimi-katlanir" Baslik="@SK.HurdaSubeKirilimi"
+                                  Sayi="@subeKirilimi.Count">
+                            @SubeKirilimTablosu
+                        </Katlanir>
+                    </BasitAlternatif>
+                </ProAlan>
+            }
+
+            @* ZO-ISLEM-A 28.09 (tasarım hakemi KRİTİK): K-13 fire gerekçesi ("karar kodu",
+               "kayıt türü DEĞİLDİR", "bacak") bir GELİŞTİRİCİ NOTUDUR — ekrandan kalktı.
+               Kullanıcıya gereken tek cümle, alıcının kabul alanının (i) ipucudur
+               (hrd-kabul-notu). Sunucu metni (FireNotu) API'de durur; ekran çizmez. *@
+        </div>
+        }
+
+        @* ── RAMATA ÇIKIŞ FORMU ─────────────────────────────────────────────── *@
+        <div class="kart">
+            <div class="kart-baslik"><h3>@Dil.T.Hurda.YeniSatis</h3></div>
+            @* ŞUBE-KAPSAM-B tur 3 (doğrulayıcı YÜKSEK — "aynı ekranda iki hurda rakamı"):
+               satış OTURUM şubesinden yazılır (şartname § 1: görünüm şubesi YAZMA yolunu
+               etkilemez). Kartlar başka şubeyi (ya da tüm şubeleri) gösterirken form artık
+               İKİNCİ bir bakiye çizmez: tek cümle + tek düğme ("Kendi şubeme geç") — basınca
+               görünüm kendi şubeye döner, kart ile form aynı rakamı gösterir. *@
+            @if (FormAyriSubede)
+            {
+                <div class="bant bant-sube" role="status" id="hrd-form-sube-notu">
+                    <span id="hrd-form-sube-metin">@string.Format(SK.HurdaSatisKendiSubede, YazmaSubesiAdi ?? Dil.T.Ortak.DegerYok)</span>
+                    <button type="button" class="dugme dugme-birincil" id="hrd-kendi-subeye-gec" @onclick="KendiSubeyeGec">@string.Format(SK.HurdaKendiSubeyeGec, YazmaSubesiAdi ?? Dil.T.Ortak.DegerYok)</button>
+                </div>
+                <HataBandi Mesaj="@gecisHata" Id="hrd-kendi-subeye-gec-hata" />
+            }
+            else
+            {
+            @* PAKET SADE-1 (göz #24): üstte "şube bağlamı gerekli" bandı varken form
+               tamamen etkin görünüyordu. Veri okunamadıysa form KİLİTLİDİR (fieldset
+               disabled — içindeki her girdi ve düğme) ve sebebi formun başında yazar. *@
+            @if (!veriGeldi && Kilit is { } formSebep && formSebep != hata)
+            {
+                <p class="uyari-metni" role="note" id="hrd-form-kilit-notu">@formSebep</p>
+            }
+            @* 29.09 (doğrulayıcı KRİTİK): anlaşılamayan/belirsiz sayı ("1.500") ortak kapıya yazılır;
+               Kaydet onu alan altı hatası olarak tutar, gövdeye eski/null değer gitmez (GecersizAlanKapisi). *@
+            <CascadingValue Value="gecersizAlanlar" IsFixed="true">
+            <fieldset class="sade-kilitli-form" id="hrd-form-alan" disabled="@(!veriGeldi)">
+            <div class="form-dikey">
+
+                @* UX-S22: tek maden varsa seçici GİZLENİR. *@
+                @if (SatilabilirMadenler.Count > 1)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="hrd-maden"
+                                Etiket="@Dil.T.Hurda.Maden"
+                                Secenekler="@MadenSecenekleri"
+                                Deger="@maden" DegerChanged="MadenDegisti"
+                                Hata="@form.Mesaj("hrd-maden")"
+                                BosSecenekMetni="—" />
+                        <AlanHatasi Alan="hrd-maden" Durum="form" />
+                    </div>
+                }
+                else if (SatilabilirMadenler.Count == 1)
+                {
+                    <p class="metin-kucuk metin-soluk" id="hrd-maden-sabit">
+                        @Dil.T.Hurda.Maden: @KurKaynakAdi.MadenAdi(SatilabilirMadenler[0].Maden, SatilabilirMadenler[0].MadenAdi) (@HassasGram(SatilabilirMadenler[0].HasGram))
+                    </p>
+                }
+
+                @* P-20b: iki has AYRI durur. Mevcut id (#hrd-has) DEĞİŞMEZ;
+                   yalnız etiketi "bizim kaydımız" olduğunu söyler. *@
+                <div class="alan">
+                    @* Q10-2: alan her değiştiğinde bakiye sınırı YENİDEN ölçülür (HasDegisti);
+                       eski mesaj ekranda kalmaz, aşım anında söylenir. *@
+                    <Gram ElemanId="hrd-has" Etiket="@Dil.T.Hurda.BizimKaydimiz" Zorunlu="true"
+                          Deger="@hasGram" DegerChanged="HasDegisti" Durum="form" HataAlani="hrd-has" />
+                    @if (SeciliBakiye is { } sb)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="hrd-has-sinir">
+                            @Dil.T.Hurda.KalanBakiye: @HassasGram(sb.HasGram)
+                        </span>
+                    }
+                </div>
+
+                @* UX-S22: tek TL kasası varsa seçici GİZLENİR. *@
+                @if (TlKasalar.Count > 1)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="hrd-kasa"
+                                Etiket="@Dil.T.Hurda.Kasa"
+                                Secenekler="@(TlKasalar.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                                Deger="@kasaId" DegerChanged="KasaDegisti"
+                                Zorunlu="true"
+                                BosSecenekMetni="—" />
+                        <AlanHatasi Alan="hrd-kasa" Durum="form" />
+                    </div>
+                }
+
+                @* ZO-ISLEM-A: sistemin bildiği değerler (tek kasa, kurdan fiyat, türetilen
+                   tutar) alt alta üç ayrı satır değil, TEK özet satırında yan yana durur —
+                   açılış 1440×900'e sığar (PRO'da iki satırlık üst barla ölçüldü 25.09:
+                   ana alan 1,03 ekran → tek satır). Kimlikler DEĞİŞMEDİ. *@
+                <div class="zo-ozet-blok metin-kucuk" id="hrd-ozet">
+                @if (TlKasalar.Count == 1)
+                {
+                    <p class="metin-kucuk metin-soluk" id="hrd-kasa-sabit">
+                        @Dil.T.Hurda.Kasa: @TlKasalar[0].Ad
+                    </p>
+                }
+
+                @* ZO-ISLEM-A (kurucu 25.09 "zorunlu önce"): birim fiyat kurdan GELİR
+                   (UX-S21) — açılışta giriş kutusu değil, kaynağıyla bir satır. Elle
+                   değiştirmek isteyen "+ Detay ekle" ile kutuyu açar. *@
+                @if (!DetayGorunur)
+                {
+                    <p class="metin-kucuk zo-ozet-satir" id="hrd-fiyat-ozet">
+                        <span class="metin-soluk">@ZO.HurdaFiyatOzet:</span>
+                        <strong>@Bicim.Para(fiyat ?? 0m, "TRY")</strong>
+                        <span class="metin-soluk">· @(fiyatElle ? Dil.T.Hurda.FiyatElle : Dil.T.Hurda.FiyatKurdan)</span>
+                    </p>
+                }
+                @* UX-S21: tutar TÜRETİLİR, boş giriş alanı olarak konmaz. *@
+                <p class="metin-kucuk" id="hrd-tutar">
+                    @Dil.T.Hurda.Tutar: <strong>@(HrdTutarVar ? Bicim.Para(Tutar, "TRY") : Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).FiyatYok)</strong>
+                </p>
+                </div>
+
+                @* ZO-ISLEM-A 28.09 (tasarım hakemi KRİTİK — tevsik duvarı): nakit bu tutarda
+                   alınamıyorsa (had ve kural SUNUCUDAN, GET /tevsik/gunluk — istemciye eşik
+                   gömülmez) tahsil aracı "Daha fazla" arkasında kalmaz, AÇILIŞTA görünür ve
+                   Nakit seçiliyken altında TEK sade cümle çıkar. Yasal kapı değişmedi:
+                   son karar sunucunun (hurda-satis). Kimlik hrd-odeme aynı; aynı anda
+                   yalnız bir yerde çizilir. *@
+                @* 29.09 (tasarım hakemi KRİTİK, K18): nakit kapalıyken alan ZORUNLU işaretlenir
+                   ("isteğe bağlı" yazmaz), Nakit seçilemez ve seçili gelmez; cümle alanın altında
+                   TEK hata olarak durur (OdemeAlani içinde). *@
+                @if (NakitKapali)
+                {
+                    @OdemeAlani
+                }
+
+                @* ── 29.09 (tasarım hakemi KRİTİK): MASAK — Banka dekontuyla AYNI kalıp.
+                     Eşik SAYISI istemciye gömülmez (/masak/esikler); hangi alanın gerektiğini
+                     sunucu söyler (/masak/gereksinim). Sunucu bağlantılı işlem toplamıyla
+                     (aynı gün aynı kişi) eşik altında da isteyebilir: ret gelince alanlar
+                     açılır (masakZorla). Kaydet eksik alanda gerekçeli kilitli. *@
+                @if (MasakGerekli)
+                {
+                    @if (masakZorla)
+                    {
+                        <p class="uyari-metni" role="note" id="hrd-masak-not">@ZO.HurdaMasakGerekli</p>
+                    }
+                    @if (masakGereksinim is not null && masakEsik is not null)
+                    {
+                        <div class="zo-masak-dikey" id="hrd-masak">
+                            <MasakFormu Model="masak" Tutar="Tutar" Esik="masakEsik" Sade="@Dil.BasitMi"
+                                        Gereksinim="masakGereksinim" Degisti="MasakAlaniDegisti" />
+                        </div>
+                        <DegismezIpucu Varlik="MasakKimlikTespiti" Gerekce="@ZO.BankaMasakKilit" />
+                    }
+                    else
+                    {
+                        <Yukleniyor />
+                    }
+                }
+
+
+                @* ── ZO-ISLEM-A: İSTEĞE BAĞLI ALANLAR ("+ Detay ekle") ────────────
+                   Açılışta YALNIZ zorunlu alan (bizim kaydımız) + sistemin bildiği
+                   değerler görünür. Alıcının kabulü, elle fiyat, ramatçı, tahsil aracı
+                   ve tahsil edilen tutar eklenmese KAYIP YOK: boş kabul = kaydımız
+                   aynen; fiyat kurdan; tahsil = tutarın tamamı, Nakit.
+                   ⚠ Kapalı bölümün alanı DOM'da YOKTUR ve gövdeye varsayılanından
+                     başka değer taşımaz. Değer girilmiş ya da alanlardan biri
+                     hatalıysa bölüm AÇIK kalır (sessiz etkisizlik / gizli değer yok).
+                   Kimlikler (hrd-kabul-has, hrd-fiyat, hrd-cari, hrd-odeme,
+                   hrd-tahsil …) DEĞİŞMEDİ. *@
+                @if (DetayGorunur)
+                {
+                    @* TOPLU-4: "Daha az göster" TETİĞİN YERİNDE (bölümün üstünde), ok yukarı; kapatılamıyorsa çizilmez. *@
+                    @if (!DetayZorunluAcik)
+                    {
+                        <button type="button" class="zo-detay-ac" id="hrd-detay-gizle" aria-expanded="true" aria-controls="hrd-detay"
+                                @onclick="() => detayAcik = false"><span>@ZO.DetayGizle</span><Ikon Ad="@Ikonlar.KatlamaAcik" Sinif="zo-detay-ok" /></button>
+                    }
+                    <div class="zo-detay form-dikey" id="hrd-detay">
+                    @* ── P-20b: ALICININ KABUL ETTİĞİ HAS ───────────────────────
+                       UX-S21: sistemin bildiği alan sorulmaz — boş bırakılırsa
+                       "kaydımız aynen kabul edildi" sayılır ve not bunu söyler. *@
+                    <div class="alan">
+                        <Gram ElemanId="hrd-kabul-has" Etiket="@Dil.T.Hurda.AliciKabul"
+                              @bind-Deger="aliciKabulHas" @bind-Deger:after="TevsikTazele" Durum="form" HataAlani="hrd-kabul-has" />
+                        @* Kimlik korundu (#hrd-kabul-notu) — ekran testleri onu arıyor. *@
+                        @* 28.09: "fark bacağı yazılmaz" jargonu yerine tek sade cümle. *@
+                        <span class="metin-kucuk metin-soluk" id="hrd-kabul-notu">@ZO.HurdaKabulIpucu</span>
+                    </div>
+
+                    @* UX-S21/S27: fark TÜRETİLİR ve YÖNÜ yazılır; boş alan olarak sorulmaz. *@
+                    <p class="metin-kucuk" id="hrd-tahlil-fark">
+                        @TahlilFarkiMetni:
+                        <strong>@HassasGram(TahlilFark)</strong>
+                        @if (TahlilFark == 0m)
+                        {
+                            <span class="metin-soluk katalog-blok-ek"> — @Dil.T.Hurda.FarkYok</span>
+                        }
+                        else
+                        {
+                            <Rozet Renk="@(TahlilFark > 0m ? "yesil" : "amber")">
+                                @(TahlilFark > 0m ? Dil.T.Hurda.FarkLehte : Dil.T.Hurda.FarkAleyhte)
+                            </Rozet>
+                        }
+                    </p>
+
+                    @* UX-S24: bağımlı alanın bağını EKRAN kurar — gerekçe yalnız
+                       fark varken açılır; fark yokken sorulmaz. *@
+                    @if (TahlilFark != 0m)
+                    {
+                        <GerekceAlani Id="hrd-tahlil-gerekce" Etiket="@Dil.T.Hurda.TahlilFarkiGerekce"
+                                      Deger="@tahlilGerekce" DegerChanged="GerekceDegisti" />
+                        <AlanHatasi Alan="hrd-tahlil-gerekce" Durum="form" />
+                    }
+
+                    @* UX-S21: has fiyatı SORULMAZ, canlı kurdan gelir; rozet kaynağı söyler. *@
+                    <div class="alan">
+                        @* PAKET ISLEM-BANT: has fiyatı bandı — sunucuyla aynı Core kuralı, aynı cümle (alan altında, canlı). *@
+                        <Para ElemanId="hrd-fiyat" Etiket="@Dil.T.Islem.HasGramFiyati" Tur="Kuyumcu.Core.Domain.Girdi.TutarTuru.Pozitif"
+                              Deger="@fiyat" DegerChanged="@((decimal? _v) => FiyatDegisti(_v))"
+                              Hata="@(HrdBantHatasi is { } bh ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(bh, Dil.Dil) : null)"
+                              Durum="form" HataAlani="hrd-fiyat" />
+                        <span class="metin-kucuk metin-soluk" id="hrd-fiyat-kaynak">
+                            @(fiyatElle ? Dil.T.Hurda.FiyatElle : Dil.T.Hurda.FiyatKurdan)
+                        </span>
+                    </div>
+                    <Kuyumcu.Web.Bilesenler.Fis.IslemBantOnay Onek="hrd" Hata="@HrdBantHatasi" Durum="hrdBant" Degisti="BantDegisti" />
+
+                    @* P-15: düz 200 kayıtlık açılır liste AÇILMAZ — seçici sunucuda arar. *@
+                    <div class="alan">
+                        <KayitSecici Tur="@Kuyumcu.Contracts.Arama.AramaTurleri.Cari"
+                                     ElemanId="hrd-cari"
+                                     Etiket="@RamatciMetni"
+                                     Zorunlu="@RamatciZorunlu"
+                                     Deger="@cariId"
+                                     DegerChanged="CariSecildi" />
+                        <AlanHatasi Alan="hrd-cari" Durum="form" />
+                    </div>
+
+                    @if (!NakitKapali)
+                    {
+                        @OdemeAlani
+                    }
+
+                    @* PAKET GOC-A (envanter C · hrd-tahsil "eksi tahsil yanlış sebebe yol açar"): K9a — eksi yazılamaz, 2 ondalık. *@
+                    <Para ElemanId="hrd-tahsil" Etiket="@Dil.T.Hurda.TahsilEdilen" Tur="TutarTuru.SifirOlabilir"
+                          @bind-Deger="tahsilEdilen" @bind-Deger:after="TevsikTazele" Durum="form" HataAlani="hrd-tahsil" />
+                    </div>
+                }
+                else
+                {
+                    <button type="button" class="zo-detay-ac" id="hrd-detay-ac" aria-expanded="false"
+                            @onclick="() => detayAcik = true"><span>@ZO.DetayEkle</span><Ikon Ad="@Ikonlar.KatlamaAcik" Sinif="zo-detay-ok" /></button>
+                }
+
+                <div class="satir-arasi">
+                    <button id="hrd-kaydet" type="button" class="dugme dugme-birincil" disabled="@(Kilit is not null || kaydediliyor)" @onclick="Kaydet">
+                        @Dil.T.Hurda.Kaydet
+                    </button>
+                    @* UX-S30: kilitli düğmenin SEBEBİ yazılır. *@
+                    @* ZO-ISLEM-A: veri okunamadıysa sebep formun başında (hrd-form-kilit-notu)
+                       ya da bantta TEK kez yazılır; düğme yanında ikinci kopyası basılmaz. *@
+                    @if (veriGeldi && Kilit is { } sebep)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="hrd-kaydet-kilit">@sebep</span>
+                    }
+                </div>
+            </div>
+            </fieldset>
+            </CascadingValue>
+            }
+        </div>
+
+        @* ── HURDA DEFTERİ ────────────────────────────────────────────────────
+           ZO-ISLEM-A (kurucu 25.09): geçmiş kayıtlar KAPALI akordeon — ortak
+           Bilesenler/Katlanir (SATIS-2). Veri Yukle()'de zaten okunur (bakiye ile
+           aynı istek turu; rozet sayısı sunucudan); kapalı kartın içi DOM'da yok.
+           Satır/düğme kimlikleri (hrd-defter, hrd-satir-*, hrd-duzelt-*) DEĞİŞMEDİ. *@
+        <Katlanir Id="hrd-gecmis" Baslik="@Dil.T.Hurda.DefterBasligi"
+                  Sayi="@(veriGeldi ? defterToplam : null)" Sinif="zo-gecmis"
+                  BaslangictaAcik="@gecmisAcik" Degisti="@(v => gecmisAcik = v)">
+            @if (sinirNotu is { Length: > 0 })
+            {
+                <p class="metin-kucuk metin-soluk" id="hrd-sinir-notu">@sinirNotu</p>
+            }
+
+            @* UX-S28: boş durum YALNIZ istek başarılıyken çıkar. *@
+            @if (veriGeldi && defter.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.Hurda.DefterYok" />
+            }
+            else if (defter.Count > 0)
+            {
+                @* ZO-ISLEM-A 29.09 (tasarım hakemi k3 KRİTİK, K13): 1100 px altında her defter
+                   satırı bir KART (Banka hareketleri / POS defteriyle AYNI kalıp): üstte tarih ·
+                   tür, maden, has gram ve tutar etiketiyle (data-etiket), tahlil farkı, düzelt
+                   düğmesi en altta tam satır. 375'te has gram ve tutar kesilmiyordu → hiçbir
+                   hücre silinmez, yalnız yerleşim değişir. Kimlikler DEĞİŞMEDİ. *@
+                @* PAKET GOC-A — ORTAK IZGARA (grid:hurda:hrd-defter-izgara). Tablo kimliği "hrd-defter" ve ZO-ISLEM-A kart
+                   sınıfları (zo-k-*) AYNEN; satır kimlikleri korunur. Defter sunucu sınırlıdır (limit=100): sınırın altındaysa TAM → yerel sıralama (tarih, has, tutar);
+                   sunucu dahaFazlasiVar derse sıralama düğmesi ÇIKMAZ (G1), sınır notu hrd-sinir-notu zaten yazılı (UX-S29). *@
+                <Izgara T="HurdaDefterSatiri" Ekran="hurda" GridId="hrd-defter-izgara" TabloId="hrd-defter" Kolonlar="@DefterKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(defter, DefterListeTam ? defterSira : null, DefterKolonlari)" SatirId="@(d => $"hrd-satir-{d.Id}")"
+                        TabloSinif="zo-kart-tablo" Baslik="@Dil.T.Hurda.DefterBasligi" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@DefterSiralandi" GecerliSiralama="@defterSira" TercihIstemcisi="@HrdTercih" />
+
+                @* UX-S25: düzenlenemeyen kaydın GEREKÇESİ yazılır; devre dışı
+                   düğme ÇİZİLMEZ (DegismezIpucu bileşeni hiç düğme üretmez). *@
+                @* ZO-ISLEM-A 28.09 (gerçek tarayıcı, POS kilit kutusuyla aynı kural): BASİT modda
+                   kutu TEK sade cümle — "Düzeltme şöyle yapılır:" başlığı + "stok satırı",
+                   "fark satırı" iç terimleri yok; doğru yol (satırdaki düğmenin adı) cümlede.
+                   PRO metni (stornolanmaz + düzeltme yolu) aynen kalır. *@
+                <DegismezIpucu Varlik="HurdaSatisi" Gerekce="@DegismezNotuMetni" />
+            }
+        </Katlanir>
+
+        @* ── P-20b: TAHLİL FARKI DÜZELTME ÇEKMECESİ ────────────────────────
+           TEK DÜZENLEME KALIBI: çok alanlı düzenleme Cekmece'de yapılır
+           (ModalPencere yalnız yıkıcı onay içindir); ikinci bir satır-içi
+           düzenleme kalıbı AÇILMAZ. *@
+        <Cekmece Varlik="tahlilfarki" Acik="@(duzeltilen is not null)"
+                 Baslik="@Dil.T.Hurda.DuzeltBaslik"
+                 Kaydediliyor="@duzeltmeKaydediliyor"
+                 KaydetAktif="@(DuzeltmeKilit is null)"
+                 KilitSebebi="@DuzeltmeKilit"
+                 Kapat="DuzeltmeKapat" Kaydet="DuzeltmeKaydet">
+            @if (duzeltilen is { } dz)
+            {
+                <p class="metin-kucuk metin-soluk" id="cekmece-tahlilfarki-kaynak">
+                    @Dil.T.Hurda.TurSatis: @KurKaynakAdi.MadenAdi(dz.Maden, dz.MadenAdi) @HassasGram(dz.HasGrami) ·
+                    @Dil.T.Hurda.ToplamFark: @HassasGram(dz.TahlilFarkiHasGram)
+                </p>
+                <p class="metin-kucuk metin-soluk" id="cekmece-tahlilfarki-not">@DuzeltmeNotuMetni</p>
+
+                @* PAKET GOC-A (envanter C · hrd-ek-fark "üst sınır yok; 7+ ondalık sessizce yuvarlanır"): işaretli has —
+                   en çok 6 ondalık + mutlak değer tavanı (decimal(15,6)); sunucu GirdiKapisi.IsaretliHas AYNI kural. *@
+                <Gram ElemanId="hrd-ek-fark" Etiket="@Dil.T.Hurda.EkFark" EnCokOndalik="@AgirlikKurali.HasOndalik"
+                      EnAz="@(-AgirlikKurali.HasTavan)" EnCok="@AgirlikKurali.HasTavan"
+                      @bind-Deger="ekFark" Durum="form" HataAlani="hrd-ek-fark" />
+
+                <GerekceAlani Id="hrd-duzelt-gerekce" Etiket="@Dil.T.Hurda.TahlilFarkiGerekce"
+                              @bind-Deger="duzeltGerekce" />
+                <AlanHatasi Alan="hrd-duzelt-gerekce" Durum="form" />
+            }
+        </Cekmece>
+
+        @* ── Q10-2 (QA 10 KRİTİK): RAMAT ÇIKIŞI ONAYI ─────────────────────────
+           Hurda satışı yerinde DEĞİŞMEZ ve stornolanmaz; tek yanlış tıkla geri
+           dönüşü olmayan kayıt oluşmaz. "Ramat çıkışını kaydet" yalnız doğrular
+           ve bu pencereyi açar; POST YALNIZ "Kaydet" onayıyla gider. Vazgeç'te
+           istek ATILMAZ. Ortak P-65 OnayKipi (ModalPencere'yi sarar — Pages/
+           altında yeni ModalPencere kullanımı AÇILMAZ). *@
+        <OnayKipi Acik="@onayAcik" Kimlik="hrd-onay"
+                  Eylem="@HO.OnayBaslik"
+                  Aciklama="@HO.OnayAciklama"
+                  Hedef="@onayOzeti"
+                  GeriDonusYolu="@string.Format(HO.OnayDuzeltmeYolu, Dil.T.Hurda.Duzelt)"
+                  OnayMetni="@HO.OnayDugmesi"
+                  Calisiyor="@kaydediliyor" Hata="@onayHata"
+                  Onayla="Gonder" Vazgec="OnayKapat" />
+    }
+</div>
+}
+
+@code {
+    /// <summary>
+    /// Q10-2 (doğrulayıcı KRİTİK 1-2) — has/gram YUVARLANMADAN gösterilir: en az 3,
+    /// en çok 6 hane (defter kesinliği decimal(…,6)). Bicim.Gram 3 haneye yukarı
+    /// yuvarladığı için bakiye 9,16458 iken "9,165 g mevcut" deyip 9,165'i
+    /// reddediyor, onay özeti gönderilen 9,1604'ü "9,160 g" gösteriyordu.
+    /// Bu sayfadaki bakiye kartı, sınır ipucu, aşım mesajı, onay özeti, başarı
+    /// bandı ve defter AYNI biçimi kullanır (tek kavram tek biçim — UX-S31).
+    /// </summary>
+    private static string HassasGram(decimal n) =>
+        $"{n.ToString("0.000###", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))} g";
+
+    // Q10-2 düzeltme turu — K8 (BASİT modda jargon 0): canlı ölçümde BASİT modda
+    // 5 jargon sayıldı (cari, mutabakat). PRO metni Sozlukler.cs HUB'ında KALIR;
+    // BASİT karşılığı bu paketin alan sözlüğünden (Sozlukler.HurdaOnay.cs) gelir.
+    private string TahlilFarkiMetni => Dil.BasitMi ? HO.TahlilFarkiBasit : Dil.T.Hurda.TahlilFarki;
+    private IReadOnlyList<SecenekOgesi> OdemeSecenekleri =>
+    [
+        new SecenekOgesi("NAKIT", Dil.T.Hurda.AracNakit, Pasif: NakitKapali),
+        new SecenekOgesi("HAVALE", Dil.T.Hurda.AracHavale),
+        new SecenekOgesi("KART", Dil.T.Hurda.AracKart),
+    ];
+    private string RamatciMetni => Dil.BasitMi ? HO.RamatciBasit : Dil.T.Hurda.Ramatci;
+    // ZO-ISLEM-A 28.09 (gerçek tarayıcı, PRO 1440): PRO metni "fark bacağı / bacakların" jargonu
+    // taşıyordu — düzeltme notu iki modda AYNI jargonsuz cümle. (Değişmezlik notu PRO'da
+    // "stornolanmaz" kuralını söyler; jargonsuz olduğu için moda bağlı kalır — P20.)
+    // 29.09 (tasarım hakemi KRİTİK): PRO'da da geliştirici notu ("bu sürümde", "ters kayıt motoru",
+    // "stok satırı", "hat") gösterilmez — iki modda AYNI tek cümle, doğru yol satırdaki düğmenin adıyla.
+    // Hub metni (Hurda.DegismezNotu) sözlükte durur; ekran çizmez.
+    private string DegismezNotuMetni => string.Format(ZO.HurdaDefterKilitBasit, Dil.T.Hurda.Duzelt);
+    private string DuzeltmeNotuMetni => ZO.HurdaDuzeltCekmeceNot;
+
+    // ── P-36c GÖÇ YARDIMCISI ────────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> MadenSecenekleri =>
+        [.. SatilabilirMadenler.Select(b => new SecenekOgesi(b.Maden, $"{KurKaynakAdi.MadenAdi(b.Maden, b.MadenAdi)} ({HassasGram(b.HasGram)})"))];
+
+    private bool yukleniyor = true;
+    private bool veriGeldi;
+    private bool kaydediliyor;
+    private string? hata;
+    private string? basari;
+    private int basariJeton;
+
+    private List<HurdaBakiyeVeri> bakiyeler = [];
+    private List<HurdaDefterSatiri> defter = [];
+    private int defterToplam;
+    // G1 (hasım 08.10): sunucu sınıra değdiğini söylüyorsa liste TAM değildir → sıralama kapalı.
+    private bool defterDahaFazla;
+    private bool DefterListeTam => !defterDahaFazla;
+    private string? DefterSiraAdi(string ad) => DefterListeTam ? ad : null;
+    /// <summary>ZO-ISLEM-A — defter akordeonunun son durumu (kayıt sonrası Yukle'de korunur).</summary>
+    private bool gecmisAcik;
+    private string? sinirNotu;
+
+    private List<KasaSz.KasaVeri> kasalar = [];
+
+    private readonly FormDurumu form = new();
+
+    private string? maden;
+    private decimal? hasGram;
+    private decimal? aliciKabulHas;
+    private string tahlilGerekce = "";
+
+    // ── P-20b düzeltme çekmecesi durumu ──────────────────────────────────────
+    private HurdaDefterSatiri? duzeltilen;
+    private decimal? ekFark;
+    private string duzeltGerekce = "";
+    private bool duzeltmeKaydediliyor;
+    private decimal? fiyat;
+    private bool fiyatElle;
+    private string? cariId;
+    private string? kasaId;
+    private string odemeTuru = "NAKIT";
+    private decimal? tahsilEdilen;
+
+    private string? kurId;
+
+    // ── ZO-ISLEM-A 28.09 (tasarım hakemi KRİTİK): nakit sınırı ÖNCEDEN söylenir ──
+    /// <summary>
+    /// Sunucunun tevsik önizlemesi (had, kural, kalan nakit hakkı). Eşik SAYISI
+    /// istemciye gömülmez (mevzuat kuralı); önizleme okunamazsa uyarı çizilmez ve
+    /// karar yine sunucudaki kapıdadır (fail-closed olan sunucudur).
+    /// </summary>
+    private Kuyumcu.Contracts.Sayfalar.Islemler.TevsikOnizleme? tevsik;
+
+    private decimal NakitTahsil => TahsilCoz(out _);
+
+    // ── 29.09 (tasarım hakemi KRİTİK): kur oynaması ─────────────────────────────
+    // Kur 10 sn'de bir yenilenir; tezgâhtarın "tahsil edilen"e yazdığı Tutar gönderim anında
+    // kuruşlarca eskiyebilir. Yazdığı değer bu has miktarı için EKRANDA GÖRÜNMÜŞ bir Tutar
+    // ise kastı "tamamı"dır: ramatçı istenmez, güncel Tutar'a eşitlenir ve onay penceresi
+    // bunu açıkça yazar (kullanıcı eşitlenmiş tutarı ONAYLAR). Elle fiyatta kural kapalıdır.
+    private readonly List<(decimal Has, decimal Tutar)> gorulenTutarlar = new();
+
+    private void GorulenTutarKaydet()
+    {
+        if (fiyatElle || KabulHas <= 0m || Tutar <= 0m) return;
+        var k = (KabulHas, Tutar);
+        if (gorulenTutarlar.Contains(k)) return;
+        gorulenTutarlar.Add(k);
+        if (gorulenTutarlar.Count > 60) gorulenTutarlar.RemoveAt(0);
+    }
+
+    private decimal TahsilCoz(out bool kurlaEsitlendi)
+    {
+        kurlaEsitlendi = false;
+        if (tahsilEdilen is not { } t) return Tutar;
+        if (t != Tutar && !fiyatElle && gorulenTutarlar.Contains((KabulHas, t)))
+        {
+            kurlaEsitlendi = true;
+            return Tutar;
+        }
+        return t;
+    }
+
+    /// <summary>
+    /// Tahsil kuralları (aşım / ramatçı) — TEK tanım. Kaydet'te çalışır; mesaj görünürken kur, tahsil
+    /// ya da ramatçı değişirse yeniden hesaplanır ki alan altındaki tutar bayat kalmasın.
+    /// </summary>
+    private bool tahsilMesajiVar;
+
+    private void TahsilKurallari()
+    {
+        if (tahsilMesajiVar) { form.Sil("hrd-tahsil"); form.Sil("hrd-cari"); }
+        tahsilMesajiVar = false;
+        var tahsil = TahsilCoz(out _);
+        if (tahsil > Tutar)
+        {
+            form.Ekle("hrd-tahsil", string.Format(ZO.HurdaTahsilAsim,
+                Bicim.Para(tahsil - Tutar, "TRY"), Bicim.Para(Tutar, "TRY")));
+            tahsilMesajiVar = true;
+        }
+        else if (tahsil < Tutar && string.IsNullOrEmpty(cariId))
+        {
+            form.Ekle("hrd-cari", string.Format(ZO.HurdaRamatciGerekli,
+                Bicim.Para(Tutar - tahsil, "TRY"), Bicim.Para(Tutar, "TRY")));
+            tahsilMesajiVar = true;
+        }
+    }
+
+    /// <summary>Tahsil edilmeyen para varsa ramatçı ZORUNLUDUR (etiketten "isteğe bağlı" kalkar).</summary>
+    private bool RamatciZorunlu => Tutar > 0m && TahsilCoz(out _) < Tutar;
+
+    /// <summary>Bu tutar (ya da bu müşteriyle bugünkü toplam) nakit alınamaz mı?</summary>
+    private bool NakitKapali =>
+        Tutar > 0m && (nakitReddedildi
+            || (tevsik is { KuralEtkin: true } t && (t.IslemTutariKuraliDevrede || NakitTahsil > t.KalanNakitHakki)));
+
+    /// <summary>
+    /// 29.09: sunucu nakdi reddetti (bağlantılı toplamı yalnız sunucu bilir) — tahsil aracı açılışta
+    /// zorunlu görünür, Nakit seçilemez; kayıt başarıyla bitince düşer.
+    /// </summary>
+    private bool nakitReddedildi;
+    private bool nakitRedBekliyor;
+
+    private static bool TevsikReddi(ApiHata e) =>
+        e.StatusCode == 400 && (e.Kod == "NAKIT_SINIRI" || e.Message.StartsWith("Tevsik", StringComparison.Ordinal));   // YASAL-3: kodla
+
+    private bool NakitUyari => NakitKapali && odemeTuru == "NAKIT";
+
+    /// <summary>Tahsil aracı alanı — tek tanım; açılışta ya da "Daha fazla" içinde çizilir.</summary>
+    // 29.09 (K18): nakit kapalıyken alan ZORUNLU, Nakit pasif ve seçili görünmez, tek hata altında.
+    private RenderFragment OdemeAlani => @<div class="alan">
+        <Secim ElemanId="hrd-odeme"
+               Etiket="@Dil.T.Hurda.OdemeTuru"
+               Zorunlu="@NakitKapali"
+               Secenekler="@OdemeSecenekleri"
+               Deger="@(NakitUyari ? null : odemeTuru)" DegerChanged="@((string? v) => odemeTuru = v ?? "NAKIT")" />
+        @if (NakitUyari)
+        {
+            <p class="hata-metni alan-hata" id="hrd-nakit-uyari" role="alert">@ZO.HurdaNakitAlinamaz</p>
+        }
+    </div>;
+
+    private async Task TevsikTazele()
+    {
+        // Tahsil, ramatçı, fiyat ya da gram değişti: görünen tahsil mesajı bayat kalmasın.
+        if (tahsilMesajiVar) TahsilKurallari();
+        await MasakTazele();
+        if (!veriGeldi || Tutar <= 0m) { tevsik = null; return; }
+        var q = "/tevsik/gunluk?fisToplamTl=" + Tutar.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (!string.IsNullOrEmpty(cariId)) q += "&cariId=" + Uri.EscapeDataString(cariId);
+        try { tevsik = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Islemler.TevsikOnizleme>(q); }
+        catch (ApiHata) { tevsik = null; }   // önizleme yalnız uyarıdır; kapı sunucuda işler
+    }
+
+    // ── 29.09 (tasarım hakemi KRİTİK): MASAK — Banka dekontuyla AYNI bileşen ve AYNI uçlar ──
+    // Sayfaya YENİ istemci tipi açılmadı (MasakFormu.MasakBilgi, Esikler, MasakGereksinim).
+    private MasakFormu.MasakBilgi masak = new();
+    private Esikler? masakEsik;
+    private MasakGereksinim? masakGereksinim;
+    private decimal gereksinimTutari = -1m;
+    /// <summary>Gereksinimin sorulduğu müşteri (tutar + müşteri birlikte önbellek anahtarıdır).</summary>
+    private string? gereksinimCari;
+    /// <summary>Sunucu MASAK nedeniyle reddetti (bağlantılı işlem toplamı) — alanlar eşik altında da açılır.
+    /// YASAL-KAPI-GERI: düz bool değil reddin İZİ — tutar reddin altına iner ya da müşteri değişirse düşer,
+    /// tutar geri çıkınca geri gelir (Bilesenler/Fis/YasalKapiIzi.cs). Girilen beyan (masak) silinmez.</summary>
+    private Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi? masakRedIzi;
+    private bool masakZorla
+    {
+        get => Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi.Gecerli(masakRedIzi, Tutar, cariId);
+        set => masakRedIzi = value ? Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi.Al(Tutar, cariId) : null;
+    }
+
+    /// <summary>
+    /// Gereksinim sunucuya sorulmalı mı? Tutar eşikteyse, sunucu MASAK'la reddettiyse ya da
+    /// ramatçı seçiliyse (29.09 tasarım hakemi KRİTİK: aynı gün aynı kişiyle yapılmış işlemler
+    /// toplamı yalnız sunucuda bilinir — kademe müşteriyle birlikte sorulur).
+    /// </summary>
+    private bool MasakSorulmali =>
+        masakEsik is not null && Tutar > 0m
+        && (masakZorla || Tutar >= masakEsik.KimlikIstenenTutar() || !string.IsNullOrEmpty(cariId));
+
+    /// <summary>
+    /// Eşik SUNUCUDAN gelir (tek sayı); istemciye gömülmez. Eşik altında da sunucu
+    /// (müşterinin günlük toplamıyla) kimlik isterse alanlar açılır.
+    /// </summary>
+    private bool MasakGerekli =>
+        MasakSorulmali
+        && (masakZorla || Tutar >= masakEsik!.KimlikIstenenTutar() || masakGereksinim?.KimlikGerekli == true);
+
+    /// <summary>
+    /// Gereksinim sorulan tutar. Müşteri seçiliyse bu işlemin tutarı (günlük toplamı sunucu
+    /// ekler); müşterisiz zorla açıldıysa en az kimlik eşiği (SATIS-3 deseni).
+    /// </summary>
+    private decimal MasakSorguTutari =>
+        masakZorla && string.IsNullOrEmpty(cariId) && masakEsik is not null ? Math.Max(Tutar, masakEsik.KimlikIstenenTutar()) : Tutar;
+
+    /// <summary>UX-S30: MASAK alanları eksikse Kaydet kilitli ve SEBEBİ yazılı.</summary>
+    private string? MasakKilitSebebi =>
+        !MasakGerekli ? null
+        : masakGereksinim is null ? Dil.T.Banka.MasakYukleniyorSebep
+        : MasakFormu.Eksiksiz(masak, masakGereksinim) ? null
+        : MasakFormu.TcknKilitMetni(masak, Dil.Dil) is { } tcknKilit ? tcknKilit   // TCKN-DOGRULAMA: alan altıyla aynı metin
+        : Dil.BasitMi ? ZO.MasakKilitSebepBasit : Dil.T.Banka.MasakKilitSebep;
+
+    private void MasakAlaniDegisti() { }
+
+    /// <summary>Tutar değişince gereksinim sunucudan çekilir; gelmezse Kaydet kilitli kalır (fail-closed).</summary>
+    private async Task MasakTazele()
+    {
+        if (!MasakSorulmali) { masakGereksinim = null; gereksinimTutari = -1m; gereksinimCari = null; return; }
+        var t = MasakSorguTutari;
+        var c = string.IsNullOrEmpty(cariId) ? null : cariId;
+        if (t == gereksinimTutari && c == gereksinimCari && masakGereksinim is not null) return;
+        // Eski tutarın/müşterinin gereksinimi yenisinde geçerli değildir: sorgudan ÖNCE düşer. İstek
+        // düşerse null kalır ve Kaydet "gereksinim alınıyor" sebebiyle kilitli kalır (fail-closed).
+        masakGereksinim = null; gereksinimTutari = -1m; gereksinimCari = null;
+        try
+        {
+            // aynı uç, aynı istemci kodu; sayfaya yeni servis bağımlılığı açılmaz.
+            // 29.09: müşteri de gider — kademe kaydın geçtiği kümülatif kapıyla aynı ölçüyle gelir.
+            masakGereksinim = await new UyumServisi(Api).Gereksinim(t, c);
+            gereksinimTutari = t;
+            gereksinimCari = c;
+        }
+        catch (ApiHata) { /* gereksinim yok → kilit açılmaz; son söz sunucuda */ }
+    }
+
+    private async Task EsikleriYukle()
+    {
+        if (masakEsik is not null) return;
+        // Sıfır/eksik eşik geçerli yapılandırma DEĞİLDİR: "bilinmiyor" sayılır, karar sunucuda kalır.
+        try { masakEsik = await Api.GetAsync<Esikler>("/masak/esikler") is { KimlikEsigi: > 0m } e ? e : null; }
+        catch (ApiHata) { /* eşik bilinmezse (masakEsik null kalır) karar sunucuda; ret gelince hata bandı */ }
+    }
+
+    /// <summary>
+    /// MASAK reddinde pencere kapanır, alanlar formda açılır (tek sade cümle hrd-masak-not);
+    /// hiçbir veri düşmez — yalnız onay penceresi kapanır ve ret metni alanlara taşınır.
+    /// </summary>
+    private async Task MasakAlanlariniAc(ApiHata e)
+    {
+        masakZorla = true;
+        gereksinimTutari = -1m;
+        await MasakTazele();
+        onayAcik = false; onayHata = null; onayGovdesi = null;
+        form.Temizle();
+        // 29.09 (tasarım hakemi KRİTİK — sessiz döngü): ekrandaki alanların HEPSİ doluyken sunucu
+        // yine MASAK'la reddettiyse (ör. geçersiz uyruk kodu) sade not tek başına yetmez: sunucunun
+        // cümlesi sayfa bandında görünür. Alanlar eksikse eksik alan kilit sebebi zaten yazılıdır.
+        hata = masakGereksinim is not null && MasakFormu.Eksiksiz(masak, masakGereksinim)
+            ? FormDurumu.SunucuMesaji(e, Dil)
+            : null;
+    }
+
+    /// <summary>Sunucu reddi MASAK kaynaklı mı (ileti "MASAK" ile başlar ya da alan anahtarı masak.*)?</summary>
+    private static bool MasakReddi(ApiHata e) =>
+        e.StatusCode == 400 && e.Message.StartsWith("MASAK", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>BASİT modda nakit reddi (sunucu "Tevsik zorunluluğu: …") tek sade cümle olur.</summary>
+    private string? SadeRetMetni(ApiHata e) =>
+        Dil.BasitMi && e.StatusCode == 400 && odemeTuru == "NAKIT"
+        && (e.Kod == "NAKIT_SINIRI" || e.Message.StartsWith("Tevsik", StringComparison.Ordinal))   // YASAL-3: kodla
+            ? ZO.HurdaNakitAlinamaz : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Canli.Degisti += KurYansit;
+        await Yukle();
+        await EsikleriYukle();
+        await Canli.BaslatAsync();
+        KurYansit();
+    }
+
+    public void Dispose() => Canli.Degisti -= KurYansit;
+
+    /// <summary>UX-S21 — has fiyatı sistemden gelir; ELLE girileni EZMEZ.</summary>
+    private void KurYansit()
+    {
+        // 29.09 (tasarım hakemi KRİTİK): kur değişmeden önce ekranda görünen tutar hatırlanır;
+        // kullanıcı onu "tahsil edilen"e yazdıysa kastı TAMAMIDIR (bkz. TahsilCoz).
+        GorulenTutarKaydet();
+        kurId = Canli.Son?.Id;
+        var hasFiyati = Canli.Son?.AltinHasFiyati ?? 0m;
+        if (!fiyatElle && hasFiyati > 0m) fiyat = hasFiyati;
+        if (tahsilMesajiVar) TahsilKurallari();
+        // 29.09: kurla değişen tutar MASAK eşiğini geçebilir — gereksinim yenilenir (beklenmez).
+        InvokeAsync(async () => { await MasakTazele(); StateHasChanged(); });
+    }
+
+    // P-36c/3: ayrıştırma ortak girdi ailesinde (FormAlani.Ondalik) — tek kaynak.
+    private async Task FiyatDegisti(decimal? deger)
+    {
+        fiyatElle = true;
+        fiyat = deger;
+        await TevsikTazele();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        veriGeldi = false;
+        try
+        {
+            // ⚠ UX-S28: istek patlarsa listeler BOŞALTILMAZ, hata bandı çıkar.
+            // ŞUBE-KAPSAM-B: kartlar + defter GÖRÜNÜM şubesinden; form bakiyesi
+            // YAZMA (oturum) şubesinden — ikisi farklıysa ayrı okunur.
+            await SubeliSorgu.HazirAsync(Oturum);
+            var b = await Api.GetAsync<HurdaBakiyeYaniti>(SubeliSorgu.Ekle("/hurda/bakiye", Oturum));
+            bakiyeler = b.Satirlar ?? [];
+            bakiyeKapsami = b.Kapsam;
+            subeKirilimi = b.Subeler ?? [];
+            // Tur 3: form yalnız görünüm = kendi şube iken çizilir → form bakiyesi = kart bakiyesi (tek rakam).
+            formBakiyeler = FormAyriSubede ? [] : bakiyeler;
+
+            var d = await Api.GetAsync<HurdaDefterYaniti>(SubeliSorgu.Ekle("/hurda/defter?limit=100", Oturum));
+            defter = d.Satirlar ?? [];
+            defterToplam = d.ToplamAdet;
+            defterDahaFazla = d.DahaFazlasiVar;
+            sinirNotu = d.SinirNotu;
+
+            kasalar = (await Api.GetAsync<List<KasaSz.KasaVeri>>("/kasalar")).Where(k => k.Aktif).ToList();
+
+            maden ??= SatilabilirMadenler.FirstOrDefault()?.Maden;
+            veriGeldi = true;
+        }
+        catch (ApiHata e)
+        {
+            // ZO-ISLEM-A: şubesi atanmamış oturumda sunucunun iç terimli metni
+            // ("şube bağlamı gerekli") yerine TEK kısa sebep + ne yapılacağı yazılır.
+            // Yalnız oturumda şube YOKKEN ve sunucu reddettiğinde: 400 (hurda kapısı —
+            // SAHİP/MÜDÜR/MUHASEBE, çok şubeli kiracı) ya da 403 (şubeye kilitli rol
+            // TEZGAHTAR — küresel şube çözümleyicisi; canlıda ölçüldü 25.09).
+            // Başka her hata sunucu metniyle kalır.
+            hata = SubeYok && e.StatusCode is 400 or 403 ? SubeYokMetni : FormDurumu.SunucuMesaji(e, Dil);
+        }
+        finally { yukleniyor = false; }
+    }
+
+    private List<HurdaBakiyeVeri> SatilabilirMadenler => formBakiyeler.Where(b => b.HasGram > 0m).ToList();
+
+    // ── ŞUBE-KAPSAM-B ───────────────────────────────────────────────────────
+    private SubeKapsamBMetinleri SK => SubeKapsamBSozlugu.Al(Dil.Dil);
+
+    /// <summary>Satış formunun (yazma = oturum şubesi) bakiyeleri; kartlar görünüm şubesinden.</summary>
+    private List<HurdaBakiyeVeri> formBakiyeler = [];
+
+    /// <summary>Sunucunun söylediği kapsam: "SUBE" ya da "TUM_SUBELER".</summary>
+    private string? bakiyeKapsami;
+
+    private bool TumSubelerKapsami => bakiyeKapsami == "TUM_SUBELER";
+
+    /// <summary>Birleşik yanıtta sunucunun şube kırılımı (tek şube yanıtında boş).</summary>
+    private List<HurdaSubeKirilimi> subeKirilimi = [];
+
+    /// <summary>Şube × maden has bakiyesi (sunucudan; ekranda türetilmez — UX-S21).</summary>
+    // PAKET GOC-A — ORTAK IZGARA (grid:hurda:hrd-sube): şube × maden satırları düzleştirilir (satır kimlikleri AYNI).
+    private RenderFragment SubeKirilimTablosu => @<Izgara T="KeyValuePair<HurdaSubeKirilimi, HurdaBakiyeVeri>" Ekran="hurda" GridId="hrd-sube"
+            TabloId="hrd-sube-kirilimi" Kolonlar="@SubeKolonlari" TabloSinif="zo-kart-tablo" Baslik="@SK.SubeSutunu" YapiskanIlkSutun="false"
+            Ogeler="@IzgaraYerelSiralama.Uygula(SubeSatirlari, subeSira, SubeKolonlari)"
+            SatirId="@(kv => $"hrd-sube-{kv.Key.SubeId}-{kv.Value.Maden}")"
+            SiralamaDegisti="@SubeSiralandi" GecerliSiralama="@subeSira" TercihIstemcisi="@HrdTercih" />;
+
+    private IReadOnlyList<KeyValuePair<HurdaSubeKirilimi, HurdaBakiyeVeri>> SubeSatirlari =>
+        [.. subeKirilimi.SelectMany(sb => (sb.Satirlar ?? []).Select(m => new KeyValuePair<HurdaSubeKirilimi, HurdaBakiyeVeri>(sb, m)))];
+
+    private IReadOnlyList<IzgaraKolonu<KeyValuePair<HurdaSubeKirilimi, HurdaBakiyeVeri>>> SubeKolonlari =>
+    [
+        new() { Anahtar = "sube", Baslik = SK.SubeSutunu, ZorunluGorunur = true, KartEtiketsiz = true, SunucuSiralamaAdi = "sube",
+                HucreSinif = _ => "zo-k-bas", Deger = kv => kv.Key.Ad },
+        new() { Anahtar = "maden", Baslik = Dil.T.Hurda.Maden, KartEtiketsiz = true, SunucuSiralamaAdi = "maden",
+                HucreSinif = _ => "zo-k-ad", Deger = kv => KurKaynakAdi.MadenAdi(kv.Value.Maden, kv.Value.MadenAdi) },
+        new() { Anahtar = "has", Baslik = Dil.T.Hurda.HasGram, ZorunluGorunur = true, SunucuSiralamaAdi = "has",
+                BaslikSinif = "sag hucre-tek-satir", HucreSinif = _ => "sag zo-k-gram", Deger = kv => kv.Value.HasGram,
+                Hucre = kv => @<text>@HassasGram(kv.Value.HasGram)</text> },
+    ];
+
+    private IzgaraTercihIstemcisi? hrdTercih;
+    private IzgaraTercihIstemcisi HrdTercih => hrdTercih ??= new IzgaraTercihIstemcisi(Api);
+    private IzgaraSiralama? defterSira, subeSira;
+    private void DefterSiralandi(IzgaraSiralama? s) => defterSira = s;
+    private void SubeSiralandi(IzgaraSiralama? s) => subeSira = s;
+
+    private IReadOnlyList<IzgaraKolonu<HurdaDefterSatiri>> DefterKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, KartEtiketsiz = true, SunucuSiralamaAdi = DefterSiraAdi("tarih"),
+                HucreSinif = _ => "zo-k-bas", Deger = d => d.Tarih, Hucre = d => @<text>@Bicim.Tarih(d.Tarih, Dil.Dil)</text> },
+        // UX-S31: ham veritabanı kodu ekrana basılmaz, sözlükten çevrilir.
+        new() { Anahtar = "tur", Baslik = Dil.T.Hurda.TurBasligi, KartEtiketsiz = true, HucreSinif = _ => "zo-k-durum", Deger = d => TurAdi(d.Tur) },
+        new() { Anahtar = "maden", Baslik = Dil.T.Hurda.Maden, KartEtiketsiz = true, HucreSinif = _ => "zo-k-ad", Deger = d => KurKaynakAdi.MadenAdi(d.Maden, d.MadenAdi) },
+        new() { Anahtar = "has", Baslik = Dil.T.Hurda.HasGram, ZorunluGorunur = true, SunucuSiralamaAdi = DefterSiraAdi("has"),
+                BaslikSinif = "sag hucre-tek-satir", HucreSinif = _ => "sag zo-k-gram", Deger = d => d.HasGrami,
+                Hucre = d => @<text>@HassasGram(d.HasGrami)</text> },
+        // CIFT-BACAK tur 2: takas satırında para hurda için el değiştirmez → tutar yazılmaz.
+        new() { Anahtar = "tutar", Baslik = Dil.T.Ortak.Tutar, SunucuSiralamaAdi = DefterSiraAdi("tutar"), BaslikSinif = "sag",
+                HucreSinif = _ => "sag zo-k-tutar", Deger = d => d.Tur == "TAKAS" ? null : d.TlTutari,
+                Hucre = d => @<text>@(d.Tur == "TAKAS" ? "—" : Bicim.Para(d.TlTutari, d.ParaBirimi ?? "TRY"))</text> },
+        new() { Anahtar = "fark", Baslik = TahlilFarkiMetni, BaslikSinif = "sag hucre-tek-satir", HucreSinif = _ => "sag zo-k-fark",
+                Deger = d => d.TahlilFarkiHasGram,
+                Hucre = d => @<span id="@($"hrd-fark-{d.Id}")">@if (d.Tur == "HURDA_SATIS" && d.TahlilFarkiHasGram != 0m)
+                {
+                    <Rozet Renk="@(d.TahlilFarkiHasGram > 0m ? "yesil" : "amber")">@HassasGram(d.TahlilFarkiHasGram)</Rozet>
+                }
+                else if (d.Tur == "HURDA_SATIS")
+                {
+                    <span class="metin-kucuk metin-soluk">@HassasGram(0m)</span>
+                }</span> },
+        // UX-S25: oluşturulabilen kayıt DÜZELTİLEBİLİR (ikinci bir fark bacağı ekler, satırın üzerine yazmaz).
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "zo-k-eylem",
+                Hucre = d => @<text>@if (d.Tur == "HURDA_SATIS")
+                {
+                    <button type="button" @onclick="() => DuzeltmeAc(d)" class="dugme dugme-ikincil dugme-kucuk"
+                            id="@($"hrd-duzelt-{d.Id}")">@Dil.T.Hurda.Duzelt</button>
+                }</text> },
+    ];
+
+    /// <summary>
+    /// Kartlar oturum şubesinden BAŞKA bir şeyi (başka şube ya da tüm şubeler)
+    /// gösteriyor ve oturumun bir şubesi var: form kendi şubesinin bakiyesini ayrı okur.
+    /// </summary>
+    private bool FormAyriSubede =>
+        !SubeYok
+        && KabukServisi.Ortak.GorunumIcin(Oturum) is { CokluGorunum: true } g
+        && g.SubeId != Oturum.Kullanici!.SubeId;
+
+    /// <summary>Tur 3: "Kendi şubeme geç" — görünümü oturum şubesine çeker (sunucuya tercih yazılır; K-9 hatası bantta).</summary>
+    private string? gecisHata;
+
+    private async Task KendiSubeyeGec()
+    {
+        gecisHata = await KabukServisi.Ortak.GorunumSubesiAtaAsync(Api, Oturum, Oturum.Kullanici?.SubeId);
+    }
+
+    private string? YazmaSubesiAdi =>
+        KabukServisi.Ortak.GorunumIcin(Oturum)?.Subeler.FirstOrDefault(x => x.Id == Oturum.Kullanici?.SubeId)?.Ad;
+
+    private List<KasaSz.KasaVeri> TlKasalar => kasalar.Where(k => k.ParaBirimi == "TRY").ToList();
+
+    // PAKET ISLEM-BANT — has fiyatı bandı (sunucuyla aynı Core kuralı; referans canlı kur) + SAHİP/MÜDÜR onay durumu.
+    private readonly Kuyumcu.Web.Bilesenler.Fis.IslemBantOnayDurumu hrdBant = new();
+    private Kuyumcu.Core.Domain.Girdi.GirdiHatasi? HrdBantHatasi => Kuyumcu.Core.Domain.Girdi.FiyatBandi.IslemDenetle(
+        fiyat, Kuyumcu.Core.Domain.Girdi.IslemFiyatBaglami.HurdaSatis, Canli.Son?.AltinHasFiyati, SecilenMaden);
+    private void BantDegisti() { }
+    // PAKET ISLEM-BANT-2: eksi/0/mutlak dışı fiyatta tutar YOK; bant dışı fiyat Takas/Hurda alışla AYNI kuralla Kaydet'i kilitler.
+    private bool HrdTutarVar => Kuyumcu.Web.Bilesenler.Fis.IslemBantGosterim.FiyatHesabaGirer(fiyat, SecilenMaden);   // eksi/0 → "—" (mutlak dışında tutar kutuyla tutarlı kalır: Q102/ZOSH kuruş ve büyük sayı biçim testleri bu satırı sınar; Kaydet kilitli)
+    private string? HrdBantKilidi => Kuyumcu.Web.Bilesenler.Fis.IslemBantGosterim.KaydetKilidi(HrdBantHatasi, hrdBant, Oturum.Kullanici?.Rol, Dil.Dil);
+    private string? SecilenMaden => SatilabilirMadenler.Count == 1 ? SatilabilirMadenler[0].Maden : maden;
+
+    private string? SecilenKasaId => TlKasalar.Count == 1 ? TlKasalar[0].Id : kasaId;
+
+    private HurdaBakiyeVeri? SeciliBakiye =>
+        SatilabilirMadenler.FirstOrDefault(b => b.Maden == SecilenMaden);
+
+    /// <summary>
+    /// P-20b — alıcının kabul ettiği has; boşsa bizim kaydımız aynen kabul
+    /// edilmiş sayılır (sunucu da aynı varsayılanı uygular — tek kural).
+    /// </summary>
+    private decimal KabulHas => aliciKabulHas ?? hasGram ?? 0m;
+
+    /// <summary>İŞARETLİ tahlil farkı: kabul − bizim kaydımız.</summary>
+    private decimal TahlilFark =>
+        hasGram is null ? 0m
+        : Math.Round(KabulHas - hasGram.Value, 6, MidpointRounding.AwayFromZero);
+
+    /// <summary>
+    /// ⚠ TL bacağı KABUL EDİLEN hasla hesaplanır (sunucuyla aynı kural):
+    /// kabul edilmeyen has için para istenmez.
+    /// </summary>
+    private decimal Tutar => Math.Round(KabulHas * (fiyat ?? 0m), 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>UX-S31 — ham tür kodu ekrana basılmaz, sözlükten çözülür.</summary>
+    private string TurAdi(string tur) => tur switch
+    {
+        "HURDA_SATIS"  => Dil.T.Hurda.TurSatis,
+        "TAHLIL_FARKI" => Dil.T.Hurda.TurTahlilFarki,
+        // CIFT-BACAK tur 2: takasta müşteriden alınan eski altın hurdaya girer.
+        "TAKAS"        => CiftBacakSozlugu.Al(Dil.Dil).HurdaTurTakas,
+        _              => Dil.T.Hurda.TurAlis,
+    };
+
+    /// <summary>UX-S30 — düzeltme çekmecesinin Kaydet düğmesi neden kapalı?</summary>
+    private string? DuzeltmeKilit =>
+        (ekFark ?? 0m) == 0m ? Dil.T.Hurda.KilitFarkSifir
+        : duzeltGerekce.Trim().Length < 20 ? Dil.T.Hurda.KilitGerekce
+        : null;
+
+    private SadeMetinleri SD => SadeSozlugu.Al(Dil.Dil);
+    private ZoIslemMetinleri ZO => ZoIslemSozlugu.Al(Dil.Dil);
+
+    // ── ZO-ISLEM-A: "+ Detay ekle" bölümü ─────────────────────────────────
+    private bool detayAcik;
+
+    /// <summary>Bölümdeki alanlardan biri hatalı mı (sunucu ya da ekran doğrulaması)?</summary>
+    private bool DetayHatali =>
+        DetayAlanlari.Any(a => form.Mesaj(a) is { Length: > 0 });
+
+    private static readonly string[] DetayAlanlari =
+        ["hrd-kabul-has", "hrd-tahlil-gerekce", "hrd-fiyat", "hrd-cari", "hrd-tahsil"];
+
+    /// <summary>
+    /// Bölüm KAPATILAMAZ: içinde varsayılandan farklı bir değer var ya da bir
+    /// alan hatalı. Kapalı bölüm gizli değer taşımaz (UX-S5 ile aynı ilke).
+    /// </summary>
+    private bool DetayZorunluAcik =>
+        aliciKabulHas is not null || !string.IsNullOrEmpty(cariId) || tahsilEdilen is not null
+        || (odemeTuru != "NAKIT" && !NakitKapali) || fiyatElle || tahlilGerekce.Length > 0 || DetayHatali
+        || DetayAlanlari.Any(gecersizAlanlar.OnekleVar);
+
+    private bool DetayGorunur => detayAcik || DetayZorunluAcik;
+
+
+    /// <summary>29.09: formun sayı kutuları — kutuda anlaşılamayan metin varken kayıt engellenir.</summary>
+    private static readonly string[] SayiAlanlari = ["hrd-has", "hrd-kabul-has", "hrd-fiyat", "hrd-tahsil"];
+
+    /// <summary>29.09 (doğrulayıcı KRİTİK): ortak geçersiz sayı kapısı (Bilesenler/Form/GecersizAlanKapisi).</summary>
+    private readonly Kuyumcu.Web.Bilesenler.Form.GecersizAlanKapisi gecersizAlanlar = new();
+
+    /// <summary>
+    /// ZO-ISLEM-A — şube atanmamışsa TEK kısa sebep + ne yapılacağı (UX-S30).
+    /// SAHİP kendine atar; diğer roller dükkân sahibinden ister.
+    /// </summary>
+    private string SubeYokMetni => Oturum.Kullanici?.Rol == "SAHIP" ? ZO.HurdaSubeYokSahip : SD.HurdaSubeYok;
+
+    /// <summary>SADE-1: oturum kullanıcısına şube atanmamış mı (sunucu "şube bağlamı gerekli" der).</summary>
+    private bool SubeYok => string.IsNullOrWhiteSpace(Oturum.Kullanici?.SubeId);
+
+    /// <summary>UX-S30 — düğme neden kapalı? Görünmez kural olmaz.</summary>
+    private string? Kilit =>
+        !veriGeldi ? (SubeYok ? SubeYokMetni : SD.HurdaFormKilitli)
+        : kurId is null ? Dil.T.Hurda.KilitKurYok
+        : fiyat is not > 0 ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).FiyatAlaniDuzeltin   // ISLEM-BANT-2: boş/eksi/0 fiyat (hata sonda değil, düğmede)
+        : HrdBantKilidi is { } hbk ? hbk   // ISLEM-BANT-2: bant dışı (Takas ile aynı davranış)
+        : SatilabilirMadenler.Count == 0 ? Dil.T.Hurda.KilitBakiyeYok
+        : TlKasalar.Count == 0 ? Dil.T.Hurda.KilitKasaYok
+        // 29.09 (K18): nakit kapalıyken tahsil aracı seçilmeden kaydedilmez; sebep yanında yazar.
+        : NakitUyari ? ZO.HurdaTahsilSecinKilit
+        : MasakKilitSebebi;
+
+    /// <summary>UX-S23 — bakiye kartı formu o madene ayarlar.</summary>
+    private async Task CariSecildi(string? id)
+    {
+        cariId = id;
+        // Q10-2: yalnız bu alanın mesajı düşer; başka alanların geçerli uyarısı silinmez.
+        form.Sil("hrd-cari");
+        await TevsikTazele();   // aynı gün aynı kişiyle nakit toplamı müşteri seçilince bilinir
+    }
+
+    private void MadenSec(string m)
+    {
+        maden = m;
+        form.Temizle();
+        BakiyeSiniriOlc();
+    }
+
+    // ── Q10-2: onay penceresi durumu ─────────────────────────────────────────
+    private HurdaOnayMetinleri HO => HurdaOnaySozlugu.Al(Dil.Dil);
+    private bool onayAcik;
+    private string? onayOzeti;
+    private string? onayHata;
+
+    /// <summary>
+    /// Q10-2 — bakiye sınırı TEK yerde ölçülür (gönderimde ve her değişimde).
+    /// Ölçülen bakiye: oturum şubesinde SEÇİLİ madenin has bakiyesi (sunucu
+    /// HurdaStokKapisi.Bakiye ile aynı kaynak: /hurda/bakiye). Sınır DAHİLDİR:
+    /// bakiye = istenen geçerlidir.
+    /// </summary>
+    private void BakiyeSiniriOlc()
+    {
+        if (SeciliBakiye is { } sb && hasGram is { } hg && hg > sb.HasGram)
+            form.Ekle("hrd-has", string.Format(HO.BakiyeAsildi, HassasGram(sb.HasGram)));
+    }
+
+    /// <summary>
+    /// Q10-2 — değer değişince sınır YENİDEN ölçülür. Eski mesajı ortak girdi
+    /// ailesi (FormAlani.DefterdenSil — Q10-5 ortak çözümü) zaten düşürür;
+    /// burada ikinci bir silme kalıbı AÇILMAZ, yalnız yeni değer ölçülür.
+    /// </summary>
+    private async Task HasDegisti(decimal? v)
+    {
+        hasGram = v;
+        BakiyeSiniriOlc();
+        await TevsikTazele();
+    }
+
+    private void MadenDegisti(string? v)
+    {
+        maden = v;
+        form.Sil("hrd-maden");
+        form.Sil("hrd-has");
+        BakiyeSiniriOlc();
+    }
+
+    private void KasaDegisti(string? v)
+    {
+        kasaId = v;
+        form.Sil("hrd-kasa");
+    }
+
+    private void GerekceDegisti(string v)
+    {
+        tahlilGerekce = v;
+        form.Sil("hrd-tahlil-gerekce");
+    }
+
+    private void OnayKapat()
+    {
+        if (nakitRedBekliyor) { nakitReddedildi = true; nakitRedBekliyor = false; }
+        // Ret metni kaybolmaz, tek yerde kalır. 28.09 7. tur (tarayıcı ölçümü): BASİT'te nakit
+        // reddi alanın altındaki cümleyle (hrd-nakit-uyari) AYNIYSA banda ikinci kez yazılmaz —
+        // sebep zaten tahsil aracının altında, yapılacak iş orada.
+        if (onayHata is not null && !(NakitUyari && onayHata == ZO.HurdaNakitAlinamaz)) hata = onayHata;
+        onayAcik = false;
+        onayHata = null;
+        onayGovdesi = null;
+    }
+
+    private void Kaydet()
+    {
+        form.Temizle();
+        // 29.09 (doğrulayıcı KRİTİK): kutuda anlaşılamayan/belirsiz sayı ("1.500") varsa değeri null'dur
+        // ve "tamamı" SAYILMAZ — alan hatası forma işlenir, onay açılmaz, POST gitmez.
+        foreach (var id in SayiAlanlari)
+            if (gecersizAlanlar.OnekleVar(id))
+                form.Ekle(id, gecersizAlanlar.Etiketler(id).FirstOrDefault() ?? Dil.T.Form.SayiAnlasilmadi);
+        var m = SecilenMaden;
+        var kasa = SecilenKasaId;
+        form.Zorunlu("hrd-maden", m, Dil);
+        form.Pozitif("hrd-has", hasGram, Dil);
+        // 29.09 (doğrulayıcı KRİTİK — onay ≠ kayıt): sunucu hası 6 haneye yuvarlar (SatisModulu.Yuvarla6)
+        // ve TL'yi yuvarlanmış hasla hesaplar. 6'dan fazla ondalık kabul edilseydi onaydaki tutar
+        // kaydedilenden kuruş sapar, tahsil eksik kalır → isteğe bağlı ramatçı boşken 400. Alan sunucunun
+        // kabul ettiği haneyle sınırlanır: yazılan = onaylanan = gönderilen = kaydedilen.
+        if (hasGram is { } hh && hh != Math.Round(hh, 6))
+            form.Ekle("hrd-has", ZO.HurdaHasHaneSiniri);
+        // Kabul alanı BOŞ bırakılabilir (= fark yok); dolu geldiyse pozitif olmalı.
+        if (aliciKabulHas is { } kb && kb <= 0m)
+            form.Ekle("hrd-kabul-has", Dil.T.Hurda.AliciKabul);
+        else if (aliciKabulHas is { } kh && kh != Math.Round(kh, 6))
+            form.Ekle("hrd-kabul-has", ZO.HurdaHasHaneSiniri);
+        // DoD EK 1/3: fark varken gerekçesiz gönderim SESSİZ ETKİSİZ kalamaz.
+        if (TahlilFark != 0m && tahlilGerekce.Trim().Length < 20)
+            form.Ekle("hrd-tahlil-gerekce", Dil.T.Hurda.KilitGerekce);
+        form.Pozitif("hrd-fiyat", fiyat, Dil);
+        form.Zorunlu("hrd-kasa", kasa, Dil);
+
+        // Sunucu kapısının EKRAN karşılığı: elde olmayan hurda çıkışı gönderilmez.
+        // Q10-2: mesaj GERÇEK sebebi söyler (bakiye VAR, aşıldı) — "bakiye yok" değil.
+        BakiyeSiniriOlc();
+
+        // Tahsil edilmeyen tutarın gideceği yer OLMALI (sunucu da reddeder).
+        // 29.09 (tasarım hakemi KRİTİK): mesaj alanın ADI değil, yapılacak işi söyleyen CÜMLE;
+        // kur oynamasıyla oluşan kuruş farkı ramatçı istemez (TahsilCoz).
+        var tahsil = TahsilCoz(out var kurlaEsitlendi);
+        TahsilKurallari();
+
+        if (!form.Gecerli) return;
+
+        // Q10-2: geri alınamaz kayıt ÖNCE özetle onaya gider (UX-S27).
+        var kasaAdi = TlKasalar.FirstOrDefault(k => k.Id == kasa)?.Ad ?? "";
+        var madenAdi = KurKaynakAdi.MadenAdi(m, SeciliBakiye?.MadenAdi);
+        var odemeAdi = odemeTuru switch
+        {
+            "HAVALE" => Dil.T.Hurda.AracHavale,
+            "KART"   => Dil.T.Hurda.AracKart,
+            _        => Dil.T.Hurda.AracNakit,
+        };
+        // Q10-2 v2 (doğrulayıcı KRİTİK): gönderilecek gövde BU ANDA DONDURULUR.
+        // Pencere açıkken canlı kur (10 sn yoklama) fiyat/kurId'yi değiştirse de
+        // sunucuya YALNIZ kullanıcının gördüğü ve onayladığı değerler gider;
+        // özet de bu dondurulmuş kayıttan üretilir (tek kaynak).
+        var tutar = Tutar;
+        onayGovdesi = new HurdaSatisIstegi(
+            Maden: m!,
+            HasGrami: hasGram!.Value,
+            BirimFiyatTlHasGram: fiyat!.Value,
+            AliciKabulHasGrami: aliciKabulHas,
+            TahlilFarkiGerekcesi: TahlilFark == 0m ? null : tahlilGerekce.Trim(),
+            CariId: string.IsNullOrEmpty(cariId) ? null : cariId,
+            KasaId: kasa!,
+            OdemeTuru: odemeTuru,
+            TahsilEdilenTl: tahsil,
+            KurSnapshotId: kurId!,
+            Masak: MasakGerekli ? masak : null, BantOnay: hrdBant.GovdeOnay, BantGerekce: hrdBant.GovdeGerekce);   // ISLEM-BANT
+        var g = onayGovdesi;
+        onayOzeti = $"{madenAdi} · {HO.OzetBizimKaydimiz}: {HassasGram(g.HasGrami)} · "
+                  + $"{HO.OzetKabul}: {HassasGram(g.AliciKabulHasGrami ?? g.HasGrami)} · "
+                  + $"{HO.OzetBirimFiyat}: {Bicim.Para(g.BirimFiyatTlHasGram, "TRY")} · "
+                  + $"{HO.OzetTutar}: {Bicim.Para(tutar, "TRY")} · "
+                  + $"{HO.OzetTahsil}: {Bicim.Para(g.TahsilEdilenTl, "TRY")} ({odemeAdi}) · "
+                  + $"{HO.OzetKasa}: {kasaAdi}"
+                  + (kurlaEsitlendi ? $" · {ZO.HurdaTahsilKurEsitlendi} {KurFarkiNotu(tutar)}" : "");
+        onayHata = null;
+        onayAcik = true;
+    }
+
+    /// <summary>
+    /// 29.09 (doğrulayıcı ORTA): eşitleme üst sınırsızdı ve onay yalnız "eşitlendi" diyordu. Fark
+    /// artık TUTAR olarak yazılır (yazılan → kaydedilecek, işaretli fark) ki kasiyer 6.800 alıp
+    /// 7.500 onaylamasın. Sabit eşik konmadı: keyfi sayı gerçek kısmi tahsili yutar ya da kuruş
+    /// oynamasında ramatçı ister; kararı fark tutarını GÖREN kullanıcı verir (Vazgeç yolu açık).
+    /// </summary>
+    private string KurFarkiNotu(decimal tutar)
+    {
+        if (tahsilEdilen is not { } yazilan) return "";
+        var fark = tutar - yazilan;
+        var farkMetni = (fark > 0m ? "+" : "") + Bicim.Para(fark, "TRY");
+        return string.Format(ZO.HurdaTahsilKurFarki, Bicim.Para(yazilan, "TRY"), Bicim.Para(tutar, "TRY"), farkMetni);
+    }
+
+    private HurdaSatisIstegi? onayGovdesi;
+
+    /// <summary>Q10-2 — POST YALNIZ onay penceresinin "Kaydet"inden gider.</summary>
+    private async Task Gonder()
+    {
+        // Q10-2 v2: gövde Kaydet() anında dondurulmuştur; burada alanlardan
+        // YENİDEN KURULMAZ (pencere açıkken değişen kur onaysız fiyat taşımasın).
+        if (!onayAcik || kaydediliyor || onayGovdesi is not { } govde) return;
+
+        kaydediliyor = true; hata = null; onayHata = null;
+        try
+        {
+            var s = await Api.PostAsync<HurdaSatisSonucu>("/islemler/hurda-satis", govde);
+
+            // UX-S27: sunucunun DÖNDÜRDÜĞÜ sonuç banda yazılır.
+            basari = $"{Dil.T.Hurda.Kaydedildi}: {KurKaynakAdi.MadenAdi(s.Maden, s.MadenAdi)} {HassasGram(s.HasGrami)} · "
+                   + $"{Bicim.Para(s.ToplamTl, s.ParaBirimi)} · "
+                   + $"{Dil.T.Hurda.KalanBakiye}: {HassasGram(s.KalanHurdaHasGram)}"
+                   // UX-S27: sunucunun döndürdüğü FARK banda yazılır — ekran kendi hesabını basmaz.
+                   + (s.TahlilFarkiHasGram == 0m ? ""
+                      : $" · {TahlilFarkiMetni}: {HassasGram(s.TahlilFarkiHasGram)} "
+                        + $"({(s.TahlilFarkiHasGram > 0m ? Dil.T.Hurda.FarkLehte : Dil.T.Hurda.FarkAleyhte)})");
+            basariJeton++;
+            onayAcik = false;
+            onayGovdesi = null;
+            hasGram = null; tahsilEdilen = null; aliciKabulHas = null; tahlilGerekce = "";
+            nakitReddedildi = false;
+            // 29.09 (gerçek tarayıcı): kayıt bitince form AÇILIŞ hâline döner — seçilen tahsil aracı
+            // "Daha fazla"yı zorla açık tutmasın (zorunlu önce).
+            odemeTuru = "NAKIT";
+            detayAcik = false;
+            masak = new(); masakZorla = false; masakGereksinim = null; gereksinimTutari = -1m;   // kişisel veri formda kalmaz
+            await Yukle();
+        }
+        catch (ApiHata e)
+        {
+            // Sunucu reddi pencerede GÖRÜNÜR (kullanıcının baktığı yer) ve sayfa
+            // bandına da yazılır; Vazgeç ile forma dönülür, alan mesajları orada.
+            // ZO-ISLEM-A 28.09 (tasarım hakemi KRİTİK): ret metni TEK yerde — pencere
+            // açıkken pencerede; pencere kapanınca (OnayKapat) sayfa bandına taşınır.
+            // BASİT modda nakit (tevsik) reddi mevzuat atfı olmadan tek sade cümledir.
+            form.Sunucudan(e);
+            hata = null;
+            // TOPLU-1: nakit kasa kapısı reddi ham "188407.25 TRY" ile basılmaz — biçimli cümle (KasaBakiyeMesaji).
+            onayHata = SadeRetMetni(e) ?? KasaBakiyeMesaji.Bicimle(e.Message, Dil) ?? FormDurumu.SunucuMesaji(e, Dil);
+            // Alan pencere KAPANINCA açılır (ret metni aynı anda iki yerde görünmez).
+            nakitRedBekliyor = TevsikReddi(e) && odemeTuru == "NAKIT";
+            // 29.09 (tasarım hakemi KRİTİK): MASAK reddi çıkmaz değildir — pencere kapanır, alanlar
+            // formda açılır ve TEK sade cümle görünür; ham alan yolu (masak.aciklama) basılmaz.
+            if (MasakReddi(e) && masakEsik is not null) await MasakAlanlariniAc(e);
+        }
+        finally { kaydediliyor = false; }
+    }
+
+    // ── P-20b — TAHLİL FARKI DÜZELTMESİ ─────────────────────────────────────
+
+    private void DuzeltmeAc(HurdaDefterSatiri satir)
+    {
+        duzeltilen = satir;
+        ekFark = null;
+        duzeltGerekce = "";
+        form.Temizle();
+    }
+
+    private void DuzeltmeKapat()
+    {
+        duzeltilen = null;
+        ekFark = null;
+        duzeltGerekce = "";
+    }
+
+    private async Task DuzeltmeKaydet()
+    {
+        if (duzeltilen is not { } dz) return;
+
+        form.Temizle();
+        if ((ekFark ?? 0m) == 0m) form.Ekle("hrd-ek-fark", Dil.T.Hurda.KilitFarkSifir);
+        if (duzeltGerekce.Trim().Length < 20) form.Ekle("hrd-duzelt-gerekce", Dil.T.Hurda.KilitGerekce);
+        if (!form.Gecerli) return;
+
+        duzeltmeKaydediliyor = true; hata = null;
+        try
+        {
+            var s = await Api.PostAsync<TahlilDuzeltmeSonucu>(
+                $"/islemler/hurda-satis/{dz.Id}/tahlil-duzeltme", new
+                {
+                    ekFarkHasGrami = ekFark!.Value,
+                    gerekce = duzeltGerekce.Trim(),
+                });
+
+            // UX-S27: sunucunun DÖNDÜRDÜĞÜ sonuç banda yazılır; çekmece ancak
+            // sunucu onayından SONRA kapanır (iyimser kaydetme yok).
+            basari = $"{Dil.T.Hurda.DuzeltmeKaydedildi}: {KurKaynakAdi.MadenAdi(s.Maden, s.MadenAdi)} {HassasGram(s.EkFarkHasGram)} · "
+                   + $"{Dil.T.Hurda.ToplamFark}: {HassasGram(s.ToplamTahlilFarkiHasGram)} · "
+                   + $"{Dil.T.Hurda.KalanBakiye}: {HassasGram(s.KalanHurdaHasGram)}";
+            basariJeton++;
+            DuzeltmeKapat();
+            await Yukle();
+        }
+        catch (ApiHata e) { form.Sunucudan(e); hata = KasaBakiyeMesaji.Bicimle(e.Message, Dil) ?? FormDurumu.SunucuMesaji(e, Dil); }
+        finally { duzeltmeKaydediliyor = false; }
+    }
+}

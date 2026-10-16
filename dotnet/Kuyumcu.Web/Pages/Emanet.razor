@@ -1,0 +1,1371 @@
+@page "/emanet"
+@using Kuyumcu.Contracts.Sayfalar.Emanet
+@using Kuyumcu.Web.Pages.EmanetParcalari
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   EMANET — müşterinin bize bıraktığı altın
+
+   TESPİT (2026-09-14): modülün ÜÇ UCU DA (giriş · çıkış · listeleme) sunucuda
+   çalışıyordu, EKRANI HİÇ YOKTU. Yani kuyumcunun en temel işlerinden biri —
+   müşteri altınını teslim almak — ürün üzerinden hiç yapılamıyordu.
+
+   ⚠ Emanet altın İŞLETMENİN MALI DEĞİLDİR. Yalnız has gram bacağında izlenir
+   (tlTutari = 0), stok değerlemesine ve kâr-zarara girmez.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Emanet.Baslik)</PageTitle>
+
+@* ═══ PAKET EMANET-1 — ZORUNLU ÖNCE (kurucu 25.09 ~11:35) ════════════════════
+   Açılışta YALNIZ zorunlu olan görünür: tek sade cümle · müşteri seçici ·
+   iki büyük eşit eylem (Emanet al / Emanet iade et) · seçilen müşterinin
+   emanet özeti. Geçmiş hareketler "Eski kayıtlar" katlanırında KAPALI
+   (ortak Bilesenler/Katlanir.razor — SATIS-2). Büyük harfle vurgu YOK;
+   "kâr-zarar ve stok değerlemesine girmez" bilgisi (i) ipucunda.
+   Sunucu uçları/gövdeleri, kilit KOŞULLARI ve mevcut id'ler DEĞİŞMEDİ.
+   Stiller: css/emanet.css (app.css'e yazılmaz). *@
+@* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) liste = tuval Y_Emanet (BİREBİR); özgün ekran yalnız "ayrıntı" görünümünde
+   çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@* YILDIZ-5A tur 2 (tasarım hakemi KRİTİK): "Emanet al" Yıldız form kalıbında açılır (eski ekrana geçmez); alanlar özgün
+   çekmecenin bileşenleri, aynı kimlik ve aynı kapılarla. *@
+@if (YildizMi)
+{
+    if (YildizGirisFormu)
+    {
+        <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizGirisBaglami">
+            <div class="alan">
+                <Secici ElemanId="e-cari" Etiket="@Dil.T.Emanet.Musteri" Secenekler="@CariSecenekleri"
+                        @bind-Deger="cariId" @bind-Deger:after="YildizCariSecildi"
+                        YerTutucu="@Dil.T.Emanet.MusteriSecin" Hata="@yildizCariHata" />
+                @if (SunucuAramasiGorunur)
+                {
+                    <Arama ElemanId="e-cari-ara" Etiket="@Dil.T.Emanet.MusteriAra"
+                           Deger="@cariArama" DegerChanged="@CariAramaDegisti" />
+                }
+                @if (CariListesiSinirda)
+                {
+                    <p id="e-cari-sinir" class="metin-soluk metin-kucuk">@S.AramaSinir</p>
+                }
+            </div>
+            <div class="alan">
+                <Secici ElemanId="e-ayar" Etiket="@Dil.T.Emanet.Ayar" Secenekler="@AyarSecenekleri" @bind-Deger="gAyar" />
+            </div>
+            <HamMetinKabi Defter="hamMetin" Alan="e-gram">
+                <Gram ElemanId="e-gram" Etiket="@Dil.T.Emanet.GramAgirlik" Zorunlu="true" Tur="AgirlikTuru.Gram"
+                      Deger="@gGram" DegerChanged="@GirisGramDegisti" Durum="girisForm" HataAlani="e-gram" />
+            </HamMetinKabi>
+            @if (yildizGirisEk || GirisDetayAcik)
+            {
+                <HamMetinKabi Defter="hamMetin" Alan="e-tas">
+                    <Gram ElemanId="e-tas" Etiket="@Dil.T.Emanet.TasAgirlik" Tur="AgirlikTuru.Tas" Brut="@(gGram > 0 ? gGram : null)"
+                          Deger="@gTas" DegerChanged="@GirisTasDegisti" Durum="girisForm" HataAlani="e-tas" />
+                </HamMetinKabi>
+                <Metin ElemanId="e-aciklama" Etiket="@Dil.T.Emanet.Aciklamasi" EnFazla="@AlanSinirlari.HareketAciklama"
+                       Deger="@gAciklama" DegerChanged="@GirisAciklamaDegisti" />
+            }
+        </Kuyumcu.Web.Bilesenler.Yildiz.YildizForm>
+    }
+    else
+    {
+        <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" />
+    }
+}
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk emanet-sade" id="emanet-sayfa">
+    <div class="sayfa-baslik">
+        <SayfaBasi Anahtar="emanet" AciklamaKatli="true" Baslik="@Dil.T.Emanet.Baslik" Aciklama="@S.Aciklama" />
+    </div>
+    @* ŞUBE-KAPSAM-B: seçilen müşterinin emaneti seçili şubede; seçim değişince yeniden okunur. *@
+    <GorunumRozeti Degisti="CariDegisti" />
+    @* (i) ipucu — yerel <details>: tıklanınca açılır, istek atmaz, JS gerekmez. *@
+    <details class="emanet-bilgi" id="e-bilgi">
+        <summary class="emanet-bilgi-ac" id="e-bilgi-ac">
+            <span class="emanet-bilgi-i" aria-hidden="true">i</span>
+            <span>@S.BilgiEtiketi</span>
+        </summary>
+        <p class="emanet-bilgi-metin" id="e-bilgi-metin">@S.Bilgi</p>
+    </details>
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @if (kurHata is not null)
+    {
+        <HataBandi Mesaj="@kurHata" />
+    }
+
+    @* ── Müşteri seçimi ──────────────────────────────────────────────────────
+       UX-4c madde 10: liste /cari?aktif=true&q=...&limit=50 ile çekilir.
+       PAKET EMANET-1: TEK müşteri seçici — seçicinin kendi arama kutusu
+       (#e-cari-ara-girdi) gelen listeyi yerinde süzer. Ayrı sunucu arama
+       kutusu (#e-cari-ara) YALNIZ liste sunucu sınırına (50) değdiğinde ya da
+       kullanıcı zaten bir sorgu yazmışken görünür: 50'den az müşteride yerinde
+       süzme eksiksizdir, ikinci kutu gereksiz yüktür. UX-S29 uyarısı aynı yerde.
+       İki arama yüzeyi AYRI kimlik taşır — mükerrer DOM kimliği yok. *@
+    <section class="kart emanet-musteri" id="e-musteri-kart">
+        <div class="kart-govde emanet-musteri-govde">
+            @* Tasarım hakemi 28.09 (KRİTİK): eski ekranda "Müşteri ara (ad, telefon)"
+               vardı; tek seçiciye geçince telefonla arama kaybolmuştu. Telefon
+               seçeneğin ikinci satırıdır (AltBilgi) ve Secici yerel süzgeci onu da
+               arar. BosSecenekMetni yerine YerTutucu: ortak Secici "eşleşme yok"
+               satırını yalnız boş seçenek TANIMSIZKEN çizer — sessiz boş liste
+               kalmasın. Tetik metni aynı ("Müşteri seçin"). *@
+            <Secici ElemanId="e-cari"
+                    Etiket="@Dil.T.Emanet.Musteri"
+                    Secenekler="@CariSecenekleri"
+                    @bind-Deger="cariId"
+                    @bind-Deger:after="CariDegisti"
+                    YerTutucu="@Dil.T.Emanet.MusteriSecin" />
+            @if (SunucuAramasiGorunur)
+            {
+                <Arama ElemanId="e-cari-ara" Etiket="@Dil.T.Emanet.MusteriAra"
+                       Deger="@cariArama" DegerChanged="@CariAramaDegisti" />
+            }
+            @if (CariListesiSinirda)
+            {
+                <p id="e-cari-sinir" class="metin-soluk metin-kucuk">@S.AramaSinir</p>
+            }
+            <HataBandi Mesaj="@cariHata" Id="hata-bandi" />
+            @if (!string.IsNullOrEmpty(cariId))
+            {
+                @* Emanet özeti — 0 ise "Emaneti yok"; has 4 hane YALNIZ sıfır değilse. *@
+                <div class="emanet-ozet" id="e-ozet">
+                    <span class="emanet-ozet-etiket">@Dil.T.Emanet.ElimizdekiEmanet</span>
+                    <strong class="emanet-ozet-deger sayi" id="e-ozet-deger">@{
+                        // Doğrulayıcı 28.09 (DÜŞÜK, 375 px): karma özette maden adı
+                        // sayısından ayrılmasın — her maden parçası tek blok, satır
+                        // yalnız " · " ayırıcısında kırılır. Metin (TextContent) aynı.
+                        var parcalar = OzetParcalari;
+                        for (var i = 0; i < parcalar.Count; i++)
+                        {
+                            if (i > 0) { <text>@(" · ")</text> }
+                            <span class="emanet-ozet-parca">@parcalar[i]</span>
+                        }
+                    }</strong>
+                    @* P-DIL-BORC-KASA (Y18): emanet bırakıldığı gibi yazılır; has yalnız ikincil (PRO). *@
+                    @if (OzetBirakildigi)
+                    {
+                        <ProAlan><span class="metin-soluk metin-kucuk sayi" id="e-ozet-has">@EmanetDiliSozlugu.HasIkincil(Bicim.Has(ElimizdekiHas), Dil.Dil)</span></ProAlan>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+
+    @* İki büyük EŞİT eylem. Ekran başına tek birincil (Emanet al); iade ikincil
+       ama aynı boy. Kilit koşulları P-65'teki gibi; sebep TEK kısa cümle. *@
+    <div class="emanet-eylemler" id="e-eylemler">
+        <button type="button" class="btn btn-birincil btn-buyuk emanet-eylem" disabled="@(string.IsNullOrEmpty(cariId) || kur is null)"
+                title="@GirisKilitSebebi" aria-describedby="@GirisAciklayan"
+                id="e-giris-ac"
+                @onclick="GirisModalAc">@S.EmanetAl</button>
+        <button type="button" class="btn btn-ikincil btn-buyuk emanet-eylem" id="e-cikis-ac"
+                disabled="@(string.IsNullOrEmpty(cariId) || kur is null || !IadeEdilecekVar)"
+                title="@CikisKilitSebebi" aria-describedby="@(CikisKilitSebebi is null ? null : "e-kilit")"
+                @onclick="CikisModalAc">@S.EmanetIade</button>
+    </div>
+    @* UX-S30: kilitli düğmenin sebebi GÖRÜNÜR — "Eksik olan:" öneki YOK. *@
+    @if (CikisKilitSebebi is not null)
+    {
+        <p class="metin-kucuk metin-soluk emanet-kilit" id="e-kilit">@CikisKilitSebebi</p>
+    }
+
+    @if (!string.IsNullOrEmpty(cariId))
+    {
+        @* UX-S28: yükleme hatası katlanırın İÇİNDE saklanmaz — görünür yerde. *@
+        @if (listeHata is not null)
+        {
+            <HataBandi Mesaj="@listeHata" Id="e-liste-hata" />
+        }
+        <Katlanir Id="e-gecmis" Baslik="@S.EskiKayitlar" Sinif="emanet-gecmis"
+                  Sayi="@(yukleniyor || listeHata is not null ? null : hareketler.Count)">
+                @if (yukleniyor)
+                {
+                    <Yukleniyor />
+                }
+                else if (listeHata is not null)
+                {
+                    @* Hata bandı katlanırın ÜSTÜNDE (#e-liste-hata); burada boş durum BASILMAZ. *@
+                }
+                else if (hareketler.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Emanet.HareketYok" />
+                }
+                else
+                {
+                    @* PAKET GOC-A — ORTAK IZGARA (grid:emanet:emanet-hareket). Hücre içerikleri (S3-5 "Geri alma kaydı"
+                       rozeti, maden adı, satır içi açıklama, Ayrıntı / Geri al eylemleri) AYNEN; id'ler korunur.
+                       Liste sunucu sınırlı olabilir (son 200 hareket) → sıralama yalnız tarih/has ve YALNIZ tam listede
+                       yerel; sunucu sinirDegdi derse sıralama düğmesi ÇIKMAZ + sınır notu (G1, UX-S29). *@
+                    <Izgara T="HareketVeri" Ekran="emanet" GridId="emanet-hareket" Kolonlar="@HareketKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(hareketler, HareketListeTam ? hareketSira : null, HareketKolonlari)"
+                            Baslik="@Dil.T.Emanet.Hareketler" YapiskanIlkSutun="false"
+                            SiralamaDegisti="@HareketSiralandi" GecerliSiralama="@hareketSira" />
+                    @if (!HareketListeTam)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="emanet-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, hareketSiniri)</p>
+                    }
+                    @* PAKET EMANET-1 (tasarım hakemi 28.09, KRİTİK): tablonun altındaki iki
+                       kalıcı "Bu kayıt değiştirilemez" kutusu KALDIRILDI. UX-S25/S30 yine
+                       karşılanır: kilitli satırın "Geri al" düğmesi o satıra özgü TEK sebebi
+                       title'ında taşır (GeriAlKilitSebebi), düzeltme yolu (Geri al) her satırda
+                       düğmedir, kilitli alanlar Ayrıntı çekmecesinde tek kısa satırla söylenir. *@
+                }
+        </Katlanir>
+    }
+</div>
+}
+
+@* ── Emanet alma ──
+   PAKET S3-5 — TEK DÜZENLEME KALIBI (DoD EK md.2): çok alanlı form
+   ModalPencere'den Cekmece'ye taşındı. Alan kimlikleri DEĞİŞMEDİ; tek kaydet
+   düğmesi #e-giris-kaydet'tir (çekmecenin kendi Kaydet'i çizilmez). *@
+<Cekmece Acik="girisAcik" Varlik="emanet-giris" Baslik="@S.EmanetAl"
+         Kapat="() => girisAcik = false" KaydetGoster="false">
+    <div class="form-dikey">
+        <div class="form-grid-2">
+            <div class="alan">
+                <Secici ElemanId="e-ayar"
+                        Etiket="@Dil.T.Emanet.Ayar"
+                        Secenekler="@AyarSecenekleri"
+                        @bind-Deger="gAyar" />
+            </div>
+            <HamMetinKabi Defter="hamMetin" Alan="e-gram">
+            @* PAKET GOC-A (envanter C · e-gram): K10 Core kuralı (> 0, 3 ondalık, tavan; eksi yazılamaz). *@
+            <Gram ElemanId="e-gram" Etiket="@Dil.T.Emanet.GramAgirlik" Zorunlu="true" Tur="AgirlikTuru.Gram"
+                  Deger="@gGram" DegerChanged="@GirisGramDegisti"
+                  Durum="girisForm" HataAlani="e-gram" />
+            </HamMetinKabi>
+        </div>
+        @* PAKET EMANET-1 — isteğe bağlı alanlar (taş ağırlığı, not) katlanır
+           arkasında: eklenmese kayıp yok. Alan hatalıysa ya da değer varsa AÇIK
+           gelir (sessiz etkisizlik yok). Kimlikler DEĞİŞMEDİ. *@
+        <details class="emanet-detay" id="e-giris-detay" open="@GirisDetayAcik">
+            <summary class="emanet-detay-ac" id="e-giris-detay-ac">@S.GirisDetayEkle</summary>
+            <div class="form-dikey emanet-detay-govde">
+                <HamMetinKabi Defter="hamMetin" Alan="e-tas">
+                @* PAKET GOC-A (envanter açık #5): eksi taş SESSİZCE yok sayılıyordu; sunucu taş ≥ gram'ı yanlış sebeple
+                   reddediyordu → K10 taş kuralı (≥ 0, 3 ondalık, taş < brüt) alan altında, sunucu AYNI kural. *@
+                <Gram ElemanId="e-tas" Etiket="@Dil.T.Emanet.TasAgirlik" Tur="AgirlikTuru.Tas" Brut="@(gGram > 0 ? gGram : null)"
+                      Deger="@gTas" DegerChanged="@GirisTasDegisti"
+                      Durum="girisForm" HataAlani="e-tas" />
+                </HamMetinKabi>
+                <Metin ElemanId="e-aciklama" Etiket="@Dil.T.Emanet.Aciklamasi" EnFazla="@AlanSinirlari.HareketAciklama"
+                       Deger="@gAciklama" DegerChanged="@GirisAciklamaDegisti" />
+            </div>
+        </details>
+        <HataBandi Mesaj="@girisHata" />
+    </div>
+    @* Tasarım hakemi 28.09 (KRİTİK): Kaydet gövdenin ortasında, İptal çekmece
+       tabanında tek başına duruyordu. Tuvaldeki gibi "Vazgeç" + "Kaydet" TABANDA
+       yan yana (ikincil önce, birincil sonda — P-36c). Ortak Cekmece'nin taban
+       yuvası yok (ORTAK-1 alanı, dokunulmadı): bu şerit çekmecenin gövde
+       SONUNA yapışkan bir taban çizer, çekmecenin kendi tabanı yalnız bu iki
+       çekmecede css/emanet.css ile gizlenir. #e-giris-kaydet kimliği AYNI. *@
+    <div class="emanet-cekmece-alt" id="e-giris-eylem">
+        <button type="button" class="btn btn-ikincil" id="e-giris-vazgec"
+                @onclick="GirisKapat">@S.Vazgec</button>
+        <button class="btn btn-birincil" id="e-giris-kaydet" disabled="@kaydediliyor"
+                @onclick="GirisKaydet">@Dil.T.Ortak.Kaydet</button>
+    </div>
+</Cekmece>
+
+@* ── İade ── (PAKET S3-5: ModalPencere → Cekmece; kimlikler DEĞİŞMEDİ) *@
+<Cekmece Acik="cikisAcik" Varlik="emanet-cikis" Baslik="@S.EmanetIade"
+         Kapat="() => cikisAcik = false" KaydetGoster="false">
+    <div class="form-dikey">
+        @* PAKET 20 — "elimizdeki has" TEK RAKAM DEĞİLDİR: 100 g gümüş ile
+           100 g altın aynı sayıya karışamaz (K20-2/K20-3). Maden bazlı satırlar. *@
+        <div class="alan">
+            <label>@Dil.T.Emanet.ElimizdekiEmanet</label>
+            @if (madenBakiyeleri.Count == 0)
+            {
+                <p class="hucre-vurgu metin-amber" id="c-bakiye-altin">@AltinElimizdeMetni</p>
+            }
+            else
+            {
+                <ul class="liste-sade" id="c-maden-bakiyeleri">
+                    @foreach (var mb in DoluMadenler)
+                    {
+                        <li><span class="metin-soluk">@KurKaynakAdi.MadenAdi(mb.Maden, mb.MadenAdi):</span> <strong class="metin-amber">@(mb.Maden == Kuyumcu.Core.Domain.Maden.Altin ? AltinElimizdeMetni : Bicim.Has(mb.Gram))</strong></li>
+                    }
+                </ul>
+                @* Tasarım hakemi 28.09 (KRİTİK): teknik not BASİT modda çizilmez (yalnız PRO). *@
+                @if (DoluMadenler.Count > 1)
+                {
+                    <ProAlan><span class="metin-soluk metin-kucuk" id="c-maden-notu">@S.MadenNotu</span></ProAlan>
+                }
+            }
+        </div>
+        @if (IadeMadenleri.Count > 1)
+        {
+            @* UX-S22: tek maden varsa seçici GÖSTERİLMEZ, değer yukarıda yazılıdır.
+               Seçenekler yalnız İADE EDİLEBİLİR (≥ 0,001) madenler. *@
+            <div class="alan">
+                <Secici ElemanId="c-maden"
+                        Etiket="@Dil.T.Urun.Maden"
+                        Secenekler="@(IadeMadenleri.Select(mb => new SecenekOgesi(mb.Maden, KurKaynakAdi.MadenAdi(mb.Maden, mb.MadenAdi))).ToList())"
+                        @bind-Deger="cMaden"
+                        @bind-Deger:after="CikisMadeniDegisti" />
+            </div>
+        }
+        @* UX-4c madde 10 / UX-S21: giriş ayar+gram alıyor, çıkış ise kullanıcıdan
+           HAS GRAM istiyordu — "22 ayar 10 gram bilezik" bırakan müşteriye geri
+           verirken kuyumcunun kafadan has çevirisi yapması gerekiyordu. Dönüşümü
+           sistem zaten biliyor (HasHesap.ToHasGram). Ayar+gram girilince has gram
+           hesaplanır; GÖVDEDE YİNE hasGrami gider (sunucu sözleşmesi değişmez).
+           PAKET EMANET-1 (doğrulayıcı 27.09): yardımcı İSTEĞE BAĞLIDIR (varsayılan
+           "tümünü iade et" has'ı zaten dolu gelir) → "+ Ayar ve gramdan hesapla"
+           katlanırının arkasında; gram girilmişse AÇIK gelir. Kimlikler DEĞİŞMEDİ. *@
+        @if (IadeBirakildigi)
+        {
+            @* P-DIL-BORC-KASA (Y18): iade BIRAKILDIĞI GİBİ girilir (ayar + gram); has sunucuda ve burada
+               aynı Core fonksiyonuyla hesaplanır, yalnız PRO'da ikincil satır olarak görünür. *@
+            <div class="form-grid-2">
+                @if (IadeAyarlari.Count > 1)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="c-ayar"
+                                Etiket="@EmanetDiliSozlugu.IadeAyar(Dil.Dil)"
+                                Secenekler="@(IadeAyarlari.Select(a => new SecenekOgesi(a.AyarId, EmanetDiliSozlugu.AyarGram(a.AyarId, a.Gram, Dil.Dil))).ToList())"
+                                @bind-Deger="cAyar"
+                                @bind-Deger:after="IadeAyarDegisti" />
+                    </div>
+                }
+                else
+                {
+                    <div class="alan">
+                        <span class="alan-etiket">@EmanetDiliSozlugu.IadeAyar(Dil.Dil)</span>
+                        <strong id="c-ayar-sabit">@EmanetDiliSozlugu.AyarAdi(cAyar, Dil.Dil)</strong>
+                    </div>
+                }
+                <HamMetinKabi Defter="hamMetin" Alan="c-gram">
+                <Gram ElemanId="c-gram" Etiket="@EmanetDiliSozlugu.IadeGram(Dil.Dil)" Tur="AgirlikTuru.Gram" Zorunlu="true"
+                      Deger="@cGram" DegerChanged="@CikisGramDegisti"
+                      Durum="cikisForm" HataAlani="c-gram" />
+                </HamMetinKabi>
+            </div>
+            @if (cGram > SeciliAyarGram)
+            {
+                <span class="metin-kirmizi metin-kucuk" id="c-gram-fazla">@Dil.T.Emanet.IadeFazlaUyari</span>
+            }
+            else if (cGram > 0)
+            {
+                <ProAlan><p id="c-hesaplanan" class="metin-soluk metin-kucuk sayi">@EmanetDiliSozlugu.HasIkincil(Bicim.Has(cHas), Dil.Dil)</p></ProAlan>
+            }
+        }
+        else
+        {
+        <details class="emanet-detay" id="e-cikis-hesap" open="@CikisHesapAcik">
+            <summary class="emanet-detay-ac" id="e-cikis-hesap-ac">@S.CikisHesapEkle</summary>
+            <div class="form-dikey emanet-detay-govde">
+        <div class="form-grid-2">
+            <div class="alan">
+                <Secici ElemanId="c-ayar"
+                        Etiket="@Dil.T.Emanet.Ayar"
+                        Secenekler="@AyarSecenekleri"
+                        @bind-Deger="cAyar"
+                        @bind-Deger:after="IadeHasHesapla" />
+            </div>
+            <HamMetinKabi Defter="hamMetin" Alan="c-gram">
+            <Gram ElemanId="c-gram" Etiket="@Dil.T.Emanet.GramAgirlik" Tur="AgirlikTuru.Gram"
+                  Deger="@cGram" DegerChanged="@CikisGramDegisti"
+                  Durum="cikisForm" HataAlani="c-gram" />
+            </HamMetinKabi>
+        </div>
+        @if (cGram > 0)
+        {
+            <p id="c-hesaplanan" class="metin-soluk metin-kucuk">
+                = @Bicim.Has(HesaplananIadeHas) (@Dil.T.Emanet.HesaplananHas)
+            </p>
+        }
+            </div>
+        </details>
+        <div class="alan">
+            <HamMetinKabi Defter="hamMetin" Alan="c-has">
+            <EmanetHasGirdi ElemanId="c-has" Etiket="@Dil.T.Emanet.IadeEdilecekHas" Zorunlu="true" EnAz="0"
+                  Deger="@cHas" DegerChanged="@CikisHasDegisti"
+                  Durum="cikisForm" HataAlani="c-has" />
+            </HamMetinKabi>
+            @* Elimizdekinden fazla iade, olmayan altını iade etmek demektir;
+               sunucu da reddeder. Kullanıcıyı oraya hiç sokmuyoruz. *@
+            @if (cHas > SeciliMadenHas)
+            {
+                <span class="metin-kirmizi metin-kucuk">@Dil.T.Emanet.IadeFazlaUyari</span>
+            }
+        </div>
+        }
+        <details class="emanet-detay" id="e-cikis-detay" open="@CikisNotAcik">
+            <summary class="emanet-detay-ac" id="e-cikis-detay-ac">@S.CikisNotEkle</summary>
+            <div class="form-dikey emanet-detay-govde">
+                <Metin ElemanId="c-aciklama" Etiket="@Dil.T.Emanet.Aciklamasi" EnFazla="@AlanSinirlari.HareketAciklama"
+                       Deger="@cAciklama" DegerChanged="@CikisAciklamaDegisti" />
+            </div>
+        </details>
+        <HataBandi Mesaj="@cikisHata" />
+    </div>
+    @* Tasarım hakemi 28.09 (KRİTİK): "Vazgeç" + "Kaydet" tabanda yan yana
+       (giriş çekmecesiyle aynı kalıp). #e-cikis-kaydet kimliği AYNI. *@
+    <div class="emanet-cekmece-alt" id="e-cikis-eylem">
+        <button type="button" class="btn btn-ikincil" id="e-cikis-vazgec"
+                @onclick="CikisKapat">@S.Vazgec</button>
+        <button class="btn btn-birincil" disabled="@(kaydediliyor || IadeFazla)"
+                id="e-cikis-kaydet"
+                title="@(IadeFazla ? Dil.T.Emanet.IadeFazlaUyari : null)"
+                @onclick="CikisKaydet">@Dil.T.Ortak.Kaydet</button>
+    </div>
+</Cekmece>
+
+@* ── AYRINTI ÇEKMECESİ (PAKET S3-5, demo adım 8) ─────────────────────────
+   Salt okunur: düzenlenecek alan YOK, bu yüzden çekmecenin Kaydet'i ÇİZİLMEZ
+   (KaydetGoster=false — S-3b kuralı: kilitli Kaydet yanıltır). Kilitli
+   alanlar (has gram · maden · müşteri) kilit gerekçesiyle yazılır; düzeltme
+   yolu ekranda: "Geri al (düzeltme fişi)" → 48-A storno onayı (ortak onay
+   modalı, gerekçe ≥ 20). Açıklama tek alanlı kalıpla (SatirIciDuzenle)
+   listede düzeltilir. Storno taklidi YOK: tek yol /islemler/{id}/storno. *@
+<Cekmece Acik="detayHareket is not null" Varlik="emanet-hareket" Baslik="@M.AyrintiBaslik"
+         Kapat="DetayKapat" KaydetGoster="false">
+    @if (detayHareket is { } d)
+    {
+        <div class="form-dikey">
+            <dl class="form-dikey kimlik-listesi" id="eh-detay-alanlar">
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@M.Tur</dt>
+                    <dd class="hucre-vurgu" id="eh-detay-tur">@TurAdi(d)</dd>
+                </div>
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@M.Tarih</dt>
+                    <dd class="hucre-vurgu" id="eh-detay-tarih">@Bicim.IsletmeBicim(d.Tarih, "g", System.Globalization.CultureInfo.CurrentCulture)</dd>
+                </div>
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@M.Aciklama</dt>
+                    <dd id="eh-detay-aciklama">@(AciklamaGoster(d) ?? M.Bilinmiyor)</dd>
+                </div>
+            </dl>
+            @* Tasarım hakemi 28.09 (KRİTİK): ayrı "Değiştirilemez" başlığı, "gram ve ayar
+               has grama çevrilir" teknik satırı ve kilit kutusu KALDIRILDI. Kilitli alanlar
+               (has gram · maden · müşteri) girdisiz yazılır; düzeltme yolu TEK kısa satır. *@
+            <dl class="form-dikey kimlik-listesi" id="eh-detay-kilitli">
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@M.HasGram</dt>
+                    <dd class="hucre-vurgu sayi" id="eh-detay-has">@Bicim.Has(d.HasGrami)</dd>
+                </div>
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@M.Maden</dt>
+                    <dd class="hucre-vurgu" id="eh-detay-maden">@(string.IsNullOrWhiteSpace(d.Maden) ? M.Bilinmiyor : KurKaynakAdi.MadenAdi(d.Maden))</dd>
+                </div>
+                <div class="satir-arasi">
+                    <dt class="metin-soluk">@M.Musteri</dt>
+                    <dd class="hucre-vurgu" id="eh-detay-musteri">@SeciliCariAdi</dd>
+                </div>
+            </dl>
+            @if (Stornolandi(d))
+            {
+                <Rozet Renk="gri">@S.GeriAlindi</Rozet>
+            }
+            @if (StornoAcik(d))
+            {
+                <p class="metin-kucuk metin-soluk" id="eh-detay-duzeltme">@S.DetayDuzeltme</p>
+            }
+            @* PAKET EKSIK-B1-YAZDIR (B1-4): ayrıntıdan da teslim belgesi açılır. *@
+            <div class="satir yazdirma-gizle">
+                <NavLink class="btn btn-ikincil" id="@($"eh-detay-belge-{d.Id}")" href="@BelgeYolu(d)">@EB1.BelgeYazdir</NavLink>
+            </div>
+            <div class="alan">
+                <button type="button" class="btn btn-tehlike" id="@($"eh-detay-geri-al-{d.Id}")"
+                        disabled="@(!StornoAcik(d))" @onclick="() => DetaydanGeriAl(d)">@S.SatirGeriAl</button>
+                @if (!StornoAcik(d))
+                {
+                    @* UX-S30: kilitli düğme sebebini söyler. *@
+                    <span class="metin-kucuk metin-soluk" id="@($"eh-detay-geri-al-kilit-{d.Id}")">
+                        @M.GeriAlKapali @GeriAlKilitSebebi(d)
+                    </span>
+                }
+            </div>
+        </div>
+    }
+</Cekmece>
+
+@* ── STORNO onayı (48-A motoru) ── *@
+<ModalPencere Acik="stornoHareket is not null" Baslik="@S.GeriAlBaslik" Kapat="StornoKapat">
+    <div class="form-dikey">
+        <p id="eh-storno-onay">@S.GeriAlOnay</p>
+        <GerekceAlani Id="eh-storno-gerekce" Etiket="@S.GeriAlGerekce" @bind-Deger="stornoGerekce">
+            <div class="satir">
+                <button class="btn btn-ikincil esnek" id="eh-storno-vazgec" @onclick="StornoKapat"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+                <button class="btn btn-tehlike esnek" id="eh-storno-onayla"
+                        disabled="@(kaydediliyor || !context)" @onclick="StornoUygula">@Dil.T.Kabuk.Onayla</button>
+            </div>
+            @if (!context)
+            {
+                <span class="metin-kucuk metin-soluk" id="eh-storno-kilit">@string.Format(Dil.T.Duzeltme.EnAzKarakter, 20)</span>
+            }
+        </GerekceAlani>
+        <HataBandi Mesaj="@stornoHata" />
+    </div>
+</ModalPencere>
+
+@code {
+    // Maden bakiyesi sözleşmesi ORTAK: Kuyumcu.Core/Sozlesmeler/MadenSozlesmeleri.cs
+
+
+    // UX-4c madde 10 / UX-S31 — ayar listesi TEK KAYNAKTAN (Kuyumcu.Core).
+    // Eskiden bu dizi burada, Urunler.razor'da ve Islemler.razor'da ÜÇ KEZ elle
+    // yazılıydı ve içerikleri farklıydı.
+    private static readonly string[] Ayarlar = Kuyumcu.Core.Domain.Ayarlar.EkranSecenekleri;
+
+    /// <summary>
+    /// PAKET S3-5 · UX-S31 — seçici DEĞERİ ayar kodudur (gövdeye K22 gider,
+    /// sunucu sözleşmesi değişmez), GÖRÜNEN metin ayarın adıdır ("22 Ayar").
+    /// Giriş ve çıkış çekmecesi aynı diziden beslenir (UX-S26).
+    /// </summary>
+    private IReadOnlyList<SecenekOgesi> AyarSecenekleri =>
+        [.. Ayarlar.Select(a => new SecenekOgesi(a, KurKaynakAdi.AyarAdi(a)))];
+
+    /// <summary>PAKET S3-5 metinleri (ayrı sözlük dosyası; TR+EN).</summary>
+    private KurVitrinEmanetMetinleri M => KurVitrinEmanetSozlugu.Al(Dil.Dil);
+
+    // ── PAKET P-65: kilitli düğmenin sebebi (UX-S30) — kilit KOŞULU DEĞİŞMEDİ, yalnız açıklandı ──
+    private OnayKilitMetinleri OnayM => OnayKilitSozlugu.Al(Dil.Dil);
+
+    /// <summary>"+ Emanet Al" neden kapalı; açıksa null.</summary>
+    private string? GirisKilitSebebi =>
+        string.IsNullOrEmpty(cariId) ? OnayM.EmanetMusteriSecilmedi
+        : kur is null ? OnayM.EmanetKurYok
+        : null;
+
+    /// <summary>
+    /// Doğrulayıcı 28.09 (DÜŞÜK): #e-kilit iade düğmesinin sebebini yazar. Giriş
+    /// düğmesi ona yalnız İKİ SEBEP AYNIYSA bağlanır (ör. müşteri seçilmedi);
+    /// aksi hâlde ekran okuyucu girişe iadenin sebebini okurdu. title yine var.
+    /// </summary>
+    private string? GirisAciklayan =>
+        GirisKilitSebebi is not null && GirisKilitSebebi == CikisKilitSebebi ? "e-kilit" : null;
+
+    /// <summary>
+    /// Tasarım hakemi 28.09 (KRİTİK): müşteri telefonla da bulunur — telefon
+    /// seçeneğin ikinci satırı (AltBilgi) ve Secici yerel süzgeci onu da arar.
+    /// </summary>
+    private List<SecenekOgesi> CariSecenekleri =>
+        cariler.Select(c => new SecenekOgesi(c.Id, c.Ad,
+            string.IsNullOrWhiteSpace(c.Telefon) ? null : c.Telefon.Trim())).ToList();
+
+    /// <summary>
+    /// "Emanet iade et" neden kapalı; açıksa null. Giriş sebebini de kapsar.
+    /// PAKET EMANET-1: sebep TEK kısa cümle ("Bu müşterinin emaneti yok.") —
+    /// Kilit koşulu MADEN BAZLI (doğrulayıcı bulgusu, 25.09): yalnız gümüş
+    /// emaneti olan müşteride `mevcutHasGramBakiye` (YALNIZ ALTIN) 0 döner;
+    /// iade, herhangi bir madenin 4 haneye yuvarlanmış neti &gt; 0 ise açıktır.
+    /// </summary>
+    private string? CikisKilitSebebi =>
+        GirisKilitSebebi ?? (yukleniyor ? S.Yukleniyor : ozetBilinmiyor ? S.BilgiAlinamadi
+            : IadeEdilecekVar ? null : TozArtikVar ? S.IadeCokKucuk : S.IadeYok);
+
+    /// <summary>
+    /// PAKET EMANET-1 (doğrulayıcı 27.09, ORTA): sunucunun iade alt sınırı —
+    /// EmanetModulu.cs çıkış DTO'su <c>HasGrami [Range(0.001, …)]</c>. Bunun
+    /// altındaki artık (ör. 0,0005 has) ekranda yazılır ama iade EDİLEMEZ;
+    /// düğme açık kalsaydı kullanıcıya hiç tamamlanamayacak bir iş sunulurdu.
+    /// </summary>
+    private const decimal IadeAltSinir = 0.001m;
+
+    /// <summary>Bu net sunucunun kabul edeceği bir iade mi? (≥ 0,001)</summary>
+    private static bool IadeEdilebilir(decimal gram) => gram >= IadeAltSinir;
+
+    /// <summary>
+    /// Pozitif ve sıfıra yuvarlanmayan ama iade alt sınırının altında kalan
+    /// artık var mı? Varsa kilit sebebi "Kalan miktar iade için çok küçük."
+    /// </summary>
+    private bool TozArtikVar =>
+        madenBakiyeleri.Any(m => m.Gram > 0m && !SifirMi(m.Gram))
+        || (ElimizdekiHas > 0m && !SifirMi(ElimizdekiHas));
+
+    /// <summary>İade çekmecesinin maden seçicisi: yalnız iade edilebilir madenler.</summary>
+    private List<Kuyumcu.Core.Sozlesmeler.MadenBakiyeSatiri> IadeMadenleri =>
+        madenBakiyeleri.Where(m => IadeEdilebilir(m.Gram)).ToList();
+
+    /// <summary>
+    /// Yuvarlanmış neti sıfır OLMAYAN madenler (iade çekmecesinin listesi ve
+    /// seçicisi): "Altın: 0,0000 has" satırı basılmaz, sıfır maden seçilemez.
+    /// </summary>
+    private List<Kuyumcu.Core.Sozlesmeler.MadenBakiyeSatiri> DoluMadenler =>
+        madenBakiyeleri.Where(m => !SifirMi(m.Gram)).ToList();
+
+    /// <summary>Has gram 4 haneye yuvarlanınca sıfır mı? (6 hane saklanır; 0,00004 = yok.)</summary>
+    /// <remarks>
+    /// Yuvarlama <see cref="Bicim.Has"/> ("F4") ile AYNI kural: yarım UZAĞA
+    /// (doğrulayıcı 27.09: ToEven iken 0,00005 "Emaneti yok" derken Bicim
+    /// "0,0001 has" yazıyordu — iki farklı kural).
+    /// </remarks>
+    private static bool SifirMi(decimal gram) => Math.Round(gram, 4, MidpointRounding.AwayFromZero) == 0m;
+
+    /// <summary>
+    /// İade edilecek bir şey var mı: herhangi bir madenin (altın, gümüş…)
+    /// neti sunucunun iade alt sınırına (0,001) ulaşıyorsa evet. Liste
+    /// boş/null ise altın alanına düşülür.
+    /// </summary>
+    private bool IadeEdilecekVar =>
+        madenBakiyeleri.Any(m => IadeEdilebilir(m.Gram)) || IadeEdilebilir(ElimizdekiHas);
+
+    // ── PAKET EMANET-1 — ZORUNLU ÖNCE ───────────────────────────────────────
+    /// <summary>Bu paketin sade metinleri (ayrı sözlük dosyası; TR+EN).</summary>
+    private EmanetSadeMetinleri S => EmanetSadeSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// Ayrı sunucu arama kutusu yalnız liste sınıra değdiğinde (50) ya da
+    /// kullanıcı zaten bir sorgu yazmışken görünür — aksi hâlde seçicinin kendi
+    /// araması eksiksizdir.
+    /// </summary>
+    private bool SunucuAramasiGorunur => CariListesiSinirda || !string.IsNullOrEmpty(cariArama);
+
+    private async Task CariAramaDegisti(string? v)
+    {
+        cariArama = v ?? "";
+        await CarileriYukle();
+    }
+
+    /// <summary>
+    /// Seçilen müşterinin emanet özeti. Sıfırsa "Emaneti yok" (0,0000 has
+    /// YAZILMAZ); has 4 hane yalnız sıfır değilse. Birden çok maden varsa
+    /// madenler ayrı yazılır (K20-2: altın ile gümüş aynı sayıya karışmaz).
+    /// </summary>
+    private string OzetMetni => string.Join(" · ", OzetParcalari);
+
+    /// <summary>Özetin maden parçaları (tek maden/boş durumda tek parça).</summary>
+    private List<string> OzetParcalari
+    {
+        get
+        {
+            // 28.09 canlı ölçüm (UX-S28): yükleme sürerken ya da ilk yükleme HATA verdiyse
+            // "Emaneti yok" DENMEZ — bilinmeyen değer boş sayılmaz.
+            if (yukleniyor) return [S.Yukleniyor];
+            if (ozetBilinmiyor) return ["—"];
+            var dolu = madenBakiyeleri.Where(m => !SifirMi(m.Gram)).ToList();
+            // P-DIL-BORC-KASA (Y18): altın bırakıldığı gibi ("22 ayar · 12,50 g"); diğer madenler eskisi gibi.
+            if (OzetBirakildigi)
+                return [.. EmanetDiliSozlugu.Parcalar(birakildigiGibi!, Dil.Dil),
+                        .. dolu.Where(m => m.Maden != Kuyumcu.Core.Domain.Maden.Altin)
+                               .Select(m => $"{KurKaynakAdi.MadenAdi(m.Maden, m.MadenAdi)} {Bicim.Has(m.Gram)}")];
+            if (dolu.Count > 1)
+                return dolu.Select(m => $"{KurKaynakAdi.MadenAdi(m.Maden, m.MadenAdi)} {Bicim.Has(m.Gram)}").ToList();
+            // Tek maden: altın varsayılandır, adı yazılmaz; altın DEĞİLSE adı
+            // yazılır — gümüş, altın has gibi okunmasın.
+            if (dolu.Count == 1)
+                return [dolu[0].Maden == Kuyumcu.Core.Domain.Maden.Altin
+                    ? Bicim.Has(dolu[0].Gram)
+                    : $"{KurKaynakAdi.MadenAdi(dolu[0].Maden, dolu[0].MadenAdi)} {Bicim.Has(dolu[0].Gram)}"];
+            return [!SifirMi(ElimizdekiHas) ? Bicim.Has(ElimizdekiHas) : S.EmanetiYok];
+        }
+    }
+
+    /// <summary>
+    /// Tablo hücresi: <see cref="Bicim.Has"/> ile AYNI sayı kuralı (tek kaynak,
+    /// P-57), birim eki olmadan — birim sütun başlığında ("Has gram") yazılı.
+    /// </summary>
+    private static string HasSayi(decimal n)
+    {
+        var metin = Bicim.Has(n);
+        var birim = " " + Kuyumcu.Core.I18n.DilEkranSozlugu.HasBirimi(Bicim.Dil);   // DIL-EKRAN: birim etkin dilden (TR has, EN fine)
+        return metin.EndsWith(birim, StringComparison.Ordinal) ? metin[..^birim.Length] : metin;
+    }
+
+    /// <summary>Giriş çekmecesinin isteğe bağlı bölümü açık mı gelmeli?</summary>
+    private bool GirisDetayAcik =>
+        girisDetayYapiskan || gTas > 0 || !string.IsNullOrEmpty(gAciklama) || girisForm.Var("e-tas");
+
+    // Doğrulayıcı 28.09 (ORTA): katlanır bölüm bir kez açılması gerektiği için
+    // açıldıysa (değer girildi) çekmece kapanana dek AÇIK kalır. Değer silinince
+    // odak içindeyken kapanmaz; kullanıcının kendi aç/kapa seçimi de korunur
+    // (Blazor `open`'ı yalnız değer DEĞİŞİNCE yazar). Çekmece açılışında sıfırlanır.
+    private bool girisDetayYapiskan, cikisHesapYapiskan, cikisNotYapiskan;
+
+    private bool CikisHesapAcik => cikisHesapYapiskan || cGram > 0;
+    private bool CikisNotAcik => cikisNotYapiskan || !string.IsNullOrEmpty(cAciklama);
+
+    private void GirisTasDegisti(decimal? v)
+    {
+        gTas = v ?? 0m;
+        if (gTas > 0) girisDetayYapiskan = true;
+    }
+
+    private void GirisAciklamaDegisti(string? v)
+    {
+        gAciklama = v ?? "";
+        if (gAciklama.Length > 0) girisDetayYapiskan = true;
+    }
+
+    private void CikisAciklamaDegisti(string? v)
+    {
+        cAciklama = v ?? "";
+        if (cAciklama.Length > 0) cikisNotYapiskan = true;
+    }
+
+    // ── PAKET S3-5 — AYRINTI ÇEKMECESİ ──────────────────────────────────────
+    private HareketVeri? detayHareket;
+
+    /// <summary>Kilitli "müşteri" alanı: seçili carinin adı (sistem biliyor, UX-S21).</summary>
+    private string SeciliCariAdi => cariler.FirstOrDefault(c => c.Id == cariId)?.Ad ?? M.Bilinmiyor;
+
+    /// <summary>
+    /// Doğrulayıcı 28.09 (DÜŞÜK): Eski kayıtlarda satırın madeni. Altın dışı satır her
+    /// zaman etiketlenir; geçmişte birden çok maden varsa altın satırı da etiketlenir
+    /// (aynı sütunda iki maden etiketsiz yan yana durmasın). Maden bilinmiyorsa
+    /// uydurulmaz (null → etiket yok; Ayrıntı çekmecesi "—" yazar).
+    /// </summary>
+    private string? SatirMadenAdi(HareketVeri h)
+    {
+        if (string.IsNullOrWhiteSpace(h.Maden)) return null;
+        var cokMaden = hareketler.Select(x => x.Maden).Where(m => !string.IsNullOrWhiteSpace(m)).Distinct().Skip(1).Any();
+        return h.Maden != Kuyumcu.Core.Domain.Maden.Altin || cokMaden ? KurKaynakAdi.MadenAdi(h.Maden) : null;
+    }
+
+    /// <summary>Satırın görünen türü: ters kayıt "Geri alma kaydı" diye okunur.</summary>
+    private string TurAdi(HareketVeri h) =>
+        h.StornoKaynakId is not null ? M.GeriAlmaKaydi
+        : h.Tur == "EMANET_GIRIS" ? Dil.T.Emanet.GirisTuru : Dil.T.Emanet.CikisTuru;
+
+    /// <summary>
+    /// Doğrulayıcı 28.09 (K8): 48-A motoru ters kaydın açıklamasını "STORNO: gerekçe"
+    /// diye yazar (sunucu metni DEĞİŞMEZ). Ekranda yalnız sunum çevrilir:
+    /// "Geri alma: gerekçe". Ters kayıt olmayan satırın metnine dokunulmaz.
+    /// </summary>
+    private const string StornoOneki = "STORNO: ";
+    private string? AciklamaGoster(HareketVeri h) =>
+        h.StornoKaynakId is not null && h.Aciklama is { } a && a.StartsWith(StornoOneki, StringComparison.Ordinal)
+            ? string.Format(S.GeriAlmaAciklama, a[StornoOneki.Length..])
+            : h.Aciklama;
+
+    /// <summary>UX-S30: geri alınamayan satırın TEK, o satıra özgü sebebi (jargonsuz).</summary>
+    private string GeriAlKilitSebebi(HareketVeri h) =>
+        kur is null ? S.KurYokGeriAl
+        : Stornolandi(h) ? S.NedenGeriAlindi
+        : h.StornoKaynakId is not null ? S.NedenGeriAlmaKaydi
+        : IadeEdildi(h) ? CiftBacakSozlugu.Al(Dil.Dil).EmanetIadeEdildiKilit
+        : h.FisId is not null ? S.NedenFis
+        : S.HareketDegismez;
+
+    private void DetayAc(HareketVeri h) => detayHareket = h;
+
+    /// <summary>PAKET EKSIK-B1-YAZDIR metinleri (Sozlukler.EksikB1.cs).</summary>
+    private EksikB1Metinleri EB1 => EksikB1Sozlugu.Al(Dil.Dil);
+
+    /// <summary>B1-4: emanet teslim belgesinin A4 yolu; "Geri" bu ekrana döner.</summary>
+    private static string BelgeYolu(HareketVeri h) =>
+        $"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.EmanetTeslim}/{h.Id}?donus=%2Femanet";
+    private void DetayKapat() => detayHareket = null;
+
+    /// <summary>
+    /// Ayrıntıdan geri alma: çekmece kapanır, ORTAK storno onayı açılır
+    /// (DoD EK md.4). Kilitli durumda SESSİZCE iş yapmaz (StornoIste kapısı).
+    /// </summary>
+    private void DetaydanGeriAl(HareketVeri h)
+    {
+        if (!StornoAcik(h)) return;
+        detayHareket = null;
+        StornoIste(h);
+    }
+
+    /// <summary>Sunucunun /cari varsayılan sınırı; UX-S29 uyarısının eşiği.</summary>
+    private const int CariLimit = 50;
+
+    private List<CariOzet> cariler = [];
+    private List<HareketVeri> hareketler = [];
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:emanet:emanet-hareket) ─────────────────
+    private IzgaraSiralama? hareketSira;
+    private void HareketSiralandi(IzgaraSiralama? s) => hareketSira = s;
+    // G1 (hasım 08.10): sunucu son 200 hareketi okur; sınıra değdiyse (sinirDegdi) emanet listesi TAM
+    // değildir → sıralama düğmesi çıkmaz, sınır notu yazılır (UX-S29).
+    private bool hareketSinirDegdi;
+    private int hareketSiniri = 200;
+    private bool HareketListeTam => !hareketSinirDegdi;
+    private string? HareketSiraAdi(string ad) => HareketListeTam ? ad : null;
+
+    private IReadOnlyList<IzgaraKolonu<HareketVeri>> HareketKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Emanet.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = HareketSiraAdi("tarih"),
+                HucreSinif = _ => "metin-soluk metin-kucuk emanet-tarih", Deger = h => h.Tarih,
+                Hucre = h => @<text>@Bicim.IsletmeBicim(h.Tarih, "g", System.Globalization.CultureInfo.CurrentCulture)</text> },
+        // PAKET S3-5: 48-A ters kaydı "Geri alma kaydı" diye okunur; altın/gümüş satırda maden adı yazılır.
+        new() { Anahtar = "tur", Baslik = Dil.T.Emanet.Tur, Tur = IzgaraHucreTuru.Rozet, Deger = h => TurAdi(h),
+                Hucre = h => @<text><Rozet Renk="@(h.StornoKaynakId is not null ? "gri" : h.Tur == "EMANET_GIRIS" ? "yesil" : "gri")">@TurAdi(h)</Rozet>@if (SatirMadenAdi(h) is { } madenAdi) {<span class="emanet-satir-maden metin-soluk metin-kucuk">@madenAdi</span>}</text> },
+        // Sütun başlığı "Has gram" birimi söyler; hücrede yalnız sayı.
+        new() { Anahtar = "has", Baslik = Dil.T.Urun.HasGram, ZorunluGorunur = true, SunucuSiralamaAdi = HareketSiraAdi("has"),
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi metin-amber", Deger = h => h.HasGrami,
+                Hucre = h => @<text>@HasSayi(h.HasGrami)</text> },
+        // PAKET P-12 (B-43): açıklama düzeltilebilir (tek alanlı kalıp); GOC-A: ekran sınırı = sunucu (500).
+        new() { Anahtar = "aciklama", Baslik = Dil.T.Emanet.Aciklamasi, HucreSinif = _ => "metin-soluk", Deger = h => h.Aciklama,
+                Hucre = h => @<text>@if (AciklamaDuzenlenebilir(h))
+                {
+                    <SatirIciDuzenle Varlik="emanet-hareket" Alan="aciklama" Id="@h.Id"
+                                     Etiket="@Dil.T.Emanet.Aciklamasi" EnFazla="@AlanSinirlari.HareketAciklama"
+                                     Deger="@h.Aciklama" BosOlabilir="true"
+                                     Kaydediliyor="@(satirKaydedilen == h.Id)"
+                                     Kaydedildi="@(y => AciklamaKaydet(h, y))" />
+                }
+                else
+                {
+                    @(AciklamaGoster(h) ?? "—")
+                }</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = h => @<div class="satir-eylemler emanet-satir-eylem">
+                    @if (Stornolandi(h))
+                    {
+                        <Rozet Renk="gri">@S.GeriAlindi</Rozet>
+                    }
+                    <button type="button" class="btn btn-ikincil btn-kucuk"
+                            id="@($"eh-detay-{h.Id}")" @onclick="() => DetayAc(h)">@M.Ayrinti</button>
+                    @* PAKET EKSIK-B1-YAZDIR (B1-4): emanet teslim belgesi BU ekrandan, iki modda da. *@
+                    <NavLink class="btn btn-ikincil btn-kucuk" id="@($"eh-belge-{h.Id}")" href="@BelgeYolu(h)">@EB1.BelgeYazdir</NavLink>
+                    <button type="button" class="btn btn-ikincil btn-kucuk" disabled="@(!StornoAcik(h))"
+                            id="@($"eh-storno-{h.Id}")"
+                            title="@(StornoAcik(h) ? null : GeriAlKilitSebebi(h))"
+                            @onclick="() => StornoIste(h)">@S.SatirGeriAl</button>
+                </div> },
+    ];
+    private KurVeri? kur;
+    private string cariId = "";
+    private decimal ElimizdekiHas;
+    /// <summary>P-DIL-BORC-KASA (Y18): altın emanetinin bırakıldığı gibi kalanı; null = bilinmiyor (has gösterilir).</summary>
+    private List<EmanetAyarSatiri>? birakildigiGibi;
+
+    /// <summary>Özet bırakıldığı gibi mi yazılır (yükleme bitti, hata yok, ayar biliniyor).</summary>
+    private bool OzetBirakildigi => !yukleniyor && !ozetBilinmiyor && birakildigiGibi is { Count: > 0 };
+
+    /// <summary>Altın emanetinin metni: "22 ayar · 12,50 g" ya da (bilinmiyorsa) has.</summary>
+    private string AltinElimizdeMetni => OzetBirakildigi
+        ? string.Join(" + ", EmanetDiliSozlugu.Parcalar(birakildigiGibi!, Dil.Dil))
+        : Bicim.Has(ElimizdekiHas);
+
+    /// <summary>İade bırakıldığı gibi mi girilir (altın seçili ve ayar biliniyor).</summary>
+    private bool IadeBirakildigi => cMaden == Kuyumcu.Core.Domain.Maden.Altin && birakildigiGibi is { Count: > 0 };
+    private IReadOnlyList<EmanetAyarSatiri> IadeAyarlari => birakildigiGibi ?? [];
+    private EmanetAyarSatiri? SeciliIadeAyari => IadeAyarlari.FirstOrDefault(a => a.AyarId == cAyar);
+    private decimal SeciliAyarGram => SeciliIadeAyari?.Gram ?? 0m;
+    /// <summary>Elimizdekinden fazla iade (kipine göre gram ya da has ile).</summary>
+    private bool IadeFazla => IadeBirakildigi ? cGram > SeciliAyarGram : cHas > SeciliMadenHas;
+
+    /// <summary>
+    /// Bırakıldığı gibi kipte has: ayarın tamamı geri veriliyorsa kalan has BİREBİR (emanet tam kapanır),
+    /// değilse ayar + gramdan (Core HasHesap — sunucuyla aynı fonksiyon).
+    /// </summary>
+    private void BirakildigiHasKur()
+    {
+        cHas = SeciliIadeAyari is { } a && cGram == a.Gram ? a.Has : HesaplananIadeHas;
+        hamMetin.Remove("c-has");
+    }
+
+    private void IadeAyarDegisti()
+    {
+        cGram = SeciliAyarGram > 0m ? SeciliAyarGram : null;
+        BirakildigiHasKur();
+    }
+    private List<Kuyumcu.Core.Sozlesmeler.MadenBakiyeSatiri> madenBakiyeleri = [];
+    /// <summary>Çıkışın madeni (K20-9) — o madenin netinden fazlası verilemez.</summary>
+    private string cMaden = Kuyumcu.Core.Domain.Maden.Altin;
+
+    /// <summary>
+    /// Seçili madenin elimizdeki net emaneti.
+    ///
+    /// ⚠ Liste BOŞSA (hiç emanet yok ya da sunucu bu alanı henüz göndermiyor)
+    /// ALTIN için `mevcutHasGramBakiye`ye düşülür: o alan artık ZATEN yalnız
+    /// altındır. Sıfır dönseydi kuyumcu kendi altın emanetini iade edemez,
+    /// düğme sebepsiz kilitli kalırdı.
+    /// </summary>
+    private decimal SeciliMadenHas =>
+        madenBakiyeleri.FirstOrDefault(x => x.Maden == cMaden)?.Gram
+        ?? (cMaden == Kuyumcu.Core.Domain.Maden.Altin ? ElimizdekiHas : 0m);
+
+    private bool yukleniyor, kaydediliyor, girisAcik, cikisAcik;
+    private string? listeHata, kurHata, girisHata, cikisHata, cariHata;
+
+    // ── UX-1-C0/C2 ──────────────────────────────────────────────────────────
+    private readonly FormDurumu girisForm = new();
+    private readonly FormDurumu cikisForm = new();
+    private string? basari;
+    private int basariJeton;
+    private void BasariGoster(string m) { basari = m; basariJeton++; }
+
+    private HareketVeri? stornoHareket;
+    private string stornoGerekce = "";
+    private string? stornoHata;
+
+    /// <summary>Bu satır daha önce stornolandı mı (listede ters kaydı var mı)?</summary>
+    private bool Stornolandi(HareketVeri h) => hareketler.Any(x => x.StornoKaynakId == h.Id);
+
+    /// <summary>
+    /// 48-A kapsamı: EMANET_GIRIS/EMANET_CIKIS stornolanabilir türlerdendir.
+    /// Kapalı kalanlar: ters kaydın KENDİSİ, zaten stornolanmış satır, çok
+    /// bacaklı fiş ve güncel kurun bulunmadığı durum — her biri gerçek gerekçedir.
+    /// </summary>
+    private bool StornoAcik(HareketVeri h) =>
+        kur is not null && h.StornoKaynakId is null && h.FisId is null && !Stornolandi(h)
+        && !IadeEdildi(h);
+
+    /// <summary>
+    /// PAKET CIFT-BACAK tur 2 (DoD EK md.1 / UX-S30): iadesi yapılmış emanetin
+    /// GİRİŞİ geri alınamaz — sunucu 409 verir (StornoServisi, elde kalan kapısı).
+    /// Düğme onaydan SONRA değil, ÖNCEDEN kilitlenir ve sebebini yazar. Kural
+    /// sunucununkiyle aynıdır: o madende elde kalan &lt; girişin has'ı.
+    /// ⚠ Tur 3 (canlı ölçüm 30.09): sunucu madenBakiyeleri'nde bakiyesi 0 olan
+    /// madeni YAZMAZ (EmanetServisi: gram != 0 süzgeci). Listede olmayan maden
+    /// = elde 0 (iade formunun SeciliMadenHas kuralıyla aynı); null sayılsaydı tam
+    /// iadesi yapılmış gümüşün girişi kilitlenmez, onaydan sonra 409 alırdı.
+    /// </summary>
+    private bool IadeEdildi(HareketVeri h) =>
+        h.Tur == "EMANET_GIRIS" && h.StornoKaynakId is null && !Stornolandi(h)
+        && EldekiMaden(h.Maden) < h.HasGrami;
+
+    private decimal EldekiMaden(string? maden)
+    {
+        var m = string.IsNullOrWhiteSpace(maden) ? Kuyumcu.Core.Domain.Maden.Altin : maden;
+        return madenBakiyeleri.FirstOrDefault(x => x.Maden == m)?.Gram
+            ?? (m == Kuyumcu.Core.Domain.Maden.Altin ? ElimizdekiHas : 0m);
+    }
+
+    // ── PAKET P-12 (B-43) — açıklama düzeltme ───────────────────────────────
+    /// <summary>Satır içi kaydetme sırasında kilitlenen satırın kimliği.</summary>
+    private string? satirKaydedilen;
+
+    /// <summary>
+    /// Sunucudaki kuralın AYNISI (EmanetServisi.HareketDuzelt): ters kaydın
+    /// kendisi ve stornolanmış satır kilitlidir.
+    /// </summary>
+    private bool AciklamaDuzenlenebilir(HareketVeri h) =>
+        h.StornoKaynakId is null && !Stornolandi(h);
+
+    /// <summary>PATCH /emanet/hareketler/{id} — yalnız açıklama gider.</summary>
+    private async Task AciklamaKaydet(HareketVeri h, string yeni)
+    {
+        satirKaydedilen = h.Id;
+        listeHata = null;
+        try
+        {
+            await Api.PatchAsync($"/emanet/hareketler/{h.Id}",
+                new { aciklama = string.IsNullOrWhiteSpace(yeni) ? null : yeni });
+            BasariGoster(Dil.T.Emanet.AciklamaGuncellendi);
+            await HareketleriTazele();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata "kayıt yok"a çevrilmez — liste DURUR, bant çıkar.
+            listeHata = ex.Message;
+        }
+        satirKaydedilen = null;
+    }
+
+    private string cariArama = "";
+    private bool CariListesiSinirda => cariler.Count >= CariLimit;
+
+    private string gAyar = "K22", gAciklama = "";
+    private decimal gGram, gTas;
+
+    private decimal cHas;
+    /// <summary>
+    /// Doğrulayıcı 28.09 (KRİTİK, X5): kullanıcı iade has'ını ELLE yazdı mı?
+    /// Yazmadıysa varsayılan ("tümünü iade et") seçili madenin netini izler;
+    /// maden değişince yeni madenin netine kurulur. Elle yazdıysa dokunulmaz.
+    /// </summary>
+    private bool cHasElle;
+    private string cAciklama = "";
+    private string cAyar = "K22";
+    private decimal? cGram;   // doğrulayıcı 28.09 (DÜŞÜK): silinince "0" değil BOŞ görünür
+
+    /// <summary>Ayar + gramdan türetilen has gram (yalnız gösterim ve ön-doldurma).</summary>
+    private decimal HesaplananIadeHas =>
+        Kuyumcu.Core.Domain.Ayarlar.Bul(cAyar) is { } a
+            ? HasHesap.ToHasGram(cGram ?? 0m, a)
+            : 0m;
+
+    /// <summary>Ayar ya da gram değişince iade edilecek has gramı doldurur.</summary>
+    /// <summary>Maden seçilince ayar listesi o madene çekilir (UX-S24).</summary>
+    private void CikisMadeniDegisti()
+    {
+        if (Kuyumcu.Core.Domain.Ayarlar.MadenBul(cAyar) != cMaden)
+        {
+            var ilk = Kuyumcu.Core.Domain.Ayarlar.MadeninAyarlari(cMaden).FirstOrDefault();
+            if (ilk is not null) cAyar = ilk.Id;
+        }
+        VarsayilanIadeHasKur();
+    }
+
+    /// <summary>
+    /// Gram girilmişse has ayar+gramdan; girilmemişse ve kullanıcı elle yazmadıysa
+    /// seçili madenin neti ("tümünü iade et"). Altının neti gümüşe TAŞINMAZ.
+    /// </summary>
+    private void VarsayilanIadeHasKur()
+    {
+        if (cGram > 0) { cHas = HesaplananIadeHas; hamMetin.Remove("c-has"); }
+        else if (!cHasElle) { cHas = SeciliMadenHas; hamMetin.Remove("c-has"); }
+    }
+
+    private void IadeHasHesapla()
+    {
+        // UX-S22 — aynı ekranda aynı sorunun İKİ cevabı olamaz: iade ayarı
+        // seçilince madeni de o ayar belirler (K18 → altın, G925 → gümüş).
+        // Ayarın madeni kullanıcının seçtiği madenle çelişemesin diye maden
+        // AYARDAN türetilir; maden seçicisi yalnız listeyi daraltır.
+        var ayarinMadeni = Kuyumcu.Core.Domain.Ayarlar.MadenBul(cAyar);
+        var madenDegisti = ayarinMadeni is not null && ayarinMadeni != cMaden;
+        if (ayarinMadeni is not null) cMaden = ayarinMadeni;
+        if (cGram > 0) { cHas = HesaplananIadeHas; hamMetin.Remove("c-has"); }
+        // Doğrulayıcı 28.09 (ORTA): gram silinince (ya da maden değişince) has
+        // bayat kalmaz — kullanıcı elle yazmadıysa "tümünü iade et" varsayılanına döner.
+        else VarsayilanIadeHasKur();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Task.WhenAll(CarileriYukle(), KuruYukle());
+    }
+
+    /// <summary>
+    /// Müşteri araması. UX-4c madde 10: sunucu varsayılanı 50 kayıttır; sorgu
+    /// gönderilmeden 51. müşteriye ulaşmak İMKÂNSIZDI. UX-S28: hata sessizce
+    /// "müşteri yok"a çevrilmez.
+    /// </summary>
+    private async Task CarileriYukle()
+    {
+        cariHata = null;
+        try
+        {
+            var q = string.IsNullOrWhiteSpace(cariArama)
+                ? $"/cari?aktif=true&limit={CariLimit}"
+                : $"/cari?aktif=true&q={Uri.EscapeDataString(cariArama.Trim())}&limit={CariLimit}";
+            cariler = await Api.GetAsync<List<CariOzet>>(q);
+            // QA turu 2: süzgeç değişince seçili müşteri listeden düşüyor ve
+            // seçim "Müşteri seçin"e dönüyordu — altındaki veri ise ESKİ
+            // müşterinindi. Seçili kayıt listede DEĞİLSE seçim temizlenir ve
+            // içerik de temizlenir; ikisi asla ayrışmaz.
+            if (!string.IsNullOrEmpty(cariId) && cariler.All(c => c.Id != cariId))
+            {
+                cariId = "";
+                hareketler = []; hareketSinirDegdi = false;
+                ElimizdekiHas = 0;
+                birakildigiGibi = null;
+            }
+        }
+        // PAKET S3-5 · UX-S28: hata "müşteri yok"a çevrilmez — son bilinen
+        // liste YERİNDE kalır, hata bandı ayrı basılır.
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            cariHata = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Her emanet hareketi bir kur anlık görüntüsüne bağlanır (kurSnapshotId
+    /// zorunlu). Kur alınamıyorsa kayıt YAPILAMAZ — sessizce sıfır kurla
+    /// yazmak has hesabını bozardı.
+    /// </summary>
+    private async Task KuruYukle()
+    {
+        kurHata = null;
+        try { kur = await Api.GetAsync<KurVeri>("/kur/guncel"); }
+        // PAKET S3-5 · UX-S28: son bilinen kur düşürülmez; bant ayrı basılır.
+        catch (ApiHata) { kurHata = Dil.T.Emanet.KurYok; }
+    }
+
+    private async Task CariDegisti()
+    {
+        hareketler = []; hareketSinirDegdi = false;
+        ElimizdekiHas = 0;
+        madenBakiyeleri = [];
+        birakildigiGibi = null;
+        if (string.IsNullOrEmpty(cariId)) return;
+
+        yukleniyor = true;
+        listeHata = null;
+        ozetBilinmiyor = false;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
+            var y = await Api.GetAsync<EmanetYaniti>(SubeliSorgu.Ekle($"/emanet/{cariId}", Oturum));
+            hareketler = y.Hareketler ?? [];
+            hareketSinirDegdi = y.SinirDegdi;
+            hareketSiniri = y.Limit;
+            ElimizdekiHas = y.MevcutHasGramBakiye;      // YALNIZ ALTIN
+            madenBakiyeleri = y.MadenBakiyeleri ?? [];
+            birakildigiGibi = y.BirakildigiGibi;        // P-DIL-BORC-KASA (Y18)
+            // Çıkış madeni varsayılanı: bakiyesi olan İLK maden (UX-S22 — tek
+            // seçenek varsa seçici gösterilmez, değer zaten dolu gelir).
+            if (madenBakiyeleri.Count > 0 && madenBakiyeleri.All(x => x.Maden != cMaden))
+                cMaden = madenBakiyeleri[0].Maden;
+            // Seçili madende iade edilecek yoksa, bakiyesi olan İLK madene geç
+            // (yalnız gümüş emaneti olan müşteride çıkış GÜMÜŞ ile açılır).
+            if (!madenBakiyeleri.Any(x => x.Maden == cMaden && IadeEdilebilir(x.Gram))
+                && madenBakiyeleri.FirstOrDefault(x => IadeEdilebilir(x.Gram)) is { } pozitif)
+                cMaden = pozitif.Maden;
+        }
+        // Doğrulayıcı 28.09 (DÜŞÜK): bozuk JSON da hata bandına düşer (HareketleriTazele ile aynı).
+        catch (Exception ex) when (ex is ApiHata or JsonException) { listeHata = ex.Message; ozetBilinmiyor = true; }
+        yukleniyor = false;
+    }
+
+    private void GirisKapat() => girisAcik = false;
+    private void CikisKapat() => cikisAcik = false;
+
+    /// <summary>
+    /// Doğrulayıcı 28.09 (DÜŞÜK): alan düzelince (ortak kutu kendi hatasını
+    /// silmiş, form artık geçerli) "Form eksik ya da hatalı" bandı bir sonraki
+    /// Kaydet'i beklemeden kalkar.
+    /// </summary>
+    private void GirisGramDegisti(decimal? v)
+    {
+        gGram = v ?? 0m;
+        if (girisForm.Gecerli) girisHata = null;
+    }
+
+    private void CikisGramDegisti(decimal? v)
+    {
+        cGram = v;
+        if (cGram > 0) cikisHesapYapiskan = true;
+        IadeHasHesapla();
+        if (IadeBirakildigi) BirakildigiHasKur();
+        if (cikisForm.Gecerli) cikisHata = null;
+    }
+
+    private void CikisHasDegisti(decimal? v)
+    {
+        cHas = v ?? 0m;
+        cHasElle = true;
+        if (cikisForm.Gecerli) cikisHata = null;
+    }
+
+    /// <summary>İlk yükleme hata verdi: özet ve iade kilidi "emaneti yok" DEMEZ (UX-S28).</summary>
+    private bool ozetBilinmiyor;
+
+    /// <summary>
+    /// PAKET P-12: listeyi YENİDEN çeker; hata hâlinde satırlar DÜŞÜRÜLMEZ
+    /// (UX-S28 / Anayasa md.1) — bant ayrıca çıkar.
+    /// </summary>
+    private async Task HareketleriTazele()
+    {
+        if (string.IsNullOrEmpty(cariId)) return;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
+            var y = await Api.GetAsync<EmanetYaniti>(SubeliSorgu.Ekle($"/emanet/{cariId}", Oturum));
+            hareketler = y.Hareketler ?? [];
+            ElimizdekiHas = y.MevcutHasGramBakiye;
+            madenBakiyeleri = y.MadenBakiyeleri ?? [];
+            birakildigiGibi = y.BirakildigiGibi;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { listeHata = ex.Message; }
+    }
+
+    private void GirisModalAc()
+    {
+        girisHata = null;
+        gAyar = "K22";
+        gGram = 0;
+        gTas = 0;
+        gAciklama = "";
+        girisDetayYapiskan = false;
+        hamMetin.Clear();
+        girisAcik = true;
+    }
+
+    private async Task GirisKaydet()
+    {
+        // QA turu 2: "gram 0 → Kaydet: istek yok, mesaj yok".
+        girisForm.Temizle();
+        HamDenetle(girisForm, "e-gram", () => gGram = 0);
+        HamDenetle(girisForm, "e-tas", () => gTas = 0);
+        girisForm.Pozitif("e-gram", gGram, Dil);
+        if (gTas >= gGram && gGram > 0) girisForm.Ekle("e-tas", Dil.T.Emanet.TasGramdanKucuk);
+        if (!girisForm.Gecerli) { girisHata = Dil.T.Kabuk.FormEksik; return; }
+
+        girisHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/emanet/giris", new
+            {
+                cariId,
+                ayarId = gAyar,
+                gramAgirlik = gGram,
+                tasAgirlik = gTas > 0 ? gTas : (decimal?)null,
+                aciklama = string.IsNullOrWhiteSpace(gAciklama) ? null : gAciklama.Trim(),
+                kurSnapshotId = kur!.Id,
+            });
+            girisAcik = false;
+            BasariGoster(Dil.T.Emanet.GirisKaydedildi);
+            await CariDegisti();
+        }
+        catch (ApiHata ex) { girisHata = girisForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string> { ["GramAgirlik"] = "e-gram", ["TasAgirlik"] = "e-tas" }); }   // TOPLU-7B: tek yazım
+        kaydediliyor = false;
+    }
+
+    private void CikisModalAc()
+    {
+        cikisHata = null;
+        cAciklama = "";
+        cAyar = "K22";
+        // Ayar seçili madenle çelişmesin (gümüş emanette K22 açılmaz).
+        if (Kuyumcu.Core.Domain.Ayarlar.MadenBul(cAyar) != cMaden
+            && Kuyumcu.Core.Domain.Ayarlar.MadeninAyarlari(cMaden).FirstOrDefault() is { } ilkAyar)
+            cAyar = ilkAyar.Id;
+        cHas = SeciliMadenHas;   // "tümünü iade et" varsayılanı — seçili madenin neti
+        cHasElle = false;
+        cGram = null;
+        cikisHesapYapiskan = false;
+        cikisNotYapiskan = false;
+        hamMetin.Clear();
+        // P-DIL-BORC-KASA (Y18): bırakıldığı gibi kipte "tümünü iade et" = ilk ayarın kalan gramı.
+        if (IadeBirakildigi)
+        {
+            cAyar = IadeAyarlari[0].AyarId;
+            cGram = IadeAyarlari[0].Gram;
+            BirakildigiHasKur();
+        }
+        cikisAcik = true;
+    }
+
+    // ── Doğrulayıcı 28.09 (t30, KRİTİK): çözülemeyen/belirsiz sayı varken POST YOK ──
+    /// <summary>Alan kimliği → kutuya son yazılan ham metin (HamMetinKabi doldurur).</summary>
+    private readonly Dictionary<string, string> hamMetin = new();
+
+    /// <summary>
+    /// Kutuda çözülemeyen ya da belirsiz ("1.500") metin varsa Gram'ın Deger'i SON
+    /// GEÇERLİ değerde kalır; o değer gönderilmez. Mesaj Gram'ın kendi alan altı
+    /// mesajıyla AYNI metin (tek kaynak: SayiCozumu.Mesaj / Form.SayiAnlasilmadi).
+    /// Sayfa yeniden çizilince ortak alan kutuyu eski değere döndürür; o eski değer
+    /// (ör. "tümünü iade et" varsayılanı) bir sonraki Kaydet'te sessizce gitmesin
+    /// diye alanın değeri SIFIRLANIR (fail-closed): kutu 0 gösterir, mesaj altında.
+    /// </summary>
+    private void HamDenetle(FormDurumu form, string alan, Action sifirla)
+    {
+        if (!hamMetin.TryGetValue(alan, out var ham)) return;
+        var cozum = Kuyumcu.Web.Bilesenler.Form.FormAlani.SayiCoz(ham);
+        string? mesaj = cozum.Sonuc switch
+        {
+            Kuyumcu.Web.Bilesenler.Form.FormAlani.SayiSonucu.Belirsiz => cozum.Mesaj(Dil.Dil),
+            Kuyumcu.Web.Bilesenler.Form.FormAlani.SayiSonucu.Gecersiz => Dil.T.Form.SayiAnlasilmadi,
+            _ => null,
+        };
+        if (mesaj is null) return;
+        form.Ekle(alan, mesaj);
+        sifirla();
+        hamMetin.Remove(alan);
+    }
+
+    private async Task CikisKaydet()
+    {
+        if (IadeBirakildigi) { await CikisKaydetBirakildigi(); return; }
+        cikisForm.Temizle();
+        HamDenetle(cikisForm, "c-gram", () => cGram = null);
+        HamDenetle(cikisForm, "c-has", () => cHas = 0);
+        cikisForm.Pozitif("c-has", cHas, Dil);
+        // Doğrulayıcı 28.09: sunucu 0 < has < 0,001'i 400 ile reddeder (EmanetModulu
+        // [Range(0.001, …)]); aynı eşik istemcide alan altı mesaj olur, gereksiz tur yok.
+        if (cHas > 0 && !IadeEdilebilir(cHas))
+            cikisForm.Ekle("c-has", string.Format(S.IadeEnAz, Bicim.Has(IadeAltSinir)));
+        if (cHas > SeciliMadenHas) cikisForm.Ekle("c-has", Dil.T.Emanet.IadeFazlaUyari);
+        if (!cikisForm.Gecerli) { cikisHata = Dil.T.Kabuk.FormEksik; return; }
+
+        cikisHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/emanet/{cariId}/cikis", new
+            {
+                hasGrami = cHas,
+                maden = cMaden,      // K20-9: çıkış bu madenin netinden düşer
+                aciklama = string.IsNullOrWhiteSpace(cAciklama) ? null : cAciklama.Trim(),
+                kurSnapshotId = kur!.Id,
+            });
+            cikisAcik = false;
+            BasariGoster(Dil.T.Emanet.CikisKaydedildi);
+            await CariDegisti();
+        }
+        catch (ApiHata ex) { cikisHata = cikisForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string> { ["HasGrami"] = "c-has" }); }   // TOPLU-7B: tek yazım
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// P-DIL-BORC-KASA (Y18): iade bırakıldığı gibi — ayar + gram gider; has aynı Core fonksiyonuyla
+    /// hesaplanmış olarak yanında gider (sunucu 0,001 g toleransla doğrular). Hata alan altında (c-gram).
+    /// </summary>
+    private async Task CikisKaydetBirakildigi()
+    {
+        cikisForm.Temizle();
+        HamDenetle(cikisForm, "c-gram", () => cGram = null);
+        cikisForm.Pozitif("c-gram", cGram ?? 0m, Dil);
+        if (cGram > SeciliAyarGram) cikisForm.Ekle("c-gram", Dil.T.Emanet.IadeFazlaUyari);
+        else if (cGram > 0 && !IadeEdilebilir(cHas))
+            cikisForm.Ekle("c-gram", string.Format(S.IadeEnAz, Bicim.Has(IadeAltSinir)));
+        if (!cikisForm.Gecerli) { cikisHata = Dil.T.Kabuk.FormEksik; return; }
+
+        cikisHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/emanet/{cariId}/cikis", new
+            {
+                hasGrami = cHas,
+                maden = cMaden,
+                ayarId = cAyar,
+                gramAgirlik = cGram,
+                aciklama = string.IsNullOrWhiteSpace(cAciklama) ? null : cAciklama.Trim(),
+                kurSnapshotId = kur!.Id,
+            });
+            cikisAcik = false;
+            BasariGoster(Dil.T.Emanet.CikisKaydedildi);
+            await CariDegisti();
+        }
+        catch (ApiHata ex) { cikisHata = cikisForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string> { ["GramAgirlik"] = "c-gram", ["HasGrami"] = "c-gram" }); }
+        kaydediliyor = false;
+    }
+
+    // ── STORNO (48-A motoru) ────────────────────────────────────────────────
+
+    private void StornoIste(HareketVeri h)
+    {
+        if (!StornoAcik(h)) return;
+        stornoHata = null;
+        stornoGerekce = "";
+        stornoHareket = h;
+    }
+
+    private void StornoKapat() { stornoHareket = null; stornoGerekce = ""; }
+
+    private async Task StornoUygula()
+    {
+        if (stornoHareket is not { } h || kur is null) return;
+        stornoHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // Emanetin kasa bacağı yoktur (tlTutari = 0) → kasaId gönderilmez.
+            var yanit = await Api.PostAsync<JsonElement>($"/islemler/{h.Id}/storno", new
+            {
+                gerekce = stornoGerekce.Trim(),
+                kurSnapshotId = kur.Id,
+            });
+            // 48-A motoru ters kaydın KİMLİĞİNİ (ULID) ve ters has gramını döndürür.
+            // Doğrulayıcı 28.09 (DÜŞÜK): ham ULID tezgâhtar için anlamsızdır, banda
+            // BASILMAZ. POST yanıtı yine okunur (UX-S27): ters has gramı banda yazılır;
+            // yanıtta yoksa yalnız "Kayıt geri alındı."
+            decimal? tersHas = yanit.ValueKind == JsonValueKind.Object
+                               && yanit.TryGetProperty("hasGrami", out var hg)
+                               && hg.ValueKind == JsonValueKind.Number
+                ? hg.GetDecimal() : null;
+            BasariGoster(tersHas is { } th
+                ? string.Format(S.GeriAlYapildi, Bicim.Has(th))
+                : S.GeriAlYapildiSade);
+            stornoHareket = null;
+            await CariDegisti();
+        }
+        catch (ApiHata ex) { stornoHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

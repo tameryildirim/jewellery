@@ -1,0 +1,35 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* E-POSTA (paket P-36b → GIRDI-AILESI-2 · K3 RFC 5321/5322). Boşluk yazılamaz; alandan
+   çıkınca küçük harf ve kural (ad@alanadi.com) → alan altı hata + Kaydet kilidi. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="email" inputmode="email" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@(YerTutucu ?? Dil.T.Form.EpostaYerTutucu)"
+           maxlength="@EnFazla" autocomplete="email" spellcheck="false" autocapitalize="off"
+           data-maske="eposta"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    /// <summary>maxlength — sunucu sınırının ekran karşılığı (varsayılan 200: mevcut DTO'lar; RFC tavanı 254).</summary>
+    [Parameter] public int EnFazla { get; set; } = 200;
+
+    /// <summary>girdi-maske.js 'eposta' ile AYNI: boşluk/kontrol karakteri yazılamaz.</summary>
+    public static string Maskele(string? girdi)
+    {
+        if (string.IsNullOrEmpty(girdi)) return "";
+        var b = new System.Text.StringBuilder(girdi.Length);
+        foreach (var c in girdi) if (!char.IsWhiteSpace(c) && !char.IsControl(c)) b.Append(c);
+        return b.ToString();
+    }
+
+    protected override string Temizle(string? girdi) => Maskele(girdi);
+    protected override string CikisBicimi(string temiz) => EpostaDogrulayici.Normallestir(temiz);
+    protected override GirdiHatasi? TamDenetle(string temiz) => EpostaDogrulayici.Denetle(temiz);
+}

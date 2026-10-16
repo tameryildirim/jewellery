@@ -1,0 +1,164 @@
+@* ═════════════════════════════════════════════════════════════════════════
+   PAKET S1-h — ORTAK SEKME BİLEŞENİ (WAI-ARIA "Tabs" kalıbı)
+
+   Kurucu (24.09): "o sayfa tren gibi aşağıya doğru gidiyor, birbiriyle
+   alakasız kısımları tab tab ayır". Tek düzen: role=tablist/tab/tabpanel,
+   aria-selected + aria-controls, dolaşan tabindex (seçili sekme 0, diğerleri
+   -1), klavye: ← → Home End (otomatik etkinleştirme).
+
+   • SEÇİLİ SEKME URL'DEDİR: "?sekme=<kod>" (QueryAnahtari ile değişir).
+     Tıklama yeni bir tarih kaydı açar → tarayıcının GERİ tuşu önceki sekmeye
+     döner; bağlantı paylaşılınca aynı sekme açılır (derin bağlantı).
+     Bilinmeyen kod TAHMİN EDİLMEZ → ilk sekme.
+   • TÜM PANELLER ÇİZİLİR, seçili olmayanlar `hidden` taşır: sekmeye taşınan
+     bölümün id'leri ve davranışları aynen yaşar (özellik silinmez); genel
+     `[hidden]{display:none !important}` kuralı (S1-g) gizler.
+   • Bileşen İSTEK ATMAZ; yalnız URL'yi değiştirir.
+   • Renkler belirteçtir (app.css S1-h bloğu); satır içi style YOK.
+   ═════════════════════════════════════════════════════════════════════════ *@
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="sekmeler" id="@($"{Onek}-sekmeler")">
+    @if (UstBarda)
+    {
+        @* PAKET T-K3 — şerit kabuğun üst bar yuvasına (#ust-sayfa-sekmeleri) gider
+           (tuval Ayarlar.dc.html: sekme hapı başlığın yanında). Yuva yoksa
+           (kabuk dışı çizim, bUnit) UstBarSekmeleri şeridi YERİNDE çizer —
+           sekme hiçbir koşulda kaybolmaz. Paneller her zaman burada kalır. *@
+        <UstBarSekmeleri>@Serit</UstBarSekmeleri>
+    }
+    else
+    {
+        @Serit
+    }
+    @foreach (var s in Liste)
+    {
+        var kod = s.Kod;
+        <div role="tabpanel" class="sekmeler-panel" id="@PanelId(kod)"
+             aria-labelledby="@SekmeId(kod)" tabindex="0" hidden="@(kod != Secili)">
+            @Panel(kod)
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Sekmeler, görünüm sırasıyla. İlk sekme varsayılandır.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<SekmeTanimi> Liste { get; set; } = [];
+
+    /// <summary>Panel içeriği: sekme kodunu alır.</summary>
+    [Parameter, EditorRequired] public RenderFragment<string> Panel { get; set; } = _ => __ => { };
+
+    /// <summary>Kimlik öneki: "&lt;önek&gt;-sekme-&lt;kod&gt;", "&lt;önek&gt;-panel-&lt;kod&gt;".</summary>
+    [Parameter, EditorRequired] public string Onek { get; set; } = "";
+
+    /// <summary>Şeridin erişilebilir adı (aria-label).</summary>
+    [Parameter, EditorRequired] public string Etiket { get; set; } = "";
+
+    /// <summary>URL sorgu anahtarı (varsayılan "sekme").</summary>
+    [Parameter] public string QueryAnahtari { get; set; } = "sekme";
+
+    /// <summary>Seçili sekme değişince (URL'den ya da tıklamadan) bildirilir.</summary>
+    [Parameter] public EventCallback<string> SeciliDegisti { get; set; }
+
+    /// <summary>
+    /// PAKET T-K3: şerit sayfanın üst barına (UstBar #ust-sayfa-sekmeleri) konsun mu?
+    /// Varsayılan HAYIR — diğer sekmeli sayfalar (Uyum, Kur…) şeridi yerinde çizer.
+    /// </summary>
+    [Parameter] public bool UstBarda { get; set; }
+
+    /// <summary>Sekme şeridi — yerinde ya da üst bar yuvasında AYNI şablon (tek kaynak).</summary>
+    private RenderFragment Serit => __builder =>
+    {
+    <div class="sekmeler-serit" role="tablist" aria-label="@Etiket" id="@($"{Onek}-sekme-seridi")">
+        @foreach (var s in Liste)
+        {
+            var kod = s.Kod;
+            var secili = kod == Secili;
+            <button type="button" role="tab"
+                    id="@SekmeId(kod)"
+                    class="@(secili ? "sekmeler-sekme secili" : "sekmeler-sekme")"
+                    aria-selected="@(secili ? "true" : "false")"
+                    aria-controls="@PanelId(kod)"
+                    tabindex="@(secili ? 0 : -1)"
+                    @ref="referanslar[kod]"
+                    @onclick="() => SecAsync(kod, odakla: false)"
+                    @onkeydown="e => TusAsync(e, kod)">
+                    @s.Etiket
+                    @if (s.Rozet is { } rozet)
+                    {
+                        @* PAKET S1-i: sekme etiketindeki sayı rozeti (Uyum'un elle yazılmış
+                           tablist'i ortak bileşene taşınınca "açık bildirim" / "yüksek risk"
+                           sayısı KAYBOLMASIN diye). Renk belirteç sınıfıdır. *@
+                        <span class="@($"rozet rozet-{s.RozetRenk ?? "gri"} sekmeler-rozet")">@rozet</span>
+                    }</button>
+        }
+    </div>
+    };
+
+    private readonly Dictionary<string, ElementReference> referanslar = new(StringComparer.Ordinal);
+
+    /// <summary>URL'den okunan geçerli sekme; yoksa/bilinmiyorsa ilk sekme.</summary>
+    internal string Secili { get; private set; } = "";
+
+    private string SekmeId(string kod) => $"{Onek}-sekme-{kod}";
+    private string PanelId(string kod) => $"{Onek}-panel-{kod}";
+
+    protected override void OnInitialized() => Nav.LocationChanged += KonumDegisti;
+
+    protected override void OnParametersSet() => Secili = UrldenOku();
+
+    private string UrldenOku()
+    {
+        var istenen = DerinBaglanti.Oku(Nav.Uri, QueryAnahtari);
+        if (istenen is not null && Liste.Any(s => s.Kod == istenen)) return istenen;
+        return Liste.Count > 0 ? Liste[0].Kod : "";
+    }
+
+    private void KonumDegisti(object? _, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs __)
+    {
+        var yeni = UrldenOku();
+        if (yeni == Secili) return;
+        Secili = yeni;
+        _ = InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await SeciliDegisti.InvokeAsync(yeni);
+        });
+    }
+
+    private async Task SecAsync(string kod, bool odakla)
+    {
+        if (kod != Secili)
+        {
+            Secili = kod;
+            // Yeni tarih kaydı: GERİ tuşu önceki sekmeye döner.
+            Nav.NavigateTo(Nav.GetUriWithQueryParameter(QueryAnahtari, kod));
+            await SeciliDegisti.InvokeAsync(kod);
+        }
+        if (odakla && referanslar.TryGetValue(kod, out var r))
+        {
+            StateHasChanged();
+            try { await r.FocusAsync(); }
+            catch (InvalidOperationException) { /* öğe henüz DOM'da değil — odak kullanıcının sonraki tuşunda */ }
+        }
+    }
+
+    private async Task TusAsync(KeyboardEventArgs e, string kod)
+    {
+        if (Liste.Count == 0) return;
+        var i = Liste.ToList().FindIndex(s => s.Kod == kod);
+        if (i < 0) return;
+        int? hedef = e.Key switch
+        {
+            "ArrowRight" => (i + 1) % Liste.Count,
+            "ArrowLeft" => (i - 1 + Liste.Count) % Liste.Count,
+            "Home" => 0,
+            "End" => Liste.Count - 1,
+            _ => null,
+        };
+        if (hedef is { } h) await SecAsync(Liste[h].Kod, odakla: true);
+    }
+
+    public void Dispose() => Nav.LocationChanged -= KonumDegisti;
+}

@@ -1,0 +1,36 @@
+@implements IHandleEvent
+@*
+  PAKET EMANET-1 — doğrulayıcı 28.09 (t30, KRİTİK): "1.500" gibi çözülemeyen
+  ya da belirsiz sayı yazıldığında ortak SayisalAlan kutuyu kırmızıya çevirir
+  ama Deger'i SON GEÇERLİ değerde bırakır (ör. iade çekmecesinin "tümünü iade
+  et" varsayılanı). Sayfa bunu bilmediği için Kaydet o eski değeri POST
+  ediyordu: müşterinin TÜM emaneti iade ediliyordu.
+
+  Bu kap, içindeki kutuya yazılan HAM metni (input olayı kabarcıkla buraya
+  çıkar) sayfanın defterine yazar; sayfa Kaydet'te bu metni ortak çözücüyle
+  (FormAlani.SayiCoz) yeniden çözer ve çözülemiyorsa istek ATMAZ.
+
+  ⚠ IHandleEvent: olay bu kabı YENİDEN ÇİZMEZ. Çizerse içindeki Gram yeniden
+  parametre alır ve OnParametersSet kullanıcının yazdığı geçersiz metni eski
+  değerle ezer (hata kaybolur). Ortak bileşene (Bilesenler/Form) dokunulmadı.
+  Görsel etkisi yok: display: contents (css/emanet.css).
+
+  YER: Pages/EmanetParcalari/ — Pages/ kökünde yalnız @page taşıyan ekranlar
+  durur (denetim.sh "Pages/*.razor dosya sayısı" tavanı + P-37c SayfaBasi kapsamı).
+*@
+<div class="emanet-ham" @oninput="Geldi">@ChildContent</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Alan kimliği → kutuda son yazılan ham metin (sayfanın defteri).</summary>
+    [Parameter, EditorRequired] public Dictionary<string, string> Defter { get; set; } = default!;
+
+    /// <summary>İzlenen kutunun ElemanId'si (ör. "c-has").</summary>
+    [Parameter, EditorRequired] public string Alan { get; set; } = "";
+
+    private void Geldi(ChangeEventArgs e) => Defter[Alan] = e.Value?.ToString() ?? "";
+
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem geriCagri, object? arg) =>
+        geriCagri.InvokeAsync(arg);
+}

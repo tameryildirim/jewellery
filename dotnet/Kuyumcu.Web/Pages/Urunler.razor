@@ -1,0 +1,2344 @@
+@page "/urunler"
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Contracts.Sayfalar.Urunler
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ArayuzModuServisi Modu
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/UrunPage.tsx — React'teki "kategori" kavramı .NET API'de "tip". *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Urun.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır — "1.500" gibi
+   anlaşılamayan metin varken ilgili formun Kaydet'i PASİF (sebep alanın etiketi) ve gövdeye 0/eski değer GİTMEZ. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) liste = tuval Y_Urunler (BİREBİR); özgün ekran yalnız "ayrıntı" görünümünde
+   çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* ── Sayfa başı: başlık + arama/ayar süzgeci yuvası + TEK birincil eylem ──
+       Mevcut denetimler KALDIRILMADI, SayfaBasi yuvasına taşındı. *@
+    <SayfaBasi Anahtar="urunler" Baslik="@Dil.T.Urun.Baslik" Aciklama="@Dil.T.Urun.Aciklama">
+        <Filtreler>
+            @* ── P-37 · TEK ARAMA YÜZEYİ (kurucu 21 Eylül 16:30) ─────────────
+               ÖNCE: bu ekranda ÜÇ ayrı arama/süzme yüzeyi vardı — sağ üstte
+               "Ürün adı veya barkod ara…", altında ayar seçicisi, bir de TAM
+               GENİŞLİKTE ayrı bir "Barkodu okutun…" satırı + düğmesi. Kurucu
+               "inputlar seçme yerleri dengesiz" derken bunu görüyordu.
+               ŞİMDİ: barkod okutma bu kutunun İÇİNE indi — okutucu Enter basar,
+               Enter doğrudan /urunler/barkod/{kod} ucuna gider ve kartı açar.
+               Mükerrer arama yüzeyi 0. *@
+            @* GOC-C-2 (tasarım hakemi KRİTİK "/urunler PRO 1280 filtre yer tutucusu kesik 'barl'"): 55 karakterlik yer tutucu
+               altı süzgeçli satırda ~260 px kutuya sığmıyordu → kısa yer tutucu (okutucu Enter'ı kendisi basar; Enter yolu aynen). *@
+            <Arama ElemanId="urun-arama" Etiket="@Dil.T.Urun.AraPlaceholder"
+                   YerTutucu="@Kuyumcu.Core.I18n.GocC2Sozlugu.Al(Dil.Dil).UrunAraKisa"
+                   Deger="@arama" DegerChanged="@(async v => { arama = v ?? ""; await Yukle(); })"
+                   Enter="BarkodBul" />
+            @* ═══ PAKET S3-3 — SÜZGEÇ SATIRI: TEK SEÇİCİ + "Süzgeç ▾" ═══
+               Görünen: arama + DURUM seçicisi (QA tur 8: "durum süzgeci yok").
+               Basit modda maden/ayar/kategori/reyon dört seçicisi "Süzgeç ▾"
+               arkasında KATLIDIR (375 px kırpılması bu yüzden kapanır); DEĞERLERİ
+               korunur, etkin süzgeç sayısı düğmede yazar — görünmez süzgeç yok.
+               Profesyonel modda dört seçici bugünkü gibi hep açıktır. *@
+            <Secici ElemanId="urun-durum-filtre"
+                    Etiket="@L.Durum"
+                    Secenekler="@DurumSecenekleri"
+                    @bind-Deger="durumFil"
+                    @bind-Deger:after="Yukle"
+                    BosSecenekMetni="@L.DurumHepsi" />
+            @if (Modu.BasitMi)
+            {
+                <button @onclick="SuzgecDegistir" type="button" class="dugme dugme-ikincil dugme-kucuk" id="urun-suzgec-ac"
+                        aria-expanded="@(suzgecAcik ? "true" : "false")">
+                    @(EtkinSuzgecSayisi > 0 ? string.Format(L.SuzgecSayili, EtkinSuzgecSayisi) : L.Suzgec) @(suzgecAcik ? "▴" : "▾")
+                </button>
+            }
+            @if (SuzgecGorunur)
+            {
+            @* PAKET 20 — maden filtresi: "hangi madenden kaç ürün var" sorusu
+               ayar ayar süzmeden cevaplanabilsin. *@
+               <Secici ElemanId="urun-maden-filtre"
+                       Etiket="@Dil.T.Urun.Maden"
+                       Secenekler="@(Madenler.Select(m => new SecenekOgesi(m, KurKaynakAdi.MadenAdi(m))).ToList())"
+                       @bind-Deger="madenFil"
+                       @bind-Deger:after="Yukle"
+                       BosSecenekMetni="@Dil.T.Urun.TumMadenler" />
+            <Secici ElemanId="urun-ayar-filtre"
+                       Etiket="@Dil.T.Urun.Ayar"
+                       Secenekler="@(Ayarlar.Select(a => new SecenekOgesi(a, KurKaynakAdi.AyarAdi(a))).ToList())"
+                       @bind-Deger="ayarFil"
+                       @bind-Deger:after="Yukle"
+                       BosSecenekMetni="@Dil.T.Urun.TumAyarlar" />
+            @* P-37: kategori ve reyon süzgeçleri ayrı bir satırdan ŞERİDE alındı. *@
+            <Secici ElemanId="urun-kategori-filtre"
+                    Etiket="@Dil.T.Urun.Kategori"
+                    Secenekler="@(DuzKategoriler.Select(k => new SecenekOgesi(k.Id, k.Etiket)).ToList())"
+                    @bind-Deger="kategoriFil"
+                    @bind-Deger:after="Yukle"
+                    BosSecenekMetni="@Dil.T.Urun.TumKategoriler" />
+            <Secici ElemanId="urun-reyon-filtre"
+                    Etiket="@Dil.T.Urun.Reyon"
+                    Secenekler="@(reyonlar.Select(r => new SecenekOgesi(r.Id, r.Ad)).ToList())"
+                    @bind-Deger="reyonFil"
+                    @bind-Deger:after="Yukle"
+                    BosSecenekMetni="@Dil.T.Urun.TumReyonlar" />
+            }
+            @* ── PAKET P-15 (B-29) — DERİN BAĞLANTI SÖZLEŞMESİ ───────────────
+               Kabuk aramasından ya da başka bir ekrandan gelen sorgu dizesi
+               süzgeci KUTULARA yazılır ve buradan geldiği söylenir; sessizce
+               yok sayılmaz (Anayasa md.1). *@
+            @if (suzgecBaglantidan)
+            {
+                <span class="metin-kucuk" id="urun-suzgec-baglanti">
+                    <Rozet Renk="mavi">@Dil.T.Kabuk.BaglantidanSuzgec</Rozet>
+                    <button type="button" @onclick="BaglantiSuzgeciniTemizle"
+                            class="dugme dugme-kucuk dugme-ikincil" id="urun-suzgec-temizle"
+                            >@Dil.T.Kabuk.BaglantiSuzgeciniTemizle</button>
+                </span>
+            }
+        </Filtreler>
+        <Eylem>
+            <button class="btn btn-birincil" id="urun-yeni-ac" @onclick="YeniModalAc">+ @Dil.T.Urun.YeniUrun</button>
+        </Eylem>
+    </SayfaBasi>
+    @* ŞUBE-KAPSAM-B: ürün listesi kiracı genelidir; STOK ADETLERİ seçili şubenin. *@
+    <GorunumRozeti Degisti="StokAdetleriniYukle" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @if (barkodHata is not null)
+    {
+        <HataBandi Mesaj="@barkodHata" />
+    }
+    <HataBandi Mesaj="@yanKaynakHata" Id="yan-kaynak-hata" />
+    @* S3-3 / UX-S28: stok adedi alınamazsa hücre "?" olur ve SEBEP burada yazar. *@
+    <HataBandi Mesaj="@stokAdetHata" Id="urun-stok-hata" />
+
+    @* ── Ürün tablosu ── *@
+    <div class="kart">
+        @* PAKET ISTEK-1 (GOZ #45, UX-S28): hata ya da yeniden yükleme ELDEKİ
+           LİSTEYİ SİLMEZ. Bekleme halkası yalnız henüz hiç liste yokken çıkar;
+           hata bandı tablonun ÜSTÜNDE durur, tablo yerinde kalır. Boş durum
+           yalnız istek BAŞARILI ve sonuç gerçekten boşken görünür. *@
+        @if (listeHata is not null)
+        {
+            <div class="kart-govde"><HataBandi Mesaj="@listeHata" Id="hata-bandi" /></div>
+        }
+        @if (yukleniyor && UrunListesi.Count == 0)
+        {
+            <Yukleniyor />
+        }
+        else if (UrunListesi.Count == 0)
+        {
+            @if (listeHata is null)
+            {
+                <BosDurum Mesaj="@Dil.T.Urun.UrunBulunamadi" />
+            }
+        }
+        else
+        {
+            @* UX-S29 — sunucu sınırı ekranda söylenir; sınıra değdiyse uyarı basar. *@
+            @* TOPLU-4 (TOPLU-2 hakem ORTA): ayrı 12 px "En çok 50 kayıt…" paragrafı yerine SAYAÇ satırı
+               ("12 kayıt gösteriliyor · en çok 50" — sınır yine yazılı, UX-S29); daraltma cümlesi YALNIZ
+               sınıra ulaşınca, aynı satırda. *@
+            <p class="metin-soluk kart-govde t4-sayac" id="urun-sinir">
+                @* TOPLU-6 (TOPLU-4 hakemi ORTA "sınırın altında da 'en çok 50'"): sınırın altında yalnız sayı (sınır
+                   title'da yazılı kalır); "en çok N" ve daraltma cümlesi sınıra ulaşınca (UX-S29: o an söylenir). *@
+                @if (UrunListesi.Count >= ListeSiniri)
+                {
+                    @string.Format(Toplu4Sozlugu.Al(Dil.Dil).ListeSayac, UrunListesi.Count, ListeSiniri)
+                }
+                else
+                {
+                    <span title="@string.Format(Toplu6Sozlugu.Al(Dil.Dil).ListeSiniriBilgi, ListeSiniri)">@string.Format(Toplu6Sozlugu.Al(Dil.Dil).ListeSayacSade, UrunListesi.Count)</span>
+                }
+                @if (UrunListesi.Count >= ListeSiniri)
+                {
+                    <span class="metin-amber" id="urun-sinir-asildi" role="status">@Dil.T.Kabuk.SinirAsildi @string.Format(Dil.T.Kabuk.SinirUyarisi, ListeSiniri)</span>
+                }
+            </p>
+            @* PAKET GOC-C — ORTAK IZGARA (grid:urunler:urun-liste). Sunucu en çok ListeSiniri ürün döndürür:
+               sınıra değdiyse sıralama KAPALI (üstteki sayaç + daraltma cümlesi UX-S29 zaten yazılı); değmediyse
+               tam liste yerel sıralanır. Mod sütunları AYNEN: barkod/ürün grubu/durum yalnız PRO (S3-3).
+               Gram binlik gruplu (devir). KartListe kimliği (urun-liste) korunur. *@
+            <Izgara T="UrunVeri" Ekran="urunler" GridId="urun-liste" KartListeId="urun-liste" TabloSinif="tablo-sik"
+                    Kolonlar="@UrunKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(UrunListesi, urunSira, UrunKolonlari)"
+                    SatirId="@(u => $"u-satir-{u.Id}")" Baslik="@Dil.T.Urun.Baslik"
+                    SiralamaDegisti="@(x => urunSira = x)" GecerliSiralama="@urunSira" />
+        }
+    </div>
+</div>
+}
+
+@* ── Yeni ürün modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Urun.YeniUrun" Kapat="() => yeniModalAcik = false">
+    <ChildContent>
+    <div class="form-dikey">
+        <Metin ElemanId="u-ad" Etiket="@Dil.T.Urun.UrunAdi" Zorunlu="true" EnFazla="@AlanSinirlari.UrunAd"
+               Deger="@yeniAd" DegerChanged="@(v => yeniAd = v ?? "")"
+               Durum="form" HataAlani="u-ad" />
+        @* PAKET P-URUN (Y19): ZORUNLULAR İLK EKRANDA — denetimde 1366×768 Yıldız penceresinde gram ve
+           açılış stoğu iç kaydırmada kalıyordu. Sıra: ad / maden+ayar / kod+gram / barkod+açılış stoğu /
+           ürün grubu. Telefonda (tek sütun) ilk beş kutu: ad · maden · ayar · kod · gram. Maden yine
+           ayardan ÖNCE (PAKET 20 bağı); ürün grubu bir maden dayatırsa maden kilitlenir. *@
+        <div class="form-grid-2">
+            @* ── PAKET 20 — ÖNCE MADEN, SONRA O MADENİN AYARLARI ─────────────
+                 UX-S24: bağımlı alanın bağını ekran kurar. Maden seçilince ayar
+                 listesi o madenin SAFLIK TABLOSUNA döner (milyemiyle birlikte);
+                 ürün grubu bir maden dayatıyorsa (PLATIN, CELIK…) maden seçici
+                 KİLİTLENİR ve sebebi yazılır (UX-S22/UX-S30). ── *@
+            <div class="alan">
+                <Secici ElemanId="u-maden"
+                        Etiket="@Dil.T.Urun.Maden"
+                        Secenekler="@(Madenler.Select(m => new SecenekOgesi(m, KurKaynakAdi.MadenAdi(m))).ToList())"
+                        @bind-Deger="yeniMaden"
+                        @bind-Deger:after="YeniMadenDegisti"
+                        Devredisi="@(TipinMadeni(yeniTip) is not null)" />
+                @* KESIF-P4 #84: sebep EKRANDA TEK KEZ — aşağıdaki u-maden-kilit satırı.
+                   Seçiciye DevredisiSebebi de verilince aynı cümle iki kez basılıyordu. *@
+                @if (TipinMadeni(yeniTip) is { } zorunlu)
+                {
+                    <span class="metin-soluk metin-kucuk" id="u-maden-kilit">
+                        @MadenKilitSebebi(yeniTip)
+                    </span>
+                }
+            </div>
+            <div class="alan">
+                @* PAKET P-URUN (K6): ayarın VARSAYILANI YOK — "Ayar seçin" ile açılır, seçilmeden
+                   Kaydet kilitli (sebep altlıkta). Ad ile seçim çelişirse tek satır uyarı;
+                   kaydı engellemez. Sunucu reddi (alan ayarId) bu kutunun altına yazılır. *@
+                <Secici ElemanId="u-ayar"
+                        Etiket="@Dil.T.Urun.Ayar"
+                        Zorunlu="true"
+                        Secenekler="@AyarSecenekleri(yeniMaden)"
+                        BosSecenekMetni="@PU.AyarSecin"
+                        Hata="@form.Mesaj("u-ayar")"
+                        @bind-Deger="yeniAyar" />
+                @if (YeniAdAyarUyarisi is { } celiski)
+                {
+                    <span class="metin-kucuk metin-amber" id="u-ayar-celiski" role="status">@celiski</span>
+                }
+            </div>
+        </div>
+        <div class="form-grid-2">
+            <Metin ElemanId="u-kod" Etiket="@Dil.T.Urun.Kod" Zorunlu="true" EnFazla="@AlanSinirlari.UrunKod"
+                   Deger="@yeniKod" DegerChanged="@(v => yeniKod = v ?? "")"
+                   Durum="form" HataAlani="u-kod" />
+            @* GRAM üründe gram ağırlık sunucuda 1'e zorlanır; girdi kilitli. *@
+            <Gram ElemanId="u-gram" Etiket="@Dil.T.Urun.GramAgirlik" Tur="@(yeniBirim == "GRAM" ? (AgirlikTuru?)null : AgirlikTuru.Gram)"
+                  Zorunlu="@(yeniBirim != "GRAM")"
+                  Deger="@yeniGram" DegerChanged="@(v => yeniGram = v ?? 0m)"
+                  Devredisi="@(yeniBirim == "GRAM")"
+                  DevredisiSebebi="@Dil.T.Urun.BirimGramIpucu"
+                  Durum="form" HataAlani="u-gram" />
+        </div>
+        <div class="form-grid-2">
+            <BarkodAlani ElemanId="u-barkod" Etiket="@Dil.T.Urun.Barkod"
+                   Deger="@yeniBarkod" DegerChanged="@(v => yeniBarkod = v ?? "")"
+                   Durum="form" HataAlani="u-barkod" />
+            @* ═══ UX-4d madde 1: AÇILIŞ STOĞU ═══
+               Ürün kartının stok açma yolu yoktu: POST /urunler ürünü 0 stokla
+               açıyor, hemen ardından satış 400 "Bu şubede ürün stoğu bulunamadı"
+               veriyordu. Şube SORULMAZ (UX-S22): oturumun/işletmenin şubesi
+               sunucuda çözülür. *@
+            @* PAKET GOC-C (#6 · K14): ADET birimde ortak Adet (sunucu UrunAdetKapisi ile aynı ileti; boş = açılış yok),
+               GRAM birimde 3 ondalıklı miktar. Eksi değer artık SESSİZCE yok sayılmaz: alan altı hata + Kaydet kilidi. *@
+            @if (yeniBirim == "GRAM")
+            {
+                <Sayi ElemanId="u-acilis-stok" Etiket="@Dil.T.Urun.AcilisStogu" EnAz="0" EnCokOndalik="3" EnCok="@AlanSinirlari.AcilisStokEnCok"
+                      Deger="@yeniAcilisStok" DegerChanged="@(v => yeniAcilisStok = v ?? 0m)"
+                      Ipucu="@Dil.T.Urun.AcilisStoguIpucu" Durum="form" HataAlani="u-acilis-stok" />
+            }
+            else
+            {
+                @* GOC-C-2 VERI-2: tavan sunucunun [AcilisAdedi] sabitiyle AYNI (99999999 artık yazarken reddedilir). *@
+                <Adet ElemanId="u-acilis-stok" Etiket="@Dil.T.Urun.AcilisStogu" EnCok="@AlanSinirlari.AcilisStokEnCok"
+                      Deger="@(yeniAcilisStok == 0m ? null : yeniAcilisStok)" DegerChanged="@(v => yeniAcilisStok = v ?? 0m)"
+                      Ipucu="@Dil.T.Urun.AcilisStoguIpucu" Durum="form" HataAlani="u-acilis-stok" />
+            }
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                @* UX-S31 / QA turu 2 ORTA: aynı enum yeni formda "Kategori",
+                   düzenlemede "Tip" diye adlandırılıyordu ve ağaç kategorisiyle
+                   karışıyordu. Tek ad: "Ürün grubu". *@
+                   <Secici ElemanId="u-tip"
+                           Etiket="@Dil.T.Urun.UrunGrubu"
+                           Secenekler="@GrupSecenekleri"
+                           @bind-Deger="yeniTip"
+                           @bind-Deger:after="YeniTipDegisti" />
+            </div>
+        </div>
+        <div class="form-grid-2">
+            @* S3-3: basit modda "Daha fazla ▾" arkasında (değer korunur). *@
+            @if (YeniTumAlanlar)
+            {
+            <div class="alan">
+                <Onay ElemanId="u-rodyum" Etiket="@Dil.T.Urun.RodyumKaplama"
+                      @bind-Deger="yeniRodyum"
+                      Devredisi="@(!RodyumKaplanabilir(yeniMaden))"
+                      DevredisiSebebi="@Dil.T.Urun.RodyumKaplanmaz"
+                      Ipucu="@(RodyumKaplanabilir(yeniMaden) ? Dil.T.Urun.RodyumKaplamaIpucu : null)" />
+            </div>
+            }
+            @if (!MadenKiymetli(yeniAyar))
+            {
+                @* UX-S21/UX-S30: sistemin bildiği kural ekranda yazılır —
+                   çelikte has gramı hesaplanmaz, o yüzden satış fiyatı zorunludur. *@
+                <div class="alan" id="u-kiymetsiz-uyari" role="note">
+                    <strong class="metin-kucuk">@Dil.T.Urun.HasHesaplanmaz</strong>
+                    <span class="metin-soluk metin-kucuk">@Dil.T.Urun.HasHesaplanmazIpucu</span>
+                </div>
+            }
+        </div>
+        @if (YeniTumAlanlar)
+        {
+        <Milyem ElemanId="u-gercek-milyem" Etiket="@Dil.T.Urun.GercekMilyem"
+              @bind-Deger="yeniGercekMilyem" Ipucu="@Dil.T.Urun.GercekMilyemIpucu" Durum="form" HataAlani="u-gercek-milyem" />
+        }
+        @if (yeniTip == "PIRLANTA")
+        {
+            <fieldset class="form-grid-2" id="u-4c">
+                <legend class="metin-kucuk">@Dil.T.Urun.DortC</legend>
+                <Sayi ElemanId="u-karat" Etiket="@Dil.T.Urun.Karat" EnAz="0.001m" EnCok="999" EnCokOndalik="3" @bind-Deger="yeniKarat" Durum="form" HataAlani="u-karat" />
+                <div class="alan"><Secici ElemanId="u-renk"
+        Etiket="@Dil.T.Urun.Renk"
+        Secenekler="@(Renkler.Select(r => new SecenekOgesi(r, r)).ToList())"
+        @bind-Deger="yeniRenk"
+        BosSecenekMetni="—" /></div>
+                <div class="alan"><Secici ElemanId="u-berraklik"
+        Etiket="@Dil.T.Urun.Berraklik"
+        Secenekler="@(Berrakliklar.Select(b => new SecenekOgesi(b, b)).ToList())"
+        @bind-Deger="yeniBerraklik"
+        BosSecenekMetni="—" /></div>
+                <div class="alan"><Secici ElemanId="u-kesim"
+        Etiket="@Dil.T.Urun.Kesim"
+        Secenekler="@(Kesimler.Select(k => new SecenekOgesi(k, k)).ToList())"
+        @bind-Deger="yeniKesim"
+        BosSecenekMetni="—" /></div>
+                <div class="alan"><Secici ElemanId="u-sert-kurum"
+        Etiket="@Dil.T.Urun.SertifikaKurumu"
+        Secenekler="@(Kurumlar.Select(k => new SecenekOgesi(k, k)).ToList())"
+        @bind-Deger="yeniSertKurum"
+        BosSecenekMetni="—" /></div>
+                <Metin ElemanId="u-sert-no" Etiket="@Dil.T.Urun.SertifikaNo" EnFazla="@AlanSinirlari.UrunSertifikaNo"
+                       Deger="@yeniSertNo" DegerChanged="@(v => yeniSertNo = v ?? "")" Durum="form" HataAlani="u-sert-no" />
+            </fieldset>
+        }
+        @if (YeniTumAlanlar)
+        {
+        <div class="alan">
+            <Secici ElemanId="u-birim"
+                    Etiket="@Dil.T.Urun.Birim"
+                    Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("ADET", Dil.T.Urun.BirimAdet), new SecenekOgesi("GRAM", Dil.T.Urun.BirimGram) })"
+                    @bind-Deger="yeniBirim"
+                    @bind-Deger:after="BirimDegisti" />
+            @if (yeniBirim == "GRAM") { <span class="metin-soluk metin-kucuk" id="u-birim-ipucu">@Dil.T.Urun.BirimGramIpucu</span> }
+        </div>
+        }
+        @if (YeniTumAlanlar)
+        {
+        <div class="form-grid-2">
+            <Gram ElemanId="u-tas" Etiket="@Dil.T.Urun.TasAgirlik" Tur="AgirlikTuru.Tas" Brut="@yeniGram"
+                  Deger="@yeniTas" DegerChanged="@(v => yeniTas = v ?? 0m)"
+                  Durum="form" HataAlani="u-tas" />
+        </div>
+        }
+        @* Kuyum Ticareti Yönetmeliği md.11/(e) — taş varsa köken ZORUNLU.
+           Alanlar yalnız taş ağırlığı girildiğinde görünür; sunucu her hâlükârda
+           doğrular (UI gizlemesi güvenlik değildir). *@
+        @if (yeniTas > 0)
+        {
+            <div class="form-grid-2">
+                <div class="alan">
+                    <Secici ElemanId="u-tas-koken"
+                            Etiket="@Dil.T.Urun.TasKokeni"
+                            Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("DOGAL", Dil.T.Urun.TasKokenDogal), new SecenekOgesi("SENTETIK", Dil.T.Urun.TasKokenSentetik), new SecenekOgesi("LABORATUVAR_URETIMI", Dil.T.Urun.TasKokenLaboratuvar), new SecenekOgesi("YAPAY_URETIM", Dil.T.Urun.TasKokenYapay) })"
+                            @bind-Deger="yeniTasKokeni"
+                            BosSecenekMetni="—" />
+                    <span class="metin-soluk metin-kucuk">@Dil.T.Urun.TasKokeniIpucu</span>
+                </div>
+                @if (YapayTas)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="u-tas-ibare"
+                                Etiket="@Dil.T.Urun.TasIbaresi"
+                                Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("sentetik", "sentetik"), new SecenekOgesi("laboratuvar üretimi", "laboratuvar üretimi"), new SecenekOgesi("yapay üretim", "yapay üretim") })"
+                                @bind-Deger="yeniTasIbaresi"
+                                BosSecenekMetni="@(Dil.T.Urun.TasIbaresiIpucu)" />
+                    </div>
+                }
+            </div>
+        }
+        <div class="form-grid-2">
+            @if (YeniTumAlanlar)
+            {
+            <Para ElemanId="u-iscilik" Etiket="@Dil.T.Islem.IscilikTutari" Tur="TutarTuru.SifirOlabilir"
+                  Deger="@yeniIscilik" DegerChanged="@(v => yeniIscilik = v ?? 0m)"
+                  Durum="form" HataAlani="u-iscilik" />
+            }
+            @* Kıymetsiz madende (çelik) satış fiyatı ZORUNLU → basit modda da görünür. *@
+            @if (YeniTumAlanlar || !MadenKiymetli(yeniAyar))
+            {
+            <Para ElemanId="u-satis-fiyati" Etiket="@Dil.T.Urun.SatisFiyati" Tur="TutarTuru.SifirOlabilir"
+                  Zorunlu="@(!MadenKiymetli(yeniAyar))"
+                  @bind-Deger="yeniSatisFiyati" Durum="form" HataAlani="u-satis-fiyati"
+                  Ipucu="@Dil.T.Urun.SatisFiyatiIpucu" />
+            }
+        </div>
+        @if (YeniTumAlanlar)
+        {
+        @* Kategori ve reyon API'de vardı ama ekranda hiç sorulmuyordu — kullanıcı
+           ağacı kurabiliyor, ürünü ağaca BAĞLAYAMIYORDU. *@
+        <div class="form-grid-2">
+            <div class="alan">
+                <Secici ElemanId="u-kategori"
+                        Etiket="@KategoriEtiketi"
+                        Secenekler="@(DuzKategoriler.Select(k => new SecenekOgesi(k.Id, k.Etiket)).ToList())"
+                        @bind-Deger="yeniKategoriId"
+                        BosSecenekMetni="—" />
+            </div>
+            <div class="alan">
+                <Secici ElemanId="u-reyon"
+                        Etiket="@ReyonEtiketi"
+                        Secenekler="@(reyonlar.Select(r => new SecenekOgesi(r.Id, r.Ad)).ToList())"
+                        @bind-Deger="yeniReyonId"
+                        BosSecenekMetni="—" />
+            </div>
+        </div>
+        <div class="alan">
+            @* id VERİLDİ (paket 20): ekran testleri konsinye kutusunu "ilk
+               checkbox" diye buluyordu; forma rodyum kutusu eklenince o varsayım
+               kırıldı. Sıraya değil KİMLİĞE bağlanır (mevcut id'ler değişmez,
+               yeni id "<önek>-<alan>" kalıbındadır). *@
+            <Onay ElemanId="u-konsinye" Etiket="@Dil.T.Urun.Konsinye"
+                  @bind-Deger="yeniKonsinye" Ipucu="@Dil.T.Urun.KonsinyeIpucu" />
+        </div>
+        @* Konsinye kapısı: sahibi ve birim bedeli olmadan KAYDEDİLEMEZ.
+           Sunucu da reddeder; buradaki alanlar kullanıcıyı hataya düşürmemek için. *@
+        @if (yeniKonsinye)
+        {
+            <div class="form-grid-2">
+                <div class="alan">
+                    <Secici ElemanId="u-kons-cari"
+                            Etiket="@Dil.T.Urun.KonsinyeSahibi"
+                            Secenekler="@CariSecenekleri"
+                            @bind-Deger="yeniKonsinyeCariId"
+                            BosSecenekMetni="—" />
+                </div>
+                <Para ElemanId="u-kons-bedel" Etiket="@Dil.T.Urun.KonsinyeBirimBedel" Tur="TutarTuru.Pozitif"
+                      @bind-Deger="yeniKonsinyeBedel" Durum="form" HataAlani="u-kons-bedel" />
+            </div>
+        }
+        @* ═══ PAKET P-10 (Y-3) — SUNUCUNUN KABUL ETTİĞİ AMA FORMDA OLMAYAN ALANLAR ═══
+           UrunOlusturDto bu beş alanı BAŞINDAN BERİ kabul ediyordu; ekran hiç
+           göndermiyordu, yani kullanıcı ürünü açarken giremiyor, "sonra
+           düzenlemeden gir" bile diyemiyordu (UX-S26 ihlali). *@
+        <Metin ElemanId="u-aciklama" Etiket="@P4.AciklamaEtiketi" EnFazla="@AlanSinirlari.UrunAciklama"
+               Deger="@yeniAciklama" DegerChanged="@(v => yeniAciklama = v ?? "")" Durum="form" HataAlani="u-aciklama" />
+        <div class="form-grid-2">
+            <div class="alan">
+                <Secici ElemanId="u-parite"
+                        Etiket="@P4.PariteEtiketi"
+                        Secenekler="@PariteSecenekOgeleri"
+                        @bind-Deger="yeniPariteKodu"
+                        BosSecenekMetni="—" />
+                <span class="metin-soluk metin-kucuk" id="u-parite-ipucu">@P4.PariteIpucu</span>
+            </div>
+        </div>
+        @* PAKET YASAL-4 / Y4-C: KMTS alanı varsayılan GİZLİ (kiracı ayarı kmtsKullanimi
+           kapalı). Açıkken yalnız PRO'da, kapalı "Ek bilgiler" katlanırında; BASİT'te hiç. *@
+        @if (KmtsGorunur)
+        {
+            <Katlanir Id="u-ek-bilgiler" Baslik="@Y4U.KmtsEkBilgiler">
+                <Metin ElemanId="u-kmts" Etiket="@Dil.T.Urun.KmtsKodu" EnFazla="@AlanSinirlari.UrunKmts"
+                       Deger="@yeniKmtsKodu" DegerChanged="@(v => yeniKmtsKodu = v ?? "")"
+                       Ipucu="@Y4U.KmtsIpucu" Durum="form" HataAlani="u-kmts" />
+            </Katlanir>
+        }
+        <div class="form-grid-2">
+            @* RİSK BEYANI (plan § 2 P-10, kurucu kalemi K-21): alan donanım İMA EDER. *@
+            <Metin ElemanId="u-rfid" Etiket="@Dil.T.Urun.Rfid" EnFazla="@AlanSinirlari.UrunRfid"
+                   Deger="@yeniRfid" DegerChanged="@(v => yeniRfid = v ?? "")"
+                   Ipucu="@Dil.T.Urun.RfidIpucu" Durum="form" HataAlani="u-rfid" />
+            <Metin ElemanId="u-gorsel-url" Etiket="@Dil.T.Urun.GorselUrl" EnFazla="@AlanSinirlari.UrunGorselUrl"
+                   Deger="@yeniGorselUrl" DegerChanged="@(v => yeniGorselUrl = v ?? "")"
+                   Durum="form" HataAlani="u-gorsel-url"
+                   Ipucu="@Dil.T.Urun.GorselUrlIpucu" />
+        </div>
+        @* ═══ PAKET P-16 (Y-26) — TEDARİK / MALİYET / STOK ALANLARI ═══════════
+           UX-S26: sunucunun OLUŞTURMADA kabul ettiği yedi alan "sonra düzenle"
+           diye ertelenmez; düzenleme çekmecesinde de AYNI küme vardır.
+           UX-S21: KDV oranı boş bırakılırsa üründen türetilir — ekran oran UYDURMAZ. *@
+        <fieldset class="form-grid-2" id="u-p16">
+            <legend>@Dil.T.Urun.KartBolumu</legend>
+            <div class="alan">
+                <Secici ElemanId="u-tedarikci"
+                        Etiket="@Dil.T.Urun.Tedarikci"
+                        Secenekler="@CariSecenekleri"
+                        @bind-Deger="yeniTedarikciId"
+                        BosSecenekMetni="—" />
+                <span class="metin-soluk metin-kucuk" id="u-tedarikci-ipucu">@Dil.T.Urun.TedarikciIpucu</span>
+            </div>
+            <div class="alan">
+                <Para ElemanId="u-alis-maliyeti" Etiket="@Dil.T.Urun.AlisMaliyeti" Tur="TutarTuru.SifirOlabilir"
+                      @bind-Deger="yeniAlisMaliyeti" Durum="form" HataAlani="u-alis-maliyeti"
+                      Ipucu="@Dil.T.Urun.AlisMaliyetiIpucu" />
+                @if (yeniAlisMaliyeti is null)
+                {
+                    <span class="metin-amber metin-kucuk" id="u-alis-maliyeti-uyari">@Dil.T.Urun.AlisMaliyetiYok</span>
+                }
+            </div>
+            <Yuzde ElemanId="u-hedef-marj" Etiket="@Dil.T.Urun.HedefMarj" Marj="true" Birim="%"
+                  @bind-Deger="yeniHedefMarj" Durum="form" HataAlani="u-hedef-marj"
+                  Ipucu="@Dil.T.Urun.HedefMarjIpucu" />
+            <Yuzde ElemanId="u-kdv-orani" Etiket="@Dil.T.Urun.KdvOrani" Birim="%"
+                  @bind-Deger="yeniKdvOrani" Durum="form" HataAlani="u-kdv-orani"
+                  Ipucu="@Dil.T.Urun.KdvOraniIpucu" />
+            <Metin ElemanId="u-seri-no" Etiket="@Dil.T.Urun.SeriNo" EnFazla="@AlanSinirlari.UrunSeriNo"
+                   Deger="@yeniSeriNo" DegerChanged="@(v => yeniSeriNo = v ?? "")" Durum="form" HataAlani="u-seri-no" />
+            <Metin ElemanId="u-olcu" Etiket="@Dil.T.Urun.Olcu" EnFazla="@AlanSinirlari.UrunOlcu"
+                   Deger="@yeniOlcu" DegerChanged="@(v => yeniOlcu = v ?? "")"
+                   Ipucu="@Dil.T.Urun.OlcuIpucu" Durum="form" HataAlani="u-olcu" />
+            <Sayi ElemanId="u-min-stok" Etiket="@Dil.T.Urun.MinStok" EnAz="0" TamSayi="@(yeniBirim != "GRAM")" EnCokOndalik="3"
+                  @bind-Deger="yeniMinStok" Durum="form" HataAlani="u-min-stok"
+                  Ipucu="@Dil.T.Urun.MinStokIpucu" />
+        </fieldset>
+        }
+        @* ═══ S3-3 — BASİT MODDA FORM ≤ 8 ALAN (taslak n3, S3-2 şablonu) ═══
+           Görünen: ad · kod · barkod · ürün grubu · maden · ayar · gram · açılış stoğu.
+           Kural kapısı olan alanlar HİÇ katlanmaz: taş varsa köken (md.11/e),
+           pırlantada 4C (karat zorunlu), çelikte satış fiyatı. Gizlemek silmek
+           değildir: katlı alanın değeri korunur, hata düşerse grup kendiliğinden açılır. *@
+        @* PAKET GOC-C: "Daha fazla" iki modda da (PRO da zorunlularla açılır). *@
+        <button @onclick="() => yeniDahaFazla = !yeniDahaFazla" type="button" class="dugme dugme-ikincil dugme-kucuk form-daha-fazla" id="u-daha-fazla"
+                aria-expanded="@(yeniDahaFazla ? "true" : "false")">
+            @(yeniDahaFazla ? $"{L.DahaAz} ▴" : $"{L.DahaFazla} ({L.DahaFazlaIcerik}) ▾")
+        </button>
+
+    </div>
+    </ChildContent>
+    <Altlik>
+        @* URUN-ACILIS-ATOMIK tur 2 (tasarım hakemi KRİTİK): BASİT modda Kaydet'e basınca
+           form uzuyor, hata bandı ve Kaydet ekran DIŞINDA kalıyordu (sessiz etkisizlik).
+           Bant, kilit sebebi ve düğmeler ortak ModalPencere'nin SABİT altlığına (P-36)
+           taşındı — Banka dekont penceresiyle aynı kalıp: gövde kayar, sonuç her zaman
+           görünür. Kimlikler (u-kaydet, u-kaydet-kilit) AYNI; bant yeni kimlik u-urun-hata. *@
+        <HataBandi Mesaj="@modalHata" Id="u-urun-hata" />
+        @if (UrunKilitSebebi is { } kilit)
+        {
+            <span class="metin-kucuk metin-amber zo-alt-sebep" id="u-kaydet-kilit">@kilit</span>
+        }
+        <div class="satir zo-alt-dugmeler">
+            <button class="btn btn-ikincil esnek" @onclick="() => yeniModalAcik = false"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            @* DoD EK md.3 / QA turu 2 YÜKSEK ("boş ve gram=-5 kayıt sessizce etkisiz"):
+               ad · kod · gram artık düğmeyi KİLİTLEMEZ — tıklanır ve alan altında
+               Türkçe mesaj çıkar. Kilit YALNIZ mevzuat/iş kuralı kapılarında kalır
+               (4C karat, taş kökeni, konsinye üçlüsü) ve sebebi altında YAZAR. *@
+            <button id="u-kaydet" class="btn btn-birincil esnek" disabled="@(kaydediliyor || UrunKilitSebebi is not null)"
+                    @onclick="UrunOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </Altlik>
+</ModalPencere>
+
+@* ── Şube stokları modalı ── *@
+<ModalPencere Acik="stokUrunId is not null" Baslik="@Dil.T.Urun.SubeStoklari" Kapat="() => stokUrunId = null">
+    <HataBandi Mesaj="@subeHata" Id="urun-sube-hata" />
+    @if (stokHata is not null)
+    {
+        <HataBandi Mesaj="@stokHata" />
+    }
+    else if (stoklar.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Urun.StokYok" />
+        @* UX-S25/S30: "düğme yok" yetmez, NEDEN yok ve DOĞRU YOL ne, yazılır.
+           Stok bu ekrandan elle yazılamaz; her stok değişikliği deftere ve
+           maliyet partisine düşmek zorundadır (HareketFabrikasi tek kapı). *@
+        <DegismezIpucu Varlik="UrunStok" Gerekce="@Dil.T.Duzeltme.SistemGerekce"
+                       AlternatifYol="@Dil.T.Urun.StokGirisiYolu" />
+    }
+    else
+    {
+        @* PAKET GOC-C — ORTAK IZGARA (grid:urunler:urun-stok). Ürünün TÜM şube stokları → yerel sıralama.
+           Adet tr-TR (eskiden kültürsüz "0.###"). KartListe kimliği (urun-hareket-liste) korunur. *@
+        <Izgara T="StokVeri" Ekran="urunler" GridId="urun-stok" KartListeId="urun-hareket-liste"
+                Kolonlar="@StokKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(stoklar, stokSira, StokKolonlari)"
+                Baslik="@Dil.T.Urun.SubeStoklari"
+                SiralamaDegisti="@(x => stokSira = x)" GecerliSiralama="@stokSira" />
+    }
+
+    @* ── YERLEŞİM (PAKET 25) ─────────────────────────────────────────────────
+       Şube toplamı `stoklar`dan gelir, reyon kırılımı yerleşimden; ATANMAMIŞ
+       satırı VURGULU ve ayrıdır — gizlenmez (geçiş verisi dürüstlüğü). *@
+    <div class="dikey-bosluk" id="urun-yerlesim">
+        <h3>@Dil.T.Yerlesim.Baslik</h3>
+        <p class="metin-kucuk metin-soluk">@Dil.T.Yerlesim.Aciklama</p>
+        @if (yerlesimHata is not null)
+        {
+            <HataBandi Mesaj="@yerlesimHata" Id="yerlesim-hata" />
+        }
+        else if (yerlesimSubeler.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.Yerlesim.YerlesimYok" />
+        }
+        else
+        {
+            @foreach (var sb in yerlesimSubeler)
+            {
+                <div class="kart" id="@($"yerlesim-sube-{sb.SubeId}")">
+                    <div class="kart-baslik satir-arasi">
+                        <h4>@sb.SubeAdi</h4>
+                        <span class="metin-kucuk metin-soluk">
+                            @Dil.T.Yerlesim.StokAdedi: @Bicim.Miktar(sb.StokAdedi, null)
+                        </span>
+                    </div>
+                    <div class="kart-govde">
+                        @* KESIF-P4 tur 2 (#14): iki sütunlu veri tablosu 375 px'te `min-width:
+                           max-content` yüzünden genişliyor, ADET sütunu ekran dışına düşüyor ve
+                           uzun reyon adı kesiliyordu. Ad + adet LİSTE SATIRI: ad kalan yere
+                           SARAR, adet sağda sabit (panel-liste-satir--is · ad + tutar). *@
+                        <ul class="panel-liste" id="urun-tas-liste" aria-label="@Dil.T.Yerlesim.Baslik">
+                            <li class="panel-liste-satir panel-liste-satir--is metin-kucuk metin-soluk" aria-hidden="true">
+                                <span class="panel-liste-ad">@Dil.T.Yerlesim.Reyon</span>
+                                <span class="panel-liste-tutar">@Dil.T.Yerlesim.Adet</span>
+                            </li>
+                            @foreach (var ry in sb.Reyonlar ?? [])
+                            {
+                                <li class="panel-liste-satir panel-liste-satir--is">
+                                    <span class="panel-liste-ad">@ry.ReyonAdi</span>
+                                    <span class="panel-liste-tutar sayi">@Bicim.Miktar(ry.Adet, null)</span>
+                                </li>
+                            }
+                            <li class="panel-liste-satir panel-liste-satir--is hucre-vurgu" id="@($"yerlesim-atanmamis-{sb.SubeId}")">
+                                <span class="panel-liste-ad">@Dil.T.Yerlesim.Atanmamis</span>
+                                <span class="panel-liste-tutar sayi">@Bicim.Miktar(sb.Atanmamis, null)</span>
+                            </li>
+                        </ul>
+                        @* KESIF-P4 #14: uzun açıklama tablo hücresinde kırılmadan sütunu
+                           genişletiyor, pencere kenarında kesiliyor ve Adet sütununu
+                           görünmez kılıyordu. Açıklama tablonun ALTINDA, sarılan paragraf. *@
+                        <p class="metin-kucuk metin-soluk" id="@($"yerlesim-atanmamis-ipucu-{sb.SubeId}")">@Dil.T.Yerlesim.AtanmamisIpucu</p>
+
+                        @* DoD: düğme ya istek atar ya DISABLED + sebep. *@
+                        @* KESIF-P4 #14: Reyon ve Adet kutuları ızgaranın DOĞRUDAN çocuğu —
+                           ara .alan sarmalayıcısı alt ızgara raylarını bozup Adet kutusunu
+                           23 px aşağı itiyordu. Aşım uyarısı ızgaranın altına alındı. *@
+                        <div class="form-grid-2">
+                                <Secici ElemanId="@($"yer-reyon-{sb.SubeId}")"
+                                        Etiket="@Dil.T.Yerlesim.Reyon"
+                                        Secenekler="@(reyonSecenekleri.Where(x => x.SubeId == sb.SubeId && x.Aktif).Select(ar => new SecenekOgesi(ar.Id, ar.Ad)).ToList())"
+                                        Deger="@YerReyonSecimi(sb.SubeId)"
+                                        DegerChanged="@((string? _v) => YerReyonYaz(sb.SubeId, _v))"
+                                        BosSecenekMetni="—" />
+                                <Sayi ElemanId="@($"yer-adet-{sb.SubeId}")" Etiket="@Dil.T.Yerlesim.Adet" EnAz="0" TamSayi="@(!StokUrunuGramli)" EnCokOndalik="3"
+                                      Deger="@YerAdetSecimi(sb.SubeId)"
+                                      DegerChanged="@((decimal? _v) => YerAdetYaz(sb.SubeId, _v?.ToString(System.Globalization.CultureInfo.InvariantCulture)))" />
+                        </div>
+                        @if (YerAdetSecimi(sb.SubeId) > sb.Atanmamis)
+                        {
+                            <span class="metin-kucuk metin-hata" id="@($"yer-adet-asim-{sb.SubeId}")">
+                                @Dil.T.Yerlesim.AdetAtanmamisiAsiyor
+                            </span>
+                        }
+                        <button class="btn btn-birincil btn-kucuk" id="@($"yer-yerlestir-{sb.SubeId}")"
+                                disabled="@(!YerlestirGecerli(sb))"
+                                @onclick="() => Yerlestir(sb)">@Dil.T.Yerlesim.Yerlestir</button>
+                        @if (!YerlestirGecerli(sb))
+                        {
+                            <span class="metin-kucuk metin-soluk" id="@($"yer-kilit-{sb.SubeId}")">
+                                @YerlestirKilitSebebi(sb)
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</ModalPencere>
+
+@* ── Ürün düzenleme modalı ──
+   ⚠ Liste yalnız ÖZET taşır (açıklama, kategori, reyon, konsinye, KMTS kodu
+   listede yok). Kartın tamamı çekilmeden kaydedilirse görünmeyen alanlar
+   silinirdi — cari ekranında bu hata bizzat yaşandı. Bu yüzden düzenleme
+   GET /urunler/{id} ile TAM KARTI çeker. *@
+@* KESIF-P4 (#15/#16/#38 · TOPLU KATMAN-1b YÜKSEK): çekmece 480 px ve yazısı
+   18 px; yarım sütuna düşen seçici değeri/etiketi kırılıyor, kutular hizadan
+   kayıyordu. Çözüm SAYFA İŞARETLEMESİYLE: çekmecede her alan TAM GENİŞLİK
+   (form-grid-2 → form-dikey). Ortak katman.css'e dokunulmadı (P7'nin). *@
+<Cekmece Acik="duzenleAcik" Varlik="urun" Baslik="@Dil.T.Urun.UrunDuzenle"
+         Kapat="() => duzenleAcik = false" Kaydet="UrunGuncelle"
+         Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(DuzenleKilitSebebi is null)"
+         KilitSebebi="@DuzenleKilitSebebi">
+    @if (duzenleYukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        <div class="form-dikey">
+            <Metin ElemanId="d-ad" Etiket="@Dil.T.Urun.UrunAdi" Zorunlu="true" EnFazla="@AlanSinirlari.UrunAd"
+                   Deger="@dAd" DegerChanged="@(v => dAd = v ?? "")"
+                   Durum="form" HataAlani="d-ad" />
+            <div class="form-dikey">
+                @* PATCH-3 tur 2 (hakem KRİTİK): kod sunucuda ZORUNLU — etiket "(isteğe bağlı)"
+                   basıp boş Kaydet'i sessizce reddetmek DoD EK (3) ihlaliydi. Yeni ürün
+                   formundaki u-kod ile AYNI işaret (UX-S26). *@
+                <Metin ElemanId="d-kod" Etiket="@Dil.T.Urun.Kod" Zorunlu="true" EnFazla="@AlanSinirlari.UrunKod"
+                       Deger="@dKod" DegerChanged="@(v => dKod = v ?? "")"
+                       Durum="form" HataAlani="d-kod" />
+                <BarkodAlani ElemanId="d-barkod" Etiket="@Dil.T.Urun.Barkod"
+                       Deger="@dBarkod" DegerChanged="@(v => dBarkod = v ?? "")" Durum="form" HataAlani="d-barkod" />
+            </div>
+            <div class="form-dikey">
+                <div class="alan">
+                    <Secici ElemanId="d-tip"
+                            Etiket="@Dil.T.Urun.UrunGrubu"
+                            Secenekler="@GrupSecenekleri"
+                            @bind-Deger="dTip"
+                            @bind-Deger:after="DuzenleTipDegisti" />
+                </div>
+                @* UX-S26 — düzenleme formu oluşturma formuyla AYNI alan kümesini
+                   taşır: maden, saflık tablosu ve rodyum işareti burada da var. *@
+                <div class="alan">
+                    <Secici ElemanId="d-maden"
+                            Etiket="@Dil.T.Urun.Maden"
+                            Secenekler="@(Madenler.Select(m => new SecenekOgesi(m, KurKaynakAdi.MadenAdi(m))).ToList())"
+                            @bind-Deger="dMaden"
+                            @bind-Deger:after="DuzenleMadenDegisti"
+                            Devredisi="@(TipinMadeni(dTip) is not null)"
+                            DevredisiSebebi="@MadenKilitSebebi(dTip)" />
+                </div>
+                <div class="alan">
+                    <Secici ElemanId="d-ayar"
+                            Etiket="@Dil.T.Urun.Ayar"
+                            Secenekler="@AyarSecenekleri(dMaden)"
+                            @bind-Deger="dAyar"
+                            @bind-Deger:after="DuzenleAyarDegisti" />
+                    @if (DuzAdAyarUyarisi is { } dCeliski)
+                    {
+                        <span class="metin-kucuk metin-amber" id="d-ayar-celiski" role="status">@dCeliski</span>
+                    }
+                </div>
+                @if (DuzTumAlanlar)
+                {
+                <Onay ElemanId="d-rodyum" Etiket="@Dil.T.Urun.RodyumKaplama"
+                      @bind-Deger="dRodyum"
+                      Devredisi="@(!RodyumKaplanabilir(dMaden))"
+                      DevredisiSebebi="@Dil.T.Urun.RodyumKaplanmaz"
+                      Ipucu="@Dil.T.Urun.RodyumKaplamaIpucu" />
+                }
+            </div>
+            @* ── QA turu 1 ve 2 YÜKSEK: "Düzenle formu Gerçek Milyem ve Birim
+                 alanlarını içermiyor" (UX-S26: oluşturma formu ile düzenleme formu
+                 AYNI alan kümesini taşır). Sunucu ikisini de BAŞINDAN BERİ kabul
+                 ediyordu (UrunGuncelleDto.GercekMilyem / .Birim) — eksik olan
+                 yalnız giriş alanıydı. ── *@
+            @if (DuzTumAlanlar)
+            {
+            <Milyem ElemanId="d-gercek-milyem" Etiket="@Dil.T.Urun.GercekMilyem"
+                  @bind-Deger="dGercekMilyem" Durum="form" HataAlani="d-gercek-milyem"
+                  Ipucu="@Dil.T.Urun.GercekMilyemIpucu" />
+            <div class="alan">
+                <Secici ElemanId="d-birim"
+                        Etiket="@Dil.T.Urun.Birim"
+                        Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("ADET", Dil.T.Urun.BirimAdet), new SecenekOgesi("GRAM", Dil.T.Urun.BirimGram) })"
+                        @bind-Deger="dBirim"
+                        @bind-Deger:after="DuzenleBirimDegisti" />
+                @if (dBirim == "GRAM")
+                {
+                    <span class="metin-soluk metin-kucuk" id="d-birim-ipucu">@Dil.T.Urun.BirimGramIpucu</span>
+                }
+            </div>
+            }
+            <div class="form-dikey">
+                @* PATCH-3 tur 2 (hakem KRİTİK, K18): ADET biriminde gram ZORUNLU (UrunGuncelle
+                   form.Pozitif) — etiket birime göre değişir, "isteğe bağlı" çelişkisi yok. *@
+                <Gram ElemanId="d-gram" Etiket="@Dil.T.Urun.GramAgirlik" Tur="@(dBirim == "GRAM" ? (AgirlikTuru?)null : AgirlikTuru.Gram)"
+                      Zorunlu="@(dBirim != "GRAM")"
+                      Deger="@(dGramBos ? (decimal?)null : dGram)" DegerChanged="DGramDegisti"
+                      Devredisi="@(dBirim == "GRAM")" DevredisiSebebi="@Dil.T.Urun.BirimGramIpucu"
+                      Durum="form" HataAlani="d-gram" />
+                @if (DuzTumAlanlar)
+                {
+                <Gram ElemanId="d-tas" Etiket="@Dil.T.Urun.TasAgirlik" Tur="AgirlikTuru.Tas" Brut="@(dGramBos ? null : dGram)"
+                      Deger="@dTas" DegerChanged="@(v => dTas = v ?? 0m)" Durum="form" HataAlani="d-tas" />
+                }
+            </div>
+            @if (dTas > 0)
+            {
+                <div class="form-dikey">
+                    <div class="alan">
+                        <Secici ElemanId="d-tas-koken"
+                                Etiket="@Dil.T.Urun.TasKokeni"
+                                Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("DOGAL", Dil.T.Urun.TasKokenDogal), new SecenekOgesi("SENTETIK", Dil.T.Urun.TasKokenSentetik), new SecenekOgesi("LABORATUVAR_URETIMI", Dil.T.Urun.TasKokenLaboratuvar), new SecenekOgesi("YAPAY_URETIM", Dil.T.Urun.TasKokenYapay) })"
+                                @bind-Deger="dTasKokeni"
+                                BosSecenekMetni="—" />
+                    </div>
+                    <Metin ElemanId="d-tas-ibare" Etiket="@Dil.T.Urun.TasIbaresi" EnFazla="@AlanSinirlari.UrunTasIbaresi"
+                           Deger="@dTasIbaresi" DegerChanged="@(v => dTasIbaresi = v ?? "")" Durum="form" HataAlani="d-tas-ibare" />
+                </div>
+            }
+            @if (DuzTumAlanlar)
+            {
+            <div class="form-dikey">
+                <div class="alan">
+                    <Secici ElemanId="d-kategori"
+                            Etiket="@Dil.T.Urun.Kategori"
+                            Secenekler="@(DuzKategoriler.Select(k => new SecenekOgesi(k.Id, k.Etiket)).ToList())"
+                            @bind-Deger="dKategoriId"
+                            BosSecenekMetni="—" />
+                </div>
+                <div class="alan">
+                    <Secici ElemanId="d-reyon"
+                            Etiket="@Dil.T.Urun.Reyon"
+                            Secenekler="@(reyonlar.Select(r => new SecenekOgesi(r.Id, r.Ad)).ToList())"
+                            @bind-Deger="dReyonId"
+                            BosSecenekMetni="—" />
+                </div>
+            </div>
+            }
+            <div class="form-dikey">
+                @if (DuzTumAlanlar)
+                {
+                <Para ElemanId="d-iscilik" Etiket="@Dil.T.Islem.IscilikTutari" Tur="TutarTuru.SifirOlabilir"
+                      Deger="@dIscilik" DegerChanged="@(v => dIscilik = v ?? 0m)" Durum="form" HataAlani="d-iscilik" />
+                }
+                @* Kıymetsiz madende satış fiyatı ZORUNLU → basit modda da görünür. *@
+                @if (DuzTumAlanlar || !MadenKiymetli(dAyar))
+                {
+                <Para ElemanId="d-satis" Etiket="@Dil.T.Urun.SatisFiyati" Tur="TutarTuru.SifirOlabilir"
+                      Zorunlu="@(!MadenKiymetli(dAyar))"
+                      @bind-Deger="dSatisFiyati" Durum="form" HataAlani="d-satis" />
+                }
+            </div>
+            @* ── 4C / sertifika (paket 4) — A16 kalan açığı: uç (PATCH /urunler/{id})
+                 4C alanlarını zaten kabul ediyordu, düzenleme ekranında GİRİŞİ YOKTU.
+                 ⚠ PATCH sözleşmesi: boş bırakılan alan NULL gider = "dokunma"
+                 (UrunModulu.Guncelle satır ~515). Değer SİLMEK bu ekrandan yapılamaz. ── *@
+            @if (dTip == "PIRLANTA")
+            {
+                <div class="form-dikey">
+                    <Sayi ElemanId="d-karat" Etiket="@Dil.T.Urun.Karat" EnAz="0.001m" EnCok="999" EnCokOndalik="3" @bind-Deger="dKarat" Durum="form" HataAlani="d-karat" />
+                    <div class="alan">
+                        <Secici ElemanId="d-renk"
+                                Etiket="@Dil.T.Urun.Renk"
+                                Secenekler="@(Renkler.Select(r => new SecenekOgesi(r, r)).ToList())"
+                                @bind-Deger="dRenk"
+                                BosSecenekMetni="—" />
+                    </div>
+                </div>
+                <div class="form-dikey">
+                    <div class="alan">
+                        <Secici ElemanId="d-berraklik"
+                                Etiket="@Dil.T.Urun.Berraklik"
+                                Secenekler="@(Berrakliklar.Select(b => new SecenekOgesi(b, b)).ToList())"
+                                @bind-Deger="dBerraklik"
+                                BosSecenekMetni="—" />
+                    </div>
+                    <div class="alan">
+                        <Secici ElemanId="d-kesim"
+                                Etiket="@Dil.T.Urun.Kesim"
+                                Secenekler="@(Kesimler.Select(s => new SecenekOgesi(s, s)).ToList())"
+                                @bind-Deger="dKesim"
+                                BosSecenekMetni="—" />
+                    </div>
+                </div>
+                <div class="form-dikey">
+                    <div class="alan">
+                        <Secici ElemanId="d-sert-kurum"
+                                Etiket="@Dil.T.Urun.SertifikaKurumu"
+                                Secenekler="@(Kurumlar.Select(s => new SecenekOgesi(s, s)).ToList())"
+                                @bind-Deger="dSertKurum"
+                                BosSecenekMetni="—" />
+                    </div>
+                    <Metin ElemanId="d-sert-no" Etiket="@Dil.T.Urun.SertifikaNo" EnFazla="@AlanSinirlari.UrunSertifikaNo"
+                           Deger="@dSertNo" DegerChanged="@(v => dSertNo = v ?? "")" Durum="form" HataAlani="d-sert-no" />
+                </div>
+            }
+
+            @if (DuzTumAlanlar)
+            {
+            @* ═══ PAKET P-10 (Y-3) — OLUŞTURMA FORMUYLA AYNI ALAN KÜMESİ (UX-S26) ═══ *@
+            <Metin ElemanId="d-aciklama" Etiket="@P4.AciklamaEtiketi" EnFazla="@AlanSinirlari.UrunAciklama"
+                   Deger="@dAciklama" DegerChanged="@(v => dAciklama = v ?? "")" Durum="form" HataAlani="d-aciklama" />
+            <div class="form-dikey">
+                <div class="alan">
+                    <Secici ElemanId="d-parite"
+                            Etiket="@P4.PariteEtiketi"
+                            Secenekler="@PariteSecenekOgeleri"
+                            @bind-Deger="dPariteKodu"
+                            BosSecenekMetni="—" />
+                    <span class="metin-soluk metin-kucuk" id="d-parite-ipucu">@P4.PariteIpucu</span>
+                </div>
+            </div>
+            @* PAKET YASAL-4 / Y4-C: yeni formla AYNI kural (UX-S26) — ayar kapalıyken alan yok,
+               PATCH'te kmtsKodu GÖNDERİLMEZ (null = koru; kayıtlı kod silinmez). *@
+            @if (KmtsGorunur)
+            {
+                <Katlanir Id="d-ek-bilgiler" Baslik="@Y4U.KmtsEkBilgiler">
+                    <Metin ElemanId="d-kmts" Etiket="@Dil.T.Urun.KmtsKodu" EnFazla="@AlanSinirlari.UrunKmts"
+                           Deger="@dKmtsKodu" DegerChanged="@(v => dKmtsKodu = v ?? "")"
+                           Ipucu="@Y4U.KmtsIpucu" Durum="form" HataAlani="d-kmts" />
+                </Katlanir>
+            }
+            <div class="form-dikey">
+                <Metin ElemanId="d-rfid" Etiket="@Dil.T.Urun.Rfid" EnFazla="@AlanSinirlari.UrunRfid"
+                       Deger="@dRfid" DegerChanged="@(v => dRfid = v ?? "")"
+                       Ipucu="@Dil.T.Urun.RfidIpucu" Durum="form" HataAlani="d-rfid" />
+                <Metin ElemanId="d-gorsel-url" Etiket="@Dil.T.Urun.GorselUrl" EnFazla="@AlanSinirlari.UrunGorselUrl"
+                       Deger="@dGorselUrl" DegerChanged="@(v => dGorselUrl = v ?? "")"
+                       Durum="form" HataAlani="d-gorsel-url"
+                       Ipucu="@Dil.T.Urun.GorselUrlIpucu" />
+            </div>
+            }
+
+            @* S3-3: konsinye kartında (sahip + bedel kural kapısı) alan basit modda da açık. *@
+            @if (DuzTumAlanlar || dKonsinye)
+            {
+            @* ── Konsinye (paket UX-4b madde 6) ──────────────────────────────
+                 Bu alanlar düzenleme modalında YOKTU: gövdede gitmedikleri için
+                 sunucu konsinye=false alıyor, sahibi ve bedeli SESSİZCE
+                 siliniyordu. Artık hem gösterilir hem gönderilir. ── *@
+            <Onay ElemanId="d-konsinye" Etiket="@Dil.T.Urun.Konsinye"
+                  @bind-Deger="dKonsinye" Ipucu="@Dil.T.Urun.KonsinyeIpucu" />
+            @if (dKonsinye)
+            {
+                <div class="form-dikey">
+                    <div class="alan">
+                        <Secici ElemanId="d-kons-cari"
+                                Etiket="@Dil.T.Urun.KonsinyeSahibi"
+                                Secenekler="@CariSecenekleri"
+                                @bind-Deger="dKonsinyeCariId"
+                                BosSecenekMetni="—" />
+                    </div>
+                    <Para ElemanId="d-kons-bedel" Etiket="@Dil.T.Urun.KonsinyeBirimBedel" Tur="TutarTuru.Pozitif"
+                          @bind-Deger="dKonsinyeBedel" Durum="form" HataAlani="d-kons-bedel" />
+                </div>
+            }
+            }
+
+            @* ═══ PAKET P-16 (Y-26) — OLUŞTURMA FORMUYLA AYNI ALAN KÜMESİ (UX-S26) ═══
+               Seçenek listeleri TEK diziden (cariler) üretilir; iki formda iki
+               farklı küme olamaz. *@
+            @if (DuzTumAlanlar)
+            {
+            <fieldset class="form-dikey" id="d-p16">
+                <legend>@Dil.T.Urun.KartBolumu</legend>
+                <div class="alan">
+                    <Secici ElemanId="d-tedarikci"
+                            Etiket="@Dil.T.Urun.Tedarikci"
+                            Secenekler="@CariSecenekleri"
+                            @bind-Deger="dTedarikciId"
+                            BosSecenekMetni="—" />
+                    <span class="metin-soluk metin-kucuk" id="d-tedarikci-ipucu">@Dil.T.Urun.TedarikciIpucu</span>
+                </div>
+                <div class="alan">
+                    <Para ElemanId="d-alis-maliyeti" Etiket="@Dil.T.Urun.AlisMaliyeti" Tur="TutarTuru.SifirOlabilir"
+                          @bind-Deger="dAlisMaliyeti" Durum="form" HataAlani="d-alis-maliyeti"
+                          Ipucu="@Dil.T.Urun.AlisMaliyetiIpucu" />
+                    @if (dAlisMaliyeti is null)
+                    {
+                        <span class="metin-amber metin-kucuk" id="d-alis-maliyeti-uyari">@Dil.T.Urun.AlisMaliyetiYok</span>
+                    }
+                </div>
+                <Yuzde ElemanId="d-hedef-marj" Etiket="@Dil.T.Urun.HedefMarj" Marj="true" Birim="%"
+                      @bind-Deger="dHedefMarj" Durum="form" HataAlani="d-hedef-marj"
+                      Ipucu="@Dil.T.Urun.HedefMarjIpucu" />
+                <Yuzde ElemanId="d-kdv-orani" Etiket="@Dil.T.Urun.KdvOrani" Birim="%"
+                      @bind-Deger="dKdvOrani" Durum="form" HataAlani="d-kdv-orani"
+                      Ipucu="@Dil.T.Urun.KdvOraniIpucu" />
+                <Metin ElemanId="d-seri-no" Etiket="@Dil.T.Urun.SeriNo" EnFazla="@AlanSinirlari.UrunSeriNo"
+                       Deger="@dSeriNo" DegerChanged="@(v => dSeriNo = v ?? "")" Durum="form" HataAlani="d-seri-no" />
+                <Metin ElemanId="d-olcu" Etiket="@Dil.T.Urun.Olcu" EnFazla="@AlanSinirlari.UrunOlcu"
+                       Deger="@dOlcu" DegerChanged="@(v => dOlcu = v ?? "")"
+                       Ipucu="@Dil.T.Urun.OlcuIpucu" Durum="form" HataAlani="d-olcu" />
+                <Sayi ElemanId="d-min-stok" Etiket="@Dil.T.Urun.MinStok" EnAz="0" TamSayi="@(dBirim != "GRAM")" EnCokOndalik="3"
+                      @bind-Deger="dMinStok" Durum="form" HataAlani="d-min-stok"
+                      Ipucu="@Dil.T.Urun.MinStokIpucu" />
+            </fieldset>
+            }
+            @if (Modu.BasitMi)
+            {
+                <button @onclick="() => duzDahaFazla = !duzDahaFazla" type="button" class="dugme dugme-ikincil dugme-kucuk form-daha-fazla" id="d-daha-fazla"
+                        aria-expanded="@(duzDahaFazla ? "true" : "false")">
+                    @(duzDahaFazla ? $"{L.DahaAz} ▴" : $"{L.DahaFazla} ({L.DahaFazlaIcerik}) ▾")
+                </button>
+            }
+
+            @* ── Belge deposu (paket 4) — A16'nın "ürün düzenleme modalında
+                 yükleme ekranı yok" açığını kapatır. Ürünün sertifikası artık
+                 ekrandan yüklenip indirilebiliyor. ── *@
+            @* S3-3: basit modda galeri + belge yükleyici de "Daha fazla ▾" arkasında
+               (çekmecede görünen girdi ≤ 8; canlı ölçümde yükleyici 9. ve 10. girdiydi). *@
+            @if (!string.IsNullOrEmpty(dId) && DuzTumAlanlar)
+            {
+                @* PAKET P-10 (Y-8): yüklenen GORSEL/FOTOGRAF belgeleri ve kart
+                   adresi burada GÖRÜNÜR — depoda duruyor ama ekranda yoktu. *@
+                <UrunGorselGalerisi UrunId="@dId" GorselUrl="@dGorselUrl" Onek="d-urun" />
+                <BelgeYukleyici SahipTuru="URUN" SahipId="@dId" Onek="d-belge"
+                                Turler="@UrunBelgeTurleri" />
+            }
+            <HataBandi Mesaj="@duzenleHata" Id="d-urun-hata" />
+            @* Kaydet/İptal çekmecenin alt çubuğunda (#cekmece-urun-kaydet/-iptal);
+               kilitliyse sebebi orada YAZAR (UX-S30). *@
+        </div>
+    }
+</Cekmece>
+
+@* ── Etiket modalı — md.11/(e) ── *@
+<ModalPencere Acik="etiket is not null" Baslik="@Dil.T.Urun.Etiket" Kapat="() => etiket = null">
+    @if (etiket is not null)
+    {
+        <div class="form-dikey">
+            <div class="alan">
+                <label>@Dil.T.Urun.EtiketMetni</label>
+                <p class="hucre-vurgu">@etiket.EtiketMetni</p>
+                @if (etiket.IbareZorunlu)
+                {
+                    <Rozet Renk="amber">@Dil.T.Urun.IbareZorunlu: @etiket.Ibare</Rozet>
+                }
+            </div>
+            <div class="form-grid-2">
+                <div class="alan"><label>@Dil.T.Urun.Barkod</label><p>@(etiket.Barkod ?? "—")</p></div>
+                <div class="alan"><label>@Dil.T.Urun.Ayar</label><p id="u-etiket-ayar">@KurKaynakAdi.AyarAdi(etiket.AyarId)</p></div>
+                <div class="alan"><label>@Dil.T.Urun.Milyem</label><p>@etiket.Milyem</p></div>
+                <div class="alan"><label>@Dil.T.Urun.HasGram</label><p class="metin-amber">@Bicim.Has(etiket.HasGrami)</p></div>
+            </div>
+            <p class="metin-soluk metin-kucuk">@Dil.T.Urun.Dayanak: @etiket.Dayanak</p>
+        </div>
+    }
+</ModalPencere>
+
+@* ── Sayım düzeltme modalı ── *@
+<ModalPencere Acik="sayimSube is not null" Baslik="@Dil.T.Urun.SayimDuzelt" Kapat="() => sayimSube = null">
+    <div class="form-dikey">
+        <div class="alan">
+            <label>@Dil.T.Urun.Sube</label>
+            <p class="metin-soluk metin-kucuk" id="s-sube">@SubeAdi(sayimSube)</p>
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <label>@DilEkranSozlugu.KayitliAdet(Dil.Dil)</label>
+                <p class="hucre-vurgu sayi">@sayimKayitli.ToString("0.###")</p>
+            </div>
+            @* GRAM üründe 1 adet = 1 gram (Entities.cs:206) → adet ondalık olabilir. *@
+            <Sayi ElemanId="s-adet" Etiket="@Dil.T.Urun.SayilanAdet" EnAz="0" TamSayi="@(!StokUrunuGramli)" EnCokOndalik="3"
+                  Deger="@sayimAdet" DegerChanged="@(v => sayimAdet = v ?? 0m)" />
+        </div>
+        <p class="metin-soluk metin-kucuk">@Dil.T.Urun.Fark: @((sayimAdet - sayimKayitli).ToString("+0.###;-0.###;0"))</p>
+        <p class="metin-soluk metin-kucuk">@Dil.T.Urun.SayimIpucu</p>
+        <HataBandi Mesaj="@sayimHata" />
+        @if (sayiKapisi.Sebep(Dil.Dil, "s-") is { } sayimKilit)
+        {
+            <span class="metin-kucuk metin-amber" id="s-kaydet-kilit">@sayimKilit</span>
+        }
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => sayimSube = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-birincil" style="flex:1" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("s-"))"
+                    @onclick="SayimKaydet">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Pasife alma onayı ──
+   Silme DEĞİL: geçmiş hareketler duruyor, ürün yalnız yeni satışa kapanıyor. *@
+<ModalPencere Acik="pasifUrun is not null" Baslik="@Dil.T.Urun.PasifeAl" Kapat="() => pasifUrun = null">
+    <div class="form-dikey">
+        <p>@Dil.T.Urun.PasifeAlOnay</p>
+        <p class="hucre-vurgu">@pasifUrun?.Ad</p>
+        <HataBandi Mesaj="@pasifHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => pasifUrun = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-tehlike" style="flex:1" disabled="@kaydediliyor"
+                    @onclick="PasifeAlOnayla">@Dil.T.Urun.PasifeAl</button>
+        </div>
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — ön ekler: u- yeni · d- düzenle · s- sayım · yer-adet- yerleşim.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+
+    // ── PAKET 25 — yanıt şekilleri ORTAK sözleşmededir (S-2 dersi):
+    //   Kuyumcu.Core/Sozlesmeler/YerlesimSozlesmeleri.cs
+
+    private List<UrunYerlesimSubesi> yerlesimSubeler = [];
+    private List<ReyonSatiri> reyonSecenekleri = [];
+    private string? yerlesimHata;
+    private readonly Dictionary<string, string> yerReyonId = [];
+    private readonly Dictionary<string, decimal> yerAdet = [];
+
+    private string YerReyonSecimi(string subeId) => yerReyonId.GetValueOrDefault(subeId, "");
+
+    private void YerReyonYaz(string subeId, string? ham) => yerReyonId[subeId] = ham ?? "";
+    private decimal YerAdetSecimi(string subeId) => yerAdet.GetValueOrDefault(subeId, 0m);
+
+    private void YerAdetYaz(string subeId, string? ham) =>
+        yerAdet[subeId] = decimal.TryParse(ham,
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0m;
+
+    private bool YerlestirGecerli(UrunYerlesimSubesi sb) =>
+        !kaydediliyor && !sayiKapisi.OnekleVar($"yer-adet-{sb.SubeId}") && !string.IsNullOrEmpty(YerReyonSecimi(sb.SubeId))
+        && YerAdetSecimi(sb.SubeId) > 0m && YerAdetSecimi(sb.SubeId) <= sb.Atanmamis;
+
+    /// <summary>UX-S30 — kilitli düğme eksik koşulu SÖYLER.</summary>
+    private string YerlestirKilitSebebi(UrunYerlesimSubesi sb) =>
+        sayiKapisi.Sebep(Dil.Dil, $"yer-adet-{sb.SubeId}") is { } sayiSebep ? sayiSebep :
+        string.IsNullOrEmpty(YerReyonSecimi(sb.SubeId)) ? Dil.T.Yerlesim.HedefSecilmeli
+        : YerAdetSecimi(sb.SubeId) <= 0m ? Dil.T.Yerlesim.AdetGecersiz
+        : Dil.T.Yerlesim.AdetAtanmamisiAsiyor;
+
+    // PAKET 20 / UX-S31 — ürün grubu listesi TEK KAYNAKTAN gelir.
+    // Eskiden burada elle yazılı 7 elemanlı bir dizi vardı; API ise 11 grup
+    // kabul ediyordu: PLATIN, PALADYUM, CELIK ve DEGERLI_TAS ürünleri ekrandan
+    // HİÇ kaydedilemiyordu (vitrindeki platin alyans sisteme giremiyordu).
+    private static readonly string[] Tipler = Kuyumcu.Core.Domain.UrunTipleri.Hepsi;
+
+    // Maden listesi ve her madenin saflık (milyem) tablosu — aynı Core kaynağı;
+    // sunucu da GET /urunler/madenler ucunda BUNU döner (K20-8).
+    private static readonly string[] Madenler = Kuyumcu.Core.Domain.Maden.Hepsi;
+
+    private static IReadOnlyList<Kuyumcu.Core.Domain.Ayar> MadenAyarlari(string maden) =>
+        [.. Kuyumcu.Core.Domain.Ayarlar.MadeninAyarlari(maden)];
+
+    private string KategoriEtiketi => $"{Dil.T.Urun.Kategori} ({Dil.T.Ortak.Opsiyonel})";
+    private string ReyonEtiketi => $"{Dil.T.Urun.Reyon} ({Dil.T.Ortak.Opsiyonel})";
+
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    // Razor ÖZNİTELİK DEĞERİ içinde iç içe çift tırnak ve `{ }` deseni
+    // ayrıştırıcıyı bozar; seçenek/sebep üretimi bu yüzden @code tarafında
+    // durur (tek yer kuralı: iki form da AYNI diziyi kullanır — UX-S26).
+    // KESIF-P4 #79/#84: ham ayar kodu (K22) ekrana basılmaz — ad TEK kaynaktan
+    // (KurKaynakAdi.AyarAdi → Core Ayarlar). Milyem yalnız PRO'da parantez içinde.
+    // Seçenek DEĞERİ kod kalır: gövdedeki ayarId sözleşmesi değişmez.
+    private IReadOnlyList<SecenekOgesi> AyarSecenekleri(string maden) =>
+        [.. MadenAyarlari(maden).Select(a => new SecenekOgesi(a.Id, AyarSecenekMetni(a)))];
+
+    private string AyarSecenekMetni(Kuyumcu.Core.Domain.Ayar a) =>
+        Modu.ProfesyonelMi
+            ? string.Format(P4.AyarMilyemKalibi, KurKaynakAdi.AyarAdi(a.Id),
+                a.Milyem.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))
+            : KurKaynakAdi.AyarAdi(a.Id);
+
+    private KesifP4Metinleri P4 => KesifP4Sozlugu.Al(Dil.Dil);
+
+    /// <summary>KESIF-P4 tur 2: barkod okutucunun ürettiği değer tek parçadır (boşluksuz).</summary>
+    public static bool BarkodBicimindeMi(string s) => s.Length > 0 && !s.Any(char.IsWhiteSpace);
+
+    /// <summary>
+    /// KESIF-P4 tur 2 (#15): uzun cari unvanı (tedarikçi / konsinye sahibi) seçici
+    /// kutusunda 2-3 satıra kırılıp kutu kenarlarına değiyordu. Seçenek ADI kısa
+    /// unvandır (A.Ş., Ltd. Şti., San. ve Tic.; gerekirse sözcük sınırında "…"); TAM
+    /// unvan alt bilgide görünür ve aranır. Değer (cari kimliği) DEĞİŞMEZ.
+    /// Dört cari seçicisi TEK diziden beslenir (UX-S26).
+    /// </summary>
+    private List<SecenekOgesi> CariSecenekleri =>
+        [.. cariler.Select(c => KisaUnvan(c.Ad) is var k && k != c.Ad
+            ? new SecenekOgesi(c.Id, k, c.Ad)
+            : new SecenekOgesi(c.Id, c.Ad))];
+
+    public const int KisaUnvanTavan = 26;
+
+    public static string KisaUnvan(string? ad)
+    {
+        var s = System.Text.RegularExpressions.Regex.Replace((ad ?? "").Trim(), @"\s+", " ");
+        foreach (var (uzun, kisa) in UnvanKisaltmalari)
+            s = System.Text.RegularExpressions.Regex.Replace(s, $@"(?<!\S){uzun}(?!\S)", kisa,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        if (s.Length <= KisaUnvanTavan) return s;
+        var kes = s.LastIndexOf(' ', KisaUnvanTavan - 1);
+        return (kes > 0 ? s[..kes] : s[..(KisaUnvanTavan - 1)]).TrimEnd(' ', ',', '.') + "…";
+    }
+
+    // Ticaret unvanlarının yerleşik kısaltmaları (sıra önemli: uzun kalıp önce).
+    private static readonly (string Uzun, string Kisa)[] UnvanKisaltmalari =
+    [
+        ("Anonim Şirketi", "A.Ş."), ("Limited Şirketi", "Ltd. Şti."),
+        ("Sanayi ve Ticaret", "San. ve Tic."), ("Sanayi", "San."), ("Ticaret", "Tic."),
+    ];
+
+    /// <summary>UX-S30 — kilitli maden seçicisinin SEBEBİ; kilitli değilse null.</summary>
+    /// S3-3: ham grup kodu ('PLATIN') ekrana basılmaz — grup adı sözlükten (UX-S31).
+    private string? MadenKilitSebebi(string tip) =>
+        TipinMadeni(tip) is { } m
+            ? string.Format(L.MadenKilit, Grup.Ad(tip), KurKaynakAdi.MadenAdi(m).ToLowerInvariant())
+            : null;
+
+    private static bool RodyumKaplanabilir(string maden) =>
+        Array.IndexOf(Kuyumcu.Core.Domain.Maden.RodyumKaplanabilir, maden) >= 0;
+
+    private static bool MadenKiymetli(string ayarId) =>
+        Kuyumcu.Core.Domain.Ayarlar.Bul(ayarId)?.Kiymetli ?? true;
+
+    /// <summary>Ürün grubunun dayattığı maden; yoksa null (grup serbest).</summary>
+    private static string? TipinMadeni(string tip) => tip switch
+    {
+        "GUMUS" => Kuyumcu.Core.Domain.Maden.Gumus,
+        "PLATIN" => Kuyumcu.Core.Domain.Maden.Platin,
+        "PALADYUM" => Kuyumcu.Core.Domain.Maden.Paladyum,
+        "CELIK" => Kuyumcu.Core.Domain.Maden.Celik,
+        "ZIYNET" or "KULCE" or "HURDA" or "SIKKE" => Kuyumcu.Core.Domain.Maden.Altin,
+        _ => null,
+    };
+    // UX-4c madde 10 / UX-S31 — ayar listesi TEK KAYNAKTAN gelir.
+    // Eskiden bu dizi üç ekranda elle yazılıyordu ve içerikleri farklıydı
+    // (emanette K995/G999 vardı, burada yoktu). Artık Kuyumcu.Core sabiti.
+    private static readonly string[] Ayarlar = Kuyumcu.Core.Domain.Ayarlar.EkranSecenekleri;
+
+    private List<UrunVeri> UrunListesi = [];
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? urunSira, stokSira;
+    private bool UrunListesiTam => UrunListesi.Count < ListeSiniri;
+    private IReadOnlyList<IzgaraKolonu<UrunVeri>> UrunKolonlari
+    {
+        get
+        {
+            var tam = UrunListesiTam;
+            var k = new List<IzgaraKolonu<UrunVeri>>
+            {
+                // PAKET P-10 (Y-8): kapak görseli listede — "kuyumda mal görselle satılır".
+                new() { Anahtar = "gorsel", Baslik = Dil.T.Urun.Gorsel, KartEtiketsiz = true,
+                        Hucre = u => @<text>@if (!string.IsNullOrWhiteSpace(u.GorselUrl))
+                            {
+                                <img class="gorsel-kucuk" id="@($"u-gorsel-{u.Id}")" src="@u.GorselUrl" alt="@u.Ad" loading="lazy" />
+                            }
+                            else
+                            {
+                                <span class="metin-soluk katalog-tek-satir" id="@($"u-gorsel-yok-{u.Id}")" title="@Dil.T.Urun.GorselYok"><Ikon Ad="@Ikonlar.Urunler" Etiket="@Dil.T.Urun.GorselYok" /></span>
+                            }</text> },
+                new() { Anahtar = "ad", Baslik = Dil.T.Urun.UrunAdi, ZorunluGorunur = true, SunucuSiralamaAdi = tam ? "ad" : null,
+                        HucreSinif = _ => "hucre-vurgu", Deger = u => u.Ad,
+                        Hucre = u => @<text>@u.Ad
+                            @* md.11/(e): ibare listede de AÇIKÇA görünür *@
+                            @if (Ibare(u).Length > 0)
+                            {
+                                <Rozet Renk="mavi">@Ibare(u)</Rozet>
+                            }
+                            @if (Modu.BasitMi && !u.Aktif)
+                            {
+                                <span id="@($"u-pasif-rozet-{u.Id}")"><Rozet Renk="gri">@Dil.T.Ortak.Pasif</Rozet></span>
+                            }</text> },
+            };
+            if (Modu.ProfesyonelMi)
+            {
+                // S3-3: basit modda barkod ve ürün grubu sütunu yok (barkod aramada ve etikette durur).
+                k.Add(new() { Anahtar = "barkod", Baslik = Dil.T.Urun.Barkod, SunucuSiralamaAdi = tam ? "barkod" : null,
+                              HucreSinif = _ => "metin-soluk metin-kucuk", Deger = u => string.IsNullOrEmpty(u.Barkod) ? "—" : u.Barkod });
+                // UX-S31: bu sütun ÜRÜN GRUBU'dur (tip); TOPLU-2: kısa başlık, tam ad title'da.
+                k.Add(new() { Anahtar = "grup", Baslik = Toplu2Sozlugu.Al(Dil.Dil).UrunGrubuKisa, BaslikIpucu = Dil.T.Urun.UrunGrubu,
+                              SunucuSiralamaAdi = tam ? "grup" : null, HucreSinif = _ => "metin-soluk", Deger = u => Grup.Ad(u.Tip),
+                              Hucre = u => @<span id="@($"u-grup-{u.Id}")">@Grup.Ad(u.Tip)</span> });
+            }
+            k.Add(new() { Anahtar = "ayar", Baslik = Dil.T.Urun.Ayar, SunucuSiralamaAdi = tam ? "ayar" : null,
+                          Deger = u => KurKaynakAdi.AyarAdi(u.AyarId),
+                          Hucre = u => @<span id="@($"u-ayar-{u.Id}")"><Rozet Renk="amber">@KurKaynakAdi.AyarAdi(u.AyarId)</Rozet></span> });
+            k.Add(new() { Anahtar = "gram", Baslik = Dil.T.Urun.Gram, SunucuSiralamaAdi = tam ? "gram" : null, BaslikSinif = "sayi",
+                          HucreSinif = _ => "sayi hucre-tek-satir", Deger = u => u.GramAgirlik,
+                          Hucre = u => @<text>@Bicim.GramGruplu(u.GramAgirlik)</text> });
+            k.Add(new() { Anahtar = "has", Baslik = Dil.T.Urun.HasGram, SunucuSiralamaAdi = tam ? "has" : null, BaslikSinif = "sayi",
+                          HucreSinif = _ => "sayi hucre-vurgu metin-amber hucre-tek-satir", Deger = u => u.HasGrami,
+                          Hucre = u => @<text>@Bicim.Has(u.HasGrami)</text> });
+            // S3-3 — STOK ADEDİ SÜTUNU; UX-S23: sayı bağlantıdır (şube stokları penceresi).
+            k.Add(new() { Anahtar = "stok", Baslik = L.StokSutunu, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                          Hucre = u => @<button @onclick="() => StokAc(u.Id)" type="button" class="dugme dugme-kucuk dugme-ikincil sayi" id="@($"u-stok-adet-{u.Id}")"
+                                                aria-label="@string.Format(L.StokAdetIpucu, u.Ad)">@StokAdetMetni(u)</button> });
+            if (Modu.ProfesyonelMi)
+                k.Add(new() { Anahtar = "durum", Baslik = Dil.T.Urun.Durum, SunucuSiralamaAdi = tam ? "durum" : null,
+                              HucreSinif = _ => "hucre-tek-satir", Deger = u => u.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif,
+                              Hucre = u => @<Rozet Renk="@(u.Aktif ? "yesil" : "gri")">@(u.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)</Rozet> });
+            // P-61 — SATIRDA EN ÇOK 3 EYLEM + "⋯" (ortak SatirEylemleri; id'ler UrunEylemleri(u) içinde AYNEN).
+            k.Add(new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                          KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                          Hucre = u => @<SatirEylemleri Onek="u" SatirId="@u.Id" SatirAdi="@u.Ad"
+                                                        Eylemler="@UrunEylemleri(u)"
+                                                        MenuBaslik="@string.Format(L.MenuBaslik, u.Ad)"
+                                                        MenuIpucu="@L.MenuIpucu" DigerIslemler="@L.DigerIslemler" /> });
+            return k;
+        }
+    }
+
+    private IReadOnlyList<IzgaraKolonu<StokVeri>> StokKolonlari =>
+    [
+        // S3-3 / QA tur 8: ham şube kimliği (ULID) ekrana basılmaz — şube ADI.
+        new() { Anahtar = "sube", Baslik = Dil.T.Urun.Sube, ZorunluGorunur = true, SunucuSiralamaAdi = "sube",
+                HucreSinif = _ => "metin-kucuk", Deger = x => SubeAdi(x.SubeId),
+                Hucre = x => @<span id="@($"u-stok-sube-{x.SubeId}")">@SubeAdi(x.SubeId)</span> },
+        new() { Anahtar = "adet", Baslik = Dil.T.Ortak.Adet, ZorunluGorunur = true, SunucuSiralamaAdi = "adet", BaslikSinif = "sayi",
+                HucreSinif = _ => "hucre-vurgu sayi", Deger = x => x.Adet, Hucre = x => @<text>@Bicim.Miktar(x.Adet, null)</text> },
+        new() { Anahtar = "has", Baslik = Dil.T.Urun.ToplamHas, SunucuSiralamaAdi = "has", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi metin-amber", Deger = x => x.ToplamHasGram, Hucre = x => @<text>@Bicim.Has(x.ToplamHasGram)</text> },
+        // Fiziksel sayım düzeltmesi — fark deftere SAYIM_DUZELTME hareketi olarak yazılır (TB-18).
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                Hucre = x => @<button class="btn btn-ikincil btn-kucuk" @onclick="() => SayimAc(x)"><Ikon Ad="@Ikonlar.Sayim" /> @Dil.T.Urun.SayimDuzelt</button> },
+    ];
+    private bool yukleniyor = true;
+    private string? listeHata;
+    // UX-4c madde 13: kategori/reyon/cari (yan kaynak) hataları için ayrı alan.
+    private string? yanKaynakHata;
+
+    private string arama = "";
+    private string ayarFil = "";
+    private string madenFil = "";
+
+    // ═══ PAKET S3-3 — liste + çekmece yüzü ═══════════════════════════════════
+    private UrunListeMetinleri L => UrunListeSozlugu.Al(Dil.Dil);
+
+    // ── P-61 — satır eylemleri TEK kaynaktan (SatirEylemleri bileşeni) ──
+    private EventCallback Cb(Func<Task> f) => EventCallback.Factory.Create(this, f);
+    private EventCallback Cb(Action f) => EventCallback.Factory.Create(this, f);
+
+    private IReadOnlyList<SatirEylemleri.Eylem> UrunEylemleri(UrunVeri u)
+    {
+        var stok = new SatirEylemleri.Eylem($"u-stok-{u.Id}", Dil.T.Urun.Stok, Cb(() => StokAc(u.Id)));
+        var l = new List<SatirEylemleri.Eylem>();
+        // QA turu 1+2 YÜKSEK: pasif ürünü aktife alma yolu (UX-S25) — pasif satırda GÖRÜNEN ilk eylem.
+        if (u.Aktif)
+            l.Add(stok);
+        else
+            l.Add(new($"u-aktife-al-{u.Id}", Dil.T.Kabuk.AktifeAl, Cb(() => UrunAktifeAl(u)),
+                      kilitli: kaydediliyor, kilitNedeni: Dil.T.Kabuk.Kaydediliyor));
+        l.Add(new($"u-duzenle-{u.Id}", Dil.T.Ortak.Duzenle, Cb(() => DuzenleAc(u.Id))));
+        // Pasif satırda stok yolu KAYBOLMAZ: "⋯" penceresinde.
+        if (!u.Aktif) l.Add(stok);
+        l.Add(new($"u-etiket-{u.Id}", Dil.T.Urun.Etiket, Cb(() => EtiketAc(u.Id))));
+        // Yıkıcı eylem: onay modalı AYNEN; geri dönüş = pasif satırdaki "Aktife al".
+        if (u.Aktif)
+            l.Add(new($"u-pasife-al-{u.Id}", Dil.T.Urun.PasifeAl, Cb(() => PasifeAlAc(u)), tehlike: true));
+        return l;
+    }
+    private UrunGrubuAdlari Grup => UrunListeSozlugu.Grup(Dil.Dil);
+
+    /// <summary>Ürün grubu seçenekleri — değer KOD, görünen AD; tek dizi iki formu besler (UX-S26/S31).</summary>
+    private List<SecenekOgesi> GrupSecenekleri => Tipler.Select(t => new SecenekOgesi(t, Grup.Ad(t))).ToList();
+
+    /// <summary>Durum süzgeci ("" = hepsi) → sunucuya aktif=true/false (UrunController.Listele).</summary>
+    private string durumFil = "";
+    private List<SecenekOgesi> DurumSecenekleri =>
+        [new SecenekOgesi("true", Dil.T.Ortak.Aktif), new SecenekOgesi("false", Dil.T.Ortak.Pasif)];
+
+    /// <summary>Basit modda dört seçici katlıdır; profesyonel modda hep açık (bugünkü ekran).</summary>
+    private bool suzgecAcik;
+    private bool SuzgecGorunur => Modu.ProfesyonelMi || suzgecAcik;
+    private void SuzgecDegistir() => suzgecAcik = !suzgecAcik;
+    /// <summary>Katlı seçicilerden kaçında değer var — düğmede yazar, görünmez süzgeç olmaz.</summary>
+    private int EtkinSuzgecSayisi =>
+        new[] { madenFil, ayarFil, kategoriFil, reyonFil }.Count(v => !string.IsNullOrEmpty(v));
+
+    /// <summary>
+    /// UX-S29 — liste sınırı İSTEMCİDE AÇIKÇA istenir (limit=50) ve ekranda yazılır.
+    /// Eskiden sorguda limit yoktu; sunucu varsayılanı (UrunController.Listele
+    /// limit = 50) sessizce kırpıyordu.
+    /// </summary>
+    private const int ListeSiniri = 50;
+
+    // ── Basit modda form katlama ("Daha fazla ▾"): alan GİZLENİR, DEĞERİ KORUNUR ──
+    // Gövde değişkenlerden kurulur, çizimden değil: katlı alan düzenlemede
+    // sunucudan yüklenen değeri PATCH'te AYNEN geri yazar (S33 testi).
+    private bool yeniDahaFazla, duzDahaFazla;
+    // PAKET GOC-C (devir URUN-ACILIS-ATOMIK KAPSAM DIŞI #3 · kurucu 25.09 "zorunlu olanlar hariç ilk etapta
+    // kullanıcı görmesin"): yeni ürün formu İKİ MODDA DA yalnız zorunlularla açılır; isteğe bağlılar
+    // "Daha fazla" arkasında (değer korunur; kural kapısı olan alan — taş kökeni, 4C, çelik fiyatı — katlanmaz).
+    private bool YeniTumAlanlar => yeniDahaFazla;
+    private bool DuzTumAlanlar => Modu.ProfesyonelMi || duzDahaFazla;
+
+    /// <summary>Basit modda katlanmadan görünen alanlar (hata eşlemesi için).</summary>
+    private static readonly string[] YeniCekirdek =
+        ["u-ad", "u-kod", "u-barkod", "u-tip", "u-maden", "u-ayar", "u-gram", "u-acilis-stok", "u-tas-koken"];
+    private static readonly string[] DuzCekirdek =
+        ["d-ad", "d-kod", "d-barkod", "d-tip", "d-maden", "d-ayar", "d-gram", "d-tas-koken"];
+
+    /// <summary>
+    /// Katlı bir alanda hata varsa grup KENDİLİĞİNDEN açılır — kullanıcı göremediği
+    /// alanın mesajıyla baş başa kalmaz (DoD EK/3: sessiz etkisizlik yasak).
+    /// </summary>
+    private void KatliHataVarsaAc(bool yeni)
+    {
+        if (Modu.ProfesyonelMi || form.Gecerli) return;
+        var cekirdek = yeni ? YeniCekirdek : DuzCekirdek;
+        var satisAlani = yeni ? "u-satis-fiyati" : "d-satis";
+        var satisGorunur = !MadenKiymetli(yeni ? yeniAyar : dAyar);
+        var gorunenHata = cekirdek.Count(form.Var) + (satisGorunur && form.Var(satisAlani) ? 1 : 0);
+        if (form.HataSayisi > gorunenHata)
+        {
+            if (yeni) yeniDahaFazla = true; else duzDahaFazla = true;
+        }
+    }
+
+    // ── Stok adedi sütunu ──────────────────────────────────────────────────
+    // ⚠ Liste ucu (GET /urunler) stok taşımaz ve sunucu modülleri bu şeridin
+    //   dosya alanı DEĞİL (S-B). Adet, görünen satırlar için mevcut
+    //   GET /urunler/{id}/stok ucundan okunur (herkese açık, kiracı süzgeçli);
+    //   satır sayısı ListeSiniri ile sınırlı. Toplu uç önerisi raporda.
+    private Dictionary<string, decimal?> stokAdetleri = [];
+    private string? stokAdetHata;
+    private int stokAdetJeton;
+
+    private string StokAdetMetni(UrunVeri u) =>
+        !stokAdetleri.TryGetValue(u.Id, out var a) ? L.StokYukleniyor
+        : a is { } adet ? Bicim.Miktar(adet, u.Birim) : "?";
+
+    private async Task StokAdetleriniYukle()
+    {
+        var jeton = ++stokAdetJeton;
+        stokAdetHata = null;
+        var urunler = UrunListesi.ToList();
+        if (urunler.Count == 0) { stokAdetleri = []; return; }
+        // PAKET ISTEK-1: satır başına GET /urunler/{id}/stok (N+1) yerine TEK
+        // toplu istek. 12 ürünlük listede 12 istek → 1; 200 ürünlük dükkânda
+        // ekran açılışı artık genel istek sınırını tek başına yemez.
+        // Liste ListeSiniri (≤500) ile sınırlı; uç da en fazla 500 kimlik alır.
+        // Önceki adetler yeni yanıt gelene dek EKRANDA KALIR (boşalma yok).
+        try
+        {
+            var kimlikler = string.Join(",", urunler.Select(u => u.Id));
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şubenin adetleri
+            var y = await Api.GetAsync<StokAdetleriYaniti>(SubeliSorgu.Ekle($"/urunler/stok-adetleri?ids={Uri.EscapeDataString(kimlikler)}", Oturum));
+            // Süzgeç bu arada değiştiyse eski yanıt yeni listeye YAZILMAZ.
+            if (jeton != stokAdetJeton) return;
+            var gelen = (y?.Urunler ?? []).ToDictionary(x => x.UrunId, x => (decimal?)x.ToplamAdet);
+            // Yanıtta olmayan ürün "?" olur (tahmin yok) ve sebep bantta yazar.
+            stokAdetleri = urunler.ToDictionary(u => u.Id, u => gelen.TryGetValue(u.Id, out var a) ? a : null);
+            if (urunler.Any(u => !gelen.ContainsKey(u.Id)))
+                stokAdetHata = L.StokAlinamadi;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            if (jeton != stokAdetJeton) return;
+            // Bilinen adet korunur; bilinmeyen hücre "?" olur, sebep bantta.
+            var onceki = stokAdetleri;
+            stokAdetleri = urunler.ToDictionary(u => u.Id, u => onceki.TryGetValue(u.Id, out var a) ? a : null);
+            stokAdetHata = $"{L.StokAlinamadi} ({ex.Message})";
+        }
+    }
+
+    // ── Şube adı (stok penceresi) ─────────────────────────────────────────
+    private Dictionary<string, string> subeAdlari = [];
+    private string? subeHata;
+
+    private string SubeAdi(string? subeId) =>
+        subeId is null ? "" :
+        subeAdlari.TryGetValue(subeId, out var ad) ? ad :
+        yerlesimSubeler.FirstOrDefault(y => y.SubeId == subeId)?.SubeAdi is { Length: > 0 } yAd ? yAd :
+        L.SubeBilinmiyor;
+
+    private async Task SubeAdlariniYukle()
+    {
+        if (subeAdlari.Count > 0) return;
+        try
+        {
+            var liste = await Api.GetAsync<List<UrunSubeVeri>>("/subeler");
+            subeAdlari = liste.Where(x => !string.IsNullOrEmpty(x.Id)).ToDictionary(x => x.Id, x => x.Ad);
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28: sessiz kalmaz — stok penceresinde AYRI hata bandı (stok tablosu
+            // yine görünür); ad yerine "Tanımsız şube" yazar, kimlik basılmaz.
+            subeHata = ex.Message;
+        }
+    }
+
+    private bool yeniModalAcik;
+    /// <summary>UX-4d madde 1 — ürün kartından açılış stoğu (0 = stoksuz aç).</summary>
+    private decimal yeniAcilisStok;
+    private bool kaydediliyor;
+    private string? modalHata;
+    private string yeniAd = "";
+    private string yeniKod = "";
+    private string yeniBarkod = "";
+    private string yeniTip = "ZIYNET";
+    private string yeniMaden = Kuyumcu.Core.Domain.Maden.Altin;
+    private string yeniAyar = "";   // P-URUN (K6): varsayılan YOK
+    private bool yeniRodyum;
+    private decimal yeniGram;
+    private string yeniBirim = "ADET";
+    private decimal? yeniKarat; private string yeniRenk = "", yeniBerraklik = "", yeniKesim = "", yeniSertKurum = "", yeniSertNo = "";
+    private static string? Bos(string s) => string.IsNullOrWhiteSpace(s) ? null : s;
+    private static readonly string[] Renkler = Kuyumcu.Core.Domain.Pirlanta.Renkler, Berrakliklar = Kuyumcu.Core.Domain.Pirlanta.Berrakliklar, Kesimler = Kuyumcu.Core.Domain.Pirlanta.Kesimler, Kurumlar = Kuyumcu.Core.Domain.Pirlanta.SertifikaKurumlari;
+    /// <summary>GRAM seçilince gram ağırlık 1'e çekilir (1 adet = 1 g); sunucu da zorlar.</summary>
+    private void BirimDegisti() { if (yeniBirim == "GRAM") yeniGram = 1m; }
+    private decimal yeniTas;
+    private string yeniTasKokeni = "";
+    private string yeniTasIbaresi = "";
+
+    /// <summary>İbare zorunluluğu doğuran kökenler — md.11/(e).</summary>
+    private bool YapayTas =>
+        yeniTasKokeni is "SENTETIK" or "LABORATUVAR_URETIMI" or "YAPAY_URETIM";
+    private decimal yeniIscilik;
+    private decimal? yeniGercekMilyem;
+    private decimal? yeniSatisFiyati;
+
+    private string? stokUrunId;
+    /// <summary>PAKET GOC-C (#6 · K14): stok penceresindeki ürün GRAM birimli mi (değilse sayım/yerleşim adedi tam sayı).</summary>
+    private bool StokUrunuGramli => UrunListesi.FirstOrDefault(x => x.Id == stokUrunId)?.Birim == "GRAM";
+    private List<StokVeri> stoklar = [];
+    private string? stokHata;
+
+
+    private List<KategoriDugum> kategoriAgaci = [];
+    private List<ReyonVeri> reyonlar = [];
+    private List<CariOzet> cariler = [];
+    private string kategoriFil = "";
+    private string reyonFil = "";
+
+    /// <summary>Ağacı açılır listeye uygun düz listeye indirger ("Altın › Bilezik").</summary>
+    private List<DuzKategori> DuzKategoriler => Duzlestir(kategoriAgaci, "");
+
+    private static List<DuzKategori> Duzlestir(List<KategoriDugum> dugumler, string onek)
+    {
+        var sonuc = new List<DuzKategori>();
+        foreach (var d in dugumler)
+        {
+            var etiket = onek.Length == 0 ? d.Ad : $"{onek} › {d.Ad}";
+            sonuc.Add(new DuzKategori(d.Id, etiket));
+            sonuc.AddRange(Duzlestir(d.Cocuklar, etiket));
+        }
+        return sonuc;
+    }
+
+    // ── Barkod okutma (P-37: ayrı kutu YOK, ana arama kutusu kullanılır) ──
+    private string? barkodHata;
+
+    // ── Düzenleme ──
+    private bool duzenleAcik;
+    private bool duzenleYukleniyor;
+    private string? duzenleHata;
+    private string dId = "";
+    /// <summary>Üründe anlamlı belge türleri — sertifika (PDF) ve görsel/fotoğraf.</summary>
+    private static readonly string[] UrunBelgeTurleri = ["SERTIFIKA", "GORSEL", "FOTOGRAF", "EK"];
+    // 4C / sertifika — düzenleme modalı (paket 4, A16 kalan açığı)
+    private decimal? dKarat;
+    private string dRenk = "", dBerraklik = "", dKesim = "", dSertKurum = "", dSertNo = "";
+    // paket UX-4b madde 6 — konsinye düzenleme alanları
+    private bool dKonsinye;
+    private string dKonsinyeCariId = "";
+    private decimal? dKonsinyeBedel;
+    private string dAd = "", dKod = "", dBarkod = "", dTip = "ZIYNET", dAyar = "K18";
+    private string dMaden = Kuyumcu.Core.Domain.Maden.Altin;
+    private bool dRodyum;
+    // QA turu 1+2: düzenleme formunda EKSİK olan iki alan (UX-S26 paritesi)
+    private decimal? dGercekMilyem;
+    // PAKET PATCH-4 (VERİ KRİTİK): çekmece açılışındaki gerçek milyem ve ayar. Gerçek milyem
+    // gövdeye YALNIZ kullanıcı değiştirdiyse konur; değişmeyen alan gönderilmez → sunucu KORUR.
+    private decimal? dGercekMilyemIlk;
+    private string dAyarIlk = "";
+    private string dBirim = "ADET";
+
+    // ── UX-1-C0 ortak form altyapısı ───────────────────────────────────────
+    private readonly FormDurumu form = new();
+    private string? basari;
+    private int basariJeton;
+
+    private static readonly Dictionary<string, string> YeniEsleme = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ad"] = "u-ad", ["kod"] = "u-kod", ["gramAgirlik"] = "u-gram", ["tasAgirlik"] = "u-tas",
+        ["gercekMilyem"] = "u-gercek-milyem", ["ayarId"] = "u-ayar", ["tip"] = "u-tip",
+        ["barkod"] = "u-barkod", ["satisFiyati"] = "u-satis-fiyati", ["iscilikTl"] = "u-iscilik",
+        // URUN-ACILIS-ATOMIK tur 2: açılış stoğu reddi kutunun ALTINA yazılır (kutu kırmızı,
+        // odak oraya) — eşlenmeyince 'Daha fazla' boşuna açılıyor, hata görünmüyordu.
+        ["acilisStogu.adet"] = "u-acilis-stok", ["acilisStogu.subeId"] = "u-acilis-stok",
+        ["adet"] = "u-acilis-stok",
+    };
+
+    private static readonly Dictionary<string, string> DuzEsleme = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ad"] = "d-ad", ["kod"] = "d-kod", ["gramAgirlik"] = "d-gram", ["tasAgirlik"] = "d-tas",
+        ["gercekMilyem"] = "d-gercek-milyem", ["ayarId"] = "d-ayar", ["tip"] = "d-tip",
+        ["barkod"] = "d-barkod", ["satisFiyati"] = "d-satis", ["iscilikTl"] = "d-iscilik",
+    };
+
+    private void Basarili(string mesaj) { basari = mesaj; basariJeton++; }
+
+    private async Task OdakIlkHataya()
+    {
+        // PATCH-3 tur 2: işaretli alan yoksa (alansız sunucu hatası) bant ekran dışında
+        // kalmasın — çekmecede bandın kendisine kaydırılır.
+        // URUN-ACILIS-ATOMIK tur 2: yeni ürün penceresinde de alansız hata bandına gidilir.
+        var hedef = form.IlkHatali
+                    ?? (duzenleAcik && duzenleHata is not null ? "d-urun-hata"
+                        : yeniModalAcik && modalHata is not null ? "u-urun-hata" : null);
+        if (hedef is null) return;
+        if (form.IlkHatali is null) { StateHasChanged(); await Task.Yield(); }   // bant önce çizilsin
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", hedef); }
+        catch { /* JS yoksa alan altı mesaj yine görünür */ }
+    }
+
+    /// <summary>GRAM seçilince gram ağırlık 1'e çekilir — yeni ürün formuyla AYNI kural.</summary>
+    private void DuzenleBirimDegisti() { if (dBirim == "GRAM") { dGram = 1m; dGramBos = false; } }
+
+    /// <summary>PATCH-3 tur 2 (hakem): boşaltılan gram kutusunun altında "0,000 g" önizlemesi
+    /// çıkmasın — boş, boş olarak gösterilir; doğrulama yine 0 üzerinden (Pozitif) işler.</summary>
+    private void DGramDegisti(decimal? v) { dGramBos = v is null; dGram = v ?? 0m; }
+
+    /// <summary>
+    /// UX-S30 — Kaydet kilitliyse SEBEBİ yazılır. Kilit yalnız mevzuat/iş kuralı
+    /// kapılarında kalır (4C karat · taş kökeni · konsinye üçlüsü); ad/kod/gram
+    /// gibi biçim kuralları düğmeyi kilitlemez, alan altı mesaj verir.
+    /// </summary>
+    private string? UrunKilitSebebi => sayiKapisi.Sebep(Dil.Dil, "u-") ?? UrunKuralKilidi;
+    private string? UrunKuralKilidi =>
+        string.IsNullOrEmpty(yeniAyar) ? PU.AyarSecilmedi   // P-URUN (K6, fail-closed)
+        : yeniTip == "PIRLANTA" && !(yeniKarat > 0) ? Dil.T.Urun.Karat
+        : yeniTas > 0 && string.IsNullOrEmpty(yeniTasKokeni) ? Dil.T.Urun.TasKokeniIpucu
+        : yeniKonsinye && (string.IsNullOrEmpty(yeniKonsinyeCariId) || yeniKonsinyeBedel is null)
+            ? Dil.T.Urun.KonsinyeIpucu
+        : null;
+
+    private string? DuzenleKilitSebebi => sayiKapisi.Sebep(Dil.Dil, "d-") ?? DuzenleKuralKilidi;
+    private string? DuzenleKuralKilidi =>
+        dTas > 0 && string.IsNullOrEmpty(dTasKokeni) ? Dil.T.Urun.TasKokeniIpucu
+        : dKonsinye && (string.IsNullOrEmpty(dKonsinyeCariId) || dKonsinyeBedel is null)
+            ? Dil.T.Urun.KonsinyeIpucu
+        : null;
+    private string dTasKokeni = "", dTasIbaresi = "", dKategoriId = "", dReyonId = "";
+    private decimal dGram, dTas, dIscilik;
+    private bool dGramBos;
+    private decimal? dSatisFiyati;
+
+    private EtiketVeri? etiket;
+
+    // ── Sayım düzeltme ──
+    private string? sayimSube;
+    private decimal sayimKayitli;
+    private decimal sayimAdet;
+    private string? sayimHata;
+
+    // ── Pasife alma ──
+    private UrunVeri? pasifUrun;
+    private string? pasifHata;
+
+    // ═══ PAKET P-10 (Y-3) — sunucunun kabul ettiği beş ürün alanı ═══
+    // İkisi de AYNI kümedir (UX-S26): oluşturma ve düzenleme aynı alanları taşır.
+    private string yeniAciklama = "", yeniPariteKodu = "", yeniKmtsKodu = "", yeniRfid = "", yeniGorselUrl = "";
+    private string dAciklama = "", dPariteKodu = "", dKmtsKodu = "", dRfid = "", dGorselUrl = "";
+    // ── PAKET P-16 (Y-26) — kart alanları (oluşturma + düzenleme AYNI küme) ──
+    private string yeniTedarikciId = "", yeniSeriNo = "", yeniOlcu = "";
+    private decimal? yeniAlisMaliyeti, yeniHedefMarj, yeniKdvOrani, yeniMinStok;
+    private string dTedarikciId = "", dSeriNo = "", dOlcu = "";
+    private decimal? dAlisMaliyeti, dHedefMarj, dKdvOrani, dMinStok;
+
+    // Parite kodları TEK KAYNAKTAN gelir (UX-S31): GET /kur/pariteler.
+    // Sabit liste KOPYALANMAZ; sunucu listesi + kaydın MEVCUT kodu birleştirilir
+    // ki kaynakta olmayan eski bir kod düzenlemede sessizce düşmesin.
+    private List<Kuyumcu.Contracts.Sayfalar.Kur.PariteVeri> pariteSecenekleri = [];
+    private bool duzenleAcikMi => duzenleAcik;
+    // KESIF-P4 #37: seçenekte parite ADI görünür (GET /kur/pariteler → Ad);
+    // değer KOD kalır (API sözleşmesi aynı). Kaynakta olmayan eski kod
+    // uydurma adla değil KENDİSİYLE görünür (Anayasa md.1).
+    private List<SecenekOgesi> PariteSecenekOgeleri =>
+        [.. PariteKodlariListesi.Select(k => new SecenekOgesi(k,
+            pariteSecenekleri.FirstOrDefault(p => p.Kod == k)?.Ad is { Length: > 0 } ad ? ad : k))];
+
+    private IEnumerable<string> PariteKodlariListesi =>
+        pariteSecenekleri.Select(p => p.Kod)
+            .Concat([duzenleAcikMi ? dPariteKodu : yeniPariteKodu])
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Distinct()
+            .OrderBy(k => k, StringComparer.Ordinal);
+
+    // Yeni ürün modalının ek alanları
+    private string yeniKategoriId = "", yeniReyonId = "", yeniKonsinyeCariId = "";
+    private bool yeniKonsinye;
+    private decimal? yeniKonsinyeBedel;
+
+    // ── PAKET P-15 (B-29) — derin bağlantı durumu ───────────────────────────
+    /// <summary>Süzgeç adres çubuğundan mı geldi? (rozet + temizleme yolu)</summary>
+    private bool suzgecBaglantidan;
+
+    /// <summary>
+    /// Sorgu dizesindeki süzgeçleri KUTULARA yazar. Tanınmayan seçenek
+    /// (listede olmayan ayar/maden) UYGULANMAZ ve rozet de çıkmaz —
+    /// kullanıcı süzgecin geçmediğini görür (Anayasa md.1).
+    /// </summary>
+    private void SorgudanSuzgecOku()
+    {
+        var suzgecler = DerinBaglanti.Suzgecler(Nav.Uri);
+        if (suzgecler.Count == 0) return;
+
+        if (suzgecler.TryGetValue("q", out var q))
+        {
+            arama = q;
+            suzgecBaglantidan = true;
+        }
+        if (suzgecler.TryGetValue("ayarId", out var ayar) && Ayarlar.Contains(ayar))
+        {
+            ayarFil = ayar;
+            suzgecBaglantidan = true;
+        }
+        if (suzgecler.TryGetValue("maden", out var maden) && Madenler.Contains(maden))
+        {
+            madenFil = maden;
+            suzgecBaglantidan = true;
+        }
+        // kategoriId / reyonId seçenekleri YanKaynaklariYukle'den sonra bilinir;
+        // doğrulanamayan bir kimlik uygulanmaz ama sunucu süzgeci yine geçerlidir.
+        if (suzgecler.TryGetValue("kategoriId", out var kategori))
+        {
+            kategoriFil = kategori;
+            suzgecBaglantidan = true;
+        }
+        if (suzgecler.TryGetValue("reyonId", out var reyon))
+        {
+            reyonFil = reyon;
+            suzgecBaglantidan = true;
+        }
+    }
+
+    /// <summary>Bağlantıdan gelen süzgeci kaldırır — geri dönüş yolu (UX-S25).</summary>
+    private async Task BaglantiSuzgeciniTemizle()
+    {
+        arama = "";
+        ayarFil = "";
+        madenFil = "";
+        kategoriFil = "";
+        reyonFil = "";
+        suzgecBaglantidan = false;
+        await Yukle();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Modu.Degisti += Yenile;
+        SorgudanSuzgecOku();
+        // P-15 derin bağlantı: katlı bir seçiciye değer geldiyse süzgeç AÇIK başlar.
+        if (EtkinSuzgecSayisi > 0) suzgecAcik = true;
+        await Yukle();
+        await YanKaynaklariYukle();
+        await KmtsAyariYukle();
+    }
+
+    // ── PAKET YASAL-4 / Y4-C — KMTS alanı görünürlüğü ─────────────────────────
+    private Kuyumcu.Core.I18n.Yasal4Metinleri Y4U => Kuyumcu.Core.I18n.Yasal4Sozlugu.Al(Dil.Dil);
+    private bool kmtsAcik;
+    private bool KmtsGorunur => kmtsAcik && Modu.ProfesyonelMi;   // BASİT: hiç görünmez (şartname § 4.4)
+
+    /// <summary>Okunamazsa alan GİZLİ kalır (varsayılan kapalı) — kayıtlı veri etkilenmez.</summary>
+    private async Task KmtsAyariYukle()
+    {
+        try
+        {
+            var a = await Api.GetAsync<System.Text.Json.JsonElement>("/kmts/ayar");
+            kmtsAcik = a.ValueKind == System.Text.Json.JsonValueKind.Object
+                       && a.TryGetProperty("acik", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { kmtsAcik = false; }
+    }
+
+    /// <summary>
+    /// Kategori ağacı, reyonlar ve cari listesi. Bunlar olmadan ürün ağaca
+    /// bağlanamaz; hata olursa ekranın geri kalanı çalışmaya devam eder.
+    /// </summary>
+    private async Task YanKaynaklariYukle()
+    {
+        // UX-4c madde 13 / UX-S28: yan kaynak hatası SESSİZCE yutulmaz; ekranın
+        // geri kalanı çalışmaya devam eder ama kullanıcı "kategori listesi boş"
+        // ile "kategori ucu cevap vermedi" durumlarını ayırt edebilir.
+        yanKaynakHata = null;
+        try { kategoriAgaci = await Api.GetAsync<List<KategoriDugum>>("/urun-kategorileri"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { kategoriAgaci = []; yanKaynakHata = ex.Message; }
+        try { reyonlar = await Api.GetAsync<List<ReyonVeri>>("/reyonlar"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { reyonlar = []; yanKaynakHata ??= ex.Message; }
+        // PAKET ISTEK-1: cari listesi ve parite kodları YALNIZ ürün formunda
+        // (yeni/düzenle) kullanılır; liste ekranı her açılışta bunları çekmez,
+        // form ilk açıldığında FormKaynaklariniYukle bir kez çeker.
+    }
+
+    private bool formKaynaklariYuklendi;
+
+    /// <summary>
+    /// PAKET ISTEK-1 — ürün formunun seçenek kaynakları (cari · parite) form İLK
+    /// açıldığında bir kez yüklenir (UX-S26: iki form aynı diziden beslenir).
+    /// Hata SESSİZ kalmaz (UX-S28): yan kaynak bandına yazılır.
+    /// </summary>
+    private async Task FormKaynaklariniYukle()
+    {
+        if (formKaynaklariYuklendi) return;
+        formKaynaklariYuklendi = true;
+        if (cariler.Count == 0) await CarileriYukle();
+        // P-10 (Y-3, UX-S31): parite kodu listesi TEK KAYNAKTAN. İsteğe bağlıdır;
+        // hata ekranı çökertmez ama SESSİZ de kalmaz (UX-S28).
+        try { pariteSecenekleri = (await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Kur.PariteYaniti>("/kur/pariteler")).Pariteler ?? []; }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { pariteSecenekleri = []; yanKaynakHata ??= ex.Message; formKaynaklariYuklendi = false; }
+    }
+
+    private async Task CarileriYukle()
+    {
+        try { cariler = await Api.GetAsync<List<CariOzet>>("/cari?aktif=true&limit=200"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { cariler = []; yanKaynakHata ??= ex.Message; }
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try
+        {
+            var sorgu = new List<string>();
+            if (!string.IsNullOrWhiteSpace(arama)) sorgu.Add($"q={Uri.EscapeDataString(arama.Trim())}");
+            if (!string.IsNullOrEmpty(ayarFil)) sorgu.Add($"ayarId={Uri.EscapeDataString(ayarFil)}");
+            if (!string.IsNullOrEmpty(madenFil)) sorgu.Add($"maden={Uri.EscapeDataString(madenFil)}");
+            if (!string.IsNullOrEmpty(kategoriFil)) sorgu.Add($"kategoriId={Uri.EscapeDataString(kategoriFil)}");
+            if (!string.IsNullOrEmpty(reyonFil)) sorgu.Add($"reyonId={Uri.EscapeDataString(reyonFil)}");
+            // S3-3: durum süzgeci ve AÇIK liste sınırı (UX-S29).
+            if (durumFil is "true" or "false") sorgu.Add($"aktif={durumFil}");
+            sorgu.Add($"limit={ListeSiniri}");
+            var yol = $"/urunler?{string.Join("&", sorgu)}";
+            UrunListesi = await Api.GetAsync<List<UrunVeri>>(yol);
+        }
+        // PAKET ISTEK-1 (UX-S28): hata listeyi BOŞALTMAZ — son başarılı liste ve
+        // stok adetleri ekranda kalır, üstte hata bandı söyler.
+        catch (ApiHata ex) { listeHata = ex.Message; }
+        yukleniyor = false;
+        if (listeHata is null) await StokAdetleriniYukle();
+    }
+
+    private async Task YeniModalAc()
+    {
+        modalHata = null;
+        form.Temizle();
+        yeniDahaFazla = false;   // S3-3: basit modda form KATLI açılır
+        yeniAd = "";
+        yeniKod = "";
+        yeniAcilisStok = 0m;
+        yeniBarkod = "";
+        yeniTip = "ZIYNET";
+        yeniMaden = Kuyumcu.Core.Domain.Maden.Altin;
+        yeniAyar = "";   // P-URUN (K6): kullanıcı seçer
+        yeniRodyum = false;
+        yeniGram = 0; yeniBirim = "ADET";
+        yeniTas = 0;
+        yeniTasKokeni = "";
+        yeniTasIbaresi = "";
+        // P-10: beş yeni alan da her açılışta temizlenir (eski kayıt sızmasın).
+        yeniAciklama = ""; yeniPariteKodu = ""; yeniKmtsKodu = ""; yeniRfid = ""; yeniGorselUrl = "";
+        yeniTedarikciId = ""; yeniSeriNo = ""; yeniOlcu = "";
+        yeniAlisMaliyeti = null; yeniHedefMarj = null; yeniKdvOrani = null; yeniMinStok = null;
+        yeniIscilik = 0;
+        yeniGercekMilyem = null;
+        yeniSatisFiyati = null;
+        yeniKategoriId = "";
+        yeniReyonId = "";
+        yeniKonsinye = false;
+        yeniKonsinyeCariId = "";
+        yeniKonsinyeBedel = null;
+        yeniModalAcik = true;
+        await FormKaynaklariniYukle();
+    }
+
+    // ── PAKET 20 — maden ↔ ayar ↔ tip bağı (UX-S24) ─────────────────────────
+    // Bir alanın değeri diğerini GEÇERSİZ kılabiliyorsa bağı ekran kurar:
+    // maden değişince o madenin İLK ayarı seçilir (yoksa ayar boşta kalır ve
+    // sunucu 400 döndürürdü), rodyum işareti anlamsızlaşmışsa kaldırılır.
+
+    private static string MadeninIlkAyari(string ayar, string maden)
+    {
+        var ayarlar = MadenAyarlari(maden);
+        if (ayarlar.Count == 0) return ayar;
+        foreach (var a in ayarlar) if (a.Id == ayar) return ayar;
+        return ayarlar[0].Id;
+    }
+
+    private void YeniMadenDegisti()
+    {
+        yeniAyar = MadeninAyariVarsayilansiz(yeniAyar, yeniMaden);   // P-URUN (K6)
+        if (!RodyumKaplanabilir(yeniMaden)) yeniRodyum = false;
+    }
+
+    private void YeniTipDegisti()
+    {
+        if (TipinMadeni(yeniTip) is { } m) { yeniMaden = m; YeniMadenDegisti(); }
+    }
+
+    private void DuzenleMadenDegisti()
+    {
+        dAyar = MadeninIlkAyari(dAyar, dMaden);
+        if (!RodyumKaplanabilir(dMaden)) dRodyum = false;
+        DuzenleAyarDegisti();
+    }
+
+    /// <summary>
+    /// PAKET PATCH-4 (UX-S24 — bağımlı alanın bağını ekran kurar): ayar değişince eski
+    /// ayarın gerçek milyemi (ör. 22 ayarın 920'si) yeni ayara TAŞINMAZ; kullanıcı elle
+    /// değiştirmediyse kutu boşalır ve yeni ayarın standardı kullanılır (ipucu bunu yazar).
+    /// Ayar ilk değerine dönerse kayıtlı değer geri gelir.
+    /// </summary>
+    private void DuzenleAyarDegisti()
+    {
+        if (dAyar != dAyarIlk && dGercekMilyem == dGercekMilyemIlk) dGercekMilyem = null;
+        else if (dAyar == dAyarIlk && dGercekMilyem is null) dGercekMilyem = dGercekMilyemIlk;
+    }
+
+    private void DuzenleTipDegisti()
+    {
+        if (TipinMadeni(dTip) is { } m) { dMaden = m; DuzenleMadenDegisti(); }
+    }
+
+    private async Task UrunOlustur()
+    {
+        modalHata = null;
+        // QA turu 2 YÜKSEK: "ad boş / gram -5 ile Kaydet sessizce etkisiz".
+        form.Temizle();
+        form.Zorunlu("u-ad", yeniAd, Dil);
+        form.Zorunlu("u-kod", yeniKod, Dil);
+        if (string.IsNullOrEmpty(yeniAyar)) form.Ekle("u-ayar", PU.AyarSecilmedi);   // P-URUN (K6)
+        if (yeniBirim != "GRAM") form.Pozitif("u-gram", yeniGram, Dil);
+        form.NegatifDegil("u-tas", yeniTas, Dil);
+        // K20-5 — kıymetsiz madende (çelik) fiyat has kurundan türetilemez:
+        // satış fiyatı boş bırakılırsa sunucu 400 döner. Sessiz etkisizlik
+        // yasaktır: alanın ALTINA Türkçe mesaj yazılır (UX-S30).
+        if (!MadenKiymetli(yeniAyar) && (yeniSatisFiyati is null or <= 0m))
+            form.Ekle("u-satis-fiyati", Dil.T.Urun.HasHesaplanmazIpucu);
+        // P-10 (Y-3, UX-S30): geçersiz şema sunucuda 400 olur; kullanıcı alan
+        // altında sebebini önce burada görür. Son sözü sunucu söyler.
+        if (GorselUrlGecersiz(yeniGorselUrl)) form.Ekle("u-gorsel-url", Dil.T.Urun.GorselUrlGecersiz);
+        sayiKapisi.FormaIsle(form, "u-", Dil.T.Form.SayiAnlasilmadi);   // ORTAK-1: "1.500" → POST YOK
+        KatliHataVarsaAc(yeni: true);
+        if (!form.Gecerli)
+        {
+            modalHata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/urunler", new
+            {
+                tip = yeniTip,
+                kod = yeniKod.Trim(),
+                ad = yeniAd.Trim(),
+                ayarId = yeniAyar,
+                rodyumKaplama = yeniRodyum,
+                gramAgirlik = yeniBirim == "GRAM" ? 1m : yeniGram,
+                birim = yeniBirim,
+                pirlantaKarat = yeniTip == "PIRLANTA" ? yeniKarat : null, pirlantaRenk = Bos(yeniRenk), pirlantaBerraklik = Bos(yeniBerraklik), pirlantaKesim = Bos(yeniKesim), sertifikaKurumu = Bos(yeniSertKurum), sertifikaNo = Bos(yeniSertNo),
+                tasAgirlik = yeniTas,
+                // Taşsızda TAS_YOK; taşlıda seçim zorunlu (sunucu da doğrular).
+                tasKokeni = yeniTas > 0
+                    ? (string.IsNullOrEmpty(yeniTasKokeni) ? null : yeniTasKokeni)
+                    : "TAS_YOK",
+                tasIbaresi = string.IsNullOrEmpty(yeniTasIbaresi) ? null : yeniTasIbaresi,
+                iscilikTl = yeniIscilik,
+                satisFiyati = yeniSatisFiyati,
+                barkod = string.IsNullOrWhiteSpace(yeniBarkod) ? null : yeniBarkod.Trim(),
+                gercekMilyem = yeniGercekMilyem,
+                kategoriId = string.IsNullOrEmpty(yeniKategoriId) ? null : yeniKategoriId,
+                reyonId = string.IsNullOrEmpty(yeniReyonId) ? null : yeniReyonId,
+                konsinye = yeniKonsinye,
+                konsinyeCariId = yeniKonsinye ? yeniKonsinyeCariId : null,
+                konsinyeBirimBedel = yeniKonsinye ? yeniKonsinyeBedel : null,
+                // UX-4d madde 1: sıfır/boşsa gönderilmez — davranış aynen korunur.
+                // ═══ PAKET P-10 (Y-3) — sunucunun kabul ettiği alanlar artık GÖNDERİLİYOR ═══
+                aciklama = Bos(yeniAciklama),
+                pariteKodu = Bos(yeniPariteKodu),
+                kmtsKodu = KmtsGorunur ? Bos(yeniKmtsKodu) : null,
+                rfid = Bos(yeniRfid),
+                gorselUrl = Bos(yeniGorselUrl),
+                // ═══ PAKET P-16 (Y-26) ═══
+                tedarikciId = Bos(yeniTedarikciId),
+                alisMaliyeti = yeniAlisMaliyeti,
+                hedefMarj = yeniHedefMarj,
+                kdvOrani = yeniKdvOrani,
+                seriNo = Bos(yeniSeriNo),
+                olcu = Bos(yeniOlcu),
+                minStok = yeniMinStok,
+                acilisStogu = yeniAcilisStok > 0m ? new { adet = yeniAcilisStok } : null,
+            });
+            yeniModalAcik = false;
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, YeniEsleme);
+            KatliHataVarsaAc(yeni: true);
+            // URUN-FORM-2: alana bağlı ret alan altında TAM yazılır; bant yalnız kısa genel cümle taşır
+            // (aynı cümle iki kez yazılmaz). Alan dışı hata bantta tam kalır (UX-S28).
+            modalHata = FormDurumu.BantMesaji(ex, Dil, YeniEsleme) is { } bant
+                ? bant
+                : Dil.T.Urun.FormAlanHatasiGenel;
+            await OdakIlkHataya();
+        }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// Etikette/listede gösterilecek zorunlu taş ibaresi — md.11/(e).
+    /// Doğal taş ve taşsız üründe boştur.
+    /// </summary>
+    /// <summary>
+    /// P-10 (Y-3) — sunucudaki <c>GorselKapisi.Dogrula</c> kapısının EKRAN ÖN
+    /// GÖSTERİMİ (kopyası değil): kapalı liste http/https. Sessiz etkisizlik
+    /// yasaktır; geçersiz adres alan altında Türkçe mesaj üretir.
+    /// </summary>
+    private static bool GorselUrlGecersiz(string ham)
+        => !string.IsNullOrWhiteSpace(ham)
+           && (!Uri.TryCreate(ham.Trim(), UriKind.Absolute, out var u)
+               || (u.Scheme != "http" && u.Scheme != "https"));
+
+    private static string Ibare(UrunVeri u) => u.TasKokeni switch
+    {
+        "SENTETIK"            => string.IsNullOrWhiteSpace(u.TasIbaresi) ? "sentetik" : u.TasIbaresi!,
+        "LABORATUVAR_URETIMI" => string.IsNullOrWhiteSpace(u.TasIbaresi) ? "laboratuvar üretimi" : u.TasIbaresi!,
+        "YAPAY_URETIM"        => string.IsNullOrWhiteSpace(u.TasIbaresi) ? "yapay üretim" : u.TasIbaresi!,
+        _ => "",
+    };
+
+    private async Task StokAc(string urunId)
+    {
+        stokHata = null;
+        stoklar = [];
+        stokUrunId = urunId;
+        try
+        {
+            var yanit = await Api.GetAsync<StokYaniti>($"/urunler/{urunId}/stok");
+            stoklar = yanit.SubeStoklar ?? [];
+        }
+        catch (ApiHata ex) { stokHata = ex.Message; }
+        subeHata = null;
+        await SubeAdlariniYukle();
+
+        await YerlesimYukle(urunId);
+    }
+
+    /// <summary>PAKET 25 — şube × reyon dağılımı ve reyon seçenekleri.</summary>
+    private async Task YerlesimYukle(string urunId)
+    {
+        yerlesimHata = null;
+        yerlesimSubeler = [];
+        try
+        {
+            var y = await Api.GetAsync<UrunYerlesimYaniti>($"/urunler/{urunId}/yerlesim");
+            yerlesimSubeler = y.Subeler ?? [];
+            reyonSecenekleri = await Api.GetAsync<List<ReyonSatiri>>("/reyonlar");
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28: hata boş listeye çevrilmez; ayrı bandda görünür.
+            // Yerleşim YARDIMCI bilgidir: alınamazsa stok modalı yine açılır.
+            yerlesimHata = ex.Message;
+        }
+    }
+
+    private async Task Yerlestir(UrunYerlesimSubesi sb)
+    {
+        if (!YerlestirGecerli(sb) || stokUrunId is null) return;
+        kaydediliyor = true;
+        yerlesimHata = null;
+        try
+        {
+            await Api.PostAsync("/reyonlar/yerlesim", new
+            {
+                subeId = sb.SubeId,
+                urunId = stokUrunId,
+                reyonId = YerReyonSecimi(sb.SubeId),
+                adet = YerAdetSecimi(sb.SubeId),
+            });
+            yerAdet[sb.SubeId] = 0m;
+            await YerlesimYukle(stokUrunId);
+        }
+        catch (ApiHata ex) { yerlesimHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Barkod okutma ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// P-37 — TEK arama yüzeyi: Enter'a basılınca (barkod okutucu Enter basar)
+    /// ANA arama kutusundaki değer barkod olarak denenir. Bulunmazsa metin
+    /// araması zaten listeyi süzmüş durumdadır; hata bandı ayrıca yazar.
+    /// </summary>
+    private async Task BarkodBul()
+    {
+        barkodHata = null;
+        var kod = arama.Trim();
+        // KESIF-P4 tur 2: barkod boşluk içermez; "burma bilezik" gibi AD araması
+        // barkod ucuna gitmez (metin araması listeyi zaten süzdü).
+        if (kod.Length == 0 || !BarkodBicimindeMi(kod)) return;
+        try
+        {
+            var urun = await Api.GetAsync<UrunVeri>($"/urunler/barkod/{Uri.EscapeDataString(kod)}");
+            arama = "";
+            // Bulunan ürün tek başına listelenir; kullanıcı doğrudan kartını açar.
+            UrunListesi = [urun];
+            await DuzenleAc(urun.Id);
+            await StokAdetleriniYukle();
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 404)
+        {
+            // KESIF-P4 tur 2: ad aramasında Enter "barkod bulunamadı" bandı basıyordu,
+            // oysa metin araması listeyi zaten süzmüştü (3 eşleşme görünürken hata).
+            // Bant yalnız hiçbir ürün eşleşmediğinde çıkar.
+            barkodHata = UrunListesi.Count == 0 ? Dil.T.Urun.BarkodBulunamadi : null;
+        }
+        catch (ApiHata ex)
+        {
+            barkodHata = ex.Message;
+        }
+    }
+
+    // ── Düzenleme ────────────────────────────────────────────────────────────
+
+    private async Task DuzenleAc(string id)
+    {
+        duzenleHata = null;
+        form.Temizle();
+        duzDahaFazla = false;   // S3-3: basit modda çekmece KATLI açılır
+        duzenleAcik = true;
+        duzenleYukleniyor = true;
+        try
+        {
+            // ⚠ TAM KART. Liste özeti ile kaydedilirse açıklama/kategori/reyon
+            // gibi listede olmayan alanlar boş gönderilip SİLİNİRDİ.
+            var u = await Api.GetAsync<UrunTamKart>($"/urunler/{id}");
+            dId = u.Id;
+            dAd = u.Ad;
+            dKod = u.Kod;
+            dBarkod = u.Barkod ?? "";
+            dTip = u.Tip;
+            dAyar = u.AyarId;
+            dMaden = Kuyumcu.Core.Domain.Ayarlar.MadenBul(u.AyarId) ?? Kuyumcu.Core.Domain.Maden.Altin;
+            dRodyum = u.RodyumKaplama;
+            dGram = u.GramAgirlik;
+            dGramBos = false;
+            dTas = u.TasAgirlik;
+            dGercekMilyem = u.GercekMilyem;   // PATCH-4: sunucu artık gercekMilyem döndürür (standarttan farklıysa)
+            dGercekMilyemIlk = u.GercekMilyem;
+            dAyarIlk = u.AyarId;
+            dBirim = string.IsNullOrEmpty(u.Birim) ? "ADET" : u.Birim;
+            dTasKokeni = u.TasKokeni ?? "";
+            dTasIbaresi = u.TasIbaresi ?? "";
+            dKategoriId = u.KategoriId ?? "";
+            dReyonId = u.ReyonId ?? "";
+            dIscilik = u.IscilikTl;
+            dSatisFiyati = u.SatisFiyati;
+            dKarat = u.PirlantaKarat;
+            dRenk = u.PirlantaRenk ?? "";
+            dBerraklik = u.PirlantaBerraklik ?? "";
+            dKesim = u.PirlantaKesim ?? "";
+            dSertKurum = u.SertifikaKurumu ?? "";
+            dSertNo = u.SertifikaNo ?? "";
+            dKonsinye = u.Konsinye;
+            dKonsinyeCariId = u.KonsinyeCariId ?? "";
+            dKonsinyeBedel = u.KonsinyeBirimBedel;
+            // P-10 (Y-3): tam kart bunları ZATEN döndürüyordu, istemci okumuyordu.
+            dAciklama = u.Aciklama ?? "";
+            dPariteKodu = u.PariteKodu ?? "";
+            dKmtsKodu = u.KmtsKodu ?? "";
+            // ── PAKET P-16 (Y-26) ──
+            dTedarikciId = u.TedarikciId ?? "";
+            dAlisMaliyeti = u.AlisMaliyeti;
+            dHedefMarj = u.HedefMarj;
+            dKdvOrani = u.KdvOrani;
+            dSeriNo = u.SeriNo ?? "";
+            dOlcu = u.Olcu ?? "";
+            dMinStok = u.MinStok;
+            dRfid = u.Rfid ?? "";
+            dGorselUrl = u.GorselUrl ?? "";
+            // Konsinye sahibi seçicisi için cari listesi: yeni ürün modalıyla AYNI
+            // kaynak (UX-S26 — oluşturma ve düzenleme aynı alan kümesi).
+            await FormKaynaklariniYukle();
+        }
+        catch (ApiHata ex) { duzenleHata = ex.Message; }
+        duzenleYukleniyor = false;
+    }
+
+    private async Task UrunGuncelle()
+    {
+        duzenleHata = null;
+        form.Temizle();
+        form.Zorunlu("d-ad", dAd, Dil);
+        form.Zorunlu("d-kod", dKod, Dil);
+        if (dBirim != "GRAM") form.Pozitif("d-gram", dGram, Dil);
+        form.NegatifDegil("d-tas", dTas, Dil);
+        if (dGercekMilyem is < 1m or > 1000m) form.Ekle("d-gercek-milyem", Dil.T.Urun.GercekMilyemIpucu);
+        if (!MadenKiymetli(dAyar) && (dSatisFiyati is null or <= 0m))
+            form.Ekle("d-satis", Dil.T.Urun.HasHesaplanmazIpucu);
+        if (GorselUrlGecersiz(dGorselUrl)) form.Ekle("d-gorsel-url", Dil.T.Urun.GorselUrlGecersiz);
+        sayiKapisi.FormaIsle(form, "d-", Dil.T.Form.SayiAnlasilmadi);   // ORTAK-1: "1.500" → PATCH YOK
+        KatliHataVarsaAc(yeni: false);
+        if (!form.Gecerli)
+        {
+            duzenleHata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            // ═══ PAKET PATCH-3 — İSTEĞE BAĞLI ALAN SÖZLEŞMESİ (sunucu UrunGuncelleDto) ═══
+            //   gövdede YOK → sunucu KORUR · null → SİLER · değer → yazar.
+            //   Ekran GÖSTERDİĞİ isteğe bağlı alanı HER ZAMAN gönderir; boşaltılan alan null
+            //   gider (eskiden "" giderdi — sunucu bir sürüm boyunca "" ile silmeyi de kabul eder).
+            //   ⚠ Eskiden barkod/taş ibaresi/4C/satış fiyatı boşaltılınca null gidiyor ve
+            //   sunucu "null = koru" diye SİLMİYORDU (sessiz etkisizlik) — bu sözleşmeyle düzeldi.
+            //   Ekranda GÖRÜNMEYEN alan (BASİT'te KMTS) gövdeye HİÇ konmaz → sunucu korur.
+            //   Anonim nesne alanı koşullu atlayamaz → sözlük; anahtarlar camelCase yazılır.
+            var govde = new Dictionary<string, object?>
+            {
+                ["tip"] = dTip,
+                ["kod"] = dKod.Trim(),
+                ["ad"] = dAd.Trim(),
+                ["ayarId"] = dAyar,
+                ["rodyumKaplama"] = dRodyum,
+                // UX-S26 paritesi: birim ekranda GÖRÜNÜR ve gönderilir. Gerçek milyem
+                // AŞAĞIDA koşullu eklenir (PATCH-4).
+                ["birim"] = dBirim,
+                ["gramAgirlik"] = dBirim == "GRAM" ? 1m : dGram,
+                ["tasAgirlik"] = dTas,
+                ["tasKokeni"] = dTas > 0
+                    ? (string.IsNullOrEmpty(dTasKokeni) ? null : dTasKokeni)
+                    : "TAS_YOK",
+                ["tasIbaresi"] = Bos(dTasIbaresi.Trim()),
+                ["kategoriId"] = Bos(dKategoriId),
+                ["reyonId"] = Bos(dReyonId),
+                ["iscilikTl"] = dIscilik,
+                // null = sabit fiyatı SİL (satışta hesaplamaya dön) — boşaltılan alanın anlamı.
+                ["satisFiyati"] = dSatisFiyati,
+                ["barkod"] = Bos(dBarkod.Trim()),
+                // PIRLANTA dışı tipte 4C null gider = SİLİNİR (4C yalnız PIRLANTA tipinde
+                // girilir — PirlantaKapisi; tip değişince eski 4C kalıp kapıya takılmaz).
+                ["pirlantaKarat"] = dTip == "PIRLANTA" ? dKarat : null,
+                ["pirlantaRenk"] = dTip == "PIRLANTA" ? Bos(dRenk) : null,
+                ["pirlantaBerraklik"] = dTip == "PIRLANTA" ? Bos(dBerraklik) : null,
+                ["pirlantaKesim"] = dTip == "PIRLANTA" ? Bos(dKesim) : null,
+                ["sertifikaKurumu"] = dTip == "PIRLANTA" ? Bos(dSertKurum) : null,
+                ["sertifikaNo"] = dTip == "PIRLANTA" ? Bos(dSertNo.Trim()) : null,
+                // Konsinye üçlüsü HER ZAMAN gönderilir: ekran alanı gösterdiği için
+                // kullanıcının kararını taşımak zorundadır (sunucu bool? okur).
+                ["konsinye"] = dKonsinye,
+                ["konsinyeCariId"] = dKonsinye ? Bos(dKonsinyeCariId) : null,
+                // ═══ PAKET P-10 (Y-3) ═══ ekranın gösterdiği alanlar HER ZAMAN gider;
+                // boş = null = SİL (PATCH-3 sözleşmesi).
+                ["aciklama"] = Bos(dAciklama.Trim()),
+                ["pariteKodu"] = Bos(dPariteKodu.Trim()),
+                ["rfid"] = Bos(dRfid.Trim()),
+                ["gorselUrl"] = Bos(dGorselUrl.Trim()),
+                // ═══ PAKET P-16 (Y-26) ═══ üç durumlu PATCH: boş = null = SİL.
+                ["tedarikciId"] = Bos(dTedarikciId.Trim()),
+                ["alisMaliyeti"] = dAlisMaliyeti,
+                ["hedefMarj"] = dHedefMarj,
+                ["kdvOrani"] = dKdvOrani,
+                ["seriNo"] = Bos(dSeriNo.Trim()),
+                ["olcu"] = Bos(dOlcu.Trim()),
+                ["minStok"] = dMinStok,
+                ["konsinyeBirimBedel"] = dKonsinye ? dKonsinyeBedel : null,
+            };
+            // ═══ PAKET PATCH-4 (VERİ KRİTİK) ═══ gerçek milyem YALNIZ değiştiyse gider:
+            //   değer → yaz · boşaltıldı (null) → ayarın standardına dön · aynı → anahtar YOK, sunucu korur.
+            //   ESKİ: her kayıtta null gidiyordu (çekmece kayıtlı değeri hiç okumuyordu) ve
+            //   barkodu düzeltilen 920 milyemli ürün sessizce 916'ya dönüyordu.
+            if (dGercekMilyem != dGercekMilyemIlk) govde["gercekMilyem"] = dGercekMilyem;
+            // Y4-C: KMTS alanı görünmüyorsa (BASİT) anahtar HİÇ konmaz → sunucu KORUR.
+            if (KmtsGorunur) govde["kmtsKodu"] = Bos(dKmtsKodu.Trim());
+            await Api.PatchAsync($"/urunler/{dId}", govde);
+            duzenleAcik = false;
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, DuzEsleme);
+            KatliHataVarsaAc(yeni: false);
+            duzenleHata = FormDurumu.SunucuMesaji(ex, Dil);
+            await OdakIlkHataya();
+        }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// QA turu 1+2 YÜKSEK: "pasife alınan ürünü aktife alma yolu yok".
+    /// ⚠ Yalnız `aktif` gönderilir — PATCH sözleşmesi "gövdede yoksa koru".
+    /// </summary>
+    private async Task UrunAktifeAl(UrunVeri u)
+    {
+        listeHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<object>($"/urunler/{u.Id}", new { aktif = true });
+            Basarili(Dil.T.Kabuk.AktifeAlindi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { listeHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    // ── Etiket ───────────────────────────────────────────────────────────────
+
+    private async Task EtiketAc(string id)
+    {
+        etiket = null;
+        try { etiket = await Api.GetAsync<EtiketVeri>($"/urunler/{id}/etiket"); }
+        catch (ApiHata ex) { listeHata = ex.Message; }
+    }
+
+    // ── Sayım düzeltme ───────────────────────────────────────────────────────
+
+    private void SayimAc(StokVeri s)
+    {
+        sayimHata = null;
+        sayimSube = s.SubeId;
+        sayimKayitli = s.Adet;
+        sayimAdet = s.Adet;
+    }
+
+    private async Task SayimKaydet()
+    {
+        sayimHata = null;
+        if (sayiKapisi.Sebep(Dil.Dil, "s-") is { } sk) { sayimHata = sk; return; }   // ORTAK-1: POST YOK
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/urunler/{stokUrunId}/stok/{sayimSube}", new { adet = sayimAdet });
+            sayimSube = null;
+            if (stokUrunId is not null) await StokAc(stokUrunId);
+        }
+        catch (ApiHata ex) { sayimHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Pasife alma ──────────────────────────────────────────────────────────
+
+    private void PasifeAlAc(UrunVeri u)
+    {
+        pasifHata = null;
+        pasifUrun = u;
+    }
+
+    private async Task PasifeAlOnayla()
+    {
+        pasifHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.DeleteAsync<object>($"/urunler/{pasifUrun!.Id}");
+            pasifUrun = null;
+            Basarili(Dil.T.Urun.PasifeAlOnay);
+            await Yukle();
+        }
+        catch (ApiHata ex) { pasifHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+    }
+}

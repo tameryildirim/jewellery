@@ -1,0 +1,47 @@
+@using Kuyumcu.Web.Servisler
+@inherits FormAlani
+
+@* ÇOK SATIR — açıklama/not alanı (paket P-36b). Sayaç UX-S29 gereği görünür:
+   kullanıcı sunucu sınırına kaç karakter kaldığını EKRANDA görür.
+
+   TOPLU-7B (YASAL-PARAM-2 devri ORTA): metin <textarea>@Deger</textarea> ile çiziliyordu. Blazor bu durumda
+   yalnız metin DÜĞÜMÜNÜ günceller; kullanıcı bir kez yazdıktan sonra tarayıcının "value"su kirlenir ve
+   kayıttan sonra Deger=null olsa da kutuda ESKİ METİN kalır, sayaç ise 0 / 1000 der. value özniteliği
+   (input'larla aynı kalıp) kutuyu her zaman bağlı değere çeker. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@GorunenHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <textarea class="girdi girdi-cok-satir @(Hatali ? "hatali" : null)" id="@ElemanId"
+              rows="@Satir" placeholder="@YerTutucu" maxlength="@EnFazla"
+              aria-required="@(Zorunlu ? "true" : "false")"
+              aria-invalid="@(Hatali ? "true" : "false")"
+              aria-describedby="@AciklayanId"
+              value="@Deger" disabled="@Kilitli" @oninput="Degisti">@Deger</textarea>
+    @if (SayacGoster)
+    {
+        <span class="alan-sayac" id="@($"{ElemanId}-sayac")">@Uzunluk / @EnFazla</span>
+    }
+</AlanKabugu>
+
+@code {
+    [Parameter] public string? Deger { get; set; }
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+    [Parameter] public int Satir { get; set; } = 3;
+    [Parameter] public int EnFazla { get; set; } = 500;
+
+    /// <summary>
+    /// P-36c/3 — çağıran KENDİ sayacını çiziyorsa (GerekceAlani: asgari uzunluk)
+    /// bu sayaç kapatılır; aynı kimlik iki kez doğmaz.
+    /// </summary>
+    [Parameter] public bool SayacGoster { get; set; } = true;
+
+    private int Uzunluk => Deger?.Length ?? 0;
+
+    private Task Degisti(ChangeEventArgs e)
+    {
+        DefterdenSil();
+        var v = e.Value?.ToString();
+        Deger = string.IsNullOrEmpty(v) ? null : v;
+        return DegerChanged.InvokeAsync(Deger);
+    }
+}

@@ -1,0 +1,206 @@
+/* ═══ PAKET RAPOR-GORUNUM (03.10, t1) — rapor ekranları kalanları (şerit dosyası) ═══════════════
+   Rapor merkezi (/raporlar, Gün sonu HARİÇ) ve Kâr-zarar (/raporlar/kar-zarar). Seçiciler sayfa
+   kimliği / rg- sınıfı ile kapsanır. Sabit renk YOK, yalnız belirteç (var(--…)); satır içi stil yok.
+   toplu6.css'ten SONRA, olcek.css'ten ÖNCE yüklenir (DUGME-2/O1 zinciri bozulmaz). */
+
+/* (1) 375 px rapor tabloları — ortak q10-yigin kart yığını tfoot'u bilmiyordu: toplam satırları
+   da kart olur (etiket solda, değer sağda). Ürün adı kartın başında TAM (kesilmez, sarar). */
+@media (max-width: 40rem) {
+  .veri-tablosu.q10-yigin.rg-rapor-tablo > tfoot,
+  .veri-tablosu.q10-yigin.rg-rapor-tablo > tfoot > tr { display: block; width: 100%; }
+  .veri-tablosu.q10-yigin.rg-rapor-tablo > tfoot > tr {
+    display: flex; justify-content: space-between; align-items: center; gap: var(--bosluk-2);
+    border-top: 1px solid var(--ayrac); padding: var(--bosluk-2);
+  }
+  .veri-tablosu.q10-yigin.rg-rapor-tablo > tfoot > tr > :is(th, td) { display: block; border: 0; padding: 0; }
+  .veri-tablosu.q10-yigin.rg-rapor-tablo > tbody > tr > td:first-child {
+    font-weight: 600; white-space: normal; overflow-wrap: anywhere;
+  }
+  .veri-tablosu.q10-yigin.rg-rapor-tablo > tbody > tr > td.sayi { text-align: end; }
+  .veri-tablosu.q10-yigin.rg-rapor-tablo .kz-has-blok { align-items: flex-end; }
+}
+
+/* (2) Toplam satırının üst çizgisi yalnız son sütundaydı → satırın tamamı. */
+.rg-rapor-tablo > tfoot > tr > :is(th, td) { border-top: 1px solid var(--ayrac); }
+
+/* (3) Kâr-zarar Ürünler · has kâr hücresi: "—" ile alt yazı TEK blok, dikeyde ortalı, sağa yaslı. */
+.kz-has-blok { display: inline-flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: var(--bosluk-1); }
+
+/* (4) Kâr-zarar Özet TL kartları: 6 kart 5+1 dizilip "Dönem kârı" tek başına kalıyordu → geniş ekranda 3+3. */
+@media (min-width: 64rem) {
+  #kz-tl-kpi { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* (5) Grafik eksen yazıları SVG dışında, okunur boyda (en az 14 px) + değer. Sütunlar eşit genişlik
+   (çubuk grupları gibi). */
+.grafik-eksen-alt { display: flex; gap: var(--bosluk-2); margin-top: var(--bosluk-2); }
+.grafik-eksen-oge { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+.grafik-eksen-ad { font-size: max(14px, var(--yazi-sm)); color: var(--metin-soluk); }
+.grafik-eksen-deger { font-size: max(14px, var(--yazi-sm)); font-weight: 600; color: var(--metin); }
+#kz-grafikler { align-items: start; }
+/* İki grafik kartı dikeyde hizasızdı (ikinci kartın üst boşluğu ~32 px) → aynı üst çizgi. */
+#kz-grafikler > .kart { margin-top: 0; }
+
+/* (6) Ortak boşluk: akordeonlar ve ızgara sonrası satırlar birbirine yapışıktı (0–4 px). */
+#raporlar-pro > #rp-duzeltme,
+#kz-duzeltme { margin-top: var(--bosluk-4); }
+#rapor-maden-dagilimi { margin-bottom: var(--bosluk-4); }
+#stok-yaslandirma-kart #sy-aciklama { margin-bottom: var(--bosluk-3); }
+#stok-yaslandirma-kart #sy-devir-tanim-satir { margin-top: var(--bosluk-3); margin-bottom: var(--bosluk-3); }
+#stok-yaslandirma-kart #sy-olu-baslik { margin-top: var(--bosluk-4); }
+
+/* ═══ PAKET RAPOR-2 (03.10, t1) — rapor tutarlılıkları + görünüm (aynı şerit dosyası) ═══════════ */
+
+/* (7) [KRİTİK] Kâr-zarar › Ürünler masaüstünde sağdan kırpılıyordu: uzun ürün adı kırılmıyor, tabloyu
+   genişletiyordu (1280: tablo 1050 / kap 964 px → HAS KÂR, MARJ görünmez). Ad sütunu SARAR ve bir azami
+   genişlik taşır; "maliyet eksik" rozeti adın altında kendi satırında. Has hücresindeki gerekçe notu da sarar. */
+#kz-urun-tablo > tbody > tr > td.kz-urun-ad {
+  white-space: normal; overflow-wrap: anywhere; min-width: 12ch; max-width: 26ch;
+}
+#kz-urun-tablo .kz-urun-ad-metin { white-space: normal; overflow-wrap: anywhere; }
+#kz-urun-tablo .kz-urun-ad-rozet { display: block; margin-top: var(--bosluk-1); }
+#kz-urun-tablo .kz-has-blok > div { white-space: normal; max-width: 18ch; text-align: end; }
+
+/* (8) [YÜKSEK] 375'te ad hücresi sarıyordu ama adı taşıyan İÇ span nowrap'tı (span 448 / td 333 px) → iç
+   span da sarar (Stok değeri kartıyla aynı davranış). */
+@media (max-width: 40rem) {
+  .veri-tablosu.q10-yigin.rg-rapor-tablo > tbody > tr > td:first-child > span { white-space: normal; overflow-wrap: anywhere; }
+  #kz-urun-tablo > tbody > tr > td.kz-urun-ad { max-width: none; display: block; }
+  #kz-urun-tablo .kz-has-blok > div { max-width: none; }
+}
+
+/* (9) Kâr-zarar dönem ön ayarları tek segment grubu (Cariler segment kalıbı; seçili vurgu dugme.css'ten). */
+#kz-donem-segment {
+  display: inline-flex; flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: flex-start;
+  flex: 0 0 auto; width: auto; min-width: 0; gap: var(--bosluk-1); padding: 3px;
+  border-radius: 999px; background: var(--yuzey);
+}
+/* Filtre yuvasının öğe kalıbı (sütun dizilim, sabit 152 px taban/en az genişlik, sağa yaslı) segmente uyunca üç
+   öğe 152 px'lik kaptan SOLA taşıp kenar menünün altına giriyordu → kimlik seçicisi kendi genişliğini alır, satıra
+   dizer; 375'te grup tam genişlik, öğeler eşit pay (ortak.css T2-2 kuralı). */
+@media (max-width: 40rem) {
+  #kz-donem-segment { display: flex; flex: 1 1 100%; width: 100%; }
+}
+
+/* (9b) [DÜŞÜK] Grafikler iki kart ALTTAN hizalanıyordu (üst farkı 1280'de 48 px): kök neden app.css
+   ".form-grid-2 > :not(.alan):not(.secici-alan):not(.arama-kutu) { grid-row: span 3; align-self: end; }" —
+   form alanı kuralı kartlara da uyuyordu; ızgaranın align-items: start'ı öğenin align-self'ini yenmez.
+   Kimlik seçicisiyle öğe düzeyinde üst hiza. */
+#kz-grafikler > .kart { align-self: start; }
+
+/* (10) Stok yaşı ölçümleri 5+1 diziliyordu ("Rafta kalan adet" tek başına) → geniş ekranda 3+3. */
+@media (min-width: 64rem) {
+  #sy-devir-izgara { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+#stok-yaslandirma-kart #sy-ayarlar { margin-bottom: var(--bosluk-3); }
+
+/* (11) "Bugün ne aldım?" altın dışı maden satırı (gümüş) — has satırının yanında kendi öğesi. */
+#bugun-alis .bugun-maden { white-space: nowrap; }
+
+/* (12) Rapor merkezi BASİT "Diğer raporlar ⓘ" sayfanın EN ALTINDA: aşağı açılan ipucu görüş alanı dışına
+   düşüyordu (tur: ekran-dışı 1280/1440/375) → yukarı açılır. */
+#bugun-diger-raporlar-ipucu > p { top: auto; bottom: calc(100% + 6px); }
+
+/* ── PAKET RAPOR-3 (07.10) ─────────────────────────────────────────────────────────────────────────────── */
+/* (13) [DÜŞÜK] Rapor merkezi PRO yıl/ay seçicileri ezikti (tur K12: #rp-yil 80 px, #rp-ay 76 px) — "Ağustos"
+   ve 4 haneli yıl ok simgesiyle birlikte rahat sığacak en az genişlik (filtre yuvasının taban genişliğini yener). */
+#rp-yil-sar { min-width: 7.5rem; flex: 0 0 auto; }
+#rp-ay-sar { min-width: 9.5rem; flex: 0 0 auto; }
+
+/* (14) [DÜŞÜK] Kâr-zarar "Bu rakamlar nereden geliyor?" / "Rapordaki bir rakam yanlışsa" akordeonu son kart sırasına
+   boşluksuz yapışıktı (bölüm arası 0 px) → öbür bölümlerle aynı üst boşluk. */
+#kz-nereden, #kz-duzeltme { margin-top: var(--bosluk-4); }
+
+/* (15) Kâr-zarar grafik boş-durum etiketi ("Maliyet ve kâr: … hesaplanamadı") grafiğin hemen altında. */
+#kz-grafik-maliyet-yok { margin-top: var(--bosluk-2); }
+
+/* (16) Alan grafiği (Panel PRO "Son 7 günlük satış") eksen yazıları SVG dışında: eşit aralıklı, ezilmeden. */
+/* RAPOR-3 tur 2: eksen (n−1) eşit hücreli ızgara; yazı hücrenin SOL kenarına (= noktasının X'i) ortalanır.
+   İlk yazı sola, son yazı sağa yaslı (kapsayıcı dışına taşmaz). Hücre sayısı satır içi style'sız: grid-auto-columns. */
+.grafik-eksen {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  margin-top: var(--bosluk-1); font-size: var(--yazi-sm); height: 1.6em;
+}
+.grafik-eksen-hucre { position: relative; min-width: 0; }
+.grafik-eksen-etiket {
+  position: absolute; top: 0; left: 0; transform: translateX(-50%);
+  color: var(--metin-soluk); white-space: nowrap; font-variant-numeric: tabular-nums; line-height: 1.6;
+}
+.grafik-eksen-etiket--ilk { transform: none; }
+.grafik-eksen-etiket--son { left: auto; right: 0; transform: none; }
+
+/* (17) "Bekleyen iş" yasal satırları (ortak BekleyenUyumSatirlari): Panel'in kapsamlı tuval kuralı Rapor merkezinde
+   uymuyordu (1280'de nokta solda kopuk, metin iki satıra kırılıyor, kaynak alt satırda) → satır her ekranda aynı:
+   nokta · metin (esner) · sağda kaynak. */
+.bekleyen-yasal-liste > .panel-liste-satir--is { display: flex; align-items: center; gap: var(--bosluk-2); }
+.bekleyen-yasal-liste > .panel-liste-satir--is > .panel-nokta { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 999px; }
+.bekleyen-yasal-liste > .panel-liste-satir--is > .panel-liste-ad {
+  flex: 1 1 auto; min-width: 0; font-size: var(--yazi-sm); font-weight: 400; color: var(--metin); text-decoration: none;
+  overflow-wrap: break-word; word-break: normal;
+}
+.bekleyen-yasal-liste > .panel-liste-satir--is > a.panel-liste-ad:hover { color: var(--vurgu); text-decoration: underline; }
+.bekleyen-yasal-liste > .panel-liste-satir--is > .panel-is-kaynak { flex: 0 0 auto; margin-left: auto; color: var(--metin-soluk); font-size: var(--yazi-sm); }
+
+/* ═══ PAKET RAPOR-4 (08.10, t1) — rapor kalanları ═════════════════════════════════════════════ */
+
+/* (18) [YÜKSEK] Çubuk grafiği (Rapor merkezi "Günlük satış / alış") değer ekseni + seyrek tarih ekseni:
+   solda HTML değer yazıları (çizim alanının üst ve alt çizgisine hizalı: SVG 220 px, üst kenar 12, alt 22),
+   altta en çok 6 tarih — her yazı kendi çubuk sütununun ortasında; ilk sola, son sağa yaslı. */
+.grafik-izgara { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--bosluk-2); }
+.grafik-y-eksen {
+  display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;
+  height: 220px; padding: 6px 0 16px; text-align: right;
+}
+.grafik-y-etiket {
+  font-size: max(12px, var(--yazi-xs)); line-height: 1; color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.grafik-eksen--cubuk .grafik-eksen-etiket--orta { left: 50%; }
+
+/* (19) [DÜŞÜK] Akordeon üst boşluğu ORTAK (sekme sekme değil): rapor ekranlarında bir akordeon kendinden önceki
+   karta / ızgaraya yapışmaz (katlanir.css kökü margin: 0 sıfırlıyordu → 0–2 px). */
+#raporlar-pro .katlanir:not(:first-child),
+#raporlar-bugun .katlanir:not(:first-child),
+.kz-sayfa .katlanir:not(:first-child) { margin-top: var(--bosluk-4); }
+
+/* (20) [DÜŞÜK] Gün sonu PRO "Toplam tahsilat" dökümü: kalemler satır sonunda "·" ile sarkıyordu → her kalem ayrı satır. */
+#mut-kartlar .stat-alt { white-space: pre-line; }
+
+/* (21) [DÜŞÜK] Kâr-zarar "+ Karşılaştır": isteğe bağlı alan açılışta katlı. Düğme tarih alanlarının ALTINDA kendi
+   satırında, solda (app.css'in "alan olmayan öğe üç rayı kaplar" kuralı onu ızgaranın başına itiyordu — ölçüldü). */
+#kz-karsilastir-ac { grid-column: 1 / -1; grid-row: auto; align-self: start; justify-self: start; }
+
+/* (22) [ölçüm K9, 375] "kart maliyeti" rozeti uzun not metniyle üst üste biniyordu → rozet + metin esnek satır. */
+#kz-kart-maliyeti { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--bosluk-1) var(--bosluk-2); margin-top: var(--bosluk-2); }
+#kz-kart-maliyeti > #kz-kart-maliyeti-metin { flex: 1 1 16rem; min-width: 0; }
+
+/* (23) PAKET RAPOR-4 tur 2 (hasım ORTA, D2): #rp-duzeltme Rapor merkezi PRO'da #raporlar-pro sarmalayıcısının
+   DIŞINDA, onun kardeşidir (Raporlar.razor) → (19)'daki "#raporlar-pro .katlanir" kuralı onu tutmuyordu ve
+   katlanir.css "margin: 0" sayfa aralığını (app.css .dikey-bosluk > * + *) eziyordu → Grafikler / Stok yaşı /
+   Gün sonu sekmelerinin son kartına 0 px yapışıktı. Ortak kural: rapor sarmalayıcısından SONRA gelen akordeon. */
+#raporlar-pro ~ .katlanir,
+#raporlar-bugun ~ .katlanir { margin-top: var(--bosluk-4); }
+
+/* (24) RAPOR-4 tur 2: CubukGrafik değer ekseni kipinin SVG yüksekliği (satır içi style yerine; Y = 220). */
+.grafik-izgara .grafik-sar svg.grafik-svg-sabit { height: 220px; }
+
+/* (25) RAPOR-4 tur 2: KZ Stok sekmesi "kart maliyeti" satırı — Özet'teki #kz-kart-maliyeti ile aynı düzen. */
+#kz-stok-kart-maliyeti { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--bosluk-1) var(--bosluk-2); margin-top: var(--bosluk-2); }
+#kz-stok-kart-maliyeti > #kz-stok-kart-maliyeti-metin { flex: 1 1 16rem; min-width: 0; }
+
+/* (26) RAPOR-4 tur 2: CubukGrafik YATAY kip (Kâr-zarar "Gelir, maliyet ve kâr"). Kalem başına satır: ad (tek satır,
+   kırılmaz) · çubuk (kalan genişlik) · tutar. Satır kabı display: contents → üç sütunlu ortak ızgara, adlar ve tutarlar
+   alt alta hizalı. Dar ekranda (≤ 480 px) ad kendi satırında, çubuk + tutar altında (kart taşmaz). */
+.grafik-eksen-alt.grafik-yatay {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center; gap: var(--bosluk-2) var(--bosluk-3); margin-top: 0;
+}
+.grafik-yatay .grafik-eksen-oge { display: contents; }
+.grafik-yatay .grafik-eksen-ad { white-space: nowrap; text-align: left; }
+.grafik-yatay .grafik-eksen-deger { white-space: nowrap; text-align: right; }
+.grafik-yatay .grafik-yatay-cubuk { overflow: visible; }
+.grafik-yatay .grafik-yatay-cubuk svg { display: block; width: 100%; height: 18px; }
+@media (max-width: 480px) {
+  .grafik-eksen-alt.grafik-yatay { grid-template-columns: minmax(0, 1fr) max-content; row-gap: var(--bosluk-1); }
+  .grafik-yatay .grafik-eksen-ad { grid-column: 1 / -1; margin-top: var(--bosluk-2); }
+}

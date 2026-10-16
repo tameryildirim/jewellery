@@ -1,0 +1,996 @@
+@page "/evraklar"
+@using System.Text.Json
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ÇEK / SENET PORTFÖYÜ — paket 29 Faz A.
+
+   ⚠ YANIT TİPLERİ BU DOSYADA TANIMLANMAZ: Kuyumcu.Core.Sozlesmeler'den gelir
+     (S-2 / MÜHÜR 5 KOŞUL 3 — Pages içindeki istemci tipi tavanı DOLU). Sunucu
+     decimal döndüren her alan orada da decimal'dir.
+
+   ⚠ TEK DÜZENLEME KALIBI (DoD EK, kurul tur 1 madde 2): çok alanlı giriş ve
+     düzeltme AYNI Cekmece bileşeninde, AYNI alan kümesiyle (UX-S26).
+     ModalPencere YALNIZ yıkıcı onay (karşılıksız) içindir.
+
+   ⚠ HER DÜĞME ya gerçek istek atar ya da disabled + sebep taşır (UX-S30).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(SayfaAdi)</PageTitle>
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Cekvesenet (BİREBİR); özgün ekran (durum/vade süzgeci,
+   özet, tahsile ver, karşılıksız, takvim bağlantısı) yalnız "Tüm ayrıntılar"da (data-yz-ozgun). Çekmeceler ORTAK. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk zo-belge" id="evrak-sayfa">
+    @* ═══ PAKET ZO-BELGE — "ZORUNLU ÖNCE" (kurucu 25.09) ══════════════════════
+       Açılış: başlık + açıklama · "Evrak gir" TEK birincil · İKİ hızlı süzgeç
+       (Tümü / Portföyde) · KAPALI "Süzgeç" (diğer durumlar, tür, vade aralığı) ·
+       TEK özet satırı · tablo. Karşılıksız/tahsil durumları ve düğmeleri
+       SİLİNMEDİ (mali kayıt) — yalnız süzgeç arayüzü katlandı. "Değiştirilemez"
+       ve ciro notu açılışta değil, evrak DÜZENLEME çekmecesinde (değiştirme
+       denenince). "Faz B" iç terimi ekrandan çıktı (göz #8). *@
+    @* ZO-BELGE 29.09 devam 9 (tasarım hakemi k3 KRİTİK · K17 "açıklama metni satırı 0"): başlık altındaki
+       açıklama satırı kaldırıldı — tuvalde (Profesyonel.png) başlık tek başına durur. *@
+    <SayfaBasi Anahtar="evraklar" Baslik="@SayfaAdi">
+        @* PAKET CUMA-J (4. tur): durum süzgeçleri filtre yuvasından ÇIKTI — yuvanın
+           ortak "etiket üstte, kontrol altta" sütun kuralı düğme metnini kutunun
+           dibine itiyordu. Süzgeçler aşağıdaki süzgeç kartında sekme şerididir;
+           takvim bağlantısı ve TEK birincil eylem (Yeni) eylem yuvasındadır. *@
+        <Eylem>
+            <a class="dugme dugme-kucuk dugme-ikincil" id="evrak-takvime-git" href="/evraklar/takvim">@Dil.T.Evrak.TakvimeGit</a>
+            <button class="dugme dugme-kucuk dugme-birincil" id="evrak-yeni" @onclick="YeniAc">@Dil.T.Evrak.Yeni</button>
+        </Eylem>
+    </SayfaBasi>
+
+    @* UX-S28: hata bandı boş duruma ÇEVRİLMEZ; ayrı ve görünür yerdedir. *@
+    <HataBandi Mesaj="@hata" />
+    <BasariBandi Id="evrak-basari" Mesaj="@basari" Jeton="@basariJetonu" />
+
+    @* ── Hızlı süzgeç: dört durum tek şeritte (tuval "Hepsi · Borçlu" şeridi). ── *@
+    <div class="zo-hizli-suzgec">
+        <div class="sekmeler-serit" role="group" id="evrak-durum-seridi" aria-label="@Dil.T.Evrak.Durum">
+            <button type="button" @onclick='() => DurumSec("")' id="evrak-suzgec-tumu" aria-pressed="@(durumSuzgec == "" ? "true" : "false")"
+                    class="@(durumSuzgec == "" ? "sekmeler-sekme secili" : "sekmeler-sekme")">@Dil.T.Evrak.Tumu</button>
+            <button type="button" @onclick='() => DurumSec("PORTFOYDE")' id="evrak-suzgec-portfoyde" aria-pressed="@(durumSuzgec == "PORTFOYDE" ? "true" : "false")"
+                    class="@(durumSuzgec == "PORTFOYDE" ? "sekmeler-sekme secili" : "sekmeler-sekme")">@Dil.T.Evrak.DurumPortfoyde</button>
+            @* KESIF-P3 (TOPLU ZO-BELGE ORTA): aynı türden seçim iki yere bölünmüştü (Tümü/Portföyde
+               dışarıda, Tahsile verildi/Karşılıksız Süzgeç katlanırında). Dört durum artık TEK
+               grupta, dışarıda. #evrak-durum-diger kimliği yaşar (display: contents — görsel
+               kutu açmaz), id'ler AYNI. *@
+            <span class="zo-grup-ic" id="evrak-durum-diger" aria-label="@ZB.EvrakDigerDurumlar">
+                <button type="button" @onclick='() => DurumSec("TAHSILE_VERILDI")' id="evrak-suzgec-tahsile" aria-pressed="@(durumSuzgec == "TAHSILE_VERILDI" ? "true" : "false")"
+                        class="@(durumSuzgec == "TAHSILE_VERILDI" ? "sekmeler-sekme secili" : "sekmeler-sekme")">@Dil.T.Evrak.DurumTahsileVerildi</button>
+                <button type="button" @onclick='() => DurumSec("KARSILIKSIZ")' id="evrak-suzgec-karsiliksiz" aria-pressed="@(durumSuzgec == "KARSILIKSIZ" ? "true" : "false")"
+                        class="@(durumSuzgec == "KARSILIKSIZ" ? "sekmeler-sekme secili" : "sekmeler-sekme")">@Dil.T.Evrak.DurumKarsiliksiz</button>
+            </span>
+        </div>
+        @* QA turu 5 (YÜKSEK): takvimden gelen derin bağlantı sessizce yok sayılıyordu.
+           Süzgeç bağlantıdan geldiyse ROZETLE söylenir ve temizleme yolu verilir —
+           katlanırın DIŞINDA (gizli süzgeç sessiz kalmaz). *@
+        @if (suzgecBaglantidan)
+        {
+            <span class="rozet rozet-mavi" id="evrak-suzgec-baglanti">@Dil.T.Evrak.SuzgecUygulandi</span>
+            <button class="dugme dugme-kucuk dugme-ikincil" id="evrak-suzgec-temizle" @onclick="VadeSuzgeciTemizle">@Dil.T.Evrak.SuzgeciTemizle</button>
+        }
+    </div>
+
+    @* ── Süzgeç (KAPALI): tür + vade aralığı (durumlar KESIF-P3'ten beri dışarıda). Seçili süzgeç varsa
+          başlıkta adı + sayı rozeti. Id'ler AYNI. ── *@
+    @* Takvimden derin bağlantıyla gelindiyse (vadeBas/vadeBit) katlanır AÇIK başlar:
+       uygulanan süzgeç kullanıcının önünde durur (QA turu 5 dersi). *@
+    <Katlanir Id="evrak-suzgec" Baslik="@SuzgecBasligi" Sayi="@(AktifSuzgecSayisi > 0 ? AktifSuzgecSayisi : null)"
+              BaslangictaAcik="@suzgecBaglantidan" Sinif="zo-suzgec">
+        <div class="form-grid-3">
+            <div class="alan">
+                <Secici ElemanId="evrak-tur-suzgec"
+                        Etiket="@Dil.T.Evrak.EvrakTuru"
+                        Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("CEK", Dil.T.Evrak.Cek), new SecenekOgesi("SENET", Dil.T.Evrak.Senet) })"
+                        @bind-Deger="turSuzgec"
+                        @bind-Deger:after="Yukle"
+                        BosSecenekMetni="@(Dil.T.Evrak.Tumu)" />
+            </div>
+            <Tarih ElemanId="evrak-vade-bas" Etiket="@($"{Dil.T.Evrak.VadeGunu} ({Dil.T.Ortak.Baslangic})")"
+                   Deger="@vadeBas" DegerChanged="@VadeBasDegisti" />
+            <Tarih ElemanId="evrak-vade-bit" Etiket="@($"{Dil.T.Evrak.VadeGunu} ({Dil.T.Ortak.Bitis})")"
+                   Deger="@vadeBit" DegerChanged="@VadeBitDegisti" Hata="@VadeAralikHatasi" />
+        </div>
+    </Katlanir>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (liste is { } l)
+    {
+        @* ZO-BELGE — TEK özet satırı (eski dört kart). Dört toplam da DURUR; sıfırdan
+           büyük karşılıksız KIRMIZI, bu hafta vadesi gelen AMBER. UX-S33: süzgeçten
+           BAĞIMSIZ oldukları satır sonunda yazılı. *@
+        <div class="zo-ozet" id="evrak-ozet">
+            <span id="evrak-ozet-portfoy">@Dil.T.Evrak.PortfoydeToplam: <strong class="sayi">@Bicim.Para(l.PortfoydeTutar, "TRY")</strong></span>
+            <span class="zo-ozet-ayrac" aria-hidden="true">·</span>
+            <span id="evrak-ozet-tahsile">@Dil.T.Evrak.TahsileVerilenToplam: <strong class="sayi">@Bicim.Para(l.TahsileVerilenTutar, "TRY")</strong></span>
+            <span class="zo-ozet-ayrac" aria-hidden="true">·</span>
+            <span id="evrak-ozet-hafta" class="@(l.BuHaftaVadeliTutar > 0 ? "zo-ozet-amber" : null)">@Dil.T.Evrak.BuHaftaVadeli: <strong class="sayi">@Bicim.Para(l.BuHaftaVadeliTutar, "TRY")</strong></span>
+            <span class="zo-ozet-ayrac" aria-hidden="true">·</span>
+            <span id="evrak-ozet-karsiliksiz" class="@(l.KarsiliksizTutar > 0 ? "zo-ozet-kirmizi" : null)">@Dil.T.Evrak.KarsiliksizToplam: <strong class="sayi">@Bicim.Para(l.KarsiliksizTutar, "TRY")</strong></span>
+            @* 29.09 devam 9 (hakem k3): parantezli teknik alt metin satırda DEĞİL — UX-S33 notu (i) ipucunda. *@
+            <details class="zo-ipucu" id="evrak-ozet-ipucu">
+                <summary aria-label="@($"{ZB.Ipucu}: {Dil.T.Evrak.PortfoydeToplam}")">i</summary>
+                <p>@Dil.T.Evrak.DonemdenBagimsiz.Trim('(', ')', ' ')</p>
+            </details>
+        </div>
+
+        @* UX-S29: sunucu sınırı SESSİZ kırpılmaz, ekranda yazılır. *@
+        @if (l.DahaFazlasiVar)
+        {
+            <p class="metin-kucuk metin-soluk" id="evrak-sinir-uyarisi">
+                @string.Format(Dil.T.Evrak.SinirUyarisi, l.Limit)
+            </p>
+        }
+
+        @if (l.Kalemler.Count == 0)
+        {
+            <div class="kart">
+                <div class="kart-govde">
+                    <BosDurum Mesaj="@Dil.T.Evrak.KayitYok" />
+                    <p class="metin-kucuk metin-soluk" id="evrak-bos-aciklama">@Dil.T.Evrak.KayitYokAciklama</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="kart">
+                <p class="metin-kucuk metin-soluk zo-yana-kaydir zo-yigin-var" aria-hidden="true">@ZB.YanaKaydir</p>
+                @* PAKET GOC-B — ORTAK IZGARA (grid:evraklar:evrak-liste): sütun sırası, göster/gizle, sıralama, kullanıcıya
+                   kalıcı, "Varsayılana dön". Mevcut id/sınıf sözleşmesi korunur: #evrak-tablo (q10-th-tek q10-yigin
+                   zo-yigin-dar), data-zo="golge", #evrak-th-tur/-veren/-vade (kısa ad, tam ad title'da), #evrak-satir-{id},
+                   gecikmiş/yakında satır rengi. Sunucu sınırına (200) değdiyse sıralama KAPALI (UX-S29, uyarı yukarıda). *@
+                <Izgara T="EvrakSatiri" Ekran="evraklar" GridId="evrak-liste" Kolonlar="@EvrakKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(l.Kalemler, evrakSira, EvrakKolonlari)"
+                        SatirId="@(e => $"evrak-satir-{e.Id}")"
+                        SatirSinif="@(e => e.Gecikmis ? "satir-kirmizi" : e.YakindaVadeli ? "satir-amber" : null)"
+                        TabloId="evrak-tablo" TabloSinif="q10-th-tek q10-yigin zo-yigin-dar" Zo="golge"
+                        Baslik="@Dil.T.Evrak.Baslik" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@(x => evrakSira = x)" GecerliSiralama="@evrakSira" />
+            </div>
+        }
+    }
+
+</div>
+}
+
+@* PAKET GOC-B: ortak girdi bileşenlerinin (Para/Tarih/AdSoyad/TcknVeyaVkn) kural hatası Kaydet kilidine bu kapıdan
+   düşer — kilit sebebi alan altı metniyle AYNI (GecersizAlanKapisi.Sebep). *@
+<CascadingValue Value="formKapisi" IsFixed="true">
+@* ── Giriş / düzeltme çekmecesi — TEK KALIP, AYNI ALAN KÜMESİ (UX-S26) ──── *@
+<Cekmece Varlik="evrak" Acik="@formAcik" Baslik="@(cekmeceEvrakId is null ? Dil.T.Evrak.Yeni : Dil.T.Evrak.Duzenle)"
+         Kapat="FormKapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@FormGecerli" KilitSebebi="@FormKilitSebebi">
+    <div class="form-grid-2">
+        <div class="alan">
+            <Secici ElemanId="evrak-form-tur"
+                    Etiket="@Dil.T.Evrak.EvrakTuru"
+                    Secenekler="@EvrakTurSecenekleri"
+                    @bind-Deger="fTur"
+                    Devredisi="@(cekmeceEvrakId is not null)"
+                    DevredisiSebebi="@(cekmeceEvrakId is not null ? Dil.T.Evrak.TurDegismez : null)" />
+        </div>
+        @* PAKET P-65 (B48): kayıtlı evrakın türü kilitli — gerekçe ve DOĞRU düzeltme
+           yolu (karşılıksız / giriş hareketini geri alma → yeniden giriş) yazılır.
+           Eski "iptal edip yenisini açın" metni sunucuda olmayan bir iptal ucuna işaret ediyordu. *@
+        @if (cekmeceEvrakId is not null)
+        {
+            <DegismezIpucu Varlik="EvrakTuru" Gerekce="@OnayM.EvrakTuruGerekce"
+                           AlternatifYol="@Dil.T.Evrak.DegismezYol" />
+        }
+        <Metin ElemanId="evrak-form-no" Etiket="@Dil.T.Evrak.EvrakNo" Zorunlu="true" EnFazla="@AlanSinirlari.EvrakNo"
+               Deger="@fEvrakNo" DegerChanged="@(v => fEvrakNo = v ?? "")"
+               Hata="@(formGonderildi && string.IsNullOrWhiteSpace(fEvrakNo) ? Dil.T.Evrak.ZorunluAlan : null)" />
+        @if (cekmeceEvrakId is null)
+        {
+                @* PAKET GOC-B (C satır 87): K9 Pozitif — eksi/0/3. ondalık alan altında Core metniyle (eskiden eksi tutar
+                   "zorunlu alan" diyordu); sunucu aynı kural. Boş gönderimde "zorunlu alan" aynen. *@
+                <Para ElemanId="evrak-form-tutar" Etiket="@Dil.T.Evrak.Tutar" Zorunlu="true" Tur="TutarTuru.Pozitif" ParaBirimi="TRY"
+                      Deger="@(fTutar != 0m ? fTutar : null)" DegerChanged="@(v => fTutar = v ?? 0m)"
+                      Hata="@(formGonderildi && fTutar == 0m ? Dil.T.Evrak.ZorunluAlan : null)" />
+        }
+        else
+        {
+                @* Defter satırı doğurdu — düzeltilemez, sebebi yazılı (UX-S25). *@
+                <SaltOkunur ElemanId="evrak-form-tutar-salt" Etiket="@Dil.T.Evrak.Tutar"
+                            Deger="@Bicim.Para(fTutar, "TRY")"
+                            MakineDeger="@Bicim.Makine(fTutar)"
+                            BosMetin="@Dil.T.Ortak.DegerYok"
+                            Ipucu="@Dil.T.Evrak.DegismezGerekce" />
+                <span class="metin-kucuk metin-soluk" id="evrak-form-tutar-degismez">@Dil.T.Evrak.DegismezGerekce</span>
+        }
+        @* PAKET GOC-B (C satır 41, K8c): vade bugün ya da sonrası, en çok 10 yıl (9999 yılı yazılamaz) — sunucu aynı.
+           Düzenlemede kayıtlı geçmiş vade (portföyde gecikmiş evrak) açılışta kırmızı çizilmesin diye alt sınır yalnız yeni kayıtta. *@
+        <Tarih ElemanId="evrak-form-vade" Etiket="@Dil.T.Evrak.VadeGunu" Zorunlu="true"
+               Tur="@(cekmeceEvrakId is null ? TarihTuru.Vade : TarihTuru.Serbest)"
+               EnGec="@(cekmeceEvrakId is null ? null : DateOnly.FromDateTime(Bicim.IsletmeBugun).AddYears(TarihPenceresi.VadeEnCokYil))"
+               @bind-Deger="fVade"
+               Hata="@(formGonderildi && fVade is null ? Dil.T.Evrak.ZorunluAlan : null)" />
+        @* ZO-BELGE (tasarım hakemi t3, K18): iki etiket ("Evrakı veren müşteri" + "Müşteriler")
+           ve yarım genişlik seçici vardı → TEK etiket (Secici'nin kendi etiketi), zorunlu
+           işareti, satırın tamamı (zo-tam-satir). Düzenlemede salt okunur satır aynen. *@
+        <div class="alan zo-tam-satir">
+            @if (cekmeceEvrakId is null)
+            {
+                <Secici ElemanId="evrak-form-cari"
+                        Etiket="@Dil.T.Evrak.KaynakCari" Zorunlu="true"
+                        YerTutucu="@Dil.T.Cari.CariSecin"
+                        Secenekler="@CariSecenekleri"
+                        @bind-Deger="fKaynakCariId" />
+                @if (formGonderildi && string.IsNullOrWhiteSpace(fKaynakCariId))
+                {
+                    <span class="alan-hata" id="evrak-form-cari-hata">@Dil.T.Evrak.ZorunluAlan</span>
+                }
+            }
+            else
+            {
+                <label for="evrak-form-cari-salt">@Dil.T.Evrak.KaynakCari</label>
+                <p class="girdi-salt" id="evrak-form-cari-salt">@(cariler.FirstOrDefault(x => x.Id == fKaynakCariId).Ad ?? "—")</p>
+            }
+        </div>
+    </div>
+    @* ZO-BELGE — "Ek bilgiler": 6 isteğe bağlı alan (+ PRO'da borçlu kimlik no)
+       KAPALI katlanırda; hiçbiri zorunlu değil, eklenmese kayıp yok (kurucu 25.09).
+       Düzenlemede alanlardan biri DOLUYSA açık başlar (dolu veri gizlenmez).
+       @key: çekmece her açılışta yeni katlanır — önceki açık/kapalı durum taşınmaz. *@
+    <Katlanir @key="@($"evrak-ek-{cekmeceEvrakId}-{formSurum}")" Id="evrak-form-ek" Baslik="@ZB.EvrakEkBilgiler"
+              BaslangictaAcik="@EkBilgiDolu" Sinif="zo-form-ek">
+        <div class="form-grid-2">
+            <Metin ElemanId="evrak-form-banka" Etiket="@Dil.T.Evrak.BankaAdi" EnFazla="@AlanSinirlari.EvrakBanka"
+                   @bind-Deger="fBankaAdi" />
+            <Metin ElemanId="evrak-form-banka-sube" Etiket="@Dil.T.Evrak.BankaSube" EnFazla="@AlanSinirlari.EvrakBanka"
+                   @bind-Deger="fBankaSube" />
+            <Metin ElemanId="evrak-form-keside-yeri" Etiket="@Dil.T.Evrak.KesideYeri" EnFazla="@AlanSinirlari.EvrakBanka"
+                   @bind-Deger="fKesideYeri" />
+            @* PAKET GOC-B (C satır 40): keşide ≤ vade (vadeden sonra keşide edilmiş evrak olmaz) + yıl penceresi —
+               sunucu EvrakServisi.TarihleriDenetle aynı kural/metin. İleri tarihli keşide TEYİTSİZ → serbest. *@
+            <Tarih ElemanId="evrak-form-keside-tarihi" Etiket="@Dil.T.Evrak.KesideTarihi" Tur="TarihTuru.Keside" EnGec="@fVade"
+                   @bind-Deger="fKesideTarihi" />
+            @* PAKET GOC-B (C satır 42, K19): borçlu adı en az 2 karakter ve bir harf. *@
+            <AdSoyad ElemanId="evrak-form-borclu-ad" Etiket="@Dil.T.Evrak.BorcluAd" EnFazla="@AlanSinirlari.EvrakBorcluAd"
+                     Deger="@fBorcluAd" DegerChanged="@(v => fBorcluAd = v)" />
+            <ProAlan>
+                @* PAKET GOC-B tur 2 (doğrulayıcı DÜŞÜK): borçlu YABANCI olabilir → kimlik türü radyosu; yerli = TcknVeyaVkn
+                   (K4/K5), yabancı = Pasaport (K7). Sunucu KimlikKurali.TcknVknVeyaPasaport ile AYNI kural; id aynı. *@
+                @* Gerçek Chrome ölçümü (PRO 1280, K3): çekmecenin iki sütununda radyo etiketleri iki satıra kırılıyordu → tam satır. *@
+                <div class="zo-tam-satir">
+                    <Secim ElemanId="evrak-form-borclu-kimlik-turu" Etiket="@GB.KimlikTuru" Secenekler="@KimlikTuruSecenekleri"
+                           Devredisi="@fKimlikKaldir" Deger="@(fKimlikYabanci ? "YABANCI" : "YERLI")"
+                           DegerChanged="KimlikTuruSecildi" />
+                </div>
+                @* PAKET GOC-B tur 2 (doğrulayıcı KRİTİK — veri kaybı): kayıtlı kimlik no şifreli, ekrana GELMEZ. Kutu boş
+                   bırakılırsa kimlik DEĞİŞMEZ (PATCH gövdesinde alan YOK); silmek yalnız aşağıdaki AÇIK onay kutusuyla. *@
+                @if (fKimlikYabanci)
+                {
+                    <Pasaport ElemanId="evrak-form-borclu-kimlik" Etiket="@GB.BorcluPasaportNo" Devredisi="@fKimlikKaldir"
+                              DevredisiSebebi="@GB.KimlikKaldirilacak"
+                              Deger="@fBorcluKimlikNo" DegerChanged="@(v => fBorcluKimlikNo = v)" Ipucu="@KimlikIpucu"
+                              HataKimligi="evrak-form-borclu-kimlik-hata" />
+                }
+                else
+                {
+                    @* PAKET GOC-B (envanter F1): genel Metin → TcknVeyaVkn (rakam dışı yazılamaz; 10/11 hane dolunca algoritma). *@
+                    <TcknVeyaVkn ElemanId="evrak-form-borclu-kimlik" Etiket="@Dil.T.Evrak.BorcluKimlikNo" Devredisi="@fKimlikKaldir"
+                                 DevredisiSebebi="@GB.KimlikKaldirilacak"
+                                 Deger="@fBorcluKimlikNo" DegerChanged="@(v => fBorcluKimlikNo = v)" Ipucu="@KimlikIpucu"
+                                 Hata="@BorcluTcknHata" HataKimligi="evrak-form-borclu-kimlik-hata" />
+                }
+                @if (cekmeceEvrakId is not null && kimlikKayitli)
+                {
+                    <Onay ElemanId="evrak-form-borclu-kimlik-kaldir" Etiket="@GB.KimlikKaldir"
+                          Deger="@fKimlikKaldir" DegerChanged="KimlikKaldirSecildi" />
+                }
+            </ProAlan>
+            @* PAKET GOC-B (C satır 128): 500 karakterlik not tek satır Metin'deydi → CokSatir. *@
+            @* Gerçek Chrome ölçümü (1280 BASİT, K7): iki satırlık not kutusu yanındaki tek satırlık kutuyla 22 px kayıyordu → tam satır. *@
+            <div class="zo-tam-satir">
+                <CokSatir ElemanId="evrak-form-notlar" Etiket="@Dil.T.Evrak.Notlar" EnFazla="@AlanSinirlari.EvrakNot" Satir="2"
+                          Deger="@fNotlar" DegerChanged="@(v => fNotlar = v)" />
+            </div>
+        </div>
+    </Katlanir>
+    @if (cekmeceEvrakId is not null)
+    {
+        @* UX-S25: değişmez alanların gerekçesi ve DOĞRU düzeltme yolu — değiştirme
+           denenince (düzenleme çekmecesi). id AYNI: degismez-ipucu-KiymetliEvrakTutar. *@
+        <DegismezIpucu Varlik="KiymetliEvrakTutar"
+                       Gerekce="@Dil.T.Evrak.DegismezGerekce"
+                       AlternatifYol="@Dil.T.Evrak.DegismezYol" />
+        @* Ciro bu sürümde YOK — düğme ÇİZİLMEZ, sebebi sade dille yazılır (göz #8:
+           "Faz B" iç terimi ekrandan çıktı). id AYNI. *@
+        <p class="metin-kucuk metin-soluk" id="evrak-ciro-devredildi">@ZB.EvrakCiroNotu</p>
+    }
+    @if (kurYok)
+    {
+        <p class="alan-hata" id="evrak-form-kur-yok">@Dil.T.Evrak.KurYok</p>
+    }
+</Cekmece>
+</CascadingValue>
+
+@* ── Tahsile ver çekmecesi ──────────────────────────────────────────────── *@
+<Cekmece Varlik="evrak-tahsile" Acik="@tahsileAcik" Baslik="@Dil.T.Evrak.TahsileVer"
+         Kapat="() => tahsileAcik = false" Kaydet="TahsileVer" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(!string.IsNullOrEmpty(secilenBankaHesapId))"
+         KilitSebebi="@Dil.T.Evrak.BankaSecilmedi">
+    <div class="alan">
+        <Secici ElemanId="evrak-tahsile-hesap"
+                Etiket="@Dil.T.Evrak.BankaHesabi"
+                Secenekler="@(hesaplar.Select(h => new SecenekOgesi(h.Id, h.Ad)).ToList())"
+                @bind-Deger="secilenBankaHesapId"
+                BosSecenekMetni="—" />
+    </div>
+</Cekmece>
+
+@* ── Tahsil edildi çekmecesi ────────────────────────────────────────────── *@
+<Cekmece Varlik="evrak-tahsil" Acik="@tahsilAcik" Baslik="@Dil.T.Evrak.TahsilEdildi"
+         Kapat="() => tahsilAcik = false" Kaydet="TahsilEt" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@TahsilGecerli" KilitSebebi="@TahsilKilitSebebi">
+    <div class="alan">
+        <Secici ElemanId="evrak-tahsil-hedef"
+                Etiket="@Dil.T.Evrak.Hedef"
+                Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("KASA", Dil.T.Evrak.HedefKasa), new SecenekOgesi("BANKA", Dil.T.Evrak.HedefBanka) })"
+                @bind-Deger="tahsilHedef" @bind-Deger:after="TahsilHedefDegisti" />
+    </div>
+    @* UX-S24: hedef seçimi bağımlı alanı ekranın kendisi açar. *@
+    @if (tahsilHedef == "KASA")
+    {
+        @if (kasalar.Count == 1)
+        {
+            @* UX-S22: tek kasa varsa seçici GÖSTERİLMEZ, salt okunur yazılır. *@
+            <p class="girdi-salt" id="evrak-tahsil-kasa-tek">@kasalar[0].Ad</p>
+        }
+        else
+        {
+            <div class="alan">
+                <Secici ElemanId="evrak-tahsil-kasa"
+                        Etiket="@Dil.T.Evrak.Kasa"
+                        Secenekler="@(kasalar.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                        @bind-Deger="secilenKasaId"
+                        BosSecenekMetni="—" />
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alan">
+            <Secici ElemanId="evrak-tahsil-hesap"
+                    Etiket="@Dil.T.Evrak.BankaHesabi"
+                    Secenekler="@(hesaplar.Select(h => new SecenekOgesi(h.Id, h.Ad)).ToList())"
+                    @bind-Deger="secilenBankaHesapId"
+                    BosSecenekMetni="—" />
+        </div>
+    }
+</Cekmece>
+
+@* ── Karşılıksız: YIKICI EYLEM → onay modalı (tek meşru ModalPencere) ───── *@
+<ModalPencere Acik="@karsiliksizAcik" Baslik="@Dil.T.Evrak.OnayBaslik"
+              Kapat="() => karsiliksizAcik = false" Acildi="KarsiliksizSifirla">
+    <p id="evrak-karsiliksiz-uyari">@Dil.T.Evrak.OnayMetin</p>
+    <CokSatir ElemanId="evrak-karsiliksiz-gerekce" Etiket="@Dil.T.Evrak.Gerekce" Zorunlu="true"
+              Satir="3" EnFazla="@AlanSinirlari.EvrakNot"
+              Deger="@karsiliksizGerekce" DegerChanged="@(v => karsiliksizGerekce = v ?? "")"
+              Ipucu="@($"{Dil.T.Evrak.GerekceIpucu} ({karsiliksizGerekce.Trim().Length}/{GerekceAsgari})")" />
+    <div class="satir-eylemler">
+        <button type="button" @onclick="Karsiliksiz" id="evrak-karsiliksiz-onayla"
+                class="dugme dugme-tehlike"
+                disabled="@(karsiliksizGerekce.Trim().Length < GerekceAsgari || kaydediliyor)">@Dil.T.Evrak.Onayla</button>
+        <button type="button" @onclick="() => karsiliksizAcik = false"
+                class="dugme dugme-ikincil" id="evrak-karsiliksiz-vazgec">@Dil.T.Evrak.Vazgec</button>
+        @if (karsiliksizGerekce.Trim().Length < GerekceAsgari)
+        {
+            @* UX-S30: kilitli düğme hangi koşulun eksik olduğunu söyler. *@
+            <span class="metin-kucuk metin-soluk" id="evrak-karsiliksiz-kilit">@Dil.T.Evrak.GerekceIpucu</span>
+        }
+    </div>
+</ModalPencere>
+
+@code {
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> EvrakTurSecenekleri =>
+    [
+        new SecenekOgesi("CEK", Dil.T.Evrak.Cek),
+        new SecenekOgesi("SENET", Dil.T.Evrak.Senet),
+    ];
+
+    private IReadOnlyList<SecenekOgesi> CariSecenekleri =>
+        [.. cariler.Select(c => new SecenekOgesi(c.Id, c.Ad))];
+
+    private const int GerekceAsgari = 20;
+
+    private EvrakListesi? liste;
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private string? hata;
+    private string? basari;
+    private int basariJetonu;
+
+    private string durumSuzgec = "";
+    private string turSuzgec = "";
+    private DateOnly? vadeBas;
+    private DateOnly? vadeBit;
+
+    // Yardımcı listeler — YENİ RECORD AÇMAMAK için değer demeti (tuple) taşınır.
+    private List<(string Id, string Ad)> cariler = [];
+    private List<(string Id, string Ad)> kasalar = [];
+    private List<(string Id, string Ad)> hesaplar = [];
+    private CanliKurServisi.KurAnlik? kur;
+    private bool kurYok;
+
+    // Form durumu
+    private bool formAcik;
+    private bool formGonderildi;
+    private string? cekmeceEvrakId;
+    private string fTur = "CEK";
+    private string fEvrakNo = "";
+    private decimal fTutar;
+    private DateOnly? fVade;
+    private string fKaynakCariId = "";
+    private string? fBankaAdi, fBankaSube, fKesideYeri, fBorcluAd, fBorcluKimlikNo, fNotlar;
+
+    // ── PAKET GOC-B tur 2: borçlu kimlik no YALNIZ-YAZILIR (şifreli; listede yalnız "kayıtlı mı" döner) ──
+    private bool fKimlikYabanci, fKimlikKaldir, kimlikKayitli;
+    private GocBMetinleri GB => GocBSozlugu.Al(Dil.Dil);
+    private IReadOnlyList<SecenekOgesi> KimlikTuruSecenekleri =>
+        [new("YERLI", GB.KimlikTuruYerli), new("YABANCI", GB.KimlikTuruYabanci)];
+    /// <summary>Tür değişince yazılmış değer temizlenir (TCKN maskesi pasaportu, pasaport maskesi TCKN'yi bozmasın).</summary>
+    private void KimlikTuruSecildi(string? v) { fKimlikYabanci = v == "YABANCI"; fBorcluKimlikNo = null; }
+    /// <summary>Açık "kimlik no'yu kaldır": işaretlenince yazılmış yeni değer düşer (gövdede ikisi birden olmaz).</summary>
+    private void KimlikKaldirSecildi(bool v) { fKimlikKaldir = v; if (v) fBorcluKimlikNo = null; }
+    /// <summary>Düzenlemede kayıtlı kimlik varsa "gizli ve değişmez" der; yoksa genel ipucu.</summary>
+    private string KimlikIpucu => cekmeceEvrakId is not null && kimlikKayitli
+        ? (fKimlikKaldir ? GB.KimlikKaldirilacak : GB.KimlikKayitliGizli)
+        : Dil.T.Evrak.BorcluKimlikNoIpucu;
+    private DateOnly? fKesideTarihi;
+
+    private bool tahsileAcik, tahsilAcik, karsiliksizAcik;
+    private string? secilenEvrakId;
+    private string secilenBankaHesapId = "";
+    private string secilenKasaId = "";
+    private string tahsilHedef = "KASA";
+    /// <summary>YASAL-KAPI-2: hedef (kasa ↔ banka) değişince önceki denemenin nakit (tevsik) reddi bayatlar — kalkar.</summary>
+    private void TahsilHedefDegisti() => hata = null;
+    private string karsiliksizGerekce = "";
+
+    // ── PAKET GOC-B — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı; mevcut th id'leri korunur) ──
+    private IzgaraSiralama? evrakSira;
+    private bool EvrakTam => liste is { DahaFazlasiVar: false };
+
+    private IReadOnlyList<IzgaraKolonu<EvrakSatiri>> EvrakKolonlari =>
+    [
+        new() { Anahtar = "tur", Baslik = EkranM.EvrakSutunTur, BaslikId = "evrak-th-tur", BaslikIpucu = Dil.T.Evrak.EvrakTuru,
+                SunucuSiralamaAdi = EvrakTam ? "tur" : null, Deger = e => TurAdi(e.EvrakTuru) },
+        new() { Anahtar = "no", Baslik = Dil.T.Evrak.EvrakNo, ZorunluGorunur = true, SunucuSiralamaAdi = EvrakTam ? "no" : null,
+                HucreSinif = _ => "hucre-vurgu hucre-tek-satir", Deger = e => e.EvrakNo,
+                Hucre = e => @<text><span>@e.EvrakNo</span>
+                    @if (!Dil.BasitMi && !string.IsNullOrWhiteSpace(e.BankaAdi))
+                    {
+                        <span class="zo-alt-satir metin-soluk zo-iki-satir" id="@($"evrak-banka-{e.Id}")"
+                              title="@($"{Dil.T.Evrak.BankaAdi}: {e.BankaAdi}")">@e.BankaAdi</span>
+                    }</text> },
+        new() { Anahtar = "veren", Baslik = EkranM.EvrakSutunVeren, BaslikId = "evrak-th-veren", BaslikIpucu = Dil.T.Evrak.KaynakCari,
+                SunucuSiralamaAdi = EvrakTam ? "veren" : null, HucreSinif = _ => "zo-metin-sutun", Deger = e => e.KaynakCariAd,
+                Hucre = e => @<span class="zo-iki-satir" title="@e.KaynakCariAd">@(e.KaynakCariAd ?? "—")</span> },
+        new() { Anahtar = "vade", Baslik = EkranM.EvrakSutunVade, BaslikId = "evrak-th-vade", BaslikIpucu = Dil.T.Evrak.VadeGunu,
+                ZorunluGorunur = true, SunucuSiralamaAdi = EvrakTam ? "vade" : null, Deger = e => e.VadeGunu,
+                Hucre = e => @<text><span class="hucre-tek-satir" id="@($"evrak-vade-{e.Id}")">@VadeMetni(e.VadeGunu)</span>
+                    @if (e.Gecikmis)
+                    {
+                        <Rozet Renk="kirmizi">@Dil.T.Evrak.Gecikmis (@e.GecikmeGun @Dil.T.Evrak.Gun)</Rozet>
+                    }
+                    else if (e.YakindaVadeli)
+                    {
+                        <Rozet Renk="amber">@Dil.T.Evrak.Yakinda</Rozet>
+                    }</text> },
+        // UX-S32: tutar kendi para birimiyle basılır.
+        new() { Anahtar = "tutar", Baslik = Dil.T.Evrak.Tutar, ZorunluGorunur = true, SunucuSiralamaAdi = EvrakTam ? "tutar" : null,
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = e => e.ParaBirimi, BaslikSinif = "zo-sag", HucreSinif = _ => "sayi", Deger = e => e.Tutar },
+        new() { Anahtar = "durum", Baslik = Dil.T.Evrak.Durum, SunucuSiralamaAdi = EvrakTam ? "durum" : null, Deger = e => DurumAdi(e.Durum),
+                Hucre = e => @<Rozet Renk="@DurumRengi(e.Durum)">@DurumAdi(e.Durum)</Rozet> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Evrak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-yigin-eylem",
+                // ZO-BELGE: satırda TEK birincil + "⋯"; yıkıcı eylem pencerede ve onaydan geçer (DoD EK 4). id'ler AYNI.
+                Hucre = e => @<text><SatirEylemleri Onek="evrak" SatirId="@e.Id" Birincil="1" DarSutun="true"
+                                    SatirAdi="@e.EvrakNo" Eylemler="@EvrakEylemleri(e)" />
+                    @if (e.IzinliGecisler.Length == 0)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="@($"evrak-son-durum-{e.Id}")">@Dil.T.Evrak.SonDurum</span>
+                    }</text> },
+    ];
+
+    private GecersizAlanKapisi? _formKapisi;
+    private GecersizAlanKapisi formKapisi => _formKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    private bool FormGecerli =>
+        !formKapisi.OnekleVar("evrak-form-") &&   // PAKET GOC-B: ortak bileşen kuralı
+        BorcluTcknHata is null &&   // PAKET TCKN-DOGRULAMA
+        !string.IsNullOrWhiteSpace(fEvrakNo) && fVade is not null && !kurYok &&
+        (cekmeceEvrakId is not null || (fTutar > 0m && !string.IsNullOrWhiteSpace(fKaynakCariId)));
+
+    // PAKET P-65 (E49 · UX-S30): Kaydet kilidi EKSİK ALANLARIN ADINI sayar —
+    // eskiden yalnız "Bu alan zorunludur." diyordu, hangi alan olduğu yazmıyordu.
+    // Kilit koşulu (FormGecerli) DEĞİŞMEDİ; yalnız sebep açıklandı.
+    /// <summary>
+    /// PAKET TCKN-DOGRULAMA — borçlu kimlik no 11 hane rakamsa TC kimlik no doğrulama kuralı (tek kaynak Core
+    /// KimlikNoDogrulayici; sunucu EvrakServisi.BorcluKimlikDenetle ile aynı): anında alan altı + Kaydet kilidi sebebi.
+    /// </summary>
+    private string? BorcluTcknHata =>
+        KimlikNoDogrulayici.TcknVeyaVknDenetle(fBorcluKimlikNo) == KimlikNoHatasi.TcknGecersiz
+            ? KimlikNoSozlugu.Al(Dil.Dil).TcknGecersiz : null;
+
+    private string FormKilitSebebi => formKapisi.Sebep(Dil.Dil, "evrak-form-") ?? BorcluTcknHata ?? (kurYok
+        ? Dil.T.Evrak.KurYok
+        : string.Format(OnayM.EvrakEksikAlanlar, string.Join(" · ", FormEksikAlanlar)));
+
+    /// <summary>Kaydet kilidini doğuran eksik alanların ekrandaki etiketleri (FormGecerli ile aynı koşullar).</summary>
+    private IEnumerable<string> FormEksikAlanlar
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(fEvrakNo)) yield return Dil.T.Evrak.EvrakNo;
+            if (fVade is null) yield return Dil.T.Evrak.VadeGunu;
+            if (cekmeceEvrakId is null && fTutar <= 0m) yield return Dil.T.Evrak.Tutar;
+            if (cekmeceEvrakId is null && string.IsNullOrWhiteSpace(fKaynakCariId)) yield return Dil.T.Evrak.KaynakCari;
+        }
+    }
+
+    private OnayKilitMetinleri OnayM => OnayKilitSozlugu.Al(Dil.Dil);
+    /// <summary>PAKET CUMA-J: tablo başlıklarının kısa adları (tam ad title'da).</summary>
+    private CumaJEkranMetinleri EkranM => CumaJSozlugu.Ekran(Dil.Dil, Dil.BasitMi);
+
+    /// <summary>Vade günü ekran metni: Türkçede gg.aa.yyyy ("01.12.2026"), İngilizcede dilin kısa tarihi.</summary>
+    private string VadeMetni(DateOnly g) => Dil.Dil == "en"
+        ? Bicim.GunBicim(g, "d", System.Globalization.CultureInfo.GetCultureInfo(Dil.Locale))
+        : Bicim.Gun(g);
+
+    private bool TahsilGecerli => !kurYok && (tahsilHedef == "KASA"
+        ? !string.IsNullOrEmpty(EtkinKasaId)
+        : !string.IsNullOrEmpty(secilenBankaHesapId));
+
+    private string TahsilKilitSebebi => kurYok
+        ? Dil.T.Evrak.KurYok
+        : tahsilHedef == "KASA" ? Dil.T.Evrak.KasaSecilmedi : Dil.T.Evrak.BankaSecilmedi;
+
+    /// <summary>UX-S22: tek kasa varsa seçici yok; değer gövdeye OTOMATİK konur.</summary>
+    private string EtkinKasaId => kasalar.Count == 1 ? kasalar[0].Id : secilenKasaId;
+
+    /// <summary>
+    /// QA turu 5 (YÜKSEK): /evraklar/takvim gün bağlantısı ?vadeBas=&vadeBit= ile
+    /// geliyordu ama bu sayfa sorguyu HİÇ OKUMUYORDU — derin bağlantı sessizce
+    /// yok sayılıyor, kullanıcı o güne ait 1 evrak yerine tüm listeyi görüyordu.
+    /// Sorgu ilk yüklemede okunur, süzgeç kutularına YAZILIR (UX-S24) ve süzgecin
+    /// bağlantıdan geldiği rozetle söylenir (UX-S29).
+    /// </summary>
+    private bool suzgecBaglantidan;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        SorgudanSuzgecOku();
+        await YardimcilariYukle();
+        await Yukle();
+    }
+
+    private async Task VadeSuzgeciTemizle()
+    {
+        vadeBas = null;
+        vadeBit = null;
+        suzgecBaglantidan = false;
+        await Yukle();
+    }
+
+    private void SorgudanSuzgecOku()
+    {
+        var sorgu = new Uri(Nav.Uri).Query;
+        if (string.IsNullOrEmpty(sorgu)) return;
+        foreach (var parca in sorgu.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var esit = parca.IndexOf('=');
+            if (esit <= 0) continue;
+            var ad = Uri.UnescapeDataString(parca[..esit]);
+            var deger = Uri.UnescapeDataString(parca[(esit + 1)..]);
+            // Geçersiz tarih SESSİZCE yok sayılmaz: kutu boş kalır, rozet de çıkmaz.
+            if (!DateOnly.TryParse(deger, System.Globalization.CultureInfo.InvariantCulture, out var g))
+                continue;
+            if (string.Equals(ad, "vadeBas", StringComparison.OrdinalIgnoreCase))
+            {
+                vadeBas = g;
+                suzgecBaglantidan = true;
+            }
+            else if (string.Equals(ad, "vadeBit", StringComparison.OrdinalIgnoreCase))
+            {
+                vadeBit = g;
+                suzgecBaglantidan = true;
+            }
+        }
+    }
+
+    private async Task DurumSec(string d)
+    {
+        durumSuzgec = d;
+        await Yukle();
+    }
+
+    // 29.09 doğrulayıcı DÜŞÜK: Razor özniteliğinde gövdeli lambda yerine adlandırılmış yöntem.
+    private async Task VadeBasDegisti(DateOnly? v)
+    {
+        vadeBas = v;
+        await Yukle();
+    }
+
+    private async Task VadeBitDegisti(DateOnly? v)
+    {
+        vadeBit = v;
+        await Yukle();
+    }
+
+    /// <summary>
+    /// PAKET GOC-B (envanter C satır 33/34, K8e): ters vade aralığı sessizce BOŞ liste dönüyordu ("kayıt yok"
+    /// sanılıyordu) → bitişin altında Core metni ve İSTEK YOK; sunucu da aynı kuralla 400 (alan vadeBit).
+    /// </summary>
+    private string? VadeAralikHatasi =>
+        TarihPenceresi.AralikDenetle(vadeBas, vadeBit, TarihPenceresi.VadeEnCokYil + 1) is { } h ? GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+
+    private async Task Yukle()
+    {
+        if (VadeAralikHatasi is not null) return;   // PAKET GOC-B: bozuk aralıkta istek atılmaz
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            var sorgu = new List<string> { "limit=200" };
+            if (!string.IsNullOrEmpty(durumSuzgec)) sorgu.Add($"durum={durumSuzgec}");
+            if (!string.IsNullOrEmpty(turSuzgec)) sorgu.Add($"evrakTuru={turSuzgec}");
+            if (vadeBas is { } b) sorgu.Add($"vadeBas={Bicim.Makine(b)}");
+            if (vadeBit is { } s) sorgu.Add($"vadeBit={Bicim.Makine(s)}");
+            liste = await Api.GetAsync<EvrakListesi>($"/evraklar?{string.Join("&", sorgu)}");
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // ⚠ UX-S28 / Anayasa md.1: hata "kayıt yok"a ÇEVRİLMEZ. Liste
+            //   DOKUNULMAZ (eski veri kalır), hata bandı ayrıca gösterilir.
+            hata = ex.Message;
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private async Task YardimcilariYukle()
+    {
+        cariler = await AdListesiOku("/cari?aktif=true&limit=200", "ad");
+        kasalar = await AdListesiOku("/kasalar", "ad");
+        hesaplar = await AdListesiOku("/bankalar", "hesapAdi");
+        try
+        {
+            kur = await Api.GetAsync<CanliKurServisi.KurAnlik>("/kur/guncel");
+            kurYok = kur is null || string.IsNullOrEmpty(kur.Id);
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            kur = null;
+            kurYok = true;
+        }
+    }
+
+    /// <summary>
+    /// Yardımcı listeleri JSON'dan okur. ⚠ Yeni istemci record'u AÇMAMAK için
+    /// JsonElement üzerinden gidilir (S-2 tavanı); sunucu sözleşmesi
+    /// değişirse liste boş kalır ve hata bandı yazılır, sessiz düşmez.
+    /// </summary>
+    private async Task<List<(string Id, string Ad)>> AdListesiOku(string yol, string adAlani)
+    {
+        try
+        {
+            var kok = await Api.GetAsync(yol);
+            var dizi = kok.ValueKind == JsonValueKind.Array ? kok
+                : kok.TryGetProperty("satirlar", out var s) ? s
+                : kok.TryGetProperty("cariler", out var c) ? c
+                : default;
+            if (dizi.ValueKind != JsonValueKind.Array) return [];
+            var sonuc = new List<(string, string)>();
+            foreach (var o in dizi.EnumerateArray())
+            {
+                if (!o.TryGetProperty("id", out var id)) continue;
+                var ad = o.TryGetProperty(adAlani, out var a) ? a.GetString() : null;
+                sonuc.Add((id.GetString() ?? "", ad ?? "—"));
+            }
+            return sonuc;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            hata = ex.Message;
+            return [];
+        }
+    }
+
+    private void YeniAc()
+    {
+        cekmeceEvrakId = null;
+        formGonderildi = false;
+        fTur = "CEK"; fEvrakNo = ""; fTutar = 0m; fVade = null; fKaynakCariId = "";
+        fBankaAdi = fBankaSube = fKesideYeri = fBorcluAd = fBorcluKimlikNo = fNotlar = null;
+        fKesideTarihi = null;
+        fKimlikYabanci = fKimlikKaldir = kimlikKayitli = false;
+        formSurum++;
+        formAcik = true;
+    }
+
+    /// <summary>UX-S26: düzenleme formu OLUŞTURMA formuyla aynı alan kümesini taşır.</summary>
+    private void DuzenleAc(EvrakSatiri e)
+    {
+        cekmeceEvrakId = e.Id;
+        formGonderildi = false;
+        fTur = e.EvrakTuru; fEvrakNo = e.EvrakNo; fTutar = e.Tutar; fVade = e.VadeGunu;
+        fKaynakCariId = e.KaynakCariId ?? "";
+        fBankaAdi = e.BankaAdi; fBankaSube = e.BankaSube; fKesideYeri = e.KesideYeri;
+        // PAKET GOC-B tur 2: kimlik değeri ekrana GELMEZ → kutu boş başlar; boş kalırsa PATCH'te alan YOKTUR (korunur).
+        fKesideTarihi = e.KesideTarihi; fBorcluAd = e.BorcluAd; fBorcluKimlikNo = null;
+        kimlikKayitli = e.BorcluKimlikKayitli; fKimlikYabanci = fKimlikKaldir = false;
+        fNotlar = e.Notlar;
+        formSurum++;
+        formAcik = true;
+    }
+
+    private void FormKapat() => formAcik = false;
+
+    // ── PAKET ZO-BELGE ──
+    private ZoBelgeMetinleri ZB => ZoBelgeSozlugu.Al(Dil.Dil);
+    /// <summary>ZO-BELGE 28.09 (UX-S31): sayfa başlığı MENÜ adıyla AYNI (MenuAdlari tek kaynak);
+    /// eski "Çek / Senet Portföyü" menüdeki "Çek ve senet" ile çelişiyordu.</summary>
+    private string SayfaAdi => MenuAdlari.Icin(Dil.Dil).CekSenet.Ad;
+
+    /// <summary>Çekmece her açıldığında artar — "Ek bilgiler" katlanırı yeniden doğar.</summary>
+    private int formSurum;
+
+    /// <summary>Düzenlenen evrakta isteğe bağlı alanlardan biri doluysa katlanır açık başlar.</summary>
+    private bool EkBilgiDolu =>
+        new[] { fBankaAdi, fBankaSube, fKesideYeri, fBorcluAd, fBorcluKimlikNo, fNotlar }
+            .Any(x => !string.IsNullOrWhiteSpace(x)) || fKesideTarihi is not null || kimlikKayitli;
+
+    /// <summary>Katlanır süzgeçteki seçili değer sayısı (Tümü/Portföyde dışarıda).</summary>
+    internal int AktifSuzgecSayisi =>
+        // KESIF-P3: durum artık katlanırın DIŞINDA (görünür şeritte) — katlanır yalnız içindekileri sayar.
+        (string.IsNullOrEmpty(turSuzgec) ? 0 : 1)
+        + (vadeBas is null ? 0 : 1) + (vadeBit is null ? 0 : 1);
+
+    private string SuzgecBasligi
+    {
+        get
+        {
+            var adlar = new List<string>();
+            if (!string.IsNullOrEmpty(turSuzgec)) adlar.Add(TurAdi(turSuzgec));
+            if (vadeBas is not null || vadeBit is not null) adlar.Add(Dil.T.Evrak.VadeGunu);
+            return adlar.Count == 0 ? ZB.Suzgec : $"{ZB.Suzgec}: {string.Join(", ", adlar)}";
+        }
+    }
+
+    private async Task Kaydet()
+    {
+        formGonderildi = true;
+        if (!FormGecerli) return;
+
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            if (cekmeceEvrakId is null)
+            {
+                var yanit = await Api.PostAsync<EvrakSonucu>("/evraklar", new
+                {
+                    evrakTuru = fTur,
+                    tutar = fTutar,
+                    vadeGunu = Bicim.Makine(fVade!.Value),
+                    evrakNo = fEvrakNo,
+                    bankaAdi = fBankaAdi,
+                    bankaSube = fBankaSube,
+                    kesideYeri = fKesideYeri,
+                    kesideTarihi = fKesideTarihi is { } kt ? Bicim.Makine(kt) : null,
+                    borcluAd = fBorcluAd,
+                    borcluKimlikNo = fBorcluKimlikNo,
+                    kaynakCariId = fKaynakCariId,
+                    kurSnapshotId = kur!.Id,
+                    notlar = fNotlar,
+                });
+                // UX-S27: sunucunun DÖNDÜRDÜĞÜ sonuç banda yazılır.
+                BasariYaz($"{Dil.T.Evrak.Kaydedildi} — " +
+                    string.Format(Dil.T.Evrak.BakiyeSonrasi, Bicim.Para(yanit?.CariTlBakiye ?? 0m, "TRY")));
+            }
+            else
+            {
+                // ⚠ PATCH SÖZLEŞMESİ: yalnız DEĞİŞTİRİLEBİLİR alanlar gönderilir;
+                //   gönderilmeyen alan sunucuda KORUNUR (null'lanmaz).
+                var govde = new Dictionary<string, object?>
+                {
+                    ["vadeGunu"] = Bicim.Makine(fVade!.Value),
+                    ["evrakNo"] = fEvrakNo,
+                    ["bankaAdi"] = fBankaAdi,
+                    ["bankaSube"] = fBankaSube,
+                    ["kesideYeri"] = fKesideYeri,
+                    ["kesideTarihi"] = fKesideTarihi is { } kt2 ? Bicim.Makine(kt2) : null,
+                    ["borcluAd"] = fBorcluAd,
+                    ["notlar"] = fNotlar,
+                };
+                // PAKET GOC-B tur 2 (doğrulayıcı KRİTİK — veri kaybı): kimlik YALNIZ kullanıcı yeni değer yazdıysa
+                // gövdeye girer; dokunulmadıysa alan HİÇ YOKTUR (kayıtlı kimlik korunur). Silme yalnız AÇIK
+                // "Kimlik no'yu kaldır" onayıyla (borcluKimlikSil). Sunucu null'u da "değişmez" sayar (iki kat koruma).
+                if (!string.IsNullOrWhiteSpace(fBorcluKimlikNo)) govde["borcluKimlikNo"] = fBorcluKimlikNo.Trim();
+                else if (fKimlikKaldir) govde["borcluKimlikSil"] = true;
+                var yanit = await Api.PatchAsync<EvrakSonucu>($"/evraklar/{cekmeceEvrakId}", govde);
+                // ⚠ Sunucu beklenmedik bir gövde döndürürse NRE ile render ağacı
+                //   DÜŞMEZ (QA turu 3 dersi); alan yoksa yerel değere düşülür.
+                BasariYaz($"{Dil.T.Evrak.Guncellendi} — {yanit?.Evrak?.EvrakNo ?? fEvrakNo}");
+            }
+            formAcik = false;
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            hata = ex.Message;
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+
+    private void TahsileVerAc(EvrakSatiri e)
+    {
+        secilenEvrakId = e.Id;
+        secilenBankaHesapId = "";
+        tahsileAcik = true;
+    }
+
+    private async Task TahsileVer() => await Gonder(
+        $"/evraklar/{secilenEvrakId}/tahsile-ver",
+        new { bankaHesapId = secilenBankaHesapId },
+        () => tahsileAcik = false);
+
+    private async Task PortfoyeAl(EvrakSatiri e)
+    {
+        secilenEvrakId = e.Id;
+        await Gonder($"/evraklar/{e.Id}/portfoye-al", new { }, () => { });
+    }
+
+    private void TahsilAc(EvrakSatiri e)
+    {
+        secilenEvrakId = e.Id;
+        tahsilHedef = "KASA";
+        secilenKasaId = "";
+        secilenBankaHesapId = "";
+        tahsilAcik = true;
+    }
+
+    private async Task TahsilEt() => await Gonder(
+        $"/evraklar/{secilenEvrakId}/tahsil-edildi",
+        new
+        {
+            hedef = tahsilHedef,
+            kasaId = tahsilHedef == "KASA" ? EtkinKasaId : null,
+            bankaHesapId = tahsilHedef == "BANKA" ? secilenBankaHesapId : null,
+            kurSnapshotId = kur?.Id,
+        },
+        () => tahsilAcik = false);
+
+    private void KarsiliksizAc(EvrakSatiri e)
+    {
+        secilenEvrakId = e.Id;
+        karsiliksizGerekce = "";
+        karsiliksizAcik = true;
+    }
+
+    /// <summary>ModalPencere her AÇILIŞTA durumu sıfırlar (DoD EK madde 2).</summary>
+    private void KarsiliksizSifirla() => karsiliksizGerekce = "";
+
+    private async Task Karsiliksiz()
+    {
+        // ⚠ 20 karakterden kısa gerekçeyle İSTEK GÖNDERİLMEZ (servis de reddeder).
+        if (karsiliksizGerekce.Trim().Length < GerekceAsgari) return;
+        await Gonder(
+            $"/evraklar/{secilenEvrakId}/karsiliksiz",
+            new { aciklama = karsiliksizGerekce.Trim(), kurSnapshotId = kur?.Id },
+            () => karsiliksizAcik = false);
+    }
+
+    private async Task Gonder(string yol, object govde, Action kapat)
+    {
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var yanit = await Api.PostAsync<EvrakSonucu>(yol, govde);
+            kapat();
+            BasariYaz($"{DurumAdi(yanit?.Evrak?.Durum ?? "")} — " +
+                string.Format(Dil.T.Evrak.BakiyeSonrasi, Bicim.Para(yanit?.CariTlBakiye ?? 0m, "TRY")));
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // YASAL-KAPI-2: sunucu cümlesindeki ham alan anahtarları basılmaz (cümle aynen kalır — md.1).
+            hata = ParaMasakKapisi.SadeMetin(ex.Message);
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+
+    private void BasariYaz(string mesaj)
+    {
+        basari = mesaj;
+        basariJetonu++;
+    }
+
+    // ⚠ UX-S31: ham veritabanı kodu ekrana BASILMAZ, sözlükten çevrilir.
+    private string TurAdi(string tur) => tur switch
+    {
+        "CEK" => Dil.T.Evrak.Cek,
+        "SENET" => Dil.T.Evrak.Senet,
+        _ => tur,
+    };
+
+    private string DurumAdi(string durum) => durum switch
+    {
+        "PORTFOYDE" => Dil.T.Evrak.DurumPortfoyde,
+        "TAHSILE_VERILDI" => Dil.T.Evrak.DurumTahsileVerildi,
+        "TAHSIL_EDILDI" => Dil.T.Evrak.DurumTahsilEdildi,
+        "KARSILIKSIZ" => Dil.T.Evrak.DurumKarsiliksiz,
+        "CIRO_EDILDI" => Dil.T.Evrak.DurumCiroEdildi,
+        _ => durum,
+    };
+
+    private static string DurumRengi(string durum) => durum switch
+    {
+        "PORTFOYDE" => "mavi",
+        "TAHSILE_VERILDI" => "amber",
+        "TAHSIL_EDILDI" => "yesil",
+        "KARSILIKSIZ" => "kirmizi",
+        _ => "gri",
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+
+    // ── ZO-BELGE 27.09 — satır eylemleri TEK kaynaktan (ortak SatirEylemleri) ──
+    private EventCallback EvCb(Func<Task> f) => EventCallback.Factory.Create(this, f);
+    private EventCallback EvCb(Action f) => EventCallback.Factory.Create(this, f);
+
+    /// <summary>
+    /// Sıra = ekran sırası; ilk eylem satırda, gerisi "⋯" penceresinde. Düzenlenebilir
+    /// evrakta birincil iş Düzenle'dir; değilse ilk izinli geçiş öne gelir ve kilitli
+    /// Düzenle SEBEBİYLE (title) pencerede kalır (UX-S30).
+    /// </summary>
+    internal IReadOnlyList<SatirEylemleri.Eylem> EvrakEylemleri(EvrakSatiri e)
+    {
+        var duzenle = new SatirEylemleri.Eylem($"evrak-duzenle-{e.Id}", Dil.T.Evrak.Duzenle, EvCb(() => DuzenleAc(e)),
+                                               kilitli: !e.Duzenlenebilir,
+                                               kilitNedeni: e.Duzenlenebilir ? null : Dil.T.Evrak.DegismezYol);
+        var gecisler = new List<SatirEylemleri.Eylem>();
+        if (e.IzinliGecisler.Contains("TAHSILE_VERILDI"))
+            gecisler.Add(new($"evrak-tahsile-ver-{e.Id}", Dil.T.Evrak.TahsileVer, EvCb(() => TahsileVerAc(e))));
+        if (e.IzinliGecisler.Contains("PORTFOYDE"))
+            gecisler.Add(new($"evrak-portfoye-al-{e.Id}", Dil.T.Evrak.PortfoyeAl, EvCb(() => PortfoyeAl(e))));
+        if (e.IzinliGecisler.Contains("TAHSIL_EDILDI"))
+            gecisler.Add(new($"evrak-tahsil-{e.Id}", Dil.T.Evrak.TahsilEdildi, EvCb(() => TahsilAc(e))));
+        if (e.IzinliGecisler.Contains("KARSILIKSIZ"))
+            gecisler.Add(new($"evrak-karsiliksiz-{e.Id}", Dil.T.Evrak.Karsiliksiz, EvCb(() => KarsiliksizAc(e)),
+                             ekSinif: "metin-kirmizi"));
+        var l = new List<SatirEylemleri.Eylem>();
+        if (e.Duzenlenebilir || gecisler.Count == 0) { l.Add(duzenle); l.AddRange(gecisler); }
+        else { l.AddRange(gecisler); l.Add(duzenle); }
+        return l;
+    }
+}

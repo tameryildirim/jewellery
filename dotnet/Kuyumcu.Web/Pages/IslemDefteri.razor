@@ -1,0 +1,596 @@
+@page "/raporlar/islem-defteri"
+@using System.Globalization
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Contracts.Cikti
+@using Kuyumcu.Web.Bilesenler.Yazdirma
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject RaporServisi Rapor
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   R10 — İŞLEM DEFTERİ (paket 34 Faz A).
+
+   Kuyumcunun "bugün ne olup bitti" sorusunun tek dökümü. Bugüne kadar genel
+   bir hareket dökümü HİÇ YOKTU (yalnız cari ekstresi, kasa ve banka hareketi).
+
+   ⚠ İŞARET KORUNUR: tutar HAM işaretiyle gösterilir, yön ayrı sütundadır.
+     Mutlak değere çevrilirse tediye ile tahsilat ayırt edilemez.
+   ⚠ UX-S29: sunucu sınırı (limit) ekranda YAZAR; sınıra değildiyse uyarı basar.
+   ⚠ UX-S25: rapor türetilmiş veridir — düzenleme yolu yoktur, gerekçesi yazılır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(SayfaAdi)</PageTitle>
+
+<div class="dikey-bosluk zo-belge" id="id-sayfa">
+    @* ═══ PAKET ZO-BELGE — "ZORUNLU ÖNCE" (kurucu 25.09) ══════════════════════
+       Açılış: 1) başlık + açıklama  2) Başlangıç/Bitiş + Yazdır  3) KAPALI
+       "Süzgeç" (Tür, Ödeme, Şube, Kaydeden)  4) tek özet satırı + tablo.
+       Açıklama artık bu ekranın kendisini anlatır (eskiden rapor merkezinin
+       "kartına tıklayın" cümlesi yanlışlıkla burada da basılıyordu). *@
+    <div class="yazdirma-gizle">
+        @* ZO-BELGE 29.09 devam 9 (tasarım hakemi k3 KRİTİK · K17 "açıklama metni satırı 0"): başlık altındaki
+           açıklama satırı kaldırıldı — tuvalde (Profesyonel.png) başlık tek başına durur. *@
+        <SayfaBasi Anahtar="islem-defteri" Baslik="@SayfaAdi">
+            <Filtreler>
+                @* PAKET GOC-D: Tur=Rapor (2000..gelecek yıl; 3000 yılı yazılamaz). Ters aralık / 400 günü aşan dönem
+                   bitiş alanı altında sunucuyla AYNI metinle (Core RaporDonemKurali) — hatalı dönemde istek ATILMAZ. *@
+                <Tarih ElemanId="id-baslangic" Etiket="@Dil.T.RaporSeti.Baslangic" Tur="TarihTuru.Rapor"
+                       Deger="@DateOnly.FromDateTime(baslangic)"
+                       DegerChanged="@BaslangicDegisti" />
+                <Tarih ElemanId="id-bitis" Etiket="@Dil.T.RaporSeti.Bitis" Tur="TarihTuru.Rapor"
+                       Deger="@DateOnly.FromDateTime(bitis)"
+                       DegerChanged="@BitisDegisti"
+                       Hata="@donemHata" HataKimligi="id-donem-hata" />
+            </Filtreler>
+            <Eylem>
+                @* ZO-BELGE 29.09 (tasarım hakemi KRİTİK): "Yazdır" yalnız ekrandaki sayfayı
+                   basıyordu. Artık önce SEÇİLİ ARALIĞIN TAMAMI ayrı isteklerle çekilir, kâğıda
+                   başlık + tarih aralığı + süzgeç + tüm satırlar basılır. window.print yine TEK
+                   noktada (YazdirDugmesi, Otomatik kipi — aşağıda gizli); kimlik id-yazdir AYNI,
+                   kilit sebebi UX-S30 (id-yazdir-kilit AYNI). *@
+                <div class="yazdir-kutu yazdirma-gizle">
+                    <button type="button" class="dugme dugme-birincil" id="id-yazdir"
+                            disabled="@(Satirlar.Count == 0 || yazdirHazirlaniyor || donemHata is not null)"
+                            @onclick="YazdirHazirla">
+                        @(yazdirHazirlaniyor ? ZB.YazdirHazirlaniyor : Dil.T.RaporSeti.Yazdir)
+                    </button>
+                    @if (Satirlar.Count == 0)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="id-yazdir-kilit">@Dil.T.RaporSeti.BosDurum</span>
+                    }
+                    else if (donemHata is not null)
+                    {
+                        @* PAKET GOC-D (UX-S30): kilitli Yazdır sebebini söyler — dönem alanının altındaki AYNI metin. *@
+                        <span class="metin-kucuk metin-soluk" id="id-yazdir-kilit">@donemHata</span>
+                    }
+                </div>
+            </Eylem>
+        </SayfaBasi>
+    </div>
+    @* ŞUBE-KAPSAM-B: şube süzgeci seçili şubeyle açılır; seçim değişince süzgeç ona çekilir. *@
+    @* TOPLU-4 (14b, gerçek tarayıcı ölçümü): süzgeç KAPALI akordeondayken #id-sube DOM'da yok; şube seçiliyse
+       akordeon başlığı ("Süzgeç: <şube>") aynı bilgiyi zaten yazar → rozet bu sarmalayıcıyla gizlenir. Bileşen
+       YİNE çizilir (Degisti geri çağrısı ve süzgeç eşitlemesi değişmez); sarmalayıcı display: contents. *@
+    <div class="id-rozet-kap @(string.IsNullOrEmpty(subeId) ? null : "id-rozet-suzgecte")" id="id-rozet-kap">
+        <GorunumRozeti Degisti="GorunumDegisti" SuzgecKullan="true" SuzgecSubeId="@subeId" />
+    </div>
+
+    <HataBandi Mesaj="@hata" />
+
+    @* ── Süzgeç — KAPALI katlanır (envanter: "Tür/Ödeme varsayılanı kayıp yaratmıyor").
+          Seçili süzgeç varsa başlıkta SAYI rozeti + adı yazılır (gizli süzgeç
+          sessiz kalmaz). Id'ler AYNI (id-tur, id-odeme, id-sube, id-kullanici). ── *@
+    <Katlanir Id="id-suzgec" Baslik="@SuzgecBasligi" Sayi="@(AktifSuzgecSayisi > 0 ? AktifSuzgecSayisi : null)"
+              Sinif="zo-suzgec yazdirma-gizle">
+        <div class="form-grid-3">
+            <div class="alan">
+                <Secici ElemanId="id-tur"
+                        Etiket="@Dil.T.RaporSeti.Tur"
+                        Secenekler="@(Turler.Select(t => new SecenekOgesi(t, TurAdi(t))).ToList())"
+                        @bind-Deger="tur"
+                        @bind-Deger:after="IlkSayfa"
+                        BosSecenekMetni="@Dil.T.RaporSeti.TumTurler" />
+            </div>
+            <div class="alan">
+                <Secici ElemanId="id-odeme"
+                        Etiket="@Dil.T.RaporSeti.OdemeTuru"
+                        Secenekler="@(Araclar.Select(a => new SecenekOgesi(a, KatalogSozlugu.OdemeAraci(a, Dil.Dil))).ToList())"
+                        @bind-Deger="odemeTuru"
+                        @bind-Deger:after="IlkSayfa"
+                        BosSecenekMetni="@Dil.T.RaporSeti.TumAraclar" />
+            </div>
+            @* UX-S22: tek şube varsa seçici GİZLENİR, değer salt okunur yazılır. *@
+            @if (subeler.Count > 1)
+            {
+                <div class="alan">
+                    <Secici ElemanId="id-sube"
+                            Etiket="@Dil.T.RaporSeti.SubeAd"
+                            Secenekler="@(subeler.Select(s => new SecenekOgesi(s.Id, s.Ad)).ToList())"
+                            @bind-Deger="subeId"
+                            @bind-Deger:after="IlkSayfa"
+                            BosSecenekMetni="@Dil.T.RaporSeti.TumSubeler" />
+                </div>
+            }
+            else if (subeler.Count == 1)
+            {
+                <div class="alan">
+                    <label for="id-sube-sabit">@Dil.T.RaporSeti.SubeAd</label>
+                    <p id="id-sube-sabit" class="metin-kucuk">@subeler[0].Ad</p>
+                </div>
+            }
+            @if (kullanicilar.Count > 1)
+            {
+                <div class="alan">
+                    <Secici ElemanId="id-kullanici"
+                            Etiket="@Dil.T.RaporSeti.KaydedenKullanici"
+                            Secenekler="@KullaniciSecenekleri"
+                            @bind-Deger="kullaniciId"
+                            @bind-Deger:after="IlkSayfa"
+                            BosSecenekMetni="@Dil.T.RaporSeti.TumKullanicilar" />
+                </div>
+            }
+        </div>
+        @if (AktifSuzgecSayisi > 0)
+        {
+            <div>
+                <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="id-suzgec-temizle"
+                        @onclick="SuzgeciTemizle">@ZB.SuzgecTemizle</button>
+            </div>
+        }
+    </Katlanir>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (yanit is { } r)
+    {
+        @* ZO-BELGE — "tek özet satırı": beş sayı (giriş, çıkış, has, hareket
+           sayısı, iptal) TEK satırda; iki görünümde AYNI (mod ölçü değiştirmez).
+           İptal (storno) AYRI kalemdir: toplamlara girmez ama SAKLANMAZ — varsa
+           amber rozetle yazar. *@
+        <p class="zo-ozet @(yazdirilacak is not null ? "yazdirma-gizle" : null)" id="id-ozet">
+            <span id="id-ozet-giris-cikis">@string.Format(ZB.IslemOzet, Bicim.Tl(r.Ozet?.TlGiris ?? 0m), Bicim.Tl(r.Ozet?.TlCikis ?? 0m), Bicim.Girdi(r.ToplamSatir, "N0"))</span>
+            <span class="zo-ozet-ayrac" aria-hidden="true">·</span>
+            <span id="id-ozet-has">@ZB.IslemOzetHas: @Bicim.Has((r.Ozet?.HasGiris ?? 0m) - (r.Ozet?.HasCikis ?? 0m))</span>
+            @if ((r.Storno?.Adet ?? 0) > 0)
+            {
+                <Rozet Renk="amber"><span id="id-ozet-storno">@string.Format(ZB.IslemStornoOzet, r.Storno!.Adet, Bicim.Tl(r.Storno.TutarTl))</span></Rozet>
+            }
+            @* ZO-BELGE 27.09: sayfa aralığı ayrı satır değil, özetin SONUNDA (açılış ≤ 1 ekran). *@
+            <span class="zo-ozet-ayrac" aria-hidden="true">·</span>
+            <span class="metin-kucuk metin-soluk" role="status" id="id-sinir">@SayfaAraligi</span>
+            @* ZO-BELGE 27.09: sayfalama ayrı kart değil, aralığın YANINDA (açılış ≤ 1 ekran;
+               10 satırlık sayfa ekrana sığdığı için tablonun altına inmek gerekmez).
+               Kimlikler AYNI (id-onceki, id-sonraki). *@
+            @if (Satirlar.Count > 0)
+            {
+                <span class="zo-sayfalama yazdirma-gizle">
+                    <button disabled="@(ofset == 0)" @onclick="Onceki"
+                            class="dugme dugme-ikincil dugme-kucuk" id="id-onceki">@Dil.T.RaporSeti.Onceki</button>
+                    <button disabled="@(!r.DahaFazlasiVar)" @onclick="Sonraki"
+                            class="dugme dugme-ikincil dugme-kucuk" id="id-sonraki">@Dil.T.RaporSeti.Sonraki</button>
+                </span>
+            }
+        </p>
+
+        @* UX-S29 — sessiz kırpma YOK. PAKET S1-i: liste artık @GorselSigmaSozlugu.IslemDefteriSayfaBoyu
+           satırlık sayfalarla gelir (ilk bakış ≤ 1,8 ekran); "daha fazlası var" uyarısı her
+           sayfada çıkacağı için yerini ÜSTTE duran aralık + toplam satırına bıraktı
+           (#id-sinir kimliği korunur). *@
+
+        @if (Satirlar.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.RaporSeti.BosDurum" />
+        }
+        else
+        {
+            <div class="kart @(yazdirilacak is not null ? "yazdirma-gizle" : null)">
+                <p class="metin-kucuk metin-soluk zo-yana-kaydir zo-yigin-var" aria-hidden="true">@ZB.YanaKaydir</p>
+                @* PAKET GOC-D — ortak ızgara (grid:islem-defteri:id-tablo): sütun sırası, göster/gizle, kullanıcıya+
+                   ekrana kalıcı, varsayılana dön. Tablo id'si, sınıfları, satır sınıfı (satir-amber) ve hücre içerikleri
+                   (id-tur-*, id-belge-*, id-yon-*, id-pay-*, id-urun-*, id-kaydeden-*, id-sube-*, id-fatura-*) AYNEN.
+                   BASİT 5 sütun / PRO 8 sütun (ZO-BELGE kararı korunur). Liste SUNUCUDA sayfalı, uç sıralama
+                   parametresi almaz → sıralama düğmesi ÇIKMAZ (yalnız görünen sayfayı sıralamak yanıltır). *@
+                <Izgara T="DefterSatiri" Ekran="islem-defteri" GridId="id-tablo" TabloId="id-tablo" Zo="golge"
+                        KartListeSinif="@(yazdirilacak is not null ? "yazdirma-gizle" : null)"
+                        TabloSinif="@($"tablo-tek-satir q10-yigin{(Dil.BasitMi ? "" : " zo-yigin-dar")}")"
+                        Kolonlar="@DefterKolonlari" Ogeler="@Satirlar" Baslik="@SayfaAdi"
+                        SatirSinif="@(s => s.StornoSatiri || s.Stornolandi ? "satir-amber" : null)" />
+            </div>
+
+        }
+    }
+
+    @* ── ZO-BELGE 29.09 — YAZDIRMA BELGESİ: ekranda GÖRÜNMEZ (zo-yazdir-belge, zo-belge.css),
+          kâğıtta ekranın yerine basılır. Seçili aralığın TÜM satırları, başlık, tarih
+          aralığı ve süzgeç. Sınırda kırpma sessiz değil (UX-S29). ── *@
+    @if (yazdirilacak is { } ys)
+    {
+        <section class="zo-yazdir-belge" id="id-yazdir-belge" aria-hidden="true">
+            <h1 id="id-yazdir-baslik">@SayfaAdi</h1>
+            <p id="id-yazdir-aralik">@string.Format(ZB.YazdirAralik, Bicim.Tarih(DateTime.SpecifyKind(baslangic, DateTimeKind.Local), Dil.Locale), Bicim.Tarih(DateTime.SpecifyKind(bitis, DateTimeKind.Local), Dil.Locale))@(AktifSuzgecSayisi > 0 ? $" · {SuzgecBasligi}" : "")</p>
+            <p id="id-yazdir-sayi">@string.Format(ZB.YazdirKayit, Bicim.Girdi(ys.Count, "N0"), Bicim.Girdi(yazdirToplam, "N0"))</p>
+            @if (ys.Count < yazdirToplam)
+            {
+                <p id="id-yazdir-sinir">@string.Format(ZB.YazdirSinir, Bicim.Girdi(ys.Count, "N0"))</p>
+            }
+            <div class="tablo-sar">
+                <table class="veri-tablosu" id="id-yazdir-tablo">
+                    <thead>
+                        <tr>
+                            <th scope="col">@Dil.T.RaporSeti.Tarih</th>
+                            <th scope="col">@Dil.T.RaporSeti.Tur</th>
+                            <th scope="col">@Dil.T.RaporSeti.CariAd</th>
+                            <th scope="col">@Dil.T.RaporSeti.TlTutar</th>
+                            <th scope="col">@Dil.T.RaporSeti.HasGram</th>
+                            <th scope="col">@Dil.T.RaporSeti.OdemeTuru</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in ys)
+                        {
+                            <tr>
+                                <td>@Bicim.TarihSaat(s.Tarih)</td>
+                                <td>@TurAdi(s.Tur)@(s.StornoSatiri ? $" ({Dil.T.RaporSeti.Storno})" : "")</td>
+                                <td>@(s.CariAd ?? "—")</td>
+                                <td class="sayi">@Bicim.Tl(s.TlTutari)</td>
+                                <td class="sayi">@Bicim.Has(s.HasGrami)</td>
+                                <td>@KatalogSozlugu.OdemeAraci(s.OdemeTuru, Dil.Dil)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        @* window.print TEK noktadan: Otomatik kip belge çizildikten sonra BİR KEZ yazdırır.
+           @key her tıklamada yeni örnek → her tıklama bir yazdırma. *@
+        <div class="yazdirma-gizle" hidden>
+            <YazdirDugmesi @key="yazdirSayac" Id="id-yazdir-oto" Otomatik="true"
+                           HataOlustu="@(m => hata = m)" />
+        </div>
+    }
+
+    @* UX-S25: defter türetilmiş veridir; satır burada düzeltilmez. ZO-BELGE 28.09
+       (doğrulayıcı): "değiştirilemez" notu süzgecin İÇİNDE değil, TABLONUN ALTINDA —
+       konusu tablodaki kayıtlar. Açılışta kutu yok (kurucu 25.09): KAPALI "işlem
+       yanlışsa" katlanırı, Raporlar PRO "rp-duzeltme" ile AYNI kalıp; id AYNI. *@
+    <Katlanir Id="id-duzeltme" Baslik="@ZB.IslemDuzeltmeBaslik" Sinif="zo-bilgi yazdirma-gizle">
+        <DegismezIpucu Varlik="Rapor"
+                       Gerekce="@Dil.T.Duzeltme.TuretilmisGerekce"
+                       AlternatifYol="@Dil.T.SayfaDuzeltme.RaporDuzeltmeYolu" />
+    </Katlanir>
+
+</div>
+
+@code {
+    /// <summary>Sunucunun taslak fatura damgası öneki (Kuyumcu.Api FaturaSeriKapisi.TaslakOnEki ile
+    /// birebir — test kilitli). Bu önekle başlayan değer seri numarası DEĞİLDİR.</summary>
+    public const string TaslakOnEki = "TASLAK:";
+    public static bool TaslakIsaretiMi(string? faturaNo) =>
+        faturaNo is not null && faturaNo.StartsWith(TaslakOnEki, StringComparison.Ordinal);
+
+    // P-48 — yön kodu sözlükten çevrilir; tanınmayan kod da ham basılmaz.
+    private string YonMetni(string? yon) => yon switch
+    {
+        "GIRIS" => Dil.T.RaporSeti.Giris,
+        "CIKIS" => Dil.T.RaporSeti.Cikis,
+        "KARISIK" => Dil.T.RaporSeti.YonKarisik,
+        null => Dil.T.RaporSeti.YonYok,
+        _ => Dil.T.RaporSeti.Bilinmiyor,
+    };
+
+    // ── P-36c GÖÇ YARDIMCISI ────────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> KullaniciSecenekleri =>
+        [.. kullanicilar.Select(u => new SecenekOgesi(u.Id, $"{u.Ad} {u.Soyad}"))];
+
+    private static readonly string[] Turler =
+        ["SATIS", "SATIS_IADE", "ALIS", "ALIS_IADE", "HURDA_ALIS", "TAKAS", "ISCILIK",
+         "VERESIYE", "TAHSILAT", "TRANSFER", "EMANET_GIRIS", "EMANET_CIKIS", "CARI_DUZELTME"];
+
+    /// <summary>KAT-1 / UX-S31 — hareket türünün okunur adı (basit modda jargonsuz).</summary>
+    private string TurAdi(string? kod) => KatalogSozlugu.HareketTuru(kod, Dil.Dil, Dil.BasitMi);
+
+    private static readonly string[] Araclar =
+        ["NAKIT", "KART", "HAVALE", "ALTIN", "VERESIYE", "KARMA"];
+
+    private IslemDefteriYaniti? yanit;
+    private List<SubeOzeti> subeler = [];
+    private List<KullaniciOzeti> kullanicilar = [];
+    private bool yukleniyor = true;
+    private string? hata;
+
+    private DateTime baslangic = DateTime.Today.AddDays(-6);
+    private DateTime bitis = DateTime.Today;
+    private string tur = "", odemeTuru = "", subeId = "", kullaniciId = "";
+    private int ofset;
+    /// <summary>PAKET S1-i: 100 → 15 (ilk bakış ≤ 1,8 ekran); sunucu limit/ofset ile sayfalar.</summary>
+    private const int Limit = GorselSigmaSozlugu.IslemDefteriSayfaBoyu;
+
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    /// <summary>"1–15 / 312 kayıt" — toplam her zaman yazılır (UX-S29).</summary>
+    internal string SayfaAraligi => Satirlar.Count == 0
+        ? string.Format(GS.ToplamKayit, Bicim.Girdi(yanit?.ToplamSatir ?? 0, "N0"))
+        : string.Format(GS.KayitAraligi, Bicim.Girdi(ofset + 1, "N0"),
+            Bicim.Girdi(ofset + Satirlar.Count, "N0"), Bicim.Girdi(yanit?.ToplamSatir ?? 0, "N0"));
+
+    private List<DefterSatiri> Satirlar => yanit?.Satirlar ?? [];
+
+    // ── PAKET GOC-D — işlem defteri ortak ızgarada (hücre şablonları eski tablonun AYNISI) ──
+    private RenderFragment<DefterSatiri> TurHucresi => s => @<text>@if (Dil.BasitMi && BelgeTuru(s.Tur) is { } btb)
+        {
+            @* BASİT: belge sütunu yok — tür adı belgeye giden bağlantı (aynı id'ler). *@
+            <NavLink id="@($"id-belge-{s.Id}")" class="zo-tur-baglanti"
+                     href="@($"/cikti/{btb}/{s.Id}")"><span id="@($"id-tur-{s.Id}")">@TurAdi(s.Tur)</span></NavLink>
+        }
+        else
+        {
+            <span id="@($"id-tur-{s.Id}")">@TurAdi(s.Tur)</span>
+        }
+        @if (s.StornoSatiri)
+        {
+            <Rozet Renk="amber">@Dil.T.RaporSeti.Storno</Rozet>
+        }
+        @if (!Dil.BasitMi && !string.IsNullOrWhiteSpace(s.FaturaNo))
+        {
+            @* Taslak faturanın iç işareti "TASLAK:<ULID>" seri numarası DEĞİLDİR — ekrana basılmaz. *@
+            @if (TaslakIsaretiMi(s.FaturaNo))
+            {
+                <div class="metin-soluk zo-hucre-alt" id="@($"id-fatura-{s.Id}")" title="@Dil.T.Fatura.NoKesimde">@Dil.T.RaporSeti.FaturaNo: @CumaJSozlugu.Ekran(Dil.Dil).FaturaNoKesimdeKisa</div>
+            }
+            else
+            {
+                <div class="metin-soluk zo-hucre-alt" id="@($"id-fatura-{s.Id}")">@Dil.T.RaporSeti.FaturaNo: @s.FaturaNo</div>
+            }
+        }</text>;
+
+    private IReadOnlyList<IzgaraKolonu<DefterSatiri>> DefterKolonlari => Dil.BasitMi
+        ?
+        [
+            new() { Anahtar = "tarih", Baslik = Dil.T.RaporSeti.Tarih, ZorunluGorunur = true, HucreSinif = _ => "metin-kucuk",
+                    Deger = s => s.Tarih, Hucre = s => @<text>@Bicim.TarihSaat(s.Tarih)</text> },
+            new() { Anahtar = "tur", Baslik = Dil.T.RaporSeti.Tur, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu",
+                    Deger = s => TurAdi(s.Tur), Hucre = TurHucresi },
+            new() { Anahtar = "cari", Baslik = Dil.T.RaporSeti.CariAd, HucreSinif = _ => "metin-kucuk hucre-sarar",
+                    Deger = s => s.CariAd },
+            new() { Anahtar = "tutar", Baslik = Dil.T.RaporSeti.TlTutar, ZorunluGorunur = true, BaslikSinif = "zo-sag", HucreSinif = _ => "sayi",
+                    Deger = s => s.TlTutari, Hucre = s => @<text>@Bicim.Tl(s.TlTutari)</text> },
+            new() { Anahtar = "odeme", Baslik = Dil.T.RaporSeti.OdemeTuru, HucreSinif = _ => "metin-kucuk",
+                    Deger = s => KatalogSozlugu.OdemeAraci(s.OdemeTuru, Dil.Dil) },
+        ]
+        :
+        [
+            new() { Anahtar = "tarih", Baslik = Dil.T.RaporSeti.Tarih, ZorunluGorunur = true, HucreSinif = _ => "metin-kucuk",
+                    Deger = s => s.Tarih, Hucre = s => @<text>@Bicim.TarihSaat(s.Tarih)</text> },
+            new() { Anahtar = "tur", Baslik = Dil.T.RaporSeti.Tur, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu",
+                    Deger = s => TurAdi(s.Tur), Hucre = TurHucresi },
+            // P-48: yön sunucunun İKİ BACAKTAN türettiği alandır; ham kod basılmaz, yön yoksa "—" (TAHMİN EDİLMEZ).
+            new() { Anahtar = "yon", Baslik = Dil.T.RaporSeti.Yon, HucreSinif = _ => "metin-kucuk", Deger = s => YonMetni(s.Yon),
+                    Hucre = s => @<span id="@($"id-yon-{s.Id}")" title="@(s.Yon is null ? Dil.T.RaporSeti.YonYokIpucu : null)">@YonMetni(s.Yon)
+                        @if (s.Yon == "KARISIK")
+                        {
+                            <div class="metin-soluk zo-yon-bacak"><span id="@($"id-yon-tl-{s.Id}")">@Dil.T.RaporSeti.YonTlBacagi: @YonMetni(s.YonTl)</span> · <span id="@($"id-yon-has-{s.Id}")">@Dil.T.RaporSeti.YonHasBacagi: @YonMetni(s.YonHas)</span></div>
+                        }</span> },
+            // HAM işaret — Math.Abs YOK. NULL = BİLİNMİYOR; 0 yazılmaz (Anayasa md.1).
+            new() { Anahtar = "tutar", Baslik = Dil.T.RaporSeti.TlTutar, ZorunluGorunur = true, BaslikSinif = "zo-sag", HucreSinif = _ => "sayi",
+                    Deger = s => s.TlTutari,
+                    Hucre = s => @<text>@Bicim.Tl(s.TlTutari)
+                        <div class="metin-soluk zo-hucre-alt" id="@($"id-pay-{s.Id}")"><span>@Dil.T.RaporSeti.NakitPayi @(s.NakitTutar is { } n ? Bicim.Tl(n) : Dil.T.RaporSeti.Bilinmiyor)</span> <span>@Dil.T.RaporSeti.VeresiyePayi @(s.VeresiyeTutar is { } v ? Bicim.Tl(v) : Dil.T.RaporSeti.Bilinmiyor)</span></div></text> },
+            new() { Anahtar = "has", Baslik = Dil.T.RaporSeti.HasGram, BaslikSinif = "zo-sag", HucreSinif = _ => "sayi",
+                    Deger = s => s.HasGrami, Hucre = s => @<text>@Bicim.Has(s.HasGrami)</text> },
+            new() { Anahtar = "odeme", Baslik = Dil.T.RaporSeti.OdemeTuru, HucreSinif = _ => "metin-kucuk",
+                    Deger = s => KatalogSozlugu.OdemeAraci(s.OdemeTuru, Dil.Dil) },
+            // Müşteri + kaydeden TEK sütunda (başlık id'si id-th-kaydeden AYNI); ürün ve şube alt satırda.
+            new() { Anahtar = "cari-kaydeden", Baslik = ZB.IslemCariKaydeden, BaslikId = "id-th-kaydeden",
+                    HucreSinif = _ => "metin-kucuk zo-metin-sutun", Deger = s => s.CariAd,
+                    Hucre = s => @<text><span class="zo-iki-satir" title="@s.CariAd">@(s.CariAd ?? "—")</span>
+                        @if (!string.IsNullOrWhiteSpace(s.UrunAd))
+                        {
+                            <div class="metin-soluk zo-hucre-alt" id="@($"id-urun-{s.Id}")">@Dil.T.RaporSeti.UrunAd: @s.UrunAd</div>
+                        }
+                        <div class="metin-soluk zo-hucre-alt" id="@($"id-kaydeden-{s.Id}")">
+                            @ZB.IslemKaydeden: @(s.KullaniciAd ?? "—")
+                            @if (!string.IsNullOrWhiteSpace(s.SubeAd))
+                            {
+                                @(" ")<span class="zo-sube-satir" id="@($"id-sube-{s.Id}")">@s.SubeAd</span>
+                            }
+                        </div></text> },
+            // PAKET P-17 (Y-6): satırın A4 belgesine giden yol; üretmeyen türde SEBEP (UX-S30).
+            new() { Anahtar = "belge", Baslik = Dil.T.Cikti.BelgeAc, BaslikSinif = "yazdirma-gizle", ZorunluGorunur = true, Tasinamaz = true,
+                    KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "metin-kucuk yazdirma-gizle q10-yigin-eylem",
+                    Hucre = s => @<text>@if (BelgeTuru(s.Tur) is { } bt)
+                        {
+                            <NavLink id="@($"id-belge-{s.Id}")" class="dugme dugme-ikincil dugme-kucuk" href="@($"/cikti/{bt}/{s.Id}")">@Dil.T.Cikti.BelgeAc</NavLink>
+                        }
+                        else
+                        {
+                            <span class="metin-soluk">—</span>
+                        }</text> },
+        ];
+
+    // ── PAKET ZO-BELGE — süzgeç katlanırı ──
+    private ZoBelgeMetinleri ZB => ZoBelgeSozlugu.Al(Dil.Dil);
+    /// <summary>ZO-BELGE 28.09 (UX-S31, doğrulayıcı): sayfa başlığı MENÜ adıyla AYNI —
+    /// tek kaynak MenuAdlari (üst çubuk ve kenar menüsü de oradan okur).
+    /// Eski "Hareket Dökümü" başlığı menüdeki "İşlem defteri" ile çelişiyordu.</summary>
+    private string SayfaAdi => MenuAdlari.Icin(Dil.Dil).IslemDefteri.Ad;
+
+    /// <summary>Seçili (boş olmayan) süzgeç sayısı — katlanır başlığında rozet.</summary>
+    internal int AktifSuzgecSayisi =>
+        new[] { tur, odemeTuru, subeId, kullaniciId }.Count(x => !string.IsNullOrEmpty(x));
+
+    /// <summary>Başlık: süzgeç açıksa seçili değerlerin adı yazılır (gizli süzgeç sessiz kalmaz).</summary>
+    private string SuzgecBasligi
+    {
+        get
+        {
+            var adlar = new List<string>();
+            if (!string.IsNullOrEmpty(tur)) adlar.Add(TurAdi(tur));
+            if (!string.IsNullOrEmpty(odemeTuru)) adlar.Add(KatalogSozlugu.OdemeAraci(odemeTuru, Dil.Dil));
+            if (!string.IsNullOrEmpty(subeId)) adlar.Add(subeler.FirstOrDefault(x => x.Id == subeId)?.Ad ?? Dil.T.RaporSeti.SubeAd);
+            if (!string.IsNullOrEmpty(kullaniciId)) adlar.Add(Dil.T.RaporSeti.KaydedenKullanici);
+            return adlar.Count == 0 ? ZB.Suzgec : $"{ZB.Suzgec}: {string.Join(", ", adlar)}";
+        }
+    }
+
+    private async Task SuzgeciTemizle()
+    {
+        tur = odemeTuru = subeId = kullaniciId = "";
+        await IlkSayfa();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await SuzgecVerisi();
+        // ŞUBE-KAPSAM-B: şube süzgecinin başlangıç değeri bakılan şubedir
+        // (kullanıcı süzgeçten başka şube/tümünü yine seçebilir — sunucu doğrular).
+        await SubeliSorgu.HazirAsync(Oturum);
+        subeId = SubeliSorgu.Sube(Oturum) ?? "";
+        await Yukle();
+    }
+
+    /// <summary>ŞUBE-KAPSAM-B — görünüm şubesi değişti: süzgeç ona çekilir, ilk sayfadan yüklenir.</summary>
+    private async Task GorunumDegisti()
+    {
+        subeId = SubeliSorgu.Sube(Oturum) ?? "";
+        ofset = 0;
+        await Yukle();
+    }
+
+    private async Task SuzgecVerisi()
+    {
+        // Süzgeç verisi YARDIMCIDIR ama hatası YUTULMAZ (UX-S28).
+        try
+        {
+            subeler = await Api.GetAsync<List<SubeOzeti>>("/subeler");
+            kullanicilar = await Api.GetAsync<List<KullaniciOzeti>>("/kullanicilar");
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            hata = ex.Message;
+        }
+    }
+
+    /// <summary>PAKET GOC-D — dönem hatası (Core RaporDonemKurali; sunucunun 400 metniyle aynı anahtar).</summary>
+    private string? donemHata;
+
+    private async Task Yukle()
+    {
+        hata = null;
+        donemHata = RaporDonemKurali.Denetle(DateOnly.FromDateTime(baslangic), DateOnly.FromDateTime(bitis),
+                                            DateOnly.FromDateTime(Bicim.IsletmeBugun), Dil.Dil)?.Mesaj;
+        if (donemHata is not null) { yukleniyor = false; return; }   // hatalı dönemde istek ATILMAZ; eski sonuç kalır
+        yukleniyor = true;
+        try
+        {
+            yanit = await Rapor.IslemDefteri(
+                DateOnly.FromDateTime(baslangic), DateOnly.FromDateTime(bitis),
+                Bos(tur), Bos(subeId), null, Bos(kullaniciId), Bos(odemeTuru), Limit, ofset);
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata "kayıt yok"a ÇEVRİLMEZ; önceki sonuç da silinmez.
+            hata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private static string? Bos(string s) => string.IsNullOrEmpty(s) ? null : s;
+
+    // 29.09 doğrulayıcı DÜŞÜK: Razor özniteliğinde gövdeli lambda yerine adlandırılmış yöntem.
+    private async Task BaslangicDegisti(DateOnly? v)
+    {
+        if (v is { } g) baslangic = g.ToDateTime(TimeOnly.MinValue);
+        await IlkSayfa();
+    }
+
+    private async Task BitisDegisti(DateOnly? v)
+    {
+        if (v is { } g) bitis = g.ToDateTime(TimeOnly.MinValue);
+        await IlkSayfa();
+    }
+
+    private async Task IlkSayfa()
+    {
+        ofset = 0;
+        yazdirilacak = null;   // süzgeç/aralık değişti: eski yazdırma belgesi geçersiz
+        await Yukle();
+    }
+
+    // ── ZO-BELGE 29.09 — YAZDIRMA: seçili aralığın TAMAMI ──────────────────
+    // Sunucu sayfası en çok RaporFiltresi.EnFazlaLimit (500) satır verir; yazdırma
+    // sayfa sayfa çeker. Üst sınır YazdirEnFazlaSayfa × 500 satır: aşılırsa belge
+    // kaç satır bastığını ve aralığı daraltma yolunu YAZAR (UX-S29, sessiz kırpma yok).
+    internal const int YazdirSayfaBoyu = 500;
+    internal const int YazdirEnFazlaSayfa = 20;
+    private List<DefterSatiri>? yazdirilacak;
+    private int yazdirToplam;
+    private int yazdirSayac;
+    private bool yazdirHazirlaniyor;
+
+    private async Task YazdirHazirla()
+    {
+        if (Satirlar.Count == 0 || yazdirHazirlaniyor || donemHata is not null) return;
+        yazdirHazirlaniyor = true;
+        hata = null;
+        try
+        {
+            var tum = new List<DefterSatiri>();
+            var toplam = 0;
+            for (var sayfa = 0; sayfa < YazdirEnFazlaSayfa; sayfa++)
+            {
+                var y = await Rapor.IslemDefteri(
+                    DateOnly.FromDateTime(baslangic), DateOnly.FromDateTime(bitis),
+                    Bos(tur), Bos(subeId), null, Bos(kullaniciId), Bos(odemeTuru),
+                    YazdirSayfaBoyu, sayfa * YazdirSayfaBoyu);
+                toplam = y.ToplamSatir;
+                tum.AddRange(y.Satirlar ?? []);
+                if (!y.DahaFazlasiVar || (y.Satirlar?.Count ?? 0) == 0) break;
+            }
+            yazdirToplam = Math.Max(toplam, tum.Count);
+            yazdirilacak = tum;
+            yazdirSayac++;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28 / Anayasa md.1: yazdırma verisi gelmezse sessizce eksik basılmaz.
+            hata = ex.Message;
+        }
+        yazdirHazirlaniyor = false;
+    }
+
+    private async Task Onceki()
+    {
+        ofset = Math.Max(0, ofset - Limit);
+        await Yukle();
+    }
+
+    private async Task Sonraki()
+    {
+        ofset += Limit;
+        await Yukle();
+    }
+
+    /// <summary>
+    /// PAKET P-17 (Y-6): hareket türü → ortak A4 belge türü. Kapalı liste;
+    /// karşılığı olmayan tür için düğme ÇİZİLMEZ (UX-S30: görünmez kural yok,
+    /// hücrede "—" durur).
+    /// </summary>
+    public static string? BelgeTuru(string tur) => tur switch
+    {
+        "SATIS" or "SATIS_IADE" or "ALIS" or "ALIS_IADE" => BelgeTurleri.SatisFisi,
+        "TAHSILAT" or "VERESIYE" => BelgeTurleri.TahsilatMakbuzu,
+        "EMANET_GIRIS" or "EMANET_CIKIS" => BelgeTurleri.EmanetTeslim,
+        _ => null,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

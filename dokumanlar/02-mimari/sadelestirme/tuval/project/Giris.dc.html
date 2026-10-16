@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Giriş ekranı</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:#e9edf3;color:#172033}
+a{color:#2457d6}a:hover{color:#1a45ad}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); background: #f2f4f7; font-size: 18px; line-height: 1.45; overflow: hidden;">
+  <div style="display: flex; align-items: center; justify-content: center; padding: 56px;">
+    <div style="width: 440px; display: flex; flex-direction: column; gap: 30px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 44px; height: 44px; border-radius: 11px; background: #2457d6; display: flex; align-items: center; justify-content: center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9z"></path><path d="M2 9h20"></path></svg>
+        </div>
+        <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.01em;">Mihenk</div>
+      </div>
+      <div>
+        <h1 style="margin: 0; font-family: Sora, sans-serif; font-size: 34px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em;">Mihenk’e hoş geldin</h1>
+        <p style="margin: 8px 0 0; color: #5a6577; font-size: 18px;">Dükkânın hesabıyla gir.</p>
+      </div>
+      <form style="display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <label for="eposta" style="font-size: 15px; color: #5a6577;">E-posta ya da telefon</label>
+          <input id="eposta" type="text" value="ayse@ozkuyum.com" style="height: 54px; box-sizing: border-box; padding: 0 16px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff; font: inherit; font-size: 18px; color: #172033;">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <label for="parola" style="font-size: 15px; color: #5a6577;">Parola</label>
+          <div style="display: flex; align-items: center; height: 54px; box-sizing: border-box; padding: 0 16px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff;">
+            <input id="parola" type="password" value="••••••••••" style="flex-grow: 1; border: 0; outline: 0; font: inherit; font-size: 18px; background: transparent;">
+            <button type="button" style="border: 0; background: transparent; font: inherit; font-size: 15px; color: #2457d6; padding: 0;">Göster</button>
+          </div>
+        </div>
+        <button type="submit" style="height: 54px; border: 0; border-radius: 9px; background: #2457d6; color: #ffffff; font: inherit; font-size: 18px; font-weight: 600;">Giriş yap</button>
+        <div style="display: flex; justify-content: space-between; font-size: 15px;">
+          <a href="#parola" style="text-decoration: none;">Parolamı unuttum</a>
+          <a href="#kur" style="text-decoration: none; color: #5a6577;">Yeni dükkân kur</a>
+        </div>
+      </form>
+      <div style="font-size: 14px; color: #8a94a6;">Mihenk 1.0 · ByGatech · Verileriniz Türkiye’de saklanır.</div>
+    </div>
+  </div>
+  <div style="position: relative; background: #14213d; display: flex; flex-direction: column; justify-content: flex-end; padding: 64px; color: #ffffff; overflow: hidden;">
+    <div style="position: absolute; top: 80px; right: 80px; width: 420px; height: 420px; border-radius: 24px; border: 1px solid #2c3d63; transform: rotate(12deg);"></div>
+    <div style="position: absolute; top: 140px; right: 140px; width: 300px; height: 300px; border-radius: 24px; border: 1px solid #3b5088; transform: rotate(12deg);"></div>
+    <div style="position: absolute; top: 200px; right: 200px; width: 180px; height: 180px; border-radius: 24px; background: #2457d6; opacity: .9; transform: rotate(12deg);"></div>
+    <div style="position: relative; display: flex; flex-direction: column; gap: 18px; max-width: 520px;">
+      <div style="font-family: Sora, sans-serif; font-size: 36px; font-weight: 700; line-height: 1.2; letter-spacing: -0.01em;">Tezgâhta bir fiş, defterde her şey.</div>
+      <div style="color: #aab7cf; font-size: 18px; line-height: 1.5;">Satış, alış, tahsilat aynı ekranda. Has hesabı, kasa ve yasal kurallar arkada kendiliğinden işler.</div>
+      <div style="display: flex; gap: 28px; margin-top: 8px; font-variant-numeric: tabular-nums;">
+        <div><div style="font-size: 26px; font-weight: 600;">3 tık</div><div style="font-size: 14px; color: #8ea2c4;">nakit satış</div></div>
+        <div><div style="font-size: 26px; font-weight: 600;">30 dk</div><div style="font-size: 14px; color: #8ea2c4;">öğrenme</div></div>
+        <div><div style="font-size: 26px; font-weight: 600;">0</div><div style="font-size: 14px; color: #8ea2c4;">silinen kayıt</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

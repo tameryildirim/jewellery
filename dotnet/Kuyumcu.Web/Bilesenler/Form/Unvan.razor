@@ -1,0 +1,28 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — ÜNVAN / FİRMA ADI (K20): kırpılır, çift boşluk teke; en az 2 karakter, en az bir harf. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="text" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@YerTutucu" maxlength="@EnFazla" autocomplete="off"
+           data-maske="ad"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    protected override string Temizle(string? g) => AdSoyad.Maskele(g);
+    protected override string CikisBicimi(string t) => AdKurali.Normallestir(t);
+    /// <summary>
+    /// PAKET GOC-A (en küçük geriye uyumlu ekleme): alanın sunucu sınırı (ekran maxlength = DTO StringLength).
+    /// Varsayılan K20 ünvan sınırı (AlanSinirlari.Unvan) — vermeyen çağıranın davranışı DEĞİŞMEZ.
+    /// Örnek: banka hesap sahibi / dekont karşı tarafı varchar(150).
+    /// </summary>
+    [Parameter] public int EnFazla { get; set; } = AlanSinirlari.Unvan;
+
+    protected override GirdiHatasi? TamDenetle(string t) => AdKurali.Denetle(t, EnFazla);
+}

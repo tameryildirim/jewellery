@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><title>Kuyumcu ERP — Ne Verdiniz, Şimdi Ne Var</title>
+<style>
+@page { size: A4; margin: 17mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 9.8pt; line-height: 1.48; color: #1a1a1a; margin: 0; }
+h1 { font-size: 20pt; margin: 0 0 2mm; color: #7a5c1e; letter-spacing: -0.3px; }
+.alt { font-size: 9.5pt; color: #666; margin-bottom: 6mm; padding-bottom: 3.5mm; border-bottom: 2px solid #c9a227; }
+h2 { font-size: 12.5pt; margin: 6mm 0 2.5mm; color: #7a5c1e; border-bottom: 1px solid #e0d5b8; padding-bottom: 1.5mm; }
+h2:first-of-type { margin-top: 3mm; }
+h3 { font-size: 10.5pt; margin: 4.5mm 0 1.8mm; color: #333; }
+p { margin: 0 0 2.8mm; }
+table { width: 100%; border-collapse: collapse; margin: 2.5mm 0 4.5mm; font-size: 9pt; }
+th { background: #f5efe0; text-align: left; padding: 1.8mm 2.2mm; border: 1px solid #ddd2b8; font-weight: 600; }
+td { padding: 1.8mm 2.2mm; border: 1px solid #e4e4e4; vertical-align: top; }
+tr:nth-child(even) td { background: #fafafa; }
+.num { text-align: right; white-space: nowrap; }
+.ok { color: #1a7a3c; font-weight: 600; }
+.no { color: #a32020; font-weight: 600; }
+.wait { color: #9a6a00; font-weight: 600; }
+ul { margin: 0 0 2.8mm; padding-left: 5mm; }
+li { margin-bottom: 1.2mm; }
+.kutu { background: #fbf8f0; border-left: 3px solid #c9a227; padding: 2.8mm 3.5mm; margin: 3.5mm 0; }
+.kutu p:last-child { margin-bottom: 0; }
+.duzeltme { background: #fdf4f4; border-left: 3px solid #a32020; }
+.kucuk { font-size: 8.6pt; color: #666; }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 8.4pt; background: #f4f4f4; padding: 0 1mm; }
+footer { margin-top: 7mm; padding-top: 3mm; border-top: 1px solid #ddd; font-size: 8.3pt; color: #777; }
+.brk { page-break-before: always; }
+.nobrk { page-break-inside: avoid; }
+</style></head><body>
+
+<h1>Ne Verdiniz — Şimdi Ne Var</h1>
+<div class="alt">Kuyumcu ERP &nbsp;·&nbsp; Hazırlayan: <strong>ByGatech A.Ş.</strong> &nbsp;·&nbsp; 14 Eylül 2026 &nbsp;·&nbsp; Sürüm <strong>4.0</strong></div>
+
+<p><strong>Bu rapor iki hâli karşılaştırır.</strong> Solda bize teslim ettiğiniz kod: <code>9 Eylül 2026</code> tarihli tek commit. Sağda bugünkü hâl. Aradaki her rakam, iki hâl üzerinde <strong>aynı komutla</strong> ölçüldü; komutlar arşivde duruyor ve tekrar çalıştırılabilir.</p>
+
+<h2>1. Tek bakışta</h2>
+<table class="nobrk">
+<tr><th style="width:40%">Ölçüt</th><th class="num">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>Program kodu (satır)</td><td class="num">11.314</td><td class="num"><strong>20.586</strong></td></tr>
+<tr><td>Test kodu (satır)</td><td class="num no">0</td><td class="num ok">8.388</td></tr>
+<tr><td>Otomatik test</td><td class="num no">test projesi yok</td><td class="num ok">591 (tamamı başarılı)</td></tr>
+<tr><td>Modül</td><td class="num">14</td><td class="num"><strong>20</strong></td></tr>
+<tr><td>Sistem işlev noktası</td><td class="num">78</td><td class="num"><strong>105</strong></td></tr>
+<tr><td>Kullanıcı ekranı</td><td class="num">13</td><td class="num"><strong>19</strong></td></tr>
+<tr><td>Veri tablosu</td><td class="num">16</td><td class="num"><strong>22</strong></td></tr>
+<tr><td>Veritabanı kurulum dosyası</td><td class="num no">yok — kurulamıyordu</td><td class="num ok">11 adım</td></tr>
+<tr><td>Yasal uyum katmanı</td><td class="num no">yalnız Kuyum KDV</td><td class="num ok">3.539 satır + 6 tablo</td></tr>
+<tr><td>Müşteri ayrımı (kiracı izolasyonu)</td><td class="num no">yok</td><td class="num ok">iki katman + 21 varlık</td></tr>
+<tr><td>Kişisel veri şifreleme</td><td class="num no">yok</td><td class="num ok">AES-256-GCM</td></tr>
+<tr><td>Kim ne yaptı kaydı</td><td class="num no">yok</td><td class="num ok">değiştirilemez denetim izi</td></tr>
+<tr><td>Proje dokümantasyonu</td><td class="num no">5 belge (4'ü geçersiz)</td><td class="num ok">34 belge, 15 karar kaydı</td></tr>
+<tr><td>Test kapsamı</td><td class="num no">ölçülemezdi</td><td class="num ok">%76,7</td></tr>
+<tr><td>Yük davranışı</td><td class="num no">ölçülmemiş</td><td class="num ok">p95 25 ms · 0 sunucu hatası</td></tr>
+</table>
+
+<div class="kutu duzeltme">
+<p><strong>Önceki raporumuzda bir rakam yanlıştı — düzeltiyoruz.</strong> 13 Eylül raporunda "program kodu 6.774 → 16.451" yazmıştık. Devir hâlini bu kez commit üzerinden yeniden ölçtük: gerçek rakam <strong>11.314</strong>. Eski 6.774 rakamı kodun bir bölümünü kapsam dışı bırakan bir sayımdan geliyor ve <strong>bizim büyümemizi olduğundan büyük gösteriyordu</strong>. Doğru büyüme 2,4 kat değil, üretim kodunda <strong>1,82 kat</strong> — üzerine sıfırdan yazılmış 8.388 satır test.</p>
+</div>
+
+<h2>2. Ne verdiniz</h2>
+
+<h3>2.1 Çekirdek doğru yerden tutulmuştu — bunu koruduk</h3>
+<p>Devraldığımız kod bir prototipti, ama <strong>doğru bir prototipti</strong>. Kuyumculuğun asıl zor kısmı zaten yapılmıştı:</p>
+<ul>
+<li><strong>Has gram çekirdeği</strong> — <code>(gram − taş) × milyem/1000</code>. Rakiplerin çoğunda olmayan <strong>gerçek milyem</strong> (imalattaki fiili saflık) desteği dâhil.</li>
+<li><strong>Paralel defter</strong> — TL ve has gram aynı satırda, ekle-only.</li>
+<li><strong>İşlem anındaki kur kanıtı</strong> — her hareket bir kur fotoğrafına bağlı.</li>
+<li><strong>Kuyum KDV</strong> — has altın bedeli matrah dışı bırakılarak KDV yalnız işçilik+kâra uygulanıyor. Bu <strong>doğru hesaplanıyordu</strong>.</li>
+<li>Emanet (müşteri altını) has bazlı, cari yaşlandırma, kredi limiti, çok şube + transfer, rol bazlı yetki matrisi, canlı kur.</li>
+</ul>
+
+<div class="kutu duzeltme">
+<p><strong>Bir haksızlığı düzeltiyoruz.</strong> Önceki raporlarımızda "devraldığımız kodda yasal uyum katmanı <em>hiç yoktu</em>" dedik. Bu ölçümde ortaya çıktı ki <strong>bir tanesi vardı ve çalışıyordu: Kuyum KDV özel matrahı.</strong> Bizim önceki taramamız MASAK, tevsik, KVKK, KMTS gibi kelimeleri aramış; KDV ve matrahı aramamıştı. Kendi belgemiz de bunu zaten kaydetmiş ("devralınan kodda zaten vardı"), raporda yansıtılmamış. Doğrusu: <strong>uyum katmanı tek bir yetenek dışında yoktu.</strong></p>
+</div>
+
+<h3>2.2 Altı kanıtlı kritik hata</h3>
+<table class="nobrk">
+<tr><th style="width:8%">#</th><th style="width:30%">Hata</th><th>Ne oluyordu</th></tr>
+<tr><td class="no">K1</td><td><strong>Kiracılar arası para yazma</strong></td><td>Bir işletme, başka bir işletmenin kasasına para yazabiliyordu. Sistem bu işlemi <strong>hatasız kabul ediyordu</strong>. Cari, kasa, şube ve kur kimliklerinin hiçbiri doğrulanmıyordu.</td></tr>
+<tr><td class="no">K2</td><td>Alışta çifte kayıt</td><td>Peşin alış hem kasadan düşülüyor hem cariye borç yazılıyordu.</td></tr>
+<tr><td class="no">K3</td><td>Hurda alışta üçlü kayıt</td><td>Aynı hata + hurdanın has bacağı cariye yazılıyordu. Hurda satın alınmıştır; müşterinin altın alacağı doğmaz.</td></tr>
+<tr><td class="no">K4</td><td>Has bakiyesinin işareti ters</td><td>Emanet giriş/çıkış yönü yanlıştı. Altın borcu olan müşteri <strong>kendi emanetini geri alamıyordu</strong>.</td></tr>
+<tr><td class="no">K5</td><td>Saat dilimi</td><td>Gün ve ay sınırları UTC'ye göre hesaplanıyordu; Türkiye'de gün sonu raporu yanlış kapanıyordu.</td></tr>
+<tr><td class="no">K6</td><td>Kasa para birimi</td><td>TL işlemi döviz kasasına yazılabiliyordu.</td></tr>
+</table>
+<p class="kucuk">Bu altısına ek olarak, düzeltme sırasında iki hata daha bulundu: fatura numarası <code>COUNT+1</code> ile üretildiği için iki kullanıcı aynı anda fatura kesince <strong>aynı numarayı</strong> alıyordu; ve 90 günlük kur temizliği, hareketlere bağlı kur kanıtlarını da siliyordu — yani her işlemin kur dayanağı 90 gün sonra yetim kalıyordu.</p>
+
+<h3>2.3 Yedi teknik borç</h3>
+<table class="nobrk">
+<tr><th style="width:8%">#</th><th style="width:34%">Borç</th><th>Ölçüm</th></tr>
+<tr><td>T1</td><td>Veritabanı kurulumu yok</td><td>Migration ya da SQL dosyası yok — proje <strong>temiz bir makinede kurulamıyordu</strong>. Denetimde 16 tablo repo dışı bir yardımcıyla oluşturuldu.</td></tr>
+<tr><td>T2</td><td>Tek test bile yok</td><td>11.314 satır kod, <strong>0 test</strong>, test projesi yok (çözüm dosyasında 3 proje).</td></tr>
+<tr><td>T3</td><td>Sayım deftere yazmıyor</td><td><code>SAYIM_DUZELTME</code> tanımlı ama hiç kullanılmıyor; sayım stoğu üzerine yazıyor.</td></tr>
+<tr><td>T4</td><td>Kim değiştirdi kaydı yok</td><td>Cari/ürün/kullanıcı güncellemelerinde iz tutulmuyor.</td></tr>
+<tr><td>T5</td><td>Raporlar belleğe çekiyor</td><td>Filtresiz <code>ToListAsync()</code>.</td></tr>
+<tr><td>T6</td><td><code>tenant_id</code> indekssiz</td><td>Yalnız 3 bileşik indeks tanımlı.</td></tr>
+<tr><td>T7</td><td><code>bin/obj</code> commit'li</td><td>1.408 derleme dosyası depoda; <code>.gitignore</code> yalnız Node dünyasını kapsıyor (6 satır).</td></tr>
+</table>
+
+<h3>2.4 Belgeler kodu anlatmıyordu</h3>
+<p>Devirde 5 belge vardı. Bunların <strong>4'ü bugünkü kodu yanlış anlatıyor</strong> ve o gün de yanlış anlatıyordu: mimari ve dağıtım belgeleri bir <strong>TypeScript (NestJS + React) yığınını ve bir Expo mobil uygulamasını</strong> tarif ediyor — depoda böyle bir şey yok. Kullanım kılavuzu kurulum önkoşulu olarak Node.js istiyor. Belgelerde <strong>var olmayan 13 ayrı dosya yoluna</strong> atıf yapılıyor. Bu belgeler bugün de aynen duruyor; dokunmadık (izinsiz değişiklik yapmıyoruz), yeni belge setini ayrı bir klasöre yazdık.</p>
+
+<h2 class="brk">3. Şimdi ne var</h2>
+
+<h3>3.1 Kod ve yapı</h3>
+<table class="nobrk">
+<tr><th style="width:40%">Ölçüt</th><th class="num">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>Kuyumcu.Api (sunucu)</td><td class="num">5.141</td><td class="num">11.086</td></tr>
+<tr><td>Kuyumcu.Web (arayüz)</td><td class="num">4.894</td><td class="num">7.323</td></tr>
+<tr><td>Kuyumcu.Core (ortak çekirdek)</td><td class="num">1.279</td><td class="num">2.177</td></tr>
+<tr><td>Kuyumcu.Tests</td><td class="num no">proje yok</td><td class="num ok">8.388</td></tr>
+<tr><td>Kod dosyası</td><td class="num">63</td><td class="num">131</td></tr>
+<tr><td>Yeni modül</td><td class="num">—</td><td class="num">6: Masak · Tevsik · Hurda · Denetim · Disaaktarim · Pano</td></tr>
+<tr><td>Silinen klasör / dosya</td><td class="num">—</td><td class="num ok">0 — büyüme tamamen eklemeli</td></tr>
+</table>
+<p class="kucuk">Ölçüt her iki hâlde de aynı: <code>.cs</code> + <code>.razor</code>, <code>obj/</code>, <code>bin/</code> ve <code>Migrations/</code> hariç. Dört projenin toplamı bağımsız ölçülen genel toplamla birebir tutuyor.</p>
+
+<h3>3.2 İşlevler ve ekranlar</h3>
+<table class="nobrk">
+<tr><th style="width:40%">Ölçüt</th><th class="num">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>HTTP işlev noktası</td><td class="num">78</td><td class="num">105</td></tr>
+<tr><td>Rol koruması <em>etkili</em> uç</td><td class="num">42 / 78</td><td class="num">63 / 105</td></tr>
+<tr><td>Kimlik istemeyen uç</td><td class="num">4</td><td class="num">4</td></tr>
+<tr><td>Ekran (sayfa)</td><td class="num">13</td><td class="num">19</td></tr>
+<tr><td>Yeni ekranlar</td><td class="num">—</td><td class="num">Uyum · Gider Pusulaları · Pusula Belgesi · Denetim İzi · Veri Dışa Aktarımı · Ürün Etiketleri</td></tr>
+<tr><td>Menü bağlantısı</td><td class="num">12</td><td class="num">17</td></tr>
+<tr><td>Arayüz metni (çeviri anahtarı)</td><td class="num">347</td><td class="num">555</td></tr>
+</table>
+
+<h3>3.3 Veri modeli</h3>
+<table class="nobrk">
+<tr><th style="width:40%">Ölçüt</th><th class="num">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>Veri tablosu</td><td class="num">16</td><td class="num">22</td></tr>
+<tr><td>Kurulum adımı (migration)</td><td class="num no">0 — repodan kurulamıyordu</td><td class="num ok">11</td></tr>
+<tr><td>Kiracı işaretli varlık</td><td class="num no">0</td><td class="num ok">21</td></tr>
+<tr><td>Tanımlı indeks</td><td class="num">3</td><td class="num">34 (canlı şemada 57)</td></tr>
+<tr><td><code>tenant_id</code> ile başlayan indeksi olan tablo</td><td class="num no">0</td><td class="num ok">21 / 22 <span class="kucuk">(22.'si <code>tenants</code> — kendisi)</span></td></tr>
+<tr><td>Global kiracı filtresi</td><td class="num no">0</td><td class="num ok">22 varlık</td></tr>
+<tr><td>Yeni varlık eklenince ne olur</td><td class="num no">sessizce filtresiz kalır</td><td class="num ok">uygulama <strong>açılmaz</strong> (fail-closed)</td></tr>
+</table>
+
+<h3>3.4 Test</h3>
+<table class="nobrk">
+<tr><th style="width:40%">Ölçüt</th><th class="num">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>Test projesi</td><td class="num no">yok</td><td class="num ok">var (xunit 2.9.2)</td></tr>
+<tr><td>Test dosyası</td><td class="num no">0</td><td class="num">26 <span class="kucuk">(24 test + 2 altyapı)</span></td></tr>
+<tr><td>Koşan test</td><td class="num no">0</td><td class="num ok">591 · <strong>0 başarısız</strong></td></tr>
+<tr><td>Mutasyon kanıtı içeren dosya</td><td class="num no">0</td><td class="num ok">3</td></tr>
+<tr><td>Test kapsamı</td><td class="num no">ölçülemezdi</td><td class="num ok">%76,7 satır / %36,9 dal</td></tr>
+<tr><td>CI'da otomatik test kapısı</td><td class="num no">yok</td><td class="num ok">var (5 kapı, 4'ü zorlayıcı)</td></tr>
+</table>
+<p class="kucuk"><strong>Mutasyon kanıtı</strong> şu demek: bir koruma yazdığımızda, o korumayı <em>bilerek bozup</em> testlerin kırmızıya döndüğünü gösteriyoruz. Yoksa "test var" demek, testin gerçekten bir şey koruduğunu kanıtlamaz.</p>
+
+<h3>3.5 Güvenlik</h3>
+<table class="nobrk">
+<tr><th style="width:40%">Ölçüt</th><th class="num">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>Müşteri verisi ayrımı</td><td class="num no">yok</td><td class="num ok">iki katman: global filtre + elle şart</td></tr>
+<tr><td>Kişisel veri şifreleme</td><td class="num no">yok</td><td class="num ok">AES-256-GCM, anahtar ortam değişkeninde</td></tr>
+<tr><td>Denetim izi</td><td class="num no">yok</td><td class="num ok">var — <strong>değiştirilemez</strong> (silme ucu yok)</td></tr>
+<tr><td>İstek hız sınırı</td><td class="num no">yok</td><td class="num ok">var (5 uçta özel politika)</td></tr>
+<tr><td>Tarayıcı güvenlik başlıkları</td><td class="num no">0</td><td class="num ok">5 başlık (CSP 10 direktif + HSTS)</td></tr>
+<tr><td>CORS</td><td class="num no"><code>AllowAnyOrigin</code></td><td class="num ok">beyaz liste</td></tr>
+<tr><td>Vekil arkası gerçek IP</td><td class="num no">okunmuyordu</td><td class="num ok">okunuyor (güvenilir vekil listesiyle)</td></tr>
+<tr><td>Şifre saklama</td><td class="num">BCrypt round 12</td><td class="num">BCrypt round 12 <span class="kucuk">(değişmedi — zaten doğruydu)</span></td></tr>
+<tr><td>Güvenlik testi</td><td class="num no">0</td><td class="num ok">24 dosya içinde</td></tr>
+</table>
+
+<h3>3.6 Yasal uyum</h3>
+<table class="nobrk">
+<tr><th style="width:44%">Yükümlülük</th><th class="num" style="width:18%">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>Kuyum KDV özel matrahı</td><td class="num ok">VAR</td><td class="num ok">korundu</td></tr>
+<tr><td>MASAK — kimlik tespiti (185.000 TL)</td><td class="num no">yok</td><td class="num ok">işlemi <strong>durduruyor</strong></td></tr>
+<tr><td>MASAK — işlem amacı / beyan formu kademeleri</td><td class="num no">yok</td><td class="num ok">var</td></tr>
+<tr><td>MASAK — şüpheli işlem + 10 iş günü sayacı</td><td class="num no">yok</td><td class="num ok">var (tatil/hafta sonu atlanarak)</td></tr>
+<tr><td>MASAK — 8 yıl saklama + maskeleme</td><td class="num no">yok</td><td class="num ok">var</td></tr>
+<tr><td>VUK md.234 — gider pusulası, TCKN, tutar yazıyla, 7 gün</td><td class="num no">yok</td><td class="num ok">var</td></tr>
+<tr><td>GVK md.94 — stopaj</td><td class="num no">yok</td><td class="num ok">var</td></tr>
+<tr><td>Tevsik zorunluluğu (30.000 TL nakit)</td><td class="num no">yok</td><td class="num ok">aynı gün birikimli, <strong>durduruyor</strong></td></tr>
+<tr><td>Sentetik taş kökeni + etiket ibaresi + ayrı kategori</td><td class="num no">yok</td><td class="num ok">kökensiz taşlı ürün <strong>satılamıyor</strong></td></tr>
+<tr><td>KVKK — okuma izi, saklama süresi, maskeleme</td><td class="num no">yok</td><td class="num ok">var</td></tr>
+<tr><td>Veri taşınabilirliği (dışa aktarım)</td><td class="num no">yok</td><td class="num ok">şifreli arşiv, tek kullanımlık bağlantı</td></tr>
+<tr><td>Barkod / etiket basımı</td><td class="num wait">yalnız veri alanı</td><td class="num ok">üretim + A4 etiket + Code 128</td></tr>
+<tr><td>KMTS kodu alanı</td><td class="num no">yok</td><td class="num ok">alan var <span class="kucuk">(biçim şeması yayımlanmadı)</span></td></tr>
+<tr><td><strong>Uyum çekirdek kodu</strong></td><td class="num no">0 satır</td><td class="num ok"><strong>3.539 satır</strong></td></tr>
+<tr><td><strong>Uyum arayüzü</strong></td><td class="num no">0 satır</td><td class="num ok"><strong>1.940 satır</strong></td></tr>
+<tr><td><strong>Uyum testi</strong></td><td class="num no">0</td><td class="num ok"><strong>12 dosya / 263 test</strong></td></tr>
+</table>
+
+<h3>3.7 Belge ve operasyon</h3>
+<table class="nobrk">
+<tr><th style="width:44%">Ölçüt</th><th class="num" style="width:20%">Verdiğiniz hâl</th><th class="num">Bugün</th></tr>
+<tr><td>Proje belgesi</td><td class="num">5 <span class="kucuk">(4'ü geçersiz)</span></td><td class="num ok">34 + eskiler duruyor</td></tr>
+<tr><td>Mimari karar kaydı (ADR)</td><td class="num no">0</td><td class="num ok">15</td></tr>
+<tr><td>Diyagram</td><td class="num no">0</td><td class="num ok">26 <span class="kucuk">(şemadan üretiliyor)</span></td></tr>
+<tr><td>İşletme kılavuzu (runbook)</td><td class="num no">0</td><td class="num ok">1</td></tr>
+<tr><td>Denetim betikleri</td><td class="num no">0</td><td class="num ok">3 + yük testi</td></tr>
+<tr><td>CI (otomatik kapı)</td><td class="num no">yok</td><td class="num ok">var</td></tr>
+<tr><td>Yazılım malzeme listesi (SBOM)</td><td class="num no">yok</td><td class="num ok">var · 128 lisans kaydı</td></tr>
+<tr><td><code>.gitignore</code></td><td class="num no">6 satır, bin/obj kapsamıyor</td><td class="num ok">31 satır, kapsıyor</td></tr>
+</table>
+
+<h2 class="brk">4. Verdiğiniz sorunların bugünkü durumu</h2>
+
+<h3>4.1 Altı kritik hata — hepsi kapandı</h3>
+<table class="nobrk">
+<tr><th style="width:8%">#</th><th style="width:32%">Hata</th><th>Bugün</th></tr>
+<tr><td class="ok">K1 ✓</td><td>Kiracılar arası para yazma</td><td>Tek kapı (<code>IslemDogrulayici</code>) + global filtre + fail-closed başlangıç denetimi. Koruma <strong>bilerek kaldırılıp</strong> 13 testin 11'inin kırmızıya döndüğü gösterildi.</td></tr>
+<tr><td class="ok">K2 ✓</td><td>Alışta çifte kayıt</td><td>Kasa verildiyse peşin, verilmediyse cari borçlanır. Kısmi ödeme de destekleniyor.</td></tr>
+<tr><td class="ok">K3 ✓</td><td>Hurda alışta üçlü kayıt</td><td>Has bacağı hiçbir durumda cariye yazılmıyor. Takasa da uygulandı.</td></tr>
+<tr><td class="ok">K4 ✓</td><td>Has bakiyesi işareti</td><td>Emanet giriş −, çıkış +. Yeterlilik kontrolü cari bakiyeden değil <strong>defterden</strong> okunuyor.</td></tr>
+<tr><td class="ok">K5 ✓</td><td>Saat dilimi</td><td>Gün ve ay sınırları Europe/Istanbul'a göre.</td></tr>
+<tr><td class="ok">K6 ✓</td><td>Kasa para birimi</td><td>Kasanın kendi para birimiyle kaydediliyor.</td></tr>
+</table>
+
+<h3>4.2 On bir eksik modül — 7'si kapandı</h3>
+<table class="nobrk">
+<tr><th style="width:8%">#</th><th style="width:30%">Eksik</th><th>Bugün</th></tr>
+<tr><td class="ok">E1 ✓</td><td>MASAK uyum katmanı</td><td>Tam — kural motoru, 4 tablo, ekran, 263 test</td></tr>
+<tr><td class="ok">E2 ✓</td><td>KMTS kodu</td><td>Alan ve eşleşme var; biçim doğrulaması şema yayımlanmadığı için yazılmadı</td></tr>
+<tr><td class="no">E3 ✗</td><td><strong>e-Fatura / e-Arşiv</strong></td><td>Yapılmadı — özel entegratör sözleşmesi gerekiyor. Sahte bağlantıyla "yapıldı" demiyoruz</td></tr>
+<tr><td class="no">E4 ✗</td><td>Fatura kalem satırı</td><td>Yapılmadı — e-Fatura ile birlikte tasarlanmalı (kayıtlı borç: TB-17)</td></tr>
+<tr><td class="ok">E5 ✓</td><td>Satıştan fatura kesme</td><td>Hareket ile fatura bağlandı; ölü <code>fatura_no</code> alanı artık yazılıyor</td></tr>
+<tr><td class="wait">E6 —</td><td>Atölye fire / ramat</td><td>Kapsam dışı bırakıldı (yasal zorunluluk değil)</td></tr>
+<tr><td class="ok">E7 ✓</td><td>Vitrin fiyat panosu</td><td>Yapıldı</td></tr>
+<tr><td class="ok">E8 ✓</td><td>Kur kaynağı seçimi</td><td>Yapıldı — çoklu kaynak defteri</td></tr>
+<tr><td class="wait">E9 ~</td><td>Kıymetli taş detayı</td><td>Kısmi: yasal olan <strong>taş kökeni</strong> eklendi. Karat/renk/berraklık/sertifika no eklenmedi (kapsam dışı)</td></tr>
+<tr><td class="ok">E10 ✓</td><td>Etiket / barkod basımı</td><td>Yapıldı</td></tr>
+<tr><td class="wait">E11 —</td><td>Taksitli altın, muhasebe aktarımı</td><td>Kapsam dışı bırakıldı</td></tr>
+</table>
+
+<h3>4.3 Yedi teknik borç — 4'ü kapandı, 3'ü açık</h3>
+<table class="nobrk">
+<tr><th style="width:8%">#</th><th style="width:30%">Borç</th><th>Bugün</th></tr>
+<tr><td class="ok">T1 ✓</td><td>Veritabanı kurulumu yok</td><td>11 migration. Proje temiz makinede kuruluyor</td></tr>
+<tr><td class="ok">T2 ✓</td><td>Test yok</td><td>591 test, %76,7 kapsam, CI kapısı</td></tr>
+<tr><td class="no">T3 ✗</td><td><strong>Sayım deftere yazmıyor</strong></td><td><strong>Hâlâ açık.</strong> Sayım stoğu üzerine yazıyor, deftere hareket düşmüyor. Bu turun kapsamında değildi ve <strong>kendi borç envanterimize de alınmamıştı</strong> — bu raporla birlikte <strong>TB-18</strong> olarak kaydedildi</td></tr>
+<tr><td class="ok">T4 ✓</td><td>Kim değiştirdi kaydı yok</td><td>Otomatik yazma izi + elle okuma izi</td></tr>
+<tr><td class="wait">T5 ~</td><td>Raporlar belleğe çekiyor</td><td><strong>Büyük ölçüde hafifledi.</strong> 9 sorgunun 4'ü artık tarihle sınırlı; 3'ü cari/ürün sayısıyla ölçekleniyor. Bugünkü segmentte ölçülen etki yok (rapor p95 25 ms). Kayda geçti: <strong>TB-19</strong></td></tr>
+<tr><td class="ok">T6 ✓</td><td><code>tenant_id</code> indekssiz</td><td>22 varlık tablosunun 21'inde <code>tenant_id</code> ile başlayan indeks</td></tr>
+<tr><td class="no">T7 ✗</td><td><code>bin/obj</code> commit'li</td><td><code>.gitignore</code> düzeltildi ama <strong>1.408 dosya hâlâ depoda izleniyor.</strong> Temizlemek geçmişe dokunan bir işlem — <strong>sizin kararınıza bırakıldı</strong></td></tr>
+</table>
+
+<h2>5. Bugün ölçülen rakamlar</h2>
+<table class="nobrk">
+<tr><th style="width:44%">Ölçüm</th><th>Sonuç</th></tr>
+<tr><td>Test kapsamı</td><td><strong>%76,7</strong> satır / %36,9 dal (çekirdek hesap katmanı %100)</td></tr>
+<tr><td>Yük — ekran/liste yanıtı (%95'lik dilim)</td><td><strong>25 ms</strong></td></tr>
+<tr><td>Yük — satış kaydı (%95'lik dilim)</td><td><strong>32 ms</strong></td></tr>
+<tr><td>Yük — sunucu hatası</td><td><strong>921 istekte 0</strong></td></tr>
+<tr><td>Kod karmaşıklığı</td><td>ortalama <strong>3,0</strong></td></tr>
+<tr><td>Bağımlılık güvenliği</td><td><strong>0 açık</strong></td></tr>
+<tr><td>Lisans</td><td>128 bileşen — <strong>0 kısıtlayıcı lisans</strong></td></tr>
+<tr><td>Yedekten geri yükleme</td><td>22 tablonun 22'si birebir doğrulandı</td></tr>
+<tr><td>Kopuk kayıt taraması</td><td>36 ilişki — <strong>0 yetim</strong></td></tr>
+</table>
+<p class="kucuk">Yük rakamları bir geliştirme dizüstü bilgisayarında ölçülmüştür; üretim kapasitesi iddia edilmemektedir. Testte güvenlik sınırları gevşetilmedi.</p>
+
+<h2>6. Açık kalanlar — dürüst kayıt</h2>
+
+<h3>6.1 Bizim tarafımızda</h3>
+<table class="nobrk">
+<tr><th style="width:34%">Açık</th><th>Durum</th></tr>
+<tr><td><strong>Veritabanı bağlantı kısıtları</strong></td><td>Hazırlık bitti (0 kopuk kayıt, 36 ilişkinin kapı denetimi tamam). Tek engel aşağıdaki veri kararı.</td></tr>
+<tr><td>TB-18 — sayım deftere yazmıyor</td><td>Devralınan borç, bu turun kapsamı dışındaydı. Envantere alındı.</td></tr>
+<tr><td>TB-19 — rapor ölçeklenmesi</td><td>Bugünkü segmentte ölçülen etki yok. Envantere alındı.</td></tr>
+<tr><td>TB-17 — fatura satır kalemi</td><td>e-Fatura ile birlikte tasarlanmalı (E3/E4).</td></tr>
+<tr><td>TB-15/16 — tevsikte parçalı ödeme ve 5 iş günü bildirimi</td><td>Kayıtlı, kapsamda değildi.</td></tr>
+<tr><td>İki adımlı doğrulama (MFA)</td><td>Bilinçli olarak bu tura alınmadı.</td></tr>
+</table>
+
+<div class="kutu duzeltme">
+<p><strong>Kendi eklediğimiz bir riski bildiriyoruz.</strong> Devraldığımız kodda <code>appsettings</code> dosyalarında <strong>iki adet düz metin sır</strong> vardı (veritabanı parolası ve oturum anahtarı) ve bunlar <strong>commit'lenmiş durumda</strong>. Biz geliştirme dosyasına <strong>üçüncü bir sır</strong> ekledik (şifreleme anahtarı). Bu dosyayı <code>.gitignore</code>'a yazdık — ama git, <strong>zaten izlenen bir dosyayı</strong> gitignore ile izlemeyi bırakmaz. Yani dikkatsiz bir <code>git add</code> bu anahtarı da geçmişe yazar. Hiçbir commit atmadığımız için bugün geçmişte <strong>yalnız sizin iki sırrınız</strong> var; ama bu ikisi de yenilenmeden yayına çıkılmamalı.</p>
+</div>
+
+<div class="kutu">
+<p><strong>Bekleyen karar — sizin.</strong> Geliştirme veritabanında <strong>2 satır</strong>, bir işletmenin kaydını başkasının kaydına bağlı gösteriyor. Bunlar <strong>bizim kendi sızma testimizin kalıntısı</strong> (9 Eylül'de açığı kanıtlamak için oluşturduğumuz "Kurban Kasa" ve "Kurban Müşteri"). Bugünkü yazılımda böyle bir açık yok — aynı tarama test veritabanında tertemiz sonuç veriyor. Kayıtları <strong>silmedik</strong>: güvenlik bulgusu sessizce temizlenmez. <strong>Silinmesini onaylamanız</strong>, veritabanı bağlantı kısıtları adımını açar.</p>
+</div>
+
+<div class="kutu">
+<p><strong>Bir başka gerçek: yaptığımız hiçbir şey commit edilmedi.</strong> Talimatınız gereği tek bir commit bile atmadık. Bunun sonucu şu: bugün depoyu temiz bir makineye kopyalayan biri <strong>yalnız 9 Eylül'deki hâli</strong> alır — 34 belgeyi, 591 testi, uyum katmanını değil. Çalışmanın tamamı bu makinedeki çalışma ağacında duruyor. Bu bir uyarıdır, bir istek değil: commit kararı sizindir.</p>
+</div>
+
+<h3>6.2 Dış bağımlılıklar — bizim elimizde değil</h3>
+<table class="nobrk">
+<tr><th style="width:30%">Yapılamayan</th><th>Sebep</th><th style="width:22%">Çözümü</th></tr>
+<tr><td><strong>e-Fatura / e-Arşiv</strong></td><td>Özel entegratör sözleşmesi gerekiyor. Sözleşme olmadan entegratörün test ortamına gerçek fatura gönderilemez; taklit bir bağlantı yazıp "yapıldı" demeyiz.</td><td class="wait">Entegratör sözleşmesi</td></tr>
+<tr><td><strong>MASAK'a gerçek bildirim</strong></td><td>MASAK'ın yazılımlar için bir bağlantı arayüzü ve test sunucusu <strong>yok</strong>; bildirim MASAK Online'a XML yüklenerek yapılıyor ve şema kamuya açık değil. Sistem bildirimi hazırlıyor ve süresini takip ediyor; gönderim elle.</td><td class="wait">Şema + işletme kaydı</td></tr>
+<tr><td><strong>Stopaj oranı, fatura haddi</strong></td><td>Doğrudan para hareketini etkiliyor. Fatura haddi için dört çelişen rakam bulundu; teyit olmadan kodlanmadı.</td><td class="wait">Mali müşavir teyidi</td></tr>
+<tr><td><strong>KVKK aydınlatma metni</strong></td><td>Hukuki metin. Sistem tarafı hazır.</td><td class="wait">Hukuk danışmanı</td></tr>
+<tr><td><strong>KMTS biçim kontrolü</strong></td><td>Şema yayımlanmadı. Bilinmeyen biçim için doğrulama yazmak uydurma olurdu.</td><td class="wait">Şema yayını</td></tr>
+</table>
+
+<h2>7. Sizden beklediklerimiz</h2>
+<table class="nobrk">
+<tr><th style="width:6%">#</th><th style="width:38%">Konu</th><th>Neyi açar</th></tr>
+<tr><td>1</td><td><strong>Sızma testi kalıntısı 2 satırın silinme onayı</strong></td><td>Veritabanı bağlantı kısıtları adımını açar — bizim tarafımızdaki son teknik iş</td></tr>
+<tr><td>2</td><td><strong>Şifre ve anahtarların yenilenmesi</strong></td><td>Devraldığımız kodda commit'li iki sır. Dosyayı düzeltmek yetmiyor; geçmiş kayıt onları saklamaya devam ediyor</td></tr>
+<tr><td>3</td><td>e-Fatura özel entegratör sözleşmesi</td><td>E3 + E4 (fatura kalem satırı) birlikte</td></tr>
+<tr><td>4</td><td>Mali müşavir teyidi: fatura haddi ve hurda stopaj oranı</td><td>Vergi hesaplarının kesinleşmesi</td></tr>
+<tr><td>5</td><td>Pilot işletme erişimi + MASAK Online kaydı</td><td>Gerçek veriyle kabul testi ve gerçek bildirim</td></tr>
+<tr><td>6</td><td>KVKK aydınlatma metni</td><td>Yasal metnin sisteme girmesi</td></tr>
+<tr><td>7</td><td>Yazılımın mülkiyet/devir belgesi</td><td>Kod sahipliğini gösteren belge yok; her ciddi görüşmede sorulan ilk başlıklardan</td></tr>
+<tr><td>8</td><td><code>bin/obj</code> temizliği ve commit kararı</td><td>Depoyu düzeltir; çalışmanın makine dışına çıkmasını sağlar</td></tr>
+</table>
+
+<h2>8. Hüküm</h2>
+<p><strong>Verdiğiniz şey sağlam bir prototipti; bugünkü şey uyumlu ve ölçülmüş bir üründür.</strong> Kuyumculuğun zor kısmı — has, milyem, paralel defter, kuyum KDV — zaten sizin kodunuzda doğruydu ve korundu. Eksik olan, o çekirdeğin etrafındaki her şeydi: müşteri verilerinin birbirinden ayrılması, yasal yükümlülükler, kurulabilirlik, ve <strong>her şeyin çalıştığını kanıtlayan tek bir test</strong>.</p>
+<p>Bugün üretim kodu <strong>1,82 kat</strong>, üstüne sıfırdan <strong>8.388 satır test</strong>. Altı kritik hatanın altısı kapandı, on bir eksik modülün yedisi kapandı, yedi teknik borcun dördü kapandı. Kapanmayanların her biri ya <strong>bilinçli kapsam kararıdır</strong> ya da <strong>bir dış bağımlılığa</strong> bağlıdır — hiçbiri "yapamadık" değildir.</p>
+<p>Ürün, tek dükkân ve 2–3 şubeli perakende kuyumcu için <strong>pilot kullanıma sunulabilir</strong> durumdadır.</p>
+
+<div class="kutu">
+<p><strong>Son bir dürüstlük notu.</strong> Bu turda bulduğumuz hataların bir kısmı <strong>yüzlerce başarılı testten geçmişti</strong>. Barkod ekranda hiç çizilmiyordu, çünkü sayı biçimlendirmesi Türkçe virgül kullanıyordu ve tarayıcı çizimi okuyamıyordu — testler İngilizce biçimde koştuğu için yeşildi. Yasal ibare etikete "SENTETIK" diye basılıyordu; doğrusu "SENTETİK". Hız sınırı "kullanıcı başına" yazıyordu ama fiilen IP başına çalışıyordu. Bu yüzden her adımı canlı ortamda gerçek veriyle ayrıca sınıyoruz ve <strong>"testler geçti" ifadesini tek başına kanıt saymıyoruz</strong>.</p>
+</div>
+
+<footer>
+ByGatech A.Ş. &nbsp;·&nbsp; Kuyumcu ERP Projesi &nbsp;·&nbsp; 14 Eylül 2026 &nbsp;·&nbsp; Sürüm 4.0<br>
+Karşılaştırma tabanı: <code>bbfdc95</code> ("first commit", 9 Eylül 2026). Bu rapordaki her sayısal veri, iki hâl üzerinde aynı komutla ölçülerek elde edilmiştir; ölçüm komutları proje arşivinde saklıdır. Tahmine dayalı rakam içermez.
+</footer>
+</body></html>

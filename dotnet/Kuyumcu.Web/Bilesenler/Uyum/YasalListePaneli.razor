@@ -1,0 +1,238 @@
+@using Kuyumcu.Core.I18n
+@using System.Globalization
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+
+@* ═══ PAKET YASAL-3 (§ 4.4) — UYUM: YASAL LİSTE (malvarlığı dondurma) ════════════
+   • Liste son güncelleme tarihi + kaynak (bağlantı) — her zaman görünür; 14 günden
+     eskiyse sarı bant. Liste ByGatech tarafından yüklenir (kuyumcu yüklemez).
+   • Eşleşmeler: tür (kimlik aynı / yalnız ad benzer), nerede yakalandı, durum, son gün.
+     SAHİP: "Bildirildi olarak kapat" (tarih + evrak no — Cekmece) · ad benzerliğinde
+     "Aynı kişi değil". Kilit elle açılmaz → DegismezIpucu (UX-S25).
+   • Hata "eşleşme yok"a çevrilmez (UX-S28). Dayanak yalnız "Neden?" title'ında.
+   ════════════════════════════════════════════════════════════════════════════ *@
+@if (Okuyabilir)
+{
+    <div class="kart" id="ylp">
+        <div class="kart-govde form-dikey">
+            <h3 id="ylp-baslik">@M.ListeBaslik</h3>
+            <HataBandi Mesaj="@hata" Id="ylp-hata" />
+            <BasariBandi Mesaj="@basari" Id="ylp-basari" Jeton="@basariJeton" />
+            @if (veri is { } v)
+            {
+                @if (v.ListeTarihi is { } lt)
+                {
+                    <dl class="tanim-listesi" id="ylp-ozet">
+                        <dt>@M.ListeSonGuncelleme</dt><dd id="ylp-tarih">@Bicim.Gun(lt)</dd>
+                        <dt>@M.ListeKaynak</dt>
+                        <dd><a href="@v.KaynakUrl" target="_blank" rel="noopener noreferrer" id="ylp-kaynak">@v.Kaynak</a></dd>
+                    </dl>
+                    @if (v.ListeEski)
+                    {
+                        <p class="bant bant-uyari yasal-bant" id="ylp-eski" role="status">@string.Format(M.ListeEski, v.ListeYasiGun)</p>
+                        <p class="t6-ylp-yukleyen" id="ylp-yukleyen">@Toplu6Sozlugu.Al(Dil.Dil).UyumListeYukleyen</p>
+                    }
+                }
+                else
+                {
+                    <p class="bant bant-uyari yasal-bant" id="ylp-yok" role="status">@M.ListeYok</p>
+                    @* TOPLU-6: Panel bandının "Uyum ekranında gör" bağlantısı buraya gelir — kimin yüklediği yazılı (çıkmaz sokak yok). *@
+                    <p class="t6-ylp-yukleyen" id="ylp-yukleyen">@Toplu6Sozlugu.Al(Dil.Dil).UyumListeYukleyen</p>
+                }
+                <details class="fis-bilgi" id="ylp-neden">
+                    <summary class="metin-kucuk" title="@DilEkranSozlugu.YaptirimDayanak(Dil.Dil)">@M.ListeNeden</summary>
+                    <span class="metin-kucuk metin-soluk">@M.ListeDayanak</span>
+                </details>
+
+                <h4 id="ylp-eslesme-baslik">@M.EslesmeBaslik</h4>
+                @if (v.Eslesmeler.Any(e => e.Tur == "TAM" && e.CariId is not null))
+                {
+                    <DegismezIpucu Varlik="YaptirimEslesmesi" Gerekce="@M.EslesmeKilitGerekce" AlternatifYol="@M.EslesmeKilitYol" />
+                }
+                @if (v.Eslesmeler.Count == 0)
+                {
+                    <BosDurum Mesaj="@M.EslesmeBos" />
+                }
+                else
+                {
+                    @* PAKET GOC-B — ORTAK IZGARA (grid:uyum:ylp-eslesme): sütun sırası, göster/gizle, sıralama, kullanıcıya
+                       kalıcı, "Varsayılana dön". Mevcut id'ler korunur (#ylp-tablo, #ylp-liste-sar, #ylp-satir-{id}).
+                       Sunucu en çok 100 eşleşme döndürür → sınıra değdiyse sıralama kapalı + sınır notu (UX-S29). *@
+                    <Izgara T="YaptirimEslesmeSatiri" Ekran="uyum" GridId="ylp-eslesme" Kolonlar="@EslesmeKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(v.Eslesmeler, eslesmeSira, EslesmeKolonlari)"
+                            SatirId="@(e => $"ylp-satir-{e.Id}")" TabloId="ylp-tablo" KartListeId="ylp-liste"
+                            Baslik="@M.EslesmeBaslik" SiralamaDegisti="@(x => eslesmeSira = x)" GecerliSiralama="@eslesmeSira" />
+                    @if (!EslesmeTam)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="ylp-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, EslesmeSiniri)</p>
+                    }
+                }
+
+                @* Tur 2 (§ 4.2): eşik bölme sinyali — sayı + kayıtlar aynı ekranda (UX-S23), sınır yazılı (UX-S29). *@
+                @if (v.EsikBolmeSinyali is { } sn)
+                {
+                    <h4 id="ylp-sinyal-baslik">@M.SinyalBaslik</h4>
+                    @if (sn.Adet == 0)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="ylp-sinyal-yok">@string.Format(Kultur, M.SinyalYok, sn.Gun)</p>
+                    }
+                    else
+                    {
+                        <p id="ylp-sinyal">@string.Format(Kultur, M.SinyalSayi, sn.Gun, sn.Adet)</p>
+                        <p class="metin-kucuk metin-soluk" id="ylp-sinyal-aciklama">@M.SinyalAciklama</p>
+                        <Katlanir Id="ylp-sinyal-liste" Baslik="@string.Format(Kultur, M.SinyalListe, sn.Sinir)" Sayi="@sn.Son.Count">
+                            <ul class="metin-kucuk" id="ylp-sinyal-satirlar">
+                                @foreach (var x in sn.Son)
+                                {
+                                    <li>@Bicim.TarihSaat(x.Tarih) · @(x.Kullanici ?? M.SinyalHata)</li>
+                                }
+                            </ul>
+                        </Katlanir>
+                    }
+                }
+            }
+        </div>
+    </div>
+
+    <Cekmece Acik="@(kapatilan is not null)" Varlik="yaptirim-eslesmesi" Baslik="@M.EslesmeKapat"
+             Kaydediliyor="@kaydediliyor" KaydetAktif="@(KilitSebebi is null)" KilitSebebi="@KilitSebebi"
+             Kapat="KapatVazgec" Kaydet="KapatKaydet">
+        <Tarih ElemanId="ylp-tarih-gir" Etiket="@M.EslesmeTarih" Deger="@tarih" DegerChanged="@(x => tarih = x)"
+               EnGec="@DateOnly.FromDateTime(DateTime.Now)" Zorunlu="true" Hata="@AlanHata("masakBildirimTarihi")" />
+        <Metin ElemanId="ylp-evrak" Etiket="@M.EslesmeEvrak" Deger="@evrak" DegerChanged="@(x => evrak = x)" EnFazla="@AlanSinirlari.YaptirimEvrakNo"
+               Zorunlu="true" Hata="@AlanHata("masakEvrakNo")" />
+        @* PAKET GOC-B (C satır 56): 500 karakterlik not tek satır Metin'deydi → CokSatir. *@
+        <CokSatir ElemanId="ylp-not" Etiket="@M.EslesmeNot" Deger="@not" DegerChanged="@(x => not = x)" Satir="2" EnFazla="@AlanSinirlari.YaptirimNot" />
+        <HataBandi Mesaj="@formHata" Id="ylp-form-hata" />
+    </Cekmece>
+
+    <OnayKipi Acik="@(ayniDegilSecilen is not null)" Kimlik="ylp-degil" Eylem="@M.EslesmeAyniDegil"
+              OnayMetni="@M.EslesmeAyniDegil" Aciklama="@M.ListeDayanak" Hedef="@ayniDegilSecilen?.CariAd"
+              Calisiyor="@kaydediliyor" Hata="@hata" Onayla="AyniDegilOnayla" Vazgec="AyniDegilVazgec" />
+}
+
+@code {
+    private YaptirimEslesmeSatiri? ayniDegilSecilen;
+    private void AyniDegilVazgec() => ayniDegilSecilen = null;
+    private async Task AyniDegilOnayla() { if (ayniDegilSecilen is { } e) { await AyniDegil(e); if (hata is null) ayniDegilSecilen = null; } }
+
+    // ── PAKET GOC-B — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? eslesmeSira;
+    /// <summary>Sunucunun eşleşme listesi sınırı (YaptirimServisi Take(100)).</summary>
+    private const int EslesmeSiniri = 100;
+    private bool EslesmeTam => (veri?.Eslesmeler.Count ?? 0) < EslesmeSiniri;
+
+    private IReadOnlyList<IzgaraKolonu<YaptirimEslesmeSatiri>> EslesmeKolonlari =>
+    [
+        new() { Anahtar = "kisi", Baslik = M.EslesmeKisi, ZorunluGorunur = true, SunucuSiralamaAdi = EslesmeTam ? "kisi" : null,
+                Deger = e => e.CariAd,
+                Hucre = e => @<text><strong>@(e.CariAd ?? "—")</strong><br />
+                    <Rozet Renk="@(e.Tur == "TAM" ? "kirmizi" : "amber")">@(e.Tur == "TAM" ? M.EslesmeTam : M.EslesmeBenzer)</Rozet>
+                    <span class="metin-kucuk metin-soluk">@Nokta(e.Nokta) · @Bicim.TarihSaat(e.Olusturuldu)</span></text> },
+        new() { Anahtar = "durum", Baslik = M.BekletmeDurum, SunucuSiralamaAdi = EslesmeTam ? "durum" : null,
+                Deger = e => Durum(e.Durum),
+                Hucre = e => @<text><Rozet Renk="@(e.Durum == "ACIK" ? "sari" : "gri")">@Durum(e.Durum)</Rozet>
+                    @if (e.Durum == "ACIK" && e.BildirimSonGunu is { } sg)
+                    {
+                        <br /><span class="metin-kucuk hucre-tek-satir" id="@($"ylp-songun-{e.Id}")">@string.Format(M.EslesmeSonGun, Bicim.Gun(sg))</span>
+                    }
+                    @if (e.MasakEvrakNo is { } ev)
+                    {
+                        <span class="metin-kucuk metin-soluk">@(e.MasakBildirimTarihi is { } mbt ? Bicim.Gun(mbt) : null) · @ev</span>
+                    }</text> },
+        new() { Anahtar = "eylem", Baslik = M.EslesmeKapat, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = e => @<text>@if (Yazabilir && e.Durum == "ACIK")
+                    {
+                        <div class="dugme-satir">
+                            <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="@($"ylp-kapat-{e.Id}")" @onclick="() => KapatAc(e)">@M.EslesmeKapat</button>
+                            @if (e.Tur != "TAM")
+                            {
+                                <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="@($"ylp-degil-{e.Id}")" @onclick="() => ayniDegilSecilen = e">@M.EslesmeAyniDegil</button>
+                            }
+                        </div>
+                    }</text> },
+    ];
+
+    private YaptirimOzeti? veri;
+    private string? hata, basari, formHata;
+    private int basariJeton;
+    private bool kaydediliyor;
+    private YaptirimEslesmeSatiri? kapatilan;
+    private DateOnly? tarih;
+    private string? evrak, not;
+    private IReadOnlyDictionary<string, string[]> alanlar = new Dictionary<string, string[]>();
+
+    private Yasal3Metinleri M => Yasal3Sozlugu.Al(Dil.Dil);
+    private CultureInfo Kultur => CultureInfo.GetCultureInfo(Dil.Dil == "en" ? "en-GB" : "tr-TR");
+    private bool Okuyabilir => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR" or "MUHASEBE";
+    private bool Yazabilir => Oturum.Kullanici?.Rol is "SAHIP";
+
+    private string? KilitSebebi =>
+        tarih is null ? M.EslesmeTarih : string.IsNullOrWhiteSpace(evrak) ? M.EslesmeEvrak : null;
+
+    private string? AlanHata(string alan) => alanlar.TryGetValue(alan, out var m) && m.Length > 0 ? m[0] : null;
+
+    private string Nokta(string n) => n switch
+    {
+        "MASAK_TESPIT" => M.NoktaMasak, "CARI" => M.NoktaCari, "HURDA_SATICI" => M.NoktaHurda, _ => M.NoktaListe,
+    };
+
+    private string Durum(string d) => d switch
+    {
+        "ACIK" => M.EslesmeAcik, "BILDIRILDI" => M.EslesmeBildirildi, "VARLIK_YOK" => M.EslesmeVarlikYok,
+        _ => M.EslesmeAyniKisiDegil,
+    };
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task Yukle()
+    {
+        if (!Okuyabilir) return;
+        hata = null;
+        try { veri = await Api.GetAsync<YaptirimOzeti>("/masak/yaptirim"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = string.Format(M.EslesmeHata, ex.Message); }
+    }
+
+    private void KapatAc(YaptirimEslesmeSatiri e)
+    {
+        kapatilan = e; tarih = DateOnly.FromDateTime(DateTime.Now); evrak = null; not = e.Not;
+        formHata = null; alanlar = new Dictionary<string, string[]>();
+    }
+
+    private void KapatVazgec() => kapatilan = null;
+
+    private async Task KapatKaydet()
+    {
+        formHata = null; alanlar = new Dictionary<string, string[]>();
+        if (kapatilan is null) return;
+        if (KilitSebebi is { } k) { formHata = k; return; }
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<YaptirimEslesmeSatiri>($"/masak/yaptirim-eslesmeleri/{Uri.EscapeDataString(kapatilan.Id)}",
+                new { durum = "BILDIRILDI", masakBildirimTarihi = tarih, masakEvrakNo = evrak, not });
+            kapatilan = null; basari = M.EslesmeKaydedildi; basariJeton++;
+            await Yukle();
+        }
+        catch (ApiHata ex) { alanlar = ex.Alanlar; formHata = ex.Alanlar.Count > 0 ? null : ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task AyniDegil(YaptirimEslesmeSatiri e)
+    {
+        kaydediliyor = true; hata = null;
+        try
+        {
+            await Api.PatchAsync<YaptirimEslesmeSatiri>($"/masak/yaptirim-eslesmeleri/{Uri.EscapeDataString(e.Id)}",
+                new { durum = "AYNI_KISI_DEGIL" });
+            basari = M.EslesmeKaydedildi; basariJeton++;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+}

@@ -1,0 +1,719 @@
+@page "/satin-alma"
+@using Kuyumcu.Contracts.Sayfalar.SatinAlma
+@using Kuyumcu.Contracts.Sayfalar.Fiyatlandirma
+@using Kuyumcu.Contracts.Cikti
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Contracts.Bilesenler.MasakFormu
+@inject ApiIstemci Api
+@inject UyumServisi Uyum
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET EKSIK-B1-SATINALMA (B1-1) — SATIN ALMA SİPARİŞİ + MAL KABUL.
+
+   Sunucu uçları ZATEN VARDI (Modules/Satinalma/SatinalmaModulu.cs — P-26 / Y-34):
+     GET  /satinalma                 liste + durum kırılımı (UX-S29 sınırı)
+     GET  /satinalma/{id}            detay (kalemler + irsaliyeler + kilit sebebi)
+     POST /satinalma                 yeni TASLAK
+     PATCH /satinalma/{id}           gövdede yoksa KORU, null ise SİL (yalnız TASLAK)
+     POST /satinalma/{id}/onayla     mal kabule açar
+     POST /satinalma/{id}/iptal      PASİFLEŞTİRME (hard DELETE yok)
+     POST /satinalma/{id}/mal-kabul  stoğa SatisServisi.Alis ile yazar + GELEN irsaliye
+
+   ⚠ ZORUNLU ÖNCE (kurucu 25.09): açılışta yalnız bekleyen siparişler; kapanan/iptal
+     edilenler KAPALI akordeonda (Katlanir). Formda isteğe bağlı alanlar ProAlan / "+ ekle".
+   ⚠ TEK DÜZENLEME KALIBI: oluşturma = düzenleme (aynı Cekmece, aynı satır modeli — UX-S26).
+     Yıkıcı eylem (iptal) OnayKipi ile (ModalPencere sayacı artmaz).
+   ⚠ UX-S21/S22: şube oturumdan (seçici YOK); kur kaydı sunucunun güncel kurundan.
+   ⚠ UX-S28: hata "kayıt yok"a çevrilmez.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(SayfaAdi)</PageTitle>
+
+<ErrorBoundary>
+    <ChildContent>
+<div class="dikey-bosluk">
+    <SayfaBasi Anahtar="satin-alma" Baslik="@SayfaAdi" Aciklama="@M.Aciklama" AciklamaKatli="true">
+        <Eylem>
+            <button type="button" class="dugme dugme-birincil" id="sa-yeni" @onclick="YeniAc"
+                    disabled="@(!YazabilirMi)" aria-disabled="@(YazabilirMi ? "false" : "true")"
+                    title="@(YazabilirMi ? M.YeniSiparis : M.YazmaYetkisiYok)">@M.YeniSiparis</button>
+        </Eylem>
+    </SayfaBasi>
+    @if (!YazabilirMi)
+    {
+        <p class="metin-kucuk metin-soluk" id="sa-yeni-kilit">@M.YazmaYetkisiYok</p>
+    }
+
+    <HataBandi Mesaj="@hata" Id="sa-hata" />
+    <BasariBandi Mesaj="@basari" Id="sa-basari" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (liste is { } l)
+    {
+        <div class="kart" id="sa-acik-kart">
+            <div class="kart-baslik"><h2 id="sa-acik-baslik">@M.AcikSiparisler</h2></div>
+            @if (Acik.Count == 0)
+            {
+                @* UX-S28: boş durum YALNIZ istek başarılı ve sonuç gerçekten boşken. *@
+                <BosDurum Mesaj="@M.SiparisYok" />
+            }
+            else
+            {
+                <Izgara T="SatinAlmaSatiri" Ekran="satin-alma" GridId="sa-acik" Kolonlar="@Kolonlar"
+                        Ogeler="@Acik" SatirId="@(s => $"sa-satir-{s.Id}")" Baslik="@M.AcikSiparisler"
+                        YapiskanIlkSutun="false" TabloSinif="q10-th-tek" />
+            }
+            @if (l.SinirDegdi)
+            {
+                @* UX-S29: sunucu sınırı ekranda söylenir; sessiz kırpma yok. *@
+                <p class="metin-kucuk metin-soluk" id="sa-sinir">@string.Format(M.SinirNotu, l.Satirlar.Count, l.Toplam)</p>
+            }
+        </div>
+
+        <Katlanir Id="sa-gecmis" Baslik="@M.GecmisSiparisler" Sayi="@Gecmis.Count">
+            @if (Gecmis.Count == 0)
+            {
+                <BosDurum Mesaj="@M.GecmisYok" />
+            }
+            else
+            {
+                <Izgara T="SatinAlmaSatiri" Ekran="satin-alma" GridId="sa-gecmis-liste" Kolonlar="@Kolonlar"
+                        Ogeler="@Gecmis" SatirId="@(s => $"sa-satir-{s.Id}")" Baslik="@M.GecmisSiparisler"
+                        YapiskanIlkSutun="false" TabloSinif="q10-th-tek" />
+            }
+        </Katlanir>
+    }
+</div>
+
+@* ── Sipariş formu: OLUŞTUR = DÜZENLE (UX-S26) — TEK DÜZENLEME KALIBI: Cekmece ── *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+<Cekmece Acik="@formAcik" Varlik="sa-form"
+         Baslik="@(formSiparisId is null ? M.FormYeniBaslik : M.FormDuzenleBaslik)"
+         Kapat="FormKapat" Kaydet="FormKaydet" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(FormKilidi is null && !kaydediliyor)" KilitSebebi="@FormKilidi">
+    <div class="form-dikey">
+        <div class="alan">
+            @* P-36b: eski kayıt seçicinin YENİ kullanımı açılmaz (SECICI_UZAK_KIP) — ortak Secici uzak kipi; düzenlemede ad sunucudan. *@
+            <Secici ElemanId="sa-form-tedarikci" Etiket="@M.Tedarikci" Zorunlu="true"
+                    UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Cari" UzakSeciliAd="@fTedarikciAdi" YerTutucu="@M.TedarikciYerTutucu"
+                    Deger="@fTedarikciId" DegerChanged="TedarikciSecildi"
+                    Hata="@(formDenendi && string.IsNullOrEmpty(fTedarikciId) ? M.TedarikciSecin : null)" />
+        </div>
+
+        @for (var i = 0; i < satirlar.Count; i++)
+        {
+            var sira = i;
+            var r = satirlar[sira];
+            <fieldset class="kart" id="@($"sa-form-satir-{sira}")" @key="r.Anahtar">
+                <legend class="metin-kucuk metin-soluk">@($"{M.Urun} {sira + 1}")</legend>
+                <div class="alan">
+                    <Secici ElemanId="@($"sa-form-urun-{sira}")" Etiket="@M.Urun" Zorunlu="true"
+                            UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Urun" UzakSeciliAd="@r.UrunAdi" YerTutucu="@M.UrunYerTutucu"
+                            Deger="@r.UrunId" DegerChanged="@(v => r.UrunId = v)"
+                            Hata="@(formDenendi && string.IsNullOrEmpty(r.UrunId) ? M.UrunGerekli : null)" />
+                </div>
+                <div class="form-grid-2">
+                    <Sayi ElemanId="@($"sa-form-adet-{sira}")" Etiket="@M.Adet" Zorunlu="true" EnCokOndalik="3"
+                          Deger="@r.Adet" DegerChanged="@(v => r.Adet = v)" EnAz="0"
+                          Hata="@(formDenendi && r.Adet is not > 0m ? M.AdetGerekli : null)" />
+                    <Para ElemanId="@($"sa-form-fiyat-{sira}")" Etiket="@M.BirimFiyat" Zorunlu="true" ParaBirimi="TRY"
+                          Tur="TutarTuru.SifirOlabilir"
+                          Deger="@r.BirimFiyatTl" DegerChanged="@(v => r.BirimFiyatTl = v)"
+                          Hata="@(formDenendi && r.BirimFiyatTl is not >= 0m ? M.FiyatGerekli : null)" />
+                </div>
+                <ProAlan>
+                    <Metin ElemanId="@($"sa-form-tanim-{sira}")" Etiket="@M.Tanim" EnFazla="@AlanSinirlari.TedarikKalemTanim"
+                           Deger="@r.Tanim" DegerChanged="@(v => r.Tanim = v)" />
+                </ProAlan>
+                @if (satirlar.Count > 1)
+                {
+                    <button type="button" @onclick="() => SatirSil(r)" class="dugme dugme-ikincil dugme-kucuk"
+                            id="@($"sa-form-sil-{sira}")">@M.KalemSil</button>
+                }
+            </fieldset>
+        }
+        <button type="button" class="dugme dugme-ikincil" id="sa-form-satir-ekle" @onclick="SatirEkle"
+                disabled="@(satirlar.Count >= AzamiSatir)" aria-disabled="@(satirlar.Count >= AzamiSatir ? "true" : "false")"
+                title="@M.KalemEkle">@M.KalemEkle</button>
+        @* SATINALMA-EKRAN (zorunlu önce): açıklama satırı açılışta görünmez; kapalı akordeon. *@
+        <Katlanir Id="sa-form-bilgi" Baslik="@M.BilgiBasligi">
+            <p class="metin-kucuk metin-soluk" id="sa-form-fiyat-aciklama">@M.FiyatAciklama</p>
+        </Katlanir>
+
+        <ProAlan>
+            <Tarih ElemanId="sa-form-beklenen" Etiket="@M.BeklenenTarih" Tur="TarihTuru.Vade"
+                   Deger="@fBeklenen" DegerChanged="@(v => fBeklenen = v)" />
+            <Metin ElemanId="sa-form-aciklama" Etiket="@M.Aciklamasi" EnFazla="@AlanSinirlari.TedarikAciklama"
+                   Deger="@fAciklama" DegerChanged="@(v => fAciklama = v)" />
+            <Metin ElemanId="sa-form-hesap" Etiket="@M.HesapKodu" EnFazla="@AlanSinirlari.HesapKodu"
+                   Deger="@fHesap" DegerChanged="@(v => fHesap = v)" />
+        </ProAlan>
+        <HataBandi Mesaj="@formHata" Id="sa-form-hata" />
+    </div>
+</Cekmece>
+</CascadingValue>
+
+@* ── Sipariş detayı + mal kabul (tek birincil düğme: durumun sıradaki işi) ── *@
+<CascadingValue Value="kabulKapisi" IsFixed="true">
+<Cekmece Acik="@(detay is not null)" Varlik="sa-detay"
+         Baslik="@(detay is { } dd ? string.Format(M.DetayBaslik, dd.No) : "")"
+         Kapat="DetayKapat" Kaydet="DetayBirincil" Kaydediliyor="@kaydediliyor"
+         KaydetGoster="@(detay is { } dg && YazabilirMi && (dg.Duzenlenebilir || dg.MalKabulEdilebilir))"
+         KaydetMetni="@(detay?.Duzenlenebilir == true ? M.Onayla : M.MalKabulYap)"
+         KaydetElemanId="sa-detay-birincil" KilitElemanId="sa-detay-kilit"
+         KaydetAktif="@(DetayKilidi is null && !kaydediliyor)" KilitSebebi="@DetayKilidi"
+         IptalMetni="@M.Kapat">
+    @if (detay is { } d)
+    {
+        <div class="form-dikey">
+            <dl class="tanim-listesi uy-tanim" id="sa-detay-bilgi">
+                <dt>@M.Tedarikci</dt><dd id="sa-detay-tedarikci">@(d.TedarikciAdi ?? "—")</dd>
+                <dt>@M.Durum</dt><dd id="sa-detay-durum"><Rozet Renk="@DurumRengi(d.Durum)">@DurumAdi(d.Durum)</Rozet></dd>
+                @if (d.BeklenenTarih is { } bt)
+                {
+                    <dt>@M.BeklenenTarih</dt><dd id="sa-detay-beklenen">@Bicim.Gun(bt)</dd>
+                }
+                @if (!string.IsNullOrWhiteSpace(d.Aciklama))
+                {
+                    <dt>@M.Aciklamasi</dt><dd id="sa-detay-aciklama">@d.Aciklama</dd>
+                }
+                @if (!string.IsNullOrWhiteSpace(d.IptalGerekce))
+                {
+                    <dt>@M.IptalGerekce</dt><dd id="sa-detay-iptal-gerekce">@d.IptalGerekce</dd>
+                }
+            </dl>
+
+            @if (d.MalKabulEdilebilir && YazabilirMi)
+            {
+                <Katlanir Id="sa-kabul-bilgi" Baslik="@M.BilgiBasligi">
+                    <p class="metin-kucuk metin-soluk" id="sa-kabul-aciklama">@M.MalKabulAciklama</p>
+                </Katlanir>
+            }
+            @* TUR 2 (gerçek Chrome 1280 + 375): çekmece dar olduğu için kalemler tablo değil KART listesi —
+               tabloda ürün adı üç satıra kırılıyor, giriş kutusunun etiketi sütun başlığını tekrar ediyordu.
+               Kimlikler (sa-kalem-{sıra}, sa-kalan-{sıra}, sa-kabul-{sıra}) DEĞİŞMEDİ. *@
+            <div class="form-dikey" id="sa-kalem-liste" role="list" aria-label="@M.Kalem">
+                @foreach (var k in d.Kalemler)
+                {
+                    <div class="kart" id="@($"sa-kalem-{k.Sira}")" role="listitem">
+                        <div class="kart-govde form-dikey">
+                            <strong class="hucre-vurgu" id="@($"sa-kalem-ad-{k.Sira}")">@(k.UrunAdi ?? k.Tanim ?? "—")</strong>
+                            @* Tek satır özet: sipariş · gelen · kalan · birim fiyat (dar ekranda kendiliğinden alta kayar).
+                               TUR 3 (gerçek Chrome 375, K3 kırık): her "ad + değer" parçası kendi içinde bölünmez
+                               ("Birim fiyat | 150.000 ₺", "Kalan | 3 adet" kırılıyordu); satır yalnız parçalar arasında kayar. *@
+                            <p class="metin-kucuk metin-soluk" id="@($"sa-kalem-ozet-{k.Sira}")">
+                                <span class="hucre-tek-satir">@M.Siparis @Bicim.Miktar(k.Adet, k.Birim)</span> ·
+                                <span class="hucre-tek-satir">@M.Kabul @Bicim.Miktar(k.KabulEdilenAdet, k.Birim)</span> ·
+                                <span class="hucre-tek-satir">@M.Kalan <span id="@($"sa-kalan-{k.Sira}")">@Bicim.Miktar(k.KalanAdet, k.Birim)</span></span>
+                                @if (k.BirimFiyatTl is { } bf)
+                                {
+                                    @(" · ")<span class="hucre-tek-satir">@M.BirimFiyat @Bicim.Para(bf, "TRY")</span>
+                                }
+                            </p>
+                            @KabulHucresi(k)
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* TUR 3 (hasım KRİTİK): eşik üstü toptan alış ekrandan teslim alınamıyordu (çıkmaz sokak).
+               Kimlik tespiti tutara / bağlantılı işlemler toplamına bağlıdır (Tedbirler Yön. md.5/1-b) —
+               hangi alanın gerektiğini SUNUCU söyler (/masak/gereksinim, tedarikçinin bugünkü toplamıyla);
+               form yalnız gerektiğinde açılır (zorunlu önce kuralı). Ortak MasakFormu (Banka/POS ile aynı). *@
+            @if (d.MalKabulEdilebilir && YazabilirMi && MasakGerekli)
+            {
+                <div class="form-dikey" id="sa-masak">
+                    @if (masakGereksinim is not null && masakEsik is not null)
+                    {
+                        <div class="zo-masak-dikey">
+                            <MasakFormu Model="masak" Tutar="KabulTutariTl" Esik="masakEsik" Sade="@Dil.BasitMi"
+                                        Gereksinim="masakGereksinim" Degisti="MasakAlaniDegisti"
+                                        ToplamBaslikSablonu="@M.MasakToplamBaslik" ToplamAmacBaslikSablonu="@M.MasakToplamAmacBaslik"
+                                        FonEtiketi="@M.MasakFonEtiketi" EkBelgeEtiketi="@M.MasakEkBelgeEtiketi" />
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (d.Duzenlenebilir && YazabilirMi)
+            {
+                <button type="button" @onclick="DuzenleAc" class="dugme dugme-ikincil" id="sa-detay-duzenle">@M.Duzenle</button>
+            }
+            @if (!d.Duzenlenebilir && !d.MalKabulEdilebilir && d.Durum != "IPTAL" && d.KilitSebebi is { } ks)
+            {
+                @* UX-S25: düzeltilemeyen kayıt NEDENİNİ ve doğru yolu söyler. İptalli sipariş değişmez DEĞİL,
+                   geri alınır: kilit kutusu yerine tek cümle (aşağıda). *@
+                <DegismezIpucu Varlik="SatinalmaSiparisi" Gerekce="@ks" />
+            }
+
+            @* SATINALMA-EKRAN: irsaliye yoksa (taslak, onaylı ama teslim alınmamış) boş kart ÇİZİLMEZ (zorunlu önce);
+               satırlar kart-govde içinde → kart kenarına yapışmaz. *@
+            @if (d.Irsaliyeler.Count > 0)
+            {
+                <div class="kart" id="sa-detay-irsaliyeler">
+                    <div class="kart-baslik"><h3>@M.Irsaliyeleri</h3></div>
+                    <div class="kart-govde sa-irs-icerik form-dikey" id="sa-detay-irs-liste">
+                        @foreach (var irs in d.Irsaliyeler)
+                        {
+                            <div class="satir-eylem" id="@($"sa-detay-irs-{irs.Id}")">
+                                <span class="hucre-vurgu">@irs.No</span>
+                                <span class="metin-soluk"> · @Bicim.TarihTam(irs.Tarih)</span>
+                                <a class="dugme dugme-ikincil dugme-kucuk" id="@($"sa-detay-irs-yazdir-{irs.Id}")"
+                                   href="@($"/cikti/{BelgeTurleri.Irsaliye}/{irs.Id}?donus=/satin-alma")">@M.Yazdir</a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (d.Durum == "IPTAL" && YazabilirMi)
+            {
+                @* SATINALMA-EKRAN: iptalden geri dönüş yolu (UX-S25) — sunucu yalnız kabulsüz iptali geri alır. *@
+                <div class="form-dikey" id="sa-aktife-al-alan">
+                    <p class="metin-soluk" id="sa-iptalli-not">@M.IptalliNot</p>
+                    <button type="button" class="dugme dugme-birincil" id="sa-aktife-al" @onclick="AktifeAl"
+                            disabled="@kaydediliyor" aria-disabled="@(kaydediliyor ? "true" : "false")"
+                            title="@M.AktifeAlAciklama">@M.AktifeAl</button>
+                </div>
+            }
+
+            @if (YazabilirMi && d.Durum is "TASLAK" or "ONAYLANDI" or "KISMI_KABUL")
+            {
+                <Katlanir Id="sa-detay-iptal" Baslik="@M.IptalEt">
+                    @if (d.Kalemler.Any(k => k.KabulEdilenAdet > 0m))
+                    {
+                        <p class="metin-soluk" id="sa-iptal-kilit">@M.IptalKilit</p>
+                    }
+                    else
+                    {
+                        <GerekceAlani Id="sa-iptal-gerekce" SayacGoster="false" AsgariUzunluk="@GerekceAsgari" AzamiUzunluk="@AlanSinirlari.TedarikAciklama"
+                                      Etiket="@M.IptalGerekce" @bind-Deger="iptalGerekce" />
+                        <button type="button" class="dugme dugme-ikincil" id="sa-iptal-ac" @onclick="() => iptalOnay = true"
+                                disabled="@(iptalGerekce.Trim().Length < GerekceAsgari)"
+                                aria-disabled="@(iptalGerekce.Trim().Length < GerekceAsgari ? "true" : "false")"
+                                title="@(iptalGerekce.Trim().Length < GerekceAsgari ? string.Format(M.IrsGerekceKisa, GerekceAsgari) : M.IptalEt)">@M.IptalEt</button>
+                    }
+                </Katlanir>
+            }
+            <HataBandi Mesaj="@detayHata" Id="sa-detay-hata" />
+        </div>
+    }
+</Cekmece>
+</CascadingValue>
+
+<OnayKipi Acik="@iptalOnay" Kimlik="sa-iptal" Eylem="@M.IptalBaslik" OnayMetni="@M.IptalEt"
+          Aciklama="@M.IptalAciklama" Hedef="@detay?.No" Calisiyor="@kaydediliyor" Hata="@detayHata"
+          Onayla="IptalEt" Vazgec="IptalVazgec" />
+    </ChildContent>
+    <ErrorContent>
+        <KabukHatasi />
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    private SatinAlmaMetinleri M => SatinAlmaSozlugu.Al(Dil.Dil);
+    private string SayfaAdi => MenuAdlari.Icin(Dil.T).SatinAlma.Ad;
+
+    /// <summary>Sunucu kuralının aynası: yazma (sipariş/onay/kabul/iptal) yalnız SAHİP/MÜDÜR (SatinalmaServisi.YazmaRolleri).</summary>
+    private bool YazabilirMi => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+
+    /// <summary>Sunucu SatinalmaSiparisi.GerekceAsgari ile aynı.</summary>
+    private const int GerekceAsgari = 10;
+    /// <summary>Sunucu SatinalmaSiparisi.AzamiKalem ile aynı.</summary>
+    private const int AzamiSatir = 200;
+
+    private SatinAlmaListesi? liste;
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private string? hata, basari;
+
+    private static readonly string[] AcikDurumlar = ["TASLAK", "ONAYLANDI", "KISMI_KABUL"];
+    private List<SatinAlmaSatiri> Acik => liste?.Satirlar.Where(s => AcikDurumlar.Contains(s.Durum)).ToList() ?? [];
+    private List<SatinAlmaSatiri> Gecmis => liste?.Satirlar.Where(s => !AcikDurumlar.Contains(s.Durum)).ToList() ?? [];
+
+    // ── Liste kolonları (ortak ızgara grid:satin-alma:*) ──────────────────────
+    private IReadOnlyList<IzgaraKolonu<SatinAlmaSatiri>> Kolonlar =>
+    [
+        new() { Anahtar = "no", Baslik = M.No, ZorunluGorunur = true, Deger = s => s.No,
+                Hucre = s => @<span class="hucre-tek-satir" id="@($"sa-no-{s.Id}")">@s.No</span> },
+        new() { Anahtar = "tedarikci", Baslik = M.Tedarikci, ZorunluGorunur = true, Deger = s => s.TedarikciAdi ?? "—" },
+        new() { Anahtar = "durum", Baslik = M.Durum, Tur = IzgaraHucreTuru.Rozet, Deger = s => DurumAdi(s.Durum),
+                Hucre = s => @<Rozet Renk="@DurumRengi(s.Durum)">@DurumAdi(s.Durum)</Rozet> },
+        new() { Anahtar = "kalem", Baslik = M.Kalem, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = s => s.KalemSayisi },
+        new() { Anahtar = "beklenen", Baslik = M.BeklenenTarih, Deger = s => s.BeklenenTarih is { } b ? Bicim.Gun(b) : "—" },
+        new() { Anahtar = "eylem", Baslik = M.Ac, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = s => @<button type="button" class="dugme dugme-kucuk" id="@($"sa-ac-{s.Id}")" @onclick="() => DetayAc(s.Id)">@M.Ac</button> },
+    ];
+
+    /// <summary>Mal kabul kutusu yalnız kabul edilebilir siparişte ve kalanı olan satırda çizilir.</summary>
+    private RenderFragment KabulHucresi(SatinAlmaKalemVeri k) =>
+        @<div>
+            @if (detay is { MalKabulEdilebilir: true } dk && YazabilirMi && k.KalanAdet > 0m)
+            {
+                <Sayi ElemanId="@($"sa-kabul-{k.Sira}")" Etiket="@M.BuTeslimat" EnCokOndalik="3"
+                      Zorunlu="@(dk.Kalemler.Count(x => x.KalanAdet > 0m) == 1)"
+                      TamSayi="@(k.Birim != "GRAM")" EnAz="0" EnCok="@k.KalanAdet"
+                      Deger="@kabulAdetleri.GetValueOrDefault(k.Id)" DegerChanged="@(v => KabulAdetDegisti(k.Id, v))"
+                      Hata="@KabulHatasi(k)" />
+            }
+            else if (k.KalanAdet <= 0m)
+            {
+                <span class="metin-soluk metin-kucuk" id="@($"sa-kabul-yok-{k.Sira}")">@M.KalemTamam</span>
+            }
+        </div>;
+
+    private string? KabulHatasi(SatinAlmaKalemVeri k) =>
+        kabulAdetleri.GetValueOrDefault(k.Id) is { } a && a > k.KalanAdet
+            ? string.Format(M.KabulAsimi, k.Sira + 1, Bicim.Miktar(k.KalanAdet, k.Birim)) : null;
+
+    // ── Rozet / durum adı (UX-S31: ham kod basılmaz) ─────────────────────────
+    private string DurumAdi(string d) => d switch
+    {
+        "TASLAK" => M.DurumTaslak,
+        "ONAYLANDI" => M.DurumOnaylandi,
+        "KISMI_KABUL" => M.DurumKismi,
+        "KAPANDI" => M.DurumKapandi,
+        "IPTAL" => M.DurumIptal,
+        _ => "—",
+    };
+
+    private static string DurumRengi(string d) => d switch
+    {
+        "TASLAK" => "gri",
+        "ONAYLANDI" => "mavi",
+        "KISMI_KABUL" => "amber",
+        "KAPANDI" => "yesil",
+        _ => "gri",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            liste = await Api.GetAsync<SatinAlmaListesi>($"/satinalma?limit={ListeLimiti}");
+        }
+        // ⚠ UX-S28: hata "kayıt yok"a ÇEVRİLMEZ. Liste boşaltılmaz; hata bandı ayrıdır.
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { hata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    /// <summary>Sunucunun azami liste sınırı (SatinalmaSiparisi.AzamiLimit) — sınır ekranda yazar.</summary>
+    private const int ListeLimiti = 200;
+
+    // ═══ FORM (oluştur = düzenle) ═══════════════════════════════════════════
+    private bool formAcik, formDenendi;
+    private string? formSiparisId, fTedarikciId, fTedarikciAdi, fAciklama, fHesap, formHata;
+    private DateTime? formSiparisDamga;
+    private DateOnly? fBeklenen;
+    private List<SatinAlmaFormSatiri> satirlar = [];
+
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    /// <summary>UX-S30: Kaydet'in kilit sebebi (null = açık). Sunucu kurallarının aynası.</summary>
+    private string? FormKilidi =>
+        string.IsNullOrEmpty(fTedarikciId) ? M.TedarikciSecin
+        : satirlar.Count == 0 ? M.KalemGerekli
+        : satirlar.Any(r => string.IsNullOrEmpty(r.UrunId)) ? M.UrunSecin
+        : sayiKapisi.Sebep(Dil.Dil, "sa-form-") is { } s ? s
+        : satirlar.Any(r => r.Adet is not > 0m) ? M.AdetGerekli
+        : satirlar.Any(r => r.BirimFiyatTl is not >= 0m) ? M.FiyatGerekli
+        : null;
+
+    private void YeniAc()
+    {
+        if (!YazabilirMi) return;
+        formSiparisId = null; formSiparisDamga = null;
+        fTedarikciId = null; fTedarikciAdi = null;
+        fAciklama = null; fHesap = null; fBeklenen = null;
+        satirlar = [new SatinAlmaFormSatiri { Adet = 1m }];
+        sayiKapisi.Temizle();
+        formDenendi = false; formHata = null; basari = null; hata = null;
+        formAcik = true;
+    }
+
+    private void DuzenleAc()
+    {
+        if (detay is not { Duzenlenebilir: true } d) return;
+        formSiparisId = d.Id; formSiparisDamga = d.Guncellendi;
+        fTedarikciId = d.TedarikciCariId; fTedarikciAdi = d.TedarikciAdi;
+        fAciklama = d.Aciklama; fHesap = d.HesapKodu; fBeklenen = d.BeklenenTarih;
+        satirlar = d.Kalemler.OrderBy(k => k.Sira).Select(k => new SatinAlmaFormSatiri
+        {
+            UrunId = k.UrunId, UrunAdi = k.UrunAdi, Adet = k.Adet, BirimFiyatTl = k.BirimFiyatTl, Tanim = k.Tanim,
+        }).ToList();
+        sayiKapisi.Temizle();
+        formDenendi = false; formHata = null; hata = null; basari = null; detayHata = null;
+        detay = null;
+        formAcik = true;
+    }
+
+    private void FormKapat() { formAcik = false; formHata = null; }
+
+    private void TedarikciSecildi(string? v) { fTedarikciId = v; }
+    private void SatirEkle() { if (satirlar.Count < AzamiSatir) satirlar.Add(new SatinAlmaFormSatiri { Adet = 1m }); }
+    private void SatirSil(SatinAlmaFormSatiri r) { if (satirlar.Count > 1) satirlar.Remove(r); }
+
+    private static string? Bos(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private object KalemGovdesi() => satirlar.Select(r => new
+    {
+        urunId = r.UrunId, adet = r.Adet, birimFiyatTl = r.BirimFiyatTl, tanim = Bos(r.Tanim),
+    }).ToList();
+
+    private async Task FormKaydet()
+    {
+        formDenendi = true;
+        if (FormKilidi is not null || kaydediliyor) return;
+        kaydediliyor = true;
+        formHata = null;
+        try
+        {
+            SatinAlmaDetay sonuc;
+            if (formSiparisId is null)
+            {
+                sonuc = await Api.PostAsync<SatinAlmaDetay>("/satinalma", new
+                {
+                    tedarikciCariId = fTedarikciId,
+                    beklenenTarih = fBeklenen is { } b ? Bicim.Makine(b) : null,
+                    aciklama = Bos(fAciklama), hesapKodu = Bos(fHesap),
+                    kalemler = KalemGovdesi(),
+                });
+                basari = string.Format(M.Kaydedildi, sonuc.No);
+            }
+            else
+            {
+                // PATCH: gövdedeki alan yazılır, null olan SİLİNİR (açıklama/hesap/beklenen tarih);
+                // eşzamanlılık damgası "guncellendi" — başkası değiştirdiyse 409.
+                sonuc = await Api.PatchAsync<SatinAlmaDetay>($"/satinalma/{formSiparisId}", new
+                {
+                    guncellendi = formSiparisDamga,
+                    tedarikciCariId = fTedarikciId,
+                    beklenenTarih = fBeklenen is { } b ? Bicim.Makine(b) : null,
+                    aciklama = Bos(fAciklama), hesapKodu = Bos(fHesap),
+                    kalemler = KalemGovdesi(),
+                });
+                basari = string.Format(M.Guncellendi, sonuc.No);
+            }
+            formAcik = false;
+            detay = sonuc;          // UX-S27: sonuç aynı ekranda — kaydedilen sipariş açılır
+            kabulAdetleri.Clear();
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { formHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ═══ DETAY + ONAY + MAL KABUL + İPTAL ════════════════════════════════════
+    private SatinAlmaDetay? detay;
+    private string? detayHata;
+    private string iptalGerekce = "";
+    private bool iptalOnay;
+    private readonly Dictionary<string, decimal?> kabulAdetleri = [];
+
+    private GecersizAlanKapisi? _kabulKapisi;
+    private GecersizAlanKapisi kabulKapisi => _kabulKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    /// <summary>UX-S30: detay birincil düğmesinin kilit sebebi.</summary>
+    private string? DetayKilidi =>
+        detay is not { MalKabulEdilebilir: true } d ? null
+        : kabulKapisi.Sebep(Dil.Dil, "sa-kabul-") is { } s ? s
+        : d.Kalemler.FirstOrDefault(k => kabulAdetleri.GetValueOrDefault(k.Id) is { } a && a > k.KalanAdet) is { } asan
+            ? string.Format(M.KabulAsimi, asan.Sira + 1, Bicim.Miktar(asan.KalanAdet, asan.Birim))
+        : !d.Kalemler.Any(k => kabulAdetleri.GetValueOrDefault(k.Id) is > 0m) ? M.KabulAdetGerekli
+        : MasakKilidi;
+
+    private async Task DetayAc(string id)
+    {
+        hata = null; basari = null; detayHata = null;
+        iptalGerekce = ""; iptalOnay = false;
+        try
+        {
+            detay = await Api.GetAsync<SatinAlmaDetay>($"/satinalma/{id}");
+            KabulOnDoldur();
+            await MasakHazirla();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { hata = ex.Message; }
+    }
+
+    /// <summary>Gelen adet kutusu KALAN ile önceden dolar (en sık durum: kalanın tamamı geldi).</summary>
+    private void KabulOnDoldur()
+    {
+        kabulAdetleri.Clear();
+        kabulKapisi.Temizle();
+        if (detay is { MalKabulEdilebilir: true } d)
+            foreach (var k in d.Kalemler.Where(k => k.KalanAdet > 0m))
+                kabulAdetleri[k.Id] = k.KalanAdet;
+    }
+
+    /// <summary>İptal onayından vazgeçmek eski hata iletisini de temizler (kalan ileti kalmaz).</summary>
+    private void IptalVazgec() { iptalOnay = false; detayHata = null; }
+
+    private async Task AktifeAl()
+    {
+        if (detay is not { Durum: "IPTAL" } d || kaydediliyor || !YazabilirMi) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            detay = await Api.PostAsync<SatinAlmaDetay>($"/satinalma/{d.Id}/aktife-al");
+            basari = string.Format(M.AktifeAlindi, detay.No);
+            KabulOnDoldur();
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private void DetayKapat()
+    {
+        detay = null; detayHata = null; iptalOnay = false;
+        masak = new(); masakGereksinim = null; gereksinimTutari = -1m;   // kişisel veri formda kalmaz
+    }
+
+    private Task DetayBirincil() => detay?.Duzenlenebilir == true ? Onayla() : MalKabul();
+
+    private async Task Onayla()
+    {
+        if (detay is not { Duzenlenebilir: true } d || kaydediliyor || !YazabilirMi) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            detay = await Api.PostAsync<SatinAlmaDetay>($"/satinalma/{d.Id}/onayla");
+            KabulOnDoldur();
+            await MasakHazirla();
+            basari = string.Format(M.Onaylandi, detay.No);
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task MalKabul()
+    {
+        if (detay is not { MalKabulEdilebilir: true } d || DetayKilidi is not null || kaydediliyor || !YazabilirMi) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            // UX-S21: kur kaydı kullanıcıdan istenmez — sunucunun güncel kurundan.
+            var kurId = (await Api.GetAsync<KurOzet>("/kur/guncel")).Id;
+            if (string.IsNullOrEmpty(kurId)) { detayHata = M.KurYok; kaydediliyor = false; return; }
+
+            var kalemler = d.Kalemler
+                .Where(k => kabulAdetleri.GetValueOrDefault(k.Id) is > 0m)
+                .Select(k => new { kalemId = k.Id, adet = kabulAdetleri[k.Id] })
+                .ToList();
+            var sonuc = await Api.PostAsync<MalKabulSonucu>($"/satinalma/{d.Id}/mal-kabul",
+                new { kurSnapshotId = kurId, kalemler, masak = MasakGerekli ? masak : null });
+            // UX-S27: POST yanıtı okunur — irsaliye no + yeni durum banda yazılır.
+            basari = string.Format(M.MalKabulBitti, sonuc.IrsaliyeNo, DurumAdi(sonuc.YeniDurum));
+            detay = sonuc.Siparis;
+            KabulOnDoldur();
+            masak = new();               // kişisel veri formda kalmaz
+            await MasakHazirla();
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── TUR 3 — MASAK beyanı (hasım KRİTİK: eşik üstü mal kabul çıkmaz sokaktı) ─────────
+    // Banka/POS ile AYNI bileşen ve AYNI uçlar; yeni istemci tipi açılmaz (MasakFormu.MasakBilgi,
+    // Esikler, MasakGereksinim). Kural sunucuda: burası yalnız formu doğru anda açar.
+    private MasakFormu.MasakBilgi masak = new();
+    private Esikler? masakEsik;
+    private MasakGereksinim? masakGereksinim;
+    private decimal gereksinimTutari = -1m;
+    private bool masakSoruluyor;
+
+    /// <summary>Bu teslimatın tutarı: girilen adet × siparişteki birim fiyat (sunucunun alış tutarı ile aynı ölçü).</summary>
+    private decimal KabulTutariTl =>
+        detay is not { } d ? 0m
+        : d.Kalemler.Sum(k => kabulAdetleri.GetValueOrDefault(k.Id) is { } a && a > 0m
+            ? Math.Round(a * (k.BirimFiyatTl ?? 0m), 2, MidpointRounding.AwayFromZero) : 0m);
+
+    /// <summary>
+    /// Form açılır mı? Tedarikçi her zaman bellidir; bu yüzden tutar sıfırdan büyükse gereksinim
+    /// SUNUCUYA sorulur (tedarikçinin bugünkü bağlantılı işlemler toplamını yalnız sunucu bilir).
+    /// Sorgu sürerken ya da başarısızken form açık ve Teslim al KİLİTLİ kalır (fail-closed, UX-S28).
+    /// </summary>
+    private bool MasakGerekli =>
+        detay is { MalKabulEdilebilir: true } && KabulTutariTl > 0m
+        && (masakSoruluyor || masakGereksinim is null || masakGereksinim.KimlikGerekli);
+
+    /// <summary>UX-S30: MASAK kaynaklı kilidin sebebi.</summary>
+    private string? MasakKilidi =>
+        !MasakGerekli ? null
+        : masakGereksinim is null || masakEsik is null ? M.MasakKabulYukleniyor
+        : MasakFormu.Eksiksiz(masak, masakGereksinim) ? null
+        : MasakFormu.TcknKilitMetni(masak, Dil.Dil) is { } tckn ? tckn
+        : M.MasakKabulKilit;
+
+    private void MasakAlaniDegisti() { }
+
+    private async Task KabulAdetDegisti(string kalemId, decimal? v)
+    {
+        kabulAdetleri[kalemId] = v;
+        detayHata = null;   // eski ileti yeni girdiyle birlikte kalmaz
+        await MasakHazirla();
+    }
+
+    /// <summary>Eşikleri (bir kez) ve bu tutarın gereksinimini sunucudan çeker. Hata = kilit, "gerek yok" DEĞİL.</summary>
+    private async Task MasakHazirla()
+    {
+        if (detay is not { MalKabulEdilebilir: true } d || !YazabilirMi) { masakGereksinim = null; gereksinimTutari = -1m; return; }
+        var t = KabulTutariTl;
+        if (t <= 0m) { masakGereksinim = null; gereksinimTutari = -1m; return; }
+        if (t == gereksinimTutari && masakGereksinim is not null && masakEsik is not null) return;
+        masakGereksinim = null; gereksinimTutari = -1m; masakSoruluyor = true;
+        detayHata = null;
+        try
+        {
+            masakEsik ??= await Api.GetAsync<Esikler>("/masak/esikler");
+            masakGereksinim = await Uyum.Gereksinim(t, d.TedarikciCariId);
+            gereksinimTutari = t;
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException or System.Text.Json.JsonException)
+        {
+            // UX-S28: gereksinim yukarıda sorgudan ÖNCE düşürüldü; hata "gerek yok" sayılmaz —
+            // form açık, Teslim al KİLİTLİ (MasakKilidi) ve sebep bantta.
+            detayHata = ex.Message;
+        }
+        masakSoruluyor = false;
+    }
+
+    private async Task IptalEt()
+    {
+        if (detay is not { } d || kaydediliyor || !YazabilirMi) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            detay = await Api.PostAsync<SatinAlmaDetay>($"/satinalma/{d.Id}/iptal", new { gerekce = iptalGerekce.Trim() });
+            basari = string.Format(M.IptalEdildi, detay.No);
+            iptalOnay = false;
+            iptalGerekce = "";
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+}

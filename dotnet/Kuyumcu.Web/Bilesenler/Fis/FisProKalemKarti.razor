@@ -1,0 +1,86 @@
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET T-S2 — tuval Profesyonel.dc.html KALEM KARTI ═══════════════════════
+   Kenar 1 px · köşe 12 · beyaz yüzey; içinde geniş kalem tablosu (sayfanın
+   KalemParcasi — FisKalemTablosu + fiş iskontosu, id'ler AYNEN), boşlukta
+   esneyen alan ve alt toplam şeridi: Toplam has · İşçilik · KDV · Genel toplam.
+   • Has/işçilik ÜRÜN KARTINDAN ve SUNUCU TEKLİFİNDEN türetilir (UX-S21);
+     işçiliği bilinmeyen satır varsa toplam yalnız bilineni gösterir ve bunu yazar.
+   • KDV: özel matrah (KDVK 23/e — sunucu motorunda "DOGRULANMALI") istemcide
+     HESAPLANMAZ; hücre "Faturada" der ve sebebini title'da söyler (MEVZUAT KURALI).
+   • Boş fiş: tablo yerine boş durum metni; düzen bozulmaz (kart yine çizilir).
+   ⚠ Bileşen İSTEK ATMAZ (tek POST yolu Islemler.Kaydet). Sabit renk yok. *@
+<section class="kart fis-pro-kart" id="islem-pro-kalem-kart" aria-label="@P.SutunUrun">
+    @* PAKET SATIS-2 (d+e): tuvalin kalem kartı başlığında TEK giriş — "Ürün ara ya da barkod okut (F2)";
+       Enter satırı ekler (adet 1, fiyat sunucudan), adet/fiyat satır içinde (✎) düzenlenir.
+       Elle satırı (ürün/adet/fiyat/Ekle, id'ler AYNEN) "Elle ekle" altında katlı. *@
+    @if (Giris is not null)
+    {
+        <div class="fis-pro-giris" id="islem-pro-giris">@Giris</div>
+    }
+    @if (Kalemler.Count > 0)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <p class="metin-soluk fis-pro-bos" id="islem-pro-kalem-bos" role="status">@P.KalemBos</p>
+    }
+    <div class="fis-pro-esnek" aria-hidden="true"></div>
+    <div class="fis-pro-toplam" id="islem-pro-toplam">
+        <div>
+            <div class="fis-pro-toplam-etiket">@P.ToplamHas</div>
+            <div class="fis-pro-toplam-deger sayi" id="islem-pro-toplam-has">@(Has is { } has ? $"{FisHesap.HasSayi(has)} g" : "—")</div>
+        </div>
+        <div>
+            <div class="fis-pro-toplam-etiket">@P.Iscilik</div>
+            <div class="fis-pro-toplam-deger sayi" id="islem-pro-toplam-iscilik" title="@(Iscilik.Eksik ? P.IscilikBilinmiyor : null)">@(Iscilik.Eksik && Iscilik.Toplam == 0m ? "—" : Bicim.Tl(Iscilik.Toplam) + (Iscilik.Eksik ? " +" : ""))</div>
+        </div>
+        <div>
+            <div class="fis-pro-toplam-etiket">@P.Kdv</div>
+            <div class="fis-pro-toplam-deger" id="islem-pro-kdv" title="@P.KdvIpucu">@P.KdvFaturada</div>
+        </div>
+        <div class="fis-pro-toplam-genel">
+            <div class="fis-pro-toplam-etiket">@P.GenelToplam</div>
+            <div class="fis-pro-toplam-deger fis-pro-genel sayi" id="islem-pro-genel-toplam">@Bicim.Tl(Toplam)</div>
+        </div>
+    </div>
+</section>
+
+@code {
+    /// <summary>Fiş kalemleri — SAHİBİ Islemler.razor.</summary>
+    [Parameter, EditorRequired] public List<FisKalemi> Kalemler { get; set; } = [];
+    /// <summary>Ürün listesi — has gramı ürün kartından.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<UrunVeri> Urunler { get; set; } = [];
+    /// <summary>Fişin NET toplamı (FisHesap.Toplam) — sayfa hesaplar.</summary>
+    [Parameter] public decimal Toplam { get; set; }
+    /// <summary>PAKET SATIS-2 — kartın üst satırındaki tek giriş (sayfanın FisKalemGirisi'si); null = yok.</summary>
+    [Parameter] public RenderFragment? Giris { get; set; }
+    /// <summary>Kalem tablosu (sayfanın KalemParcasi) — yalnız kalem varken çizilir.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>PAKET T-S2b — fiş iskontosu (yüzde). Doluysa işçilik toplamı indirim öncesi kalır → "—".</summary>
+    [Parameter] public decimal? FisIskontoYuzde { get; set; }
+
+    private SatisProMetinleri P => SatisProSozlugu.Al(Dil.Dil);
+    private (decimal Toplam, bool Eksik) Iscilik => FisHesap.ToplamIscilik(Kalemler, FisIskontoYuzde);
+    private decimal? Has => FisHesap.ToplamHasBilinen(Kalemler, Urunler);
+
+    /// <summary>
+    /// Kalemin birim işçiliği: YALNIZ sunucu teklifi varsa ve kalem teklifin fiyatıyla
+    /// ekleniyorsa (elle yazılan fiyatta işçilik bilinmez → null; rakam uydurulmaz).
+    /// SABİT FİYATLI teklifte sunucu fiyatı ayrıştırmaz (hasDegeri/marj/işçilik 0 = "ayrıştırılmadı")
+    /// → işçilik BİLİNMİYOR (null, ekran "—"); 0 ₺ uydurulmaz (doğrulayıcı bulgusu, KRİTİK).
+    /// </summary>
+    /// <remarks>
+    /// PAKET T-S2b (doğrulayıcı bulgusu, KRİTİK): KAMPANYA İNDİRİMLİ teklifte sunucunun
+    /// <c>iscilikTl</c>'si İNDİRİM ÖNCESİ liste işçiliğidir (FiyatMotoru: indirim fiyatın
+    /// BÜTÜNÜNDEN düşer, parçalara dağıtılmaz). Satış fiyatı indirim SONRASI olduğundan
+    /// o rakamı bu satırın işçiliği diye basmak uydurmadır → indirim varsa null ("—").
+    /// </remarks>
+    public static decimal? TeklifIscilik(Teklif? teklif, decimal? birimFiyat) =>
+        teklif is { TeklifVar: true, SabitFiyat: false, IscilikTl: { } i, IndirimTutari: null or 0m } && teklif.SatisFiyati == birimFiyat ? i : null;
+}

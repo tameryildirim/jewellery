@@ -1,0 +1,66 @@
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-18 (B-9 · B-30) — VERİ TABLOSUNUN TEK SARMALAYICISI
+
+   NE YAPAR: bir veri tablosunu 375 px'te sayfayı taşırmayan, klavyeyle
+   kaydırılabilen ve sınırını EKRANDA SÖYLEYEN tek bir kutuya alır.
+
+   NEDEN BİLEŞEN: PLAN § 1 md.1 — "375 px mobil genişlik ekran ekran değil
+   şablon/bileşen/sayaç düzeyinde kapatılır". Sayfalar `<div class="tablo-sar">`
+   yazmayı bırakır; taşma hapsi, odak halkası, yapışkan ilk sütun ve ipucu
+   metni TEK yerden gelir. İkinci bir sarmalayıcı kalıbı AÇILMAZ
+   (denetim.sh · P-18: MOBIL_TABLO_SARMALAYICISIZ = 0).
+
+   ⚠ UX-S29 (sunucu sınırı ekranda söylenir): ipucu metni yalnız dar ekranda
+     görünür ve tablonun yatay kaydırılabildiğini yazar; sessiz kırpma yok.
+   ⚠ UX-S28: bu bileşen veri KARARI vermez — boş durum ve hata bandı
+     çağıran sayfanın sorumluluğudur; sarmalayıcı yalnız düzen kurar.
+   ⚠ Erişilebilirlik: kaydırılabilir bir bölge klavyeyle ulaşılabilir olmalıdır
+     (WCAG 2.1.1). `role="region"` + `tabindex="0"` + erişilebilir ad verilir.
+   ⚠ Mevcut element id'leri DEĞİŞMEZ; `Id` verilirse `<önek>-sar` türetilir.
+   ═══════════════════════════════════════════════════════════════════════ *@
+
+<div class="kart-liste @(YapiskanIlkSutun ? "kart-liste--yapiskan" : null) @Sinif">
+    <div class="tablo-sar" id="@SarId" role="region" tabindex="0" data-zo="@Zo"
+         aria-label="@ErisilebilirAd" aria-describedby="@IpucuId">
+        @ChildContent
+    </div>
+    <p class="kart-liste-ipucu" id="@IpucuId">@Dil.T.Kabuk.TabloKaydirIpucu</p>
+</div>
+
+@code {
+    /// <summary>Sarmalanan tablo (ve varsa toplam satırı).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Bölgenin erişilebilir adı. Boşsa sözlükten gelen genel ad kullanılır —
+    /// çıplak metin YOKTUR (UX-S31).
+    /// </summary>
+    [Parameter] public string? Baslik { get; set; }
+
+    /// <summary>Kimlik öneki. Verilirse `<önek>-sar` ve `<önek>-ipucu` türetilir.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>
+    /// B-30 — ilk sütun yatay kaydırmada donuk kalır (/yetkiler ROL sütunu).
+    /// Zemin rengi belirteçten gelir; karanlık tema kendiliğinden doğrudur.
+    /// </summary>
+    [Parameter] public bool YapiskanIlkSutun { get; set; }
+
+    /// <summary>Çağıranın ekleyebileceği ek sınıf (sabit renk taşıyamaz).</summary>
+    [Parameter] public string? Sinif { get; set; }
+
+    /// <summary>
+    /// PAKET GOC-A (en küçük geriye uyumlu ekleme): kaydırma kabının <c>data-zo</c> şerit işareti
+    /// ("golge" · "kalem") — zo-belge.css kart/gölge kuralları ortak ızgaraya geçen tablolarda da
+    /// AYNEN uygulansın diye. null (varsayılan) = öznitelik yazılmaz (eski davranış birebir).
+    /// </summary>
+    [Parameter] public string? Zo { get; set; }
+
+    private string? SarId => string.IsNullOrWhiteSpace(Id) ? null : $"{Id}-sar";
+    private string? IpucuId => string.IsNullOrWhiteSpace(Id) ? null : $"{Id}-ipucu";
+
+    private string ErisilebilirAd =>
+        string.IsNullOrWhiteSpace(Baslik) ? Dil.T.Kabuk.TabloBolgesi : Baslik!;
+}

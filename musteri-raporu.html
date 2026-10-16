@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><title>Kuyumcu ERP — Durum ve Yol Haritası</title>
+<style>
+@page { size: A4; margin: 18mm 16mm; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 10pt; line-height: 1.5; color: #1a1a1a; margin: 0; }
+h1 { font-size: 20pt; margin: 0 0 2mm; color: #7a5c1e; letter-spacing: -0.3px; }
+.alt { font-size: 10pt; color: #666; margin-bottom: 7mm; padding-bottom: 4mm; border-bottom: 2px solid #c9a227; }
+h2 { font-size: 12.5pt; margin: 6mm 0 2.5mm; color: #7a5c1e; border-bottom: 1px solid #e0d5b8; padding-bottom: 1.5mm; }
+h2:first-of-type { margin-top: 4mm; }
+h3 { font-size: 11pt; margin: 5mm 0 2mm; color: #333; }
+p { margin: 0 0 3mm; }
+table { width: 100%; border-collapse: collapse; margin: 3mm 0 5mm; font-size: 9.5pt; }
+th { background: #f5efe0; text-align: left; padding: 2mm 2.5mm; border: 1px solid #ddd2b8; font-weight: 600; }
+td { padding: 2mm 2.5mm; border: 1px solid #e4e4e4; vertical-align: top; }
+tr:nth-child(even) td { background: #fafafa; }
+.num { text-align: right; white-space: nowrap; }
+.ok { color: #1a7a3c; font-weight: 600; }
+.no { color: #a32020; font-weight: 600; }
+.wait { color: #9a6a00; font-weight: 600; }
+ul { margin: 0 0 3mm; padding-left: 5mm; }
+li { margin-bottom: 1.5mm; }
+.kutu { background: #fbf8f0; border-left: 3px solid #c9a227; padding: 3mm 4mm; margin: 4mm 0; }
+.kutu p:last-child { margin-bottom: 0; }
+.kucuk { font-size: 9pt; color: #666; }
+footer { margin-top: 8mm; padding-top: 3mm; border-top: 1px solid #ddd; font-size: 8.5pt; color: #777; }
+.brk { page-break-before: always; }
+.nobrk { page-break-inside: avoid; }
+</style></head><body>
+
+<h1>Kuyumcu ERP — Durum ve Yol Haritası</h1>
+<div class="alt">Hazırlayan: <strong>ByGatech A.Ş.</strong> &nbsp;·&nbsp; Tarih: 14 Eylül 2026 &nbsp;·&nbsp; Sürüm: <strong>3.0</strong> (güncellendi)</div>
+
+<h2>1. Özet</h2>
+<p>Tarafınızdan teslim alınan yazılım, çalışan ancak <strong>otomatik testi ve yasal uyum katmanı bulunmayan</strong> bir durumdaydı. Bugün itibarıyla <strong>591 otomatik test</strong> çalışıyor ve tamamı başarılı.</p>
+<p>Bu sürümde <strong>yol haritasındaki 5 maddenin 5'i de tamamlandı</strong>: uyum ekranları, 30.000 TL nakit belgeleme kontrolü, sentetik taş etiketleme, veri dışa aktarımı ve barkod/etiket basımı. Önceki raporda "sırada" görünen listede <strong>bize ait iş kalmadı</strong>; kalan maddelerin tamamı sizden gelecek bir sözleşme, teyit veya belgeye bağlı.</p>
+<p>Ayrıca daha önce "ölçülmedi" diye bıraktığımız son başlık olan <strong>yük davranışı ölçüldü</strong> ve yazılımın her kimlik alanı için koruma kapısı olup olmadığı tek tek denetlendi &mdash; bu denetimde <strong>üç gerçek açık bulundu ve kapatıldı</strong>.</p>
+
+<h2>2. Devraldığımız Hâl</h2>
+<table class="nobrk">
+<tr><th>Ölçüt</th><th class="num">Teslim aldığımızda</th><th class="num">Bugün</th></tr>
+<tr><td>Program kodu (satır)</td><td class="num">6.774</td><td class="num"><strong>20.586</strong></td></tr>
+<tr><td>Sistem işlev noktası</td><td class="num">78</td><td class="num"><strong>105</strong></td></tr>
+<tr><td>Modül</td><td class="num">15</td><td class="num"><strong>20</strong></td></tr>
+<tr><td>Veri tablosu</td><td class="num">16</td><td class="num"><strong>23</strong></td></tr>
+<tr><td>Otomatik test</td><td class="num no">0</td><td class="num ok">591 (tamamı başarılı)</td></tr>
+<tr><td>Veritabanı sürüm yönetimi</td><td class="num no">yok</td><td class="num ok">12 adım</td></tr>
+<tr><td>Yasal uyum katmanı</td><td class="num no">yok</td><td class="num ok">var</td></tr>
+<tr><td>Test kapsamı</td><td class="num no">ölçülemezdi</td><td class="num ok">%76,7</td></tr>
+<tr><td>Proje dokümantasyonu</td><td class="num no">yok</td><td class="num ok">34 belge, 13 diyagram</td></tr>
+<tr><td>Kullanıcı ekranı</td><td class="num">12</td><td class="num ok"><strong>19</strong></td></tr>
+</table>
+
+<div class="kutu">
+<p><strong>Önemli tespit.</strong> Teslim aldığımız kodda kanıtlanmış <strong>6 kritik hata</strong> vardı. En ciddisi, bir müşterinin kaydından başka bir müşterinin kasasına para yazılabilmesiydi &mdash; sistem bu işlemi hatasız kabul ediyordu. Bu ve diğer hatalar (çift kayıt, has altın hesabında işaret hatası) giderildi ve tekrarlamasını engelleyen testler yazıldı.</p>
+</div>
+
+<h2>3. Ne Yaptık</h2>
+
+<h3>3.1 Veri güvenliği ve müşteri ayrımı</h3>
+<ul>
+<li>Her kuyumcunun verisi artık sistem düzeyinde ayrılmış durumda. Bir programcı kod yazarken filtreyi unutsa dahi başka bir işletmenin verisi görünmüyor.</li>
+<li>Bu korumanın gerçekten çalıştığı <strong>korumayı bilerek devre dışı bırakarak</strong> sınandı: 13 testin 11'i anında hata verdi, koruma geri konunca tümü düzeldi.</li>
+<li>Müşteri kimlik numaraları veritabanında <strong>şifreli</strong> tutuluyor; diskte açık metin olarak bulunmadığı doğrulandı.</li>
+<li>Kim neyi ne zaman okudu/yazdı kaydı tutuluyor (KVKK gereği).</li>
+<li>Şifre deneme sınırı, güvenli bağlantı zorunluluğu ve erişim kısıtlaması eklendi.</li>
+<li><strong>Yeni:</strong> Tarayıcı güvenlik başlıkları ve içerik güvenlik politikası eklendi.</li>
+<li><strong>Yeni:</strong> Kimlik doğrulama (giriş, şifre, oturum yenileme, çalıntı oturum tespiti) baştan sona test edildi.</li>
+</ul>
+
+<h3>3.2 MASAK yükümlülükleri</h3>
+<ul>
+<li>185.000 TL ve üzeri işlemlerde <strong>kimlik tespiti olmadan işlem tamamlanamıyor</strong> &mdash; uyarı verip geçmiyor, işlemi durduruyor.</li>
+<li>Tutar kademelerine göre işlem amacı ve beyan formu zorunluluğu.</li>
+<li>Şüpheli işlem bildirimi için <strong>10 iş günü sayacı</strong> &mdash; hafta sonu ve resmî tatilleri atlayarak hesaplıyor.</li>
+<li>8 yıllık saklama yükümlülüğü: süre dolunca kayıt silinmiyor, yalnızca kimlik alanları maskeleniyor. Böylece hem denetim izi bozulmuyor hem kişisel veri gereğinden uzun tutulmuyor.</li>
+<li>Eşik tutarları ayar dosyasından okunuyor &mdash; mevzuat değişince <strong>program değiştirmeye gerek yok</strong>.</li>
+</ul>
+
+<h3>3.3 Vergi ve muhasebe</h3>
+<ul>
+<li><strong>Gider pusulası</strong> (VUK md.234): hurda alımında kimlik zorunlu, T.C. kimlik numarası doğrulaması, tutarın yazıyla yazılması, 7 günlük düzenleme süresi takibi.</li>
+<li><strong>Stopaj</strong> (GVK md.94): satıcı tipine göre kesinti hesaplanıyor ve kasadan net tutar çıkıyor.</li>
+<li><strong>Gün sonu POS &ndash; fatura mutabakatı</strong>: tahsilat ile kesilen fatura karşılaştırılıyor, fark ve faturasız işlemler listeleniyor.</li>
+</ul>
+
+<h3>3.4 Bu sürümde ölçülen ve düzeltilenler</h3>
+<p>Daha önce "ölçülmedi" diye bıraktığımız her alan ölçüldü:</p>
+<table class="nobrk">
+<tr><th>Ölçüm</th><th>Sonuç</th></tr>
+<tr><td>Test kapsamı</td><td><strong>%76,7</strong> (çekirdek hesap katmanı %100)</td></tr>
+<tr><td>Kod karmaşıklığı</td><td>Ortalama <strong>3,0</strong> — 409 fonksiyondan yalnız 8'i eşiğin üstünde</td></tr>
+<tr><td>Programın açılış boyutu</td><td><strong>2,42 MB</strong> <span class="kucuk">(önceki raporda 7,53 MB yazmıştık &mdash; o ölçüm yanlış yöntemle yapılmıştı, gerçek rakam çok daha iyi)</span></td></tr>
+<tr><td>Yedekten geri yükleme</td><td><strong>22 tablonun 22'si</strong> birebir doğrulandı</td></tr>
+<tr><td>Bağımlılık güvenliği</td><td><strong>0 güvenlik açığı</strong> (yeni eklenen arşiv bileşeni dâhil)</td></tr>
+<tr><td>Lisans uygunluğu</td><td><strong>0 kısıtlayıcı lisans</strong></td></tr>
+<tr><td>Yük altında sunucu hatası</td><td><strong>921 istekte 0</strong></td></tr>
+</table>
+
+<p>Bu ölçümler sırasında <strong>dört kusur bulundu ve dördü de kapatıldı</strong>:</p>
+<table class="nobrk">
+<tr><th style="width:34%">Kusur</th><th>Etkisi</th></tr>
+<tr><td><strong>Kullanıcı IP'si yanlış okunuyordu</strong></td><td>Sunucu önündeki yönlendirici nedeniyle tüm kullanıcılar aynı kişi gibi görünüyordu. Sonuç: bir kuyumcu kayıt olunca diğerleri saatlerce kayıt olamıyordu; erişim kayıtlarındaki IP bilgisi anlamsızdı.</td></tr>
+<tr><td><strong>MASAK kaydında doğrulama eksiği</strong></td><td>Bir işletme, başka bir işletmenin kimlik tespiti kaydını kendi bildirimine bağlayabiliyordu. Bu kayıtlar sonradan değiştirilemediği için düzeltilemezdi.</td></tr>
+<tr><td><strong>Giriş sistemi test edilmemişti</strong></td><td>Güvenliğin en kritik parçasının test kapsamı %6,7 idi. Şimdi %98.</td></tr>
+<tr><td><strong>Bir bileşende güvenlik açığı</strong></td><td>Test aracının getirdiği bir bileşende orta seviye açık vardı. Aynı gün bulundu, aynı gün kapatıldı.</td></tr>
+</table>
+
+<div class="kutu">
+<p><strong>Bir bulguyu size ayrıca bildirmek isteriz.</strong> Veri tutarlılığı taraması, geliştirme veritabanında <strong>2 satır</strong> bulunan bir kayıt buldu: bir işletmenin kaydı başka bir işletmenin kaydına bağlanmış durumda. İnceledik: bunlar <strong>bizim kendi güvenlik testimizin kalıntısı</strong> &mdash; 9 Eylül'de açığı kanıtlamak için oluşturduğumuz "Kurban Kasa" ve "Kurban Müşteri" kayıtları. Aynı tarama, tüm testler çalıştıktan sonra test veritabanında <strong>tertemiz</strong> sonuç veriyor; yani bugünkü yazılımda böyle bir açık yok. Kayıtları <strong>silmedik</strong> &mdash; güvenlik bulguları sessizce temizlenmez, raporlanır.</p>
+</div>
+
+<div class="kutu">
+<p><strong>Test hakkında dürüst bir not.</strong> Çalışma sırasında <strong>4 gerçek hata</strong> yakalandı ve dördü de yüzlerce başarılı otomatik testten geçmişti. Ancak gerçek veriyle canlı sunucuda çalışırken ortaya çıktılar &mdash; örneğin kasa defterinin yön bilgisini kaybetmesi ve stopajın kasadan düşülmemesi. Bu nedenle her adımı canlı ortamda gerçek veriyle ayrıca sınıyoruz. "Testler geçti" tek başına bizim için yeterli kanıt değil.</p>
+</div>
+
+
+
+<h3 class="brk">3.5 Bu sürümde tamamlananlar (yol haritasının 5 maddesi)</h3>
+
+<p><strong>1) Uyum ekranları.</strong> MASAK ve gider pusulası işlevleri çalışıyordu ama ekranı yoktu. Artık var: şüpheli işlem ekrandan bildirilebiliyor, kimlik tespitleri ve süre takibi listeleniyor, gider pusulası <strong>yazdırılabilir belge</strong> olarak çıkıyor.</p>
+
+<p><strong>2) 30.000 TL nakit belgeleme kontrolü.</strong> Aynı gün aynı müşteriye yapılan nakit ödemelerin toplamı sınırı aşarsa <strong>işlem duruyor</strong> &mdash; uyarı verip geçmiyor. Gün sınırı Türkiye saatine göre hesaplanıyor.</p>
+<div class="kutu">
+<p><strong>Bu konuda bir araştırma yaptık ve sonucu size aynen aktarıyoruz.</strong> "Vergi mükellefi olmayan vatandaştan hurda altın alımı bu kapsamda mı?" sorusunu birincil mevzuat kaynaklarından araştırdık. <strong>Cevap: evet, kapsamda.</strong> 18.10.2024 tarihli Resmî Gazete'de yayımlanan tebliğ ile mükellef olmayanlar (nihai tüketiciler dâhil) açıkça kapsama alındı. 30.000 TL üstü nakit hurda alımında ceza <strong>hem kuyumcuya hem vatandaşa ayrı ayrı</strong> kesiliyor ve ceza, işlem tutarının %10'undan az olmamak üzere asgari tutardan aşağı inmiyor &mdash; 31.000 TL'lik bir ödemede birinci sınıf tüccara <strong>35.000 TL</strong> ceza çıkabiliyor. Bu yüzden kapının "uyarı" değil "durdurucu" olmasında ısrar ettik.</p>
+<p class="kucuk">Ayrıca bir terminoloji düzeltmesi yaptık: yaygın olarak "VUK md. 459" denen düzenleme aslında bir <em>madde</em> değil, <strong>459 Sıra No'lu Genel Tebliğ</strong>dir. Belgelerimizde ve program içi uyarı metinlerinde bu düzeltildi.</p>
+</div>
+
+<p><strong>3) Sentetik taş etiketleme.</strong> 24.06.2026 tarihli Resmî Gazete ile zorunlu oldu. Ürün kartına <strong>taş kökeni</strong> alanı eklendi; taş ağırlığı girilmiş bir ürün kökeni belirtilmeden <strong>kaydedilemiyor ve satılamıyor</strong>. "Sentetik / laboratuvar üretimi / yapay üretim" ibaresi etikete, ürün listesine ve etiket çıktısına otomatik basılıyor. Doğal ve yapay taşlar <strong>ayrı kategoride</strong> listeleniyor.</p>
+
+<p><strong>4) Veri dışa aktarımı.</strong> Sektörün en sık şikâyeti verinin programda kilitli kalmasıydı. Artık altı veri kümesi (cari, ürün, satış, fatura, kasa, gider pusulası) standart <strong>CSV</strong> olarak indirilebiliyor &mdash; Excel doğrudan açıyor, başka bir programa taşımak için bizden izin gerekmiyor.</p>
+<div class="kutu">
+<p><strong>Ama denetimsiz değil.</strong> Dışa aktarım aynı zamanda bir sızdırma yüzeyidir. Bu yüzden: yalnız işletme sahibi yapabiliyor, <strong>gerekçe yazmak zorunlu</strong> (ve gerekçe denetim kaydına siliniemez şekilde işleniyor), kimlik bilgileri <strong>varsayılan olarak maskeli</strong> çıkıyor, maskesiz çıktı için ayrı bir onay metninin birebir yazılması gerekiyor, dosya <strong>AES-256 ile şifreli</strong> arşiv olarak iniyor ve parolası dosyayla aynı kanaldan verilmiyor. İndirme bağlantısı <strong>10 dakika ömürlü ve tek kullanımlık</strong>.</p>
+</div>
+
+<p><strong>5) Barkod / etiket basımı.</strong> Her ürüne otomatik barkod üretiliyor; 50×30 mm etiketler A4'e dört sütun hâlinde basılıyor. Etiket, ürün adı ve ağırlık bilgisinin yanında <strong>sentetik taş ibaresini de taşıyor</strong> &mdash; yani iki yasal yük tek kâğıtta karşılanıyor.</p>
+<div class="kutu">
+<p><strong>Barkod konusunda bilerek yapmadığımız bir şey var.</strong> Marketlerde gördüğünüz EAN-13 barkodu, GS1 adlı kuruluştan alınan bir <strong>firma öneki</strong> gerektirir. Bizde böyle bir önek yok. Rastgele bir önekle numara üretmek, fiilen <strong>başka bir firmanın numara alanına yazmak</strong> olurdu. Bunun yerine kayıt gerektirmeyen <strong>Code 128</strong> standardını kullandık; her el terminali okur. GS1 üyeliği alırsanız EAN-13 sonradan eklenebilir.</p>
+<p>Barkodun gerçekten okunabildiğini <strong>varsaymadık</strong>: ekrandaki çizimi geri okuyup bağımsız bir çözücüye verdik; çözülen metin ve sağlama değeri birebir tuttu.</p>
+</div>
+
+<h3>3.6 Son ölçülmemiş başlık: yük davranışı</h3>
+<p>Daha önce "ölçülmedi" diye bıraktığımız tek başlık kalmıştı. Ölçüldü: 10 eşzamanlı kullanıcı, gerçek satış akışı dâhil.</p>
+<table class="nobrk">
+<tr><th>Ölçüm</th><th class="num">Sonuç</th></tr>
+<tr><td>Ekran açılış / liste yanıtı (%95'lik dilim)</td><td class="num ok"><strong>25 ms</strong></td></tr>
+<tr><td>Satış kaydı (%95'lik dilim)</td><td class="num ok"><strong>32 ms</strong></td></tr>
+<tr><td>Sunucu hatası</td><td class="num ok"><strong>921 istekte 0</strong></td></tr>
+</table>
+<p class="kucuk">Bu rakamlar bir geliştirme dizüstü bilgisayarında ölçülmüştür; üretim kapasitesi iddia edilmemektedir. Ölçümün amacı hız rekoru değil, yük altında <strong>hata üretilmediğini</strong> göstermektir. Testte güvenlik sınırları gevşetilmedi &mdash; gevşetip daha büyük bir rakam yazmak, gerçekte olmayan bir sayı üretmek olurdu.</p>
+
+<h3>3.7 Kimlik alanı denetimi &mdash; üç açık bulundu</h3>
+<p>Güvenlik sorumlumuzun talebiyle, veritabanındaki <strong>36 bağlantı alanının tamamı</strong> tek tek denetlendi: "Bu alan dışarıdan gelebiliyorsa, yazılmadan önce kontrol ediliyor mu?" Üç yerde kontrol <strong>yoktu</strong>:</p>
+<table class="nobrk">
+<tr><th style="width:32%">Bulgu</th><th>Etkisi</th></tr>
+<tr><td><strong>Kasa açarken şube kontrolü yok</strong></td><td>Var olmayan ya da başka bir işletmeye ait bir şube kimliğiyle kasa açılabiliyordu.</td></tr>
+<tr><td><strong>Kullanıcıya şube atarken kontrol yok</strong></td><td>Daha ağırı. Atanan şube bilgisi kullanıcının oturum anahtarına giriyor ve sonra <strong>satış kayıtlarına</strong> yazılıyordu; yani yabancı bir şube kimliği defterlere sızabiliyordu.</td></tr>
+<tr><td><strong>Fatura okumasında ikinci koruma eksik</strong></td><td>Genel koruma çalışıyordu, ama kuralımız "tek katman bırakma" der. İkinci koruma eklendi.</td></tr>
+</table>
+<p>Üçü de kapatıldı ve <strong>korumaları bilerek kaldırıp</strong> testlerin kırmızıya döndüğü doğrulandı.</p>
+
+<h2>4. Proje Dokümantasyonu</h2>
+<p>Projenin uluslararası standartlara dayalı tam belge seti hazırlandı &mdash; <strong>34 belge, 13 diyagram</strong>. Herhangi bir firma teknik inceleme yaptığında görmek isteyeceği her başlık mevcut.</p>
+
+<table class="nobrk">
+<tr><th style="width:30%">Belge grubu</th><th style="width:34%">Dayandığı standart</th><th>İçerik</th></tr>
+<tr><td>Gereksinimler</td><td>ISO/IEC/IEEE 29148:2018</td><td>Yazılım ve paydaş gereksinimleri, mevzuat izlenebilirliği</td></tr>
+<tr><td>Mimari</td><td>ISO/IEC/IEEE 42010:2022 · arc42 · C4</td><td>Mimari tanımı + <strong>15 karar kaydı</strong> (her kararın gerekçesi ve bedeli)</td></tr>
+<tr><td>Kalite</td><td>ISO/IEC 25010:<strong>2023</strong></td><td>9 kalite başlığı, 54 ölçülebilir hedef</td></tr>
+<tr><td>Test</td><td>ISO/IEC/IEEE 29119-3:2021</td><td>Test politikası, planı ve tamamlama raporu</td></tr>
+<tr><td>Güvenlik</td><td>OWASP ASVS 5.0.0 · ISO/IEC 27002:2022</td><td>17 başlıkta uygunluk matrisi + tehdit modeli</td></tr>
+<tr><td>Süreç</td><td>ISO/IEC/IEEE 12207:2017</td><td>Yaşam döngüsü + <strong>işletme kılavuzu (runbook)</strong></td></tr>
+<tr><td>Proje yönetimi</td><td>PMBOK 8. baskı</td><td>Proje planı ve risk kaydı</td></tr>
+<tr><td>Değerlendirme</td><td>&mdash;</td><td>Teknik öz-değerlendirme + teknik borç envanteri</td></tr>
+</table>
+
+<p><strong>Diyagramlar:</strong> veri modeli (genel + 4 konu alanı), sistem mimarisi (3 seviye), kullanım senaryoları, işlem akışı ve hurda alımı akışı.</p>
+
+<div class="kutu">
+<p><strong>İki nokta önemli.</strong> Birincisi: veri modeli diyagramları <strong>elle çizilmedi</strong>, veritabanından otomatik üretiliyor &mdash; böylece şema değiştiğinde diyagram yalana dönüşmez. İkincisi: belge setinde <strong>artık geçerli olmayan standartlar bilinçli olarak kullanılmadı</strong>. İnternetteki hazır şablonların çoğu hâlâ geri çekilmiş standartlara dayanıyor; bunu bilen bir inceleyici için bu, güven artıran değil azaltan bir ayrıntıdır.</p>
+</div>
+
+<h2 class="brk">5. Sırada Ne Var</h2>
+<p>Önceki raporda sıralanan <strong>5 maddenin 5'i de tamamlandı.</strong></p>
+<table class="nobrk">
+<tr><th style="width:8%">#</th><th style="width:34%">İş</th><th>Durum</th></tr>
+<tr><td class="ok">0 ✓</td><td>Test altyapısı ve denetim kaydının korunması</td><td class="kucuk ok">TAMAMLANDI</td></tr>
+<tr><td class="ok">1 ✓</td><td>Uyum ekranlarının yapılması</td><td class="kucuk ok">TAMAMLANDI &mdash; MASAK ekranı, gider pusulası listesi ve yazdırılabilir belge</td></tr>
+<tr><td class="ok">2 ✓</td><td>30.000 TL nakit belgeleme kontrolü</td><td class="kucuk ok">TAMAMLANDI &mdash; aynı gün birikimli, işlemi durduruyor</td></tr>
+<tr><td class="ok">3 ✓</td><td>Sentetik taş etiketleme</td><td class="kucuk ok">TAMAMLANDI &mdash; zorunlu köken alanı, etiket ibaresi, ayrı kategori</td></tr>
+<tr><td class="ok">4 ✓</td><td>Veri dışa aktarımı</td><td class="kucuk ok">TAMAMLANDI &mdash; şifreli arşiv, tek kullanımlık bağlantı, denetim kaydı</td></tr>
+<tr><td class="ok">5 ✓</td><td>Barkod / etiket basımı</td><td class="kucuk ok">TAMAMLANDI &mdash; otomatik barkod, A4 etiket sayfası</td></tr>
+</table>
+
+<h3>Bizim tarafımızda kalan tek iş</h3>
+<table class="nobrk">
+<tr><th style="width:34%">İş</th><th>Neden henüz yapılmadı</th></tr>
+<tr><td><strong>Veritabanı bağlantı kısıtlarının kurulması</strong></td><td>Tablolar arası bağlantıların veritabanı düzeyinde de zorlanması. Hazırlığı bitti: bağlantı taraması <strong>0 kopuk kayıt</strong> veriyor ve kimlik alanı denetimi tamamlandı. Tek engel aşağıdaki veri kararı.</td></tr>
+<tr><td class="wait"><strong>Bekleyen karar:</strong> güvenlik testi kalıntısı 2 satır</td><td class="kucuk">Geliştirme veritabanındaki "Kurban Kasa / Kurban Müşteri" kayıtları (kendi sızma testimizin artığı). Bunlar durdukça kısıt kurulamaz. <strong>Silinmesini onaylamanızı bekliyoruz</strong> &mdash; güvenlik bulgusunu kendi başımıza silmeyiz.</td></tr>
+</table>
+
+<h3>Kapsam dışı bırakılanlar</h3>
+<p>Yasal zorunluluk olmadığı için bu aşamada bilinçli olarak yapılmadı: RFID, toptan satış modülü, imalat/atölye, tamirat takibi, personel ve prim yönetimi, masraf yönetimi, sertifika/katalog, mobil uygulama, e-ticaret entegrasyonu, iki adımlı doğrulama (MFA).</p>
+
+<h2>6. Neleri Yapamıyoruz &mdash; ve Neden</h2>
+<p>Aşağıdaki maddeler <strong>yazılım eksikliğinden değil</strong>, dış bağımlılıklardan kaynaklanıyor. Tahmine dayalı çözüm üretmeyi tercih etmiyoruz.</p>
+<table class="nobrk">
+<tr><th style="width:30%">Yapılamayan</th><th>Sebep</th><th style="width:22%">Çözümü</th></tr>
+<tr><td><strong>e-Fatura / e-Arşiv</strong></td><td>Özel entegratör firmayla sözleşme gerekiyor. Sözleşme olmadan entegratörün test ortamına gerçek fatura gönderilemez; taklit (sahte) bir bağlantı yazıp "yapıldı" demeyiz.</td><td class="wait">Entegratör sözleşmesi</td></tr>
+<tr><td><strong>MASAK'a gerçek bildirim gönderimi</strong></td><td>MASAK'ın yazılımlar için bir bağlantı arayüzü (API) ve test sunucusu <strong>bulunmuyor</strong>. Bildirim yalnızca MASAK Online sistemine XML dosyası yüklenerek yapılıyor ve bu dosyanın şema tanımı kamuya açık değil. Sistem, bildirimi hazırlıyor ve süresini takip ediyor; gönderim adımı elle yapılıyor.</td><td class="wait">MASAK'tan şema; işletme kaydı</td></tr>
+<tr><td><strong>Stopaj oranlarının vergi borcuna işlenmesi</strong></td><td>Oran doğrudan para hareketini etkiliyor. Mali müşavir teyidi olmadan rakam varsayamayız.</td><td class="wait">Mali müşavir teyidi</td></tr>
+<tr><td><strong>Fatura / e-fatura haddi</strong></td><td>Araştırmada dört farklı ve birbiriyle çelişen rakama ulaşıldı. Hangisinin geçerli olduğu teyit edilmeden kodlanmadı; eşik ayar dosyasından okunacak şekilde hazırlandı.</td><td class="wait">Mali müşavir teyidi</td></tr>
+<tr><td><strong>KVKK aydınlatma metni</strong></td><td>Hukuki metin. Sistem tarafı hazır, metnin kendisi hukuk danışmanınızdan gelmeli.</td><td class="wait">Hukuk danışmanı</td></tr>
+<tr><td><strong>KMTS biçim kontrolü</strong></td><td>Kayıt alanı eklendi, ancak biçim şeması yayımlanmadığı için doğrulama yazılmadı. <span class="kucuk">Not: Yaptığımız incelemede KMTS'nin perakende kuyumcuya doğrudan yükümlülük getirmediği, kapsamın rafinerilere yönelik olduğu görüldü.</span></td><td class="wait">Şema yayını</td></tr>
+</table>
+
+<h2>7. Sizden Beklediklerimiz</h2>
+<table class="nobrk">
+<tr><th style="width:8%">#</th><th style="width:38%">Konu</th><th>Neyi açar</th></tr>
+<tr><td>1</td><td>e-Fatura özel entegratör sözleşmesi</td><td>e-Fatura / e-Arşiv adımının tamamı</td></tr>
+<tr><td>2</td><td>Mali müşavir teyidi: fatura haddi ve hurda stopaj oranı</td><td>Vergi hesaplarının kesinleşmesi</td></tr>
+<tr><td>3</td><td>Pilot işletme erişimi</td><td>Gerçek veriyle kabul testleri</td></tr>
+<tr><td>4</td><td>Pilot işletmenin MASAK Online kaydı</td><td>Gerçek bildirim gönderimi</td></tr>
+<tr><td>5</td><td>KVKK aydınlatma metni (hukuk danışmanı)</td><td>Yasal metnin sisteme girilmesi</td></tr>
+<tr><td>6</td><td><strong>Şifre ve anahtarların yenilenmesi</strong></td><td class="kucuk">Teslim aldığımız kodda veritabanı şifresi ve güvenlik anahtarları sürüm geçmişine kaydedilmiş durumda. Dosyayı düzeltmek yetmiyor; geçmiş kayıt bu bilgileri saklamaya devam ediyor. Bu, geçmişi yeniden yazan bir işlem olduğu için sizin kararınıza bırakıldı.</td></tr>
+<tr><td>7</td><td><strong>Güvenlik testi kalıntısı 2 satırın silinmesi onayı</strong></td><td class="kucuk">Geliştirme veritabanındaki kendi sızma testimizin artığı. Silinmeden veritabanı bağlantı kısıtları kurulamıyor. Güvenlik bulgusunu kendi başımıza silmeyiz &mdash; onayınızı bekliyoruz.</td></tr>
+<tr><td>8</td><td>Yazılımın mülkiyet/devir belgesi</td><td class="kucuk">Kod sahipliğini gösteren bir belge bulunmuyor. Bu, her ciddi görüşmede sorulan ilk başlıklardandır.</td></tr>
+</table>
+
+<h2>8. Değerlendirme</h2>
+<p><strong>Bizim yapabileceğimiz işler bitti.</strong> Teslim aldığımız yazılımda hiç otomatik test yoktu ve kanıtlanmış 6 kritik hata bulunuyordu. Bugün <strong>591 test</strong>, otomatik kod denetimi, iki katmanlı veri güvenliği, ölçülmüş yük davranışı ve standartlara dayalı <strong>34 parçalık belge seti</strong> mevcut.</p>
+<p>Yol haritasındaki <strong>5 maddenin 5'i de tamamlandı</strong>. Bizim tarafımızda kalan tek teknik iş, sizin bir onayınıza bağlı (güvenlik testi kalıntısının silinmesi). Geriye kalan her şey &mdash; e-Fatura, MASAK bildirim gönderimi, vergi oranlarının teyidi, hukuki metinler &mdash; <strong>dış bağımlılıktır ve tahminle kapatılmaz</strong>.</p>
+<p>Ürün, tek dükkân ve 2&ndash;3 şubeli perakende kuyumcu için <strong>pilot kullanıma sunulabilir</strong> durumdadır. Rakiplerle tam kıyaslanabilir olgunluk için eksik olan yasal katman değil, kapsam dışı bırakılan ticari modüllerdir (toptan, imalat, mobil).</p>
+<div class="kutu">
+<p><strong>Kendi çalışmamız hakkında dürüst bir not.</strong> Bu sürümde bulduğumuz hataların bir kısmı <strong>yüzlerce başarılı testten geçmişti</strong>. Örneğin barkod, ekranda hiç çizilmiyordu: sayı biçimlendirmesi Türkçe virgül kullandığı için tarayıcı çizimi okuyamıyordu &mdash; ama testler İngilizce biçimde koştuğu için <strong>yeşildi</strong>. Bir diğeri: yasal ibare etikete "SENTETIK" diye basılıyordu, doğrusu "SENTETİK". Bu yüzden her adımı canlı ortamda gerçek veriyle ayrıca sınıyoruz ve raporlarımızda "testler geçti" ifadesini tek başına kanıt saymıyoruz.</p>
+</div>
+
+<footer>
+ByGatech A.Ş. &nbsp;·&nbsp; Kuyumcu ERP Projesi &nbsp;·&nbsp; 14 Eylül 2026<br>
+Bu rapordaki tüm sayısal veriler proje kodu üzerinde ölçülerek elde edilmiştir; tahmine dayalı rakam içermez.
+</footer>
+</body></html>

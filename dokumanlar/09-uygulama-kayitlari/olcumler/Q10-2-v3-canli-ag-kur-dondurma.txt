@@ -1,0 +1,7 @@
+Q10-2 tur 3 — canli ag olcumu (API 5174, vekil 5173, tarayici bolmesi tab-52, window.fetch kaydi)
+Kaydet aninda: fiyat alani 6749,47 · ozet "Birim fiyat: 6.749,47 ₺ · Tutar: 674,95 ₺ · Tahsil edilen: 674,95 ₺ (Nakit)"
+Pencere acikken: test kiracisina POST /kur/manuel altinHasFiyati=7000 (201) → ust bar HAS 7.000 ₺, fiyat alani 7000, #hrd-tutar "Tutar: 700 ₺"; ozet DEGISMEDI (ozet_ayni=true)
+Onayla (2026-09-24T21:25:58.626Z) → tek POST /api/v1/islemler/hurda-satis govdesi:
+{"maden":"ALTIN","hasGrami":0.1,"birimFiyatTlHasGram":6749.4700,"aliciKabulHasGrami":null,"tahlilFarkiGerekcesi":null,"cariId":null,"kasaId":"01M3AMNKZ8CWVGYQ6CK7FTTH5K","odemeTuru":"NAKIT","tahsilEdilenTl":674.95,"kurSnapshotId":"01M3AMPECAXYWFCMKEMTPPBR5D"}
+Bant: "Hurda satışı kaydedildi: Altın 0,100 g · 674,95 ₺ · Kalan hurda: 9,06458 g"
+SQL: bkz. Q10-2-v3-sql-kur-dondurma.txt (HURDA_SATIS -0.100000 674.95, kur 6749.47 @21:21:12; onaydan once 10 adet 7000 kuru vardi)

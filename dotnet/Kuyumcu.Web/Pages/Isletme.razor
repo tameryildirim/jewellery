@@ -1,0 +1,1223 @@
+@page "/isletme"
+@using Kuyumcu.Contracts.Sayfalar.Isletme
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject ArayuzModuServisi Modu
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   İŞLETME VE ŞUBELER
+
+   TESPİT (2026-09-14): tenant bilgisi, plan değişikliği, AI anahtarı ve
+   şubenin düzenle/detay/pasife al uçları sunucuda VARDI, ekranı YOKTU.
+   Şube yalnız kayıt sırasında açılıyor, sonradan adı bile düzeltilemiyordu.
+
+   Tüm uçlar sunucuda SAHIP rolüne kapalıdır; buradaki gizleme kolaylıktır,
+   güvenlik kapısı değildir — son sözü sunucu söyler.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Isletme.Baslik)</PageTitle>
+
+<div class="dikey-bosluk">
+    @* UX-1-C4 · K7 — tek başlık kabuğu + ekran başına TEK birincil eylem. *@
+    <SayfaBasi Anahtar="isletme" Baslik="@Dil.T.Isletme.Baslik" Aciklama="@Dil.T.Yonetim.IsletmeSayfaAciklama">
+        <Eylem>
+            <button class="btn btn-birincil" id="i-kimlik-duzenle" disabled="@(tenant is null || SaltOkunur)" @onclick="KimlikAc">
+                <Ikon Ad="@Ikonlar.Kalem" /> @Dil.T.Yonetim.KimlikDuzenle
+            </button>
+            @if (tenant is null)
+            {
+                @* KESIF-P1 (#72): okuma BAŞARISIZSA "Yükleniyor" yazılmaz (sonsuz bekleme
+                   yalanı); kilit sebebi sunucunun hatasıdır. *@
+                <span class="metin-soluk metin-kucuk" id="i-kimlik-duzenle-kilit">
+                    @Dil.T.Yonetim.KilitSebebi: @(tenantHata ?? Dil.T.Ortak.Yukleniyor)
+                </span>
+            }
+            else if (SaltOkunur)
+            {
+                @* UX-S30: kilitli düğme SEBEBİNİ söyler. *@
+                <span class="metin-soluk metin-kucuk" id="i-yazma-kilidi">
+                    @Dil.T.Yonetim.KilitSebebi: @Dil.T.Isletme.YazmaKapaliKilidi
+                </span>
+            }
+        </Eylem>
+    </SayfaBasi>
+    @* ORTAK-1 hakem turu 29.09 (KRİTİK): BASİT'te üst bar + SayfaBasi açıklamasının altında ikinci
+       büyük başlık ve ikinci açıklama vardı (üç başlık, iki açıklama). BASİT'te çizilmez; PRO aynen. *@
+    @if (!Dil.BasitMi)
+    {
+        <div class="sayfa-baslik">
+            <h1>@Dil.T.Isletme.Baslik</h1>
+            <p class="metin-soluk" id="isletme-aciklama">@P1.IsletmeAciklama</p>
+        </div>
+    }
+
+    <BasariBandi Mesaj="@basariMesaj" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @* ── Deneme / salt-okunur bandı (paket F-2-min Faz A) ──
+       Sunucu SON SÖZÜ söyler: saltOkunurMu ve kalanGun GET /admin/tenant'tan
+       gelir, ekran hesaplamaz (UX-S21). AKTIF kiracıda band hiç çizilmez. *@
+    @if (tenant is not null && tenant.Durum != "AKTIF")
+    {
+        <div class="kart" id="i-durum-bandi">
+            <div class="kart-govde">
+                <div class="satir-arasi">
+                    <span class="metin-soluk">@Dil.T.Isletme.DurumBasligi</span>
+                    <span id="i-durum-rozeti">
+                        <Rozet Renk="@(tenant.SaltOkunurMu ? "kirmizi" : "amber")">
+                            @(tenant.Durum == "SALT_OKUNUR"
+                                ? Dil.T.Isletme.DurumSaltOkunur
+                                : Dil.T.Isletme.DurumDeneme)
+                        </Rozet>
+                    </span>
+                </div>
+                @if (tenant.Durum == "DENEME" && tenant.KalanGun is int gun && gun > 0)
+                {
+                    <p id="i-kalan-gun"><strong>@gun</strong> @Dil.T.Isletme.KalanGun</p>
+                }
+                @if (tenant.SaltOkunurMu)
+                {
+                    <p id="i-deneme-bitti">
+                        @(tenant.Durum == "DENEME" ? Dil.T.Isletme.DenemeBitti : "")
+                        @Dil.T.Isletme.SaltOkunurUyari
+                    </p>
+                }
+                <p class="metin-soluk metin-kucuk">@Dil.T.Isletme.SureUzatmaNotu</p>
+                @* KVKK md.11-12 · VUK 253/256: veri REHİN ALINMAZ — dışa aktarım
+                   salt-okunur kiracıda da açıktır ve bandın içinden erişilir. *@
+                <a class="btn btn-ikincil btn-kucuk" id="i-disa-aktarim-bag" href="/veri-disa-aktarim">
+                    <Ikon Ad="@Ikonlar.VeriDisaAktarim" /> @Dil.T.Isletme.VerileriDisaAktar
+                </a>
+            </div>
+        </div>
+    }
+
+    @* ── PAKET S1-i — SEKMELER (kurucu 24.09: "tren gibi aşağıya doğru gidiyor").
+       Tek büyük "İşletme bilgisi" kartı ile şubeler dört sekmeye ayrıldı: kimlik ·
+       abonelik · ayarlar · şubeler. Hiçbir alan silinmedi, id'ler aynı. Kiracı
+       yüklenemezse hata bandı sekmelerin ÜSTÜNDE tek yerde durur (UX-S28). *@
+    @if (tenantHata is not null)
+    {
+        <div class="kart"><div class="kart-govde"><HataBandi Mesaj="@tenantHata" /></div></div>
+    }
+    else if (tenant is null)
+    {
+        <Yukleniyor />
+    }
+    <Sekmeler Onek="isl" Liste="@IsSekmeleri" Etiket="@GS.IsSerit">
+        <Panel Context="isKod">
+            @if (isKod == GorselSigmaSozlugu.IsSubeler)
+            {
+            @* ── Şubeler ── *@
+            <div class="kart">
+                <div class="kart-baslik satir-arasi">
+                    <h2>@Dil.T.Isletme.Subeler</h2>
+                    @* Ekran başına TEK birincil eylem (kimlik düzenle, sayfa başında): "+ Yeni Şube" ikincil. *@
+                    <button class="btn btn-ikincil btn-kucuk" id="s-yeni-sube-ac" disabled="@SaltOkunur"
+                            title="@(SaltOkunur ? Dil.T.Isletme.YazmaKapaliKilidi : null)"
+                            @onclick="() => SubeModalAc(null)">
+                        + @Dil.T.Isletme.YeniSube
+                    </button>
+                </div>
+                <div class="kart-govde">
+                    @if (subeYukleniyor)
+                    {
+                        <Yukleniyor />
+                    }
+                    else if (subeHata is not null)
+                    {
+                        <HataBandi Mesaj="@subeHata" />
+                    }
+                    else if (subeler.Count == 0)
+                    {
+                        <BosDurum Mesaj="@Dil.T.Isletme.SubeYok" />
+                    }
+                    else
+                    {
+                        @* PAKET GOC-D — ortak ızgara (grid:isletme:sube-liste): sütun sırası, göster/gizle, sıralama,
+                           kullanıcıya+ekrana kalıcı, varsayılana dön. Kart kabı kimliği (isletme-sube-liste) ve satır
+                           eylemleri (s-pasife-*, s-aktife-*) AYNEN. Şube listesi TAMDIR → yerel sıralama. *@
+                        <Izgara T="SubeVeri" Ekran="isletme" GridId="sube-liste" KartListeId="isletme-sube-liste"
+                                Kolonlar="@SubeKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(subeler, subeSira, SubeKolonlari)"
+                                Baslik="@Dil.T.Isletme.Subeler"
+                                SiralamaDegisti="@(x => subeSira = x)" GecerliSiralama="@subeSira" />
+                        @if (AktifSubeSayisi <= 1)
+                        {
+                            <p class="metin-soluk metin-kucuk" id="s-son-sube-notu">@SonSubeMetni</p>
+                        }
+                        @* PAKET S-3b: aktifleştirme yolu AÇILDI (PATCH /subeler/{id} aktif=true),
+                           bu yüzden buradaki "değişmez" ipucu KALDIRILDI — satırın kendisinde
+                           gerçek düğme var (UX-S25: "sunucuda uç var, ekranda düğme yok" biter). *@
+                    }
+                </div>
+            </div>
+            }
+            else if (tenant is not null)
+            {
+                <div class="kart">
+                    @if (isKod == GorselSigmaSozlugu.IsKimlik)
+                    {
+                        <div class="kart-baslik"><h2>@Dil.T.Isletme.IsletmeBilgisi</h2></div>
+                    }
+                    <div class="kart-govde">
+                        @if (isKod == GorselSigmaSozlugu.IsKimlik)
+                        {
+                            @* Kurul tur 2 KRİTİK + QA turu 1/2: işletme adı SALT METİNDİ, düzenleme
+                               yolu yoktu. UX-1-B'nin açtığı PATCH /admin/tenant/kimlik ucuna bağlandı. *@
+                            <dl class="form-dikey kimlik-listesi">
+                                <div class="satir-arasi">
+                                    <dt class="metin-soluk">@Dil.T.Isletme.IsletmeAdi</dt>
+                                    <dd class="hucre-vurgu" id="ikimlik-ad-goster">@tenant.Ad</dd>
+                                </div>
+                                <div class="satir-arasi">
+                                    <dt class="metin-soluk">@Dil.T.Yonetim.Adres</dt>
+                                    <dd class="hucre-vurgu" id="ikimlik-adres-goster">@Bosluk(tenant.Adres)</dd>
+                                </div>
+                                <div class="satir-arasi">
+                                    <dt class="metin-soluk">@Dil.T.Yonetim.Telefon</dt>
+                                    <dd class="hucre-vurgu" id="ikimlik-telefon-goster">@Bosluk(tenant.Telefon)</dd>
+                                </div>
+                                <div class="satir-arasi">
+                                    <dt class="metin-soluk">@Dil.T.Yonetim.VergiDairesi</dt>
+                                    <dd class="hucre-vurgu" id="ikimlik-vergidairesi-goster">@Bosluk(tenant.VergiDairesi)</dd>
+                                </div>
+                                <div class="satir-arasi">
+                                    <dt class="metin-soluk">@Dil.T.Yonetim.VergiNo</dt>
+                                    <dd class="hucre-vurgu" id="ikimlik-vergino-goster">@Bosluk(tenant.VergiNo)</dd>
+                                </div>
+                            </dl>
+                            <p class="metin-soluk metin-kucuk">@Dil.T.Yonetim.KimlikAciklama</p>
+                        }
+                        else if (isKod == GorselSigmaSozlugu.IsAbonelik)
+                        {
+                            @* ── PAKET P-27 (F-1 abonelik + F-3 plan kapısı) ──────────────
+                               Plan artık "seç-kaydet" bir tercih DEĞİLDİR: abonelik hakkıdır.
+                               Ekran hiçbir seviye/süre hesabı yapmaz (UX-S21) — yükseltmenin
+                               kapalı olduğunu, indirilebilir planları ve kalan günü SUNUCU
+                               söyler (GET /abonelik). *@
+                            <div class="alan" id="i-abonelik-blok">
+                                <h3 class="alt-baslik">@Dil.T.Isletme.AbonelikBasligi</h3>
+                                <p class="metin-soluk metin-kucuk" id="i-abonelik-aciklama">@Dil.T.Isletme.AbonelikAciklama</p>
+
+                                @if (abonelikHata is not null)
+                                {
+                                    @* UX-S28: hata "kayıt yok"a çevrilmez — boş durum DEĞİL, hata bandı. *@
+                                    <HataBandi Mesaj="@abonelikHata" />
+                                }
+                                else if (abonelik is null)
+                                {
+                                    <Yukleniyor />
+                                }
+                                else
+                                {
+                                    @if (abonelik.SuresiDolduMu)
+                                    {
+                                        <HataBandi Mesaj="@Dil.T.Isletme.AbonelikSuresiDoldu" />
+                                    }
+
+                                    <dl class="form-dikey" id="i-abonelik-ozet">
+                                        <div class="satir-arasi">
+                                            <dt class="metin-soluk">@Dil.T.Isletme.Plan</dt>
+                                            <dd class="hucre-vurgu" id="i-abonelik-plan">
+                                                @DilEkranSozlugu.SunucuMetni(Dil.Dil, abonelik.PlanAdi)
+                                                <Rozet Renk="mavi">@(abonelik.Donem is null
+                                                    ? Dil.T.Isletme.AbonelikYok : Dil.T.Isletme.PlanKaynakRozeti)</Rozet>
+                                            </dd>
+                                        </div>
+                                        <div class="satir-arasi">
+                                            <dt class="metin-soluk">@Dil.T.Isletme.AbonelikBaslangic</dt>
+                                            <dd id="i-abonelik-baslangic">
+                                                @(abonelik.Donem is null ? "—" : Bicim.Tarih(abonelik.Donem.Baslangic, Dil.Locale))
+                                            </dd>
+                                        </div>
+                                        <div class="satir-arasi">
+                                            <dt class="metin-soluk">@Dil.T.Isletme.AbonelikBitis</dt>
+                                            <dd id="i-abonelik-bitis">
+                                                @(abonelik.Donem?.Bitis is null
+                                                    ? Dil.T.Isletme.AbonelikSuresiz
+                                                    : Bicim.Tarih(abonelik.Donem.Bitis.Value, Dil.Locale))
+                                            </dd>
+                                        </div>
+                                        @if (abonelik.KalanGun is not null)
+                                        {
+                                            <div class="satir-arasi">
+                                                <dt class="metin-soluk">@Dil.T.Isletme.AbonelikKalanGun</dt>
+                                                @* UX-S33: bu kart üstteki dönem seçicisinden etkilenmez. *@
+                                                <dd id="i-abonelik-kalan">
+                                                    @abonelik.KalanGun
+                                                    <span class="metin-soluk metin-kucuk">@Dil.T.Isletme.DonemdenBagimsiz</span>
+                                                </dd>
+                                            </div>
+                                        }
+                                    </dl>
+
+                                    @if (IndirilebilirSecenekler.Count > 1)
+                                    {
+                                        <Secici ElemanId="i-plan"
+                                                Etiket="@Dil.T.Isletme.Plan"
+                                                Secenekler="@IndirilebilirSecenekler"
+                                                @bind-Deger="secilenPlan"
+                                                @bind-Deger:after="PlanIndirSor"
+                                                Devredisi="@SaltOkunur"
+                                                DevredisiSebebi="@SaltOkunurSebebi" />
+                                    }
+                                    else
+                                    {
+                                        @* UX-S25 / UX-S30: düğme çizip kilitlemek yerine NEDEN
+                                           değiştirilemediği ve doğru yol yazılır. *@
+                                        <DegismezIpucu Varlik="Abonelik"
+                                                       Gerekce="@Dil.T.Isletme.PlanYukseltmeKapali"
+                                                       AlternatifYol="@Dil.T.Isletme.PlanIndirmeYok" />
+                                    }
+                                    <p class="metin-soluk metin-kucuk" id="i-plan-yukseltme-notu">
+                                        @(string.IsNullOrWhiteSpace(abonelik.YukseltmeKapaliSebebi)
+                                            ? Dil.T.Isletme.PlanYukseltmeKapali
+                                            : DilEkranSozlugu.SunucuMetni(Dil.Dil, abonelik.YukseltmeKapaliSebebi))
+                                    </p>
+
+                                    <h4 class="alt-baslik">@Dil.T.Isletme.AbonelikGecmisi</h4>
+                                    @if (Gecmis.Count == 0)
+                                    {
+                                        <BosDurum Mesaj="@Dil.T.Isletme.AbonelikGecmisYok" />
+                                    }
+                                    else
+                                    {
+                                        <ul class="liste-sade" id="i-abonelik-gecmis">
+                                            @foreach (var d in Gecmis)
+                                            {
+                                                <li>
+                                                    <span class="hucre-vurgu">@d.PlanKodu</span>
+                                                    <span class="metin-soluk">
+                                                        @Bicim.Tarih(d.Baslangic, Dil.Locale) —
+                                                        @(d.Bitis is null ? Dil.T.Isletme.AbonelikSuresiz : Bicim.Tarih(d.Bitis.Value, Dil.Locale))
+                                                    </span>
+                                                    <Rozet Renk="gri">@KaynakAdi(d.Kaynak)</Rozet>
+                                                </li>
+                                            }
+                                        </ul>
+                                        @* UX-S29: sunucu sınırı ekranda YAZILIR. *@
+                                        <p class="metin-soluk metin-kucuk" id="i-abonelik-sinir">
+                                            @Dil.T.Isletme.AbonelikSinirNotu
+                                        </p>
+                                    }
+                                }
+                            </div>
+
+                            @* ── Plan indirme ONAYI (PAKET P-27) ─────────────────────
+                               Onay YERİNDE alınır, ModalPencere ile DEĞİL: DoD EK md.2'ye
+                               göre modal YALNIZ yıkıcı onaya ayrılmıştır ve plan indirme
+                               hiçbir kaydı silmez/iptal etmez — hak kapsamını daraltır.
+                               Yine de sessiz yazma YASAKTIR (UX-S27): seçim tek başına
+                               yazmaz, kullanıcı açıkça onaylar. *@
+                            @if (planOnayAcik)
+                            {
+                                <div class="kart-uyari" id="i-plan-onay">
+                                    <p id="i-plan-onay-metin">@Dil.T.Isletme.PlanIndirOnay</p>
+                                    <p class="metin-soluk metin-kucuk">@Dil.T.Isletme.PlanYukseltmeKapali</p>
+                                    <div class="satir">
+                                        @* ⚠ @onclick AYNI SATIRDA: denetim.sh "ölü düğme" sayacı
+                                           satır bazlı tarar; sonraki satıra taşınan @onclick
+                                           düğmeyi ölü gösterirdi. *@
+                                        <button @onclick="PlanIndirVazgec" class="btn btn-ikincil esit-pay" id="i-plan-onay-vazgec">@Dil.T.Ortak.Iptal</button>
+                                        <button @onclick="PlanKaydet" disabled="@kaydediliyor" class="btn btn-tehlike esit-pay" id="i-plan-onay-uygula">@Dil.T.Isletme.PlanDegistir</button>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="alan">
+                                @* KESIF-P1 (#12): seçim YALNIZ taslağı değiştirir; kayıt aşağıdaki
+                                   "Değişikliği kaydet" + onay penceresiyle olur. *@
+                                <Secici ElemanId="i-varsayilan-arayuz-modu"
+                                        Etiket="@Dil.T.Arayuz.VarsayilanBaslik"
+                                        Secenekler="@ArayuzModuSecenekleri"
+                                        @bind-Deger="secilenArayuzModu"
+                                        Devredisi="@(SaltOkunur || kaydediliyor)"
+                                        DevredisiSebebi="@SaltOkunurSebebi" />
+                                <span class="metin-soluk metin-kucuk">@Dil.T.Arayuz.VarsayilanAciklama</span>
+                            </div>
+
+                            <div class="alan">
+                                <Onay ElemanId="i-ai-etkin"
+                                      Etiket="@($"{P1.AkilliOneriler} — {(tenant.AiEtkin ? Dil.T.Isletme.AiAcik : Dil.T.Isletme.AiKapali)}")"
+                                      Deger="@tenant.AiEtkin" DegerChanged="@((bool v) => AiDegistir(v))"
+                                      Devredisi="@SaltOkunur" DevredisiSebebi="@P1.IsletmeYalnizSahip"
+                                      Ipucu="@Dil.T.Isletme.AiAciklama" />
+                            </div>
+
+                            @* Paket 19 Faz A — vezne ayrımı. Ayar kiraci_ayarlari tablosundadır
+                               (tenants'a kolon EKLENMEDİ); PATCH /admin/vezne yalnız SAHİP. *@
+                            <div class="alan">
+                                <Onay ElemanId="i-vezne-zorunlu"
+                                      Etiket="@($"{Dil.T.Vezne.AyrimZorunlu} — {(taslakVezne ? Dil.T.Vezne.AyrimAcik : Dil.T.Vezne.AyrimKapali)}")"
+                                      Deger="@taslakVezne" DegerChanged="@((bool v) => VezneTaslak(v))"
+                                      Devredisi="@(SaltOkunur || kaydediliyor || !vezneOkundu)" DevredisiSebebi="@P1.IsletmeYalnizSahip" />
+                                @* Kimlik korundu (#i-vezne-aciklama). *@
+                                <span class="metin-soluk metin-kucuk" id="i-vezne-aciklama">@P1.VezneAyrimAciklama</span>
+                            </div>
+                            @* PAKET YASAL-4 / Y4-C — KMTS takip kodu alanı (varsayılan KAPALI).
+                               kiraci_ayarlari üzerinden; PUT /kmts/ayar yalnız SAHİP. *@
+                            <div class="alan">
+                                <Onay ElemanId="i-kmts-kullanimi"
+                                      Etiket="@Y4I.KmtsAyarEtiket"
+                                      Deger="@kmtsKullanimi" DegerChanged="@((bool v) => KmtsDegistir(v))"
+                                      Devredisi="@(SaltOkunur || !kmtsOkundu)" DevredisiSebebi="@P1.IsletmeYalnizSahip" />
+                                <span class="metin-soluk metin-kucuk" id="i-kmts-aciklama">@Y4I.KmtsAyarAciklama</span>
+                                @* § 4.4: resmî biçim yazılınca mevcut kodlar taranır; uymayan varsa yalnız sayı + ürünlere bağlantı (silinmez). *@
+                                @if (kmtsUymayan > 0)
+                                {
+                                    <a class="metin-kucuk" id="i-kmts-uymayan" href="/urunler">@string.Format(Y4I.KmtsUymayan, kmtsUymayan)</a>
+                                }
+                                <HataBandi Mesaj="@kmtsHata" Id="i-kmts-hata" />
+                            </div>
+                            @* ── PAKET P-13 · B-47 ────────────────────────────────────────
+                               Kur kaynağı ve maliyet yöntemi SALT OKUNUR satırdı ve yanında
+                               "bu ayar türetilir" gerekçesi yazıyordu. İkisi de doğru değildi:
+                               kur kaynağının yazma ucu (PATCH /kur/kaynak) ZATEN vardı, maliyet
+                               yönteminin ise HİÇBİR ucu yoktu — yani türetilmiyor, hiç
+                               sorulmuyordu. İkisi de belirlenmemişken kilitli kalıyordu.
+                               Artık: seçilir, kaynağı rozetle söylenir (UX-S21), boşken
+                               sistem varsayılanının kullanıldığı yazılır. *@
+                            <div class="alan">
+                                <Secici ElemanId="i-kur-kaynagi"
+                                        Etiket="@Dil.T.Yonetim.KurKaynagi"
+                                        Secenekler="@KurKaynakSecenekleri"
+                                        Deger="@taslakKurKaynagi"
+                                        DegerChanged="@KurKaynagiSecildiDeger"
+                                        Devredisi="@(SaltOkunur || kaydediliyor)"
+                                        DevredisiSebebi="@SaltOkunurSebebi"
+                                        BosSecenekMetni="@Dil.T.Yonetim.KurKaynagiSec" />
+                                @if (string.IsNullOrWhiteSpace(tenant.KurKaynagi))
+                                {
+                                    <span class="rozet rozet-amber" id="i-kur-kaynagi-varsayilan">@Dil.T.Yonetim.AyarBelirlenmedi</span>
+                                }
+                                <span class="metin-soluk metin-kucuk" id="i-kur-kaynagi-not">@Dil.T.Yonetim.KurKaynagiNotu</span>
+                            </div>
+                            <div class="alan">
+                                <Secici ElemanId="i-maliyet-yontemi"
+                                        Etiket="@Dil.T.Yonetim.MaliyetYontemi"
+                                        Secenekler="@MaliyetYontemSecenekleri"
+                                        Deger="@taslakMaliyet"
+                                        DegerChanged="@MaliyetYontemiSecildiDeger"
+                                        Devredisi="@(SaltOkunur || kaydediliyor)"
+                                        DevredisiSebebi="@SaltOkunurSebebi"
+                                        BosSecenekMetni="@Dil.T.Yonetim.MaliyetYontemiSec" />
+                                @if (string.IsNullOrWhiteSpace(tenant.MaliyetYontemi))
+                                {
+                                    <span class="rozet rozet-amber" id="i-maliyet-yontemi-varsayilan">@Dil.T.Yonetim.AyarBelirlenmedi</span>
+                                }
+                                <span class="metin-soluk metin-kucuk" id="i-maliyet-yontemi-not">@Dil.T.Yonetim.MaliyetYontemiNotu</span>
+                            </div>
+                            @* ── KESIF-P1 (#12) — KRİTİK AYAR KAYDI ───────────────────────
+                               Maliyet yöntemi, kur kaynağı, varsayılan ekran ve vezne ayrımı
+                               seçildiği anda kaydediliyordu (odaktaki listede tekerlek bile
+                               kiracının maliyet yöntemini değiştiriyordu). Artık seçim yalnız
+                               TASLAKTIR; kayıt bu satırdaki düğme + ortak onay penceresiyle
+                               (etki cümlesi) olur. Değişiklik yoksa satır ÇİZİLMEZ (ölü düğme yok). *@
+                            @if (AyarDegisiklikleri.Count > 0)
+                            {
+                                <div class="kart-uyari" id="i-ayar-taslak">
+                                    <p id="i-ayar-taslak-metin">@string.Format(P1.AyarDegisiklikVar, string.Join(" · ", AyarDegisiklikleri.Select(d => d.Ad)))</p>
+                                    <div class="satir">
+                                        <button type="button" @onclick="AyarTaslakVazgec" class="btn btn-ikincil" id="i-ayar-vazgec" disabled="@kaydediliyor">@P1.AyarVazgec</button>
+                                        <button type="button" @onclick="AyarOnayAc" class="btn btn-ikincil" id="i-ayar-kaydet" disabled="@(kaydediliyor || SaltOkunur)">@P1.AyarKaydet</button>
+                                    </div>
+                                    @if (SaltOkunur)
+                                    {
+                                        <p class="metin-soluk metin-kucuk" id="i-ayar-kaydet-kilit">@SaltOkunurSebebi</p>
+                                    }
+                                </div>
+                            }
+                            <HataBandi Mesaj="@adminHata" />
+                        }
+                    </div>
+                </div>
+            }
+        </Panel>
+    </Sekmeler>
+</div>
+
+@* GIRDI-AILESI-2 tur 3 (doğrulayıcı KRİTİK): iki çekmecenin Telefon bileşeni kilidini ORTAK girdi kapısına
+   bildirir; Kaydet kilidi ve sebebi bileşenin alan altı metninden gelir (sayfada ikinci telefon kuralı YOK). *@
+<CascadingValue Value="girdiKapisi" IsFixed="true">
+@* ── İşletme kimliği (çok alanlı düzenleme → ÇEKMECE, K6) ── *@
+<Cekmece Acik="kimlikAcik" Varlik="isletme-kimlik" Baslik="@Dil.T.Yonetim.KimlikBaslik"
+         Kaydediliyor="@kaydediliyor" KaydetAktif="@KimlikGecerli"
+         KilitSebebi="@KimlikKilitSebebi"
+         Kapat="KimlikKapat" Kaydet="KimlikKaydet">
+    @* PİLOT GÖÇ (P-36b) — beş ham HTML girdisi ortak girdi ailesine devredildi.
+       Eleman kimlikleri (#ikimlik-ad, -adres, -telefon, -vergidairesi,
+       -vergino) ve hata kimlikleri (#ikimlik-*-hata) BİREBİR korundu; hata
+       metinlerinin kaynağı değişmedi (Dil.T.Yonetim.*), yalnız ÇİZEN değişti. *@
+    <div class="form-dikey">
+        <Metin ElemanId="ikimlik-ad" Etiket="@Dil.T.Isletme.IsletmeAdi" Zorunlu="true"
+               @bind-Deger="KAd" Hata="@AdMesaji" />
+        @* PAKET Q10-3 (QA turu 10 KRİTİK): dört alan eskiden <ProAlan> içindeydi →
+           BASİT modda çekmecede YALNIZ ad vardı ve adres/telefon/vergi dairesi/
+           vergi no HİÇBİR YERDEN düzenlenemiyordu (UX-S25). Form 5 alan (≤ 8, UX-3);
+           bunlar belgenin satıcı kimliğidir, her modda görünür. *@
+        @* Q10-3 (doğrulayıcı bulgusu, DÜŞÜK): 500 karakterlik adres tek satırda kayıyor.
+           CokSatir denendi ve gerçek tarayıcıda GERİ ALINDI: .girdi-cok-satir yazı
+           ailesini devralmıyor (computed font-family: monospace) — düzeltmesi app.css /
+           Bilesenler/Form (Q10-B şeridi) alanında; rapor § açık kalanlar. *@
+        <Metin ElemanId="ikimlik-adres" Etiket="@Dil.T.Yonetim.Adres" EnFazla="@AlanSinirlari.Adres"
+               @bind-Deger="KAdres" />
+        @* QA turu 5 (YÜKSEK): "abc" kaydediliyordu; kural şube formuyla TEK kaynaktan. *@
+        <Telefon ElemanId="ikimlik-telefon" Etiket="@Dil.T.Yonetim.Telefon"
+                 @bind-Deger="KTelefon" />
+        <Metin ElemanId="ikimlik-vergidairesi" Etiket="@Dil.T.Yonetim.VergiDairesi" EnFazla="@YonetimSinirlari.VergiDairesi"
+               @bind-Deger="KVergiDairesi" />
+        @* Q10-3 (gerçek tarayıcı): maxlength=11 12 haneli yapıştırmayı SESSİZCE 11'e
+           kırpıyordu → başka bir numara kaydedilebiliyordu. Sınır 20: fazla hane
+           kırpılmaz, alan altında "10/11 hane" mesajı çıkar (UX-S28 ruhu). *@
+        @* PAKET GOC-D (envanter F2 · GIRDI_TUR_GENEL_BILESEN): genel Metin yerine anlamsal TcknVeyaVkn —
+           rakam dışı tuş yazılmaz, yapıştırmada temizlenir, 10/11 hane dolunca TCKN-DOGRULAMA algoritması
+           (KimlikNoDogrulayici — yeniden yazılmadı). Q10-3 "12 haneli yapıştırma sessizce 11'e kırpılır"
+           kaygısı: bileşen 11 haneyi aşanı alan altında söyler ve Kaydet kilitlenir; sunucu VergiKimlik
+           aynı hane/algoritma kuralıyla reddeder. Sayfanın eski VergiKimlik denetimi de kilitte kalır. *@
+        <TcknVeyaVkn ElemanId="ikimlik-vergino" Etiket="@Dil.T.Yonetim.VergiNo"
+                     @bind-Deger="KVergiNo" Ipucu="@IsletmeKimlikSozlugu.Al(Dil.Dil).VergiNoIpucu"
+                     Hata="@VergiNoMesaji" />
+        <p class="metin-soluk metin-kucuk" id="ikimlik-belge-notu">@IsletmeKimlikSozlugu.Al(Dil.Dil).BelgeNotu</p>
+        <HataBandi Mesaj="@kimlikHata" Id="ikimlik-hata" />
+    </div>
+</Cekmece>
+
+@* ── Şube ekle / düzenle (çok alanlı → ÇEKMECE, K6; iç alan id'leri AYNEN) ── *@
+<Cekmece Acik="subeModalAcik" Varlik="sube"
+         Baslik="@(sDuzenlenenId is null ? Dil.T.Isletme.YeniSube : Dil.T.Ortak.Duzenle)"
+         Kaydediliyor="@kaydediliyor" KaydetAktif="@SubeGecerli" KilitSebebi="@SubeKilitSebebi"
+         Kapat="() => subeModalAcik = false" Kaydet="SubeKaydet">
+    @if (subeDetayYukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        <div class="form-dikey">
+            <Metin ElemanId="s-ad" Etiket="@Dil.T.Isletme.SubeAdi" Zorunlu="true" EnFazla="@YonetimSinirlari.SubeAdi"
+                   Deger="@sAd" DegerChanged="@(v => sAd = v ?? "")"
+                   Hata="@(string.IsNullOrWhiteSpace(sAd) ? Dil.T.Yonetim.ZorunluAlan : null)"
+                   HataKimligi="s-ad-hata" />
+            <Metin ElemanId="s-adres" Etiket="@Dil.T.Isletme.Adres" EnFazla="@AlanSinirlari.Adres"
+                   Deger="@sAdres" DegerChanged="@(v => sAdres = v ?? "")" />
+            @* QA turu 1+2 (ORTA): "abc" 200 ile kabul ediliyordu. Sunucu kuralı
+               UX-4d md.19 ile eklendi; ekran artık AYNI kuralı gösteriyor (UX-S31). *@
+            <Telefon ElemanId="s-telefon" Etiket="@Dil.T.Isletme.Telefon"
+                     Deger="@sTelefon" DegerChanged="@(v => sTelefon = v ?? "")"
+                     HataKimligi="s-telefon-hata" />
+            <HataBandi Mesaj="@subeModalHata" Id="s-hata" />
+        </div>
+    }
+</Cekmece>
+</CascadingValue>
+
+@* ── Şube pasife alma onayı ── *@
+@* KESIF-P1 (#12) — kritik ayar onayı: ORTAK onay penceresi (OnayKipi, ModalPencere'yi
+   sarar; Pages/ ModalPencere sayacı artmaz). Etki cümlesi sunucuya gidecek değişikliği söyler. *@
+<OnayKipi Acik="@ayarOnayAcik" Kimlik="i-ayar-onay" Eylem="@P1.AyarOnayBaslik"
+          OnayMetni="@P1.AyarOnayDugme" VazgecMetni="@P1.AyarVazgec"
+          Aciklama="@string.Join(" ", AyarDegisiklikleri.Select(d => d.Etki))"
+          GeriDonusYolu="@P1.AyarOnayGeriDonus"
+          Calisiyor="@kaydediliyor" Hata="@ayarOnayHata"
+          Onayla="AyarKaydetOnayli" Vazgec="AyarOnayVazgec" />
+
+<ModalPencere Acik="pasifSube is not null" Baslik="@SubePasifeAlMetni" Kapat="() => pasifSube = null">
+    <div class="form-dikey">
+        <p>@Dil.T.Isletme.PasifeAlOnay</p>
+        <p class="hucre-vurgu">@pasifSube?.Ad</p>
+        <HataBandi Mesaj="@pasifHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esit-pay" @onclick="() => pasifSube = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-tehlike esit-pay" id="s-pasife-onayla" disabled="@kaydediliyor"
+                    @onclick="SubePasifeAl">@SubePasifeAlMetni</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@code {
+    // ── PAKET S1-i — sekmeler ──
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<SekmeTanimi> IsSekmeleri =>
+    [
+        new(GorselSigmaSozlugu.IsKimlik, GS.IsKimlik),
+        new(GorselSigmaSozlugu.IsAbonelik, GS.IsAbonelik),
+        new(GorselSigmaSozlugu.IsAyarlar, GS.IsAyarlar),
+        new(GorselSigmaSozlugu.IsSubeler, GS.IsSubeler),
+    ];
+
+
+    private TenantVeri? tenant;
+    private List<SubeVeri> subeler = [];
+
+    // ── PAKET GOC-D — şube listesi ortak ızgarada (hücre içerikleri eski tablonun AYNISI) ──
+    private IzgaraSiralama? subeSira;
+    private IReadOnlyList<IzgaraKolonu<SubeVeri>> SubeKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Isletme.SubeAdi, ZorunluGorunur = true, SunucuSiralamaAdi = "ad",
+                HucreSinif = _ => "hucre-vurgu", Deger = sb => sb.Ad },
+        new() { Anahtar = "adres", Baslik = Dil.T.Isletme.Adres, SunucuSiralamaAdi = "adres",
+                HucreSinif = _ => "metin-soluk", Deger = sb => string.IsNullOrEmpty(sb.Adres) ? null : sb.Adres },
+        new() { Anahtar = "telefon", Baslik = Dil.T.Isletme.Telefon, SunucuSiralamaAdi = "telefon",
+                HucreSinif = _ => "metin-soluk", Deger = sb => string.IsNullOrEmpty(sb.Telefon) ? null : sb.Telefon },
+        new() { Anahtar = "durum", Baslik = Dil.T.Urun.Durum, ZorunluGorunur = true, SunucuSiralamaAdi = "durum",
+                Deger = sb => sb.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif,
+                Hucre = sb => @<Rozet Renk="@(sb.Aktif ? "yesil" : "gri")">@(sb.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)</Rozet> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                Hucre = sb => @<div class="satir-eylemler">
+                    <button class="btn btn-ikincil btn-kucuk" disabled="@SaltOkunur"
+                            title="@(SaltOkunur ? Dil.T.Isletme.YazmaKapaliKilidi : null)"
+                            @onclick="() => SubeModalAc(sb.Id)">
+                        <Ikon Ad="@Ikonlar.Kalem" /> @Dil.T.Ortak.Duzenle
+                    </button>
+                    @if (sb.Aktif)
+                    {
+                        <button class="btn btn-tehlike btn-kucuk" id="@($"s-pasife-{sb.Id}")" disabled="@(AktifSubeSayisi <= 1 || SaltOkunur)"
+                                title="@(SaltOkunur ? Dil.T.Isletme.YazmaKapaliKilidi : AktifSubeSayisi <= 1 ? SonSubeMetni : null)"
+                                @onclick="() => pasifSube = sb">
+                            @SubePasifeAlMetni
+                        </button>
+                    }
+                    else
+                    {
+                        @* PAKET S-3b (kurul tur 3, YÜKSEK): pasif şube ARTIK geri açılabilir — PATCH aktif=true, ayrı uç yok. *@
+                        <button class="btn btn-ikincil btn-kucuk" disabled="@(SaltOkunur || kaydediliyor)"
+                                id="@($"s-aktife-{sb.Id}")"
+                                title="@(SaltOkunur ? Dil.T.Isletme.YazmaKapaliKilidi : null)"
+                                @onclick="() => SubeAktifeAl(sb)">
+                            @Dil.T.Yonetim.SubeAktifeAl
+                        </button>
+                    }
+                </div> },
+    ];
+
+    private bool subeYukleniyor = true, kaydediliyor, subeModalAcik, subeDetayYukleniyor;
+    private string? tenantHata, adminHata, subeHata, subeModalHata, pasifHata;
+
+    private string? basariMesaj;
+    private int basariJeton;
+
+    // ── işletme kimliği (çekmece) ──
+    private bool kimlikAcik;
+    private string? kimlikHata;
+    private string kAd = "", kAdres = "", kTelefon = "", kVergiDairesi = "", kVergiNo = "";
+
+    // Girdi ailesi `string?` taşır, sayfanın alanları `string` — köprü BURADA
+    // kurulur ki sayfanın geri kalan mantığı (KimlikGecerli, KimlikKaydet,
+    // VergiNoHatali) tek satır bile değişmesin.
+    private string? KAd { get => kAd; set => kAd = value ?? ""; }
+    private string? KAdres { get => kAdres; set => kAdres = value ?? ""; }
+    private string? KTelefon { get => kTelefon; set => kTelefon = value ?? ""; }
+    private string? KVergiDairesi { get => kVergiDairesi; set => kVergiDairesi = value ?? ""; }
+    private string? KVergiNo { get => kVergiNo; set => kVergiNo = value ?? ""; }
+
+    private string secilenPlan = "BASLANGIC";
+    private string secilenArayuzModu = "PROFESYONEL";
+    private string? sDuzenlenenId;
+    private string sAd = "", sAdres = "", sTelefon = "";
+    private SubeVeri? pasifSube;
+
+    /// <summary>
+    /// Son aktif şube pasife alınamaz: işlem yapılacak şube kalmazsa satış,
+    /// alış ve emanet dâhil her akış kilitlenirdi.
+    /// </summary>
+    private int AktifSubeSayisi => subeler.Count(s => s.Aktif);
+
+    /// <summary>
+    /// Sunucunun SON SÖZÜ (GET /admin/tenant → saltOkunurMu). Ekranda hiçbir
+    /// süre hesabı YAPILMAZ; buradaki kilit kolaylıktır, kapı sunucudadır
+    /// (KiraciDurumKapisi). DoD EK md.1: düğme ya istek atar ya disabled+sebep.
+    /// </summary>
+    // ── PAKET P-27 — ABONELİK ───────────────────────────────────────────
+    private AbonelikVeri? abonelik;
+    private string? abonelikHata;
+    private bool planOnayAcik;
+
+    /// <summary>
+    /// Seçilebilir planlar: GEÇERLİ plan + SUNUCUNUN indirilebilir dediği
+    /// planlar. Liste ekranda TÜRETİLMEZ (UX-S21/S26): seviye karşılaştırmasını
+    /// sunucu yapar, ekran yalnız çizer. Tek eleman kalırsa seçici hiç
+    /// gösterilmez (UX-S22) — yerine gerekçe yazılır.
+    /// </summary>
+    private IReadOnlyList<SecenekOgesi> IndirilebilirSecenekler
+    {
+        get
+        {
+            if (abonelik is null) return [];
+            var katalog = abonelik.Planlar ?? [];
+            string Ad(string kod) => DilEkranSozlugu.SunucuMetni(Dil.Dil, katalog.FirstOrDefault(p => p.Kod == kod)?.Ad ?? kod);
+            List<SecenekOgesi> liste = [new SecenekOgesi(abonelik.PlanKodu, Ad(abonelik.PlanKodu))];
+            foreach (var kod in abonelik.IndirilebilirPlanlar ?? [])
+                liste.Add(new SecenekOgesi(kod, Ad(kod)));
+            return liste;
+        }
+    }
+
+    private IReadOnlyList<AbonelikDonemVeri> Gecmis => abonelik?.Gecmis ?? [];
+
+    private string KaynakAdi(string kaynak) =>
+        kaynak == "KIRACI" ? Dil.T.Isletme.AbonelikKaynakKiraci : Dil.T.Isletme.AbonelikKaynakSistem;
+
+    /// <summary>
+    /// UX-S28: istek başarısız olursa liste BOŞALTILIP boş durum gösterilmez;
+    /// hata bandı ayrı alanda yazılır ve abonelik kartı "veri yok" demez.
+    /// </summary>
+    private async Task AbonelikYukle()
+    {
+        abonelikHata = null;
+        try
+        {
+            abonelik = await Api.GetAsync<AbonelikVeri>("/abonelik");
+            secilenPlan = abonelik.PlanKodu;
+        }
+        catch (ApiHata ex) { abonelikHata = ex.Message; }
+    }
+
+    /// <summary>Seçim yalnız ONAY modalını açar — yazma onaydan sonra (DoD EK md.4).</summary>
+    private void PlanIndirSor()
+    {
+        if (abonelik is null || secilenPlan == abonelik.PlanKodu) return;
+        adminHata = null;
+        planOnayAcik = true;
+    }
+
+    /// <summary>Vazgeçince seçim GERİ ALINIR: ekran sahip olunmayan planı göstermez.</summary>
+    private void PlanIndirVazgec()
+    {
+        planOnayAcik = false;
+        if (abonelik is not null) secilenPlan = abonelik.PlanKodu;
+    }
+
+    private IReadOnlyList<SecenekOgesi> ArayuzModuSecenekleri =>
+    [
+        new SecenekOgesi("PROFESYONEL", Dil.T.Arayuz.Profesyonel),
+        new SecenekOgesi("BASIT", Dil.T.Arayuz.Basit),
+    ];
+
+    // KESIF-P1 (#71): ham kod (ALTINKAYNAK · TRUNCGIL) ekrana BASILMAZ; ad üst çubukla
+    // aynı tek çeviriciden (KurKaynakAdi.Ad) gelir. Değer (gövdeye giden) koddur.
+    private IReadOnlyList<SecenekOgesi> KurKaynakSecenekleri =>
+        [.. kurKaynaklari.Select(k => new SecenekOgesi(k, KurKaynakAdi.Ad(k, Dil.T)))];
+
+    private IReadOnlyList<SecenekOgesi> MaliyetYontemSecenekleri =>
+    [
+        new SecenekOgesi("FIFO", Dil.T.Yonetim.MaliyetFifo),
+        new SecenekOgesi("LIFO", Dil.T.Yonetim.MaliyetLifo),
+        new SecenekOgesi("ORTALAMA", Dil.T.Yonetim.MaliyetOrtalama),
+    ];
+
+    /// <summary>UX-S30 — salt okunur kiracıda seçici kilitli; SEBEBİ yazılır.</summary>
+    private string? SaltOkunurSebebi => SaltOkunur ? Dil.T.Yonetim.SaltOkunurKilit : null;
+
+    // Secici string? verir; mevcut ChangeEventArgs imzalı iş yolu YENİDEN YAZILMAZ.
+    // KESIF-P1 (#12): seçim YALNIZ taslağı değiştirir — ağ isteği YOK.
+    private void KurKaynagiSecildiDeger(string? deger) { taslakKurKaynagi = deger ?? ""; ayarOnayHata = null; }
+
+    private void MaliyetYontemiSecildiDeger(string? deger) { taslakMaliyet = deger ?? ""; ayarOnayHata = null; }
+
+    private void VezneTaslak(bool v) { taslakVezne = v; ayarOnayHata = null; }
+
+    // ═══ KESIF-P1 (#12) — KRİTİK AYAR TASLAĞI + ONAY ═══════════════════════
+    private KesifP1Metinleri P1 => KesifP1Sozlugu.Al(Dil.Dil);
+    private string taslakKurKaynagi = "";
+    private string taslakMaliyet = "";
+    private bool taslakVezne;
+    private bool vezneOkundu;
+    private bool ayarOnayAcik;
+    private string? ayarOnayHata;
+
+    private string MaliyetAdi(string? k) => string.IsNullOrWhiteSpace(k) ? P1.AyarBelirsiz
+        : MaliyetYontemSecenekleri.FirstOrDefault(o => o.Deger == k)?.Ad ?? k;
+
+    private string KurAdi(string? k) => string.IsNullOrWhiteSpace(k) ? P1.AyarBelirsiz : KurKaynakAdi.Ad(k, Dil.T);
+
+    private string ModAdi(string? k) => ArayuzModuSecenekleri.FirstOrDefault(o => o.Deger == k)?.Ad ?? k ?? "";
+
+    private string VezneAdi(bool v) => v ? Dil.T.Vezne.AyrimAcik : Dil.T.Vezne.AyrimKapali;
+
+    /// <summary>Taslağın kayıtlı değerden farkları (kod, ad, etki cümlesi) — her biri tek PATCH.</summary>
+    private List<(string Kod, string Ad, string Etki)> AyarDegisiklikleri
+    {
+        get
+        {
+            var l = new List<(string Kod, string Ad, string Etki)>(4);
+            if (tenant is null) return l;
+            if (taslakMaliyet.Length > 0 && taslakMaliyet != (tenant.MaliyetYontemi ?? ""))
+                l.Add(("maliyet", Dil.T.Yonetim.MaliyetYontemi,
+                    string.Format(P1.AyarMaliyetEtki, MaliyetAdi(tenant.MaliyetYontemi), MaliyetAdi(taslakMaliyet))));
+            if (taslakKurKaynagi.Length > 0 && taslakKurKaynagi != (tenant.KurKaynagi ?? ""))
+                l.Add(("kur", Dil.T.Yonetim.KurKaynagi,
+                    string.Format(P1.AyarKurEtki, KurAdi(tenant.KurKaynagi), KurAdi(taslakKurKaynagi))));
+            if (secilenArayuzModu != tenant.VarsayilanArayuzModu)
+                l.Add(("mod", Dil.T.Arayuz.VarsayilanBaslik,
+                    string.Format(P1.AyarModEtki, ModAdi(tenant.VarsayilanArayuzModu), ModAdi(secilenArayuzModu))));
+            if (vezneOkundu && taslakVezne != vezneZorunlu)
+                l.Add(("vezne", Dil.T.Vezne.AyrimZorunlu,
+                    string.Format(P1.AyarVezneEtki, VezneAdi(vezneZorunlu), VezneAdi(taslakVezne))));
+            return l;
+        }
+    }
+
+    /// <summary>Taslak kayıtlı değerlere döner — istek YOK.</summary>
+    private void AyarTaslakVazgec()
+    {
+        ayarOnayAcik = false;
+        ayarOnayHata = null;
+        TaslagiSifirla();
+    }
+
+    private void TaslagiSifirla()
+    {
+        taslakKurKaynagi = tenant?.KurKaynagi ?? "";
+        taslakMaliyet = tenant?.MaliyetYontemi ?? "";
+        if (tenant is not null) secilenArayuzModu = tenant.VarsayilanArayuzModu;
+        taslakVezne = vezneZorunlu;
+    }
+
+    private void AyarOnayAc()
+    {
+        if (AyarDegisiklikleri.Count == 0 || SaltOkunur) return;
+        ayarOnayHata = null;
+        ayarOnayAcik = true;
+    }
+
+    /// <summary>Onay penceresinde Vazgeç: istek YOK, ekran ESKİ değerlere döner.</summary>
+    private void AyarOnayVazgec() => AyarTaslakVazgec();
+
+    /// <summary>
+    /// Onaylanınca YALNIZ değişen ayar(lar) için mevcut yazma uçları çağrılır:
+    /// tek değişiklik = tek PATCH. Sonuç bantta (UX-S27); hata pencerede kalır.
+    /// </summary>
+    private async Task AyarKaydetOnayli()
+    {
+        var degisenler = AyarDegisiklikleri;
+        if (degisenler.Count == 0) { ayarOnayAcik = false; return; }
+        ayarOnayHata = null;
+        adminHata = null;
+        kaydediliyor = true;
+        var yazilan = new List<string>(4);
+        try
+        {
+            foreach (var d in degisenler)
+            {
+                switch (d.Kod)
+                {
+                    case "maliyet": await MaliyetYontemiSecildi(new ChangeEventArgs { Value = taslakMaliyet }); break;
+                    case "kur": await KurKaynagiSecildi(new ChangeEventArgs { Value = taslakKurKaynagi }); break;
+                    case "mod": await ArayuzModuKaydet(); break;
+                    case "vezne": await VezneDegistir(taslakVezne); break;
+                }
+                if (adminHata is not null) break;
+                yazilan.Add(d.Ad);
+            }
+        }
+        finally { kaydediliyor = false; }
+        if (adminHata is not null)
+        {
+            ayarOnayHata = adminHata;          // hata pencerede görünür (UX-S28)
+            return;
+        }
+        ayarOnayAcik = false;
+        TaslagiSifirla();
+        BasariGoster(string.Format(P1.AyarKaydedildi, string.Join(" · ", yazilan)));
+    }
+
+    private bool SaltOkunur => tenant?.SaltOkunurMu == true;
+
+    // PAKET ORTAK-1 (G): BASİT modda "Pasife Al" jargonu yerine menüdeki ortak ad
+    // ("Kullanımdan kaldır", BasitDilSozlugu ile aynı); PROFESYONEL metin AYNEN.
+    // ORTAK-1 hakem turu 29.09: "pasife alınamaz" BASİT'te "kaldırılamaz" (düğme adıyla aynı kavram).
+    private string SonSubeMetni => Dil.BasitMi ? OrtakGorunumSozlugu.Al(Dil.Dil).IsletmeSonSubeBasit : Dil.T.Isletme.SonSubeUyarisi;
+    private string SubePasifeAlMetni => Dil.BasitMi
+        ? OrtakGorunumSozlugu.Al(Dil.Dil).IsletmeSubePasifeAlBasit
+        : Dil.T.Isletme.PasifeAl;
+
+    /// <summary>Boş alanı "—" ile gösterir; ham null ekrana basılmaz.</summary>
+    private static string Bosluk(string? d) => string.IsNullOrWhiteSpace(d) ? "—" : d;
+
+    // ── işletme kimliği doğrulaması (sunucu kuralının BİREBİR karşılığı) ──
+    private bool AdBos => string.IsNullOrWhiteSpace(kAd);
+    // Q10-3 (doğrulayıcı bulgusu): uzunluk KIRPILMIŞ metinde, sunucuyla TEK kaynak (Core IsletmeAdi).
+    private bool AdUzunlukHatali => !AdBos && !Kuyumcu.Core.Domain.IsletmeAdi.Gecerli(kAd);
+    private string? AdMesaji =>
+        AdBos ? Dil.T.Yonetim.AdBosOlamaz
+        : AdUzunlukHatali ? IsletmeKimlikSozlugu.Al(Dil.Dil).AdUzunluk
+        : null;
+    // Q10-3: kural TEK kaynaktan (Core VergiKimlik — sunucu da aynısını çağırır);
+    // mesaj türüne göre ayrılır (harf/boşluk ≠ hane sayısı).
+    private string? VergiNoMesaji => IsletmeKimlikSozlugu.VergiNoMesaji(Dil.Dil, kVergiNo);
+    private bool VergiNoHatali => VergiNoMesaji is not null;
+    // GIRDI-AILESI-2 tur 3 (doğrulayıcı KRİTİK): telefon kuralı SAYFADA YOK. Ortak <Telefon> bileşeni
+    // Core TelefonDogrulayici'yı uygular ve sonucu (alan altı METNİYLE) bu kapıya bildirir; kilit ve
+    // sebebi buradan okunur → alan altı = kilit sebebi BİREBİR (sunucu da aynı kural + aynı metin).
+    private GecersizAlanKapisi? _girdiKapisi;
+    private GecersizAlanKapisi girdiKapisi => _girdiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    /// <summary>İşletme telefonu — bileşenin kapıya bildirdiği durum (Core TelefonDogrulayici).</summary>
+    private bool KimlikTelefonHatali => girdiKapisi.OnekleVar("ikimlik-telefon");
+    // PAKET GOC-D: vergi no artık anlamsal TcknVeyaVkn — bileşenin kendi bildirimi de kilide girer.
+    private bool KimlikVergiNoBilesenHatali => girdiKapisi.OnekleVar("ikimlik-vergino");
+    private bool KimlikGecerli => AdMesaji is null && !VergiNoHatali && !KimlikTelefonHatali && !KimlikVergiNoBilesenHatali;
+    private string KimlikKilitSebebi =>
+        AdMesaji is { } adMesaji ? adMesaji
+        // PAKET GOC-D: alan altında bileşenin kendi metni önce görünür → kilit de ONU söyler (UX-S30 birebir).
+        : girdiKapisi.Sebep(Dil.Dil, "ikimlik-vergino") is { } vergiNoBilesen ? vergiNoBilesen
+        : VergiNoHatali ? VergiNoMesaji!
+        : girdiKapisi.Sebep(Dil.Dil, "ikimlik-telefon") ?? "";
+
+    /// <summary>
+    /// Şube telefonu — kural CARİ ile AYNI kaynaktan (Kuyumcu.Core Iletisim.TelefonDesen);
+    /// iki ekranda iki kural olmaz (UX-S31).
+    /// </summary>
+    private bool TelefonHatali => girdiKapisi.OnekleVar("s-telefon");
+    private bool SubeGecerli => !string.IsNullOrWhiteSpace(sAd) && !TelefonHatali;
+    private string SubeKilitSebebi =>
+        string.IsNullOrWhiteSpace(sAd) ? Dil.T.Isletme.SubeAdi : girdiKapisi.Sebep(Dil.Dil, "s-telefon") ?? "";
+
+    private void BasariGoster(string mesaj)
+    {
+        basariMesaj = mesaj;
+        basariJeton++;
+    }
+
+    // ── işletme kimliği ─────────────────────────────────────────────────────
+
+    private void KimlikAc()
+    {
+        if (tenant is null) return;
+        kimlikHata = null;
+        kAd = tenant.Ad;
+        kAdres = tenant.Adres ?? "";
+        kTelefon = tenant.Telefon ?? "";
+        kVergiDairesi = tenant.VergiDairesi ?? "";
+        kVergiNo = tenant.VergiNo ?? "";
+        kimlikAcik = true;
+    }
+
+    private void KimlikKapat() => kimlikAcik = false;
+
+    /// <summary>
+    /// PATCH /admin/tenant/kimlik — üç durumlu sözleşme: gövdede OLMAYAN alan
+    /// korunur, null SİLER. Q10-3: beş alan HER MODDA çizildiği için gövde her
+    /// modda beşini taşır (UX-S5 — çizilmeyen alan gövdeye konmaz — kuralı korunur:
+    /// artık çizilmeyen kimlik alanı yoktur).
+    /// </summary>
+    private async Task KimlikKaydet()
+    {
+        if (tenant is null || !KimlikGecerli || kaydediliyor) return;
+        kimlikHata = null;
+        kaydediliyor = true;
+        try
+        {
+            var govde = new
+            {
+                ad = kAd.Trim(),
+                adres = Bos(kAdres),
+                telefon = Bos(kTelefon),
+                vergiDairesi = Bos(kVergiDairesi),
+                vergiNo = Bos(kVergiNo),
+            };
+            tenant = await Api.PatchAsync<TenantVeri>("/admin/tenant/kimlik", govde);
+            // İYİMSER KAYDETME YOK: çekmece ancak sunucu 200 döndükten sonra kapanır.
+            kimlikAcik = false;
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { kimlikHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>Boş dizge = "alanı sil" (açık null) — sunucu sözleşmesinin karşılığı.</summary>
+    private static string? Bos(string d) => string.IsNullOrWhiteSpace(d) ? null : d.Trim();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Task.WhenAll(
+            TenantYukle(), SubeYukle(), VezneYukle(), KurKaynaklariYukle(), AbonelikYukle(), KmtsYukle());
+    }
+
+    // ── PAKET YASAL-4 / Y4-C — KMTS alanı ayarı ──────────────────────────────
+    private Kuyumcu.Core.I18n.Yasal4Metinleri Y4I => Kuyumcu.Core.I18n.Yasal4Sozlugu.Al(Dil.Dil);
+    private bool kmtsKullanimi, kmtsOkundu;
+    private int kmtsUymayan;
+    private string? kmtsHata;
+
+    private async Task KmtsYukle()
+    {
+        kmtsHata = null;
+        try
+        {
+            var a = await Api.GetAsync<System.Text.Json.JsonElement>("/kmts/ayar");
+            kmtsKullanimi = a.ValueKind == System.Text.Json.JsonValueKind.Object
+                            && a.TryGetProperty("acik", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.True;
+            kmtsUymayan = a.ValueKind == System.Text.Json.JsonValueKind.Object
+                          && a.TryGetProperty("uymayanSayisi", out var u) && u.ValueKind == System.Text.Json.JsonValueKind.Number
+                ? u.GetInt32() : 0;
+            kmtsOkundu = true;
+        }
+        // UX-S28: okunamadıysa anahtar KİLİTLİ kalır ve sebebi bantta yazar.
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        { kmtsHata = string.Format(Y4I.KmtsAyarHata, ex.Message); }
+    }
+
+    private async Task KmtsDegistir(bool acik)
+    {
+        kmtsHata = null;
+        try
+        {
+            var a = await Api.PutAsync<System.Text.Json.JsonElement>("/kmts/ayar", new { acik });
+            kmtsKullanimi = a.TryGetProperty("acik", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.True;
+            BasariGoster(kmtsKullanimi ? Y4I.KmtsAyarAcildi : Y4I.KmtsAyarKapatildi);
+        }
+        catch (ApiHata ex) { kmtsHata = ex.Message; }
+    }
+
+    private async Task TenantYukle()
+    {
+        tenantHata = null;
+        try
+        {
+            tenant = await Api.GetAsync<TenantVeri>("/admin/tenant");
+            secilenPlan = tenant.Plan;
+            secilenArayuzModu = tenant.VarsayilanArayuzModu;
+            taslakKurKaynagi = tenant.KurKaynagi ?? "";      // KESIF-P1 (#12) taslak = kayıtlı değer
+            taslakMaliyet = tenant.MaliyetYontemi ?? "";
+        }
+        catch (ApiHata ex) { tenant = null; tenantHata = ex.Message; }
+    }
+
+    private async Task SubeYukle()
+    {
+        subeYukleniyor = true;
+        subeHata = null;
+        try { subeler = await Api.GetAsync<List<SubeVeri>>("/subeler"); }
+        catch (ApiHata ex) { subeler = []; subeHata = ex.Message; }
+        subeYukleniyor = false;
+    }
+
+    // ── PAKET P-13 · B-47 — kur kaynağı ve maliyet yöntemi ──────────────────
+
+    private List<string> kurKaynaklari = [];
+
+    /// <summary>
+    /// Seçilebilir kur kaynakları SUNUCUDAN okunur (tek kaynak: KurKaynakDefteri).
+    /// Liste ekrana gömülseydi yeni kaynak eklendiğinde ekran sessizce eski
+    /// listeyi gösterirdi. Okunamazsa liste UYDURULMAZ, boş kalır ve seçici
+    /// yalnız mevcut değeri gösterir (Anayasa md.1).
+    /// </summary>
+    private async Task KurKaynaklariYukle()
+    {
+        try
+        {
+            var y = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Panel.KaynakYaniti>("/kur/kaynaklar");
+            kurKaynaklari = [.. y.Kaynaklar ?? []];
+        }
+        catch (ApiHata ex) { adminHata = ex.Message; }
+    }
+
+    private async Task KurKaynagiSecildi(ChangeEventArgs e)
+    {
+        var kod = e.Value?.ToString() ?? "";
+        if (tenant is null || string.IsNullOrWhiteSpace(kod) || kod == tenant.KurKaynagi) return;
+        adminHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // Yazma yolu MEVCUT uçtur (PATCH /kur/kaynak): ikinci bir yazma
+            // yolu açılsaydı kaynak değişince kur yeniden çekilmezdi.
+            await Api.PatchAsync<object>("/kur/kaynak", new { kaynak = kod });
+            tenant = await Api.GetAsync<TenantVeri>("/admin/tenant");
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { adminHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task MaliyetYontemiSecildi(ChangeEventArgs e)
+    {
+        var y = e.Value?.ToString() ?? "";
+        if (tenant is null || string.IsNullOrWhiteSpace(y) || y == tenant.MaliyetYontemi) return;
+        adminHata = null;
+        kaydediliyor = true;
+        try
+        {
+            tenant = await Api.PatchAsync<TenantVeri>("/admin/tenant/maliyet-yontemi", new { yontem = y });
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { adminHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// Plan İNDİRME (PAKET P-27). Yükseltme bu ekrandan hiç denenmez: seçici
+    /// yalnız sunucunun indirilebilir dediği planları taşır. Sunucu yine de
+    /// son sözü söyler — 403 gelirse seçim geri alınır ve sebep BANDA yazılır.
+    /// </summary>
+    private async Task PlanKaydet()
+    {
+        adminHata = null;
+        planOnayAcik = false;
+        if (tenant is null || secilenPlan == tenant.Plan) return;
+        try
+        {
+            tenant = await Api.PatchAsync<TenantVeri>("/admin/plan", new { plan = secilenPlan });
+            await AbonelikYukle();                    // yeni dönem AYNI ekranda görünsün (UX-S23/S27)
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);   // QA turu 2: sessizce kaydediliyordu
+        }
+        catch (ApiHata ex)
+        {
+            adminHata = ex.Message;
+            secilenPlan = abonelik?.PlanKodu ?? tenant.Plan;   // başarısız değişiklik ekranda kalmasın
+        }
+    }
+
+    /// <summary>
+    /// Kiracı varsayılan arayüz modu (UX-3). ⚠ TOPLU ATAMA YOK: kullanıcıların
+    /// kendi arayuz_modu satırlarına dokunulmaz; yalnız NULL olanlar yeni
+    /// varsayılanı devralır (çözüm sunucuda).
+    /// </summary>
+    private async Task ArayuzModuKaydet()
+    {
+        adminHata = null;
+        if (tenant is null || secilenArayuzModu == tenant.VarsayilanArayuzModu) return;
+        try
+        {
+            tenant = await Api.PatchAsync<TenantVeri>(
+                "/admin/tenant", new { varsayilanArayuzModu = secilenArayuzModu });
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex)
+        {
+            adminHata = ex.Message;
+            secilenArayuzModu = tenant.VarsayilanArayuzModu;   // başarısız değişiklik ekranda kalmasın
+        }
+    }
+
+    private bool vezneZorunlu;
+
+    private async Task VezneYukle()
+    {
+        try
+        {
+            var a = await Api.GetAsync<Kuyumcu.Core.Sozlesmeler.VezneAyarYaniti>("/admin/vezne");
+            vezneZorunlu = a.Zorunlu;
+            taslakVezne = a.Zorunlu;
+            vezneOkundu = true;
+        }
+        catch (ApiHata ex) { adminHata = ex.Message; }
+    }
+
+    /// <summary>Vezne ayrımını açar/kapatır — sunucu yanıtı OKUNUR (UX-S27).</summary>
+    private async Task VezneDegistir(bool zorunlu)
+    {
+        adminHata = null;
+        try
+        {
+            var a = await Api.PatchAsync<Kuyumcu.Core.Sozlesmeler.VezneAyarYaniti>("/admin/vezne", new { zorunlu });
+            vezneZorunlu = a.Zorunlu;
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { adminHata = ex.Message; }
+    }
+
+    private async Task AiDegistir(bool etkin)
+    {
+        adminHata = null;
+        try
+        {
+            tenant = await Api.PatchAsync<TenantVeri>("/admin/ai", new { etkin });
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { adminHata = ex.Message; }
+    }
+
+    // ── Şube ─────────────────────────────────────────────────────────────────
+
+    private async Task SubeModalAc(string? id)
+    {
+        subeModalHata = null;
+        sDuzenlenenId = id;
+        sAd = "";
+        sAdres = "";
+        sTelefon = "";
+        subeModalAcik = true;
+
+        if (id is null) return;
+
+        // Detay ucu tam kaydı verir; listedeki özetle kaydetmek adres/telefonu
+        // silme riski taşır (cari ekranında bu hata bizzat yaşandı).
+        subeDetayYukleniyor = true;
+        try
+        {
+            var sb = await Api.GetAsync<SubeVeri>($"/subeler/{id}");
+            sAd = sb.Ad;
+            sAdres = sb.Adres ?? "";
+            sTelefon = sb.Telefon ?? "";
+        }
+        catch (ApiHata ex) { subeModalHata = ex.Message; }
+        subeDetayYukleniyor = false;
+    }
+
+    private async Task SubeKaydet()
+    {
+        if (!SubeGecerli || kaydediliyor) return;
+        subeModalHata = null;
+        kaydediliyor = true;
+        var govde = new
+        {
+            ad = sAd.Trim(),
+            adres = string.IsNullOrWhiteSpace(sAdres) ? null : sAdres.Trim(),
+            telefon = string.IsNullOrWhiteSpace(sTelefon) ? null : sTelefon.Trim(),
+        };
+        try
+        {
+            if (sDuzenlenenId is null) await Api.PostAsync("/subeler", govde);
+            else await Api.PatchAsync($"/subeler/{sDuzenlenenId}", govde);
+            subeModalAcik = false;
+            await SubeYukle();
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { subeModalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>UX-S25 — pasife almanın TERSİ; ayrı uç yok, aynı PATCH taşır.</summary>
+    private async Task SubeAktifeAl(SubeVeri sb)
+    {
+        subeHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // PATCH sözleşmesi: gönderilmeyen alan KORUNUR. Sunucu Ad'ı [Required]
+            // istiyor, o yüzden mevcut ad AYNEN geri gönderilir (değişiklik değil).
+            await Api.PatchAsync($"/subeler/{sb.Id}", new { ad = sb.Ad, aktif = true });
+            await SubeYukle();
+            BasariGoster(Dil.T.Kabuk.AktifeAlindi);
+        }
+        catch (ApiHata ex) { subeHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task SubePasifeAl()
+    {
+        pasifHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.DeleteAsync<object>($"/subeler/{pasifSube!.Id}");
+            pasifSube = null;
+            await SubeYukle();
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { pasifHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

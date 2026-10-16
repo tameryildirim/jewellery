@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Müşteriler — liste ve çekmece</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:#e9edf3;color:#172033}
+a{color:#2457d6}a:hover{color:#1a45ad}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; background: #f2f4f7; font-size: 18px; line-height: 1.4; overflow: hidden;">
+
+  <nav style="width: 268px; flex-shrink: 0; box-sizing: border-box; padding: 20px 14px; background: #14213d; color: #d6deeb; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 2px 8px;">
+      <div style="width: 34px; height: 34px; border-radius: 9px; background: #2457d6; display: flex; align-items: center; justify-content: center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9z"></path><path d="M2 9h20"></path></svg>
+      </div>
+      <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 21px; letter-spacing: -0.01em; color: #ffffff;">Mihenk</div>
+    </div>
+    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #2c3d63; border-radius: 9px; background: #1f2f52; color: #aab7cf; font-size: 16px;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input type="search" placeholder="Ekran ara" aria-label="Ekran ara" style="border: 0; outline: 0; background: transparent; font: inherit; color: #ffffff; width: 160px;">
+    </label>
+    <a href="Ekranlar.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: #aab7cf; text-decoration: none; font-size: 16px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>Tüm ekranlar (38)</a>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: #e6ecf5; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Günlük iş</span><span style="color: #8ea2c4;">5 ▸</span></span><span style="font-size: 14px; color: #8ea2c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Panel · Satış · Emanet · Sipariş ve tamir · Bildirimler</span></button>
+      <button type="button" aria-expanded="true" style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 12px 4px; border: 0; background: transparent; font: inherit; font-size: 15px; font-weight: 600; color: #8ea2c4; text-align: left; text-transform: uppercase; letter-spacing: .04em;"><span>Müşteri ve stok</span><span>▾</span></button>
+      <a href="Musteriler.dc.html" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; background: #2b3f6b; color: #ffffff; text-decoration: none; font-size: 17px; font-weight: 600;">Müşteriler</a>
+      <a href="#urunler" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: #d6deeb; text-decoration: none; font-size: 17px;">Ürünler</a>
+      <a href="#agac" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: #d6deeb; text-decoration: none; font-size: 17px;">Ürün ağacı</a>
+      <a href="#etiket" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: #d6deeb; text-decoration: none; font-size: 17px;">Etiketler</a>
+      <a href="#fiyat" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: #d6deeb; text-decoration: none; font-size: 17px;">Fiyat listeleri</a>
+      <a href="#sayim" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: #d6deeb; text-decoration: none; font-size: 17px;">Sayım</a>
+      <button type="button" aria-expanded="false" style="margin-top: 6px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: #e6ecf5; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Para ve banka</span><span style="color: #8ea2c4;">10 ▸</span></span><span style="font-size: 14px; color: #8ea2c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kasalar · Vezne · POS · Banka · Çek-senet · Kur · Gider · Hurda…</span></button>
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: #e6ecf5; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Belge ve uyum</span><span style="color: #8ea2c4;">3 ▸</span></span><span style="font-size: 14px; color: #8ea2c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Faturalar · Gider pusulaları · Uyum (MASAK)</span></button>
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: #e6ecf5; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Raporlar</span><span style="color: #8ea2c4;">6 ▸</span></span><span style="font-size: 14px; color: #8ea2c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Rapor merkezi · Kâr-zarar · Vade · İşlem defteri · Satış · Kasa</span></button>
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: #e6ecf5; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Yönetim</span><span style="color: #8ea2c4;">8 ▸</span></span><span style="font-size: 14px; color: #8ea2c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kullanıcılar · İşletme · Yetkiler · Kim ne yaptı · Kurulum · Yedek…</span></button>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #1f2f52;">
+      <div style="width: 36px; height: 36px; border-radius: 999px; background: #2b3f6b; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">AY</div>
+      <div style="display: flex; flex-direction: column; flex-grow: 1;"><div style="font-weight: 500; font-size: 16px; color: #ffffff;">Ayşe Yılmaz</div><div style="font-size: 14px; color: #8ea2c4;">Tezgâhtar</div></div>
+      <a href="#ayarlar" aria-label="Ayarlar" style="color: #aab7cf;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.3 2.6h5l.3-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1z"></path></svg></a>
+    </div>
+  </nav>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; position: relative;">
+    <header style="height: 68px; box-sizing: border-box; padding: 0 28px; display: flex; align-items: center; gap: 26px; background: #ffffff; border-bottom: 1px solid #d7dce4;">
+      <div style="font-family: Sora, sans-serif; font-size: 22px; font-weight: 600;">Müşteriler</div>
+      <div style="display: flex; align-items: center; gap: 24px; margin-left: 8px; font-variant-numeric: tabular-nums;">
+        <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-size: 14px; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Has</span><span style="font-weight: 600; font-size: 19px;">6.877 ₺</span></div>
+        <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-size: 14px; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Gram 22</span><span style="font-weight: 600; font-size: 19px;">6.301 ₺</span></div>
+        <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-size: 14px; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">USD</span><span style="font-weight: 600; font-size: 19px;">41,95 ₺</span></div>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <a href="#kilavuz" style="font-size: 16px; text-decoration: none; color: #2457d6;">Yardım</a>
+      <div style="display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid #d7dce4; border-radius: 999px; font-size: 15px;">
+        <span style="padding: 6px 14px; border-radius: 999px; background: #14213d; color: #ffffff; font-weight: 500;">Basit</span>
+        <a href="Profesyonel.dc.html" style="padding: 6px 14px; border-radius: 999px; color: #5a6577; text-decoration: none;">Profesyonel</a>
+      </div>
+    </header>
+
+    <main style="flex-grow: 1; box-sizing: border-box; padding: 22px 28px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <label style="flex-grow: 1; max-width: 460px; display: flex; align-items: center; gap: 10px; height: 50px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff; color: #5a6577;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input type="search" placeholder="Ad ya da telefon" aria-label="Müşteri ara" style="flex-grow: 1; border: 0; outline: 0; background: transparent; font: inherit; font-size: 17px; color: #172033;">
+        </label>
+        <div style="display: flex; gap: 4px; padding: 3px; border: 1px solid #d7dce4; border-radius: 999px; background: #ffffff; font-size: 15px;">
+          <span style="padding: 7px 14px; border-radius: 999px; background: #14213d; color: #ffffff;">Hepsi</span>
+          <span style="padding: 7px 14px; border-radius: 999px; color: #5a6577;">Borçlu</span>
+          <span style="padding: 7px 14px; border-radius: 999px; color: #5a6577;">Toptancı</span>
+        </div>
+        <div style="flex-grow: 1;"></div>
+        <button type="button" style="height: 50px; padding: 0 20px; border: 0; border-radius: 9px; background: #2457d6; color: #ffffff; font: inherit; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Yeni müşteri</button>
+      </div>
+
+      <div style="border: 1px solid #d7dce4; border-radius: 12px; background: #ffffff; overflow: hidden; box-shadow: 0 1px 2px rgba(20,33,61,.06); font-variant-numeric: tabular-nums;">
+        <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 170px 140px 130px 230px; gap: 12px; padding: 12px 20px; font-size: 14px; color: #8a94a6; text-transform: uppercase; letter-spacing: .04em; background: #f2f4f7; border-bottom: 1px solid #d7dce4;"><span>Müşteri</span><span>Telefon</span><span style="text-align: right;">Borç ₺</span><span style="text-align: right;">Has g</span><span></span></div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 170px 140px 130px 230px; gap: 12px; padding: 0 20px; height: 62px; align-items: center; border-bottom: 1px solid #edf0f4; background: #eef3ff;"><span style="font-weight: 500;">Hasan Kaya <span style="margin-left: 8px; padding: 3px 10px; border-radius: 999px; background: #fdecec; color: #c0262d; font-size: 13px; font-weight: 500;">Vade geçti</span></span><span style="color: #5a6577;">0532 411 22 33</span><span style="text-align: right; font-weight: 600;">38.900</span><span style="text-align: right;">5,66</span><div style="display: flex; gap: 6px; justify-content: flex-end;"><a href="Tezgah.dc.html" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; font-size: 15px; color: #172033; text-decoration: none;">Tahsilat</a><button type="button" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 15px;">Düzenle</button><button type="button" aria-label="Diğer işlemler" style="width: 38px; height: 38px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 17px;">⋯</button></div></div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 170px 140px 130px 230px; gap: 12px; padding: 0 20px; height: 62px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Zeynep Demir</span><span style="color: #5a6577;">0541 208 90 17</span><span style="text-align: right; font-weight: 600;">12.000</span><span style="text-align: right;">1,74</span><div style="display: flex; gap: 6px; justify-content: flex-end;"><a href="Tezgah.dc.html" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; font-size: 15px; color: #172033; text-decoration: none;">Tahsilat</a><button type="button" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 15px;">Düzenle</button><button type="button" aria-label="Diğer işlemler" style="width: 38px; height: 38px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 17px;">⋯</button></div></div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 170px 140px 130px 230px; gap: 12px; padding: 0 20px; height: 62px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Mehmet Öz <span style="margin-left: 8px; padding: 3px 10px; border-radius: 999px; background: #e9edf3; color: #3d4a5c; font-size: 13px; font-weight: 500;">Toptancı</span></span><span style="color: #5a6577;">0212 511 40 40</span><span style="text-align: right; font-weight: 600; color: #c0262d;">−151.300</span><span style="text-align: right; color: #c0262d;">−22,00</span><div style="display: flex; gap: 6px; justify-content: flex-end;"><a href="Tezgah.dc.html" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; font-size: 15px; color: #172033; text-decoration: none;">Ödeme</a><button type="button" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 15px;">Düzenle</button><button type="button" aria-label="Diğer işlemler" style="width: 38px; height: 38px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 17px;">⋯</button></div></div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 170px 140px 130px 230px; gap: 12px; padding: 0 20px; height: 62px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Ali Can</span><span style="color: #5a6577;">0505 777 12 80</span><span style="text-align: right;">0</span><span style="text-align: right;">0,00</span><div style="display: flex; gap: 6px; justify-content: flex-end;"><a href="Tezgah.dc.html" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; font-size: 15px; color: #172033; text-decoration: none;">Satış</a><button type="button" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 15px;">Düzenle</button><button type="button" aria-label="Diğer işlemler" style="width: 38px; height: 38px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 17px;">⋯</button></div></div>
+        <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) 170px 140px 130px 230px; gap: 12px; padding: 0 20px; height: 62px; align-items: center;"><span style="font-weight: 500;">Elif Arslan</span><span style="color: #5a6577;">0530 640 55 21</span><span style="text-align: right;">0</span><span style="text-align: right; color: #15803d;">+3,20</span><div style="display: flex; gap: 6px; justify-content: flex-end;"><a href="Tezgah.dc.html" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; font-size: 15px; color: #172033; text-decoration: none;">Satış</a><button type="button" style="padding: 8px 12px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 15px;">Düzenle</button><button type="button" aria-label="Diğer işlemler" style="width: 38px; height: 38px; border: 1px solid #c9d0db; border-radius: 8px; background: #ffffff; font: inherit; font-size: 17px;">⋯</button></div></div>
+      </div>
+      <div style="font-size: 15px; color: #8a94a6;">184 müşteri · 5 gösteriliyor</div>
+    </main>
+
+    <aside style="position: absolute; top: 68px; right: 0; bottom: 0; width: 440px; box-sizing: border-box; padding: 24px 26px; background: #ffffff; border-left: 1px solid #d7dce4; box-shadow: -12px 0 32px rgba(20,33,61,.10); display: flex; flex-direction: column; gap: 18px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-size: 21px; font-weight: 600;">Hasan Kaya</div>
+        <button type="button" aria-label="Kapat" style="width: 38px; height: 38px; border: 1px solid #d7dce4; border-radius: 8px; background: #ffffff; font: inherit; font-size: 18px;">×</button>
+      </div>
+      <div style="padding: 12px 14px; border-radius: 10px; background: #fdecec; color: #c0262d; font-size: 15px; line-height: 1.4;">Vadesi 12 gün geçti. Para almak için listedeki "Tahsilat" düğmesini kullan.</div>
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; flex-direction: column; gap: 6px;"><label for="ad" style="font-size: 15px; color: #5a6577;">Ad soyad <span style="color: #c0262d;">*</span></label><input id="ad" type="text" value="Hasan Kaya" style="height: 50px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; font: inherit; font-size: 17px; color: #172033;"></div>
+        <div style="display: flex; flex-direction: column; gap: 6px;"><label for="tel" style="font-size: 15px; color: #5a6577;">Telefon <span style="color: #c0262d;">*</span></label><input id="tel" type="text" value="0532 411 22 33" style="height: 50px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; font: inherit; font-size: 17px; color: #172033; font-variant-numeric: tabular-nums;"></div>
+        <div style="display: flex; flex-direction: column; gap: 6px;"><label for="not" style="font-size: 15px; color: #5a6577;">Not</label><input id="not" type="text" value="Eşinin doğum günü ekim" style="height: 50px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; font: inherit; font-size: 17px; color: #172033;"></div>
+        <button type="button" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border: 1px solid #d7dce4; border-radius: 9px; background: #f2f4f7; font: inherit; font-size: 16px; color: #172033;"><span>Daha fazla (adres, TC, e-posta, limit)</span><span style="color: #5a6577;">▾</span></button>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <div style="font-size: 14px; color: #8a94a6;">Son değişiklik: Ayşe Y., dün 16:20 · <a href="#gecmis" style="text-decoration: none;">Kim ne yaptı</a></div>
+      <div style="display: flex; gap: 10px;">
+        <button type="button" style="height: 50px; padding: 0 18px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff; font: inherit; font-size: 17px;">Vazgeç</button>
+        <button type="button" style="flex-grow: 1; height: 50px; border: 0; border-radius: 9px; background: #2457d6; color: #ffffff; font: inherit; font-size: 17px; font-weight: 600;">Kaydet</button>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

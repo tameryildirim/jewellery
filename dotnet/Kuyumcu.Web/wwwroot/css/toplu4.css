@@ -1,0 +1,208 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET TOPLU-4 — toplu tasarım kuyruğu (TOPLU-2 t2 · ŞUBE-KAPSAM-B t2 · TOPLU-2
+   kapanışı · TOPLU-3 t2 kalanları). YALNIZ GÖRÜNÜM; seçiciler sayfa/öğe kimliğiyle
+   kapsanır. olcek.css → dugme.css → ortak.css zinciri (DUGME-2/O1) bozulmasın diye
+   toplu3.css'ten SONRA, olcek.css'ten ÖNCE yüklenir; ortak.css'i yenmesi gereken
+   kurallar özgüllükle (ana içerik / kimlik zinciri) kazanır — sıra değişmez.
+   Sabit renk YOK: yalnız belirteç (var(--…)).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (T4-1) KRİTİK — Panel "Kim borçlu?" satırı.
+   Ölçüm (önce, has dolu fikstür): 1440 BASİT #panel-borclu-tutar "24.423,82 ₺ · 12,3 g has"
+   130 px sütundan 73 px taşıp "Tahsil et" düğmesinin ARKASINA giriyordu; 375'te auto sütun
+   tutarla genişleyip ad sütununu 102 px'e daraltıyor, ad 6 satıra HARF HARF kırılıyordu.
+   Çözüm: TL ve has AYRI satır (Panel.razor .panel-tutar-parca); tutar sütunu en az 130 px,
+   gerekirse içeriği kadar (max-content); ad yalnız SÖZCÜK arasından sarar. Dar kap
+   (≤ 559 px, ortak.css ile aynı kap sorgusu): iki satırlı kart "ad · eylem" / "durum · tutar". */
+.ana-icerik .panel-sade #panel-soru-borclu .panel-liste-satir {
+  grid-template-columns: minmax(0, 1fr) 130px minmax(130px, max-content) 110px;
+}
+.ana-icerik .panel-sade #panel-soru-borclu .panel-liste-tutar {
+  display: flex; flex-direction: column; align-items: flex-end; row-gap: 2px;
+  white-space: nowrap; min-width: 0;
+}
+.ana-icerik .panel-sade #panel-soru-borclu .panel-tutar-parca { display: block; }
+.ana-icerik .panel-sade #panel-soru-borclu .panel-liste-ad {
+  word-break: normal; overflow-wrap: break-word; hyphens: manual;
+}
+@container (max-width: 559px) {
+  .ana-icerik .panel-sade #panel-soru-borclu .panel-liste-satir {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "ad eylem" "durum tutar";
+    align-items: center;
+  }
+  .ana-icerik .panel-sade #panel-soru-borclu .panel-liste-tutar { align-self: start; }
+}
+
+/* (T4-2) Ortak ⓘ satırı: kısa metin + ⓘ aynı satırda, 14 px; ⓘ içinde birden çok paragraf
+   (zo-belge.css .zo-ipucu > p yalnız TEK paragrafı konumlar — gövde kabı aynı katman). */
+.t4-ipucu-satir { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--bosluk-1); row-gap: var(--bosluk-1); font-size: max(14px, var(--yazi-sm)); }
+.t4-ipucu-satir > :is(p, h2, h3) { margin: 0; }
+.t4-ipucu-satir > .zo-ipucu { margin-inline-start: 0; }
+.zo-ipucu > .t4-ipucu-govde {
+  position: absolute; z-index: 5; inset-inline-start: 0; top: calc(100% + 6px); width: 18rem; max-width: 80vw;
+  margin: 0; padding: var(--bosluk-2) var(--bosluk-3); background: var(--yuzey); color: var(--metin);
+  border: 1px solid var(--ayrac); border-radius: var(--yaricap); box-shadow: 0 6px 18px color-mix(in srgb, var(--metin) 14%, transparent);
+  font-size: max(14px, var(--yazi-sm)); font-weight: 400; line-height: 1.4; white-space: normal; text-transform: none;
+}
+.zo-ipucu > .t4-ipucu-govde p { margin: 0 0 var(--bosluk-2); }
+.zo-ipucu > .t4-ipucu-govde p:last-child { margin-bottom: 0; }
+.t4-ipucu-satir > :is(p, span) { font-size: max(14px, var(--yazi-sm)); }
+#vitrin-ayar-baslik-satir { flex-wrap: nowrap; }
+#vitrin-ayar-baslik-satir > h3 { min-width: 0; }
+@media (max-width: 480px) {
+  /* Telefonda her summary 44 × 44 dokunma hedefidir (app.css K3); ⓘ dairesi o kutunun içinde
+     20 px kalır — kutu zeminsiz, halka belirteç renginde (görünür boy ile dokunma boyu ayrı). */
+  .t4-ipucu-satir .zo-ipucu > summary,
+  #sayfa-basi-vade-takibi-filtre > #vade-ufuk-ipucu > summary,
+  .t4-degismez-satir > .zo-ipucu > summary {
+    border: 0;
+    background: radial-gradient(circle at center, transparent 9px, var(--ayrac) 9.5px, var(--ayrac) 10.5px, transparent 11px);
+  }
+}
+@media (max-width: 640px) {
+  /* Dar ekranda ⓘ katmanı ekranın İKİ yanından da taşmasın (gerçek tarayıcı ölçümü 02.10: tetiğe sağdan
+     yaslı katman 375'te /kur'da x=-6, /raporlar/vade-takibi'nde x=-91 idi). Katman ⓘ'ye değil SATIRA
+     bağlanır: satır içerik kenarından başlar, katman satırın tam genişliğinde açılır. */
+  .t4-ipucu-satir { position: relative; }
+  .t4-ipucu-satir > .zo-ipucu { position: static; }
+  .t4-ipucu-satir > .zo-ipucu > :is(p, .t4-ipucu-govde) { inset-inline-start: 0; inset-inline-end: 0; width: auto; max-width: none; }
+}
+
+/* (T4-3) Vitrin: kaynak satırı 14 px (eski 12 px metin-kucuk); "atlanan yok" cümlesi 14 px. */
+#vitrin-kaynak-satir { margin-bottom: var(--bosluk-3); }
+#vitrin-atlanan-yok { font-size: max(14px, var(--yazi-sm)); }
+#vitrin-ayar-baslik-satir { margin-bottom: var(--bosluk-3); }
+#vitrin-ayar-baslik-satir > h3 { font-size: var(--yazi-lg); }
+
+/* (T4-5) Liste sayaç satırı: 14 px, sınır yazılı; daraltma cümlesi yalnız sınırda (amber). */
+.t4-sayac { font-size: max(14px, var(--yazi-sm)); margin-block: var(--bosluk-2); }
+.t4-sayac > .metin-amber { margin-inline-start: var(--bosluk-2); }
+
+/* (T4-6) "Eylem düğmesi üstünde ~60 px boş bant": P-37 şeridi etiketsiz çocuğa ETİKET PAYI
+   (--arac-etiket-bosluk) verir ki etiketli komşusuyla üst kenarı eşitlensin. Şeritte HİÇ
+   görünür etiket yoksa (yalnız eylem, ya da gizli etiketli arama) hizalanacak komşu yoktur;
+   pay boş bant olarak kalıyordu (/kur 64 px). Pay YALNIZ o durumda sıfırlanır — etiketli
+   şeritte (P-37 hizası) hiçbir şey değişmez. */
+.sayfa-basi:not(:has(.sayfa-basi-filtre :is(.alan-etiket, .alan > label))) > .sayfa-basi-eylem { padding-top: 0; }
+.sayfa-basi:not(:has(.sayfa-basi-filtre :is(.alan-etiket, .alan > label))) > .sayfa-basi-filtre > .arama-kutu { padding-top: 0; }
+.sayfa-basi:not(:has(.sayfa-basi-filtre :is(.alan-etiket, .alan > label))) > .sayfa-basi-filtre > :is(button, .btn, .dugme) { margin-top: 0; }
+
+/* (T4-4) Siparişler: tür seçimi durum süzgeciyle AYNI şeritte — şerit çocuğu kuralı
+   (.sayfa-basi-filtre > * sütun + 220 px asgari) segment grubunu ezmesin. */
+#sip-tur-grubu { flex-direction: row; flex-wrap: wrap; flex: 0 1 auto; min-width: 0; gap: var(--bosluk-2); }
+
+/* (T4-8) Kur rozeti kaynak satırının yanında 14 px; Vade / Uyum yardımcı satırları 14 px. */
+#kur-kaynak-satir #kur-has-kaynak { margin: 0; }
+#kur-kaynak-satir #kur-sozlesmesiz { margin: 0; }
+#kur-kaynak-satir #kur-sozlesmesiz .rozet { font-size: max(14px, var(--yazi-sm)); }
+/* (T4-8, tur 2 — tasarım hakemi 02.10 KRİTİK) Vade takibi:
+   · ⓘ gün segmentinin YANINDA (yetim "Kaç gün ilerisi ⓘ" satırı kalktı); filtre yuvasının sütun/220 px
+     kuralı (app.css .sayfa-basi-filtre > *) bu küçük tetiği genişletmesin.
+   · serbest gün kutusu "+ Başka gün" metin bağlantısı arkasında (T4-9 kalıbı: kutu yok, 44 px hedef).
+   · "Vadesi girilmemiş" kart alt metni tek satır + ⓘ; değişmezlik notu tek satır + ⓘ. */
+#sayfa-basi-vade-takibi-filtre > #vade-ufuk-ipucu { display: inline-block; flex: 0 0 auto; min-width: 0; align-self: center; margin: 0; }
+.t4-baska-gun { margin: 0; }
+.t4-baska-gun > summary {
+  list-style: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--bosluk-1);
+  border-radius: var(--yaricap); cursor: pointer; color: var(--vurgu); font-weight: var(--kalin-orta, 600);
+}
+.t4-baska-gun > summary::-webkit-details-marker { display: none; }
+.t4-baska-gun > summary:focus-visible { outline: var(--odak-halka-kalinlik, 2px) solid var(--odak-halka); outline-offset: 2px; }
+.t4-baska-gun[open] > summary { margin-bottom: var(--bosluk-1); }
+#vade-vadesiz-alt { margin-top: .25rem; color: var(--metin-soluk); }
+.t4-degismez-satir { display: flex; align-items: center; gap: var(--bosluk-2); min-width: 0; }
+.t4-degismez-satir > .degismez-ipucu { flex: 1 1 auto; min-width: 0; align-items: center; }
+.t4-degismez-satir .degismez-govde { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--bosluk-2); row-gap: 0; }
+.t4-degismez-satir .degismez-govde > p { margin: 0; }
+.t4-degismez-satir .degismez-gerekce { font-size: max(14px, var(--yazi-sm)); }
+.t4-degismez-satir > .zo-ipucu { flex: 0 0 auto; margin: 0; }
+.t4-degismez-satir .zo-ipucu > p { inset-inline-start: auto; inset-inline-end: 0; }
+@media (max-width: 640px) {
+  /* Dar ekranda segment ⓘ katmanı filtre yuvasının tam genişliğinde açılır (iki yandan taşma 0). */
+  #sayfa-basi-vade-takibi-filtre { position: relative; }
+  #sayfa-basi-vade-takibi-filtre > #vade-ufuk-ipucu { position: static; }
+  #sayfa-basi-vade-takibi-filtre > #vade-ufuk-ipucu > p { inset-inline-start: 0; inset-inline-end: 0; width: auto; max-width: none; }
+  .t4-degismez-satir { position: relative; }
+  .t4-degismez-satir > .zo-ipucu { position: static; }
+  .t4-degismez-satir .zo-ipucu > p { inset-inline-start: 0; inset-inline-end: 0; width: auto; max-width: none; }
+}
+.ana-icerik:has(#sayfa-basi-vade-takibi) .stat-alt { font-size: max(14px, var(--yazi-sm)); }
+#uy-risk-ipucu-satir { margin-bottom: var(--bosluk-3); }
+#uy-risk-cari-sinir { font-size: max(14px, var(--yazi-sm)); }
+
+/* (T4-9) Hurda "Daha fazla" → "+ … ekle" METİN BAĞLANTISI kalıbı (tam genişlik kutu ve ok yok);
+   açıkken "Daha az göster" tetiğin yerinde, ok yukarı. 44 px dokunma hedefi korunur.
+   toplu3.css T3-9 (kesik kenarlı kutu) bu kuralla geçersiz kalır (aynı özgüllük, sonra yüklenir). */
+#hrd-detay-ac, #hrd-detay-gizle {
+  width: auto; align-self: flex-start; min-height: 44px; padding: 0 var(--bosluk-1);
+  border: 0; border-radius: var(--yaricap); background: none;
+  justify-content: flex-start; gap: var(--bosluk-1);
+  color: var(--vurgu); font-weight: var(--kalin-orta, 600);
+}
+#hrd-detay-ac:hover, #hrd-detay-gizle:hover { text-decoration: underline; background: none; }
+#hrd-detay-ac .zo-detay-ok { display: none; }
+#hrd-detay-gizle .zo-detay-ok { color: var(--vurgu); transform: rotate(180deg); }
+
+/* (T4-10) Uyum risk özeti 3 + 3: altı kart iki eşit satır (eskiden 4 + 2, PEP kartı iki sütun
+   genişleyince boş hücre kalıyordu). Dar ekranda 2 + 2 + 2. */
+#uy-risk-ozet { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#uy-risk-ozet > .stat-kart--genis { grid-column: auto; }
+@media (max-width: 640px) { #uy-risk-ozet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* (T4-11) Yaşlandırma: renk İŞARETE bağlı — eksi tutar (cari alacaklı) dilim renginden
+   bağımsız kırmızı (has sütunuyla aynı kural); has notu ⓘ satırı, boş has sütununda gizli. */
+#yas-tablo td.yas-eksi { color: var(--tehlike); }
+#yas-kart:has(#yas-tablo.yas-has-bos) > #yas-has-not-satir { display: none; }
+
+/* (T4-12) Kurulum adım listesi: sayı etiketiyle tek satırda, sağa yaslı ve 14 px. */
+#kur-adimlar .sade-adim-listesi .metin-kucuk, #kur-tl-kural { font-size: max(14px, var(--yazi-sm)); }
+#kur-adimlar .sade-adim-listesi > li > .metin-kucuk { min-width: 0; overflow-wrap: break-word; }
+
+/* (T4-14b) İşlem defteri: şube süzgeci (#id-sube) görünürken "Görünüm: <şube>" rozeti AYNI bilgiyi
+   ikinci kez yazıyordu — süzgeç etkin kapsamı zaten gösterir (ve değiştirilebilir). */
+.ana-icerik:has(#id-sube) p.gorunum-rozeti { display: none; }
+/* (T4-14b ek) Süzgeç kapalıyken (#id-sube DOM'da yok) şube seçiliyse akordeon başlığı şubeyi zaten yazar. */
+#id-rozet-kap { display: contents; }
+#id-rozet-kap.id-rozet-suzgecte > p.gorunum-rozeti { display: none; }
+
+/* (T4-8b) Kur / Vade / Uyum / Siparişler: kalan 12 px açıklama ve sayaç satırları 14 px (ipucu kademesi;
+   ekip oyu TOPLU-3 T3-10 "yardımcı yazı en az 14 px"). Metin ve davranış aynı. */
+#kur-pro-notu, #kur-pro-notu-bag { font-size: max(14px, var(--yazi-sm)); }
+#sip-ozet .metin-kucuk, #sip-ozet strong { font-size: max(14px, var(--yazi-sm)); }
+#ylp-neden > summary, #ylp-neden .metin-kucuk, #ylp-sinyal-yok, #ylp-sinyal-aciklama, #ylp-sinyal-satirlar { font-size: max(14px, var(--yazi-sm)); }
+
+/* (T4-12b) Kurulum adım listesi "kaymış satır": düğmesi olan ve olmayan satırlarda sayı ve ad farklı
+   x'te başlıyordu (esnek satır). ≥ 641 px'te SABİT dört sütun: durum · ad · sayı · eylem —
+   eylemsiz satırda da sütun yeri durur; satırlar eşit boyda. 375 düzeni toplu3.css T3-7'de. */
+@media (min-width: 641px) {
+  #kur-adimlar .sade-adim-listesi > li {
+    display: grid; grid-template-columns: 8rem minmax(0, 1fr) auto 10rem;
+    grid-template-areas: "durum ad sayi eylem";
+    column-gap: var(--bosluk-3); align-items: center; min-height: 3rem;
+  }
+  #kur-adimlar .sade-adim-listesi > li > .rozet { grid-area: durum; justify-self: start; }
+  #kur-adimlar .sade-adim-listesi > li > span:not(.rozet):not(.metin-kucuk) { grid-area: ad; }
+  #kur-adimlar .sade-adim-listesi > li > .metin-kucuk { grid-area: sayi; justify-self: end; white-space: nowrap; }
+  #kur-adimlar .sade-adim-listesi > li > :is(.btn, button) { grid-area: eylem; justify-self: end; }
+}
+
+/* (GOC-C, hasım ORTA K9) Kurulum adım satırının eylem hücresi TEK sarmalayıcı: "Bu adıma git" + "Bu adımı atla"
+   aynı grid-area'ya iki ayrı öğe olarak konup üst üste biniyordu. Sarmalayıcı eylem alanını alır, içi esnek ve
+   sarar (10rem sütunda iki düğme alt alta); her genişlikte (≤640 toplu3 T3-7, ≥641 T4-12b) aynı alan adı. */
+#kur-adimlar .sade-adim-listesi > li > .kur-adim-eylemler {
+  grid-area: eylem; order: 4; justify-self: end; align-self: center; min-width: 0;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--bosluk-2);
+}
+#kur-adimlar .sade-adim-listesi > li > .kur-adim-eylemler:empty { display: none; }
+/* 375: iki eylem YAN YANA eylem sütununu genişletip adım adını ("Kasa ve banka açılışı") iki satıra kırıyordu
+   (ölçüm K3) — dar ekranda eylemler alt alta, sütun en geniş düğme kadar. */
+@media (max-width: 640px) {
+  #kur-adimlar .sade-adim-listesi > li > .kur-adim-eylemler { flex-direction: column; align-items: stretch; }
+}
+
+/* (T4-2b) Kurulum PRO ve Vitrin PRO'da kalan 12 px yardımcı satırlar (açılış penceresi, satır tavanı,
+   kontrol kilidi, "Varsayılan" durum yazısı) 14 px. Metin ve koşullar aynı. */
+.ana-icerik:has(#kur-adimlar) :is(#kur-pencere, #kur-acilis-sinir, #kur-prova-kilit) { font-size: max(14px, var(--yazi-sm)); }
+#vitrin-ayarlar [id^="vitrin-varsayilan-"] { font-size: max(14px, var(--yazi-sm)); }
+#sip-f-sube-sabit, #sip-f-sube-sabit > strong { font-size: max(14px, var(--yazi-sm)); }

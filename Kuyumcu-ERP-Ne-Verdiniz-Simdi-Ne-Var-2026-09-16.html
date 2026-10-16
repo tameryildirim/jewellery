@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><title>Kuyumcu ERP — Ne Verdiniz, Şimdi Ne Var (16 Eylül 2026)</title>
+<style>
+@page { size: A4; margin: 16mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 9.6pt; line-height: 1.45; color: #1a1a1a; margin: 0; }
+h1 { font-size: 19pt; margin: 0 0 2mm; color: #7a5c1e; letter-spacing: -0.3px; }
+.alt { font-size: 9.3pt; color: #555; margin-bottom: 5mm; padding-bottom: 3mm; border-bottom: 2px solid #c9a227; }
+h2 { font-size: 12.5pt; margin: 6mm 0 2.5mm; color: #7a5c1e; border-bottom: 1px solid #e0d5b8; padding-bottom: 1.5mm; page-break-after: avoid; }
+h3 { font-size: 10.3pt; margin: 4mm 0 1.6mm; color: #333; page-break-after: avoid; }
+p { margin: 0 0 2.6mm; }
+ul { margin: 0 0 2.8mm 4.5mm; padding: 0; } li { margin-bottom: 1.1mm; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 8.8pt; page-break-inside: auto; }
+th { background: #f5efe0; text-align: left; padding: 1.6mm 2mm; border: 1px solid #ddd3b8; font-weight: 600; }
+td { padding: 1.5mm 2mm; border: 1px solid #e3e3e3; vertical-align: top; }
+tr { page-break-inside: avoid; }
+.k { font-family: Menlo, Consolas, monospace; font-size: 8.4pt; background: #f6f6f6; padding: 0 1.2mm; border-radius: 2px; }
+.kutu { border: 1px solid #e0d5b8; background: #fbf8f0; padding: 3mm 3.5mm; margin: 2.5mm 0 4mm; border-radius: 3px; }
+.uyari { border-color: #d9a441; background: #fff7e6; }
+.iyi { color: #2e7d32; font-weight: 600; } .kotu { color: #b23b3b; font-weight: 600; } .orta { color: #b26a00; font-weight: 600; }
+.iki { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+.kucuk { font-size: 8.4pt; color: #555; }
+.sayfa { page-break-before: always; }
+</style></head><body>
+
+<h1>Kuyumcu ERP — Ne Verdiniz, Şimdi Ne Var</h1>
+<div class="alt">Kime: Ramazan Akkocan (Kurucu) · Hazırlayan: Tamer Bey (AI Patron, ByGatech A.Ş.) · Durum anı: <b>16 Eylül 2026, 08:50</b> · Kaynak: çalışma ağacı ölçümleri, test/derleme çıktıları, <span class="k">SONRAKI-OTURUM-PROMPT.md</span> A1–A18, <span class="k">PAZAR-ARASTIRMASI-2026-09-16.md</span>. Kural: her sayı ölçülmüştür; tahmin olan yerde "tahmin" yazar.</div>
+
+<h2>1. Bir bakışta — 9 Eylül'de verdiğiniz ile bugün</h2>
+<table>
+<tr><th style="width:30%">Ölçüt</th><th style="width:22%">9 Eylül (devir, commit bbfdc95)</th><th style="width:22%">16 Eylül 08:50 (bugün)</th><th>Not</th></tr>
+<tr><td>Üretim kodu (C# + Razor, test ve migration hariç)</td><td>11.314 satır</td><td><b>30.889 satır</b></td><td>≈ 2,7 kat; hepsi çalışma ağacında (commit yasağı sürüyor)</td></tr>
+<tr><td>Otomatik test</td><td class="kotu">0</td><td class="iyi">1.027 / 1.027 yeşil</td><td>17.551 satır test kodu, 58 test dosyası; gerçek MySQL + HTTP + bUnit ekran testleri</td></tr>
+<tr><td>Veritabanı şeması</td><td class="kotu">Migration yok (temiz makinede kurulamıyordu)</td><td class="iyi">22 migration, 32 tablo</td><td>kuyumcu_net ve kuyumcu_test birebir aynı şemada</td></tr>
+<tr><td>Kanıtlanmış kritik hata</td><td class="kotu">6 (en ağırı: bir işletme başkasının kasasına para yazabiliyordu)</td><td class="iyi">0 açık; 6'sı kapandı, ayrıca 10+ yeni gerçek hata testlerden geçmişken bulunup kapatıldı</td><td>kiracı izolasyonu artık iki katman: global sorgu filtresi + yazma denetçisi</td></tr>
+<tr><td>Yasal uyum katmanı</td><td class="kotu">Yok (MASAK/tevsik/KMTS/e-Fatura kelimeleri kodda geçmiyordu)</td><td class="iyi">MASAK kimlik tespiti + bağlantılı işlem kümülatifi, tevsik 30.000 TL (işlem tutarı kuralı), gider pusulası + stopaj, sentetik taş kapısı, KMTS alanı, denetim izi (append-only), alan şifreleme, veri dışa aktarımı</td><td>e-Fatura entegrasyonu sözleşme (K1) bekliyor — 2026'da bloker</td></tr>
+<tr><td>HTTP ucu / ekran</td><td>~60 uç, 12 sayfa</td><td>141 uç, 27 sayfa, 24 modül</td><td>26 ekransız uç → 0 (9 yanlış pozitif dahil elle doğrulandı)</td></tr>
+<tr><td>Mimari karar kaydı (ADR)</td><td>0</td><td>15</td><td>+ kalan paketler için 14 + 3 UX spesifikasyonu</td></tr>
+<tr><td>Belge</td><td>5 (4'ü eski TypeScript yığınını anlatıyordu, geçersiz)</td><td>22 kök belge + 8 bölümlü <span class="k">dokumanlar/</span> + uygulama raporları</td><td>her paket için kanıtlı uygulama raporu</td></tr>
+<tr><td>Mühürlü iş listesi (48 paket)</td><td>—</td><td><b>15 bitti · 7 kapsam dışı (imalat) · 26 sürüyor/planlı</b> + Katman 8 deneyim (UX-2 Faz A1 bitti)</td><td>ayrıntı §5–§6</td></tr>
+</table>
+
+<h2>2. Ne verdiniz (9 Eylül)</h2>
+<p>Arkadaşınızın Claude ile yazdığı .NET 8 + Blazor WASM + MySQL prototipi: satış/alış/hurda/takas, cari, kasa, banka, fatura, kur, emanet ve raporlar çalışıyordu; has-gram paralel defteri, kur fotoğrafı zorunluluğu ve kuyum KDV'si doğruydu. Ancak testi yoktu, şeması dosyada değildi, belgeleri başka bir yığını anlatıyordu ve canlıda ölçülen altı kritik hata vardı: kiracı sızıntısı (B işletmesi A'nın kasasına yazabiliyordu), alışta çifte kayıt, hurda alışta üçlü kayıt, has işaretinin emanet ile veresiye arasında ters olması, saat dilimi (gece 00–03 arası ciro sıfır görünüyordu), kasa para biriminin yok sayılması. Kod tabanında hiçbir maliyet alanı olmadığı için kâr-zarar hesaplanamıyordu.</p>
+
+<h2>3. Yol — gün gün ne yapıldı</h2>
+<table>
+<tr><th style="width:14%">Gün</th><th>Yapılan (kanıtlı)</th></tr>
+<tr><td>9–10 Eylül</td><td>Kod denetimi (kanıtlı 6 kritik hata) · Faz 0: hepsi kapandı, ilk migration, ilk 43 test, kiracı izolasyonu tek kapıya alındı; ekip oylaması (Mehmet'in yayın vetosu kaydedildi)</td></tr>
+<tr><td>11–12 Eylül</td><td>Yasal zorunluluklar planı; MASAK (kimlik tespiti, beyan, şüpheli bildirim, saklama, alan şifreleme), tevsik kapısı, gider pusulası + stopaj, KMTS alanı, denetim izi; vitrin panosu fiyat çekirdeği</td></tr>
+<tr><td>13 Eylül</td><td>Satılabilirlik planı; test altyapısı (gerçek MySQL, HTTP, bUnit); uyum ekranları; sentetik taş kapısı; veri dışa aktarımı; barkod/etiket; 15 ADR; belge seti (SRS, mimari, test, güvenlik, runbook); CI tanımı; yük testi</td></tr>
+<tr><td>14 Eylül</td><td>Kâr-zarar çekirdeği (FIFO/LIFO/ortalama parti, <b>TL + HAS iki bacaklı kâr</b>), maden genişletme, ürün ağacı, reyon, konsinye, sayımın deftere yazılması; 26 ekransız uç kapatıldı; POS barkod; ALIŞ/HURDA ödeme aracı canlı hatası; karma ödeme Faz A (tevsik açığı)</td></tr>
+<tr><td>15 Eylül</td><td>Karma ödeme Faz B (çok bacaklı fiş), yasal araştırma (19 ajan), MASAK bağlantılı işlem kümülatifi, gün sonu kapanışı, iade, vade takibi + kredi limiti, dövizle tahsilat (döviz alım-satımı yasak — kodlanmadı), fiyat listesi + kampanya + hediye, sayım oturumu, çift birim stok, pırlanta 4C + sertifika PDF</td></tr>
+<tr><td>16 Eylül (gece → sabah)</td><td>Kapsamlı analiz (9 ajan): derleme kırığı bulundu ve açıldı; yanlış proje kökünden yazılmış hafıza/yedekler kurtarıldı · <b>Paket 33 manuel düzeltme fişi bitti</b> (ekip oyu + hasım doğrulama) · Katman 8 deneyim tasarımı (3 UX paketi) oylandı · <b>UX-2 Faz A1 bitti</b> (belirteç sistemi, karanlık tema, rota başlıkları; 2 gerçek hata) · 27 kalan paketin mimarisi (11 tamam, 16 yeniden üretiliyor) · <b>piyasa araştırması</b> (152 kaynak) · kota dolunca kaldığı yerden devam mekanizması kuruldu</td></tr>
+</table>
+
+<h2>4. Şimdi ne var — alan alan</h2>
+<div class="iki">
+<div>
+<h3>Satış / tezgâh</h3>
+<ul>
+<li>Barkod okutmalı POS, sunucu fiyat teklifi (has × kur × marj + işçilik), fiyat listeleri, kampanya (≤ 92 gün), hediye kalemi</li>
+<li>Karma ödeme tek fişte (nakit + kart + havale + veresiye + efektif döviz), sıralı pay dağıtımı, tevsik önizlemesi</li>
+<li>İade (satış/alış aynası; çıktığı maliyetle geri girer), takas, işçilik, transfer</li>
+</ul>
+<h3>Stok / ürün</h3>
+<ul>
+<li>Maliyet partileri (FIFO/LIFO/AO), stok değerlemesi, maliyeti bilinmeyen mal "sıfır" sayılmaz</li>
+<li>Çok seviyeli kategori, reyon, konsinye, çift birim (gram), pırlanta 4C + sertifika PDF, etiket/barkod, sayım oturumu + fark raporu (deftere yazar)</li>
+</ul>
+<h3>Cari / finans</h3>
+<ul>
+<li>TL + has paralel defter, ekstre, yaşlandırma, <b>vade takibi + kredi limiti</b> (tüm borç doğuran akışlarda), tahsilat/veresiye, <b>manuel düzeltme fişi</b> (gerekçeli, yetkili, denetim izli)</li>
+<li>Kasa (para birimi kapısı), <b>gün sonu kapanışı ve gün kilidi</b>, banka hesapları/hareketleri, emanet</li>
+</ul>
+</div>
+<div>
+<h3>Uyum</h3>
+<ul>
+<li>MASAK: 185.000 TL eşiği, aynı gün bağlantılı işlem kümülatifi (eşik bölme yakalanır), kimlik tespiti/beyan/şüpheli bildirim, 10 iş günü sayacı, saklama-maskeleme</li>
+<li>Tevsik: 30.000 TL nakit haddi, işlem tutarı kuralı, kısmi/karma ödemede nakit payı</li>
+<li>Gider pusulası + stopaj (vatandaşta %0), sentetik taş ibaresi kapısı, kuyum KDV'si (has bedeli matrah dışı), denetim izi (silinemez), alan şifreleme, veri dışa aktarımı (maskeli, gerekçeli)</li>
+</ul>
+<h3>Raporlar</h3>
+<ul><li>Günlük/aylık, kâr-zarar (TL ve HAS ayrı), ürün kârlılığı, stok değeri, yaşlandırma, vade takibi, POS-fatura mutabakatı</li></ul>
+<h3>Platform / güvenlik</h3>
+<ul>
+<li>Çok kiracılı izolasyon (iki katman, denetim betiği kapıları), JWT + refresh rotasyonu + sunucu tarafı çıkış, rol × modül yetki matrisi, oran sınırı, CSP, HTTPS</li>
+<li>Mimari denetim betiği (<span class="k">dotnet/denetim.sh</span>), yetim/sızıntı taraması, yedek doğrulama, k6 yük testi, CI tanımı</li>
+</ul>
+<h3>Deneyim (yeni)</h3>
+<ul><li>Belirteç tabanlı tasarım sistemi, aydınlık/karanlık tema, tutarlı sayfa başlıkları, dar ekran temel kuralları (UX-2 Faz A1); düzenlenebilirlik politikası ve basit/profesyonel mod tasarlandı, uygulaması dalga 1'de</li></ul>
+</div>
+</div>
+
+<h2>5. Kalite nasıl kanıtlanıyor</h2>
+<div class="kutu">
+<ul>
+<li><b>Fail-closed kapılar:</b> testten (Aşkın) ve güvenlikten (Mehmet) geçmeyen sevk edilmez. Her paket: derleme 0 uyarı/0 hata → filtreli testler → <b>mutasyon kanıtı</b> (kural bozulur, testin adıyla kırmızıya döndüğü gösterilir, geri alınır) → tam süit → <span class="k">denetim.sh</span> TEMİZ → canlı sunucuda gerçek veriyle HTTP + SQL kanıtı → test kiracısı silinir.</li>
+<li><b>Bu projede bulunan gerçek hatalar testlerden geçmişti</b> (10'dan fazla); bu yüzden "testler yeşil" tek başına kanıt sayılmaz, mutasyon zorunludur (bugüne kadar M1–M109 + UX mutasyonları).</li>
+<li><b>Gece düzeni:</b> Opus uygulayıcı → farklı modelde hasım doğrulayıcı (kanıtları yeniden üretir) → en fazla iki düzeltme turu → orkestratör kapısı (kendi derleme/denetim/tam süit koşumum). Her karar üç mercekli ekip oyuyla (Bertan · Mehmet · Aşkın), Tamer Bey mühürler; size soru sorulmaz.</li>
+</ul>
+</div>
+
+<h2 class="sayfa">6. Şu an sürenler ve sıradakiler</h2>
+<table>
+<tr><th style="width:24%">Hat</th><th>Durum (08:50)</th></tr>
+<tr><td>Dalga 1 (seri)</td><td><b>Paket 4 Faz A</b> (belge deposu + yükleme ekranı) sürüyor → UX-1 Faz A (düzeltme politikası + gerekçe bileşeni) → UX-3 Faz A (basit/profesyonel mod altyapısı, migration) → Paket 1 Faz A (fatura satır kalemi + tek özel matrah motoru)</td></tr>
+<tr><td>Mimari (16 paket)</td><td>Paket başına ajan, 3'erli partiler: 19, 20, 25 → 27, 29, 31 → 32, 43, 44 → 45, 46, 47 → 48, 3, 5 → 6; ardından üç mercekli oylama ve sentez (dalga sırası + dosya çakışma haritası)</td></tr>
+<tr><td>Sonraki dalgalar (plan)</td><td>Küçük altyapı (6-A, 5-A, 3-A) → günlük dükkân işi (19 vezne, 25 reyon stoku, 27 döviz bakiye, 29 çek/senet, 31 POS cihazı, 32 banka ekstresi, 20 rodyum) → uyum (<b>38 KDV 23/e öne alınır</b>, 39, 40-A, 41, 42) → raporlar (34–37) → platform (44 PWA, 45 MFA, 46 yetki, 43 mobil, 47, 48) → UX fazları araya serpilir; her dalga sonunda tarayıcıdan tıklamalı QA turu</td></tr>
+<tr><td>Devralma güvencesi</td><td>Kota dolarsa: durum dosyası <span class="k">dokumanlar/09-uygulama-kayitlari/ORKESTRATOR-DURUM.md</span> + zamanlanmış görev (04:05 / 10:05, canlılık kontrollü) kaldığı yerden sürdürür</td></tr>
+</table>
+<p class="kucuk">Gece yaşanan iki aksaklık dürüstçe: (1) 5 saatlik kota 01:00–06:40 arası doldu, iş 06:52'de sürdü; (2) 16 paralel Opus ajanı hız sınırına takılıp "3 dk ilerleme yok" ile durduruldu, eşzamanlılık 3–4'e indirilip çaba orta seviyeye çekildi. Ayrıca devir belgesine A18 eklenirken bir karakter kodlama hatası oluştu ve aynı dakika içinde geri alındı (yedek + doğrulama var).</p>
+
+<h2>7. Piyasa araştırması — daha iyi ne yapabiliriz (özet)</h2>
+<div class="iki">
+<div class="kutu">
+<b>Fırsatlar</b>
+<ul>
+<li>1/1/2026: büyükşehirde emtia satanlar gerçek usule geçti (10380 s. Karar) — binlerce küçük kuyumcu ilk kez program alıcısı; oda/dernek kanalı açık</li>
+<li>Yalnız bizde olan üçlü: MASAK ŞİB 10 iş günü sayacı, sentetik taş kapısı, stopajlı gider pusulası → "uyum garantisi" vaadi</li>
+<li>2–3 günlük kazanımlar: vitrin panosu yayını, WhatsApp'la ekstre/vade hatırlatma, KDV 23/e otomatiği (805 + 808 + 230), sentetik ibaresinin fatura satırına basılması</li>
+<li>Banka ekstresi (MT940/CSV) ile "18 banka entegrasyonu" faydasının büyük kısmı sözleşmesiz</li>
+<li>Verinin müşteride kalması (dışa aktarım + kendi sunucusu) — rakiplerin en yaygın şikâyeti "verim programda kilitli"</li>
+</ul>
+</div>
+<div class="kutu uyari">
+<b>Riskler</b>
+<ul>
+<li><b>e-Fatura artık eleme kriteri:</b> bilanço esasında 2026'da tutarına bakılmaksızın e-Arşiv zorunlu; K1 entegratör sözleşmesi imzanızı bekleyen tek gerçek engel</li>
+<li>Rekabet: Dezy 500 TL/ay + AI + pazaryeri; KuyumHub Türkçe AI asistan + açık bankacılık; fiyat modelimiz belirlenmedi</li>
+<li>Mobil/PWA yok — en görünür zayıflık (paket 43/44 + UX-2 A2 planda)</li>
+<li>Doğrulanamayan: KMTS'nin perakendeyi kapsayıp kapsamadığı, kart taksit kısıtı — koda yazılmadı, mali müşavir sorusu</li>
+</ul>
+</div>
+</div>
+
+<h2>8. Sizin elinizde olanlar (ekip yapamaz)</h2>
+<ul>
+<li><b>K1 — e-Fatura özel entegratör sözleşmesi</b> (test ortamı görüşmesi başlatılmalı) · K2 mali müşavir teyidi (KMTS kapsamı, fatura haddi, taksit kısıtı) · K5 MASAK Online kaydı · K10 lisans/mülkiyet belgesi · fiyat kararı (K7)</li>
+<li><b>Commit kararı:</b> tek commit 9 Eylül hâli; 1.027 test, 22 migration, tüm modüller ve belgeler yalnız bu makinede. Yedek stratejisi ve <span class="k">.gitignore</span>/sır temizliği (K9: docker-compose ve appsettings.Development içindeki parolalar) sizin kararınız.</li>
+<li><b>Elle silinecekler</b> (koruma kancası izin vermiyor): 16 adet <span class="k">*.mutorj</span> mutasyon yedeği (kaynakta mutant yok), 8 sıfır baytlık migration dosyası, <span class="k">VadeTakibiTestleri.cs.ek</span>; <span class="k">/private/tmp</span> altındaki 3 veritabanı yedeği ve <span class="k">mut.sh</span> kalıcı yere alınmalı.</li>
+<li>VB-02: kuyumcu_net'teki iki sızma testi kalıntısı silinmeden yabancı anahtar dalgaları başlayamaz.</li>
+</ul>
+
+<h2>9. Nasıl bakarsınız</h2>
+<p>Uygulama: <span class="k">http://localhost:5199</span> (ajanlar 5198'i kullanır, sizinkine dokunmaz). En çok veri içeren hesaplar: "Düzeltme Sonrası Kuyumculuk" (<span class="k">duzeltme@bygatech.com</span>, 33 hareket) ve "Demo Kuyumcu" (<span class="k">demo-1789378226@bygatech.com</span>, 23 hareket); parolalar devir belgesi §5 ve Faz 0 notunda. Yeni tema karanlık/aydınlık sistem ayarını izler; Ayarlar sayfasından seçilebilir. Belgeler: <span class="k">SONRAKI-OTURUM-PROMPT.md</span> (§1 durum, A17-BİTTİ, A18), <span class="k">dokumanlar/02-mimari/MIMARI-KALAN-PAKETLER-2026-09-15.md</span>, <span class="k">dokumanlar/09-uygulama-kayitlari/</span> (paket raporları, durum dosyası, betikler), <span class="k">PAZAR-ARASTIRMASI-2026-09-16.md</span>.</p>
+<p class="kucuk">Bu rapor 16 Eylül 2026 08:50 anını yansıtır; dalga 1 tamamlandığında sayılar (test, migration, uç) artacaktır. ByGatech A.Ş. — AI ile yönetilen yazılım şirketi.</p>
+</body></html>

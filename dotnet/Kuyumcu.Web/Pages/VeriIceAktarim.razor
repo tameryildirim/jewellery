@@ -1,0 +1,805 @@
+@page "/veri-ice-aktarim"
+@using System.Text.Json
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Web.Servisler
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Microsoft.AspNetCore.Components.Forms
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime Js
+@implements IDisposable
+
+<PageTitle>@Marka.SayfaBasligi(MenuAdlari.Icin(Dil.T).VeriIceAktar.Ad)</PageTitle>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   VERİ İÇE AKTARIMI — paket 47 Faz A (kapılı, kuru provalı)
+
+   Bu ekran bir vaat vermez: "tek tık göç" DEMEZ. Rakip programların kolon
+   adları bilinmiyor (PARITE §6); dürüst vaat "şablona yapıştır, biz kontrol
+   edelim"dir. Akış üç adımdır ve ikincisi KURU PROVADIR:
+
+     1) Ne aktarılacak + şablon indir + dosya seç + gerekçe + politika
+     2) KURU PROVA — sunucu hiçbir kart yazmaz, satır satır sonuç döner
+     3) Onay metni birebir yazılır → uygula → gerekirse GERİ AL (pasife alma)
+
+   UX sözleşmesi karşılıkları:
+     • UX-S27 — her yazma başarı bandıyla biter, sunucunun döndürdüğü sayı banda yazılır
+     • UX-S28 — hata "kayıt yok"a çevrilmez; boş durum yalnız istek başarılıyken çıkar
+     • UX-S29 — satır listesinin sunucu sınırı ekranda yazar
+     • UX-S30 — kilitli düğmenin yanında eksik koşul yazar
+     • UX-S25 — oturum düzeltilebilir (gerekçe satır içi), satır sonucu DEĞİŞMEZ (DegismezIpucu)
+     • UX-S31 — ham durum kodu ekrana basılmaz, sözlükten çevrilir
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="sayfa zo-belge" id="ia-sayfa">
+    @* ═══ PAKET ZO-BELGE — "ZORUNLU ÖNCE" + göz #12/#16 ═══════════════════════
+       • "Yükleniyor…" DONMASI (göz #12): şablon isteği hata verince kart sonsuza
+         dek "Yükleniyor" yazıyordu (hata yalnız üst bantta). Artık kartın İÇİNDE
+         sebep + "Yeniden dene" düğmesi (UX-S28: hata ≠ yükleniyor ≠ boş).
+       • İçe Aktarım Geçmişi: KAPALI katlanır (kurucu: geçmiş kayıt listeleri
+         kapalı); açılınca BİR KEZ yüklenir, hata varsa katlanırın içinde yazar.
+       • Jargon (göz #16): "MASAK", "tevsik", "KURU PROVA" açıklamadan çıktı;
+         geçmiş hareketin aktarılMADIĞI kuralı YAZILI kalır (envanter "risk"). *@
+    @* ZO-BELGE 29.09 devam 9 (tasarım hakemi k3 KRİTİK · K17 "açıklama metni satırı 0"): başlık altındaki
+       açıklama satırı kaldırıldı — tuvalde (Profesyonel.png) başlık tek başına durur. *@
+    <SayfaBasi Anahtar="veri-ice-aktarim" Baslik="@SayfaAdi" />
+    @* PAKET CUMA-J (4. tur): ikinci başlık (sayfa-baslik h1 + açıklama) kaldırıldı —
+       SayfaBasi başlığı ve açıklamayı ZATEN basıyor; ekranda iki kez görünüyordu. *@
+
+    @* 29.09 devam 9 (hakem k3 · K17): başlığın altındaki ikinci paragraf (kapsam notu, 18 px) açılışta
+       DEĞİL — "Dosyayı nasıl hazırlarım?" katlanırının İLK satırında (kural yazılı kalır, id AYNI). *@
+
+    <HataBandi Mesaj="@hata" Id="ia-hata" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="6000" Id="ia-basari" />
+
+    @* ── ADIM 1 ───────────────────────────────────────────────────────── *@
+    <div class="kart">
+        @* CUMA-J (4. tur): kart başlığı artık adımın adıdır; "Ne aktarılacak" yalnız
+           alanın kendi etiketinde bir kez görünür. id yeni: ia-adim1-baslik. *@
+        <h2 class="kart-baslik" id="ia-adim1-baslik">@CumaJSozlugu.Ekran(Dil.Dil).IceAktarimHazirlikBaslik</h2>
+        <div class="kart-govde dikey-bosluk">
+
+        @if (sablon is null && sablonHatasi)
+        {
+            @* UX-S28: hata "yükleniyor"a da "kayıt yok"a da çevrilmez. *@
+            <p class="hata-metni" role="alert" id="ia-sablon-hata">@ZB.IceSablonYuklenemedi</p>
+            <div>
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="ia-sablon-yeniden"
+                        disabled="@sablonYukleniyor" @onclick="Yukle">@ZB.YenidenDene</button>
+            </div>
+        }
+        else if (sablon is null)
+        {
+            <p class="metin-soluk">@Dil.T.Ortak.Yukleniyor</p>
+        }
+        else
+        {
+            <div class="alan">
+                @* UX-S22: tek kaynak varsa seçici gösterilmez, salt okunur yazılır.
+                   CUMA-J (4. tur): dış etiket kaldırıldı — Secici kendi etiketini çiziyor,
+                   kart başlığıyla birlikte "Ne aktarılacak" üç kez görünüyordu. *@
+                @if (sablon.KaynakListesi.Count <= 1)
+                {
+                    <span class="alan-etiket">@Dil.T.IceAktarim.Kaynak</span>
+                    <p id="ia-kaynak-tek" class="metin-soluk">@KaynakAdi(kaynak)</p>
+                }
+                else
+                {
+                    <Secici ElemanId="ia-kaynak"
+                            Etiket="@Dil.T.IceAktarim.Kaynak"
+                            Secenekler="@KaynakSecenekleri(sablon)"
+                            Deger="@kaynak"
+                            DegerChanged="@KaynakDegistiDeger" />
+                }
+            </div>
+
+            <div class="alan zo-ice-sablon">
+                <button type="button" @onclick="SablonIndir" class="btn btn-ikincil" id="ia-sablon-indir"
+                        disabled="@indiriliyor">
+                    @Toplu2Sozlugu.Al(Dil.Dil).IceSablonIndir
+                </button>
+            </div>
+
+            @* 29.09 devam 6 (tasarım hakemi YÜKSEK): biçim ve sınır bilgisi ("CSV UTF-8",
+               ".xlsx", KB, satır sınırı, kolon listesi) açılışta teknik metin satırı olarak
+               duruyordu → KAPALI "Dosyayı nasıl hazırlarım?" katlanırında. Bilgi silinmedi;
+               kimlik ia-kolonlar AYNI (PRO). *@
+            <Katlanir Id="ia-nasil" Baslik="@ZB.IceNasilHazirlarim" Sinif="zo-ice-ayar">
+                @* Kapsam dürüstlüğü: neyin aktarılMADIĞI katlanırın en başında yazar. *@
+                <p id="ia-kapsam-notu" class="metin-soluk metin-kucuk" role="note">@ZB.IceKapsamNotu</p>
+                @* GOC-47B: açılış kaynaklarının kuralı katlanırda yazılı (zorunlu önce — açılışta kalabalık yok). *@
+                @if (DefterKaynagi)
+                {
+                    <p id="ia-defter-notu" class="metin-soluk metin-kucuk" role="note">@G.DefterNotu</p>
+                    <p id="ia-ondalik-notu" class="metin-soluk metin-kucuk" role="note">@G.OndalikNotu</p>
+                    @if (kaynak == "acilis-bakiye")
+                    {
+                        <p id="ia-bakiye-isaret" class="metin-soluk metin-kucuk">@G.BakiyeIsaretNotu</p>
+                        <p id="ia-emanet-notu" class="metin-soluk metin-kucuk">@G.EmanetNotu</p>
+                    }
+                    else
+                    {
+                        <p id="ia-stok-notu" class="metin-soluk metin-kucuk">@G.StokNotu</p>
+                    }
+                }
+                @* GOC-47B tur 3: belirsiz sayı ('45.000') TÜM kaynaklarda reddedilir — örnek burada. *@
+                <p id="ia-binlik-notu" class="metin-soluk metin-kucuk" role="note">@G.BinlikNotu</p>
+                <p class="metin-soluk metin-kucuk" id="ia-sablon-ipucu">@Dil.T.IceAktarim.SablonIpucu</p>
+                <p class="metin-soluk metin-kucuk" id="ia-dosya-ipucu">
+                    @Dil.T.IceAktarim.DosyaIpucu (@KbMetni(sablon.MaksDosyaBayt) · @Bicim.SayiGirdi(sablon.MaksSatir))
+                </p>
+                <ProAlan>
+                    <p class="metin-soluk metin-kucuk" id="ia-kolonlar">
+                        @string.Join(" · ", ZorunluKolonlar)
+                    </p>
+                </ProAlan>
+            </Katlanir>
+
+            <div class="alan">
+                <label for="ia-dosya">@Dil.T.IceAktarim.DosyaSec</label>
+                <InputFile id="ia-dosya" class="girdi" OnChange="DosyaSecildi" accept=".csv,text/csv" />
+                @if (dosyaAdi is not null)
+                {
+                    <p class="dosya-onizleme" id="ia-dosya-secili">@dosyaAdi — @KbMetni(dosyaBoyut)</p>
+                }
+                @if (dosyaHatasi is not null)
+                {
+                    <span class="hata-metni" role="alert" id="ia-dosya-hata">@dosyaHatasi</span>
+                }
+            </div>
+
+            @* GOC-47B — SÜTUN EŞLEŞTİRME: kullanıcı kendi başlıklarını bizim alanlara eşler
+               (otomatik tahmin yok). Hepsi adıyla eşleştiyse KAPALI gelir (zorunlu önce);
+               eksik zorunlu varsa AÇIK gelir ve kilit sebebi düğmenin yanında yazar (UX-S30). *@
+            @if (dosyaBasliklari.Count > 0 && sablon is not null)
+            {
+                <Katlanir @key="@($"{dosyaAdi}|{kaynak}")" Id="ia-eslestirme" Sinif="zo-ice-ayar"
+                          BaslangictaAcik="@(EksikZorunluEslesme > 0)"
+                          Baslik="@(EksikZorunluEslesme == 0 ? $"{G.EslestirmeBaslik}: {G.EslestirmeTamam}" : $"{G.EslestirmeBaslik}: {string.Format(G.EslestirmeEksik, EksikZorunluEslesme)}")">
+                    <p class="metin-soluk metin-kucuk" id="ia-eslestirme-ipucu">@G.EslestirmeIpucu</p>
+                    @foreach (var kolon in KaynakKolonlari)
+                    {
+                        var ad = kolon.Ad;
+                        <div class="alan">
+                            <Secici ElemanId="@($"ia-esle-{ad}")" Etiket="@G.KolonEtiketi(ad)" Zorunlu="@kolon.Zorunlu"
+                                    Secenekler="@EslestirmeSecenekleri"
+                                    Deger="@EslesenBaslik(ad)"
+                                    DegerChanged="@(v => EslemeDegisti(ad, v))" />
+                        </div>
+                    }
+                </Katlanir>
+            }
+
+            <div class="alan">
+                @* CUMA-J (4. tur): dış "Gerekçe" etiketi kaldırıldı — CokSatir Etiket'i basıyor. *@
+                <CokSatir ElemanId="ia-gerekce" SayacGoster="false" Etiket="@Dil.T.DisaAktarim.Gerekce" Zorunlu="true"
+                          Satir="2" EnFazla="@AlanSinirlari.AktarimGerekce" YerTutucu="@Dil.T.DisaAktarim.GerekceOrnek"
+                          Deger="@gerekce" DegerChanged="@(v => gerekce = v ?? "")"
+                          Hata="@(GerekceKisa ? string.Format(Dil.T.Yonetim.GerekceKisa, GerekceEnAz) : null)"
+                          HataKimligi="ia-gerekce-hata" />
+                <span id="ia-gerekce-sayac" class="metin-soluk metin-kucuk sayi">
+                    @string.Format(Dil.T.Yonetim.GerekceSayac, gerekce.Trim().Length, GerekceEnAz)
+                </span>
+            </div>
+
+            @* ZO-BELGE 27.09: yinelenen satır kuralının GÜVENLİ varsayılanı var ("Hata say");
+               isteğe bağlı seçim KAPALI katlanırda — başlık SEÇİLİ değeri yazar (sessiz
+               gizleme yok). Kimlik ia-politika AYNI. *@
+            <Katlanir Id="ia-politika-katlanir" Sinif="zo-ice-ayar"
+                      Baslik="@($"{Dil.T.IceAktarim.YinelenenPolitikasi}: {(politika == "ATLA" ? Dil.T.IceAktarim.PolitikaAtla : Dil.T.IceAktarim.PolitikaHata)}")">
+                <div class="alan">
+                    <Secici ElemanId="ia-politika"
+                            Etiket="@Dil.T.IceAktarim.YinelenenPolitikasi"
+                            Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("HATA", Dil.T.IceAktarim.PolitikaHata), new SecenekOgesi("ATLA", Dil.T.IceAktarim.PolitikaAtla) })"
+                            @bind-Deger="politika" />
+                    <span class="metin-soluk metin-kucuk">@Dil.T.IceAktarim.PolitikaIpucu</span>
+                </div>
+            </Katlanir>
+
+            @* ZO-BELGE 29.09: birincil eylem ve kilit sebebi AYNI satırda (1440 açılış ≤ 1,0 ekran;
+               UX-S30 sebep düğmenin hemen yanında). Kimlikler AYNI. *@
+            <div class="zo-ice-eylem">
+            <button type="button" @onclick="Prova" class="btn btn-birincil" id="ia-prova"
+                    disabled="@(calisiyor || !ProvaGecerli)">
+                @* 29.09 devam 6: "Kuru prova çalıştır" jargon — sade ad; iş aynı (sunucu hiçbir kart yazmaz). *@
+                @(calisiyor ? Dil.T.Ortak.Yukleniyor : ZB.IceProvaDugme)
+            </button>
+            @if (!calisiyor && !ProvaGecerli)
+            {
+                <p id="ia-kilit-sebep" class="metin-soluk metin-kucuk">
+                    @Dil.T.Yonetim.KilitSebebi: @string.Join(" · ", EksikKosullar)
+                </p>
+            }
+            </div>
+        }
+        </div>
+    </div>
+
+    @* ── ADIM 2: kuru prova sonucu ─────────────────────────────────────── *@
+    @if (prova is not null)
+    {
+        <div class="kart" id="ia-prova-sonuc">
+            <h2 class="kart-baslik">@Dil.T.IceAktarim.ProvaBasligi</h2>
+            <div class="kart-govde dikey-bosluk">
+            <p class="metin-soluk">@Dil.T.IceAktarim.ProvaAciklama</p>
+
+            <div class="rozet-satir">
+                <span class="metin-kucuk">@Dil.T.IceAktarim.ToplamSatir: <b class="sayi">@prova.ToplamSatir</b></span>
+                <span class="metin-kucuk">@Dil.T.IceAktarim.GecerliSatir: <b class="sayi" id="ia-gecerli">@prova.GecerliSatir</b></span>
+                <span class="metin-kucuk">@Dil.T.IceAktarim.HataliSatir: <b class="sayi" id="ia-hatali">@prova.HataliSatir</b></span>
+                <span class="metin-kucuk">@Dil.T.IceAktarim.AtlananSatir: <b class="sayi">@prova.AtlananSatir</b></span>
+                @* Kuru prova kanıtı: sunucunun döndürdüğü "yazılan kayıt" sayısı. *@
+                <span class="metin-kucuk" id="ia-yazilan">@Dil.T.IceAktarim.YazilanKayit: <b class="sayi">@prova.YazilanKayit</b></span>
+            </div>
+
+            @if (prova.AyniDosyaOturumId is not null)
+            {
+                <p class="uyari-metni" role="alert" id="ia-ayni-dosya">@G.AyniDosyaUyari</p>
+            }
+
+            @* GOC-47B (UX-S23): açılışın etkisi UYGULAMADAN önce görünür. *@
+            @if (prova.Ozet is { } oz)
+            {
+                <div class="rozet-satir" id="ia-defter-ozet" aria-label="@G.OzetBaslik">
+                    @if (prova.Kaynak == "acilis-bakiye")
+                    {
+                        <span class="metin-kucuk">@G.OzetCari: <b class="sayi" id="ia-ozet-cari">@oz.SatirSayisi</b></span>
+                        <span class="metin-kucuk">@G.OzetTl: <b class="sayi" id="ia-ozet-tl">@Bicim.Para(oz.TlToplam, "TRY")</b></span>
+                        <span class="metin-kucuk">@G.OzetHas: <b class="sayi" id="ia-ozet-has">@Bicim.Has(oz.HasToplam)</b></span>
+                        @foreach (var (pb, t) in oz.DovizListesi)
+                        {
+                            <span class="metin-kucuk">@string.Format(G.OzetDoviz, pb): <b class="sayi">@Bicim.Para(t, pb)</b></span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="metin-kucuk">@G.OzetAdet: <b class="sayi" id="ia-ozet-adet">@Bicim.SayiGirdi(oz.ToplamAdet)</b></span>
+                        <span class="metin-kucuk">@G.OzetHasGram: <b class="sayi">@Bicim.Has(oz.ToplamHasGram)</b></span>
+                        <span class="metin-kucuk">@G.OzetMaliyet: <b class="sayi">@Bicim.Para(oz.ToplamMaliyetTl, "TRY")</b></span>
+                        <span class="metin-kucuk">
+                            @G.OzetMaliyetsiz:
+                            <a href="/raporlar/kar-zarar" id="ia-ozet-maliyetsiz" title="@G.OzetMaliyetsizBaglanti"><b class="sayi">@Bicim.SayiGirdi(oz.MaliyetiBilinmeyenAdet)</b></a>
+                        </span>
+                    }
+                </div>
+            }
+
+            @if (prova.BilinmeyenListe.Count > 0)
+            {
+                <p class="uyari-metni" id="ia-bilinmeyen">
+                    @Dil.T.IceAktarim.BilinmeyenKolon: @string.Join(", ", prova.BilinmeyenListe)
+                </p>
+            }
+
+            @if (prova.HataListesi.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.IceAktarim.HataYok" />
+            }
+            else
+            {
+                @* PAKET GOC-C — ORTAK IZGARA (grid:veri-ice-aktarim:ia-hata-tablosu). Sunucu ilk HataTavani hatayı döndürür
+                   (not aşağıda, UX-S29): sınıra değdiyse sıralama KAPALI. *@
+                <Izgara T="IceAktarimHataSatiri" Ekran="veri-ice-aktarim" GridId="ia-hata-tablosu" TabloId="ia-hata-tablosu"
+                        Kolonlar="@HataKolonlari(prova.HataListesi.Count < HataTavani)"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(prova.HataListesi, hataSira, HataKolonlari(prova.HataListesi.Count < HataTavani))"
+                        Baslik="@Dil.T.IceAktarim.HataMesaji"
+                        SiralamaDegisti="@(x => hataSira = x)" GecerliSiralama="@hataSira" />
+                @* UX-S29: sunucu ilk 100 hatayı döndürür — sessiz kırpma yok. *@
+                <p class="metin-soluk metin-kucuk" id="ia-hata-siniri">
+                    @string.Format(Dil.T.Yonetim.GecmisSiniri, HataTavani)
+                </p>
+            }
+
+            @* Satır sonucu DEĞİŞMEZDİR — düzeltme yolu yazılır (UX-S25). *@
+            <DegismezIpucu Varlik="@Dil.T.IceAktarim.SatirDegismez"
+                           Gerekce="@Dil.T.IceAktarim.SatirDegismezYol"
+                           AlternatifYol="@Dil.T.IceAktarim.ProvaCalistir" />
+
+            @if (ProvaAcik)
+            {
+                <div class="alan">
+                    <code class="metin-kucuk">@OnayMetni</code>
+                    <Metin ElemanId="ia-onay" Etiket="@Dil.T.IceAktarim.OnayMetniniYazin" Zorunlu="true"
+                           EnFazla="@AlanSinirlari.AktarimOnay"
+                           Deger="@onayGirisi" DegerChanged="@(v => onayGirisi = v ?? "")" />
+                </div>
+
+                <div class="satir">
+                    @* P-36c: tek tip düğme sırası — ikincil önce, birincil sonda. *@
+                    <button type="button" @onclick="IptalSor" class="btn btn-ikincil" id="ia-iptal"
+                            disabled="@calisiyor">
+                        @Dil.T.IceAktarim.Iptal
+                    </button>
+                    <button type="button" @onclick="Uygula" class="btn btn-birincil" id="ia-uygula"
+                            disabled="@(calisiyor || !UygulaGecerli)">
+                        @Dil.T.IceAktarim.Uygula
+                    </button>
+                </div>
+                @if (!calisiyor && !UygulaGecerli)
+                {
+                    <p id="ia-uygula-kilit" class="metin-soluk metin-kucuk">
+                        @Dil.T.Yonetim.KilitSebebi: @string.Join(" · ", UygulaEksikleri)
+                    </p>
+                }
+            }
+            else if (sonUygulama is not null)
+            {
+                <div class="satir">
+                    <button type="button" @onclick="GeriAlSor" class="btn btn-ikincil" id="ia-geri-al"
+                            disabled="@calisiyor">
+                        @Dil.T.IceAktarim.GeriAl
+                    </button>
+                </div>
+                @if (DefterKaynagi)
+                {
+                    <p class="metin-soluk metin-kucuk" id="ia-geri-al-ipucu">@G.GeriAlDefterIpucu</p>
+                }
+            }
+            </div>
+        </div>
+    }
+
+    @* ── Geçmiş — KAPALI katlanır; açılınca BİR KEZ yüklenir (Katlanir sözleşmesi).
+          Hata varsa yeniden açınca tekrar dener (Hatali). ── *@
+    <Katlanir Id="ia-gecmis" Baslik="@Dil.T.IceAktarim.Gecmis" Sayi="@(gecmisYuklendi ? gecmis.Count : null)"
+              IlkAcilis="GecmisAc" Hatali="@(gecmisHatasi is not null)" Sinif="zo-gecmis">
+        <p id="ia-gecmis-siniri" class="metin-soluk metin-kucuk">
+            @string.Format(Dil.T.Yonetim.GecmisSiniri, GecmisLimit)
+        </p>
+        @if (gecmisHatasi is not null)
+        {
+            <p class="hata-metni" role="alert" id="ia-gecmis-hata">@ZB.IceGecmisYuklenemedi @gecmisHatasi</p>
+            <div>
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="ia-gecmis-yeniden"
+                        @onclick="GecmisAc">@ZB.YenidenDene</button>
+            </div>
+        }
+        else if (gecmisYuklendi && gecmis.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.IceAktarim.GecmisBos" />
+        }
+        else if (!gecmisYuklendi)
+        {
+            <p class="metin-soluk">@Dil.T.Ortak.Yukleniyor</p>
+        }
+        else
+        {
+            @* PAKET GOC-C — ORTAK IZGARA (grid:veri-ice-aktarim:ia-gecmis-tablosu). Son GecmisLimit oturum (not üstte,
+               UX-S29): sınıra değdiyse sıralama KAPALI. PROVA'daki gerekçe satır içi düzeltilir (UX-S25) — AYNEN. *@
+            <Izgara T="IceAktarimGecmisSatiri" Ekran="veri-ice-aktarim" GridId="ia-gecmis-tablosu" TabloId="ia-gecmis-tablosu"
+                    Kolonlar="@GecmisKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(gecmis, gecmisSira, GecmisKolonlari)"
+                    SatirId="@(g => $"ia-gecmis-{g.Id}")" Baslik="@Dil.T.IceAktarim.Durum"
+                    SiralamaDegisti="@(x => gecmisSira = x)" GecerliSiralama="@gecmisSira" />
+        }
+    </Katlanir>
+</div>
+
+@* Yıkıcı eylem ortak onay modalı (DoD/4) — tek kullanım: geri al / iptal. *@
+<ModalPencere Acik="@(onayTuru is not null)" Baslik="@Dil.T.IceAktarim.Baslik"
+              Kapat="@OnayKapat">
+    <p>@(onayTuru == "geri-al" ? (DefterKaynagi ? G.GeriAlOnayDefter : Dil.T.IceAktarim.GeriAlOnay) : Dil.T.IceAktarim.IptalOnay)</p>
+    <div class="satir">
+        <button type="button" @onclick="OnayKapat" class="btn btn-ikincil" id="ia-onay-hayir"
+                disabled="@calisiyor">@Dil.T.Ortak.Hayir</button>
+        <button type="button" @onclick="OnayEvet" class="btn btn-birincil" id="ia-onay-evet"
+                disabled="@calisiyor">@Dil.T.Ortak.Evet</button>
+    </div>
+</ModalPencere>
+
+@code {
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> KaynakSecenekleri(IceAktarimSablonYaniti s) =>
+        [.. s.KaynakListesi.Select(k => new SecenekOgesi(k.Ad, KaynakAdi(k.Ad)))];
+
+    private void KaynakDegistiDeger(string? deger) =>
+        KaynakDegisti(new ChangeEventArgs { Value = deger });
+
+    /// <summary>Sunucunun (IceAktarimModulu) istediği asgari gerekçe uzunluğu.</summary>
+    private const int GerekceEnAz = 20;
+    private const int GecmisLimit = 20;
+    /// <summary>Sunucu kuru prova yanıtında EN FAZLA bu kadar hata döndürür.</summary>
+    private const int HataTavani = 100;
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? hataSira, gecmisSira;
+    private IReadOnlyList<IzgaraKolonu<IceAktarimHataSatiri>> HataKolonlari(bool tam) =>
+    [
+        new() { Anahtar = "satir", Baslik = Dil.T.IceAktarim.SatirNo, ZorunluGorunur = true, SunucuSiralamaAdi = tam ? "satir" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = h => h.SatirNo },
+        new() { Anahtar = "kod", Baslik = Dil.T.IceAktarim.HataKodu, SunucuSiralamaAdi = tam ? "kod" : null,
+                HucreSinif = _ => "metin-kucuk hucre-tek-satir", Deger = h => G.HataKoduAdi(h.HataKodu) },
+        new() { Anahtar = "mesaj", Baslik = Dil.T.IceAktarim.HataMesaji, ZorunluGorunur = true, HucreSinif = _ => "metin-kucuk", Deger = h => h.HataMesaji },
+    ];
+
+    private bool GecmisTam => gecmis.Count < GecmisLimit;
+    private IReadOnlyList<IzgaraKolonu<IceAktarimGecmisSatiri>> GecmisKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = GecmisTam ? "tarih" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = g => g.Olusturuldu, Hucre = g => @<text>@Bicim.TarihSaat(g.Olusturuldu)</text> },
+        new() { Anahtar = "kaynak", Baslik = Dil.T.IceAktarim.Kaynak, SunucuSiralamaAdi = GecmisTam ? "kaynak" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = g => KaynakAdi(g.KaynakAd) },
+        new() { Anahtar = "dosya", Baslik = Dil.T.IceAktarim.Dosya, HucreSinif = _ => "metin-kucuk", Deger = g => g.DosyaAdi },
+        new() { Anahtar = "durum", Baslik = Dil.T.IceAktarim.Durum, ZorunluGorunur = true, SunucuSiralamaAdi = GecmisTam ? "durum" : null,
+                Deger = g => DurumAdi(g.Durum), Hucre = g => @<Rozet Renk="@DurumRengi(g.Durum)">@DurumAdi(g.Durum)</Rozet> },
+        new() { Anahtar = "satir", Baslik = Dil.T.IceAktarim.GecerliSatir, SunucuSiralamaAdi = GecmisTam ? "satir" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = g => g.UygulananSatir,
+                Hucre = g => @<text>@g.UygulananSatir / @g.ToplamSatir</text> },
+        // UX-S25: PROVA aşamasındaki oturumun gerekçesi düzeltilebilir.
+        new() { Anahtar = "gerekce", Baslik = Dil.T.DisaAktarim.Gerekce, HucreSinif = _ => "metin-kucuk metin-soluk", Deger = g => g.Gerekce,
+                Hucre = g => @<text>@if (g.Durum == "PROVA")
+                    {
+                        <SatirIciDuzenle Varlik="iceaktarim" Alan="gerekce" Id="@g.Id"
+                                         Etiket="@Dil.T.DisaAktarim.Gerekce" Deger="@g.Gerekce"
+                                         Kaydediliyor="@(kaydedilenId == g.Id)"
+                                         Kaydedildi="@(yeni => GerekceKaydet(g.Id, yeni))" />
+                    }
+                    else
+                    {
+                        @g.Gerekce
+                    }</text> },
+    ];
+
+    private IceAktarimSablonYaniti? sablon;
+    private IceAktarimProvaYaniti? prova;
+    private IceAktarimUygulaYaniti? sonUygulama;
+    private List<IceAktarimGecmisSatiri> gecmis = [];
+    private bool gecmisYuklendi;
+
+    private string kaynak = "cari";
+    private string gerekce = "";
+    private string politika = "HATA";
+    private string onayGirisi = "";
+    private string? dosyaAdi;
+    private long dosyaBoyut;
+    private string? dosyaBase64;
+    private string? dosyaHatasi;
+
+    private bool calisiyor;
+    private bool indiriliyor;
+    private string? hata;
+    private string? basari;
+    private int basariJeton;
+    private string? onayTuru;
+    private string? kaydedilenId;
+
+    private string OnayMetni => sablon?.OnayMetni ?? "";
+
+    private bool GerekceKisa => gerekce.Trim().Length is > 0 and < GerekceEnAz;
+
+    private bool ProvaGecerli =>
+        dosyaBase64 is not null && dosyaHatasi is null && gerekce.Trim().Length >= GerekceEnAz
+        && EksikZorunluEslesme == 0;
+
+    /// <summary>Uygulanabilir aşama: prova var, henüz uygulanmadı ve geçerli satır var.</summary>
+    private bool ProvaAcik => prova is not null && sonUygulama is null;
+
+    private bool UygulaGecerli =>
+        ProvaAcik && prova!.GecerliSatir > 0 && onayGirisi.Trim() == OnayMetni;
+
+    private IEnumerable<string> EksikKosullar
+    {
+        get
+        {
+            if (dosyaBase64 is null) yield return Dil.T.IceAktarim.DosyaSec;
+            if (dosyaHatasi is not null) yield return dosyaHatasi;
+            if (gerekce.Trim().Length < GerekceEnAz)
+                yield return string.Format(Dil.T.Yonetim.GerekceSayac, gerekce.Trim().Length, GerekceEnAz);
+            if (dosyaBase64 is not null && EksikZorunluEslesme > 0)
+                yield return string.Format(G.EslestirmeEksik, EksikZorunluEslesme);
+        }
+    }
+
+    private IEnumerable<string> UygulaEksikleri
+    {
+        get
+        {
+            if (prova is { GecerliSatir: 0 }) yield return Dil.T.IceAktarim.HataYok;
+            if (onayGirisi.Trim() != OnayMetni) yield return Dil.T.Yonetim.OnayMetniEksik;
+        }
+    }
+
+    private IEnumerable<string> ZorunluKolonlar =>
+        sablon?.KaynakListesi.FirstOrDefault(k => k.Ad == kaynak)?.Liste
+            .Where(c => c.Zorunlu).Select(c => c.Ad) ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    // ── PAKET ZO-BELGE ──
+    private ZoBelgeMetinleri ZB => ZoBelgeSozlugu.Al(Dil.Dil);
+    /// <summary>ZO-BELGE 28.09 (UX-S31): sayfa başlığı MENÜ adıyla AYNI (MenuAdlari tek kaynak);
+    /// eski "Veri İçe Aktarımı" menüdeki "Veri içe aktar" ile çelişiyordu.</summary>
+    private string SayfaAdi => MenuAdlari.Icin(Dil.Dil).VeriIceAktar.Ad;
+    private bool sablonHatasi, sablonYukleniyor;
+    private static bool AgHatasi(Exception ex) => ex is HttpRequestException or OperationCanceledException;
+    private string? gecmisHatasi;
+
+    private async Task Yukle()
+    {
+        sablonYukleniyor = true;
+        sablonHatasi = false;
+        try
+        {
+            sablon = await Api.GetAsync<IceAktarimSablonYaniti>("/ice-aktarim/sablonlar");
+            if (sablon.KaynakListesi.Count > 0 && sablon.KaynakListesi.All(k => k.Ad != kaynak))
+                kaynak = sablon.KaynakListesi[0].Ad;
+            hata = null;
+        }
+        // ⚠ UX-S28: hata "kayıt yok"a çevrilmez — bant ayrı, boş durum ayrı.
+        // ZO-BELGE (göz #12): kart da "Yükleniyor"da DONMAZ — sablonHatasi.
+        catch (ApiHata ex) { hata = ex.Message; sablonHatasi = true; }
+        catch (JsonException) { hata = Dil.T.Ortak.Hata; sablonHatasi = true; }
+        // ZO-BELGE 29.09 (doğrulayıcı ORTA, KIYAS #3): ağ hatası / zaman aşımı da bant + yeniden dene.
+        catch (Exception ex) when (AgHatasi(ex)) { hata = ZB.BaglantiHatasi; sablonHatasi = true; }
+        finally { sablonYukleniyor = false; }
+    }
+
+    /// <summary>Geçmiş katlanırı açılınca (ve "Yeniden dene") çağrılır — hata katlanırın içinde yazar.</summary>
+    private async Task GecmisAc()
+    {
+        try { await GecmisYukle(); }
+        catch (ApiHata ex) { gecmisHatasi = ex.Message; }
+        catch (JsonException) { gecmisHatasi = Dil.T.Ortak.Hata; }
+        catch (Exception ex) when (AgHatasi(ex)) { gecmisHatasi = ZB.BaglantiHatasi; }
+    }
+
+    private async Task GecmisYukle()
+    {
+        var yanit = await Api.GetAsync<IceAktarimGecmisYaniti>($"/ice-aktarim/gecmis?limit={GecmisLimit}");
+        gecmis = yanit.Liste;
+        gecmisYuklendi = true;
+        gecmisHatasi = null;
+    }
+
+    private void KaynakDegisti(ChangeEventArgs e)
+    {
+        kaynak = e.Value?.ToString() ?? kaynak;
+        // Bağımlı alanın bağını EKRAN kurar (UX-S24): kaynak değişince eski
+        // prova sonucu ARTIK GEÇERSİZDİR, sessizce durmaz.
+        prova = null;
+        sonUygulama = null;
+        onayGirisi = "";
+        esleme.Clear();
+    }
+
+    private async Task DosyaSecildi(InputFileChangeEventArgs e)
+    {
+        dosyaHatasi = null; dosyaBase64 = null; dosyaAdi = null; dosyaBoyut = 0;
+        dosyaBasliklari = []; esleme.Clear();
+        prova = null; sonUygulama = null; onayGirisi = "";
+
+        var dosya = e.File;
+        if (dosya is null) return;
+
+        var tavan = sablon?.MaksDosyaBayt ?? 2 * 1024 * 1024;
+        if (dosya.Size > tavan)
+        {
+            // İstemci ön kapısı sunucunun KOPYASI değil ÖN GÖSTERİMİDİR.
+            dosyaHatasi = $"{Dil.T.IceAktarim.DosyaIpucu} ({KbMetni(tavan)})";
+            dosyaAdi = dosya.Name;
+            dosyaBoyut = dosya.Size;
+            return;
+        }
+
+        using var akis = dosya.OpenReadStream(tavan);
+        using var bellek = new MemoryStream();
+        await akis.CopyToAsync(bellek);
+
+        var baytlar = bellek.ToArray();
+        dosyaBase64 = Convert.ToBase64String(baytlar);
+        BasliklariOku(baytlar);
+        dosyaAdi = dosya.Name;
+        dosyaBoyut = dosya.Size;
+    }
+
+    private async Task SablonIndir()
+    {
+        hata = null;
+        indiriliyor = true;
+        try
+        {
+            var (veri, ad) = await Api.GetBaytAsync($"/ice-aktarim/sablon/{kaynak}.csv");
+            await Js.InvokeVoidAsync("kuyumcuIndir",
+                ad ?? $"kuyumcu-{kaynak}-sablon.csv",
+                Convert.ToBase64String(veri), "text/csv");
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        indiriliyor = false;
+    }
+
+    private async Task Prova()
+    {
+        if (dosyaBase64 is null) return;
+        hata = null; basari = null;
+        calisiyor = true;
+        try
+        {
+            prova = await Api.PostAsync<IceAktarimProvaYaniti>("/ice-aktarim/prova", new
+            {
+                kaynak,
+                dosyaAdi,
+                icerikBase64 = dosyaBase64,
+                gerekce = gerekce.Trim(),
+                yinelenenPolitikasi = politika,
+                kolonEslemesi = GonderilecekEsleme(),
+            });
+            sonUygulama = null;
+            onayGirisi = "";
+            await GecmisYukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; prova = null; }
+        calisiyor = false;
+    }
+
+    private async Task Uygula()
+    {
+        if (prova is null) return;
+        hata = null;
+        calisiyor = true;
+        try
+        {
+            sonUygulama = await Api.PostAsync<IceAktarimUygulaYaniti>(
+                $"/ice-aktarim/{prova.OturumId}/uygula", new { onay = onayGirisi.Trim() });
+
+            // UX-S27: sunucunun döndürdüğü sonuç banda yazılır.
+            basari = $"{Dil.T.IceAktarim.UygulandiMesaji} — {sonUygulama.UygulananSatir}";
+            basariJeton++;
+            await GecmisYukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        calisiyor = false;
+    }
+
+    private void GeriAlSor() => onayTuru = "geri-al";
+    private void IptalSor() => onayTuru = "iptal";
+    private void OnayKapat() => onayTuru = null;
+
+    private async Task OnayEvet()
+    {
+        var tur = onayTuru;
+        onayTuru = null;
+        if (prova is null || tur is null) return;
+
+        hata = null;
+        calisiyor = true;
+        try
+        {
+            if (tur == "geri-al")
+            {
+                var y = await Api.PostAsync<IceAktarimGeriAlYaniti>(
+                    $"/ice-aktarim/{prova.OturumId}/geri-al");
+                basari = y.GeriAlinan > 0
+                    ? $"{G.GeriAlindiDefter} — {y.GeriAlinan}"
+                    : $"{Dil.T.IceAktarim.GeriAlindiMesaji} — {y.PasifeAlinan}";
+            }
+            else
+            {
+                await Api.PostAsync($"/ice-aktarim/{prova.OturumId}/iptal");
+                basari = Dil.T.Yonetim.Kaydedildi;
+            }
+            basariJeton++;
+            prova = null;
+            sonUygulama = null;
+            await GecmisYukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        calisiyor = false;
+    }
+
+    private async Task GerekceKaydet(string oturumId, string yeni)
+    {
+        hata = null;
+        kaydedilenId = oturumId;
+        try
+        {
+            await Api.PatchAsync($"/ice-aktarim/{oturumId}", new { gerekce = yeni.Trim() });
+            basari = Dil.T.Yonetim.Kaydedildi;
+            basariJeton++;
+            await GecmisYukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydedilenId = null;
+    }
+
+    private string KaynakAdi(string ad) => ad switch
+    {
+        "cari" => Dil.T.IceAktarim.KaynakCari,
+        "urun" => Dil.T.IceAktarim.KaynakUrun,
+        "acilis-bakiye" => G.KaynakAcilisBakiye,
+        "acilis-stok" => G.KaynakAcilisStok,
+        _ => ad,
+    };
+
+    // UX-S31: ham veritabanı kodu ekrana basılmaz.
+    private string DurumAdi(string durum) => durum switch
+    {
+        "PROVA" => Dil.T.IceAktarim.ProvaBasligi,
+        "UYGULANDI" => Dil.T.IceAktarim.UygulandiMesaji,
+        "GERI_ALINDI" => Dil.T.IceAktarim.GeriAlindiMesaji,
+        "IPTAL" => Dil.T.Ortak.Iptal,
+        _ => durum,
+    };
+
+    private static string DurumRengi(string durum) => durum switch
+    {
+        "UYGULANDI" => "yesil",
+        "GERI_ALINDI" => "sari",
+        "IPTAL" => "kirmizi",
+        _ => "gri",
+    };
+
+    private static string KbMetni(long bayt) =>
+        (bayt / 1024.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " KB";
+
+    // ── PAKET GOC-47B — Faz B (açılış) + sütun eşleştirme ─────────────────────
+    private Goc47BMetinleri G => Goc47BSozlugu.Al(Dil.Dil);
+
+    /// <summary>Seçili kaynak deftere (açılış) yazan bir kaynak mı? Sunucu söyler (tek kaynak).</summary>
+    private bool DefterKaynagi =>
+        sablon?.KaynakListesi.FirstOrDefault(k => k.Ad == (prova?.Kaynak ?? kaynak))?.Defter ?? false;
+
+    private List<string> dosyaBasliklari = [];
+    /// <summary>Kullanıcının seçtiği eşleşmeler: bizimKolon → dosyadaki başlık ("" = dosyada yok).</summary>
+    private readonly Dictionary<string, string> esleme = new(StringComparer.OrdinalIgnoreCase);
+
+    private IReadOnlyList<IceAktarimKolonBilgisi> KaynakKolonlari =>
+        sablon?.KaynakListesi.FirstOrDefault(k => k.Ad == kaynak)?.Liste ?? [];
+
+    private IReadOnlyList<SecenekOgesi> EslestirmeSecenekleri =>
+        [new SecenekOgesi("", G.EslestirmeYok), .. dosyaBasliklari.Select(b => new SecenekOgesi(b, b))];
+
+    /// <summary>Seçim yoksa aynı adlı başlık varsayılır (tahmin değil, birebir ad eşleşmesi).</summary>
+    private string EslesenBaslik(string kolon) =>
+        esleme.TryGetValue(kolon, out var s)
+            ? s
+            : dosyaBasliklari.FirstOrDefault(b => b.Equals(kolon, StringComparison.OrdinalIgnoreCase)) ?? "";
+
+    private int EksikZorunluEslesme =>
+        dosyaBasliklari.Count == 0 ? 0 : KaynakKolonlari.Count(k => k.Zorunlu && EslesenBaslik(k.Ad) == "");
+
+    private void EslemeDegisti(string kolon, string? deger)
+    {
+        esleme[kolon] = deger ?? "";
+        prova = null; sonUygulama = null; onayGirisi = "";
+    }
+
+    /// <summary>Yalnız ADI FARKLI eşleşmeler gönderilir; aynı adlı başlığı sunucu zaten bulur.</summary>
+    private Dictionary<string, string>? GonderilecekEsleme()
+    {
+        var d = KaynakKolonlari
+            .Select(k => (k.Ad, Baslik: EslesenBaslik(k.Ad)))
+            .Where(x => x.Baslik != "" && !x.Baslik.Equals(x.Ad, StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(x => x.Ad, x => x.Baslik);
+        return d.Count == 0 ? null : d;
+    }
+
+    /// <summary>İlk satırı (başlık) okur: BOM atlanır, tırnaklı alan korunur. Yalnız ekran için.</summary>
+    private void BasliklariOku(byte[] veri)
+    {
+        dosyaBasliklari = [];
+        string metin;
+        try { metin = new System.Text.UTF8Encoding(false, true).GetString(veri); }
+        catch (System.Text.DecoderFallbackException) { return; }   // sunucu kapısı sebebini yazar
+        metin = metin.TrimStart('\uFEFF');
+        var hucre = new System.Text.StringBuilder();
+        var tirnak = false;
+        foreach (var c in metin)
+        {
+            if (tirnak) { if (c == '"') tirnak = false; else hucre.Append(c); continue; }
+            if (c == '"') { tirnak = true; continue; }
+            if (c == ',') { dosyaBasliklari.Add(hucre.ToString().Trim()); hucre.Clear(); continue; }
+            if (c is '\r' or '\n') break;
+            hucre.Append(c);
+        }
+        dosyaBasliklari.Add(hucre.ToString().Trim());
+        dosyaBasliklari = dosyaBasliklari.Where(b => b.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

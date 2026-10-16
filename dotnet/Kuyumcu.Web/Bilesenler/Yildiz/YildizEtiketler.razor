@@ -1,0 +1,211 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-5A — "YILDIZ" ETİKETLER (tuval Y_Etiketler · BİREBİR).
+
+   Yerleşim tuvalin <main>'idir: solda üst satır + 64 px ince başlık, altında .k form
+   satırları (Ürün · Adet · Etiket boyu · Etikette ne yazsın · Fiyat yazılsın mı), ".ekle"
+   "Başka ürün ekle", en altta tek beyaz hap "Yazdır" + altı çizili "Vazgeç"; sağda 420 px
+   "Önizleme" (ilk seçili ürünün etiketi) ve not.
+
+   ⚠ YALNIZ data-sema="yildiz" (BASİT ve PRO aynı yüz). İSTEK ATMAZ: seçim, adet, yazdırma
+     ve vazgeç sayfanın mevcut geri çağrılarıdır. Basılacak kâğıt sayfanın özgün
+     .urun-etiket-sayfa'sıdır (kâğıt muaf; bu bileşen yazdırmada gizli: .yazdirma-gizle).
+   ⚠ Kimlikler yeni ("yildiz-etiket-*"): özgün ekran DOM'da kalır (kâğıt), kimlik çakışmaz.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="@(B.AyrintiAcik ? "yz yz-etiket yz-liste--ayrinti yazdirma-gizle" : "yz yz-etiket yazdirma-gizle")" id="yildiz-etiket">
+    @if (B.AyrintiAcik)
+    {
+        <div class="yz-liste-ana">
+            <div class="yz-bas">
+                <div class="yz-bas-sol">
+                    <p class="yz-ust" id="yildiz-etiket-ust">@B.Ust</p>
+                    <h1 class="yz-ince yz-h1" id="yildiz-etiket-baslik">@B.Baslik</h1>
+                </div>
+                <button type="button" class="yz-b2" id="yildiz-etiket-don" @onclick="B.AyrintiKapat">@YildizEtiketSozlugu.EtiketeDon(Dil.Dil)</button>
+            </div>
+        </div>
+    }
+    else
+    {
+    <div class="yz-etiket-ana">
+        <section class="yz-etiket-sol">
+            <div class="yz-bas">
+                <div class="yz-bas-sol">
+                    <p class="yz-ust" id="yildiz-etiket-ust">@B.Ust</p>
+                    <h1 class="yz-ince yz-h1" id="yildiz-etiket-baslik">@B.Baslik</h1>
+                </div>
+            </div>
+            <div class="yz-etiket-satirlar" id="yildiz-etiket-satirlar">
+                <div class="yz-k" id="yildiz-etiket-urun">
+                    <p class="yz-k-etiket">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.Urun(Dil.Dil), Dil.Dil)</p>
+                    <div class="yz-k-deger">
+                        @if (B.Secili.Count == 0)
+                        {
+                            @* YILDIZ-KATMAN (5A kalanı "Etiketler 'Ürün seçin'"): ürün yokken satırın değeri tıklanmayan bir yazıydı —
+                               seçim yalnız alttaki "Başka ürün ekle"den açılıyordu ("başka" derken hiç ürün yok). Değer artık
+                               seçim listesini açan düğmedir (aynı kimlik, aynı geri çağrı SecimDegistir); görünüm tuval .k değeri. *@
+                            <button type="button" class="yz-s yz-etiket-urun-sec" id="yildiz-etiket-urun-deger"
+                                    aria-expanded="@(secimAcik ? "true" : "false")" aria-controls="yildiz-etiket-secim"
+                                    @onclick="SecimDegistir">@YildizEtiketSozlugu.UrunSecin(Dil.Dil)</button>
+                        }
+                        else
+                        {
+                            <span id="yildiz-etiket-urun-deger">@UrunMetni(B.Secili[0])</span>
+                            @if (B.Secili.Count > 1)
+                            {
+                                <span class="yz-s yz-k-ek" id="yildiz-etiket-urun-ek">@YildizEtiketSozlugu.DigerUrun(B.Secili.Count - 1, Dil.Dil)</span>
+                            }
+                        }
+                    </div>
+                </div>
+                <div class="yz-k" id="yildiz-etiket-adet-satir">
+                    <label class="yz-k-etiket" for="yildiz-etiket-adet">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.Adet(Dil.Dil), Dil.Dil)</label>
+                    <div class="yz-k-deger">
+                        <span class="yz-etiket-adet-sar">
+                            <input type="number" inputmode="numeric" min="1" max="@B.KopyaEnCok" step="1" class="yz-k-girdi yz-etiket-adet"
+                                   id="yildiz-etiket-adet" value="@B.Kopya" aria-invalid="@(B.KopyaHata is null ? "false" : "true")"
+                                   aria-describedby="@(B.KopyaHata is null ? null : "yildiz-etiket-adet-hata")"
+                                   @onchange="AdetDegisti" />
+                            <span>@YildizEtiketSozlugu.Etiket(Dil.Dil)</span>
+                        </span>
+                    </div>
+                    @if (B.KopyaHata is { } kh)
+                    {
+                        <p class="yz-kotu yz-k-ek" id="yildiz-etiket-adet-hata" role="alert">@kh</p>
+                    }
+                </div>
+                <div class="yz-k">
+                    <p class="yz-k-etiket">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.EtiketBoyu(Dil.Dil), Dil.Dil)</p>
+                    <div class="yz-k-deger"><span id="yildiz-etiket-boy">@YildizEtiketSozlugu.Boy(Dil.Dil)</span></div>
+                </div>
+                <div class="yz-k">
+                    <p class="yz-k-etiket">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.NeYazsin(Dil.Dil), Dil.Dil)</p>
+                    <div class="yz-k-deger"><span id="yildiz-etiket-icerik">@YildizEtiketSozlugu.Icerik(Dil.Dil)</span></div>
+                </div>
+                <div class="yz-k">
+                    <p class="yz-k-etiket">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.FiyatYazilsin(Dil.Dil), Dil.Dil) <span class="yz-etiket-istege">@YildizEtiketSozlugu.IstegeBagli(Dil.Dil)</span></p>
+                    <div class="yz-k-deger"><span id="yildiz-etiket-fiyat">@YildizEtiketSozlugu.Hayir(Dil.Dil)</span><span class="yz-s yz-k-ek">@YildizEtiketSozlugu.KurEskir(Dil.Dil)</span></div>
+                </div>
+            </div>
+
+            <button type="button" class="yz-ekle" id="yildiz-etiket-baska" aria-expanded="@(secimAcik ? "true" : "false")" @onclick="SecimDegistir">
+                <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@(secimAcik ? YildizEtiketSozlugu.SecimiKapat(Dil.Dil) : YildizEtiketSozlugu.BaskaUrun(Dil.Dil))
+            </button>
+
+            @if (secimAcik)
+            {
+                <div class="yz-etiket-secim" id="yildiz-etiket-secim">
+                    <label class="yz-alan yz-liste-ara" for="yildiz-etiket-ara">
+                        <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
+                        <Kuyumcu.Web.Bilesenler.Form.Arama ElemanId="yildiz-etiket-ara" Etiket="@YildizEtiketSozlugu.AraYerTutucu(Dil.Dil)"
+                            YerTutucu="@YildizEtiketSozlugu.AraYerTutucu(Dil.Dil)" Deger="@arama" DegerChanged="AramaDegisti" />
+                    </label>
+                    @if (B.Yukleniyor)
+                    {
+                        <Yukleniyor />
+                    }
+                    else if (B.Urunler.Count == 0)
+                    {
+                        <p class="yz-s yz-bos" id="yildiz-etiket-urun-yok">@YildizEtiketSozlugu.UrunYok(Dil.Dil)</p>
+                    }
+                    else if (Suzulmus.Count == 0)
+                    {
+                        <p class="yz-s yz-bos" id="yildiz-etiket-arama-bos">@YildizEtiketSozlugu.AramaBos(Dil.Dil)</p>
+                    }
+                    else
+                    {
+                        <div class="yz-sayi yz-liste-tablo yz-etiket-liste" id="yildiz-etiket-liste">
+                            @foreach (var u in Suzulmus.Take(GosterimSiniri))
+                            {
+                                var secili = B.Secili.Any(s => s.Id == u.Id);
+                                <div class="yz-sat yz-liste-sat yz-etiket-sat" id="@($"yildiz-etiket-sat-{u.Id}")">
+                                    <span class="yz-liste-ad">@u.Ad</span>
+                                    <span class="yz-liste-d yz-s">@(u.Barkod ?? "—")</span>
+                                    <span class="yz-liste-eylem">
+                                        <button type="button" class="yz-b3" id="@($"yildiz-etiket-sec-{u.Id}")" aria-pressed="@(secili ? "true" : "false")"
+                                                @onclick="() => Degistir(u.Id, secili)">@(secili ? YildizEtiketSozlugu.Cikar(Dil.Dil) : YildizEtiketSozlugu.Ekle(Dil.Dil))</button>
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                        @if (Suzulmus.Count > GosterimSiniri)
+                        {
+                            <p class="yz-s yz-not" id="yildiz-etiket-sinir" role="status">@YildizEtiketSozlugu.Sinir(GosterimSiniri, Dil.Dil)</p>
+                        }
+                    }
+                </div>
+            }
+
+            <div class="yz-etiket-bosluk"></div>
+            <div class="yz-etiket-eylem">
+                <button type="button" class="yz-b1" id="yildiz-etiket-yazdir" disabled="@(B.YazdirKilit is not null)"
+                        title="@B.YazdirKilit" aria-describedby="@(B.YazdirKilit is null ? null : "yildiz-etiket-yazdir-kilit")" @onclick="B.Yazdir">@YildizEtiketSozlugu.Yazdir(Dil.Dil)</button>
+                <button type="button" class="yz-b2" id="yildiz-etiket-vazgec" disabled="@(B.Secili.Count == 0)"
+                        title="@(B.Secili.Count == 0 ? YildizEtiketSozlugu.VazgecKilit(Dil.Dil) : null)" @onclick="B.Vazgec">@YildizEtiketSozlugu.Vazgec(Dil.Dil)</button>
+            </div>
+            @if (B.YazdirKilit is { } yk)
+            {
+                <p class="yz-s yz-not" id="yildiz-etiket-yazdir-kilit">@yk</p>
+            }
+            @* Bantlar (hata, yazdırma sonucu, taslak geri yükleme/eksik/temizleme + geri al) eylemin ALTINDA:
+               tuvalin form düzeni kaymaz; bilgi yine görünür (kayıp sessiz olmaz, P-66). *@
+            @B.Bantlar
+        </section>
+        <aside class="yz-etiket-sag" id="yildiz-etiket-onizleme">
+            <p class="yz-ust">@YildizEtiketSozlugu.Onizleme(Dil.Dil)</p>
+            <div class="yz-s yz-etiket-onizleme-metin">
+                @if (B.Secili.Count > 0)
+                {
+                    var o = B.Secili[0];
+                    <span class="yz-etiket-kutu" id="yildiz-etiket-kutu" aria-hidden="true"><b class="yz-etiket-kutu-ad">@o.Ad</b><span class="yz-s">@($"{o.Milyem} · {o.Gram} g")</span><span class="yz-etiket-kutu-cubuk">@Cubuk</span><span class="yz-s yz-etiket-kutu-kod">@(o.Barkod ?? "—")</span></span>
+                    <br /><br />
+                }
+                else
+                {
+                    <span id="yildiz-etiket-onizleme-bos">@YildizEtiketSozlugu.OnizlemeBos(Dil.Dil)</span>
+                    <br /><br />
+                }
+                <span id="yildiz-etiket-yazici">@YildizEtiketSozlugu.YaziciNotu(Dil.Dil)</span>
+            </div>
+            @if (B.AyrintiAc.HasDelegate)
+            {
+                <button type="button" class="yz-ekle" id="yildiz-etiket-ayrinti" @onclick="B.AyrintiAc">
+                    <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@YildizListeSozlugu.TumAyrintilar(Dil.Dil)
+                </button>
+            }
+        </aside>
+    </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizEtiketBaglami B { get; set; } = new();
+
+    /// <summary>Seçim listesinde bir kerede gösterilen en çok ürün (sayfa kısa kalsın; arama daraltır — UX-S29 notu).</summary>
+    public const int GosterimSiniri = 20;
+
+    /// <summary>Önizlemedeki barkod çizgisi — tuvaldeki süs dizisi AYNEN (kâğıttaki gerçek barkod SVG'dir).</summary>
+    public const string Cubuk = "▌▌▐▌▐▐▌▌▐▌▐▌▌▐▐▌";
+
+    private bool secimAcik;
+    private string arama = "";
+
+    /// <summary>Ürün satırının metni (tuval "22 Ayar Burma Bilezik · 8698256000046").</summary>
+    public static string UrunMetni(YildizEtiketUrunu u) => string.IsNullOrWhiteSpace(u.Barkod) ? u.Ad : $"{u.Ad} · {u.Barkod}";
+
+    /// <summary>Seçim listesinin süzgeci — YALNIZ görünüm (seçim düşmez; seçililer "Ürün" satırında hep görünür).</summary>
+    private IReadOnlyList<YildizEtiketUrunu> Suzulmus =>
+        string.IsNullOrWhiteSpace(arama) ? B.Urunler
+        : [.. B.Urunler.Where(u => u.Ad.Contains(arama.Trim(), StringComparison.CurrentCultureIgnoreCase)
+                                || (u.Barkod ?? "").Contains(arama.Trim(), StringComparison.OrdinalIgnoreCase))];
+
+    private void SecimDegistir() => secimAcik = !secimAcik;
+    private void AramaDegisti(string? v) => arama = v ?? "";
+    private Task Degistir(string id, bool secili) => secili ? B.Cikar.InvokeAsync(id) : B.Ekle.InvokeAsync(id);
+
+    private Task AdetDegisti(ChangeEventArgs e) =>
+        B.KopyaGirildi.InvokeAsync(decimal.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null);
+}

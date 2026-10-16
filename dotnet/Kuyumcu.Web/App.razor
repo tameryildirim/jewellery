@@ -1,0 +1,15 @@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.AnaYerlesim)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    @* PAKET P-40: bulunamayan adres artık tek cümle değil, gerçek bir ekran —
+       başlık + hata bandı + istenen adres + öneri + panele dönüş.
+       Tek satırlık eski hâli tarayıcı denetiminde "boş içerik" ölçülüyordu. *@
+    <NotFound>
+        <PageTitle>@Marka.Ad</PageTitle>
+        <LayoutView Layout="@typeof(Layout.AnaYerlesim)">
+            <Kuyumcu.Web.Bilesenler.RotaYok />
+        </LayoutView>
+    </NotFound>
+</Router>

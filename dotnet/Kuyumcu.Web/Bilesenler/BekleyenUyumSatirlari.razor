@@ -1,0 +1,68 @@
+@using Kuyumcu.Web.Bilesenler.Uyum
+@inject DilServisi Dil
+
+@* ═══ PAKET RAPOR-3 (07.10) — "BEKLEYEN İŞ" YASAL SATIRLARI (Panel + Rapor merkezi ORTAK) ═══════════
+   Hasım YÜKSEK: kart iş varken boş-durum simgesi ve "Bekleyen 1 iş üstteki uyarıda." yazısını birlikte
+   gösteriyordu; 375'te "üstteki uyarı" ~1100 px yukarıdaydı. Artık her iş tuvaldeki gibi renkli noktalı
+   bir SATIR ("● Yasal liste yüklenmedi — Uyum") ve doğrudan ilgili ekrana bağlantıdır.
+   • Veri ÜRETMEZ: UyumYasalBantlari (/masak/uyum-ozet) ve NakitSiniriPanelSatiri (/tevsik/ihlaller)
+     zaten yükler; sayfa onların bildirdiğini bu bileşene verir (ikinci istek YOK).
+   • İki ekran (Panel BASİT/PRO, Rapor merkezi BASİT) AYNI bileşeni çizer — satır biçimi tek yerde.
+   • Hiç iş yoksa HİÇBİR ŞEY çizmez (boş durumu sayfa söyler).
+   ═════════════════════════════════════════════════════════════════════════════════════════════ *@
+@if (Sayi > 0)
+{
+    <ul class="panel-liste bekleyen-yasal-liste" id="@($"{Onek}-yasal-liste")">
+        @if (Yasal is { } v && v.AcikTam + v.AcikBenzerlik > 0)
+        {
+            @Satir($"{Onek}-yasal-eslesme", "KRITIK", string.Format(KR.IsYasalEslesme, v.AcikTam + v.AcikBenzerlik), "/uyum?sekme=risk")
+        }
+        @if (NakitSayisi > 0)
+        {
+            @Satir($"{Onek}-yasal-nakit", "KRITIK", string.Format(KR.IsNakitSiniri, NakitSayisi), "/uyum?sekme=nakit")
+        }
+        @if (Yasal is { ListeEski: true } l)
+        {
+            @Satir($"{Onek}-yasal-liste-eski", "UYARI",
+                l.ListeYasiGun is { } g ? string.Format(KR.IsYasalListeEski, g) : KR.IsYasalListeYok, "/uyum?sekme=risk")
+        }
+        @if (Yasal is { SaklamaYaklasan: > 0 } sk)
+        {
+            @Satir($"{Onek}-yasal-saklama", "BILGI", string.Format(KR.IsSaklama, sk.SaklamaYaklasan), "/uyum?sekme=saklama")
+        }
+    </ul>
+}
+
+@code {
+    /// <summary>DOM kimlik öneki (Panel: "panel-soru-bekleyen", Rapor merkezi: "bugun-bekleyen").</summary>
+    [Parameter, EditorRequired] public string Onek { get; set; } = "";
+    /// <summary>UyumYasalBantlari'nın yüklediği özet (yalnız SAHİP; diğer rolde null).</summary>
+    [Parameter] public UyumYasalOzet? Yasal { get; set; }
+    /// <summary>NakitSiniriPanelSatiri'nın bildirdiği kapanmamış aşım sayısı + listeden ayrılan bildirim.</summary>
+    [Parameter] public int NakitSayisi { get; set; }
+
+    private KarRaporMetinleri KR => KarRaporSozlugu.Al(Dil.Dil);
+
+    /// <summary>Çizilen satır sayısı — sayfa boş durumu buna göre verir (UyumYasalBantlari.SayiDegisti ile aynı sayım).</summary>
+    public static int SatirSayisi(UyumYasalOzet? y, int nakit) =>
+        (y is { } v && v.AcikTam + v.AcikBenzerlik > 0 ? 1 : 0) + (nakit > 0 ? 1 : 0)
+        + (y is { ListeEski: true } ? 1 : 0) + (y is { SaklamaYaklasan: > 0 } ? 1 : 0);
+
+    private int Sayi => SatirSayisi(Yasal, NakitSayisi);
+
+    private static string Nokta(string onem) => onem switch
+    {
+        "KRITIK" => "panel-nokta--acil",
+        "UYARI" => "panel-nokta--dikkat",
+        _ => "panel-nokta--bilgi",
+    };
+
+    private RenderFragment Satir(string id, string onem, string metin, string rota) =>
+        @<li class="panel-liste-satir panel-liste-satir--is" id="@id">
+            <span class="panel-nokta @Nokta(onem)" role="img"
+                  aria-label="@PanelSadeSozlugu.Onem(onem, Dil.Dil)"
+                  title="@PanelSadeSozlugu.Onem(onem, Dil.Dil)"></span>
+            <a class="panel-liste-ad" href="@rota" id="@($"{id}-git")">@metin</a>
+            <span class="panel-is-kaynak">@PanelTuvalSozlugu.Al(Dil.Dil).KaynakUyum</span>
+        </li>;
+}

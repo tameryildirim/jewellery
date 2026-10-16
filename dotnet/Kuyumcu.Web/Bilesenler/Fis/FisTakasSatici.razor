@@ -1,0 +1,139 @@
+@inject DilServisi Dil
+
+@* ═══ PAKET PARA-DEMO (madde 3, yasal) — TAKASTA SATICI KİMLİĞİ ══════════════════
+   Takasta dükkân müşteriden eski altın SATIN ALIR (TBK md.283: her taraf verdiği şeyin
+   satıcısıdır); belge düzenleme zorunluluğu olmayandan alınan mal için VUK md.234 gider
+   pusulası (ad, soyad, adres) düzenlenir. Sunucu (SatisModulu.Takas → GiderPusulasiKapisi
+   .Dogrula) bu bloğu TUTAR EŞİĞİ OLMADAN zorunlu kılar (fail-closed). Hurda Alış'taki
+   kimlik bloğunun AYNISI — yeni element id'leri "takas-satici-*". Bileşen istek ATMAZ;
+   gövde Islemler.Kaydet()'te kurulur. Esnaf muafiyetli satıcı takasta kilitli (stopaj
+   farkı bozar) — sebep alan altında yazar (UX-S30). *@
+@* DEGISIM-GUNSONU (hakem YÜKSEK "iki kimlik kutusu + 'gider pusulası' jargonu"): BASİT'te başlık/not sade dille;
+   MASAK kimlik kutusu açıkken (KimlikMasakta) bu küme ÇERÇEVESİZ çizilir — ekranda TEK kimlik kutusu kalır
+   (ad/TCKN/adres zaten o kutudan alınır). Kural, alanlar, id'ler ve kilit AYNEN; PRO aynen. *@
+<fieldset class="alan-kume@(Basit && KimlikMasakta ? " dg-kimlik-birlesik" : null)" id="takas-satici">
+    <legend class="@(Basit && KimlikMasakta ? "gorsel-gizli" : null)">@(Basit ? DG.KimlikBaslikSade : Dil.T.Islem.SaticiKimligi)</legend>
+    <p class="metin-kucuk metin-soluk@(Basit ? " gorsel-gizli" : null)" id="takas-satici-not">@(Basit ? DG.KimlikNotuSade : PD.TakasKimlikNotu)</p>
+    <Secici ElemanId="takas-satici-tip"
+            Etiket="@(Basit ? DG.SaticiTipiSade : Dil.T.Islem.SaticiTipi)" Zorunlu="true"
+            Secenekler="@SaticiTipleri"
+            Deger="@Satici.SaticiTipi"
+            DegerChanged="@(v => { Satici.SaticiTipiSec(v, CariAdi); return Bildir("tip"); })"
+            Hata="@Goster("tip", TipiHataMetni)"
+            BosSecenekMetni="—" />
+    @if (Satici.SaticiTipi == "MUKELLEF")
+    {
+        <Metin ElemanId="takas-satici-fatura" Etiket="@Dil.T.Islem.TedarikciFaturaNo" Zorunlu="true"
+               @bind-Deger="Satici.TedarikciFaturaNo" @bind-Deger:after="@(() => Bildir("fatura"))" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.TedarikciFaturaNo"
+               Hata="@Goster("fatura", Satici.FaturaNoHata(Dil.T.Islem))" HataKimligi="takas-satici-fatura-hata" />
+    }
+    else if (Satici.SaticiTipi == "ESNAF_MUAF")
+    {
+        <p class="hata-metni metin-kucuk" id="takas-satici-esnaf-kilit" role="alert">@EsnafKilitMetni(Dil.Dil, Basit, Dil.T.Islem)</p>
+    }
+    else if (Satici.SaticiTipi == "NIHAI_TUKETICI" && KimlikMasakta)
+    {
+        @* PARA-DEMO-2 tur 5 (doğrulayıcı YÜKSEK) — TEK KİMLİK FORMU: MASAK kimlik kutusu açıkken satıcının
+           adı, TCKN'si ve adresi O kutudan alınır (Islemler.Satis4.cs KimlikEsitle; Hurda Alış'taki kuralın
+           aynısı). Belge türü TC kimlik değilse TCKN burada sorulur (değer uydurulmaz). *@
+        <p class="metin-kucuk metin-soluk" id="takas-kimlik-not">@KesifP5Sozlugu.Al(Dil.Dil).KimlikAsagidaAlinir</p>
+        @if (!TcknMasakta)
+        {
+            <TcKimlikNo ElemanId="takas-satici-tckn" Etiket="@(Basit ? DG.TcKimlikNo : Dil.T.Islem.SaticiTckn)" Zorunlu="true"
+                   @bind-Deger="Satici.SaticiTckn" @bind-Deger:after="@(() => Bildir("tckn"))"
+                   Hata="@Goster("tckn", Satici.TcknHata(Dil.T.Islem))" HataKimligi="takas-satici-tckn-hata" />
+        }
+    }
+    else if (Satici.SaticiTipi == "NIHAI_TUKETICI")
+    {
+        <div class="form-grid-2">
+            <AdSoyad ElemanId="takas-satici-ad" Etiket="@(Basit ? DG.GetireninAdSoyad : Dil.T.Islem.SaticiAdSoyad)" Zorunlu="true"
+                   @bind-Deger="Satici.SaticiAd" @bind-Deger:after="AdElleYazildi" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.SaticiAd"
+                   KaynakRozeti="@(Satici.SaticiAdCariden ? Dil.T.Islem.CaridenGeldi : null)"
+                   Hata="@Goster("ad", Satici.AdHata(Dil.T.Islem))" HataKimligi="takas-satici-ad-hata" />
+            <TcKimlikNo ElemanId="takas-satici-tckn" Etiket="@(Basit ? DG.TcKimlikNo : Dil.T.Islem.SaticiTckn)" Zorunlu="true"
+                   @bind-Deger="Satici.SaticiTckn" @bind-Deger:after="@(() => Bildir("tckn"))"
+                   Hata="@Goster("tckn", Satici.TcknHata(Dil.T.Islem))" HataKimligi="takas-satici-tckn-hata" />
+        </div>
+        <Metin ElemanId="takas-satici-adres" Etiket="@(Basit ? DG.GetireninAdresi : Satis3Sozlugu.Al(Dil.Dil).SaticiAdres)" Zorunlu="Satici.AdresZorunlu"
+               @bind-Deger="Satici.SaticiAdres" @bind-Deger:after="@(() => Bildir("adres"))" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.SaticiAdres"
+               Hata="@Goster("adres", Satici.AdresHata(AltinBacagiSozlugu.Al(Dil.Dil).AdresGirin))" HataKimligi="takas-satici-adres-hata" />
+    }
+</fieldset>
+
+@code {
+    private ParaDemoMetinleri PD => ParaDemoSozlugu.Al(Dil.Dil);
+    private DegisimGunSonuMetinleri DG => DegisimGunSonuSozlugu.Al(Dil.Dil);
+
+    /// <summary>Satıcı kimliği girdileri — SAHİBİ Islemler.razor (TakasGirisi.Satici).</summary>
+    [Parameter, EditorRequired] public HurdaGirisi Satici { get; set; } = new();
+    /// <summary>BASİT yüz: satıcı tipleri vergi terimi olmadan yazılır.</summary>
+    [Parameter] public bool Basit { get; set; }
+    /// <summary>Seçili carinin adı (UX-S24 ön dolum) — yoksa null.</summary>
+    [Parameter] public string? CariAdi { get; set; }
+    /// <summary>PARA-DEMO-2 tur 5: MASAK kimlik kutusu açık — satıcı ad/adres (ve TC kimlikse TCKN) o kutudan alınır, burada sorulmaz.</summary>
+    [Parameter] public bool KimlikMasakta { get; set; }
+    /// <summary>PARA-DEMO-2 tur 5: MASAK belgesi TC kimlik — satıcı TCKN'si belge numarasıdır.</summary>
+    [Parameter] public bool TcknMasakta { get; set; }
+    /// <summary>Her girdi değişikliğinden sonra — sayfa yeniden çizilir (Kaydet kilidi).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    /// <summary>Seçenekler Hurda Alış'takiyle TEK kaynaktan (UX-S26/S31: aynı kavram aynı ad).</summary>
+    private List<SecenekOgesi> SaticiTipleri =>
+    [
+        new("NIHAI_TUKETICI", Basit ? Satis3Sozlugu.Al(Dil.Dil).SaticiTipiVatandas : Dil.T.Islem.SaticiTipiNihai),
+        new("ESNAF_MUAF", Basit ? Satis3Sozlugu.Al(Dil.Dil).SaticiTipiEsnafSade : Dil.T.Islem.SaticiTipiEsnaf),
+        new("MUKELLEF", Basit ? Satis3Sozlugu.Al(Dil.Dil).SaticiTipiMukellefSade : Dil.T.Islem.SaticiTipiMukellef),
+    ];
+
+    /// <summary>
+    /// PARA-DEMO-2 (madde 8): hata rengi ALAN BAŞINA, o alana ilk dokunuştan (ya da sayfanın Kaydet
+    /// denemesinden, <see cref="Denendi"/>) SONRA görünür — satıcı türü seçilir seçilmez boş TCKN/adres
+    /// kırmızıya boyanmaz. Eksik alanlar yine Kaydet'in yanındaki kilit sebebinde ADIYLA yazar.
+    /// </summary>
+    [Parameter] public bool Denendi { get; set; }
+    private readonly HashSet<string> dokunulan = [];
+    /// <summary>
+    /// DEGISIM-2 (hakem YÜKSEK "Vazgeç'e basınca boş formda kırmızı 'Satıcı tipi zorunludur.'"): dokunuş kaydı FİŞE
+    /// özgüdür. Model sıfırlanınca (Vazgeç / kayıt sonrası — HurdaGirisi.Sifirla Dokunuldu=false) bileşenin eski
+    /// dokunuş kümesi geçersizdir → temiz formda hata YOK; hata yalnız yeniden dokunulunca ya da Kaydet denemesinde.
+    /// </summary>
+    private string? Goster(string alan, string? hata) => Denendi || (Satici.Dokunuldu && dokunulan.Contains(alan)) ? hata : null;
+
+    private Task Bildir(string alan)
+    {
+        if (!Satici.Dokunuldu) dokunulan.Clear();   // DEGISIM-2: sıfırlanmış fişte önceki fişin dokunuşları dirilmez
+        dokunulan.Add(alan); Satici.Dokunuldu = true; return Degisti.InvokeAsync();
+    }
+
+    /// <summary>DEGISIM-2: BASİT'te hata alanın ETİKETİYLE söyler ("Kim getirdi? seçin.") — kural (TipiHata) AYNEN.</summary>
+    private string? TipiHataMetni => Satici.TipiHata(Dil.T.Islem) is { } h ? (Basit ? DG.KimGetirdiSecin : h) : null;
+    private Task AdElleYazildi() { Satici.SaticiAdCariden = false; return Bildir("ad"); }
+
+    /// <summary>PARA-DEMO-2 (madde 6): esnaf kilidi metni ekrandaki GERÇEK tür adlarıyla (BASİT karo adı / PRO sekme adı).</summary>
+    public static string EsnafKilitMetni(string dil, bool basit, Kuyumcu.Core.I18n.SozlukIslem t) =>
+        string.Format(ParaDemo2Sozlugu.Al(dil).TakasEsnafKilit,
+            basit ? SatisTuvalSozlugu.Al(dil).KaroAlisEskiAltin : t.HurdaAlis, t.Satis);
+
+    /// <summary>
+    /// PARA-DEMO-2 (madde 8): takas satıcı kilidinin sebebi EKSİK ALANA göre (sabit "kimliği girin" cümlesi değil).
+    /// BASİT: "Eksik: TCKN, adres." · PRO: aynı liste, sade dil + yasal dayanak (VUK md.234). Eksik yoksa null.
+    /// </summary>
+    public static string? EksikMetni(HurdaGirisi s, string dil, bool basit, Kuyumcu.Core.I18n.SozlukIslem t)
+    {
+        var m = ParaDemo2Sozlugu.Al(dil);
+        var dg = DegisimGunSonuSozlugu.Al(dil);
+        // PAKET TCKN-DOGRULAMA: 11 hane yazılmış ama doğrulama kuralından geçmiyorsa kilit ALAN ALTIYLA AYNI metni söyler.
+        if (s.TcknAlgoritmaHatasi) return KimlikNoSozlugu.Al(dil).TcknGecersiz;
+        var eksik = new List<string>();
+        // DEGISIM-2: BASİT kilit alanın EKRANDAKİ adıyla ("Eksik: kim getirdi.") — koşullar AYNEN.
+        if (s.TipiHata(t) is not null) eksik.Add(basit ? dg.KilitKimGetirdi : m.AlanSaticiTuru);
+        if (s.AdHata(t) is not null) eksik.Add(m.AlanAdSoyad);
+        if (s.TcknHata(t) is { } th) eksik.Add(basit ? (th == t.SaticiTcknZorunlu ? dg.TcKimlikNo : string.Format(Toplu5Sozlugu.Al(dil).AlanHane, dg.TcKimlikNo))
+                                     : (th == t.SaticiTcknZorunlu ? m.AlanTckn : m.AlanTcknHane));
+        if (s.AdresHata("x") is not null) eksik.Add(m.AlanAdres);
+        if (s.FaturaNoHata(t) is not null) eksik.Add(m.AlanFaturaNo);
+        if (eksik.Count == 0) return null;
+        return string.Format(basit ? m.TakasEksikBasit : m.TakasEksikPro, string.Join(", ", eksik));
+    }
+}

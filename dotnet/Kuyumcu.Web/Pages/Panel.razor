@@ -1,0 +1,1700 @@
+@page "/"
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Panel
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject CanliKurServisi Canli
+@inject UyumServisi Uyum
+@inject OturumServisi Oturum
+@inject RaporServisi Rapor
+@inject MenuTercihServisi Tercih
+@inject HavaServisi HavaS
+@inject IJSRuntime JS
+@inject ArayuzModuServisi Mod
+@inject IServiceProvider Hizmetler
+@using YaslandirmaSz = Kuyumcu.Contracts.Sayfalar.Raporlar
+@using VadeSz = Kuyumcu.Contracts.Sayfalar.VadeTakibi
+@using BildirimSz = Kuyumcu.Contracts.Sayfalar.Bildirimler
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-37b — KARŞILAMA EKRANI ("pencere pencere")
+
+   Kurucu (talimat 20): "ilk sayfa menü olarak pencere pencere olan bir ekran
+   karşılamalı, en uygun yerlere hoş geldin kullanıcı ismi olmalı ve havanın
+   kaç derece olduğu gibi, kullanıcıyı ekrana kilitleyecek … bir tasarım".
+
+   "EKRANA KİLİTLEYEN" = HİS DEĞİL, DÖRT ÖLÇÜT:
+    (1) İLK EKRANDA CEVAP — sabahın beş sorusu kaydırmadan görünür:
+        bugün ne sattım (gun-ozeti) · kasada ne var (kasa) · kim borçlu
+        (bekleyen) · altın kaç (kur) · bekleyen iş (bekleyen).
+    (2) BEKLETME YOK — her kutucuk KENDİ isteğini açar; biri yavaşsa diğerleri
+        beklemez. Sayfayı tümden kilitleyen `if (yukleniyor) { <Yukleniyor/> }`
+        kapısı KALDIRILDI (denetim.sh: KARSILAMA_TEK_ISTEK_BEKLEME = 0).
+        Yüklenirken boş ekran değil İSKELET (.karsilama-iskelet) çizilir.
+    (3) CANLI — kur mevcut CanliKurServisi akışından kendiliğinden tazelenir;
+        YENİ altyapı KURULMADI.
+    (4) TEK TIK — en sık üç işlem (satış, alış, tahsilat) buradan tek tıkla.
+
+   Kutucuklar sürükle-bırakla dizilir ve gizlenebilir; düzen KULLANICI bazında
+   saklanır (MenuTercihServisi → /tercihler/benim, kiracı bazında DEĞİL).
+   ⚠ Hata "kayıt yok"a çevrilmez (UX-S28): her kutucuğun kendi hata bandı var.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* ═══ P-37c · SAYFA_BASI_MUAFIYETI (YAZILI GEREKÇE, sessiz istisna DEĞİL) ═══
+   Karşılama ekranı 46 ekranın TEK'idir ki başlığı SABİT bir ekran adı değil,
+   kişiye ve saate göre değişen SELAM'dır ("Günaydın Ramazan") ve yanında hava
+   kutucuğu durur. SayfaBasi sözleşmesi iki yuva sunar: Filtreler ve Eylem.
+   Hava ne süzgeçtir ne eylem; selam da ekran adı değildir. Bu ekranı SayfaBasi
+   kabuğuna sokmak, ya havayı "süzgeç" diye yanlış yuvaya koymayı ya da
+   P-37b'de mühürlenen karşılama tasarımını bozmayı gerektirirdi.
+   KARAR: Panel.razor araç şeridi kapsamının DIŞINDADIR; karşılama başlığı
+   (.karsilama-bas) kendi TEK yerinden (app.css) biçimlenir, ekran başına
+   düzen CSS'i burada da YAZILMAZ (SAYFA_BASI_DISI_DUZEN = 0 geçerli).
+   Sayaç: SAYFA_BASI_KAPSAM = 45/45 uygun ekran (46 ekran − 1 yazılı muafiyet).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* ═══ PAKET S3-1 — İKİ YÜZ, TEK GÖVDE (PLAN § 5 · tuval Panel.dc.html) ═══════
+   BASİT mod = "sabahın beş sorusu": selam + tarih + hava TEK küçük satırda,
+   tek birincil düğme "Yeni satış", üç kart (Bugün ne sattım? · Kasada ne
+   var? · Altın pozisyonum), altta "Kim borçlu?" (satırda TEK eylem) ve
+   "Bekleyen iş". PROFESYONEL mod = P-37b kutucuk ızgarası AYNEN (id'ler,
+   düzen modu, sürükle-bırak, kur kaynağı seçici, grafik, son işlemler).
+   ⚠ Özellik silinmez: basit yüzde görünmeyen her şey profesyonel yüzde ve
+     menüde durur (kur kaynağı → /kur, son işlemler → /raporlar/islem-defteri).
+   ⚠ Yetki ≠ mod: basit yüz hiçbir kapıyı atlamaz; 403 "kayıt yok"a
+     çevrilmez, "yalnız yönetici görür" notu çizilir (UX-S28).
+   ⚠ Panel POST ETMEZ: "Tahsil et / Öde" müşterinin kartını açar
+     (/cariler?cariId=…, P-15 derin bağlantısı); para hareketi orada yazılır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Nav.Panel)</PageTitle>
+
+@* ═══ PAKET YILDIZ-4A — "Yıldız" şemasında Bugün TUVALİN KENDİSİDİR (Bugun4/Bugun4a, BİREBİR) ═══
+   Selam/hava, kutucuk ızgarası, "Kutucukları düzenle" ve üstteki yasal bantlar bu şemada ÇİZİLMEZ
+   (tuvalde yok). Yasal bilgi kaybolmaz: UyumYasalBantlari/NakitSiniriPanelSatiri veriyi yine yükler
+   (Gorunmez) ve iş "Seni bekleyen" listesine SATIR olarak düşer; YasalDegisiklikBandi listenin başında
+   satır kalıbıyla durur. BASİT ve PROFESYONEL aynı tuval düzenindedir. Öteki 8 şemada aşağıdaki
+   `else` dalı AYNEN çalışır. *@
+@if (YildizMi)
+{
+    <GorunumRozeti Degisti="GorunumDegisti" />
+    <NakitSiniriPanelSatiri SayiDegisti="@(n => nakitSeritSayisi = n)" Gorunmez="true" />
+    <Kuyumcu.Web.Bilesenler.Uyum.UyumYasalBantlari SayiDegisti="@(n => yasalSeritSayisi = n)" OzetDegisti="@(o => yasalOzet = o)" Gorunmez="true" />
+    <Kuyumcu.Web.Bilesenler.Yildiz.YildizBugun Veri="@YildizVerisi"><YasalDegisiklikBandi /></Kuyumcu.Web.Bilesenler.Yildiz.YildizBugun>
+}
+else
+{
+<text>
+<div class="karsilama-bas @(Mod.BasitMi ? "karsilama-bas--sade" : null)" id="panel-karsilama">
+    <div>
+        <p class="karsilama-selam" id="panel-selam">@Selam</p>
+        <p class="karsilama-tarih" id="panel-tarih">
+            @(Mod.BasitMi ? BugunSade : Bugun)
+            @if (Mod.BasitMi && hava is { } hs)
+            {
+                @* Basit yüz: hava selam satırının İÇİNDE, küçük (PLAN § 6 S-3, kurucu talimatı). *@
+                @* T-P1 (tuval birebir): "Çarşamba, 23 Eylül 2026 · İstanbul 21°" — gökyüzü
+                   durumu ve sağlayıcı SİLİNMEDİ, üzerine gelince (title) okunur. *@
+                <span class="karsilama-hava-sade" id="panel-hava" title="@($"{Kuyumcu.Core.I18n.HavaSozlugu.Durum(hs.Kod, Dil.Dil)} · {hs.Saglayici}")"><span class="panel-hava-ayrac">·</span><span id="panel-hava-sehir">@hs.Sehir</span> <span class="panel-hava-derece" id="panel-hava-derece">@DereceKisa(hs.Derece)</span></span>
+            }</p>
+    </div>
+    @if (Mod.BasitMi)
+    {
+        @* EKRANDAKİ TEK BİRİNCİL DÜĞME (PLAN § 5B kural 4). T-P1: tuvaldeki ince
+           çizgili "+" işareti .panel-yeni-satis::before ile çizilir (sprite'ta
+           "plus" sembolü yok; ikon.svg bu şeridin dosya alanı DIŞINDA). *@
+        <a class="dugme dugme-birincil panel-yeni-satis" id="panel-yeni-satis" href="/islemler">@S.YeniSatis</a>
+    }
+    else if (hava is { } h)
+    {
+        @* HAVA: yalnız veri GELDİYSE çizilir. Gelmezse kutucuk SESSİZCE yoktur —
+           hata bandı atılmaz, sayfa beklemez (HavaServisi 3 sn zaman aşımı). *@
+        <div class="karsilama-hava" id="panel-hava" title="@h.Saglayici">
+            <Ikon Ad="@Ikonlar.Saat" />
+            <span id="panel-hava-sehir">@h.Sehir</span>
+            <strong id="panel-hava-derece">@Derece(h.Derece)</strong>
+            <span id="panel-hava-durum">@Kuyumcu.Core.I18n.HavaSozlugu.Durum(h.Kod, Dil.Dil)</span>
+        </div>
+    }
+</div>
+
+@* ŞUBE-KAPSAM-B: hangi şubeye bakıldığı tek satırda; seçim değişince şubeli kartlar
+   (bugün özeti, kasa özeti, kâr, grafik, son işlemler) yeniden yüklenir. Tek şubede çizilmez. *@
+<GorunumRozeti Degisti="GorunumDegisti" />
+<YasalDegisiklikBandi />@* PAKET YASAL-1 (§ 4.5): yaklaşan yasal değişiklik + bayram eksik bandı — iki modda da *@
+<NakitSiniriPanelSatiri SayiDegisti="@(n => nakitSeritSayisi = n)" />@* PAKET YASAL-2 (TB-16): kapanmamış nakit sınırı aşımı KRİTİK satırı — iki modda da, SAHİP/MUHASEBE *@
+<Kuyumcu.Web.Bilesenler.Uyum.UyumYasalBantlari SayiDegisti="@(n => yasalSeritSayisi = n)" OzetDegisti="@(o => yasalOzet = o)" Gorunmez="@BasitYasalBantGizli" />@* PAKET YASAL-3: saklama (mavi) · yasal liste eski (sarı) · liste eşleşmesi (kırmızı) — yalnız SAHİP *@
+
+@if (Mod.BasitMi)
+{
+    @SadeGovde
+}
+else
+{
+<div class="karsilama-araclar mb-2">
+    <button type="button" @onclick="() => duzenModu = !duzenModu"
+            class="dugme dugme-kucuk dugme-ikincil" id="panel-duzen-modu">
+        @(duzenModu ? Dil.T.Panel.DuzenlemeyiBitir : Dil.T.Panel.DuzeniDuzenle)
+    </button>
+    @if (duzenModu)
+    {
+        <button type="button" @onclick="DuzeniSifirla"
+                class="dugme dugme-kucuk dugme-ikincil" id="panel-duzen-sifirla">@Dil.T.Panel.DuzeniSifirla</button>
+    }
+</div>
+<HataBandi Mesaj="@Tercih.Hata" Id="panel-duzen-hata" />
+
+<div class="karsilama-izgara" id="panel-izgara">
+    @foreach (var k in GorunenKutucuklar)
+    {
+        <section class="karsilama-kutucuk" data-sira-anahtar="@k.Kod"
+                 id="@($"panel-kutucuk-{k.Kod}")" tabindex="0"
+                 @onkeydown="@(e => KutucukTus(e, k.Kod))">
+            <header class="karsilama-kutucuk-bas">
+                <h3 id="@($"panel-kutucuk-{k.Kod}-baslik")">@k.Baslik(Dil.T)</h3>
+                @if (duzenModu)
+                {
+                    <div class="karsilama-araclar">
+                        <button type="button" @onclick="() => GizleDegistir(k.Kod)"
+                                id="@($"panel-gizle-{k.Kod}")"
+                                title="@Dil.T.Panel.KutucukGizle"><Ikon Ad="@Ikonlar.Kilit" /></button>
+                    </div>
+                }
+            </header>
+            @KutucukGovde(k.Kod)
+        </section>
+    }
+</div>
+
+    if (duzenModu && GizliKutucuklar.Count > 0)
+    {
+    <div class="kart mt-3" id="panel-gizli-liste">
+        <div class="kart-baslik"><h2>@Dil.T.Panel.GizliKutucuklar</h2></div>
+        <div class="kart-govde karsilama-araclar">
+            @foreach (var k in GizliKutucuklar)
+            {
+                <button type="button" @onclick="() => GizleDegistir(k.Kod)"
+                        class="dugme dugme-kucuk dugme-ikincil"
+                        id="@($"panel-goster-{k.Kod}")" title="@Dil.T.Panel.KutucukGoster">@k.Baslik(Dil.T)</button>
+            }
+        </div>
+    </div>
+    }
+}
+</text>
+}
+
+@code {
+    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);   // YILDIZ-4A: Yıldız'da gövde = YildizBugun (tuval Bugun4/4a)
+
+    // ── PAKET YILDIZ-4A — Yıldız Bugün verisi ───────────────────────────────────────────────
+    // YENİ İSTEK YOK: hepsi bu sayfanın mevcut yükleyicilerinden (ozet, nakit ayrımı, yaşlandırma,
+    // vade, bildirim, uyum, stopaj, kâr). Bilinmeyen parça yazılmaz; hata kendi bandında (UX-S28).
+    private Kuyumcu.Web.Bilesenler.Yildiz.YildizBugunVerisi YildizVerisi
+    {
+        get
+        {
+            string? kasa = null;
+            var nakit = false;
+            if (!ozetYukleniyor && !ozetYetkiYok && hata is null
+                && KasaGruplari.FirstOrDefault(g => g.ParaBirimi == "TRY") is { } tl)
+            {
+                // PARA-DEMO-2: kasaya yazılmış kart/havale "nakit" diye BASILMAZ — ayrım okunduysa nakit.
+                if (PanelTlAyrim is { } ay) { kasa = Bicim.Tl(ay.Nakit); nakit = true; }
+                else kasa = Bicim.Tl(tl.Toplam);
+            }
+            decimal? alacak = null, borc = null;
+            // UX-S29: sunucu sınırına değdiyse toplam EKSİK olurdu → cümleye yazılmaz (not satırı söyler).
+            if (!borcluYukleniyor && !borcluYetkiYok && borcluHata is null && !borcluDahaFazla)
+            {
+                var (a, b) = Kuyumcu.Web.Bilesenler.Yildiz.YildizBugunBicim.CariToplamlari(acikHesaplar.Select(c => c.TlBakiye));
+                alacak = a;
+                borc = b;
+            }
+            var notlar = new List<(string, string)>();
+            if (borcluYetkiYok) notlar.Add(("yildiz-bugun-borclu-yetki", S.YetkiYok));
+            if (borcluDahaFazla) notlar.Add(("yildiz-bugun-borclu-sinir", string.Format(S.BorcluSinir, BorcluSinir)));
+            if (bildirimDahaFazla) notlar.Add(("yildiz-bugun-bekleyen-sinir", string.Format(S.BekleyenSinir, BildirimSinir)));
+            if (SubeDaraltmali) notlar.Add(("yildiz-bugun-kapsam", SKB.KartTumSubelerNotu));
+            if (yildizEmanetSinirda) notlar.Add(("yildiz-bugun-emanet-sinir", Kuyumcu.Core.I18n.YildizBugunSozlugu.EmanetSinir(Kuyumcu.Web.Bilesenler.Yildiz.YildizBugunBicim.EmanetOkumaSiniri, Dil.Dil)));   // YILDIZ-4C UX-S29
+            return new()
+            {
+                SatisYukleniyor = ozetYukleniyor,
+                SatisYetkiYok = ozetYetkiYok,
+                SatisHata = hata,
+                SatisTl = SatisGosterTl,
+                SatisAdet = SatisAdet,
+                KasaTutar = kasa,
+                KasaNakit = nakit,
+                AlacakTl = alacak,
+                BorcTl = borc,
+                Bekleyen = YildizBekleyenSatirlari(),
+                BekleyenYukleniyor = borcluYukleniyor || bildirimYukleniyor || uyumYukleniyor,
+                Notlar = notlar,
+                Hatalar =
+                [
+                    ("yildiz-bugun-borclu-hata", borcluHata), ("yildiz-bugun-vade-hata", vadeHata),
+                    ("yildiz-bugun-bekleyen-hata", bildirimHata), ("yildiz-bugun-uyum-hata", uyumHata),
+                    ("yildiz-bugun-stopaj-hata", stopajHata), ("yildiz-bugun-kar-hata", karHata),
+                    ("yildiz-bugun-kasa-ayrim-hata", panelAyrimHata is null ? null : string.Format(PD2Panel.KasaAyrimHata, panelAyrimHata)),
+                    ("yildiz-bugun-gunsonu-hata", yildizGunSonuHata), ("yildiz-bugun-emanet-hata", yildizEmanetHata),   // YILDIZ-4C (UX-S28)
+                ],
+                KarMetni = YildizKarMetni,
+            };
+        }
+    }
+
+    /// <summary>Alt şerit "Kâr": maliyeti eksik satış/iade varsa ya da eski şekil yanıtta maliyetsiz adet varsa
+    /// rakam BASILMAZ ("maliyet eksik" — fail-closed, kart ile AYNI kural); yetki/yanıt yoksa öğe yok.</summary>
+    private string? YildizKarMetni =>
+        karTl is null && karEksikSatis + karEksikIade > 0 ? Kuyumcu.Core.I18n.YildizBugunSozlugu.MaliyetEksik(Dil.Dil)
+        : karTl is decimal && (karEksikSatis + karEksikIade > 0 || (karMaliyetiBilinmeyen > 0 && karDurumu is null))
+            ? Kuyumcu.Core.I18n.YildizBugunSozlugu.MaliyetEksik(Dil.Dil)
+        : karTl is decimal k ? Bicim.Tl(k) : null;
+
+    /// <summary>
+    /// "Seni bekleyen" satırları — Basit yüzün "Kim borçlu?" + "Bekleyen iş" kartlarının VERİSİ, tuvaldeki
+    /// tek liste kalıbında: önce kritik işler, sonra müşteri hesapları (en çok 3 — aynı seçim), sonra kalan
+    /// işler ve bildirimler. Koşullar BekleyenUyumSatirlari / BekleyenSorusu ile AYNI.
+    /// </summary>
+    private List<Kuyumcu.Web.Bilesenler.Yildiz.YildizBekleyenSatir> YildizBekleyenSatirlari()
+    {
+        var kritik = new List<Kuyumcu.Web.Bilesenler.Yildiz.YildizBekleyenSatir>();
+        var diger = new List<Kuyumcu.Web.Bilesenler.Yildiz.YildizBekleyenSatir>();
+        var ac = Kuyumcu.Core.I18n.YildizBugunSozlugu.Ac(Dil.Dil);
+        void Is(string id, string onem, string metin, string rota, string kaynak) =>
+            (onem == "KRITIK" ? kritik : diger).Add(new(id, metin, null, kaynak, onem == "KRITIK", ac, rota, PanelSadeSozlugu.Onem(onem, Dil.Dil)));
+
+        // (1) Yasal / nakit sınırı (BekleyenUyumSatirlari ile aynı koşul ve metin).
+        if (yasalOzet is { } v && v.AcikTam + v.AcikBenzerlik > 0)
+            Is("yasal-eslesme", "KRITIK", string.Format(KR.IsYasalEslesme, v.AcikTam + v.AcikBenzerlik), "/uyum?sekme=risk", T.KaynakUyum);
+        if (NakitIsSayisi > 0)
+            Is("yasal-nakit", "KRITIK", string.Format(KR.IsNakitSiniri, NakitIsSayisi), "/uyum?sekme=nakit", T.KaynakUyum);
+        if (yasalOzet is { ListeEski: true } l)
+            Is("yasal-liste-eski", "UYARI", l.ListeYasiGun is { } g ? string.Format(KR.IsYasalListeEski, g) : KR.IsYasalListeYok, "/uyum?sekme=risk", T.KaynakUyum);
+        if (yasalOzet is { SaklamaYaklasan: > 0 } sk)
+            Is("yasal-saklama", "BILGI", string.Format(KR.IsSaklama, sk.SaklamaYaklasan), "/uyum?sekme=saklama", T.KaynakUyum);
+
+        // (2) Uyum sayaçları (yetkili rol) — "Bekleyen iş" kartıyla aynı.
+        if (UyumGorebilir)
+        {
+            if (masakOzet is { SuresiGecmis: > 0 })
+                Is("masak-gecti", "KRITIK", $"{masakOzet.SuresiGecmis} {Dil.T.Panel.MasakSuresiGecti}", "/uyum", T.KaynakUyum);
+            if (masakOzet is { Yaklasan: > 0 })
+                Is("masak-yaklasan", "UYARI", $"{masakOzet.Yaklasan} {Dil.T.Panel.MasakSuresiYaklasiyor}", "/uyum", T.KaynakUyum);
+            if (sureTakip is { YaklasanSayisi: > 0 })
+                Is("pusula-yeniden", "UYARI", $"{sureTakip.YaklasanSayisi} {PusulaYenidenMetni}", "/gider-pusulalari", T.KaynakBelge);
+            if (sureTakip is { GecikmisSayisi: > 0 })
+                Is("pusula", "KRITIK", $"{sureTakip.GecikmisSayisi} {Y4.PanelBelgesiz}", "/gider-pusulalari", T.KaynakBelge);
+            foreach (var d in stopajOzet?.Gecikmis ?? [])
+                Is($"stopaj-gecti-{d.Donem}", "KRITIK", StopajGectiMetni(d), StopajOdeRota(d.Donem), T.KaynakBelge);
+            foreach (var d in stopajOzet?.Yaklasan ?? [])
+                Is($"stopaj-yaklasan-{d.Donem}", "UYARI", StopajYaklasanMetni(d), StopajOdeRota(d.Donem), T.KaynakBelge);
+            if (riskOzet is { Yuksek: > 0 })
+                Is("yuksek-risk", "UYARI", $"{riskOzet.Yuksek} {Dil.T.Panel.YuksekRiskliCari}", "/uyum", T.KaynakUyum);
+        }
+
+        // (3) Müşteri hesapları — "Kim borçlu?" ile aynı 3 satır; tutar Bicim.Tl (tuval "−3.840 ₺").
+        var cari = new List<Kuyumcu.Web.Bilesenler.Yildiz.YildizBekleyenSatir>();
+        if (!borcluYukleniyor && !borcluYetkiYok && borcluHata is null)
+        {
+            foreach (var c in BorcluSatirlari)
+            {
+                var tutar = Math.Abs(c.TlBakiye) > 0.01m ? Bicim.Tl(c.TlBakiye) : HasMetni(c.HasGramBakiye);
+                var adres = $"/cariler?cariId={Uri.EscapeDataString(c.CariId)}";
+                if (BizBorcluyuz(c))
+                {
+                    cari.Add(new($"cari-{c.CariId}", c.CariAd, Kuyumcu.Core.I18n.YildizBugunSozlugu.BizBorcluyuz(Dil.Dil),
+                        tutar, true, S.Ode, adres, TutarMetni(c)));
+                }
+                else
+                {
+                    // Tuval: "15 gün" = vadeye kalan gün; geçmişse "N gün geçti"; vade bugün / vadesiz → mevcut metin.
+                    var durum = DurumMetni(c);
+                    if (vadeler.TryGetValue(c.CariId, out var vd))
+                    {
+                        if (vd.EnEskiGecikmeGun is int gg and > 0) durum = Kuyumcu.Core.I18n.YildizBugunSozlugu.GunGecti(gg, Dil.Dil);
+                        else if (vd.EnYakinVade is DateOnly vade && vade.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber is int kalan and > 0)
+                            durum = Kuyumcu.Core.I18n.YildizBugunSozlugu.Gun(kalan, Dil.Dil);
+                    }
+                    // SUNUM 14.10: "Tahsil et" doğrudan o müşterinin TAHSİLAT penceresini açar (önceden hesap dökümü açılıyordu).
+                    cari.Add(new($"cari-{c.CariId}", c.CariAd, tutar, durum, false, S.TahsilEt, adres + "&islem=tahsilat", DurumIpucu(c) ?? TutarMetni(c)));
+                }
+            }
+        }
+
+        // (4) Bildirimler (sunucunun rol süzgecinden geçmiş açık işler).
+        foreach (var b in bildirimler)
+        {
+            var ay = IsAyrintisi(b);
+            var rota = IcRota(b.HedefRota);
+            diger.Add(new($"is-{b.Id}", b.Baslik, ay is { } a1 ? $"{a1.Ad} · {a1.Tutar}" : null,
+                ay?.Durum ?? PanelTuvalSozlugu.Kaynak(b.Tur, Dil.Dil), b.Onem == "KRITIK",
+                rota is null ? null : ac, rota, PanelSadeSozlugu.Onem(b.Onem, Dil.Dil)));
+        }
+        return [.. kritik, .. YildizGunSonuSatiri(), .. cari, .. yildizEmanetSatirlari, .. diger];   // YILDIZ-4C: tuval sırası (gün sonu · cari · emanet)
+    }
+    // ── Kutucuk gövdeleri ────────────────────────────────────────────────────
+    private RenderFragment KutucukGovde(string kod) => kod switch
+    {
+        PanelKutucuklari.GunOzeti     => GunOzetiGovde,
+        PanelKutucuklari.Kur          => KurGovde,
+        PanelKutucuklari.Bekleyen     => BekleyenGovde,
+        PanelKutucuklari.Kasa         => KasaGovde,
+        PanelKutucuklari.SonIslemler  => SonIslemlerGovde,
+        PanelKutucuklari.HizliEylem   => HizliEylemGovde,
+        _                             => GrafikGovde,
+    };
+
+    private RenderFragment GunOzetiGovde => @<div>
+        <HataBandi Mesaj="@hata" Id="hata-bandi" />
+        @if (ozetYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-gun-ozeti"></div>
+        }
+        else
+        {
+            <div class="stat-izgara">
+                <StatKart Renk="yesil" Etiket="@Dil.T.Panel.GunlukSatis" Deger="@Bicim.TlKurus(SatisGosterTl)" Alt="@IadeSatiri" />
+                <StatKart Etiket="@Dil.T.Panel.GunlukAlis" Deger="@Bicim.TlKurus(AlisTl)" />
+                @* PAKET RAPOR-3 (hasım ORTA ×2): "NET HAS GRAM · Paralel defter" günün TÜM has hareketiydi (sayım düzeltmesi,
+                   emanet dâhil) — BASİT yüzle çelişiyor, jargon taşıyordu. Kart artık BASİT "Bugün ne sattım"ın has
+                   sayısını (net satış, iade düşülmüş — /raporlar/gunluk netSatis) kapsamını söyleyen adla gösterir. *@
+                <StatKart Renk="mavi" Etiket="@KR.BugunSatilanAltin" Deger="@Bicim.Has(SatisGosterHas)" />
+                <StatKart Renk="@(NetKasaTl >= 0 ? "yesil" : "kirmizi")" Etiket="@Dil.T.Panel.NetKasa"
+                          Deger="@Bicim.TlKurus(NetKasaTl)" Alt="@Dil.T.Panel.NetKasaFormul" />
+            </div>
+            <a class="metin-kucuk" href="/raporlar" id="panel-gun-ozeti-git">@Dil.T.Panel.BugunOzeti →</a>
+        }
+    </div>;
+
+    private RenderFragment KurGovde => @<div>
+        @* PAKET RAPOR-3 (hasım DÜŞÜK): "Kur (24K Altın)" kutucuk başlığında zaten yazılı — gövdede ikinci kez yok. *@
+        <p class="karsilama-buyuk-sayi sayi metin-amber" id="panel-kur-deger">
+            @(Canli.Son is null ? Dil.T.Panel.Canli : Bicim.TlKurus(Canli.Son.AltinHasFiyati))
+        </p>
+        <span class="metin-soluk metin-kucuk" id="panel-kur-sorgu">
+            @if (Canli.SonSorgu is DateTime sorgu)
+            {
+                @($"{(Dil.Dil == "tr" ? "Son sorgu" : "Last query")}: {Bicim.IsletmeBicim(sorgu, "HH':'mm':'ss")}")
+            }
+            else
+            {
+                @Dil.T.Panel.KurTakip
+            }
+        </span>
+        @* KESIF-P6 tur 2 (YETKİ — 30.09 18:10 ekip oyu): kur kaynağı YALNIZ SAHİP ve
+           YALNIZ İşletme'deki onay kalıbıyla, TEK yerde değişir (PATCH /kur/kaynak
+           [RolGerekli("SAHIP")]). Panel kartındaki onaysız seçici (#kur-kaynak) kaldırıldı:
+           MÜDÜR'e yalnız 403 veren kontrol (DoD EK 1) ve SAHİP'e onaysız ikinci yol kapandı.
+           Kaynak adı salt okunur; SAHİP'e İşletme bağlantısı, diğer rollere sebep (UX-S30). *@
+        <div class="alan" id="panel-kur-kaynak-alan">
+            <span class="metin-soluk metin-kucuk" id="panel-kur-kaynak-etiket">@P6.KaynakEtiket</span>
+            <p class="hucre-vurgu" id="panel-kur-kaynak-ad">@SeciliKaynakAdi</p>
+            @if (KaynakDegistirebilir)
+            {
+                <a class="btn btn-ikincil btn-kucuk" id="panel-kur-kaynak-isletme-bag" href="/isletme">@P6.KaynakIsletmeBaglanti</a>
+            }
+            else
+            {
+                <span class="metin-kucuk metin-soluk" id="panel-kur-kaynak-yalniz-sahip">@P6.KaynakYalnizSahip</span>
+            }
+        </div>
+        <HataBandi Mesaj="@kaynakHata" />
+    </div>;
+
+    private RenderFragment BekleyenGovde => @<div>
+        @KiraciGeneliNot("panel-bekleyen-kapsam")
+        @if (uyumYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-bekleyen"></div>
+        }
+        else if (!UyumGorebilir)
+        {
+            <p class="metin-kucuk metin-soluk" id="panel-bekleyen-rol">@Dil.T.Panel.BekleyenRolKapali</p>
+        }
+        else if (BekleyenYok)
+        {
+            @* PAKET RAPOR-3 (hasım YÜKSEK): yasal/nakit işi varken boş durum ÇİZİLMEZ — iş, renkli noktalı satır
+               olarak ve ilgili ekrana bağlantıyla burada (Rapor merkezi ile AYNI bileşen). *@
+            <BekleyenUyumSatirlari Onek="panel-bekleyen" Yasal="yasalOzet" NakitSayisi="NakitIsSayisi" />
+            @if (YasalIsSatiri == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.Panel.BekleyenYok" />
+            }
+        }
+        else
+        {
+            <BekleyenUyumSatirlari Onek="panel-bekleyen" Yasal="yasalOzet" NakitSayisi="NakitIsSayisi" />
+            <div class="uyari-kutu">
+                @if (masakOzet is { SuresiGecmis: > 0 })
+                {
+                    <p><Ikon Ad="@Ikonlar.Uyari" /> <strong>@masakOzet.SuresiGecmis</strong> @Dil.T.Panel.MasakSuresiGecti
+                       <a href="/uyum">@Dil.T.Panel.UyumaGit →</a></p>
+                }
+                @if (masakOzet is { Yaklasan: > 0 })
+                {
+                    <p><Ikon Ad="@Ikonlar.Uyari" /> <strong>@masakOzet.Yaklasan</strong> @Dil.T.Panel.MasakSuresiYaklasiyor
+                       <a href="/uyum">@Dil.T.Panel.UyumaGit →</a></p>
+                }
+                @* PAKET YASAL-4 / Y4-A: eski satır 7 günden eski HER pusulayı "süresi DOLDU"
+                   sayıyordu (yanlış alarm). Artık yalnız iptal edilip yerine yenisi
+                   düzenlenmeyen belge; sayı 0 ise satır yok. *@
+                @if (sureTakip is { YaklasanSayisi: > 0 })
+                {
+                    <p id="panel-pusula-yeniden"><Ikon Ad="@Ikonlar.Uyari" /> <strong>@sureTakip.YaklasanSayisi</strong> @PusulaYenidenMetni
+                       <a class="hucre-tek-satir" href="/gider-pusulalari">@Dil.T.Panel.PusulalaraGit →</a></p>
+                }
+                @if (sureTakip is { GecikmisSayisi: > 0 })
+                {
+                    <p id="panel-pusula-belgesiz"><Ikon Ad="@Ikonlar.Uyari" /> <strong>@sureTakip.GecikmisSayisi</strong> @Y4.PanelBelgesiz
+                       <a class="hucre-tek-satir" href="/gider-pusulalari">@Dil.T.Panel.PusulalaraGit →</a></p>
+                }
+                @* Y4-B: kalanı olan stopaj dönemi (son gün geçti → KRİTİK; yaklaşıyor → uyarı). *@
+                @foreach (var d in stopajOzet?.Gecikmis ?? [])
+                {
+                    <p id="@($"panel-stopaj-gecti-{d.Donem}")"><Ikon Ad="@Ikonlar.Uyari" /> @StopajGectiMetni(d)
+                       <a class="hucre-tek-satir" href="@StopajOdeRota(d.Donem)">@Y4.PanelStopajGit →</a></p>
+                }
+                @foreach (var d in stopajOzet?.Yaklasan ?? [])
+                {
+                    <p id="@($"panel-stopaj-yaklasan-{d.Donem}")"><Ikon Ad="@Ikonlar.Uyari" /> @StopajYaklasanMetni(d)
+                       <a class="hucre-tek-satir" href="@StopajOdeRota(d.Donem)">@Y4.PanelStopajGit →</a></p>
+                }
+                @* PAKET 40-A — yüksek riskli cari sayısı. ⚠ UYARIDIR, engel değil.
+                   Sayı gösteren yer o kayıtlara giden bağlantıdır (UX-S23). *@
+                @if (riskOzet is { Yuksek: > 0 })
+                {
+                    <p id="panel-yuksek-risk"><Ikon Ad="@Ikonlar.Uyari" /> <strong>@riskOzet.Yuksek</strong> @Dil.T.Panel.YuksekRiskliCari
+                       <a href="/uyum">@Dil.T.Panel.UyumaGit →</a></p>
+                }
+            </div>
+        }
+        <HataBandi Mesaj="@uyumHata" Id="panel-bekleyen-hata" />
+        <HataBandi Mesaj="@stopajHata" Id="panel-stopaj-hata" />
+    </div>;
+
+    private RenderFragment KasaGovde => @<div>
+        <p class="gorsel-gizli" id="panel-kasa-donem">@Dil.T.Panel.BugunItibariyla</p>@* RAPOR-3 (K17): Panel'de dönem seçici yok — not yalnız ekran okuyucuda *@
+        @if (ozetYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-kasa"></div>
+        }
+        else if (Kasalar.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.Panel.KasaKaydiYok" />
+        }
+        else
+        {
+            @foreach (var k in Kasalar)
+            {
+                <div class="satir-arasi">
+                    <span class="metin-soluk">@k.Ad</span>
+                    @* UX-S32: tutar "varsayılan TL" sayılmaz — para birimi Bicim.Para'ya verilir. *@
+                    <span class="hucre-vurgu sayi">@Bicim.BelgePara(k.Bakiye, k.ParaBirimi)</span>
+                </div>
+            }
+            <a class="metin-kucuk" href="/kasalar" id="panel-kasa-git">@Dil.T.Panel.KasaOzeti →</a>
+        }
+        @* Y4-B: kasa bakiyesi DEĞİŞMEZ; kesilen stopaj ayrıca söylenir ki harcanabilir sanılmasın. *@
+        @if (StopajBuAyGoster)
+        {
+            <p class="metin-kucuk metin-soluk" id="panel-kasa-stopaj">@string.Format(Y4.PanelStopajBuAy, Bicim.BelgePara(stopajOzet!.BuAyKesilenTl, "TRY"))</p>
+        }
+    </div>;
+
+    private RenderFragment SonIslemlerGovde => @<div>
+        @if (defterYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-son-islemler"></div>
+        }
+        else if (sonSatirlar.Count == 0 && defterHata is null)
+        {
+            <BosDurum Mesaj="@Dil.T.Panel.SonIslemYok" />
+        }
+        else
+        {
+            @foreach (var s in sonSatirlar)
+            {
+                <div class="satir-arasi">
+                    <span class="metin-soluk">@Bicim.IsletmeSaati(s.Tarih) @(s.CariAd ?? s.UrunAd ?? "")</span>
+                    <span class="hucre-vurgu sayi">@Bicim.BelgePara(s.TlTutari, s.ParaBirimi)</span>
+                </div>
+            }
+            <a class="metin-kucuk" href="/raporlar/islem-defteri" id="panel-defter-git">@Dil.T.Panel.SonIslemler →</a>
+        }
+        @* UX-S28: hata "kayıt yok"a çevrilmez — bandı ayrı durur. *@
+        <HataBandi Mesaj="@defterHata" Id="panel-defter-hata" />
+    </div>;
+
+    private RenderFragment HizliEylemGovde => @<div class="karsilama-araclar">
+        @* TEK TIK ölçütü: en sık üç işlem buradan tek tıkla başlar. *@
+        <a class="btn btn-birincil" id="panel-satis-yap" href="/islemler">@Dil.T.Panel.SatisYap</a>
+        <a class="dugme dugme-ikincil" id="panel-alis-yap" href="/islemler">@Dil.T.Panel.AlisYap</a>
+        <a class="dugme dugme-ikincil" id="panel-tahsilat" href="/vezne">@Dil.T.Panel.Tahsilat</a>
+        <a class="dugme dugme-ikincil" id="panel-hurda" href="/hurda">@Dil.T.Islem.HurdaAlis</a>
+    </div>;
+
+    private RenderFragment GrafikGovde => @<div>
+        <ProAlan>
+            <BasitAlternatif>
+                <p class="metin-kucuk metin-soluk" id="panel-basit-notu">@Dil.T.Panel.BasitModNotu</p>
+            </BasitAlternatif>
+            <ChildContent>
+                <HataBandi Mesaj="@grafikHata" Id="panel-grafik-hata" />
+                @if (grafikYukleniyor)
+                {
+                    <div class="karsilama-iskelet" id="panel-iskelet-grafik"></div>
+                }
+                else
+                {
+                    <AlanGrafik Noktalar="grafikNoktalari" Aciklama="@Dil.T.Panel.Son7Gun" />
+                }
+            </ChildContent>
+        </ProAlan>
+    </div>;
+
+    // ══ PAKET S3-1 — BASİT YÜZ: SABAHIN BEŞ SORUSU ══════════════════════════
+    private PanelSadeMetinleri S => PanelSadeSozlugu.Al(Dil.Dil);
+
+    private RenderFragment SadeGovde => @<div class="panel-sade" id="panel-sade">
+        <div class="panel-sade-kartlar">
+            @SatisSorusu
+            @KasaSorusu
+            @* B-2 kapıdan geçti: kart kendi verisini çeker (GET /pozisyon),
+               403'ü kendi yetki notuyla söyler. T-P1: Sade = tuvaldeki kısa kart
+               (+N g has · Vitrin · Alacak); kalanı kartın "Ayrıntı"sında. *@
+            <AltinPozisyonuKarti Sade="true" />
+        </div>
+        <div class="panel-sade-alt">
+            @BorcluSorusu
+            @BekleyenSorusu
+        </div>
+    </div>;
+
+    // (1) Bugün ne sattım?
+    private RenderFragment SatisSorusu => @<section class="panel-soru" id="panel-soru-satis" aria-labelledby="panel-soru-satis-baslik">
+        <h2 class="panel-soru-baslik" id="panel-soru-satis-baslik">@S.BugunNeSattim</h2>
+        @if (ozetYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-soru-satis"></div>
+        }
+        else if (ozetYetkiYok)
+        {
+            <p class="metin-soluk" id="panel-soru-satis-yetki">@S.YetkiYok</p>
+        }
+        else if (hata is not null)
+        {
+            @* UX-S28: hata "0 ₺"a çevrilmez — sayı çizilmez, bant durur. *@
+            <HataBandi Mesaj="@hata" Id="panel-soru-satis-hata" />
+        }
+        else
+        {
+            @* UX-S23: sayı, onu oluşturan kayıtlara giden bağlantıdır. *@
+            <a class="panel-soru-sayi" id="panel-soru-satis-deger" href="/raporlar/islem-defteri"
+               data-deger-boy="@DegerBoyu.Kademe(Bicim.TlKurus(SatisGosterTl))"
+               title="@S.SatisBaglantiIpucu">@Bicim.TlKurus(SatisGosterTl)</a>
+            <p class="panel-soru-alt" id="panel-soru-satis-alt">
+                @* PAKET RAPOR-2 tur 2 (tasarım hakemi KRİTİK): tutar ve has NET'tir (iade düşülmüş,
+                   Kâr-zarar "Bugün" ile aynı tanım — /raporlar/gunluk netSatis); iade varsa kapsam satırı. *@
+                @if (SatisAdet == 0 && IadeAdet == 0)
+                {
+                    <span id="panel-soru-satis-yok">@S.SatisYok</span>
+                }
+                else
+                {
+                    <span id="panel-soru-satis-adet">@string.Format(S.SatisAdet, SatisAdet)</span>
+                    @if (IadeAdet > 0)
+                    {
+                        <span id="panel-soru-satis-iade">@IadeSatiri</span>
+                    }
+                    <span id="panel-soru-satis-has">@HasMetni(SatisGosterHas)</span>
+                    @* T-P1: "Kâr 4.120 ₺" — sunucunun kâr-zarar ucundan (bugün..bugün).
+                       Uç yoksa / yetki yoksa / hata varsa KÂR YAZILMAZ (uydurma yok). *@
+                    @* PAKET KAR-RAPOR: sunucu artık maliyeti eksik satışı kâra KATMAZ.
+                       Hiçbir satışın maliyeti bilinmiyorsa kâr null gelir → "hesaplanamadı";
+                       bir kısmı biliniyorsa kâr (yalnız bilinenlerden) + eksik satış sayısı. *@
+                    @* MADEN-2 (hasım ORTA): eksik yalnız iadeden geliyorsa da kâr satırı bunu söyler (karEksikIade). *@
+                    @if (karTl is null && karEksikSatis + karEksikIade > 0)
+                    {
+                        <a class="panel-soru-kar panel-soru-kar--eksik" id="panel-soru-satis-kar"
+                           href="/raporlar/kar-zarar" title="@KarIpucu">@KR.PanelKarHesaplanamadi</a>
+                    }
+                    else if (karTl is decimal kar && karEksikSatis + karEksikIade > 0)
+                    {
+                        @* PAKET RAPOR-3 (hasım ORTA): "eksik: 12 satış, 1 iade" neyin eksik olduğunu söylemiyordu, kâr günün
+                           kârı gibi okunuyordu. Kapsam yazılır: "Kâr 1.082,68 ₺ (yalnız 1 satış) · 12 satışın maliyeti yok". *@
+                        <a class="panel-soru-kar panel-soru-kar--eksik" id="panel-soru-satis-kar"
+                           href="/raporlar/kar-zarar" title="@KarIpucu">@string.Format(KR.PanelKarKapsam, Bicim.TlKurus(kar), BilinenSatisAdedi, BolunmezMaliyetYok)</a>
+                    }
+                    else if (karTl is decimal && karMaliyetiBilinmeyen > 0 && karDurumu is null)
+                    {
+                        @* Eski şekil yanıt (eksik satış alanı yok) ama maliyetsiz adet var: rakam BASILMAZ (fail-closed). *@
+                        <a class="panel-soru-kar panel-soru-kar--eksik" id="panel-soru-satis-kar"
+                           href="/raporlar/kar-zarar" title="@KarIpucu">@T.KarMaliyetEksik</a>
+                    }
+                    else if (karTl is decimal kar2)
+                    {
+                        <a class="panel-soru-kar @(kar2 < 0m ? "panel-soru-kar--eksi" : null)" id="panel-soru-satis-kar"
+                           href="/raporlar/kar-zarar" title="@KarIpucu">@T.Kar @Bicim.TlKurus(kar2)</a>
+                    }
+                }
+            </p>
+            @* Kâr yalnız ZENGİNLEŞTİRMEDİR: alınamazsa bant durur (UX-S28), satış kalır. *@
+            <HataBandi Mesaj="@karHata" Id="panel-soru-satis-kar-hata" />
+        }
+    </section>;
+
+    // (2) Kasada ne var? — UX-S32: tutar para birimiyle, grup adı etikette.
+    private RenderFragment KasaSorusu => @<section class="panel-soru" id="panel-soru-kasa" aria-labelledby="panel-soru-kasa-baslik">
+        <h2 class="panel-soru-baslik" id="panel-soru-kasa-baslik">@S.KasadaNeVar</h2>
+        @if (ozetYukleniyor || bankaYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-soru-kasa"></div>
+        }
+        else if (ozetYetkiYok)
+        {
+            <p class="metin-soluk" id="panel-soru-kasa-yetki">@S.YetkiYok</p>
+        }
+        else if (hata is not null)
+        {
+            <HataBandi Mesaj="@hata" Id="panel-soru-kasa-hata" />
+        }
+        else if (Kasalar.Count == 0 && BankaTl is null)
+        {
+            <BosDurum Mesaj="@Dil.T.Panel.KasaKaydiYok" />
+        }
+        else
+        {
+            @* T-P1 (tuval): büyük sayı = TL nakit + TL banka; alt TEK satır
+               "Nakit X ₺ · Banka Y ₺". Farklı para birimleri ASLA toplanmaz
+               (UX-S32): döviz kasaları aynı satırda KENDİ biriminde durur. *@
+            var gruplar = KasaGruplari;
+            var tl = gruplar.FirstOrDefault(g => g.ParaBirimi == "TRY");
+            var digerleri = gruplar.Where(g => g.ParaBirimi != "TRY").ToList();
+            if (tl is null && BankaTl is null)
+            {
+                var ana = digerleri[0];
+                digerleri.RemoveAt(0);
+                <a class="panel-soru-sayi" id="panel-soru-kasa-deger" href="/kasalar"
+                   data-deger-boy="@DegerBoyu.Kademe(Bicim.BelgePara(ana.Toplam, ana.ParaBirimi))"
+                   title="@S.KasaBaglantiIpucu">@Bicim.BelgePara(ana.Toplam, ana.ParaBirimi)</a>
+                <p class="panel-soru-alt" id="panel-soru-kasa-alt">
+                    <span id="panel-soru-kasa-grup" title="@KasaKirilimi(ana)">@PanelSadeSozlugu.KasaGrubu(ana.ParaBirimi, Dil.Dil)</span>
+                    @DovizGruplari(digerleri)
+                </p>
+            }
+            else
+            {
+                @* ORTAK-1 (B): data-deger-boy = uzunluk kademesi (css/ortak.css) — 960/1024
+                   px'te 7 haneli tutar kartından taşıyordu. *@
+                <a class="panel-soru-sayi" id="panel-soru-kasa-deger" href="/kasalar"
+                   data-deger-boy="@(DegerBoyu.Kademe(Bicim.BelgePara((tl?.Toplam ?? 0m) + (BankaTl ?? 0m), "TRY")))"
+                   title="@S.KasaBaglantiIpucu">@Bicim.BelgePara((tl?.Toplam ?? 0m) + (BankaTl ?? 0m), "TRY")</a>
+                <p class="panel-soru-alt" id="panel-soru-kasa-alt">
+                    @if (tl is not null)
+                    {
+                        @* PARA-DEMO-2 tur 5 (doğrulayıcı KRİTİK): kasaya yazılmış kart/havale çekmecede DURMAZ.
+                           Alt satır Kasalar ve Rapor merkeziyle AYNI kaynaktan (GET /kasalar/nakit-ayrimi,
+                           sunucu KasaNakitAyrimi): "Nakit X · Kart/Havale Y". Ayrım okunamadıysa toplam
+                           "Nakit" diye BASILMAZ — kasa grubu adıyla yazılır, kısa hata alt satırda. *@
+                        @if (PanelTlAyrim is { } ay)
+                        {
+                            <a class="panel-soru-alt-oge" id="panel-soru-kasa-grup" href="/kasalar"
+                               title="@KasaKirilimi(tl)">@T.Nakit @Bicim.BelgePara(ay.Nakit, "TRY")</a>
+                            @if (ay.KartHavale != 0m)
+                            {
+                                <a class="panel-soru-alt-oge" id="panel-soru-kasa-karthavale" href="/kasalar"
+                                   title="@KasaKirilimi(tl)">@PD2Panel.KartHavaleEtiket @Bicim.BelgePara(ay.KartHavale, "TRY")</a>
+                            }
+                        }
+                        else
+                        {
+                            <a class="panel-soru-alt-oge" id="panel-soru-kasa-grup" href="/kasalar"
+                               title="@KasaKirilimi(tl)">@PanelSadeSozlugu.KasaGrubu("TRY", Dil.Dil) @Bicim.BelgePara(tl.Toplam, "TRY")</a>
+                        }
+                    }
+                    @if (BankaTl is decimal banka)
+                    {
+                        <a class="panel-soru-alt-oge" id="panel-soru-kasa-banka" href="/banka">@T.Banka @Bicim.BelgePara(banka, "TRY")</a>
+                        @* ŞUBE-KAPSAM-B tur 2: banka hesapları şubeye bölünmez — şube seçiliyken söylenir. *@
+                        @if (SubeDaraltmali)
+                        {
+                            <span class="panel-soru-alt-oge metin-soluk" id="panel-soru-kasa-banka-kapsam">(@SKB.KartTumSubelerNotu)</span>
+                        }
+                    }
+                    @DovizGruplari(digerleri)
+                </p>
+            }
+            @if (tl is not null && panelAyrimHata is not null)
+            {
+                <p class="panel-soru-alt metin-kucuk metin-amber" id="panel-soru-kasa-ayrim-hata">@string.Format(PD2Panel.KasaAyrimHata, panelAyrimHata)</p>
+            }
+            <HataBandi Mesaj="@bankaHata" Id="panel-soru-kasa-banka-hata" />
+            @* Y4-B: kesilen stopaj kasadadır ama vergi dairesine aittir (bakiye değişmez). *@
+            @if (StopajBuAyGoster)
+            {
+                <p class="panel-soru-alt metin-soluk" id="panel-soru-kasa-stopaj">@string.Format(Y4.PanelStopajBuAy, Bicim.BelgePara(stopajOzet!.BuAyKesilenTl, "TRY"))</p>
+            }
+        }
+    </section>;
+
+    private RenderFragment DovizGruplari(List<PanelKasaGrubu> gruplar) => @<text>
+        @foreach (var g in gruplar)
+        {
+            <a class="panel-soru-alt-oge" id="@($"panel-soru-kasa-grup-{g.Sira}")" href="/kasalar"
+               title="@KasaKirilimi(g)">@PanelSadeSozlugu.KasaGrubu(g.ParaBirimi, Dil.Dil) @Bicim.BelgePara(g.Toplam, g.ParaBirimi)</a>
+        }
+    </text>;
+
+    // (4) Kim borçlu? — satırda TEK eylem (PLAN § 5 "≤ 3"; taslak: 1).
+    private RenderFragment BorcluSorusu => @<section class="panel-soru panel-soru--liste" id="panel-soru-borclu" aria-labelledby="panel-soru-borclu-baslik">
+        <header class="panel-soru-bas">
+            <h2 class="panel-soru-baslik panel-soru-baslik--liste" id="panel-soru-borclu-baslik">@S.KimBorclu</h2>
+            @* T-P1 (tuval): başlıkta yalnız "Tümü". Açık hesap SAYISI silinmedi —
+               bağlantının içinde ekran okuyucuya ve üzerine gelince okunur. *@
+            <a href="/cariler" id="panel-soru-borclu-tumu" title="@BorcluSayiMetni">
+                @S.Tumu
+                @if (!borcluYukleniyor && !borcluYetkiYok && borcluHata is null && BorcluSatirlari.Count > 0)
+                {
+                    <span class="gorsel-gizli" id="panel-soru-borclu-sayi"> · @BorcluSayiMetni</span>
+                }
+            </a>
+        </header>
+        @KiraciGeneliNot("panel-soru-borclu-kapsam")
+        @if (borcluYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-soru-borclu"></div>
+        }
+        else if (borcluYetkiYok)
+        {
+            <p class="metin-soluk" id="panel-soru-borclu-yetki">@S.YetkiYok</p>
+        }
+        else if (borcluHata is not null)
+        {
+            <HataBandi Mesaj="@borcluHata" Id="panel-soru-borclu-hata" />
+        }
+        else if (BorcluSatirlari.Count == 0)
+        {
+            <BosDurum Mesaj="@S.BorcluYok" />
+        }
+        else
+        {
+            <ul class="panel-liste" id="panel-soru-borclu-liste">
+                @foreach (var c in BorcluSatirlari)
+                {
+                    var bizBorclu = BizBorcluyuz(c);
+                    <li class="panel-liste-satir" id="@($"panel-borclu-{c.CariId}")">
+                        <span class="panel-liste-ad" title="@c.CariAd">@c.CariAd</span>
+                        <span class="panel-liste-durum @(VadeGectiMi(c) ? "panel-liste-durum--gecti" : null)"
+                              id="@($"panel-borclu-durum-{c.CariId}")" title="@DurumIpucu(c)">@DurumMetni(c)</span>
+                        @* TOPLU-4 (KRİTİK): TL ve has AYRI satırda — tek satırlık "24.423,82 ₺ · 12,3 g has"
+                           1440'ta eylem düğmesinin arkasına taşıyor, 375'te adı harf harf kırıyordu. *@
+                        <span class="panel-liste-tutar @(bizBorclu ? "panel-liste-tutar--eksi" : null)"
+                              id="@($"panel-borclu-tutar-{c.CariId}")" title="@TutarMetni(c)">@foreach (var parca in TutarParcalari(c))
+                            {<span class="panel-tutar-parca">@parca</span>}</span>
+                        @* Panel POST ETMEZ: eylem müşterinin kartını açar, para hareketi orada. *@
+                        <a class="dugme dugme-kucuk dugme-ikincil" id="@($"panel-borclu-eylem-{c.CariId}")"
+                           href="@($"/cariler?cariId={Uri.EscapeDataString(c.CariId)}{(bizBorclu ? "" : "&islem=tahsilat")}")">@(bizBorclu ? S.Ode : S.TahsilEt)</a>
+                    </li>
+                }
+            </ul>
+            @* UX-S29: sunucu sınırı söylenir, sınıra değdiyse "daha fazlası var". *@
+            @if (borcluDahaFazla)
+            {
+                <div class="bant bant-uyari" id="panel-soru-borclu-sinir">@string.Format(S.BorcluSinir, BorcluSinir)</div>
+            }
+        }
+        @* Vade bilgisi yalnız ZENGİNLEŞTİRMEDİR; alınamazsa bant durur, liste kalır. *@
+        <HataBandi Mesaj="@vadeHata" Id="panel-soru-borclu-vade-hata" />
+    </section>;
+
+    // (5) Bekleyen iş — sunucunun rol süzgecinden geçmiş açık bildirimler
+    //     + (yetkili rolde) uyum sayaçları. Sayılar kayıtlara giden bağlantıdır.
+    private RenderFragment BekleyenSorusu => @<section class="panel-soru panel-soru--liste" id="panel-soru-bekleyen" aria-labelledby="panel-soru-bekleyen-baslik">
+        <header class="panel-soru-bas">
+            <h2 class="panel-soru-baslik panel-soru-baslik--liste" id="panel-soru-bekleyen-baslik">@S.BekleyenIs</h2>
+            <a href="/bildirimler" id="panel-soru-bekleyen-tumu">@S.Tumu</a>
+        </header>
+        @KiraciGeneliNot("panel-soru-bekleyen-kapsam")
+        @if (bildirimYukleniyor || uyumYukleniyor)
+        {
+            <div class="karsilama-iskelet" id="panel-iskelet-soru-bekleyen"></div>
+        }
+        else
+        {
+            @* PAKET RAPOR-3 (hasım YÜKSEK): yasal bant / nakit sınırı işleri SATIR olarak (tuval: noktalı liste,
+               doğrudan ilgili ekrana bağlantı) — "Bekleyen 1 iş üstteki uyarıda" yönlendirmesi ve iş varken boş
+               simge kalktı. Rapor merkezi aynı bileşeni çizer. *@
+            <BekleyenUyumSatirlari Onek="panel-soru-bekleyen" Yasal="yasalOzet" NakitSayisi="NakitIsSayisi" />
+            @if (UyumGorebilir && !BekleyenYok)
+            {
+                @* T-P1: uyum sayaçları (P-37b kutucuğunun VERİSİ, aynı bağlantılar)
+                   tuvaldeki satır biçimiyle — renkli nokta · metin · sağda kaynak.
+                   Emoji yok; önem noktanın rengi ve aria-label'ıdır. *@
+                <ul class="panel-liste" id="panel-soru-uyum-liste">
+                    @if (masakOzet is { SuresiGecmis: > 0 })
+                    {
+                        @UyumSatiri("panel-uyum-masak-gecti", "KRITIK", masakOzet.SuresiGecmis, Dil.T.Panel.MasakSuresiGecti, "/uyum", T.KaynakUyum)
+                    }
+                    @if (masakOzet is { Yaklasan: > 0 })
+                    {
+                        @UyumSatiri("panel-uyum-masak-yaklasan", "UYARI", masakOzet.Yaklasan, Dil.T.Panel.MasakSuresiYaklasiyor, "/uyum", T.KaynakUyum)
+                    }
+                    @* PAKET YASAL-4 / Y4-A + Y4-B: yalnız gerçek iş (bkz. BekleyenGovde). *@
+                    @if (sureTakip is { YaklasanSayisi: > 0 })
+                    {
+                        @UyumSatiri("panel-uyum-pusula-yeniden", "UYARI", sureTakip.YaklasanSayisi, PusulaYenidenMetni, "/gider-pusulalari", T.KaynakBelge)
+                    }
+                    @if (sureTakip is { GecikmisSayisi: > 0 })
+                    {
+                        @UyumSatiri("panel-uyum-pusula", "KRITIK", sureTakip.GecikmisSayisi, Y4.PanelBelgesiz, "/gider-pusulalari", T.KaynakBelge)
+                    }
+                    @foreach (var d in stopajOzet?.Gecikmis ?? [])
+                    {
+                        @StopajSatiri($"panel-uyum-stopaj-gecti-{d.Donem}", "KRITIK", StopajGectiMetni(d), d.Donem)
+                    }
+                    @foreach (var d in stopajOzet?.Yaklasan ?? [])
+                    {
+                        @StopajSatiri($"panel-uyum-stopaj-yaklasan-{d.Donem}", "UYARI", StopajYaklasanMetni(d), d.Donem)
+                    }
+                    @if (riskOzet is { Yuksek: > 0 })
+                    {
+                        @UyumSatiri("panel-yuksek-risk", "UYARI", riskOzet.Yuksek, Dil.T.Panel.YuksekRiskliCari, "/uyum", T.KaynakUyum)
+                    }
+                </ul>
+            }
+            @if (bildirimYetkiYok)
+            {
+                <p class="metin-soluk" id="panel-soru-bekleyen-yetki">@S.YetkiYok</p>
+            }
+            else if (bildirimler.Count > 0)
+            {
+                <ul class="panel-liste" id="panel-soru-bekleyen-liste">
+                    @foreach (var b in bildirimler)
+                    {
+                        <li class="panel-liste-satir panel-liste-satir--is" id="@($"panel-is-{b.Id}")">
+                            <span class="panel-nokta @NoktaSinifi(b.Onem)" role="img"
+                                  aria-label="@PanelSadeSozlugu.Onem(b.Onem, Dil.Dil)"
+                                  title="@PanelSadeSozlugu.Onem(b.Onem, Dil.Dil)"></span>
+                            @* KIYAS DEVRİ 28.09 (ORTAK-1): aynı başlıklı satırlar ("Vadesi yaklaşan
+                               veresiye borcu" ×4) ayırt edilemiyordu. Bildirim bir müşteriye bağlıysa
+                               (IlgiliVarlikTuru=Cari) alt satırda o müşterinin adı (kartına bağlantı),
+                               tutarı ve gün durumu yazar — veri, aynı panelin zaten yüklediği vade
+                               takibi raporundan gelir (yeni istek YOK; rapor yetkisi yoksa satır
+                               eskisi gibi yalnız başlıktır → ad, yetkisi olmayana gösterilmez). *@
+                            <span class="panel-is-govde">
+                                @if (IcRota(b.HedefRota) is { } rota)
+                                {
+                                    <a class="panel-liste-ad" href="@rota" id="@($"panel-is-git-{b.Id}")">@b.Baslik</a>
+                                }
+                                else
+                                {
+                                    <span class="panel-liste-ad">@b.Baslik</span>
+                                }
+                                @if (IsAyrintisi(b) is { } ay)
+                                {
+                                    <span class="panel-is-ayrinti" id="@($"panel-is-ayrinti-{b.Id}")">
+                                        <a href="@($"/cariler?cariId={Uri.EscapeDataString(ay.CariId)}")"
+                                           id="@($"panel-is-cari-{b.Id}")">@ay.Ad</a>
+                                        <span class="panel-is-ayrinti-tutar">@ay.Tutar</span>
+                                        <span>@ay.Durum</span>
+                                    </span>
+                                }
+                            </span>
+                            <span class="panel-is-kaynak" id="@($"panel-is-kaynak-{b.Id}")">@PanelTuvalSozlugu.Kaynak(b.Tur, Dil.Dil)</span>
+                        </li>
+                    }
+                </ul>
+                @if (bildirimDahaFazla)
+                {
+                    <div class="bant bant-uyari" id="panel-soru-bekleyen-sinir">@string.Format(S.BekleyenSinir, BildirimSinir)</div>
+                }
+            }
+            else if (bildirimHata is null && (!UyumGorebilir || BekleyenYok) && uyumHata is null && YasalIsSatiri == 0)
+            {
+                <BosDurum Mesaj="@S.BekleyenYok" />@* RAPOR-3: boş durum YALNIZ hiç iş yokken (yasal/nakit işi yukarıda satır) *@
+            }
+            <HataBandi Mesaj="@bildirimHata" Id="panel-soru-bekleyen-hata" />
+            @if (!UyumGorebilir || BekleyenYok)
+            {
+                @* Uyum hatası BekleyenGovde çizilmediğinde de görünür kalır (UX-S28). *@
+                <HataBandi Mesaj="@uyumHata" Id="panel-soru-uyum-hata" />
+            }
+            <HataBandi Mesaj="@stopajHata" Id="panel-soru-stopaj-hata" />
+        }
+    </section>;
+
+    // ── T-P1 · tuval yardımcıları ────────────────────────────────────────────
+    private PanelTuvalMetinleri T => PanelTuvalSozlugu.Al(Dil.Dil);
+
+    /// <summary>"Bekleyen iş" uyum satırı — bildirim satırıyla AYNI biçim (nokta · metin · kaynak).</summary>
+    // ── PAKET YASAL-4 ──────────────────────────────────────────────────────
+    private Kuyumcu.Core.I18n.Yasal4Metinleri Y4 => Kuyumcu.Core.I18n.Yasal4Sozlugu.Al(Dil.Dil);
+    private Kuyumcu.Contracts.Sayfalar.Stopaj.StopajOzeti? stopajOzet;
+    private const string StopajRota = "/gider-pusulalari?sekme=stopaj";
+    private string? stopajHata;
+    private static string GunMetni(DateOnly? g) => g is { } d ? Bicim.Gun(d) : "—";   // TOPLU-1 TARIH-TEK
+    private string PusulaYenidenMetni => string.Format(Y4.PanelYenidenDuzenle, GunMetni(sureTakip?.EnYakinSonGun));
+    private string DonemAdi(string donem) =>
+        DateTime.TryParseExact(donem + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var t)
+            ? Bicim.GunBicim(t, "MMMM yyyy", new CultureInfo(Dil.Locale)) : donem;
+    private string StopajGectiMetni(Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi d) =>
+        string.Format(Y4.PanelStopajGecti, DonemAdi(d.Donem), Bicim.BelgePara(d.KalanTl, "TRY"), GunMetni(d.SonGun));
+    private string StopajYaklasanMetni(Kuyumcu.Contracts.Sayfalar.Stopaj.StopajDonemi d) =>
+        string.Format(Y4.PanelStopajYaklasan, DonemAdi(d.Donem), Bicim.BelgePara(d.KalanTl, "TRY"), GunMetni(d.SonGun));
+    private bool StopajBuAyGoster => UyumGorebilir && stopajOzet is { BuAyKesilenTl: > 0m };
+
+    // § 4.5 (hasım bulgusu 01.10): satırda TEK DOKUNUŞ "Ödendi olarak kaydet" — Panel POST
+    // ETMEZ; ödeme çekmecesi o dönem için AÇIK gelir (kasa/tutar orada, sunucu kalanıyla).
+    private static string StopajOdeRota(string donem) => $"{StopajRota}&ode={Uri.EscapeDataString(donem)}";
+
+    private RenderFragment StopajSatiri(string id, string onem, string metin, string donem) =>
+        @<li class="panel-liste-satir panel-liste-satir--is" id="@id">
+            <span class="panel-nokta @NoktaSinifi(onem)" role="img"
+                  aria-label="@PanelSadeSozlugu.Onem(onem, Dil.Dil)"
+                  title="@PanelSadeSozlugu.Onem(onem, Dil.Dil)"></span>
+            <a class="panel-liste-ad" href="@StopajRota" id="@($"{id}-git")">@metin</a>
+            <a class="dugme dugme-kucuk dugme-ikincil yasal-eylem" id="@($"{id}-ode")" href="@StopajOdeRota(donem)">@Y4.PanelStopajGit</a>
+        </li>;
+
+    private RenderFragment UyumSatiri(string id, string onem, int adet, string metin, string rota, string kaynak) =>
+        @<li class="panel-liste-satir panel-liste-satir--is" id="@id">
+            <span class="panel-nokta @NoktaSinifi(onem)" role="img"
+                  aria-label="@PanelSadeSozlugu.Onem(onem, Dil.Dil)"
+                  title="@PanelSadeSozlugu.Onem(onem, Dil.Dil)"></span>
+            <a class="panel-liste-ad" href="@rota" id="@($"{id}-git")"><strong>@adet</strong> @metin</a>
+            <span class="panel-is-kaynak">@kaynak</span>
+        </li>;
+
+    private string BorcluSayiMetni => string.Format(S.AcikHesapSayisi, borcluToplamSatir);
+
+    /// <summary>Kasa grubunun kasaları tek tek (üzerine gelince) — ekrandan kasa listesi silinmedi.</summary>
+    private string KasaKirilimi(PanelKasaGrubu g) =>
+        string.Join(" · ", g.Kasalar.Select(k => $"{k.Ad} {Bicim.BelgePara(k.Bakiye, k.ParaBirimi)}")) + " — " + T.KasaKirilimIpucu;
+
+    // Kâr (bugün..bugün) — GET /raporlar/kar-zarar (SAHIP/MUDUR/MUHASEBE). 403 = yazılmaz.
+    private decimal? karTl;
+    private int karMaliyetiBilinmeyen;
+    private int karEksikSatis;          // PAKET KAR-RAPOR: maliyeti eksik (kâra katılmayan) satış sayısı
+    private int karEksikIade;           // MADEN-2: maliyeti eksik (kâra katılmayan) iade sayısı
+    // KAR-RAPOR-2: sunucu karDurumu döndürüyorsa (yeni şekil) eski "Kâr: maliyet eksik" dalı KULLANILMAZ —
+    // eksik bilgisi MaliyetiEksikSatisAdedi'nden okunur (TAM + yuvarlama artığı adet = çelişki çıkıyordu).
+    private string? karDurumu;
+    private string? karHata;
+    private KarRaporMetinleri KR => KarRaporSozlugu.Al(Dil.Dil);
+
+    // PAKET KAR-RAPOR: "kâr eksik olabilir" artık doğru değil — eksik satış kâra hiç girmez.
+    private string KarIpucu => karEksikSatis + karEksikIade > 0
+        ? $"{T.KarIpucu}. {(karTl is null ? KR.MaliyetNasilGirilir : KR.KarKismiNotu)}"
+        : karMaliyetiBilinmeyen > 0 && karDurumu is null
+        ? $"{T.KarIpucu}. {string.Format(T.KarEksikIpucu, karMaliyetiBilinmeyen)}"
+        : T.KarIpucu;
+
+    private async Task YukleKar()
+    {
+        var gun = Bicim.Makine(Bicim.IsletmeBugun);
+        string? istenen = null;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
+            istenen = SubeliSorgu.Sube(Oturum);
+            var k = await Api.GetAsync<PanelKarOzeti>(SubeliSorgu.Ekle($"/raporlar/kar-zarar?baslangic={gun}&bitis={gun}", Oturum));
+            if (Eskidi(istenen)) return;
+            karTl = k.KarTl;
+            karMaliyetiBilinmeyen = (int)Math.Ceiling(k.MaliyetiBilinmeyenAdet);
+            karEksikSatis = k.MaliyetiEksikSatisAdedi;
+            karEksikIade = k.MaliyetiEksikIadeAdedi;
+            karSatisAdedi = k.SatisAdedi;
+            karDurumu = k.KarDurumu;
+        }
+        // Yetkisiz rol kârı GÖRMEZ: yazı yok, bant yok (yetki notu satış kartında zaten var).
+        catch (ApiHata ex) when (ex.StatusCode == 403) { }
+        catch (Exception ex) when (YukleHatasi(ex)) { if (Eskidi(istenen)) return; karHata = HataMetni(ex); }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // PARA-DEMO-2 tur 5 — "Kasada ne var?" alt satırı: nakit / kart+havale ayrımı (Kasalar ve Rapor merkeziyle
+    // aynı uç ve aynı toplama: aynı para birimindeki kasaların Σnakit ve Σ(kart+havale)). Şubeli (kasa özetiyle aynı kapsam).
+    private List<Kuyumcu.Contracts.Sayfalar.Kasalar.KasaNakitAyrimiOzeti>? panelAyrim;
+    private string? panelAyrimHata;
+    private ParaDemo2Metinleri PD2Panel => ParaDemo2Sozlugu.Al(Dil.Dil);
+    private (decimal Nakit, decimal KartHavale)? PanelTlAyrim =>
+        panelAyrim is null ? null
+        : (panelAyrim.Where(a => a.ParaBirimi == "TRY").Sum(a => a.Nakit),
+           panelAyrim.Where(a => a.ParaBirimi == "TRY").Sum(a => a.Kart + a.Havale));
+
+    private async Task YukleNakitAyrimi()
+    {
+        string? istenen = null;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);
+            istenen = SubeliSorgu.Sube(Oturum);
+            var y = await Api.GetAsync<List<Kuyumcu.Contracts.Sayfalar.Kasalar.KasaNakitAyrimiOzeti>>(SubeliSorgu.Ekle("/kasalar/nakit-ayrimi", Oturum));
+            if (Eskidi(istenen)) return;
+            panelAyrim = y ?? [];
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { _ = ex; }   // kasa yetkisi yok: grup adıyla toplam yazılır
+        catch (Exception ex) when (YukleHatasi(ex)) { if (Eskidi(istenen)) return; panelAyrimHata = HataMetni(ex); }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Banka (TL hesaplar) — GET /bankalar ("banka" modülü). 403 = banka bacağı yazılmaz.
+    private bool bankaYukleniyor = true;
+    private decimal? bankaTl;
+    private string? bankaHata;
+    private decimal? BankaTl => bankaTl;
+
+    private async Task YukleBanka()
+    {
+        try
+        {
+            var y = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Banka.HesapYaniti>("/bankalar");
+            var tl = (y.Hesaplar ?? []).Where(h => h.Aktif && (h.ParaBirimi ?? "TRY") == "TRY").ToList();
+            bankaTl = tl.Count == 0 ? null : tl.Sum(h => h.Bakiye);
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { }
+        catch (Exception ex) when (YukleHatasi(ex)) { bankaHata = HataMetni(ex); }
+        bankaYukleniyor = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string? DurumIpucu(YaslandirmaSz.YaslananCari c) =>
+        !BizBorcluyuz(c) && vadeler.TryGetValue(c.CariId, out var v) && v.EnEskiGecikmeGun is int g and > 0
+            ? string.Format(T.VadeGectiIpucu, g) : null;
+
+    // ── Basit yüz verisi ─────────────────────────────────────────────────────
+    /// <summary>"Kim borçlu?" listesi için sunucudan istenen sayfa boyu (UX-S29: ekranda yazılır).</summary>
+    internal const int BorcluSinir = 500;
+    /// <summary>"Bekleyen iş" listesinde gösterilen en çok bildirim.</summary>
+    internal const int BildirimSinir = 5;
+    /// <summary>Kartta gösterilen en çok borçlu satırı (T-P1 tuval: 3 satır + "Tümü").</summary>
+    internal const int BorcluSatirSayisi = 3;
+
+    private bool ozetYetkiYok;
+    private bool borcluYukleniyor = true, borcluYetkiYok, borcluDahaFazla;
+    private string? borcluHata, vadeHata;
+    private int borcluToplamSatir;
+    private List<YaslandirmaSz.YaslananCari> acikHesaplar = [];
+    private Dictionary<string, VadeSz.CariSatir> vadeler = [];
+
+    private bool bildirimYukleniyor = true, bildirimYetkiYok, bildirimDahaFazla;
+    private string? bildirimHata;
+    private List<BildirimSz.Satir> bildirimler = []; private int nakitAyrildi, nakitSeritSayisi, yasalSeritSayisi;   /* YASAL-3: uyum bantlarındaki iş */   // YASAL-2 t3: şeride devredilen nakit sınırı bildirimi
+
+    private bool sadeYuklendi, proYuklendi;
+
+    private int SatisAdet => ozet?.Satis?.Adet ?? 0;
+    private decimal SatisHas => ozet?.Satis?.ToplamHas ?? 0m;
+    // PAKET RAPOR-2 tur 2: "Bugün ne sattım" NET gösterir (Kâr-zarar ile aynı tanım); alan yoksa brüt.
+    private NetSatisOzet? NetSatis => ozet?.NetSatis;
+    private decimal SatisGosterTl => NetSatis?.ToplamTl ?? SatisTl;
+    private decimal SatisGosterHas => NetSatis?.AltinToplamHas ?? SatisHas;
+    private int IadeAdet => NetSatis?.IadeAdet ?? 0;
+    private string? IadeSatiri => IadeAdet > 0
+        ? string.Format(KR.BugunIadeSatiri, IadeAdet, Bicim.TlKurus(NetSatis!.IadeTl)) : null;
+
+    /// <summary>
+    /// Kasalar para birimine göre gruplanır; TL önce gelir. Farklı para birimleri
+    /// ASLA toplanmaz (UX-S32) — her grup kendi satırında, kendi birimiyle.
+    /// </summary>
+    private List<PanelKasaGrubu> KasaGruplari =>
+    [
+        .. Kasalar
+            .GroupBy(k => string.IsNullOrEmpty(k.ParaBirimi) ? "TRY" : k.ParaBirimi)
+            .OrderBy(g => g.Key == "TRY" ? 0 : 1).ThenBy(g => g.Key, StringComparer.Ordinal)
+            .Select((g, i) => new PanelKasaGrubu(i, g.Key, g.Sum(k => k.Bakiye), [.. g])),
+    ];
+
+    /// <summary>PAKET RAPOR-2 (RAPOR-GORUNUM açık kalanı, Panel/TOPLU-5): has eşiği görüntü hassasiyetine
+    /// hizalı. Bicim.HasIsaretli 4 haneye (AwayFromZero) yuvarlar; |has| &lt; 0,00005 "0,0000 has" yazardı →
+    /// böyle bir cari listeye GİRMEZ (eski eşik 0,000001 idi). TL eşiği (0,01) aynı mantıkta zaten kuruştu.</summary>
+    public const decimal HasGosterimEsigi = 0.00005m;
+
+    private static bool Alacak(YaslandirmaSz.YaslananCari c) =>
+        c.TlBakiye > 0.01m || c.HasGramBakiye >= HasGosterimEsigi;
+
+    private static bool BizBorcluyuz(YaslandirmaSz.YaslananCari c) =>
+        !Alacak(c) && (c.TlBakiye < -0.01m || c.HasGramBakiye <= -HasGosterimEsigi);
+
+    /// <summary>
+    /// Kartta gösterilecek satırlar: önce bize borçlu olanlar (en büyük TL,
+    /// sonra has), sonra bizim borçlu olduklarımız. En çok 3 satır (T-P1); iki yön
+    /// de varsa borç yönüne en az 1 satır ayrılır (tuval: 2 "Tahsil et" + 1 "Öde").
+    /// </summary>
+    private List<YaslandirmaSz.YaslananCari> BorcluSatirlari
+    {
+        get
+        {
+            var alacak = acikHesaplar.Where(Alacak)
+                .OrderByDescending(c => c.TlBakiye).ThenByDescending(c => c.HasGramBakiye).ToList();
+            var borc = acikHesaplar.Where(BizBorcluyuz)
+                .OrderBy(c => c.TlBakiye).ThenBy(c => c.HasGramBakiye).ToList();
+            var borcPayi = Math.Min(borc.Count, Math.Max(1, BorcluSatirSayisi - alacak.Count));
+            var alacakPayi = Math.Min(alacak.Count, BorcluSatirSayisi - borcPayi);
+            return [.. alacak.Take(alacakPayi), .. borc.Take(BorcluSatirSayisi - alacakPayi)];
+        }
+    }
+
+    private bool VadeGectiMi(YaslandirmaSz.YaslananCari c) =>
+        !BizBorcluyuz(c) && vadeler.TryGetValue(c.CariId, out var v) && v.EnEskiGecikmeGun is > 0;
+
+    private string DurumMetni(YaslandirmaSz.YaslananCari c)
+    {
+        if (BizBorcluyuz(c)) return S.BizBorcluyuz;
+        if (vadeler.TryGetValue(c.CariId, out var v))
+        {
+            if (v.EnEskiGecikmeGun is > 0) return T.VadeGectiKisa;   // T-P1: gün sayısı title'da (DurumIpucu)
+            if (v.EnYakinVade is DateOnly vade)
+            {
+                var kalan = vade.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+                return kalan <= 0 ? S.VadeBugun : string.Format(S.GunKaldi, kalan);
+            }
+        }
+        return S.AcikHesap;
+    }
+
+    private string TutarMetni(YaslandirmaSz.YaslananCari c) => string.Join(" · ", TutarParcalari(c));
+
+    /// <summary>TOPLU-4: tutarın parçaları (TL · has · döviz) — ekranda her biri kendi satırında.</summary>
+    private List<string> TutarParcalari(YaslandirmaSz.YaslananCari c)
+    {
+        var parcalar = new List<string>();
+        if (Math.Abs(c.TlBakiye) > 0.01m) parcalar.Add(Bicim.TlKurus(c.TlBakiye));
+        if (Math.Abs(c.HasGramBakiye) >= HasGosterimEsigi) parcalar.Add(HasMetni(c.HasGramBakiye));
+        if (c.DovizBakiyesiVar) parcalar.Add(S.DovizDeVar);
+        return parcalar;
+    }
+
+    /// <summary>
+    /// PAKET RAPOR-GORUNUM (MADEN-2 hasım YÜKSEK, veri a): Panel "Bugün ne sattım … 26,1 g has" ile
+    /// yanındaki "Altın pozisyonum +171,4480 has" ve Rapor merkezinin aynı kartı "26,0588 has" iki ayrı
+    /// has dili konuşuyordu. Has artık TEK biçimdir: <see cref="Bicim.HasIsaretli"/> (Bicim.Has, N4 binlik,
+    /// eksi "−") — Rapor merkezi Bugün kartı ve Altın pozisyonu kartı ile AYNI. Değer YALNIZ ALTINDIR
+    /// (sunucu /raporlar/gunluk satis.toplamHas = altinToplamHas, P-69). Kim borçlu has satırı da aynı yardımcı.
+    /// </summary>
+    // Tur 2: birim sözlükten (TR "has", EN "fine" — eski EN "g fine gold" karşılığı kaybolmasın).
+    private string HasMetni(decimal gram) => Bicim.HasIsaretli(gram, KR.HasBirimKisa);
+
+    /// <summary>RAPOR-GORUNUM (tasarım DÜŞÜK): "maliyeti eksik: 9 satış ve 1 iade" dar kartta "iade"yi tek başına
+    /// alt satıra düşürüyordu — sayı-birim öbeği bölünmez boşlukla tek parça (satır öbeğin ÖNÜNDEN kırılır).</summary>
+    // PAKET RAPOR-2 (tasarım DÜŞÜK): satır hâlâ "maliyeti eksik:" sonrasında kırılıyordu → kısa metin
+    // ("Kâr … · eksik: 9 satış, 1 iade"); "eksik:" ile sayı öbeği arasındaki boşluk da bölünmez (sözlük kalıbında U+00A0).
+    private string BolunmezEksikSayi => KarRaporSozlugu.EksikSayiKisa(KR, karEksikSatis, karEksikIade).Replace(' ', '\u00A0');
+    /// <summary>RAPOR-3: "12 satışın maliyeti yok" — satır içinde bölünmez öbek.</summary>
+    private string BolunmezMaliyetYok => KarRaporSozlugu.MaliyetYok(KR, karEksikSatis, karEksikIade).Replace(' ', '\u00A0');
+    /// <summary>RAPOR-3: kârın hesaplandığı (maliyeti bilinen) satış sayısı = kâr-zarar satış adedi − maliyeti eksik satış.
+    /// Eski şekil yanıt (satisAdedi yok) → günün net satış adedi.</summary>
+    private int BilinenSatisAdedi => Math.Max(0, (karSatisAdedi > 0 ? karSatisAdedi : SatisAdet) - karEksikSatis);
+    /// <summary>RAPOR-3: "Bekleyen iş" kartında satır olarak çizilen yasal/nakit iş sayısı (BekleyenUyumSatirlari ile aynı sayım).</summary>
+    private int YasalIsSatiri => BekleyenUyumSatirlari.SatirSayisi(yasalOzet, NakitIsSayisi);
+    /// <summary>
+    /// PAKET RAPOR-4 (tasarım DÜŞÜK, tuval): BASİT'te "Yasal liste henüz yüklenmedi" hem üst sarı bantta hem
+    /// "Bekleyen iş" satırında çıkıyordu. BASİT'te bant YALNIZ kritik (açık yasal liste eşleşmesi) varken çizilir;
+    /// liste eski/yok ve saklama işi Bekleyen iş satırında kalır (aynı özet, ikinci istek yok). PRO değişmedi.
+    /// </summary>
+    private bool BasitYasalBantGizli => Mod.BasitMi && (yasalOzet is null || yasalOzet.AcikTam + yasalOzet.AcikBenzerlik == 0);
+
+    private int NakitIsSayisi => Math.Max(nakitSeritSayisi, nakitAyrildi);
+    private Kuyumcu.Web.Bilesenler.Uyum.UyumYasalOzet? yasalOzet;
+    private int karSatisAdedi;
+
+    private static string NoktaSinifi(string? onem) => onem switch
+    {
+        "KRITIK" => "panel-nokta--acil",
+        "UYARI" => "panel-nokta--dikkat",
+        _ => "panel-nokta--bilgi",
+    };
+
+    /// <summary>
+    /// Bildirim bir müşteriye bağlıysa ve o müşteri vade takibi raporunda varsa alt satırı
+    /// kurar; yoksa null (satır eskisi gibi yalnız başlık). Tutar ve gün BUGÜNKÜ durumdan
+    /// gelir (bildirim dünkü "yaklaşıyor" olabilir, borç bugün gecikmiş olabilir):
+    /// gecikmiş borç varsa gecikmiş tutar + gecikme günü; yoksa açık toplam + vadeye kalan gün.
+    /// </summary>
+    // (Razor @code içinde yeni kayıt tipi AÇILMAZ — SozlesmeYansima kuralı; adlı demet.)
+    private (string CariId, string Ad, string Tutar, string Durum)? IsAyrintisi(BildirimSz.Satir b)
+    {
+        if (b.IlgiliVarlikTuru != "Cari" || string.IsNullOrEmpty(b.IlgiliVarlikId)) return null;
+        if (!vadeler.TryGetValue(b.IlgiliVarlikId, out var v)) return null;
+        if (v.GecikenTutar > 0 && v.EnEskiGecikmeGun is int g and > 0)
+            return (v.CariId, v.CariAd, Bicim.TlKurus(v.GecikenTutar), string.Format(T.VadeGectiIpucu, g));
+        var acik = v.Kalemler.Count > 0 ? v.Kalemler.Sum(k => k.AcikTutar) : v.GecikenTutar + v.YaklasanTutar + v.VadesizTutar;
+        string durum = S.AcikHesap;
+        if (v.EnYakinVade is DateOnly vade)
+        {
+            var kalan = vade.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+            durum = kalan <= 0 ? S.VadeBugun : string.Format(S.GunKaldi, kalan);
+        }
+        return (v.CariId, v.CariAd, Bicim.TlKurus(acik), durum);
+    }
+
+    // ── KIYAS DEVRİ 28.09 (ORTAK-1) — yükleyici hata yakalama boşluğu ──────────
+    // ApiIstemci ağ hatasını (HttpRequestException) ve zaman aşımını
+    // (TaskCanceledException) ApiHata'ya çevirmez; yalnız ApiHata/JsonException
+    // yakalanınca istek düşerse "…Yukleniyor = false" satırına hiç gelinmiyor ve
+    // kutucuk SONSUZA dek dönüyordu (UX-S28). Bu iki tür de yakalanır, kutucuğun
+    // kendi bandına Türkçe bağlantı metni yazılır.
+    internal static bool AgHatasi(Exception ex) => ex is HttpRequestException or TaskCanceledException;
+    private static bool YukleHatasi(Exception ex) => ex is ApiHata or JsonException || AgHatasi(ex);
+    private string HataMetni(Exception ex) => AgHatasi(ex) ? OrtakGorunumSozlugu.Al(Dil.Dil).PanelBaglantiHatasi : ex.Message;
+
+    /// <summary>Yalnız uygulama içi rota bağlantı olur ("/…", "//…" değil).</summary>
+    private static string? IcRota(string? rota) =>
+        rota is { Length: > 1 } r && r[0] == '/' && r[1] != '/' ? r : rota == "/" ? "/" : null;
+
+    private async Task YukleBorclu()
+    {
+        try
+        {
+            var y = await Api.GetAsync<YaslandirmaSz.YaslandirmaYaniti>(
+                $"/raporlar/cari-yaslandirma?limit={BorcluSinir}");
+            acikHesaplar = y.YaslananCariler ?? [];
+            borcluToplamSatir = y.ToplamSatir;
+            borcluDahaFazla = y.DahaFazlasiVar;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { borcluYetkiYok = true; }
+        catch (Exception ex) when (YukleHatasi(ex)) { borcluHata = HataMetni(ex); }
+        borcluYukleniyor = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task YukleVade()
+    {
+        try
+        {
+            var y = await Api.GetAsync<VadeSz.Yanit>("/raporlar/vade-takibi");
+            vadeler = (y.Cariler ?? []).ToDictionary(c => c.CariId);
+        }
+        // 403'ü borçlu listesi zaten söyler; burada ikinci kez yazılmaz.
+        catch (ApiHata ex) when (ex.StatusCode == 403) { }
+        catch (Exception ex) when (YukleHatasi(ex)) { vadeHata = HataMetni(ex); }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task YukleBildirim()
+    {
+        try
+        {
+            var y = await Api.GetAsync<BildirimSz.Yanit>($"/bildirimler?durum=ACIK&limit={BildirimSinir}");
+            bildirimler = y.Satirlar.Where(b => b.IlgiliVarlikTuru != "TevsikIhlali").ToList(); nakitAyrildi = y.Satirlar.Count - bildirimler.Count;   // YASAL-2 tur 3: nakit sınırı aşımı TEK kaynaktan — üstteki kırmızı şerit (tevsik/ihlaller); burada ikinci kez sayılmaz
+            bildirimDahaFazla = y.DahaFazlasiVar;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { bildirimYetkiYok = true; }
+        catch (Exception ex) when (YukleHatasi(ex)) { bildirimHata = HataMetni(ex); }
+        bildirimYukleniyor = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Yüze göre yükleyiciler. İkisi de BAĞIMSIZ ve paraleldir; mod çalışırken
+    /// değişirse eksik yüzün yükleyicileri O AN açılır (bir kez).
+    /// </summary>
+    private void YuzeGoreYukle()
+    {
+        YildizEkYukleBaslat();   // YILDIZ-4C: Bugün'ün iki tuval satırı (dünkü gün sonu · uzun duran emanet) — yalnız Yıldız (Panel.Yildiz.cs)
+        // YILDIZ-4A: Yıldız'da BASİT ve PRO aynı tuval yüzünü çizer → sade yükleyiciler iki modda da açılır.
+        if ((Mod.BasitMi || YildizMi) && !sadeYuklendi)
+        {
+            sadeYuklendi = true;
+            Yuklemeler.AddRange([YukleBorclu(), YukleVade(), YukleBildirim(), YukleKar(), YukleBanka(), YukleNakitAyrimi()]);
+        }
+        else if (!Mod.BasitMi && !proYuklendi)
+        {
+            proYuklendi = true;
+            Yuklemeler.AddRange([YukleGrafik(), YukleDefter(), KaynaklariYukle()]);
+        }
+    }
+
+    private void ModDegisti()
+    {
+        if (Mod.BasitMi) suruklemeKuruldu = false;   // ızgara DOM'dan çıktı; geri gelince yeniden kurulur
+        YuzeGoreYukle();
+        Yenile();
+    }
+
+    private string BugunSade => Bicim.GunBicim(Bicim.IsletmeBugun, "dddd, d MMMM yyyy",
+        Dil.Dil == "tr" ? new CultureInfo("tr-TR") : CultureInfo.InvariantCulture);
+
+    // ── Karşılama başlığı ────────────────────────────────────────────────────
+    private string Selam
+    {
+        get
+        {
+            var s = DateTime.Now.Hour;
+            var selam = s < 6 ? Dil.T.Panel.SelamIyiGeceler
+                      : s < 12 ? Dil.T.Panel.SelamGunaydin
+                      : s < 18 ? Dil.T.Panel.SelamIyiGunler
+                      : Dil.T.Panel.SelamIyiAksamlar;
+            var ad = Oturum.Kullanici?.Ad;
+            return string.IsNullOrWhiteSpace(ad) ? selam : $"{selam} {ad}";
+        }
+    }
+
+    private string Bugun => Bicim.GunBicim(Bicim.IsletmeBugun, "d MMMM yyyy, dddd",
+        Dil.Dil == "tr" ? new CultureInfo("tr-TR") : CultureInfo.InvariantCulture);
+
+    private static string Derece(decimal? d) =>
+        d is null ? "" : d.Value.ToString("0", CultureInfo.CurrentCulture) + "°C";
+
+    /// <summary>T-P1 · basit yüz: tuvaldeki kısa biçim "21°" (profesyonel yüz "21°C" kalır).</summary>
+    private static string DereceKisa(decimal? d) =>
+        d is null ? "" : d.Value.ToString("0", CultureInfo.InvariantCulture) + "°";
+
+    // ── Düzen (kullanıcı bazlı) ──────────────────────────────────────────────
+    private bool duzenModu;
+    private bool suruklemeKuruldu;
+    private DotNetObjectReference<Panel>? benlik;
+
+    private List<PanelKutucukTanimi> GorunenKutucuklar =>
+        Tercih.PanelSirasi([.. PanelKutucuklari.Tumu.Where(k => !Tercih.KutucukGizli(k.Kod))], k => k.Kod);
+
+    private List<PanelKutucukTanimi> GizliKutucuklar =>
+        [.. PanelKutucuklari.Tumu.Where(k => Tercih.KutucukGizli(k.Kod))];
+
+    private Task GizleDegistir(string kod) => Tercih.KutucukGizleDegistirAsync(kod);
+
+    private Task DuzeniSifirla() => Tercih.PanelDuzeniniSifirlaAsync();
+
+    /// <summary>Klavye yolu (erişilebilirlik): Alt + Yukarı / Alt + Aşağı.</summary>
+    private Task KutucukTus(KeyboardEventArgs e, string kod)
+    {
+        if (!e.AltKey) return Task.CompletedTask;
+        var gorunen = GorunenKutucuklar.Select(k => k.Kod).ToList();
+        if (e.Key == "ArrowUp") return Tercih.KutucukTasiAsync(gorunen, kod, -1);
+        if (e.Key == "ArrowDown") return Tercih.KutucukTasiAsync(gorunen, kod, 1);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>JS sürükle-bırak geri çağrısı (fare + dokunmatik, 5px eşik).</summary>
+    [JSInvokable]
+    public Task Birak(string kaynak, string hedef)
+        => Tercih.KutucukBirakAsync([.. GorunenKutucuklar.Select(k => k.Kod)], kaynak, hedef);
+
+    // ── Veri ─────────────────────────────────────────────────────────────────
+    private string[] kaynaklar = [];
+    private string? seciliKaynak;
+    private string? varsayilanKaynak;
+    private string? kaynakHata;
+    private KesifP6Metinleri P6 => KesifP6Sozlugu.Al(Dil.Dil);
+    /// <summary>KESIF-P6: kaynak yalnız SAHİP'te ve yalnız İşletme'de (onaylı) değişir.</summary>
+    private bool KaynakDegistirebilir => Oturum.Kullanici?.Rol == "SAHIP";
+    private string SeciliKaynakAdi =>
+        (seciliKaynak ?? varsayilanKaynak) is { Length: > 0 } k ? KaynakAdi(k) : "—";
+
+    private GunlukOzet? ozet;
+    private List<GrafikNokta> grafikNoktalari = [];
+    private List<DefterSatiri> sonSatirlar = [];
+    private HavaDurumu? hava;
+
+    private bool ozetYukleniyor = true, grafikYukleniyor = true, uyumYukleniyor = true, defterYukleniyor = true;
+    private string? hata, grafikHata, uyumHata, defterHata;
+
+    private decimal SatisTl => ozet?.Satis?.ToplamTl ?? 0m;
+    private decimal AlisTl => ozet?.Alis?.ToplamTl ?? 0m;
+    private decimal HurdaTl => ozet?.Hurda?.OdenenTl ?? 0m;
+    private decimal NetHas => ozet?.NetHasGramHareketi ?? 0m;
+    // RAPOR-2 tur 2: formül etiketi "(satış − alış − hurda)" üstteki GÜNLÜK SATIŞ kartıyla AYNI satışı kullanır (net).
+    private decimal NetKasaTl => SatisGosterTl - AlisTl - HurdaTl;
+    private List<KasaOzet> Kasalar => ozet?.Kasalar ?? [];
+
+    private MasakOzet? masakOzet;
+    private RiskOzet? riskOzet;
+    private SureTakip? sureTakip;
+
+    /// <summary>TEZGÂHTAR uyum verisini görmez; API de RolGerekli ile kapalıdır.</summary>
+    private bool UyumGorebilir => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR" or "MUHASEBE";
+
+    private bool BekleyenYok =>
+        masakOzet is not { SuresiGecmis: > 0 } and not { Yaklasan: > 0 }
+        && sureTakip is not { GecikmisSayisi: > 0 } and not { YaklasanSayisi: > 0 }
+        && stopajOzet is not { Gecikmis.Count: > 0 } and not { Yaklasan.Count: > 0 }
+        && riskOzet is not { Yuksek: > 0 };
+
+    private static string KaynakAdi(string kod) => kod switch
+    {
+        "ALTINKAYNAK" => "Altınkaynak",
+        "ANKARA" => "Ankara Altın Borsası",
+        "TRUNCGIL" => "Truncgil",
+        _ => kod,
+    };
+
+    // ── BAĞIMSIZ YÜKLEYİCİLER — hiçbiri diğerini BEKLEMEZ ────────────────────
+    // (denetim.sh: KARSILAMA_TEK_ISTEK_BEKLEME = 0)
+    /// <summary>Testlerin bekleyebilmesi için açılan yükleme görevleri.</summary>
+    internal List<Task> Yuklemeler { get; } = [];
+
+    private async Task YukleOzet()
+    {
+        string? istenen = null;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
+            istenen = SubeliSorgu.Sube(Oturum);
+            var y = await Api.GetAsync<GunlukOzet>(SubeliSorgu.Ekle($"/raporlar/gunluk?tarih={Bicim.Makine(Bicim.IsletmeBugun)}", Oturum));
+            if (Eskidi(istenen)) return;
+            ozet = y;
+        }
+        catch (ApiHata ex)
+        {
+            if (Eskidi(istenen)) return;
+            hata = ex.Message;
+            // S3-1: basit yüz 403'ü "yalnız yönetici görür" notuyla söyler (UX-S28);
+            // profesyonel yüz bugünkü gibi hata bandını gösterir.
+            ozetYetkiYok = ex.StatusCode == 403;
+        }
+        catch (Exception ex) when (AgHatasi(ex)) { if (Eskidi(istenen)) return; hata = HataMetni(ex); }
+        ozetYukleniyor = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task YukleGrafik()
+    {
+        string? istenen = null;
+        try
+        {
+            var bugun = DateTime.Today;
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
+            istenen = SubeliSorgu.Sube(Oturum);
+            var aylik = await Api.GetAsync<AylikYanit>(SubeliSorgu.Ekle($"/raporlar/aylik?yil={bugun.Year}&ay={bugun.Month}", Oturum));
+            if (Eskidi(istenen)) return;
+            if (aylik?.Gunler is { Count: > 0 } gunler)
+            {
+                // PAKET RAPOR-3 tur 2 (hasım DÜŞÜK "Son 7 günlük satış ayın tüm günlerini çiziyor"): başlık ne diyorsa
+                // o çizilir — SON 7 GÜN. Ayın ilk 6 gününde önceki ayın son günleri de istenir (ay sınırını aşar).
+                if (gunler.Count < SonGunSayisi)
+                {
+                    var once = bugun.AddMonths(-1);
+                    var onceki = await Api.GetAsync<AylikYanit>(SubeliSorgu.Ekle($"/raporlar/aylik?yil={once.Year}&ay={once.Month}", Oturum));
+                    if (Eskidi(istenen)) return;
+                    gunler = [.. onceki?.Gunler ?? [], .. gunler];
+                }
+                grafikNoktalari = [.. gunler.TakeLast(SonGunSayisi)
+                    .Select(g => new GrafikNokta(GunEtiketi(g.Tarih), g.NetSatisTl ?? g.SatisTl))];   // RAPOR-3: kartla aynı NET tanım
+                grafikYukleniyor = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+        }
+        catch (Exception ex) when (YukleHatasi(ex))
+        {
+            // UX-S28: "rapor ucu cevap vermedi" ile "bu ay hiç satış olmadı" AYNI
+            // grafiğe çizilmez. Dolgu çizilir ki eksenler kaybolmasın, üstünde bant durur.
+            if (Eskidi(istenen)) return;
+            grafikHata = HataMetni(ex);
+        }
+
+        grafikNoktalari = [.. Enumerable.Range(0, 7)
+            .Select(i => new GrafikNokta(Bicim.GunBicim(Bicim.IsletmeBugun.AddDays(i - 6), "dd.MM", CultureInfo.CurrentCulture), 0m))];
+        grafikYukleniyor = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// YASAL-4 tur 4 (orkestratör 01.10 12:35): tam sayfa yüklemede (F5, doğrudan /) ve oturum
+    /// açılışından sonraki ilk Panel'de profil (rol) İLK çizimden SONRA gelir. Eskiden
+    /// YukleUyum OnInitialized anında rolü null görüp hiç istek atmıyordu → stopaj KRİTİK
+    /// satırı, pusula/MASAK sayaçları ve "bu ay kesilen stopaj" hiç gelmiyor, yerine
+    /// "Başka iş yok" çıkıyordu. Artık rol yetkiliyse BİR KEZ yüklenir; oturum var ama
+    /// profil henüz yoksa iskelet kalır ("iş yok" DENMEZ) ve OturumServisi.Degisti
+    /// geldiğinde yükleme açılır (YasalDegisiklikBandi ile aynı desen).
+    /// </summary>
+    private bool uyumBasladi;
+
+    private bool ProfilBekleniyor => Oturum.Kullanici is null && Oturum.GirisYapildi;
+
+    private void OturumDegisti() => _ = InvokeAsync(() =>
+    {
+        if (uyumBasladi) return;
+        if (UyumGorebilir)
+        {
+            uyumYukleniyor = true;
+            Yuklemeler.Add(YukleUyum());
+        }
+        else if (!ProfilBekleniyor)
+        {
+            uyumYukleniyor = false;
+        }
+        StateHasChanged();
+    });
+
+    private async Task YukleUyum()
+    {
+        if (!UyumGorebilir)
+        {
+            // Rol henüz gelmediyse iskelet kalır; yetkisiz rolde (TEZGÂHTAR) istek YOK.
+            uyumYukleniyor = ProfilBekleniyor;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        if (uyumBasladi) return;
+        uyumBasladi = true;
+        {
+            try
+            {
+                masakOzet = await Uyum.Ozet();
+                sureTakip = await Uyum.SureTakibi();
+                riskOzet = await Uyum.RiskOzet();
+            }
+            // UX-S28 / md.1: hata SESSİZCE yutulmaz, kutucuğun kendi bandına yazılır.
+            catch (Exception ex) when (YukleHatasi(ex)) { uyumHata = HataMetni(ex); }
+            // Y4-B: stopaj özeti AYRI denenir — okunamazsa kendi bandı (UX-S28), diğer
+            // uyum sayaçları etkilenmez; sayılar uydurulmaz.
+            try
+            {
+                var so = await Uyum.StopajOzeti();
+                stopajOzet = so with { Gecikmis = so.Gecikmis ?? [], Yaklasan = so.Yaklasan ?? [] };
+            }
+            catch (Exception ex) when (YukleHatasi(ex)) { stopajHata = HataMetni(ex); }
+        }
+        uyumYukleniyor = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task YukleDefter()
+    {
+        string? istenen = null;
+        try
+        {
+            var bugun = DateOnly.FromDateTime(DateTime.Today);
+            await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
+            istenen = SubeliSorgu.Sube(Oturum);
+            var y = await Rapor.IslemDefteri(bugun, bugun, subeId: istenen, limit: 5);
+            if (Eskidi(istenen)) return;
+            sonSatirlar = y.Satirlar ?? [];
+        }
+        catch (Exception ex) when (YukleHatasi(ex)) { if (Eskidi(istenen)) return; defterHata = HataMetni(ex); }
+        defterYukleniyor = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task YukleHava()
+    {
+        // Zaman aşımı ve sessiz düşme HavaServisi'nin içindedir; burada BEKLEME yok.
+        hava = await HavaS.GetirAsync();
+        if (hava is not null) await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task KaynaklariYukle()
+    {
+        try
+        {
+            var y = await Api.GetAsync<KaynakYaniti>("/kur/kaynaklar");
+            kaynaklar = y.Kaynaklar ?? [];
+            seciliKaynak = y.Secili;
+            varsayilanKaynak = y.Varsayilan;
+        }
+        catch (Exception ex) when (YukleHatasi(ex)) { kaynakHata = HataMetni(ex); }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Canli.Degisti += Yenile;      // (3) CANLI: kur kendiliğinden tazelenir
+        Tercih.Degisti += Yenile;
+        Mod.Degisti += ModDegisti;
+        Oturum.Degisti += OturumDegisti;   // YASAL-4 tur 4: rol ilk çizimden sonra gelirse uyum/stopaj yüklenir
+        // YILDIZ-4A: şema (Ayarlar › Görünüm ya da geç okunan kullanıcı görünümü) değişince gövde anında geçer.
+        kiraciGorunumu = Hizmetler.GetService(typeof(GorunumServisi)) as GorunumServisi;
+        benimGorunumu = Hizmetler.GetService(typeof(KullaniciGorunumServisi)) as KullaniciGorunumServisi;
+        if (kiraciGorunumu is not null) kiraciGorunumu.Degisti += SemaDegisti;
+        if (benimGorunumu is not null) benimGorunumu.Degisti += SemaDegisti;
+        _ = Tercih.HazirlaAsync();
+        _ = Canli.BaslatAsync();
+        // (2) BEKLETME YOK: yükleyiciler PARALEL açılır, hiçbiri await ile zincirlenmez.
+        // S3-1: ortak yükleyiciler (iki yüz de kullanır) + yüze özel olanlar.
+        Yuklemeler.AddRange([YukleOzet(), YukleUyum(), YukleHava()]);
+        YuzeGoreYukle();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        // S3-1: sürükleme yalnız profesyonel yüzün ızgarasında kurulur; basit
+        // yüzde ızgara yoktur, mod değişince ilk profesyonel çizimde kurulur.
+        // T-P1 (gerçek tarayıcıda bulundu): tam sayfa yenilemede oturum profili İLK
+        // çizimden SONRA gelir → etkin mod PROFESYONEL→BASIT döner ama Mod.Degisti
+        // tetiklenmez; basit yüzün yükleyicileri hiç açılmıyor, kartlar iskelette
+        // kalıyordu. Çizilen yüzün yükleyicisi açılmadıysa burada (bir kez) açılır.
+        if (((Mod.BasitMi || YildizMi) && !sadeYuklendi) || (!Mod.BasitMi && !proYuklendi)) YuzeGoreYukle();
+        if (suruklemeKuruldu || Mod.BasitMi || YildizMi) return;   // YILDIZ-4A: Yıldız'da ızgara yok
+        suruklemeKuruldu = true;
+        benlik = DotNetObjectReference.Create(this);
+        // JS yoksa (ön-render / bUnit) sürükleme olmaz; Alt+↑/↓ klavye yolu DURUR.
+        try { await JS.InvokeVoidAsync("kuyumcuSira.baslat", "panel-izgara", benlik); }
+        catch (Exception) { /* sürükleme yok; klavye yolu çalışmaya devam eder */ }
+    }
+
+    /// <summary>Panel grafiği "Son 7 günlük satış": çizilen gün sayısı başlıkla aynı.</summary>
+    private const int SonGunSayisi = 7;
+
+    private static string GunEtiketi(string? tarih) =>
+        DateTime.TryParse(tarih, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t)
+            ? Bicim.GunBicim(t, "dd.MM", CultureInfo.CurrentCulture)
+            : tarih ?? "";
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    private GorunumServisi? kiraciGorunumu;
+    private KullaniciGorunumServisi? benimGorunumu;
+    /// <summary>YILDIZ-4A: şema değişti — Yıldız yüzünün yükleyicileri (gerekirse) açılır, gövde yeniden çizilir.</summary>
+    private void SemaDegisti() => InvokeAsync(() => { YuzeGoreYukle(); StateHasChanged(); });
+
+    /// <summary>
+    /// ŞUBE-KAPSAM-B — görünüm şubesi değişti: şubeli kartlar YENİDEN yüklenir
+    /// (paralel; açılmış yüzün yükleyicileri). Kiracı geneli kartlar (borçlu,
+    /// vade, banka, bildirim, uyum) şubeye bölünmez — yeniden çekilmez.
+    /// </summary>
+    // ── ŞUBE-KAPSAM-B tur 2 (doğrulayıcı DÜŞÜK): kiracı geneli kartlar ──────
+    // Borçlu müşteriler, vade, bekleyen işler ve banka şubeye BÖLÜNMEZ. Sayfa rozeti
+    // "Gösterilen şube: X" derken bu kartlar tüm şubeleri gösterir → kartın kendisi söyler.
+    private SubeKapsamBMetinleri SKB => SubeKapsamBSozlugu.Al(Dil.Dil);
+
+    private bool SubeDaraltmali =>
+        KabukServisi.Ortak.GorunumIcin(Oturum) is { CokluGorunum: true, SubeId: not null };
+
+    private RenderFragment KiraciGeneliNot(string id) => @<text>
+        @if (SubeDaraltmali)
+        {
+            <p class="panel-soru-alt metin-soluk" id="@id">@SKB.KartTumSubelerNotu</p>
+        }
+    </text>;
+
+    /// <summary>
+    /// ŞUBE-KAPSAM-B tur 2 (yarış): istek atıldıktan sonra seçim değiştiyse yanıt
+    /// ESKİDİR — atılır; yeni seçimin yüklemesi (GorunumDegisti) kartı doldurur.
+    /// </summary>
+    private bool Eskidi(string? istenen) => !string.Equals(SubeliSorgu.Sube(Oturum), istenen, StringComparison.Ordinal);
+
+    private Task GorunumDegisti()
+    {
+        hata = null;
+        ozetYukleniyor = true;
+        var yeni = new List<Task> { YukleOzet() };
+        if (sadeYuklendi) { karHata = null; panelAyrimHata = null; panelAyrim = null; yeni.Add(YukleKar()); yeni.Add(YukleNakitAyrimi()); }
+        if (proYuklendi)
+        {
+            defterHata = grafikHata = null;
+            defterYukleniyor = grafikYukleniyor = true;
+            yeni.Add(YukleGrafik());
+            yeni.Add(YukleDefter());
+        }
+        Yuklemeler.AddRange(yeni);
+        StateHasChanged();
+        return Task.WhenAll(yeni);
+    }
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Canli.Degisti -= Yenile;
+        Tercih.Degisti -= Yenile;
+        Mod.Degisti -= ModDegisti;
+        Oturum.Degisti -= OturumDegisti;
+        if (kiraciGorunumu is not null) kiraciGorunumu.Degisti -= SemaDegisti;
+        if (benimGorunumu is not null) benimGorunumu.Degisti -= SemaDegisti;
+        benlik?.Dispose();
+    }
+}

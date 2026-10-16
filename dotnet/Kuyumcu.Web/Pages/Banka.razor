@@ -1,0 +1,1634 @@
+@page "/banka"
+@using Kuyumcu.Contracts.Bilesenler.MasakFormu
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Banka
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject UyumServisi Uyum
+@inject NavigationManager Gezgin
+@inject IJSRuntime Js
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/BankaPage.tsx — Kasalar.razor desenini izler. *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Banka.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Banka (BİREBİR; boş durum) — dolu liste tuval liste
+   kalıbında; özgün ekran (hareketler, dekont, ekstre, storno) yalnız "Hareketler" / "Tüm ayrıntılar"da (data-yz-ozgun). *@
+@if (YildizMi)
+{
+    @if (YildizBosMu) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizBos B="@YildizBosBaglami" /> }
+    else { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+}
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* ZO-ISLEM-A 28.09 (tasarım hakemi): başlık altı açıklama satırı YOK (tuvalde yok;
+       metin tasarım notu kopyasıydı, BASİT'te "pasife" jargonu taşıyordu). *@
+    <SayfaBasi Anahtar="banka" Baslik="@Dil.T.Banka.Baslik">
+        <Eylem>
+            <button class="btn btn-birincil btn-kucuk" id="banka-yeni" @onclick="YeniHesapModalAc">+ @Dil.T.Banka.YeniHesap</button>
+        </Eylem>
+    </SayfaBasi>
+
+    <div class="stat-izgara">
+        @* UX-S32 — toplam kartı hangi para birimini topladığını etiketinde söyler. *@
+        <StatKart Renk="yesil" Etiket="@Dil.T.Banka.ToplamBakiye" Deger="@Bicim.Para(ToplamTry, "TRY")" />
+        <StatKart Renk="mavi" Etiket="@Dil.T.Banka.HesapSayisi" Deger="@hesaplar.Count.ToString()" />
+    </div>
+
+    <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (listeHata is null && hesaplar.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Banka.HesapBulunamadi" />
+    }
+    else
+    {
+        @* ── Hesap sekmeleri ── *@
+        <div class="sekme-grubu zo-banka-sekmeler">
+            @foreach (var h in hesaplar)
+            {
+                var secili = h.Id == AktifHesapId;
+                <button class="sekme @(secili ? "secili" : null)"
+                        aria-pressed="@(secili ? "true" : "false")"
+                        @onclick="() => HesapSec(h.Id)">
+                    <Ikon Ad="@Ikonlar.Banka" />
+                    @* 28.09 (4. doğrulama DÜŞÜK): 375'te ad ve bakiye alt alta (ad kelime ortasından kırılmaz). *@
+                    <span class="zo-sekme-ad">@h.BankaAdi — @h.HesapAdi</span>
+                    <span class="hucre-vurgu sayi">@Bicim.Para(h.Bakiye, h.ParaBirimi)</span>
+                    @if (!h.Aktif) { <Rozet Renk="gri">@Dil.T.Ortak.Pasif</Rozet> }
+                </button>
+            }
+        </div>
+
+        @* ── Hareket listesi ── *@
+        @if (AktifHesap is not null)
+        {
+            <div class="kart">
+                <div class="kart-baslik satir-arasi">
+                    <div>
+                        @* ZO-ISLEM-A: "Hareketler" başlığı akordeona taşındı; kart başlığı hesabı söyler. *@
+                        <h2 id="bh-hesap-baslik">@AktifHesap.BankaAdi — @AktifHesap.HesapAdi</h2>
+                        @if (!string.IsNullOrEmpty(AktifHesap.HesapSahibi))
+                        {
+                            <p class="metin-soluk metin-kucuk">
+                                @Dil.T.Banka.HesapSahibi: <span class="hucre-vurgu">@AktifHesap.HesapSahibi</span>
+                            </p>
+                        }
+                        <p class="metin-soluk metin-kucuk sayi kir-uzun">@AktifHesap.Iban</p>
+                        @if (!AktifHesap.Aktif)
+                        {
+                            <p class="metin-soluk metin-kucuk" id="bh-pasif-not">@Dil.T.Banka.PasifHesapUyari</p>
+                        }
+                    </div>
+                    <div class="satir-eylemler">
+                        <button class="btn btn-ikincil btn-kucuk" id="@($"bh-duzenle-{AktifHesap.Id}")" @onclick="() => DuzenleModalAc(AktifHesap)">
+                            <Ikon Ad="@Ikonlar.Kalem" /> @Dil.T.Banka.HesabiDuzenle
+                        </button>
+                        <button class="btn btn-ikincil btn-kucuk" id="bh-dekont-gir" disabled="@(!AktifHesap.Aktif)" @onclick="DekontModalAc">+ @Dil.T.Banka.DekontGir</button>
+                        @* Paket 32 — ekstre yükleme. Menüye satır EKLENMEZ; ekran buradan çağrılır. *@
+                        <button disabled="@(!AktifHesap.Aktif)" @onclick="EkstreModalAc"
+                                class="btn btn-ikincil btn-kucuk" id="bh-ekstre-yukle">+ @Dil.T.Banka.EkstreYukle</button>
+                        @* UX-S25 — DELETE = pasife alma (silme değil); geri açma yolu yanında.
+                           ZO-ISLEM-A 28.09 (tasarım hakemi): yıkıcı eylem kırmızı DOLU düğme
+                           değil — ortak SatirEylemleri "⋯" menüsünde, ikincil görünümde; bakiyeli
+                           hesapta kilidin SEBEBİ menüde görünür yazılır (UX-S30), yalnız title
+                           ipucunda değil. Kimlik (bh-pasife-al-{id}) ve onay penceresi DEĞİŞMEDİ. *@
+                        @if (AktifHesap.Aktif)
+                        {
+                            <SatirEylemleri Onek="bh" SatirId="@AktifHesap.Id" SatirAdi="@($"{AktifHesap.BankaAdi} — {AktifHesap.HesapAdi}")"
+                                            DarSutun="true" Birincil="0" Eylemler="@HesapKaldirEylemi(AktifHesap)">
+                                <MenuEk>
+                                    @if (AktifHesap.Bakiye != 0)
+                                    {
+                                        <p class="metin-kucuk metin-soluk" id="@($"bh-pasife-al-kilit-{AktifHesap.Id}")">@ZO.BankaKaldirKilit</p>
+                                    }
+                                </MenuEk>
+                            </SatirEylemleri>
+                        }
+                        else
+                        {
+                            <button class="btn btn-ikincil btn-kucuk" disabled="@kaydediliyor"
+                                    id="@($"bh-aktife-al-{AktifHesap.Id}")" @onclick="() => HesapAktifeAl(AktifHesap)">@Dil.T.Kabuk.AktifeAl</button>
+                        }
+                    </div>
+                </div>
+
+                <HataBandi Mesaj="@hareketHata" />
+                @* ── ZO-ISLEM-A (kurucu 25.09): hesabın geçmiş hareketleri KAPALI akordeon
+                   (ortak Bilesenler/Katlanir). Veri hesap seçilince okunur (rozet sayısı
+                   gerçek); hata bandı akordeonun DIŞINDA kalır (UX-S28 — kapalıyken de
+                   görünür). Satır ve düğme kimlikleri DEĞİŞMEDİ. *@
+                <Katlanir Id="bh-gecmis" Baslik="@Dil.T.Banka.Hareketler"
+                          Sayi="@(hareketYukleniyor || hareketHata is not null ? null : hareketler.Count)"
+                          Sinif="zo-gecmis"
+                          BaslangictaAcik="@hareketAkordeonAcik" Degisti="@(v => hareketAkordeonAcik = v)">
+                @if (hareketYukleniyor)
+                {
+                    <Yukleniyor />
+                }
+                else if (hareketHata is null && hareketler.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Cari.HareketYok" />
+                }
+                else
+                {
+                    @* PAKET GOC-A — ORTAK IZGARA (grid:banka:bh-hareket). KartListe kimliği "banka-hesap-liste" (→ #banka-hesap-liste-sar)
+                       ve tablo kimliği "bh-hareket-tablo" korunur; ZO-ISLEM-A kart sınıfları (zo-k-*) hücrelerde aynen.
+                       Uç sunucu sınırlıdır (varsayılan limit 100, BankaModulu HareketListele) → liste TAM ise
+                       (sınırın altında) yerel sıralama; sınıra değdiyse sıralama düğmesi ÇIKMAZ ve sınır notu yazılır (G1, UX-S29). *@
+                    <Izgara T="HareketVeri" Ekran="banka" GridId="bh-hareket" KartListeId="banka-hesap-liste" TabloId="bh-hareket-tablo" KartListeSinif="zo-kart-liste"
+                            Kolonlar="@HareketKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(hareketler, HareketListeTam ? hareketSira : null, HareketKolonlari)"
+                            TabloSinif="zo-banka-hareket zo-kart-tablo" Baslik="@Dil.T.Banka.Hareketler" YapiskanIlkSutun="false"
+                            SiralamaDegisti="@HareketSiralandi" GecerliSiralama="@hareketSira" />
+                    @if (!HareketListeTam)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="bh-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, HareketSiniri)</p>
+                    }
+                    @* PAKET P-12 (B-42) — UX-S25/S30: kilitli kalan satırların sebebi
+                       ve doğru düzeltme yolu YAZILI; ayrıca hangi alanların finansal
+                       olduğu (ve neden stornodan başka yolu olmadığı) söylenir. *@
+                    @* PAKET SADE-1 (göz #27): dört ayrı "Bu kayıt değiştirilemez" kutusu tablonun
+                       altında metin duvarı oluşturuyordu. Artık TEK kısa satır; kutuların
+                       HEPSİ (gerekçe + doğru düzeltme yolu, UX-S25) "Ayrıntı" katlanında
+                       aynen durur — id'ler ve metinler değişmedi, yalnız katlandı. *@
+                    <details class="sade-ayrinti" id="bh-degismez-ayrinti">
+                    <summary class="sade-ayrinti-ozet" id="bh-degismez-ozet">
+                        <Ikon Ad="@Ikonlar.Kilit" /> @SadeSozlugu.Al(Dil.Dil).BankaDegismezOzet
+                    </summary>
+                    <div class="sade-ayrinti-govde">
+                    @if (hareketler.Any(x => !StornoAcik(x)))
+                    {
+                        <DegismezIpucu Varlik="BankaHareketi"
+                                       Gerekce="@(Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).DekontStornoYokBasit : Dil.T.Banka.DekontStornoYok)"
+                                       AlternatifYol="@Dil.T.Banka.DekontStornoYolu" />
+                    }
+                    <DegismezIpucu Varlik="BankaHareketiFinansalAlan"
+                                   Gerekce="@(Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).DekontKilitliAlanlarBasit : Dil.T.Banka.DekontKilitliAlanlar)"
+                                   AlternatifYol="@DekontDegismezYoluMetni" />
+                    @* PAKET Q9-1 — UX-S25/S30: tarihi düzeltilemeyen ve müşterisi
+                       değiştirilemeyen satırların sebebi ve GERÇEK düzeltme yolu. *@
+                    @if (hareketler.Any(x => x.EkstreSatirId is not null && AlanDuzenlenebilir(x)))
+                    {
+                        <DegismezIpucu Varlik="BankaHareketiEkstreTarih"
+                                       Gerekce="@D.EkstreTarihGerekce"
+                                       AlternatifYol="@D.EkstreTarihYolu" />
+                    }
+                    @if (hareketler.Any(x => x.Durum == "ESLESTI" && x.CariId is not null && x.KarsiBacakId is null && AlanDuzenlenebilir(x)))
+                    {
+                        <DegismezIpucu Varlik="BankaHareketiEslesme"
+                                       Gerekce="@D.EslesmisGerekce"
+                                       AlternatifYol="@(Dil.BasitMi ? KatalogSozlugu.Al(Dil.Dil).BankaEslesmisYoluBasit : D.EslesmisYolu)" />
+                    }
+                    @* 29.09 (tasarım hakemi YÜKSEK, K17): "Bekliyor" açıklaması tablonun altında
+                       görünür talimat satırı DEĞİL — aynı "Ayrıntı" katlanında durur (kimlik aynı). *@
+                    @if (hareketler.Any(EslestirAcik))
+                    {
+                        <p class="metin-kucuk metin-soluk" id="bh-bekliyor-not">@D.BekliyorAnlami</p>
+                    }
+                    </div>
+                    </details>
+                }
+                </Katlanir>
+            </div>
+        }
+    }
+</div>
+}
+
+@* ── Yeni hesap modalı ── *@
+<ModalPencere Acik="yeniHesapModalAcik" Baslik="@Dil.T.Banka.YeniHesap" Kapat="() => yeniHesapModalAcik = false">
+    <div class="form-dikey">
+        <Metin ElemanId="hesap-banka" Etiket="@Dil.T.Banka.BankaAdi" Zorunlu="true" EnFazla="@AlanSinirlari.BankaAdi"
+               YerTutucu="@Kuyumcu.Core.I18n.DilSunucuSozlugu.Al(Dil.Dil).BankaAdiOrnek"
+               Deger="@hesapBankaAdi" DegerChanged="@(v => hesapBankaAdi = v ?? "")"
+               Durum="yeniForm" HataAlani="hesap-banka" />
+        <Metin ElemanId="hesap-ad" Etiket="@Dil.T.Banka.HesapAdi" Zorunlu="true" EnFazla="@AlanSinirlari.BankaAdi"
+               YerTutucu="@Kuyumcu.Core.I18n.DilSunucuSozlugu.Al(Dil.Dil).HesapAdiOrnek"
+               Deger="@hesapHesapAdi" DegerChanged="@(v => hesapHesapAdi = v ?? "")"
+               Durum="yeniForm" HataAlani="hesap-ad" />
+        @* GIRDI-AILESI-2 (kabul örneği): ortak <Iban> — TR öneki, 4'lü grup, 26. karakterde
+           kontrol hanesi (TCMB 2008/6 + MOD 97-10), alan altı hata ve Kaydet kilidi aynı metin. *@
+        <Iban ElemanId="hesap-iban" Etiket="@Dil.T.Banka.Iban" Zorunlu="true"
+               Deger="@hesapIban" DegerChanged="@(v => hesapIban = v ?? "")"
+               Durum="yeniForm" HataAlani="hesap-iban" />
+        @* 28.09 (tasarım hakemi K22): 4 seçenek → ortak Form/Secim (radyo). *@
+        <Secim ElemanId="hesap-doviz"
+               Etiket="@Dil.T.Kasa.Doviz"
+               Secenekler="@DovizSecenekleri"
+               Durum="yeniForm" HataAlani="hesap-doviz"
+               Deger="@hesapParaBirimi" DegerChanged="@(v => hesapParaBirimi = v ?? "TRY")" />
+        @* 28.09 (doğrulayıcı ORTA): isteğe bağlı açıcı zorunlu alanların ARASINA girmez —
+           IBAN ve Döviz'in ALTINDA, kaydet düğmelerinin hemen üstünde. *@
+        @* ZO-ISLEM-A: hesap sahibi zorunlu değil (sunucu DTO) — eklenmese kayıp yok;
+           "+ Hesap sahibi ekle" arkasında. Değer girildiyse alan açık kalır. *@
+        @if (yeniSahibiAcik || !string.IsNullOrEmpty(hesapSahibi))
+        {
+            @* PAKET GOC-A (envanter C · hesap-sahibi "ekran 200 / sunucu 150"): ortak Unvan (K20: en az 2, en az bir harf),
+               sınır sunucuyla AYNI sabit (AlanSinirlari.HesapSahibi = 150); sunucu [Unvan] ile aynı kuralı uygular. *@
+            <Unvan ElemanId="hesap-sahibi" Etiket="@Dil.T.Banka.HesapSahibi" EnFazla="@AlanSinirlari.HesapSahibi"
+                   Deger="@hesapSahibi" DegerChanged="@(v => hesapSahibi = v ?? "")"
+                   Durum="yeniForm" HataAlani="hesap-sahibi" />
+        }
+        else
+        {
+            <button type="button" class="zo-detay-ac" id="hesap-sahibi-ac"
+                    @onclick="() => yeniSahibiAcik = true"><span>@ZO.BankaDigerBilgiler</span><Ikon Ad="@Ikonlar.KatlamaAcik" Sinif="zo-detay-ok" /></button>
+        }
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esnek" @onclick="() => yeniHesapModalAcik = false">@ZO.Vazgec</button>
+            <button class="btn btn-birincil esnek" id="hesap-kaydet" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("hesap-"))"
+                    @onclick="HesapOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+        @* GIRDI-AILESI-2: Kaydet kilitliyse sebebi — alan altı metninin AYNISI (UX-S30). *@
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="hesap-" ElemanId="hesap-kilit-sebep" />
+    </div>
+</ModalPencere>
+
+@* ── Hesap düzenleme ÇEKMECESİ (K6; eski modal kabuğu çevrildi, iç id'ler AYNEN) ── *@
+<Cekmece Acik="duzenleHesap is not null" Varlik="banka-hesap" Baslik="@Dil.T.Banka.HesabiDuzenle"
+         Kapat="() => duzenleHesap = null" Kaydet="HesapGuncelle" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(!sayiKapisi.OnekleVar("d-"))" KilitSebebi="@sayiKapisi.Sebep(Dil.Dil, "d-")">
+    @if (duzenleHesap is not null)
+    {
+        <div class="form-dikey">
+            <Metin ElemanId="d-banka" Etiket="@Dil.T.Banka.BankaAdi" Zorunlu="true" EnFazla="@AlanSinirlari.BankaAdi"
+                   Deger="@dBankaAdi" DegerChanged="@(v => dBankaAdi = v ?? "")"
+                   Durum="duzenleForm" HataAlani="d-banka" />
+            <Metin ElemanId="d-hesapad" Etiket="@Dil.T.Banka.HesapAdi" Zorunlu="true" EnFazla="@AlanSinirlari.BankaAdi"
+                   Deger="@dHesapAdi" DegerChanged="@(v => dHesapAdi = v ?? "")"
+                   Durum="duzenleForm" HataAlani="d-hesapad" />
+            <Iban ElemanId="d-iban" Etiket="@Dil.T.Banka.Iban" Zorunlu="true"
+                   Deger="@dIban" DegerChanged="@(v => dIban = v ?? "")"
+                   Durum="duzenleForm" HataAlani="d-iban" />
+            @* 28.09: oluşturma formuyla AYNI bileşen ve AYNI dizi (UX-S26). *@
+            @* SON-KALANLAR tur 2 (tasarım hakemi KRİTİK): bakiyesi ya da hareketi olan hesapta sunucu para
+               birimi değişimini 409 alan:paraBirimi ile reddeder. Eskiden bu ret ekranda HİÇBİR YERDE
+               görünmüyordu (eşleme d-doviz'e bağlıyordu, Secim alan hatası çizmiyordu → bant da boş).
+               Kural (Kasalar #d-doviz-kilit kalıbı): kilit KAYDETMEDEN önce okunur, seçenekler kilitlenir,
+               sebep DegismezIpucu ile yazar; sunucu yine reddederse mesaj alanın ALTINDA görünür. *@
+            <Secim ElemanId="d-doviz"
+                   Etiket="@Dil.T.Kasa.Doviz"
+                   Secenekler="@DovizSecenekleri"
+                   Devredisi="@DovizKilitli"
+                   Durum="duzenleForm" HataAlani="d-doviz"
+                   Deger="@dParaBirimi" DegerChanged="@(v => dParaBirimi = v ?? "TRY")" />
+            @if (dDovizKilitYukleniyor)
+            {
+                <Yukleniyor />
+            }
+            else if (dDovizKilitSebebi is not null)
+            {
+                <DegismezIpucu Varlik="banka-hesap-doviz" Gerekce="@DovizKilitGerekcesi" />
+            }
+            @* 28.09 (doğrulayıcı ORTA): isteğe bağlı açıcı zorunlu alanların altında. *@
+            @* ZO-ISLEM-A: kayıtlı hesap sahibi VARSA alan açık gelir (gizli değer yok);
+               yoksa "+ Hesap sahibi ekle" ile açılır. Oluşturma ile aynı alan kümesi (UX-S26). *@
+            @if (dSahibiAcik || !string.IsNullOrEmpty(dHesapSahibi) || !string.IsNullOrEmpty(duzenleHesap.HesapSahibi))
+            {
+                <Unvan ElemanId="d-sahibi" Etiket="@Dil.T.Banka.HesapSahibi" EnFazla="@AlanSinirlari.HesapSahibi"
+                       Deger="@dHesapSahibi" DegerChanged="@(v => dHesapSahibi = v ?? "")"
+                       Durum="duzenleForm" HataAlani="d-sahibi" />
+            }
+            else
+            {
+                <button type="button" class="zo-detay-ac" id="d-sahibi-ac"
+                        @onclick="() => dSahibiAcik = true"><span>@ZO.BankaDigerBilgiler</span><Ikon Ad="@Ikonlar.KatlamaAcik" Sinif="zo-detay-ok" /></button>
+            }
+            <HataBandi Mesaj="@modalHata" />
+        </div>
+    }
+</Cekmece>
+
+@* ── Dekont giriş modalı ── *@
+<ModalPencere Acik="dekontModalAcik" Baslik="@Dil.T.Banka.DekontGir" Kapat="() => dekontModalAcik = false">
+    <ChildContent>
+    <div class="form-dikey">
+        @* 28.09 (tasarım hakemi K22): 2 seçenek → ortak Form/Secim (radyo). *@
+        <Secim ElemanId="dekont-yon"
+               Etiket="@Dil.T.Banka.Yon" Zorunlu="true"
+               Secenekler="@YonSecenekleri"
+               Deger="@dekontYon" DegerChanged="@(v => dekontYon = v ?? "GELEN")" />
+        @* PAKET GOC-A (K9): Core tutar kuralı (> 0, 2 ondalık, tavan; eksi yazılamaz) — sunucu AYNI kuralla 400. *@
+        <Para ElemanId="dekont-tutar" Etiket="@Dil.T.Ortak.Tutar" Zorunlu="true" Tur="TutarTuru.Pozitif"
+              Deger="@dekontTutar"
+              DegerChanged="@(async v => { dekontTutar = v; await GereksinimTazele(); })"
+              Durum="dekontForm" HataAlani="dekont-tutar" />
+        @* ── ZO-ISLEM-A: isteğe bağlı dekont alanları ("+ … ekle") ───────────
+           Zorunlu olan YALNIZ yön + tutar (sunucu DTO). Tarih varsayılan bugün
+           (sunucu saati), müşteri / karşı taraf / açıklama boş kalabilir — eklenmese
+           kayıp yok. Bölüm şu hâllerde KAPATILAMAZ ve açık gelir: bir değer girildi,
+           tarih bugün değil, alanlardan biri hatalı ya da MASAK kapısı açıldı
+           (müşteri seçimi yasal gereklilik — sessiz gizleme yok). Kimlikler DEĞİŞMEDİ. *@
+        @if (DekontDetayGorunur)
+        {
+            <div class="zo-detay form-dikey" id="dekont-detay">
+            @* PAKET Q9-1 (QA turu 9 KRİTİK): sunucu `tarih` alanını P-12'den beri kabul
+               ediyordu, ekranda alan YOKTU (UX-S26). Varsayılan bugün; bugün seçiliyse
+               gövdeye tarih konmaz ve sunucu saati kullanılır (davranış değişmez). *@
+            @* ZO-ISLEM-A: tarih "Daha fazla" bölümünde ve bugünle DOLU gelir (sunucu da boşsa
+               o anki saati yazar) — yıldız gösterilmez; boşaltılırsa GunGecerli alan altı
+               mesaj verir ve bölüm kapanamaz. *@
+            @* PAKET GOC-A (envanter C · dekont-tarih "geçmiş sınırı yok"): K8a işlem tarihi (ileri gün yok, en çok 1 yıl geri). *@
+            <Tarih ElemanId="dekont-tarih" Etiket="@D.Tarih" Zorunlu="false" Ipucu="@D.TarihIpucu" Tur="TarihTuru.Islem"
+                   EnGec="@Bugun" Deger="@dekontTarih" DegerChanged="@(v => dekontTarih = v)"
+                   Durum="dekontForm" HataAlani="dekont-tarih" />
+            @* PAKET 41 / UX-S24: kişi bilinmeden MASAK bağlantılı işlem toplamı
+               kurulamaz. Cari seçimi sunucuda ZATEN vardı (cariId), ekranda yoktu. *@
+            <div class="alan">
+                <Secici ElemanId="dekont-cari"
+                        Etiket="@(Dil.BasitMi ? ZO.BankaMusteriBasit : Dil.T.Banka.DekontCari)"
+                        Secenekler="@(cariler.Select(c => new SecenekOgesi(c.Id, c.Ad)).ToList())"
+                        Deger="@dekontCariId" DegerChanged="DekontCariDegisti"
+                        BosSecenekMetni="@(Dil.BasitMi ? ZO.BankaMusteriYokBasit : Dil.T.Banka.DekontCariYok)" />
+                @* ZO-ISLEM-A 28.09 (2. hakem turu): MASAK kapısı açıkken aynı şeyi aşağıdaki
+                   uyarı kutusu söyler — ipucu ikinci kez YAZILMAZ; BASİT'te jargonsuz. *@
+                @if (!MasakGerekli)
+                {
+                    <span class="metin-kucuk metin-soluk" id="dekont-cari-ipucu">@(Dil.BasitMi ? ZO.BankaMusteriIpucuBasit : Dil.T.Banka.DekontCariIpucu)</span>
+                }
+            </div>
+            @* PAKET GOC-A: karşı taraf ortak Unvan (K20) + sunucu sınırı 150; açıklama sınırı sunucu POST'uyla AYNI sabit. *@
+            <Unvan ElemanId="dekont-karsi" Etiket="@Dil.T.Banka.KarsiTaraf" EnFazla="@AlanSinirlari.HesapSahibi"
+                   Deger="@dekontKarsiTaraf" DegerChanged="@(v => dekontKarsiTaraf = v ?? "")" />
+            <Metin ElemanId="dekont-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.DekontAciklama"
+                   Deger="@dekontAciklama" DegerChanged="@(v => dekontAciklama = v ?? "")" />
+            </div>
+        }
+        else
+        {
+            <button type="button" class="zo-detay-ac" id="dekont-detay-ac"
+                    @onclick="() => dekontDetayAcik = true"><span>@ZO.BankaDekontDetay</span><Ikon Ad="@Ikonlar.KatlamaAcik" Sinif="zo-detay-ok" /></button>
+        }
+        @* ── PAKET 41 — MASAK kapısı: tutar yasal eşiği aşınca kimlik/beyan
+             formu açılır. Eşik SAYISI ekrana yazılmaz, /masak/esikler'den gelir;
+             hangi ALANIN gerektiğini sunucu söyler (/masak/gereksinim).
+             Eşik altında hiçbir MASAK alanı görünmez — bugünkü akış değişmez. *@
+        @if (MasakGerekli)
+        {
+            @if (string.IsNullOrEmpty(dekontCariId))
+            {
+                <div class="uyari-kutu" id="dekont-masak-cari-uyari" role="note">
+                    @Dil.T.Banka.MasakCariUyari
+                </div>
+            }
+            @if (masakGereksinim is not null)
+            {
+                @* ⚠ BULUNAN HATA (paket 41 bUnit kanıtı): MASAK alanları ÇOCUK
+                   bileşende bağlanıyor; alan doldurulunca yalnız çocuk yeniden
+                   çiziliyordu ve bu sayfadaki "Kaydet kilitli mi" kararı ESKİ
+                   kalıyordu — kullanıcı tüm alanları doldurduğu hâlde düğme
+                   kapalı görünüyordu. Degisti geri çağrısı üst bileşeni de
+                   yeniden çizdirir. *@
+                @* ZO-ISLEM-A 28.09 (3. tur gerçek tarayıcı): dar pencerede üç sütunlu MASAK
+                   alanları etiket kırıp kutuları kaydırıyordu (K7) — pencere içinde TEK sütun. *@
+                <div class="zo-masak-dikey">
+                <MasakFormu Model="masak" Tutar="DekontTutarTl" Esik="masakEsik!" Sade="@Dil.BasitMi"
+                            Gereksinim="masakGereksinim" Degisti="MasakAlaniDegisti" />
+                </div>
+                @* UX-1 / UX-S25: bu formun ürettiği kimlik tespiti append-only bir
+                   yükümlülük kaydıdır; düzenle düğmesi YOKTUR, gerekçe ve doğru
+                   düzeltme yolu YAZILIDIR. Sessiz bırakılmaz.
+                   ZO-ISLEM-A 28.09 (2. hakem turu): kutu TEK cümle — gerekçe ve düzeltme
+                   yolu birlikte; mevzuat anlatısı ve "Düzeltme şöyle yapılır" tekrarı yok. *@
+                <DegismezIpucu Varlik="MasakKimlikTespiti" Gerekce="@ZO.BankaMasakKilit" />
+            }
+            else
+            {
+                <Yukleniyor />
+            }
+        }
+        <HataBandi Mesaj="@DekontModalHata" />
+    </div>
+    </ChildContent>
+    <Altlik>
+        @* 29.09 (tasarım hakemi YÜKSEK): MASAK alanları açılınca Kaydet/Vazgeç ve kilit
+           sebebi pencerenin DIŞINA düşüyordu (Kaydet top 1909 px / görüntü 900). Ortak
+           ModalPencere'nin SABİT altlığına (P-36) taşındı: gövde kayar, düğmeler ve
+           sebep her zaman görünür. Kimlikler (dekont-kaydet, dekont-kaydet-sebep) AYNI. *@
+        @* UX-S30: kilitli düğme SEBEBİNİ söyler. *@
+        @if (DekontKilitSebebi is { } sebep)
+        {
+            <p class="metin-kucuk metin-soluk zo-alt-sebep" id="dekont-kaydet-sebep">@sebep</p>
+        }
+        <div class="satir zo-alt-dugmeler">
+            <button class="btn btn-ikincil esnek" @onclick="() => dekontModalAcik = false">@ZO.Vazgec</button>
+            <button class="btn btn-birincil esnek" id="dekont-kaydet" disabled="@(kaydediliyor || DekontKilitSebebi is not null)"
+                    @onclick="DekontKaydet">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </Altlik>
+</ModalPencere>
+
+@* ── Faturaya dönüştür modalı ── *@
+<ModalPencere Acik="donusturHareket is not null" Baslik="@Dil.T.Banka.FaturayaDonustur" Kapat="() => donusturHareket = null">
+    @if (donusturHareket is not null)
+    {
+        <div class="form-dikey">
+            <div class="ozet-kutu ozet-kutu--amber">
+                <div class="satir-arasi mb-1">
+                    <span class="metin-soluk">@Dil.T.Ortak.Tutar</span>
+                    <span class="hucre-vurgu sayi metin-amber">@Bicim.Para(donusturHareket.Tutar, AktifHesap?.ParaBirimi)</span>
+                </div>
+                @if (!string.IsNullOrEmpty(donusturHareket.KarsiTarafAd))
+                {
+                    <div class="satir-arasi">
+                        <span class="metin-soluk">@Dil.T.Banka.KarsiTaraf</span>
+                        <span class="hucre-vurgu">@donusturHareket.KarsiTarafAd</span>
+                    </div>
+                }
+            </div>
+
+            <div class="alan">
+                <Secici ElemanId="donustur-cari"
+                        Etiket="@CariSecEtiketi"
+                        Secenekler="@CariSecenekleri"
+                        @bind-Deger="donusturCariId"
+                        BosSecenekMetni="@Dil.T.Cari.CariSecin" />
+            </div>
+
+            <div class="alan">
+                <Secici ElemanId="donustur-kdv"
+                        Etiket="@Dil.T.Fatura.KdvOran"
+                        Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("0", "%0"), new SecenekOgesi("0.01", "%1"), new SecenekOgesi("0.10", "%10"), new SecenekOgesi("0.20", "%20") })"
+                        @bind-Deger="donusturKdv" />
+            </div>
+
+            @* KDV önizleme *@
+            <div class="metin-kucuk metin-soluk ozet-kutu">
+                <div class="satir-arasi">
+                    <span>@Dil.T.Fatura.AraToplam</span>
+                    <span class="sayi">@Bicim.Tl(DonusturAraToplam)</span>
+                </div>
+                <div class="satir-arasi">
+                    <span>@Dil.T.Fatura.KdvTutar</span>
+                    <span class="sayi">@Bicim.Tl(donusturHareket.Tutar - DonusturAraToplam)</span>
+                </div>
+                <div class="satir-arasi hucre-vurgu">
+                    <span>@Dil.T.Fatura.Toplam</span>
+                    <span class="sayi">@Bicim.Tl(donusturHareket.Tutar)</span>
+                </div>
+            </div>
+
+            <HataBandi Mesaj="@modalHata" />
+            <div class="satir">
+                <button class="btn btn-ikincil esnek" @onclick="() => donusturHareket = null">@ZO.Vazgec</button>
+                <button class="btn btn-birincil esnek"
+                        disabled="@(kaydediliyor || string.IsNullOrEmpty(donusturCariId))"
+                        @onclick="Donustur">
+                    <Ikon Ad="@Ikonlar.Faturalar" /> @Dil.T.Banka.FaturayaDonustur
+                </button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@* ── Ekstre yükleme ÇEKMECESİ (paket 32) ──
+   ⚠ ModalPencere KULLANILMADI (DoD EK 2): modal yalnız YIKICI ONAY içindir;
+     bu bir veri girişi formudur ve tek düzenleme kalıbı Cekmece'dir. *@
+<Cekmece Acik="ekstreModalAcik" Varlik="banka-ekstre" Baslik="@Dil.T.Banka.EkstreYukle"
+         Kapat="() => ekstreModalAcik = false" Kaydet="EkstreYukle" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(EkstreKilitSebebi is null)" KilitSebebi="@EkstreKilitSebebi">
+    <div class="form-dikey">
+        @* UX-S27 — bu işlemin deftere HİÇBİR ŞEY yazmadığı ÖNCEDEN söylenir. *@
+        <p class="metin-kucuk metin-soluk" id="ekstre-yukle-not">@Dil.T.Banka.YuklemeYazmaz</p>
+
+        <div class="alan">
+            <label for="ekstre-dosya">@Dil.T.Banka.EkstreDosyasi</label>
+            <InputFile id="ekstre-dosya" class="girdi" OnChange="EkstreDosyaSecildi" accept=".csv,text/csv" />
+            @if (ekstreDosyaAdi is not null)
+            {
+                <p class="dosya-onizleme" id="ekstre-dosya-secili">@ekstreDosyaAdi</p>
+            }
+            @if (ekstreDosyaHatasi is not null)
+            {
+                <span class="hata-metni" role="alert" id="ekstre-dosya-hata">@ekstreDosyaHatasi</span>
+            }
+        </div>
+
+        @* MT940 seçilemez: ayrıştırıcı YOK ve sessizce CSV gibi okunmaz. *@
+        <p class="metin-kucuk metin-soluk" id="ekstre-mt940-not">@Dil.T.Banka.Mt940Yok</p>
+
+        <Onay ElemanId="ekstre-tekrar" Etiket="@Dil.T.Banka.TekrarYukle" @bind-Deger="ekstreTekrar" />
+
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button @onclick="EkstreSablonIndir" class="btn btn-ikincil esnek" id="ekstre-sablon"
+                    disabled="@kaydediliyor">@Dil.T.Banka.SablonIndir</button>
+        </div>
+    </div>
+</Cekmece>
+
+@* ── PAKET Q9-1 — dekont tarihi düzeltme ÇEKMECESİ (tek düzenleme kalıbı: Cekmece;
+     SatirIciDuzenle yalnız metin girdisi taşır, tarih seçici yok). PATCH üç durumlu
+     sözleşme: gövdede YALNIZ tarih gider, diğer alanlar korunur. ── *@
+<Cekmece Acik="tarihHareket is not null" Varlik="banka-dekont-tarih" Baslik="@D.TarihDuzeltBaslik"
+         Kapat="TarihDuzeltKapat" Kaydet="TarihDuzeltKaydet" Kaydediliyor="@kaydediliyor">
+    @if (tarihHareket is not null)
+    {
+        <div class="form-dikey">
+            @* PAKET GOC-A: POST ile AYNI K8a kuralı (sunucu PATCH toleransı 1 gün → K8a). *@
+            <Tarih ElemanId="bh-tarih-girdi" Etiket="@D.TarihDuzeltEtiket" Zorunlu="true" Ipucu="@D.TarihIpucu" Tur="TarihTuru.Islem"
+                   EnGec="@Bugun" Deger="@tarihYeni" DegerChanged="@(v => tarihYeni = v)"
+                   Durum="tarihForm" HataAlani="bh-tarih-girdi" />
+            <HataBandi Mesaj="@tarihHata" Id="bh-tarih-hata" />
+        </div>
+    }
+</Cekmece>
+
+@* ── PAKET Q9-1 — dekontu müşteriyle eşleştirme ÇEKMECESİ (BEKLIYOR → ESLESTI). ── *@
+<Cekmece Acik="eslestirHareket is not null" Varlik="banka-dekont-eslestir" Baslik="@D.EslestirBaslik"
+         Kapat="EslestirKapat" Kaydet="EslestirKaydet" Kaydediliyor="@kaydediliyor">
+    @if (eslestirHareket is not null)
+    {
+        <div class="form-dikey">
+            <p class="metin-kucuk metin-soluk" id="bh-eslestir-ozet">
+                @Bicim.Tarih(eslestirHareket.Tarih, Dil.Locale) · @Bicim.Para(eslestirHareket.Tutar, AktifHesap?.ParaBirimi ?? "TRY") · @(eslestirHareket.KarsiTarafAd ?? "—")
+            </p>
+            <div class="alan">
+                <Secici ElemanId="bh-eslestir-cari" Etiket="@D.EslestirMusteri" Zorunlu="true"
+                        Secenekler="@CariSecenekleri" Deger="@eslestirCariId"
+                        DegerChanged="@(v => eslestirCariId = v ?? "")"
+                        Hata="@eslestirForm.Mesaj("bh-eslestir-cari")" />
+                <span class="metin-kucuk metin-soluk">@D.EslestirIpucu</span>
+            </div>
+            <HataBandi Mesaj="@eslestirHata" Id="bh-eslestir-hata" />
+        </div>
+    }
+</Cekmece>
+
+@* ── Hesap pasife alma onayı (yıkıcı eylem → ortak onay modalı) ── *@
+<ModalPencere Acik="pasifHesap is not null" Baslik="@Dil.T.Kabuk.PasifeAl" Kapat="() => pasifHesap = null">
+    <div class="form-dikey">
+        <p id="bh-pasif-metin">@Dil.T.Kabuk.PasifeAlOnay</p>
+        <p class="hucre-vurgu" id="bh-pasif-ad">@pasifHesap?.BankaAdi — @pasifHesap?.HesapAdi</p>
+        <HataBandi Mesaj="@pasifHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esnek" id="bh-pasif-vazgec" @onclick="() => pasifHesap = null">@ZO.Vazgec</button>
+            <button class="btn btn-tehlike esnek" id="bh-pasif-onayla" disabled="@kaydediliyor"
+                    @onclick="HesapPasifeAl">@Dil.T.Kabuk.Onayla</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── PAKET P-12 (B-42) · STORNO onayı (yıkıcı eylem ortak onay modalı) ───
+   Tek motor: StornoServisi.BankaHareketiStorno. Gerekçe ≥ 20 karakter,
+   kilit sebebi düğmenin yanında YAZILI (UX-S30). *@
+<ModalPencere Acik="stornoHareket is not null" Baslik="@Dil.T.Kabuk.StornoBaslik" Kapat="StornoKapat">
+    <div class="form-dikey">
+        <p id="bh-storno-onay">@DekontDegismezYoluMetni</p>
+        <GerekceAlani Id="bh-storno-gerekce" Etiket="@Dil.T.Kabuk.StornoGerekce"
+                      @bind-Deger="stornoGerekce">
+            <div class="satir">
+                <button class="btn btn-ikincil esnek" id="bh-storno-vazgec" @onclick="StornoKapat">@ZO.Vazgec</button>
+                <button class="btn btn-tehlike esnek" disabled="@(kaydediliyor || !context)" @onclick="StornoUygula"
+                        id="bh-storno-onayla">@Dil.T.Kabuk.Onayla</button>
+            </div>
+            @if (!context)
+            {
+                <span class="metin-kucuk metin-soluk" id="bh-storno-kilit">@string.Format(Dil.T.Duzeltme.EnAzKarakter, 20)</span>
+            }
+        </GerekceAlani>
+        <HataBandi Mesaj="@stornoHata" />
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    // PAKET Q10-5 (QA 10 · K8): basit modda dekont değişmezlik metinleri "storno" demez (D10: Geri al).
+    private string DekontDegismezYoluMetni => Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).DekontDegismezYoluBasit : Dil.T.Banka.DekontDegismezYolu;
+
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private static readonly string[] BankaDovizleri = ["TRY", "USD", "EUR", "GBP"];
+
+    // KAT-1 (K5): TRY seçeneği "₺ Türk lirası" okunur; USD/EUR/GBP kodu aynen. Değer (gövde) kod kalır.
+    private IReadOnlyList<SecenekOgesi> DovizSecenekleri =>
+        [.. BankaDovizleri.Select(d => new SecenekOgesi(d, KatalogSozlugu.ParaSecenegi(d, Dil.Dil)))];
+
+    private IReadOnlyList<SecenekOgesi> YonSecenekleri =>
+    [
+        new SecenekOgesi("GELEN", Dil.T.Banka.Gelen),
+        new SecenekOgesi("GIDEN", Dil.T.Banka.Giden),
+    ];
+
+    /// <summary>ZO-ISLEM-A 28.09 — hesabı kullanımdan kaldırma (pasife alma) ortak menüde.</summary>
+    private IReadOnlyList<SatirEylemleri.Eylem> HesapKaldirEylemi(HesapVeri h) =>
+    [
+        new SatirEylemleri.Eylem($"bh-pasife-al-{h.Id}", Dil.T.Kabuk.PasifeAl,
+            EventCallback.Factory.Create(this, () => pasifHesap = h),
+            kilitli: h.Bakiye != 0, kilitNedeni: ZO.BankaKaldirKilit),
+    ];
+
+    /// <summary>ZO-ISLEM-A 28.09 — hareket satırının eylemleri (sıra = önem).</summary>
+    private IReadOnlyList<SatirEylemleri.Eylem> HareketEylemleri(HareketVeri h)
+    {
+        var l = new List<SatirEylemleri.Eylem>();
+        // 29.09 (tasarım hakemi YÜKSEK): POS cihazının parasının yattığı hesaba gelen, müşteriye
+        // bağlanmamış satırın BİRİNCİL eylemi POS eşleştirmesidir (POS ekranına götürür);
+        // "Müşteriyle eşleştir" menüde kalır (aynı hesaba müşteri havalesi de gelebilir).
+        if (PosYatmasiOlabilir(h))
+            l.Add(new($"bh-pos-{h.Id}", ZO.BankaPosEslestir,
+                EventCallback.Factory.Create(this, () => Gezgin.NavigateTo("/pos/tahsilatlar"))));
+        if (EslestirAcik(h))
+            l.Add(new($"bh-eslestir-{h.Id}", D.Eslestir, EventCallback.Factory.Create(this, () => EslestirAc(h))));
+        if (h.Yon == "GELEN" && h.Durum != "FATURALANDI")
+            l.Add(new($"bh-fatura-{h.Id}", Dil.T.Banka.FaturayaDonustur, EventCallback.Factory.Create(this, () => DonusturModalAc(h))));
+        l.Add(new($"bh-storno-{h.Id}", Dil.T.Kabuk.Storno, EventCallback.Factory.Create(this, () => StornoIste(h)),
+            kilitli: !StornoAcik(h),
+            kilitNedeni: Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).DekontStornoYokBasit : Dil.T.Banka.DekontStornoYok));
+        return l;
+    }
+
+    private IReadOnlyList<SecenekOgesi> CariSecenekleri =>
+        [.. cariler.Select(c => new SecenekOgesi(c.Id, c.Ad))];
+
+    private string CariSecEtiketi => $"{Dil.T.Cari.Baslik} — {Dil.T.Banka.CariSecInfo}";
+
+    private List<HesapVeri> hesaplar = [];
+    private List<HareketVeri> hareketler = [];
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:banka:bh-hareket) ─────────────────────
+    private IzgaraSiralama? hareketSira;
+    private void HareketSiralandi(IzgaraSiralama? s) => hareketSira = s;
+    // G1 (hasım 08.10): uç limitsiz çağrılınca sunucu varsayılanı 100 satır döner → sınıra değen liste
+    // TAM sayılmaz; o durumda sıralama düğmesi çıkmaz (yalnız görünen 100 satırı sıralamak yanıltır).
+    private const int HareketSiniri = 100;
+    private bool HareketListeTam => hareketler.Count < HareketSiniri;
+    private string? HareketSiraAdi(string ad) => HareketListeTam ? ad : null;
+
+    private IReadOnlyList<IzgaraKolonu<HareketVeri>> HareketKolonlari =>
+    [
+        // PAKET Q9-1: tarih hücresi düzeltilebilir (Cekmece banka-dekont-tarih); ekstreden gelen / stornolu satırda düz metin.
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, KartEtiketsiz = true, SunucuSiralamaAdi = HareketSiraAdi("tarih"),
+                HucreSinif = _ => "metin-soluk zo-k-bas", Deger = h => h.Tarih,
+                Hucre = h => @<text>@if (TarihDuzeltilebilir(h))
+                {
+                    <button type="button" class="si-tetik" data-duzenlenebilir="true"
+                            id="@($"bh-tarih-{h.Id}")" title="@D.TarihDuzeltBaslik"
+                            aria-label="@string.Format(D.TarihDuzeltAria, Bicim.Tarih(h.Tarih, Dil.Locale))"
+                            @onclick="() => TarihDuzeltAc(h)">@Bicim.Tarih(h.Tarih, Dil.Locale)</button>
+                }
+                else
+                {
+                    @Bicim.Tarih(h.Tarih, Dil.Locale)
+                }</text> },
+        new() { Anahtar = "yon", Baslik = Dil.T.Banka.Yon, KartEtiketsiz = true, Tur = IzgaraHucreTuru.Rozet, HucreSinif = _ => "zo-k-yon",
+                Deger = h => h.Yon,
+                Hucre = h => @<Rozet Renk="@(h.Yon == "GELEN" ? "yesil" : "kirmizi")">@(h.Yon == "GELEN" ? $"↓ {Dil.T.Banka.Gelen}" : $"↑ {Dil.T.Banka.Giden}")</Rozet> },
+        // P-12 (B-42): finansal OLMAYAN alanlar satır içi düzeltilir; karşı taraf + açıklama TEK hücrede (28.09 K3).
+        // GOC-A: satır içi sınırlar sunucuyla AYNI sabit (karşı taraf 150 · açıklama düzeltme 2000).
+        new() { Anahtar = "karsi", Baslik = $"{Dil.T.Banka.KarsiTaraf} · {Dil.T.Ortak.Aciklama}", KartEtiketsiz = true,
+                HucreSinif = h => $"zo-hucre-dar zo-hucre-karsi zo-k-ad {(IkisiBos(h) ? "zo-karsi-ikisi-bos" : null)}",
+                Deger = h => h.KarsiTarafAd,
+                Hucre = h => @<text><div class="zo-karsi-ad">
+                    @if (AlanDuzenlenebilir(h) && h.EkstreSatirId is null)
+                    {
+                        <SatirIciDuzenle Varlik="banka-dekont" Alan="karsitaraf" Id="@h.Id"
+                                         Etiket="@Dil.T.Banka.KarsiTaraf" EnFazla="@AlanSinirlari.HesapSahibi"
+                                         Deger="@h.KarsiTarafAd" BosOlabilir="true"
+                                         Kaydediliyor="@(satirKaydedilen == h.Id)"
+                                         Kaydedildi="@(y => DekontAlanKaydet(h, "karsiTarafAd", y))" />
+                    }
+                    else
+                    {
+                        @(h.KarsiTarafAd ?? "—")
+                    }
+                    </div>
+                    <div class="zo-karsi-aciklama metin-soluk">
+                    @if (AlanDuzenlenebilir(h))
+                    {
+                        <SatirIciDuzenle Varlik="banka-dekont" Alan="aciklama" Id="@h.Id"
+                                         Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.DekontAciklamaDuzelt"
+                                         Deger="@h.Aciklama" BosOlabilir="true"
+                                         Kaydediliyor="@(satirKaydedilen == h.Id)"
+                                         Kaydedildi="@(y => DekontAlanKaydet(h, "aciklama", y))" />
+                    }
+                    else
+                    {
+                        @(h.Aciklama ?? "—")
+                    }
+                    </div></text> },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Ortak.Tutar, ZorunluGorunur = true, KartEtiketsiz = true, SunucuSiralamaAdi = HareketSiraAdi("tutar"),
+                HucreSinif = h => $"hucre-vurgu sayi zo-hucre-tutar zo-k-tutar {(h.Yon == "GELEN" ? "metin-yesil" : "metin-kirmizi")}",
+                Deger = h => h.Yon == "GELEN" ? h.Tutar : -h.Tutar,
+                Hucre = h => @<text>@(h.Yon == "GELEN" ? "+" : "-")@Bicim.Para(h.Tutar, AktifHesap?.ParaBirimi)</text> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Fatura.Durum, KartEtiketsiz = true, Tur = IzgaraHucreTuru.Rozet, HucreSinif = _ => "zo-k-durum",
+                Deger = h => DurumMetin(h.Durum),
+                Hucre = h => @<text><Rozet Renk="@DurumRenk(h.Durum)">@DurumMetin(h.Durum)</Rozet>
+                    @if (h.StornoKaynakId is not null || Stornolandi(h))
+                    {
+                        <Rozet Renk="gri">@Dil.T.Banka.DekontStornolandi</Rozet>
+                    }
+                    @* P-19 (Y-11): kasa ekranıyla BİREBİR aynı virman kalıbı (UX-S31). *@
+                    @if (h.KarsiBacakId is not null)
+                    {
+                        <Rozet Renk="sari">@Dil.T.Kabuk.VirmanBacagi</Rozet>
+                        <p class="metin-kucuk metin-soluk" id="@($"bh-virman-gerekce-{h.Id}")">@Dil.T.Kabuk.VirmanBacagiGerekce</p>
+                        <a class="btn btn-ikincil btn-kucuk" href="/gider?sekme=virman"
+                           id="@($"bh-virman-yol-{h.Id}")">@Dil.T.Kabuk.VirmanStornosunaGit</a>
+                    }</text> },
+        // Q9-1 / P-12 / ZO-ISLEM-A: ortak SatirEylemleri (ilk eylem satırda, diğerleri "⋯"); kimlikler AYNI.
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "zo-k-eylem",
+                Hucre = h => @<SatirEylemleri Onek="bh-h" SatirId="@h.Id"
+                                              SatirAdi="@($"{Bicim.Tarih(h.Tarih, Dil.Locale)} · {Bicim.Para(h.Tutar, AktifHesap?.ParaBirimi)}")"
+                                              DarSutun="true" Birincil="1" Eylemler="@HareketEylemleri(h)" /> },
+    ];
+    private List<CariVeri> cariler = [];
+    private bool yukleniyor = true;
+    // UX-4c madde 13 / UX-S28: liste hatası boş duruma çevrilmez.
+    private string? listeHata;
+    private string? hareketHata;
+    private bool hareketYukleniyor;
+    private bool kaydediliyor;
+    private string? modalHata;
+
+    // ── PAKET P-12 (B-42) — dekont düzeltme + storno ─────────────────────────
+    /// <summary>Satır içi kaydetme sırasında kilitlenen satırın kimliği.</summary>
+    private string? satirKaydedilen;
+    private HareketVeri? stornoHareket;
+    private string stornoGerekce = "";
+    private string? stornoHata;
+
+    /// <summary>Bu dekontun ters kaydı listede var mı?</summary>
+    private bool Stornolandi(HareketVeri h) => hareketler.Any(x => x.StornoKaynakId == h.Id);
+
+    /// <summary>
+    /// Sunucudaki kuralın AYNISI (StornoServisi.BankaHareketiStorno): ters
+    /// kaydın kendisi, zaten stornolanmış satır, faturalanmış dekont ve
+    /// ekstreden gelen satır kapalıdır. Kur GEREKMEZ — dekontun has/kur
+    /// bacağı yoktur.
+    /// </summary>
+    /// PAKET P-19 (Y-11): VİRMAN BACAĞI da kapalıdır — sunucudaki kuralın
+    /// (StornoServisi.BankaHareketiStorno) ekrandaki aynısı; doğru yol satırın
+    /// yanındaki "Virman stornosuna git" bağlantısıdır (UX-S30).
+    private bool StornoAcik(HareketVeri h) =>
+        h.StornoKaynakId is null && !Stornolandi(h)
+        && h.Durum != "FATURALANDI" && h.EkstreSatirId is null
+        && h.KarsiBacakId is null;
+
+    /// <summary>
+    /// Finansal olmayan alan hangi satırda düzeltilebilir? (Sunucu: hükümsüz
+    /// kılınmış kaydın bilgisi değiştirilmez.)
+    /// </summary>
+    private bool AlanDuzenlenebilir(HareketVeri h) =>
+        h.StornoKaynakId is null && !Stornolandi(h);
+
+    /// <summary>
+    /// PATCH /bankalar/{hesapId}/hareketler/{id} — YALNIZ tek alan gider
+    /// (üç durumlu sözleşme: gönderilmeyen alan "değişmedi" demektir).
+    /// </summary>
+    private async Task DekontAlanKaydet(HareketVeri h, string alan, string yeni)
+    {
+        if (AktifHesapId is null) return;
+        satirKaydedilen = h.Id;
+        hareketHata = null;
+        try
+        {
+            var deger = string.IsNullOrWhiteSpace(yeni) ? null : yeni;
+            object govde = alan switch
+            {
+                "karsiTarafAd" => new { karsiTarafAd = deger },
+                _              => new { aciklama = deger },
+            };
+            await Api.PatchAsync($"/bankalar/{AktifHesapId}/hareketler/{h.Id}", govde);
+            BasariGoster(Dil.T.Banka.DekontGuncellendi);
+            await HareketleriYukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata "kayıt yok"a çevrilmez — liste DURUR, bant çıkar.
+            hareketHata = ex.Message;
+        }
+        satirKaydedilen = null;
+    }
+
+    private void StornoIste(HareketVeri h)
+    {
+        stornoHata = null;
+        stornoGerekce = "";
+        stornoHareket = h;
+    }
+
+    private void StornoKapat() { stornoHareket = null; stornoGerekce = ""; stornoHata = null; }
+
+    private async Task StornoUygula()
+    {
+        if (stornoHareket is not { } h || AktifHesapId is null) return;
+        kaydediliyor = true;
+        stornoHata = null;
+        try
+        {
+            // UX-S27: POST yanıtı OKUNUR; ters kaydın kimliği banda yazılır.
+            var yanit = await Api.PostAsync<System.Text.Json.JsonElement>(
+                $"/bankalar/{AktifHesapId}/hareketler/{h.Id}/storno",
+                new { gerekce = stornoGerekce });
+            var fis = yanit.TryGetProperty("stornoBankaHareketId", out var sb) ? sb.GetString() : null;
+            BasariGoster(fis is null ? Dil.T.Banka.DekontGuncellendi
+                                     : $"{Dil.T.Banka.DekontStornolandi}: {fis}");
+            stornoHareket = null;
+            stornoGerekce = "";
+            await HareketleriYukle();
+            // PAKET Q9-1 (QA turu 9 YÜKSEK): storno bakiyeyi değiştirir; TOPLAM
+            // BAKİYE kartı ve hesap sekmesi aynı ekranda sunucudan TAZELENİR
+            // (eskiden sayfa yenilenene dek eski tutar görünüyordu).
+            await HesaplariTazele();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            stornoHata = ex.Message;
+        }
+        kaydediliyor = false;
+    }
+
+    // ── PAKET Q9-1 — tarih girişi/düzeltmesi + müşteriyle eşleştirme ─────────
+    private BankaDekontMetinleri D => BankaDekontSozlugu.Al(Dil.Dil);
+
+    /// <summary>Kullanıcının yerel günü (tarayıcı saat dilimi).</summary>
+    private static DateOnly Bugun => DateOnly.FromDateTime(DateTime.Now);
+
+    private DateOnly? dekontTarih;
+
+    private HareketVeri? tarihHareket;
+    private DateOnly? tarihYeni;
+    private string? tarihHata;
+    private readonly FormDurumu tarihForm = new();
+
+    private HareketVeri? eslestirHareket;
+    private string eslestirCariId = "";
+    private string? eslestirHata;
+    private readonly FormDurumu eslestirForm = new();
+
+    /// <summary>
+    /// Sunucu kuralının AYNISI (BankaServisi.HareketDuzelt): hükümsüz kılınmış
+    /// kayıt ve ekstreden gelen satırın tarihi düzeltilmez.
+    /// </summary>
+    private bool TarihDuzeltilebilir(HareketVeri h) =>
+        AlanDuzenlenebilir(h) && h.EkstreSatirId is null;
+
+    /// <summary>Sunucu kuralının AYNISI (BankaServisi.DekontEslestir).</summary>
+    private bool EslestirAcik(HareketVeri h) =>
+        h.Durum == "BEKLIYOR" && AlanDuzenlenebilir(h) && h.KarsiBacakId is null;
+
+    /// <summary>
+    /// 29.09 — POS cihazlarının parasının yattığı banka hesapları (GET /pos/cihazlar →
+    /// bankaHesapId). Okunamazsa boş kalır: satır eski davranışa (Müşteriyle eşleştir)
+    /// döner, karar yine sunucudadır (PosYatmasiKapisi).
+    /// </summary>
+    private HashSet<string> posHesaplari = [];
+
+    /// <summary>Sunucu kapısının ekrandaki yansıması: POS hesabına GELEN, müşteriye bağlanmamış, açık satır.</summary>
+    private bool PosYatmasiOlabilir(HareketVeri h) =>
+        EslestirAcik(h) && h.Yon == "GELEN" && h.CariId is null
+        && AktifHesapId is { } hid && posHesaplari.Contains(hid);
+
+    private async Task PosHesaplariniYukle()
+    {
+        try
+        {
+            var c = await Api.GetAsync<List<Kuyumcu.Web.Servisler.PosCihazSatir>>("/pos/cihazlar");
+            posHesaplari = [.. c.Where(x => x.BankaHesapId is { Length: > 0 }).Select(x => x.BankaHesapId!)];
+        }
+        // P-11: catch içinde veri boşaltılmaz — okunamazsa ÖNCEKİ küme (açılışta boş) kalır;
+        // satır eski eyleme (Müşteriyle eşleştir) döner, POS kararı yine sunucudadır.
+        // Bu okuma yalnız YÖNLENDİRME ipucudur (hangi eylem önde); başarısızlığı ekranı bozmaz,
+        // tahmin de üretmez: küme boş kalır → hiçbir satırda POS eylemi çıkmaz.
+        catch (Exception ex) when (ex is ApiHata or JsonException) { /* önceki küme korunur */ }
+    }
+
+    /// <summary>
+    /// Seçilen gün sunucuya ÖĞLE (12:00 UTC) olarak gider: gece yarısı UTC
+    /// gönderilseydi bazı saat dilimlerinde ekranda BİR GÜN ÖNCE görünürdü.
+    /// </summary>
+    private static string GunGovdesi(DateOnly g) =>
+        Bicim.Makine(g) + "T12:00:00Z";
+
+    /// <summary>Formdaki gün kuralı: boş olamaz, bugünden ileri olamaz.</summary>
+    private bool GunGecerli(FormDurumu form, string alan, DateOnly? gun)
+    {
+        if (gun is null) { form.Ekle(alan, D.TarihSecin); return false; }
+        if (gun.Value > Bugun) { form.Ekle(alan, D.TarihIleri); return false; }
+        return true;
+    }
+
+    private void TarihDuzeltAc(HareketVeri h)
+    {
+        tarihForm.Temizle();
+        tarihHata = null;
+        tarihYeni = Bicim.IsletmeGunu(h.Tarih);
+        tarihHareket = h;
+    }
+
+    private void TarihDuzeltKapat() { tarihHareket = null; tarihHata = null; tarihForm.Temizle(); }
+
+    private async Task TarihDuzeltKaydet()
+    {
+        if (tarihHareket is not { } h || AktifHesapId is null) return;
+        tarihForm.Temizle();
+        tarihHata = null;
+        if (!GunGecerli(tarihForm, "bh-tarih-girdi", tarihYeni)) { tarihHata = Dil.T.Kabuk.FormEksik; return; }
+        if (tarihYeni == Bicim.IsletmeGunu(h.Tarih))
+        {
+            TarihDuzeltKapat();
+            BasariGoster(D.TarihDegismedi);
+            return;
+        }
+
+        kaydediliyor = true;
+        try
+        {
+            // Üç durumlu PATCH: gövdede YALNIZ tarih — açıklama/karşı taraf KORUNUR.
+            var yanit = await Api.PatchAsync<System.Text.Json.JsonElement>(
+                $"/bankalar/{AktifHesapId}/hareketler/{h.Id}",
+                new { tarih = GunGovdesi(tarihYeni!.Value) });
+            // UX-S27: sunucunun yazdığı tarih banda yazılır (POST/PATCH yanıtı okunur).
+            var yeni = yanit.TryGetProperty("tarih", out var t) && t.TryGetDateTime(out var dt)
+                ? Bicim.Tarih(dt, Dil.Locale) : Bicim.Makine(tarihYeni!.Value);
+            TarihDuzeltKapat();
+            BasariGoster(string.Format(D.TarihDuzeltildi, yeni));
+            await HareketleriYukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata bandı çekmecede görünür; form açık kalır.
+            tarihHata = ex is ApiHata ah ? FormDurumu.SunucuMesaji(ah, Dil) : ex.Message;
+        }
+        kaydediliyor = false;
+    }
+
+    private async Task EslestirAc(HareketVeri h)
+    {
+        eslestirForm.Temizle();
+        eslestirHata = null;
+        eslestirCariId = "";
+        eslestirHareket = h;
+        if (cariler.Count == 0) await CarileriYukle();
+        // CarileriYukle hatayı modalHata'ya yazar; çekmecede de GÖRÜNSÜN (UX-S28).
+        if (cariler.Count == 0 && modalHata is not null) eslestirHata = modalHata;
+    }
+
+    private void EslestirKapat() { eslestirHareket = null; eslestirHata = null; eslestirForm.Temizle(); }
+
+    private async Task EslestirKaydet()
+    {
+        if (eslestirHareket is not { } h || AktifHesapId is null) return;
+        eslestirForm.Temizle();
+        eslestirHata = null;
+        if (string.IsNullOrWhiteSpace(eslestirCariId))
+        {
+            eslestirForm.Ekle("bh-eslestir-cari", D.EslestirMusteriSecin);
+            eslestirHata = Dil.T.Kabuk.FormEksik;
+            return;
+        }
+
+        kaydediliyor = true;
+        try
+        {
+            var yanit = await Api.PostAsync<System.Text.Json.JsonElement>(
+                $"/bankalar/{AktifHesapId}/hareketler/{h.Id}/eslestir",
+                new { cariId = eslestirCariId });
+            var durum = yanit.TryGetProperty("durum", out var d) ? d.GetString() : null;
+            var cariAd = cariler.FirstOrDefault(c => c.Id == eslestirCariId)?.Ad ?? eslestirCariId;
+            EslestirKapat();
+            BasariGoster($"{string.Format(D.Eslestirildi, cariAd)} · {DurumMetin(durum ?? "ESLESTI")}");
+            await HareketleriYukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // YASAL-KAPI-2: sunucunun 409 cümlesine gömülü ham MASAK reddi ("(MASAK: … (masak.aciklama) …)") basılmaz.
+            eslestirHata = ex is ApiHata ah ? ParaMasakKapisi.SadeMetin(FormDurumu.SunucuMesaji(ah, Dil)) : ex.Message;
+        }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// Hesap listesini (bakiyeler + TOPLAM BAKİYE) SESSİZCE tazeler: tam sayfa
+    /// "Yükleniyor" çizmez, seçili hesap ve hareket tablosu yerinde kalır.
+    /// ⚠ UX-S28: hata listeyi BOŞALTMAZ; bant çıkar, eski liste durur.
+    /// </summary>
+    private async Task HesaplariTazele()
+    {
+        try
+        {
+            hesaplar = (await Api.GetAsync<HesapYaniti>("/bankalar")).Hesaplar;
+            listeHata = null;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            listeHata = ex.Message;
+        }
+    }
+
+    // ── Paket 32 — ekstre yükleme ────────────────────────────────────────────
+    private bool ekstreModalAcik;
+    private string? ekstreDosyaAdi;
+    private string? ekstreDosyaBase64;
+    private string? ekstreDosyaHatasi;
+    private bool ekstreTekrar;
+
+    /// <summary>İstemci tavanı SUNUCUNUN KOPYASI değil, ÖN GÖSTERİMİDİR.</summary>
+    private const int EkstreDosyaTavan = 2_000_000;
+
+    /// <summary>UX-S30 — kilitli düğme sebebini söyler.</summary>
+    private string? EkstreKilitSebebi =>
+        ekstreDosyaBase64 is null ? Dil.T.Banka.EkstreDosyasi : null;
+
+    private void EkstreModalAc()
+    {
+        modalHata = null;
+        ekstreDosyaAdi = null;
+        ekstreDosyaBase64 = null;
+        ekstreDosyaHatasi = null;
+        ekstreTekrar = false;
+        ekstreModalAcik = true;
+    }
+
+    private async Task EkstreDosyaSecildi(InputFileChangeEventArgs e)
+    {
+        ekstreDosyaHatasi = null;
+        ekstreDosyaBase64 = null;
+        ekstreDosyaAdi = null;
+
+        var dosya = e.File;
+        if (dosya is null) return;
+
+        ekstreDosyaAdi = dosya.Name;
+        if (dosya.Size > EkstreDosyaTavan)
+        {
+            ekstreDosyaHatasi = $"{EkstreDosyaTavan / 1024} KB";
+            return;
+        }
+
+        using var akis = dosya.OpenReadStream(EkstreDosyaTavan);
+        using var bellek = new MemoryStream();
+        await akis.CopyToAsync(bellek);
+        ekstreDosyaBase64 = Convert.ToBase64String(bellek.ToArray());
+    }
+
+    private async Task EkstreYukle()
+    {
+        if (AktifHesap is null || ekstreDosyaBase64 is null) return;
+        kaydediliyor = true;
+        modalHata = null;
+        try
+        {
+            var yanit = await Api.PostAsync<Kuyumcu.Core.Sozlesmeler.EkstreYuklemeYaniti>(
+                $"/bankalar/{AktifHesap.Id}/ekstre/yukle" + (ekstreTekrar ? "?tekrar=true" : ""),
+                new { dosyaAdi = ekstreDosyaAdi, format = "CSV", icerikBase64 = ekstreDosyaBase64 });
+
+            // UX-S27 — POST yanıtı OKUNUR; sonuç banda yazılır ve ekrana geçilir.
+            basari = $"{Dil.T.Banka.EkstreYuklendi}: {yanit.SatirSayisi} · " +
+                     $"{Dil.T.Banka.YeniSatir} {yanit.YeniSayisi} · " +
+                     $"{Dil.T.Banka.Mukerrer} {yanit.MukerrerSayisi} · " +
+                     $"{Dil.T.Banka.HataliSatir} {yanit.HataliSayisi}";
+            basariJeton++;
+            ekstreModalAcik = false;
+            Gezgin.NavigateTo($"/banka/ekstre/{yanit.IthalatId}");
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            modalHata = ex.Message;
+        }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task EkstreSablonIndir()
+    {
+        modalHata = null;
+        try
+        {
+            var (veri, ad) = await Api.GetBaytAsync("/bankalar/ekstre/sablon.csv");
+            await Js.InvokeVoidAsync("kuyumcuIndir",
+                ad ?? "banka-ekstre-sablon.csv", Convert.ToBase64String(veri), "text/csv");
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            modalHata = ex.Message;
+        }
+    }
+
+    // ── UX-1-C0/C2 ortak form altyapısı ──────────────────────────────────────
+    private readonly FormDurumu yeniForm = new();
+    private readonly FormDurumu duzenleForm = new();
+    private readonly FormDurumu dekontForm = new();
+    private string? basari;
+    private int basariJeton;
+    private HesapVeri? pasifHesap;
+    private string? pasifHata;
+
+    private void BasariGoster(string m) { basari = m; basariJeton++; }
+
+    private string? seciliHesapId;
+    private string? AktifHesapId => seciliHesapId ?? hesaplar.FirstOrDefault()?.Id;
+    private HesapVeri? AktifHesap => hesaplar.FirstOrDefault(h => h.Id == AktifHesapId);
+    private decimal ToplamTry => hesaplar.Where(h => h.ParaBirimi == "TRY").Sum(h => h.Bakiye);
+
+    // ── yeni hesap formu ──
+    private bool yeniHesapModalAcik;
+    private string hesapBankaAdi = "";
+    private string hesapHesapAdi = "";
+    private string hesapSahibi = "";
+    private string hesapIban = "";
+    private string hesapParaBirimi = "TRY";
+
+    // ── hesap düzenle formu ──
+    private HesapVeri? duzenleHesap;
+    private string dBankaAdi = "";
+    private string dHesapAdi = "";
+    private string dHesapSahibi = "";
+    private string dIban = "";
+    private string dParaBirimi = "TRY";
+
+    // ── dekont formu ──
+    private bool dekontModalAcik;
+    private string dekontYon = "GELEN";
+    /// <summary>
+    /// 29.09 (tasarım hakemi YÜKSEK, K18/K20): kutu BOŞ açılır. Eskiden decimal 0 ile açılıyor,
+    /// kutuda "0" duruyor ve yazılan "250000" "0250000" görünüyordu (Hurda'nın Para kutuları boş açılır).
+    /// </summary>
+    private decimal? dekontTutar;
+    private decimal DekontTutarTl => dekontTutar ?? 0m;
+    private string dekontKarsiTaraf = "";
+    private string dekontAciklama = "";
+    private string dekontCariId = "";
+
+    // ── ZO-ISLEM-A: "+ … ekle" bölümleri ─────────────────────────────────
+    private ZoIslemMetinleri ZO => ZoIslemSozlugu.Al(Dil.Dil);
+    private bool yeniSahibiAcik;
+    private bool dSahibiAcik;
+    private bool dekontDetayAcik;
+    /// <summary>Hareket akordeonunun son durumu (liste yeniden çizilince korunur).</summary>
+    private bool hareketAkordeonAcik;
+
+    /// <summary>
+    /// Dekont detay bölümü görünür mü? Değer girilmişse, tarih bugün değilse,
+    /// tarih hatalıysa ya da MASAK kapısı açıldıysa ZORUNLU açıktır — kapalı
+    /// bölüm gövdeye varsayılanından başka değer taşımaz.
+    /// </summary>
+    private bool DekontDetayGorunur =>
+        dekontDetayAcik || MasakGerekli
+        || !string.IsNullOrEmpty(dekontCariId) || !string.IsNullOrEmpty(dekontKarsiTaraf)
+        || !string.IsNullOrEmpty(dekontAciklama)
+        || (dekontTarih is { } dt && dt != Bugun) || dekontTarih is null
+        || dekontForm.Mesaj("dekont-tarih") is { Length: > 0 };
+
+    // ── PAKET 41 — MASAK kapısı (POS ile AYNI bileşen ve AYNI uçlar) ─────────
+    // ⚠ Sayfaya YENİ istemci tipi AÇILMADI: MasakFormu.MasakBilgi,
+    //   Esikler ve Kuyumcu.Web.Servisler.MasakGereksinim yeniden
+    //   kullanılır (denetim.sh sayfa tipi tavanı). Gövde anonim nesneyle gider.
+    private MasakFormu.MasakBilgi masak = new();
+    private Esikler? masakEsik;
+    private MasakGereksinim? masakGereksinim;
+    private decimal gereksinimTutari = -1m;
+
+    /// <summary>Eşik karşılaştırması istemcide (tek sayı, SUNUCUDAN gelir).</summary>
+    private string? gereksinimCari;
+
+    /// <summary>
+    /// Gereksinim sunucuya sorulmalı mı? Tutar eşikteyse ya da müşteri seçiliyse
+    /// (29.09 tasarım hakemi KRİTİK: aynı gün aynı müşteriyle yapılmış işlemlerin toplamını
+    /// yalnız sunucu bilir; kayıt o toplamla doğrulanır, ekran da onunla sorar).
+    /// </summary>
+    private bool MasakSorulmali =>
+        masakEsik is not null && DekontTutarTl > 0m
+        && (DekontTutarTl >= masakEsik.KimlikIstenenTutar() || !string.IsNullOrEmpty(dekontCariId) || DekontMasakRedGecerli);
+
+    /// <summary>Eşik karşılaştırması istemcide (tek sayı, SUNUCUDAN gelir); eşik altında da
+    /// müşterinin günlük toplamı kimlik gerektiriyorsa alanlar açılır.</summary>
+    private bool MasakGerekli =>
+        MasakSorulmali
+        && (DekontTutarTl >= masakEsik!.KimlikIstenenTutar() || masakGereksinim?.KimlikGerekli == true || DekontMasakRedGecerli);
+
+    // ── PAKET YASAL-KAPI-2 — sunucu MASAK reddi YasalKapiIzi deseniyle (Hurda/Kapora/Satış ile aynı kural):
+    //    ret metni ham alan anahtarı ("masak.aciklama") taşımaz; tutar reddin altına inince ya da müşteri
+    //    değişince ret cümlesi ve zorla açılan alanlar kalkar, tutar geri çıkınca geri gelir.
+    private Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi? dekontRedIzi;
+    private bool DekontMasakRedGecerli =>
+        Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi.Gecerli(dekontRedIzi, DekontTutarTl, dekontCariId);
+    /// <summary>Dekont penceresinin hata bandı: MASAK reddinin cümlesi yalnız izi geçerliyken görünür.</summary>
+    private string? DekontModalHata => dekontRedIzi is null || DekontMasakRedGecerli ? modalHata : null;
+
+    private async Task DekontCariDegisti(string? v)
+    {
+        dekontCariId = v ?? "";
+        await GereksinimTazele();
+    }
+
+    /// <summary>
+    /// UX-S30: Kaydet kilitliyse SEBEBİ yazılır. null = düğme açık.
+    /// Sunucu her hâlükârda son sözü söyler; burası yalnız erken uyarır.
+    /// </summary>
+    private string? DekontKilitSebebi => sayiKapisi.Sebep(Dil.Dil, "dekont-") ?? DekontKuralKilidi;   // ORTAK-1: "1.500" → POST YOK
+    private string? DekontKuralKilidi =>
+        !MasakGerekli ? null
+        : masakGereksinim is null ? Dil.T.Banka.MasakYukleniyorSebep
+        : MasakFormu.Eksiksiz(masak, masakGereksinim) ? null
+        : MasakFormu.TcknKilitMetni(masak, Dil.Dil) is { } tcknKilit ? tcknKilit   // TCKN-DOGRULAMA: alan altıyla aynı metin
+        : Dil.BasitMi ? ZO.MasakKilitSebepBasit : Dil.T.Banka.MasakKilitSebep;
+
+    /// <summary>
+    /// MASAK alanlarındaki değişiklik bu sayfayı da yeniden çizer (Kaydet
+    /// düğmesinin kilidi ve sebebi burada hesaplanır). Gövde boş: tek amaç
+    /// olayın üst bileşene ulaşıp yeniden çizim tetiklemesidir.
+    /// </summary>
+    private void MasakAlaniDegisti() { }
+
+    /// <summary>
+    /// Tutar değişince sunucudan gereksinim çeker (Islemler.razor deseni).
+    /// Aynı tutar için tekrar çağrılmaz.
+    /// ⚠ UX-S28: hata "kayıt yok"a çevrilmez — gereksinim gelmezse Kaydet
+    ///   KİLİTLİ kalır ve sebebini yazar (fail-closed).
+    /// </summary>
+    private async Task GereksinimTazele()
+    {
+        if (!MasakSorulmali) { masakGereksinim = null; gereksinimTutari = -1m; gereksinimCari = null; return; }
+        var t = DekontTutarTl;
+        var c = string.IsNullOrEmpty(dekontCariId) ? null : dekontCariId;
+        if (t == gereksinimTutari && c == gereksinimCari && masakGereksinim is not null) return;
+        // Eski tutarın/müşterinin gereksinimi yenisinde geçerli değildir: sorgudan ÖNCE düşer.
+        masakGereksinim = null; gereksinimTutari = -1m; gereksinimCari = null;
+        try
+        {
+            masakGereksinim = await Uyum.Gereksinim(t, c);
+            gereksinimTutari = t;
+            gereksinimCari = c;
+        }
+        catch { masakGereksinim = null; gereksinimTutari = -1m; gereksinimCari = null; }
+    }
+
+    // ── faturaya dönüştür formu ──
+    private HareketVeri? donusturHareket;
+    private string donusturCariId = "";
+    private string donusturKdv = "0.20";
+    private decimal DonusturKdvOran => decimal.Parse(donusturKdv, CultureInfo.InvariantCulture);
+    private decimal DonusturAraToplam =>
+        donusturHareket is null ? 0m : donusturHareket.Tutar / (1m + DonusturKdvOran);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await HesaplariYukle();
+        await PosHesaplariniYukle();
+        if (AktifHesapId is not null) await HareketleriYukle();
+    }
+
+    private async Task HesaplariYukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try { hesaplar = (await Api.GetAsync<HesapYaniti>("/bankalar")).Hesaplar; }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            hesaplar = [];
+            listeHata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private async Task HareketleriYukle()
+    {
+        if (AktifHesapId is null) { hareketler = []; return; }
+        hareketYukleniyor = true;
+        hareketHata = null;
+        try { hareketler = (await Api.GetAsync<HareketYaniti>($"/bankalar/{AktifHesapId}/hareketler")).Hareketler; }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            hareketler = [];
+            hareketHata = ex.Message;
+        }
+        hareketYukleniyor = false;
+    }
+
+    private async Task HesapSec(string id)
+    {
+        seciliHesapId = id;
+        await HareketleriYukle();
+    }
+
+    // ── yeni hesap ──
+    private void YeniHesapModalAc()
+    {
+        modalHata = null;
+        hesapBankaAdi = "";
+        hesapHesapAdi = "";
+        hesapSahibi = "";
+        yeniSahibiAcik = false;
+        hesapIban = "";
+        hesapParaBirimi = "TRY";
+        yeniHesapModalAcik = true;
+    }
+
+    private async Task HesapOlustur()
+    {
+        // Sessiz etkisizlik YASAK (QA turu 2): kilitli düğme yerine alan altı mesaj.
+        yeniForm.Temizle();
+        yeniForm.Zorunlu("hesap-banka", hesapBankaAdi, Dil);
+        yeniForm.Zorunlu("hesap-ad", hesapHesapAdi, Dil);
+        yeniForm.Zorunlu("hesap-iban", hesapIban, Dil);
+        if (!yeniForm.Gecerli) { modalHata = Dil.T.Kabuk.FormEksik; return; }
+
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/bankalar", new
+            {
+                bankaAdi = hesapBankaAdi,
+                hesapAdi = hesapHesapAdi,
+                hesapSahibi = string.IsNullOrWhiteSpace(hesapSahibi) ? null : hesapSahibi.Trim(),
+                iban = hesapIban.ToUpperInvariant().Replace(" ", ""),
+                paraBirimi = hesapParaBirimi,
+            });
+            yeniHesapModalAcik = false;
+            BasariGoster(Dil.T.Banka.HesapKaydedildi);
+            await HesaplariYukle();
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) { modalHata = FormDurumu.BantMesaji(ex, Dil, SunucuAlanHesapYeni); yeniForm.Sunucudan(ex, SunucuAlanHesapYeni); }
+        kaydediliyor = false;
+    }
+
+    // ── hesap düzenle ──
+    // ── SON-KALANLAR tur 2 — para birimi kilidi (sunucu BankaServisi.ParaBirimiKilidi ile AYNI ölçüt) ──
+    /// <summary>null = serbest · BAKIYE · HAREKET · BILINMIYOR (okunamadı → fail-closed, kilitli).</summary>
+    private string? dDovizKilitSebebi;
+    private bool dDovizKilitYukleniyor;
+    private bool DovizKilitli => dDovizKilitYukleniyor || dDovizKilitSebebi is not null;
+    private SonKalanlarMetinleri SKL => SonKalanlarSozlugu.Al(Dil.Dil);
+    private string DovizKilitGerekcesi => dDovizKilitSebebi switch
+    {
+        "BAKIYE" => SKL.BankaDovizKilitBakiye,
+        "HAREKET" => SKL.BankaDovizKilitHareket,
+        _ => SKL.BankaDovizKilitBilinmiyor,
+    };
+
+    /// <summary>
+    /// Kilit KAYDETMEDEN önce okunur (UX-S30). Bakiye listeden bilinir; hareket var mı sorusu mevcut
+    /// okuma ucuyla (<c>GET /bankalar/{id}/hareketler?limit=1</c>, durum süzgeçsiz) sorulur — yeni uç açılmaz.
+    /// Okunamazsa ya da yanıt beklenen biçimde değilse kilitli kalır; hata "serbest"e çevrilmez (UX-S28).
+    /// </summary>
+    private async Task DovizKilidiniOku(HesapVeri h)
+    {
+        dDovizKilitSebebi = null;
+        if (h.Bakiye != 0m) { dDovizKilitSebebi = "BAKIYE"; return; }
+        dDovizKilitYukleniyor = true;
+        try
+        {
+            var y = await Api.GetAsync<HareketYaniti>($"/bankalar/{h.Id}/hareketler?limit=1");
+            dDovizKilitSebebi = y?.Hareketler is null ? "BILINMIYOR"
+                : y.Hareketler.Count > 0 ? "HAREKET" : null;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { dDovizKilitSebebi = "BILINMIYOR"; }
+        dDovizKilitYukleniyor = false;
+    }
+
+    private async Task DuzenleModalAc(HesapVeri h)
+    {
+        modalHata = null;
+        duzenleForm.Temizle();
+        duzenleHesap = h;
+        dBankaAdi = h.BankaAdi;
+        dHesapAdi = h.HesapAdi;
+        dHesapSahibi = h.HesapSahibi ?? "";
+        dSahibiAcik = false;
+        dIban = h.Iban;
+        dParaBirimi = h.ParaBirimi;
+        await DovizKilidiniOku(h);
+    }
+
+    private async Task HesapGuncelle()
+    {
+        if (duzenleHesap is null) return;
+        duzenleForm.Temizle();
+        duzenleForm.Zorunlu("d-banka", dBankaAdi, Dil);
+        duzenleForm.Zorunlu("d-hesapad", dHesapAdi, Dil);
+        duzenleForm.Zorunlu("d-iban", dIban, Dil);
+        if (!duzenleForm.Gecerli) { modalHata = Dil.T.Kabuk.FormEksik; return; }
+
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/bankalar/{duzenleHesap.Id}", new
+            {
+                bankaAdi = dBankaAdi.Trim(),
+                hesapAdi = dHesapAdi.Trim(),
+                hesapSahibi = dHesapSahibi.Trim(),   // boş → sunucu null'a çevirir
+                iban = dIban.ToUpperInvariant().Replace(" ", ""),
+                paraBirimi = dParaBirimi,
+            });
+            duzenleHesap = null;
+            BasariGoster(Dil.T.Banka.HesapKaydedildi);
+            await HesaplariYukle();
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) { modalHata = FormDurumu.BantMesaji(ex, Dil, SunucuAlanHesapDuzenle); duzenleForm.Sunucudan(ex, SunucuAlanHesapDuzenle); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>UX-S25 — DELETE ucu PASİFE ALIR (silmez); geri açma aynı PATCH'tir.</summary>
+    private async Task HesapPasifeAl()
+    {
+        if (pasifHesap is null) return;
+        pasifHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.DeleteAsync<object>($"/bankalar/{pasifHesap.Id}");
+            pasifHesap = null;
+            BasariGoster(Dil.T.Kabuk.PasifeAlindi);
+            await HesaplariYukle();
+        }
+        catch (ApiHata ex) { pasifHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private async Task HesapAktifeAl(HesapVeri h)
+    {
+        listeHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/bankalar/{h.Id}", new { aktif = true });
+            BasariGoster(Dil.T.Kabuk.AktifeAlindi);
+            await HesaplariYukle();
+        }
+        catch (ApiHata ex) { listeHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    // ── dekont ──
+    private async Task DekontModalAc()
+    {
+        modalHata = null;
+        dekontRedIzi = null;   // YASAL-KAPI-2: önceki pencerenin ret izi taşınmaz
+        dekontYon = "GELEN";
+        dekontTutar = null;
+        dekontKarsiTaraf = "";
+        dekontAciklama = "";
+        dekontCariId = "";
+        dekontTarih = Bugun;          // PAKET Q9-1: varsayılan bugün
+        dekontDetayAcik = false;
+        dekontForm.Temizle();
+        masak = new();               // kişisel veri formda kalmaz
+        masakGereksinim = null;
+        gereksinimTutari = -1m;
+        gereksinimCari = null;
+        dekontModalAcik = true;
+
+        // Cari listesi ve MASAK eşikleri modal açılırken çekilir; eşik SAYISI
+        // ekrana yazılmaz, yalnız formun açılıp açılmayacağını belirler.
+        if (cariler.Count == 0) await CarileriYukle();
+        masakEsik ??= await EsikleriYukle();
+    }
+
+    private async Task CarileriYukle()
+    {
+        try { cariler = await Api.GetAsync<List<CariVeri>>("/cari?aktif=true&limit=200"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28: hata boş duruma çevrilmez, bandda GÖRÜNÜR.
+            cariler = [];
+            modalHata = ex.Message;
+        }
+    }
+
+    private async Task<Esikler?> EsikleriYukle()
+    {
+        try { return await Api.GetAsync<Esikler>("/masak/esikler"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            modalHata = ex.Message;
+            return null;
+        }
+    }
+
+    private async Task DekontKaydet()
+    {
+        if (sayiKapisi.OnekleVar("dekont-")) return;   // ORTAK-1: düğme pasif + sebep; ikinci kat koruma
+        dekontRedIzi = null;   // YASAL-KAPI-2: her denemede iz yeniden kurulur (yalnız MASAK reddi yeni iz bırakır)
+        dekontForm.Temizle();
+        dekontForm.Pozitif("dekont-tutar", dekontTutar, Dil);
+        GunGecerli(dekontForm, "dekont-tarih", dekontTarih);   // PAKET Q9-1
+        if (!dekontForm.Gecerli) { modalHata = Dil.T.Kabuk.FormEksik; return; }
+
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/bankalar/{AktifHesapId}/hareket", new
+            {
+                yon = dekontYon,
+                tutar = DekontTutarTl,
+                karsiTarafAd = string.IsNullOrWhiteSpace(dekontKarsiTaraf) ? null : dekontKarsiTaraf,
+                aciklama = string.IsNullOrWhiteSpace(dekontAciklama) ? null : dekontAciklama,
+                cariId = string.IsNullOrWhiteSpace(dekontCariId) ? null : dekontCariId,
+                // PAKET Q9-1: bugün seçiliyse tarih GÖNDERİLMEZ (sunucu saati — davranış aynı);
+                // geçmiş gün öğle UTC olarak gider (bkz. GunGovdesi).
+                tarih = dekontTarih is { } dg && dg != Bugun ? GunGovdesi(dg) : null,
+                // PAKET 41: alan adları sunucudaki MasakBilgiDto ile BİREBİR
+                // (belgeTuru, belgeNo, adSoyad, dogumTarihi, uyruk, adres…).
+                masak = MasakGerekli ? masak : null,
+            });
+            dekontModalAcik = false;
+            BasariGoster(Dil.T.Banka.HareketEklendi);
+            await HesaplariYukle();
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) when (ParaMasakKapisi.MasakReddi(ex))
+        {
+            // YASAL-KAPI-2: ham sunucu cümlesi (alan anahtarı) basılmaz; alanlar açılır, gereksinim yeniden sorulur.
+            // Form eksikken neyin eksik olduğunu Kaydet kilidi söyler (tek yer); form TAMKEN sunucunun cümlesi sade yazılır.
+            var tamamdi = masakGereksinim is { KimlikGerekli: true } g && MasakFormu.Eksiksiz(masak, g);
+            dekontRedIzi = Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi.Al(DekontTutarTl, dekontCariId);
+            gereksinimTutari = -1m;
+            await GereksinimTazele();
+            modalHata = tamamdi || !MasakGerekli || masakGereksinim is not { KimlikGerekli: true }
+                ? string.Format(YasalKapi2Sozlugu.Al(Dil.Dil).MasakKabulEdilmedi, ParaMasakKapisi.SadeMetin(ex.Message.StartsWith("MASAK:", StringComparison.Ordinal) ? ex.Message[6..].TrimStart() : ex.Message))
+                : null;
+        }
+        catch (ApiHata ex) { modalHata = FormDurumu.BantMesaji(ex, Dil, SunucuAlanDekont); dekontForm.Sunucudan(ex, SunucuAlanDekont); }
+        kaydediliyor = false;
+    }
+
+    // ── faturaya dönüştür ──
+    private async Task DonusturModalAc(HareketVeri hareket)
+    {
+        modalHata = null;
+        donusturCariId = "";
+        donusturKdv = "0.20";
+        donusturHareket = hareket;
+        await CarileriYukle();
+    }
+
+    private async Task Donustur()
+    {
+        if (donusturHareket is null) return;
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/bankalar/hareketler/{donusturHareket.Id}/faturaya-donustur", new
+            {
+                cariId = donusturCariId,
+                kdvOran = DonusturKdvOran,
+            });
+            donusturHareket = null;
+            BasariGoster(Dil.T.Banka.DonusturBasarili);
+            await HareketleriYukle();
+        }
+        catch (ApiHata ex) { modalHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private static readonly Dictionary<string, string> SunucuAlanDekont = new()
+    {
+        ["Tutar"] = "dekont-tutar", ["Tarih"] = "dekont-tarih",
+    };
+
+    private static readonly Dictionary<string, string> SunucuAlanHesapYeni = new()
+    {
+        ["BankaAdi"] = "hesap-banka", ["HesapAdi"] = "hesap-ad", ["Iban"] = "hesap-iban",
+        ["HesapSahibi"] = "hesap-sahibi", ["ParaBirimi"] = "hesap-doviz",
+    };
+
+    private static readonly Dictionary<string, string> SunucuAlanHesapDuzenle = new()
+    {
+        ["BankaAdi"] = "d-banka", ["HesapAdi"] = "d-hesapad", ["Iban"] = "d-iban",
+        ["HesapSahibi"] = "d-sahibi", ["ParaBirimi"] = "d-doviz",
+    };
+
+    /// <summary>KESIF-P6 tur 2: karşı taraf ve açıklama ikisi de boş → tek satır (ZO-ISLEM-A).</summary>
+    internal static bool IkisiBos(HareketVeri h) =>
+        string.IsNullOrWhiteSpace(h.KarsiTarafAd) && string.IsNullOrWhiteSpace(h.Aciklama);
+
+    // ── durum rozeti ──
+    private static string DurumRenk(string durum) => durum switch
+    {
+        "FATURALANDI" => "yesil",
+        "ESLESTI" => "mavi",
+        _ => "sari",
+    };
+
+    private string DurumMetin(string durum) => durum switch
+    {
+        "FATURALANDI" => Dil.T.Banka.Faturalandi,
+        "ESLESTI" => Dil.T.Banka.Eslesti,
+        _ => Dil.T.Banka.Bekliyor,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

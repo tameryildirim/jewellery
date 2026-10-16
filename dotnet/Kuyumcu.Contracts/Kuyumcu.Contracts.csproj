@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- P-03 SÖZLEŞME-1: sunucu ile istemcinin ORTAK tip evi.
+       Kural (PLAN § 1 md.9): yeni uç önce buradaki tipi alır; razor @code
+       bloğuna yeni istemci record'u yazılmaz (denetim.sh SAYFA_RECORD_TAVAN). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kuyumcu.Core\Kuyumcu.Core.csproj" />
+  </ItemGroup>
+
+</Project>

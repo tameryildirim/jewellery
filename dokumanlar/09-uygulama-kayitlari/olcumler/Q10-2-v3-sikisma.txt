@@ -1,0 +1,21 @@
+Q10-2 tur 3 — sikisma-olc.js (tarayici bolmesi tab-52, vekil 5173 → API 5174), 2026-09-25 ~00:29-00:33 yerel
+durum | tema | rota | mod | genislik | K1 | K2 | K3 tasan/kirik | K4 | K5 | K6 | K7 | K8 | K9 | K11 | K10 | yatay
+form | aydinlik | /hurda | PRO | 1280 | 0 | 98 | 0/0 | 2x1 | 0 | 0/1 | 0 | 0 | 0 | 0 | 0 | 0
+onay | aydinlik | /hurda | PRO | 1280 | 0 | 98 | 0/0 | 2x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [384,896] vazgecPOST 0
+form | karanlik | /hurda | PRO | 1280 | 0 | 98 | 0/0 | 2x1 | 0 | 0/1 | 0 | 0 | 0 | 0 | 0 | 0
+onay | karanlik | /hurda | PRO | 1280 | 0 | 98 | 0/0 | 2x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [384,896] vazgecPOST 0
+form | karanlik | /hurda | BASIT | 1280 | 0 | 98 | 0/0 | 2x1 | 0 | 0/1 | 0 | 4** -> yeniden olcum 0 | 0 | 0 | 0 | 0
+onay | karanlik | /hurda | BASIT | 1280 | 0 | 98 | 0/0 | 2x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [384,896] vazgecPOST 0
+form | aydinlik | /hurda | BASIT | 1280 | 0 | 98 | 0/0 | 2x1 | 0 | 0/1 | 0 | 0 | 0 | 0 | 0 | 0
+onay | aydinlik | /hurda | BASIT | 1280 | 0 | 98 | 0/0 | 2x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [384,896] vazgecPOST 0
+form | karanlik | /hurda | BASIT | 375 | 0 | 97 | 0/0 | 2.5x1 | 0 | 0/1 | 0 | 0 | 0 | 0 | 0 | 0
+onay | karanlik | /hurda | BASIT | 375 | 0 | 97 | 0/0 | 2.5x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [12,363] vazgecPOST 0
+form | aydinlik | /hurda | BASIT | 375 | 0 | 97 | 0/0 | 2.5x1 | 0 | 0/1 | 0 | 0 | 0 | 0 | 0 | 0
+onay | aydinlik | /hurda | BASIT | 375 | 0 | 97 | 0/0 | 2.5x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [12,363] vazgecPOST 0
+form | aydinlik | /hurda | PRO | 375 | 0 | 97 | 0/0 | 2.6x1 | 0 | 0/1 | 0 | 0 | 0 | 0 | 0 | 0
+onay | aydinlik | /hurda | PRO | 375 | 0 | 97 | 0/0 | 2.6x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [12,363] vazgecPOST 0
+form | karanlik | /hurda | PRO | 375 | 0 | 97 | 0/0 | 2.6x1 | 0 | 0/1 | 0 | 0 | 0 | 0 | 0 | 0
+onay | karanlik | /hurda | PRO | 375 | 0 | 97 | 0/0 | 2.6x2 | 0 | - | 0 | 0 | 6* | 0 | 0 | 0 | kutu [12,363] vazgecPOST 0
+*  K9=6 yalniz pencere acikken: ciftlerin hepsi perdenin ALTINDAKI form metni ⟂ pencere metni (or. "#hrd-has-sinir ⟂ #modal-… Ramat çıkışı onayı"). Pencere ICI olcum (375 PRO koyu): metin 7, binen 0, tasan 0.
+** Mod dugmesine basildiktan 1,5 sn sonra olculdu; sayfa henuz BASIT metinlerine gecmemisti (dugme secili, icerik PRO). Ayni durumda 0,6 sn sonra yeniden olcum: mod BASIT, tema karanlik, K8=0, K3 0/0, K9 0, yatay 0.
+Ekran goruntuleri (CDP headless Chrome, ayni vekil/API): ekran/Q10-2/v3/F-{PRO,BASIT}-{1280,375}-{aydinlik,karanlik}.png, O-… (onay acik), K-kur-oncesi-1280.png, K-kur-degisti-ozet-ayni-1280.png. Tarayici bolmesi gizli oldugu icin bolme ekran goruntusu dosyaya alinamadi ("Browser pane is not displayed").

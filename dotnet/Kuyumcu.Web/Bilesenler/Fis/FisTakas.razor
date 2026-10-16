@@ -1,0 +1,145 @@
+@inject DilServisi Dil
+@inject IServiceProvider Hizmetler
+
+@* ═══ PAKET S2-1 — TAKAS (DEĞİŞİM) ALANLARI ══════════════════════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Bileşen istek ATMAZ:
+   yeni ürünün fiyat teklifi sayfanın YeniUrunSecildi geri çağrısıdır; takas
+   gövdesi yine Kaydet()'te kurulur. Mevcut element id'leri DEĞİŞMEDİ.
+   Satır içi style'lar taşındı (sayı değişmedi — denetim cırcırı); etkisiz olan
+   grid-column:span 1 (varsayılan değer) kaldırıldı. *@
+@* DEGISIM-GUNSONU — BASİT Değişim fişi Verdim/Aldım tuvalinde (FisTakasTuval): bileşen BÖLÜM BÖLÜM çizilir
+   (Bolum: ESKI = Aldım sütunu, YENI = Verdim sütunu, null = hepsi — PRO aynen). Sade=true: etiketler
+   cümle düzeninde, "(₺)/(g)" ekleri yok. id'ler, bağlamalar ve hesap AYNEN; gövde Islemler.Kaydet'te. *@
+@if (Bolum is null or "ESKI")
+{
+<p class="fis-takas-baslik@(Sade ? " gorsel-gizli" : null)" id="takas-eski-baslik">   @* DEGISIM-GUNSONU: tuvalde sütun başlığı aynı adı taşır — ekran okuyucuda kalır · SATIS-3 (KAYNAK 2 md.7): büyük harf vurgu YOK *@
+    @(Sade ? DG.AldimEskiAltin : Dil.T.Islem.TakasEskiUrun)
+</p>
+<div class="form-grid-3@(Sade ? " dg-takas-eski" : null)">
+    <div class="alan">
+        <Secici ElemanId="takas-eski-ayar"
+                Etiket="@Dil.T.Urun.Ayar"
+                Secenekler="@FisHesap.AyarSecenekleri(Ayarlar)"
+                @bind-Deger="Takas.EskiAyar" @bind-Deger:after="Bildir" />
+    </div>
+    <Gram ElemanId="takas-eski-gram" Zorunlu="true" Etiket="@(Sade ? DG.EskiGram : Dil.T.Urun.GramAgirlik)"
+          @bind-Deger="Takas.EskiGram" @bind-Deger:after="Bildir" />
+    @* SATIS-3 (KAYNAK 2 md.1+2): ikinci <label> ve sarmalayıcı kalktı; rozet etiket satırında (#takas-eski-fiyat-kaynak). *@
+    @* ISLEM-BANT-2: eksi/0 yazılırken reddedilir (Tur=Pozitif, alan altı Core cümlesi, gövdeye null); etiket iki modda TEK ad (Dil.T.Islem.HasGramFiyati). *@
+    <Para ElemanId="takas-eski-fiyat" Zorunlu="true" GecersizdeBosalt="true" Tur="Kuyumcu.Core.Domain.Girdi.TutarTuru.Pozitif" Etiket="@Dil.T.Islem.HasGramFiyati"
+          Deger="@Takas.EskiFiyat" Hata="@BantMetni" KaynakRozeti="@(Takas.FiyatElle ? Dil.T.Islem.ElleGirildi : Dil.T.Islem.KurdanGeldi)"
+          DegerChanged="@((decimal? _v) => { Takas.FiyatGirildi(_v); return Bildir(); })" />
+</div>
+@* PAKET ISLEM-BANT: oran bandı aşımında SAHİP/MÜDÜR onayı; bant içinde hiçbir şey çizilmez. *@
+<IslemBantOnay Onek="takas" Hata="@BantHatasi" Durum="Takas.Bant" Degisti="Bildir" />
+}
+
+@if (Bolum is null or "YENI")
+{
+<p class="fis-takas-baslik@(Sade ? " gorsel-gizli" : null)" id="takas-yeni-baslik">
+    @(Sade ? DG.VerdimUrun : Dil.T.Islem.TakasYeniUrun)
+</p>
+@* SATIS-3 t3 (KAYNAK 0 "aynı kutu tüm türlerde"): yeni ürün Satış'taki TEK arama kutusundan seçilir (Arama = sayfanın
+   #islem-barkod parçası). Eski açılır liste (#takas-yeni-urun, id aynı) YALNIZ arama parçası verilmediyse görünür;
+   verildiyse katlı ve kapalı durur (özellik silinmedi). Adet + fiyat ürün seçilince açılır (zorunlu önce). *@
+@if (Arama is not null)
+{
+    @if (Sade)
+    {
+        @* DEGISIM-2 (hakem ORTA K7 "VERDİM arama kutusu ALDIM kutularından 29 px yukarıda"): ALDIM'daki alanlarla AYNI
+           sarmalayıcı (.alan) + etiket satırı → kutular aynı hizada; etiket arama kutusunu adlandırır (ekran okuyucu). *@
+        <div class="alan dg-takas-arama">
+            <label class="alan-etiket" for="islem-barkod" id="takas-verdim-etiket">@DG.VerdimAramaEtiketi</label>
+            @Arama
+        </div>
+    }
+    else
+    {
+        @Arama
+    }
+    @if (!string.IsNullOrEmpty(Takas.YeniUrunId))
+    {
+        <p class="fis-takas-secili" id="takas-yeni-secili"><span class="metin-soluk">@Dil.T.Islem.Urun:</span> <strong>@(YeniUrunAdi ?? "—")</strong></p>
+    }
+}
+<details class="fis-elle" id="takas-elle" open="@(Arama is null)" hidden="@(Arama is not null)">
+    <summary hidden aria-hidden="true" tabindex="-1"></summary>
+    <div class="alan">
+        <Secici ElemanId="takas-yeni-urun"
+                Etiket="@Dil.T.Islem.Urun"
+                Secenekler="@UrunSecenekleri"
+                @bind-Deger="Takas.YeniUrunId"
+                @bind-Deger:after="() => YeniUrunSecildi.InvokeAsync()"
+                BosSecenekMetni="@Dil.T.Urun.UrunSecin" />
+    </div>
+</details>
+@if (Arama is null || !string.IsNullOrEmpty(Takas.YeniUrunId))
+{
+<div class="form-grid-3@(Sade ? " dg-takas-yeni" : null)">
+    @* PAKET GOC-C (#6 · #7): 1,9 eskiden SESSİZCE 1 gidiyordu — ortak Adet; verilen ürün fiyatı 0 olamaz (Tur=Pozitif). *@
+    <Adet ElemanId="takas-yeni-adet" Zorunlu="true" Etiket="@Dil.T.Ortak.Adet"
+          Deger="@((decimal?)Takas.YeniAdet)"
+          DegerChanged="@(v => { Takas.YeniAdet = v is { } _d3 && _d3 == decimal.Truncate(_d3) ? (int)_d3 : 0; return Bildir(); })" />
+    <Para ElemanId="takas-yeni-fiyat" Zorunlu="true" Tur="Kuyumcu.Core.Domain.Girdi.TutarTuru.Pozitif" Etiket="@(Sade ? DG.YeniFiyat : Dil.T.Islem.BirimFiyat)"
+          @bind-Deger="Takas.YeniFiyat" @bind-Deger:after="Bildir" />
+</div>
+}
+}
+
+@* Fark önizlemesi — sunucuyla aynı formül (SatisModulu.Takas). Tuvalde fark Aldım sütununun alt çubuğundadır (FisTakasTuval). *@
+@if (Bolum is null && Takas.Fark is decimal fark && Takas.EskiFiyatHesabaGirer)   @* ISLEM-BANT-2: mutlak dışı fiyatla tutar/fark kartı çizilmez *@
+{
+    <div class="kart kart--soluk">
+        <div class="kart-govde takas-fark-govde">
+            <div class="satir-arasi metin-kucuk metin-soluk">
+                <span>@Dil.T.Islem.TakasEskiUrun</span>
+                <span class="sayi">@Bicim.Has(Takas.EskiHas) · @Bicim.Tl(Takas.EskiDeger)</span>
+            </div>
+            <div class="satir-arasi metin-kucuk metin-soluk">
+                <span>@Dil.T.Islem.TakasYeniUrun</span>
+                <span class="sayi">@Bicim.Tl(Takas.YeniDeger)</span>
+            </div>
+            <div class="satir-arasi hucre-vurgu takas-fark-toplam">
+                <span>@Dil.T.Islem.Fark</span>
+                <span class="sayi @FarkRenkSinifi(fark)">
+                    @* t10 (doğrulayıcı DÜŞÜK): kuruşa yuvarlanınca 0 olan farkta yön metni yazılmaz ("0 ₺ — İade edilir" değil). *@
+                    @Bicim.Tl(Math.Abs(fark))@(Math.Round(fark, 2, MidpointRounding.AwayFromZero) == 0m ? "" : " — " + (fark > 0 ? Dil.T.Islem.FarkMusteriOder : Dil.T.Islem.FarkIadeEdilir))
+                </span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Takas girdileri — SAHİBİ Islemler.razor.</summary>
+    [Parameter, EditorRequired] public TakasGirisi Takas { get; set; } = new();
+    /// <summary>Ayar seçenekleri — TEK KAYNAK Kuyumcu.Core.Domain.Ayarlar.EkranSecenekleri (sayfa verir).</summary>
+    [Parameter, EditorRequired] public string[] Ayarlar { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<SecenekOgesi> UrunSecenekleri { get; set; } = [];
+    /// <summary>Yeni ürün seçildi — sayfa fiyat teklifini (/fiyat/teklif) alır.</summary>
+    [Parameter] public EventCallback YeniUrunSecildi { get; set; }
+    /// <summary>Her girdi değişikliğinden sonra — sayfa yeniden çizilir (Kaydet kilidi, MASAK tutarı).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+    /// <summary>t3: sayfanın TEK ürün arama kutusu (#islem-barkod). Verilirse eski açılır liste katlı durur.</summary>
+    [Parameter] public RenderFragment? Arama { get; set; }
+    /// <summary>t3: seçilen yeni ürünün adı (sayfanın ürün listesinden).</summary>
+    [Parameter] public string? YeniUrunAdi { get; set; }
+
+    /// <summary>DEGISIM-GUNSONU: yalnız bir bölümü çiz — "ESKI" (alınan eski altın), "YENI" (verilen ürün), null = hepsi (PRO).</summary>
+    [Parameter] public string? Bolum { get; set; }
+    /// <summary>DEGISIM-GUNSONU: BASİT tuval etiketleri (cümle düzeni, birim eki yok).</summary>
+    [Parameter] public bool Sade { get; set; }
+    private Kuyumcu.Core.I18n.DegisimGunSonuMetinleri DG => Kuyumcu.Core.I18n.DegisimGunSonuSozlugu.Al(Dil.Dil);
+
+    private Task Bildir() => Degisti.InvokeAsync();
+
+    /// <summary>PAKET ISLEM-BANT — eski altın has fiyatı bandı (sunucuyla aynı Core kuralı; referans canlı kur).</summary>
+    private Kuyumcu.Core.Domain.Girdi.GirdiHatasi? BantHatasi => Kuyumcu.Core.Domain.Girdi.FiyatBandi.IslemDenetle(
+        Takas.EskiFiyat, Kuyumcu.Core.Domain.Girdi.IslemFiyatBaglami.Takas, IslemBantGosterim.Referans(Hizmetler),
+        Kuyumcu.Core.Domain.Ayarlar.MadenBul(Takas.EskiAyar));
+    private string? BantMetni => BantHatasi is { } h ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+
+    /// <summary>DEGISIM-2: BASİT tuvalle (FisTakasTuval.FarkDurumu) aynı renk anlamı — açık fark uyarı, kapalı yeşil (yön rengi YOK).</summary>
+    internal static string FarkRenkSinifi(decimal fark) =>
+        FisTakasTuval.FarkDurumu(fark) == "acik" ? "metin-uyari" : "metin-yesil";
+}

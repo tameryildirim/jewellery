@@ -1,0 +1,94 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — TELEFON (K2 · ITU E.164 TR bildirimi). <Telefon> ile
+   <TelefonBicimli> TEK bileşende birleşti (TelefonBicimli bu bileşeni sarar).
+   Yazarken: harf yazılamaz, yapıştırılan metin temizlenir ('+' yalnız başta), kutu
+   "0532 411 22 33" biçimine girer; ulusal 10 hane dolunca aralık kuralı → alan altı
+   hata + Kaydet kilidi (aynı metin). Alandan çıkınca TelefonBicimi.Girdi (CUMA-M). *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="tel" inputmode="tel" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@(YerTutucu ?? Dil.T.Form.TelefonYerTutucu)"
+           maxlength="@AlanSinirlari.Telefon" autocomplete="tel"
+           data-maske="telefon"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    // Tur 3 (tasarım hakemi): varsayılan ipucu satırı KALDIRILDI — biçimi maske ve yer tutucu
+    // anlatır; alan altında yalnız hata olur. İpucu yalnız çağıran Ipucu verirse görünür.
+
+    /// <summary>girdi-maske.js 'telefon' ile AYNI: rakam + baştaki '+', TR gruplaması.</summary>
+    public static string Maskele(string? girdi)
+    {
+        if (string.IsNullOrEmpty(girdi)) return "";
+        var t = girdi.TrimStart();
+        // Tur 3: yapıştırmada önek ("Tel: +90 (532) …") — ilk rakamdan ÖNCE '+' varsa uluslararası yazımdır.
+        var ilkRakam = -1;
+        for (var i = 0; i < t.Length; i++) if (t[i] is >= '0' and <= '9') { ilkRakam = i; break; }
+        var arti = (ilkRakam < 0 ? t : t[..ilkRakam]).Contains('+');
+        var r = TelefonDogrulayici.Rakamlar(t);
+        if (arti)
+        {
+            if (r.StartsWith("90", StringComparison.Ordinal))
+            {
+                var u = r[2..];
+                if (u.Length > 10) u = u[..10];
+                return u.Length == 0 ? "+90" : "+90 " + Grupla(u, 3, 3, 2, 2);
+            }
+            if (r.Length > TelefonDogrulayici.E164EnCok) r = r[..TelefonDogrulayici.E164EnCok];
+            return "+" + r;
+        }
+        // Tur 3: "00" uluslararası önektir ('+' ile aynı; ülke kodu 0 ile başlamaz). Eskiden 11 haneye
+        // KIRPILIYORDU ("00442079460958" → "0044 207 94 60", sessizce yanlış numara).
+        if (r.Length > 2 && r.StartsWith("00", StringComparison.Ordinal) && r[2] != '0')
+        {
+            var u = r[2..];
+            if (u.StartsWith("90", StringComparison.Ordinal))
+            {
+                var ulusal = u[2..];
+                if (ulusal.Length > 10) ulusal = ulusal[..10];
+                return ulusal.Length == 0 ? "0090" : "0090 " + Grupla(ulusal, 3, 3, 2, 2);
+            }
+            if (u.Length > TelefonDogrulayici.E164EnCok) u = u[..TelefonDogrulayici.E164EnCok];
+            return "00" + u;
+        }
+        // 444 tek numara (alan kodu değil): "444 12 34" / "0444 12 34" (tur 2 — "444 123 4" okunmuyordu)
+        if (r.StartsWith("0444", StringComparison.Ordinal) && r.Length <= 8) return Grupla(r, 4, 2, 2);
+        if (r.StartsWith("444", StringComparison.Ordinal) && r.Length <= 7) return Grupla(r, 3, 2, 2);
+        if (r.StartsWith('0'))
+        {
+            if (r.Length > 11) r = r[..11];
+            return Grupla(r, 4, 3, 2, 2);
+        }
+        if (r.Length > 10) r = r[..10];
+        return Grupla(r, 3, 3, 2, 2);
+    }
+
+    protected override string Temizle(string? girdi) => Maskele(girdi);
+
+    protected override string CikisBicimi(string temiz) => TelefonBicimi.Girdi(temiz);
+
+    /// <summary>Çağırana giden: tanınan TR numarası "05324112233" (CUMA-M saklama biçimi), tanınmayan AYNEN.</summary>
+    protected override string Kayit(string temiz) => TelefonBicimi.Sunucuya(temiz) ?? "";
+
+    protected override string Goster(string? deger) => string.IsNullOrWhiteSpace(deger) ? "" : TelefonBicimi.Girdi(Maskele(deger));
+
+    protected override GirdiHatasi? TamDenetle(string temiz) => TelefonDogrulayici.Denetle(temiz);
+
+    /// <summary>Ulusal 10 hane dolunca aralık kuralı anında.</summary>
+    protected override GirdiHatasi? YazarkenDenetle(string temiz)
+    {
+        var r = TelefonDogrulayici.Rakamlar(temiz);
+        var tamam = temiz.StartsWith('+') ? (r.StartsWith("90", StringComparison.Ordinal) && r.Length >= 12)
+            : r.StartsWith("0090", StringComparison.Ordinal) ? r.Length >= 14
+            : r.StartsWith("00", StringComparison.Ordinal) ? false   // yabancı: alandan çıkınca
+            : r.StartsWith('0') ? r.Length >= 11 : r.Length >= 10;
+        return tamam ? TelefonDogrulayici.Denetle(temiz) : null;
+    }
+}

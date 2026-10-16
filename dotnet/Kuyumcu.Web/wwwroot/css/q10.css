@@ -1,0 +1,69 @@
+/* q10 — şerit stil dosyası (orkestratör 24.09 17:30). app.css'ten SONRA yüklenir; yalnız bu şerit yazar. Sabit renk YOK, yalnız belirteç (var(--…)). */
+
+/* ═══ PAKET Q10-5 — tablo başlığı · mobil yığın · ekstre karşı taraf · katlanır beyan ═══
+   Kaynak: QA turu 10 (24.09, gerçek tarayıcı). Renkler yalnız belirteç (var(--…)); sabit renk yok. */
+
+/* (1) Tablo başlığı tek satır (K3 "kısa etiket iki satıra bölünüyor"):
+   yalnız bu sınıfı taşıyan tablolarda. Tablo sığmazsa .tablo-sar içinde
+   kayar; sayfa yatay kaymaz (1280'de ölçüldü). */
+.veri-tablosu.q10-th-tek > thead > tr > th { white-space: nowrap; }
+
+/* (2) Mobil yığın (QA 10 /sayim 375 px: tablo 513 px, kapsayıcı 349 px).
+   Dar ekranda her satır bir kart; hücre etiketi data-etiket'ten gelir. */
+@media (max-width: 40rem) {
+  .veri-tablosu.q10-yigin,
+  .veri-tablosu.q10-yigin > tbody,
+  .veri-tablosu.q10-yigin > tbody > tr,
+  .veri-tablosu.q10-yigin > tbody > tr > td { display: block; width: 100%; }
+  /* Başlık satırı dar ekranda çizilmez: her hücre kendi etiketini ::before ile
+     taşır. (İlk sürüm başlığı 1 px'e kırpıyordu; 24.09 375 px ölçümünde K9
+     "th AD ⟂ td" üst üste binme saydı → display:none.) */
+  .veri-tablosu.q10-yigin > thead { display: none; }
+  .veri-tablosu.q10-yigin > tbody > tr {
+    border: 1px solid var(--ayrac); border-radius: var(--yaricap);
+    margin-block-end: var(--bosluk-2); padding: var(--bosluk-2);
+  }
+  .veri-tablosu.q10-yigin > tbody > tr > td {
+    display: flex; justify-content: space-between; align-items: center; gap: var(--bosluk-2);
+    border-top: 0; padding: var(--bosluk-1) 0;
+  }
+  .veri-tablosu.q10-yigin > tbody > tr > td[data-etiket]::before {
+    content: attr(data-etiket); color: var(--metin-soluk); font-size: .75rem; font-weight: 600;
+  }
+  .veri-tablosu.q10-yigin > tbody > tr > td.q10-yigin-eylem { justify-content: flex-end; }
+  /* Q10-5 tur 3 — /banka/ekstre 375 px (tablo 1162 / kapsayıcı 349): hücre içeriği
+     (müşteri seçici, IBAN) dar kartta alt satıra geçebilir; kart dışına taşmaz. */
+  .veri-tablosu.q10-yigin > tbody > tr > td { flex-wrap: wrap; min-width: 0; }
+  /* app.css (@media 768) '.veri-tablosu { min-width: max-content }' yığında kartı en
+     uzun satırın (ekstre ham satırı) genişliğine çekiyordu: gerçek tarayıcı 375 px
+     ölçümü tablo 1042 / kapsayıcı 349, etiketler ekran dışında → yığında sıfırlanır. */
+  .veri-tablosu.q10-yigin { min-width: 0; }
+  /* Seçimli tabloda "Tümünü seç" başlığı mobilde de kalır (özellik silinmez):
+     yalnız ilk başlık hücresi çizilir, etiketi data-etiket'ten yazılır. */
+  .veri-tablosu.q10-yigin.q10-yigin-secim > thead,
+  .veri-tablosu.q10-yigin.q10-yigin-secim > thead > tr { display: block; }
+  .veri-tablosu.q10-yigin.q10-yigin-secim > thead > tr > th { display: none; }
+  .veri-tablosu.q10-yigin.q10-yigin-secim > thead > tr > th:first-child {
+    display: flex; align-items: center; gap: var(--bosluk-2); padding: var(--bosluk-1) 0;
+  }
+  .veri-tablosu.q10-yigin.q10-yigin-secim > thead > tr > th:first-child[data-etiket]::after {
+    content: attr(data-etiket); color: var(--metin-soluk); font-size: .75rem; font-weight: 600;
+  }
+}
+
+/* (3) Banka ekstresi — karşı taraf adı ile IBAN etiketi üst üste biniyordu (K9).
+   İki ayrı satır; IBAN tek satır, ad kelime sınırında sarar. */
+/* Doğrulama bulgusu (1280 PRO): 12/14/16rem en-az genişlikler tabloyu 1177 px'e
+   çıkarıyor, 'Atla' düğmesi görünür alanın dışında kalıyordu → en-azlar
+   düşürüldü; eylem hücresi sarabilir, düğme kendi içinde tek satır kalır. */
+.q10-karsi { display: flex; flex-direction: column; gap: var(--bosluk-1); min-width: 9rem; }
+.q10-karsi-iban { white-space: nowrap; }
+.q10-ekstre-eylem { min-width: 8rem; }
+.q10-ekstre-eylem > .btn { white-space: nowrap; }
+/* "Müşteriye bağla" seçici etiketi dar sütunda iki satıra bölünüyordu (K3, 1280). */
+.q10-ekstre-cari { min-width: 11rem; }
+.q10-ekstre-cari .alan-etiket { white-space: nowrap; }
+
+/* (4) Basit modda katlanır beyan (faturalar özel matrah). */
+.q10-katlanir > summary { cursor: pointer; color: var(--metin-soluk); }
+.q10-katlanir[open] > summary { margin-block-end: var(--bosluk-2); }

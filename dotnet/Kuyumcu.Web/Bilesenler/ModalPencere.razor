@@ -1,0 +1,139 @@
+@inject DilServisi Dil
+@inject IJSRuntime JS
+
+@if (Acik)
+{
+    <div class="modal-arka" @onclick="KapatIstegi">
+        <div class="modal-panel @(Suruklenebilir ? "suruklenebilir" : null)" role="dialog" aria-modal="true"
+             aria-labelledby="@BaslikId" @ref="panelRef"
+             @onclick:stopPropagation="true" @onkeydown="TusYakala" tabindex="-1">
+            <div class="modal-baslik" @ref="baslikRef">
+                <h2 id="@BaslikId">@Baslik</h2>
+                <button class="modal-kapat" aria-label="@Dil.T.Ortak.Kapat" @onclick="KapatIstegi">&times;</button>
+            </div>
+            @* ── HER AÇILIŞTA DURUM SIFIRLANIR (paket S-3c · kurul tur 3 engel 20) ──
+               QA: "modal önceki seçimi hatırlıyor". Sözleşmenin İKİ ayağı var:
+                 1) Modal KAPALIYKEN HİÇ ÇİZİLMEZ (yukarıdaki @if) — çocuk
+                    bileşenler yok edilir, içeride tutulan durum taşınamaz.
+                    Modal "gizli ama çizili" hâle getirilirse bu ayak düşer;
+                    S3c-13 testi tam da onu bekler.
+                 2) Ebeveynin KENDİ alanları (seçili kasa, yön, tutar) için
+                    Acildi geri çağrısı: her açılışta sıfırlama yeri budur.
+               ⚠ @key denendi ve ÇIKARILDI: 1. ayak zaten aynı işi yaptığı için
+                 hiçbir testi kırmıyordu (S-3c mutasyon kanıtı M6 — ölü mekanizma). *@
+            <div class="modal-govde">
+                @ChildContent
+            </div>
+            @* ── P-36: SABİT DÜĞME ŞERİDİ ───────────────────────────────────
+               Ölçüm (FRONTEND-POPUP-DENETIMI-2026-09-21): Yeni Cari ve Yeni
+               Ürün pencereleri HER ÜÇ genişlikte de Kaydet/İptal düğmelerini
+               açılışta GİZLİYORDU — kullanıcı kaydırmadan kaydedemiyordu.
+               Kök neden `.modal-panel`in kendisinin kaydırma kabı olmasıydı;
+               CSS'te gövdeye alındı, düğmeler buraya konunca sabit kalır.
+               Altlik verilmeyen 55 pencere ESKİSİ GİBİ çalışır (düğmeler
+               gövdede kayar) — göç ekran ekran yapılır, sessiz bozulma yok.
+               SIRA (FRONTEND-POPUP "30 pencerede birincil düğme ters
+               tarafta"): çekmecedeki tek kalıp esas alındı → Kaydet önce. *@
+            @if (Altlik is not null)
+            {
+                <div class="modal-alt" id="@($"{BaslikId}-alt")">@Altlik</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public string Baslik { get; set; } = "";
+    [Parameter] public EventCallback Kapat { get; set; }
+    /// <summary>
+    /// Modal KAPALIDAN AÇIĞA geçtiğinde çağrılır. Ebeveyn burada kendi form
+    /// alanlarını sıfırlar — "önceki kaydın seçimi hatırlanıyor" hatasının
+    /// tek meşru panzehiri (S-3c sözleşmesi).
+    /// </summary>
+    [Parameter] public EventCallback Acildi { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>
+    /// SABİT düğme şeridi (P-36). Verilirse kaydırmaz: gövde kayar, düğmeler
+    /// her zaman görünür kalır. Kaydet ÖNCE, İptal SONRA (çekmece ile tek sıra).
+    /// </summary>
+    [Parameter] public RenderFragment? Altlik { get; set; }
+    /// <summary>true ise pencere başlığından tutulup mouse/dokunmatikle taşınabilir.</summary>
+    [Parameter] public bool Suruklenebilir { get; set; }
+
+    private readonly string BaslikId = $"modal-{Guid.NewGuid():N}";
+    private ElementReference panelRef;
+    private ElementReference baslikRef;
+    private bool suruklemeKuruldu;
+    private bool odakKuruldu;
+    private bool oncekiAcik;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik == oncekiAcik) return;
+        oncekiAcik = Acik;
+        if (!Acik) return;
+        await Acildi.InvokeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // ── QA turu 2 bulgusu (grup 1-2): "Escape hiçbir modalı kapatmıyor" ──
+        // Sebep: @onkeydown PANEL üzerindeydi ama açılışta odak panele HİÇ
+        // taşınmıyordu; tuş olayı panele ulaşmıyordu. Çözüm, Cekmece ile AYNI
+        // yardımcı: açılışta odak içeri + Tab hapsi, kapanışta odak
+        // TETİKLEYİCİYE geri. İkinci bir erişilebilirlik mekanizması AÇILMAZ.
+        if (Acik && !odakKuruldu)
+        {
+            odakKuruldu = true;
+            try { await JS.InvokeVoidAsync("kuyumcuCekmece.ac", panelRef); }
+            catch (JSDisconnectedException) { /* devre koptu */ }
+            catch (JSException) { /* JS yoksa modal yine çalışır (Esc panel odaklıysa gelir) */ }
+        }
+        else if (!Acik && odakKuruldu)
+        {
+            odakKuruldu = false;
+            try { await JS.InvokeVoidAsync("kuyumcuCekmece.kapat", panelRef); }
+            catch (JSDisconnectedException) { /* devre koptu */ }
+            catch (JSException) { /* öğe DOM'dan çıkmış olabilir */ }
+        }
+
+        if (!Suruklenebilir) return;
+
+        if (Acik && !suruklemeKuruldu)
+        {
+            suruklemeKuruldu = true;
+            try { await JS.InvokeVoidAsync("kuyumcuSurukle.baslat", panelRef, baslikRef); }
+            catch (JSDisconnectedException) { /* devre koptu */ }
+            catch (JSException) { /* JS yüklenmediyse modal yine de normal çalışır */ }
+        }
+        else if (!Acik && suruklemeKuruldu)
+        {
+            suruklemeKuruldu = false;   // sonraki açılışta yeniden kurulur (konum sıfırlanır)
+        }
+    }
+
+    // ── ODAK TUZAĞI DÜZELTMESİ (P-36c) ──────────────────────────────────
+    // ÖLÇÜLEN HATA: `Acik=false` olunca panel @if bloğuyla DOM'DAN ÇIKIYOR,
+    // `kuyumcuCekmece.kapat` ANCAK ONDAN SONRA (OnAfterRenderAsync) kopmuş bir
+    // ElementReference ile çağrılıyordu → odak tetikleyiciye HİÇ dönmüyordu ve
+    // hata `catch { }` ile yutuluyordu (Anayasa md.1: sessiz yutma yasak).
+    // Doğru sıra: ÖNCE odağı geri ver (panel hâlâ DOM'da), SONRA kapat.
+    private async Task KapatIstegi()
+    {
+        await OdakGeriVer();
+        await Kapat.InvokeAsync();
+    }
+
+    /// <summary>Odağı tetikleyiciye geri verir; panel HÂLÂ DOM'dayken çağrılır.</summary>
+    private async Task OdakGeriVer()
+    {
+        if (!odakKuruldu) return;
+        odakKuruldu = false;
+        try { await JS.InvokeVoidAsync("kuyumcuCekmece.kapat", panelRef); }
+        catch (JSDisconnectedException) { /* devre koptu: geri verilecek odak da yok */ }
+    }
+
+    private Task TusYakala(KeyboardEventArgs e) =>
+        e.Key == "Escape" ? KapatIstegi() : Task.CompletedTask;
+}

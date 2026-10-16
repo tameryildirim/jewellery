@@ -1,0 +1,57 @@
+@inject DilServisi Dil
+@inject NavigationManager Gezgin
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   BULUNAMAYAN ROTA EKRANI — paket P-40.
+
+   NEDEN VAR: tasarım denetimi (2026-09-21) `/vade-takvimi` adresini 4
+   genişlikte de "boş içerik" ölçtü ve bozuk sayfa diye eskale etti. Kök neden
+   ölçüldü: BÖYLE BİR ROTA YOK; Router'ın <NotFound> bloğu tek bir 18
+   karakterlik cümle çiziyordu. Başlık yok, adres yok, çıkış yolu yok — yani
+   kullanıcı için pratikte SESSİZ BOŞ EKRAN (UX-S28 ihlali, Anayasa md.1:
+   başarısızlık gizlenmez, gerçek hâliyle söylenir).
+
+   ⚠ Bu bir HATA durumudur, "kayıt yok" değildir: BosDurum değil HataBandi
+     kullanılır (UX-S28 "hata 'kayıt yok'a çevrilmez").
+   ⚠ Her bağlantı gerçek bir rotaya gider (DoD ek 1: tıklanınca hiçbir şey
+     olmayan düğme yasak); öneri yoksa satır hiç çizilmez, uydurma öneri yok.
+   ⚠ Burada yeni istemci record'u AÇILMAZ; öneri tipi Layout/RotaOnerisi.cs.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="dikey-bosluk" id="rota-yok">
+    <h1 id="rota-yok-baslik">@Dil.T.Kabuk.RotaYokBaslik</h1>
+
+    <HataBandi Id="rota-yok-bant" Mesaj="@Dil.T.Kabuk.RotaYokAciklama" />
+
+    <p class="metin-kucuk metin-soluk">
+        @Dil.T.Kabuk.RotaYokAdres:
+        <code id="rota-yok-adres">@IstenenYol</code>
+    </p>
+
+    @if (Oneriler.Count > 0)
+    {
+        <div id="rota-yok-oneriler">
+            <p class="metin-kucuk">@Dil.T.Kabuk.RotaYokBenzer</p>
+            <ul>
+                @foreach (var o in Oneriler)
+                {
+                    <li><a href="@o.Yol" id="@($"rota-yok-oneri-{Slug(o.Yol)}")">@o.Etiket</a></li>
+                }
+            </ul>
+        </div>
+    }
+
+    <p><a class="btn btn-birincil" href="/" id="rota-yok-panele">@Dil.T.Kabuk.RotaYokPanele</a></p>
+</div>
+
+@code {
+    /// <summary>Kullanıcının yazdığı adres (sorgu dizesi olmadan, baştaki "/" ile).</summary>
+    private string IstenenYol =>
+        "/" + Gezgin.ToBaseRelativePath(Gezgin.Uri).Split('?', '#')[0].TrimStart('/');
+
+    private IReadOnlyList<RotaOnerisiOgesi> Oneriler =>
+        RotaOnerisi.Oner(IstenenYol, Dil.T);
+
+    /// <summary>Rotayı DOM kimliğine çevirir ("/raporlar/vade-takibi" → "raporlar-vade-takibi").</summary>
+    private static string Slug(string yol) => yol.Trim('/').Replace('/', '-');
+}

@@ -1,0 +1,85 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET TOPLU-6 — kalan görünüm kuyruğu (şerit dosyası; hasımsız, yalnız görünüm).
+   degisim-gunsonu.css'ten SONRA, olcek.css'ten ÖNCE yüklenir (DUGME-2/O1 zinciri korunur).
+   YALNIZ yeni seçici yazılır; sabit renk YOK, yalnız belirteç; satır içi stil yok.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (T6-1) Üst çubuktaki Basit/Profesyonel anahtarı sayfa içi segmentle AYNI seçili belirteci kullanır
+   (dugme.css --secili-dolgu): aydınlıkta lacivert (değer aynı), karanlıkta ters açık dolgu (≥ 3:1).
+   :root[data-mod] → app.css'teki fildişi kuralıyla eş özgüllük, sonra yüklendiği için kazanır. */
+:root[data-mod] .ust-bar .mod-anahtar button.secili {
+  background: var(--secili-dolgu);
+  color: var(--secili-dolgu-metin);
+}
+
+/* (T6-2) Panel yasal liste bandı (YASAL-LISTE-DEMO hakemi ORTA): bant altındaki kartlara 0 px yapışıktı —
+   tuvalin 24 px ritmi. Uyum → Risk'teki "Neden?" özeti 12 px idi → 14 px; kimin yüklediği satırı 14 px. */
+:is(#uyb-hata, #uyb-eslesme, #uyb-liste, #uyb-saklama) { margin-bottom: var(--bosluk-5); }
+#ylp-neden > summary { font-size: max(14px, var(--yazi-sm)); }
+.t6-ylp-yukleyen { font-size: max(14px, var(--yazi-sm)); color: var(--metin-soluk); margin: var(--bosluk-2) 0 0; }
+
+/* (T6-3) Vitrin ayar tablosu: "Kalem" başlığı değerlerle aynı (sola) hizalı. 375 px'te tablo KART
+   düzenine döner — her satır bir kart, her değerin solunda kendi başlığı (data-etiket); başlık
+   satırı görsel olarak gizli (ekran okuyucu için DOM'da). Yatay kaydırma yok, sütun kesilmez. */
+#vitrin-ayarlar th:first-child, #vitrin-pano th:first-child { text-align: start; }
+@media (max-width: 600px) {
+  #vitrin-ayarlar, #vitrin-ayarlar tbody, #vitrin-ayarlar tr, #vitrin-ayarlar td { display: block; width: 100%; }
+  /* Başlık satırı yerine her değerin solunda kendi başlığı (data-etiket) okunur; ölçümde 1 px kırpık başlık
+     ilk hücreyle "binen" sayılıyordu → başlık satırı dar ekranda çizilmez. */
+  #vitrin-ayarlar thead { display: none; }
+  #vitrin-ayarlar tbody tr { border: 1px solid var(--ayrac); border-radius: var(--yaricap); padding: var(--bosluk-2) var(--bosluk-3); margin-bottom: var(--bosluk-3); }
+  #vitrin-ayarlar tbody td { display: flex; justify-content: space-between; align-items: center; gap: var(--bosluk-3); border: 0; padding: var(--bosluk-1) 0; text-align: end; }
+  #vitrin-ayarlar tbody td[data-etiket]::before { content: attr(data-etiket); color: var(--metin-soluk); text-align: start; flex: 1 1 auto; min-width: 0; }
+  #vitrin-ayarlar tbody td.t6-kalem { font-weight: var(--kalin-orta, 600); }
+  #vitrin-ayarlar tbody td.t6-kalem::before { content: none; }
+  #vitrin-ayar-kat .tablo-sar { overflow-x: visible; }
+}
+
+/* (T6-4) Kur "Ayar bazlı gram fiyatları": başlık üstteki kur kutusuna yapışmasın (hakem: arada boşluk yok). */
+#kur-ayar-fiyat-baslik { margin-top: var(--bosluk-5); }
+
+/* (T6-5) Panel "Kim borçlu?" satır eylemi: genişlik satırdan satıra değişmesin ("Tahsil et"/"Öde"),
+   sol kenarlar aynı hizada. */
+html[data-mod] .panel-sade #panel-soru-borclu .panel-liste-satir > .dugme { min-width: 6.875rem; justify-content: center; }
+
+/* (T6-6) Siparişler: isteğe bağlı alanlar Hurda'daki "+ … ekle" METİN BAĞLANTISI kalıbı (tam genişlik kutu yok);
+   açıkken "Daha az göster" tetiğin yerinde, ok yukarı. 44 px dokunma hedefi korunur. */
+#sip-f-detay-ac, #sip-f-detay-gizle {
+  width: auto; align-self: flex-start; min-height: 44px; padding: 0 var(--bosluk-1);
+  border: 0; border-radius: var(--yaricap); background: none;
+  justify-content: flex-start; gap: var(--bosluk-1);
+  color: var(--vurgu); font-weight: var(--kalin-orta, 600);
+}
+#sip-f-detay-ac:hover, #sip-f-detay-gizle:hover { text-decoration: underline; background: none; }
+#sip-f-detay-ac .zo-detay-ok { display: none; }
+#sip-f-detay-gizle .zo-detay-ok { color: var(--vurgu); transform: rotate(180deg); }
+
+/* (T6-7) Gider / Para aktarımı: kilitli Kaydet'in gerekçesi ilgili ALANIN altında, 14 px alan mesajı
+   (eskiden düğmenin yanında 12 px). Banka hesabı yok bandı: bilgi tonu, belirteçli. */
+.t6-alan-kilit { font-size: max(14px, var(--yazi-sm)); color: var(--metin-soluk); margin: var(--bosluk-1) 0 0; }
+.t6-bant-bilgi {
+  display: flex; flex-wrap: wrap; gap: var(--bosluk-1) var(--bosluk-3); align-items: center;
+  background: var(--vurgu-yuzey); border: 1px solid var(--vurgu-kenar); color: var(--metin);
+  margin: 0 var(--bosluk-5) var(--bosluk-4);
+}
+.t6-bos-eylem { display: flex; justify-content: center; margin: 0 0 var(--bosluk-5); }
+#gd-virman-baslik-satir { align-items: center; }
+
+/* (T6-8) /cikti araç şeridi (TOPLU-5 hakemi ORTA): Geri ve Yazdır belge genişliğinde AYNI satırda —
+   Geri solda, Yazdır sağ kenarda. 375'te Yazdır tam genişlikte üstte, Geri metin bağlantısı. */
+#sayfa-basi-cikti-belge { width: 100%; }
+#sayfa-basi-cikti-belge-filtre { flex: 1 1 auto; }
+#sayfa-basi-cikti-belge-eylem { margin-left: auto; }
+@media (max-width: 600px) {
+  #sayfa-basi-cikti-belge-eylem { order: -1; width: 100%; margin-left: 0; }
+  #sayfa-basi-cikti-belge-eylem .yazdir-kutu, #sayfa-basi-cikti-belge-eylem #cikti-yazdir { width: 100%; }
+  #sayfa-basi-cikti-belge .sayfa-basi-metin { order: -2; }
+  html[data-mod] #cikti-geri {
+    width: auto; min-height: 44px; padding: 0 var(--bosluk-1);
+    border: 0; background: none; color: var(--vurgu); font-weight: var(--kalin-orta, 600);
+  }
+}
+
+/* (T6-9) Uyum kimlik arama: notu ⓘ içinde, arama kutusunun yanında. */
+.t6-arama-satir { align-items: center; }
+.t6-arama-satir > .arama-kutu { flex: 1 1 auto; min-width: 0; }

@@ -1,0 +1,77 @@
+@using Kuyumcu.Web.Servisler
+@inherits FormAlani
+
+@* ŞİFRE — parola girdisi (paket P-36c/3).
+
+   NEDEN AİLEYE GİRDİ: parola kutuları /kullanicilar, /giris ve /kurulum'da
+   ham `<input type="password">` olarak yazılıydı; her birinde autocomplete
+   ipucu başka (ya da hiç) idi ve kural listesi/hata yeri ekrana göre
+   değişiyordu. Tek kabuk, tek davranış.
+
+   ⚠ DEĞER EKRANA BASILMAZ, GÜNLÜĞE YAZILMAZ: bileşen yalnız taşır.
+   ⚠ Doğrulama sunucunundur; kural listesi çağıranın <ChildContent>'i değildir —
+     çağıran kendi kural listesini alanın ALTINDA ayrı bir öğe olarak çizer.
+*@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@GorunenHata" HataId="@HataElemanId"
+            Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    @if (GosterEtiketi is { Length: > 0 } goster)
+    {
+        @* S1-e (tuval Giris.dc.html): "Göster" düğmesi kutunun İÇİNDEDİR.
+           Değer yine ekrana basılmaz — yalnız girdinin tipi değişir. *@
+        <span class="sifre-kutu @(Hatali ? "hatali" : null)" id="@($"{ElemanId}-kutu")">
+            <input type="@(gorunur ? "text" : "password")" class="girdi sifre-kutu-girdi @(Hatali ? "hatali" : null)" id="@ElemanId"
+                   value="@Deger" placeholder="@YerTutucu" maxlength="@EnFazla"
+                   autocomplete="@OtoTamamla" spellcheck="false" autocapitalize="off"
+                   aria-required="@(Zorunlu ? "true" : "false")"
+                   aria-invalid="@(Hatali ? "true" : "false")"
+                   aria-describedby="@AciklayanId"
+                   disabled="@Kilitli" @oninput="Degisti" />
+            <button type="button" @onclick="GorunurlukDegistir" class="sifre-goster" id="@($"{ElemanId}-goster")"
+                    aria-controls="@ElemanId" aria-pressed="@(gorunur ? "true" : "false")" disabled="@Kilitli">
+                @(gorunur ? GizleEtiketi ?? goster : goster)
+            </button>
+        </span>
+    }
+    else
+    {
+        <input type="password" class="girdi @(Hatali ? "hatali" : null)" id="@ElemanId"
+               value="@Deger" placeholder="@YerTutucu" maxlength="@EnFazla"
+               autocomplete="@OtoTamamla"
+               aria-required="@(Zorunlu ? "true" : "false")"
+               aria-invalid="@(Hatali ? "true" : "false")"
+               aria-describedby="@AciklayanId"
+               disabled="@Kilitli" @oninput="Degisti" />
+    }
+</AlanKabugu>
+
+@code {
+    [Parameter] public string? Deger { get; set; }
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+    [Parameter] public int EnFazla { get; set; } = 200;
+
+    /// <summary>"current-password" · "new-password" — tarayıcıya doğru ipucu.</summary>
+    [Parameter] public string OtoTamamla { get; set; } = "off";
+
+    /// <summary>
+    /// S1-e: doluysa kutunun içinde "Göster/Gizle" düğmesi çizilir (tuval).
+    /// Boşsa bileşen eskisi gibi yalnız parola girdisidir (diğer ekranlar değişmez).
+    /// </summary>
+    [Parameter] public string? GosterEtiketi { get; set; }
+
+    /// <summary>Parola görünürken düğmenin metni (boşsa GosterEtiketi kalır).</summary>
+    [Parameter] public string? GizleEtiketi { get; set; }
+
+    private bool gorunur;
+
+    private void GorunurlukDegistir() => gorunur = !gorunur;
+
+    private Task Degisti(ChangeEventArgs e)
+    {
+        DefterdenSil();
+        var v = e.Value?.ToString();
+        Deger = string.IsNullOrEmpty(v) ? null : v;
+        return DegerChanged.InvokeAsync(Deger);
+    }
+}

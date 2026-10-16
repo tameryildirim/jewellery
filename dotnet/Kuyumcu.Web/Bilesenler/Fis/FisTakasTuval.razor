@@ -1,0 +1,84 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET DEGISIM-GUNSONU — BASİT DEĞİŞİM FİŞİ: VERDİM / ALDIM (tuval Tezgah.dc.html kalıbı) ═══
+   Hakem YÜKSEK: BASİT Değişim eski tip uzun formdu (title-case etiketler, iki kimlik kutusu, jargon,
+   Vazgeç yok). Satış tezgâh fişiyle AYNI kalıp: iki sütun, üstten hizalı; VERDİM = müşteriye verilen
+   ürün (FisTakas Bolum=YENI), ALDIM = müşteriden alınan eski altın (FisTakas Bolum=ESKI); altta FARK
+   ve farkın ödemesi (sayfanın OdemeParcasi — FisOdemeKasa, POS, kasa AYNEN).
+   ⚠ YALNIZ YERLEŞİM: alanlar, id'ler, bağlamalar, hesap (TakasGirisi.Fark = sunucu formülü) ve
+     POST gövdesi DEĞİŞMEZ; MASAK/VUK md.234 kimlik kapısı sayfada (FisTakasSatici + MasakFormu) aynen.
+   ⚠ Bileşen İSTEK ATMAZ (PLAN § 3 md.5); renkler belirteçle (css/tuval-satis.css + degisim-gunsonu.css). *@
+<section class="kart fis-tuval dg-takas-tuval" id="takas-tuval" aria-label="@($"{D.VerdimUrun} / {D.AldimEskiAltin}")">
+    <div class="fis-tuval-izgara">
+        <div class="fis-tuval-sutun" id="takas-verdim">
+            <h3 class="fis-tuval-baslik">@D.VerdimUrun</h3>
+            <div class="fis-tuval-icerik">
+                @Verdim
+                @if (string.IsNullOrEmpty(Takas.YeniUrunId))
+                {
+                    <p class="metin-soluk fis-tuval-bos gorsel-gizli" id="takas-verdim-bos">@D.VerdimBos</p>   @* DEGISIM-2 (K17): yer tutucu aynı şeyi söylüyor — ekran okuyucuda kalır *@
+                }
+            </div>
+            <div class="fis-tuval-alt" id="takas-verdim-toplam">
+                <span class="metin-soluk">@D.UrunTutari</span>
+                <span class="fis-tuval-tutar sayi" id="takas-verdim-tutar">@Bicim.Para(Takas.YeniDeger, "TRY")</span>
+            </div>
+        </div>
+        <div class="fis-tuval-sutun" id="takas-aldim">
+            <h3 class="fis-tuval-baslik">@D.AldimEskiAltin</h3>
+            <div class="fis-tuval-icerik">
+                @Aldim
+            </div>
+            <div class="fis-tuval-alt" id="takas-aldim-toplam">
+                <span class="metin-soluk" id="takas-aldim-has">@Bicim.Has(Takas.EskiHas)</span>
+                <span class="fis-tuval-tutar sayi" id="takas-aldim-tutar">@(IslemBantGosterim.TutarGosterilirAyar(Takas.EskiFiyat, Takas.EskiAyar) ? Bicim.Para(Takas.EskiDeger, "TRY") : Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).FiyatYok)</span>   @* ISLEM-BANT-2: eksi/0/mutlak dışı fiyatta tutar YOK ("-22,90 TL" görünüyordu; maske eksiyi yazdırmayınca "5" ile 22,90 ₺ kalıyordu) *@
+            </div>
+        </div>
+    </div>
+    @* ── FARK: verilen − alınan (TakasGirisi.Fark = SatisModulu.Takas formülü) ── *@
+    <div class="fis-tuval-alt dg-takas-fark @FarkSinifi" id="takas-tuval-fark" role="status" title="@(Takas.Fark is null ? D.FarkBekleniyor : null)">
+        <span>@Dil.T.Islem.Fark</span>
+        <span class="fis-tuval-tutar sayi" id="takas-tuval-fark-tutar">@FarkMetni</span>
+    </div>
+    @* DEGISIM-2 (K17): "Ürün ve eski altın girilince fark hesaplanır." satırı KALDIRILDI — fark çubuğu (role=status) "—" ile
+       zaten bekliyor; görsel gizli bırakıldığında da ölçer onu sütun başlığıyla üst üste sayıyordu (K9). *@
+    @if (FarkVar)
+    {
+        @* Farkın ödemesi — sayfanın ödeme parçası (tür + kasa + POS + otomatik nakit-sınırı notu) *@
+        <div class="dg-takas-odeme" id="takas-tuval-odeme">
+            <p class="fis-takas-baslik" id="takas-tuval-odeme-baslik">@D.FarkOdemesi</p>
+            @Odeme
+        </div>
+    }
+</section>
+
+@code {
+    /// <summary>Takas girdileri — SAHİBİ Islemler.razor.</summary>
+    [Parameter, EditorRequired] public TakasGirisi Takas { get; set; } = new();
+    /// <summary>VERDİM sütunu: FisTakas Bolum="YENI" (sayfadan; tek arama kutusu dahil).</summary>
+    [Parameter] public RenderFragment? Verdim { get; set; }
+    /// <summary>ALDIM sütunu: FisTakas Bolum="ESKI" (sayfadan).</summary>
+    [Parameter] public RenderFragment? Aldim { get; set; }
+    /// <summary>Farkın ödemesi: sayfanın OdemeParcasi (FisOdemeKasa).</summary>
+    [Parameter] public RenderFragment? Odeme { get; set; }
+
+    private DegisimGunSonuMetinleri D => DegisimGunSonuSozlugu.Al(Dil.Dil);
+
+    /// <summary>Kuruşa yuvarlanınca sıfır olmayan fark (FisTakas'taki t10 kuralıyla aynı).</summary>
+    private bool FarkVar => Takas.Fark is decimal f && Math.Round(f, 2, MidpointRounding.AwayFromZero) != 0m;
+
+    /// <summary>
+    /// DEGISIM-2 (hakem DÜŞÜK "BASİT kırmızı / PRO yeşil; boş formda yeşil '—' tamam gibi"): İKİ MODDA TEK renk anlamı —
+    /// fark yok (henüz hesaplanmadı) = NÖTR, açık fark (ödenecek/iade edilecek) = UYARI, kapalı (kuruşa yuvarlanınca 0) = YEŞİL.
+    /// PRO FisTakas.FarkRenkSinifi aynı üç durumu kullanır.
+    /// </summary>
+    internal static string FarkDurumu(decimal? fark) =>
+        fark is not decimal f ? "bos" : Math.Round(f, 2, MidpointRounding.AwayFromZero) != 0m ? "acik" : "tamam";
+
+    private string FarkSinifi => FarkDurumu(Takas.Fark) switch { "acik" => "dg-fark-acik", "tamam" => "fis-fark-tamam", _ => "dg-fark-bos" };
+
+    private string FarkMetni => Takas.Fark is not decimal f || !Takas.EskiFiyatHesabaGirer ? "—"   // ISLEM-BANT-2: mutlak dışı fiyatla fark yazılmaz
+        : !FarkVar ? D.FarkYok
+        : $"{Bicim.Para(Math.Abs(f), "TRY")} — {(f > 0 ? Dil.T.Islem.FarkMusteriOder : Dil.T.Islem.FarkIadeEdilir)}";
+}

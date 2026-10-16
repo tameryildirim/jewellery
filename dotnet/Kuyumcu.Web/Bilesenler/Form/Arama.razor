@@ -1,0 +1,68 @@
+@using Kuyumcu.Web.Servisler
+@using Microsoft.AspNetCore.Components.Web
+@inherits FormAlani
+
+@* ARAMA — süzgeç çubuğundaki arama kutusu (paket P-36c/3).
+
+   NEDEN AYRI BİLEŞEN: arama kutusu 20'den fazla ekranda ham
+   `<input type="search" class="girdi" style="flex:1">` olarak tekrarlanıyordu.
+   Üç ayrı kusuru birlikte taşıyordu:
+     • SATIR İÇİ style="flex:1" — belirteç dışı görsel değer (denetim.sh);
+     • etiketi yoktu, yalnız aria-label vardı ve her ekranda başka yazılıyordu;
+     • bazı ekranlarda @bind:event="oninput", bazılarında onchange'di —
+       aynı kutu bir yerde yazarken, bir yerde çıkınca süzüyordu.
+   Artık TEK davranış: yazarken süzer (oninput).
+
+   ⚠ Etiket GÖRSEL OLARAK GİZLİDİR (.gorsel-gizli) ama DOM'da vardır:
+     ekran okuyucu alanın ne olduğunu söyler, süzgeç çubuğu da şişmez.
+*@
+
+<div class="arama-kutu" id="@($"{ElemanId}-sar")">
+    <label class="gorsel-gizli" for="@ElemanId">@Etiket</label>
+    <input @attributes="EkOznitelikler" type="search" class="girdi girdi-arama" id="@ElemanId"
+           value="@Deger" placeholder="@(YerTutucu ?? Etiket)"
+           maxlength="@EnFazla" autocomplete="off"
+           aria-describedby="@AciklayanId"
+           disabled="@Kilitli" @oninput="Degisti" @onkeydown="TusaBasildi" />
+    @if (Ipucu is { Length: > 0 } ip)
+    {
+        <span class="alan-ipucu" id="@($"{ElemanId}-ipucu")">@ip</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Deger { get; set; }
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+    [Parameter] public int EnFazla { get; set; } = 100;
+
+    /// <summary>Enter'a basılınca çağrılır (barkod okuyucu Enter basar).</summary>
+    [Parameter] public EventCallback Enter { get; set; }
+
+    /// <summary>
+    /// PAKET S1-j — HER tuşta çağrılır (Esc, ↑/↓, Enter): menü araması
+    /// satırlar arasında klavyeyle gezer. Verilmezse davranış ESKİSİYLE aynıdır.
+    /// ⚠ keydown, oninput'tan ÖNCE gelir: dinleyici metni buradan OKUMAMALIDIR.
+    /// </summary>
+    [Parameter] public EventCallback<KeyboardEventArgs> TusBasti { get; set; }
+
+    /// <summary>
+    /// PAKET S1-j — girdiye eklenecek erişilebilirlik öznitelikleri
+    /// (aria-controls, aria-activedescendant, spellcheck). Bileşenin kendi
+    /// öznitelikleri (id, class, value, placeholder…) ÖNCELİKLİDİR: splat önce yazılır.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? EkOznitelikler { get; set; }
+
+    private async Task TusaBasildi(KeyboardEventArgs e)
+    {
+        if (TusBasti.HasDelegate) await TusBasti.InvokeAsync(e);
+        if ((e.Key is "Enter" or "NumpadEnter") && Enter.HasDelegate) await Enter.InvokeAsync();
+    }
+
+    private Task Degisti(ChangeEventArgs e)
+    {
+        DefterdenSil();
+        var v = e.Value?.ToString();
+        Deger = string.IsNullOrEmpty(v) ? null : v;
+        return DegerChanged.InvokeAsync(Deger);
+    }
+}

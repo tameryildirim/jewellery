@@ -1,0 +1,87 @@
+@* Recharts AreaChart karşılığı — saf SVG, bağımlılıksız.
+   RAPOR-3: eksen etiketleri SVG dışında HTML yazısı (ezilmez); tur 2: her yazı kendi noktasının altında. *@
+<div class="grafik-sar" role="img" aria-label="@Aciklama">
+    <svg viewBox="0 0 @G @Y" preserveAspectRatio="none" style="height:@(Y)px">
+        <defs>
+            <linearGradient id="@GradId" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stop-color="var(--vurgu)" stop-opacity="0.25" />
+                <stop offset="95%" stop-color="var(--vurgu)" stop-opacity="0" />
+            </linearGradient>
+        </defs>
+        @if (Noktalar.Count > 1)
+        {
+            <polygon points="@AlanNoktalari" fill="url(#@GradId)" />
+            <polyline points="@CizgiNoktalari" fill="none" stroke="var(--vurgu)" stroke-width="2" />
+        }
+    </svg>
+    @* PAKET RAPOR-3 (hasım: Panel PRO "Son 7 günlük satış" eksen yazıları ezik/okunamaz): yazılar SVG İÇİNDEYDİ —
+       preserveAspectRatio="none" yatayda gerip dikeyde sabit tuttuğu için glifler ezik çiziliyordu (600→~1000 px).
+       Eksen yazıları artık SVG'nin ALTINDA gerçek HTML yazısı: ölçeklenmez, tema belirteciyle (rapor-gorunum.css). *@
+    @* PAKET RAPOR-3 tur 2 (hasım KRİTİK "yazı noktasının altında değil"): yazılar eşit aralıkla (space-between)
+       diziliyordu, noktalar ise X(i)=i/(n−1)·G konumunda → (n−1) adımın katı değilse yazı kayıyordu (bugünün satışı
+       dünün tarihiyle). Artık eksen (n−1) EŞİT HÜCRELİ ızgara (grid-auto-columns: 1fr — satır içi style gerekmez):
+       i. yazı i. hücrenin SOL kenarına ortalanır = tam X(i). İlk yazı sola, son yazı (her zaman yazılır) sağa yaslı. *@
+    <div class="grafik-eksen" aria-hidden="true">
+        @for (var h = 0; h < HucreSayisi; h++)
+        {
+            var i = h;
+            <span class="grafik-eksen-hucre">
+                @if (Yazilacak.Contains(i))
+                {
+                    <span class="@EtiketSinifi(i)" data-indeks="@i" data-konum="@Konum(i)">@Noktalar[i].Etiket</span>
+                }
+                @if (i == HucreSayisi - 1 && Noktalar.Count > 1)
+                {
+                    var son = Noktalar.Count - 1;
+                    <span class="grafik-eksen-etiket grafik-eksen-etiket--son" data-indeks="@son" data-konum="@Konum(son)">@Noktalar[son].Etiket</span>
+                }
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<GrafikNokta> Noktalar { get; set; } = [];
+    [Parameter] public string Aciklama { get; set; } = "";
+
+    private const int G = 600, Y = 220, KenarUst = 12, KenarAlt = 4;
+    private readonly string GradId = $"g{Guid.NewGuid():N}";
+
+    private decimal Maks => Math.Max(1m, Noktalar.Count == 0 ? 1m : Noktalar.Max(n => n.Deger));
+    private double X(int i) => Noktalar.Count <= 1 ? 0 : (double)i / (Noktalar.Count - 1) * G;
+    private double YKord(decimal v) => KenarUst + (double)(1 - v / Maks) * (Y - KenarUst - KenarAlt);
+
+    private string CizgiNoktalari => string.Join(" ",
+        Noktalar.Select((n, i) => string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{X(i):F1},{YKord(n.Deger):F1}")));
+
+    private string AlanNoktalari => $"0,{Y - KenarAlt} {CizgiNoktalari} {G},{Y - KenarAlt}";
+
+    /// <summary>Eksen yazısı adımı: en çok 5 yazı — kutucuk ~250 px; gerçek yazı boyunda 8 tarih sığmıyordu
+    /// (1440 ölçümü: son etiket "06.1" kırpıldı).</summary>
+    private int Adim => Math.Max(1, (int)Math.Ceiling(Noktalar.Count / 5.0));
+
+    /// <summary>Izgara hücresi: n nokta → n−1 aralık (tek noktada 1 hücre).</summary>
+    private int HucreSayisi => Math.Max(1, Noktalar.Count - 1);
+
+    /// <summary>Yazılacak indeksler (son nokta HARİÇ — o her zaman ayrıca yazılır): 0, Adim, 2·Adim…; sona
+    /// yarım adımdan yakın olan düşer (son yazıyla çakışmasın).</summary>
+    internal IReadOnlySet<int> Yazilacak
+    {
+        get
+        {
+            var k = new HashSet<int>();
+            var son = Noktalar.Count - 1;
+            for (var i = 0; i < Noktalar.Count; i += Adim)
+                if (i == 0 || (son - i) * 2 >= Adim) k.Add(i);
+            if (son > 0) k.Remove(son);
+            return k;
+        }
+    }
+
+    private string EtiketSinifi(int i) => i == 0
+        ? "grafik-eksen-etiket grafik-eksen-etiket--ilk" : "grafik-eksen-etiket";
+
+    /// <summary>Yazının yatay konumu (% genişlik) = noktasının X(i)/G'si — test ve tarayıcı ölçümü bunu okur.</summary>
+    private string Konum(int i) => (X(i) / G * 100).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

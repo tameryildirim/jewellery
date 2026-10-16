@@ -1,0 +1,88 @@
+@* ═══ PAKET SATIS-2 — KATLANIR (ortak "piyano" kart) ═══════════════════════════
+   Kurucu 25.09: "eski kayıtlar direkt açık gelmesin, eski kayıtlar diye bir piyano
+   gibi açılır kapanır olsun, ekranlar basit olsun".
+   TEK STİL: başlık satırı (ad + kayıt sayısı rozeti + ince ok ikonu) → tıklanınca
+   gövde açılır. Tuval kart dili (1 px ayraç kenar · 10 px köşe · yüzey zemin) —
+   css/katlanir.css (app.css'e YAZILMAZ).
+   SÖZLEŞME (GECMIS-1 paketi tüm ekranlara bununla uygular):
+   • Varsayılan KAPALI. Kapalıyken ChildContent DOM'a HİÇ çizilmez.
+   • İlk açılışta IlkAcilis BİR KEZ çağrılır (sayfa listeyi o an yükler) — kapalı
+     kartın içeriği için istek ATILMAZ. Sonraki aç/kapa istek atmaz — YALNIZ son yükleme
+     hatalıysa (Hatali=true) kart yeniden açılınca IlkAcilis TEKRAR çağrılır (hata çıkmaz
+     sokak olmaz; sayfa yenilemeden yeniden deneme — doğrulayıcı bulgusu 25.09).
+   • Başlık gerçek <button>: Enter/Boşluk ile açılır; aria-expanded + aria-controls.
+   • id'ler: kök = Id · başlık düğmesi = {Id}-ac · gövde = {Id}-govde · rozet = {Id}-sayi.
+   • Sayi null ise rozet çizilmez (sayı bilinmeden "0" yazılmaz — UX-S28).
+   • Bileşen istek ATMAZ, ApiIstemci bilmez; sabit renk ve satır içi stil yok. *@
+<section class="katlanir @Sinif @(acik ? "katlanir-acik" : null)" id="@Id">
+    <h2 class="katlanir-h">
+        <button type="button" class="katlanir-baslik" id="@($"{Id}-ac")"
+                aria-expanded="@(acik ? "true" : "false")" aria-controls="@($"{Id}-govde")"
+                @onclick="Degistir">
+            @* KESIF-P7 (K10, keşif #56): başlık ÜÇ NOKTAYLA KESİLMEZ (katlanir.css: dar ekranda
+               ikinci satıra sarar); tam metin ayrıca title ipucunda. *@
+            <span class="katlanir-ad" title="@Baslik">@Baslik</span>
+            @if (Sayi is { } n)
+            {
+                <span class="rozet rozet-gri katlanir-sayi sayi" id="@($"{Id}-sayi")">@n</span>
+            }
+            <Ikon Ad="@(acik ? Ikonlar.KatlamaAcik : Ikonlar.KatlamaKapali)" Sinif="katlanir-ok" />
+        </button>
+    </h2>
+    @if (acik)
+    {
+        <div class="katlanir-govde" id="@($"{Id}-govde")">
+            @ChildContent
+        </div>
+    }
+</section>
+
+@code {
+    /// <summary>Kök element id'si (sayfanın mevcut kart id'si korunur, ör. islem-son-satislar).</summary>
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    /// <summary>Başlık metni (sözlükten — çıplak metin yok).</summary>
+    [Parameter, EditorRequired] public string Baslik { get; set; } = "";
+    /// <summary>Kayıt sayısı rozeti; null = bilinmiyor → rozet çizilmez.</summary>
+    [Parameter] public int? Sayi { get; set; }
+    /// <summary>Ek CSS sınıfı (ekrana özgü yerleşim için).</summary>
+    [Parameter] public string? Sinif { get; set; }
+    /// <summary>Başlangıç durumu. Varsayılan KAPALI (kurucu 25.09).</summary>
+    [Parameter] public bool BaslangictaAcik { get; set; }
+    /// <summary>İlk açılışta bir kez çağrılır — içerik verisi burada yüklenir.</summary>
+    [Parameter] public EventCallback IlkAcilis { get; set; }
+    /// <summary>Son yükleme hata verdi mi (sayfa bildirir). true iken kart yeniden açılınca IlkAcilis tekrar çağrılır.</summary>
+    [Parameter] public bool Hatali { get; set; }
+    /// <summary>Her aç/kapa sonrası yeni durum (true = açık).</summary>
+    [Parameter] public EventCallback<bool> Degisti { get; set; }
+    /// <summary>Gövde — yalnız açıkken çizilir.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool acik;
+    private bool ilkDurumUygulandi;
+    private bool yuklendi;
+
+    /// <summary>Açık mı (test ve sayfa okuması için).</summary>
+    public bool Acik => acik;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ilkDurumUygulandi) return;
+        ilkDurumUygulandi = true;
+        acik = BaslangictaAcik;
+        if (acik) await Yukle();
+    }
+
+    private async Task Degistir()
+    {
+        acik = !acik;
+        if (acik) await Yukle();
+        await Degisti.InvokeAsync(acik);
+    }
+
+    private async Task Yukle()
+    {
+        if (yuklendi && !Hatali) return;
+        yuklendi = true;
+        await IlkAcilis.InvokeAsync();
+    }
+}

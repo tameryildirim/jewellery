@@ -1,0 +1,360 @@
+/* ═══ PAKET DUGME-2 — DÜĞME / SEÇİCİ YAZISI DİKEY ORTADA + DÜĞME ZEMİNDEN AYIRT EDİLİR ═══
+   Kurucu 25.09 ~12:20 (Faturalar, BASİT koyu): "yazının biri butonun üstünde diğeri
+   altında, butonlar zeminle aynı renkte" — "bu tür hataları tüm ekranlar bazında gez
+   ve değiştir". Ölçüm aracı: betikler/tur/dugme-olc.mjs (42 rota × BASİT/PRO ×
+   aydınlık/karanlık, 1440 ve 1024).
+   SÖZLEŞME:
+   (1) Düğme/seçici/segment ailesinde yazı kutunun dikey ortasında (±1,5 px).
+   (2) Yerleşik (native) <select> kalmaz: appearance:none + uygulamanın ok ikonu.
+   (3) Her eylem düğmesi zeminden ayrılır (kenar ≥ 3:1, WCAG 1.4.11); seçili olmayan
+       sekme segment kaplaması içinde kendi çerçevesini taşır; basılı/seçili düğme
+       (aria-pressed=true / .secili) dolu vurgu zeminiyle görünür.
+   (4) Tablo satırındaki eylem düğmesi dar pencerede tablo kenarında kesilmez.
+   KURALLAR: renk YALNIZ belirteç (belirtecler.css § DUGME-2) — sabit renk yok,
+   8 şema × aydınlık/karanlık çalışır. Moda özel seçici YOK (OLCEK-1: mod ölçü
+   değiştirmez). Sayfa dosyasına dokunulmaz; app.css'e yazılmaz. index.html'de
+   olcek.css'ten SONRA, ortak.css'ten önce yüklenir (ORTAK-1 O1: ortak.css en sonda).
+   Seçiciler `html[data-mod] .ana-icerik …` önekiyle olcek.css (0,2,1) düzeyinde ya
+   da üstünde tutulur; böylece sayfa/şerit dosyalarının `border: 0` kuralını yener.
+   GERİ DÖNÜŞ: index.html'deki tek <link> kaldırılınca görünüm DUGME-2 öncesine döner. */
+
+/* ── (1) DİKEY ORTA ──────────────────────────────────────────────────────────
+   Düğme ailesinin tamamı esnek kutudur (app.css .btn/.dugme inline-flex); burada
+   yalnız hizalama ve satır yüksekliği belirteçten gelir. display YAZILMAZ:
+   [hidden] düğmeler gizli kalır. */
+html[data-mod] :is(.ana-icerik, .cekmece, .modal) :is(.dugme, .btn, .sekme, .sekmeler-sekme, .musteri-segment-oge, button.ikincil) {
+  align-items: center;
+  line-height: var(--dugme-satir);
+}
+
+/* ── (2) YERLEŞİK SEÇİCİ YOK ────────────────────────────────────────────────
+   İşletim sisteminin küçük oku kenara yapışıyor, yazı kutunun üstüne kayıyordu
+   (#sip-durum-suzgec, #kz-karsilastir, #fk-durum-filtre, #kr-kasa, Yeni sipariş
+   "Tür"/"Cari"). Ok iki doğrusal gradyanla çizilir → rengi belirteçten gelir. */
+html[data-mod] select:not([multiple]):not([size]) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-inline-end: 2.25rem;
+  /* KESIF-P7 (TOPLU DUGME-2 ORTA): seçici en uzun seçeneği kadar genişleyip kabını aşıyordu
+     (/siparisler 375 "Yeni sipariş" #sip-f-cari 368 px > alan 346 px; ana alan yatay kayıyordu).
+     Sonra turu ölçümü: .alan ızgarasının sütunu seçicinin EN UZUN SEÇENEĞİNE (560 px) göre
+     büyüyordu (ızgara öğesinin içerikten gelen en az genişliği) → en az genişlik 0. */
+  max-width: 100%;
+  min-width: 0;
+  line-height: var(--dugme-satir);
+  text-overflow: ellipsis;
+  /* İnce çizgi ok (Ikon bileşeni gibi, dolu üçgen değil): iki kare kutuda birer
+     köşegen — sol "\" + sağ "/" = "V". */
+  background-image:
+    linear-gradient(45deg, transparent calc(50% - .8px), var(--secim-ok) calc(50% - .8px), var(--secim-ok) calc(50% + .8px), transparent calc(50% + .8px)),
+    linear-gradient(135deg, transparent calc(50% - .8px), var(--secim-ok) calc(50% - .8px), var(--secim-ok) calc(50% + .8px), transparent calc(50% + .8px));
+  background-position:
+    right calc(.875rem + .4375rem) center,
+    right .875rem center;
+  background-size: .4375rem .4375rem, .4375rem .4375rem;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+html[data-mod] select:not([multiple]):not([size]):disabled { cursor: not-allowed; }
+
+/* ── (3a) SEGMENT / SEKME ŞERİDİ ─────────────────────────────────────────────
+   Tuval (Panel.dc.html Basit/Profesyonel anahtarı): kap 1 px çerçeve, 3 px dolgu,
+   999 px köşe; seçili dolu. Seçili olmayan sekme kap içinde KENDİ çerçevesini
+   taşır (≥ 3:1) — "zeminle aynı renk" şikâyeti. Üst bardaki sayfa sekmeleri
+   (tuval-kabuk.css, .ust-bar) kapsam dışıdır: yalnız ana içerik. */
+/* KESIF-P7 — TUVAL GERİLEMESİ GERİ ALINDI (TOPLU DUGME-2 [YÜKSEK], ölçüm: dugme.css kapalı/açık
+   kıyası, /cariler BASİT 1440): seçili öğe ana eylemle AYNI maviye (--vurgu) boyanıyor, seçili
+   olmayan öğeler kap içinde kendi çerçevesini taşıyordu ("hap içinde hap"). Tuval
+   (Musteriler.png, üst bardaki Basit/Profesyonel anahtarı): seçili = koyu lacivert dolgu
+   (--kenar-yuzey + --kenar-metin-guclu), seçili olmayan çerçevesiz; ≥ 3:1 sınırı KAP kenarı verir.
+   Fildişi şemada menünün aktif satır belirteci.
+   KESIF-P7 tur 2 (tasarım hakemi, DUGME-2 koyu tema): karanlık için AYRI eşleme YOK. Önceki karanlık
+   blok (vurgu yüzeyi + kenar --vurgu) seçili hapı ana eylem mavisiyle çerçeveliyordu ("hap içinde hap").
+   Artık iki temada da üst çubuk anahtarıyla (app.css .ust-bar .mod-anahtar button.secili) AYNI aile:
+   dolu, çerçevesiz (kenar = dolgu); karanlıkta --kenar-yuzey = #ust-mod-basit dolgusu. Yazı/dolgu ≥ 4,5:1
+   ve kap kenarı (--sekme-kenar) ≥ 3:1 her tema × şemada KesifP7Testleri ölçer. */
+html[data-mod] {
+  --secili-dolgu:        var(--kenar-yuzey);
+  --secili-dolgu-metin:  var(--kenar-metin-guclu);
+  --secili-dolgu-kenar:  var(--kenar-yuzey);
+}
+html[data-mod][data-sema="fildisi"] {
+  --secili-dolgu:        var(--menu-aktif-yuzey);
+  --secili-dolgu-metin:  var(--menu-aktif-metin);
+  --secili-dolgu-kenar:  var(--menu-aktif-yuzey);
+}
+/* TOPLU-6 (tasarım kuyruğu, tekrar eden ORTA "koyu temada seçili sekme/segment soluk"): karanlıkta
+   --kenar-yuzey (#090d16) kart yüzeyinden (#1a1e26) yalnız 1,04–1,16 ayrılıyordu — seçili sekme
+   seçili değilmiş gibi okunuyordu (başsız Chrome ölçümü: /raporlar, /uyum, /gider, /evraklar, vade 7 gün).
+   Karanlıkta aynı aile TERS çevrilir: seçili = açık dolgu + koyu yazı (aydınlıktaki lacivert hapın
+   aynası). Dolgu/yüzey ≥ 3:1, yazı/dolgu ≥ 4,5:1; ana eylem mavisi (--vurgu) DEĞİL; kenar = dolgu
+   (hap içinde hap yok). Üst çubuktaki Basit/Profesyonel anahtarı aynı belirteci kullanır (toplu6.css).
+   Fildişi bloğundan SONRA: karanlıkta her şemada bu eşleme geçerlidir. Toplu6Testleri ölçer. */
+@media (prefers-color-scheme: dark) {
+  html[data-mod]:not([data-tema="aydinlik"]) {
+    --secili-dolgu:        var(--kenar-metin-guclu);
+    --secili-dolgu-metin:  var(--kenar-yuzey);
+    --secili-dolgu-kenar:  var(--kenar-metin-guclu);
+  }
+}
+html[data-mod][data-tema="karanlik"] {
+  --secili-dolgu:        var(--kenar-metin-guclu);
+  --secili-dolgu-metin:  var(--kenar-yuzey);
+  --secili-dolgu-kenar:  var(--kenar-metin-guclu);
+}
+html[data-mod] .ana-icerik :is(.sekmeler-serit, .musteri-segment) {
+  border: 1px solid var(--sekme-kenar);
+}
+html[data-mod] .ana-icerik .sekmeler-serit > .sekmeler-sekme,
+html[data-mod] .ana-icerik .musteri-segment > .musteri-segment-oge {
+  border: 1px solid transparent;
+  color: var(--sekme-metin);
+}
+html[data-mod] .ana-icerik .sekmeler-serit > .sekmeler-sekme.secili,
+html[data-mod] .ana-icerik .musteri-segment > .musteri-segment-oge--secili {
+  border-color: var(--secili-dolgu-kenar);
+  background: var(--secili-dolgu);
+  color: var(--secili-dolgu-metin);
+}
+
+/* ── (3b) BASILI / SEÇİLİ DÜĞME ──────────────────────────────────────────────
+   Vade takibi 7/30/60 gün (#vade-ufuk-*), Evraklar/Cariler hızlı süzgeçleri:
+   DOM'da aria-pressed=true / .secili vardı ama hiçbir kural çizmiyordu → üç
+   düğme birebir aynı görünüyordu. */
+/* KESIF-P7 (TOPLU DUGME-2 [YÜKSEK]): kapsız basılı düğme de (vade 7/30/60 gün) ana eylem
+   mavisi DEĞİL, segmentle aynı lacivert dolgu alır. */
+html[data-mod] .ana-icerik :is(.dugme, .btn, .sekme)[aria-pressed="true"],
+html[data-mod] .ana-icerik :is(.dugme, .btn).secili {
+  background: var(--secili-dolgu);
+  border-color: var(--secili-dolgu-kenar);
+  color: var(--secili-dolgu-metin);
+  /* font-weight YAZILMAZ: /ayarlar #arayuz-basit/#arayuz-profesyonel basılı durumu MODA
+     bağlıdır → kalınlık farkı tutarlilik.mjs'de BASİT↔PRO farkı sayılıyordu (13 → 15). */
+}
+html[data-mod] .ana-icerik :is(.dugme, .btn)[aria-pressed="false"]:not(.dugme-birincil):not(.btn-birincil) {
+  border-color: var(--dugme-kenar);
+}
+
+/* ── (3c) ÇERÇEVESİZ EYLEM DÜĞMELERİ ─────────────────────────────────────────
+   Ölçümde zemin/kenar kontrastı 1,00 çıkan eylemler. Her biri ≥ 3:1 kenar alır;
+   yazı rengi ve yazı ölçüsü kendi dosyasından kalır. */
+/* Katlanır başlık (Katlanir.razor): başlık düğmesi kartın kenarını ÜSTLENİR
+   (-1 px taşma: kart kenarıyla çakışır, çift çizgi olmaz). */
+html[data-mod] .ana-icerik .katlanir > .katlanir-h > .katlanir-baslik {
+  border: 1px solid var(--dugme-kenar);
+  margin: -1px;
+  width: calc(100% + 2px);
+}
+/* Görünüm kartı şema örnekleri (Ayarlar #gk-sema-*) ve görünüm seçenekleri. */
+html[data-mod] .ana-icerik .gk-sema:not(.secili),
+html[data-mod] .ana-icerik .gk-secenek:not(.secili) {
+  border-color: var(--dugme-kenar);
+}
+/* Panel pozisyon kartı "Ayrıntı" ve kırılım öğeleri, müşteri sayaç bağlantısı,
+   karşılama araç çubuğundaki ikincil düğme: bağlantı görünümlü DÜĞMELER. */
+html[data-mod] .ana-icerik button:is(.pozisyon-ayrinti, .pozisyon-kirilim-oge, .musteri-baglanti) {
+  border: 1px solid var(--dugme-kenar);
+  border-radius: 999px;
+  padding: .125rem .625rem;
+  line-height: var(--dugme-satir);
+}
+html[data-mod] .ana-icerik .karsilama-araclar button.dugme-ikincil {
+  border: 1px solid var(--dugme-kenar);
+}
+/* Görünüm kartı alt düğmesi "Dükkân varsayılanına dön": tuval-kabuk.css `.gk` kenarı
+   ayraç %85 karışımıdır (karanlıkta zeminle 1,5:1) → etkileşimli kenar belirtecine döner. */
+html[data-mod] .ana-icerik .gk .gk-alt-dugme.btn-ikincil {
+  border-color: var(--dugme-kenar);
+}
+/* Satır içi düzenleme açıcısı (SatirIciDuzenle .si-tetik): değer düzenlenebilir bir
+   kutudur — dinlenirken de kesikli ≥ 3:1 kenar taşır ("her veri girişi düzenlenebilir"
+   görünür olsun; app.css'te kenar yalnız üzerine gelince çıkıyordu). */
+/* KESIF-P7 (TOPLU ZO-ISLEM-A [YÜKSEK], SatirIciDuzenle ile tek karar): her hücrede kesikli
+   KUTU tabloyu tel çerçeveye çeviriyordu (/banka, /cariler, /faturalar, /kasalar, /pos). Dinlenirken
+   yalnız ALT çizgi (≥ 3:1, düzenlenebilir olduğu görünür kalır); kesikli kutu üzerine gelince
+   ve klavye odağında. */
+html[data-mod] .ana-icerik .si-tetik {
+  border-color: transparent;
+  border-bottom-color: var(--dugme-kenar);
+}
+html[data-mod] .ana-icerik .si-tetik:is(:hover, :focus-visible) {
+  border-color: var(--dugme-kenar);
+}
+/* Vurgulu (seçili) satırdaki ikincil düğme: satır zemini --vurgu-yuzey olunca --dugme-kenar
+   karanlıkta 2,97:1'e düşüyordu (/fiyatlandirma #fl-duzenle-*, #fl-goster-*; tur 2 ölçümü).
+   Kenar vurgu rengine döner (D2_07: --dugme-kenar-vurgulu / --vurgu-yuzey ≥ 3:1 her temada). */
+html[data-mod] .ana-icerik tr.satir-vurgu :is(.btn, .dugme):not(.btn-birincil):not(.dugme-birincil):not(:disabled) {
+  border-color: var(--dugme-kenar-vurgulu);
+}
+/* /ekranlar favori yıldızı (#ekran-favori-*): app.css'te boş yıldız opacity:0 idi, yalnız
+   üzerine gelince/odakta çıkıyordu → dinlenirken "tıklanacak bir şey" görünmüyordu
+   (hasım doğrulayıcı 29.09: 38 düğme zemin=1,00 kenar=1,00). Artık dinlenirken de görünür:
+   ≥ 3:1 kenar + ≥ 4,5:1 ince çizgi yıldız (yerleşim için aşağıdaki @media notu). */
+html[data-mod] .ekranlar-sayfa .ekran-karo-kap > .ekran-yildiz {
+  opacity: 1;
+  border: 1px solid var(--dugme-kenar);
+  color: var(--sekme-metin);
+}
+html[data-mod] .ekranlar-sayfa .ekran-karo-kap > .ekran-yildiz.dolu {
+  color: var(--uyari);
+}
+html[data-mod] .ekranlar-sayfa .ekran-karo-kap > .ekran-karo-birincil + .ekran-yildiz {
+  border-color: var(--vurgu-metin);
+  color: var(--vurgu-metin);
+  background: var(--vurgu);   /* birincil karoyla aynı zemin: yıldızın sınırı karonun kendisidir */
+}
+html[data-mod] .ekranlar-sayfa .ekran-karo-kap > .ekran-karo-birincil + .ekran-yildiz:hover {
+  background: var(--vurgu-guclu);
+}
+/* Karo yerleşimi TUVALDEKİ GİBİ kalır (masaüstü sağ iç boşluk 14 px, tuval-kabuk.css): 36 px ayırmak
+   1440'ta 6 kısa adı iki satıra kırıyordu (sikisma K3). Yıldız bunun yerine karonun köşesine
+   1 px yaklaşır: yazı satır kutusuyla dikey kesişim ≤ 3,2 px (satır aralığı payı, harf çizgisine
+   değmez; K9 eşiği 4 px). Ölçüm: 1440/1280/1024/900 × tüm karolar (rapor § 3). Dokunmatikte
+   app.css dokunma hedefi + 8 px ayırır; ≤ 768 fareli ekranda app.css 36 px ayırır. */
+@media (hover: hover) and (min-width: 769px) {
+  html[data-mod] .ekranlar-sayfa .ekran-karo-kap > .ekran-yildiz {
+    top: 1px;
+    right: 1px;
+  }
+}
+
+/* ── (4) DAR PENCEREDE KESİLEN SATIR DÜĞMESİ ────────────────────────────────
+   Tasarım hakemi 29.09 (dugme-olc 1024: kirpik 124): /vitrin "Düzenle" sağ=1250 ve
+   "Varsayılana dön" sağ=1380, /urunler PRO "3 adet" (#u-stok-adet-*) sağ=1080 —
+   kurucunun "+ Yeni Fatura sağ kenarda kesik" şikâyetiyle aynı sınıf.
+   TUR 3 (hakem 29.09 16:15, YÜKSEK): tur 2'nin YAPIŞIK eylem sütunu kesilmeyi
+   çözüyordu ama veriyi ÖRTÜYORDU — /urunler PRO 1024/960'ta "15,200 g", "13,9232 has",
+   /vitrin 1024/960'ta "Satış marjı (TL)", "0 ₺" yapışık sütunun ALTINDA kalıyordu
+   (binen.mjs gizlenen metin 25/37). YAPIŞIK SÜTUN KALDIRILDI; bu dosyada hiçbir
+   hücreye yapışık konum yazılmaz. Yerine OLCEK-1 § 13e'nin kalıbı (Müşteriler/Ürünler):
+   eylem hücreleri veri satırının ALTINDA, kendi ızgara satırında, SOLDA durur →
+   düğme ekran dışına düşmez (kirpik 0) ve hiçbir yazının üstüne binmez (gizlenen 0).
+   Veri sütunları kaba sığmazsa tablo KENDİ kabında kayar (sayfa yatay kaydırması 0);
+   kayan içerikte örten bir şey yoktur. Başlık tek satır (ORTAK-1 (A)) ve sütun
+   gizleme YASAĞI korunur. Mod seçicisi yok: düzen tablonun YAPISINA bağlıdır.
+
+   (4a) /vitrin marj tablosu (#vitrin-ayarlar): 8 sütun, son ikisi eylem (Düzenle ·
+   Varsayılana dön/"Varsayılan"). 769–1439 px'te tablo 6 sütunlu ızgaraya çevrilir;
+   sütunlar arası .75rem (sayfanın .tablo hücre dolgusu 1 px — "Sıra" ile "Alış marjı" yapışıktı);
+   iki eylem hücresi alt satıra iner (Düzenle 1. sütunda, varsayılan hücresi 2.'den
+   sona). Üst sınır 1439: 1280'de tablo kabından taşıyordu (1086 > 914), 1440'ta
+   (tuval boyutu) sığıyor → tuval görünümüne dokunulmaz. İki eylem başlığı yalnız
+   ekran okuyucu içindir (ızgarada sütun açmaz; metin DOM'da kalır). */
+@media (min-width: 769px) and (max-width: 1439px) {
+  html[data-mod] .ana-icerik #vitrin-ayarlar {
+    display: grid;
+    grid-template-columns: repeat(6, auto);
+    min-width: 0;
+    column-gap: .75rem;
+  }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > :is(thead, tbody),
+  html[data-mod] .ana-icerik #vitrin-ayarlar > :is(thead, tbody) > tr { display: contents; }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > thead > tr > th {
+    box-shadow: inset 0 0 0 100vmax var(--yuzey-2), 0 1px 0 0 var(--ayrac);
+    align-content: center;
+  }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > thead > tr > th:nth-last-child(-n+2) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    box-shadow: none;
+  }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > tbody > tr > td {
+    height: auto;
+    min-height: var(--tablo-satir-boyu);
+    align-content: center;
+    border-block-width: 0;
+  }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > tbody > tr > td:nth-last-child(-n+2):not([colspan]) {
+    min-height: 0;
+    padding-top: 0;
+    border-bottom: 1px solid var(--ayrac);
+  }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > tbody > tr > td:nth-last-child(2):not([colspan]) { grid-column: 1 / 2; }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > tbody > tr > td:last-child:not([colspan]) { grid-column: 2 / -1; }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > tbody > tr > td[colspan] { grid-column: 1 / -1; }
+  /* Kalem adı ("Yeni Tam (Teklik)") kırılmaz — ORTAK-1 (A) ilk sütun kuralının bu tablodaki karşılığı; kap kayar. */
+  html[data-mod] .ana-icerik #vitrin-ayarlar > tbody > tr > td:first-child:not([colspan]) { white-space: nowrap; }
+  html[data-mod] .ana-icerik #vitrin-ayarlar > tbody > tr:hover > td { box-shadow: inset 0 0 0 100vmax var(--yuzey-2); }
+}
+/* (4b) /urunler PRO (769–1099, OLCEK-1 § 13e ızgarası; eylemler zaten satırın altında):
+   STOK sütunundaki "N adet" düğmesi (#u-stok-adet-*) VERİ sütunlarının arasındaydı ve
+   PRO'nun 9 veri sütunu kaba sığmadığı için kabın dışında kalıyordu. Düğme eylem
+   satırına, ilk sütuna iner ("3 adet · Stok · Düzenle · ⋯"); STOK başlığı yalnız ekran
+   okuyucu içindir. Yalnız 10 başlıklı (PRO yapısı) tabloda: BASİT'in 7 sütunu kaba
+   sığar, düzeni değişmez. `dense`: STOK hücresi alt satıra inince DURUM hücresi veri
+   satırındaki boş yuvaya (son sütun) döner; satırlar kaymaz. */
+@media (min-width: 769px) and (max-width: 1099px) {
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(10)):has(> tbody > tr > td > [id^="u-stok-adet-"]):has(> tbody > tr > td:last-child > .satir-eylem) {
+    --eylem-alti-sutun: 8;
+    grid-auto-flow: row dense;
+  }
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(10)):has(> tbody > tr > td > [id^="u-stok-adet-"]):has(> tbody > tr > td:last-child > .satir-eylem) > thead > tr > th:nth-last-child(3) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    box-shadow: none;
+  }
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(10)) > tbody > tr > td:has(> [id^="u-stok-adet-"]) {
+    grid-column: 1 / 2;
+    min-height: 0;
+    padding-top: 0;
+    border-bottom: 1px solid var(--ayrac);
+  }
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu:has(> thead > tr > th:first-child:nth-last-child(10)):has(> tbody > tr > td > [id^="u-stok-adet-"]) > tbody > tr > td:last-child:has(> .satir-eylem) {
+    grid-column: 2 / -1;
+  }
+}
+/* (4c) Satır eylemi `.satir-eylemler` kümesi olan diğer taşan tablolar (769–1099): tur 2'de
+   yapışık sütunla örtülüyordu; yapışık kaldırılınca ölçüldü (tur 3, dugme.css açık):
+   /fiyatlandirma #fl-tablo 1024'te 710 > 706 ("Kullanımdan kaldır" #fl-durum-* sağ 1003 > kap 999),
+   960'ta 2 düğme kabın dışında; /kullanicilar tablosu 960'ta "Düzenle"/"Şifre Değiştir" sağ 987 > 935.
+   Aynı kalıp: eylem hücresi veri satırının altına, sola; son başlık yalnız ekran okuyucu içindir.
+   Sütun sayısı = başlık sayısı − 1: #fl-tablo 6, #km-tablo 7, Kullanıcılar 7. Kayıt ayracı veri
+   hücrelerinin üst çizgisidir (app.css), eylem hücresi çizgisizdir (iki satır tek kayıt).
+   Satır vurgusu (tr.satir-vurgu, varsayılan fiyat listesi) tr kutusu olmadığından hücreye iç gölge. */
+@media (min-width: 769px) and (max-width: 1099px) {
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) {
+    display: grid;
+    grid-template-columns: repeat(var(--d2-eylem-alti-sutun, 7), auto);
+    min-width: 0;
+  }
+  html[data-mod] .ana-icerik .tablo-sar > #fl-tablo { --d2-eylem-alti-sutun: 6; }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > :is(thead, tbody),
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > :is(thead, tbody) > tr { display: contents; }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > thead > tr > th {
+    box-shadow: inset 0 0 0 100vmax var(--yuzey-2), 0 1px 0 0 var(--ayrac);
+    align-content: center;
+  }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > thead > tr > th:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    box-shadow: none;
+  }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > tbody > tr > td { align-content: center; }
+  /* Kısa veri hücresi ("Merkez Şube", e-posta) ızgarada en dar boya inip iki satıra kırılıyordu
+     (sikisma K3, /kullanicilar 960: 8 → 12). ORTAK-1 (A) gibi: hücre kırılmaz, tablo kendi kabında kayar;
+     kayan kısımda düğme yoktur (eylemler alt satırda, solda). */
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > tbody > tr > td:not(:last-child) { white-space: nowrap; }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > tbody > tr > td[colspan] { grid-column: 1 / -1; }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > tbody > tr > td:last-child:not([colspan]) {
+    grid-column: 1 / -1;
+    padding-top: 0;
+    border-top: 0;
+  }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo, .veri-tablosu:has(> tbody > tr > td > .satir-eylemler.saga-yasla)) > tbody > tr > td:last-child > .satir-eylemler { justify-content: flex-start; }
+  html[data-mod] .ana-icerik .tablo-sar > :is(#fl-tablo, #km-tablo) > tbody > tr.satir-vurgu > td { box-shadow: inset 0 0 0 100vmax var(--vurgu-yuzey); }
+}

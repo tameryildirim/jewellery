@@ -1,0 +1,513 @@
+@page "/irsaliyeler"
+@using Kuyumcu.Contracts.Sayfalar.SatinAlma
+@using Kuyumcu.Contracts.Cikti
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET EKSIK-B1-SATINALMA (B1-2) — İRSALİYELER (sevk = GİDEN · mal kabul = GELEN).
+
+   Sunucu uçları ZATEN VARDI (Modules/Irsaliye/IrsaliyeModulu.cs — P-26 / Y-35):
+     GET  /irsaliyeler                       liste (+ süzgeçten bağımsız bağsız sayısı)
+     GET  /irsaliyeler/{id}                  detay (kalemler + kilit sebebi)
+     POST /irsaliyeler                       yeni SEVK (GİDEN) — GELEN yalnız mal kabulden doğar
+     PATCH /irsaliyeler/{id}                 açıklama · hesap kodu · tarih (gövdede yoksa KORU)
+     POST /irsaliyeler/{id}/fatura           faturaya bağla
+     POST /irsaliyeler/{id}/fatura-bagini-kaldir   geri dönüş yolu (UX-S25)
+     POST /irsaliyeler/{id}/iptal            PASİFLEŞTİRME (hard DELETE yok)
+   Kâğıt dökümü: /cikti/IRSALIYE/{id} (ortak A4 şablonu; fiyat basılmaz — VUK md.230/5).
+
+   ⚠ ZORUNLU ÖNCE: açılışta yalnız faturası bekleyenler; faturalanan/iptal KAPALI akordeonda.
+   ⚠ TEK DÜZENLEME KALIBI: Cekmece; yıkıcı eylem (iptal) OnayKipi.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(SayfaAdi)</PageTitle>
+
+<ErrorBoundary>
+    <ChildContent>
+<div class="dikey-bosluk">
+    <SayfaBasi Anahtar="irsaliyeler" Baslik="@SayfaAdi" Aciklama="@M.IrsAciklama" AciklamaKatli="true">
+        <Eylem>
+            <button type="button" class="dugme dugme-birincil" id="irs-yeni" @onclick="YeniAc"
+                    disabled="@(!YazabilirMi)" aria-disabled="@(YazabilirMi ? "false" : "true")"
+                    title="@(YazabilirMi ? M.YeniSevk : M.YazmaYetkisiYok)">@M.YeniSevk</button>
+        </Eylem>
+    </SayfaBasi>
+    @if (!YazabilirMi)
+    {
+        <p class="metin-kucuk metin-soluk" id="irs-yeni-kilit">@M.YazmaYetkisiYok</p>
+    }
+
+    <HataBandi Mesaj="@hata" Id="irs-hata" />
+    <BasariBandi Mesaj="@basari" Id="irs-basari" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (liste is { } l)
+    {
+        <div class="kart" id="irs-acik-kart">
+            <div class="kart-baslik">
+                <h2 id="irs-acik-baslik">@M.AcikIrsaliyeler</h2>
+                @* UX-S23: sayı süzgeçten bağımsız (sunucu bagsizToplam). *@
+                <span class="rozet rozet-amber" id="irs-bagsiz-sayi">@string.Format(M.Bagsizlar, l.BagsizToplam)</span>
+            </div>
+            @if (Acik.Count == 0)
+            {
+                <BosDurum Mesaj="@M.IrsYok" />
+            }
+            else
+            {
+                <Izgara T="IrsaliyeSatiri" Ekran="irsaliyeler" GridId="irs-acik" Kolonlar="@Kolonlar"
+                        Ogeler="@Acik" SatirId="@(s => $"irs-satir-{s.Id}")" Baslik="@M.AcikIrsaliyeler"
+                        YapiskanIlkSutun="false" TabloSinif="q10-th-tek" />
+            }
+            @if (l.SinirDegdi)
+            {
+                <p class="metin-kucuk metin-soluk" id="irs-sinir">@string.Format(M.SinirNotu, l.Satirlar.Count, l.Toplam)</p>
+            }
+        </div>
+
+        <Katlanir Id="irs-gecmis" Baslik="@M.GecmisIrsaliyeler" Sayi="@Gecmis.Count">
+            @if (Gecmis.Count == 0)
+            {
+                <BosDurum Mesaj="@M.IrsGecmisYok" />
+            }
+            else
+            {
+                <Izgara T="IrsaliyeSatiri" Ekran="irsaliyeler" GridId="irs-gecmis-liste" Kolonlar="@Kolonlar"
+                        Ogeler="@Gecmis" SatirId="@(s => $"irs-satir-{s.Id}")" Baslik="@M.GecmisIrsaliyeler"
+                        YapiskanIlkSutun="false" TabloSinif="q10-th-tek" />
+            }
+        </Katlanir>
+    }
+</div>
+
+@* ── Yeni sevk irsaliyesi (çok alanlı form → Cekmece) ── *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+<Cekmece Acik="@formAcik" Varlik="irs-form" Baslik="@M.SevkBaslik"
+         Kapat="() => formAcik = false" Kaydet="SevkKaydet" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(FormKilidi is null && !kaydediliyor)" KilitSebebi="@FormKilidi">
+    <div class="form-dikey">
+        <div class="alan">
+            <Secici ElemanId="irs-form-alici" Etiket="@M.Alici" Zorunlu="true"
+                    UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Cari" YerTutucu="@M.AliciYerTutucu"
+                    Deger="@fAliciId" DegerChanged="@(v => fAliciId = v)"
+                    Hata="@(formDenendi && string.IsNullOrEmpty(fAliciId) ? M.AliciSecin : null)" />
+        </div>
+        @for (var i = 0; i < satirlar.Count; i++)
+        {
+            var sira = i;
+            var r = satirlar[sira];
+            <fieldset class="kart" id="@($"irs-form-satir-{sira}")" @key="r.Anahtar">
+                <legend class="metin-kucuk metin-soluk">@($"{M.Urun} {sira + 1}")</legend>
+                <div class="alan">
+                    <Secici ElemanId="@($"irs-form-urun-{sira}")" Etiket="@M.Urun" Zorunlu="true"
+                            UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Urun" YerTutucu="@M.UrunYerTutucu"
+                            Deger="@r.UrunId" DegerChanged="@(v => r.UrunId = v)"
+                            Hata="@(formDenendi && string.IsNullOrEmpty(r.UrunId) ? M.UrunGerekli : null)" />
+                </div>
+                <Sayi ElemanId="@($"irs-form-adet-{sira}")" Etiket="@M.Adet" Zorunlu="true" EnCokOndalik="3"
+                      Deger="@r.Adet" DegerChanged="@(v => r.Adet = v)" EnAz="0"
+                      Hata="@(formDenendi && r.Adet is not > 0m ? M.AdetGerekli : null)" />
+                <ProAlan>
+                    <Metin ElemanId="@($"irs-form-tanim-{sira}")" Etiket="@M.Tanim" EnFazla="@AlanSinirlari.TedarikKalemTanim"
+                           Deger="@r.Tanim" DegerChanged="@(v => r.Tanim = v)" />
+                </ProAlan>
+                @if (satirlar.Count > 1)
+                {
+                    <button type="button" @onclick="() => satirlar.Remove(r)" class="dugme dugme-ikincil dugme-kucuk"
+                            id="@($"irs-form-sil-{sira}")">@M.KalemSil</button>
+                }
+            </fieldset>
+        }
+        <button type="button" class="dugme dugme-ikincil" id="irs-form-satir-ekle" @onclick="SatirEkle"
+                disabled="@(satirlar.Count >= AzamiSatir)" aria-disabled="@(satirlar.Count >= AzamiSatir ? "true" : "false")"
+                title="@M.KalemEkle">@M.KalemEkle</button>
+        @* SATINALMA-EKRAN (zorunlu önce): açıklama satırı kapalı akordeonda. *@
+        <Katlanir Id="irs-form-bilgi" Baslik="@M.BilgiBasligi">
+            <p class="metin-kucuk metin-soluk" id="irs-form-fiyat-yok">@M.FiyatYazmaz</p>
+        </Katlanir>
+        <ProAlan>
+            <Tarih ElemanId="irs-form-tarih" Etiket="@M.Tarih" Tur="TarihTuru.Islem"
+                   Deger="@fTarih" DegerChanged="@(v => fTarih = v)" />
+            <Metin ElemanId="irs-form-aciklama" Etiket="@M.Aciklamasi" EnFazla="@AlanSinirlari.TedarikAciklama"
+                   Deger="@fAciklama" DegerChanged="@(v => fAciklama = v)" />
+            <Metin ElemanId="irs-form-hesap" Etiket="@M.HesapKodu" EnFazla="@AlanSinirlari.HesapKodu"
+                   Deger="@fHesap" DegerChanged="@(v => fHesap = v)" />
+        </ProAlan>
+        <HataBandi Mesaj="@formHata" Id="irs-form-hata" />
+    </div>
+</Cekmece>
+</CascadingValue>
+
+@* ── Detay: düzenle (açıklama/hesap/tarih) · faturaya bağla · bağı kaldır · iptal · yazdır ── *@
+<Cekmece Acik="@(detay is not null)" Varlik="irs-detay"
+         Baslik="@(detay is { } dd ? string.Format(M.IrsDetayBaslik, dd.No) : "")"
+         Kapat="DetayKapat" Kaydet="DetayKaydet" Kaydediliyor="@kaydediliyor"
+         KaydetGoster="@(detay is { Durum: not "IPTAL" } && YazabilirMi)"
+         KaydetMetni="@M.IrsDuzenle" KaydetElemanId="irs-detay-kaydet" KilitElemanId="irs-detay-kilit"
+         KaydetAktif="@(DuzenleKilidi is null && !kaydediliyor)" KilitSebebi="@DuzenleKilidi"
+         IptalMetni="@M.Kapat">
+    @if (detay is { } d)
+    {
+        <div class="form-dikey">
+            <dl class="tanim-listesi uy-tanim" id="irs-detay-bilgi">
+                <dt>@M.Yon</dt><dd id="irs-detay-yon">@YonAdi(d.Yon)</dd>
+                <dt>@M.Cari</dt><dd id="irs-detay-cari">@(d.CariAdi ?? "—")</dd>
+                <dt>@M.Durum</dt><dd id="irs-detay-durum"><Rozet Renk="@DurumRengi(d.Durum)">@DurumAdi(d.Durum)</Rozet></dd>
+                @if (!string.IsNullOrWhiteSpace(d.IptalGerekce))
+                {
+                    <dt>@M.IptalGerekce</dt><dd id="irs-detay-iptal-gerekce">@d.IptalGerekce</dd>
+                }
+            </dl>
+
+            <Izgara T="IrsaliyeKalemVeri" Ekran="irsaliyeler" GridId="irs-kalem" Kolonlar="@KalemKolonlari"
+                    Ogeler="@d.Kalemler" SatirId="@(k => $"irs-kalem-{k.Sira}")" Baslik="@M.Kalem"
+                    YapiskanIlkSutun="false" TabloSinif="q10-th-tek" />
+
+            <a class="dugme dugme-ikincil" id="irs-detay-yazdir"
+               href="@($"/cikti/{BelgeTurleri.Irsaliye}/{d.Id}?donus=/irsaliyeler")">@M.Yazdir</a>
+            <Katlanir Id="irs-detay-bilgi" Baslik="@M.BilgiBasligi">
+                <p class="metin-kucuk metin-soluk" id="irs-detay-yasal">@M.YasalNot</p>
+            </Katlanir>
+
+            @if (d.Durum != "IPTAL" && YazabilirMi)
+            {
+                <Tarih ElemanId="irs-detay-tarih" Etiket="@M.Tarih" Tur="TarihTuru.Islem"
+                       Deger="@dTarih" DegerChanged="@(v => dTarih = v)" />
+                <ProAlan>
+                    <Metin ElemanId="irs-detay-aciklama" Etiket="@M.Aciklamasi" EnFazla="@AlanSinirlari.TedarikAciklama"
+                           Deger="@dAciklama" DegerChanged="@(v => dAciklama = v)" />
+                    <Metin ElemanId="irs-detay-hesap" Etiket="@M.HesapKodu" EnFazla="@AlanSinirlari.HesapKodu"
+                           Deger="@dHesap" DegerChanged="@(v => dHesap = v)" />
+                </ProAlan>
+
+                @if (d.FaturaId is null)
+                {
+                    <Katlanir Id="irs-detay-fatura" Baslik="@M.FaturayaBagla">
+                        <Secici ElemanId="irs-fatura-sec" Etiket="@M.Fatura"
+                                UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Fatura" YerTutucu="@M.FaturaYerTutucu"
+                                Deger="@faturaId" DegerChanged="@(v => faturaId = v)" />
+                        <button type="button" class="dugme dugme-ikincil" id="irs-fatura-bagla" @onclick="FaturayaBagla"
+                                disabled="@(string.IsNullOrEmpty(faturaId) || kaydediliyor)"
+                                aria-disabled="@(string.IsNullOrEmpty(faturaId) ? "true" : "false")"
+                                title="@M.FaturayaBagla">@M.FaturayaBagla</button>
+                        @if (string.IsNullOrEmpty(faturaId))
+                        {
+                            <p class="metin-kucuk metin-soluk" id="irs-fatura-kilit">@M.FaturaSecin</p>
+                        }
+                    </Katlanir>
+                }
+                else
+                {
+                    <button type="button" class="dugme dugme-ikincil" id="irs-bag-kaldir" @onclick="BagiKaldir"
+                            disabled="@kaydediliyor" title="@M.BagiKaldir">@M.BagiKaldir</button>
+                }
+
+                <Katlanir Id="irs-detay-iptal" Baslik="@M.IrsIptalEt">
+                    @if (d.Kalemler.Any(k => k.HareketId is not null))
+                    {
+                        <p class="metin-soluk" id="irs-iptal-kilit">@M.DefterBagliIpucu</p>
+                    }
+                    else
+                    {
+                        <GerekceAlani Id="irs-iptal-gerekce" SayacGoster="false" AsgariUzunluk="@GerekceAsgari" AzamiUzunluk="@AlanSinirlari.TedarikAciklama"
+                                      Etiket="@M.IptalGerekce" @bind-Deger="iptalGerekce" />
+                        <button type="button" class="dugme dugme-ikincil" id="irs-iptal-ac" @onclick="() => iptalOnay = true"
+                                disabled="@(iptalGerekce.Trim().Length < GerekceAsgari)"
+                                aria-disabled="@(iptalGerekce.Trim().Length < GerekceAsgari ? "true" : "false")"
+                                title="@(iptalGerekce.Trim().Length < GerekceAsgari ? string.Format(M.IrsGerekceKisa, GerekceAsgari) : M.IrsIptalEt)">@M.IrsIptalEt</button>
+                    }
+                </Katlanir>
+            }
+            else if (d.Durum == "IPTAL" && YazabilirMi)
+            {
+                @* SATINALMA-EKRAN: iptalden geri dönüş yolu (UX-S25). *@
+                <div class="form-dikey" id="irs-aktife-al-alan">
+                    <button type="button" class="dugme dugme-birincil" id="irs-aktife-al" @onclick="AktifeAl"
+                            disabled="@kaydediliyor" aria-disabled="@(kaydediliyor ? "true" : "false")"
+                            title="@M.IrsAktifeAlAciklama">@M.IrsAktifeAl</button>
+                </div>
+            }
+            else if (d.KilitSebebi is { } ks)
+            {
+                <DegismezIpucu Varlik="Irsaliye" Gerekce="@ks" />
+            }
+            <HataBandi Mesaj="@detayHata" Id="irs-detay-hata" />
+        </div>
+    }
+</Cekmece>
+
+<OnayKipi Acik="@iptalOnay" Kimlik="irs-iptal" Eylem="@M.IrsIptalBaslik" OnayMetni="@M.IrsIptalEt"
+          Aciklama="@M.IrsIptalAciklama" Hedef="@detay?.No" Calisiyor="@kaydediliyor" Hata="@detayHata"
+          Onayla="IptalEt" Vazgec="IptalVazgec" />
+    </ChildContent>
+    <ErrorContent>
+        <KabukHatasi />
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    private SatinAlmaMetinleri M => SatinAlmaSozlugu.Al(Dil.Dil);
+    private string SayfaAdi => MenuAdlari.Icin(Dil.T).Irsaliyeler.Ad;
+
+    /// <summary>Sunucu kuralının aynası: yazma uçları [RolGerekli("SAHIP","MUDUR")].</summary>
+    private bool YazabilirMi => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+
+    /// <summary>Sunucu Irsaliye.GerekceAsgari ile aynı.</summary>
+    private const int GerekceAsgari = 10;
+    /// <summary>Sunucu Irsaliye.AzamiKalem ile aynı.</summary>
+    private const int AzamiSatir = 200;
+    /// <summary>Sunucu Irsaliye.AzamiLimit ile aynı — sınır ekranda yazar (UX-S29).</summary>
+    private const int ListeLimiti = 200;
+
+    private IrsaliyeListesi? liste;
+    private bool yukleniyor = true, kaydediliyor;
+    private string? hata, basari;
+
+    private List<IrsaliyeSatiri> Acik => liste?.Satirlar.Where(s => s.Durum == "ACIK").ToList() ?? [];
+    private List<IrsaliyeSatiri> Gecmis => liste?.Satirlar.Where(s => s.Durum != "ACIK").ToList() ?? [];
+
+    private IReadOnlyList<IzgaraKolonu<IrsaliyeSatiri>> Kolonlar =>
+    [
+        new() { Anahtar = "no", Baslik = M.IrsNo, ZorunluGorunur = true, Deger = s => s.No,
+                Hucre = s => @<span class="hucre-tek-satir" id="@($"irs-no-{s.Id}")">@s.No</span> },
+        new() { Anahtar = "yon", Baslik = M.Yon, Deger = s => YonAdi(s.Yon),
+                Hucre = s => @<span class="hucre-tek-satir" id="@($"irs-yon-{s.Id}")">@YonAdi(s.Yon)</span> },
+        new() { Anahtar = "cari", Baslik = M.Cari, ZorunluGorunur = true, Deger = s => s.CariAdi ?? "—" },
+        new() { Anahtar = "tarih", Baslik = M.Tarih, Deger = s => Bicim.TarihTam(s.Tarih) },
+        new() { Anahtar = "durum", Baslik = M.Durum, Tur = IzgaraHucreTuru.Rozet, Deger = s => DurumAdi(s.Durum),
+                Hucre = s => @<Rozet Renk="@DurumRengi(s.Durum)">@DurumAdi(s.Durum)</Rozet> },
+        new() { Anahtar = "eylem", Baslik = M.Ac, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = s => @<div class="satir-eylem" id="@($"irs-eylem-{s.Id}")">
+                    <button type="button" class="dugme dugme-kucuk" id="@($"irs-ac-{s.Id}")" @onclick="() => DetayAc(s.Id)">@M.Ac</button>
+                    <a class="dugme dugme-kucuk dugme-ikincil" id="@($"irs-yazdir-{s.Id}")"
+                       href="@($"/cikti/{BelgeTurleri.Irsaliye}/{s.Id}?donus=/irsaliyeler")">@M.Yazdir</a>
+                </div> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<IrsaliyeKalemVeri>> KalemKolonlari =>
+    [
+        new() { Anahtar = "urun", Baslik = M.Urun, ZorunluGorunur = true, Deger = k => k.UrunAdi ?? k.Tanim ?? "—" },
+        new() { Anahtar = "miktar", Baslik = M.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = k => Bicim.Miktar(k.Adet, k.Birim) },
+    ];
+
+    private string YonAdi(string y) => y == "GELEN" ? M.YonGelen : M.YonGiden;
+
+    private string DurumAdi(string d) => d switch
+    {
+        "ACIK" => M.IrsDurumAcik,
+        "FATURALANDI" => M.IrsDurumFaturali,
+        "IPTAL" => M.IrsDurumIptal,
+        _ => "—",
+    };
+
+    private static string DurumRengi(string d) => d switch
+    {
+        "ACIK" => "amber",
+        "FATURALANDI" => "yesil",
+        _ => "gri",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try { liste = await Api.GetAsync<IrsaliyeListesi>($"/irsaliyeler?limit={ListeLimiti}"); }
+        // UX-S28: hata "kayıt yok"a çevrilmez.
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { hata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    // ═══ YENİ SEVK ═══════════════════════════════════════════════════════════
+    private bool formAcik, formDenendi;
+    private string? fAliciId, fAciklama, fHesap, formHata;
+    private DateOnly? fTarih;
+    private List<SatinAlmaFormSatiri> satirlar = [];
+
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    private string? FormKilidi =>
+        string.IsNullOrEmpty(fAliciId) ? M.AliciSecin
+        : satirlar.Count == 0 ? M.KalemGerekli
+        : satirlar.Any(r => string.IsNullOrEmpty(r.UrunId)) ? M.UrunSecin
+        : sayiKapisi.Sebep(Dil.Dil, "irs-form-") is { } s ? s
+        : satirlar.Any(r => r.Adet is not > 0m) ? M.AdetGerekli
+        : null;
+
+    private void YeniAc()
+    {
+        if (!YazabilirMi) return;
+        fAliciId = null; fAciklama = null; fHesap = null; fTarih = null;
+        satirlar = [new SatinAlmaFormSatiri { Adet = 1m }];
+        sayiKapisi.Temizle();
+        formDenendi = false; formHata = null; basari = null; hata = null;
+        formAcik = true;
+    }
+
+    private void SatirEkle() { if (satirlar.Count < AzamiSatir) satirlar.Add(new SatinAlmaFormSatiri { Adet = 1m }); }
+
+    private static string? Bos(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private async Task SevkKaydet()
+    {
+        formDenendi = true;
+        if (FormKilidi is not null || kaydediliyor) return;
+        kaydediliyor = true; formHata = null;
+        try
+        {
+            var sonuc = await Api.PostAsync<IrsaliyeDetay>("/irsaliyeler", new
+            {
+                yon = "GIDEN",
+                cariId = fAliciId,
+                tarih = fTarih is { } t ? Bicim.Makine(t) : null,
+                aciklama = Bos(fAciklama), hesapKodu = Bos(fHesap),
+                kalemler = satirlar.Select(r => new { urunId = r.UrunId, adet = r.Adet, tanim = Bos(r.Tanim) }).ToList(),
+            });
+            basari = string.Format(M.SevkKaydedildi, sonuc.No);   // UX-S27: sunucunun numarası
+            formAcik = false;
+            DetayKur(sonuc);
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { formHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ═══ DETAY ══════════════════════════════════════════════════════════════
+    private IrsaliyeDetay? detay;
+    private string? detayHata, dAciklama, dHesap, faturaId;
+    private DateOnly? dTarih;
+    private string iptalGerekce = "";
+    private bool iptalOnay;
+
+    /// <summary>Belge günü işletme saatiyle (Bicim.TarihTam ile aynı gün) — karşılaştırma bu güne göre.</summary>
+    private static DateOnly OrijinalGun(IrsaliyeDetay d) => DateOnly.FromDateTime(Bicim.IsletmeZamani(d.Tarih));
+
+    private bool TarihDegisti => detay is { } d && dTarih is { } t && t != OrijinalGun(d);
+    private bool Degisti => detay is { } d
+        && (Bos(dAciklama) != d.Aciklama || Bos(dHesap) != d.HesapKodu || TarihDegisti);
+
+    /// <summary>UX-S30: Kaydet kilit sebebi — boş PATCH 400 döneceği için önce ekran söyler.</summary>
+    private string? DuzenleKilidi =>
+        dTarih is null ? M.Tarih
+        : !Degisti ? M.DegisiklikYok
+        : null;
+
+    private void DetayKur(IrsaliyeDetay d)
+    {
+        detay = d;
+        dAciklama = d.Aciklama; dHesap = d.HesapKodu; dTarih = OrijinalGun(d);
+        faturaId = null; iptalGerekce = ""; iptalOnay = false; detayHata = null;
+    }
+
+    private async Task DetayAc(string id)
+    {
+        hata = null; basari = null;
+        try { DetayKur(await Api.GetAsync<IrsaliyeDetay>($"/irsaliyeler/{id}")); }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { hata = ex.Message; }
+    }
+
+    private void DetayKapat() { detay = null; detayHata = null; iptalOnay = false; }
+
+    /// <summary>İptal onayından vazgeçmek eski hata iletisini de temizler.</summary>
+    private void IptalVazgec() { iptalOnay = false; detayHata = null; }
+
+    private async Task AktifeAl()
+    {
+        if (detay is not { Durum: "IPTAL" } d || kaydediliyor || !YazabilirMi) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            var sonuc = await Api.PostAsync<IrsaliyeDetay>($"/irsaliyeler/{d.Id}/aktife-al");
+            basari = string.Format(M.IrsAktifeAlindi, sonuc.No);
+            DetayKur(sonuc);
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task DetayKaydet()
+    {
+        if (detay is not { } d || DuzenleKilidi is not null || kaydediliyor || !YazabilirMi) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            // PATCH: yalnız DEĞİŞEN alan gönderilir; boşaltılan açıklama/hesap null = SİL.
+            var govde = new Dictionary<string, object?>();
+            if (Bos(dAciklama) != d.Aciklama) govde["aciklama"] = Bos(dAciklama);
+            if (Bos(dHesap) != d.HesapKodu) govde["hesapKodu"] = Bos(dHesap);
+            if (TarihDegisti) govde["tarih"] = Bicim.Makine(dTarih!.Value);
+            var sonuc = await Api.PatchAsync<IrsaliyeDetay>($"/irsaliyeler/{d.Id}", govde);
+            basari = string.Format(M.IrsGuncellendi, sonuc.No);
+            DetayKur(sonuc);
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task FaturayaBagla()
+    {
+        if (detay is not { } d || string.IsNullOrEmpty(faturaId) || kaydediliyor) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            var sonuc = await Api.PostAsync<IrsaliyeDetay>($"/irsaliyeler/{d.Id}/fatura", new { faturaId });
+            basari = string.Format(M.FaturaBaglandi, sonuc.No);
+            DetayKur(sonuc);
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task BagiKaldir()
+    {
+        if (detay is not { } d || kaydediliyor) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            var sonuc = await Api.PostAsync<IrsaliyeDetay>($"/irsaliyeler/{d.Id}/fatura-bagini-kaldir");
+            basari = string.Format(M.BagKaldirildi, sonuc.No);
+            DetayKur(sonuc);
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task IptalEt()
+    {
+        if (detay is not { } d || kaydediliyor || !YazabilirMi) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            var sonuc = await Api.PostAsync<IrsaliyeDetay>($"/irsaliyeler/{d.Id}/iptal", new { gerekce = iptalGerekce.Trim() });
+            basari = string.Format(M.IrsIptalEdildi, sonuc.No);
+            DetayKur(sonuc);
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { detayHata = ex.Message; }
+        kaydediliyor = false;
+    }
+}

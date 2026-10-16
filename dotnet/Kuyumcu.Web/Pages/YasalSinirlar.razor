@@ -1,0 +1,350 @@
+@page "/yasal-sinirlar"
+@using Kuyumcu.Contracts.Sayfalar.YasalSinirlar
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET YASAL-1 — YASAL SINIRLAR (salt okunur · SAHİP / MÜDÜR / MUHASEBE)
+
+   Devletin rakamları (nakit günlük sınır, kimlik eşiği, süreler) ve BUGÜNKÜ
+   değerleri. Her satır: sade ad · bugünkü değer · ne zamandan beri · teyit
+   rozeti. Dayanak ve geçmiş değerler KAPALI katlanır (kurucu: "zorunlu önce").
+
+   ⚠ DÜZENLEME YOK (DoD sözleşmesi): ulusal rakamdır, yanlış giriş ceza doğurur —
+     DegismezIpucu gerekçeyi ve doğru yolu yazar (yazma yalnız sistem ucundan).
+   ⚠ JARGON YOK: satır adı sözlükten (TR+EN); resmî dayanak metni yalnız
+     katlanır "Dayanak" içinde. Ham teyit kodu basılmaz, rozet sözlükten.
+   ⚠ UX-S28: hata bandı ayrı; boş durum yalnız istek BAŞARILI ve liste boşken.
+   ⚠ Yetkisiz rolde istek ATILMAZ; ham rol kodu değil sade not yazılır.
+   ⚠ Menü (tur 2): "Belge ve uyum" grubunda rol süzgeçli öğe (MenuTanimi) → "Tüm
+     ekranlar" karosu da oradan üretilir.
+   ⚠ Tur 2 (tasarım hakemi): açılışta açıklama satırı YOK; değişmezlik tek satırlık
+     katlanır başlığıdır, gerekçe (DegismezIpucu) içinde. Dayanak yalnız resmî atıf
+     (iç notlar ic_not'ta, API'de yok). Başlangıcı doğrulanmamış satır tarih UYDURMAZ
+     ("doğrulanmadı"). Programın henüz denetlemediği rakam "Henüz kullanılmayan
+     sınırlar"da. Geçmişte bitiş HARİÇ → ekrana son gün (bitiş − 1) yazılır.
+   ⚠ Oturum hazır olunca yükler (doğrudan açılışta Kullanici ilk çizimde null).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(M.Baslik)</PageTitle>
+
+<div class="sayfa yasal-sayfa" id="ys-sayfa">
+    <SayfaBasi Anahtar="yasal-sinirlar" Baslik="@M.Baslik" />
+
+    <HataBandi Mesaj="@hata" Id="ys-hata-bandi" />
+
+    @if (Oturum.Kullanici is null)
+    {
+        @* Doğrudan açılış: oturum henüz yüklenmedi → yetki notu değil, yükleniyor. *@
+        <Yukleniyor />
+    }
+    else if (!Yetkili)
+    {
+        <p class="yasal-not" id="ys-yetki-yok" role="note">@M.YetkiYok</p>
+    }
+    else if (veri is null)
+    {
+        @if (hata is null)
+        {
+            <Yukleniyor />
+        }
+    }
+    else
+    {
+        @* Tek satır: kilit + "Devletin rakamları — değiştirilemez"; gerekçe katlanırda. *@
+        <Katlanir Id="ys-degismez" Baslik="@M.DegismezKisa" Sinif="yasal-katlanir yasal-degismez">
+            <DegismezIpucu Varlik="YasalParametre" Gerekce="@M.DegismezNeden" />
+        </Katlanir>
+
+        @if (Satirlar.Count == 0)
+        {
+            <BosDurum Mesaj="@M.Bos" />
+        }
+        else
+        {
+            <ul class="yasal-liste" id="ys-liste" aria-label="@M.Baslik">
+                @foreach (var s in Tutarlar)
+                {
+                    @Kart(s)
+                }
+            </ul>
+            @if (Sureler.Count > 0)
+            {
+                @* Zorunlu önce: tezgâhta her gün sorulan TUTAR sınırları açık; süre ve oranlar katlanır. *@
+                <Katlanir Id="ys-sureler" Baslik="@M.SureGrup" Sayi="@Sureler.Count" Sinif="yasal-katlanir">
+                    <ul class="yasal-liste" id="ys-sure-liste">
+                        @foreach (var s in Sureler)
+                        {
+                            @Kart(s)
+                        }
+                    </ul>
+                </Katlanir>
+            }
+            @if (Kapali.Count > 0)
+            {
+                @* Zorunlu önce: kuralı henüz açılmamış rakamlar kapalı katlanırda. *@
+                <Katlanir Id="ys-kapali" Baslik="@M.KapaliGrup" Sayi="@Kapali.Count" Sinif="yasal-katlanir">
+                    <p class="yasal-not" id="ys-kapali-not">@M.KullanilmayanNot</p>
+                    <ul class="yasal-liste" id="ys-kapali-liste">
+                        @foreach (var s in Kapali)
+                        {
+                            @Kart(s)
+                        }
+                    </ul>
+                </Katlanir>
+            }
+        }
+
+        @if (YonetimModu && veri.YonetimAcik)
+        {
+            @* YASAL-PARAM-EKRAN: ByGatech sistem yöneticisi formu — yalnız /yasal-sinirlar?yonetim=1 VE sunucu
+               bu oturumun ByGatech yönetim kiracısı olduğunu söylediyse (tur 3, Mehmet notu). Yazma yetkisi yine
+               SUNUCUDA (sistem anahtarı); form görünse bile anahtarsız 403. *@
+            <YasalParamFormu Satirlar="@Kullanilan" Bugun="@veri.Bugun" Kaydedildi="YenidenYukle" />
+        }
+        else if (YonetimModu)
+        {
+            @* Tur 3 (hasım DÜŞÜK): kuyumcu (SAHİP dahil) ?yonetim=1 ile formu ve sistem anahtarı alanını GÖRMEZ. *@
+            <p class="yasal-not" id="ys-yonetim-kapali" role="note">@P.YonetimKapali</p>
+        }
+
+        @if (veri.Tatiller is { Count: > 0 } tatiller)
+        {
+            <Katlanir Id="ys-tatiller" Baslik="@M.Tatiller" Sayi="@tatiller.Count" Sinif="yasal-katlanir">
+                <ul class="yasal-gecmis" id="ys-tatil-liste">
+                    @foreach (var t in tatiller)
+                    {
+                        <li>@YasalBicim.Tarih(t, Dil.Dil)</li>
+                    }
+                </ul>
+            </Katlanir>
+        }
+        else if (veri.BayramEksik)
+        {
+            @* Tur 2: uyarı açılışta bant DEĞİL — katlanır içinde, yapılacak yolla birlikte. *@
+            <Katlanir Id="ys-tatiller" Baslik="@M.Tatiller" Sinif="yasal-katlanir">
+                <p class="yasal-not" id="ys-bayram-uyari" role="note">@M.TatilYok</p>
+            </Katlanir>
+        }
+    }
+</div>
+
+@code {
+    private YasalListeVeri? veri;
+    private string? hata;
+    private readonly Dictionary<string, List<YasalSatirVeri>> gecmis = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> gecmisHata = new(StringComparer.Ordinal);
+
+    private YasalSinirMetinleri M => YasalSinirSozlugu.Al(Dil.Dil);
+    private YasalParamMetinleri P => YasalParamSozlugu.Al(Dil.Dil);
+
+    /// <summary>YASAL-PARAM-EKRAN: ?yonetim=1 → ByGatech değişiklik formu (kuyumcu varsayılanı salt okunur).</summary>
+    [SupplyParameterFromQuery(Name = "yonetim")] public string? Yonetim { get; set; }
+
+    private bool YonetimModu => Yonetim == "1";
+
+    /// <summary>Kayıttan sonra liste ve açılmış geçmişler sunucudan yeniden okunur.</summary>
+    private async Task YenidenYukle()
+    {
+        gecmis.Clear();
+        gecmisHata.Clear();
+        try
+        {
+            veri = await Api.TazeGetAsync<YasalListeVeri>("/yasal-parametreler");
+            hata = null;
+        }
+        catch (ApiHata ex)
+        {
+            hata = string.Format(M.YuklemeHata, ex.Message);
+        }
+    }
+
+    /// <summary>Sunucu kapısının ([RolGerekli] SAHIP/MUDUR/MUHASEBE) ekran yansıması.</summary>
+    private bool Yetkili => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR" or "MUHASEBE";
+
+    private List<YasalSatirVeri> Satirlar => veri?.Satirlar ?? [];
+
+    /// <summary>Ekran sırası: tezgâhı en çok ilgilendiren sınır önce (sunucu anahtar sırasıyla gelir).</summary>
+    private static readonly string[] Sira =
+    [
+        "TEVSIK_HADDI_TL", "MASAK_KIMLIK_ESIGI_TL", "MASAK_AMAC_BEYANI_ESIGI_TL", "MASAK_BEYAN_FORMU_ESIGI_TL",
+        "MASAK_EK_BELGE_ESIGI_TL", "FATURA_HADDI_TL", "GIDER_PUSULASI_GUN", "TEVSIK_BILDIRIM_IS_GUNU",
+        "MASAK_SIB_IS_GUNU", "MASAK_SAKLAMA_YIL", "STOPAJ_ESNAF_MUAF_HURDA_ORAN", "STOPAJ_NIHAI_TUKETICI_ORAN",
+        "STOPAJ_BEYAN_GUNU", "KDV_GENEL_ORAN",
+    ];
+
+    private static int SiraNo(string anahtar) => Array.IndexOf(Sira, anahtar) is var i and >= 0 ? i : Sira.Length;
+
+    /// <summary>Program bu rakamı bir kuralda kullanıyor (sunucu: ProgramdaKullanilan ve KAPALI değil).</summary>
+    private List<YasalSatirVeri> Kullanilan => Satirlar.Where(s => s.Kullaniliyor && s.Teyit != "KAPALI")
+        .OrderBy(s => SiraNo(s.Anahtar)).ThenBy(s => s.Anahtar, StringComparer.Ordinal).ToList();
+
+    private List<YasalSatirVeri> Tutarlar => Kullanilan.Where(s => s.Birim == "TL").ToList();
+
+    private List<YasalSatirVeri> Sureler => Kullanilan.Where(s => s.Birim != "TL").ToList();
+
+    private List<YasalSatirVeri> Kapali => Satirlar.Where(s => !s.Kullaniliyor || s.Teyit == "KAPALI")
+        .OrderBy(s => SiraNo(s.Anahtar)).ThenBy(s => s.Anahtar, StringComparer.Ordinal).ToList();
+
+    private RenderFragment Kart(YasalSatirVeri s) => __builder =>
+    {
+        var slug = YasalBicim.Slug(s.Anahtar);
+        <li class="yasal-kart" id="@($"ys-satir-{slug}")">
+            <div class="yasal-kart-ust">
+                <p class="yasal-ad" id="@($"ys-ad-{slug}")">@YasalBicim.Ad(s.Anahtar, s.AciklamaSade, M)</p>
+                <Rozet Renk="@RozetRengi(s.Teyit)">@RozetMetni(s.Teyit)</Rozet>
+            </div>
+            <p class="yasal-deger" id="@($"ys-deger-{slug}")">@YasalBicim.SatirDegeri(s, M)</p>
+            @if (s.Teyit == "DOGRULANDI")
+            {
+                @* Başlangıç yalnız birincil kaynakla DOĞRULANMIŞ satırda yazılır (migration günü uydurulmaz).
+                   Tur 3 (hasım DÜŞÜK): doğrulanmamış satırda "Ne zamandan beri: doğrulanmadı" satırı HİÇ basılmaz —
+                   teyit durumunu rozet zaten söylüyor. *@
+                <p class="yasal-tarih" id="@($"ys-baslangic-{slug}")">
+                    <span class="metin-soluk">@M.SutunBaslangic:</span>
+                    @YasalBicim.Tarih(s.Baslangic, Dil.Dil)
+                </p>
+            }
+            @if (s.ResmiGazeteSayisi is { Length: > 0 } rgs && s.ResmiGazeteTarihi is { Length: > 0 } rgt)
+            {
+                @* YASAL-PARAM-EKRAN: kuyumcu kaynağı (Resmî Gazete tarih/sayı) salt okunur görür. *@
+                <p class="yasal-tarih" id="@($"ys-rg-{slug}")">@string.Format(P.Kaynak, YasalBicim.Tarih(rgt, Dil.Dil), rgs)</p>
+            }
+            @if (Sonraki(s.Anahtar) is { } y)
+            {
+                @* Tur 3: ileri tarihli satır geçmişte DEĞİL — kartta "Yaklaşan değişiklik". *@
+                <p class="yasal-yaklasan" id="@($"ys-yaklasan-{slug}")">
+                    <span class="metin-soluk">@M.Yaklasan:</span>
+                    @string.Format(M.YaklasanSatir, YasalBicim.Tarih(y.Baslangic, Dil.Dil), YasalBicim.SatirDegeri(y, M))
+                </p>
+            }
+            <Katlanir Id="@($"ys-ayrinti-{slug}")" Baslik="@M.Ayrinti" Sinif="yasal-katlanir"
+                      IlkAcilis="@(() => GecmisYukle(s.Anahtar))"
+                      Hatali="@gecmisHata.ContainsKey(s.Anahtar)">
+                @if (s.Anahtar == "MASAK_KIMLIK_ESIGI_TL")
+                {
+                    @* YASAL-PARAM-EKRAN (MASAK-370 hakemi DÜŞÜK): "bağlantılı işlem" toplama yorumu (T-1) teyit
+                       bekliyor — eşik değerine değil toplama kuralına ait; "Doğrulandı" rozetinin yanında değil,
+                       dayanak bölümünde durur (id değişmedi). *@
+                    <p class="yasal-not" id="@($"ys-yorum-{slug}")" role="note">@P.ToplamaKurali</p>
+                }
+                <p class="yasal-alt-baslik">@M.Dayanak</p>
+                <p class="yasal-dayanak" id="@($"ys-dayanak-{slug}")">@(string.IsNullOrWhiteSpace(s.Dayanak) ? M.DayanakYok : s.Dayanak)</p>
+                <a class="yasal-kaynak" href="@s.KaynakUrl" target="_blank" rel="noopener noreferrer">@M.KaynagiAc</a>
+                <p class="yasal-alt-baslik">@M.Gecmis</p>
+                @if (gecmisHata.TryGetValue(s.Anahtar, out var gh))
+                {
+                    <p class="bant bant-hata" role="alert">@gh</p>
+                }
+                else if (gecmis.TryGetValue(s.Anahtar, out var liste))
+                {
+                    <ul class="yasal-gecmis" id="@($"ys-gecmis-liste-{slug}")">
+                        @foreach (var g in liste.Where(GecmisteMi))
+                        {
+                            <li>@GecmisMetni(g)</li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <Yukleniyor />
+                }
+            </Katlanir>
+        </li>
+    };
+
+    private bool yuklemeBasladi;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Oturum.Degisti += OturumDegisti;
+        await YukleGerekirse();
+    }
+
+    private void OturumDegisti() => _ = InvokeAsync(async () =>
+    {
+        await YukleGerekirse();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Oturum.Degisti -= OturumDegisti;
+
+    /// <summary>Rol yetkiliyse BİR KEZ yükler (yetkisizde istek YOK; oturum sonradan gelirse yeniden denenir).</summary>
+    private async Task YukleGerekirse()
+    {
+        if (!Yetkili || yuklemeBasladi) return;
+        yuklemeBasladi = true;
+        try
+        {
+            veri = await Api.GetAsync<YasalListeVeri>("/yasal-parametreler");
+        }
+        catch (ApiHata ex)
+        {
+            hata = ex.StatusCode == 403 ? M.YetkiYok : string.Format(M.YuklemeHata, ex.Message);
+        }
+    }
+
+    private async Task GecmisYukle(string anahtar)
+    {
+        gecmisHata.Remove(anahtar);
+        try
+        {
+            var g = await Api.GetAsync<YasalGecmisVeri>($"/yasal-parametreler/gecmis?anahtar={Uri.EscapeDataString(anahtar)}");
+            gecmis[anahtar] = g?.Satirlar ?? [];
+        }
+        catch (ApiHata ex)
+        {
+            gecmisHata[anahtar] = string.Format(M.YuklemeHata, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Geçmiş satırı: bitiş HARİÇ → son gün yazılır. Başlangıcı birincil kaynakla
+    /// DOĞRULANMAMIŞ satırda başlangıç tarihi (migration/yönetmelik günü) BASILMAZ.
+    /// </summary>
+    private string GecmisMetni(YasalSatirVeri g)
+    {
+        var deger = YasalBicim.SatirDegeri(g, M);
+        // Tur 3: bugün geçerli satırın bitişi ileri tarihli bir değer yüzünden dolu olabilir —
+        // yine "sürüyor" yazılır (son gün yaklaşan değişiklik satırında görünür).
+        var suruyor = g.Bitis is null || BugununSatiriMi(g);
+        if (g.Teyit != "DOGRULANDI")
+            return suruyor
+                ? string.Format(M.GecmisTarihsizSuruyor, deger)
+                : string.Format(M.GecmisTarihsizBitti, YasalBicim.SonGun(g.Bitis, Dil.Dil), deger);
+        return string.Format(M.GecmisSatir, YasalBicim.Tarih(g.Baslangic, Dil.Dil),
+            suruyor ? M.GecmisSuruyor : YasalBicim.SonGun(g.Bitis, Dil.Dil), deger);
+    }
+
+    /// <summary>Sunucunun "bugün"ü (yerel gün); yoksa null.</summary>
+    private DateOnly? Bugun => YasalBicim.Gun(veri?.Bugun);
+
+    /// <summary>Geçmiş listesine girer mi: başlangıcı bugün ya da önce (ileri tarihli satır GİRMEZ).</summary>
+    private bool GecmisteMi(YasalSatirVeri g) =>
+        Bugun is not { } b || YasalBicim.Gun(g.Baslangic) is not { } bas || bas <= b;
+
+    /// <summary>Bugün geçerli satır mı ([başlangıç, bitiş) bugünü kapsıyor).</summary>
+    private bool BugununSatiriMi(YasalSatirVeri g) =>
+        Bugun is { } b && YasalBicim.Gun(g.Baslangic) is { } bas && bas <= b
+        && (YasalBicim.Gun(g.Bitis) is not { } bit || b < bit);
+
+    /// <summary>Bu anahtarın en yakın ileri tarihli satırı (liste yanıtının Sonrakiler'i).</summary>
+    private YasalSatirVeri? Sonraki(string anahtar) =>
+        veri?.Sonrakiler?.Where(y => y.Anahtar == anahtar).OrderBy(y => y.Baslangic, StringComparer.Ordinal).FirstOrDefault();
+
+    private string RozetMetni(string teyit) => teyit switch
+    {
+        "DOGRULANDI" => M.RozetDogrulandi,
+        "KAPALI" => M.RozetKapali,
+        _ => M.RozetTeyitsiz,
+    };
+
+    private static string RozetRengi(string teyit) => teyit switch
+    {
+        "DOGRULANDI" => "yesil",
+        "KAPALI" => "gri",
+        _ => "sari",
+    };
+}

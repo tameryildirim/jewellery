@@ -1,0 +1,69 @@
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Web.Bilesenler.Form
+@inject DilServisi Dil
+
+@* ═══ SATIS-3 t10 (tasarım hakemi KRİTİK — "Diğer formları ana formlardan farklı kalıpta") ═══
+   Diğer işlem formlarının ORTAK alt eylem şeridi — ana türlerdeki Kaydet ile aynı kalıp: sağda TEK birincil düğme
+   (büyük); zorunlu alan eksikken PASİF ve yanında hangi alanın eksik olduğu yazar (UX-S30). Düğme id'si formun
+   eski id'sidir (değişmez); istek yine formun kendi yöntemiyle, sayfa üzerinden gider (bileşen istek atmaz). *@
+@* t17 ("görünen ≠ giden" hata sınıfı): formun kutularından biri anlaşılamayan sayı taşıyorsa (sayfanın
+   GecersizAlanKapisi, formun ön ekiyle) düğme PASİF ve sebep o kutunun etiketiyle yazar; tıklama da istek atmaz. *@
+<div class="fis-diger-eylem">
+    @if (Sebep is { } sebep)
+    {
+        <span class="metin-kucuk islem-kaydet-kilit" id="@($"{Id}-kilit")" role="status">@sebep</span>
+    }
+    else if (Red is { Length: > 0 } red)
+    {
+        @* t22: sunucunun reddi düğmenin YANINDA kısa cümle (sayfa dibinde ham paragraf değil). *@
+        <span class="metin-kucuk islem-kaydet-kilit metin-kirmizi" id="@($"{Id}-red")" role="alert">@red</span>
+    }
+    <button type="button" class="btn btn-birincil btn-buyuk" id="@Id" disabled="@(Mesgul || !KurVar || Kilitli)"
+            title="@(Kilitli ? (TumEksik.Count > 0 ? string.Join(" · ", TumEksik) : EkSebep) : null)"
+            aria-describedby="@(KurVar ? (Kilitli ? $"{Id}-kilit" : null) : "islem-diger-kur-yok")"
+            @onclick="Bas">@Metin</button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter, EditorRequired] public string Metin { get; set; } = "";
+    /// <summary>Eksik zorunlu alanların ETİKETLERİ (boş = düğme açık).</summary>
+    [Parameter] public IReadOnlyList<string> Eksik { get; set; } = [];
+    [Parameter] public bool Mesgul { get; set; }
+    [Parameter] public bool KurVar { get; set; } = true;
+    [Parameter] public EventCallback Tikla { get; set; }
+
+    /// <summary>t22: alan eksikliği DIŞINDAKİ kilit sebebi (ör. nakit haddi — sayı sunucudan); doluysa düğme PASİF ve bu metin yazar.</summary>
+    [Parameter] public string? EkSebep { get; set; }
+
+    /// <summary>t22: sunucunun bu eyleme verdiği kısa ret metni (kilitlemez; düzeltince yeniden denenir).</summary>
+    [Parameter] public string? Red { get; set; }
+
+    /// <summary>t17: sayfanın geçersiz sayı kapısı (Islemler verir; yoksa eski davranış).</summary>
+    [CascadingParameter] public GecersizAlanKapisi? GecersizKapi { get; set; }
+
+    /// <summary>Formun kutu ön eki — verilmezse düğme id'sinin ilk parçası ("avans-al" → "avans-").</summary>
+    [Parameter] public string? AlanOneki { get; set; }
+
+    private string Onek => AlanOneki ?? (Id.Split('-')[0] + "-");
+
+    /// <summary>Anlaşılamayan sayı taşıyan kutuların etiketleri.</summary>
+    private IReadOnlyList<string> Gecersiz => GecersizKapi?.Etiketler(Onek) ?? [];
+
+    private IReadOnlyList<string> TumEksik => [.. Gecersiz.Concat(Eksik).Distinct()];
+
+    private bool Kilitli => Eksik.Count > 0 || Gecersiz.Count > 0 || EkSebep is { Length: > 0 };
+
+    private string? Sebep =>
+        Gecersiz.Count > 0 ? string.Format(Satis3Sozlugu.Al(Dil.Dil).AlanDuzeltin, string.Join(" · ", Gecersiz))
+        : Eksik.Count > 0 ? string.Format(Satis3Sozlugu.Al(Dil.Dil).EksikAlanlar, string.Join(" · ", Eksik))
+        : EkSebep is { Length: > 0 } ek ? ek
+        : null;
+
+    /// <summary>Anlaşılamayan sayı varken programatik tık da istek atmaz (savunma derinliği); eski yol aynen.</summary>
+    private Task Bas() => Gecersiz.Count > 0 || EkSebep is { Length: > 0 } ? Task.CompletedTask : Tikla.InvokeAsync();
+
+    /// <summary>Formun hata sözlüğünden (alan → mesaj) eksik alanların etiketleri — sıra formdaki sırayla.</summary>
+    public static IReadOnlyList<string> Etiketler(IReadOnlyDictionary<string, string> hatalar, params (string Alan, string Etiket)[] harita) =>
+        [.. harita.Where(x => hatalar.ContainsKey(x.Alan)).Select(x => x.Etiket).Distinct()];
+}

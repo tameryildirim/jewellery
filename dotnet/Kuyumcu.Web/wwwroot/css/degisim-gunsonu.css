@@ -1,0 +1,131 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET DEGISIM-GUNSONU — BASİT Değişim fişi (Verdim/Aldım) + gün sonu farkının okunuşu (şerit dosyası).
+   toplu5.css'ten SONRA, olcek.css'ten ÖNCE yüklenir (DUGME-2/O1 zinciri korunur).
+   YALNIZ yeni seçici yazılır; mevcut kural değiştirilmez. Sabit renk YOK, yalnız belirteç.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (DG-1) Değişim tuvali: satış tezgâh fişinin (.fis-tuval, tuval-satis.css) kalıbı; sütun içeriği kart dolgusuyla
+   hizalı (18 px — tuvalin sütun başlığı/alt çubuğu ile aynı). Dar kapta sütunlar alt alta. */
+.islem-sayfa #takas-tuval { container-type: inline-size; container-name: dg-takas; }
+.islem-sayfa #takas-tuval .fis-tuval-icerik { padding: 14px 18px; gap: 12px; }
+.islem-sayfa #takas-tuval .fis-tuval-icerik > .fis-tuval-bos { padding: 0; }
+/* Tur 2 (hakem KRİTİK, 1280): auto-fit minmax(120px) dar ALDIM sütununda 2+1'e düşüp üçüncü alanı (Has fiyatı) 120 px'e
+   sıkıştırıyordu → "*" ayrı satıra, "g"/"₺" kutunun altına kayıyordu. Düzen BİLİNÇLİ 2+1: Ayar | Gram üstte, Has fiyatı
+   tam satır (her genişlikte aynı); VERDİM Adet | Fiyat iki eşit sütun. Birim eki kutunun SAĞINDA kalır (satış ALDIM
+   sütunundaki kuralın aynısı, tuval-satis.css #islem-aldim): girdi esner, ek sabit, satır kırılmaz. */
+.islem-sayfa #takas-tuval .dg-takas-eski,
+.islem-sayfa #takas-tuval .dg-takas-yeni { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.islem-sayfa #takas-tuval .dg-takas-eski > :nth-child(3) { grid-column: 1 / -1; }
+.islem-sayfa #takas-tuval .alan-girdi-satir { flex-wrap: nowrap; }
+.islem-sayfa #takas-tuval .alan-girdi-satir > .girdi { flex: 1 1 0; min-width: 0; }
+.islem-sayfa #takas-tuval .alan-girdi-satir > .alan-son-ek { flex: 0 0 auto; }
+.islem-sayfa #takas-tuval .dg-takas-fark { margin-top: 0; }
+.islem-sayfa #takas-tuval .dg-takas-fark .fis-tuval-tutar { white-space: normal; text-align: right; }
+.islem-sayfa #takas-tuval-fark-bekle { margin: 0; padding: 10px 18px; }
+.islem-sayfa #takas-tuval-odeme { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--ayrac); }
+.islem-sayfa #takas-tuval-odeme > .fis-takas-baslik { margin: 0; font-weight: 600; color: var(--metin-soluk); }
+@container dg-takas (max-width: 660px) {
+  .islem-sayfa #takas-tuval .fis-tuval-izgara { grid-template-columns: minmax(0, 1fr); }
+  .islem-sayfa #takas-tuval .fis-tuval-sutun + .fis-tuval-sutun { border-left: 0; border-top: 1px solid var(--ayrac); }
+}
+
+/* (DG-2) Tek kimlik kutusu: MASAK kimlik kutusu açıkken satıcı kümesi çerçevesiz (başlığı ekran okuyucuda). */
+.islem-sayfa #takas-satici.dg-kimlik-birlesik { border: 0; padding: 0; margin: 0; background: none; }
+
+/* (DG-3) Gün sonu BASİT: fark satırı "Faturası kesilmemiş satış: X" — ad ile tutar bölünmez parça. */
+#bugun-fark-var .dg-fark-satir { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+#bugun-fark-var #bugun-fark-tutar { white-space: nowrap; }
+#bugun-fark-aciklama.dg-fark-aciklama { font-size: max(14px, var(--yazi-sm)); }
+
+/* (DG-4) Gün sonu PRO: özet tablosu satır dolgusu kart dolgusuyla aynı (kart-govde 1.5rem); tutar sütunu sağa yaslı;
+   faturasız işlemler tablosu kartın tamamını kullanır (TUTAR ile ÖDEME TÜRÜ yapışmaz). */
+#mut-ozet-tablo td:first-child,
+#mut-faturasiz-tablo :is(th, td):first-child { padding-left: 1.5rem; }
+#mut-ozet-tablo td:last-child,
+#mut-faturasiz-tablo :is(th, td):last-child { padding-right: 1.5rem; }
+#mut-faturasiz-tablo { width: 100%; }
+#mut-faturasiz-tablo :is(th, td).sayi { text-align: right; white-space: nowrap; }
+/* Ölçüldü (1440 PRO): Saat sütunu bütün boşluğu alıyor, Tutar ile Ödeme türü sağda yapışık kalıyordu → Saat dar,
+   Ödeme türü sağa yaslı ve Tutar'dan ayrık. */
+#mut-faturasiz-tablo :is(th, td):first-child { width: 30%; }
+#mut-faturasiz-tablo :is(th, td):last-child { text-align: right; padding-left: 2rem; }
+
+/* (DG-5) Değişim VERDİM sütunu dar (tuval 1,25 : 1): tek arama kutusu sütun genişliğinde; öneri satırı iki satır —
+   ad + ayar/gram solda (ad üç noktayla KESİLMEZ), fiyat + stok sağda (ölçüldü: 1440'ta ad "22 A…" kesiliyordu). */
+.islem-sayfa #takas-verdim .fis-arama { width: 100%; }
+/* Tur 2 (hakem KRİTİK "yer tutucu 'Barkodu okut ya da' kesiliyor"): satıştaki "Elle ekle" düğmesinin yeri (sağ boşluk)
+   Değişim'de yok — arama kutusu VERDİM sütununu tam genişlikte kaplar. */
+.islem-sayfa #takas-verdim .barkod-satiri { margin-right: 0; }
+.islem-sayfa #takas-verdim .fis-arama-oneri { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+.islem-sayfa #takas-verdim .fis-arama-ad { grid-column: 1; grid-row: 1; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.islem-sayfa #takas-verdim .fis-arama-meta { grid-column: 1; grid-row: 2; white-space: normal; }
+.islem-sayfa #takas-verdim .fis-arama-fiyat { grid-column: 2; grid-row: 1; text-align: right; }
+.islem-sayfa #takas-verdim .fis-arama-stok { grid-column: 2; grid-row: 2; text-align: right; }
+/* Dar ekranda kart başlığı dolgusu 1rem (ölçüldü 375: başlık 17 px, satır 25 px) → satır dolgusu da 1rem. */
+@media (max-width: 600px) {
+  #mut-ozet-tablo td:first-child,
+  #mut-faturasiz-tablo :is(th, td):first-child { padding-left: 1rem; }
+  #mut-ozet-tablo td:last-child,
+  #mut-faturasiz-tablo :is(th, td):last-child { padding-right: 1rem; }
+  /* PAKET GOC-D (ölçüm 09.10, 375 PRO K3): tablo ortak ızgarada; dar ekranda satır KARTTIR — 1440'ın "Saat %30"
+     kuralı kartta hücreyi daraltıp "03:47"yi iki satıra kırıyordu. Kartta genişlik içeriğe bırakılır. */
+  #mut-faturasiz-tablo :is(th, td):first-child { width: auto; }
+}
+
+/* ═══ DEGISIM-2 (tasarım hakemi t2 + hasım t2 bulguları — YALNIZ görünüm) ═══ */
+/* (DG2-1) Fark çubuğu İKİ MODDA tek renk anlamı: henüz fark yok = NÖTR (yeşil "—" tamam gibi okunuyordu),
+   açık fark = UYARI (kırmızı "hata" değil, ödenecek/iade edilecek tutar), kapalı (0) = yeşil (fis-fark-tamam AYNEN). */
+.islem-sayfa #takas-tuval .fis-tuval-alt.dg-takas-fark.dg-fark-acik { background: var(--uyari-yuzey); border-top-color: var(--uyari-kenar); }
+.islem-sayfa #takas-tuval .dg-takas-fark.dg-fark-acik > :first-child,
+.islem-sayfa #takas-tuval .dg-takas-fark.dg-fark-acik .fis-tuval-tutar { color: var(--uyari); font-weight: 600; }
+.islem-sayfa #takas-tuval .dg-takas-fark.dg-fark-bos .fis-tuval-tutar { color: var(--metin-soluk); }
+/* (DG2-2) K7: VERDİM arama kutusu ALDIM'daki kutularla aynı satırda — etiket satırı ALDIM alan etiketleriyle aynı ölçü.
+   Ölçüldü (1440): ALDIM etiketi (.alan içinde 14 px) + ızgara satır aralığı 10 px (subgrid) → kutu 278; VERDİM etiketi sütunda 16 px +
+   sütun aralığı 12 px → kutu 283. VERDİM etiketi ve arama kutusu AYNI .alan sarmalayıcısında, aynı 10 px satır aralığıyla. */
+.islem-sayfa #takas-verdim .dg-takas-arama { display: grid; row-gap: 10px; min-width: 0; }   /* = .dg-takas-eski satır aralığı (ALDIM seçicisi subgrid) */
+/* (DG2-3) Gün sonu PRO: "Satışa bağlanmamış faturalar" tablosu da kart dolgusuyla hizalı (faturasız tablosuyla aynı). */
+#mut-bagsiz-faturalar .veri-tablosu :is(th, td):first-child { padding-left: 1.5rem; }
+#mut-bagsiz-faturalar .veri-tablosu :is(th, td):last-child { padding-right: 1.5rem; }
+/* (DG2-4) Gün sonu PRO kartları: beş kart geniş ekranda TEK satır (1280'de 4+1 yalnız kalıyordu); etiket satırı iki satırlık
+   sabit yükseklik → iki satıra kırılan etiket değeri aşağı itmez, değerler aynı hizada. */
+#mut-kartlar { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); }
+#mut-kartlar .stat-etiket { line-height: 1.35; min-height: 2.7em; }
+@media (max-width: 600px) {
+  #mut-bagsiz-faturalar .veri-tablosu :is(th, td):first-child { padding-left: 1rem; }
+  #mut-bagsiz-faturalar .veri-tablosu :is(th, td):last-child { padding-right: 1rem; }
+}
+/* Telefon: app.css'teki tek sütun kuralı aynen (yukarıdaki kimlik seçicisi onu ezmesin); tek sütunda etiket payı gereksiz. */
+@media (max-width: 480px) {
+  #mut-kartlar { grid-template-columns: minmax(0, 1fr); }
+  #mut-kartlar .stat-etiket { min-height: 0; }
+}
+
+/* ═══ PAKET ISLEM-BANT tur 2 (tasarım hakemi KRİTİK, 09.10 — YALNIZ görünüm) ═══
+   BASİT Değişim, ürün seçilince: VERDİM sütunundaki elle satırı (Ürün · Adet · Birim fiyat · Ekle) geniş ekran kuralıyla
+   (app.css (3) ≥769 px: minmax(10rem,1fr) auto auto auto) tek satıra dizildiği için sütun genişliğini AŞIYORDU → arama
+   kutusu ALDIM'ın "Ayar" kutusunun altına, "Ekle" has fiyatı kutusunun altına giriyor, "Fiyat listesi tanımlı değil"
+   notu ALDIM'daki bant hatasının üstüne biniyordu (ölçer 1440/1280 K9 2–4). Sütun ekranın yarısıdır: VERDİM içinde
+   satır HER genişlikte dar ekran düzenidir (app.css (11) ile birebir): Ürün tam satır, Adet · Fiyat · Ekle altında. */
+.islem-sayfa #takas-verdim .dg-takas-arama { grid-template-columns: minmax(0, 1fr); }
+.islem-sayfa #takas-verdim .fis-tuval-icerik > *,
+.islem-sayfa #takas-verdim .dg-takas-arama > * { min-width: 0; }
+.islem-sayfa #takas-verdim .satir.fis-kalem-satiri {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto auto auto;
+  align-items: start;
+  column-gap: var(--bosluk-2, .5rem);
+  row-gap: var(--bosluk-1, .25rem);
+}
+.islem-sayfa #takas-verdim .fis-kalem-satiri > .alan { grid-template-rows: subgrid; row-gap: inherit; min-width: 0; }
+.islem-sayfa #takas-verdim .fis-kalem-satiri > .alan.esnek { grid-column: 1 / -1; grid-row: 1 / span 3; margin-bottom: var(--bosluk-2, .5rem); }
+.islem-sayfa #takas-verdim .fis-kalem-satiri > .alan:not(.esnek) { grid-row: 4 / span 3; }
+.islem-sayfa #takas-verdim .fis-kalem-satiri > .alan .alan-etiket { white-space: nowrap; }
+.islem-sayfa #takas-verdim .fis-kalem-satiri > #islem-kalem-ekle { grid-column: 3; grid-row: 5; align-self: start; height: var(--dokunma-hedefi); min-height: var(--dokunma-hedefi); }
+/* Teklif notu ("Fiyat listesi tanımlı değil — …") sütunun içinde sarar; komşu sütuna taşmaz. */
+.islem-sayfa #takas-verdim .fis-teklif-satiri { overflow-wrap: break-word; }
+/* ISLEM-BANT tur 2 (ölçüm 1280 BASİT, eski altın fiyatı mutlak sınır dışı 99.999.999): ALDIM alt çubuğunda dev tutar has
+   miktarını ("2,7480 has") iki satıra kırıyordu (K3). Has miktarı bölünmez parça; sığmazsa tutar alt satıra, sağa yaslı iner. */
+.islem-sayfa #takas-aldim-has { white-space: nowrap; }
+.islem-sayfa #takas-aldim-toplam { flex-wrap: wrap; column-gap: 12px; }
+.islem-sayfa #takas-aldim-toplam .fis-tuval-tutar { margin-left: auto; }

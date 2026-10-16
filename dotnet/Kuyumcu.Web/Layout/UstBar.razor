@@ -1,0 +1,471 @@
+@inject DilServisi Dil
+@inject ApiIstemci Api
+@inject OturumServisi Oturum
+@inject CanliKurServisi Canli
+@inject NavigationManager Nav
+@inject ArayuzModuServisi Modu
+@inject IServiceProvider Hizmetler
+@implements IDisposable
+
+<header class="ust-bar">
+    @* ── Dar ekran menü düğmesi (UX-2 A2 · KABUK) ──
+       ≤768px'te kenar çubuğu çekmeceye döner; geniş ekranda bu düğme
+       CSS ile gizlidir (.kabuk-menu-dugme{display:none}). Mevcut hiçbir
+       id değişmez, yalnız #ust-menu-ac EKLENİR (K4). *@
+    <button type="button" class="kabuk-menu-dugme" id="ust-menu-ac"
+            aria-controls="kenar-cubugu" aria-expanded="@(Kabuk.MenuAcik ? "true" : "false")"
+            aria-label="@(Kabuk.MenuAcik ? Dil.T.Kabuk.MenuKapat : Dil.T.Kabuk.MenuAc)"
+            title="@(Kabuk.MenuAcik ? Dil.T.Kabuk.MenuKapat : Dil.T.Kabuk.MenuAc)"
+            @onclick="MenuDegistir"><Ikon Ad="@Ikonlar.Menu" /></button>
+    @if (BelgeSayfasi(new Uri(Nav.Uri).AbsolutePath))
+    {
+        @* PAKET Q9-4 (QA turu 9): belge sayfasında TEK <h1> belgenin kendi başlığıdır
+           (A4Belge / PusulaBelgesi). Üst bar rota adını aynı görünümde (mevcut
+           .sayfa-basi-baslik belirteç sınıfı) ama başlık ÖĞESİ olmadan yazar. *@
+        <p class="sayfa-basi-baslik" id="ust-bar-rota-adi">@SayfaBasligi</p>
+    }
+    else if (YildizUst is { } yzUst)
+    {
+        @* PAKET YILDIZ-KATMAN (denetim Y17/O16) — YALNIZ data-sema="yildiz" ve kendi Yıldız yüzü olmayan
+           ekranda: tuvalin sayfa başlığı (üst satır "Grup · ne işe yarar" + ince başlık 64/200 ya da özet
+           kalıbında 40/300). Başlık öğesi AYNI <h1> (tek başlık); öteki 8 şemada bu dal çizilmez. *@
+        <div class="yz-sayfa-baslik" id="ust-bar-yz-baslik" data-boy="@Kuyumcu.Web.Layout.YildizKabuk.BaslikBoyu(MutlakYol)">
+            <p class="yz-sayfa-baslik-ust" id="ust-bar-yz-ust">@yzUst</p>
+            <h1>@(YildizSayfaBasligiSozlugu.Baslik(MutlakYol, Dil.Dil) ?? SayfaBasligi)</h1>
+        </div>
+    }
+    else
+    {
+        <h1>@SayfaBasligi</h1>
+    }
+    @* ── PAKET T-K2 — SAYFA SEKMELERİ YUVASI (tuval Ayarlar.dc.html) ─────────
+       Tuvalde Ayarlar'ın sekme hapı (Görünüm · Dükkân · Kur · Yazıcı · Güvenlik)
+       başlığın HEMEN YANINDADIR. Sayfa içeriğini <UstBarSekmeleri> ile buraya
+       koyar (T-K3); yuva AnaYerlesim'den CascadingValue ile gelir. İçerik
+       yokken kap HİÇ çizilmez. *@
+    @if (SekmeYuvasi?.Icerik is { } sekmeler)
+    {
+        <div class="ust-sayfa-sekmeleri" id="ust-sayfa-sekmeleri" role="navigation"
+             aria-label="@KabukTuvalSozlugu.SayfaSekmeleri(Dil.Dil)">@sekmeler</div>
+    }
+    @* ── PAKET S1-c — KUR ŞERİDİ (tuval Panel.dc.html <header>) ──────────────
+       Sıra tuvaldeki gibi: HAS · GRAM 22 · USD · saat. Profesyonel yüzde EUR ve
+       saatin yanında kaynak adı da görünür ("14:32 · Altınkaynak").
+       Özellik SİLİNMEDİ (plan § 3 md.1): gram altın (24), EUR ve GBP şeridin
+       title ipucunda TAM listelenir; son sorgunun tam tarihi saatin title'ında.
+       Gram 22 SUNUCUDAN gelir (ayarFiyatlari[K22]); yanıtta yoksa çizilmez —
+       istemci has × milyem çarpımı YAPMAZ (UX-S21). *@
+    <div class="ust-kur-serit" id="ust-kur-serit">
+        @if (Canli.Son is { } kur)
+        {
+            <div class="kur-bandi" role="status" aria-label="@Dil.T.Kur.Canli" title="@KurIpucu(kur)">
+                <span class="kur-oge" id="ust-kur-has">
+                    <span class="etiket">@UstBarSozlugu.Has(Dil.Dil)</span>
+                    <span class="deger sayi">@Bicim.TlTam(kur.AltinHasFiyati)</span>
+                </span>
+                @if (kur.AyarGramFiyati(Ayar22) is decimal g22)
+                {
+                    <span class="kur-oge" id="ust-kur-gram22">
+                        <span class="etiket">@UstBarSozlugu.Gram22(Dil.Dil)</span>
+                        <span class="deger sayi">@Bicim.TlTam(g22)</span>
+                    </span>
+                }
+                @if (kur.UsdTry is decimal usd)
+                {
+                    <span class="kur-oge" id="ust-kur-usd">
+                        <span class="etiket">@UstBarSozlugu.Usd(Dil.Dil)</span>
+                        <span class="deger sayi">@Bicim.TlKurus(usd)</span>
+                    </span>
+                }
+                @if (Modu.ProfesyonelMi && kur.EurTry is decimal eur)
+                {
+                    <span class="kur-oge" id="ust-kur-eur">
+                        <span class="etiket">@UstBarSozlugu.Eur(Dil.Dil)</span>
+                        <span class="deger sayi">@Bicim.TlKurus(eur)</span>
+                    </span>
+                }
+            </div>
+        }
+        else if (Canli.SonHata is not null)
+        {
+            @* UX-S28: kur alınamadıysa şerit sessizce BOŞ kalmaz; sebep title'da. *@
+            <span class="kur-yok" id="ust-kur-yok" role="status" title="@Canli.SonHata">
+                @UstBarSozlugu.KurYok(Dil.Dil)
+            </span>
+        }
+        @* ── PAKET S1-g — ETİKETSİZ '⟳' DÜĞMESİ KALKTI (kurucu bulgusu) ──────────
+           Tuvalde (Profesyonel.dc.html) saat DÜZ METİNDİR: "14:32 · Altınkaynak";
+           ayrı bir ikon düğmesi yoktur ve '⟳' bir metin karakteriydi (emoji ikon
+           yasağı). "Kuru şimdi sor" ÖZELLİĞİ SİLİNMEDİ: yetkili (SAHİP/MÜDÜR)
+           için SAATİN KENDİSİ düğmedir — ne yaptığı title + aria-label'da yazar.
+           Yetkisiz kullanıcıda saat düz metin kalır (#ust-kur-saat id'si aynı).
+           Henüz hiç sorgu yoksa (saat yok) düğme görünür METİN taşır. *@
+        @if (Canli.SonSorgu is DateTime sorgu)
+        {
+            @* Kurucu isteği: son sorgulama zamanı. Tuvalde yalnız saat ("09:02");
+               tam tarih-saat ve hata sebebi title'dadır. Arayüz 10 saniyede bir
+               kendisi sorar (CanliKurServisi.YoklamaAraligi). *@
+            if (YetkiliGuncelle)
+            {
+                <button type="button" class="son-sorgu kur-guncelle-btn kur-guncelle-saat @(Canli.Bayat ? "hatali" : null)"
+                        id="ust-kur-saat"
+                        title="@SaatIpucu(sorgu)"
+                        aria-label="@($"{Dil.T.Kur.Guncelle} — {Bicim.Saat(sorgu)}")"
+                        aria-describedby="ust-kur-guncelle-aciklama"
+                        aria-busy="@(guncelleniyor ? "true" : "false")"
+                        disabled="@guncelleniyor" @onclick="KuruGuncelle">@SaatIcerigi(sorgu)</button>
+                @* Düğmenin ne yaptığı (title saatin tam tarihini taşır — S1-c sözleşmesi). *@
+                <span class="gorsel-gizli" id="ust-kur-guncelle-aciklama">@(guncelleniyor ? Dil.T.Kur.Guncelleniyor : MenuAdlari.Icin(Dil.Dil).KurGuncelleIpucu)</span>
+            }
+            else
+            {
+                <span class="son-sorgu @(Canli.Bayat ? "hatali" : null)" id="ust-kur-saat"
+                      title="@SaatIpucu(sorgu)">@SaatIcerigi(sorgu)</span>
+            }
+        }
+        else if (YetkiliGuncelle)
+        {
+            <button type="button" class="kur-guncelle-btn kur-guncelle-saat" id="ust-kur-guncelle"
+                    title="@(guncelleniyor ? Dil.T.Kur.Guncelleniyor : MenuAdlari.Icin(Dil.Dil).KurGuncelleIpucu)"
+                    aria-busy="@(guncelleniyor ? "true" : "false")"
+                    disabled="@guncelleniyor" @onclick="KuruGuncelle">@Dil.T.Kur.Guncelle</button>
+        }
+    </div>
+    @* ── PAKET P-15 (Y-29) — ŞUBE KAPSAMI ──────────────────────────────────
+       ⚠ PAKET P-37 SAPMASI: arama kutusu BURADAN KALDIRILDI ve menünün en
+       üstüne taşındı (kurucu talimatı 20: "menü arama menünün üzerinde
+       olmalı"). Üst bardaki #ust-arama-ac DÜĞMESİ artık YOKTUR — bir düğmenin
+       arkasındaki arama kurucunun göremediği aramadır. Kutu şimdi
+       KenarCubugu.razor içinde, her zaman görünür (#kabuk-arama-girdi).
+       Şube kapsamı arama ucuna hâlâ KabukServisi.AramaSubesi ile geçer. *@
+    @* T-K2: <SubeSecici /> buradan KALDIRILDI → kullanıcı kartının menüsü
+       (KenarCubugu #kenar-kullanici-menu). Tuvalde üst barda şube YOK; çoklu
+       şube seçimi ve hata bandı silinmedi, taşındı. *@
+    <div class="ust-sag">
+        @* ── PAKET S1-j — KAYIT ARAMASI ÜST BARA DÖNDÜ (yazılı düğme + Ctrl/Cmd+K) ──
+           Menü kutusu artık YALNIZ menüyü süzer (kurucu 24.09: "sonuçlar menüde
+           olmalı, ekstra gelmemeli"). Müşteri/ürün/fiş araması SİLİNMEDİ: bu
+           düğme (#ust-kayit-ara, GÖRÜNÜR YAZILI — P-37'nin "düğme arkasındaki
+           arama görünmez" itirazına karşı ikonla yetinilmez) paleti açar.
+           Eski #ust-arama-ac kimliği GERİ GELMEDİ. *@
+        <GlobalArama />
+        @* ── PAKET S1-c — Yardım (tuval: sağda, vurgu renginde düz bağlantı).
+           Bulunulan ekranın kılavuz bölümüne YENİ SEKMEDE gider (YardimBaglantisi). *@
+        <a class="ust-yardim" id="ust-yardim" href="@YardimAdresi"
+           target="_blank" rel="noopener noreferrer"
+           title="@UstBarSozlugu.YardimIpucu(Dil.Dil)">@UstBarSozlugu.Yardim(Dil.Dil)</a>
+        @* ── Bildirim rozeti (paket 6 Faz A) ──
+           60 sn'de bir GET /bildirimler/sayi. Sayı 0 ise rozet DOM'a HİÇ
+           basılmaz (gürültü yok). Yetki yoksa (403) da basılmaz — modül
+           yetkisi olmayan kullanıcı "0 bildirim" görmez, hiç görmez.
+           ⚠ UX-S28: sunucu hatası "bildirim yok"a ÇEVRİLMEZ; 403 dışındaki
+             hatada soru işaretli bir uyarı rozeti çizilir ve sebebi başlıkta
+             yazar. Asıl hata bandı /bildirimler ekranındadır.
+           ⚠ Bu bir <a>'dır, <button> değil: tek işi ekrana gitmektir. *@
+        @* PAKET ISTEK-1 (GOZ #29/#48): sayı alınamadıysa zilin yanına "?" YAZILMAZ,
+           rozet GÖRÜNMEZ (ekip kararı). Hata yine de yutulmaz (UX-S28): sebep
+           ekran okuyucuya durum metni olarak verilir; asıl bant /bildirimler'dedir.
+           429 (yoğunluk) ise hiç hata sayılmaz — son bilinen sayı korunur. *@
+        @if (rozetHata is not null)
+        {
+            <span class="gorsel-gizli" id="ust-bildirim-rozet-hata" role="status">@rozetHata</span>
+        }
+        else if (acikBildirim > 0)
+        {
+            <a class="bildirim-rozet bildirim-rozet-@(enYuksekOnem == "KRITIK" ? "kritik" : "uyari")"
+               id="ust-bildirim-rozet" href="/bildirimler"
+               title="@Dil.T.Bildirim.RozetEtiket" aria-label="@($"{Dil.T.Bildirim.RozetEtiket}: {acikBildirim}")">
+                <Ikon Ad="@Ikonlar.Bildirimler" /><span class="bildirim-sayi">@acikBildirim</span>
+            </a>
+        }
+        @* ── Arayüz modu anahtarı (UX-3) ──
+           S1-c: tuvaldeki hap (999px yarıçap), YALNIZ METİN — tuvalde ikon yok.
+           DilSecici pill deseni. Kur bandının aksine dar ekranda GİZLENMEZ:
+           basit modun ana kullanıcısı tezgâhtardır ve anahtar onun içindir.
+           id sözleşmesi: #ust-mod-anahtar > #ust-mod-basit · #ust-mod-profesyonel *@
+        <div class="mod-anahtar" id="ust-mod-anahtar" role="group" aria-label="@Dil.T.Arayuz.Baslik">
+            <button type="button" id="ust-mod-basit"
+                    class="@(Modu.BasitMi ? "secili" : null)"
+                    aria-pressed="@(Modu.BasitMi ? "true" : "false")"
+                    title="@Dil.T.Arayuz.ModAciklamaBasit"
+                    disabled="@modDegisiyor"
+                    @onclick="ModuBasitYap">
+                @Dil.T.Arayuz.Basit
+            </button>
+            <button type="button" id="ust-mod-profesyonel"
+                    class="@(Modu.ProfesyonelMi ? "secili" : null)"
+                    aria-pressed="@(Modu.ProfesyonelMi ? "true" : "false")"
+                    title="@Dil.T.Arayuz.ModAciklamaPro"
+                    disabled="@modDegisiyor"
+                    @onclick="ModuProYap">
+                @Dil.T.Arayuz.Profesyonel
+            </button>
+        </div>
+    </div>
+</header>
+@if (hata is not null)
+{
+    <div class="kur-hata" role="alert">@hata</div>
+}
+@* PAKET ISTEK-1 — TEK YOĞUNLUK BANDI: sunucu yoğunken (429) her kart kendi
+   kırmızı bandını basmasın; istemci kendiliğinden bekleyip yeniden dener ya
+   da ekrandaki az önceki veriyi korur, kullanıcı tek sade satır görür.
+   Sonraki başarılı yanıtta kendiliğinden kapanır. *@
+@if (Api.Yogun)
+{
+    <div class="bant bant-uyari" role="status" id="ust-yogunluk-bandi">@UstBarSozlugu.Yogunluk(Dil.Dil)</div>
+}
+
+@code {
+    private static KabukServisi Kabuk => KabukServisi.Ortak;
+
+    /// <summary>S1-g: saat + (PRO'da) kaynak adı — düz metin ya da yetkiliye düğme içeriği.</summary>
+    private RenderFragment SaatIcerigi(DateTime sorgu) => cizici =>
+    {
+        cizici.OpenElement(0, "span");
+        cizici.AddAttribute(1, "class", "deger sayi");
+        cizici.AddContent(2, Bicim.Saat(sorgu));
+        cizici.CloseElement();
+        if (Modu.ProfesyonelMi && KaynakAdi is { Length: > 0 } kaynakAd)
+        {
+            cizici.OpenElement(3, "span");
+            cizici.AddAttribute(4, "class", "kur-kaynak");
+            cizici.AddAttribute(5, "id", "ust-kur-kaynak");
+            cizici.AddContent(6, UstBarSozlugu.Ayrac + kaynakAd);
+            cizici.CloseElement();
+        }
+    };
+
+    private bool guncelleniyor;
+    private string? hata;
+    private bool modDegisiyor;
+
+    // ── Bildirim rozeti (paket 6 Faz A) ──────────────────────────────────────
+    private int acikBildirim;
+    private string? enYuksekOnem;
+    private string? rozetHata;
+    private CancellationTokenSource? rozetIptal;
+
+    /// <summary>Rozet yoklama aralığı — Faz A kararı: yoklama, SignalR değil.</summary>
+    public static readonly TimeSpan RozetAraligi = TimeSpan.FromSeconds(60);
+
+    /// <summary>T-K2: sayfaların üst bara sekme koyduğu yuva (AnaYerlesim'den; yoksa null).</summary>
+    [CascadingParameter] public UstBarSekmeYuvasi? SekmeYuvasi { get; set; }
+    private UstBarSekmeYuvasi? abonelik;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(abonelik, SekmeYuvasi)) return;
+        if (abonelik is not null) abonelik.Degisti -= Yenile;
+        abonelik = SekmeYuvasi;
+        if (abonelik is not null) abonelik.Degisti += Yenile;
+    }
+
+    /// <summary>
+    /// T-K2: yoklanan açık bildirim sayısı kabuğa bildirilir; kenar çubuğu onu
+    /// tuvaldeki gibi "Bildirimler" satırında hap olarak çizer (ikinci yoklama yok).
+    /// Hata/403 → 0 bildirilir (rozet çizilmez; hata rozeti üst barda kalır).
+    /// </summary>
+    [Parameter] public EventCallback<int> BildirimSayisiDegisti { get; set; }
+
+    /// <summary>
+    /// Rozeti tazeler. <c>public</c>: zamanlayıcının yanı sıra bUnit testi de
+    /// "elle yenile" adımını buradan ölçer (testte zamanlayıcı BEKLENMEZ —
+    /// 60 sn beklemek kararsız test demek olurdu, Aşkın'ın koşulu).
+    /// </summary>
+    public async Task RozetiYenile()
+    {
+        try
+        {
+            var c = await Api.GetAsync("/bildirimler/sayi");
+            acikBildirim = c.TryGetProperty("sayi", out var s)
+                && s.ValueKind == System.Text.Json.JsonValueKind.Number ? s.GetInt32() : 0;
+            enYuksekOnem = c.TryGetProperty("enYuksekOnem", out var o)
+                && o.ValueKind == System.Text.Json.JsonValueKind.String ? o.GetString() : null;
+            rozetHata = null;
+        }
+        catch (OranSinirHatasi)
+        {
+            // PAKET ISTEK-1: yoğunluk bir "hata" değildir — son bilinen sayı ve
+            // durum KORUNUR, bir sonraki turda yeniden sorulur ("?" yok).
+        }
+        catch (ApiHata ex) when (ex.StatusCode is 401 or 403)
+        {
+            // Yetki yok / oturum yok: rozet HİÇ çizilmez, hata da gösterilmez.
+            acikBildirim = 0; enYuksekOnem = null; rozetHata = null;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            acikBildirim = 0; enYuksekOnem = null;
+            rozetHata = ex.Message;
+        }
+        if (BildirimSayisiDegisti.HasDelegate) await BildirimSayisiDegisti.InvokeAsync(acikBildirim);
+        StateHasChanged();
+    }
+
+    private async Task RozetDongusu(CancellationToken iptal)
+    {
+        using var saat = new PeriodicTimer(RozetAraligi);
+        try
+        {
+            while (await saat.WaitForNextTickAsync(iptal))
+                await InvokeAsync(RozetiYenile);
+        }
+        catch (OperationCanceledException) { /* bileşen kapandı */ }
+    }
+
+    // ── PAKET S1-c — kur şeridi yardımcıları ────────────────────────────────
+    /// <summary>Tuvaldeki "Gram 22": sunucunun AltinAyarlari tablosundaki kimlik.</summary>
+    public const string Ayar22 = "K22";
+
+    /// <summary>
+    /// Şeridin title ipucu: görünmeyen kurlar (gram altın 24, EUR, GBP) BURADA
+    /// tam listelenir — özellik silinmez, katlanır (plan § 3 md.1). Yanıtta
+    /// olmayan kalem yazılmaz; uydurma değer yok.
+    /// </summary>
+    private string KurIpucu(CanliKurServisi.KurAnlik kur)
+    {
+        var d = Dil.Dil;
+        var satirlar = new List<string>
+        {
+            UstBarSozlugu.KurIpucuBaslik(d),
+            $"{Dil.T.Kur.HasAltin}: {Bicim.TlKurus(kur.AltinHasFiyati)}",
+        };
+        if (kur.AyarGramFiyati(Ayar22) is decimal g22) satirlar.Add($"{UstBarSozlugu.Gram22(d)}: {Bicim.TlKurus(g22)}");
+        if (kur.GramAltinFiyati is decimal g) satirlar.Add($"{Dil.T.Kur.GramAltin}: {Bicim.TlKurus(g)}");
+        if (kur.UsdTry is decimal usd) satirlar.Add($"{UstBarSozlugu.Usd(d)}: {Bicim.TlKurus(usd)}");
+        if (kur.EurTry is decimal eur) satirlar.Add($"{UstBarSozlugu.Eur(d)}: {Bicim.TlKurus(eur)}");
+        if (kur.GbpTry is decimal gbp) satirlar.Add($"{UstBarSozlugu.Gbp(d)}: {Bicim.TlKurus(gbp)}");
+        return string.Join("\n", satirlar);
+    }
+
+    /// <summary>Saatin title'ı: tam tarih-saat; hata varsa "ne oldu + ne yap".</summary>
+    private string SaatIpucu(DateTime sorgu)
+    {
+        var zaman = Bicim.TarihSaatSaniye(sorgu);
+        var metin = Canli.SonHata is { } sebep
+            ? UstBarSozlugu.SonSorguHatali(Dil.Dil, zaman, sebep)
+            : UstBarSozlugu.SonSorgu(Dil.Dil, zaman);
+        // T-K2: 769–1439 px PRO'da "· <kaynak>" yazısı yer açmak için gizlenir;
+        // kaynak bilgisi saatin ipucunda HER genişlikte durur (kaybolmaz).
+        // (Kaynak adı yalnız PRO'da gösterilir; ipucu satırı da yalnız PRO'dadır.)
+        return Modu.ProfesyonelMi && KaynakAdi is { Length: > 0 } k
+            ? metin + "\n" + KabukTuvalSozlugu.KurKaynagi(Dil.Dil, k)
+            : metin;
+    }
+
+    /// <summary>
+    /// Kaynak kodu → okunur ad (UX-S31: ham kod ekrana basılmaz). Tanınmayan
+    /// kod için ad TAHMİN EDİLMEZ, kaynak kısmı çizilmez.
+    /// </summary>
+    private string? KaynakAdi => Canli.Son?.Kaynak switch
+    {
+        "ALTINKAYNAK" => Dil.T.Kur.KaynakAltinkaynak,
+        "ANKARA" => Dil.T.Kur.KaynakAnkara,
+        "TRUNCGIL" => Dil.T.Kur.KaynakTruncgil,
+        "MANUAL" => Dil.T.Kur.KaynakManuel,
+        _ => null,
+    };
+
+    /// <summary>Yardım bağlantısı: bulunulan ekranın kılavuz bölümü.</summary>
+    private string YardimAdresi => YardimBaglantisi.Adres(new Uri(Nav.Uri).AbsolutePath);
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    private Task ModuBasitYap() => ModuDegistir(ArayuzModuServisi.Basit);
+    private Task ModuProYap() => ModuDegistir(ArayuzModuServisi.Profesyonel);
+
+    private async Task ModuDegistir(string mod)
+    {
+        if (modDegisiyor || Modu.EtkinMod == mod) return;
+        modDegisiyor = true;
+        hata = null;
+        StateHasChanged();
+        try { await Modu.DegistirAsync(mod); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch { hata = Dil.T.Arayuz.Baslik; }
+        modDegisiyor = false;
+        StateHasChanged();
+    }
+
+    // Dış kaynaktan kur çekmeye yalnız SAHIP/MUDUR yetkili (POST /kur/guncelle)
+    private bool YetkiliGuncelle => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+
+    // Başlık haritası Layout/RotaBasliklari.cs'tedir. Eski `_ => "Kuyumcu"`
+    // geri dalı KALDIRILDI: 15 rota sessizce oraya düşüyordu (UX-2 Faz A1).
+    /// <summary>
+    /// PAKET Q9-4 — kendi &lt;h1&gt;'ini taşıyan yazdırılabilir belge rotaları
+    /// (ortak A4 çıktı + gider pusulası belgesi). Sayfada tek H1 kalsın diye üst
+    /// bar bu rotalarda başlık öğesi çizmez.
+    /// </summary>
+    private string MutlakYol => new Uri(Nav.Uri).AbsolutePath.TrimEnd('/') is { Length: > 0 } y ? y : "/";
+    /// <summary>YILDIZ-KATMAN: Yıldız sayfa başlığının üst satırı; Yıldız değilse ya da rota listede yoksa null.</summary>
+    private string? YildizUst => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler) ? YildizSayfaBasligiSozlugu.Ust(MutlakYol, Dil.Dil) : null;
+
+    public static bool BelgeSayfasi(string mutlakYol)
+    {
+        var y = mutlakYol.TrimEnd('/');
+        if (y.StartsWith("/cikti/", StringComparison.OrdinalIgnoreCase)) return true;
+        var p = y.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return p.Length == 3
+            && p[0].Equals("gider-pusulalari", StringComparison.OrdinalIgnoreCase)
+            && p[2].Equals("belge", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // DEGISIM-GUNSONU: sayfa seçili ekranın adını yazdıysa (UstBarBasligi — ör. /islemler'de Değişim) o, değilse rota adı.
+    private string SayfaBasligi =>
+        SekmeYuvasi?.BaslikIcin(new Uri(Nav.Uri).AbsolutePath)
+        ?? RotaBasliklari.Baslik(new Uri(Nav.Uri).AbsolutePath, Dil.T);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Canli.Degisti += Yenile;
+        Modu.Degisti += Yenile;          // push geldiğinde çubuğu tazele
+        Kabuk.Degisti += Yenile;
+        Nav.LocationChanged += KonumDegisti;
+        Api.YogunlukDegisti += Yenile;      // ISTEK-1: tek yoğunluk bandı
+        await Canli.BaslatAsync();         // ilk REST + canlı push aboneliği (tek bağlantı)
+
+        // İlk ölçüm BEKLENİR (deterministik); sonraki turlar zamanlayıcıdan gelir.
+        await RozetiYenile();
+        rozetIptal = new CancellationTokenSource();
+        _ = RozetDongusu(rozetIptal.Token);
+    }
+
+    // Dış kaynaktan (truncgil) anlık kur çek; yanıt anında uygulanır, ayrıca sunucu push eder
+    private async Task KuruGuncelle()
+    {
+        if (guncelleniyor) return;
+        guncelleniyor = true;
+        hata = null;
+        StateHasChanged();
+        try
+        {
+            Canli.Uygula(await Api.PostAsync<CanliKurServisi.KurAnlik>("/kur/guncelle"));
+        }
+        catch (ApiHata ex) { hata = $"{Dil.T.Kur.Guncellenemedi}: {ex.Message}"; }
+        catch { hata = Dil.T.Kur.Guncellenemedi; }
+        guncelleniyor = false;
+        StateHasChanged();
+    }
+
+    private void MenuDegistir() => Kabuk.Degistir();
+
+    private void KonumDegisti(object? s, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => Yenile();
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Canli.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+        Kabuk.Degisti -= Yenile;
+        Nav.LocationChanged -= KonumDegisti;
+        Api.YogunlukDegisti -= Yenile;
+        if (abonelik is not null) abonelik.Degisti -= Yenile;
+        var k = rozetIptal;
+        rozetIptal = null;
+        if (k is null) return;
+        try { k.Cancel(); } catch (ObjectDisposedException) { }
+        k.Dispose();
+    }
+}

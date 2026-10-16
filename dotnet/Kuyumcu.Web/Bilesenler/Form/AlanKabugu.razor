@@ -1,0 +1,79 @@
+@using Kuyumcu.Web.Servisler
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ALAN KABUĞU — girdi ailesinin TEK görsel kabuğu (paket P-36b).
+
+   Etiket, zorunluluk işareti, kaynak rozeti (UX-S21), ipucu, kilit sebebi
+   (UX-S30) ve alan altı hata (DoD EK md.3) BURADA çizilir; 12 girdi bileşeni
+   yalnız kendi denetimini <ChildContent> olarak verir.
+
+   ⚠ İKİNCİ KABUK AÇILMAZ: "etiketi kendim yazayım" diyen her ekran, kurucunun
+     "tek seferde değiştiririz" şartını bozar. denetim.sh bu dosyanın tekliğini
+     GIRDI_AILESI_TEK_KAYNAK sayacıyla zorlar.
+
+   id sözleşmesi: <ElemanId>-sar · -ipucu · -durum · -hata
+   ═══════════════════════════════════════════════════════════════════════ *@
+
+<div class="alan @(Hatali ? "alan-hatali" : null)" id="@($"{ElemanId}-sar")">
+    <label class="alan-etiket" for="@ElemanId">
+        <span class="alan-etiket-metin">@Etiket</span>
+        @if (Zorunlu)
+        {
+            <span class="zorunlu-isaret" aria-hidden="true">*</span>
+        }
+        else if (!IstegeGizle)
+        {
+            <span class="alan-istege">(@Dil.T.Ortak.Istege)</span>
+        }
+        @if (KaynakRozeti is { Length: > 0 } kaynak)
+        {
+            @* UX-S21: türetilen değerin nereden geldiği YAZILIR. *@
+            <span class="alan-kaynak" id="@($"{ElemanId}-kaynak")">@kaynak</span>
+        }
+    </label>
+
+    @* ── PAKET P-39 · K2 ────────────────────────────────────────────────
+       Alan hücresi ÜÇ SATIRLIDIR: [etiket] · [kontrol] · [alt].
+       Satır kapsayıcısı `subgrid` ile bu üç raya oturur, böylece etiket kaç
+       satıra sararsa sarsın KONTROLLER AYNI y'de başlar (28 hiza kusurunun
+       tek kökü). Sarmalayıcılar ŞART: subgrid kendi içinde örtük ray
+       açamaz, üçten fazla çocuk aynı hücreye yığılırdı. *@
+    <div class="alan-kontrol">@ChildContent</div>
+
+    <div class="alan-alt">
+    @if (Ipucu is { Length: > 0 } ip)
+    {
+        <span class="alan-ipucu" id="@($"{ElemanId}-ipucu")">@ip</span>
+    }
+    @if (Kilitli && DevredisiSebebi is { Length: > 0 } sebep)
+    {
+        @* UX-S30: kilitli alanın sebebi GÖRÜNÜR. *@
+        <span class="alan-kilit-sebep" id="@($"{ElemanId}-durum")">@sebep</span>
+    }
+    @if (Hatali)
+    {
+        @* DoD EK md.3: sessiz etkisizlik yasak — mesaj alanın ALTINDA. *@
+        <span class="hata-metni alan-hata" id="@HataEtkinId" role="alert">@Hata</span>
+    }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ElemanId { get; set; } = "";
+    [Parameter, EditorRequired] public string Etiket { get; set; } = "";
+    [Parameter] public bool Zorunlu { get; set; }
+    /// <summary>Salt okunur alanlarda "(isteğe bağlı)" eki anlamsızdır — gizlenir.</summary>
+    [Parameter] public bool IstegeGizle { get; set; }
+    [Parameter] public bool Kilitli { get; set; }
+    [Parameter] public string? DevredisiSebebi { get; set; }
+    [Parameter] public string? Hata { get; set; }
+    /// <summary>Hata span kimliği. Boşsa &lt;ElemanId&gt;-hata (göçte eski kimlik korunur).</summary>
+    [Parameter] public string? HataId { get; set; }
+    [Parameter] public string? Ipucu { get; set; }
+    [Parameter] public string? KaynakRozeti { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool Hatali => Hata is { Length: > 0 };
+    private string HataEtkinId => HataId is { Length: > 0 } h ? h : $"{ElemanId}-hata";
+}

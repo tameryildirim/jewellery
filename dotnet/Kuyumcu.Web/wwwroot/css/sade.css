@@ -1,0 +1,129 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET SADE-1 — göz incelemesi artıkları (şerit dosyası; app.css'e YAZILMAZ).
+   Kapsam: /kurulum · /hurda · /kur · /pos/tahsilatlar · /banka · /kilavuz ·
+   /yedekler · /ayarlar. Sabit renk YOK — yalnız belirteç var(); satır içi
+   style YOK. app.css kuralları gerekirse DAHA ÖZGÜL seçiciyle ezilir.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (1) /kurulum adım listesi — 375 px'te "Bu adıma git" düğmesi, adım adı ve
+       sayı üst üste biniyordu (göz #15). Satır: rozet · ad · sayı · eylem;
+       dar ekranda ad tam satır, sayı + eylem alt satıra akar. */
+.kart .sade-adim-listesi { display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; }
+.kart .sade-adim-listesi > li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--bosluk-2) var(--bosluk-3);
+  list-style: none; min-width: 0; padding: 6px 0;
+  border-bottom: 1px solid var(--ayrac);
+}
+.kart .sade-adim-listesi > li:last-child { border-bottom: 0; }
+.kart .sade-adim-listesi > li > span:not(.rozet):not(.metin-kucuk) { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.kart .sade-adim-listesi > li > .rozet, .kart .sade-adim-listesi > li > span:first-child { order: 1; }
+.kart .sade-adim-listesi > li > span:not(.rozet):not(.metin-kucuk) { order: 2; }
+.kart .sade-adim-listesi > li > .metin-kucuk { flex: 0 0 auto; order: 3; }
+.kart .sade-adim-listesi > li > .btn,
+.kart .sade-adim-listesi > li > button { flex: 0 0 auto; order: 4; }
+
+/* (1b) /kurulum · /veri-disa-aktarim · /hurda kartlarında gövde öğeleri .kart-govde
+        sarmalı olmadan doğrudan kartın içindeydi → kenara yapışık, sağdaki sayı
+        kırpılıyordu. Yalnız bu üç sayfada (sayfa başı id'siyle kapsanır) kartın
+        başlık dışı çocuklarına kartın başlık dolgusuyla aynı yatay pay verilir. */
+:is(.sayfa, .dikey-bosluk):is(:has(> #sayfa-basi-kurulum), :has(> #sayfa-basi-veri-disa-aktarim), :has(> #sayfa-basi-hurda)) > .kart {
+  padding-bottom: 1rem;
+}
+:is(.sayfa, .dikey-bosluk):is(:has(> #sayfa-basi-kurulum), :has(> #sayfa-basi-veri-disa-aktarim), :has(> #sayfa-basi-hurda))
+  > .kart > :not(.kart-baslik):not(.kart-govde):not(.tablo-sar) {
+  margin-left: 1.5rem; margin-right: 1.5rem;
+}
+@media (max-width: 600px) {
+  :is(.sayfa, .dikey-bosluk):is(:has(> #sayfa-basi-kurulum), :has(> #sayfa-basi-veri-disa-aktarim), :has(> #sayfa-basi-hurda))
+    > .kart > :not(.kart-baslik):not(.kart-govde):not(.tablo-sar) {
+    margin-left: 1rem; margin-right: 1rem;
+  }
+}
+.sade-yeniden { margin: var(--bosluk-2) 0 0; }
+
+/* (2) /hurda — veri okunamadıysa form kilitli (fieldset disabled) ve SOLUK
+       görünür (göz #24): "hata var ama her şey etkin" çelişkisi kalkar. */
+fieldset.sade-kilitli-form { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset.sade-kilitli-form:disabled { opacity: .55; }
+fieldset.sade-kilitli-form:disabled * { cursor: not-allowed; }
+#hrd-form-kilit-notu { margin: 0 0 var(--bosluk-2); font-size: var(--yazi-sm); }
+
+/* (3) /kur — sözleşmesiz kaynak: tek satır rozet (göz #25). */
+.sade-kaynak-satir { margin: 0; }
+
+/* (4) Katlanır "Ayrıntı" (banka kilit notları · kılavuz ekran listesi). */
+.sade-ayrinti { min-width: 0; }
+.sade-ayrinti-ozet {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  cursor: pointer; color: var(--metin-soluk); font-size: var(--yazi-sm);
+  padding: var(--bosluk-2) 0; list-style: none;
+}
+.sade-ayrinti-ozet::-webkit-details-marker { display: none; }
+.sade-ayrinti-ozet::after { content: "▸"; color: var(--metin-soluk); }
+.sade-ayrinti[open] > .sade-ayrinti-ozet::after { content: "▾"; }
+.sade-ayrinti-ozet:hover { color: var(--metin); }
+.sade-ayrinti-ozet:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; border-radius: 6px; }
+.sade-ayrinti-ozet .ikon { width: 16px; height: 16px; flex: 0 0 auto; }
+.sade-ayrinti-govde {
+  display: flex; flex-direction: column; gap: var(--bosluk-2);
+  /* Açılan ayrıntı sayfayı ekran boyu aşağı itmez: kendi kutusunda kayar. */
+  max-height: 50vh; overflow-y: auto; overscroll-behavior: contain;
+}
+
+/* (5) /kilavuz — kart ızgarası (göz #18): madde işaretli uzun liste yerine. */
+.sade-kart-izgara {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 10px; padding: 0; margin: var(--bosluk-2) 0 0;
+}
+.sade-kart-oge { list-style: none; min-width: 0; }
+.sade-kart-oge > a {
+  display: flex; align-items: center; min-height: 48px; box-sizing: border-box;
+  padding: 8px 14px; border: 1px solid var(--ayrac); border-radius: 10px;
+  background: var(--yuzey); color: var(--metin); text-decoration: none;
+  line-height: 1.25; overflow-wrap: break-word;
+}
+@media (max-width: 600px) {
+  /* 375 px: tek sütun (kısa ad iki satıra KIRILMAZ), alçak kart — sayfa treni oluşmaz. */
+  .sade-kart-izgara { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .sade-kart-oge > a { min-height: 40px; padding: 6px 12px; }
+}
+.sade-kart-oge > a:hover { color: var(--vurgu-guclu); background: var(--yuzey-hover); }
+.sade-kart-oge > a:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+
+/* (6) Sayfa içi sekme şeridi — tuvalin segment dili (göz #17): Basit/Profesyonel
+       hapıyla aynı: ince çerçeveli kap, seçili sekme koyu zemin + açık yazı. */
+#yd-sekme-seridi, #kur-sekme-seridi { background: transparent; }
+#yd-sekme-seridi .sekmeler-sekme, #kur-sekme-seridi .sekmeler-sekme { font-size: 15px; font-weight: 400; padding: 6px 14px; }
+#yd-sekme-seridi .sekmeler-sekme.secili, #kur-sekme-seridi .sekmeler-sekme.secili {
+  /* TOPLU-6: sabit lacivert değil, ortak seçili belirteci (dugme.css) — karanlıkta ters dolgu, ≥ 3:1. */
+  background: var(--secili-dolgu); color: var(--secili-dolgu-metin); font-weight: 400;
+}
+#yd-sekme-seridi .sekmeler-sekme:hover:not(.secili),
+#kur-sekme-seridi .sekmeler-sekme:hover:not(.secili) { color: var(--metin); background: var(--yuzey-hover); }
+/* TOPLU-6: ayrı karanlık eşleme (vurgu yüzeyi, 1,36:1) kaldırıldı — karanlık dolgu ortak belirteçten gelir. */
+
+/* (7) /ayarlar — okuma hatası bandı + "Yeniden dene" (göz #41). */
+#gorunum-okuma-hata, #benim-okuma-hata {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--bosluk-2) var(--bosluk-3);
+}
+#gorunum-okuma-hata > span, #benim-okuma-hata > span { flex: 1 1 14rem; min-width: 0; }
+
+/* (8) /kilavuz — açılan "Tüm ekranların listesi" sayfayı ekran boyu aşağı itiyordu
+       (tur ölçümü: açılan katman ekran dışı). Liste kendi kutusunda kayar; ekranın
+       en çok %40'ı kadar yer kaplar, liste SİLİNMEZ. */
+#kl-ekranlar-ayrinti > #kl-ekranlar {
+  max-height: 40vh; overflow-y: auto; overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+/* (9) /kilavuz 375 PROFESYONEL — liste PRO'da açık gelir; dar ekranda sayfa ekran
+       boyunun 2 katını aşıyordu (doğrulama: K4 tren 2.1×4). Dar ekranda listenin
+       kutusu alçalır (liste yine tam; kendi kutusunda kayar). */
+@media (max-width: 600px) {
+  #kl-ekranlar-ayrinti > #kl-ekranlar { max-height: 24vh; }
+}
+
+/* (10) /kurulum — açılış kartının boş durumu 12rem sabit boy taşıyordu; 960 px
+        PROFESYONEL'de sayfa ekran boyunun 2 katını aşıyordu (tur 2: K4 2.1×4).
+        Boş durum metni ve ikonu KALIR, yalnız boşluğu içeriğe göre olur. */
+#kur-acilis .bos-durum { height: auto; padding: var(--bosluk-4) 0; }

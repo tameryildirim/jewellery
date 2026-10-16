@@ -1,0 +1,102 @@
+%% Kuyumcu ERP — Ürün, Stok ve İşlem Akışı
+%% ŞEMADAN ÜRETİLMİŞTİR — elle çizilmemiştir (er-uret.py).
+%% Kaynak: MySQL information_schema / kuyumcu_net
+%% Veritabanında enforce edilen FK kısıtı: 0 (ölçüldü).
+%% FK işaretleri MANTIKSAL yabancı anahtardır; bütünlük uygulama katmanında korunur.
+erDiagram
+    cariler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string tur
+        string ad
+        string telefon
+        string email
+        string vergi_no
+        string adres
+        string notlar
+        decimal kredi_limiti_tl
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    hareketler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string tur
+        datetime tarih
+        text aciklama
+        decimal tl_tutari
+        string para_birimi
+        decimal has_grami
+        string kur_snapshot_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string urun_id FK "mantiksal"
+        string karsi_sube_id FK "mantiksal"
+        string kullanici_id FK "mantiksal"
+        string fatura_no
+        datetime olusturuldu
+        string odeme_turu
+        string kmts_kodu
+    }
+    kur_snapshots {
+        string id PK
+        string tenant_id FK "kiraci"
+        decimal altin_has_fiyati
+        decimal gram_altin_fiyati
+        decimal usd_try
+        decimal eur_try
+        decimal gbp_try
+        string kaynak
+        datetime olusturuldu
+    }
+    stoklar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string urun_id FK "mantiksal"
+        decimal adet
+        decimal toplam_has_gram
+        datetime guncellendi
+    }
+    subeler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string ad
+        string adres
+        string telefon
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    urunler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string tip
+        string kod
+        string ad
+        string aciklama
+        string ayar_id FK "mantiksal"
+        decimal milyem
+        decimal gram_agirlik
+        decimal tas_agirlik
+        decimal has_grami
+        decimal iscilik_tl
+        decimal satis_fiyati
+        string barkod
+        string rfid
+        string gorsel_url
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+        string parite_kodu
+        string kmts_kodu
+    }
+
+    cariler ||--o{ hareketler : "cari"
+    kur_snapshots ||--|{ hareketler : "kur_snapshot"
+    subeler ||--o{ hareketler : "karsi_sube"
+    subeler ||--|{ hareketler : "sube"
+    subeler ||--|{ stoklar : "sube"
+    urunler ||--o{ hareketler : "urun"
+    urunler ||--|{ stoklar : "urun"

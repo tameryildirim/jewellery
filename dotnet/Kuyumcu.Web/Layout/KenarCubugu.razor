@@ -1,0 +1,723 @@
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject YetkiServisi Yetki
+@inject ArayuzModuServisi Modu
+@inject MenuTercihServisi Tercih
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+<aside class="kenar-cubugu" id="kenar-cubugu">
+    <div class="kenar-logo">
+        @* PAKET S1-b — tuvaldeki marka satırı: ad Marka.Ad TEK KAYNAĞINDAN gelir
+           (P-D2); eski "Kuyumcu" dizgesi burada elle duruyordu. *@
+        @* PAKET T-K2 — tuval: 34 px mavi kare içinde elmas + "Mihenk" (Sora 21/700).
+           Yazım Marka.Ad'dan TÜRETİLİR (KabukTuvalSozlugu.MarkaYazimi) — ikinci
+           kaynak yok. TR/EN seçici buradan KALKTI → kullanıcı kartının menüsü
+           (#kenar-kullanici-menu); özellik silinmedi. *@
+        <span class="marka" id="kenar-marka"><span class="kenar-marka-rozet" aria-hidden="true"><Ikon Ad="@Ikonlar.Marka" /></span>@KabukTuvalSozlugu.MarkaYazimi</span>
+    </div>
+
+    @* ── PAKET P-37 → S1-j — MENÜ İÇİ ARAMA (kurucu 24.09 14:40) ──────────────
+       ÖNCE: kutu GlobalArama bileşeniydi; yazınca sonuçlar menünün DIŞINDA,
+       içeriğin üstüne binen beyaz bir pencerede (EKRANLAR + KAYITLAR + "En çok
+       10 kayıt" notu) açılıyor, ilk tuşta Sadelestir("") çöküp Blazor hata
+       bandını açıyordu. Kurucu: "menüde olması lazım, sonuçların ekstra
+       gelmemesi lazım".
+       ŞİMDİ: kutu yalnız MENÜNÜN KENDİSİNİ süzer — eşleşen satırlar görünür,
+       eşleşen gruplar açılır, eşleşmeyen satır/grup [hidden] ile gizlenir;
+       "Tüm ekranlar", favoriler ve alt blok (Kılavuz/Ayarlar) da süzülür.
+       Eşleşme yoksa menüde TEK satır "Eşleşen ekran yok". Açılır pencere YOK.
+       Temizle (×) ve Esc menüyü kullanıcının katlama tercihli hâline döndürür
+       (arama tercihe YAZMAZ). ↑/↓ eşleşen satırlar arasında, Enter ekrana gider.
+       Kayıt araması SİLİNMEDİ: üst bardaki "Müşteri, ürün ara" düğmesi ve
+       Ctrl/Cmd+K (GlobalArama paleti). *@
+    <div class="menu-arama" id="menu-arama" role="search">
+        <div class="menu-arama-satir @(AramaVar ? "dolu" : null)">
+            <span class="menu-arama-ikon" aria-hidden="true"><Ikon Ad="@Ikonlar.Arama" /></span>
+            @* Ortak Form/Arama bileşeni (P-36c: serbest ekranda ham girdi yok);
+               etiketi görsel gizlidir, yer tutucu "Menüde ara". *@
+            @* T-K2: yer tutucu tuvaldeki gibi "Ekran ara"; görsel-gizli etiket
+               (erişilebilir ad) davranışı anlatmaya devam eder. *@
+            <Arama ElemanId="menu-arama-girdi" Etiket="@MenuAramaSozlugu.Etiket(Dil.Dil)"
+                   YerTutucu="@KabukTuvalSozlugu.EkranAra(Dil.Dil)"
+                   Deger="@sorgu" DegerChanged="SorguDegisti" TusBasti="AramaTusu"
+                   aria-controls="kenar-nav"
+                   aria-activedescendant="@AktifSatirId()"
+                   spellcheck="false" />
+            @if (AramaVar)
+            {
+                <button type="button" class="menu-arama-temizle" id="menu-arama-temizle"
+                        title="@MenuAramaSozlugu.Temizle(Dil.Dil)" aria-label="@MenuAramaSozlugu.Temizle(Dil.Dil)"
+                        @onclick="AramayiTemizle">×</button>
+            }
+            else if (!Modu.BasitMi)
+            {
+                @* T-K2 — tuval Profesyonel.dc.html: "Ekran ara ⌘K". Kısayol GlobalArama
+                   paletini (ekran + müşteri + ürün) açar; ne yaptığı title'da yazar.
+                   Etkileşimsiz ipucudur (düğme değil → DoD EK md.1 kapsamı dışı). *@
+                <kbd class="kenar-kisayol" id="menu-arama-kisayol" aria-hidden="true"
+                     title="@KabukTuvalSozlugu.KisayolIpucu(Dil.Dil)">@Dil.T.Kabuk.MenuAramaKisayol</kbd>
+            }
+        </div>
+        <span class="gorsel-gizli" id="menu-arama-durum" role="status" aria-live="polite">@(AramaVar ? MenuAramaSozlugu.EslesenSayisi(Dil.Dil, EslesenYollar().Count) : "")</span>
+    </div>
+
+    @* ── PAKET S1-b/S1-d — "TÜM EKRANLAR" GİRİŞİ (tuval Panel.dc.html <nav>) ───
+       Tuvalde aramanın hemen altında duran karo menü bağlantısı. S1-b'de hedef
+       sayfa yoktu ve bu bir KİLİTLİ DÜĞMEYDİ; S1-d /ekranlar sayfasını açtı,
+       giriş artık gerçek bir BAĞLANTIDIR (id aynı: #kenar-tum-ekranlar).
+       Sayı = sayfadaki karo sayısı (yalnız yetki süzgeci — GorunurEkranSayisi).
+       ⚠ .kenar-nav'ın DIŞINDADIR: menü bağlantılarını sayan mevcut testler
+         (.kenar-nav a) bu girişi menü öğesi sanmamalıdır. *@
+    @* S1-j: arama sürerken "Tüm ekranlar" de süzülür — yalnız adı eşleşirse görünür. *@
+    <NavLink class="kenar-tum-ekranlar" id="kenar-tum-ekranlar" href="@MenuTanimi.TumEkranlarYolu"
+             hidden="@(AramaVar && !TumEkranlarEslesir())"
+             Match="NavLinkMatch.All" ActiveClass="aktif"
+             title="@MenuSozlugu.TumEkranlarAciklama(Dil.Dil)"
+             aria-describedby="kenar-tum-ekranlar-sebep">
+        <Ikon Ad="@Ikonlar.TumEkranlar" />
+        <span>@MenuSozlugu.TumEkranlar(Dil.Dil, GorunurEkranSayisi())</span>
+    </NavLink>
+    @* id sözleşmesi: S1-b'nin #kenar-tum-ekranlar-sebep'i SİLİNMEDİ — artık
+       kilidin sebebini değil bağlantının ne açtığını söyler. *@
+    <span class="gorsel-gizli" id="kenar-tum-ekranlar-sebep">@MenuSozlugu.TumEkranlarAciklama(Dil.Dil)</span>
+
+    @* ── YETKİ HATASI GÖRÜNÜR (P-37) ────────────────────────────────────────
+       ÖNCE: YetkiServisi hatayı yutuyor, menü 36 bağlantıdan 1'e düşüyordu ve
+       kullanıcı hiçbir uyarı görmüyordu. ŞİMDİ: bant + gerçek istek atan
+       "yeniden dene" düğmesi (DoD EK md.1). Menü BOŞALTILMAZ. *@
+    @if (Yetki.Hata is { Length: > 0 })
+    {
+        <div class="kenar-uyari" id="kenar-yetki-hatasi" role="alert">
+            <span>@Dil.T.Kabuk.YetkiYuklenemedi</span>
+            <button type="button" class="dugme dugme-kucuk dugme-ikincil"
+                    id="kenar-yetki-yeniden"
+                    @onclick="YetkiYenidenDene">@Dil.T.Kabuk.YetkiYenidenDene</button>
+        </div>
+    }
+    @if (Tercih.Hata is { Length: > 0 })
+    {
+        <div class="kenar-uyari" id="kenar-sira-hatasi" role="alert">
+            @* S1-b: katlama hatası "sıra kaydedilemedi" DİYE yazılmaz — neyin
+               kaydedilemediği söylenir (bant id'si aynı kaldı). *@
+            <span>@(Tercih.HataAnahtari == MenuTercihServisi.AnahtarAcikGruplar
+                        ? MenuSozlugu.KatlamaKaydedilemedi(Dil.Dil)
+                        : Dil.T.Kabuk.SiraKaydedilemedi)</span>
+            @* KATMAN-2: bant kalıcı hatada çıkar ve KAPATILABİLİR — kapatmak veri
+               değiştirmez (yerel durum sunucunun bildiğine zaten geri alındı). *@
+            <button type="button" class="kenar-uyari-kapat"
+                    id="kenar-sira-hatasi-kapat" aria-label="@Dil.T.Ortak.Kapat" title="@Dil.T.Ortak.Kapat"
+                    @onclick="Tercih.HatayiKapat"><span aria-hidden="true">×</span></button>
+        </div>
+    }
+
+    <nav class="kenar-nav" aria-label="@Dil.T.Nav.MenuEtiketi" id="kenar-nav">
+        @* ── FAVORİLER (P-37) — KULLANICIYA ÖZEL ────────────────────────────
+           Boşken grup HİÇ çizilmez; ilk yıldızda belirir ve nasıl çalıştığı
+           bir kez anlatılır. Favori kiracıya değil KULLANICIYA bağlıdır:
+           iki tezgâhtarın favorisi farklıdır. *@
+        @* PAKET S1-g: tuval Profesyonel.dc.html menünün en üstünde "Favoriler"
+           satırlarını gösterir; basit yüzde (Panel.dc.html, Tezgah.dc.html)
+           favori bloğu YOKTUR. Favori EKLEME/ÇIKARMA "Tüm ekranlar" sayfasındaki
+           yıldızdadır (Ekranlar.dc.html: "yıldızla favorine ekle"); menü
+           satırında yıldız ve sürükleme tutamacı ÇİZİLMEZ (38+38 → 0). *@
+        @{ var favoriler = Favoriler(); }
+        @if (!Modu.BasitMi && favoriler.Count > 0 && (!AramaVar || favoriler.Any(Eslesir)))
+        {
+            @* P-37 (kurucu 21 Eylül 16:30): menünün tepesindeki 3 satırlık
+               paragraf KALDIRILDI. Açıklama yıldız ikonunun kendi ipucunda
+               (title) durur — menüde KALICI PARAGRAF YOKTUR. *@
+            <h2 class="kenar-grup-baslik" id="kenar-grup-favoriler"
+                title="@Dil.T.Kabuk.FavoriIpucu">@Dil.T.Kabuk.Favoriler</h2>
+            @foreach (var oge in favoriler)
+            {
+                <div class="@SatirSinifi(oge)" id="@($"kenar-favori-satir-{Slug(oge.Yol)}")"
+                     hidden="@(AramaVar && !Eslesir(oge))">
+                    @* T-K2: tuval Profesyonel.dc.html — favori satırı ekranın kendi
+                       ikonunu değil, sarı yıldızı taşır. *@
+                    <NavLink href="@oge.Yol"
+                             Match="@Eslesme(oge)"
+                             ActiveClass="aktif">
+                        <Ikon Ad="@Ikonlar.Favori" Sinif="kenar-favori-yildiz" /> @oge.Etiket(Dil.T)
+                    </NavLink>
+                </div>
+            }
+        }
+
+        @* ── PAKET P-14 (Y-9) — GRUPLU MENÜ ───────────────────────────────────
+           Tek kaynak MenuTanimi.Ogeler; burada YALNIZ çizim var.
+
+           UX-3 → S1-g: her bağlantıda YETKİ aranır — Yetki.Erisebilir / rol
+           (SUNUCU kapısının ekran yansıması). S1-g öncesindeki MOD süzgeci
+           (basit modda 8 satır) tuvalle çeliştiği için KALKTI; mod yetkiyi
+           hiçbir zaman gevşetmez (M-UX3-06).
+
+           P-37: grup içi sıra KULLANICI tercihine göre uygulanır; sürükle-bırak
+           (fare + dokunmatik, 5px eşik) ve Alt+↑/↓ aynı yola çıkar. Gruplar
+           ARASI taşıma bu sürümde YOKTUR — gerekçesi ekranda yazar. *@
+        @foreach (var grup in MenuTanimi.GrupSirasi)
+        {
+            var slug = MenuTanimi.GrupSlug(grup);
+            var ogeler = GrupOgeleri(grup);
+            if (ogeler.Count == 0)
+            {
+                continue;
+            }
+            var grupAdi = MenuTanimi.GrupEtiketi(grup)(Dil.T);
+            @* S1-j: arama sürerken eşleşen grup AÇIK, eşleşmeyen grup (başlığıyla)
+               GİZLİDİR; kullanıcının katlama tercihi OKUNMAZ ve YAZILMAZ — arama
+               temizlenince tercihli hâl kendiliğinden geri gelir. *@
+            var eslesenSayisi = AramaVar ? ogeler.Count(Eslesir) : 0;
+            var acik = AramaVar ? eslesenSayisi > 0 : GrupAcik(slug);
+            @* ── PAKET S1-b — KATLANIR GRUP BAŞLIĞI ────────────────────────────
+               Tuval Panel.dc.html: başlık bir <button aria-expanded>'dır; KAPALI
+               olduğunda ALTINDA o grubun ekran adları tek satır önizleme olarak
+               durur ("Müşteriler · Ürünler · Ürün ağacı …"). Bu, "menüde hiçbir
+               ekran kaybolmadı" kuralının GÖRSEL KANITIDIR (tuval notu n2).
+               ⚠ PAKET S1-g: BAŞLIK HER MODDA ÇİZİLİR. S1-b "basit yüz düz
+                 listedir" diye okumuştu; kurucunun tuvali (Panel.dc.html basit,
+                 Tezgah.dc.html tezgâhtar) basit modda da 6 katlanır grup +
+                 önizleme gösterir. Eski düz liste 30 ekranı menüden siliyordu.
+               ⚠ Kapalı grubun satırları DOM'dan SİLİNMEZ, `hidden` ile katlanır:
+                 özellik silinmez (plan § 3 md.1), ekran okuyucu ve göz onları
+                 görmez ama bağlantı ağacı bozulmaz.
+               ⚠ <p> KULLANILMAZ (P-37: menüde kalıcı paragraf 0) — önizleme
+                 başlığın kendi düğmesinin ikinci satırıdır. *@
+            if (AramaVar)
+            {
+                @* Arama sürerken başlık DÜĞME DEĞİLDİR: katlamak arama sonucunu
+                   gizlerdi ve tercihe sessizce yazardı. Başlık yalnız hangi grupta
+                   olunduğunu söyler; eşleşmeyen grubun başlığı gizlidir. *@
+                <h2 class="kenar-grup-baslik kenar-grup-baslik-arama" id="@($"kenar-grup-{slug}")"
+                    hidden="@(eslesenSayisi == 0)">
+                    <span class="kenar-grup-satir">
+                        <span class="kenar-grup-ad">@grupAdi</span>
+                        <span class="kenar-grup-sayi">
+                            <span class="gorsel-gizli">@MenuSozlugu.EkranSayisi(Dil.Dil, eslesenSayisi)</span>
+                            <span aria-hidden="true">@eslesenSayisi</span>
+                        </span>
+                    </span>
+                </h2>
+            }
+            else
+            {
+                <h2 class="kenar-grup-baslik" id="@($"kenar-grup-{slug}")">
+                    <button type="button" class="kenar-grup-dugme"
+                            id="@($"kenar-grup-dugme-{slug}")"
+                            aria-expanded="@(acik ? "true" : "false")"
+                            aria-controls="@($"kenar-grup-{slug}")"
+                            aria-label="@(acik ? MenuSozlugu.GrubuKapat(Dil.Dil, grupAdi) : MenuSozlugu.GrubuAc(Dil.Dil, grupAdi))"
+                            title="@MenuSozlugu.KatlamaIpucu(Dil.Dil)"
+                            @onclick="() => GrupKatla(slug)">
+                        <span class="kenar-grup-satir">
+                            <span class="kenar-grup-ad">@grupAdi</span>
+                            <span class="kenar-grup-sayi">
+                                <span class="gorsel-gizli">@MenuSozlugu.EkranSayisi(Dil.Dil, ogeler.Count)</span>
+                                <span aria-hidden="true">@ogeler.Count</span>
+                                <Ikon Ad="@(acik ? Ikonlar.KatlamaAcik : Ikonlar.KatlamaKapali)" />
+                            </span>
+                        </span>
+                        @if (!acik)
+                        {
+                            <span class="kenar-grup-onizleme"
+                                  id="@($"kenar-onizleme-{slug}")"
+                                  aria-label="@MenuSozlugu.OnizlemeEtiketi(Dil.Dil)"
+                                  title="@TamOnizleme(ogeler)">@Onizleme(ogeler)</span>
+                        }
+                    </button>
+                </h2>
+            }
+            @foreach (var oge in ogeler)
+            {
+                <div class="@SatirSinifi(oge)" data-sira-anahtar="@oge.Yol"
+                     id="@($"kenar-satir-{Slug(oge.Yol)}")"
+                     hidden="@(AramaVar ? !Eslesir(oge) : !acik)"
+                     tabindex="0" role="listitem"
+                     aria-label="@($"{oge.Etiket(Dil.T)} — {Dil.T.Kabuk.SiraTutamac}")"
+                     @onkeydown="@(e => SatirTus(e, slug, ogeler, oge.Yol))">
+                    <NavLink href="@oge.Yol"
+                             Match="@Eslesme(oge)"
+                             ActiveClass="aktif">
+                        <Ikon Ad="@oge.Ikon" /> @oge.Etiket(Dil.T)
+                        @if (oge.Yol == BildirimlerYolu && BildirimSayisi > 0)
+                        {
+                            @* T-K2 — tuval Panel.dc.html: açık bildirim sayısı menü
+                               satırında kırmızı haptır. Sayıyı üst bar yoklar
+                               (60 sn, GET /bildirimler/sayi) ve AnaYerlesim buraya
+                               geçirir — ikinci bir yoklama YOK. *@
+                            <span class="kenar-rozet" id="kenar-bildirim-rozet"
+                                  title="@KabukTuvalSozlugu.BildirimRozeti(Dil.Dil, BildirimSayisi)">
+                                <span class="gorsel-gizli">@KabukTuvalSozlugu.BildirimRozeti(Dil.Dil, BildirimSayisi)</span>
+                                <span aria-hidden="true">@BildirimSayisi</span>
+                            </span>
+                        }
+                    </NavLink>
+                    @* P-37 → S1-g: görünür ok düğmeleri (P-37) ve ardından tutamaç
+                       '⠿' + yıldız (S1-g, kurucu: "olmamış"; tuvalde YOK) menüden
+                       KALKTI. Sıralama ÖZELLİĞİ SİLİNMEDİ: satırın kendisi
+                       sürüklenir (siralistesi.js satırı data-sira-anahtar ile
+                       bulur, 5 px eşik) ve Alt+↑/↓ klavye yolu durur; nasıl
+                       yapıldığı satırın erişilebilir adında yazar. *@
+                </div>
+            }
+        }
+
+        @if (AramaVar && EslesenYollar().Count == 0)
+        {
+            @* S1-j: eşleşme yoksa menüde TEK satır — ayrı pencere, öneri listesi YOK. *@
+            <div class="kenar-arama-yok" id="menu-arama-yok" role="status">@MenuAramaSozlugu.EslesenYok(Dil.Dil)</div>
+        }
+
+    </nav>
+
+    <div class="kenar-alt" @onkeydown="KartTusu">
+        @* ── PAKET T-K2 — KULLANICI KARTI + MENÜSÜ (tuval Panel/Profesyonel.dc.html) ──
+           Tuval: kartta YALNIZ baş harf rozeti · ad · rol (PRO: " · <şube>") ve
+           sağda dişli (→ /ayarlar). Kartta/menüde tuvalin çizmediği her şey
+           SİLİNMEDİ, kartın kendi menüsüne taşındı (kart = düğme,
+           #kenar-kullanici-menu-ac): TR/EN dil seçici (eski yeri marka satırı),
+           çoklu şubede şube seçici (eski yeri üst bar), Kılavuz ve Ayarlar
+           bağlantıları (#kenar-alt-*), "Sırayı sıfırla" / "Katlamayı sıfırla"
+           (eski yeri menünün dibi) ve Çıkış.
+           ⚠ Menü kapalıyken öğeler DOM'da KALIR, `hidden` ile katlanır (S1-b
+             deseni): bağlantı ağacı ve id sözleşmesi bozulmaz.
+           ⚠ UX-S28: şube listesi okunamazsa menü KENDİLİĞİNDEN açık durur —
+             hata bandı kapalı bir menüde saklanmaz.
+           ⚠ S1-j: arama sürerken alt blok (Kılavuz/Ayarlar) eşleşirse menü
+             açılır; eşleşmeyen gizli kalır. *@
+        @if (Oturum.Kullanici is not null)
+        {
+            <div class="kenar-kullanici" id="kenar-kullanici">
+                <button type="button" class="kenar-kullanici-dugme" id="kenar-kullanici-menu-ac"
+                        aria-expanded="@(KartMenusuGorunur ? "true" : "false")"
+                        aria-controls="kenar-kullanici-menu"
+                        title="@KabukTuvalSozlugu.KartMenusuAc(Dil.Dil)"
+                        @onclick="KartMenusuDegistir">
+                    <span class="gorsel-gizli">@KabukTuvalSozlugu.KartMenusuAc(Dil.Dil)</span>
+                    @* Rozet DEKORATİFTİR (aria-hidden): ad yanında yazar. *@
+                    <span class="kenar-avatar" aria-hidden="true">@BasHarfler()</span>
+                    <span class="kenar-kullanici-metin">
+                        <span class="kullanici-ad" title="@($"{Oturum.Kullanici.Ad} {Oturum.Kullanici.Soyad}")">@KartAdi()</span>
+                        @* S1-g: tuval Profesyonel.dc.html "Sahip · Merkez şube" — şube
+                           kullanıcı kartındadır. Basit yüzde yalnız rol yazar. *@
+                        <span class="kullanici-rol-satir" id="kenar-kullanici-rol-satir">
+                            <span class="kullanici-rol" id="kenar-kullanici-rol">@RolEtiket(Oturum.Kullanici.Rol)</span>
+                            @if (!Modu.BasitMi)
+                            {
+                                <SubeSecici KartIci="true" />
+                            }
+                        </span>
+                    </span>
+                </button>
+                <a href="@AyarlarYolu" class="kenar-disli" id="kenar-ayarlar-disli"
+                   aria-label="@KabukTuvalSozlugu.AyarlarDisli(Dil.Dil)"
+                   title="@KabukTuvalSozlugu.AyarlarDisli(Dil.Dil)"><Ikon Ad="@Ikonlar.Ayarlar" /></a>
+            </div>
+        }
+        <div class="kenar-kullanici-menu" id="kenar-kullanici-menu" role="group"
+             aria-label="@KabukTuvalSozlugu.KartMenusu(Dil.Dil)"
+             hidden="@(!KartMenusuGorunur)">
+            <div class="kenar-menu-satir" id="kenar-menu-dil">
+                <span class="kenar-menu-etiket">@KabukTuvalSozlugu.Dil(Dil.Dil)</span>
+                <DilSecici />
+            </div>
+            @* Çoklu şube + tüm-şube yetkisinde seçici; tek şubede hiçbir şey çizmez (UX-S22). *@
+            <SubeSecici HataDegisti="SubeHatasiDegisti" />
+            <div class="kenar-alt-butonlar">
+                @* Kılavuz ve Ayarlar HER MODDA, HER ROLDE durur — grup dışıdır. *@
+                @foreach (var oge in MenuTanimi.AltBlok)
+                {
+                    @* S1-j: alt blok da menüdür — arama sürerken eşleşmeyen gizlenir. *@
+                    <a href="@oge.Yol" id="@($"kenar-alt-{Slug(oge.Yol)}")"
+                       class="@(Secili(oge) ? "secili" : null)"
+                       hidden="@(AramaVar && !Eslesir(oge))"><Ikon Ad="@oge.Ikon" /> @oge.Etiket(Dil.T)</a>
+                }
+                @* S1-g: tuvalde sıfırlama düğmesi YOKTUR. Düğme SİLİNMEDİ: yalnız
+                   kullanıcının kayıtlı bir sırası varken çizilir (etkisiz düğme
+                   yasak — DoD EK md.1). T-K2: yeri menünün dibinden kart menüsü. *@
+                @if (Tercih.OzelSiraVar)
+                {
+                    <button type="button" class="dugme dugme-kucuk dugme-ikincil" id="kenar-sira-sifirla"
+                            title="@Dil.T.Kabuk.SiraGrupKilidi"
+                            @onclick="SirayiSifirla">@Dil.T.Kabuk.SirayiSifirla</button>
+                }
+                @* S1-b — katlama tercihinin SİLME yolu (PATCH + DELETE ekranda).
+                   Kayıtlı tercih yoksa düğme ÇİZİLMEZ (DoD EK md.1). *@
+                @if (Tercih.AcikGruplar is not null)
+                {
+                    <button type="button" class="dugme dugme-kucuk dugme-ikincil" id="kenar-katlama-sifirla"
+                            title="@MenuSozlugu.KatlamayiSifirlaIpucu(Dil.Dil)"
+                            @onclick="KatlamayiSifirla">@MenuSozlugu.KatlamayiSifirla(Dil.Dil)</button>
+                }
+                <button type="button" id="kenar-cikis" @onclick="CikisYap"><Ikon Ad="@Ikonlar.Cikis" /> @Dil.T.Ortak.CikisYap</button>
+            </div>
+        </div>
+    </div>
+</aside>
+
+@code {
+    private static KabukServisi Kabuk => KabukServisi.Ortak;
+
+    private DotNetObjectReference<KenarCubugu>? benlik;
+    private bool suruklemeKuruldu;
+
+    // ── PAKET S1-j — MENÜ İÇİ ARAMA ─────────────────────────────────────────
+    // ⚠ Durum YALNIZ bu bileşende yaşar; katlama tercihi (MenuTercihServisi)
+    //   okunmaz/yazılmaz → × ve Esc sonrası menü kullanıcının hâline döner.
+    // ⚠ Değer @oninput ile güncellenir; keydown yalnız Esc/↑/↓/Enter'a bakar
+    //   ve METNİ OKUMAZ — keydown'un input'tan önce gelmesi (S1-j çökmesinin
+    //   tetikleyicisi) artık sonucu değiştirmez.
+    private string sorgu = "";
+    private int secili = -1;
+
+    /// <summary>Kullanıcı bir şey yazdı mı (boşluktan ibaret = yazmadı).</summary>
+    private bool AramaVar => MenuTanimi.AramaVar(sorgu);
+
+    private bool Eslesir(MenuOgesi oge) => MenuTanimi.AramaEslesir(oge, Dil.T, sorgu);
+
+    private bool TumEkranlarEslesir() =>
+        MenuTanimi.AramaEslesir(MenuSozlugu.TumEkranlar(Dil.Dil, 0), sorgu);
+
+    /// <summary>
+    /// Eşleşen hedefler, menüdeki GÖRSEL sırayla ve tekil (favori ile grup
+    /// satırı aynı yola gidiyorsa bir kez): ↑/↓ bu listede gezer.
+    /// </summary>
+    private List<string> EslesenYollar()
+    {
+        if (!AramaVar) return [];
+        var liste = new List<string>();
+        void Ekle(MenuOgesi o) { if (Eslesir(o) && !liste.Contains(o.Yol)) liste.Add(o.Yol); }
+        if (!Modu.BasitMi) foreach (var o in Favoriler()) Ekle(o);
+        foreach (var g in MenuTanimi.GrupSirasi) foreach (var o in GrupOgeleri(g)) Ekle(o);
+        foreach (var o in MenuTanimi.AltBlok) Ekle(o);
+        if (TumEkranlarEslesir() && !liste.Contains(MenuTanimi.TumEkranlarYolu)) liste.Add(MenuTanimi.TumEkranlarYolu);
+        return liste;
+    }
+
+    private string? SeciliYol()
+    {
+        var y = EslesenYollar();
+        return secili >= 0 && secili < y.Count ? y[secili] : null;
+    }
+
+    private bool Secili(MenuOgesi oge) => AramaVar && SeciliYol() == oge.Yol;
+
+    private string SatirSinifi(MenuOgesi oge) => Secili(oge) ? "kenar-satir secili" : "kenar-satir";
+
+    /// <summary>Klavyeyle seçili satırın id'si (aria-activedescendant).</summary>
+    private string? AktifSatirId()
+    {
+        var yol = SeciliYol();
+        if (yol is null) return null;
+        if (MenuTanimi.AltBlok.Any(o => o.Yol == yol)) return $"kenar-alt-{Slug(yol)}";
+        if (yol == MenuTanimi.TumEkranlarYolu) return "kenar-tum-ekranlar";
+        return $"kenar-satir-{Slug(yol)}";
+    }
+
+    private void SorguDegisti(string? deger)
+    {
+        sorgu = deger ?? "";
+        secili = -1;
+    }
+
+    private void AramayiTemizle()
+    {
+        sorgu = "";
+        secili = -1;
+    }
+
+    private void AramaTusu(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") { AramayiTemizle(); return; }
+        if (!AramaVar) return;
+        var y = EslesenYollar();
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (y.Count > 0) secili = (secili + 1) % y.Count;
+                break;
+            case "ArrowUp":
+                if (y.Count > 0) secili = secili <= 0 ? y.Count - 1 : secili - 1;
+                break;
+            case "Enter":
+                if (y.Count == 0) return;
+                var hedef = secili >= 0 && secili < y.Count ? y[secili] : y[0];
+                AramayiTemizle();
+                Nav.NavigateTo(hedef);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Bağlantı görünür mü? YALNIZ YETKİ (sunucu kapısının yansıması).
+    /// PAKET S1-g: mod süzgeci KALKTI — tuval basit modda da yetkili her ekranı
+    /// 6 grupta gösterir. Mod yetkiyi GEVŞETMEZ: yetkisiz ekran basit modda da,
+    /// önizlemede de görünmez (M-UX3-06).
+    /// </summary>
+    private bool Gorunur(MenuOgesi oge) =>
+        MenuTanimi.YetkiliMi(oge, Yetki.Erisebilir, Oturum.Kullanici?.Rol);
+
+    /// <summary>Bir grubun görünür öğeleri, KULLANICI sırasıyla.</summary>
+    private List<MenuOgesi> GrupOgeleri(MenuGrubu grup)
+    {
+        var ogeler = MenuTanimi.Ogeler.Where(o => o.Grup == grup && Gorunur(o)).ToList();
+        return Tercih.SiraUygula(MenuTanimi.GrupSlug(grup), ogeler, o => o.Yol);
+    }
+
+    /// <summary>Favori grubu — menünün EN ÜSTÜ. Yetki/mod koşulu burada da geçerlidir.</summary>
+    private List<MenuOgesi> Favoriler() =>
+        [.. MenuTanimi.Ogeler.Where(o => Gorunur(o) && Tercih.Favori(o.Yol))];
+
+    // ── PAKET S1-b — KATLAMA ────────────────────────────────────────────────
+
+    /// <summary>
+    /// "Tüm ekranlar (N)" sayısı = /ekranlar sayfasındaki KARO sayısı (S1-d):
+    /// YALNIZ YETKİ süzgeci, mod DEĞİL. Tuval (Panel.dc.html, basit mod) basit
+    /// yüzde de "(38)" yazar: bağlantının vaadi "yetkili olduğun her ekran"dır
+    /// ve sayfa tam o kadar karo çizer. Mod süzgeci burada kalsaydı basit modda
+    /// bağlantı "(8)" der, sayfa 38 karo açardı — aynı soruya iki cevap (UX-S22).
+    /// </summary>
+    private int GorunurEkranSayisi() => MenuTanimi.Yetkililer(Yetki.Erisebilir, Oturum.Kullanici?.Rol).Count;
+
+    /// <summary>Şu an açık olan rotanın grubu — varsayılan olarak AÇIK gelir.</summary>
+    /// <summary>
+    /// TOPLU-2 (kuyruk ZO-BELGE/ORTAK-1 "menüde iki öğe birden seçili"): ön ek eşleşmesi, bulunulan
+    /// rotaya DAHA UZUN bir menü öğesi de uyuyorsa TAM eşleşmeye döner — /raporlar/islem-defteri
+    /// açıkken "Rapor merkezi" (/raporlar) vurgulanmaz; menüde karşılığı olmayan alt rota
+    /// (/siparisler/{Id}, /urunler?maden=…) üst öğeyi vurgulamaya devam eder.
+    /// </summary>
+    private NavLinkMatch Eslesme(MenuOgesi oge)
+    {
+        if (oge.TamEslesme) return NavLinkMatch.All;
+        var yol = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/');
+        return DahaUzunOgeVar(oge.Yol, yol) ? NavLinkMatch.All : NavLinkMatch.Prefix;
+    }
+
+    /// <summary>Saf kural (test edilebilir): rotaya <paramref name="ogeYolu"/>ndan daha uzun bir menü öğesi uyuyor mu.</summary>
+    public static bool DahaUzunOgeVar(string ogeYolu, string yol) =>
+        MenuTanimi.Ogeler.Concat(MenuTanimi.AltBlok).Any(o => o.Yol.Length > ogeYolu.Length
+            && o.Yol.StartsWith(ogeYolu, StringComparison.Ordinal)
+            && (yol == o.Yol || yol.StartsWith(o.Yol + "/", StringComparison.Ordinal)));
+
+    private string? AktifGrupSlug()
+    {
+        var yol = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/');
+        var eslesen = MenuTanimi.Ogeler
+            .Where(o => Gorunur(o) && (o.Yol == yol || (o.Yol != "/" && yol.StartsWith(o.Yol, StringComparison.Ordinal))))
+            .OrderByDescending(o => o.Yol.Length)
+            .FirstOrDefault();
+        return eslesen is null ? null : MenuTanimi.GrupSlug(eslesen.Grup);
+    }
+
+    /// <summary>
+    /// Grup açık mı? AKTİF ROTANIN grubu, kayıtlı katlama tercihinden BAĞIMSIZ
+    /// açık gelir (plan § S-1 md. 1.1 "aktif rotanın grubu açık"; KIYAS 28.09
+    /// bulgu 2a: tercih ["para-ve-banka"] tohumlanınca her sayfada o grup açık,
+    /// bulunulan ekranın grubu KAPALI çiziliyordu). Kullanıcı aktif grubu bu
+    /// ziyarette katlayabilir (<see cref="aktifKatlanan"/>, rota değişince
+    /// sıfırlanır); kayıtlı tercih YALNIZ öteki grupları yönetir.
+    /// </summary>
+    private bool GrupAcik(string slug) =>
+        slug == AktifGrupSlug()
+            ? aktifKatlanan != slug
+            : Tercih.GrupAcik(slug) ?? false;
+
+    /// <summary>Bu ziyarette elle katlanan AKTİF grup (rota değişince null).</summary>
+    private string? aktifKatlanan;
+
+    /// <summary>
+    /// Tohumlama kümesi: ekranda açık duran ÖTEKİ gruplar. Aktif grup kümeye
+    /// girmez — girseydi o grup kalıcı tercihe yazılır ve her sayfada açık kalırdı.
+    /// </summary>
+    private List<string> AcikOlanlar()
+    {
+        var aktif = AktifGrupSlug();
+        return [.. MenuTanimi.GrupSirasi.Select(MenuTanimi.GrupSlug).Where(s => s != aktif && GrupAcik(s))];
+    }
+
+    private Task GrupKatla(string slug)
+    {
+        if (slug == AktifGrupSlug())
+        {
+            // Aktif grup: yalnız bu ziyaret için katlanır/açılır; tercihe yazılmaz.
+            aktifKatlanan = aktifKatlanan == slug ? null : slug;
+            return Task.CompletedTask;
+        }
+        return Tercih.GrupKatlamaDegistirAsync(slug, AcikOlanlar());
+    }
+
+    /// <summary>
+    /// Kapalı grubun altındaki TEK SATIR önizleme: o gruptaki ekran adları.
+    /// "Menüde hiçbir ekran kaybolmadı" kuralının görsel kanıtı (tuval notu n2).
+    /// Kırpma CSS'in işidir (text-overflow) — metin BURADA kesilmez, çünkü
+    /// kesilen metin ekran okuyucuda da kaybolurdu.
+    /// </summary>
+    private string Onizleme(List<MenuOgesi> ogeler) =>
+        string.Join(MenuSozlugu.OnizlemeAyraci, ogeler.Select(o => o.KisaEtiket(Dil.T)));
+
+    /// <summary>S1-g: önizleme KISA adları yazar (tuval); tam adlar ipucundadır.</summary>
+    private string TamOnizleme(List<MenuOgesi> ogeler) =>
+        string.Join(MenuSozlugu.OnizlemeAyraci, ogeler.Select(o => o.Etiket(Dil.T)));
+
+    /// <summary>Kullanıcı rozetindeki baş harfler (ad + soyad).</summary>
+    // ── PAKET T-K2 — kabuk tuvali ────────────────────────────────────────────
+
+    /// <summary>
+    /// Açık bildirim sayısı: üst bar yoklar, AnaYerlesim geçirir (ikinci yoklama
+    /// yok). 0 → menü satırında rozet ÇİZİLMEZ (tuval: sayı yoksa hap yok).
+    /// </summary>
+    [Parameter] public int BildirimSayisi { get; set; }
+
+    public const string BildirimlerYolu = "/bildirimler";
+    public const string AyarlarYolu = "/ayarlar";
+
+    private bool kartMenuAcik;
+    private bool subeHatasi;
+
+    /// <summary>
+    /// Kart menüsü görünür mü: kullanıcı açtıysa · şube listesi okunamadıysa
+    /// (UX-S28: hata bandı saklanmaz) · arama alt bloktan eşleşme bulduysa (S1-j).
+    /// </summary>
+    private bool KartMenusuGorunur =>
+        kartMenuAcik || subeHatasi || (AramaVar && MenuTanimi.AltBlok.Any(Eslesir));
+
+    private void KartMenusuDegistir() => kartMenuAcik = !kartMenuAcik;
+
+    /// <summary>Esc kart menüsünü kapatır (klavye yolu; menü bir açılır penceredir).</summary>
+    private void KartTusu(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") kartMenuAcik = false;
+    }
+
+    private void SubeHatasiDegisti(bool var) => subeHatasi = var;
+
+    /// <summary>Tuval: "Ramazan A." — ad + soyadın baş harfi (tam ad title'da).</summary>
+    private string KartAdi()
+    {
+        var k = Oturum.Kullanici;
+        if (k is null) return "";
+        return k.Soyad.Length > 0 ? $"{k.Ad} {k.Soyad[..1]}." : k.Ad;
+    }
+
+    private string BasHarfler()
+    {
+        var k = Oturum.Kullanici;
+        if (k is null) return "";
+        var a = k.Ad.Length > 0 ? k.Ad[..1] : "";
+        var b = k.Soyad.Length > 0 ? k.Soyad[..1] : "";
+        return (a + b).ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Kullanıcı kartındaki rol — UX-S31: ham kod ("SAHIP") ekrana BASILMAZ,
+    /// sözlükten çevrilir. Tanınmayan kod TAHMİN EDİLMEZ (tezgâhtar sayılmaz):
+    /// boş döner ve kart yalnız adı gösterir (Anayasa md.1 — varsayım yok).
+    /// </summary>
+    private string RolEtiket(string rol) => rol switch
+    {
+        "SAHIP" => Dil.T.Kullanici.RolSahip,
+        "MUDUR" => Dil.T.Kullanici.RolMudur,
+        "MUHASEBE" => Dil.T.Kullanici.RolMuhasebe,
+        "TEZGAHTAR" => Dil.T.Kullanici.RolTezgahtar,
+        _ => "",
+    };
+
+    private static string Slug(string yol) => MenuTanimi.Slug(yol);
+
+    // S1-g: menü satırındaki yıldız düğmesi (YildizDugmesi, #kenar-favori-<slug>)
+    // KALDIRILDI — favori ekleme/çıkarma "Tüm ekranlar" sayfasındadır
+    // (#ekran-favori-<slug>, Ekranlar.razor). Favoriler menüde PRO'da listelenir.
+
+    private Task Tasi(string slug, List<MenuOgesi> ogeler, string yol, int yon) =>
+        Tercih.TasiAsync(slug, [.. ogeler.Select(o => o.Yol)], yol, yon);
+
+    /// <summary>Klavyeyle sıralama (erişilebilirlik): Alt+↑ / Alt+↓.</summary>
+    private Task SatirTus(KeyboardEventArgs e, string slug, List<MenuOgesi> ogeler, string yol)
+    {
+        if (!e.AltKey) return Task.CompletedTask;
+        if (e.Key == "ArrowUp") return Tasi(slug, ogeler, yol, -1);
+        if (e.Key == "ArrowDown") return Tasi(slug, ogeler, yol, 1);
+        return Task.CompletedTask;
+    }
+
+    private Task SirayiSifirla() => Tercih.SirayiSifirlaAsync();
+
+    private Task KatlamayiSifirla() => Tercih.KatlamayiSifirlaAsync();
+
+    private Task YetkiYenidenDene() => Yetki.YenidenDeneAsync();
+
+    /// <summary>JS sürükle-bırak geri çağrısı — hangi grup olduğunu YOL'dan çözer.</summary>
+    [JSInvokable]
+    public async Task Birak(string kaynak, string hedef)
+    {
+        var k = MenuTanimi.Ogeler.FirstOrDefault(o => o.Yol == kaynak);
+        var h = MenuTanimi.Ogeler.FirstOrDefault(o => o.Yol == hedef);
+        // Gruplar arası taşıma bu sürümde YOK (kapsam kilidi) — sessizce reddedilir,
+        // gerekçesi #kenar-sira-sifirla düğmesinin ipucunda yazar.
+        if (k is null || h is null || k.Grup != h.Grup) return;
+        var slug = MenuTanimi.GrupSlug(k.Grup);
+        await Tercih.BirakAsync(slug, [.. GrupOgeleri(k.Grup).Select(o => o.Yol)], kaynak, hedef);
+    }
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += OturumDegisti;
+        Yetki.Degisti += Yenile;
+        Modu.Degisti += Yenile;
+        Tercih.Degisti += Yenile;
+        Kabuk.Degisti += Yenile;
+        // Dar ekranda bağlantıya basınca çekmece kendiliğinden kapanır.
+        Nav.LocationChanged += KonumDegisti;
+        _ = Yetki.HazirlaAsync();
+        _ = Tercih.HazirlaAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk || suruklemeKuruldu) return;
+        suruklemeKuruldu = true;
+        benlik = DotNetObjectReference.Create(this);
+        // JS yoksa (ön-render / bUnit) sürükleme olmaz; klavye yolu ÇALIŞMAYA devam eder.
+        try { await JS.InvokeVoidAsync("kuyumcuSira.baslat", "kenar-nav", benlik); }
+        catch (Exception) { /* sürükleme yok; Alt+↑/↓ klavye yolu DURUYOR */ }
+    }
+
+    // Oturum değişince (profil yüklenince / kullanıcı değişince) yetkileri tazele
+    private async void OturumDegisti()
+    {
+        await Yetki.HazirlaAsync();
+        await Tercih.HazirlaAsync();
+        Yenile();
+    }
+
+    private async Task CikisYap()
+    {
+        await Oturum.CikisAsync();
+        Nav.NavigateTo("/giris");
+    }
+
+    private void KonumDegisti(object? s, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        // S1-b: rota değişince AKTİF GRUP değişir → katlama yeniden çizilmeli.
+        Kabuk.Kapat();
+        kartMenuAcik = false;   // T-K2: ekran değişince kart menüsü kapanır
+        aktifKatlanan = null;   // KIYAS 2a: yeni ekranın grubu açık gelir
+        Yenile();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= OturumDegisti;
+        Yetki.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+        Tercih.Degisti -= Yenile;
+        Kabuk.Degisti -= Yenile;
+        Nav.LocationChanged -= KonumDegisti;
+        benlik?.Dispose();
+    }
+}

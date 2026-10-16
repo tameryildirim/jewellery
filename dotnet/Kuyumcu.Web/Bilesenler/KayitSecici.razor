@@ -1,0 +1,315 @@
+@using Kuyumcu.Contracts.Arama
+@inject DilServisi Dil
+@inject ApiIstemci Api
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-15 — KAYIT SEÇİCİ (kimlikler Y-5 · B-25)
+
+   NEDEN: ekranlar ya `?limit=200` ile düz bir açılır liste dolduruyordu
+   (200. kayıttan sonrası SESSİZCE yoktu — UX-S29 ihlali) ya da kullanıcıdan
+   26 haneli bir ULID yazmasını istiyordu (B-25). Bu bileşen SUNUCUDA ARAR ve
+   SAYFALAR; kullanıcı ULID değil AD + TÜR görür, kimlik yalnız gövdeye gider.
+
+   ⚠ ELEMAN KİMLİĞİ SÖZLEŞMESİ: <c>ElemanId</c> ÇAĞIRANIN verdiği mevcut
+     girdi kimliğidir ve DEĞİŞTİRİLMEZ (ör. Faturalar'da `ff-fis`). Türetilen
+     kimlikler `<ElemanId>-<alan>` kalıbındadır: `-sonuc-<n>`, `-temizle`,
+     `-ara`, `-secili`, `-durum`.
+
+   ⚠ HER DÜĞME YA İSTEK ATAR YA DISABLED + SEBEP (DoD EK md.1): "Ara" düğmesi
+     sorgu kısayken kapalıdır ve sebebi yanında yazar (UX-S30).
+
+   ⚠ UX-S28: hata "kayıt yok"a ÇEVRİLMEZ. Boş durum yalnız istek BAŞARILI ve
+     sonuç gerçekten boşken çıkar; hata ayrı bir bantta görünür.
+   ═══════════════════════════════════════════════════════════════════════ *@
+
+<div class="kayit-secici" id="@($"{ElemanId}-sarmal")">
+    <label for="@ElemanId">
+        @Etiket
+        @if (!Zorunlu)
+        {
+            <span class="metin-soluk metin-kucuk">(@Dil.T.Ortak.Istege)</span>
+        }
+    </label>
+
+    @if (secili is not null)
+    {
+        @* ── SEÇİLİ KAYIT — ULID değil AD + TÜR (B-25) ───────────────────── *@
+        <div class="secici-secili" id="@($"{ElemanId}-secili")">
+            <Rozet Renk="mavi">@TurEtiketi(secili.Tur)</Rozet>
+            <span class="secici-ad">@secili.Ad</span>
+            @if (!string.IsNullOrWhiteSpace(secili.AltBilgi))
+            {
+                <span class="metin-kucuk metin-soluk">@secili.AltBilgi</span>
+            }
+            <button type="button" class="dugme dugme-kucuk dugme-ikincil"
+                    id="@($"{ElemanId}-temizle")"
+                    disabled="@Devredisi"
+                    title="@Dil.T.Kabuk.SeciciTemizle"
+                    @onclick="Temizle">@Dil.T.Kabuk.SeciciTemizle</button>
+        </div>
+    }
+    else
+    {
+        <div class="secici-arama">
+            <input id="@ElemanId" class="girdi" type="search"
+                   placeholder="@Dil.T.Kabuk.SeciciAra"
+                   aria-describedby="@($"{ElemanId}-durum")"
+                   disabled="@Devredisi"
+                   @bind="metin" @bind:event="oninput" />
+            @* ZO-ISLEM-A 28.09: AraDugmesiYok=true çağıranda ayrı "Ara" düğmesi çizilmez —
+               arama zaten yazdıkça çalışır (OnAfterRenderAsync); varsayılan davranış AYNI. *@
+            @if (!AraDugmesiYok)
+            {
+            <button type="button" class="dugme dugme-ikincil dugme-kucuk"
+                    id="@($"{ElemanId}-ara")"
+                    disabled="@(Devredisi || !Aranabilir)"
+                    aria-disabled="@(Devredisi || !Aranabilir ? "true" : "false")"
+                    title="@AraKilitSebebi"
+                    @onclick="AramayiCalistir">@Dil.T.Kabuk.AramaAc</button>
+            }
+        </div>
+
+        <span class="metin-kucuk metin-soluk" id="@($"{ElemanId}-durum")">
+            @if (!Aranabilir)
+            {
+                @* UX-S30: kilidin sebebi GÖRÜNÜR yazılır. *@
+                @string.Format(Dil.T.Kabuk.AramaEnAz, AramaServisiAsgari)
+            }
+            else if (yanit is { Gozatma: true })
+            {
+                @* B-25: liste bir SORGUNUN değil, "en son kayıtlar"ın sonucu. *@
+                @Dil.T.Kabuk.AramaGozatma
+            }
+            else if (yanit is not null)
+            {
+                @* UX-S29: sunucu sınırı ve daraltma yolu ekranda söylenir. *@
+                @string.Format(Dil.T.Kabuk.SinirUyarisi, yanit.Limit)
+            }
+        </span>
+
+        <HataBandi Mesaj="@hata" Id="@($"{ElemanId}-hata")" />
+
+        @if (araniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (yanit is not null && yanit.Sonuclar.Count == 0)
+        {
+            @* Boş durum YALNIZ istek başarılıyken (UX-S28). *@
+            <BosDurum Mesaj="@(BosMesaj ?? Dil.T.Kabuk.AramaSonucYok)" />
+        }
+        else if (yanit is not null)
+        {
+            <ul class="secici-sonuclar" id="@($"{ElemanId}-sonuclar")">
+                @for (var i = 0; i < yanit.Sonuclar.Count; i++)
+                {
+                    var sonuc = yanit.Sonuclar[i];
+                    <li>
+                        <button type="button" class="secici-sonuc"
+                                id="@($"{ElemanId}-sonuc-{i}")"
+                                @onclick="() => Sec(sonuc)">
+                            <Rozet Renk="gri">@TurEtiketi(sonuc.Tur)</Rozet>
+                            <span class="secici-ad">@sonuc.Ad</span>
+                            @if (!string.IsNullOrWhiteSpace(sonuc.AltBilgi))
+                            {
+                                <span class="metin-kucuk metin-soluk">@sonuc.AltBilgi</span>
+                            }
+                        </button>
+                    </li>
+                }
+            </ul>
+            @if (yanit.DahaVar)
+            {
+                @* Sessiz kırpma YOK: sınıra değdiyse söylenir (UX-S29). *@
+                <span class="metin-kucuk metin-uyari" id="@($"{ElemanId}-daha-var")">
+                    @Dil.T.Kabuk.SinirAsildi
+                </span>
+            }
+        }
+    }
+</div>
+
+@code {
+    private static KabukServisi Kabuk => KabukServisi.Ortak;
+
+    /// <summary>Sunucunun asgari sorgu uzunluğu (AramaServisi.AsgariSorgu ile AYNI).</summary>
+    public const int AramaServisiAsgari = 2;
+
+    /// <summary>Yazarken art arda istek atılmasın diye bekleme (ms).</summary>
+    public static int BeklemeMs { get; set; } = 250;
+
+    /// <summary>Aranacak kayıt türü — <see cref="AramaTurleri"/> sabitlerinden biri.</summary>
+    [Parameter, EditorRequired] public string Tur { get; set; } = AramaTurleri.Cari;
+
+    /// <summary>Girdi elemanının kimliği. MEVCUT kimlikler DEĞİŞMEZ.</summary>
+    [Parameter, EditorRequired] public string ElemanId { get; set; } = "";
+
+    [Parameter, EditorRequired] public string Etiket { get; set; } = "";
+
+    /// <summary>Seçili kaydın kimliği (ULID). Ekrana BASILMAZ, gövdeye konur.</summary>
+    [Parameter] public string? Deger { get; set; }
+
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+
+    [Parameter] public bool Devredisi { get; set; }
+
+    [Parameter] public bool Zorunlu { get; set; } = true;
+
+    /// <summary>ZO-ISLEM-A 28.09 — true: ayrı "Ara" düğmesi çizilmez (arama yazdıkça çalışır).</summary>
+    [Parameter] public bool AraDugmesiYok { get; set; }
+
+    /// <summary>ZO-ISLEM-A 28.09 — boş sonuçta türe özgü metin (null: ortak "sonuç yok").</summary>
+    [Parameter] public string? BosMesaj { get; set; }
+
+    /// <summary>
+    /// ZO-ISLEM-A 29.09 — null değilse genel <c>/arama</c> yerine bu uç sorgulanır (yanıt
+    /// AYNI <see cref="AramaYaniti"/> sözleşmesi; <c>q</c> ve <c>limit</c> eklenir). Kapsamı
+    /// daraltılmış seçiciler için (POS yatma adayları). Varsayılan davranış DEĞİŞMEDİ.
+    /// </summary>
+    [Parameter] public string? AramaYolu { get; set; }
+
+    /// <summary>ZO-ISLEM-A 29.09 — true: sorgusuz açılışta liste çekilir (gözatma).</summary>
+    [Parameter] public bool Gozat { get; set; }
+
+    private string metin = "";
+    private string? sonAranan;
+    private bool araniyor;
+    private string? hata;
+    private AramaYaniti? yanit;
+    private AramaSonucu? secili;
+    private int istekSirasi;
+
+    /// <summary>
+    /// P-38 · B-25 — bu tür SORGUSUZ gözatılabilir mi? Fişin insanın bildiği
+    /// bir adı yoktur; seçici açıldığında en son fişler kendiliğinden listelenir.
+    /// Sözleşme tek kaynaktır (<see cref="AramaTurleri.Gozatilir"/>).
+    /// </summary>
+    private bool Gozatilir => Gozat || AramaTurleri.Gozatilir(Tur);
+
+    private bool Aranabilir => Gozatilir || metin.Trim().Length >= AramaServisiAsgari;
+
+    private string AraKilitSebebi => Aranabilir
+        ? Dil.T.Kabuk.AramaAc
+        : string.Format(Dil.T.Kabuk.AramaEnAz, AramaServisiAsgari);
+
+    /// <summary>UX-S31: ham veritabanı kodu ekrana basılmaz, sözlükten çevrilir.</summary>
+    private string TurEtiketi(string tur) => tur switch
+    {
+        AramaTurleri.Cari => Dil.T.Kabuk.TurCari,
+        AramaTurleri.Urun => Dil.T.Kabuk.TurUrun,
+        AramaTurleri.Fis => Dil.T.Kabuk.TurFis,
+        AramaTurleri.Fatura => Dil.T.Kabuk.TurFatura,
+        AramaTurleri.BankaHareket => Dil.T.Kabuk.TurBankaHareket,
+        AramaTurleri.Hareket => Dil.T.Kabuk.TurHareket,
+        _ => tur,
+    };
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Kabuk.Degisti += Yenile;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Çağıran seçimi dışarıdan temizlediyse (modal kapanıp açıldı) bileşen de temizlenir.
+        if (string.IsNullOrEmpty(Deger) && secili is not null)
+        {
+            secili = null;
+            metin = "";
+            // 29.09 (ZO-ISLEM-A canlı): Temizle() ile AYNI — son sorgu unutulur ki gözatılabilir
+            // türde liste yeniden (taze) çekilsin; aksi hâlde "" == "" diye arama hiç tetiklenmiyordu.
+            sonAranan = null;
+            yanit = null;
+            hata = null;
+        }
+    }
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    private Task AramayiCalistir() => Ara(metin.Trim());
+
+    /// <summary>
+    /// Yazma durunca arar. Sıra numarası ile geç gelen yanıt ERKEN yanıtın
+    /// üstüne yazılmaz (yarış koşulu: "Ay" yanıtı "Ayşe" yanıtından sonra
+    /// gelirse kullanıcı yanlış listeyi görürdü).
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        var q = metin.Trim();
+        // Gözatılabilir türde İLK açılışta sorgusuz liste çekilir (B-25).
+        if (q.Length < AramaServisiAsgari && !(Gozatilir && secili is null)) return;
+        if (q == sonAranan) return;
+        sonAranan = q;
+        var sira = ++istekSirasi;
+        if (BeklemeMs > 0) await Task.Delay(BeklemeMs);
+        if (sira != istekSirasi) return;
+        await Ara(q, sira);
+    }
+
+    private async Task Ara(string q, int? sira = null)
+    {
+        if (q.Length < AramaServisiAsgari && !Gozatilir) return;
+        var benim = sira ?? ++istekSirasi;
+        araniyor = true;
+        hata = null;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            string yol;
+            if (AramaYolu is { Length: > 0 } ozel)
+                yol = $"{ozel}{(ozel.Contains('?') ? "&" : "?")}q={Uri.EscapeDataString(q)}&limit=10";
+            else
+            {
+                yol = $"/arama?q={Uri.EscapeDataString(q)}&tur={Tur}&limit=10";
+                if (Kabuk.GorunumSubesiIcin(Oturum) is { Length: > 0 } s)   // ŞUBE-KAPSAM-B: bu oturumun görünüm şubesi
+                    yol += $"&sube={Uri.EscapeDataString(s)}";
+            }
+            var gelen = await Api.GetAsync<AramaYaniti>(yol);
+            if (benim != istekSirasi) return;   // geç gelen yanıt yok sayılır
+            yanit = gelen;
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28: hata boş listeye ÇEVRİLMEZ; liste olduğu gibi kalır,
+            // bant ayrı görünür (Anayasa md.1 — bilinmeyen "yok" sayılmaz).
+            hata = $"{Dil.T.Kabuk.AramaHata}: {ex.Message}";
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            hata = $"{Dil.T.Kabuk.AramaHata}: {ex.Message}";
+        }
+        finally
+        {
+            araniyor = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task Sec(AramaSonucu sonuc)
+    {
+        secili = sonuc;
+        Deger = sonuc.Kimlik;
+        await DegerChanged.InvokeAsync(sonuc.Kimlik);
+    }
+
+    private async Task Temizle()
+    {
+        secili = null;
+        metin = "";
+        sonAranan = null;
+        yanit = null;
+        hata = null;
+        Deger = null;
+        await DegerChanged.InvokeAsync(null);
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Kabuk.Degisti -= Yenile;
+    }
+}

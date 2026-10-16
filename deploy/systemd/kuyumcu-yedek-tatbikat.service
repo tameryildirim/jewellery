@@ -1,0 +1,52 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# KUYUMCU ERP — AYLIK GERİ YÜKLEME TATBİKATI (Paket T-3 Faz A)
+#
+# Yedeği AYRI bir şemaya geri yükler, CHECKSUM karşılaştırır, sonucu
+# yedek_tatbikatlari tablosuna yazar ve tatbikat şemasını DÜŞÜRÜR.
+# Kaynak veritabanına hiçbir aşamada YAZMAZ.
+#
+# YER: systemd birimleri YALNIZ deploy/systemd/ altındadır (MÜHÜR 3, tek yayın
+# yolu). Bu birim kuyumcu.service ile AYNI kullanıcı ve AYNI EnvironmentFile
+# düzenine yaslanır; kendi ortam düzenini KURMAZ.
+#
+# ⚠ FAZ A'da ARTIMLI/PITR YOKTUR (MÜHÜR 6 / K1): gecelik TAM + gündüz 6 saatte
+#   bir TAM dump. İkinci bir geri yükleme yolu = doğrulanmamış yol.
+#
+# KURULUM:
+#   sudo cp deploy/systemd/kuyumcu-yedek-*.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now kuyumcu-yedek-tam.timer kuyumcu-yedek-talep.timer kuyumcu-yedek-tatbikat.timer
+# ═══════════════════════════════════════════════════════════════════════════
+[Unit]
+Description=Kuyumcu ERP — aylık geri yükleme tatbikatı (doğrulama)
+Documentation=file:/opt/kuyumcu/docs/YEDEK-GERI-YUKLEME.md
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=kuyumcu
+Group=kuyumcu
+WorkingDirectory=/opt/kuyumcu
+# Sırlar (KUYUMCU_DB_SIFRE, Yedek__SifrelemeAnahtari) YALNIZ buradan gelir;
+# birime ya da betiğe YAZILMAZ. Dosya chmod 600, sahibi kuyumcu.
+EnvironmentFile=/etc/kuyumcu/.env
+Environment=YEDEK_DIZIN=/var/lib/kuyumcu/yedek
+Environment=YEDEK_SAKLAMA_GUN=30
+# Saklama temizliği YALNIZ üretim birimlerinde açıktır (MÜHÜR 6 / K8:
+# geliştirme makinesinde koşmaz).
+Environment=YEDEK_SAKLAMA_ETKIN=0
+Environment=TZ=Europe/Istanbul
+ExecStart=/opt/kuyumcu/dotnet/yedek-al-ve-dogrula.sh tatbikat
+
+# ── SIKILAŞTIRMA ─────────────────────────────────────────────────────────
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictSUIDSGID=true
+# Yazılabilir TEK dizin: yedek deposu.
+ReadWritePaths=/var/lib/kuyumcu/yedek
+# Başarısızlık sessiz kalmaz: operatör bildirimi bu birime bağlanır.
+# (Bildirim kanalı — e-posta/webhook — HENÜZ SEÇİLMEDİ; T-4 kalemidir.)
+# OnFailure=kuyumcu-yedek-bildirim@%n.service

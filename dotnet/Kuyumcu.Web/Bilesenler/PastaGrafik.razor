@@ -1,0 +1,77 @@
+@using Kuyumcu.Contracts.Bilesenler.PastaGrafik
+@* Recharts PieChart karşılığı — saf SVG dilimler + lejant *@
+<div class="grafik-sar" role="img" aria-label="@Aciklama">
+    <svg viewBox="0 0 220 220" class="grafik-pasta">
+        @foreach (var dilim in Dilimler)
+        {
+            <path d="@dilim.Yol" fill="@dilim.Renk" />
+        }
+    </svg>
+    <div class="grafik-lejant">
+        @foreach (var dilim in Dilimler)
+        {
+            <span class="grafik-lejant-oge">
+                <span class="grafik-lejant-kutu" style="background:@dilim.Renk" aria-hidden="true"></span>
+                @dilim.Etiket (%@dilim.Yuzde.ToString("F0"))
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<GrafikNokta> Noktalar { get; set; } = [];
+    [Parameter] public string Aciklama { get; set; } = "";
+
+    private static readonly string[] Renkler = ["var(--grafik-1)", "var(--grafik-3)", "var(--grafik-2)", "var(--grafik-4)", "var(--grafik-5)", "var(--bilgi)"];
+
+
+    private List<DilimVeri> Dilimler
+    {
+        get
+        {
+            var toplam = Noktalar.Sum(n => n.Deger);
+            if (toplam <= 0) return [];
+            var sonuc = new List<DilimVeri>();
+            double aci = -90;
+            for (var i = 0; i < Noktalar.Count; i++)
+            {
+                var pay = (double)(Noktalar[i].Deger / toplam);
+                var bitis = aci + pay * 360;
+                sonuc.Add(new DilimVeri(
+                    DilimYolu(aci, bitis), Renkler[i % Renkler.Length],
+                    Noktalar[i].Etiket, Noktalar[i].Deger / toplam * 100));
+                aci = bitis;
+            }
+            return sonuc;
+        }
+    }
+
+    private static string DilimYolu(double bas, double bit)
+    {
+        const double cx = 110, cy = 110, r = 90;
+        // ⚠ QA turu 5 (YÜKSEK): TEK dilim %100 olduğunda bas ve bit aynı noktaya
+        //   düşüyordu; SVG yayı yozlaşıyor ve HİÇBİR dolgu çizilmiyordu
+        //   (getBBox().width == 0). 360°'lik dilim yay ile çizilemez → İKİ yarım
+        //   yaydan kapalı tam daire çizilir.
+        if (bit - bas >= 359.99)
+            return string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                "M {0:F1} {1:F1} A {2} {2} 0 1 1 {0:F1} {3:F1} A {2} {2} 0 1 1 {0:F1} {1:F1} Z",
+                cx, cy - r, r, cy + r);
+        var (x1, y1) = Kord(bas); var (x2, y2) = Kord(bit);
+        var buyuk = bit - bas > 180 ? 1 : 0;
+        // ⚠ QA turu 3 (2026-09-17): bu satır tr-TR kültüründe "110,0" üretiyordu ve
+        //   tarayıcı SVG path'ini REDDEDİYORDU ("Expected number") → pasta HİÇ çizilmiyordu.
+        //   SVG'ye giden her sayı InvariantCulture ile biçimlenir (GrafikKulturTestleri kuralı).
+        return string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            "M {0:F1} {1:F1} L {2:F1} {3:F1} A {4} {4} 0 {5} 1 {6:F1} {7:F1} Z",
+            cx, cy, x1, y1, r, buyuk, x2, y2);
+
+        static (double, double) Kord(double derece)
+        {
+            var rad = derece * Math.PI / 180;
+            return (110 + 90 * Math.Cos(rad), 110 + 90 * Math.Sin(rad));
+        }
+    }
+}

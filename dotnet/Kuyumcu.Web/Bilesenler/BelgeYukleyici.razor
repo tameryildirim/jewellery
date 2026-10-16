@@ -1,0 +1,211 @@
+@using Kuyumcu.Contracts.Bilesenler.BelgeYukleyici
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime Js
+@implements IDisposable
+
+@* ─────────────────────────────────────────────────────────────────────────────
+   BELGE YÜKLEYİCİ — paket 4 Faz A. A16'nın "yükleme ekranı yok" açığını kapatır.
+
+   ⚠ İSTEMCİ TARAFI KAPISI SUNUCUNUNKİNİN KOPYASI DEĞİL, ÖN GÖSTERİMİDİR:
+   boyut/uzantı uymuyorsa kullanıcıya sebebi YAZILIR ve istek HİÇ GÖNDERİLMEZ —
+   ama son sözü her zaman sunucu söyler (magic byte orada denetlenir).
+
+   ⚠ İçerik ekranda MarkupString ile BASILMAZ; indirme blob üzerinden yapılır.
+   ───────────────────────────────────────────────────────────────────────────── *@
+
+<div class="dosya-secici">
+    <h4>@Dil.T.Belge.Baslik</h4>
+
+    @* KESIF-P4 #16: yarım sütunda dosya kutusunun en küçük genişliği "Belge
+       türü" seçicisini ~48 px'e eziyor, iki etiket üst üste biniyordu
+       ("BeDosya seç"). İki alan TAM GENİŞLİK alt alta. *@
+    <div class="form-dikey">
+        <div class="alan">
+            <Secici ElemanId="@($"{Onek}-tur")"
+                    Etiket="@Dil.T.Belge.Tur"
+                    Secenekler="@(Turler.Select(t => new SecenekOgesi(t, TurEtiketi(t))).ToList())"
+                    @bind-Deger="secilenTur" />
+        </div>
+        @* KESIF-P4 tur 2 (#16): tarayıcının ham dosya kontrolü ("Dosya Seç | Dosya
+           seçilmedi") 375 px'te çekmeceden 55 px taşıyordu ve dile/temaya uymuyordu.
+           Girdi görsel olarak GİZLİ (.gorunmez — erişilebilir, klavyeyle odaklanır);
+           görünen yüz etiketli İKİNCİL düğme + seçilen dosya adı satırı. *@
+        <div class="alan">
+            <InputFile id="belge-sec" class="gorunmez" OnChange="DosyaSecildi" />
+            <label for="belge-sec" id="belge-sec-dugme" class="btn btn-ikincil">@Dil.T.Belge.DosyaSec</label>
+            <p class="dosya-onizleme" id="belge-sec-ad">@(secilenAd is null ? P4.DosyaSecilmedi : $"{secilenAd} — {Kb(secilenBoyut)}")</p>
+        </div>
+    </div>
+
+    <HataBandi Mesaj="@hata" />
+    <BasariBandi Mesaj="@basari" />
+
+    <div class="satir">
+        <button id="belge-yukle" class="btn btn-birincil" type="button"
+                disabled="@(yukleniyor || secilenIcerik is null)"
+                @onclick="Yukle">@Dil.T.Belge.Yukle</button>
+    </div>
+
+    @if (belgeler.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Belge.BelgeYok" />
+    }
+    else
+    {
+        <ul class="dosya-listesi">
+            @foreach (var b in belgeler)
+            {
+                <li class="dosya-satiri">
+                    <span class="dosya-ad">@b.Ad</span>
+                    <span class="dosya-tur">@TurEtiketi(b.Tur)</span>
+                    <span class="dosya-boyut">@Kb(b.Boyut)</span>
+                    <button class="btn btn-ikincil btn-kucuk" type="button"
+                            @onclick="() => Indir(b)">@Dil.T.Belge.Indir</button>
+                    <button class="btn btn-ikincil btn-kucuk" type="button"
+                            @onclick="() => PasifeAl(b)">@Dil.T.Belge.PasifeAl</button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    /// <summary>Kapalı listedeki sahip türü (URUN, ISLETME…).</summary>
+    [Parameter, EditorRequired] public string SahipTuru { get; set; } = "";
+
+    /// <summary>Sahip kaydın kimliği. Boşken bileşen istek göndermez.</summary>
+    [Parameter, EditorRequired] public string SahipId { get; set; } = "";
+
+    /// <summary>Bu bağlamda seçilebilecek belge türleri.</summary>
+    [Parameter] public string[] Turler { get; set; } = ["SERTIFIKA", "GORSEL", "FOTOGRAF", "EK"];
+
+    /// <summary>Element id öneki — aynı sayfada iki yükleyici olursa id çakışmasın.</summary>
+    [Parameter] public string Onek { get; set; } = "belge";
+
+
+    private KesifP4Metinleri P4 => KesifP4Sozlugu.Al(Dil.Dil);
+
+    private List<BelgeSatiri> belgeler = [];
+    private string secilenTur = "SERTIFIKA";
+    private string? secilenAd;
+    private long secilenBoyut;
+    private byte[]? secilenIcerik;
+    private string? hata;
+    private string? basari;
+    private bool yukleniyor;
+
+    // ── İstemci ön kapısı (sunucunun kopyası DEĞİL) ──────────────────────────
+    private const long PdfTavan = 5L * 1024 * 1024;
+    private const long GorselTavan = 2L * 1024 * 1024;
+    private static readonly string[] PdfUzanti = [".pdf"];
+    private static readonly string[] GorselUzanti = [".jpg", ".jpeg", ".png"];
+
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        secilenTur = Turler.Length > 0 ? Turler[0] : "SERTIFIKA";
+        await Listele();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    /// <summary>Boyut etiketi — kültürden bağımsız (InvariantCulture).</summary>
+    private static string Kb(long bayt) =>
+        (bayt / 1024.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " KB";
+
+    private string TurEtiketi(string t) => t switch
+    {
+        "SERTIFIKA" => Dil.T.Belge.TurSertifika,
+        "GORSEL" => Dil.T.Belge.TurGorsel,
+        "FOTOGRAF" => Dil.T.Belge.TurFotograf,
+        _ => Dil.T.Belge.TurEk,
+    };
+
+    private async Task Listele()
+    {
+        if (string.IsNullOrWhiteSpace(SahipId)) { belgeler = []; return; }
+        try
+        {
+            belgeler = await Api.GetAsync<List<BelgeSatiri>>(
+                $"/belgeler?sahipTuru={Uri.EscapeDataString(SahipTuru)}&sahipId={Uri.EscapeDataString(SahipId)}");
+        }
+        // ⚠ Sahte API varsayılanı "{}" listeye çevrilemez → JsonException ApiHata DEĞİLDİR.
+        catch (Exception ex) when (ex is ApiHata or JsonException) { belgeler = []; }
+    }
+
+    private async Task DosyaSecildi(InputFileChangeEventArgs e)
+    {
+        hata = null; basari = null;
+        secilenIcerik = null; secilenAd = null; secilenBoyut = 0;
+
+        var dosya = e.File;
+        if (dosya is null) return;
+
+        var uzanti = System.IO.Path.GetExtension(dosya.Name).ToLowerInvariant();
+        var pdf = PdfUzanti.Contains(uzanti);
+        var gorsel = GorselUzanti.Contains(uzanti);
+
+        if (!pdf && !gorsel) { hata = Dil.T.Belge.TurGecersiz; return; }
+
+        var tavan = pdf ? PdfTavan : GorselTavan;
+        if (dosya.Size > tavan) { hata = Dil.T.Belge.BoyutAsildi; return; }
+
+        using var akis = dosya.OpenReadStream(tavan);
+        using var bellek = new MemoryStream();
+        await akis.CopyToAsync(bellek);
+
+        secilenIcerik = bellek.ToArray();
+        secilenAd = dosya.Name;
+        secilenBoyut = dosya.Size;
+    }
+
+    private async Task Yukle()
+    {
+        if (secilenIcerik is null || string.IsNullOrWhiteSpace(SahipId)) return;
+        hata = null; basari = null;
+        yukleniyor = true;
+        try
+        {
+            await Api.PostAsync("/belgeler", new
+            {
+                sahipTuru = SahipTuru,
+                sahipId = SahipId,
+                tur = secilenTur,
+                ad = secilenAd,
+                icerikBase64 = Convert.ToBase64String(secilenIcerik),
+            });
+            basari = Dil.T.Belge.Yuklendi;
+            secilenIcerik = null; secilenAd = null; secilenBoyut = 0;
+            await Listele();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        yukleniyor = false;
+    }
+
+    private async Task Indir(BelgeSatiri b)
+    {
+        hata = null; basari = null;
+        try
+        {
+            var (veri, ad) = await Api.GetBaytAsync($"/belgeler/{b.Id}/icerik");
+            await Js.InvokeVoidAsync("kuyumcuIndir", ad ?? b.Ad, Convert.ToBase64String(veri), b.Mime);
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    private async Task PasifeAl(BelgeSatiri b)
+    {
+        hata = null; basari = null;
+        try
+        {
+            await Api.DeleteAsync<JsonElement>($"/belgeler/{b.Id}");
+            basari = Dil.T.Belge.PasifeAlindi;
+            await Listele();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

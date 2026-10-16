@@ -1,0 +1,94 @@
+@using Kuyumcu.Contracts.Sayfalar.YasalSinirlar
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══ PAKET YASAL-1 — PANEL YASAL DEĞİŞİKLİK BANDI (şartname § 4.5) ═══════════
+   • MAVİ (bilgi): yeni yasal değer 7 gün içinde başlıyorsa tek cümle —
+     "<tarih> tarihinden itibaren <sınır>: <eski> yerine <yeni>." — yalnız SAHİP/MÜDÜR.
+   • (Tur 2, tasarım hakemi) SARI bayram bandı Panel'den KALDIRILDI: sahip
+     bayram giremez (tablo ekrandan düzenlenmez, § 5) → her gün duran, eylemsiz
+     uyarı demoda gürültüydü. Durum "Yasal sınırlar → Bu yılın bayram tatilleri"
+     katlanırında yapılacak yolla yazar; ByGatech sistem sağlık ucunda görür.
+   • OTURUM HAZIR OLUNCA (tur 2, hakem KRİTİK): doğrudan açılışta/tam yenilemede
+     Kullanici ilk çizimde henüz null'dur → istek atılmıyor ve bant hiç çizilmiyordu.
+     Bileşen OturumServisi.Degisti'ye abone olur; rol yetkili olunca BİR KEZ yükler.
+   • Rakam, tarih ve ufuk (7 gün) SUNUCUDAN gelir; istemciye gömülmez.
+   • Yetkisiz rolde istek ATILMAZ ve hiçbir şey çizilmez (bant bilgi amaçlıdır).
+   • UX-S28: istek hatası "değişiklik yok"a çevrilmez — küçük hata bandı çizilir.
+   • Bant eylemsizdir: tek bağlantı "Yasal sınırları gör" (salt okunur sayfa).
+   ═════════════════════════════════════════════════════════════════════════ *@
+
+@if (hata is not null)
+{
+    <p class="bant bant-hata yasal-bant" id="yasal-bant-hata" role="alert">@hata</p>
+}
+else if (Mavi.Count > 0)
+{
+    <div class="yasal-bantlar" id="yasal-bantlar">
+        @foreach (var d in Mavi)
+        {
+            <p class="bant yasal-bant yasal-bant--bilgi" id="@($"yasal-bant-{YasalBicim.Slug(d.Anahtar)}")" role="status">
+                <span>@Cumle(d)</span>
+                <a class="yasal-bant-bag" href="/yasal-sinirlar">@M.BantBaglanti</a>
+            </p>
+        }
+    </div>
+}
+
+@code {
+    private YasalYaklasanVeri? veri;
+    private string? hata;
+
+    private YasalSinirMetinleri M => YasalSinirSozlugu.Al(Dil.Dil);
+    private string? Rol => Oturum.Kullanici?.Rol;
+    private bool MaviYetkili => Rol is "SAHIP" or "MUDUR";
+    private bool yuklemeBasladi;
+
+    /// <summary>Bant ufku içindeki (1..BantUfkuGun gün kala) değişiklikler.</summary>
+    private List<YasalDegisiklikVeri> Mavi =>
+        !MaviYetkili || veri?.Degisiklikler is null
+            ? []
+            : veri.Degisiklikler.Where(d => d.KalanGun >= 1 && d.KalanGun <= veri.BantUfkuGun).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Oturum.Degisti += OturumDegisti;
+        await YukleGerekirse();
+    }
+
+    /// <summary>Rol yetkiliyse ve henüz yüklenmediyse BİR KEZ ister (yetkisizde istek YOK).</summary>
+    private async Task YukleGerekirse()
+    {
+        if (!MaviYetkili || yuklemeBasladi) return;
+        yuklemeBasladi = true;
+        try
+        {
+            veri = await Api.GetAsync<YasalYaklasanVeri>("/yasal-parametreler/yaklasan");
+        }
+        catch (ApiHata ex)
+        {
+            hata = string.Format(M.BantHata, ex.Message);
+        }
+    }
+
+    private void OturumDegisti() => _ = InvokeAsync(async () =>
+    {
+        await YukleGerekirse();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Oturum.Degisti -= OturumDegisti;
+
+    private string Cumle(YasalDegisiklikVeri d)
+    {
+        var ad = YasalBicim.Ad(d.Anahtar, d.AciklamaSade, M);
+        if (Dil.Dil != "en" && ad.Length > 0) ad = char.ToLower(ad[0], new System.Globalization.CultureInfo("tr-TR")) + ad[1..];
+        var tarih = YasalBicim.Tarih(d.Baslangic, Dil.Dil);
+        var yeni = YasalBicim.Esikli(d.YeniSayi, d.YeniMetin, d.Birim, d.EsikTuru, d.YeniEsik, M);
+        return d.EskiSayi is null && string.IsNullOrWhiteSpace(d.EskiMetin)
+            ? string.Format(M.BantDegisimEskisiz, tarih, ad, yeni)
+            : string.Format(M.BantDegisim, tarih, ad, YasalBicim.Esikli(d.EskiSayi, d.EskiMetin, d.Birim, d.EskiEsikTuru, d.EskiEsik, M), yeni);
+    }
+}

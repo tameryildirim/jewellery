@@ -1,0 +1,817 @@
+@page "/kullanicilar"
+@using Kuyumcu.Contracts.Sayfalar.Kullanicilar
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* Kullanıcı yönetimi — API: /api/v1/kullanicilar (SAHIP, MUDUR).
+   Rol hiyerarşisi: SAHIP(4) > MUDUR(3) > MUHASEBE(2) > TEZGAHTAR(1).
+   • Düzenle: kendi profilini (ad/soyad/e-posta) veya kendinden düşük roldeki kullanıcıyı (+ rol/durum) günceller.
+   • Şifre: kendine "Şifre Değiştir" (mevcut şifre ister), başkasına "Şifre Sıfırla" (admin). *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Kullanici.Baslik)</PageTitle>
+
+<div class="dikey-bosluk">
+    @* UX-1-C4 · K7 — tek başlık kabuğu + ekran başına TEK birincil eylem. *@
+    <SayfaBasi Anahtar="kullanicilar" Baslik="@Dil.T.Kullanici.Baslik"
+               Aciklama="@Dil.T.Yonetim.KullanicilarAciklama">
+        <Eylem>
+            <button class="btn btn-birincil" id="k-yeni" @onclick="YeniModalAc">
+                + @Dil.T.Kullanici.YeniKullanici
+            </button>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
+    @* UX-4c madde 13: süreli gösterim BasariBandi'nin içinde (kopya metot silindi). *@
+    <BasariBandi Mesaj="@basariMesaj" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (listeHata is not null && liste.Count == 0)
+    {
+        @* QA turu 5 (YÜKSEK): 429'da yalnız bant ve boş başlık satırı kalıyordu;
+           ne "Yeniden dene" vardı ne de kendiliğinden tekrar deneme. Hata boş
+           duruma ÇEVRİLMEZ (UX-S28) — ayrı, adı konmuş bir yüklenemedi durumudur. *@
+        <div class="kart">
+            <div class="kart-govde dikey-bosluk">
+                @* ⚠ BosDurum BİLEREK KULLANILMIYOR (UX-4c M13 değişmezi): hata
+                   "kayıt yok" görünümüne çevrilmez. Bu AYRI bir durumdur. *@
+                <p class="metin-vurgu" id="k-liste-yuklenemedi" role="status">
+                    @Dil.T.Kullanici.ListeYuklenemedi
+                </p>
+                <p class="metin-kucuk metin-soluk" id="k-liste-hata">@listeHata</p>
+                <button class="btn btn-ikincil" id="k-yeniden-dene" disabled="@(yukleniyor || otomatikDeneme)"
+                        @onclick="Yukle">@Dil.T.Kullanici.YenidenDene</button>
+                @if (otomatikDeneme)
+                {
+                    @* ORTAK-1 (H): not KENDİ satırında (375 px'te düğmenin üstüne biniyordu, K9).
+                       Bant yalnız 429 (oran sınırı) otomatik denemesinde çıkar. *@
+                    <span class="metin-kucuk metin-soluk durum-notu-blok" id="k-otomatik-deneme" role="status">
+                        @string.Format(Dil.T.Kullanici.OtomatikDeneniyor, sonrakiDenemeSaniye)
+                    </span>
+                }
+            </div>
+        </div>
+    }
+    else if (listeHata is null && liste.Count == 0)
+    {
+        @* UX-S28: sunucu hatası "kullanıcı bulunamadı" diye gösterilmez. *@
+        <div class="kart"><BosDurum Mesaj="@Dil.T.Kullanici.KullaniciBulunamadi" /></div>
+    }
+    else
+    {
+        <div class="kart">
+            @* PAKET GOC-D — ortak ızgara (grid:kullanicilar:k-tablo): sütun sırası, göster/gizle, sıralama,
+               kullanıcıya+ekrana kalıcı, varsayılana dön. Tablo id'si (#k-tablo), sınıfları ve hücre
+               içerikleri (k-siz, k-satir-eposta, SatirEylemleri k-*) AYNEN. Liste TAMDIR (tüm kullanıcılar)
+               → yerel sıralama yanıltmaz. *@
+            <Izgara T="KullaniciVeri" Ekran="kullanicilar" GridId="k-tablo" TabloId="k-tablo"
+                    TabloSinif="q10-th-tek q10-yigin" Kolonlar="@KullaniciKolonlari"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(liste, kullaniciSira, KullaniciKolonlari)"
+                    Baslik="@Dil.T.Kullanici.Baslik"
+                    SiralamaDegisti="@(x => kullaniciSira = x)" GecerliSiralama="@kullaniciSira" />
+        </div>
+    }
+</div>
+
+@* ── Yeni kullanıcı modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Kullanici.YeniKullanici" Kapat="() => yeniModalAcik = false">
+    <div class="form-dikey">
+        <div class="form-grid-2">
+            <Metin ElemanId="k-ad" Etiket="@Dil.T.Auth.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.Ad"
+                   Deger="@yeniAd" DegerChanged="@(v => yeniAd = v ?? "")" />
+            <Metin ElemanId="k-soyad" Etiket="@Dil.T.Auth.Soyad" Zorunlu="true" EnFazla="@AlanSinirlari.Ad"
+                   Deger="@yeniSoyad" DegerChanged="@(v => yeniSoyad = v ?? "")" />
+        </div>
+        @* QA turu 1+2 (ORTA): geçersiz e-posta/boş alanda Kaydet SESSİZCE pasifti;
+           hiçbir mesaj yoktu. Sessiz etkisizlik yasak (DoD/3).
+           Hata kimliği (#k-eposta-hata) ortak kabuktan BİREBİR aynı doğar. *@
+        <Eposta ElemanId="k-eposta" Etiket="@Dil.T.Kullanici.Eposta" Zorunlu="true"
+                Deger="@yeniEmail" DegerChanged="@(v => yeniEmail = v ?? "")"
+                Hata="@(YeniEpostaHatali ? EpostaMesaji(yeniEmail) : null)" />
+        <div class="alan">
+            <Secici ElemanId="k-arayuz-modu"
+                    Etiket="@Dil.T.Arayuz.Baslik"
+                    Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("BASIT", Dil.T.Arayuz.Basit), new SecenekOgesi("PROFESYONEL", Dil.T.Arayuz.Profesyonel) })"
+                    @bind-Deger="yeniArayuzModu"
+                    BosSecenekMetni="@(Dil.T.Arayuz.KiraciVarsayilani)" />
+        </div>
+        <div class="form-grid-2">
+            <div class="alan">
+                <Secici ElemanId="k-rol"
+                        Etiket="@Dil.T.Kullanici.Rol"
+                        Secenekler="@(AtanabilirRoller.Select(r => new SecenekOgesi(r, RolEtiket(r))).ToList())"
+                        @bind-Deger="yeniRol" />
+            </div>
+            <Sifre ElemanId="k-sifre" Etiket="@Dil.T.Kullanici.Sifre" Zorunlu="true"
+                   YerTutucu="@Dil.T.Kullanici.SifreIpucu" OtoTamamla="new-password"
+                   Deger="@yeniSifre" DegerChanged="@(v => yeniSifre = v ?? "")" />
+        </div>
+        @* UX-4c madde 12 / UX-S30: istemci yalnız uzunluğa bakıyordu, sunucu ayrıca
+           harf+rakam istiyordu. Kullanıcı "aaaaaaaa" yazınca düğme açılıyor, kaydediyor
+           ve sunucudan 400 yiyordu. Kural artık ekranda ve istemcide sunucuyla EŞİT. *@
+        <ul id="k-sifre-kural" class="kural-listesi">
+            <li class="@(SifreUzunlukTamam(yeniSifre) ? "kural-tamam" : null)">@Dil.T.Kullanici.SifreKuralUzunluk</li>
+            <li class="@(SifreHarfTamam(yeniSifre) ? "kural-tamam" : null)">@Dil.T.Kullanici.SifreKuralHarf</li>
+            <li class="@(SifreRakamTamam(yeniSifre) ? "kural-tamam" : null)">@Dil.T.Kullanici.SifreKuralRakam</li>
+        </ul>
+        @* UX-S22 — tek şubede seçici gizlenir, değer salt okunur yazılır ve gövdeye konur. *@
+        @if (subeler.Count == 1)
+        {
+            <div class="alan">
+                <label>@Dil.T.Kullanici.Sube</label>
+                <p id="k-sube-tek" class="hucre-vurgu">@subeler[0].Ad</p>
+            </div>
+        }
+        else if (subeler.Count > 1)
+        {
+            <div class="alan">
+                <Secici ElemanId="k-sube"
+                        Etiket="@Dil.T.Kullanici.Sube"
+                        Secenekler="@(subeler.Select(sb => new SecenekOgesi(sb.Id, sb.Ad)).ToList())"
+                        @bind-Deger="yeniSubeId"
+                        BosSecenekMetni="@Dil.T.Kullanici.SubeSecin" />
+            </div>
+        }
+        @if (YeniAdBos)
+        {
+            <span id="k-ad-hata" class="hata-metni" role="alert">@Dil.T.Yonetim.AdSoyadBos</span>
+        }
+        <HataBandi Mesaj="@modalHata" Id="k-hata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esit-pay" @onclick="() => yeniModalAcik = false"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-birincil esit-pay" id="k-kaydet" disabled="@(kaydediliyor || !YeniGecerli)"
+                    @onclick="KullaniciOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+        @* UX-S30: kilitli düğme hangi koşulun eksik olduğunu söyler. *@
+        @if (!kaydediliyor && !YeniGecerli)
+        {
+            <p id="k-kaydet-kilit" class="metin-soluk metin-kucuk">
+                @Dil.T.Yonetim.KilitSebebi: @string.Join(" · ", YeniEksikler)
+            </p>
+        }
+    </div>
+</ModalPencere>
+
+@* ── Kullanıcı düzenle modalı ── *@
+<ModalPencere Acik="duzenleHedef is not null" Baslik="@Dil.T.Kullanici.Duzenle" Kapat="() => duzenleHedef = null">
+    @if (duzenleHedef is not null)
+    {
+        <div class="form-dikey">
+            <div class="form-grid-2">
+                <Metin ElemanId="d-ad" Etiket="@Dil.T.Auth.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.Ad"
+                       Deger="@dAd" DegerChanged="@(v => dAd = v ?? "")" />
+                <Metin ElemanId="d-soyad" Etiket="@Dil.T.Auth.Soyad" Zorunlu="true" EnFazla="@AlanSinirlari.Ad"
+                       Deger="@dSoyad" DegerChanged="@(v => dSoyad = v ?? "")" />
+            </div>
+            <Eposta ElemanId="d-eposta" Etiket="@Dil.T.Kullanici.Eposta" Zorunlu="true"
+                    Deger="@dEmail" DegerChanged="@(v => dEmail = v ?? "")"
+                    Hata="@(DuzenleEpostaHatali ? EpostaMesaji(dEmail) : null)" />
+            @* UX-3: sahip/müdür, çalışanını BASİT moda alabilir. Bu bir TERCİHTİR;
+               yetkiye dokunmaz, rol değişimi AYRI uçtadır. *@
+            <div class="alan">
+                <Secici ElemanId="d-arayuz-modu"
+                        Etiket="@Dil.T.Arayuz.Baslik"
+                        Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("BASIT", Dil.T.Arayuz.Basit), new SecenekOgesi("PROFESYONEL", Dil.T.Arayuz.Profesyonel) })"
+                        @bind-Deger="dArayuzModu"
+                        BosSecenekMetni="@(Dil.T.Arayuz.KiraciVarsayilani)" />
+            </div>
+            @if (subeler.Count == 1)
+            {
+                <div class="alan">
+                    <label>@Dil.T.Kullanici.Sube</label>
+                    <p id="d-sube-tek" class="hucre-vurgu">@subeler[0].Ad</p>
+                </div>
+            }
+            else if (subeler.Count > 1)
+            {
+                <div class="alan">
+                    <Secici ElemanId="d-sube"
+                            Etiket="@Dil.T.Kullanici.Sube"
+                            Secenekler="@(subeler.Select(sb => new SecenekOgesi(sb.Id, sb.Ad)).ToList())"
+                            @bind-Deger="dSubeId"
+                            BosSecenekMetni="@Dil.T.Kullanici.SubeSecin" />
+                </div>
+            }
+            @* UX-S25: kendi satırında rol ve erişim durumu ALANI YOK. Sessiz
+               eksiklik yerine gerekçe ve doğru yol yazılır (QA turu 2, KISMEN). *@
+            @if (duzenleHedef.Id == BenimId)
+            {
+                <DegismezIpucu Varlik="KendiRolum"
+                               Gerekce="@Dil.T.Yonetim.KendiRolunDegismez"
+                               AlternatifYol="@string.Format(OnayM.KendiRolYolu, Dil.T.Kullanici.SahipligiDevret)" />
+            }
+            else
+            {
+                <div class="form-grid-2">
+                    <div class="alan">
+                        <Secici ElemanId="d-rol"
+                                Etiket="@Dil.T.Kullanici.Rol"
+                                Secenekler="@(AtanabilirRoller.Select(r => new SecenekOgesi(r, RolEtiket(r))).ToList())"
+                                @bind-Deger="dRol" />
+                    </div>
+                    <div class="alan">
+                        <Secici ElemanId="d-durum"
+                                Etiket="@Dil.T.Kullanici.Durum"
+                                Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("true", Dil.T.Kullanici.Aktif), new SecenekOgesi("false", Dil.T.Kullanici.Pasif) })"
+                                @bind-Deger="dAktif" />
+                    </div>
+                </div>
+            }
+            @if (DuzenleAdBos)
+            {
+                <span id="d-ad-hata" class="hata-metni" role="alert">@Dil.T.Yonetim.AdSoyadBos</span>
+            }
+            @if (DuzenleEpostaHatali)
+            {
+                <span id="d-eposta-hata" class="hata-metni" role="alert">@Dil.T.Yonetim.EpostaGecersiz</span>
+            }
+            <HataBandi Mesaj="@modalHata" Id="d-hata" />
+            <div class="satir">
+                <button class="btn btn-ikincil esit-pay" @onclick="() => duzenleHedef = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+                <button class="btn btn-birincil esit-pay" id="d-kaydet" disabled="@(kaydediliyor || !DuzenleGecerli)"
+                        @onclick="DuzenleKaydet">@Dil.T.Ortak.Kaydet</button>
+            </div>
+            @if (!kaydediliyor && !DuzenleGecerli)
+            {
+                <p id="d-kaydet-kilit" class="metin-soluk metin-kucuk">
+                    @Dil.T.Yonetim.KilitSebebi: @(DuzenleAdBos ? Dil.T.Yonetim.AdSoyadBos : Dil.T.Yonetim.EpostaGecersiz)
+                </p>
+            }
+        </div>
+    }
+</ModalPencere>
+
+@* ── Şifre modalı (kendine değiştir / başkasına sıfırla) ── *@
+<ModalPencere Acik="sifreHedef is not null"
+              Baslik="@(SifreHedefKendim ? Dil.T.Kullanici.SifreDegistir : Dil.T.Kullanici.SifreSifirla)"
+              Kapat="() => sifreHedef = null">
+    @if (sifreHedef is not null)
+    {
+        <div class="form-dikey">
+            <p class="metin-soluk">@sifreHedef.Ad @sifreHedef.Soyad</p>
+            @if (SifreHedefKendim)
+            {
+                <Sifre ElemanId="s-mevcut" Etiket="@Dil.T.Kullanici.MevcutSifre" Zorunlu="true"
+                       OtoTamamla="current-password"
+                       Deger="@sMevcut" DegerChanged="@(v => sMevcut = v ?? "")" />
+            }
+            <Sifre ElemanId="s-yeni" Etiket="@Dil.T.Kullanici.YeniSifre" Zorunlu="true"
+                   YerTutucu="@Dil.T.Kullanici.SifreIpucu" OtoTamamla="new-password"
+                   Deger="@sYeni" DegerChanged="@(v => sYeni = v ?? "")" />
+            <ul id="s-sifre-kural" class="kural-listesi">
+                <li class="@(SifreUzunlukTamam(sYeni) ? "kural-tamam" : null)">@Dil.T.Kullanici.SifreKuralUzunluk</li>
+                <li class="@(SifreHarfTamam(sYeni) ? "kural-tamam" : null)">@Dil.T.Kullanici.SifreKuralHarf</li>
+                <li class="@(SifreRakamTamam(sYeni) ? "kural-tamam" : null)">@Dil.T.Kullanici.SifreKuralRakam</li>
+            </ul>
+            <Sifre ElemanId="s-tekrar" Etiket="@Dil.T.Auth.SifreTekrar" Zorunlu="true"
+                   OtoTamamla="new-password"
+                   Deger="@sTekrar" DegerChanged="@(v => sTekrar = v ?? "")" />
+            <HataBandi Mesaj="@modalHata" />
+            <div class="satir">
+                <button class="btn btn-ikincil esit-pay" @onclick="() => sifreHedef = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+                <button class="btn btn-birincil esit-pay" id="s-kaydet" disabled="@(kaydediliyor || !SifreGecerli(sYeni) || (SifreHedefKendim && string.IsNullOrEmpty(sMevcut)))"
+                        @onclick="SifreKaydet">@Dil.T.Ortak.Kaydet</button>
+            </div>
+        </div>
+    }
+</ModalPencere>
+
+@* ── ORTAK YIKICI ONAY MODALI (P-09 · B-36/B-37) ────────────────────────────
+   DoD EK 1 md.4: yıkıcı eylem ORTAK onay modalı ister.
+   DoD EK 2: ModalPencere tavanı ARTIRILMAZ — sahiplik devri ve erişim kapatma
+   İKİ ayrı pencere değil, TEK ortak yıkıcı onay penceresinin iki gövdesidir.
+   ⚠ Düzenleme kalıbı DEĞİLDİR: çok alanlı düzenleme yukarıdaki Cekmece/düzenle
+     yolundadır; burada yalnız geri dönüşü olan yıkıcı eylem onaylanır
+     (devir → yeni SAHİP geri devredebilir; pasife alma → aktifleştir). *@
+<ModalPencere Acik="@(devirHedef is not null)"
+              Baslik="@Dil.T.Kullanici.SahipligiDevret"
+              Kapat="YikiciOnayKapat">
+    @if (devirHedef is not null)
+    {
+        <div class="form-dikey">
+            <p>@Dil.T.Kullanici.SahipligiDevretAciklama</p>
+            <p class="hucre-vurgu" id="k-devir-hedef">@devirHedef?.Ad @devirHedef?.Soyad — @devirHedef?.Email</p>
+            <p class="hata-metni" role="alert" id="k-devir-onay">@Dil.T.Kullanici.SahipligiDevretOnay</p>
+            <div class="alan">
+                <Secici ElemanId="k-devir-rol"
+                        Etiket="@Dil.T.Kullanici.DevirdenSonrakiRolum"
+                        Secenekler="@DevirRolSecenekleri"
+                        @bind-Deger="devirYeniRolum" />
+            </div>
+            <Sifre ElemanId="k-devir-sifre" Etiket="@Dil.T.Kullanici.SifrenizDevir" Zorunlu="true"
+                   OtoTamamla="current-password"
+                   Deger="@devirSifre" DegerChanged="@(v => devirSifre = v ?? "")"
+                   Hata="@(string.IsNullOrEmpty(devirSifre) ? Dil.T.Kullanici.SifreGerekli : null)" />
+            <HataBandi Mesaj="@devirHata" Id="k-devir-hata" />
+            <div class="satir">
+                <button class="btn btn-ikincil esit-pay" @onclick="() => devirHedef = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+                <button class="btn btn-tehlike esit-pay" disabled="@(kaydediliyor || string.IsNullOrEmpty(devirSifre))"
+                        id="k-devir-onayla" @onclick="SahipligiDevret">
+                    @Dil.T.Kullanici.SahipligiDevret
+                </button>
+            </div>
+            @if (!kaydediliyor && string.IsNullOrEmpty(devirSifre))
+            {
+                <p id="k-devir-kilit" class="metin-soluk metin-kucuk">
+                    @Dil.T.Yonetim.KilitSebebi: @Dil.T.Kullanici.SifreGerekli
+                </p>
+            }
+        </div>
+    }
+</ModalPencere>
+
+@* ── PAKET P-65 (E49): erişim kapatma ORTAK ONAY KİPİNE taşındı ──────────────
+   Başlık eylemi adlandırır ("Kullanıcının erişimini kapat"), onay düğmesi
+   "Pasife al", vazgeç "Vazgeç" (eskiden "İptal"). Kimlik #k-pasife-onayla KORUNUR.
+   Geri dönüş yolu (Aktif et) pencerede YAZILI (UX-S25). *@
+<OnayKipi Acik="@(pasifHedef is not null)" Kimlik="k-pasife"
+          Eylem="@OnayM.KullaniciPasifBaslik"
+          Aciklama="@Dil.T.Kullanici.PasifeAlOnay"
+          Hedef="@(pasifHedef is null ? null : $"{pasifHedef.Ad} {pasifHedef.Soyad} — {pasifHedef.Email}")"
+          GeriDonusYolu="@string.Format(OnayM.GeriDonusYolu, Dil.T.Kullanici.AktifEt)"
+          OnayMetni="@Dil.T.Kullanici.PasifeAl" Calisiyor="@kaydediliyor" Hata="@pasifHata"
+          OnayId="k-pasife-onayla"
+          Onayla="PasifeAl" Vazgec="YikiciOnayKapat" />
+
+@code {
+    // ── P-36c GÖÇ YARDIMCISI (UX-S31: rol listesi TEK kaynaktan) ─────────
+    private static readonly string[] DevirRolleri = ["MUDUR", "MUHASEBE", "TEZGAHTAR"];
+
+    private IReadOnlyList<SecenekOgesi> DevirRolSecenekleri =>
+        [.. DevirRolleri.Select(r => new SecenekOgesi(r, RolEtiket(r)))];
+
+
+
+    // PAKET P-65: onay kipi ve kilit gerekçesi metinleri (ayrı sözlük; TR+EN).
+    private OnayKilitMetinleri OnayM => OnayKilitSozlugu.Al(Dil.Dil);
+
+    /// <summary>Ortak yıkıcı onay penceresini kapatır (iki gövde tek pencerede).</summary>
+    private void YikiciOnayKapat() { devirHedef = null; pasifHedef = null; }
+
+    private List<KullaniciVeri> liste = [];
+    // UX-4c madde 12: sunucu SubeId'yi hem oluşturmada hem güncellemede KABUL
+    // EDİYORDU; ekran hiç göndermediği için herkesin şubesi boş kalıyor ve şube
+    // satış/alış/kasa ekranlarında her seferinde yeniden soruluyordu.
+    private List<SubeOzet> subeler = [];
+    private bool yukleniyor = true;
+    private string? listeHata;
+
+    private string? basariMesaj;
+    private int basariJeton;
+
+    private bool kaydediliyor;
+    private string? modalHata;
+
+    // yeni kullanıcı
+    private bool yeniModalAcik;
+    private string yeniAd = "";
+    private string yeniSoyad = "";
+    private string yeniEmail = "";
+    private string yeniSifre = "";
+    private string yeniRol = "TEZGAHTAR";
+    private string yeniArayuzModu = "";
+    private string yeniSubeId = "";
+
+    // düzenle
+    private KullaniciVeri? duzenleHedef;
+    private string dAd = "";
+    private string dSoyad = "";
+    private string dEmail = "";
+    private string dRol = "TEZGAHTAR";
+    private string dAktif = "true";
+    private string dArayuzModu = "";
+    private string dSubeId = "";
+
+    // şifre
+    private KullaniciVeri? sifreHedef;
+    private string sMevcut = "";
+    private string sYeni = "";
+    private string sTekrar = "";
+    private bool SifreHedefKendim => sifreHedef?.Id == BenimId;
+
+    private KullaniciVeri? pasifHedef;
+    private string? pasifHata;
+
+    /// <summary>
+    /// Kullanıcı erişimini kapatır (soft delete). SİLME DEĞİL: geçmiş işlemler
+    /// ve denetim izi kullanıcıya bağlı kalmalıdır, yoksa "bu satışı kim yaptı"
+    /// sorusu cevapsız kalır.
+    /// </summary>
+    private async Task PasifeAl()
+    {
+        pasifHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.DeleteAsync<object>($"/kullanicilar/{pasifHedef!.Id}");
+            pasifHedef = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { pasifHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Sahiplik devri (P-09 · B-36) ─────────────────────────────────────
+    private KullaniciVeri? devirHedef;
+    private string devirSifre = "";
+    private string devirYeniRolum = "MUDUR";
+    private string? devirHata;
+
+    private void DevirModalAc(KullaniciVeri k)
+    {
+        devirHedef = k;
+        devirSifre = "";
+        devirYeniRolum = "MUDUR";
+        devirHata = null;
+    }
+
+    /// <summary>
+    /// Yeni SAHİP atar ve devreder. Sunucu TEK SaveChanges ile iki rolü birden
+    /// yazar: işletme ne sahipsiz ne çift sahipli kalır.
+    /// ⚠ Devirden sonra KENDİ rolümüz düştüğü için oturum bilgisi tazelenir.
+    /// </summary>
+    private async Task SahipligiDevret()
+    {
+        if (devirHedef is null || string.IsNullOrEmpty(devirSifre)) return;
+        devirHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync(
+                $"/kullanicilar/{devirHedef.Id}/sahiplik-devret",
+                new { sifre = devirSifre, yeniRolum = devirYeniRolum });
+            devirHedef = null;
+            devirSifre = "";
+            await Oturum.YukleAsync();
+            await Yukle();
+            BasariGoster(Dil.T.Kullanici.SahiplikDevredildi);
+        }
+        catch (ApiHata ex) { devirHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// UX-4c madde 12 / UX-S25 — pasif kullanıcıyı tek tıkla geri açar.
+    /// Hiyerarşi kapısı sunucuda (HedefUzerindekiYetkiKontrol) DURUYOR; ekran
+    /// yalnız düğmeyi göstermiyor/gösteriyor, kapı yerine geçmiyor.
+    /// PATCH sözleşmesi korunur: gönderilmeyen alan KORUNUR, yalnız aktif yazılır.
+    /// </summary>
+    private async Task Aktiflestir(KullaniciVeri k)
+    {
+        listeHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/kullanicilar/{k.Id}", new { aktif = true });
+            await Yukle();
+            BasariGoster(Dil.T.Kullanici.Guncellendi);
+        }
+        catch (ApiHata ex) { listeHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>Boş seçenek = "kiracı varsayılanını devral" → gövdeye AÇIK null gider.</summary>
+    private static string? Bos(string deger) => string.IsNullOrEmpty(deger) ? null : deger;
+
+    private string BenimId => Oturum.Kullanici?.Id ?? "";
+    private string BenimRol => Oturum.Kullanici?.Rol ?? "TEZGAHTAR";
+
+    private static int Seviye(string rol) => rol switch
+    {
+        "SAHIP" => 4, "MUDUR" => 3, "MUHASEBE" => 2, _ => 1,
+    };
+
+    // KESIF-P6 tur 2: satır eylemleri TEK listede (ortak SatirEylemleri). Sıra = önem: Düzenle satırda,
+    // gerisi "⋯" penceresinde. Koşullar eski satır içi düğmelerle BİREBİR aynı.
+    private IReadOnlyList<SatirEylemleri.Eylem> SatirEylemListesi(KullaniciVeri k)
+    {
+        var l = new List<SatirEylemleri.Eylem>
+        {
+            new($"k-duzenle-{k.Id}", Dil.T.Kullanici.Duzenle,
+                EventCallback.Factory.Create(this, () => DuzenleModalAc(k))),
+            new($"k-sifre-{k.Id}", k.Id == BenimId ? Dil.T.Kullanici.SifreDegistir : Dil.T.Kullanici.SifreSifirla,
+                EventCallback.Factory.Create(this, () => SifreModalAc(k))),
+        };
+        // Ayrılan çalışanın erişimi; kendini pasife alma kapalı — SAHİP kendini kilitleyemez.
+        if (k.Aktif && k.Id != BenimId && UzerindeIslemYapabilir(k))
+            l.Add(new($"k-pasif-{k.Id}", Dil.T.Kullanici.PasifeAl,
+                EventCallback.Factory.Create(this, () => pasifHedef = k), tehlike: true));
+        // UX-4c madde 12 / UX-S25: pasife almanın tersi aynı yerde.
+        else if (!k.Aktif && UzerindeIslemYapabilir(k))
+            l.Add(new($"k-aktiflestir-{k.Id}", Dil.T.Kullanici.AktifEt,
+                EventCallback.Factory.Create(this, () => Aktiflestir(k)), kilitli: kaydediliyor));
+        // P-09 (B-36): TEK SAHİP ÇIKMAZI — devir tek adımda ve parola onayıyla.
+        if (BenimRol == "SAHIP" && k.Id != BenimId && k.Aktif && k.Rol != "SAHIP")
+            l.Add(new($"k-devret-{k.Id}", Dil.T.Kullanici.SahipligiDevret,
+                EventCallback.Factory.Create(this, () => DevirModalAc(k)), kilitli: kaydediliyor));
+        return l;
+    }
+
+    // Kendinden düşük roldeki BAŞKA kullanıcılar üzerinde tam işlem yapılabilir
+    private bool UzerindeIslemYapabilir(KullaniciVeri k) =>
+        k.Id != BenimId && Seviye(BenimRol) > Seviye(k.Rol);
+
+    private string[] AtanabilirRoller =>
+        new[] { "MUDUR", "MUHASEBE", "TEZGAHTAR" }.Where(r => Seviye(BenimRol) > Seviye(r)).ToArray();
+
+    /// <summary>
+    /// UX-4c madde 12 — sunucu kuralının BİREBİR karşılığı:
+    /// KullaniciModulu.cs `[StringLength(72, MinimumLength = 8)]` +
+    /// `[RegularExpression("^(?=.*[0-9])(?=.*[a-zA-Z]).+$")]`. İstemci yalnız
+    /// uzunluğa baktığı için "aaaaaaaa" kaydediliyor, sunucudan 400 dönüyordu.
+    /// </summary>
+    private static bool SifreUzunlukTamam(string? s) => (s?.Length ?? 0) is >= ParolaKurali.EnAz and <= ParolaKurali.EnCok;
+    private static bool SifreHarfTamam(string? s) => s is not null && s.Any(char.IsAsciiLetter);
+    private static bool SifreRakamTamam(string? s) => s is not null && s.Any(char.IsAsciiDigit);
+    // PAKET GOC-D: üç madde listesi görünüm içindir; geçerlilik Core ParolaKurali (sunucuyla tek kural).
+    private static bool SifreGecerli(string? s) => ParolaKurali.Gecerli(s);
+
+    /// <summary>
+    /// PAKET GOC-D (K3): sunucu artık [Eposta] (Core EpostaDogrulayici) ile doğrular — ekran AYNI kuralı
+    /// çağırır; eski yerel regex ile sunucunun [EmailAddress]'i farklı adresleri kabul ediyordu.
+    /// </summary>
+    private static bool EpostaGecerli(string? e) => EpostaDogrulayici.Gecerli(e);
+
+    /// <summary>Alan altı ve kilit sebebi için TEK metin (sunucunun 400 metniyle aynı sözlük anahtarı).</summary>
+    private string EpostaMesaji(string? e) =>
+        EpostaDogrulayici.Denetle(e) is { } h ? GirdiSozlugu.Mesaj(h, Dil.Dil) : Dil.T.Yonetim.EpostaGecersiz;
+
+    private bool YeniAdBos =>
+        string.IsNullOrWhiteSpace(yeniAd) || string.IsNullOrWhiteSpace(yeniSoyad);
+    private bool YeniEpostaHatali => yeniEmail.Length > 0 && !EpostaGecerli(yeniEmail);
+
+    private bool YeniGecerli =>
+        !YeniAdBos && EpostaGecerli(yeniEmail) && SifreGecerli(yeniSifre);
+
+    /// <summary>Kilitli Kaydet'in yanında yazılacak eksik koşullar (UX-S30).</summary>
+    private IEnumerable<string> YeniEksikler
+    {
+        get
+        {
+            if (YeniAdBos) yield return Dil.T.Yonetim.AdSoyadBos;
+            if (!EpostaGecerli(yeniEmail)) yield return EpostaMesaji(yeniEmail);
+            if (!SifreGecerli(yeniSifre)) yield return Dil.T.Kullanici.SifreIpucu;
+        }
+    }
+
+    private bool DuzenleAdBos =>
+        string.IsNullOrWhiteSpace(dAd) || string.IsNullOrWhiteSpace(dSoyad);
+    private bool DuzenleEpostaHatali => dEmail.Length > 0 && !EpostaGecerli(dEmail);
+    private bool DuzenleGecerli => !DuzenleAdBos && EpostaGecerli(dEmail);
+
+    // ── PAKET GOC-D — kullanıcı listesi ortak ızgarada (hücre içerikleri eski tablonun AYNISI) ──
+    private IzgaraSiralama? kullaniciSira;
+    private IReadOnlyList<IzgaraKolonu<KullaniciVeri>> KullaniciKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Kullanici.AdSoyad, ZorunluGorunur = true, SunucuSiralamaAdi = "ad",
+                HucreSinif = _ => "hucre-vurgu hucre-tek-satir", Deger = k => $"{k.Ad} {k.Soyad}",
+                Hucre = k => @<text><span class="k-ad">@k.Ad @k.Soyad
+                    @if (k.Id == BenimId)
+                    {
+                        <span class="metin-soluk metin-kucuk" id="k-siz"> (@Dil.T.Yonetim.Siz)</span>
+                    }</span>
+                    <span class="k-satir-eposta metin-soluk metin-kucuk" title="@k.Email">@k.Email</span></text> },
+        new() { Anahtar = "rol", Baslik = Dil.T.Kullanici.Rol, ZorunluGorunur = true, SunucuSiralamaAdi = "rol",
+                Deger = k => RolEtiket(k.Rol), Hucre = k => @<Rozet Renk="@RolRengi(k.Rol)">@RolEtiket(k.Rol)</Rozet> },
+        new() { Anahtar = "sube", Baslik = Dil.T.Kullanici.Sube, SunucuSiralamaAdi = "sube",
+                HucreSinif = _ => "metin-soluk hucre-tek-satir", Deger = k => SubeAd(k.SubeId) },
+        new() { Anahtar = "durum", Baslik = Dil.T.Kullanici.Durum, ZorunluGorunur = true, SunucuSiralamaAdi = "durum",
+                Deger = k => k.Aktif ? Dil.T.Kullanici.Aktif : Dil.T.Kullanici.Pasif,
+                Hucre = k => @<Rozet Renk="@(k.Aktif ? "yesil" : "gri")">@(k.Aktif ? Dil.T.Kullanici.Aktif : Dil.T.Kullanici.Pasif)</Rozet> },
+        // 45-UI: "kim korumasız" sorusu listede görünür. Yalnız BAYRAK; giz/kurtarma kodu bilgisi ekrana hiç gelmez.
+        new() { Anahtar = "mfa", Baslik = Dil.T.Yonetim.MfaSutun, SunucuSiralamaAdi = "mfa",
+                Deger = k => MfaEtiket(k), Hucre = k => @<Rozet Renk="@(k.MfaEtkin == true ? "yesil" : "gri")">@MfaEtiket(k)</Rozet> },
+        new() { Anahtar = "son-giris", Baslik = Dil.T.Kullanici.SonGiris, SunucuSiralamaAdi = "son-giris",
+                HucreSinif = _ => "metin-soluk metin-kucuk hucre-tek-satir", Deger = k => k.SonGiris,
+                Hucre = k => @<text>@(k.SonGiris is DateTime sg ? Bicim.Tarih(sg, Dil.Locale) : Dil.T.Kullanici.GirisYok)</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-yigin-eylem",
+                Hucre = k => @<text>@if (k.Id == BenimId || UzerindeIslemYapabilir(k))
+                    {
+                        <SatirEylemleri Onek="k" SatirId="@k.Id" SatirAdi="@($"{k.Ad} {k.Soyad}")"
+                                        DarSutun="true" Birincil="1" Eylemler="@SatirEylemListesi(k)" />
+                    }
+                    else
+                    {
+                        <span class="metin-soluk">—</span>
+                    }</text> },
+    ];
+
+    private string MfaEtiket(KullaniciVeri k) =>
+        k.MfaEtkin is null ? Dil.T.Yonetim.MfaBilinmiyor : k.MfaEtkin == true ? Dil.T.Yonetim.MfaVar : Dil.T.Yonetim.MfaYok;
+
+    private string SubeAd(string? subeId) =>
+        string.IsNullOrEmpty(subeId) ? "—"
+            : subeler.FirstOrDefault(s => s.Id == subeId)?.Ad ?? subeId;
+
+    /// <summary>Tek şubede gövdeye giden değer; çok şubede kullanıcının seçimi.</summary>
+    private string? SubeGovde(string secim) =>
+        subeler.Count == 1 ? subeler[0].Id : (string.IsNullOrEmpty(secim) ? null : secim);
+
+    private string RolEtiket(string rol) => rol switch
+    {
+        "SAHIP" => Dil.T.Kullanici.RolSahip,
+        "MUDUR" => Dil.T.Kullanici.RolMudur,
+        "MUHASEBE" => Dil.T.Kullanici.RolMuhasebe,
+        _ => Dil.T.Kullanici.RolTezgahtar,
+    };
+
+    private static string RolRengi(string rol) => rol switch
+    {
+        "SAHIP" => "amber",
+        "MUDUR" => "mavi",
+        "MUHASEBE" => "yesil",
+        _ => "gri",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await SubeleriYukle();
+        await Yukle();
+    }
+
+    private async Task SubeleriYukle()
+    {
+        try { subeler = await Api.GetAsync<List<SubeOzet>>("/subeler"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            subeler = [];
+            listeHata = ex.Message;   // UX-S28: sessiz yutma yok
+        }
+    }
+
+    // ── QA turu 5 (YÜKSEK): 429'da kurtarma yolu ────────────────────────────
+    // Sayfa 429 alınca sessizce boş kalıyordu. Artık: (a) hata listeyi SİLMEZ,
+    // (b) liste boşsa "yüklenemedi" durumu + "Yeniden dene" düğmesi çıkar,
+    // (c) YALNIZ 429'da üstel geri çekilmeyle (2·4·8 sn) en çok 3 kez otomatik
+    //     tekrar denenir ve kaç saniye kaldığı ekranda yazar (UX-S30).
+    private const int AzamiOtomatikDeneme = 3;
+    private int denemeNo;
+    private bool otomatikDeneme;
+    private int sonrakiDenemeSaniye;
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try
+        {
+            liste = await Api.GetAsync<List<KullaniciVeri>>("/kullanicilar");
+            denemeNo = 0;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28 / Anayasa md.1: hata "kayıt yok"a çevrilmez, eski liste DURUR.
+            listeHata = ex.Message;
+            if (ex is ApiHata { StatusCode: 429 } && denemeNo < AzamiOtomatikDeneme)
+            {
+                denemeNo++;
+                sonrakiDenemeSaniye = 1 << denemeNo;   // 2 · 4 · 8
+                otomatikDeneme = true;
+                yukleniyor = false;
+                StateHasChanged();
+                await Task.Delay(TimeSpan.FromSeconds(sonrakiDenemeSaniye));
+                otomatikDeneme = false;
+                await Yukle();
+                return;
+            }
+        }
+        yukleniyor = false;
+    }
+
+    private void YeniModalAc()
+    {
+        modalHata = null;
+        yeniAd = yeniSoyad = yeniEmail = yeniSifre = "";
+        yeniArayuzModu = "";
+        yeniSubeId = subeler.Count == 1 ? subeler[0].Id : "";
+        yeniRol = AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR";
+        yeniModalAcik = true;
+    }
+
+    private async Task KullaniciOlustur()
+    {
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/kullanicilar", new
+            {
+                ad = yeniAd.Trim(),
+                soyad = yeniSoyad.Trim(),
+                email = yeniEmail.Trim(),
+                sifre = yeniSifre,
+                rol = yeniRol,
+                arayuzModu = Bos(yeniArayuzModu),
+                subeId = SubeGovde(yeniSubeId),
+            });
+            yeniModalAcik = false;
+            await Yukle();
+            BasariGoster(Dil.T.Kullanici.Olusturuldu);
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── düzenle ──
+    private void DuzenleModalAc(KullaniciVeri k)
+    {
+        modalHata = null;
+        duzenleHedef = k;
+        dAd = k.Ad;
+        dSoyad = k.Soyad;
+        dEmail = k.Email;
+        dRol = AtanabilirRoller.Contains(k.Rol) ? k.Rol : (AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR");
+        dAktif = k.Aktif ? "true" : "false";
+        dArayuzModu = k.ArayuzModu ?? "";
+        dSubeId = k.SubeId ?? (subeler.Count == 1 ? subeler[0].Id : "");
+    }
+
+    private async Task DuzenleKaydet()
+    {
+        if (duzenleHedef is null) return;
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            if (duzenleHedef.Id == BenimId)
+            {
+                // Kendi profili — /ben (rol/aktif değiştirilemez)
+                await Api.PatchAsync("/kullanicilar/ben",
+                    new { ad = dAd.Trim(), soyad = dSoyad.Trim(), email = dEmail.Trim(),
+                          arayuzModu = Bos(dArayuzModu) });
+                // NOT: /kullanicilar/ben ucu şube DEĞİŞTİRMEZ (kendi şubesini
+                // kullanıcı kendi seçemez); subeId bilerek gönderilmez.
+                // Yan menüdeki ad anında güncellensin
+                if (Oturum.Kullanici is not null)
+                    Oturum.KullaniciAta(Oturum.Kullanici with
+                    {
+                        Ad = dAd.Trim(), Soyad = dSoyad.Trim(), Email = dEmail.Trim(),
+                    });
+            }
+            else
+            {
+                var eskiRol = duzenleHedef.Rol;
+                await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}", new
+                {
+                    ad = dAd.Trim(), soyad = dSoyad.Trim(), email = dEmail.Trim(), aktif = dAktif == "true",
+                    arayuzModu = Bos(dArayuzModu),
+                    subeId = SubeGovde(dSubeId),
+                });
+                if (dRol != eskiRol)
+                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol });
+            }
+            duzenleHedef = null;
+            await Yukle();
+            BasariGoster(Dil.T.Kullanici.Guncellendi);
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── şifre ──
+    private void SifreModalAc(KullaniciVeri k)
+    {
+        modalHata = null;
+        sifreHedef = k;
+        sMevcut = sYeni = sTekrar = "";
+    }
+
+    private async Task SifreKaydet()
+    {
+        if (sifreHedef is null) return;
+        modalHata = null;
+        if (sYeni != sTekrar) { modalHata = Dil.T.Ayarlar.SifrelerEslesmiyor; return; }
+        kaydediliyor = true;
+        try
+        {
+            if (SifreHedefKendim)
+                await Api.PatchAsync("/kullanicilar/ben/sifre",
+                    new { mevcutSifre = sMevcut, yeniSifre = sYeni, yeniSifreTekrar = sTekrar });
+            else
+                await Api.PatchAsync($"/kullanicilar/{sifreHedef.Id}/sifre",
+                    new { yeniSifre = sYeni, yeniSifreTekrar = sTekrar });
+            sifreHedef = null;
+            BasariGoster(Dil.T.Kullanici.SifreSifirlandi);
+        }
+        catch (ApiHata ex) { modalHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private void BasariGoster(string mesaj)
+    {
+        basariMesaj = mesaj;
+        basariJeton++;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

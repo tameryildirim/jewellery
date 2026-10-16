@@ -1,0 +1,30 @@
+@inject DilServisi Dil
+
+@* ── PAKET EKSIK-KUCUK (B2-12 · UX-S24) — "FİYAT LİSTESİ DEĞİŞTİ — GÜNCELLE" BANDI ──
+   Islemler.razor'dan ayrı (sayfa 1.400 satır sınırı). Bileşen İSTEK ATMAZ ve fiyat
+   DEĞİŞTİRMEZ: iki düğme sayfanın olayını çağırır (Islemler.ListeGuncelle.cs).
+   Sayi = 0 iken bant çizilmez; hata ve başarı bantları ayrı (UX-S28 · UX-S27). *@
+@if (Sayi > 0)
+{
+    <div class="bant bant-uyari islem-liste-bant" id="islem-liste-degisti" role="status">
+        <span>@string.Format(E.ListeDegisti, Sayi)</span>
+        <span class="islem-liste-eylem">
+            <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="islem-liste-guncelle" @onclick="Guncelle">@E.ListeGuncelle</button>
+            <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="islem-liste-eski" @onclick="EskiKalsin">@E.ListeEskiKalsin</button>
+        </span>
+    </div>
+}
+<HataBandi Mesaj="@Hata" Id="islem-liste-hata" />
+<BasariBandi Mesaj="@Basari" Id="islem-liste-guncellendi" Jeton="Jeton" />
+
+@code {
+    private EksikKucukMetinleri E => EksikKucukSozlugu.Al(Dil.Dil);
+
+    /// <summary>Fiyatı değişecek kalem sayısı (0 → bant yok).</summary>
+    [Parameter] public int Sayi { get; set; }
+    [Parameter] public EventCallback Guncelle { get; set; }
+    [Parameter] public EventCallback EskiKalsin { get; set; }
+    [Parameter] public string? Hata { get; set; }
+    [Parameter] public string? Basari { get; set; }
+    [Parameter] public int Jeton { get; set; }
+}

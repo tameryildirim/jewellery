@@ -1,0 +1,108 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET T-S2 — tuval Profesyonel.dc.html EN ALT SATIR: ödeme hapı + özet ═══
+   "Karma ödeme | Tek ödeme" hapı ve yanında ödemenin tek satırlık özeti:
+   tek ödemede "Nakit · kasa · tutar", karmada "Nakit 20.000 · Eski altın … →
+   Fark 0 ₺". FARK kuralı TEK YERDE (FisFark); renk belirteçle.
+   • Hap sayfanın MEVCUT yollarını çağırır: Karma → OdemeyiBol (tek ödeme ilk
+     bacak olur), Tek → TekOdemeyeDon. Ayrıntılı bacak düzenlemesi (POS, kasa,
+     döviz, eski altın) hapın üstündeki ödeme bölümünde AYNEN durur.
+   ⚠ Bileşen İSTEK ATMAZ (tek POST yolu Islemler.Kaydet). *@
+@* PAKET SATIS-2 (f) — tek ödemede özet TIKLANABİLİR: ödeme türü + kasa alt çubuktaki özetin
+   üstünde BAĞLI AÇILIR katmanda değişir (Pusula/tuval: ekranda ayrı "Ödeme Türü / Kasa"
+   satırı yok). Katman içeriği sayfanın OdemeParcasi'dir (FisOdemeKasa, id'ler AYNEN).
+   Katman kapalıyken de DOM'dadır ([hidden]) — F8, bUnit ve form doğrulaması aynı alanları
+   bulur; görünmez. Karma ödemede ve yasal kapı açıkken sayfa ödemeyi satır içinde çizer
+   (Katman = null). *@
+<span class="fis-pro-odeme-ozet-sar">
+@if (Katman is not null && !Karma)
+{
+    <button type="button" class="fis-pro-odeme-degistir" id="islem-pro-odeme-degistir" title="@S.OdemeOzetiIpucu"
+            aria-haspopup="dialog" aria-expanded="@(KatmanAcik ? "true" : "false")" aria-controls="islem-pro-odeme"
+            disabled="@Kaydediliyor" @onclick="() => KatmanDegistir.InvokeAsync()">
+        <span class="fis-pro-odeme-ozet" id="islem-pro-odeme-ozet" role="status">@TekOzet</span>
+        <Ikon Ad="@(KatmanAcik ? Ikonlar.KatlamaAcik : Ikonlar.KatlamaKapali)" Sinif="fis-pro-odeme-ok" />
+    </button>
+    <div class="fis-pro-odeme-katman" id="islem-pro-odeme" role="dialog" aria-label="@S.OdemeOzetiIpucu" hidden="@(!KatmanAcik)">
+        @Katman
+        <div class="fis-pro-odeme-katman-alt">
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-pro-odeme-tamam" @onclick="() => KatmanDegistir.InvokeAsync()">@S.OdemeKapat</button>
+        </div>
+    </div>
+}
+else
+{
+<span class="fis-pro-odeme-ozet" id="islem-pro-odeme-ozet" role="status" hidden="@Karma">   @* t3: karmada ödeme bölümü tam görünür — alt çubukta ikinci özet/fark yok *@
+    @if (Karma)
+    {
+        @string.Join(" · ", Bacaklar.Select(b => $"{AracAdi(b.Arac)} {Bicim.Tl(b.TutarTl)}"))
+        @(" → " + P.Fark + " ")<strong class="@(FisFark.Durum(Fark) == FarkDurumu.Tamam ? "metin-yesil" : "metin-kirmizi")" id="islem-pro-fark">@Bicim.Tl(Fark)</strong>
+    }
+    else
+    {
+        @(SeciciGorunur ? SatirIciOzet : TekOzet)   @* YASAL-KAPI-3 (hakem KRİTİK "ödeme bilgisi üç yerde"): ödeme satır içindeyken tür seçicide yazar — özet yalnız kasa + tutar *@
+    }
+</span>
+}
+</span>
+@* KURUCU TEMEL KURALI (25.09 11:35): "Karma ödeme | Tek ödeme" anahtarı YERİNE tek bağlantı —
+   ikinci bacak isteğe bağlıdır (eski altın/kart/havale/veresiye): "+ Başka ödeme ekle" mevcut
+   OdemeyiBol yolunu, karmada "Tek ödemeye dön" mevcut TekOdemeyeDon yolunu çağırır (id'ler aynı). *@
+<div class="fis-pro-odeme-hap" id="islem-pro-odeme-hap" role="group" aria-label="@P.OdemeHapEtiket">
+    @if (Karma)
+    {
+        <button type="button" class="fis-pro-odeme-bag" id="islem-pro-tek" aria-pressed="false"
+                disabled="@Kaydediliyor" @onclick="() => KarmaSec.InvokeAsync(false)">@S.TekOdemeyeDon</button>
+    }
+    else
+    {
+        <button type="button" class="fis-pro-odeme-bag" id="islem-pro-karma" aria-pressed="false"
+                disabled="@Kaydediliyor" @onclick="() => KarmaSec.InvokeAsync(true)">@S.BaskaOdemeEkle</button>
+    }
+</div>
+
+@code {
+    /// <summary>Karma (çok bacaklı) ödeme açık mı — sayfa tutar.</summary>
+    [Parameter] public bool Karma { get; set; }
+    /// <summary>Hap seçildi: true = karma (OdemeyiBol), false = tek ödeme (TekOdemeyeDon).</summary>
+    [Parameter] public EventCallback<bool> KarmaSec { get; set; }
+    /// <summary>Karma bacakları (sayfanın listesi).</summary>
+    [Parameter] public IReadOnlyList<FisBacagi> Bacaklar { get; set; } = [];
+    /// <summary>Fişin NET toplamı.</summary>
+    [Parameter] public decimal Toplam { get; set; }
+    /// <summary>Tek ödemede ödeme türü kodu (NAKIT, KART…).</summary>
+    [Parameter] public string? OdemeTuru { get; set; }
+    /// <summary>Tek ödemede seçili kasanın adı.</summary>
+    [Parameter] public string? KasaAdi { get; set; }
+    /// <summary>Kayıt sürerken hap kilitli.</summary>
+    [Parameter] public bool Kaydediliyor { get; set; }
+
+    private SatisProMetinleri P => SatisProSozlugu.Al(Dil.Dil);
+    private SatisSadeMetinleri S => SatisSadeSozlugu.Al(Dil.Dil);
+    /// <summary>YASAL-KAPI-3: sayfa ödeme türü seçicisini satır içinde çiziyor (yasal kapı/karma) — özet türü tekrarlamaz.</summary>
+    [Parameter] public bool SeciciGorunur { get; set; }
+    private string SatirIciOzet => $"{(string.IsNullOrEmpty(KasaAdi) ? T.KasaYok : KasaAdi)} · {Bicim.Tl(Toplam)}";
+    private string TekOzet => $"{AracAdi(OdemeTuru)} · {(string.IsNullOrEmpty(KasaAdi) ? T.KasaYok : KasaAdi)} · {Bicim.Tl(Toplam)}";
+
+    /// <summary>SATIS-2 (f): ödeme türü + kasa katmanı içeriği (sayfanın OdemeParcasi); null = satır içinde çizilir.</summary>
+    [Parameter] public RenderFragment? Katman { get; set; }
+    /// <summary>Katman açık mı — sayfa tutar.</summary>
+    [Parameter] public bool KatmanAcik { get; set; }
+    /// <summary>Özet / Tamam tıklandı — sayfa katmanı açar/kapatır (istek atmaz).</summary>
+    [Parameter] public EventCallback KatmanDegistir { get; set; }
+    private SatisTuvalMetinleri T => SatisTuvalSozlugu.Al(Dil.Dil);
+    private decimal Fark => FisFark.Hesapla(Toplam, Bacaklar);
+
+    /// <summary>Araç kodunun ekran adı — sözlükten; bilinmeyen kod ham basılmaz (UX-S31).</summary>
+    private string AracAdi(string? arac) => arac switch
+    {
+        "KART" => Dil.T.Islem.OdemeKart,
+        "HAVALE" => Dil.T.Islem.OdemeHavale,
+        "VERESIYE" => Dil.T.Islem.OdemeVeresiye,
+        "DOVIZ" => Dil.T.Islem.OdemeDoviz,
+        "ALTIN" => EskiAltinSozlugu.Al(Dil.Dil).EskiAltin,
+        null or "" or "NAKIT" => Dil.T.Islem.OdemeNakit,
+        _ => Dil.T.Islem.OdemeTuru,
+    };
+}

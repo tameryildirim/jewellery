@@ -1,0 +1,675 @@
+@page "/yedekler"
+@using Kuyumcu.Web.Servisler
+@using Kuyumcu.Contracts.Sayfalar.Yedekler
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+<PageTitle>@Marka.SayfaBasligi(MenuAdlari.Icin(Dil.T).Yedekler.Ad)</PageTitle>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   YEDEKLER — paket T-3 Faz A
+
+   Bu ekran bir iddiayı kanıta çevirir: "yedek alınıyor" değil, "yedek
+   DOĞRULANDI". Dört kart, koşu tablosu, tatbikat tablosu ve gerekçeli elle
+   yedek talebi.
+
+   ⚠ İNDİRME DÜĞMESİ YOKTUR ve olmayacaktır: yedek dosyası tüm işletmelerin
+     verisini taşır (Mehmet koşulu). Ekran yalnız ÜSTVERİ gösterir.
+   ⚠ "Elle yedek al" sunucuda komut çalıştırmaz; kuyruğa satır yazar.
+   ⚠ UX-S28: hata boş duruma çevrilmez — hata bandı ayrıdır, boş durum yalnız
+     istek BAŞARILI ve sonuç gerçekten boşken çıkar.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="sayfa">
+    <SayfaBasi Anahtar="yedekler" Baslik="@Dil.T.Yedek.Baslik" Aciklama="@Dil.T.Yedek.Aciklama" />
+    @* PAKET SADE-1 (göz #11/#13): SayfaBasi'nın altındaki ikinci, büyük puntolu
+       <h1> + açıklama bloğu KALDIRILDI — aynı başlık ekranda iki kez yazıyordu.
+       Sayfanın tek <h1>'i üst bardadır (UstBar), şerit başlığı SayfaBasi'dır. *@
+
+    @* Mehmet koşulu: kapsam ekranda YAZILI. *@
+    <p id="yd-sistem-uyari" class="uyari-metni" role="status">@Dil.T.Yedek.SistemGeneliUyari</p>
+
+    <HataBandi Mesaj="@hata" Id="yd-hata-bandi" />
+    <BasariBandi Mesaj="@basariMesaj" Jeton="@basariJeton" SureliMs="5000" Id="yd-basari-bandi" />
+
+    @* ── PAKET S1-i — SEKMELER (kurucu 24.09: "tren gibi aşağıya doğru gidiyor").
+       Beş bölüm dört sekmeye TAŞINDI, hiçbiri silinmedi; id'ler aynı. Elle yedek
+       formu ile talepler listesi TEK akıştır (talep aç → listede gör/iptal et),
+       aynı sekmededir. Sistem geneli uyarısı ve bantlar sekmelerin ÜSTÜNDE kalır. *@
+    <Sekmeler Onek="yd" Liste="@YdSekmeleri" Etiket="@GS.YdSerit">
+        <Panel Context="ydKod">
+            @if (ydKod == GorselSigmaSozlugu.YdDurum)
+            {
+            @if (ozet is null)
+            {
+                @if (hata is null)
+                {
+                    <Yukleniyor />
+                }
+            }
+            else
+            {
+                <div class="stat-izgara">
+                    <StatKart Etiket="@Dil.T.Yedek.SonYedek"
+                              Deger="@SonYedekZamani"
+                              Alt="@SonYedekAlt"
+                              Renk="@(SonYedekBasarili ? "yesil" : "kirmizi")" />
+                    <StatKart Etiket="@Dil.T.Yedek.Dogrulama"
+                              Deger="@DogrulamaMetni"
+                              Alt="@DogrulamaAlt"
+                              Renk="@(Dogrulandi ? "yesil" : "kirmizi")" />
+                    <StatKart Etiket="@Dil.T.Yedek.DisKopya"
+                              Deger="@DisKopyaMetni"
+                              Alt="@Dil.T.Yedek.IndirmeYok"
+                              Renk="@(DisKopyaTamam ? "yesil" : "kirmizi")" />
+                    @* UX-S33 + MÜHÜR 6/K2: ÖLÇÜLEN ve TAAHHÜT iki ayrı etikettir.
+                       PAKET P-76: renk ÜÇ BANTLI (yeşil / sarı / kırmızı; nötr YOK),
+                       süre insan okunur, ham dakika ipucunda (title). StatKart'ın
+                       biçimi birebir yazıldı çünkü ortak bileşen ipucu taşımıyor ve bu
+                       şerit ortak bileşene dokunamaz. *@
+                    <div id="yd-rpo-kart" class="kart stat-kart @RpoRengi" title="@RpoHamIpucu">
+                        <div class="kart-govde">
+                            <p class="stat-etiket">@Dil.T.Yedek.RpoRto</p>
+                            <p class="stat-deger" id="yd-rpo-deger">@RpoOlculenMetni</p>
+                            <p class="stat-alt">@RpoRtoAlt</p>
+                        </div>
+                    </div>
+                    @* PAKET P-33 (BK-30 · Köprü K-5): son BAŞARILI geri yükleme tatbikatı
+                       ve tazeliği. Tarih ve "bayat mı" hesabı SUNUCUDAN gelir; 30 gün
+                       istemciye gömülmez. *@
+                    <StatKart Etiket="@YedekTatbikatSozlugu.KartEtiketi(Dil.Dil)"
+                              Deger="@SonTatbikatMetni"
+                              Alt="@YedekTatbikatSozlugu.KartAlt(Dil.Dil, ozet.TatbikatYasGun, ozet.TatbikatAzamiGun)"
+                              Renk="@(ozet.TatbikatBayat ? "kirmizi" : "yesil")" />
+                </div>
+
+                @* PAKET P-76 — RPO aşımı AÇIK uyarı: kaç kat aşıldığı ve son başarılı
+                   yedeğin ne kadar önce alındığı. Ölçüm yoksa ayrı uyarı (bilinmeyen
+                   iyi sayılmaz). *@
+                @if (YedekRpoSozlugu.Asildi(ozet.RpoDakikaOlculen, ozet.RpoDakikaTaahhut))
+                {
+                    <p id="yd-rpo-uyari" class="uyari-metni" role="alert">@RpoAsimMetni</p>
+                }
+                else if (ozet.RpoDakikaOlculen is null)
+                {
+                    <p id="yd-rpo-olculmedi" class="uyari-metni" role="alert">@R.OlculmediUyari</p>
+                }
+
+                @if (ozet.TatbikatBayat)
+                {
+                    <p id="yd-tatbikat-bayat" class="uyari-metni" role="alert">@YedekTatbikatSozlugu.BayatUyari(Dil.Dil, ozet.TatbikatAzamiGun)</p>
+                }
+
+                @if (!Dogrulandi)
+                {
+                    <p id="yd-dogrulama-uyari" class="uyari-metni" role="alert">@Dil.T.Yedek.DogrulanmamisUyari</p>
+                }
+
+                @* ── PAKET P-77 — "Şimdi doğrula" ───────────────────────────────────
+                   Uyarı bir çıkmaz sokaktı: doğrulama yalnız sunucudaki betikle
+                   yapılabiliyordu. Düğme kuyruğa DOĞRULAMA talebi yazar (süreç
+                   başlatmaz); betik son başarılı yedeği ayrı alana geri yükleyip
+                   karşılaştırır. Kilitliyken SEBEBİ yazar (UX-S30) — sessiz devre dışı
+                   bırakma yok. Pasife alma yolu: talepler tablosundaki "İptal et". *@
+                <div class="alan" id="yd-dogrula-alani">
+                    <p id="yd-dogrula-aciklama" class="metin-soluk metin-kucuk">@D.Aciklama</p>
+                    <button class="btn btn-ikincil" id="yd-dogrula"
+                            disabled="@(calisiyor || DogrulaKilitSebebi is not null)"
+                            @onclick="DogrulamaTalepAc">
+                        @(dogrulaGonderiliyor ? Dil.T.Ortak.Yukleniyor : D.SimdiDogrula)
+                    </button>
+                    @if (DogrulaKilitSebebi is { } dogrulaSebep)
+                    {
+                        <p id="yd-dogrula-kilit" class="metin-soluk metin-kucuk">
+                            @Dil.T.Yonetim.KilitSebebi: @dogrulaSebep
+                        </p>
+                    }
+                    @if (dogrulaSonuc is not null)
+                    {
+                        <p id="yd-dogrula-sonuc" class="metin-kucuk" role="alert">@dogrulaSonuc</p>
+                    }
+                </div>
+
+                <p id="yd-saklama-notu" class="metin-soluk metin-kucuk">
+                    @string.Format(Dil.T.Yedek.SaklamaNotu, ozet!.SaklamaGun)
+                </p>
+                <p id="yd-anahtar-uyari" class="uyari-metni">@Dil.T.Yedek.AnahtarUyari</p>
+            }
+            }
+            else if (ydKod == GorselSigmaSozlugu.YdElle)
+            {
+            @* ── Elle yedek talebi ─────────────────────────────────────────────── *@
+            <div class="kart">
+                <h2 class="kart-baslik">@Dil.T.Yedek.ElleYedek</h2>
+                <p class="metin-soluk metin-kucuk">@Dil.T.Yedek.ElleYedekAciklama</p>
+
+                <div class="alan">
+                    <label for="yd-gerekce">@Dil.T.Yedek.Gerekce</label>
+                    <CokSatir ElemanId="yd-gerekce" SayacGoster="false" Etiket="@Dil.T.Yedek.Gerekce" Zorunlu="true"
+                              Satir="2" EnFazla="@YonetimSinirlari.YedekGerekce" YerTutucu="@Dil.T.Yedek.GerekceOrnek"
+                              Deger="@gerekce" DegerChanged="@(v => gerekce = v ?? "")"
+                              Hata="@(GerekceKisa ? string.Format(Dil.T.Yonetim.GerekceKisa, GerekceEnAz) : null)"
+                              HataKimligi="yd-gerekce-hata" />
+                    <span id="yd-gerekce-sayac" class="metin-soluk metin-kucuk sayi">
+                        @string.Format(Dil.T.Yonetim.GerekceSayac, gerekce.Trim().Length, GerekceEnAz)
+                    </span>
+                </div>
+
+                <button class="btn btn-birincil" id="yd-talep" disabled="@(calisiyor || !TalepGecerli)"
+                        @onclick="TalepAc">
+                    @(calisiyor ? Dil.T.Ortak.Yukleniyor : Dil.T.Yedek.TalepGonder)
+                </button>
+                @* UX-S30: kilitli düğme hangi koşulun eksik olduğunu söyler. *@
+                @if (!calisiyor && !TalepGecerli)
+                {
+                    <p id="yd-talep-kilit" class="metin-soluk metin-kucuk">
+                        @Dil.T.Yonetim.KilitSebebi: @string.Join(" · ", EksikKosullar)
+                    </p>
+                }
+            </div>
+
+            @* ── Talepler ──────────────────────────────────────────────────────── *@
+            <div class="kart">
+                <h2 class="kart-baslik">@Dil.T.Yedek.Talepler</h2>
+                @if (talepler is null)
+                {
+                    @if (hata is null) { <Yukleniyor /> }
+                }
+                else if (talepler.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Yedek.TalepBos" />
+                }
+                else
+                {
+                    @* PAKET GOC-D — ortak ızgara (grid:yedekler:yd-talep): satır içi gerekçe düzenleme (SatirIciDuzenle),
+                       iptal düğmesi (yd-iptal-*) ve DegismezIpucu hücre şablonunda AYNEN. Sınıra (20) değdiyse sıralama
+                       kapalı + sınır notu (UX-S29). *@
+                    <Izgara T="TalepVeri" Ekran="yedekler" GridId="yd-talep" TabloId="yd-talep-tablosu" Kolonlar="@TalepKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(talepler, talepSira, TalepKolonlari)"
+                            Baslik="@Dil.T.Yedek.Talepler"
+                            SiralamaDegisti="@(x => talepSira = x)" GecerliSiralama="@talepSira" />
+                    @if (!TalepTam)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="yd-talep-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, TalepSiniri)</p>
+                    }
+                }
+            </div>
+            }
+            else if (ydKod == GorselSigmaSozlugu.YdKosular)
+            {
+            @* ── Koşular ───────────────────────────────────────────────────────── *@
+            <div class="kart">
+                <h2 class="kart-baslik">@Dil.T.Yedek.Kosular</h2>
+                <p id="yd-kosu-siniri" class="metin-soluk metin-kucuk">
+                    @string.Format(Dil.T.Yonetim.GecmisSiniri, Limit)
+                </p>
+                @if (kosular is null)
+                {
+                    @if (hata is null) { <Yukleniyor /> }
+                }
+                else if (kosular.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Yedek.KosuBos" />
+                }
+                else
+                {
+                    @* PAKET GOC-D — ortak ızgara (grid:yedekler:yd-kosu); tablo id'si AYNI. Sınır notu üstte (yd-kosu-siniri). *@
+                    <Izgara T="KosuVeri" Ekran="yedekler" GridId="yd-kosu" TabloId="yd-kosu-tablosu" Kolonlar="@KosuKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(kosular, kosuSira, KosuKolonlari)"
+                            Baslik="@Dil.T.Yedek.Kosular"
+                            SiralamaDegisti="@(x => kosuSira = x)" GecerliSiralama="@kosuSira" />
+                }
+            </div>
+            }
+            else if (ydKod == GorselSigmaSozlugu.YdTatbikatlar)
+            {
+            @* ── Tatbikatlar ───────────────────────────────────────────────────── *@
+            <div class="kart">
+                <h2 class="kart-baslik">@Dil.T.Yedek.Tatbikatlar</h2>
+                <p class="metin-soluk metin-kucuk">@Dil.T.Yedek.TatbikatAciklama</p>
+                @if (tatbikatlar is null)
+                {
+                    @if (hata is null) { <Yukleniyor /> }
+                }
+                else if (tatbikatlar.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Yedek.TatbikatBos" />
+                }
+                else
+                {
+                    @* PAKET GOC-D — ortak ızgara (grid:yedekler:yd-tatbikat); tablo id'si AYNI. Sınır 12 (UX-S29 notu). *@
+                    <Izgara T="TatbikatVeri" Ekran="yedekler" GridId="yd-tatbikat" TabloId="yd-tatbikat-tablosu" Kolonlar="@TatbikatKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(tatbikatlar, tatbikatSira, TatbikatKolonlari)"
+                            Baslik="@Dil.T.Yedek.Tatbikatlar"
+                            SiralamaDegisti="@(x => tatbikatSira = x)" GecerliSiralama="@tatbikatSira" />
+                    @if (!TatbikatTam)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="yd-tatbikat-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, TatbikatSiniri)</p>
+                    }
+                }
+            </div>
+            }
+        </Panel>
+    </Sekmeler>
+</div>
+
+@* Yıkıcı eylem → ortak onay modalı (DoD/4). Düzenleme için modal AÇILMAZ. *@
+<ModalPencere Acik="@(iptalId is not null)" Baslik="@Dil.T.Yedek.IptalOnayBaslik" Kapat="IptalKapat">
+    <p>@Dil.T.Yedek.IptalOnayMetin</p>
+    <div class="alan">
+        <CokSatir ElemanId="yd-iptal-gerekce" Etiket="@Dil.T.Yedek.IptalGerekce" Zorunlu="true"
+                  Satir="2" EnFazla="@YonetimSinirlari.YedekGerekce"
+                  Deger="@iptalGerekce" DegerChanged="@(v => iptalGerekce = v ?? "")" />
+        <span id="yd-iptal-sayac" class="metin-soluk metin-kucuk sayi">
+            @string.Format(Dil.T.Yonetim.GerekceSayac, iptalGerekce.Trim().Length, GerekceEnAz)
+        </span>
+    </div>
+    <div class="satir">
+        <button class="btn btn-tehlike" id="yd-iptal-onay"
+                disabled="@(calisiyor || iptalGerekce.Trim().Length < GerekceEnAz)"
+                @onclick="IptalOnayla">@Dil.T.Yedek.IptalEt</button>
+        <button class="btn btn-ikincil" id="yd-iptal-vazgec" @onclick="IptalKapat"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+    </div>
+</ModalPencere>
+
+@code {
+    // ── PAKET S1-i — sekmeler ──
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<SekmeTanimi> YdSekmeleri =>
+    [
+        new(GorselSigmaSozlugu.YdDurum, GS.YdDurum),
+        new(GorselSigmaSozlugu.YdElle, GS.YdElle),
+        new(GorselSigmaSozlugu.YdKosular, GS.YdKosular),
+        new(GorselSigmaSozlugu.YdTatbikatlar, GS.YdTatbikatlar),
+    ];
+
+
+
+
+
+
+
+
+
+    /// <summary>Sunucunun (YedekServisi) istediği asgari gerekçe uzunluğu.</summary>
+    private const int GerekceEnAz = 20;
+    /// <summary>Sunucuya gönderilen liste sınırı — ekranda da yazar (UX-S29).</summary>
+    private const int Limit = 50;
+
+    private OzetVeri? ozet;
+    private List<KosuVeri>? kosular;
+    private List<TatbikatVeri>? tatbikatlar;
+    private List<TalepVeri>? talepler;
+
+    // ── PAKET GOC-D — üç liste ortak ızgarada (hücre içerikleri eski tabloların AYNISI) ──
+    private const int TalepSiniri = 20, TatbikatSiniri = 12;
+    private bool TalepTam => (talepler?.Count ?? 0) < TalepSiniri;
+    private bool KosuTam => (kosular?.Count ?? 0) < Limit;
+    private bool TatbikatTam => (tatbikatlar?.Count ?? 0) < TatbikatSiniri;
+    private IzgaraSiralama? talepSira, kosuSira, tatbikatSira;
+
+    private IReadOnlyList<IzgaraKolonu<TalepVeri>> TalepKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = TalepTam ? "tarih" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = t => t.Olusturuldu, Hucre = t => @<text>@Bicim.TarihSaat(t.Olusturuldu)</text> },
+        // PAKET P-56: BEKLIYOR talepte gerekçe yerinde düzeltilir (SatirIciDuzenle); işlenmişte salt okunur.
+        new() { Anahtar = "gerekce", Baslik = Dil.T.Yedek.Gerekce, ZorunluGorunur = true, SunucuSiralamaAdi = TalepTam ? "gerekce" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = t => t.Gerekce,
+                Hucre = t => @<text>@if (t.Durum == "BEKLIYOR")
+                    {
+                        <SatirIciDuzenle Varlik="yedek-talep" Alan="gerekce" Id="@t.Id"
+                                         Etiket="@Dil.T.Yedek.Gerekce" Deger="@t.Gerekce"
+                                         Kaydediliyor="@(kaydedilenTalep == t.Id)"
+                                         Kaydedildi="@(yeni => GerekceKaydet(t.Id, yeni))" />
+                        @if (gerekceHataId == t.Id && gerekceHata is not null)
+                        {
+                            <p class="metin-kucuk alan-hata" role="alert" id="@($"yd-gerekce-hata-{t.Id}")">@gerekceHata</p>
+                        }
+                    }
+                    else
+                    {
+                        @t.Gerekce
+                    }</text> },
+        // PAKET P-77 tür sözlükten; P-13 iptal gerekçesi kaydın yanında.
+        new() { Anahtar = "detay", Baslik = Dil.T.Ortak.Detay, SunucuSiralamaAdi = TalepTam ? "detay" : null,
+                Deger = t => t.Durum,
+                Hucre = t => @<text><Rozet Renk="gri">@YedekDogrulamaSozlugu.TurAdi(D, t.Tur)</Rozet>
+                    <Rozet Renk="@TalepRengi(t.Durum)">@Kuyumcu.Core.I18n.DilSunucuSozlugu.KodAdi(t.Durum, Dil.Dil)</Rozet>
+                    @if (!string.IsNullOrWhiteSpace(t.IptalGerekce))
+                    {
+                        <p class="metin-kucuk metin-soluk" id="@($"yd-iptal-gerekce-{t.Id}")">@Dil.T.Yedek.IptalGerekceEtiket: @t.IptalGerekce</p>
+                    }</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                Hucre = t => @<text>@if (t.Durum == "BEKLIYOR")
+                    {
+                        <button class="btn btn-ikincil btn-kucuk" id="@($"yd-iptal-{t.Id}")" @onclick="() => IptalAc(t.Id)">@Dil.T.Yedek.IptalEt</button>
+                    }
+                    else
+                    {
+                        @* DoD/1: işlenmiş talepte eylem yerine değişmezlik gerekçesi. *@
+                        <DegismezIpucu Varlik="YedekTalebi" Gerekce="@Dil.T.Yedek.IptalOnayMetin" />
+                    }</text> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<KosuVeri>> KosuKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = KosuTam ? "tarih" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = k => k.Baslangic, Hucre = k => @<text>@Bicim.TarihSaat(k.Baslangic)</text> },
+        new() { Anahtar = "tur", Baslik = Dil.T.Yedek.Tur, SunucuSiralamaAdi = KosuTam ? "tur" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = k => k.Tur,
+                Hucre = k => @<text>@Kuyumcu.Core.I18n.DilSunucuSozlugu.KodAdi(k.Tur, Dil.Dil)</text> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Ortak.Detay, ZorunluGorunur = true, SunucuSiralamaAdi = KosuTam ? "durum" : null,
+                Deger = k => k.Durum,
+                Hucre = k => @<text><Rozet Renk="@(k.Durum == "BASARILI" ? "yesil" : k.Durum == "SURUYOR" ? "sari" : "kirmizi")">@Kuyumcu.Core.I18n.DilSunucuSozlugu.KodAdi(k.Durum, Dil.Dil)</Rozet>
+                    @if (!k.Sifreli)
+                    {
+                        <Rozet Renk="kirmizi">@Dil.T.Yedek.SifreliDegil</Rozet>
+                    }</text> },
+        new() { Anahtar = "boyut", Baslik = Dil.T.Yedek.Boyut, SunucuSiralamaAdi = KosuTam ? "boyut" : null, BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = k => k.BoyutBayt, Hucre = k => @<text>@Boyut(k.BoyutBayt)</text> },
+        new() { Anahtar = "tablo", Baslik = Dil.T.Yedek.TabloSayisi, SunucuSiralamaAdi = KosuTam ? "tablo" : null, BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = k => k.TabloSayisi, Hucre = k => @<text>@(k.TabloSayisi?.ToString() ?? "—")</text> },
+        new() { Anahtar = "dogrulama", Baslik = Dil.T.Yedek.Dogrulama, SunucuSiralamaAdi = KosuTam ? "dogrulama" : null,
+                Deger = k => DogrulamaAdi(k.Dogrulama), Hucre = k => @<Rozet Renk="@DogrulamaRengi(k.Dogrulama)">@DogrulamaAdi(k.Dogrulama)</Rozet> },
+        new() { Anahtar = "dis-kopya", Baslik = Dil.T.Yedek.DisKopya, SunucuSiralamaAdi = KosuTam ? "dis-kopya" : null,
+                Deger = k => DisKopyaAdi(k.DisKopya), Hucre = k => @<Rozet Renk="@(k.DisKopya == "KOPYALANDI" ? "yesil" : "kirmizi")">@DisKopyaAdi(k.DisKopya)</Rozet> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<TatbikatVeri>> TatbikatKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = TatbikatTam ? "tarih" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = t => t.Tarih, Hucre = t => @<text>@Bicim.TarihSaat(t.Tarih)</text> },
+        new() { Anahtar = "tablo", Baslik = Dil.T.Yedek.TabloSayisi, SunucuSiralamaAdi = TatbikatTam ? "tablo" : null, BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = t => t.TabloSayisi },
+        new() { Anahtar = "uyusan", Baslik = Dil.T.Yedek.Uyusan, SunucuSiralamaAdi = TatbikatTam ? "uyusan" : null, BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = t => t.Uyusan },
+        new() { Anahtar = "uyusmayan", Baslik = Dil.T.Yedek.Uyusmayan, SunucuSiralamaAdi = TatbikatTam ? "uyusmayan" : null, BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = t => t.Uyusmayan },
+        new() { Anahtar = "sure", Baslik = Dil.T.Yedek.SureSn, SunucuSiralamaAdi = TatbikatTam ? "sure" : null, BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = t => t.SureSn },
+        new() { Anahtar = "sema", Baslik = Dil.T.Yedek.SemaDusuruldu, SunucuSiralamaAdi = TatbikatTam ? "sema" : null,
+                Deger = t => t.SemaDusuruldu ? Dil.T.Ortak.Evet : Dil.T.Ortak.Hayir,
+                Hucre = t => @<Rozet Renk="@(t.SemaDusuruldu ? "yesil" : "kirmizi")">@(t.SemaDusuruldu ? Dil.T.Ortak.Evet : Dil.T.Ortak.Hayir)</Rozet> },
+        new() { Anahtar = "sonuc", Baslik = Dil.T.Ortak.Detay, ZorunluGorunur = true, SunucuSiralamaAdi = TatbikatTam ? "sonuc" : null,
+                Deger = t => t.Sonuc, Hucre = t => @<Rozet Renk="@(t.Sonuc == "BASARILI" ? "yesil" : "kirmizi")">@Kuyumcu.Core.I18n.DilSunucuSozlugu.KodAdi(t.Sonuc, Dil.Dil)</Rozet> },
+    ];
+
+    private string gerekce = "";
+    private string iptalGerekce = "";
+    // ── PAKET P-56 ──────────────────────────────────────────────────────────
+    // Satır içi gerekçe düzeltmesinin durumu. Ayrı bir "düzenleme kalıbı"
+    // AÇILMADI: SatirIciDuzenle kendi açılış/kapanışını yönetir, sayfa yalnız
+    // "hangi satır sunucu yanıtı bekliyor" ve "hangi satırda alan hatası var"
+    // bilgisini tutar.
+    private string? kaydedilenTalep;
+    private string? gerekceHataId;
+    private string? gerekceHata;
+    private string? iptalId;
+    private bool calisiyor;
+    private string? hata;
+    private string? basariMesaj;
+    private int basariJeton;
+
+    // ── PAKET P-77 — "Şimdi doğrula" ───────────────────────────────────────
+    private YedekDogrulamaMetinleri D => YedekDogrulamaSozlugu.Al(Dil.Dil);
+    private bool dogrulaGonderiliyor;
+    /// <summary>Sunucunun POST yanıtındaki sonuç (UX-S27: yanıt okunur, atılmaz).</summary>
+    private string? dogrulaSonuc;
+
+    /// <summary>
+    /// Düğme kilitliyse SEBEBİ; değilse null (UX-S30). Kilit kararı SUNUCUNUN
+    /// özetinden gelir (bekleyenDogrulamaTalebi) — istemci kendi kuralını uydurmaz.
+    /// </summary>
+    private string? DogrulaKilitSebebi =>
+        ozet?.BekleyenDogrulamaTalebi is { } b
+            ? string.Format(D.KilitBekleyen,
+                Bicim.IsletmeBicim(b.Olusturuldu, "g", System.Globalization.CultureInfo.GetCultureInfo(Dil.Locale)))
+            : ozet is not null && ozet.SonYedek is null
+                ? D.KilitYedekYok
+                : null;
+
+    private bool GerekceKisa => gerekce.Trim().Length is > 0 and < GerekceEnAz;
+    private bool TalepGecerli => gerekce.Trim().Length >= GerekceEnAz;
+
+    private IEnumerable<string> EksikKosullar
+    {
+        get
+        {
+            if (gerekce.Trim().Length < GerekceEnAz)
+                yield return string.Format(Dil.T.Yonetim.GerekceSayac, gerekce.Trim().Length, GerekceEnAz);
+        }
+    }
+
+    private bool SonYedekBasarili => ozet?.SonYedek?.Durum == "BASARILI";
+    private bool Dogrulandi => ozet?.Dogrulama == "DOGRULANDI";
+    private bool DisKopyaTamam => ozet?.DisKopya == "KOPYALANDI";
+
+    private bool RpoIcinde =>
+        ozet?.RpoDakikaOlculen is { } d && d <= ozet.RpoDakikaTaahhut;
+
+    private string SonYedekZamani =>
+        ozet?.SonYedek is { } s ? Bicim.TarihSaat(s.Zaman) : "—";
+
+    private string SonYedekAlt =>
+        ozet?.SonYedek is { } s
+            ? $"{s.Tur} · {Boyut(s.BoyutBayt)} · {(s.Sifreli ? Dil.T.Yedek.Sifreli : Dil.T.Yedek.SifreliDegil)}"
+            : Dil.T.Yedek.KosuBos;
+
+    private string SonTatbikatMetni =>
+        ozet?.SonBasariliTatbikat is { } t
+            ? Bicim.IsletmeBicim(t, "g", System.Globalization.CultureInfo.GetCultureInfo(Dil.Locale))
+            : YedekTatbikatSozlugu.HicYok(Dil.Dil);
+
+    private string DogrulamaMetni => DogrulamaAdi(ozet?.Dogrulama ?? "BEKLIYOR");
+
+    private string DogrulamaAlt =>
+        ozet?.DogrulamaTarih is { } t
+            ? Bicim.TarihSaat(t)
+            : Dil.T.Yedek.Olculmedi;
+
+    private string DisKopyaMetni => DisKopyaAdi(ozet?.DisKopya ?? "YOK");
+
+    // ── PAKET P-76 — RPO aşımı ─────────────────────────────────────────────
+    private YedekRpoMetinleri R => YedekRpoSozlugu.Al(Dil.Dil);
+
+    /// <summary>Üç bantlı kart rengi (yeşil / sarı / kırmızı); ölçüm yoksa yeşil DEĞİL.</summary>
+    private string RpoRengi =>
+        ozet is null ? "sari" : YedekRpoSozlugu.Renk(ozet.RpoDakikaOlculen, ozet.RpoDakikaTaahhut);
+
+    /// <summary>Dakikayı insan okunur süreye çevirir ("5 gün 13 saat").</summary>
+    private string Sure(int dakika) => Bicim.Sure(dakika, R.BirimGun, R.BirimSaat, R.BirimDakika);
+
+    /// <summary>Ham dakika — yalnız ipucunda (title) kalır.</summary>
+    private string Ham(int? dakika) =>
+        dakika is { } d ? $"{d.ToString(System.Globalization.CultureInfo.InvariantCulture)} {R.BirimDakika}" : Dil.T.Yedek.Olculmedi;
+
+    private string RpoOlculenMetni =>
+        ozet?.RpoDakikaOlculen is { } d ? Sure(d) : Dil.T.Yedek.Olculmedi;
+
+    private string RpoHamIpucu =>
+        ozet is null ? "" :
+        $"{R.HamIpucu} — {R.Olculen}: {Ham(ozet.RpoDakikaOlculen)} · {Dil.T.Yedek.RpoTaahhut}: {Ham(ozet.RpoDakikaTaahhut)} · "
+        + $"{Dil.T.Yedek.RtoTaahhut}: {Ham(ozet.RtoDakikaTaahhut)} · {Dil.T.Yedek.RtoOlculen}: {Ham(ozet.RtoDakikaOlculen)}";
+
+    /// <summary>Aşım uyarısı: geçen süre, taahhüt ve kaç kat aşıldığı (tek ondalık, kullanıcı dilinde).</summary>
+    private string RpoAsimMetni =>
+        ozet?.RpoDakikaOlculen is { } d && ozet.RpoDakikaTaahhut > 0
+            ? string.Format(R.AsimUyari, Sure(d), Sure(ozet.RpoDakikaTaahhut),
+                Bicim.BelgeSayisi((decimal)d / ozet.RpoDakikaTaahhut, Dil.Locale, 1))
+            : "";
+
+    private string RpoRtoAlt =>
+        ozet is null ? "" :
+        $"{Dil.T.Yedek.RpoTaahhut}: {Sure(ozet.RpoDakikaTaahhut)} · {Dil.T.Yedek.RtoTaahhut}: {Sure(ozet.RtoDakikaTaahhut)} · "
+        + $"{Dil.T.Yedek.RtoOlculen}: {(ozet.RtoDakikaOlculen is { } r ? Sure(r) : Dil.T.Yedek.Olculmedi)}";
+
+    private string DogrulamaAdi(string d) => d switch
+    {
+        "DOGRULANDI" => Dil.T.Yedek.DurumDogrulandi,
+        "UYUSMADI" => Dil.T.Yedek.DurumUyusmadi,
+        _ => Dil.T.Yedek.DurumBekliyor,
+    };
+
+    private string DogrulamaRengi(string d) => d switch
+    {
+        "DOGRULANDI" => "yesil",
+        "UYUSMADI" => "kirmizi",
+        _ => "sari",
+    };
+
+    private string DisKopyaAdi(string d) => d switch
+    {
+        "KOPYALANDI" => Dil.T.Yedek.KopyaVar,
+        "HATA" => Dil.T.Yedek.KopyaHata,
+        _ => Dil.T.Yedek.KopyaYok,
+    };
+
+    private static string TalepRengi(string durum) => durum switch
+    {
+        "ISLENDI" => "yesil",
+        "BEKLIYOR" => "sari",
+        "HATA" => "kirmizi",
+        _ => "gri",
+    };
+
+    private static string Boyut(long? bayt) =>
+        bayt is null ? "—" : $"{bayt.Value / 1024d / 1024d:N2} MB";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        // ⚠ UX-S28: catch içinde listeler BOŞALTILMAZ. Hata olursa liste null
+        // kalır ve hata bandı görünür; "kayıt yok" demek yalan olurdu.
+        try
+        {
+            ozet = await Api.GetAsync<OzetVeri>("/yedekler/ozet");
+            kosular = (await Api.GetAsync<KosuYanit>($"/yedekler?limit={Limit}")).Kayitlar;
+            tatbikatlar = (await Api.GetAsync<TatbikatYanit>("/yedekler/tatbikatlar?limit=12")).Tatbikatlar;
+            talepler = (await Api.GetAsync<TalepYanit>("/yedekler/talepler?limit=20")).Talepler;
+            hata = null;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    private async Task TalepAc()
+    {
+        calisiyor = true;
+        hata = null;
+        try
+        {
+            var yanit = await Api.PostAsync("/yedekler/talep", new { gerekce = gerekce.Trim() });
+            // UX-S27: sunucunun döndürdüğü sonuç banda yazılır.
+            var no = yanit.TryGetProperty("id", out var idOgesi) ? idOgesi.GetString() : null;
+            basariMesaj = no is null ? Dil.T.Yedek.TalepAcildi : $"{Dil.T.Yedek.TalepAcildi} — {no}";
+            basariJeton++;
+            gerekce = "";
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        calisiyor = false;
+    }
+
+    // ── PAKET P-77 — doğrulama talebi ───────────────────────────────────────
+    private async Task DogrulamaTalepAc()
+    {
+        // Kilitliyken istek GİTMEZ (disabled özniteliğine ek savunma: düğme
+        // durumu ile özet arasında yarış olsa bile çift talep üretilmez).
+        if (calisiyor || DogrulaKilitSebebi is not null) return;
+        calisiyor = true;
+        dogrulaGonderiliyor = true;
+        hata = null;
+        dogrulaSonuc = null;
+        try
+        {
+            var yanit = await Api.PostAsync("/yedekler/dogrulama-talep", new { });
+            // UX-S27: sunucunun döndürdüğü talep no ve mesaj banda yazılır.
+            var no = yanit.TryGetProperty("id", out var idOgesi) ? idOgesi.GetString() : null;
+            var mesaj = yanit.TryGetProperty("mesaj", out var m) ? m.GetString() : null;
+            basariMesaj = no is null ? D.TalepAcildi : $"{D.TalepAcildi} — {no}";
+            basariJeton++;
+            dogrulaSonuc = string.IsNullOrWhiteSpace(mesaj) ? basariMesaj : $"{mesaj} — {no}";
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        dogrulaGonderiliyor = false;
+        calisiyor = false;
+    }
+
+    // ── PAKET P-56 — bekleyen talebin gerekçesini düzelt ────────────────────
+    // ⚠ İSTEK GİTMEDEN ÖNCE alan kuralı: sunucudaki 20 karakter kuralının
+    //   aynısı burada da çalışır. Kısa gerekçede istek ATILMAZ ve sebep alanın
+    //   altında Türkçe yazar (sessiz etkisizlik YASAK · UX-S30).
+    private async Task GerekceKaydet(string id, string? yeniDeger)
+    {
+        var yeni = (yeniDeger ?? "").Trim();
+        if (yeni.Length < GerekceEnAz)
+        {
+            gerekceHataId = id;
+            gerekceHata = string.Format(Dil.T.Siparis.GerekceKisa, GerekceEnAz);
+            return;
+        }
+
+        gerekceHataId = null;
+        gerekceHata = null;
+        kaydedilenTalep = id;
+        calisiyor = true;
+        hata = null;
+        try
+        {
+            // UX-S27: sunucunun döndürdüğü sonuç okunur, atılmaz.
+            var yanit = await Api.PatchAsync($"/yedekler/talep/{id}/gerekce", new { gerekce = yeni });
+            var kayitliGerekce = yanit.TryGetProperty("gerekce", out var g) ? g.GetString() : null;
+            basariMesaj = string.IsNullOrWhiteSpace(kayitliGerekce)
+                ? Dil.T.Yonetim.Kaydedildi
+                : $"{Dil.T.Yonetim.Kaydedildi} — {Dil.T.Yedek.Gerekce}: {kayitliGerekce}";
+            basariJeton++;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        calisiyor = false;
+        kaydedilenTalep = null;
+    }
+
+    private void IptalAc(string id)
+    {
+        iptalId = id;
+        iptalGerekce = "";
+    }
+
+    private void IptalKapat()
+    {
+        iptalId = null;
+        iptalGerekce = "";
+    }
+
+    private async Task IptalOnayla()
+    {
+        if (iptalId is null) return;
+        calisiyor = true;
+        hata = null;
+        try
+        {
+            await Api.PatchAsync($"/yedekler/talep/{iptalId}", new { iptalGerekce = iptalGerekce.Trim() });
+            basariMesaj = Dil.T.Yedek.IptalEdildi;
+            basariJeton++;
+            IptalKapat();
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        calisiyor = false;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

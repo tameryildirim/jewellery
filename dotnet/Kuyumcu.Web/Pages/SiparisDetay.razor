@@ -1,0 +1,1522 @@
+@page "/siparisler/{Id}"
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.SiparisDetay
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Contracts.Bilesenler.MasakFormu
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SİPARİŞ DETAYI (paket 3 Faz A)
+
+   GET   /siparisler/{id}
+   PATCH /siparisler/{id}          (yalnız TASLAK · iyimser kilit damgasıyla)
+   POST  /siparisler/{id}/gecis    (durum makinesinin izin verdikleri)
+
+   ⚠ UX-S25: TASLAK düzenlenir; sonraki durumlarda DÜZENLE DÜĞMESİ ÇİZİLMEZ,
+     yerine DegismezIpucu ile NEDEN değişmediği ve doğru düzeltme yolu yazılır.
+   ⚠ UX-S26: düzenleme formu oluşturma formuyla AYNI alan kümesini taşır.
+   ⚠ UX-S27: geri alınamaz eylem (İPTAL) önce onay ister; POST yanıtı okunur.
+   ⚠ UX-S30: kilitli düğmenin yanında eksik koşul yazılır (gerekçe n/10, rol).
+   ⚠ ModalPencere YALNIZ yıkıcı onay (iptal) içindir — düzenleme kalıbı değil.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Siparis.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+<div class="dikey-bosluk">
+    @* P-37c — ORTAK ARAÇ ŞERİDİ. Detay ekranında süzgeç yoktur; şerit
+       başlık + açıklama taşır, böylece 46 ekranın kabuğu TEK yerdedir. *@
+    @* KESIF-P6 tur 2 (hakem 01.10, K17): sayfa başı açıklama satırı kaldırıldı (tuvalde yok). *@
+    <SayfaBasi Anahtar="siparis-detay" Baslik="@Dil.T.Siparis.DetayEkranBaslik" />
+
+    <HataBandi Mesaj="@hata" Id="sipd-hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="5000" Id="sipd-basari-bandi" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (kart is { } s)
+    {
+        <div class="kart" id="sipd-kart">
+            <div class="kart-baslik">
+                <h3 id="sipd-no">@s.No</h3>
+                <Rozet Renk="@DurumRengi(s.Durum)">@DurumMetni(s.Durum)</Rozet>
+                @if (s.Geciken)
+                {
+                    <Rozet Renk="kirmizi">@Dil.T.Siparis.Geciken</Rozet>
+                }
+                @* KESIF-P6 tur 2 (hakem 01.10, KRİTİK): tek düğmelik "Düzenle" kartı kaldırıldı —
+                   düğme başlık satırında, ortak düğme ailesinden İKİNCİL (ekranda tek birincil:
+                   durum geçişi). Kimlik AYNI (#sipd-duzenle). *@
+                @if (s.Duzenlenebilir && !duzenleAcik)
+                {
+                    <button type="button" class="btn btn-ikincil sipd-baslik-eylem" id="sipd-duzenle" @onclick="DuzenlemeyiAc">
+                        @Dil.T.Siparis.Duzenle
+                    </button>
+                }
+            </div>
+            <div class="kart-govde">
+                @* PAKET EKSIK-B1-YAZDIR (B1-6): süreç şeridi (alındı → işlemde/tamirde → hazır → teslim).
+                   Yalnız ÇİZİM: aşama sunucunun durumundan türetilir; iptalde şerit çizilmez (rozet söyler). *@
+                @if (AdimSirasi(s.Durum) is { } adim)
+                {
+                    <AdimGostergesi Onek="sipd" Adimlar="@AdimAdlari(s.Tur)" Aktif="@adim" Etiket="@EB1.AdimSeridi" />
+                }
+                @* KESIF-P6 tur 2: sipariş özeti 12 px kalın-etiketli satır dökümüydü — Uyum çekmecesiyle
+                   AYNI tanım listesi (soluk etiket / koyu değer, iki sütun; dar ekranda alt alta).
+                   Q9-3 · UX-S27: şube kartta görünür; ad oturumun şube listesinden çözülür, kimlik
+                   (ULID) basılmaz (B-25). Kimlik #sipd-sube AYNI (değer hücresinde). *@
+                <dl class="tanim-listesi uy-tanim" id="sipd-ozet">
+                    <dt>@Dil.T.Siparis.Tur</dt><dd>@TurMetni(s.Tur)</dd>
+                    <dt>@Dil.T.Siparis.Cari</dt><dd>@(s.CariAd ?? "—")</dd>
+                    @if (UstaUygun(s.Tur) || !string.IsNullOrWhiteSpace(s.UstaCariId))
+                    {
+                        @* B1-5: işi yapan usta (adıyla; kimlik basılmaz). *@
+                        <dt>@EB1.Usta</dt><dd id="sipd-usta">@(s.UstaAd ?? EB1.UstaYok)</dd>
+                    }
+                    <dt>@Dil.T.Siparis.Sube</dt><dd id="sipd-sube">@SubeAdi(s.SubeId)</dd>
+                    <dt>@Dil.T.Siparis.SozVerilenGun</dt><dd>@(s.SozVerilenGun is { } svg ? Bicim.Gun(svg) : "—")</dd>
+                    <dt>@Dil.T.Siparis.TahminiTutar (@Bicim.ParaIsareti("TRY"))</dt><dd>@(s.TahminiTutarTl is { } t ? Bicim.Tl(t) : "—")</dd>
+                    <dt>@Dil.T.Siparis.Aciklama</dt><dd>@(s.Aciklama ?? "—")</dd>
+                </dl>
+                @* KESIF-P6 tur 2 (hakem 01.10, K17): "deftere yazmaz … işlem uçları" açıklama satırı kaldırıldı. *@
+
+                @if (s.Tur == "TAMIR" && string.IsNullOrWhiteSpace(s.EmanetHareketId))
+                {
+                    <div class="bant bant-uyari" role="status" id="sipd-emanet-uyarisi">
+                        @Dil.T.Siparis.EmanetUyarisi
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ── PAKET EKSIK-B1-YAZDIR (B1-5): KAPORA KARTI ──────────────────────
+           Uç: POST /siparisler/{id}/kapora (P-26) — para cari tahsilat gövdesinden deftere
+           yazılır (MASAK + tevsik + kasa orada); sipariş yalnız hareket kimliğini tutar.
+           Geri verme: 48-A storno motoru (POST /islemler/{hareketId}/storno) — taklit yok.
+           Zorunlu önce: kapora isteğe bağlıdır → tek satır + "+ Kapora al". *@
+        <div class="kart" id="sipd-kapora">
+            <div class="kart-baslik"><h3>@EB1.KaporaBaslik</h3></div>
+            <div class="kart-govde dikey-bosluk">
+                @if (!string.IsNullOrWhiteSpace(s.KaporaHareketId))
+                {
+                    <dl class="tanim-listesi uy-tanim" id="sipd-kapora-ozet">
+                        <dt>@EB1.KaporaSatir</dt>
+                        <dd id="sipd-kapora-tutar">@(s.KaporaTutari is { } kt ? Bicim.Para(kt, "TRY") : "—")</dd>
+                    </dl>
+                    @if (s.KaporaStornolu)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="sipd-kapora-stornolu">@EB1.KaporaStornolu</p>
+                    }
+                    <div class="satir yazdirma-gizle kapora-eylemler">
+                        <NavLink class="btn btn-ikincil btn-kucuk" id="sipd-kapora-makbuz" href="@MakbuzYolu(s)">@EB1.MakbuzYazdir</NavLink>
+                        @if (s.KaporaCanli && IptalEdebilir)
+                        {
+                            <button type="button" class="btn btn-ikincil btn-kucuk" id="sipd-kapora-geri"
+                                    @onclick="KaporaGeriIste">@EB1.KaporaGeriVer</button>
+                        }
+                    </div>
+                    @if (s.KaporaCanli && !IptalEdebilir)
+                    {
+                        @* UX-S30: yetkisi olmayana silik düğme yerine sebebi okunur cümleyle yazılır. *@
+                        <p class="metin-kucuk" id="sipd-kapora-geri-kilit">@EB1.GeriVerYetki</p>
+                    }
+                }
+                @if (!s.KaporaCanli)
+                {
+                    @if (string.IsNullOrWhiteSpace(s.KaporaHareketId))
+                    {
+                        <p class="metin-kucuk metin-soluk" id="sipd-kapora-yok">@EB1.KaporaYok</p>
+                    }
+                    @if (s.KaporaAlinabilir)
+                    {
+                        <div>
+                            <button type="button" class="btn btn-ikincil" id="sipd-kapora-al" @onclick="KaporaFormAc">@EB1.KaporaAl</button>
+                        </div>
+                    }
+                    else if (s.KaporaKilitSebebi is { } kks)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="sipd-kapora-kilit">@kks</p>
+                    }
+                }
+                @* PAKET KAPORA-ESZAMAN (DÜŞÜK): kapora geri verilip yeniden alınınca eskisi kaybolmaz —
+                   geçmiş defterden gelir (kartla birlikte; açılışta istek atılmaz). Zorunlu önce: yalnız
+                   özetin gösterdiğinden FAZLASI varsa (geri verilmiş bir kapora — aynı anda tek canlı kapora
+                   olabildiği için birden çok satır da ancak böyle doğar) ve KAPALI. *@
+                @if (s.KaporaGecmisiL.Any(g => g.Stornolu))
+                {
+                    <Katlanir Id="sipd-kapora-gecmis" Sinif="zo-gecmis" Baslik="@KG.Baslik" Sayi="@s.KaporaGecmisiL.Count">
+                        <ul id="sipd-kapora-gecmis-liste" class="kapora-gecmis-liste">
+                            @foreach (var g in s.KaporaGecmisiL)
+                            {
+                                <li id="@($"sipd-kapora-gecmis-{g.HareketId}")">
+                                    <strong class="sayi">@Bicim.Para(g.Tutar, "TRY")</strong>
+                                    <span class="metin-soluk katalog-blok-ek">@Bicim.TarihSaat(g.Tarih) · @KaporaGecmisSozlugu.Odeme(KG, g.OdemeTuru)</span>
+                                    @(" ")
+                                    @if (g.Stornolu)
+                                    {
+                                        <span class="rozet rozet-gri">@string.Format(KG.GeriVerildi, g.StornoTarihi is { } st ? Bicim.TarihSaat(st) : "—")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="rozet rozet-yesil">@(g.Guncel ? KG.Guncel : KG.Gecerli)</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </Katlanir>
+                }
+            </div>
+        </div>
+
+        @* ── Düzenleme yolu (UX-S25) ─────────────────────────────────────── *@
+        @if (!s.Duzenlenebilir || duzenleAcik)
+        {
+        <div class="kart" id="sipd-duzenleme">
+            <div class="kart-govde">
+                @if (s.Duzenlenebilir)
+                {
+                    @if (duzenleAcik)
+                    {
+                        <div class="dikey-bosluk">
+                            @* ── PAKET P-51 · BAŞLIK KİMLİĞİ (cari · tür · şube) ─────────
+                               UX-1/UX-S25: yanlış cariye ya da yanlış türe açılmış TASLAK
+                               sipariş artık iptal edilmeden düzeltilir.
+                               UX-S26: alan kümesi oluşturma formuyla AYNI; seçenek listeleri
+                               SAYFA AÇILIŞINDA yüklenir — düzenleme açılınca boş liste ÇIKMAZ.
+                               UX-S28: liste çekilemezse boş duruma çevrilmez, hata bandı çıkar. *@
+                            @* P-36c: bu ekranda ham select/girdi öğesi YASAKTIR — ortak
+                               Secici kullanılır (arama kutusunu ve klavye erişimini o taşır).
+                               ⚠ Öğe adları burada BİLEREK köşeli parantezsiz yazıldı:
+                                 denetim.sh P-36 sayacı yorumları AYIKLAMAZ, ham grep'tir. *@
+                            <Secici ElemanId="sipd-d-tur" Etiket="@Dil.T.Siparis.Tur" Zorunlu="true"
+                                    Secenekler="@TurSecenekleri" Deger="@dTur"
+                                    DegerChanged="@((string? v) => TurSecildi(v))" />
+
+                            <div class="alan">
+                                <Secici ElemanId="sipd-d-cari" Etiket="@Dil.T.Siparis.Cari" Zorunlu="true"
+                                        Secenekler="@CariSecenekleri" Deger="@dCariId"
+                                        Hata="@cariHatasi" BosSecenekMetni="—"
+                                        DegerChanged="@((string? v) => CariSecildi(v))" />
+                                @* UX-S29: sunucu sınırı ve daraltma yolu EKRANDA yazar. *@
+                                @* Q9-3: eski not SİPARİŞ listesinin sınır metniydi ve "{0}"
+                                   yer tutucusunu çıplak basıyordu; artık müşteri sınırını
+                                   sayıyla söyler, sınıra değdiyse "daha fazlası var" der. *@
+                                <span class="metin-kucuk metin-soluk" id="sipd-d-cari-sinir">
+                                    @string.Format(CultureInfo.InvariantCulture, B.CariSinir, CariSiniri)
+                                </span>
+                                @if (cariler.Count >= CariSiniri)
+                                {
+                                    <p class="bant bant-uyari" role="status" id="sipd-d-cari-dahafazla">
+                                        @string.Format(CultureInfo.InvariantCulture, B.CariDahaFazla, CariSiniri)
+                                    </p>
+                                }
+                                @if (cariHatasi is { } cph)
+                                {
+                                    <p class="hata-metni" id="sipd-d-cari-hata">@cph</p>
+                                }
+                            </div>
+
+                            @* PAKET EKSIK-B1-YAZDIR (B1-5): usta yalnız atölye ve tamir işinde (sunucu UstaDogrula);
+                               dış atölyede ZORUNLU (sunucu P-51), tamirde isteğe bağlı. Liste müşteri listesidir. *@
+                            @if (UstaUygun(dTur))
+                            {
+                                <Secici ElemanId="sipd-d-usta" Etiket="@EB1.Usta" Zorunlu="@(dTur == "ATOLYE_SIPARISI")"
+                                        Secenekler="@UstaSecenekleri" Deger="@dUstaId" BosSecenekMetni="—"
+                                        Hata="@ustaHatasi"
+                                        DegerChanged="@((string? v) => UstaSecildi(v))" />
+                            }
+
+                            @* UX-S22: TEK şubede seçici ÇİZİLMEZ — değer salt okunur satırdır. *@
+                            @if (subeler.Count > 1)
+                            {
+                                <Secici ElemanId="sipd-d-sube" Etiket="@Dil.T.Siparis.Sube"
+                                        Secenekler="@SubeSecenekleri" Deger="@dSubeId"
+                                        DegerChanged="@((string? v) => SubeSecildi(v))" />
+                            }
+                            else if (subeler.Count == 1)
+                            {
+                                <p class="metin-kucuk" id="sipd-d-sube-sabit">
+                                    <strong>@Dil.T.Siparis.Sube:</strong> @subeler[0].Ad
+                                    <Rozet Renk="gri">@Dil.T.Siparis.SubeOturumdan</Rozet>
+                                </p>
+                            }
+
+                            @* UX-S28/UX-S30: başlık reddedilirse sunucunun AÇIK gerekçesi
+                               alanların hemen altında da okunur (yalnız bantta kalmaz). *@
+                            @if (baslikHatasi is { } bh)
+                            {
+                                <p class="hata-metni" id="sipd-d-baslik-hata">@bh</p>
+                            }
+
+                            @* PAKET GOC-C (envanter #9 · K8c): söz günü bugün..+2 yıl; KAYITLI geçmiş gün korunabilir
+                               (sunucu yalnız DEĞİŞEN günü sınar — eski siparişin düzenlemesi kilitlenmez). *@
+                            <Tarih ElemanId="sipd-d-gun" Etiket="@Dil.T.Siparis.SozVerilenGun"
+                                   EnErken="@SozEnErken" EnGec="@SozEnGec"
+                                   Deger="@(DateOnly.TryParse(dGun, out var _g) ? _g : null)"
+                                   DegerChanged="@((DateOnly? v) => GunDegisti(v))" />
+                            <Metin ElemanId="sipd-d-aciklama" Etiket="@Dil.T.Siparis.Aciklama" EnFazla="@AlanSinirlari.SiparisAciklama"
+                                   Deger="@dAciklama" DegerChanged="@(v => dAciklama = v ?? "")" />
+                            <div class="alan">
+                                <label>@Dil.T.Siparis.Kalemler</label>
+                                @for (var i = 0; i < dKalemler.Count; i++)
+                                {
+                                    var sira = i;
+                                    var k = dKalemler[i];
+                                    <div class="rozet-satir">
+                                        @* ── PAKET P-52 · KALEMİN ÜRÜN BAĞI DÜZENLENİR ───────────────
+                                           QA turu 8 / YÜKSEK (UX-S25 + UX-S26 ihlali): sunucu kalem
+                                           PATCH'inde urunId'yi ZATEN kabul ediyordu (KalemBirlestir),
+                                           oluşturma formunda ürün seçici VARDI; düzenleme formunda ise
+                                           ürün SALT OKUNUR rozetti. Yanlış ürünle açılmış taslak kalemi
+                                           düzeltilemiyor, kullanıcı kalemi silip yeniden ekliyor, böylece
+                                           kalem kimliği (ve satırın geçmişi) kayboluyordu.
+                                           ⚠ Eleman kimliği DEĞİŞMEDİ: `sipd-d-kalem-urun-{sira}` aynı
+                                             kaldı; taşıyıcısı rozetten ortak Secici'ye geçti (P-36c —
+                                             bu ekranda ham seçim öğesi açılamaz; arama kutusunu Secici
+                                             kendisi taşır).
+                                           ⚠ UX-S21: ürün seçilince ayar ve gram ÜRÜN KARTINDAN türetilir,
+                                             kullanıcıdan yeniden istenmez (oluşturma formuyla AYNI
+                                             davranış — UX-S26). *@
+                                        <Secici ElemanId="@($"sipd-d-kalem-urun-{sira}")" Etiket="@Dil.T.Siparis.Urun"
+                                                Secenekler="@UrunSecenekleri(sira)" Deger="@k.UrunId"
+                                                BosSecenekMetni="—"
+                                                DegerChanged="@((string? _v) => UrunSecildi(sira, _v))" />
+                                        <Metin ElemanId="@($"sipd-d-kalem-tanim-{sira}")" Etiket="@Dil.T.Siparis.Tanim"
+                                               EnFazla="@AlanSinirlari.SiparisKalemTanim" Deger="@k.Tanim"
+                                               DegerChanged="@((string? _v) => TanimDegisti(sira, _v))" />
+                                        @* P-52 · UX-S31: ayar artık serbest metin DEĞİL — tek kaynak
+                                           Kuyumcu.Core.Domain.Ayarlar. Sunucu zaten Ayarlar.Bul ile
+                                           reddediyordu (KalemKur); ekran o listeyi göstermediği için
+                                           kullanıcıyı "geçersiz ayar" 400'üne sürüyordu. *@
+                                        <Secici ElemanId="@($"sipd-d-kalem-ayar-{sira}")" Etiket="@Dil.T.Siparis.Ayar"
+                                                Secenekler="@AyarSecenekleri" Deger="@k.AyarId"
+                                                BosSecenekMetni="—"
+                                                DegerChanged="@((string? _v) => AyarDegisti(sira, _v))" />
+                                        <Gram ElemanId="@($"sipd-d-kalem-gram-{sira}")" Etiket="@Dil.T.Siparis.Gram" Tur="AgirlikTuru.Gram"
+                                              Deger="@Kuyumcu.Web.Bilesenler.Form.FormAlani.Ondalik(k.Gram)"
+                                              DegerChanged="@((decimal? _v) => GramDegisti(sira, _v))" />
+                                        <Adet ElemanId="@($"sipd-d-kalem-adet-{sira}")" Etiket="@Dil.T.Siparis.Adet"
+                                              Deger="@Kuyumcu.Web.Bilesenler.Form.FormAlani.Ondalik(k.Adet)"
+                                              DegerChanged="@((decimal? _v) => AdetDegisti(sira, _v))" />
+                                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"sipd-d-kalem-sil-{sira}")"
+                                                disabled="@(dKalemler.Count <= 1)" @onclick="() => KalemSil(sira)">
+                                            @Dil.T.Siparis.KalemSil
+                                        </button>
+                                    </div>
+                                }
+                                <button type="button" class="btn btn-ikincil" id="sipd-d-kalem-ekle" @onclick="KalemEkle">
+                                    @Dil.T.Siparis.KalemEkle
+                                </button>
+                                @* UX-S29: ürün listesinin sunucu sınırı ve daraltma yolu EKRANDA yazar. *@
+                                <span class="metin-kucuk metin-soluk" id="sipd-d-urun-sinir">
+                                    @string.Format(CultureInfo.InvariantCulture, B.UrunSinir, UrunSiniri)
+                                </span>
+                                @if (urunler.Count >= UrunSiniri)
+                                {
+                                    <p class="bant bant-uyari" role="status" id="sipd-d-urun-dahafazla">
+                                        @string.Format(CultureInfo.InvariantCulture, B.UrunDahaFazla, UrunSiniri)
+                                    </p>
+                                }
+                                <span class="metin-kucuk metin-soluk" id="sipd-d-urun-ipucu">
+                                    @Dil.T.Siparis.UrundenGeldi
+                                </span>
+                                @if (kalemHatasi is { } kh)
+                                {
+                                    <p class="hata-metni" id="sipd-d-kalem-hata">@kh</p>
+                                }
+                            </div>
+
+                            @* ── PAKET P-52 · TAHMİNİ TUTAR DÜZENLENİR ───────────────────────
+                               QA turu 8 / YÜKSEK: sunucu tahminiTutarTl'i PATCH'te KABUL EDİYOR
+                               (TahminDogrula), ekranda ise tutar yalnız DÜZ METİNDİ. Oluşturma
+                               ekranında teklifle dolan tutar sonradan düzeltilemiyordu (UX-S25).
+                               ⚠ UX-S21 + sunucu kuralı: tutar verilirse kur anlık görüntüsü
+                                 ZORUNLUDUR ("hangi kurdan söz verildiği sonradan sorulur").
+                                 Kur, kullanıcıdan İSTENMEZ — /kur/guncel'den türetilir ve gövdeye
+                                 ekran koyar; kur yoksa UX-S30 gereği sebep alanın altında yazar
+                                 ve istek HİÇ GİTMEZ (sunucudan 400 beklenip kullanıcıya ham
+                                 sunucu metni gösterilmez). *@
+                            <div class="alan">
+                                <Para ElemanId="sipd-d-tahmini" Etiket="@Dil.T.Siparis.TahminiTutar"
+                                      ParaBirimi="TRY" Tur="TutarTuru.SifirOlabilir" Deger="@dTahminiTutar"
+                                      Hata="@tahminiHatasi"
+                                      DegerChanged="@((decimal? v) => TahminiDegisti(v))" />
+                                @if (KurVar)
+                                {
+                                    <span class="metin-kucuk metin-soluk" id="sipd-d-tahmini-kur">
+                                        <Rozet Renk="mavi">@Dil.T.Siparis.TeklifKaynak</Rozet>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <p class="hata-metni" id="sipd-d-tahmini-kur-yok">@Dil.T.Siparis.KurYok</p>
+                                }
+                            </div>
+                            <SayiKapisiSebebi Kapi="sayiKapisi" Onek="sipd-d-" ElemanId="sipd-d-sayi-kilit" />
+                            <div class="rozet-satir">
+                                <button type="button" class="btn btn-birincil" id="sipd-d-kaydet" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("sipd-d-"))" @onclick="Kaydet">
+                                    @Dil.T.Siparis.Kaydet
+                                </button>
+                                <button type="button" class="btn btn-ikincil" id="sipd-d-vazgec" @onclick="DuzenlemeyiKapat">
+                                    @Dil.T.Siparis.DuzenlemeyiBitir
+                                </button>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    @* Q9-3 · UX-S25: teslim edilmiş / iptal edilmiş siparişte İPTAL yolu
+                       YOKTUR (durum makinesinde çıkışı yok) — not ona göre değişir. *@
+                    <DegismezIpucu Varlik="Siparis"
+                                   Gerekce="@(s.Terminal ? B.TerminalGerekce : Dil.T.Siparis.DegismezGerekce)"
+                                   AlternatifYol="@(s.Terminal ? B.TerminalAlternatif : Dil.T.Siparis.DegismezAlternatif)" />
+                    @* QA turu 5 (YÜKSEK): ONAYLANDI'da Düzenle tamamen kayboluyor ve
+                       hiçbir çıkış yolu yazmıyordu. Geri geçiş yolu artık AÇIK ve
+                       ekranda ADI KONMUŞ durumda (UX-S25 · UX-S30). *@
+                    @if (s.IzinliGecislerL.Contains("TASLAK"))
+                    {
+                        <p class="metin-kucuk metin-soluk" id="sipd-taslaga-don-notu">
+                            @Dil.T.Siparis.TaslagaDonNotu
+                        </p>
+                    }
+                    else if (s.GeriYonluGecislerL.Count > 0)
+                    {
+                        @* Q9-3: ATÖLYEDE/HAZIR'da da düzenlemeye dönüş yolu VARDIR (K-23
+                           geri alma zinciri); ekran onu adıyla söyler. *@
+                        <p class="metin-kucuk metin-soluk" id="sipd-geri-al-notu">
+                            @B.GeriAlmaNotu
+                        </p>
+                    }
+                }
+            </div>
+        </div>
+        }
+
+        @* ── Durum geçişleri ─────────────────────────────────────────────── *@
+        <div class="kart" id="sipd-gecis-paneli">
+            <div class="kart-baslik"><h3>@Dil.T.Siparis.GecisYap</h3></div>
+            <div class="kart-govde rozet-satir">
+                @if (s.IzinliGecislerL.Count == 0)
+                {
+                    <p class="metin-kucuk metin-soluk" id="sipd-gecis-yok">@Dil.T.Siparis.IzinliGecisYok</p>
+                }
+                @foreach (var hedef in s.IzinliGecislerL)
+                {
+                    var h = hedef;
+                    if (h == "IPTAL")
+                    {
+                        <button type="button" class="btn btn-ikincil" id="sipd-gecis-IPTAL"
+                                disabled="@(!IptalEdebilir)" @onclick="IptalModaliAc">
+                            @Dil.T.Siparis.IptalBaslik
+                        </button>
+                        @if (!IptalEdebilir)
+                        {
+                            @* UX-S30: kilitli düğme sebebini söyler. *@
+                            <span class="metin-kucuk metin-soluk" id="sipd-gecis-IPTAL-sebep">
+                                @Dil.T.Yetki.Rol: SAHIP / MUDUR
+                            </span>
+                        }
+                    }
+                    else if (s.GeriYonluGecislerL.Contains(h))
+                    {
+                        @* PAKET P-22 / K-23: geri dönüş SERBEST ama DENETİMLİ.
+                           Düğme ayrı etikete sahiptir (ileri geçişle karışmasın),
+                           yetki yoksa KİLİTLİDİR ve sebebini yazar (UX-S30). *@
+                        <button type="button" disabled="@(gecisYapiliyor || !s.GeriAlmaYetkisi)"
+                                class="btn btn-ikincil" id="@($"sipd-geri-{h}")"
+                                @onclick="() => GecisIste(h)">
+                            @string.Format(CultureInfo.InvariantCulture, Dil.T.Siparis.GeriAl, DurumMetni(h))
+                        </button>
+                        @if (!s.GeriAlmaYetkisi)
+                        {
+                            <span class="metin-kucuk metin-soluk" id="@($"sipd-geri-{h}-sebep")">
+                                @Dil.T.Yetki.Rol: @string.Join(" / ", s.GeriAlmaRolleriL)
+                            </span>
+                        }
+                    }
+                    else
+                    {
+                        @* QA turu 5 (YÜKSEK): tek tıkla, onaysız ve geri dönüşsüz durum
+                           değişimi. Her geçiş artık ONAY KİPİNDEN geçer (DoD EK md.4). *@
+                        @* KESIF-P6 tur 2 (hakem 01.10, KRİTİK): tarayıcı gri düğmesi yerine ortak aile;
+                           İLK ileri geçiş birincil, diğerleri ikincil (ekranda tek birincil). Etiket
+                           EYLEM dilinde ("Onaylandı" değil "Onayla"); kimlik AYNI. *@
+                        <button type="button" id="@($"sipd-gecis-{h}")" disabled="@gecisYapiliyor"
+                                class="@(h == IlkIleriGecis(s) ? "btn btn-birincil" : "btn btn-ikincil")"
+                                @onclick="() => GecisIste(h)">
+                            @GecisEtiketi(h)
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+
+        @* ── Kalemler ────────────────────────────────────────────────────── *@
+        <div class="kart">
+            <div class="kart-baslik"><h3>@Dil.T.Siparis.Kalemler</h3></div>
+            <div class="kart-govde">
+                @if (s.KalemlerL.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Siparis.KalemGerekli" />
+                }
+                else
+                {
+                    @* PAKET GOC-C — ORTAK IZGARA (grid:siparis-detay:sipd-kalemler). Kalem listesi TAMDIR (siparişin
+                       bütün kalemleri) → yerel sıralama. Mevcut id'ler (#sipd-kalemler, sipd-kalem-{id}) korunur;
+                       ayar ham kod değil sözlük adı (UX-S31). *@
+                    <Izgara T="KalemSatiri" Ekran="siparis-detay" GridId="sipd-kalemler" TabloId="sipd-kalemler"
+                            Kolonlar="@KalemKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(s.KalemlerL, kalemSira, KalemKolonlari)"
+                            SatirId="@(k => $"sipd-kalem-{k.Id}")" Baslik="@Dil.T.Siparis.Kalemler"
+                            SiralamaDegisti="@(x => kalemSira = x)" GecerliSiralama="@kalemSira" />
+                }
+            </div>
+        </div>
+
+        @* ── Append-only geçiş zaman çizelgesi ───────────────────────────── *@
+        @* KESIF-P6 tur 2 (hakem 01.10, K15 + K17): durum geçmişi KAPALI akordeon (ortak Katlanir —
+           kurucu 25.09 "eski kayıtlar açık gelmesin"); "yalnız eklenir" açıklama satırı kaldırıldı.
+           Veri kartla birlikte gelir: açılışta istek ATILMAZ. *@
+        <Katlanir Id="sipd-gecmis" Sinif="zo-gecmis" Baslik="@Dil.T.Siparis.GecisGecmisi" Sayi="@s.GecislerL.Count">
+                <ul id="sipd-gecisler">
+                    @foreach (var g in s.GecislerL)
+                    {
+                        <li id="@($"sipd-gecis-satir-{g.Id}")">
+                            <strong>@(g.OncekiDurum is null ? "—" : DurumMetni(g.OncekiDurum)) → @DurumMetni(g.YeniDurum)</strong>
+                            <span class="metin-soluk katalog-blok-ek">
+                                @Bicim.TarihSaat(g.Olusturuldu)
+                                @(string.IsNullOrWhiteSpace(g.KullaniciAd) ? null : $" — {g.KullaniciAd}")
+                            </span>
+                            @if (!string.IsNullOrWhiteSpace(g.Gerekce))
+                            {
+                                <p class="metin-kucuk">@Dil.T.Siparis.Gerekce: @GerekceMetni(g.Gerekce)</p>
+                            }
+                        </li>
+                    }
+                </ul>
+        </Katlanir>
+    }
+</div>
+
+@* ── Yıkıcı / geri dönülemez eylem onayı — TEK ModalPencere ───────────────
+   DoD EK md.2: ModalPencere yalnız onay içindir, düzenleme kalıbı değildir.
+   QA turu 5 (YÜKSEK): durum geçişi onaysız uygulanıyordu. İPTAL ve diğer
+   durum geçişleri AYNI kipi paylaşır — ikinci bir modal kalıbı AÇILMAZ.
+   İptal dalının element kimlikleri DEĞİŞMEDİ. *@
+<ModalPencere Acik="@(gecisHedefi is not null)" Baslik="@OnayBasligi" Kapat="ModaliKapat">
+    @if (kart is { } gs && gecisHedefi is { } gh)
+    {
+        @if (gh == "IPTAL")
+        {
+            <p>@Dil.T.Siparis.IptalOnay</p>
+            @* PAKET GOC-C: asgari uzunluk sunucunun tek sabitinden (gerekceAsgari) — koda gömülü 10 kalktı. *@
+            <GerekceAlani Id="sipd-iptal-gerekce" AsgariUzunluk="@gs.GerekceAsgari" AzamiUzunluk="500"
+                          @bind-Deger="iptalGerekce">
+                @if (!context)
+                {
+                    <p class="hata-metni" id="sipd-iptal-gerekce-hata">
+                        @string.Format(CultureInfo.InvariantCulture, Dil.T.Siparis.GerekceKisa, gs.GerekceAsgari)
+                    </p>
+                }
+            </GerekceAlani>
+            <div class="rozet-satir">
+                <button type="button" class="btn btn-tehlike" id="sipd-iptal-onay" disabled="@(gecisYapiliyor || !GerekceGecerli)"
+                        @onclick="IptalOnayla">
+                    @Dil.T.Siparis.IptalBaslik
+                </button>
+                <button type="button" class="btn btn-ikincil" id="sipd-iptal-vazgec" @onclick="ModaliKapat">
+                    <Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec />
+                </button>
+            </div>
+        }
+        else
+        {
+            <p id="sipd-gecis-onay-metni">
+                @string.Format(CultureInfo.InvariantCulture, Dil.T.Siparis.GecisOnayMetni,
+                    DurumMetni(gs.Durum), DurumMetni(gh))
+            </p>
+            @if (GecisGerekceGerekli)
+            {
+                <GerekceAlani Id="sipd-gecis-gerekce" AsgariUzunluk="@gs.GerekceAsgari" AzamiUzunluk="500"
+                              Etiket="@Dil.T.Siparis.GeriGecisGerekce" @bind-Deger="gecisGerekce">
+                    @if (!context)
+                    {
+                        <p class="hata-metni" id="sipd-gecis-gerekce-hata">
+                            @string.Format(CultureInfo.InvariantCulture, Dil.T.Siparis.GerekceKisa, gs.GerekceAsgari)
+                        </p>
+                    }
+                </GerekceAlani>
+            }
+            <div class="rozet-satir">
+                <button type="button" class="btn btn-birincil" id="sipd-gecis-onayla" disabled="@(gecisYapiliyor || !GecisOnayVerilebilir)"
+                        @onclick="GecisOnayla">
+                    @Dil.T.Kabuk.Onayla
+                </button>
+                <button type="button" class="btn btn-ikincil" id="sipd-gecis-vazgec" @onclick="ModaliKapat">
+                    <Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec />
+                </button>
+            </div>
+        }
+    }
+</ModalPencere>
+
+@* ── PAKET EKSIK-B1-YAZDIR (B1-5): kapora alma — çok alanlı form TEK kalıpta (Cekmece). ──
+   UX-S21/S22: müşteri siparişten gelir (sorulmaz); tek kasada seçici çizilmez. *@
+<Cekmece Acik="kaporaAcik" Varlik="siparis-kapora" Baslik="@EB1.KaporaAlBaslik"
+         Kapat="KaporaKapat" Kaydet="KaporaKaydet" Kaydediliyor="kaporaKaydediliyor"
+         KaydetMetni="@EB1.KaporaKaydet" KaydetElemanId="sipd-kapora-kaydet"
+         KaydetAktif="@(KaporaFormKilidi is null)" KilitSebebi="@KaporaFormKilidi" KilitElemanId="sipd-kapora-form-kilit">
+    <div class="form-dikey" id="sipd-kapora-form">
+        <Para ElemanId="sipd-kapora-tutar-g" Etiket="@EB1.KaporaTutar" Zorunlu="true"
+              Tur="TutarTuru.Pozitif" ParaBirimi="TRY" Deger="@kTutar"
+              DegerChanged="KaporaTutarDegisti" Hata="@kTutarHata" />
+        <Secici ElemanId="sipd-kapora-odeme" Etiket="@EB1.OdemeSekli" Zorunlu="true"
+                Secenekler="@KaporaOdemeSecenekleri" Deger="@kOdeme"
+                DegerChanged="@((string? v) => kOdeme = string.IsNullOrWhiteSpace(v) ? "NAKIT" : v)" />
+        @if (kaporaKasalari.Count > 1)
+        {
+            <Secici ElemanId="sipd-kapora-kasa" Etiket="@EB1.Kasa" Zorunlu="true"
+                    Secenekler="@(kaporaKasalari.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())" Deger="@kKasaId"
+                    Hata="@kKasaHata" DegerChanged="@((string? v) => { kKasaId = v; kKasaHata = null; })" />
+        }
+        else if (kaporaKasalari.Count == 1)
+        {
+            <p class="metin-kucuk" id="sipd-kapora-kasa-sabit"><strong>@EB1.Kasa:</strong> @kaporaKasalari[0].Ad</p>
+        }
+        @* KAPORA-ESZAMAN tur 2 (tasarım hakemi KRİTİK): büyük kaporada çıkış yolu — cari tahsilat, banka
+           ve hurda ile AYNI bileşen (MasakFormu) ve AYNI uçlar (/masak/esikler, /masak/gereksinim).
+           Eşik SAYISI istemciye gömülmez; açılır: tutar eşikte ya da sunucu MASAK'la reddetti.
+           Ekrana tek sade cümle — ham alan adı (masak.aciklama) ve sunucu jargonu basılmaz. *@
+        @if (KaporaMasakGerekli)
+        {
+            @if (kaporaMasakGereksinim is null || kaporaMasakEsik is null) { <p class="uyari-metni" role="note" id="sipd-kapora-masak-not">@KG.MasakNot</p> }   @* YASAL-KAPI-3 tur 2: form açıkken başlığı aynı şeyi söyler — not tek kez (form gelene dek) *@
+            @if (kaporaMasakGereksinim is not null && kaporaMasakEsik is not null)
+            {
+                <div class="zo-masak-dikey" id="sipd-kapora-masak">
+                    <MasakFormu Model="kaporaMasak" Tutar="@(kTutar ?? 0m)" Esik="kaporaMasakEsik" Sade="@Dil.BasitMi"
+                                Gereksinim="kaporaMasakGereksinim" Degisti="KaporaMasakDegisti" KuralGizli="true" />
+                </div>
+            }
+        }
+        <HataBandi Mesaj="@kaporaHata" Id="sipd-kapora-hata" />
+    </div>
+</Cekmece>
+
+@* ── B1-5: kaporayı geri verme — YIKICI eylem → ortak onay (48-A storno, gerekçe ≥ 20). ── *@
+<ModalPencere Acik="kaporaGeriAcik" Baslik="@EB1.KaporaGeriVer" Kapat="KaporaGeriKapat">
+    <div class="form-dikey">
+        <p id="sipd-kapora-geri-aciklama">@EB1.KaporaGeriVerAciklama</p>
+        <GerekceAlani Id="sipd-kapora-geri-gerekce" Etiket="@EB1.Gerekce" @bind-Deger="kaporaGerekce">
+            <div class="satir">
+                <button type="button" class="btn btn-ikincil esnek" id="sipd-kapora-geri-vazgec" @onclick="KaporaGeriKapat">@OnayKilitSozlugu.Al(Dil.Dil).Vazgec</button>
+                <button type="button" class="btn btn-tehlike esnek" id="sipd-kapora-geri-onayla"
+                        disabled="@(kaporaKaydediliyor || !context || !KurVarCanli)" @onclick="KaporaGeriUygula">@KG.GeriVerOnay</button>
+            </div>
+            @if (!context)
+            {
+                <span class="metin-kucuk metin-soluk" id="sipd-kapora-geri-gerekce-kilit">@string.Format(Dil.T.Duzeltme.EnAzKarakter, 20)</span>
+            }
+            else if (!KurVarCanli)
+            {
+                <span class="metin-kucuk metin-soluk" id="sipd-kapora-geri-kur-kilit">@EB1.KurYok</span>
+            }
+        </GerekceAlani>
+        <HataBandi Mesaj="@kaporaGeriHata" Id="sipd-kapora-geri-hata" />
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    // ═══ PAKET EKSIK-B1-YAZDIR (B1-5 · B1-6) ════════════════════════════════
+    private EksikB1Metinleri EB1 => EksikB1Sozlugu.Al(Dil.Dil);
+    private KaporaGecmisMetinleri KG => KaporaGecmisSozlugu.Al(Dil.Dil);
+
+
+    /// <summary>Usta yalnız atölye ve tamir işinde tutulur (sunucu UstaDogrula ile aynı kural).</summary>
+    private static bool UstaUygun(string? tur) => tur is "ATOLYE_SIPARISI" or "TAMIR";
+
+    private string? dUstaId, ustaHatasi;
+
+    private void UstaSecildi(string? v)
+    {
+        dUstaId = string.IsNullOrWhiteSpace(v) ? null : v;
+        ustaHatasi = null;
+    }
+
+    /// <summary>Usta seçenekleri cari listesinden; kayıtlı usta listede yoksa DÜŞMEZ (sessiz kayma yok).</summary>
+    private List<SecenekOgesi> UstaSecenekleri
+    {
+        get
+        {
+            var liste = cariler.Select(c => new SecenekOgesi(c.Id, c.Ad, CariTurMetni(c.Tur))).ToList();
+            if (kart is { UstaCariId: { Length: > 0 } u } k && !liste.Any(o => o.Deger == u))
+                liste.Insert(0, new SecenekOgesi(u, k.UstaAd ?? u));
+            return liste;
+        }
+    }
+
+    /// <summary>B1-6: şeridin dört aşaması; tamirde ikinci aşama "Tamirde".</summary>
+    private string[] AdimAdlari(string tur) =>
+        [EB1.AdimAlindi, tur == "TAMIR" ? EB1.AdimTamirde : EB1.AdimIslemde, EB1.AdimHazir, EB1.AdimTeslim];
+
+    /// <summary>Durum → aşama. İptal (ve bilinmeyen durum) için şerit ÇİZİLMEZ.</summary>
+    public static int? AdimSirasi(string? durum) => durum switch
+    {
+        "TASLAK" or "ONAYLANDI" => 0,
+        "ATOLYEDE" => 1,
+        "HAZIR" => 2,
+        "TESLIM_EDILDI" => 3,
+        _ => null,
+    };
+
+    /// <summary>Kapora makbuzu (tahsilat makbuzu A4) — "Geri" bu siparişe döner.</summary>
+    private static string MakbuzYolu(Kart s) =>
+        $"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.TahsilatMakbuzu}/{s.KaporaHareketId}?donus={Uri.EscapeDataString("/siparisler/" + s.Id)}";
+
+    private bool kaporaAcik, kaporaKaydediliyor, kaporaGeriAcik;
+    private decimal? kTutar;
+    private string kOdeme = "NAKIT";
+    private string? kKasaId, kTutarHata, kKasaHata, kaporaHata, kaporaGeriHata;
+    private string kaporaGerekce = "";
+    private List<KaporaKasasi> kaporaKasalari = [];
+
+    /// <summary>Kapora için GÜNCEL kur gerekir (kaydın eski kuru değil).</summary>
+    private bool KurVarCanli => !string.IsNullOrWhiteSpace(kurId);
+
+    private IReadOnlyList<SecenekOgesi> KaporaOdemeSecenekleri =>
+        [new("NAKIT", EB1.Nakit), new("KART", EB1.Kart), new("HAVALE", EB1.Havale)];
+
+    /// <summary>UX-S30: Kaydet neden kilitli — kur yok ya da TL kasası yok.</summary>
+    private string? KaporaFormKilidi =>
+        !KurVarCanli ? EB1.KurYok
+        : kaporaKasalari.Count == 0 ? EB1.KasaYok
+        : KaporaMasakKilidi;
+
+    // ── KAPORA-ESZAMAN tur 2: MASAK (kimlik) — Hurda/Banka ile aynı bileşen, aynı uçlar ──
+    private MasakFormu.MasakBilgi kaporaMasak = new();
+    private Esikler? kaporaMasakEsik;
+    private MasakGereksinim? kaporaMasakGereksinim;
+    private decimal kaporaGereksinimTutari = -1m;
+    /// <summary>Sunucu MASAK nedeniyle reddetti (günlük toplam yalnız sunucuda bilinir) — eşik altında da açılır.
+    /// YASAL-KAPI-GERI: düz bool değil reddin İZİ — kapora tutarı reddin altına iner ya da cari değişirse düşer,
+    /// tutar geri çıkınca geri gelir (Bilesenler/Fis/YasalKapiIzi.cs). Girilen beyan (kaporaMasak) silinmez.</summary>
+    private Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi? kaporaMasakRedIzi;
+    private bool kaporaMasakZorla
+    {
+        get => Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi.Gecerli(kaporaMasakRedIzi, kTutar ?? 0m, kart?.CariId);
+        set => kaporaMasakRedIzi = value ? Kuyumcu.Web.Bilesenler.Fis.YasalKapiIzi.Al(kTutar ?? 0m, kart?.CariId) : null;
+    }
+
+    /// <summary>Kimlik alanları açılır mı: eşik SUNUCUDAN bilinir ve tutar eşikte, ya da sunucu reddetti.</summary>
+    private bool KaporaMasakGerekli =>
+        kTutar is > 0m && kaporaMasakEsik is not null
+        && (kaporaMasakZorla || kTutar.Value >= kaporaMasakEsik.KimlikIstenenTutar());
+
+    /// <summary>UX-S30: kimlik eksikse Kaydet kilitli ve sebebi sade dille yazılı.</summary>
+    private string? KaporaMasakKilidi =>
+        !KaporaMasakGerekli ? null
+        : kaporaMasakGereksinim is null ? KG.MasakHazirlaniyor
+        : MasakFormu.Eksiksiz(kaporaMasak, kaporaMasakGereksinim) ? null
+        : MasakFormu.TcknKilitMetni(kaporaMasak, Dil.Dil) ?? ZoIslemSozlugu.Al(Dil.Dil).MasakKilitSebepBasit;
+
+    private void KaporaMasakDegisti() { }
+
+    private async Task KaporaTutarDegisti(decimal? v)
+    {
+        kTutar = v; kTutarHata = null;
+        await KaporaMasakTazele();
+    }
+
+    /// <summary>Gereksinim sunucudan çekilir; gelmezse Kaydet kilitli kalır (fail-closed).</summary>
+    private async Task KaporaMasakTazele()
+    {
+        if (!KaporaMasakGerekli) { kaporaMasakGereksinim = null; kaporaGereksinimTutari = -1m; return; }
+        var t = kTutar!.Value;
+        if (t == kaporaGereksinimTutari && kaporaMasakGereksinim is not null) return;
+        kaporaMasakGereksinim = null; kaporaGereksinimTutari = -1m;
+        try
+        {
+            kaporaMasakGereksinim = await new UyumServisi(Api).Gereksinim(t, kart?.CariId);
+            kaporaGereksinimTutari = t;
+        }
+        catch (ApiHata) { /* gereksinim yok → kilit açılmaz; son söz sunucuda */ }
+    }
+
+    private async Task KaporaEsikleriYukle()
+    {
+        if (kaporaMasakEsik is not null) return;
+        // Sıfır/eksik eşik geçerli yapılandırma değildir: bilinmiyor sayılır, karar sunucuda kalır.
+        try { kaporaMasakEsik = await Api.GetAsync<Esikler>("/masak/esikler") is { KimlikEsigi: > 0m } e ? e : null; }
+        catch (ApiHata) { /* eşik bilinmezse karar sunucuda; ret gelince kaporaMasakZorla yine açamaz → bant */ }
+    }
+
+    private void KaporaMasakSifirla()
+    {
+        kaporaMasak = new(); kaporaMasakZorla = false; kaporaMasakGereksinim = null; kaporaGereksinimTutari = -1m;
+    }
+
+    /// <summary>Sunucu reddi MASAK kaynaklı mı (Hurda ile aynı ölçüt)?</summary>
+    private static bool KaporaMasakReddi(ApiHata e) =>
+        e.StatusCode == 400 && e.Message.StartsWith("MASAK", StringComparison.OrdinalIgnoreCase);
+
+    private async Task KaporaFormAc()
+    {
+        kTutar = null; kOdeme = "NAKIT"; kKasaId = null;
+        kTutarHata = kKasaHata = kaporaHata = null;
+        KaporaMasakSifirla();
+        kaporaAcik = true;
+        await KaporaEsikleriYukle();
+        try
+        {
+            // Kapora TL kasasına girer (sunucu KasaDogrula "TRY"); pasif kasa listelenmez.
+            kaporaKasalari = (await Api.GetAsync<List<KaporaKasasi>>("/kasalar"))
+                .Where(k => k.Aktif && k.ParaBirimi == "TRY").ToList();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            kaporaHata = ex.Message;   // UX-S28: hata boş listeye çevrilmez — bantta yazar (liste boşaltılmaz).
+        }
+        if (!KurVarCanli) await KuruYukle();
+    }
+
+    private void KaporaKapat() => kaporaAcik = false;
+
+    private void KaporaFormlariniSifirla()
+    {
+        kaporaAcik = kaporaGeriAcik = false;
+        kTutar = null; kOdeme = "NAKIT"; kKasaId = null;
+        kTutarHata = kKasaHata = kaporaHata = kaporaGeriHata = null;
+        kaporaGerekce = "";
+        KaporaMasakSifirla();   // kişisel veri formda kalmaz
+    }
+
+    private async Task KaporaKaydet()
+    {
+        if (kart is not { } s || kaporaKaydediliyor) return;
+        // DoD EK md.3: boş/geçersiz gönderimde alan altı mesaj — sessiz etkisizlik yok.
+        if (sayiKapisi.OnekleVar("sipd-kapora-")) return;
+        if (kTutar is not > 0m) { kTutarHata = EB1.TutarGerekli; return; }
+        var kasaId = kaporaKasalari.Count == 1 ? kaporaKasalari[0].Id : kKasaId;
+        if (string.IsNullOrWhiteSpace(kasaId)) { kKasaHata = EB1.KasaGerekli; return; }
+        if (!KurVarCanli) { kaporaHata = EB1.KurYok; return; }
+
+        kaporaKaydediliyor = true;
+        kaporaHata = null;
+        try
+        {
+            var cevap = await Api.PostAsync($"/siparisler/{s.Id}/kapora", new
+            {
+                tlTutari = kTutar,
+                odemeTuru = kOdeme,
+                kasaId,
+                kurSnapshotId = kurId,
+                masak = KaporaMasakGerekli ? kaporaMasak : null,
+            });
+            // UX-S27: POST yanıtı okunur — sunucunun yazdığı kapora tutarı banda.
+            decimal? yazilan = cevap.TryGetProperty("siparis", out var sp)
+                && sp.TryGetProperty("kaporaTutari", out var kt) && kt.ValueKind == System.Text.Json.JsonValueKind.Number
+                ? kt.GetDecimal() : kTutar;
+            basari = string.Format(EB1.KaporaAlindi, Bicim.Para(yazilan ?? 0m, "TRY"));
+            basariJeton++;
+            kaporaAcik = false;
+            KaporaMasakSifirla();   // kişisel veri formda kalmaz
+            await Yukle();
+        }
+        catch (ApiHata e) when (KaporaMasakReddi(e))
+        {
+            await KaporaEsikleriYukle();   // açılışta eşik alınamadıysa yeniden dene
+            // Tasarım hakemi KRİTİK: MASAK reddi çıkmaz değildir — kimlik alanları çekmecede açılır,
+            // tek sade cümle görünür; ham sunucu metni (masak.aciklama, "(şu an 0)") basılmaz.
+            var tamamdi = kaporaMasakGereksinim is not null && MasakFormu.Eksiksiz(kaporaMasak, kaporaMasakGereksinim);
+            kaporaMasakZorla = true;
+            kaporaGereksinimTutari = -1m;
+            await KaporaMasakTazele();
+            // eksikse kilit sebebi zaten yazılı; eşik hâlâ bilinmiyorsa alan açılamaz → sade cümle bantta
+            kaporaHata = kaporaMasakEsik is null ? KG.MasakNot : tamamdi ? KG.MasakRet : null;
+        }
+        catch (ApiHata e) when (e.StatusCode == 409)
+        {
+            // Başka sekme/kullanıcı kaporayı önce aldı (ya da sipariş kapandı): çekmece kapanır, sipariş
+            // yeniden okunur, kart güncel kaporayı gösterir; "+ Kapora al" bayat kalmaz.
+            kaporaAcik = false;
+            KaporaMasakSifirla();
+            await Yukle();
+            if (hata is null) hata = KG.BaskaYerdeDegisti;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            kaporaHata = ex.Message;   // form KAPANMAZ, girilen değer kaybolmaz
+        }
+        kaporaKaydediliyor = false;
+    }
+
+    private async Task KaporaGeriIste()
+    {
+        kaporaGerekce = "";
+        kaporaGeriHata = null;
+        kaporaGeriAcik = true;
+        if (!KurVarCanli) await KuruYukle();
+    }
+
+    private void KaporaGeriKapat() => kaporaGeriAcik = false;
+
+    private async Task KaporaGeriUygula()
+    {
+        if (kart is not { KaporaCanli: true } s || kaporaKaydediliyor || !KurVarCanli) return;
+        kaporaKaydediliyor = true;
+        kaporaGeriHata = null;
+        try
+        {
+            // 48-A: kaynağın kasası sunucuda bulunur ve gönderilenle karşılaştırılır.
+            var cevap = await Api.PostAsync($"/islemler/{s.KaporaHareketId}/storno", new
+            {
+                gerekce = kaporaGerekce.Trim(),
+                kurSnapshotId = kurId,
+                kasaId = s.KaporaKasaId,
+            });
+            _ = cevap;   // UX-S27: yanıt okundu; kart aşağıda yeniden yüklenir.
+            basari = EB1.KaporaGeriVerildi;
+            basariJeton++;
+            kaporaGeriAcik = false;
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            kaporaGeriHata = ex.Message;
+        }
+        kaporaKaydediliyor = false;
+    }
+
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    [Parameter] public string Id { get; set; } = "";
+
+
+
+
+    // PAKET S-3a — düzenleme formu kalemin TAMAMINI taşır (UX-S26: oluşturma
+    // formu ile düzenleme formu aynı alan kümesini taşır). Eskiden yalnız
+    // Tanim + Adet taşınıyordu; kaydet basılınca ürün bağı, ayar ve gram
+    // sunucuya hiç gitmediği için SİLİNİYORDU (QA turu 3 KRİTİK).
+    private sealed class FormKalemi
+    {
+        /// <summary>Mevcut kalemin kimliği. Boşsa YENİ kalem (sunucu üretir).</summary>
+        public string? Id { get; set; }
+        public string? UrunId { get; set; }
+        public string? UrunAd { get; set; }
+        public string? Tanim { get; set; }
+        public string? AyarId { get; set; }
+        public string Gram { get; set; } = "";
+        public string Adet { get; set; } = "1";
+    }
+
+    // ── PAKET P-51 — başlık kimliği düzenleme durumu ────────────────────────
+    // UX-S26: tür listesi Siparisler ekranındakiyle AYNI diziden gelir.
+    private static readonly string[] FormTurleri = ["MUSTERI_SIPARISI", "ATOLYE_SIPARISI", "TAMIR"];
+
+    private List<CariSecenegi> cariler = [];
+    private List<SubeSecenegi> subeler = [];
+
+    // ── PAKET P-52 — ürün seçici · ayar sözlüğü · tahmini tutar ─────────────
+    // UX-S31 (tek kaynak): ürün satırı sözleşmesi Siparisler ekranınınkiyle
+    // AYNI tiptir — düzenleme formu ikinci bir ürün tipi TÜRETMEZ.
+    private List<Kuyumcu.Contracts.Sayfalar.Siparisler.UrunSatiri> urunler = [];
+
+    /// <summary>Sunucu sınırı — UX-S29 gereği ekranda YAZAR, sessiz kırpma yok.</summary>
+    private const int UrunSiniri = 100;
+
+    /// <summary>
+    /// Ayar seçenekleri. UX-S31: ekran kendi listesini YAZMAZ; sunucunun
+    /// <c>Ayarlar.Bul</c> ile doğruladığı SÖZLÜĞÜN kendisinden beslenir, böylece
+    /// ekranda seçilebilen her ayar sunucuda da geçerlidir.
+    /// </summary>
+    private static List<SecenekOgesi> AyarSecenekleri =>
+        [.. Kuyumcu.Core.Domain.Ayarlar.Tumu.Values
+            .OrderBy(a => a.Maden, StringComparer.Ordinal).ThenBy(a => a.Milyem)
+            .Select(a => new SecenekOgesi(a.Id, KurKaynakAdi.AyarAdi(a.Id)))];
+
+    private decimal? dTahminiTutar;
+    private string? tahminiHatasi;
+    private string? kurId;
+
+    /// <summary>
+    /// Gövdeye gidecek kur anlık görüntüsü. Önce CANLI kur; o gelmediyse kaydın
+    /// KENDİ kuru (tutar değişmeden kaydedilen düzenleme kuru kaybetmesin).
+    /// </summary>
+    private string? EtkinKurId =>
+        string.IsNullOrWhiteSpace(kurId) ? kart?.KurSnapshotId : kurId;
+
+    private bool KurVar => !string.IsNullOrWhiteSpace(EtkinKurId);
+    private string dTur = "MUSTERI_SIPARISI";
+    private string? dCariId, dSubeId;
+    private string? cariHatasi, baslikHatasi;
+
+    private List<SecenekOgesi> TurSecenekleri =>
+        [.. FormTurleri.Select(t => new SecenekOgesi(t, TurMetni(t)))];
+
+    private List<SecenekOgesi> SubeSecenekleri =>
+        [.. subeler.Select(sb => new SecenekOgesi(sb.Id, sb.Ad))];
+
+    /// <summary>
+    /// UX-S29 + boş liste yasağı: arama ilk 50 cariyi getirir; siparişin KENDİ
+    /// carisi o 50'nin içinde olmasa bile seçenekten DÜŞMEZ — aksi hâlde kaydet
+    /// basıldığında cari sessizce başkasına kayardı.
+    /// </summary>
+    private List<SecenekOgesi> CariSecenekleri
+    {
+        get
+        {
+            var liste = cariler.Select(c => new SecenekOgesi(c.Id, c.Ad, CariTurMetni(c.Tur))).ToList();
+            if (kart is { } s && !string.IsNullOrWhiteSpace(s.CariId)
+                && !liste.Any(o => o.Deger == s.CariId))
+            {
+                liste.Insert(0, new SecenekOgesi(s.CariId!, s.CariAd ?? s.CariId!));
+            }
+            return liste;
+        }
+    }
+
+    /// <summary>
+    /// P-52 · UX-S29 + boş liste yasağı: ürün listesi ilk <see cref="UrunSiniri"/>
+    /// kaydı getirir; kalemin KENDİ ürünü o listede olmasa bile seçenekten
+    /// DÜŞMEZ — aksi hâlde kaydet basıldığında ürün bağı sessizce kaybolurdu.
+    /// </summary>
+    private List<SecenekOgesi> UrunSecenekleri(int sira)
+    {
+        var liste = urunler.Select(u => new SecenekOgesi(u.Id, u.Ad)).ToList();
+        var k = dKalemler[sira];
+        if (!string.IsNullOrWhiteSpace(k.UrunId) && !liste.Any(o => o.Deger == k.UrunId))
+            liste.Insert(0, new SecenekOgesi(k.UrunId!, k.UrunAd ?? k.UrunId!));
+        return liste;
+    }
+
+    private Kart? kart;
+    private bool yukleniyor = true, kaydediliyor, gecisYapiliyor, duzenleAcik;
+    private string? hata, basari, kalemHatasi;
+    private int basariJeton;
+    private string? dGun;
+    private string dAciklama = "";
+    private string iptalGerekce = "";
+    private List<FormKalemi> dKalemler = [new()];
+
+    private bool IptalEdebilir => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+    private bool GerekceGecerli => iptalGerekce.Trim().Length >= (kart?.GerekceAsgari ?? 10);   // PAKET GOC-C: sunucu sabiti
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+        // P-51: seçenekler SAYFA AÇILIŞINDA çekilir (Faturalar ekranındaki
+        // "düzenleme açılınca boş liste" hatası TEKRARLANMAZ).
+        await SeceneklerYukle();
+    }
+
+    private async Task SeceneklerYukle()
+    {
+        try
+        {
+            subeler = await Api.GetAsync<List<SubeSecenegi>>("/subeler");
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            hata = ex.Message;   // UX-S28: hata boş duruma çevrilmez.
+        }
+        await CarileriYukle();
+        await UrunleriYukle();
+        await KuruYukle();
+    }
+
+    // P-52: ürün listesi ve kur anlık görüntüsü SAYFA AÇILIŞINDA çekilir —
+    // düzenleme açılınca boş seçici çıkmaz (P-51'de alınan ders).
+    private async Task UrunleriYukle()
+    {
+        try
+        {
+            urunler = await Api.GetAsync<List<Kuyumcu.Contracts.Sayfalar.Siparisler.UrunSatiri>>(
+                $"/urunler?aktif=true&limit={UrunSiniri}");
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            hata = ex.Message;   // UX-S28: hata boş duruma ÇEVRİLMEZ.
+        }
+    }
+
+    private async Task KuruYukle()
+    {
+        try
+        {
+            var k = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Siparisler.KurSatiri>("/kur/guncel");
+            kurId = string.IsNullOrWhiteSpace(k.Id) ? null : k.Id;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            hata = ex.Message;
+        }
+    }
+
+    private async Task CarileriYukle()
+    {
+        try
+        {
+            // UX-S29: sunucu sınırı CariSiniri'dir ve ekranda yazar; daraltma Secici'nin
+            // kendi arama kutusuyla yapılır (ham girdi öğesi açılmaz — P-36c).
+            cariler = await Api.GetAsync<List<CariSecenegi>>($"/cari?aktif=true&limit={CariSiniri}");
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            hata = ex.Message;
+        }
+    }
+
+    private void TurSecildi(string? v)
+    {
+        dTur = string.IsNullOrWhiteSpace(v) ? dTur : v;
+        baslikHatasi = null;
+    }
+
+    private void CariSecildi(string? v)
+    {
+        dCariId = string.IsNullOrWhiteSpace(v) ? null : v;
+        cariHatasi = null;
+        baslikHatasi = null;
+    }
+
+    private void SubeSecildi(string? v)
+    {
+        dSubeId = string.IsNullOrWhiteSpace(v) ? null : v;
+        baslikHatasi = null;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Tur 2 (doğrulayıcı bulgusu): rota başka siparişe geçince önceki siparişin kapora
+        // çekmecesi ve geri verme penceresi açık kalmaz; form alanları da taşınmaz.
+        if (kart is not null && kart.Id != Id) KaporaFormlariniSifirla();
+        if (kart is not null && kart.Id != Id) await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            kart = await Api.GetAsync<Kart>($"/siparisler/{Id}");
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata boş duruma çevrilmez.
+            hata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private void DuzenlemeyiAc()
+    {
+        if (kart is not { } s) return;
+        duzenleAcik = true;
+        kalemHatasi = null;
+        // P-51: başlık alanları KAYITTAN doldurulur (UX-S21 — sistemin bildiği
+        // değer kullanıcıdan yeniden istenmez).
+        dTur = s.Tur;
+        dCariId = s.CariId;
+        dUstaId = s.UstaCariId;
+        ustaHatasi = null;
+        dSubeId = s.SubeId ?? (subeler.Count == 1 ? subeler[0].Id : null);
+        cariHatasi = null;
+        baslikHatasi = null;
+        dGun = Bicim.Makine(s.SozVerilenGun);
+        kayitliGun = s.SozVerilenGun;
+        dAciklama = s.Aciklama ?? "";
+        // P-52 · UX-S21: tahmini tutar KAYITTAN gelir; kullanıcıdan yeniden istenmez.
+        dTahminiTutar = s.TahminiTutarTl;
+        tahminiHatasi = null;
+        dKalemler = s.KalemlerL.Count == 0
+            ? [new FormKalemi()]
+            : [.. s.KalemlerL.Select(k => new FormKalemi
+            {
+                Id = k.Id,
+                UrunId = k.UrunId,
+                UrunAd = k.UrunAd,
+                // ⚠ Ürün bağlı kalemde ürün adı SERBEST TANIMA ÇEVRİLMEZ; tanım
+                //   yalnız gerçekten serbest yazılan metindir (S-3a).
+                Tanim = k.Tanim,
+                AyarId = k.AyarId,
+                Gram = k.GramAgirlik is { } g ? Bicim.Girdi(g) : "",
+                Adet = Bicim.Girdi(k.Adet),
+            })];
+    }
+
+    private void DuzenlemeyiKapat()
+    {
+        duzenleAcik = false;
+        kalemHatasi = null;
+    }
+
+    // P-36c/3: değerler ortak girdi ailesinden ÇÖZÜLMÜŞ tiplerle gelir;
+    // ekranın kendi ayrıştırması kalktı (tek kaynak: Bilesenler/Form).
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? kalemSira;
+    private IReadOnlyList<IzgaraKolonu<KalemSatiri>> KalemKolonlari =>
+    [
+        new() { Anahtar = "urun", Baslik = Dil.T.Siparis.Urun, ZorunluGorunur = true, SunucuSiralamaAdi = "urun",
+                HucreSinif = _ => "hucre-ad", Deger = k => k.UrunAd ?? "—" },
+        new() { Anahtar = "tanim", Baslik = Dil.T.Siparis.Tanim, SunucuSiralamaAdi = "tanim", Deger = k => k.Tanim ?? "—" },
+        new() { Anahtar = "ayar", Baslik = Dil.T.Siparis.Ayar, SunucuSiralamaAdi = "ayar",
+                Deger = k => k.AyarId is { } a ? KurKaynakAdi.AyarAdi(a) : "—" },
+        new() { Anahtar = "gram", Baslik = Dil.T.Siparis.Gram, SunucuSiralamaAdi = "gram", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = k => k.GramAgirlik,
+                Hucre = k => @<text>@(k.GramAgirlik is { } kg ? Bicim.Miktar(kg, null) : "—")</text> },
+        new() { Anahtar = "adet", Baslik = Dil.T.Siparis.Adet, ZorunluGorunur = true, SunucuSiralamaAdi = "adet", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = k => k.Adet,
+                Hucre = k => @<text>@Bicim.Miktar(k.Adet, null)</text> },
+    ];
+
+    // ── PAKET GOC-C: söz günü penceresi (sunucu SiparisServisi.SozGunuDogrula ile aynı kural) ──
+    private DateOnly? kayitliGun;
+    private static DateOnly IsletmeBugunu => DateOnly.FromDateTime(Bicim.IsletmeBugun);
+    /// <summary>En erken: bugün; kayıtlı gün geçmişteyse o gün (değişmeyen gün sunucuda da sınanmaz).</summary>
+    private DateOnly SozEnErken => kayitliGun is { } k && k < IsletmeBugunu ? k : IsletmeBugunu;
+    private DateOnly SozEnGec
+    {
+        get
+        {
+            var g = IsletmeBugunu.AddYears(AlanSinirlari.SiparisSozEnCokYil);
+            return kayitliGun is { } k && k > g ? k : g;
+        }
+    }
+
+    private void GunDegisti(DateOnly? g) =>
+        dGun = g is { } d ? Kuyumcu.Web.Servisler.Bicim.Makine(d) : null;
+
+    private void TanimDegisti(int sira, string? deger)
+    {
+        dKalemler[sira].Tanim = deger;
+        kalemHatasi = null;
+    }
+
+    private void AdetDegisti(int sira, decimal? deger) =>
+        dKalemler[sira].Adet = deger is { } d ? Bicim.Girdi(d) : "1";
+
+    // ── PAKET P-52 ──────────────────────────────────────────────────────────
+    private void UrunSecildi(int sira, string? deger)
+    {
+        var k = dKalemler[sira];
+        k.UrunId = string.IsNullOrWhiteSpace(deger) ? null : deger;
+        if (k.UrunId is null)
+        {
+            // Ürün bağı KALDIRILDI: ad da düşer, yoksa ekran olmayan bir ürünü
+            // gösterir (Anayasa md.1 — ekran uydurmaz). Ayar/gram KORUNUR:
+            // kullanıcının girdiği değer sessizce silinmez.
+            k.UrunAd = null;
+        }
+        else if (urunler.FirstOrDefault(x => x.Id == k.UrunId) is { } u)
+        {
+            // UX-S21: sistemin bildiği alan türetilir (oluşturma formuyla AYNI).
+            k.UrunAd = u.Ad;
+            k.AyarId = u.AyarId;
+            k.Gram = Bicim.Girdi(u.GramAgirlik);
+        }
+        kalemHatasi = null;
+    }
+
+    private void TahminiDegisti(decimal? deger)
+    {
+        dTahminiTutar = deger;
+        tahminiHatasi = null;
+    }
+
+    private void AyarDegisti(int sira, string? deger) =>
+        dKalemler[sira].AyarId = string.IsNullOrWhiteSpace(deger)
+            ? null : deger.Trim().ToUpperInvariant();
+
+    private void GramDegisti(int sira, decimal? deger) =>
+        dKalemler[sira].Gram = deger is { } d ? Bicim.Girdi(d) : "";
+
+    private void KalemEkle() => dKalemler.Add(new FormKalemi());
+
+    private void KalemSil(int sira)
+    {
+        if (dKalemler.Count <= 1) return;
+        dKalemler.RemoveAt(sira);
+    }
+
+    private async Task Kaydet()
+    {
+        if (kart is not { } s || kaydediliyor || sayiKapisi.OnekleVar("sipd-d-")) return;   // ORTAK-1: PATCH YOK
+        // S-3a: ürün bağlı kalemde tanım BOŞ olabilir — geçerlilik ölçütü
+        // "ürün var ya da tanım var" (sunucu KalemKur ile aynı kural).
+        var gecerli = dKalemler
+            .Where(k => !string.IsNullOrWhiteSpace(k.UrunId) || !string.IsNullOrWhiteSpace(k.Tanim))
+            .ToList();
+        if (gecerli.Count == 0)
+        {
+            kalemHatasi = Dil.T.Siparis.KalemGerekli;
+            return;
+        }
+
+        // P-51 · DoD EK md.3: geçersiz gönderimde alan altı Türkçe mesaj —
+        // sessiz etkisizlik YASAK.
+        if (string.IsNullOrWhiteSpace(dCariId))
+        {
+            cariHatasi = Dil.T.Siparis.CariGerekli;
+            return;
+        }
+        // B1-5 · DoD EK md.3: dış atölye işinde usta boş gönderilmez (sunucu da reddeder).
+        if (dTur == "ATOLYE_SIPARISI" && string.IsNullOrWhiteSpace(dUstaId))
+        {
+            ustaHatasi = EB1.UstaSecin;
+            return;
+        }
+
+        // P-52 · DoD EK md.3 + UX-S30: tahmini tutar verildiyse kur anlık görüntüsü
+        // ZORUNLUDUR (sunucu TahminDogrula ile aynı kural). Kur yoksa istek HİÇ
+        // GİTMEZ; sebep alanın altında Türkçe yazar — sessiz etkisizlik YASAK.
+        if (dTahminiTutar is not null && !KurVar)
+        {
+            tahminiHatasi = Dil.T.Siparis.KurYok;
+            return;
+        }
+
+        kaydediliyor = true;
+        hata = null;
+        baslikHatasi = null;
+        try
+        {
+            // PATCH sözleşmesi: GÖNDERİLEN alan değişir, gönderilmeyen KORUNUR,
+            // null gönderilen SİLİNİR. İyimser kilit damgası her zaman gider.
+            var cevap = await Api.PatchAsync($"/siparisler/{s.Id}", new
+            {
+                guncellendi = s.Guncellendi,
+                // P-51 — başlık kimliği. Şube TEK ise sunucuya gönderilmez:
+                // değeri oturum/kayıt taşır, ekran ikinci bir gerçek uydurmaz (UX-S22).
+                tur = dTur,
+                cariId = dCariId,
+                // B1-5: usta türle BİRLİKTE gider; usta tutmayan türde null (bağ silinir — PATCH null = sil).
+                ustaCariId = UstaUygun(dTur) ? dUstaId : null,
+                subeId = subeler.Count > 1 ? dSubeId : s.SubeId,
+                sozVerilenGun = dGun,
+                aciklama = string.IsNullOrWhiteSpace(dAciklama) ? null : dAciklama,
+                // P-52: tutar ve kur BİRLİKTE gider. Tutar silindiyse kur da
+                // silinir — "hangi kurdan söz verildi" sorusu tutarsız kalmaz.
+                tahminiTutarTl = dTahminiTutar,
+                kurSnapshotId = dTahminiTutar is null ? null : EtkinKurId,
+                // S-3a: kalem TAM alan kümesiyle gider. `id` verildiği için
+                // sunucu kalemi GÜNCELLER (kimlik kararlı); gönderilmeyen alan
+                // korunur, burada hepsi açıkça gönderilir → sessiz veri kaybı yok.
+                kalemler = gecerli.Select(k => new
+                {
+                    id = string.IsNullOrWhiteSpace(k.Id) ? null : k.Id,
+                    urunId = string.IsNullOrWhiteSpace(k.UrunId) ? null : k.UrunId,
+                    tanim = string.IsNullOrWhiteSpace(k.Tanim) ? null : k.Tanim,
+                    ayarId = string.IsNullOrWhiteSpace(k.AyarId) ? null : k.AyarId,
+                    // P-78: kalem metinleri ekranda tr-TR tutulur (Bicim.Girdi) ve
+                    // TEK MERKEZDE çözülür; eski Invariant ayrıştırma "1,5"i 15 okuyordu.
+                    gramAgirlik = FormAlani.Ondalik(k.Gram),
+                    adet = FormAlani.Ondalik(k.Adet) ?? 1m,
+                }),
+            });
+            _ = cevap;   // UX-S27: yanıt okunur; kart aşağıda yeniden yüklenir.
+            basari = Dil.T.Siparis.Guncellendi;
+            basariJeton++;
+            duzenleAcik = false;
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28/UX-S30: sunucunun AÇIK gerekçesi hem bantta hem başlık
+            // alanlarının altında okunur; form KAPANMAZ, girilen değer kaybolmaz.
+            hata = ex.Message;
+            baslikHatasi = ex.Message;
+        }
+        kaydediliyor = false;
+    }
+
+    // ── QA turu 5 (YÜKSEK): durum geçişi onay kipi ──────────────────────────
+    private string? gecisHedefi;
+    private string gecisGerekce = "";
+
+    /// <summary>Gerekçe gerekli mi? SUNUCU söyler (gerekceIsteyenGecisler) — ekran tahmin etmez.</summary>
+    private bool GecisGerekceGerekli =>
+        gecisHedefi is { } h && kart is { } k && k.GerekceIsteyenGecislerL.Contains(h);
+
+    private bool GecisOnayVerilebilir =>
+        !GecisGerekceGerekli
+        || (kart is { } k && gecisGerekce.Trim().Length >= k.GerekceAsgari);
+
+    private void GecisIste(string hedef)
+    {
+        gecisGerekce = "";
+        gecisHedefi = hedef;
+    }
+
+    private async Task GecisOnayla()
+    {
+        if (gecisHedefi is not { } hedef || !GecisOnayVerilebilir) return;
+        var gerekce = GecisGerekceGerekli ? gecisGerekce.Trim() : null;
+        gecisHedefi = null;
+        await Gecis(hedef, gerekce);
+    }
+
+    private void IptalModaliAc()
+    {
+        iptalGerekce = "";
+        gecisHedefi = "IPTAL";
+    }
+
+    private void ModaliKapat() => gecisHedefi = null;
+
+    /// <summary>Onay kipinin başlığı — yıkıcı iptal ile olağan geçiş ayrı adlandırılır.</summary>
+    private string OnayBasligi =>
+        gecisHedefi == "IPTAL" ? Dil.T.Siparis.IptalBaslik : Dil.T.Siparis.GecisOnayBaslik;
+
+    private async Task IptalOnayla()
+    {
+        if (!GerekceGecerli) return;   // düğme zaten disabled; ikinci kapı
+        gecisHedefi = null;
+        await Gecis("IPTAL", iptalGerekce.Trim());
+    }
+
+    private async Task Gecis(string yeniDurum, string? gerekce)
+    {
+        if (kart is not { } s || gecisYapiliyor) return;
+        gecisYapiliyor = true;
+        hata = null;
+        try
+        {
+            var cevap = await Api.PostAsync($"/siparisler/{s.Id}/gecis", new
+            {
+                yeniDurum,
+                gerekce,
+                guncellendi = s.Guncellendi,   // iyimser kilit
+            });
+            var durum = cevap.TryGetProperty("durum", out var d) &&
+                        d.ValueKind == System.Text.Json.JsonValueKind.String ? d.GetString() : null;
+            basari = durum is null
+                ? Dil.T.Siparis.GecisYapildi
+                : $"{Dil.T.Siparis.GecisYapildi}: {DurumMetni(durum)}";
+            basariJeton++;
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        gecisYapiliyor = false;
+    }
+
+    // ── PAKET Q9-3 — başlık düzenlemesinin GÖRÜNÜR sonucu ────────────────────
+    private SiparisBaslikMetinleri B => SiparisBaslikSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// Müşteri listesinin yükleme sınırı — Secici'nin yerel kip tavanıyla AYNI
+    /// (daha fazlası yerel aramayla taşınmaz). UX-S29: ekranda sayıyla yazar.
+    /// </summary>
+    private const int CariSiniri = Kuyumcu.Web.Bilesenler.Secici.YerelTavan;
+
+    /// <summary>
+    /// Sunucunun başlık düzeltmesine yazdığı iz öneki
+    /// (SiparisServisi.BaslikDuzenlendiNotu ile AYNI dizge — Web, Api'ye başvurmaz).
+    /// </summary>
+    private const string BaslikOneki = "BASLIK_DUZENLENDI: ";
+
+    private string SubeAdi(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || id == "—") return B.SubeYok;
+        return subeler.FirstOrDefault(x => x.Id == id)?.Ad ?? B.KayitListedeYok;
+    }
+
+    private string CariAdi(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || id == "—") return "—";
+        if (cariler.FirstOrDefault(x => x.Id == id) is { } c) return c.Ad;
+        if (kart is { } k && k.CariId == id && !string.IsNullOrWhiteSpace(k.CariAd)) return k.CariAd!;
+        return B.KayitListedeYok;
+    }
+
+    private string? CariTurMetni(string? t) => t switch
+    {
+        "MUSTERI" => B.Musteri,
+        "TEDARIKCI" => B.Tedarikci,
+        "HER_IKISI" => B.HerIkisi,
+        "ATOLYE" => B.Atolye,
+        "SARRAF" => B.Sarraf,
+        _ => null,   // bilinmeyen kod ekrana ÇIPLAK basılmaz (UX-S31)
+    };
+
+    /// <summary>
+    /// Q9-3 · UX-S31 + B-25: başlık düzeltme izi sunucuda denetim için KİMLİKLE
+    /// saklanır ("cari 01M… → 01M… · tür TAMIR → …"); ekran onu ada ve sözlük
+    /// metnine çevirir. Tanınmayan parça olduğu gibi kalır (veri gizlenmez).
+    /// </summary>
+    private string GerekceMetni(string gerekce)
+    {
+        if (!gerekce.StartsWith(BaslikOneki, StringComparison.Ordinal)) return gerekce;
+        var cikti = new List<string>();
+        foreach (var parca in gerekce[BaslikOneki.Length..].Split(" · "))
+        {
+            var bosluk = parca.IndexOf(' ');
+            var ok = parca.IndexOf(" → ", StringComparison.Ordinal);
+            if (bosluk < 0 || ok < bosluk)
+            {
+                cikti.Add(parca);
+                continue;
+            }
+            var alan = parca[..bosluk];
+            var eski = parca[(bosluk + 1)..ok];
+            var yeni = parca[(ok + 3)..];
+            cikti.Add(alan switch
+            {
+                "cari" => $"{Dil.T.Siparis.Cari}: {CariAdi(eski)} → {CariAdi(yeni)}",
+                "tür" => $"{Dil.T.Siparis.Tur}: {TurMetni(eski)} → {TurMetni(yeni)}",
+                "şube" => $"{Dil.T.Siparis.Sube}: {SubeAdi(eski)} → {SubeAdi(yeni)}",
+                _ => parca,
+            });
+        }
+        return $"{B.BaslikDuzenlendi} — {string.Join(" · ", cikti)}";
+    }
+
+    private string TurMetni(string t) => t switch
+    {
+        "MUSTERI_SIPARISI" => Dil.T.Siparis.TurMusteri,
+        "ATOLYE_SIPARISI" => Dil.T.Siparis.TurAtolye,
+        "TAMIR" => Dil.T.Siparis.TurTamir,
+        _ => t,
+    };
+
+    // KESIF-P6 tur 2: ekranda tek birincil — izinli İLERİ geçişlerin ilki (İPTAL ve geri dönüş hariç).
+    private static string? IlkIleriGecis(Kart s) =>
+        s.IzinliGecislerL.FirstOrDefault(h => h != "IPTAL" && !s.GeriYonluGecislerL.Contains(h));
+
+    // Düğme EYLEM dilindedir; sözlükte karşılığı olmayan hedef durum adıyla yazılır (uydurma yok).
+    private string GecisEtiketi(string h) => KesifP6Sozlugu.GecisEylemi(h, Dil.Dil) ?? DurumMetni(h);
+
+    private string DurumMetni(string d) => d switch
+    {
+        "TASLAK" => Dil.T.Siparis.DurumTaslak,
+        "ONAYLANDI" => Dil.T.Siparis.DurumOnaylandi,
+        "ATOLYEDE" => Dil.T.Siparis.DurumAtolyede,
+        "HAZIR" => Dil.T.Siparis.DurumHazir,
+        "TESLIM_EDILDI" => Dil.T.Siparis.DurumTeslimEdildi,
+        "IPTAL" => Dil.T.Siparis.DurumIptal,
+        _ => d,
+    };
+
+    private static string DurumRengi(string d) => d switch
+    {
+        "TASLAK" => "gri",
+        "ONAYLANDI" => "mavi",
+        "ATOLYEDE" => "amber",
+        "HAZIR" => "yesil",
+        "TESLIM_EDILDI" => "yesil",
+        _ => "kirmizi",
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

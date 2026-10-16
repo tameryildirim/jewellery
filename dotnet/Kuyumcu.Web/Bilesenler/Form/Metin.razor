@@ -1,0 +1,34 @@
+@using Kuyumcu.Web.Servisler
+@inherits FormAlani
+
+@* METİN — tek satırlık serbest metin (paket P-36b · talimat 20/a).
+   Sözleşme FormAlani'dedir; kabuk AlanKabugu'dur. Burada YALNIZ denetim var. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@GorunenHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <input type="text" class="girdi @(Hatali ? "hatali" : null)" id="@ElemanId"
+           value="@Deger" placeholder="@YerTutucu" maxlength="@EnFazla"
+           autocomplete="@OtoTamamla" inputmode="@GirisModu"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(Hatali ? "true" : "false")"
+           aria-describedby="@AciklayanId"
+           disabled="@Kilitli" @oninput="Degisti" />
+</AlanKabugu>
+
+@code {
+    [Parameter] public string? Deger { get; set; }
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+    /// <summary>maxlength — sunucu sınırının ekran karşılığı (UX-S29).</summary>
+    [Parameter] public int EnFazla { get; set; } = 200;
+    [Parameter] public string OtoTamamla { get; set; } = "off";
+    /// <summary>PAKET SATIS-3 — inputmode (ör. "numeric": TCKN'de rakam klavyesi). null = öznitelik yazılmaz.</summary>
+    [Parameter] public string? GirisModu { get; set; }
+
+    private Task Degisti(ChangeEventArgs e)
+    {
+        DefterdenSil();
+        var v = e.Value?.ToString();
+        Deger = string.IsNullOrEmpty(v) ? null : v;
+        return DegerChanged.InvokeAsync(Deger);
+    }
+}

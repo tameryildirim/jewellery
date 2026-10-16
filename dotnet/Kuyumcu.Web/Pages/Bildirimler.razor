@@ -1,0 +1,706 @@
+@page "/bildirimler"
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Bildirimler
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   BİLDİRİMLER (paket 6 Faz A)
+
+   GET  /bildirimler?durum=ACIK|KAPALI|TUMU&limit=100
+   GET  /bildirimler/sayi          (üst bar rozeti — bu ekran kullanmaz)
+   GET  /isler                     (SAHIP/MUDUR: tanımlı işler + son 50 koşum)
+   POST /isler/{kod}/calistir      (SAHIP/MUDUR, 3/dk)
+   POST /bildirimler/{id}/kapat
+
+   ⚠ UX-S28: sunucu hatası "kayıt yok"a ÇEVRİLMEZ — hata bandı ayrıdır ve boş
+     durum yalnız istek BAŞARILI ve sonuç gerçekten boşken çizilir.
+   ⚠ UX-S25/S30: kapatılmış bildirimde 'Kapat' düğmesi ÇİZİLMEZ; yerine
+     DegismezIpucu ile neden değiştirilemediği ve doğru yol yazılır.
+   ⚠ UX-S29: sunucu sınırı (en çok 100) ve kapalı bildirim penceresi ekranda
+     YAZILIR; sessiz kırpma yoktur.
+   ⚠ UX-3: iş çatısı yönetimi ProAlan içindedir; bildirim listesi her moddadır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Bildirim.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) liste = tuval Y_Bildirimler (BİREBİR); özgün ekran yalnız "ayrıntı" görünümünde
+   çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* P-37c — ORTAK ARAÇ ŞERİDİ: başlık/açıklama/eylem artık SayfaBasi'nda.
+       Yenile TEK birincil eylemdir; sekmeler kendi satırında kalır (sekme
+       ≠ süzgeç: durum sekmesi gezinmedir, şerit süzgeç yuvası değildir). *@
+    @* PAKET S3-6 (tur 8): açıklama SEKMEYLE değişir ("sekme değişince açıklama
+       güncellenmiyor" bulgusu); Yenile artık SESSİZ değil, sonucu banda yazar. *@
+    <SayfaBasi Anahtar="bildirimler" Baslik="@Dil.T.Bildirim.Baslik"
+               Aciklama="@SekmeAciklama">
+        <Eylem>
+            <button @onclick="ElleYenile" type="button" id="bildirim-yenile" class="ikincil"
+                    disabled="@yukleniyor">@Dil.T.Bildirim.Yenile</button>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" Id="hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="4000" />
+
+    <div class="kart">
+        @* TOPLU-2 tur 2 (kuyruk DÜŞÜK "Bildirimler sekme seçimi başka ekranlardan farklı"): seçili "Açık" gri
+           ve gölgeli ayrı düğmelerdi; diğer ekranların sekme hapıyla (ortak .sekmeler-serit/.sekmeler-sekme,
+           seçili = lacivert dolgu) AYNI aile. id'ler ve tıklama yolları aynı. *@
+        <div class="kart-govde">
+            <div class="sekmeler-serit" role="tablist" id="bildirim-sekme-seridi">
+                <button @onclick="SekmeAcik" type="button" role="tab" aria-selected="@(durum == "ACIK" ? "true" : "false")" id="bildirim-sekme-acik" class="@SekmeSinif("ACIK")">@Dil.T.Bildirim.Acik</button>
+                <button @onclick="SekmeKapali" type="button" role="tab" aria-selected="@(durum == "KAPALI" ? "true" : "false")" id="bildirim-sekme-kapali" class="@SekmeSinif("KAPALI")">@Dil.T.Bildirim.Kapali</button>
+                <button @onclick="SekmeTumu" type="button" role="tab" aria-selected="@(durum == "TUMU" ? "true" : "false")" id="bildirim-sekme-tumu" class="@SekmeSinif("TUMU")">@Dil.T.Ortak.Tumu</button>
+            </div>
+        </div>
+    </div>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (liste is { } l)
+    {
+        @if (l.DahaFazlasiVar)
+        {
+            <div class="bant bant-uyari" role="status" id="bildirim-sinir-uyarisi">
+                @string.Format(CultureInfo.InvariantCulture, Dil.T.Bildirim.SinirUyarisi, l.AzamiLimit)
+            </div>
+        }
+        @if (durum != "ACIK")
+        {
+            <p class="metin-kucuk metin-soluk" id="bildirim-kapali-pencere">
+                @string.Format(CultureInfo.InvariantCulture, Dil.T.Bildirim.KapaliPencere, l.KapaliGosterimGun)
+            </p>
+        }
+
+        @if (l.Satirlar.Count == 0)
+        {
+            @* PAKET S3-6 — boş durum = 1 cümle + 1 düğme. Düğme GERÇEK istek atar
+               (öbür sekmeyi yükler); UX-S28: yalnız istek başarılıyken çizilir. *@
+            <div class="dikey-bosluk ortala" id="bildirim-bos">
+                <BosDurum Mesaj="@(durum == "ACIK" ? Dil.T.Bildirim.BosDurum : Dil.T.Bildirim.BosDurumKapali)" />
+                @if (durum == "ACIK")
+                {
+                    <button @onclick="SekmeKapali" type="button" class="ikincil" id="bildirim-bos-cta">@M.BosAcikCta</button>
+                }
+                else
+                {
+                    <button @onclick="SekmeAcik" type="button" class="ikincil" id="bildirim-bos-cta">@M.BosKapaliCta</button>
+                }
+            </div>
+        }
+        else
+        {
+            @foreach (var b in l.Satirlar)
+            {
+                <div class="kart bildirim-kart bildirim-@OnemSinifi(b.Onem)" id="@($"bildirim-{b.Id}")">
+                    <div class="kart-baslik">
+                        <h3>@b.Baslik</h3>
+                        <Rozet Renk="@OnemRengi(b.Onem)">@OnemMetni(b.Onem)</Rozet>
+                    </div>
+                    <div class="kart-govde">
+                        <p>@b.Govde</p>
+                        <p class="metin-kucuk metin-soluk">
+                            @Bicim.TarihSaat(b.Olusturuldu)
+                        </p>
+                        @if (b.Kapatildi is { } kapali)
+                        {
+                            <p class="metin-kucuk">
+                                <strong>@Dil.T.Bildirim.KapatildiEtiket:</strong>
+                                @Bicim.TarihSaat(kapali)
+                                @(string.IsNullOrWhiteSpace(b.KapatmaNotu) ? null : $" — {b.KapatmaNotu}")
+                            </p>
+                        }
+                        <div class="rozet-satir">
+                            @if (!string.IsNullOrWhiteSpace(b.HedefRota))
+                            {
+                                <a class="dugme-benzeri" id="@($"bildirim-git-{b.Id}")" href="@b.HedefRota">@Dil.T.Bildirim.Git</a>
+                            }
+                            @if (b.Kapatildi is null)
+                            {
+                                <button @onclick="() => KapatmaModaliAc(b.Id)" type="button" class="ikincil" id="@($"bildirim-kapat-{b.Id}")"
+                                        disabled="@kapatiliyor">
+                                    @Dil.T.Bildirim.Kapat
+                                </button>
+                            }
+                            else
+                            {
+                                <DegismezIpucu Varlik="Bildirim"
+                                               Gerekce="@Dil.T.Bildirim.DegismezGerekce"
+                                               AlternatifYol="@Dil.T.Bildirim.DegismezAlternatif" />
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    }
+
+    @* ── İş çatısı (UX-3: yalnız profesyonel alanda) ─────────────────────── *@
+    <ProAlan>
+        <ChildContent>
+        @if (YoneticiMi)
+        {
+            <div class="kart" id="bildirim-is-paneli">
+                <div class="kart-baslik"><h3>@Dil.T.Bildirim.Isler</h3></div>
+                <div class="kart-govde">
+                    <p class="metin-kucuk metin-soluk">@Dil.T.Bildirim.IslerAciklama</p>
+
+                    @* ═══ PAKET P-11 (B-24) — ZAMANLANMIŞ İŞ AYARLARI ═══════════════
+                       B-24: saat/eşik/açık-kapalı yalnız appsettings.json'daydı; kiracı
+                       ne görüyor ne değiştirebiliyordu. Ayar artık kiraci_ayarlari'nda
+                       (migration YOK) ve PATCH /isler/ayarlar ile düzenlenir.
+                       UX-S21/S29/S30: sınırlar ve kurulum varsayılanı SUNUCUDAN gelir,
+                       ekranda YAZILIR; kilitli alanın sebebi görünür. *@
+                    <div class="kart" id="is-ayar-kart">
+                        <div class="kart-baslik"><h4>@Dil.T.Bildirim.Ayarlar</h4></div>
+                        <div class="kart-govde">
+                            <p class="metin-kucuk metin-soluk">@Dil.T.Bildirim.AyarlarAciklama</p>
+                            <HataBandi Mesaj="@ayarHata" Id="is-ayar-hata" />
+                            @if (isler?.Ayarlar is { } ay)
+                            {
+                                <div class="form-grid-2">
+                                    <div class="alan">
+                                        <GunSayisi ElemanId="is-ayar-saat" Etiket="@Dil.T.Bildirim.BaslangicSaat"
+                                              EnAz="@((decimal)ay.SaatEnAz)" EnCok="@((decimal)ay.SaatEnCok)"
+                                              Deger="@((decimal?)fSaat)"
+                                              DegerChanged="@(v => fSaat = v is { } _d ? (int)_d : null)"
+                                              Durum="ayarForm" HataAlani="is-ayar-saat" />
+                                        <span class="metin-kucuk metin-soluk" id="is-ayar-saat-ipucu">
+                                            @Dil.T.Bildirim.BaslangicSaatIpucu
+                                            @string.Format(CultureInfo.InvariantCulture, Dil.T.Bildirim.AyarAraligi, ay.SaatEnAz, ay.SaatEnCok)
+                                        </span>
+                                    </div>
+                                    <div class="alan">
+                                        <GunSayisi ElemanId="is-ayar-vade" Etiket="@Dil.T.Bildirim.VadeUfukGun"
+                                              EnAz="@((decimal)ay.VadeEnAz)" EnCok="@((decimal)ay.VadeEnCok)"
+                                              Deger="@((decimal?)fVade)"
+                                              DegerChanged="@(v => fVade = v is { } _d ? (int)_d : null)"
+                                              Durum="ayarForm" HataAlani="is-ayar-vade" />
+                                        <span class="metin-kucuk metin-soluk" id="is-ayar-vade-ipucu">
+                                            @Dil.T.Bildirim.VadeUfukGunIpucu
+                                            @string.Format(CultureInfo.InvariantCulture, Dil.T.Bildirim.AyarAraligi, ay.VadeEnAz, ay.VadeEnCok)
+                                            @string.Format(CultureInfo.InvariantCulture, Dil.T.Bildirim.VarsayilanDeger, ay.VarsayilanVadeUfukGun)
+                                        </span>
+                                    </div>
+                                    <div class="alan">
+                                        <GunSayisi ElemanId="is-ayar-masak" Etiket="@Dil.T.Bildirim.MasakUyariGun"
+                                              EnAz="@((decimal)ay.MasakEnAz)" EnCok="@((decimal)ay.MasakEnCok)"
+                                              Deger="@((decimal?)fMasak)"
+                                              DegerChanged="@(v => fMasak = v is { } _d ? (int)_d : null)"
+                                              Durum="ayarForm" HataAlani="is-ayar-masak" />
+                                        <span class="metin-kucuk metin-soluk" id="is-ayar-masak-ipucu">
+                                            @Dil.T.Bildirim.MasakUyariGunIpucu
+                                            @string.Format(CultureInfo.InvariantCulture, Dil.T.Bildirim.AyarAraligi, ay.MasakEnAz, ay.MasakEnCok)
+                                            @string.Format(CultureInfo.InvariantCulture, Dil.T.Bildirim.VarsayilanDeger, ay.VarsayilanMasakUyariGun)
+                                        </span>
+                                    </div>
+                                </div>
+                                <SayiKapisiSebebi Kapi="sayiKapisi" Onek="is-ayar-" ElemanId="is-ayar-sayi-kilit" />
+                                <div class="rozet-satir">
+                                    <button @onclick="AyarKaydet" type="button" id="is-ayar-kaydet" disabled="@(ayarKaydediliyor || sayiKapisi.OnekleVar("is-ayar-"))">@Dil.T.Bildirim.AyarKaydet</button>
+                                    <button @onclick="AyarVarsayilanaDon" type="button" class="ikincil" id="is-ayar-varsayilan" disabled="@ayarKaydediliyor">@Dil.T.Bildirim.AyarVarsayilanaDon</button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    @if (isler is { } isl)
+                    {
+                        @* PAKET GOC-B — ORTAK IZGARA (grid:bildirimler:is-liste). İş listesi TAM (kayıtlı işler) → yerel sıralama.
+                           Mevcut hücre id'leri (is-son-calisma-{kod}, is-acik-{kod}, is-calistir-{kod}…) korunur. *@
+                        <Izgara T="IsSatiri" Ekran="bildirimler" GridId="is-liste" Kolonlar="@IsKolonlari"
+                                Ogeler="@IzgaraYerelSiralama.Uygula(isl.Isler, isSira, IsKolonlari)"
+                                SatirId="@(i => $"is-satir-{i.Kod}")" Baslik="@Dil.T.Bildirim.IsAdi"
+                                SiralamaDegisti="@(x => isSira = x)" GecerliSiralama="@isSira" />
+                        @* PAKET P-65 (B48): kurulumda KAPALI işin ekrandan açılamayışının
+                           gerekçesi ve AÇMA YOLU (kurulumu yapan kişi → sunucu ayarı → "Aç"). *@
+                        @if (isl.Isler.Any(x => !x.YapilandirmaEtkin))
+                        {
+                            <DegismezIpucu Varlik="KurulumKapaliIs" Gerekce="@OnayM.BildirimKurulumKapaliGerekce"
+                                           AlternatifYol="@string.Format(OnayM.BildirimKurulumKapaliYol, Dil.T.Bildirim.IsAcikKapali)" />
+                        }
+
+                        <h4>@Dil.T.Bildirim.CalismaGecmisi</h4>
+                        @* UX-S25: koşum kaydı DEĞİŞMEZ; gerekçesi ve doğru yol yazılı. *@
+                        <DegismezIpucu Varlik="IsCalismasi"
+                                       Gerekce="@Dil.T.Bildirim.AyarDegismezGerekce"
+                                       AlternatifYol="@Dil.T.Bildirim.AyarDegismezYolu" />
+                        @if (isl.Calismalar.Count == 0)
+                        {
+                            <BosDurum Mesaj="@Dil.T.Ortak.Bulunamadi" />
+                        }
+                        else
+                        {
+                            @* PAKET GOC-B — ORTAK IZGARA (grid:bildirimler:is-calisma). Sunucu son 50 koşumu döndürür →
+                               sınıra değdiyse sıralama kapalı + sınır notu (UX-S29). *@
+                            <Izgara T="CalismaSatiri" Ekran="bildirimler" GridId="is-calisma" Kolonlar="@CalismaKolonlari"
+                                    Ogeler="@IzgaraYerelSiralama.Uygula(isl.Calismalar, calismaSira, CalismaKolonlari)"
+                                    SatirId="@(c => $"is-calisma-satir-{c.Id}")"
+                                    SatirSinif="@(c => c.Durum == "HATALI" ? "satir-kirmizi" : null)"
+                                    Baslik="@Dil.T.Bildirim.CalismaGecmisi"
+                                    SiralamaDegisti="@(x => calismaSira = x)" GecerliSiralama="@calismaSira" />
+                            @if (isl.Calismalar.Count >= CalismaSiniri)
+                            {
+                                <p class="metin-kucuk metin-soluk" id="is-calisma-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, CalismaSiniri)</p>
+                            }
+                        }
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <p class="metin-kucuk metin-soluk" id="bildirim-is-yetki-notu">@Dil.T.Bildirim.YalnizYoneticiIs</p>
+        }
+        </ChildContent>
+        <BasitAlternatif>
+            @* ═══ PAKET S3-6 (tur 8 bulgusu 28) — KAPALI HATIRLATMA ARAYÜZDEN AÇILIR ═══
+               İş paneli profesyonel yüzde (ProAlan); basit yüzde sahibin kapattığı
+               hatırlatmayı yeniden açacak HİÇBİR yol yoktu. Artık kapalı her iş
+               burada tek satırdır ve tek tıkla AÇILIR (PATCH /isler/ayarlar —
+               profesyonel yüzdeki kutuyla AYNI uç, AYNI gövde; ikinci yol yok).
+               ⚠ Kurulum ayarında (appsettings Isler:*:Etkin) kapalı iş ekrandan
+                 AÇILMAZ: P-11 fail-closed kuralı ve mevzuat kuralı (doğrulanmamış
+                 hükme dayanan iş, ör. TEVSIK_KURTARMA, kapalı kalır). Düğme kilitli,
+                 sebebi ve doğru yol YAZILI (UX-S30). Sunucu da aynı cevabı verir. *@
+            @if (YoneticiMi && isler is { } kis && kis.Isler.Any(x => !x.Etkin))
+            {
+                <div class="kart" id="bildirim-kapali-isler">
+                    <div class="kart-baslik"><h3>@M.KapaliIslerBaslik</h3></div>
+                    <div class="kart-govde">
+                        <p class="metin-kucuk metin-soluk">@M.KapaliIslerAciklama</p>
+                        <HataBandi Mesaj="@ayarHata" Id="is-ac-hata" />
+                        @foreach (var i in kis.Isler.Where(x => !x.Etkin))
+                        {
+                            <div class="satir-arasi liste-satiri" id="@($"bildirim-kapali-is-{i.Kod}")">
+                                <span class="hucre-vurgu">@DilEkranSozlugu.IsAdi(Dil.Dil, i.Kod, i.Ad)</span>
+                                @if (i.YapilandirmaEtkin)
+                                {
+                                    <button @onclick="() => IsAc(i)" disabled="@ayarKaydediliyor" type="button" class="ikincil" id="@($"is-ac-{i.Kod}")"
+                                            title="@(ayarKaydediliyor ? Dil.T.Kabuk.SunucuOnayiBekleniyor : null)">@M.Ac</button>
+                                }
+                                else
+                                {
+                                    <span class="rozet-satir">
+                                        <Rozet Renk="gri">@M.KurulumKapali</Rozet>
+                                        <button disabled type="button" class="ikincil" id="@($"is-ac-{i.Kod}")"
+                                                title="@M.KurulumKapaliSebep">@M.Ac</button>
+                                    </span>
+                                }
+                            </div>
+                            @if (!i.YapilandirmaEtkin)
+                            {
+                                <p class="metin-kucuk metin-soluk" id="@($"is-ac-kilit-{i.Kod}")">@M.KurulumKapaliSebep @M.KurulumKapaliYol</p>
+                            }
+                        }
+                        @* PAKET P-65 (B48): açma yolu DegismezIpucu ile, düğme adıyla. *@
+                        @if (kis.Isler.Any(x => !x.YapilandirmaEtkin))
+                        {
+                            <DegismezIpucu Varlik="KurulumKapaliIs" Gerekce="@OnayM.BildirimKurulumKapaliGerekce"
+                                           AlternatifYol="@string.Format(OnayM.BildirimKurulumKapaliYol, M.Ac)" />
+                        }
+                    </div>
+                </div>
+            }
+        </BasitAlternatif>
+    </ProAlan>
+</div>
+}
+
+@* Yıkıcı/geri alınamaz eylem → ortak onay modalı (DoD 4). *@
+<ModalPencere Acik="@(kapatilacakId is not null)" Baslik="@Dil.T.Bildirim.KapatBaslik" Kapat="ModaliKapat">
+    <p>@Dil.T.Bildirim.KapatOnay</p>
+    <div class="alan">
+        <CokSatir ElemanId="bildirim-kapatma-notu" Etiket="@Dil.T.Bildirim.KapatmaNotu"
+                  Satir="3" EnFazla="@AlanSinirlari.BildirimNotu"
+                  Deger="@kapatmaNotu" DegerChanged="@(v => kapatmaNotu = v ?? "")"
+                  Hata="@notHatasi" />
+    </div>
+    <div class="rozet-satir">
+        <button @onclick="Kapat" type="button" id="bildirim-kapat-onay" disabled="@kapatiliyor">@Dil.T.Bildirim.Kapat</button>
+        <button type="button" class="ikincil" id="bildirim-kapat-vazgec" @onclick="ModaliKapat"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+
+
+
+
+    // ── PAKET GOC-B — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? isSira, calismaSira;
+    /// <summary>Sunucunun koşum geçmişi sınırı (IslerModulu Take(50)).</summary>
+    private const int CalismaSiniri = 50;
+    private bool CalismaTam => (isler?.Calismalar.Count ?? 0) < CalismaSiniri;
+
+    private IReadOnlyList<IzgaraKolonu<IsSatiri>> IsKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Bildirim.IsAdi, ZorunluGorunur = true, SunucuSiralamaAdi = "ad",
+                HucreSinif = _ => "hucre-vurgu", Deger = i => DilEkranSozlugu.IsAdi(Dil.Dil, i.Kod, i.Ad) },
+        // TOPLU-2 tur 2: tarih-saat tek satır.
+        new() { Anahtar = "son-calisma", Baslik = Dil.T.Bildirim.SonCalisma, SunucuSiralamaAdi = "son-calisma",
+                HucreSinif = _ => "metin-kucuk hucre-tek-satir", Deger = i => i.SonCalisma,
+                Hucre = i => @<span id="@($"is-son-calisma-{i.Kod}")">@(i.SonCalisma is { } t ? Bicim.TarihSaat(t) : "—")</span> },
+        // S3-6 / UX-S31: ham durum kodu ekrana basılmaz.
+        new() { Anahtar = "durum", Baslik = Dil.T.Bildirim.IsDurumu, HucreSinif = _ => "metin-kucuk", Deger = i => DurumAdi(i.SonDurum) },
+        // PAKET P-11 (B-24): iş AÇIK/KAPALI kiracı ayarıdır; yapılandırmada kapalı iş ekrandan AÇILAMAZ (UX-S30).
+        new() { Anahtar = "acik", Baslik = Dil.T.Bildirim.IsAcikKapali, ZorunluGorunur = true,
+                Hucre = i => @<text><Onay ElemanId="@($"is-acik-{i.Kod}")" Etiket="@Dil.T.Bildirim.IsAcikKapali"
+                          Deger="@(!i.KiraciKapatti)"
+                          DegerChanged="@((bool _v) => IsAcikDegisti(i.Kod, _v))"
+                          Devredisi="@(!i.YapilandirmaEtkin || ayarKaydediliyor)"
+                          DevredisiSebebi="@(!i.YapilandirmaEtkin ? Dil.T.Bildirim.YapilandirmaKapaliIpucu : Dil.T.Kabuk.SunucuOnayiBekleniyor)" />
+                    @if (!i.YapilandirmaEtkin)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="@($"is-yapkapali-{i.Kod}")">@Dil.T.Bildirim.YapilandirmaKapaliIpucu</span>
+                    }
+                    else if (i.KiraciKapatti)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="@($"is-kiracikapali-{i.Kod}")">@Dil.T.Bildirim.KiraciKapattiIpucu</span>
+                    }</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = i => @<text>@if (i.Etkin)
+                    {
+                        <button @onclick="() => IsiCalistir(i.Kod)" type="button" class="ikincil"
+                                id="@($"is-calistir-{i.Kod}")" disabled="@(calisanIs is not null)">
+                            @(calisanIs == i.Kod ? Dil.T.Bildirim.Calisiyor : Dil.T.Bildirim.SimdiCalistir)
+                        </button>
+                    }
+                    else
+                    {
+                        <button disabled type="button" class="ikincil" id="@($"is-calistir-{i.Kod}")"
+                                title="@(i.YapilandirmaEtkin ? Dil.T.Bildirim.KiraciKapattiIpucu : Dil.T.Bildirim.KapaliIsIpucu)">
+                            @(i.YapilandirmaEtkin ? Dil.T.Bildirim.KiraciKapatti : Dil.T.Bildirim.KapaliIs)
+                        </button>
+                        <span class="metin-kucuk metin-soluk">@(i.YapilandirmaEtkin ? Dil.T.Bildirim.KiraciKapattiIpucu : Dil.T.Bildirim.KapaliIsIpucu)</span>
+                    }</text> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<CalismaSatiri>> CalismaKolonlari =>
+    [
+        // S3-6 / UX-S31: iş KODU yerine sunucunun verdiği ad.
+        new() { Anahtar = "is", Baslik = Dil.T.Bildirim.IsAdi, ZorunluGorunur = true, SunucuSiralamaAdi = CalismaTam ? "is" : null,
+                HucreSinif = _ => "metin-kucuk hucre-tek-satir", Deger = c => IsAdi(c.IsKodu) },
+        new() { Anahtar = "anahtar", Baslik = Dil.T.Bildirim.Anahtar, HucreSinif = c => c.Elle ? "metin-kucuk" : "metin-kucuk hucre-tek-satir",   // DIL-EKRAN: ISO tarih anahtarı ("2026-10-09") tire yerinden bölünmez
+                Deger = c => c.Elle ? $"{c.CalismaAnahtari} ({Dil.T.Bildirim.ElleTetiklendi})" : c.CalismaAnahtari },
+        new() { Anahtar = "durum", Baslik = Dil.T.Bildirim.IsDurumu, ZorunluGorunur = true, SunucuSiralamaAdi = CalismaTam ? "durum" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = c => DurumAdi(c.Durum) },
+        new() { Anahtar = "uretilen", Baslik = Dil.T.Bildirim.UretilenBildirim, SunucuSiralamaAdi = CalismaTam ? "uretilen" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = c => c.UretilenBildirim },
+        new() { Anahtar = "incelenen", Baslik = Dil.T.Bildirim.IncelenenKayit, SunucuSiralamaAdi = CalismaTam ? "incelenen" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = c => c.IncelenenKayit },
+        new() { Anahtar = "sure", Baslik = Dil.T.Bildirim.Sure, SunucuSiralamaAdi = CalismaTam ? "sure" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = c => c.SureMs,
+                Hucre = c => @<text>@(c.SureMs?.ToString(CultureInfo.InvariantCulture) ?? "—")</text> },
+        new() { Anahtar = "hata", Baslik = Dil.T.Bildirim.HataOzeti, HucreSinif = _ => "metin-kucuk", Deger = c => c.HataOzeti ?? "—" },
+    ];
+
+    private Yanit? liste;
+    private IsGorunumu? isler;
+    private string durum = "ACIK";
+    private bool yukleniyor = true;
+    private bool kapatiliyor;
+    private string? hata, basari, notHatasi;
+    private int basariJeton;
+    private string? kapatilacakId;
+    private string? calisanIs;
+    private string kapatmaNotu = "";
+
+
+    private bool YoneticiMi => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+
+    // ── PAKET S3-6 ──────────────────────────────────────────────────────────
+    /// <summary>Bu paketin metinleri (ayrı sözlük dosyası; TR + EN).</summary>
+    private KasaBildirimMetinleri M => KasaBildirimSozlugu.Al(Dil.Dil);
+    /// <summary>PAKET P-65 onay/kilit metinleri (ayrı sözlük; TR+EN).</summary>
+    private OnayKilitMetinleri OnayM => OnayKilitSozlugu.Al(Dil.Dil);
+
+    /// <summary>Tur 8: sayfa açıklaması SEÇİLİ SEKMEYİ anlatır.</summary>
+    private string SekmeAciklama => durum switch
+    {
+        "KAPALI" => M.AciklamaKapali,
+        "TUMU" => M.AciklamaTumu,
+        _ => Dil.T.Bildirim.EkranAciklama,
+    };
+
+    /// <summary>UX-S31: koşum durumu kodu okunur adla.</summary>
+    private string DurumAdi(string? kod) => KasaBildirimSozlugu.DurumAdi(M, kod);
+
+    /// <summary>UX-S31: iş KODU yerine sunucunun verdiği ad; bilinmeyen kod ad uydurulmadan kalır.</summary>
+    private string IsAdi(string kod) =>
+        isler?.Isler.FirstOrDefault(x => x.Kod == kod) is { } is_ ? DilEkranSozlugu.IsAdi(Dil.Dil, is_.Kod, is_.Ad) : kod;
+
+    /// <summary>
+    /// Tur 8 "Yenile sessiz" bulgusu: elle yenileme sonucu banda YAZILIR (UX-S27).
+    /// Hata olursa bant hata bandıdır; başarı bandı basılmaz.
+    /// </summary>
+    private async Task ElleYenile()
+    {
+        await Yukle();
+        if (hata is null && liste is { } l)
+        {
+            basari = string.Format(CultureInfo.InvariantCulture, M.Yenilendi, l.Satirlar.Count);
+            basariJeton++;
+        }
+    }
+
+    /// <summary>
+    /// PAKET S3-6 (tur 8 bulgusu 28): kiracının kapattığı işi basit yüzden AÇAR.
+    /// Profesyonel yüzdeki kutuyla AYNI yol (<see cref="IsAcikDegisti"/>): gövde
+    /// yalnız <c>kapaliIsler</c> taşır, diğer ayarlar DEĞİŞMEZ (PATCH sözleşmesi).
+    /// Kurulumda kapalı iş için çağrılmaz (düğme kilitli) ve sunucu da reddeder.
+    /// </summary>
+    private async Task IsAc(IsSatiri i)
+    {
+        if (!i.YapilandirmaEtkin) return;
+        var onceki = basariJeton;
+        await IsAcikDegisti(i.Kod, true);
+        // Yalnız BU istek başarı bandı ürettiyse sonucu genişlet (bayat bant yazılmaz).
+        if (basariJeton != onceki && ayarHata is null && basari is { } m)
+        {
+            basari = string.Format(CultureInfo.InvariantCulture, M.AcildiSonuc, DilEkranSozlugu.IsAdi(Dil.Dil, i.Kod, i.Ad), m).Trim();
+        }
+    }
+
+    private string SekmeSinif(string d) => d == durum ? "sekmeler-sekme secili" : "sekmeler-sekme";
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    private Task SekmeAcik() => SekmeSec("ACIK");
+    private Task SekmeKapali() => SekmeSec("KAPALI");
+    private Task SekmeTumu() => SekmeSec("TUMU");
+
+    private Task SekmeSec(string d)
+    {
+        durum = d;
+        return Yukle();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+        await IsleriYukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            liste = await Api.GetAsync<Yanit>($"/bildirimler?durum={durum}&limit=100");
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28: hata "kayıt yok"a çevrilmez; önceki liste korunur ve bant çıkar.
+            hata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private async Task IsleriYukle()
+    {
+        if (!YoneticiMi) return;
+        try
+        {
+            var y = await Api.GetAsync<IsYaniti>("/isler");
+            isler = new IsGorunumu(y.Isler2, y.Calismalar2, y.Ayarlar);
+            if (y.Ayarlar is { } ay)
+            {
+                fSaat = ay.BaslangicSaat;
+                fVade = ay.VadeUfukGun;
+                fMasak = ay.MasakUyariGun;
+            }
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // İş paneli ikincil bilgidir; hatası bildirim listesini gizlemez ama
+            // SESSİZ de geçilmez (Anayasa md.1).
+            hata = ex.Message;
+        }
+    }
+
+    private void KapatmaModaliAc(string id)
+    {
+        kapatilacakId = id;
+        kapatmaNotu = "";
+        notHatasi = null;
+    }
+
+    private void ModaliKapat()
+    {
+        kapatilacakId = null;
+        notHatasi = null;
+    }
+
+    private async Task Kapat()
+    {
+        if (kapatilacakId is not { } id || kapatiliyor) return;
+        if (kapatmaNotu.Length > 500)
+        {
+            notHatasi = "Kapatma notu en fazla 500 karakter olabilir";
+            return;
+        }
+
+        kapatiliyor = true;
+        hata = null;
+        notHatasi = null;
+        try
+        {
+            // UX-S27: POST yanıtı OKUNUR; sonuç banda yazılır.
+            var cevap = await Api.PostAsync($"/bildirimler/{id}/kapat",
+                new { not = string.IsNullOrWhiteSpace(kapatmaNotu) ? null : kapatmaNotu });
+            var mesaj = cevap.TryGetProperty("mesaj", out var m) && m.ValueKind == System.Text.Json.JsonValueKind.String
+                ? m.GetString() : null;
+            basari = mesaj ?? Dil.T.Bildirim.Kapatildi;
+            basariJeton++;
+            kapatilacakId = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kapatiliyor = false;
+    }
+
+    // ── PAKET P-11 (B-24) — zamanlanmış iş ayarları ─────────────────────────
+    // PAKET GOC-B (envanter C satır 24/66/85): boş kutu 0 olarak SESSİZCE kaydediliyordu (saat 0 = gece yarısı,
+    // MASAK uyarısı 0 gün) ve kesirli değer sessizce kesiliyordu → alanlar GunSayisi (kesir/harf/eksi yazılamaz,
+    // aralık dışı alan altında), boş = null → Kaydet'te alan altı aralık hatası (varsayılana dönüş ayrı düğmede).
+    private int? fSaat = 0, fVade = 7, fMasak = 3;
+    private bool ayarKaydediliyor;
+    private string? ayarHata;
+    /// <summary>UX-1-C0: geçersiz gönderimde alan altı Türkçe mesaj; sessiz etkisizlik YASAK.</summary>
+    private readonly FormDurumu ayarForm = new();
+
+    private Task AyarKaydet() => sayiKapisi.OnekleVar("is-ayar-") ? Task.CompletedTask   // ORTAK-1: PUT YOK (düğme pasif, sebep yazılı)
+        : AyarGonder(new
+    {
+        baslangicSaat = fSaat,
+        vadeUfukGun = fVade,
+        masakUyariGun = fMasak,
+    }, dogrula: true);
+
+    /// <summary>
+    /// PATCH sözleşmesi: alanlar açıkça <c>null</c> gönderilir → ayar satırı
+    /// SİLİNİR ve kurulum varsayılanı yeniden geçerli olur (UX-S25 geri dönüş).
+    /// Kapatılan işler bu düğmeden ETKİLENMEZ (gövdede yok = değişmedi).
+    /// </summary>
+    private Task AyarVarsayilanaDon() => AyarGonder(new
+    {
+        baslangicSaat = (int?)null,
+        vadeUfukGun = (int?)null,
+        masakUyariGun = (int?)null,
+    }, dogrula: false);
+
+    /// <summary>Bir işin kiracı açık/kapalı durumunu değiştirir (B-24).</summary>
+    private Task IsAcikDegisti(string kod, bool acik)
+    {
+        if (isler is not { } isl) return Task.CompletedTask;
+        var kapalilar = isl.Isler.Where(x => x.KiraciKapatti).Select(x => x.Kod).ToList();
+        if (acik) kapalilar.Remove(kod);
+        else if (!kapalilar.Contains(kod, StringComparer.Ordinal)) kapalilar.Add(kod);
+        return AyarGonder(new { kapaliIsler = kapalilar }, dogrula: false);
+    }
+
+    private async Task AyarGonder(object govde, bool dogrula)
+    {
+        if (ayarKaydediliyor) return;
+        ayarForm.Temizle();
+        if (dogrula && isler?.Ayarlar is { } s0)
+        {
+            Aralik("is-ayar-saat", fSaat, s0.SaatEnAz, s0.SaatEnCok);
+            Aralik("is-ayar-vade", fVade, s0.VadeEnAz, s0.VadeEnCok);
+            Aralik("is-ayar-masak", fMasak, s0.MasakEnAz, s0.MasakEnCok);
+            if (!ayarForm.Gecerli) { ayarHata = Dil.T.Kabuk.FormEksik; return; }
+        }
+
+        ayarKaydediliyor = true;
+        ayarHata = null;
+        try
+        {
+            // UX-S27: POST/PATCH yanıtı OKUNUR, sonucu banda yazılır.
+            var cevap = await Api.PatchAsync("/isler/ayarlar", govde);
+            basari = cevap.TryGetProperty("mesaj", out var m) && m.ValueKind == System.Text.Json.JsonValueKind.String
+                ? m.GetString() : Dil.T.Bildirim.AyarKaydedildi;
+            basariJeton++;
+            await IsleriYukle();
+        }
+        catch (ApiHata ex)
+        {
+            ayarHata = FormDurumu.SunucuMesaji(ex, Dil);
+            ayarForm.Sunucudan(ex, new Dictionary<string, string>
+            {
+                ["BaslangicSaat"] = "is-ayar-saat",
+                ["VadeUfukGun"] = "is-ayar-vade",
+                ["MasakUyariGun"] = "is-ayar-masak",
+            });
+        }
+        ayarKaydediliyor = false;
+    }
+
+    private void Aralik(string alan, int? deger, int enAz, int enCok)
+    {
+        if (deger is not { } d || d < enAz || d > enCok)
+            ayarForm.Ekle(alan, string.Format(CultureInfo.InvariantCulture,
+                Dil.T.Bildirim.AyarAraligi, enAz, enCok));
+    }
+
+    private async Task IsiCalistir(string kod)
+    {
+        if (calisanIs is not null) return;
+        calisanIs = kod;
+        hata = null;
+        try
+        {
+            var cevap = await Api.PostAsync($"/isler/{kod}/calistir");
+            basari = cevap.TryGetProperty("mesaj", out var m) && m.ValueKind == System.Text.Json.JsonValueKind.String
+                ? m.GetString() : Dil.T.Ortak.Basarili;
+            basariJeton++;
+            await Yukle();
+            await IsleriYukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // ⚠ P-11 (B-14) sayacı: catch içinde veri alanı boşaltılmaz. Meşgul
+            //   bayrağı da catch'te değil, ortak çıkışta sıfırlanır.
+            hata = ex.Message;
+        }
+        calisanIs = null;
+    }
+
+    private string OnemMetni(string onem) => onem switch
+    {
+        "KRITIK" => Dil.T.Bildirim.Kritik,
+        "UYARI" => Dil.T.Bildirim.Uyari,
+        _ => Dil.T.Bildirim.Bilgi,
+    };
+
+    private static string OnemRengi(string onem) => onem switch
+    {
+        "KRITIK" => "kirmizi", "UYARI" => "amber", _ => "mavi",
+    };
+
+    private static string OnemSinifi(string onem) => onem switch
+    {
+        "KRITIK" => "kritik", "UYARI" => "uyari", _ => "bilgi",
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

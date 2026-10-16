@@ -1,0 +1,200 @@
+@using Kuyumcu.Contracts.Sayfalar.Pozisyon
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject YetkiServisi Yetki
+@implements IDisposable
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-4A — "YILDIZ" BUGÜN (tuval Bugun4 koyu / Bugun4a açık · BİREBİR)
+
+   Kurucu (09.10): "birebir tasarım neyse aynısını istisnasız olarak istiyorum".
+   Yerleşim tuvalin <main> + <footer>'ıdır: solda üst satır (gün · tarih · şube),
+   dev rakam (günün NET satışı; kuruş + ₺ soluk, yarı boy), tek cümle, altta
+   "Yeni satış" hapı + "Günü kapat" altı çizili; sağda alta yaslı "Seni bekleyen"
+   listesi (satır: metin · soluk ek · durum · tek ince hap); en altta ALTIN
+   POZİSYONU · VİTRİN · KÂR şeridi.
+
+   ⚠ YALNIZ data-sema="yildiz": Panel bu bileşeni şema Yıldız iken çizer; öteki
+     8 şemada Panel'in özgün gövdesi AYNEN çalışır.
+   ⚠ VERİ ÜRETMEZ: değerler Panel'in mevcut yükleyicilerinden (Veri) ve mevcut
+     GET /pozisyon ucundan gelir. Panel POST ETMEZ; eylemler ekran açar.
+   ⚠ Tuvalde olmayan öğe ÇİZİLMEZ (selam, hava, kutucuklar, "Kutucukları düzenle").
+     Yasal bant (ChildContent) listenin bir satırı olarak durur.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yildiz-bugun" id="yildiz-bugun">
+    <div class="yildiz-bugun-ana">
+        <section class="yildiz-bugun-sol" aria-labelledby="yildiz-bugun-rakam">
+            <div class="yildiz-bugun-ozet">
+                <p class="yildiz-bugun-ust" id="yildiz-bugun-ust-satir">@UstSatirMetni</p>
+                @if (Veri.SatisYetkiYok)
+                {
+                    <p class="yildiz-bugun-cumle" id="yildiz-bugun-rakam">@PanelSadeSozlugu.Al(Dil.Dil).YetkiYok</p>
+                }
+                else if (Veri.SatisHata is not null)
+                {
+                    @* UX-S28: hata "0 ₺"a çevrilmez — rakam çizilmez, bant durur. *@
+                    <HataBandi Mesaj="@Veri.SatisHata" Id="yildiz-bugun-satis-hata" />
+                }
+                else if (Veri.SatisYukleniyor)
+                {
+                    <p class="yildiz-bugun-rakam" id="yildiz-bugun-rakam" aria-busy="true"><span class="yildiz-bugun-kurus">—</span></p>
+                }
+                else
+                {
+                    var metin = Bicim.TlKurus(Veri.SatisTl);
+                    var bol = Kuyumcu.Web.Layout.YildizSayi.Bol(metin);
+                    @* UX-S23: sayı onu oluşturan kayıtlara gider. *@
+                    <a class="yildiz-bugun-rakam" id="yildiz-bugun-rakam" href="/raporlar/islem-defteri"
+                       title="@PanelSadeSozlugu.Al(Dil.Dil).SatisBaglantiIpucu">@if (bol is { } b) {<span class="yildiz-bugun-tam">@b.Tam</span><span class="yildiz-bugun-kurus">@b.Kurus</span>} else {<span class="yildiz-bugun-tam">@metin</span>}</a>
+                }
+                @if (Cumle is { Length: > 0 } cumle)
+                {
+                    <p class="yildiz-bugun-cumle" id="yildiz-bugun-cumle">@cumle</p>
+                }
+            </div>
+            <div class="yildiz-bugun-eylemler">
+                <a class="yildiz-b1" id="yildiz-bugun-yeni-satis" href="/islemler">@PanelSadeSozlugu.Al(Dil.Dil).YeniSatis</a>
+                @if (KasaGorunur)
+                {
+                    @* Gün kapanışı Kasalar ekranındadır (kasa başına sayım + onay); Panel POST ETMEZ. *@
+                    <a class="yildiz-b2" id="yildiz-bugun-gunu-kapat" href="/kasalar">@YildizBugunSozlugu.GunuKapat(Dil.Dil)</a>
+                }
+            </div>
+        </section>
+
+        <section class="yildiz-bugun-sag" aria-labelledby="yildiz-bugun-bekleyen-baslik">
+            <h2 class="yildiz-bugun-ust yildiz-bugun-bekleyen-baslik" id="yildiz-bugun-bekleyen-baslik">@YildizBugunSozlugu.SeniBekleyen(Dil.Dil)</h2>
+            @ChildContent
+            @if (Veri.BekleyenYukleniyor && Veri.Bekleyen.Count == 0)
+            {
+                <p class="yildiz-bugun-sat yildiz-bugun-sat--bos" id="yildiz-bugun-bekleyen-yukleniyor" aria-busy="true"><span class="yildiz-bugun-sat-durum">…</span></p>
+            }
+            else if (Veri.Bekleyen.Count == 0 && Veri.Hatalar.All(h => h.Mesaj is null))
+            {
+                @* Boş durum YALNIZ istek başarılı ve iş gerçekten yokken (UX-S28). *@
+                <p class="yildiz-bugun-sat yildiz-bugun-sat--bos" id="yildiz-bugun-bekleyen-bos"><span class="yildiz-bugun-sat-durum">@PanelSadeSozlugu.Al(Dil.Dil).BekleyenYok</span></p>
+            }
+            else if (Veri.Bekleyen.Count > 0)
+            {
+                <ul class="yildiz-bugun-liste" id="yildiz-bugun-liste">
+                    @foreach (var s in Veri.Bekleyen)
+                    {
+                        <li class="yildiz-bugun-sat" id="@($"yildiz-bekleyen-{s.Kimlik}")" title="@s.Ipucu">
+                            <span class="yildiz-bugun-sat-metin">@(s.Ek is null ? s.Metin : s.Metin + " ")@if (s.Ek is { } ek) {<span class="yildiz-bugun-sat-ek">· @ek</span>}</span>
+                            <span class="@(s.DurumKotu ? "yildiz-bugun-sat-durum yildiz-bugun-sat-durum--kotu" : "yildiz-bugun-sat-durum")"
+                                  id="@($"yildiz-bekleyen-{s.Kimlik}-durum")">@s.Durum</span>
+                            @if (s.Eylem is { } eylem && s.Adres is { } adres)
+                            {
+                                <a class="yildiz-b3" id="@($"yildiz-bekleyen-{s.Kimlik}-eylem")" href="@adres">@eylem</a>
+                            }
+                            else
+                            {
+                                <span></span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            @foreach (var n in Veri.Notlar)
+            {
+                <p class="yildiz-bugun-not" id="@n.Id">@n.Metin</p>
+            }
+            @foreach (var h in Veri.Hatalar)
+            {
+                <HataBandi Mesaj="@h.Mesaj" Id="@h.Id" />
+            }
+        </section>
+    </div>
+
+    <footer class="yildiz-bugun-alt" id="yildiz-bugun-alt">
+        @if (pozisyon is { } p)
+        {
+            <a class="yildiz-bugun-alt-oge" id="yildiz-bugun-pozisyon" href="/raporlar"><span class="yildiz-bugun-alt-etiket">@YildizBugunSozlugu.AltinPozisyonu(Dil.Dil)</span> <b>@YildizBugunBicim.HasKisa(p.Altin.NetGram, YildizBugunSozlugu.GramHas(Dil.Dil), true)</b></a>
+            <a class="yildiz-bugun-alt-oge" id="yildiz-bugun-vitrin" href="@($"/urunler?maden={p.Altin.Maden}")"><span class="yildiz-bugun-alt-etiket">@YildizBugunSozlugu.Vitrin(Dil.Dil)</span> <b>@YildizBugunBicim.HasKisa(p.Altin.VitrinGram, "g", false)</b></a>
+        }
+        @if (Veri.KarMetni is { } kar)
+        {
+            <a class="yildiz-bugun-alt-oge" id="yildiz-bugun-kar" href="/raporlar/kar-zarar"><span class="yildiz-bugun-alt-etiket">@YildizBugunSozlugu.Kar(Dil.Dil)</span> <b>@kar</b></a>
+        }
+    </footer>
+    <HataBandi Mesaj="@pozisyonHata" Id="yildiz-bugun-pozisyon-hata" />
+</div>
+
+@code {
+    /// <summary>Panel'in mevcut yükleyicilerinden kurulan veri.</summary>
+    [Parameter, EditorRequired] public YildizBugunVerisi Veri { get; set; } = new();
+    /// <summary>Listenin başına konan yasal bant (YasalDegisiklikBandi) — satır kalıbıyla çizilir.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private AltinPozisyonuYaniti? pozisyon;
+    private string? pozisyonHata;
+
+    private string Cumle => YildizBugunBicim.Cumle(Veri, Dil.Dil);
+
+    /// <summary>"Günü kapat" yalnız Kasa ekranını açabilen role (üst menü "Kasa" ile AYNI süzgeç).</summary>
+    private bool KasaGorunur =>
+        Kuyumcu.Web.Layout.YildizKabuk.Gorunur(Kuyumcu.Web.Layout.YildizKabuk.UstMenu[3], Yetki.Erisebilir, Oturum.Kullanici?.Rol);
+
+    private string UstSatirMetni
+    {
+        get
+        {
+            var d = KabukServisi.Ortak.GorunumIcin(Oturum);
+            var sube = d is null ? null
+                : YildizBugunBicim.SubeAdi(d.Subeler, d.SubeId, d.TumSubeler, Oturum.Kullanici?.SubeId, Dil.T.Kabuk.SubeTumu);
+            return YildizBugunBicim.UstSatir(Bicim.IsletmeBugun, sube, Dil.Dil);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        KabukServisi.Ortak.GorunumDegisti += GorunumDegisti;
+        KabukServisi.Ortak.GorunumDurumuDegisti += DurumDegisti;
+        Dil.Degisti += Yenile;
+        Yetki.Degisti += Yenile;
+        await PozisyonYukle();
+    }
+
+    private async Task PozisyonYukle()
+    {
+        pozisyonHata = null;
+        try
+        {
+            await SubeliSorgu.HazirAsync(Oturum);
+            var istenen = SubeliSorgu.Sube(Oturum);
+            var gelen = await Api.GetAsync<AltinPozisyonuYaniti>(SubeliSorgu.Ekle("/pozisyon", Oturum));
+            if (istenen != SubeliSorgu.Sube(Oturum)) return;
+            pozisyon = gelen;
+        }
+        // Yetkisiz rol pozisyonu GÖRMEZ: öğe yazılmaz (uydurma yok), bant da yok.
+        catch (ApiHata ex) when (ex.StatusCode == 403) { pozisyon = null; }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException or HttpRequestException or TaskCanceledException)
+        {
+            pozisyonHata = ex is HttpRequestException or TaskCanceledException
+                ? OrtakGorunumSozlugu.Al(Dil.Dil).PanelBaglantiHatasi : ex.Message;
+        }
+    }
+
+    private void GorunumDegisti(object sahip)
+    {
+        if (!ReferenceEquals(sahip, Oturum)) return;
+        InvokeAsync(async () => { await PozisyonYukle(); StateHasChanged(); });
+    }
+
+    private void DurumDegisti(object sahip)
+    {
+        if (ReferenceEquals(sahip, Oturum)) InvokeAsync(StateHasChanged);
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        KabukServisi.Ortak.GorunumDegisti -= GorunumDegisti;
+        KabukServisi.Ortak.GorunumDurumuDegisti -= DurumDegisti;
+        Dil.Degisti -= Yenile;
+        Yetki.Degisti -= Yenile;
+    }
+}

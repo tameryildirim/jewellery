@@ -1,0 +1,422 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@implements IDisposable
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+
+@* ═══ PAKET S2-1 — KALEM GİRİŞ SATIRI (barkod + ürün + adet + fiyat) ═════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Bileşen istek ATMAZ:
+   barkod okuma (/urunler/barkod), fiyat teklifi (/fiyat/teklif) ve kalem
+   ekleme sayfanın geri çağrılarıdır. Mevcut element id'leri DEĞİŞMEDİ.
+   Tek fark: bileşen klasöründe emoji YASAKTIR (IkonTestleri) → 🔎 yerine
+   ortak Ikon (Ikonlar.Arama) çizilir; düğme metni aynıdır. *@
+
+@* ── Barkod okutma ──
+   Tezgâhın asıl hızı burada: okutucu Enter basar, ürün
+   kalemlere DOĞRUDAN düşer. Açılır listede ürün aramak
+   vitrindeki müşteriyi bekletir. *@
+@* S1-i (katalog K7, 375 px): barkod kutusu ve düğmesi dar ekranda da TEK satır. *@
+<div class="fis-arama" id="islem-barkod-kutu">   @* SATIS-3 KAYNAK 0: TEK giriş — yazdıkça liste, barkod + Enter doğrudan ekler *@
+<div class="satir barkod-satiri">
+    <Arama ElemanId="islem-barkod" Etiket="@Dil.T.Urun.BarkodAra"
+           YerTutucu="@(YerTutucu ?? (Basit ? SatisTuvalSozlugu.Al(Dil.Dil).BarkodYerTutucu : SatisEkraniSozlugu.Al(Dil.Dil).BarkodKisaIpucu))"
+           Deger="@Giris.Barkod" DegerChanged="MetinDegisti"
+           TusBasti="TusIsle"
+           role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
+           aria-expanded="@(ListeGorunur ? "true" : "false")" aria-controls="islem-barkod-liste"
+           aria-activedescendant="@AktifId"
+           onfocus="@(EventCallback.Factory.Create<FocusEventArgs>(this, OdakGeldi))" onclick="@(EventCallback.Factory.Create<MouseEventArgs>(this, Tiklandi))" onblur="@(EventCallback.Factory.Create<FocusEventArgs>(this, OdakGitti))" />
+    <button class="btn btn-ikincil" disabled="@string.IsNullOrWhiteSpace(Giris.Barkod)"
+            aria-label="@Dil.T.Urun.BarkodAra" title="@Dil.T.Urun.BarkodAra"
+            @onclick="BarkodDugmesi">
+        <Ikon Ad="@Ikonlar.Arama" /> <span class="barkod-dugme-metin">@Dil.T.Urun.BarkodAra</span>
+    </button>
+</div>
+@if (ListeGorunur)
+{
+    @* Liste yalnız kutunun ALTINDA bağlı açılır (css/tuval-satis.css .fis-arama-liste); satır seçimi
+       mousedown'da (kutu odağını kaybetmeden) — ok tuşları + Enter aynı yolu çağırır. *@
+    <ul class="fis-arama-liste" id="islem-barkod-liste" role="listbox" aria-label="@S3.OneriEtiket">
+        @if (string.IsNullOrWhiteSpace(Giris.Barkod) && BosOdakListesi.Count > 0)
+        {
+            <li class="fis-arama-baslik" role="presentation" id="islem-barkod-bos-baslik">@S3.BosOdakBaslik</li>
+        }
+        @for (var i = 0; i < GorunenOneriler.Count; i++)
+        {
+            var ix = i;
+            var u = GorunenOneriler[ix];
+            <li role="option" class="fis-arama-oneri@(aktif == ix ? " aktif" : "")" id="@($"islem-barkod-oneri-{ix}")"
+                aria-selected="@(aktif == ix ? "true" : "false")"
+                @onmousedown="() => Sec(ix)" @onmousedown:preventDefault="true">
+                <span class="fis-arama-ad">@u.Ad</span>
+                <span class="fis-arama-meta">@AyarAdi(u)@(u.GramAgirlik > 0 ? " · " + Bicim.Gram(u.GramAgirlik) : "")</span>
+                @* KAYNAK 0: fiyat sunucudan; bilinmeyen "—". SATIS-4 (c): altın üründe fiyat toplu teklif ucundan
+                   (/fiyat/teklifler — seçimdeki /fiyat/teklif ile aynı motor), stok /urunler/stok-adetleri'nden. *@
+                <span class="fis-arama-fiyat sayi" id="@($"islem-barkod-oneri-fiyat-{ix}")">@FiyatMetni(u)</span>
+                <span class="fis-arama-stok@(SatirStoklari.TryGetValue(u.Id, out var stk) && stk <= 0m ? " stok-yok" : "")" id="@($"islem-barkod-oneri-stok-{ix}")">@StokMetni(u)</span>
+            </li>
+        }
+        @if (Araniyor && GorunenOneriler.Count == 0)
+        {
+            <li class="fis-arama-durum" role="presentation" id="islem-barkod-araniyor">@S3.Araniyor</li>
+        }
+        else if (BulunamadiGorunur)
+        {
+            <li class="fis-arama-durum" role="presentation" id="islem-barkod-bulunamadi">@S3.Bulunamadi</li>
+        }
+        @if (OneriSinirda && !string.IsNullOrWhiteSpace(Giris.Barkod))
+        {
+            <li class="fis-arama-durum" role="presentation" id="islem-barkod-sinir">@string.Format(S3.AramaSinir, GorunenOneriler.Count)</li>
+        }
+        @if (ElleSatiriVar)
+        {
+            <li role="option" class="fis-arama-elle@(aktif == GorunenOneriler.Count ? " aktif" : "")" id="islem-barkod-elle"
+                aria-selected="@(aktif == GorunenOneriler.Count ? "true" : "false")"
+                @onmousedown="ElleAc" @onmousedown:preventDefault="true">@S3.ElleEkleSatiri</li>
+        }
+    </ul>
+}
+</div>
+@if (OneriHata is { Length: > 0 } oh)
+{
+    <HataBandi Mesaj="@string.Format(S3.AramaHata, oh)" Id="islem-barkod-arama-hata" />   @* UX-S28: hata "bulunamadı"ya çevrilmez *@
+}
+@if (Giris.BarkodHata is not null)
+{
+    <HataBandi Mesaj="@Giris.BarkodHata" Id="islem-barkod-hata" />
+}
+
+@* ── Elle ekleme satırı (ürün + adet + fiyat + Ekle) — SATIS-3 KAYNAK 0: ayrı "Elle ekle"
+   düğmesi KALKTI; satır listenin son satırından ("Listede olmayan ürünü elle ekle") açılır.
+   Özellik silinmedi: alanlar DOM'da, id'ler aynı; ürün seçiliyse ya da alanda hata varsa
+   kendiliğinden açık. Özetsiz &lt;details&gt; tarayıcı "Ayrıntılar" yazısı basmasın diye boş,
+   gizli bir &lt;summary&gt; taşır (tıklanacak düğme DEĞİL). *@
+<details id="islem-elle" class="fis-elle" open="@ElleAcik">
+    <summary hidden aria-hidden="true" tabindex="-1"></summary>
+    @ElleSatiri
+</details>
+
+@code {
+    /// <summary>Giriş satırının durumu — SAHİBİ Islemler.razor.</summary>
+    [Parameter, EditorRequired] public KalemGirisi Giris { get; set; } = new();
+    [Parameter, EditorRequired] public IReadOnlyList<SecenekOgesi> UrunSecenekleri { get; set; } = [];
+    /// <summary>Seçili ürün GRAM birimli mi (adet adımı 0,001).</summary>
+    [Parameter] public bool Gramli { get; set; }
+    /// <summary>Sayfanın form durumu — alan altı mesajlar (islem-adet, islem-birimfiyat).</summary>
+    [Parameter, EditorRequired] public FormDurumu Form { get; set; } = new();
+    /// <summary>Barkod okut (Enter ya da düğme) — sayfa /urunler/barkod ucunu çağırır.</summary>
+    [Parameter] public EventCallback BarkodOkut { get; set; }
+    /// <summary>Ürün seçildi — sayfa fiyat teklifini (/fiyat/teklif) alır.</summary>
+    [Parameter] public EventCallback UrunSecildi { get; set; }
+    /// <summary>Ekle — doğrulama ve kalem listesine ekleme sayfadadır.</summary>
+    [Parameter] public EventCallback Ekle { get; set; }
+    /// <summary>Her girdi değişikliğinden sonra — sayfa yeniden çizilir.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private Task Bildir() => Degisti.InvokeAsync();
+
+    /// <summary>
+    /// PAKET PATCH-4 (hasım ORTA): istemci TUTAR TAVANI. Birim fiyat ya da satır tutarı
+    /// (adet × fiyat) sunucunun kolon tavanını (decimal(15,2) — PatchDortSozlugu.TutarTavani)
+    /// aşarsa kalem EKLENMEZ ve sebep fiyat kutusunun ALTINDA yazar; kullanıcı hatayı
+    /// kaydederken değil, girerken görür. Diğer doğrulamalar sayfada (Islemler.KalemEkle).
+    /// </summary>
+    private async Task EkleTiklandi()
+    {
+        if (TavanAsildi(Giris.Adet, Giris.BirimFiyat))
+        {
+            Form.Temizle();
+            Form.Ekle("islem-birimfiyat", TavanMesaji(Dil.Dil));
+            await Bildir();
+            return;
+        }
+        await Ekle.InvokeAsync();
+    }
+
+    /// <summary>Birim fiyat ya da adet × fiyat tavanı aşıyor mu (taşma da "aşıyor" sayılır).</summary>
+    public static bool TavanAsildi(decimal adet, decimal? birimFiyat)
+    {
+        if (birimFiyat is not { } f) return false;
+        if (f > PatchDortSozlugu.TutarTavani) return true;
+        try { return Math.Abs(adet) * f > PatchDortSozlugu.TutarTavani; }
+        catch (OverflowException) { return true; }
+    }
+
+    /// <summary>Alan altı mesaj (dile göre; tavan hane sayısıyla söylenir).</summary>
+    public static string TavanMesaji(string dil) => PatchDortSozlugu.Al(dil).TutarTavaniAsildi;
+
+    /// <summary>
+    /// PAKET S2-5 (PLAN 2.8) — BARKOD ODAĞI. Sayfa açılınca ve her başarılı
+    /// kayıttan sonra (jeton artar) odak #islem-barkod alanına gider: okutucu
+    /// sıradaki müşteride hiçbir tıklama olmadan çalışır. Mekanizma mevcut
+    /// kuyumcuOdak.alana (cekmece.js); yeni betik açılmaz. JS yoksa (ön
+    /// çizim, test) odak sessizce atlanır — alan yine elle tıklanabilir.
+    /// </summary>
+    [Parameter] public int OdakJeton { get; set; }
+    private int? odaklananJeton;
+
+    protected override async Task OnAfterRenderAsync(bool ilkCizim)
+    {
+        if (odaklananJeton == OdakJeton) return;
+        odaklananJeton = OdakJeton;
+        try { await JS.InvokeAsync<bool>("kuyumcuOdak.alana", "islem-barkod"); }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException) { }
+    }
+
+    /// <summary>PAKET S2-2 — basit modda elle ekleme satırı katlanır.</summary>
+    [Parameter] public bool Basit { get; set; }
+    /// <summary>PAKET SATIS-2 (d+e) — PRO satışta da tek giriş: elle satırı "Elle ekle" altında katlı.</summary>
+    [Parameter] public bool Katli { get; set; }
+    /// <summary>PAKET SATIS-2 — arama kutusunun yer tutucusu (null = moda göre varsayılan).</summary>
+    [Parameter] public string? YerTutucu { get; set; }
+
+    /// <summary>Seçili ürün ya da alan hatası varsa katman açık gelir (fiyat sessizce eksik kalmaz).</summary>
+    private bool ElleAcik => elleIstendi || !string.IsNullOrEmpty(Giris.UrunId) || !Form.Gecerli;
+    /// <summary>t13: elle satırı arama satırından açıldıysa aranan metin seçicinin boş hâlinde yazar (null = varsayılan "Ürün seçin…").</summary>
+    private string? ElleYerTutucu => elleIstendi && elleAranan.Length > 0 ? string.Format(S3.ElleAranan, elleAranan) : null;
+
+    // ═══ PAKET SATIS-3 — KAYNAK 0: TEK GİRİŞ + ÖNERİ LİSTESİ ═══════════════════
+    // Bileşen İSTEK ATMAZ (S-2 kuralı, denetim S2-3): arama isteği sayfanın Ara
+    // geri çağrısıdır; bileşen yalnız 220 ms bekler (debounce), listeyi çizer ve
+    // klavye/fare seçimini sayfaya bildirir.
+    /// <summary>Sunucu arama sonucu (null = henüz aranmadı / metin boş).</summary>
+    /// <summary>SATIS-4 (c): ürün → satış fiyatı (toplu teklif; null = hesaplanamadı). Yoksa "—".</summary>
+    [Parameter] public IReadOnlyDictionary<string, decimal?> SatirFiyatlari { get; set; } = new Dictionary<string, decimal?>();
+    /// <summary>SATIS-4 (c): ürün → stok adedi (oturum şubesi). Yoksa "Stok —".</summary>
+    [Parameter] public IReadOnlyDictionary<string, decimal> SatirStoklari { get; set; } = new Dictionary<string, decimal>();
+
+    private string FiyatMetni(UrunVeri u) =>
+        u.SatisFiyati is { } f && f > 0 ? Bicim.Tl(f)
+        : SatirFiyatlari.TryGetValue(u.Id, out var t) && t is > 0m ? Bicim.Tl(t.Value) : "—";
+
+    private string StokMetni(UrunVeri u)
+    {
+        var p5 = KesifP5Sozlugu.Al(Dil.Dil);
+        if (!SatirStoklari.TryGetValue(u.Id, out var s)) return p5.StokBilinmiyor;
+        if (s <= 0m) return p5.StokYok;
+        return string.Format(p5.Stok, u.Birim == "GRAM" ? Bicim.Gram(s) : s.ToString("#,##0.###", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")));
+    }
+
+    [Parameter] public IReadOnlyList<UrunVeri>? Oneriler { get; set; }
+    /// <summary>Kutu boşken liste açılınca gösterilen liste (sayfa "en çok satılan" sırasıyla verir).</summary>
+    [Parameter] public IReadOnlyList<UrunVeri> BosOdakListesi { get; set; } = [];
+    /// <summary>Boş kutuya odaklanıldı — sayfa boş odak listesini (bir kez) ister. Bileşen istek atmaz.</summary>
+    [Parameter] public EventCallback BosOdakIste { get; set; }
+    /// <summary>Sayfa arama isteğini bekliyor.</summary>
+    [Parameter] public bool Araniyor { get; set; }
+    /// <summary>Son arama sunucu sınırına değdi (UX-S29: "daha fazlası var").</summary>
+    [Parameter] public bool OneriSinirda { get; set; }
+    /// <summary>Arama isteği hata verdi — "bulunamadı" DEĞİL, hata bandı (UX-S28).</summary>
+    [Parameter] public string? OneriHata { get; set; }
+    /// <summary>Metin yazıldı (debounce sonrası) — sayfa GET /urunler?q= ister.</summary>
+    [Parameter] public EventCallback<string> Ara { get; set; }
+    /// <summary>Listeden ürün seçildi — sayfa fiyat teklifini alır ve kalemi ekler.</summary>
+    [Parameter] public EventCallback<string> OneriSecildi { get; set; }
+
+    /// <summary>Debounce süresi (ms) — ISTEK-1 oran kuralına uygun, harf başına istek yok.</summary>
+    public const int BeklemeMs = 220;
+    /// <summary>Boş odak listesinin boyu.</summary>
+    public const int BosOdakBoyu = 8;
+
+    private Satis3Metinleri S3 => Satis3Sozlugu.Al(Dil.Dil);
+    private bool listeAcik, elleIstendi;   // t13: listeAcik YALNIZ kullanıcı eylemiyle (tıklama, yazma, ↓, F2) true olur — odak tek başına açmaz
+    private string elleAranan = "";
+    private int aktif = -1;
+    private CancellationTokenSource? bekleme;
+    private string sonAranan = "";
+
+    private IReadOnlyList<UrunVeri> GorunenOneriler =>
+        string.IsNullOrWhiteSpace(Giris.Barkod)
+            ? BosOdakListesi.Take(BosOdakBoyu).ToList()
+            : (Oneriler is not null && sonAranan == Giris.Barkod.Trim() ? Oneriler : []);
+
+    private bool BulunamadiGorunur =>
+        !string.IsNullOrWhiteSpace(Giris.Barkod) && !Araniyor && OneriHata is null
+        && Oneriler is not null && sonAranan == Giris.Barkod.Trim() && Oneriler.Count == 0;
+
+    /// <summary>"Elle ekle" satırı çizili mi (metin var ve arama bitmiş) — klavye yalnız çizili satıra gider.</summary>
+    private bool ElleSatiriVar => !string.IsNullOrWhiteSpace(Giris.Barkod) && !Araniyor
+        && sonAranan == Giris.Barkod.Trim() && (Oneriler is not null || OneriHata is not null);
+
+    private bool ListeGorunur =>
+        listeAcik && (GorunenOneriler.Count > 0 || !string.IsNullOrWhiteSpace(Giris.Barkod));
+
+    private string? AktifId => !ListeGorunur || aktif < 0 ? null
+        : aktif < GorunenOneriler.Count ? $"islem-barkod-oneri-{aktif}" : "islem-barkod-elle";
+
+    /// <summary>UX-S31: ham ayar kodu (K22) ekrana basılmaz — tek kaynak Core.Ayarlar adı.</summary>
+    private static string AyarAdi(UrunVeri u) =>
+        u.Ayar is { Length: > 0 } a && a != u.AyarId ? a
+        : KurKaynakAdi.AyarAdi(u.AyarId ?? "");
+
+    /// <summary>
+    /// SATIS-3 t13 (tasarım hakemi YÜKSEK, 29.09): liste YALNIZ kullanıcı eylemiyle açılır — kutuya tıklama,
+    /// yazma, ↓ ya da F2 (kutudayken tuş, değilse sayfanın F2 kısayolu → <see cref="AcJeton"/>). Programın
+    /// odağı kutuya geri vermesi (OdakJeton, Basit↔Profesyonel geçişi, sekme dönüşü) listeyi AÇMAZ; eskiden
+    /// focus olayı açıyordu ve 6 satırlık liste kalem satırıyla toplamların üstüne biniyordu.
+    /// </summary>
+    private async Task ListeyiAc()
+    {
+        if (listeAcik) return;
+        listeAcik = true; aktif = -1;
+        if (string.IsNullOrWhiteSpace(Giris.Barkod)) await BosOdakIste.InvokeAsync();
+    }
+    /// <summary>Sayfanın F2 kısayolu her basışta artırır; değişince liste açılır. İlk değer (bileşen yeniden
+    /// kurulduğunda sayfanın o anki jetonu) AÇMAZ — mod/sekme değişimi kendiliğinden liste açmasın.</summary>
+    [Parameter] public int AcJeton { get; set; }
+    private int? acJetonSon;
+    protected override async Task OnParametersSetAsync()
+    {
+        if (acJetonSon is null) { acJetonSon = AcJeton; return; }
+        if (acJetonSon == AcJeton) return;
+        acJetonSon = AcJeton;
+        await ListeyiAc();
+    }
+    /// <summary>Kutu açılışta zaten odakta olduğundan tıklama yeni focus olayı doğurmaz — tıklama listeyi açar.</summary>
+    /// <summary>t13: odak (programın ya da Tab'ın) listeyi AÇMAZ — yalnız klavye seçimi sıfırlanır.</summary>
+    private void OdakGeldi() { aktif = -1; }
+    private Task Tiklandi(MouseEventArgs _) => ListeyiAc();
+    private void OdakGitti() { listeAcik = false; aktif = -1; }
+
+    private async Task MetinDegisti(string? v)
+    {
+        Giris.Barkod = v ?? "";
+        listeAcik = true;
+        aktif = -1;
+        bekleme?.Cancel();
+        var q = Giris.Barkod.Trim();
+        await Bildir();
+        if (q.Length == 0) return;
+        var cts = bekleme = new CancellationTokenSource();
+        try { await Task.Delay(BeklemeMs, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        if (cts.IsCancellationRequested) return;
+        sonAranan = q;
+        await Ara.InvokeAsync(q);
+    }
+
+    /// <summary>↑/↓ gezer, Enter seçer (seçim yoksa barkod okur), Esc kapatır.</summary>
+    private async Task TusIsle(KeyboardEventArgs e)
+    {
+        var son = GorunenOneriler.Count + (ElleSatiriVar ? 1 : 0) - 1;
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (!listeAcik) { await ListeyiAc(); son = GorunenOneriler.Count + (ElleSatiriVar ? 1 : 0) - 1; }   // SATIS-3: klavyeyle de açılır
+                aktif = Math.Min(aktif + 1, son); break;
+            case "F2": await ListeyiAc(); break;   // t13: kutudayken F2 de açar (sayfa kısayolu AcJeton'la)
+            case "ArrowUp": aktif = Math.Max(aktif - 1, -1); break;
+            case "Escape": listeAcik = false; aktif = -1; break;
+            case "Enter" or "NumpadEnter":
+                bekleme?.Cancel();   // okuyucunun hızlı dizisi: bekleyen arama iptal, barkod DOĞRUDAN okunur
+                if (ListeGorunur && aktif >= 0 && aktif < GorunenOneriler.Count) await Sec(aktif);
+                else if (ListeGorunur && ElleSatiriVar && aktif == GorunenOneriler.Count && aktif >= 0) ElleAc();
+                else { listeAcik = false; await BarkodOkut.InvokeAsync(); }
+                break;
+        }
+    }
+
+    private async Task BarkodDugmesi()
+    {
+        bekleme?.Cancel();
+        listeAcik = false;
+        await BarkodOkut.InvokeAsync();
+    }
+
+    private async Task Sec(int ix)
+    {
+        if (ix < 0 || ix >= GorunenOneriler.Count) return;
+        var id = GorunenOneriler[ix].Id;
+        bekleme?.Cancel();
+        listeAcik = false;
+        aktif = -1;
+        elleIstendi = false;
+        elleAranan = "";
+        await OneriSecildi.InvokeAsync(id);
+    }
+
+    /// <summary>"Ürün seç, fiyatı kendin yaz" — elle satırı açılır (özellik silinmedi). t13: satır adı yaptığı işi
+    /// söyler (mevcut ürün + elle fiyat; sunucu kalemde ürün kimliği ister) ve aranan metin ürün seçicisine taşınır.</summary>
+    private void ElleAc()
+    {
+        bekleme?.Cancel();
+        elleIstendi = true;
+        elleAranan = Giris.Barkod.Trim();
+        listeAcik = false;
+        aktif = -1;
+    }
+
+    public void Dispose() => bekleme?.Cancel();
+
+    /// <summary>Ürün + adet + fiyat + Ekle satırı (S2-1'de taşınan markup, değişmedi).</summary>
+    private RenderFragment ElleSatiri => @<text>
+@* PAKET S1-i (kurucu 24.09: "inputlar aynı seviyede değil"): satır ortak form
+   satırı sınıfıyla (app.css S1-i `.form-satiri`) hizalanır — etiketler aynı üst
+   çizgide, girdiler aynı yükseklik ve alt çizgide, Ekle girdilerle hizalı.
+   Fiyat alanını saran ikinci `.alan` kaldırıldı (iç içe alan rayları kaydırıyordu:
+   ölçüldü 31 px); fiyat kaynağı/teklif notu satırın ALTINA indi. id'ler aynı. *@
+<div class="satir form-satiri fis-kalem-satiri" id="islem-elle-satir">
+    <div class="alan esnek">
+        <Secici ElemanId="islem-urun"
+                Etiket="@Dil.T.Islem.Urun"
+                Secenekler="@UrunSecenekleri"
+                @bind-Deger="Giris.UrunId"
+                @bind-Deger:after="() => UrunSecildi.InvokeAsync()"
+                BosSecenekMetni="@Dil.T.Urun.UrunSecin"
+                YerTutucu="@ElleYerTutucu" />
+    </div>
+    @* GRAM ürün: miktar gram, 0,001 adım — paket 21 çift birim *@
+    @* PAKET GOC-C (#6 · K14): ADET birimli üründe ortak Adet (kesir tuşta yazılamaz; ileti Core AdetKurali — sunucu
+       UrunAdetKapisi ile AYNI cümle); GRAM birimli üründe miktar gramdır (3 ondalık). Kimlik AYNI (islem-adet). *@
+    @if (Gramli)
+    {
+        <Sayi ElemanId="islem-adet" Zorunlu="true" Etiket="@Dil.T.Ortak.Adet"
+              EnAz="0.001m" EnCokOndalik="3"
+              Deger="@Giris.Adet" DegerChanged="@(v => { Giris.Adet = v ?? 0m; return Bildir(); })"
+              Durum="Form" HataAlani="islem-adet" />
+    }
+    else
+    {
+        <Adet ElemanId="islem-adet" Zorunlu="true" Etiket="@Dil.T.Ortak.Adet"
+              Deger="@Giris.Adet" DegerChanged="@(v => { Giris.Adet = v ?? 0m; return Bildir(); })"
+              Durum="Form" HataAlani="islem-adet" />
+    }
+    <Para ElemanId="islem-birimfiyat" Zorunlu="true" Etiket="@Dil.T.Islem.BirimFiyat" EnAz="0"
+          @bind-Deger="Giris.BirimFiyat" @bind-Deger:after="Bildir"
+          Durum="Form" HataAlani="islem-birimfiyat" />
+    @* QA turu 1+2 YÜKSEK: "adet=0 / fiyat=-5 ile Ekle sessizce hiçbir şey
+       yapmıyor". Düğme KİLİTLİ DEĞİL: tıklanır ve eksik olan alanın altında
+       Türkçe mesaj çıkar (DoD EK md.3). *@
+    <button class="btn btn-birincil" id="islem-kalem-ekle" @onclick="EkleTiklandi">@Dil.T.Ortak.Ekle</button>
+</div>
+@if (Giris.SonTeklif is not null && !string.IsNullOrEmpty(Giris.UrunId))
+{
+    <div class="fis-teklif-satiri" id="islem-teklif-sar">
+        @if (Giris.SonTeklif is { } st && !string.IsNullOrEmpty(Giris.UrunId))
+        {
+            @if (st.TeklifVar)
+            {
+                <small id="islem-teklif" class="metin-soluk">
+                    @* UX-S21 / B-69: değerin NEREDEN geldiği rozetle söylenir —
+                       kullanıcı sistemin bildiği rakamı elle girmez. *@
+                    <span class="rozet rozet-gri" id="islem-fiyat-kaynak">@Dil.T.Islem.ListedenGeldi</span>
+                    @Dil.T.Fiyat.ListeFiyati @Bicim.Tl(st.ListeFiyati ?? 0m)
+                    @if (st.IndirimTutari is > 0)
+                    {
+                        <text> · @Dil.T.Fiyat.Indirim @Bicim.Tl(st.IndirimTutari.Value)</text>
+                        @if (st.IndirimOncesiFiyat is { } io) { <text> · @Dil.T.Fiyat.IndirimOncesi @Bicim.Tl(io)</text> }
+                    }
+                </small>
+            }
+            else if (Giris.BarkodHata is null)
+            {
+                @* t7: sebep üstteki bantta (#islem-barkod-hata) yazıyorsa ikinci kez yazılmaz *@
+                <small id="islem-teklif-yok" class="metin-amber">
+                    @(st.Sebep == "LISTE_YOK" ? Dil.T.Fiyat.ListeYok : Dil.T.Fiyat.TeklifYok)
+                </small>
+            }
+        }
+    </div>
+}
+</text>;
+}

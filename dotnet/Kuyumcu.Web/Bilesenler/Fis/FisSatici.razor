@@ -1,0 +1,81 @@
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Contracts.Sayfalar.SaticiPersonel
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-5b — SATICI PERSONEL (PLAN § S-2 madde 2.8) ════════════════════
+   hareketler.personel_id = SATIŞI YAPAN (kaydı giren değil).
+   · BASİT mod: seçici YOK; salt okunur "Satan: <ad>" satırı. Gövdeye
+     personelId KONMAZ → sunucu oturum kullanıcısını yazar.
+   · PRO mod: sunucu seçim serbest dediyse ve birden çok aktif kullanıcı varsa
+     #islem-personel seçicisi (varsayılan oturum kullanıcısı). Tek seçenekte
+     seçici GİZLENİR, salt okunur satır yazar (UX-S22).
+   · Kim başkasını seçebilir: SUNUCU söyler (SecimSerbest); istemci rol
+     listesi gömmez. Sunucu yine her istekte doğrular (yetki ≠ mod).
+   ⚠ TEK POST YOLU: bu bileşen istek ATMAZ; liste sayfadan parametre gelir,
+     seçim Secili/SeciliChanged ile sayfaya döner, gövdeye sayfa koyar. *@
+<div class="alan" id="islem-satan-sar">
+    <HataBandi Mesaj="@HataMetni" Id="islem-personel-hata" />
+    @if (SeciciGorunur)
+    {
+        <Secici ElemanId="islem-personel"
+                Etiket="@(Etiket ?? M.Satan)"
+                Secenekler="@Secenekler"
+                Deger="@(Secili ?? Liste!.OturumId)" DegerChanged="SecimDegisti" />
+        <span class="metin-soluk metin-kucuk" id="islem-personel-ipucu">@M.SatanIpucu</span>
+        @if (Liste!.DahaFazlasiVar)
+        {
+            <span class="metin-kucuk metin-soluk" id="islem-personel-sinir" role="status">@M.DahaFazlasiVar</span>
+        }
+    }
+    else
+    {
+        <span class="alan-etiket" id="islem-satan-etiket">@(Etiket ?? M.Satan)</span>
+        <p class="hucre-vurgu@(Etiket is null ? null : " fis-salt-kutu")" id="islem-satan" aria-labelledby="islem-satan-etiket">@SatanAdi</p>
+        @if (!Basit && Liste is { SecimSerbest: false })
+        {
+            <span class="metin-soluk metin-kucuk" id="islem-personel-ipucu">@M.KendinizIpucu</span>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>Sunucunun satıcı listesi (GET /islemler/personeller); alınamadıysa null.</summary>
+    [Parameter] public SaticiPersonelListesi? Liste { get; set; }
+
+    /// <summary>Liste alınamadıysa sunucu mesajı (UX-S28: yutulmaz).</summary>
+    [Parameter] public string? Hata { get; set; }
+
+    /// <summary>Basit mod: seçici hiç çizilmez.</summary>
+    [Parameter] public bool Basit { get; set; }
+
+    /// <summary>Oturum kullanıcısının görünen adı (liste yoksa "Satan" satırı bunu yazar).</summary>
+    [Parameter] public string? OturumAdi { get; set; }
+
+    /// <summary>Pro modda seçilen personel; null = oturum kullanıcısı.</summary>
+    [Parameter] public string? Secili { get; set; }
+    [Parameter] public EventCallback<string?> SeciliChanged { get; set; }
+
+    private FisSaticiMetinleri M => FisSaticiSozlugu.Al(Dil.Dil);
+
+    /// <summary>PAKET T-S2 — tuval Profesyonel alan satırının etiketi ("Satıcı"); null = eski "Satan".</summary>
+    [Parameter] public string? Etiket { get; set; }
+
+    private string? HataMetni => string.IsNullOrEmpty(Hata) ? null : string.Format(M.YuklemeHatasi, Hata);
+
+    /// <summary>Seçici yalnız pro modda, seçim serbestken ve birden çok seçenek varken.</summary>
+    private bool SeciciGorunur => !Basit && Liste is { SecimSerbest: true, Personeller.Count: > 1 };
+
+    private IReadOnlyList<SecenekOgesi> Secenekler =>
+        (Liste?.Personeller ?? []).Select(p => new SecenekOgesi(p.Id, AdSoyad(p))).ToList();
+
+    private static string AdSoyad(SaticiPersonelSatiri p) => $"{p.Ad} {p.Soyad}".Trim();
+
+    /// <summary>Salt okunur satırın adı: listede oturum kullanıcısı varsa o, yoksa oturumdaki ad.</summary>
+    private string SatanAdi =>
+        Liste?.Personeller?.FirstOrDefault(p => p.Id == Liste.OturumId) is { } ben ? AdSoyad(ben)
+        : !string.IsNullOrWhiteSpace(OturumAdi) ? OturumAdi!.Trim()
+        : M.Bilinmiyor;
+
+    private Task SecimDegisti(string? v) =>
+        SeciliChanged.InvokeAsync(string.IsNullOrEmpty(v) || v == Liste?.OturumId ? null : v);
+}

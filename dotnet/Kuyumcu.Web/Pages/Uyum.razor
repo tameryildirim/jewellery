@@ -1,0 +1,1143 @@
+@page "/uyum"
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject UyumServisi Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   UYUM EKRANI — PLAN-2 Adım 1.
+   MASAK'ın 12 ucundan 11'i ekransızdı: kuyumcu şüpheli işlemi bildiremiyor,
+   kimlik tespitlerini göremiyor, saklama süresini yönetemiyordu.
+
+   MEHMET'İN KOŞULLARI (PLAN-2 Adım 1 oylaması):
+   • Listede TCKN/belge no MASKELİ. Toplu tam kimlik gösteren ekran YASAK.
+   • Detay AYRI ROUTE DEĞİL, MODAL: URL'e kişisel veri kimliği yazılmaz,
+     geri tuşuyla kaza yeniden-okuma olmaz.
+   • ÖN YÜKLEME (prefetch) YASAK: detay yalnız tıklayınca çekilir, çünkü
+     tekil uç OKUMA İZİ düşürür (KVKK md.12).
+   • UI rol matrisini tekrar eder ama API SON SÖZÜ SÖYLER.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Uyum.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+<div class="dikey-bosluk">
+    @* UX-1-C3: sayfa başı (başlık + tek birincil eylem). Açıklama metni
+       KALDIRILMADI, SayfaBasi'nın Aciklama yuvasına taşındı. *@
+    @* PAKET YASAL-2 tur 2: Nakit sınırı sekmesinde MASAK'ın "+ Yeni bildirim"i nakit
+       sınırı bildirimi sanılır → o sekmede sayfa başı EYLEMSİZ çizilir (boş eylem satırı
+       sekmelerin üstünde 40 px boşluk bırakıyordu — gerçek tarayıcı ölçümü); o sekmenin
+       birincili satırdaki "Dilekçeyi yazdır". *@
+    @* TOPLU-6 (YASAL-LISTE-DEMO hakemi DÜŞÜK "boş başlık alanında yalnız '+ Yeni'"): Risk sekmesinde de
+       (yasal liste + risk puanı) "+ Yeni bildirim" o sekmenin işi değildir; BASİT'te açıklama gizli olduğu için
+       başlık alanında tek başına duruyordu. Nakit sekmesi gibi EYLEMSİZ; bildirim diğer sekmelerde aynen. *@
+    @* SUNUM 15.10: Şüpheli İşlemler sekmesinde "+ Yeni bildirim" sekmenin kendi satırında (#uy-yeni-bildirim-sekme) zaten var —
+       sayfa başındaki ikinci düğme aynı ekranda iki birincil düğme demekti (tek birincil ilkesi) → o sekmede de başlık eylemsiz. *@
+    @if (sekme == Sekme.Nakit || sekme == Sekme.Risk || sekme == Sekme.Supheli)
+    {
+        <SayfaBasi Anahtar="uyum" Baslik="@Dil.T.Uyum.Baslik" Aciklama="@Dil.T.Uyum.Aciklama" />
+    }
+    else
+    {
+    <SayfaBasi Anahtar="uyum" Baslik="@Dil.T.Uyum.Baslik" Aciklama="@Dil.T.Uyum.Aciklama">
+        <Eylem>
+            @* Ekranın tek birincil eylemi: yeni şüpheli işlem bildirimi.
+               Sekme farklıysa düğme sekmeyi de değiştirir — tıklanınca hiçbir
+               şey olmayan düğme yasak (DoD EK md.1). *@
+            <button class="dugme dugme-birincil dugme-kucuk" id="uy-yeni-bildirim"
+                    @onclick="YeniBildirimAc">+ @Dil.T.Uyum.YeniBildirim</button>
+        </Eylem>
+    </SayfaBasi>
+    }
+
+    <HataBandi Mesaj="@hata" />
+    @if (basari is not null) { <BasariBandi Mesaj="@basari" /> }
+
+    @* PAKET YASAL-2 tur 2: MASAK özet kutuları nakit sınırı sekmesinde gösterilmez
+       (orada "0 açık bildirim" yanlış okunuyordu; sekme kendi sayılarını çizer). *@
+    @if (ozet is not null && sekme != Sekme.Nakit)
+    {
+        <div class="stat-izgara">
+            <StatKart Etiket="@Dil.T.Uyum.AcikBildirim" Deger="@ozet.AcikBildirim.ToString()" />
+            <StatKart Etiket="@Dil.T.Uyum.SuresiGecmis" Deger="@ozet.SuresiGecmis.ToString()"
+                      Renk="@(ozet.SuresiGecmis > 0 ? "kirmizi" : "")" />
+            <StatKart Etiket="@Dil.T.Uyum.Yaklasan" Deger="@ozet.Yaklasan.ToString()"
+                      Renk="@(ozet.Yaklasan > 0 ? "" : "mavi")" />
+            <StatKart Etiket="@Dil.T.Uyum.Son30Gun" Deger="@ozet.Son30GunTespit.ToString()" Renk="mavi" />
+        </div>
+    }
+
+    @* PAKET S1-i: elle yazılmış tablist ORTAK Sekmeler bileşenine taşındı (WAI-ARIA,
+       klavye, ?sekme= derin bağlantı). #uy-sekme-risk kimliği aynı; açık bildirim ve
+       yüksek risk sayı rozetleri sekme etiketinde yaşar (SekmeTanimi.Rozet). *@
+    <Sekmeler Onek="uy" Liste="@UySekmeleri" Etiket="@GS.UyumSerit" SeciliDegisti="UySekmeDegisti">
+        <Panel Context="uyKod">
+    @if (Durum(uyKod) != sekme)
+    {
+        @* seçili olmayan panel boş — veri yalnız açık sekme için çekilir *@
+    }
+    else if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        @if (sekme == Sekme.Tespit)
+        {
+            <div class="kart">
+                <div class="kart-govde form-grid-3">
+                    @* TOPLU-6 (TOPLU-4 hakemi ORTA "açıklama satırları"): 12 px arama notu alanın altında satır
+                       değil, yanındaki ⓘ içinde (metin AYNI). *@
+                    <div class="t4-ipucu-satir t6-arama-satir" id="uy-arama-satir">
+                    <Arama ElemanId="ara-belge" Etiket="@Dil.T.Uyum.BelgeNoIleAra"
+                           YerTutucu="@Dil.T.Uyum.TamBelgeNo"
+                           Deger="@araBelgeNo" DegerChanged="@(async v => { araBelgeNo = v ?? ""; await Ara(); })" />
+                        <details class="zo-ipucu" id="uy-arama-ipucu">
+                            <summary aria-label="@Toplu6Sozlugu.Al(Dil.Dil).UyumAramaBilgi">i</summary>
+                            <p id="ara-belge-ipucu">@Dil.T.Uyum.AramaNotu</p>
+                        </details>
+                    </div>
+                </div>
+            </div>
+
+            @if (aramaSonucu is { } asn)
+            {
+                <p id="uy-arama-ozet" class="metin-kucuk metin-soluk">
+                    @string.Format(Dil.T.Uyum.AramaSonucu, asn.Adet, Para(asn.ToplamTutarTl))
+                </p>
+            }
+
+            @if (tespitler.Count == 0)
+            {
+                <BosDurum Mesaj="@(aramaSonucu is null ? Dil.T.Uyum.TespitYok : Dil.T.Uyum.AramaSonucYok)" />
+            }
+            else
+            {
+                @* PAKET GOC-B — ORTAK IZGARA (grid:uyum:uy-tespit). Sunucu en çok 100 kayıt → sınıra değdiyse sıralama kapalı (UX-S29). *@
+                <div class="kart">
+                    <Izgara T="KimlikTespitSatir" Ekran="uyum" GridId="uy-tespit" Kolonlar="@TespitKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(tespitler, tespitSira, TespitKolonlari)"
+                            SatirId="@(t => $"uy-tespit-satir-{t.Id}")" Baslik="@Dil.T.Uyum.KimlikTespitleri"
+                            SiralamaDegisti="@(x => tespitSira = x)" GecerliSiralama="@tespitSira" />
+                </div>
+                @if (!TespitTam)
+                {
+                    <p class="metin-kucuk metin-soluk" id="uy-tespit-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, TespitSiniri)</p>
+                }
+                <p class="metin-soluk metin-kucuk"><Ikon Ad="@Ikonlar.Kilit" /> @Dil.T.Uyum.MaskeNotu</p>
+            }
+        }
+        else if (sekme == Sekme.Supheli)
+        {
+            <div class="dugme-satir">
+                <button class="dugme dugme-birincil" id="uy-yeni-bildirim-sekme"
+                        @onclick="YeniBildirimAc">
+                    + @Dil.T.Uyum.YeniBildirim
+                </button>
+                <Secici ElemanId="uy-supheli-durum"
+                        Etiket="@Dil.T.Ortak.Durum"
+                        Secenekler="@SupheliDurumSecenekleri"
+                        @bind-Deger="supheliFiltre"
+                        @bind-Deger:after="Yukle"
+                        BosSecenekMetni="@Dil.T.Uyum.TumDurumlar" />
+            </div>
+
+            @if (supheliler.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.Uyum.BildirimYok" />
+            }
+            else
+            {
+                @* PAKET GOC-B — ORTAK IZGARA (grid:uyum:uy-supheli). Ham durum kodu (ACIK) yerine sözlük adı (UX-S31);
+                   satır renkleri (gecikti/yaklaşıyor) SatirSinif'te aynen. Sunucu en çok 500 kayıt. *@
+                <div class="kart">
+                    <Izgara T="SupheliSatir" Ekran="uyum" GridId="uy-supheli" Kolonlar="@SupheliKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(supheliler, supheliSira, SupheliKolonlari)"
+                            SatirId="@(x => $"uy-supheli-satir-{x.Id}")"
+                            SatirSinif="@(x => x.Gecikti ? "satir-kirmizi" : x.Yaklasiyor ? "satir-amber" : null)"
+                            Baslik="@Dil.T.Uyum.SupheliIslemler"
+                            SiralamaDegisti="@(x => supheliSira = x)" GecerliSiralama="@supheliSira" />
+                </div>
+                @if (!SupheliTam)
+                {
+                    <p class="metin-kucuk metin-soluk" id="uy-supheli-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, SupheliSiniri)</p>
+                }
+                <p class="metin-soluk metin-kucuk"><Ikon Ad="@Ikonlar.Uyari" /> @Dil.T.Uyum.GonderimEldeNotu</p>
+            }
+        }
+        else if (sekme == Sekme.Saklama)
+        {
+            @if (saklama is { } sk)
+            {
+                <div class="kart">
+                    <div class="kart-govde form-dikey">
+                        <p>@DilEkranSozlugu.SunucuMetni(Dil.Dil, sk.Aciklama)</p>
+                        <dl class="tanim-listesi uy-tanim">
+                            <dt>@Dil.T.Uyum.SuresiDolmusTespit</dt><dd>@sk.SuresiDolmus.KimlikTespiti</dd>
+                            <dt>@Dil.T.Uyum.SuresiDolmusBeyan</dt><dd>@sk.SuresiDolmus.Beyan</dd>
+                            <dt>@Dil.T.Uyum.EnYakinSaklamaBitisi</dt>
+                            <dd>@(sk.EnYakinSaklamaBitisi is { } esb ? Bicim.TarihTam(esb) : "—")</dd>
+                        </dl>
+
+                        @if (sk.SuresiDolmus.KimlikTespiti + sk.SuresiDolmus.Beyan > 0)
+                        {
+                            <div class="uyari-kutu">
+                                <p><strong>@Dil.T.Uyum.MaskelemeUyariBaslik</strong></p>
+                                <p>@Dil.T.Uyum.MaskelemeUyari</p>
+                            </div>
+                            <Onay ElemanId="uy-maskeleme-onay" Etiket="@Dil.T.Uyum.MaskelemeOnayi"
+                                  @bind-Deger="saklamaOnaylandi" />
+                            <div class="dugme-satir">
+                                <button class="dugme dugme-tehlike" disabled="@(!saklamaOnaylandi || kaydediliyor)"
+                                        title="@(saklamaOnaylandi ? null : Dil.T.Uyum.MaskelemeOnayi)"
+                                        @onclick="SaklamaCalistir">
+                                    @Dil.T.Uyum.MaskelemeyiUygula
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <p class="metin-soluk metin-kucuk">@Dil.T.Uyum.SaklamaDayanak</p>
+            }
+            <Kuyumcu.Web.Bilesenler.Uyum.SaklamaBekletmePaneli />@* PAKET YASAL-3 (§ 4.3): gerekçeli bekletme + geçmiş gizlemeler *@
+        }
+        else if (sekme == Sekme.Nakit)
+        {
+            <NakitSiniriAsimlari />@* PAKET YASAL-2 (TB-16): liste, dilekçe, kapatma — bileşen kendi verisini çeker *@
+        }
+        else if (sekme == Sekme.Risk)
+        {
+            <Kuyumcu.Web.Bilesenler.Uyum.YasalListePaneli />@* PAKET YASAL-3 (§ 4.4): yasal liste tarihi/kaynağı + eşleşmeler *@
+            @* ═══ PAKET 40-A — RİSK SEKMESİ ═══════════════════════════════════
+               ⚠ Risk skoru HİÇBİR işlemi durdurmaz; ekran bunu AÇIKÇA yazar.
+               ⚠ Ön yükleme yasak: tarihçe yalnız cari seçilince çekilir.
+               ⚠ Listede kimlik verisi YOK — yalnız ad, puan, seviye, sebep. *@
+            @* ORTAK-1 hakem turu 29.09 (tasarım hakemi, KRİTİK): BASİT modda üç satır teknik metin ve
+               ham yapılandırma anahtarı görünüyordu. BASİT: tek sade cümle (#uy-risk-aciklama) + kapalı
+               kural notu sade; "durdurmaz" ayrıntısı PRO'da kalır. id'ler aynı. *@
+            @* TOPLU-4 (TOPLU-3 hakem ORTA): üç satır 12 px açıklama (bilgi amaçlı · durdurmaz · kural kapalı)
+               tek kısa 14 px cümle + ⓘ içinde. Metinler ve id'ler AYNI; "durdurmaz" bilgisi ekranda KALIR. *@
+            <div class="t4-ipucu-satir metin-soluk" id="uy-risk-ipucu-satir">
+                <span>@Toplu4Sozlugu.Al(Dil.Dil).UyumRiskKisa</span>
+                <details class="zo-ipucu" id="uy-risk-ipucu">
+                    <summary aria-label="@Toplu4Sozlugu.Al(Dil.Dil).UyumRiskBilgi">i</summary>
+                    <div class="t4-ipucu-govde">
+                        <p id="uy-risk-aciklama">@(Dil.BasitMi ? OrtakGorunumSozlugu.Al(Dil.Dil).UyumRiskAciklamaBasit : Dil.T.Uyum.RiskAciklama)</p>
+                        @if (!Dil.BasitMi)
+                        {
+                            <p id="uy-risk-durdurmaz">@Dil.T.Uyum.RiskSkorDurdurmaz</p>
+                        }
+                        @* UX-S30: kural kapalıysa SEBEBİ yazar. Ham anahtar (MasakRisk:Etkin=…) HİÇBİR modda basılmaz. *@
+                        @if (riskOzet is { KuralEtkin: false })
+                        {
+                            <p id="uy-risk-kapali" role="note">@(Dil.BasitMi ? OrtakGorunumSozlugu.Al(Dil.Dil).UyumRiskKapaliBasit : OrtakGorunumSozlugu.Al(Dil.Dil).UyumRiskKapaliPro)</p>
+                        }
+                    </div>
+                </details>
+            </div>
+
+            @if (riskOzet is { } ro)
+            {
+                @* TOPLU-3: "SİYASİ NÜFUZ…" yasal terimdir, KISALTILMAZ — kart iki sütun genişliğinde durur (toplu3.css T3-11). *@
+                <div class="stat-izgara" id="uy-risk-ozet">
+                    <StatKart Etiket="@Dil.T.Uyum.SeviyeDusuk" Deger="@ro.Dusuk.ToString()" Renk="mavi" />
+                    <StatKart Etiket="@Dil.T.Uyum.SeviyeOrta" Deger="@ro.Orta.ToString()" />
+                    <StatKart Etiket="@Dil.T.Uyum.SeviyeYuksek" Deger="@ro.Yuksek.ToString()"
+                              Renk="@(ro.Yuksek > 0 ? "kirmizi" : "")" />
+                    <StatKart Etiket="@RiskMetin.PepSayisi" Deger="@ro.PepSayisi.ToString()" Renk="stat-kart--genis" />
+                    <StatKart Etiket="@Dil.T.Uyum.Tazelenecek" Deger="@ro.Tazelenecek.ToString()" />
+                    <StatKart Etiket="@RiskMetin.Profilsiz" Deger="@ro.Profilsiz.ToString()" />
+                </div>
+            }
+
+            <div class="kart">
+                @* PAKET S1-i (ölçüldü: 1280 px'te seçici yer tutucusu sınır notunun
+                   ÜSTÜNE biniyordu, 91×22 px): `.alan` içinde ikinci bir <label> ve
+                   not, seçicinin üç raylı kabuğuyla aynı hücreye yığılıyordu. Seçici
+                   kendi etiketini çizer; ikinci etiket kaldırıldı, not ALTINDA. *@
+                <div class="kart-govde form-dikey">
+                        @* UX-S26/S22: seçenekler TEK diziden üretilir; sunucu
+                           sınırı ekranda YAZILIR (UX-S29). *@
+                        <Secici ElemanId="uy-risk-cari"
+                            Etiket="@Dil.T.Uyum.RiskCariSec"
+                            Secenekler="@RiskCariSecenekleri"
+                            @bind-Deger="riskCariId"
+                            @bind-Deger:after="RiskCariSecildi"
+                            BosSecenekMetni="@RiskCariBosMetni" />
+                        <span class="metin-kucuk metin-soluk" id="uy-risk-cari-sinir">
+                            @string.Format(RiskMetin.RiskListeSiniri, RiskCariSiniri)
+                        </span>
+                </div>
+            </div>
+
+            @if (riskProfil is null)
+            {
+                <BosDurum Mesaj="@Dil.T.Uyum.RiskCariSecilmedi" />
+            }
+            else
+            {
+                <div class="kart">
+                    <div class="kart-govde form-dikey">
+                        <h3 id="uy-risk-cari-ad">@riskProfil.CariAd</h3>
+                        @if (riskProfil.PepBeyani)
+                        {
+                            <p id="uy-risk-pep" class="metin-kucuk">
+                                <span class="rozet rozet-amber">@Dil.T.Cari.PepRozet</span>
+                                @riskProfil.PepGorev
+                            </p>
+                        }
+                        @if (riskProfil.Guncel is { } g)
+                        {
+                            <dl class="tanim-listesi uy-tanim">
+                                <dt>@Dil.T.Uyum.Seviye</dt>
+                                <dd id="uy-risk-seviye"><strong>@Dil.T.Uyum.SeviyeAdi(g.Seviye)</strong></dd>
+                                <dt>@Dil.T.Uyum.Puan</dt><dd id="uy-risk-puan">@g.Puan</dd>
+                                <dt>@Dil.T.Uyum.RiskKaynak</dt><dd>@Dil.T.Uyum.RiskKaynakAdi(g.Kaynak)</dd>
+                                <dt>@Dil.T.Uyum.Sebepler</dt>
+                                <dd id="uy-risk-sebepler">
+                                    @if (g.Sebepler.Count == 0) { @Dil.T.Uyum.SebepYok }
+                                    else { @string.Join(" · ", g.Sebepler.Select(Dil.T.Uyum.SebepAdi)) }
+                                </dd>
+                                @if (!string.IsNullOrWhiteSpace(g.Gerekce))
+                                {
+                                    <dt>@Dil.T.Uyum.ElleGerekce</dt><dd>@g.Gerekce</dd>
+                                }
+                            </dl>
+                        }
+                        else
+                        {
+                            <BosDurum Mesaj="@RiskMetin.ProfilTarihceYok" />
+                        }
+
+                        <div class="dugme-satir">
+                            @* DoD EK md.1: her iki düğme de GERÇEK istek atar
+                               (hesapla POST; elle çekmecesi Kaydet'te POST). *@
+                            <button id="uy-risk-hesapla" @onclick="RiskHesapla"
+                                    class="dugme dugme-birincil" disabled="@kaydediliyor">
+                                @Dil.T.Uyum.YenidenHesapla
+                            </button>
+                            <button id="uy-risk-elle-ac" @onclick="RiskElleAc"
+                                    class="dugme dugme-ikincil">@Dil.T.Uyum.SeviyeyiElleDegistir</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kart">
+                    <div class="kart-govde form-dikey">
+                        <h3>@Dil.T.Uyum.ProfilTarihcesi</h3>
+                        @if (riskProfil.Tarihce.Count == 0)
+                        {
+                            <BosDurum Mesaj="@RiskMetin.ProfilTarihceYok" />
+                        }
+                        else
+                        {
+                            @* PAKET GOC-B — ORTAK IZGARA (grid:uyum:uy-risk-tarihce). Sunucu son 10 profili döndürür. *@
+                            <Izgara T="RiskProfilSatiri" Ekran="uyum" GridId="uy-risk-tarihce" Kolonlar="@TarihceKolonlari"
+                                    Ogeler="@IzgaraYerelSiralama.Uygula(riskProfil.Tarihce, tarihceSira, TarihceKolonlari)"
+                                    SatirId="@(t => $"uy-tarihce-satir-{t.Id}")" Baslik="@Dil.T.Uyum.ProfilTarihcesi"
+                                    SiralamaDegisti="@(x => tarihceSira = x)" GecerliSiralama="@tarihceSira" />
+                            @if (!TarihceTam)
+                            {
+                                <p class="metin-kucuk metin-soluk" id="uy-tarihce-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, TarihceSiniri)</p>
+                            }
+                        }
+                        @* UX-S25: değiştirilemeyen tek kalem GEÇMİŞ SATIRDIR ve
+                           sebebi ekranda yazılır; sessiz bırakılmaz. *@
+                        <DegismezIpucu Varlik="CariRiskProfili"
+                                       Gerekce="@Dil.T.Uyum.ProfilDegismezNot"
+                                       AlternatifYol="@Dil.T.Uyum.YenidenHesapla" />
+                    </div>
+                </div>
+            }
+
+            <div class="kart">
+                <div class="kart-govde form-dikey">
+                    <h3>@RiskMetin.YuksekRiskliler</h3>
+                    @if (riskOzet is null || riskOzet.YuksekRiskliler.Count == 0)
+                    {
+                        <BosDurum Mesaj="@RiskMetin.YuksekRiskliYok" />
+                    }
+                    else
+                    {
+                        @* PAKET GOC-B — ORTAK IZGARA (grid:uyum:uy-yuksek-risk). Sunucu sınırı yanıtta (ListeSiniri). *@
+                        <Izgara T="RiskliCari" Ekran="uyum" GridId="uy-yuksek-risk" Kolonlar="@YuksekKolonlari"
+                                Ogeler="@IzgaraYerelSiralama.Uygula(riskOzet.YuksekRiskliler, yuksekSira, YuksekKolonlari)"
+                                SatirId="@(x => $"uy-yuksek-satir-{x.CariId}")" Baslik="@RiskMetin.YuksekRiskliler"
+                                SiralamaDegisti="@(x => yuksekSira = x)" GecerliSiralama="@yuksekSira" />
+                        @if (!YuksekTam)
+                        {
+                            <p class="metin-kucuk metin-soluk" id="uy-yuksek-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, riskOzet.ListeSiniri)</p>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    }
+        </Panel>
+    </Sekmeler>
+</div>
+
+@* ── PAKET 40-A — seviye elle değiştirme ÇEKMECESİ ────────────────────────
+   DoD EK md.2 (TEK DÜZENLEME KALIBI): çok alanlı düzenleme = Cekmece.
+   ModalPencere yalnız yıkıcı onay için kullanılır; burada yeni bir
+   ModalPencere düzenleme kalıbı AÇILMAZ. *@
+<Cekmece Acik="@riskElleAcik" Varlik="risk-elle" Baslik="@Dil.T.Uyum.ElleBaslik"
+         Kapat="@(() => { riskElleAcik = false; return Task.CompletedTask; })"
+         Kaydet="RiskElleKaydet" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@RiskElleGecerli"
+         KilitSebebi="@string.Format(Dil.T.Uyum.ElleGerekceEnAz, RiskGerekceAsgari, (riskGerekce?.Trim().Length ?? 0))">
+    <div class="form-dikey">
+        <div class="alan">
+            <Secici ElemanId="uy-risk-elle-seviye"
+                    Etiket="@Dil.T.Uyum.ElleSeviyeSec"
+                    Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("DUSUK", Dil.T.Uyum.SeviyeDusuk), new SecenekOgesi("ORTA", Dil.T.Uyum.SeviyeOrta), new SecenekOgesi("YUKSEK", Dil.T.Uyum.SeviyeYuksek) })"
+                    @bind-Deger="riskElleSeviye" />
+        </div>
+        <div class="alan">
+            <CokSatir ElemanId="uy-risk-elle-gerekce" Etiket="@Dil.T.Uyum.ElleGerekce" Zorunlu="true"
+                      Satir="4" EnFazla="@AlanSinirlari.RiskElleGerekce" @bind-Deger="riskGerekce"
+                      Ipucu="@($"{riskGerekce?.Trim().Length ?? 0} / {RiskGerekceAsgari}")" />
+            @* DoD EK md.3: geçersiz gönderimde alan altı Türkçe mesaj. *@
+            @if (!RiskElleGecerli)
+            {
+                <span id="uy-risk-elle-hata" class="metin-kucuk metin-kirmizi" role="alert">
+                    @string.Format(Dil.T.Uyum.ElleGerekceEnAz, RiskGerekceAsgari, (riskGerekce?.Trim().Length ?? 0))
+                </span>
+            }
+        </div>
+        <HataBandi Mesaj="@riskElleHata" />
+    </div>
+</Cekmece>
+
+@* ── Kimlik tespiti detayı — MODAL (ayrı route değil) ────────────────────── *@
+@* UX-1-C3 / K6: salt okunur detay modalı ÇEKMECEYE çevrildi (Esc, odak hapsi).
+   Kaydet kilitli ve sebebi ekranda yazılı (UX-S30). *@
+<Cekmece Acik="@(tespitDetay is not null)" Varlik="kimlik-tespiti"
+         Baslik="@Dil.T.Uyum.KimlikTespitiDetay"
+         KaydetAktif="false" KilitSebebi="@Dil.T.Duzeltme.MasakGerekce"
+         Kapat="@(() => { tespitDetay = null; return Task.CompletedTask; })">
+    @if (tespitDetay is { } d)
+    {
+        <div class="form-dikey">
+            <p class="metin-kucuk metin-soluk"><Ikon Ad="@Ikonlar.Kilit" /> @Dil.T.Uyum.OkumaIziNotu</p>
+            <dl class="tanim-listesi uy-tanim">
+                <dt>@Dil.T.Uyum.AdSoyad</dt><dd>@d.AdSoyad</dd>
+                <dt>@Dil.T.Uyum.BelgeTuru</dt><dd>@Dil.T.SayfaDuzeltme.BelgeTuruAdi(d.BelgeTuru)</dd>
+                <dt>@Dil.T.Uyum.BelgeNo</dt><dd><strong>@d.BelgeNo</strong></dd>
+                @if (d.DogumTarihi is { } dt) { <dt>@Dil.T.Uyum.DogumTarihi</dt><dd>@Bicim.Gun(dt)</dd> }
+                @* KESIF-P6 tur 2 (hakem 01.10): uyruk ham kodu (TUR) basılmaz — MASAK formunun ülke listesinden ad (UX-S31). *@
+                @if (!string.IsNullOrEmpty(d.Uyruk)) { <dt>@Dil.T.Uyum.Uyruk</dt><dd id="uy-tespit-uyruk">@KesifP6Sozlugu.Uyruk(d.Uyruk, Dil.Dil)</dd> }
+                @if (!string.IsNullOrEmpty(d.Adres)) { <dt>@Dil.T.Uyum.Adres</dt><dd>@d.Adres</dd> }
+                <dt>@Dil.T.Uyum.IslemTutari</dt><dd>@Para(d.IslemTutariTl)</dd>
+                @* ⚠ PAKET 41: hareketId iki farklı tabloyu işaret edebilir ve
+                   ADR-0009 gereği FK yoktur — kaynağı EKRAN SÖYLER, ham kod
+                   basılmaz (UX-S31, sözlükten çevrilir). *@
+                <dt>@Dil.T.Uyum.Kaynak</dt><dd id="uy-tespit-kaynak">@Dil.T.Uyum.KaynakAdi(d.KaynakTur)</dd>
+                <dt>@Dil.T.Uyum.Tarih</dt><dd>@Zaman(d.Tarih)</dd>
+                <dt>@Dil.T.Uyum.SaklamaBitis</dt><dd>@Bicim.TarihTam(d.SaklamaBitis)</dd>
+            </dl>
+
+            @if (d.Beyan is { } b)
+            {
+                @* KESIF-P6 (#86): kademe ham kodu (AMAC_BEYANI) basılmaz — sözlükten çevrilir (UX-S31). *@
+                <h3 id="uy-beyan-baslik">@Dil.T.Uyum.Beyan (@KesifP6Sozlugu.Kademe(b.Kademe, Dil.Dil))</h3>
+                <dl class="tanim-listesi uy-tanim">
+                    @if (!string.IsNullOrEmpty(b.IslemAmaci)) { <dt>@Dil.T.Uyum.IslemAmaci</dt><dd>@b.IslemAmaci</dd> }
+                    @if (!string.IsNullOrEmpty(b.FonKaynagi)) { <dt>@Dil.T.Uyum.FonKaynagi</dt><dd>@b.FonKaynagi</dd> }
+                    @if (!string.IsNullOrEmpty(b.EkBelgeReferansi)) { <dt>@Dil.T.Uyum.EkBelge</dt><dd>@b.EkBelgeReferansi</dd> }
+                </dl>
+                @if (!string.IsNullOrEmpty(b.Aciklama))
+                {
+                    <div class="alan">
+                        @* QA turu 2: buradaki etiket sayfa alt başlığını basıyordu. *@
+                        <label id="uy-beyan-aciklama-etiket">@Dil.T.SayfaDuzeltme.IslemAciklamasi</label>
+                        <p>@b.Aciklama</p>
+                    </div>
+                }
+            }
+
+            @* UX-S25: kimlik tespiti bir yükümlülük kaydıdır; düzenle düğmesi YOK,
+               gerekçe ve doğru yol yazılı. *@
+            <DegismezIpucu Varlik="MasakKimlikTespiti"
+                           Gerekce="@Dil.T.Duzeltme.MasakGerekce"
+                           AlternatifYol="@Dil.T.SayfaDuzeltme.TespitDuzeltmeYolu" />
+        </div>
+    }
+</Cekmece>
+
+@* ── Şüpheli işlem bildirimi oluşturma ──────────────────────────────────── *@
+<ModalPencere Acik="@supheliFormAcik"
+              Baslik="@(ekBeyanHedef is null ? Dil.T.Uyum.YeniBildirim : Dil.T.Uyum.EkBeyanBaslik)"
+              Kapat="@(() => { supheliFormAcik = false; ekBeyanHedef = null; return Task.CompletedTask; })">
+    <div class="form-dikey">
+        <p class="metin-kucuk metin-soluk">@Dil.T.Uyum.BildirimNotu</p>
+        @if (ekBeyanHedef is not null)
+        {
+            <p class="metin-kucuk metin-soluk" id="sb-ek-beyan-not">
+                @Dil.T.Uyum.EkBeyanAciklama (@ekBeyanHedef.GonderimReferansi)
+            </p>
+        }
+
+        <div class="alan">
+            @* SUNUM 14.10: sayfanın kendi <label>'ı kaldırıldı — Para bileşeni etiketini kendisi çizer (Yıldız'da iki etiket alt alta görünüyordu). *@
+            @* ⚠ @bind:event="oninput" KULLANILMADI: mevcut ekran testleri bu alanı
+               onchange ile sürüyor (id sözleşmesi K4 — mevcut davranış korunur). *@
+            @* PAKET GOC-B (envanter #10, C satır 161): K9 Pozitif — eksi/sıfır/3. ondalık/tavan alan altında Core
+               metniyle (#sb-tutar-hata, bileşenin kendi hata yeri) + Kaydet kilidi; sunucu [Tutar] aynı metin.
+               Eski sayfa içi "<= 0" satırı kaldırıldı (aynı id iki kez çiziliyordu). *@
+            <Para ElemanId="sb-tutar" Etiket="@Dil.T.Uyum.IslemTutari" Zorunlu="true" Tur="TutarTuru.Pozitif" ParaBirimi="TRY" @bind-Deger="yeniTutar" />   @* SUNUM 14.10: Kaydet tutar > 0 ister (KaydetAktif) — etiket "isteğe bağlı" demesin *@
+        </div>
+        @* Form 3 alanlıdır (UX sözleşmesi tavanı 8) — ProAlan ile katlamaya gerek
+           yok; hareket kimliği isteğe bağlı olduğu açıkça yazılı. *@
+        @* ── PAKET P-15 (B-25) — ULID ELLE YAZMA KALKTI ──────────────────────
+           Düzeltme fişinin dayandığı defter satırı artık açıklamasıyla
+           SUNUCUDA aranır; kullanıcı ULID değil açıklama + tarih + tutar görür.
+           Girdi kimliği `sb-hareket` DEĞİŞMEDİ. *@
+        <KayitSecici Tur="@Kuyumcu.Contracts.Arama.AramaTurleri.Hareket"
+                     ElemanId="sb-hareket"
+                     Etiket="@Dil.T.Uyum.HareketId"
+                     Zorunlu="false"
+                     Deger="@yeniHareketId"
+                     DegerChanged="HareketSecildi" />
+        <div class="alan">
+            @* SUNUM 14.10: çift etiket kaldırıldı — CokSatir etiketi + "en az N karakter" ipucunu kendisi çizer. *@
+            <CokSatir ElemanId="sb-gerekce" Etiket="@Dil.T.Uyum.Gerekce" Zorunlu="true"
+                      Satir="6" EnFazla="@AlanSinirlari.SupheliAciklama" @bind-Deger="yeniGerekce"
+                      Ipucu="@string.Format(Dil.T.Uyum.EnAzKarakter, AsgariGerekce)" />
+            <span class="metin-kucuk @((yeniGerekce?.Trim().Length ?? 0) < AsgariGerekce ? "metin-kirmizi" : "")">
+                @(yeniGerekce?.Trim().Length ?? 0) / @AsgariGerekce
+            </span>
+            @if ((yeniGerekce?.Trim().Length ?? 0) is > 0 and var uz && uz < AsgariGerekce)
+            {
+                <span id="sb-gerekce-hata" class="metin-kucuk metin-kirmizi" role="alert">
+                    @string.Format(Dil.T.SayfaDuzeltme.GerekceEksik, AsgariGerekce, AsgariGerekce - uz)
+                </span>
+            }
+        </div>
+
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="sb-tutar" ElemanId="sb-sayi-kilit" />
+        <div class="dugme-satir">
+            @* P-36c: tek tip düğme sırası — ikincil önce, birincil sonda. *@
+            <button class="dugme dugme-ikincil" @onclick="@(() => { supheliFormAcik = false; ekBeyanHedef = null; })"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="dugme dugme-birincil" id="sb-kaydet"
+                    disabled="@(!BildirimGecerli || kaydediliyor)" @onclick="BildirimKaydet">
+                @Dil.T.Ortak.Kaydet
+            </button>
+            @* UX-S30: kilitli düğme SEBEBİNİ söyler. *@
+            @if (!BildirimGecerli)
+            {
+                <span id="sb-kaydet-kilit" class="metin-kucuk metin-soluk">@Dil.T.SayfaDuzeltme.KaydetKilidi</span>
+            }
+        </div>
+    </div>
+</ModalPencere>
+
+@* ═══ UX-4d madde 10: "Gönderildi" ve "Kapat" düğmeleri hiçbir istek atmıyordu.
+     Kök neden: değerler JS window.prompt ile isteniyordu; prompt iptal/engel
+     durumunda null döner ve akış sessizce biterdi (DoD EK md.1 ihlali:
+     tıklanınca hiçbir şey olmayan düğme). Her ikisi de GERİ ALINAMAZ durum
+     geçişidir → ortak onay modalı (DoD EK md.4). ═══ *@
+<ModalPencere Acik="@gonderimAcik" Baslik="@Dil.T.Uyum.GonderimOnayBaslik"
+              Kapat="@(() => { gonderimAcik = false; return Task.CompletedTask; })">
+    <div class="form-dikey">
+        <p class="metin-kucuk metin-soluk">@Dil.T.Uyum.GonderimOnayNotu</p>
+        <Metin ElemanId="uy-referans" Etiket="@Dil.T.Uyum.GonderimReferansiSor" Zorunlu="true" EnFazla="@AlanSinirlari.GonderimReferansi"
+               @bind-Deger="gonderimReferansi"
+               Hata="@(gonderimDenendi && string.IsNullOrWhiteSpace(gonderimReferansi) ? Dil.T.Uyum.ReferansZorunlu : null)"
+               HataKimligi="uy-referans-hata" />
+        <div class="dugme-satir">
+            <button id="uy-gonderim-vazgec" class="dugme dugme-ikincil"
+                    @onclick="@(() => gonderimAcik = false)"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button id="uy-gonderim-onayla" class="dugme dugme-birincil"
+                    disabled="@(kaydediliyor)" @onclick="GonderimOnayla">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+<ModalPencere Acik="@kapatmaAcik" Baslik="@Dil.T.Uyum.KapatOnayBaslik"
+              Kapat="@(() => { kapatmaAcik = false; return Task.CompletedTask; })">
+    <div class="form-dikey">
+        <p class="metin-kucuk metin-soluk">@Dil.T.Uyum.KapatOnayNotu</p>
+        <div class="alan">
+            @* SUNUM 14.10: çift etiket kaldırıldı (CokSatir kendi etiketini çizer). *@
+            <CokSatir ElemanId="uy-kapatma-gerekce" Etiket="@Dil.T.Uyum.KapatmaGerekcesiSor" Zorunlu="true"
+                      Satir="4" EnFazla="@AlanSinirlari.SupheliKapatma" @bind-Deger="kapatmaGerekcesi" />
+            <span class="metin-kucuk @((kapatmaGerekcesi?.Trim().Length ?? 0) < AsgariKapatma ? "metin-kirmizi" : "")">
+                @(kapatmaGerekcesi?.Trim().Length ?? 0) / @AsgariKapatma
+            </span>
+            @if (kapatmaDenendi && (kapatmaGerekcesi?.Trim().Length ?? 0) < AsgariKapatma)
+            {
+                <span id="uy-kapatma-hata" class="metin-kucuk metin-kirmizi">
+                    @string.Format(Dil.T.Uyum.GerekceEnAzHata, AsgariKapatma)
+                </span>
+            }
+        </div>
+        <div class="dugme-satir">
+            <button id="uy-kapatma-vazgec" class="dugme dugme-ikincil"
+                    @onclick="@(() => kapatmaAcik = false)"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button id="uy-kapatma-onayla" class="dugme dugme-birincil"
+                    disabled="@(kaydediliyor)" @onclick="KapatmaOnayla">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> SupheliDurumSecenekleri =>
+    [
+        new SecenekOgesi("ACIK", Dil.T.Uyum.DurumAcik),
+        new SecenekOgesi("GONDERILDI", Dil.T.Uyum.DurumGonderildi),
+        new SecenekOgesi("KAPATILDI", Dil.T.Uyum.DurumKapatildi),
+    ];
+
+    private IReadOnlyList<SecenekOgesi> RiskCariSecenekleri =>
+        [.. riskCariler.Select(c => new SecenekOgesi(
+            c.Id,
+            c.RiskSeviye is null ? c.Ad : $"{c.Ad} · {Dil.T.Uyum.SeviyeAdi(c.RiskSeviye)}"))];
+
+    private string RiskCariBosMetni => $"— {Dil.T.Uyum.RiskCariSec} —";
+
+    // ── PAKET ORTAK-1 (G): risk sekmesi BASİT modda "cari" demez ─────────
+    // Tam tur v3 (K8): BASİT modda "cari, cariler" 12 durumda görünüyordu.
+    // Basit metin ORTAK-1 sözlüğünden (Sozlukler.OrtakGorunum.cs) okunur;
+    // PROFESYONEL mod Dil.T.Uyum metnini (muhasebe dili) AYNEN korur.
+    private RiskMetinleri RiskMetin => Dil.BasitMi
+        ? new(OrtakGorunumSozlugu.Al(Dil.Dil))
+        : new(Dil.T.Uyum);
+
+    private readonly struct RiskMetinleri
+    {
+        public RiskMetinleri(OrtakGorunumMetinleri b)
+        {
+            PepSayisi = b.UyumPepSayisiBasit; Profilsiz = b.UyumProfilsizBasit;
+            YuksekRiskliler = b.UyumYuksekRisklilerBasit; YuksekRiskliYok = b.UyumYuksekRiskliYokBasit;
+            ProfilTarihceYok = b.UyumProfilTarihceYokBasit; RiskListeSiniri = b.UyumRiskListeSiniriBasit;
+        }
+        public RiskMetinleri(SozlukUyum p)
+        {
+            PepSayisi = p.PepSayisi; Profilsiz = p.Profilsiz;
+            YuksekRiskliler = p.YuksekRiskliler; YuksekRiskliYok = p.YuksekRiskliYok;
+            ProfilTarihceYok = p.ProfilTarihceYok; RiskListeSiniri = p.RiskListeSiniri;
+        }
+        public string PepSayisi { get; }
+        public string Profilsiz { get; }
+        public string YuksekRiskliler { get; }
+        public string YuksekRiskliYok { get; }
+        public string ProfilTarihceYok { get; }
+        public string RiskListeSiniri { get; }
+    }
+
+    private enum Sekme { Tespit, Supheli, Saklama, Risk, Nakit }   // Nakit: PAKET YASAL-2 (TB-16)
+
+    /// <summary>PAKET YASAL-2: "?sekme=" derin bağlantısı (Panel "nakit sınırı" satırı, bildirim rotası).</summary>
+    [SupplyParameterFromQuery(Name = "sekme")] public string? SekmeSorgusu { get; set; }
+
+    /// <summary>Sunucunun KapatDto kuralı (MinLength 20) ile aynı.</summary>
+    private const int AsgariKapatma = 20;
+
+    /// <summary>MASAK Rehber 2.0 §4.2.7 — sunucu da bu sınırı uygular.</summary>
+    private const int AsgariGerekce = 300;
+
+    private Sekme sekme = Sekme.Tespit;
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private string? hata;
+    private string? basari;
+
+    private MasakOzet? ozet;
+    // ── PAKET GOC-B — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ─────────────
+    private IzgaraSiralama? tespitSira, supheliSira, tarihceSira, yuksekSira;
+    private const int TespitSiniri = 100, SupheliSiniri = 500, TarihceSiniri = 10;
+    private bool TespitTam => tespitler.Count < TespitSiniri;
+    private bool SupheliTam => supheliler.Count < SupheliSiniri;
+    private bool TarihceTam => (riskProfil?.Tarihce.Count ?? 0) < TarihceSiniri;
+    private bool YuksekTam => riskOzet is null || riskOzet.YuksekRiskliler.Count < riskOzet.ListeSiniri;
+
+    /// <summary>UX-S31: şüpheli bildirim durumunun sözlük adı (ham kod ekrana basılmaz).</summary>
+    private string SupheliDurumAdi(string d) => d switch
+    {
+        "ACIK" => Dil.T.Uyum.DurumAcik, "GONDERILDI" => Dil.T.Uyum.DurumGonderildi, "KAPATILDI" => Dil.T.Uyum.DurumKapatildi, _ => d,
+    };
+
+    private IReadOnlyList<IzgaraKolonu<KimlikTespitSatir>> TespitKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Uyum.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = TespitTam ? "tarih" : null,
+                HucreSinif = _ => "hucre-tek-satir", Deger = t => t.Tarih, Hucre = t => @<text>@Zaman(t.Tarih)</text> },
+        new() { Anahtar = "ad", Baslik = Dil.T.Uyum.AdSoyad, ZorunluGorunur = true, SunucuSiralamaAdi = TespitTam ? "ad" : null, Deger = t => t.AdSoyad },
+        new() { Anahtar = "belge-turu", Baslik = Dil.T.Uyum.BelgeTuru, HucreSinif = _ => "metin-kucuk",
+                Deger = t => Dil.T.SayfaDuzeltme.BelgeTuruAdi(t.BelgeTuru) },
+        new() { Anahtar = "belge-no", Baslik = Dil.T.Uyum.BelgeNo, Deger = t => t.BelgeNo, Hucre = t => @<code>@t.BelgeNo</code> },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Uyum.IslemTutari, ZorunluGorunur = true, SunucuSiralamaAdi = TespitTam ? "tutar" : null,
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = t => t.IslemTutariTl },
+        new() { Anahtar = "saklama", Baslik = Dil.T.Uyum.SaklamaBitis, HucreSinif = _ => "metin-kucuk",
+                Deger = t => t.SaklamaBitis, Hucre = t => @<text>@Bicim.TarihTam(t.SaklamaBitis)</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Uyum.Goruntule, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = t => @<button class="dugme dugme-kucuk" id="@($"uy-tespit-ac-{t.Id}")" @onclick="() => TespitAc(t.Id)">@Dil.T.Uyum.Goruntule</button> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<SupheliSatir>> SupheliKolonlari =>
+    [
+        new() { Anahtar = "tespit", Baslik = Dil.T.Uyum.TespitTarihi, ZorunluGorunur = true, SunucuSiralamaAdi = SupheliTam ? "tespit" : null,
+                HucreSinif = _ => "hucre-tek-satir", Deger = x => x.TespitTarihi, Hucre = x => @<text>@Zaman(x.TespitTarihi)</text> },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Uyum.IslemTutari, ZorunluGorunur = true, SunucuSiralamaAdi = SupheliTam ? "tutar" : null,
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = x => x.IslemTutariTl },
+        new() { Anahtar = "son-bildirim", Baslik = Dil.T.Uyum.SonBildirim, SunucuSiralamaAdi = SupheliTam ? "son-bildirim" : null,
+                HucreSinif = _ => "hucre-tek-satir", Deger = x => x.SonBildirimTarihi,
+                Hucre = x => @<text>@Zaman(x.SonBildirimTarihi)
+                    @if (x.Gecikti)
+                    {
+                        <span class="rozet rozet-kirmizi">@Dil.T.Uyum.SuresiDoldu</span>
+                    }
+                    else if (x.Yaklasiyor)
+                    {
+                        <span class="rozet rozet-amber">@($"{(int)(x.KalanSaat / 24)} {Dil.T.Uyum.GunKaldi}")</span>
+                    }</text> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Uyum.Durum, SunucuSiralamaAdi = SupheliTam ? "durum" : null,
+                Deger = x => SupheliDurumAdi(x.Durum), Hucre = x => @<Rozet Renk="@DurumRenk(x.Durum)">@SupheliDurumAdi(x.Durum)</Rozet> },
+        new() { Anahtar = "gerekce", Baslik = Dil.T.Uyum.Gerekce, HucreSinif = _ => "metin-kucuk", Deger = x => Kisalt(x.Gerekce) },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, Hucre = SupheliEylemleri },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<RiskProfilSatiri>> TarihceKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Uyum.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = TarihceTam ? "tarih" : null,
+                HucreSinif = _ => "hucre-tek-satir", Deger = t => t.Olusturuldu, Hucre = t => @<text>@Zaman(t.Olusturuldu)</text> },
+        new() { Anahtar = "seviye", Baslik = Dil.T.Uyum.Seviye, ZorunluGorunur = true, Deger = t => Dil.T.Uyum.SeviyeAdi(t.Seviye) },
+        new() { Anahtar = "puan", Baslik = Dil.T.Uyum.Puan, SunucuSiralamaAdi = TarihceTam ? "puan" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = t => t.Puan },
+        new() { Anahtar = "kaynak", Baslik = Dil.T.Uyum.RiskKaynak, HucreSinif = _ => "metin-kucuk", Deger = t => Dil.T.Uyum.RiskKaynakAdi(t.Kaynak) },
+        new() { Anahtar = "sebepler", Baslik = Dil.T.Uyum.Sebepler, HucreSinif = _ => "metin-kucuk",
+                Deger = t => t.Sebepler.Count == 0 ? (t.Gerekce ?? Dil.T.Uyum.SebepYok) : string.Join(" · ", t.Sebepler.Select(Dil.T.Uyum.SebepAdi)) },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<RiskliCari>> YuksekKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Uyum.AdSoyad, ZorunluGorunur = true, SunucuSiralamaAdi = YuksekTam ? "ad" : null, Deger = x => x.CariAd },
+        new() { Anahtar = "puan", Baslik = Dil.T.Uyum.Puan, ZorunluGorunur = true, SunucuSiralamaAdi = YuksekTam ? "puan" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = x => x.Puan },
+        new() { Anahtar = "sebepler", Baslik = Dil.T.Uyum.Sebepler, HucreSinif = _ => "metin-kucuk",
+                Deger = x => string.Join(" · ", x.Sebepler.Select(Dil.T.Uyum.SebepAdi)) },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Uyum.Goruntule, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                // DoD EK md.1: gerçek istek atar (GET /masak/risk/{cariId}).
+                Hucre = x => @<button @onclick="() => RiskCariAc(x.CariId)" id="@($"uy-yuksek-ac-{x.CariId}")" class="dugme dugme-kucuk">@Dil.T.Uyum.Goruntule</button> },
+    ];
+
+    /// <summary>Şüpheli bildirim satır eylemleri (eski tablo hücresi birebir; id'ler korunur).</summary>
+    private RenderFragment<SupheliSatir> SupheliEylemleri => s => @<text>@if (s.Durum == "ACIK")
+        {
+            <button id="@($"uy-gonderildi-{s.Id}")" class="dugme dugme-kucuk" @onclick="() => GonderimAc(s)">@Dil.T.Uyum.GonderildiIsaretle</button>
+            <button id="@($"uy-kapat-{s.Id}")" class="dugme dugme-kucuk dugme-ikincil" @onclick="() => KapatmaAc(s)">@Dil.T.Uyum.Kapat</button>
+        }
+        else if (!string.IsNullOrEmpty(s.GonderimReferansi))
+        {
+            <span class="metin-kucuk metin-soluk">@s.GonderimReferansi</span>
+        }
+        @* PAKET P-13 · B-12: gönderilmiş bildirimin gerçek düzeltme yolu EK BEYANDIR. *@
+        @if (s.Durum == "GONDERILDI" && s.DuzeltilenBildirimId is null)
+        {
+            <button id="@($"uy-ek-beyan-{s.Id}")" class="dugme dugme-kucuk" @onclick="() => EkBeyanAc(s)">@Dil.T.Uyum.EkBeyan</button>
+        }
+        @if (s.DuzeltilenBildirimId is not null)
+        {
+            <span class="rozet rozet-mavi" id="@($"uy-ek-beyan-rozet-{s.Id}")">@Dil.T.Uyum.EkBeyanRozet</span>
+        }
+        @* UX-S25: tutar/gerekçe sonradan DEĞİŞTİRİLEMEZ; gerekçe + duruma göre doğru düzeltme yolu. *@
+        <DegismezIpucu Varlik="@($"MasakSupheliBildirim-{s.Id}")"
+                       Gerekce="@Dil.T.Duzeltme.MasakGerekce"
+                       AlternatifYol="@(s.Durum == "GONDERILDI" ? Dil.T.Uyum.GonderildiDuzeltmeYolu : Dil.T.SayfaDuzeltme.BildirimDuzeltmeYolu)" /></text>;
+
+    private List<KimlikTespitSatir> tespitler = [];
+    private List<SupheliSatir> supheliler = [];
+    private SaklamaOnizleme? saklama;
+
+    private KimlikTespitDetay? tespitDetay;
+    private bool supheliFormAcik;
+    private decimal? yeniTutar;
+    private string? yeniHareketId;
+
+    /// <summary>
+    /// PAKET P-15 (B-25): defter satırı seçici bir kayıt seçti/temizledi.
+    /// Alan İSTEĞE BAĞLIDIR; null = dayanak verilmedi (sunucu sözleşmesi aynı).
+    /// </summary>
+    private void HareketSecildi(string? hareketId) => yeniHareketId = hareketId;
+    private string? yeniGerekce;
+    private string supheliFiltre = "";
+    private string araBelgeNo = "";
+    private BelgeAramaSonucu? aramaSonucu;
+    private SupheliSatir? gonderimHedef, kapatmaHedef;
+    private bool gonderimAcik, kapatmaAcik, gonderimDenendi, kapatmaDenendi;
+    private string? gonderimReferansi, kapatmaGerekcesi;
+    private bool saklamaOnaylandi;
+
+    // ── PAKET 40-A — risk sekmesi durumu ────────────────────────────────────
+    /// <summary>Cari seçicisinin sunucu sınırı — ekranda YAZILIR (UX-S29).</summary>
+    private const int RiskCariSiniri = 200;
+
+    /// <summary>
+    /// Elle ezme gerekçesinin asgarisi. Sunucu da AYNI sınırı uygular
+    /// (MasakRiskAyarlari.ElleGerekceAsgari) ve son sözü o söyler; ekran yalnız
+    /// kullanıcıyı boşa göndermez.
+    /// </summary>
+    private int RiskGerekceAsgari => riskProfil?.GerekceAsgari ?? 20;
+
+    private RiskOzet? riskOzet;
+    private List<RiskCariSecenek> riskCariler = [];
+    private RiskProfilYaniti? riskProfil;
+    private string riskCariId = "";
+    private bool riskElleAcik;
+    private string riskElleSeviye = "ORTA";
+    private string? riskGerekce;
+    private string? riskElleHata;
+
+    private bool RiskElleGecerli => (riskGerekce?.Trim().Length ?? 0) >= RiskGerekceAsgari;
+
+    private System.Globalization.CultureInfo Kultur => new(Dil.Locale);
+    // P-36b: biçim TEK yerden — Servisler/Bicim.cs. Çıktı birebir aynı.
+    private string Para(decimal d) => Bicim.BelgeParasi(d, Dil.Locale);
+    private string Zaman(DateTime t) => Bicim.TarihSaat(t);
+
+    private bool BildirimGecerli => !sayiKapisi.OnekleVar("sb-tutar") &&   // ORTAK-1
+        yeniTutar is > 0 && (yeniGerekce?.Trim().Length ?? 0) >= AsgariGerekce;
+
+    private static string Kisalt(string metin) =>
+        metin.Length <= 60 ? metin : metin[..60] + "…";
+
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+    public void Dispose() => Dil.Degisti -= Yenile;
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    protected override Task OnInitializedAsync()
+    {
+        // PAKET S1-i: ?sekme= derin bağlantısı (Sekmeler ile AYNI kaynak: URL).
+        if ((SekmeSorgusu ?? DerinBaglanti.Oku(Nav.Uri, "sekme")) is { } k && UySekmeleri.Any(x => x.Kod == k)) sekme = Durum(k);
+        return Yukle();
+    }
+
+    // ── PAKET S1-i — ortak Sekmeler ──
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<SekmeTanimi> UySekmeleri =>
+    [
+        new("tespit", Dil.T.Uyum.KimlikTespitleri),
+        new("supheli", Dil.T.Uyum.SupheliIslemler,
+            ozet is { AcikBildirim: > 0 } ? ozet.AcikBildirim.ToString(System.Globalization.CultureInfo.InvariantCulture) : null, "amber"),
+        // KESIF-P6 (#72 alt): saklama uçlarının HEPSİ [RolGerekli("SAHIP")] — MÜDÜR'e sekme çizilseydi
+        // tıklanınca yalnız 403 bandı görürdü. Sekme yalnız SAHİP'te doğar; kapı yine sunucudadır.
+        .. (SahipMi ? new SekmeTanimi[] { new("saklama", Dil.T.Uyum.SaklamaSuresi) } : []),
+        new("risk", Dil.T.Uyum.RiskSekmesi,
+            riskOzet is { Yuksek: > 0 } ? riskOzet.Yuksek.ToString(System.Globalization.CultureInfo.InvariantCulture) : null, "kirmizi"),
+        new("nakit", TevsikTaksitSozlugu.Al(Dil.Dil).SekmeAdi),   // PAKET YASAL-2 (TB-16)
+    ];
+
+    /// <summary>KESIF-P6: saklama yönetimi yalnız SAHİP'in (sunucu kapısıyla aynı rol).</summary>
+    private bool SahipMi => Oturum.Kullanici?.Rol == "SAHIP";
+
+    private static Sekme Durum(string kod) => kod switch
+    {
+        "supheli" => Sekme.Supheli,
+        "saklama" => Sekme.Saklama,
+        "risk" => Sekme.Risk,
+        "nakit" => Sekme.Nakit,
+        _ => Sekme.Tespit,
+    };
+
+    private static string Kod(Sekme s) => s switch
+    {
+        Sekme.Supheli => "supheli",
+        Sekme.Saklama => "saklama",
+        Sekme.Risk => "risk",
+        Sekme.Nakit => "nakit",
+        _ => "tespit",
+    };
+
+    private Task UySekmeDegisti(string kod) => Durum(kod) == sekme ? Task.CompletedTask : SekmeSec(Durum(kod));
+
+    /// <summary>Sayfa başındaki birincil eylem: şüpheli sekmesine geçer ve formu açar.</summary>
+    private async Task YeniBildirimAc()
+    {
+        if (sekme != Sekme.Supheli)
+        {
+            await SekmeSec(Sekme.Supheli);
+            // PAKET S1-i: seçili sekme URL'dedir — Sekmeler şeridi de şüpheliye geçer.
+            Nav.NavigateTo(Nav.GetUriWithQueryParameter("sekme", Kod(Sekme.Supheli)));
+        }
+        // P-13: yeni bildirim ek beyan DEĞİLDİR; önceki ek beyan hedefi temizlenir.
+        ekBeyanHedef = null;
+        yeniTutar = null; yeniHareketId = null; yeniGerekce = null;
+        supheliFormAcik = true;
+    }
+
+    private async Task SekmeSec(Sekme s)
+    {
+        sekme = s;
+        basari = null;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            ozet = await Api.Ozet();
+            switch (sekme)
+            {
+                case Sekme.Tespit:
+                    tespitler = await Api.TespitleriGetir();
+                    break;
+                case Sekme.Supheli:
+                    supheliler = await Api.SupheliGetir(
+                        string.IsNullOrEmpty(supheliFiltre) ? null : supheliFiltre);
+                    break;
+                case Sekme.Saklama:
+                    saklama = await Api.SaklamaOnizleme();
+                    saklamaOnaylandi = false;
+                    break;
+                case Sekme.Risk:
+                    // ⚠ ÖN YÜKLEME YASAK (Mehmet PLAN-2 + K40-3): burada YALNIZ
+                    //   özet (kişisel veri yok) ve cari seçicisi çekilir. Tekil
+                    //   /masak/risk/{cariId} ucu KULLANICI SEÇENE KADAR çağrılmaz.
+                    riskOzet = await Api.RiskOzet();
+                    riskCariler = await Api.RiskCarileri(RiskCariSiniri);
+                    riskProfil = null;
+                    riskCariId = "";
+                    break;
+            }
+        }
+        catch (Exception ex) { hata = ex.Message; }
+        finally { yukleniyor = false; }
+    }
+
+    // ⚠ PREFETCH YASAK: bu metot YALNIZ kullanıcı tıklayınca çağrılır.
+    // Tekil uç okuma izi düşürür (KVKK md.12).
+    private async Task TespitAc(string id)
+    {
+        try { tespitDetay = await Api.TespitGetir(id); }
+        catch (Exception ex) { hata = ex.Message; }
+    }
+
+    // ── PAKET 40-A — risk sekmesi eylemleri ─────────────────────────────────
+
+    /// <summary>
+    /// Seçicide cari değişti. ⚠ ÖN YÜKLEME YASAĞININ SINIRI BURASI: tekil uç
+    /// yalnız KULLANICI seçtiği için çağrılır (KVKK md.12 okuma izi).
+    /// </summary>
+    private async Task RiskCariSecildi()
+    {
+        if (string.IsNullOrEmpty(riskCariId)) { riskProfil = null; return; }
+        await RiskCariAc(riskCariId);
+    }
+
+    private async Task RiskCariAc(string cariId)
+    {
+        hata = null;
+        try
+        {
+            riskCariId = cariId;
+            riskProfil = await Api.RiskGetir(cariId);
+        }
+        // ⚠ UX-S28: hata "kayıt yok"a ÇEVRİLMEZ. Profil eldeki hâliyle kalır,
+        //   sebep hata bandında görünür.
+        catch (Exception ex) { hata = ex.Message; }
+    }
+
+    private async Task RiskHesapla()
+    {
+        if (string.IsNullOrEmpty(riskCariId)) return;
+        hata = null; basari = null;
+        kaydediliyor = true;
+        try
+        {
+            // UX-S27: POST yanıtı OKUNUR ve sonucu banda yazılır.
+            var sonuc = await Api.RiskHesapla(riskCariId);
+            basari = string.Format(Dil.T.Uyum.RiskHesaplandi,
+                Dil.T.Uyum.SeviyeAdi(sonuc.Profil.Seviye), sonuc.Profil.Puan);
+            riskProfil = await Api.RiskGetir(riskCariId);
+            riskOzet = await Api.RiskOzet();
+        }
+        catch (Exception ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private void RiskElleAc()
+    {
+        riskElleHata = null;
+        riskGerekce = "";
+        riskElleSeviye = riskProfil?.Guncel?.Seviye ?? "ORTA";
+        riskElleAcik = true;
+    }
+
+    private async Task RiskElleKaydet()
+    {
+        if (string.IsNullOrEmpty(riskCariId)) return;
+        riskElleHata = null;
+        if (!RiskElleGecerli)
+        {
+            riskElleHata = string.Format(Dil.T.Uyum.ElleGerekceEnAz,
+                RiskGerekceAsgari, riskGerekce?.Trim().Length ?? 0);
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            var sonuc = await Api.RiskElle(riskCariId, riskElleSeviye, riskGerekce!.Trim());
+            // İYİMSER KAYDETME YOK: çekmece ancak sunucu 200 dönünce kapanır.
+            riskElleAcik = false;
+            basari = string.Format(Dil.T.Uyum.RiskElleDegistirildi,
+                Dil.T.Uyum.SeviyeAdi(sonuc.Profil.Seviye));
+            riskProfil = await Api.RiskGetir(riskCariId);
+            riskOzet = await Api.RiskOzet();
+        }
+        catch (Exception ex) { riskElleHata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task Ara()
+    {
+        if (string.IsNullOrWhiteSpace(araBelgeNo)) { aramaSonucu = null; await Yukle(); return; }
+        hata = null;
+        try
+        {
+            // UX-4d madde 18: sonuç ARTIK sözleşmeye uygun okunuyor; 0 kayıtta
+            // eski liste ekranda KALMAZ, boş durum çıkar (UX-S28).
+            var sonuc = await Api.BelgeNoIleAra(araBelgeNo.Trim());
+            aramaSonucu = sonuc;
+            tespitler = sonuc.Kayitlar ?? [];
+        }
+        catch (Exception ex) { hata = ex.Message; }
+    }
+
+    /// <summary>
+    /// PAKET P-13 (B-12): ek beyan AYNI formu kullanır (UX-S26 — oluşturma ve
+    /// düzeltme formu tek alan kümesi). Asıl kaydın tutarı öneri olarak gelir;
+    /// gerekçe BOŞ başlar, çünkü ek beyanın kendi özgün metni olmalıdır.
+    /// </summary>
+    private SupheliSatir? ekBeyanHedef;
+
+    private void EkBeyanAc(SupheliSatir s)
+    {
+        hata = null;
+        basari = null;
+        ekBeyanHedef = s;
+        yeniTutar = s.IslemTutariTl;
+        yeniHareketId = s.HareketId;
+        yeniGerekce = null;
+        supheliFormAcik = true;
+    }
+
+    private async Task BildirimKaydet()
+    {
+        if (sayiKapisi.OnekleVar("sb-tutar")) return;   // ORTAK-1: POST YOK
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var govde = new SupheliOlusturDto
+            {
+                IslemTutariTl = yeniTutar!.Value,
+                HareketId = string.IsNullOrWhiteSpace(yeniHareketId) ? null : yeniHareketId.Trim(),
+                Gerekce = yeniGerekce!.Trim(),
+            };
+            if (ekBeyanHedef is null) await Api.SupheliOlustur(govde);
+            else await Api.EkBeyan(ekBeyanHedef.Id, govde);
+
+            supheliFormAcik = false;
+            yeniTutar = null; yeniHareketId = null; yeniGerekce = null;
+            basari = ekBeyanHedef is null ? Dil.T.Uyum.BildirimOlusturuldu : Dil.T.Uyum.EkBeyanBasarili;
+            ekBeyanHedef = null;
+            await Yukle();
+        }
+        catch (Exception ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task GonderimAc(SupheliSatir s)
+    {
+        gonderimHedef = s;
+        gonderimReferansi = null;
+        gonderimDenendi = false;
+        gonderimAcik = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task GonderimOnayla()
+    {
+        gonderimDenendi = true;
+        if (gonderimHedef is null || string.IsNullOrWhiteSpace(gonderimReferansi)) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            await Api.GonderildiIsaretle(gonderimHedef.Id, gonderimReferansi.Trim());
+            basari = Dil.T.Uyum.GonderildiIsaretlendi;
+            gonderimAcik = false;
+            await Yukle();
+        }
+        catch (Exception ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task KapatmaAc(SupheliSatir s)
+    {
+        kapatmaHedef = s;
+        kapatmaGerekcesi = null;
+        kapatmaDenendi = false;
+        kapatmaAcik = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task KapatmaOnayla()
+    {
+        kapatmaDenendi = true;
+        if (kapatmaHedef is null || (kapatmaGerekcesi?.Trim().Length ?? 0) < AsgariKapatma) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            await Api.Kapat(kapatmaHedef.Id, kapatmaGerekcesi!.Trim());
+            basari = Dil.T.Uyum.BildirimKapatildi;
+            kapatmaAcik = false;
+            await Yukle();
+        }
+        catch (Exception ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task SaklamaCalistir()
+    {
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var sonuc = await Api.SaklamaUygula();
+            basari = string.Format(Dil.T.Uyum.MaskelemeSonuc,
+                sonuc.Maskelenen.KimlikTespiti, sonuc.Maskelenen.Beyan);
+            await Yukle();
+        }
+        catch (Exception ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    // ⚠ UX-4d madde 10: window.prompt KALDIRILDI. Otomasyon/kurumsal tarayıcı
+    // ayarlarında prompt engellenince null dönüyor ve düğme SESSİZCE hiçbir şey
+    // yapmıyordu (QA turu 1: ağda hiç istek yok). Yerine uygulama içi onay
+    // modalı geldi; alan altı Türkçe hata mesajı var.
+
+    private static string DurumRenk(string durum) => durum switch
+    {
+        "ACIK" => "amber",
+        "GONDERILDI" => "yesil",
+        "KAPATILDI" => "gri",
+        _ => "gri",
+    };
+}

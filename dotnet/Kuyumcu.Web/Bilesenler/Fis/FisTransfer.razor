@@ -1,0 +1,49 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-1 — ŞUBELER ARASI TRANSFER ALANLARI ════════════════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Bileşen istek ATMAZ;
+   transfer gövdesi Kaydet()'te kurulur. Reyon seçicileri (kaynak/hedef reyon)
+   DOM sırası korunsun diye sayfada kaldı. Mevcut element id'leri DEĞİŞMEDİ.
+   Satır içi flex:1 → .esnek (app.css'te birebir aynı kural, UX4c M13-b). *@
+<div class="form-grid-2">
+    <div class="alan">
+        <Secici ElemanId="transfer-kaynak"
+                Etiket="@Dil.T.Islem.KaynakSube"
+                Secenekler="@(Subeler.Select(s => new SecenekOgesi(s.Id, s.Ad)).ToList())"
+                @bind-Deger="Transfer.KaynakSubeId" @bind-Deger:after="Bildir"
+                BosSecenekMetni="@Dil.T.Islem.SubeSecin" />
+    </div>
+    <div class="alan">
+        <Secici ElemanId="transfer-hedef"
+                Etiket="@Dil.T.Islem.HedefSube"
+                Secenekler="@(Subeler.Where(x => x.Id != Transfer.KaynakSubeId).Select(s => new SecenekOgesi(s.Id, s.Ad)).ToList())"
+                @bind-Deger="Transfer.HedefSubeId" @bind-Deger:after="Bildir"
+                BosSecenekMetni="@Dil.T.Islem.SubeSecin" />
+    </div>
+</div>
+<div class="satir">
+    <div class="alan esnek">
+        <Secici ElemanId="transfer-urun"
+                Etiket="@Dil.T.Islem.Urun"
+                Secenekler="@UrunSecenekleri"
+                @bind-Deger="Transfer.UrunId" @bind-Deger:after="Bildir"
+                BosSecenekMetni="@Dil.T.Urun.UrunSecin" />
+    </div>
+    @* PAKET GOC-C (#6): 2,5 eskiden SESSİZCE 2 gidiyordu ((int) kesme) — ortak Adet kesri tuşta engeller, kesirli değer 0 (gönderilmez). *@
+    <Adet ElemanId="transfer-adet" Zorunlu="true" Etiket="@Dil.T.Ortak.Adet"
+          Deger="@((decimal?)Transfer.Adet)"
+          DegerChanged="@(v => { Transfer.Adet = v is { } _d4 && _d4 == decimal.Truncate(_d4) ? (int)_d4 : 0; return Bildir(); })" />
+</div>
+
+@code {
+    /// <summary>Transfer girdileri — SAHİBİ Islemler.razor.</summary>
+    [Parameter, EditorRequired] public TransferGirisi Transfer { get; set; } = new();
+    /// <summary>Aktif şubeler — sayfa yükler.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<SubeVeri> Subeler { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<SecenekOgesi> UrunSecenekleri { get; set; } = [];
+    /// <summary>Her girdi değişikliğinden sonra — sayfa yeniden çizilir (Kaydet kilidi, reyon listeleri).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private Task Bildir() => Degisti.InvokeAsync();
+}

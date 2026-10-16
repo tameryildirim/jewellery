@@ -1,0 +1,23 @@
+@implements IDisposable
+@* PAKET T-K2 — sayfanın üst bara koyduğu sekmeler (tuval Ayarlar.dc.html).
+   Kullanım (T-K3): <UstBarSekmeleri> … sekme hapı … </UstBarSekmeleri>
+   Kendisi yerinde HİÇBİR ŞEY çizmez; içerik UstBar'daki #ust-sayfa-sekmeleri
+   yuvasında görünür. Yuva yoksa (kabuk dışı çizim, bUnit) içerik kaybolmaz:
+   YerindeCiz=true ise sayfanın kendi yerinde çizilir. *@
+@if (Yuva is null && YerindeCiz)
+{
+    @ChildContent
+}
+
+@code {
+    [CascadingParameter] public UstBarSekmeYuvasi? Yuva { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Yuva yoksa içerik sayfanın kendi yerinde çizilsin mi (varsayılan: evet — özellik kaybolmaz).</summary>
+    [Parameter] public bool YerindeCiz { get; set; } = true;
+
+    protected override void OnParametersSet() => Yuva?.Ata(this, ChildContent);
+
+    public void Dispose() => Yuva?.Birak(this);
+}

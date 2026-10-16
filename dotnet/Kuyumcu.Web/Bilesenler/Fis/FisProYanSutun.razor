@@ -1,0 +1,203 @@
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET T-S2 — tuval Profesyonel.dc.html SAĞ SÜTUN (320 px) ═══════════════
+   Yasal kapılar · Müşteri kartı · Kısayollar · not.
+   • Yasal kapılar: EŞİK SAYILARI İSTEMCİYE GÖMÜLMEZ (MEVZUAT KURALI / B-3).
+     Nakit kuralının tutarı ve durumu SUNUCUNUN /tevsik/gunluk yanıtından
+     (had · islemTutariKuraliDevrede), kimlik eşiği /masak/esikler'den gelir.
+     Sunucu yanıt vermediyse satır sayısız yazılır ve durum "Bilinmiyor" olur.
+     KDV özel matrahı istemcide hesaplanmaz: "Faturada" (sebep title'da).
+   • Müşteri kartı: sayfanın ZATEN çektiği GET /cari listesi (has/TL bakiyesi) +
+     GET /cari/{id}/bakiye (son işlem). "Kartı aç" → /cariler?cariId=… .
+     Tuvaldeki "Toplam alışveriş" satırı YOK: mevcut cari uçlarında bu toplam yok
+     (uydurulmaz — rapora açık kalan olarak yazıldı).
+   • Kısayollar: sayfanın gerçek F2/F4/F8/F9 tuşları (Islemler.Pro.cs · ProKisayol).
+   ⚠ Bileşen İSTEK ATMAZ (S2-3 FIS_BILESENI_ISTEK = 0): veriyi sayfa verir. *@
+@* ═══ KURUCU TEMEL KURALI (25.09 11:35) — sağ sütun yalnız gerektiğinde konuşur ═══
+   • Yasal kapılar: eşik yaklaşmadıysa/aşılmadıysa TEK yeşil satır "Yasal kapılar uygun";
+     satırlar (id'ler AYNEN) o satırın katlanır ayrıntısında. Eşik aşıldı, yaklaşıldı (fiş
+     tutarı sunucu eşiğinin YaklasmaOrani'nı geçti) ya da durum bilinmiyorsa kart AÇIK çizilir.
+     YaklasmaOrani yalnız EKRAN uyarısıdır, yasal hüküm değildir; eşik sayıları yine sunucudan.
+   • Müşteri kartı: yalnız GERÇEK müşteri seçiliyken (Peşin/boş iken kart çizilmez).
+   • Kısayollar: tek satır ipucu (F2 · F4 · F8 · F9). *@
+<aside class="fis-pro-yan" id="islem-pro-yan" aria-label="@P.YasalKapilar">
+    @* t3 hakemi (ORTA): kartın verisi (nakit kuralı) yalnız SATIŞ fişinde hesaplanır; diğer türlerde boş formda üç
+       "Bilinmiyor" satırı basılıyordu → kart yalnız satışta ya da kimlik eşiği tetiklenince çizilir (kapılar sunucuda işler). *@
+    @if (!YasalGoster) { }
+    else if (YasalDikkat && FisteSoylendi)
+    {
+        @* YASAL-KAPI-3 (hakem KRİTİK "aynı uyarı 2-5 kez"): engel fişte TEK yerde yazıyor — kademe ayrıntısı katlı (tıklayınca). *@
+        <section class="fis-pro-yan-kart fis-pro-yasal-ozet" id="islem-pro-yasal" aria-labelledby="islem-pro-yasal-baslik">
+            <details class="fis-pro-yasal-ayrinti" id="islem-pro-yasal-ayrinti">
+                <summary id="islem-pro-yasal-baslik" class="fis-pro-yan-baslik">@P.YasalKapilar</summary>
+                @YasalSatirlari
+            </details>
+        </section>
+    }
+    else if (YasalDikkat)
+    {
+        <section class="fis-pro-yan-kart" id="islem-pro-yasal" aria-labelledby="islem-pro-yasal-baslik">
+            <h2 class="fis-pro-yan-baslik" id="islem-pro-yasal-baslik">@P.YasalKapilar</h2>
+            @YasalSatirlari
+        </section>
+    }
+    else
+    {
+        <section class="fis-pro-yan-kart fis-pro-yasal-ozet" id="islem-pro-yasal" aria-labelledby="islem-pro-yasal-uygun">
+            <details class="fis-pro-yasal-ayrinti" id="islem-pro-yasal-ayrinti">
+                <summary id="islem-pro-yasal-uygun" class="metin-yesil" title="@S.YasalAyrinti"><Ikon Ad="@Ikonlar.Onay" Sinif="fis-pro-yasal-ikon" /> @S.YasalUygun</summary>
+                @YasalSatirlari
+            </details>
+        </section>
+    }
+
+    @if (Cari is not null && !PesinSecili)
+    {
+    <section class="fis-pro-yan-kart" id="islem-pro-musteri" aria-labelledby="islem-pro-musteri-baslik">
+        <h2 class="fis-pro-yan-baslik" id="islem-pro-musteri-baslik">@P.MusteriKarti</h2>
+            <div class="fis-pro-yan-satir">
+                <span class="metin-soluk">@P.HasHesabi</span>
+                <span class="sayi" id="islem-pro-musteri-has">@HesapMetni(FisHesap.HasYuvarla(Cari.HasGramBakiye), $"{FisHesap.HasSayi(Math.Abs(Cari.HasGramBakiye))} g")</span>
+            </div>
+            <div class="fis-pro-yan-satir">
+                <span class="metin-soluk">@P.TlHesabi</span>
+                <span class="sayi" id="islem-pro-musteri-tl">@HesapMetni(FisHesap.Yuvarla2(Cari.TlBakiye), Bicim.Tl(Math.Abs(Cari.TlBakiye)))</span>
+            </div>
+            <div class="fis-pro-yan-satir">
+                <span class="metin-soluk">@P.SonIslem</span>
+                <span id="islem-pro-musteri-son">@(SonIslem is { } s ? Bicim.IsletmeBicim(s, "d MMMM", KulturDil) : KartHata is null ? P.SonIslemYok : "—")</span>
+            </div>
+            @if (!string.IsNullOrEmpty(KartHata))
+            {
+                <p class="metin-kucuk metin-amber fis-pro-yan-not" id="islem-pro-musteri-hata" role="alert">@string.Format(P.MusteriKartHata, KartHata)</p>
+            }
+            <a class="fis-pro-yan-bag" id="islem-pro-karti-ac" href="@($"/cariler?cariId={Uri.EscapeDataString(Cari.Id)}")">@P.KartiAc</a>
+    </section>
+    }
+
+    <p class="fis-pro-yan-kisayol metin-kucuk metin-soluk" id="islem-pro-kisayollar" title="@P.KisayolIpucu">
+        <span class="gorsel-gizli" id="islem-pro-kisayol-baslik">@P.Kisayollar</span>
+        @foreach (var (tus, ad) in Tuslar)
+        {
+            <span class="fis-pro-kisayol" id="@($"islem-pro-kisayol-{tus.ToLowerInvariant()}")"><kbd class="fis-pro-tus">@tus</kbd> <span>@ad</span></span>
+        }
+    </p>
+
+    @* SATIS-2 (j): tuvaldeki gri "Basit modda katlı olan her şey burada açık…" kutusu TASARIM NOTUDUR, ürün metni değil — kaldırıldı. *@
+</aside>
+
+@code {
+    /// <summary>Sunucunun tevsik haddi (/tevsik/gunluk · had); null = sunucu yanıt vermedi.</summary>
+    [Parameter] public decimal? NakitHad { get; set; }
+    /// <summary>Sunucu bu fişte nakit kuralını devrede sayıyor mu (islemTutariKuraliDevrede); null = bilinmiyor.</summary>
+    [Parameter] public bool? NakitAsildi { get; set; }
+    /// <summary>SATIS-4 (a): ödeme tutar nedeniyle otomatik nakit dışına döndüyse neden (sayfanın OdemeOtomatikNotu); null = yok.</summary>
+    [Parameter] public string? NakitNot { get; set; }
+    /// <summary>YASAL-KAPI-3: sayfa yasal engeli/kimlik formunu kendi TEK yerinde söylüyor → panelin kademe satırları katlı.</summary>
+    [Parameter] public bool FisteSoylendi { get; set; }
+    /// <summary>MASAK: kimliğin FİİLEN istendiği en düşük tutar (/masak/esikler · kimlikIstenenEnDusukTutar — MASAK-370 tur 3;
+    /// 07.10.2026 sonrası md.5/1-b 370.000 değil, amaç beyanı kademesi 200.000); null = okunamadı.</summary>
+    [Parameter] public decimal? KimlikEsigi { get; set; }
+    /// <summary>Fiş tutarı kimlik eşiğini aştı mı (sayfanın MasakGerekli'si — sunucu eşiğiyle).</summary>
+    [Parameter] public bool KimlikAsildi { get; set; }
+    /// <summary>Tur 2: MASAK md.5/1-b kimlik eşiği (/masak/esikler · kimlikEsigi). null = eski çağıran → KimlikEsigi satırı.</summary>
+    [Parameter] public decimal? MasakKimlikEsigi { get; set; }
+    /// <summary>Tur 2: amaç beyanı kademesi (kimlik eşiğinin altındaysa; sunucudan). null = ayrı satır yok.</summary>
+    [Parameter] public decimal? AmacEsigi { get; set; }
+    /// <summary>Tur 2: kilit metniyle AYNI ölçü (bağlantılı toplam ya da işlem tutarı — MasakKademe.Olcu).</summary>
+    [Parameter] public decimal MasakOlcu { get; set; }
+
+    private YasalParamMetinleri YP => YasalParamSozlugu.Al(Dil.Dil);
+
+    /// <summary>Kimlik satırının eşiği: md.5/1-b (yeni) ya da eski çağıranın "istenen en düşük" tutarı.</summary>
+    private decimal? KimlikSatirEsigi => MasakKimlikEsigi ?? KimlikEsigi;
+
+    /// <summary>Kimlik satırı "gerekir" mi: ölçü md.5/1-b eşiğinde/üstünde; ya da sunucu kimlik istedi ama
+    /// ölçü hiçbir kademeye ulaşmıyor (sebep bilinmiyor → fail-closed "gerekir"). Eski çağıran: KimlikAsildi.</summary>
+    private bool KimlikSatiriGerekir => MasakKimlikEsigi is not { } k ? KimlikAsildi
+        : MasakOlcu >= k || (KimlikAsildi && MasakOlcu < (AmacEsigi ?? k));
+    /// <summary>Tevsik önizlemesi okunamadıysa sunucu mesajı (UX-S28: yutulmaz).</summary>
+    [Parameter] public string? YasalHata { get; set; }
+    /// <summary>Seçili müşteri (sayfanın GET /cari listesinden).</summary>
+    [Parameter] public CariVeri? Cari { get; set; }
+    /// <summary>Seçili müşteri Peşin Müşteri mi.</summary>
+    [Parameter] public bool PesinSecili { get; set; }
+    /// <summary>GET /cari/{id}/bakiye · sonIslemTarihi.</summary>
+    [Parameter] public DateTime? SonIslem { get; set; }
+    /// <summary>Kart bilgisi okunamadıysa sunucu mesajı.</summary>
+    [Parameter] public string? KartHata { get; set; }
+
+    /// <summary>PAKET SATIS-2 — fiş net toplamı (eşiğe yaklaşma yalnız ekranda; yasal karar sunucuda).</summary>
+    [Parameter] public decimal Toplam { get; set; }
+
+    /// <summary>t3: Yasal kapılar kartı çizilsin mi (sayfa: yalnız SATIŞ ya da MASAK kimlik eşiği tetikliyken).</summary>
+    [Parameter] public bool YasalGoster { get; set; } = true;
+
+    /// <summary>EKRAN uyarı oranı (yasal hüküm DEĞİL): fiş tutarı sunucu eşiğinin bu oranını geçince kart açık çizilir.</summary>
+    public const decimal YaklasmaOrani = 0.8m;
+
+    /// <summary>Yasal kart açık mı: aşıldı / yaklaşıldı / bilinmiyor / önizleme hatası.</summary>
+    private bool YasalDikkat =>
+        NakitAsildi != false || KimlikAsildi || KimlikEsigi is null || !string.IsNullOrEmpty(YasalHata)
+        || (NakitHad is > 0m && Toplam >= NakitHad.Value * YaklasmaOrani)
+        || (KimlikEsigi is > 0m && Toplam >= KimlikEsigi.Value * YaklasmaOrani);
+
+    private SatisSadeMetinleri S => SatisSadeSozlugu.Al(Dil.Dil);
+
+    /// <summary>Yasal kapı satırları (id'ler AYNEN) — açık kartta ya da "uygun" satırının ayrıntısında.</summary>
+    private RenderFragment YasalSatirlari => @<text>
+        <div class="fis-pro-yan-satir">
+            <span class="metin-soluk" id="islem-pro-nakit-etiket">@(NakitHad is { } h ? string.Format(P.NakitKurali, Bicim.Tl(h)) : P.NakitKuraliSayisiz)</span>
+            <span class="@NakitSinif" id="islem-pro-nakit">@NakitDurum</span>
+        </div>
+        @if (!string.IsNullOrEmpty(NakitNot))
+        {
+            @* KESIF-P5 t2 (doğrulayıcı DÜŞÜK): PRO'da ödeme katmanı kapalıyken otomatik seçimin nedeni burada görünür. *@
+            <p class="metin-kucuk metin-soluk fis-pro-yan-not" id="islem-pro-nakit-not" role="status">@NakitNot</p>
+        }
+        @* YASAL-PARAM-EKRAN tur 2 (tasarım hakemi KRİTİK): kimlik satırı md.5/1-b eşiğini (MASAK) söyler;
+           amaç beyanı kademesi AYRI satırda "teyit bekleniyor" ile. Durum, kilit metniyle AYNI ölçüden
+           (MasakKademe.Olcu): aynı ekranda iki farklı kimlik eşiği görünmez. Eski çağıran (MasakKimlikEsigi
+           yok) eski davranışı korur. *@
+        <div class="fis-pro-yan-satir yasal-masak-satir">
+            <span class="metin-soluk" id="islem-pro-kimlik-etiket">@(KimlikSatirEsigi is { } k ? string.Format(P.KimlikEsigi, Bicim.Tl(k)) : P.KimlikEsigiSayisiz)</span>
+            <span class="@(KimlikSatirEsigi is null ? "metin-soluk" : KimlikSatiriGerekir ? "metin-kirmizi" : "metin-yesil")" id="islem-pro-kimlik">@(KimlikSatirEsigi is null ? P.Bilinmiyor : KimlikSatiriGerekir ? P.KimlikGerekir : P.Altinda)</span>
+        </div>
+        @if (MasakKimlikEsigi is not null && AmacEsigi is { } a)
+        {
+            <div class="fis-pro-yan-satir yasal-masak-satir">
+                <span class="metin-soluk" id="islem-pro-amac-etiket">@string.Format(YP.PanelAmac, Bicim.Tl(a))</span>
+                <span class="@(MasakOlcu >= a ? "metin-kirmizi" : "metin-yesil")" id="islem-pro-amac">@(MasakOlcu >= a ? YP.PanelAmacGerekir : P.Altinda)</span>
+            </div>
+        }
+        <div class="fis-pro-yan-satir">
+            <span class="metin-soluk">@P.KdvMatrahSatiri</span>
+            <span id="islem-pro-kdv-matrah" title="@P.KdvIpucu">@P.KdvFaturada</span>
+        </div>
+        @if (!string.IsNullOrEmpty(YasalHata))
+        {
+            <p class="metin-kucuk metin-amber fis-pro-yan-not" id="islem-pro-yasal-hata" role="alert">@string.Format(P.YasalHata, YasalHata)</p>
+        }
+</text>;
+
+    private CultureInfo KulturDil => CultureInfo.GetCultureInfo(Dil.Dil == "en" ? "en-GB" : "tr-TR");
+    private SatisProMetinleri P => SatisProSozlugu.Al(Dil.Dil);
+
+    /// <summary>Kısayollar kartının satırları — sayfanın ProKisayol eşlemesiyle TEK kaynak (Islemler.Pro.cs).</summary>
+    private (string Tus, string Ad)[] Tuslar =>
+        [("F2", P.KisaUrunAra), ("F4", P.KisaMusteri), ("F8", P.KisaOdeme), ("F9", P.KisaKaydet)];
+
+    private string NakitDurum => NakitAsildi switch { true => P.Asildi, false => P.Uygun, null => P.Bilinmiyor };
+    private string NakitSinif => NakitAsildi switch { true => "metin-kirmizi", false => "metin-yesil", null => "metin-soluk" };
+
+    /// <summary>Pozitif bakiye = müşterinin borcu (FisBakiyeRozeti ile aynı işaret).</summary>
+    // T-S2 (doğrulayıcı bulgusu): yön GÖSTERİLEN (yuvarlanmış) değerden okunur —
+    // ekranda "0,00" yazıp "borçlu" demek çelişkidir; yuvarlanınca sıfırsa "hesap kapalı".
+    private string HesapMetni(decimal gosterilenBakiye, string metin) =>
+        // P-DIL-BORC-KASA tur 2: tek işaret kuralı (BorcDiliSozlugu.Yon); değer çağıranda zaten gösterim hassasiyetine yuvarlı.
+        Kuyumcu.Core.I18n.BorcDiliSozlugu.Yon(gosterilenBakiye, 6) is var y && y == 1 ? string.Format(P.Borclu, metin)
+            : y == -1 ? string.Format(P.Alacakli, metin) : P.HesapSifir;
+}

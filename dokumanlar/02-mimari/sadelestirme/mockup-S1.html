@@ -1,0 +1,884 @@
+> ⚠ BU DOSYA GEÇERSİZDİR (23 Eylül 2026, orkestratör).
+> Kurucunun onayladığı tasarım tuvali (`tuval/project/*.dc.html`) BUNDAN ÖNCEDİR ve ÜSTÜNDÜR.
+> Bu mockup 3 şema ve altın vurgu içeriyor; plan § 5A bunu açıkça reddediyor (8 şema, altın yok).
+> Uygulama tuvale göre yapılır. Bu dosya yalnız tarihsel kayıt olarak duruyor.
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup S-1 — Görsel tercih (Sakin Lüks)</title>
+<style>
+/* ════════════════════════════════════════════════════════════════════════
+   mockup-S1.html — KURUCUNUN GÖRSEL TERCİHİ (plan § 8.1 / § 8.2 / § 8.5)
+   Saf CSS. CDN yok, script yok, dış istek yok (plan § 3 md. 8 — CSP).
+   Belirteç adları bugünkü wwwroot/css/belirtecler.css ile BİREBİR aynıdır;
+   S-1'de bu değerler doğrudan o dosyaya taşınabilir.
+   ÜRETİM KODUNA KOPYALANMAZ (plan § 5A "Mockup teslimi").
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── ÖLÇÜ belirteçleri (belirtecler.css katman 3 ile aynı adlar) ───────── */
+:root{
+  --bosluk-1:.25rem; --bosluk-2:.5rem; --bosluk-3:.75rem; --bosluk-4:1rem;
+  --bosluk-5:1.5rem; --bosluk-6:2rem; --bosluk-7:3rem;
+  --yaricap-sm:.375rem; --yaricap:.5rem; --yaricap-lg:.75rem; --yaricap-xl:1rem; --yaricap-tam:999px;
+  --yazi-ailesi:"Segoe UI",system-ui,-apple-system,sans-serif;
+  --yazi-sayi:ui-monospace,"SF Mono",Consolas,Menlo,monospace;
+  --satir-yuksekligi:1.5; --kalin-orta:500; --kalin:600; --kalin-cok:700;
+  --golge-sm:0 1px 2px rgb(0 0 0 / .06);
+  --golge:0 1px 3px rgb(15 23 42 / .10), 0 1px 2px rgb(15 23 42 / .06);
+  --golge-lg:0 10px 25px rgb(15 23 42 / .12);
+  --gecis:200ms;
+
+  /* ── ORTAK SEMANTİK (şemadan bağımsız — belirtecler.css aydınlık) ───── */
+  --yuzey:#ffffff; --yuzey-2:#f8fafc; --yuzey-3:#f1f5f9; --yuzey-govde:#f8fafc;
+  --ayrac:#e2e8f0;
+  --basari:#047857; --basari-yuzey:#ecfdf5; --basari-kenar:#a7f3d0;
+  --uyari:#8a5206;  --uyari-yuzey:#fdf6e7;  --uyari-kenar:#fde68a;
+  --tehlike:#b91c1c;--tehlike-yuzey:#fef2f2;--tehlike-kenar:#fecaca;
+  --tehlike-dolgu:#dc2626; --tehlike-dolgu-metin:#ffffff;
+  --bilgi:#1d4ed8;  --bilgi-yuzey:#dbeafe;  --bilgi-kenar:#bfdbfe;
+}
+
+/* ── ÜÇ RENK ŞEMASI (plan § 8.1) ───────────────────────────────────────
+   A = bugünkü varsayılan blok (:root)           → belirtecler.css satır ~102
+   B = :root[data-sema="kurumsal"]               → belirtecler.css satır ~243
+   C = :root[data-sema="zumrut"]                 → belirtecler.css satır ~259
+   Değerler TAHMİN DEĞİL, o dosyadan okundu.                              */
+.sema-a{
+  --metin:#1e293b; --metin-guclu:#0f172a; --metin-soluk:#475569;
+  --kenarlik:#8592a5;
+  --vurgu:#b45309; --vurgu-guclu:#92400e; --vurgu-metin:#ffffff;
+  --vurgu-yuzey:#fffbeb; --vurgu-kenar:#fde68a; --odak-halka:#b45309;
+}
+.sema-b{
+  --metin:#1f2937; --metin-guclu:#111827; --metin-soluk:#4b5563;
+  --kenarlik:#6b7280;
+  --vurgu:#1d4ed8; --vurgu-guclu:#1e3a8a; --vurgu-metin:#ffffff;
+  --vurgu-yuzey:#eff6ff; --vurgu-kenar:#bfdbfe; --odak-halka:#1d4ed8;
+}
+.sema-c{
+  --metin:#14532d; --metin-guclu:#052e16; --metin-soluk:#3f6212;
+  --kenarlik:#6b7280;
+  --vurgu:#065f46; --vurgu-guclu:#064e3b; --vurgu-metin:#ffffff;
+  --vurgu-yuzey:#ecfdf5; --vurgu-kenar:#a7f3d0; --odak-halka:#065f46;
+}
+
+/* ── KENAR ÇUBUĞU ZEMİNİ (plan § 8.5 / karar D11) ──────────────────────
+   KOYU = bugünkü belirtecler.css değerleri (satır ~127).
+   AÇIK = "Fildişi" ÖNERİSİ — bugün belirtecler.css'te YOKTUR, S-1'de eklenir. */
+.kenar-koyu{
+  --kenar-yuzey:#0f172a; --kenar-yuzey-2:#1e293b; --kenar-metin:#94a3b8;
+  --kenar-metin-guclu:#ffffff; --kenar-ayrac:#334155;
+}
+.kenar-acik{
+  --kenar-yuzey:#f6f4ef; --kenar-yuzey-2:#ece8df; --kenar-metin:#5b5347;
+  --kenar-metin-guclu:#1f1b14; --kenar-ayrac:#ddd7ca;
+}
+
+/* ── YAZI ÖLÇEĞİ (plan § 8.2) — Ö2 okunaklı / Ö1 yoğun ─────────────── */
+.ol-o2{ --yazi-xs:.8125rem; --yazi-sm:.875rem; --yazi-md:.9375rem;
+        --yazi-govde:16px; --yazi-lg:1.125rem; --yazi-xl:1.25rem;
+        --yazi-2xl:1.625rem; --satir-yuk:52px; --hucre:.75rem 1rem; }
+.ol-o1{ --yazi-xs:.6875rem; --yazi-sm:.75rem; --yazi-md:.8125rem;
+        --yazi-govde:14px; --yazi-lg:1rem; --yazi-xl:1.125rem;
+        --yazi-2xl:1.5rem; --satir-yuk:40px; --hucre:.4375rem .75rem; }
+
+/* ── Sayfa iskeleti (mockup'ın kendi kabuğu) ────────────────────────── */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:#eef1f5; color:#0f172a;
+  font-family:var(--yazi-ailesi); font-size:16px; line-height:var(--satir-yuksekligi);
+}
+.sayfa{max-width:1400px; margin:0 auto; padding:var(--bosluk-5) var(--bosluk-4) var(--bosluk-7)}
+.girizgah{
+  background:#fff; border:1px solid #cbd5e1; border-left:4px solid #0f172a;
+  border-radius:var(--yaricap-lg); padding:var(--bosluk-5); box-shadow:var(--golge);
+  margin-bottom:var(--bosluk-6);
+}
+.girizgah h1{margin:0 0 var(--bosluk-3); font-size:1.5rem; line-height:1.25}
+.girizgah p{margin:0 0 var(--bosluk-3); max-width:70ch}
+.girizgah p:last-child{margin-bottom:0}
+.secim{display:flex; flex-wrap:wrap; gap:var(--bosluk-2); margin-top:var(--bosluk-4)}
+.secim span{
+  background:#0f172a; color:#fff; border-radius:var(--yaricap-tam);
+  padding:.375rem .875rem; font-weight:var(--kalin); font-size:.875rem;
+}
+.not{
+  background:#fdf6e7; border:1px solid #fde68a; color:#8a5206;
+  border-radius:var(--yaricap); padding:var(--bosluk-3) var(--bosluk-4);
+  font-size:.875rem; margin-top:var(--bosluk-4);
+}
+.not b{color:#6b4005}
+h2.bolum{
+  margin:var(--bosluk-7) 0 var(--bosluk-2); font-size:1.25rem; letter-spacing:-.01em;
+  padding-bottom:var(--bosluk-2); border-bottom:2px solid #cbd5e1;
+}
+h2.bolum:first-of-type{margin-top:var(--bosluk-5)}
+.bolum-alt{margin:0 0 var(--bosluk-5); color:#475569; font-size:.9375rem; max-width:80ch}
+
+/* ── Seçenek kutusu ─────────────────────────────────────────────────── */
+.secenekler{display:grid; gap:var(--bosluk-6)}
+@media (min-width:1180px){ .secenekler.ucuz{grid-template-columns:repeat(3,1fr)} }
+@media (min-width:900px){ .secenekler.ikiz{grid-template-columns:repeat(2,1fr)} }
+.secenek{
+  background:#fff; border:1px solid #cbd5e1; border-radius:var(--yaricap-lg);
+  overflow:hidden; box-shadow:var(--golge);
+}
+.secenek > header{
+  padding:var(--bosluk-3) var(--bosluk-4); background:#0f172a; color:#fff;
+  display:flex; align-items:center; gap:var(--bosluk-3); flex-wrap:wrap;
+}
+.secenek > header .harf{
+  background:#fff; color:#0f172a; width:1.75rem; height:1.75rem; flex:none;
+  border-radius:var(--yaricap-sm); display:grid; place-items:center;
+  font-weight:var(--kalin-cok); font-size:.9375rem;
+}
+.secenek > header .ad{font-weight:var(--kalin); font-size:1rem}
+.secenek > header .karakter{color:#cbd5e1; font-size:.8125rem}
+
+/* ── ÖRNEK EKRAN — her şemada birebir aynı içerik ───────────────────── */
+.ekran{
+  font-size:var(--yazi-govde); color:var(--metin);
+  background:var(--yuzey-govde);
+  display:grid; grid-template-columns:200px 1fr; min-height:520px;
+}
+@media (max-width:720px){ .ekran{grid-template-columns:1fr} }
+
+/* kenar çubuğu */
+.kenarcubugu{
+  background:var(--kenar-yuzey); color:var(--kenar-metin);
+  padding:var(--bosluk-3) var(--bosluk-2); border-right:1px solid var(--kenar-ayrac);
+  display:flex; flex-direction:column; gap:var(--bosluk-1);
+}
+.marka{
+  display:flex; align-items:center; gap:var(--bosluk-2);
+  color:var(--kenar-metin-guclu); font-weight:var(--kalin);
+  padding:var(--bosluk-2) var(--bosluk-3) var(--bosluk-4);
+  font-size:var(--yazi-lg); letter-spacing:-.01em;
+}
+.marka .mg{
+  width:1.5rem;height:1.5rem;flex:none;border-radius:var(--yaricap-sm);
+  background:var(--vurgu); color:var(--vurgu-metin);
+  display:grid;place-items:center;font-size:.75rem;font-weight:var(--kalin-cok);
+}
+.mlink{
+  display:flex; align-items:center; gap:var(--bosluk-3);
+  padding:var(--bosluk-2) var(--bosluk-3); border-radius:var(--yaricap);
+  font-size:var(--yazi-md); color:var(--kenar-metin); min-height:2.25rem;
+}
+.mlink .ik{width:1.125rem; text-align:center; flex:none; opacity:.9}
+.mlink.aktif{
+  background:var(--vurgu); color:var(--vurgu-metin); font-weight:var(--kalin);
+}
+.mlink.aktif .ik{opacity:1}
+.mgrup{
+  margin-top:var(--bosluk-3); padding:var(--bosluk-2) var(--bosluk-3);
+  font-size:var(--yazi-xs); text-transform:uppercase; letter-spacing:.06em;
+  color:var(--kenar-metin); border-top:1px solid var(--kenar-ayrac);
+  display:flex; justify-content:space-between; align-items:center;
+}
+
+/* üst bar */
+.gvde{display:flex; flex-direction:column; min-width:0}
+.ustbar{
+  background:var(--yuzey); border-bottom:1px solid var(--ayrac);
+  padding:var(--bosluk-2) var(--bosluk-4);
+  display:flex; align-items:center; gap:var(--bosluk-3); flex-wrap:wrap;
+}
+.arama{
+  flex:1 1 11rem; min-width:8rem; border:1px solid var(--kenarlik);
+  border-radius:var(--yaricap); background:var(--yuzey);
+  padding:.375rem var(--bosluk-3); color:var(--metin-soluk);
+  font-size:var(--yazi-md); min-height:2rem; display:flex; align-items:center; gap:var(--bosluk-2);
+}
+.kurserit{
+  display:flex; gap:var(--bosluk-3); font-size:var(--yazi-sm);
+  color:var(--metin-soluk); white-space:nowrap;
+}
+.kurserit b{
+  color:var(--metin-guclu); font-family:var(--yazi-sayi);
+  font-variant-numeric:tabular-nums; font-weight:var(--kalin);
+}
+.hesap{
+  display:flex; align-items:center; gap:var(--bosluk-2); font-size:var(--yazi-md);
+  color:var(--metin); white-space:nowrap;
+}
+.hesap .av{
+  width:1.75rem;height:1.75rem;border-radius:var(--yaricap-tam);
+  background:var(--vurgu-yuzey); border:1px solid var(--vurgu-kenar);
+  color:var(--vurgu); display:grid;place-items:center;
+  font-size:var(--yazi-xs); font-weight:var(--kalin);
+}
+
+/* içerik */
+.icerik{padding:var(--bosluk-4); display:grid; gap:var(--bosluk-4); align-content:start}
+@media (min-width:1024px){
+  .secenekler:not(.ucuz) .icerik{grid-template-columns:1.3fr 1fr}
+  .secenekler:not(.ucuz) .icerik .basliksatiri{grid-column:1 / -1}
+}
+.basliksatiri{display:flex; align-items:center; justify-content:space-between; gap:var(--bosluk-3); flex-wrap:wrap}
+.basliksatiri h3{
+  margin:0; font-size:var(--yazi-xl); color:var(--metin-guclu);
+  font-weight:var(--kalin); letter-spacing:-.01em;
+}
+.basliksatiri .alt{margin:0; font-size:var(--yazi-sm); color:var(--metin-soluk)}
+
+/* düğme ailesi (tek sistem: .dugme + 5 varyant — plan § 4) */
+.dugme{
+  font:inherit; font-size:var(--yazi-md); font-weight:var(--kalin-orta);
+  border-radius:var(--yaricap); padding:.4375rem .875rem; min-height:2.25rem;
+  border:1px solid transparent; background:var(--yuzey-3); color:var(--metin);
+  display:inline-flex; align-items:center; gap:var(--bosluk-2); cursor:default;
+  transition:background var(--gecis);
+}
+.dugme.birincil{background:var(--vurgu); color:var(--vurgu-metin); font-weight:var(--kalin)}
+.dugme.ikincil{background:var(--yuzey); color:var(--metin); border-color:var(--kenarlik)}
+.dugme.sessiz{background:transparent; color:var(--metin-soluk)}
+.dugme.tehlike{background:var(--tehlike-dolgu); color:var(--tehlike-dolgu-metin)}
+.dugme.baglanti{background:transparent; color:var(--vurgu); text-decoration:underline; padding-inline:.25rem}
+.dugme.odakli{outline:2px solid var(--odak-halka); outline-offset:2px}
+.dugme-ailesi{
+  display:flex; flex-wrap:wrap; gap:var(--bosluk-2);
+  padding:var(--bosluk-3); background:var(--yuzey);
+  border:1px solid var(--ayrac); border-radius:var(--yaricap-lg);
+}
+
+/* kart */
+.kart{
+  background:var(--yuzey); border:1px solid var(--ayrac);
+  border-radius:var(--yaricap-lg); box-shadow:var(--golge-sm);
+  overflow-x:auto; overflow-y:hidden;
+}
+.kart > h4{
+  margin:0; padding:var(--bosluk-3) var(--bosluk-4);
+  font-size:var(--yazi-md); font-weight:var(--kalin); color:var(--metin-guclu);
+  border-bottom:1px solid var(--ayrac); background:var(--yuzey-2);
+  display:flex; justify-content:space-between; align-items:center; gap:var(--bosluk-2);
+}
+
+/* liste */
+table{width:100%; border-collapse:collapse; font-size:var(--yazi-md)}
+thead th{
+  text-align:left; padding:var(--hucre); background:var(--yuzey-2);
+  color:var(--metin); font-weight:var(--kalin); font-size:var(--yazi-sm);
+  border-bottom:1px solid var(--ayrac); position:sticky; top:0;
+}
+tbody td{padding:var(--hucre); border-bottom:1px solid var(--ayrac); height:var(--satir-yuk)}
+tbody tr:last-child td{border-bottom:0}
+.sayi{
+  font-family:var(--yazi-sayi); font-variant-numeric:tabular-nums;
+  text-align:right; white-space:nowrap; color:var(--metin-guclu);
+  font-weight:var(--kalin-orta);
+}
+.ad{font-weight:var(--kalin-orta); color:var(--metin-guclu)}
+.alt-ad{display:block; font-size:var(--yazi-xs); color:var(--metin-soluk); font-weight:400}
+.eylemler{display:flex; gap:var(--bosluk-1); justify-content:flex-end; white-space:nowrap}
+.eylemler .dugme{padding:.25rem .5rem; min-height:1.875rem; font-size:var(--yazi-xs)}
+.rozet{
+  display:inline-block; padding:.125rem .5rem; border-radius:var(--yaricap-tam);
+  font-size:var(--yazi-xs); font-weight:var(--kalin); white-space:nowrap;
+}
+.rozet.borclu{background:var(--tehlike-yuzey); color:var(--tehlike); border:1px solid var(--tehlike-kenar)}
+.rozet.alacakli{background:var(--basari-yuzey); color:var(--basari); border:1px solid var(--basari-kenar)}
+.rozet.vurgulu{background:var(--vurgu-yuzey); color:var(--vurgu); border:1px solid var(--vurgu-kenar)}
+
+/* vezne fişi */
+.fis-satir{
+  display:flex; justify-content:space-between; gap:var(--bosluk-3);
+  padding:var(--bosluk-2) var(--bosluk-4); border-bottom:1px solid var(--ayrac);
+  font-size:var(--yazi-md);
+}
+.fis-satir .etiket{color:var(--metin-soluk)}
+.fis-toplam{
+  display:flex; justify-content:space-between; align-items:baseline; gap:var(--bosluk-3);
+  padding:var(--bosluk-3) var(--bosluk-4); background:var(--vurgu-yuzey);
+  border-top:1px solid var(--vurgu-kenar);
+}
+.fis-toplam .etiket{font-weight:var(--kalin); color:var(--metin-guclu); font-size:var(--yazi-md)}
+.fis-toplam .tutar{
+  font-family:var(--yazi-sayi); font-variant-numeric:tabular-nums;
+  font-size:var(--yazi-2xl); font-weight:var(--kalin-cok); color:var(--vurgu);
+}
+.bant{
+  margin:var(--bosluk-3) var(--bosluk-4); padding:var(--bosluk-2) var(--bosluk-3);
+  border-radius:var(--yaricap); font-size:var(--yazi-sm);
+  background:var(--basari-yuzey); color:var(--basari); border:1px solid var(--basari-kenar);
+}
+.fis-dugmeler{display:flex; gap:var(--bosluk-2); padding:var(--bosluk-3) var(--bosluk-4); flex-wrap:wrap}
+
+/* ── KONTRAST TABLOSU ───────────────────────────────────────────────── */
+.kontrast{
+  border-top:1px solid #cbd5e1; background:#fff;
+  padding:var(--bosluk-3) var(--bosluk-4);
+}
+.kontrast h5{
+  margin:0 0 var(--bosluk-2); font-size:.8125rem; text-transform:uppercase;
+  letter-spacing:.06em; color:#475569;
+}
+.kontrast table{font-size:.8125rem; color:#1e293b}
+.kontrast th, .kontrast td{padding:.3125rem .5rem; border-bottom:1px solid #e2e8f0}
+.kontrast th{background:#f8fafc; font-size:.75rem; text-transform:none; position:static}
+.kontrast td.oran{font-family:var(--yazi-sayi); font-variant-numeric:tabular-nums; text-align:right; font-weight:600}
+.damga{
+  display:inline-block; padding:.0625rem .4375rem; border-radius:var(--yaricap-tam);
+  font-size:.6875rem; font-weight:700; white-space:nowrap;
+}
+.damga.gecer{background:#ecfdf5; color:#047857; border:1px solid #a7f3d0}
+.damga.kalir{background:#fef2f2; color:#b91c1c; border:1px solid #fecaca}
+.ozet{
+  display:flex; flex-wrap:wrap; gap:var(--bosluk-2); margin-top:var(--bosluk-3);
+  font-size:.8125rem; color:#334155;
+}
+.ozet span{background:#f1f5f9; border:1px solid #e2e8f0; border-radius:var(--yaricap-tam); padding:.1875rem .625rem}
+.sonuc{
+  margin-top:var(--bosluk-6); background:#0f172a; color:#fff;
+  border-radius:var(--yaricap-lg); padding:var(--bosluk-5);
+}
+.sonuc h2{margin:0 0 var(--bosluk-3); font-size:1.125rem}
+.sonuc ul{margin:0; padding-left:1.25rem}
+.sonuc li{margin-bottom:var(--bosluk-2)}
+.sonuc b{color:#fcd34d}
+.kucuk{font-size:.8125rem; color:#475569}
+@media (max-width:420px){
+  .sayfa{padding:var(--bosluk-3) var(--bosluk-2) var(--bosluk-6)}
+  .girizgah{padding:var(--bosluk-4)}
+  .icerik{padding:var(--bosluk-3)}
+  .kontrast td:nth-child(2), .kontrast th:nth-child(2){display:none}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+<div class="sayfa">
+
+<div class="girizgah">
+  <h1>Görsel tercih sayfası — kurucunun seçeceği üç şey</h1>
+  <p>Bu sayfada yapılacak tek iş <b>seçmek</b>: <b>(1)</b> renk şeması <b>A / B / C</b>,
+     <b>(2)</b> kenar çubuğu zemini <b>açık / koyu</b>, <b>(3)</b> yazı ölçeği <b>Ö1 / Ö2</b>.
+     Düzen, akış, menü sırası ve paket sırası sorulmuyor — onlar ekip oyuyla karara bağlanıyor
+     (plan § 3 md. 10). Üç şemanın hepsinde ekran <b>birebir aynı</b>; değişen yalnız renktir,
+     böylece karşılaştırma renk üstünden yapılır.</p>
+  <div class="secim"><span>A / B / C</span><span>açık / koyu menü</span><span>Ö1 / Ö2</span></div>
+  <div class="not">
+    <b>Ölçülen tutarsızlık (Madde 1 — gizlenmiyor):</b> Planın § 8.1'i <b>üç</b> şema (A Altın Klasik ·
+    B Platin Mavi · C Zümrüt Kasa) sorar; aynı planın § 5A'sı ise sonradan <b>sekiz</b> şemaya çıkar ve
+    “altın/amber yok, kurucu ve müşteri beğenmedi” der. Bu sayfa § 8.1'i uygular çünkü <b>üçü de bugün
+    kodda mevcuttur</b> (<code>belirtecler.css</code>: varsayılan blok = A, <code>data-sema="kurumsal"</code> = B,
+    <code>data-sema="zumrut"</code> = C) ve kurucunun amberi bir kez de yan yana görüp elemesi gerekir.
+    § 5A'nın kalan beş şeması (Bordo · Okyanus · Menekşe · Zeytin · Fildişi) <b>bugün kodda yoktur</b>,
+    S-1'de üretilir; bu sayfada gösterilmedi çünkü değerleri ölçülmemiştir — uydurulmadı.
+  </div>
+  <div class="not">
+    <b>Kenar çubuğu “açık zemin” hakkında:</b> aşağıdaki Fildişi değerleri bugün
+    <code>belirtecler.css</code>'te <b>YOKTUR</b> (bugünkü kenar çubuğu her iki temada da koyudur,
+    satır ~127). Bunlar S-1 için <b>öneri</b> değerlerdir ve kontrastları bu sayfada ölçülmüştür.
+    Koyu sütunun değerleri ise bugünkü gerçek değerlerdir.
+  </div>
+</div>
+
+<!-- ══════════════ 1) ÜÇ RENK ŞEMASI ══════════════ -->
+<h2 class="bolum">1 · Üç renk şeması — aynı ekran, üç renk</h2>
+<p class="bolum-alt">Örnek ekran: kenar çubuğu (7 satır, plan § 4 “≤ 7”) + tek satır üst bar +
+  müşteri listesi + vezne fişi kartı + düğme ailesi. Vurgu rengi taşıyan öğe sayısı her şemada
+  <b>3</b>'tür (aktif menü satırı, birincil düğme, fiş toplamı) — plan § 5A “VURGU_OGE_MAX = 3”.
+  Hepsi Ö2 ölçeğinde ve koyu menüyle gösterildi ki tek değişken renk olsun.</p>
+
+<div class="secenekler ucuz">
+
+  <!-- ŞEMA A -->
+  <section class="secenek">
+    <header><span class="harf">A</span><span class="ad">Altın Klasik</span>
+      <span class="karakter">amber vurgu · bugünkü varsayılan · sektöre gönderme</span></header>
+    <div class="ekran sema-a kenar-koyu ol-o2">
+      <nav class="kenarcubugu">
+        <div class="marka"><span class="mg">K</span>Kuyumcu</div>
+        <a class="mlink aktif"><span class="ik">▦</span>Satış</a>
+        <a class="mlink"><span class="ik">☰</span>Müşteriler</a>
+        <a class="mlink"><span class="ik">◈</span>Ürünler</a>
+        <a class="mlink"><span class="ik">⇄</span>Kasa</a>
+        <a class="mlink"><span class="ik">⚖</span>Has defteri</a>
+        <a class="mlink"><span class="ik">▤</span>Raporlar</a>
+        <a class="mlink"><span class="ik">⚙</span>Ayarlar</a>
+        <div class="mgrup"><span>Diğer işlemler</span><span>▾</span></div>
+      </nav>
+      <div class="gvde">
+        <div class="ustbar">
+          <div class="arama"><span>⌕</span>Müşteri, ürün ya da barkod ara</div>
+          <div class="kurserit">HAS <b>4.186,50 ₺</b></div>
+          <div class="hesap"><span class="av">RA</span>Ramazan A.</div>
+        </div>
+        <div class="icerik">
+          <div class="basliksatiri">
+            <div><h3>Müşteriler</h3><p class="alt">248 kayıt · 23.09.2026</p></div>
+            <button class="dugme birincil">＋ Yeni müşteri</button>
+          </div>
+          <div class="kart">
+            <h4>Son hareket görenler<span class="rozet vurgulu">Bu hafta</span></h4>
+            <table>
+              <thead><tr><th>Müşteri</th><th class="sayi">Bakiye</th><th class="sayi">Has</th><th></th></tr></thead>
+              <tbody>
+                <tr><td class="ad">Kuyumcu Nazif Öztürk<span class="alt-ad">Toptancı · 0532 418 77 21</span></td>
+                    <td class="sayi">-42.750,00 ₺</td><td class="sayi">18,420 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+                <tr><td class="ad">Ayşe Demirtaş<span class="alt-ad">Müşteri · 22 ayar bilezik</span></td>
+                    <td class="sayi">6.300,00 ₺</td><td class="sayi">2,850 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+                <tr><td class="ad">Mert Gülsoy<span class="alt-ad">Müşteri · emanet mal</span></td>
+                    <td class="sayi">0,00 ₺</td><td class="sayi">0,000 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="kart">
+            <h4>Vezne fişi V-2026-04187<span class="rozet alacakli">Fark 0</span></h4>
+            <div class="fis-satir"><span class="etiket">22 ayar bilezik · 14,300 g</span><span class="sayi">11.960,00 ₺</span></div>
+            <div class="fis-satir"><span class="etiket">Has karşılığı (milyem 916)</span><span class="sayi">13,099 g has</span></div>
+            <div class="fis-satir"><span class="etiket">Nakit</span><span class="sayi">12.000,00 ₺</span></div>
+            <div class="fis-toplam"><span class="etiket">Tahsil edilecek</span><span class="tutar">11.960,00 ₺</span></div>
+            <div class="bant">Fiş hazır. Kaydet'e basınca kasaya işlenir ve fiş yazdırılır.</div>
+            <div class="fis-dugmeler">
+              <button class="dugme birincil">Kaydet ve yazdır</button>
+              <button class="dugme ikincil">Geri al (düzeltme fişi)</button>
+              <button class="dugme sessiz">Vazgeç</button>
+            </div>
+          </div>
+          <div class="dugme-ailesi">
+            <button class="dugme birincil">Birincil</button>
+            <button class="dugme ikincil">İkincil</button>
+            <button class="dugme sessiz">Sessiz</button>
+            <button class="dugme tehlike">Sil</button>
+            <button class="dugme baglanti">Bağlantı</button>
+            <button class="dugme ikincil odakli">Odaklı</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kontrast">
+      <h5>Kontrast ölçümü — WCAG 2.1, metin eşiği 4,5:1 · etkileşimli kenar eşiği 3:1</h5>
+      <table>
+        <thead><tr><th>Metin / Zemin</th><th>Renkler</th><th class="oran">Oran</th><th>Damga</th></tr></thead>
+        <tbody>
+          <tr><td>--metin / --yuzey</td><td>#1e293b / #ffffff</td><td class="oran">14,63</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-guclu / --yuzey</td><td>#0f172a / #ffffff</td><td class="oran">17,85</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-soluk / --yuzey</td><td>#475569 / #ffffff</td><td class="oran">7,58</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin / --yuzey-2</td><td>#1e293b / #f8fafc</td><td class="oran">13,98</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-soluk / --yuzey-2</td><td>#475569 / #f8fafc</td><td class="oran">7,24</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin / --yuzey-3</td><td>#1e293b / #f1f5f9</td><td class="oran">13,35</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu-metin / --vurgu</td><td>#ffffff / #b45309</td><td class="oran">5,02</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu-metin / --vurgu-guclu</td><td>#ffffff / #92400e</td><td class="oran">7,09</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu / --yuzey</td><td>#b45309 / #ffffff</td><td class="oran">5,02</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu / --vurgu-yuzey</td><td>#b45309 / #fffbeb</td><td class="oran">4,84</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--kenarlik / --yuzey <span class="kucuk">(3:1)</span></td><td>#8592a5 / #ffffff</td><td class="oran">3,16</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--odak-halka / --yuzey <span class="kucuk">(3:1)</span></td><td>#b45309 / #ffffff</td><td class="oran">5,02</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        </tbody>
+      </table>
+      <div class="ozet"><span>12 çift · 12 geçer · 0 kalır</span><span>En dar pay: 3,16 (kenarlık, eşik 3,0)</span><span>Metinde en dar: 4,84</span></div>
+    </div>
+  </section>
+
+  <!-- ŞEMA B -->
+  <section class="secenek">
+    <header><span class="harf">B</span><span class="ad">Platin Mavi</span>
+      <span class="karakter">kurumsal nötr mavi · kontrast payı en rahat</span></header>
+    <div class="ekran sema-b kenar-koyu ol-o2">
+      <nav class="kenarcubugu">
+        <div class="marka"><span class="mg">K</span>Kuyumcu</div>
+        <a class="mlink aktif"><span class="ik">▦</span>Satış</a>
+        <a class="mlink"><span class="ik">☰</span>Müşteriler</a>
+        <a class="mlink"><span class="ik">◈</span>Ürünler</a>
+        <a class="mlink"><span class="ik">⇄</span>Kasa</a>
+        <a class="mlink"><span class="ik">⚖</span>Has defteri</a>
+        <a class="mlink"><span class="ik">▤</span>Raporlar</a>
+        <a class="mlink"><span class="ik">⚙</span>Ayarlar</a>
+        <div class="mgrup"><span>Diğer işlemler</span><span>▾</span></div>
+      </nav>
+      <div class="gvde">
+        <div class="ustbar">
+          <div class="arama"><span>⌕</span>Müşteri, ürün ya da barkod ara</div>
+          <div class="kurserit">HAS <b>4.186,50 ₺</b></div>
+          <div class="hesap"><span class="av">RA</span>Ramazan A.</div>
+        </div>
+        <div class="icerik">
+          <div class="basliksatiri">
+            <div><h3>Müşteriler</h3><p class="alt">248 kayıt · 23.09.2026</p></div>
+            <button class="dugme birincil">＋ Yeni müşteri</button>
+          </div>
+          <div class="kart">
+            <h4>Son hareket görenler<span class="rozet vurgulu">Bu hafta</span></h4>
+            <table>
+              <thead><tr><th>Müşteri</th><th class="sayi">Bakiye</th><th class="sayi">Has</th><th></th></tr></thead>
+              <tbody>
+                <tr><td class="ad">Kuyumcu Nazif Öztürk<span class="alt-ad">Toptancı · 0532 418 77 21</span></td>
+                    <td class="sayi">-42.750,00 ₺</td><td class="sayi">18,420 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+                <tr><td class="ad">Ayşe Demirtaş<span class="alt-ad">Müşteri · 22 ayar bilezik</span></td>
+                    <td class="sayi">6.300,00 ₺</td><td class="sayi">2,850 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+                <tr><td class="ad">Mert Gülsoy<span class="alt-ad">Müşteri · emanet mal</span></td>
+                    <td class="sayi">0,00 ₺</td><td class="sayi">0,000 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="kart">
+            <h4>Vezne fişi V-2026-04187<span class="rozet alacakli">Fark 0</span></h4>
+            <div class="fis-satir"><span class="etiket">22 ayar bilezik · 14,300 g</span><span class="sayi">11.960,00 ₺</span></div>
+            <div class="fis-satir"><span class="etiket">Has karşılığı (milyem 916)</span><span class="sayi">13,099 g has</span></div>
+            <div class="fis-satir"><span class="etiket">Nakit</span><span class="sayi">12.000,00 ₺</span></div>
+            <div class="fis-toplam"><span class="etiket">Tahsil edilecek</span><span class="tutar">11.960,00 ₺</span></div>
+            <div class="bant">Fiş hazır. Kaydet'e basınca kasaya işlenir ve fiş yazdırılır.</div>
+            <div class="fis-dugmeler">
+              <button class="dugme birincil">Kaydet ve yazdır</button>
+              <button class="dugme ikincil">Geri al (düzeltme fişi)</button>
+              <button class="dugme sessiz">Vazgeç</button>
+            </div>
+          </div>
+          <div class="dugme-ailesi">
+            <button class="dugme birincil">Birincil</button>
+            <button class="dugme ikincil">İkincil</button>
+            <button class="dugme sessiz">Sessiz</button>
+            <button class="dugme tehlike">Sil</button>
+            <button class="dugme baglanti">Bağlantı</button>
+            <button class="dugme ikincil odakli">Odaklı</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kontrast">
+      <h5>Kontrast ölçümü — WCAG 2.1, metin eşiği 4,5:1 · etkileşimli kenar eşiği 3:1</h5>
+      <table>
+        <thead><tr><th>Metin / Zemin</th><th>Renkler</th><th class="oran">Oran</th><th>Damga</th></tr></thead>
+        <tbody>
+          <tr><td>--metin / --yuzey</td><td>#1f2937 / #ffffff</td><td class="oran">14,68</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-guclu / --yuzey</td><td>#111827 / #ffffff</td><td class="oran">17,74</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-soluk / --yuzey</td><td>#4b5563 / #ffffff</td><td class="oran">7,56</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin / --yuzey-2</td><td>#1f2937 / #f8fafc</td><td class="oran">14,03</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-soluk / --yuzey-2</td><td>#4b5563 / #f8fafc</td><td class="oran">7,22</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin / --yuzey-3</td><td>#1f2937 / #f1f5f9</td><td class="oran">13,40</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu-metin / --vurgu</td><td>#ffffff / #1d4ed8</td><td class="oran">6,70</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu-metin / --vurgu-guclu</td><td>#ffffff / #1e3a8a</td><td class="oran">10,36</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu / --yuzey</td><td>#1d4ed8 / #ffffff</td><td class="oran">6,70</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu / --vurgu-yuzey</td><td>#1d4ed8 / #eff6ff</td><td class="oran">6,16</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--kenarlik / --yuzey <span class="kucuk">(3:1)</span></td><td>#6b7280 / #ffffff</td><td class="oran">4,83</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--odak-halka / --yuzey <span class="kucuk">(3:1)</span></td><td>#1d4ed8 / #ffffff</td><td class="oran">6,70</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        </tbody>
+      </table>
+      <div class="ozet"><span>12 çift · 12 geçer · 0 kalır</span><span>En dar pay: 4,83 (kenarlık, eşik 3,0)</span><span>Metinde en dar: 6,16</span></div>
+    </div>
+  </section>
+
+  <!-- ŞEMA C -->
+  <section class="secenek">
+    <header><span class="harf">C</span><span class="ad">Zümrüt Kasa</span>
+      <span class="karakter">koyu yeşil vurgu · başarı rengi ile çakışma riski (D6)</span></header>
+    <div class="ekran sema-c kenar-koyu ol-o2">
+      <nav class="kenarcubugu">
+        <div class="marka"><span class="mg">K</span>Kuyumcu</div>
+        <a class="mlink aktif"><span class="ik">▦</span>Satış</a>
+        <a class="mlink"><span class="ik">☰</span>Müşteriler</a>
+        <a class="mlink"><span class="ik">◈</span>Ürünler</a>
+        <a class="mlink"><span class="ik">⇄</span>Kasa</a>
+        <a class="mlink"><span class="ik">⚖</span>Has defteri</a>
+        <a class="mlink"><span class="ik">▤</span>Raporlar</a>
+        <a class="mlink"><span class="ik">⚙</span>Ayarlar</a>
+        <div class="mgrup"><span>Diğer işlemler</span><span>▾</span></div>
+      </nav>
+      <div class="gvde">
+        <div class="ustbar">
+          <div class="arama"><span>⌕</span>Müşteri, ürün ya da barkod ara</div>
+          <div class="kurserit">HAS <b>4.186,50 ₺</b></div>
+          <div class="hesap"><span class="av">RA</span>Ramazan A.</div>
+        </div>
+        <div class="icerik">
+          <div class="basliksatiri">
+            <div><h3>Müşteriler</h3><p class="alt">248 kayıt · 23.09.2026</p></div>
+            <button class="dugme birincil">＋ Yeni müşteri</button>
+          </div>
+          <div class="kart">
+            <h4>Son hareket görenler<span class="rozet vurgulu">Bu hafta</span></h4>
+            <table>
+              <thead><tr><th>Müşteri</th><th class="sayi">Bakiye</th><th class="sayi">Has</th><th></th></tr></thead>
+              <tbody>
+                <tr><td class="ad">Kuyumcu Nazif Öztürk<span class="alt-ad">Toptancı · 0532 418 77 21</span></td>
+                    <td class="sayi">-42.750,00 ₺</td><td class="sayi">18,420 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+                <tr><td class="ad">Ayşe Demirtaş<span class="alt-ad">Müşteri · 22 ayar bilezik</span></td>
+                    <td class="sayi">6.300,00 ₺</td><td class="sayi">2,850 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+                <tr><td class="ad">Mert Gülsoy<span class="alt-ad">Müşteri · emanet mal</span></td>
+                    <td class="sayi">0,00 ₺</td><td class="sayi">0,000 g</td>
+                    <td><div class="eylemler"><button class="dugme ikincil">Tahsilat</button><button class="dugme sessiz">Ekstre</button><button class="dugme sessiz">⋯</button></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="kart">
+            <h4>Vezne fişi V-2026-04187<span class="rozet alacakli">Fark 0</span></h4>
+            <div class="fis-satir"><span class="etiket">22 ayar bilezik · 14,300 g</span><span class="sayi">11.960,00 ₺</span></div>
+            <div class="fis-satir"><span class="etiket">Has karşılığı (milyem 916)</span><span class="sayi">13,099 g has</span></div>
+            <div class="fis-satir"><span class="etiket">Nakit</span><span class="sayi">12.000,00 ₺</span></div>
+            <div class="fis-toplam"><span class="etiket">Tahsil edilecek</span><span class="tutar">11.960,00 ₺</span></div>
+            <div class="bant">Fiş hazır. Kaydet'e basınca kasaya işlenir ve fiş yazdırılır.</div>
+            <div class="fis-dugmeler">
+              <button class="dugme birincil">Kaydet ve yazdır</button>
+              <button class="dugme ikincil">Geri al (düzeltme fişi)</button>
+              <button class="dugme sessiz">Vazgeç</button>
+            </div>
+          </div>
+          <div class="dugme-ailesi">
+            <button class="dugme birincil">Birincil</button>
+            <button class="dugme ikincil">İkincil</button>
+            <button class="dugme sessiz">Sessiz</button>
+            <button class="dugme tehlike">Sil</button>
+            <button class="dugme baglanti">Bağlantı</button>
+            <button class="dugme ikincil odakli">Odaklı</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kontrast">
+      <h5>Kontrast ölçümü — WCAG 2.1, metin eşiği 4,5:1 · etkileşimli kenar eşiği 3:1</h5>
+      <table>
+        <thead><tr><th>Metin / Zemin</th><th>Renkler</th><th class="oran">Oran</th><th>Damga</th></tr></thead>
+        <tbody>
+          <tr><td>--metin / --yuzey</td><td>#14532d / #ffffff</td><td class="oran">9,11</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-guclu / --yuzey</td><td>#052e16 / #ffffff</td><td class="oran">14,91</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-soluk / --yuzey</td><td>#3f6212 / #ffffff</td><td class="oran">7,08</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin / --yuzey-2</td><td>#14532d / #f8fafc</td><td class="oran">8,71</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin-soluk / --yuzey-2</td><td>#3f6212 / #f8fafc</td><td class="oran">6,76</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--metin / --yuzey-3</td><td>#14532d / #f1f5f9</td><td class="oran">8,32</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu-metin / --vurgu</td><td>#ffffff / #065f46</td><td class="oran">7,68</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu-metin / --vurgu-guclu</td><td>#ffffff / #064e3b</td><td class="oran">9,72</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu / --yuzey</td><td>#065f46 / #ffffff</td><td class="oran">7,68</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--vurgu / --vurgu-yuzey</td><td>#065f46 / #ecfdf5</td><td class="oran">7,29</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--kenarlik / --yuzey <span class="kucuk">(3:1)</span></td><td>#6b7280 / #ffffff</td><td class="oran">4,83</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--odak-halka / --yuzey <span class="kucuk">(3:1)</span></td><td>#065f46 / #ffffff</td><td class="oran">7,68</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        </tbody>
+      </table>
+      <div class="ozet"><span>12 çift · 12 geçer · 0 kalır</span><span>En dar pay: 4,83 (kenarlık, eşik 3,0)</span><span>Metinde en dar: 6,76</span>
+        <span>Uyarı: vurgu yeşili ile başarı yeşili birbirine yakın (karar D6 bunu ayırır)</span></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ══════════════ 2) ORTAK DURUM RENKLERİ ══════════════ -->
+<h2 class="bolum">2 · Durum renkleri — üç şemada da aynı</h2>
+<p class="bolum-alt">Başarı / uyarı / hata / bilgi renkleri şemadan bağımsız semantik belirteçlerdir
+  (karar D6). Şema hangisi seçilirse seçilsin bu yedi çift değişmez.</p>
+<section class="secenek">
+  <div class="kontrast" style="border-top:0">
+    <table>
+      <thead><tr><th>Metin / Zemin</th><th>Renkler</th><th class="oran">Oran</th><th>Damga</th></tr></thead>
+      <tbody>
+        <tr><td>--basari / --yuzey</td><td>#047857 / #ffffff</td><td class="oran">5,48</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        <tr><td>--basari / --basari-yuzey</td><td>#047857 / #ecfdf5</td><td class="oran">5,21</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        <tr><td>--uyari / --yuzey</td><td>#8a5206 / #ffffff</td><td class="oran">6,38</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        <tr><td>--uyari / --uyari-yuzey</td><td>#8a5206 / #fdf6e7</td><td class="oran">5,93</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        <tr><td>--tehlike / --yuzey</td><td>#b91c1c / #ffffff</td><td class="oran">6,47</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        <tr><td>--tehlike / --tehlike-yuzey</td><td>#b91c1c / #fef2f2</td><td class="oran">5,91</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        <tr><td>--tehlike-dolgu-metin / --tehlike-dolgu</td><td>#ffffff / #dc2626</td><td class="oran">4,83</td><td><span class="damga gecer">AA geçer</span></td></tr>
+      </tbody>
+    </table>
+    <div class="ozet"><span>7 çift · 7 geçer · 0 kalır</span><span>En dar pay: 4,83 (kırmızı dolgu düğme)</span></div>
+  </div>
+</section>
+
+<!-- ══════════════ 3) KENAR ÇUBUĞU ZEMİNİ ══════════════ -->
+<h2 class="bolum">3 · Kenar çubuğu zemini — açık mı, koyu mu? (plan § 8.5 · karar D11)</h2>
+<p class="bolum-alt">Müşterinin şikâyeti şuydu: koyu menü + beyaz gövde “iki program yan yana”
+  hissi veriyor. Solda <b>açık zemin (Fildişi)</b> önerisi, sağda <b>bugünkü koyu zemin (Grafit)</b>.
+  İkisi de B şemasında ve Ö2 ölçeğinde gösterildi ki tek değişken zemin olsun.
+  <b>Ekip önerisi: açık zemin.</b> Karar kurucunundur; ekip bu maddede oy kullanmaz.</p>
+
+<div class="secenekler ikiz">
+  <section class="secenek">
+    <header><span class="harf">☀</span><span class="ad">AÇIK zemin — “Fildişi”</span>
+      <span class="karakter">öneri · bugün kodda YOK, S-1'de eklenir</span></header>
+    <div class="ekran sema-b kenar-acik ol-o2" style="min-height:360px">
+      <nav class="kenarcubugu">
+        <div class="marka"><span class="mg">K</span>Kuyumcu</div>
+        <a class="mlink aktif"><span class="ik">▦</span>Satış</a>
+        <a class="mlink"><span class="ik">☰</span>Müşteriler</a>
+        <a class="mlink"><span class="ik">◈</span>Ürünler</a>
+        <a class="mlink"><span class="ik">⇄</span>Kasa</a>
+        <a class="mlink"><span class="ik">⚖</span>Has defteri</a>
+        <a class="mlink"><span class="ik">▤</span>Raporlar</a>
+        <a class="mlink"><span class="ik">⚙</span>Ayarlar</a>
+        <div class="mgrup"><span>Diğer işlemler</span><span>▾</span></div>
+      </nav>
+      <div class="gvde">
+        <div class="ustbar">
+          <div class="arama"><span>⌕</span>Barkod okutun ya da ürün arayın</div>
+          <div class="kurserit">HAS <b>4.186,50 ₺</b></div>
+          <div class="hesap"><span class="av">RA</span>Ramazan A.</div>
+        </div>
+        <div class="icerik">
+          <div class="basliksatiri"><div><h3>Satış</h3><p class="alt">Tezgâh yüzü · 23.09.2026 Çarşamba</p></div>
+            <button class="dugme birincil">Kaydet ve yazdır</button></div>
+          <div class="kart">
+            <h4>Fiş S-2026-11904<span class="rozet alacakli">Fark 0</span></h4>
+            <div class="fis-satir"><span class="etiket">14 ayar kolye · 3,120 g</span><span class="sayi">4.680,00 ₺</span></div>
+            <div class="fis-satir"><span class="etiket">Has karşılığı (milyem 585)</span><span class="sayi">1,825 g has</span></div>
+            <div class="fis-toplam"><span class="etiket">Tahsil edilecek</span><span class="tutar">4.680,00 ₺</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kontrast">
+      <h5>Kontrast ölçümü — açık kenar çubuğu (önerilen değerler)</h5>
+      <table>
+        <thead><tr><th>Metin / Zemin</th><th>Renkler</th><th class="oran">Oran</th><th>Damga</th></tr></thead>
+        <tbody>
+          <tr><td>--kenar-metin-guclu / --kenar-yuzey</td><td>#1f1b14 / #f6f4ef</td><td class="oran">15,59</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--kenar-metin / --kenar-yuzey</td><td>#5b5347 / #f6f4ef</td><td class="oran">6,89</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--kenar-metin / --kenar-yuzey-2</td><td>#5b5347 / #ece8df</td><td class="oran">6,19</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        </tbody>
+      </table>
+      <div class="ozet"><span>3 çift · 3 geçer · 0 kalır</span><span>Aktif satır: --vurgu-metin / --vurgu (B'de 6,70)</span></div>
+    </div>
+  </section>
+
+  <section class="secenek">
+    <header><span class="harf">☾</span><span class="ad">KOYU zemin — “Grafit”</span>
+      <span class="karakter">bugünkü hâl · belirtecler.css satır ~127</span></header>
+    <div class="ekran sema-b kenar-koyu ol-o2" style="min-height:360px">
+      <nav class="kenarcubugu">
+        <div class="marka"><span class="mg">K</span>Kuyumcu</div>
+        <a class="mlink aktif"><span class="ik">▦</span>Satış</a>
+        <a class="mlink"><span class="ik">☰</span>Müşteriler</a>
+        <a class="mlink"><span class="ik">◈</span>Ürünler</a>
+        <a class="mlink"><span class="ik">⇄</span>Kasa</a>
+        <a class="mlink"><span class="ik">⚖</span>Has defteri</a>
+        <a class="mlink"><span class="ik">▤</span>Raporlar</a>
+        <a class="mlink"><span class="ik">⚙</span>Ayarlar</a>
+        <div class="mgrup"><span>Diğer işlemler</span><span>▾</span></div>
+      </nav>
+      <div class="gvde">
+        <div class="ustbar">
+          <div class="arama"><span>⌕</span>Barkod okutun ya da ürün arayın</div>
+          <div class="kurserit">HAS <b>4.186,50 ₺</b></div>
+          <div class="hesap"><span class="av">RA</span>Ramazan A.</div>
+        </div>
+        <div class="icerik">
+          <div class="basliksatiri"><div><h3>Satış</h3><p class="alt">Tezgâh yüzü · 23.09.2026 Çarşamba</p></div>
+            <button class="dugme birincil">Kaydet ve yazdır</button></div>
+          <div class="kart">
+            <h4>Fiş S-2026-11904<span class="rozet alacakli">Fark 0</span></h4>
+            <div class="fis-satir"><span class="etiket">14 ayar kolye · 3,120 g</span><span class="sayi">4.680,00 ₺</span></div>
+            <div class="fis-satir"><span class="etiket">Has karşılığı (milyem 585)</span><span class="sayi">1,825 g has</span></div>
+            <div class="fis-toplam"><span class="etiket">Tahsil edilecek</span><span class="tutar">4.680,00 ₺</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kontrast">
+      <h5>Kontrast ölçümü — koyu kenar çubuğu (bugünkü değerler)</h5>
+      <table>
+        <thead><tr><th>Metin / Zemin</th><th>Renkler</th><th class="oran">Oran</th><th>Damga</th></tr></thead>
+        <tbody>
+          <tr><td>--kenar-metin-guclu / --kenar-yuzey</td><td>#ffffff / #0f172a</td><td class="oran">17,85</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--kenar-metin / --kenar-yuzey</td><td>#94a3b8 / #0f172a</td><td class="oran">6,96</td><td><span class="damga gecer">AA geçer</span></td></tr>
+          <tr><td>--kenar-metin / --kenar-yuzey-2</td><td>#94a3b8 / #1e293b</td><td class="oran">5,71</td><td><span class="damga gecer">AA geçer</span></td></tr>
+        </tbody>
+      </table>
+      <div class="ozet"><span>3 çift · 3 geçer · 0 kalır</span><span>Kontrast sorunu yok; sorun “iki program yan yana” hissidir (görsel tercih)</span></div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════ 4) YAZI ÖLÇEĞİ ══════════════ -->
+<h2 class="bolum">4 · Yazı ölçeği — Ö2 okunaklı mı, Ö1 yoğun mu? (plan § 8.2)</h2>
+<p class="bolum-alt">Ö2 = 16 px gövde, 52 px satır — tezgâhtar için okunaklı (plan önerisi: basit modun
+  varsayılanı). Ö1 = 14 px gövde, 40 px satır — ekrana daha çok satır sığar (plan önerisi: profesyonel
+  mod). Kontrast oranı yazı boyutundan etkilenmez; ikisi de B şemasının ölçülmüş oranlarını taşır.
+  <b>Onay gelmezse plan Ö2 varsayılan / Ö1 profesyonel olarak ilerler.</b></p>
+
+<div class="secenekler ikiz">
+  <section class="secenek">
+    <header><span class="harf">Ö2</span><span class="ad">Okunaklı — 16 px</span>
+      <span class="karakter">satır 52 px · basit mod önerisi</span></header>
+    <div class="ekran sema-b kenar-koyu ol-o2" style="grid-template-columns:1fr; min-height:0">
+      <div class="gvde"><div class="icerik">
+        <div class="kart">
+          <h4>Vezne kuyruğu</h4>
+          <table>
+            <thead><tr><th>Fiş</th><th>Müşteri</th><th class="sayi">Has</th><th class="sayi">Tutar</th></tr></thead>
+            <tbody>
+              <tr><td>V-2026-04187</td><td class="ad">Ayşe Demirtaş</td><td class="sayi">13,099 g</td><td class="sayi">11.960,00 ₺</td></tr>
+              <tr><td>V-2026-04188</td><td class="ad">Mert Gülsoy</td><td class="sayi">1,825 g</td><td class="sayi">4.680,00 ₺</td></tr>
+              <tr><td>V-2026-04189</td><td class="ad">Kuyumcu Nazif Öztürk</td><td class="sayi">18,420 g</td><td class="sayi">42.750,00 ₺</td></tr>
+              <tr><td>V-2026-04190</td><td class="ad">Selim Bayrak</td><td class="sayi">0,940 g</td><td class="sayi">2.310,00 ₺</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="dugme-ailesi">
+          <button class="dugme birincil">Kaydet ve yazdır</button>
+          <button class="dugme ikincil">Geri al (düzeltme fişi)</button>
+          <button class="dugme sessiz">Vazgeç</button>
+        </div>
+      </div></div>
+    </div>
+    <div class="kontrast"><div class="ozet"><span>Gövde 16 px · satır 52 px</span><span>Kontrast B şemasıyla aynı: 12/12 AA geçer</span><span>Ekrana sığan satır: az</span></div></div>
+  </section>
+
+  <section class="secenek">
+    <header><span class="harf">Ö1</span><span class="ad">Yoğun — 14 px</span>
+      <span class="karakter">satır 40 px · profesyonel mod önerisi</span></header>
+    <div class="ekran sema-b kenar-koyu ol-o1" style="grid-template-columns:1fr; min-height:0">
+      <div class="gvde"><div class="icerik">
+        <div class="kart">
+          <h4>Vezne kuyruğu</h4>
+          <table>
+            <thead><tr><th>Fiş</th><th>Müşteri</th><th class="sayi">Has</th><th class="sayi">Tutar</th></tr></thead>
+            <tbody>
+              <tr><td>V-2026-04187</td><td class="ad">Ayşe Demirtaş</td><td class="sayi">13,099 g</td><td class="sayi">11.960,00 ₺</td></tr>
+              <tr><td>V-2026-04188</td><td class="ad">Mert Gülsoy</td><td class="sayi">1,825 g</td><td class="sayi">4.680,00 ₺</td></tr>
+              <tr><td>V-2026-04189</td><td class="ad">Kuyumcu Nazif Öztürk</td><td class="sayi">18,420 g</td><td class="sayi">42.750,00 ₺</td></tr>
+              <tr><td>V-2026-04190</td><td class="ad">Selim Bayrak</td><td class="sayi">0,940 g</td><td class="sayi">2.310,00 ₺</td></tr>
+              <tr><td>V-2026-04191</td><td class="ad">Hatice Yalçın</td><td class="sayi">4,205 g</td><td class="sayi">9.140,00 ₺</td></tr>
+              <tr><td>V-2026-04192</td><td class="ad">Emre Koçyiğit</td><td class="sayi">7,660 g</td><td class="sayi">17.850,00 ₺</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="dugme-ailesi">
+          <button class="dugme birincil">Kaydet ve yazdır</button>
+          <button class="dugme ikincil">Geri al (düzeltme fişi)</button>
+          <button class="dugme sessiz">Vazgeç</button>
+        </div>
+      </div></div>
+    </div>
+    <div class="kontrast"><div class="ozet"><span>Gövde 14 px · satır 40 px</span><span>Kontrast B şemasıyla aynı: 12/12 AA geçer</span><span>Ekrana sığan satır: ~%30 fazla</span></div></div>
+  </section>
+</div>
+
+<!-- ══════════════ SONUÇ ══════════════ -->
+<div class="sonuc">
+  <h2>Ölçüm özeti — bu sayfada ne sayıldı</h2>
+  <ul>
+    <li><b>3</b> renk şeması gösterildi (A Altın Klasik · B Platin Mavi · C Zümrüt Kasa) —
+        üçü de bugün <code>belirtecler.css</code>'te tanımlıdır.</li>
+    <li><b>49</b> metin/zemin (ve kenar) çifti hesaplandı: şema başına 12 × 3 = 36, ortak durum
+        renkleri 7, kenar çubuğu 3 açık + 3 koyu = 6.</li>
+    <li><b>49/49 AA geçer</b>, <b>0 kalır</b>. En dar pay şema A'nın <code>--kenarlik</code>
+        çiftidir: <b>3,16</b> (eşik 3,0) — grafik/kenar eşiğinin hemen üstünde, metin eşiğinin
+        altında ama metin değildir.</li>
+    <li>Oranlar WCAG 2.1 bağıl parlaklık formülüyle hesaplandı (sRGB doğrusallaştırma, 0,05 kaydırma);
+        metin için eşik 4,5:1, etkileşimli bileşen kenarı ve odak halkası için 3:1.</li>
+    <li><b>ÖLÇÜLEMEYEN:</b> karanlık tema kombinasyonları bu sayfada gösterilmedi; plan § 5A'nın
+        diğer beş şeması (Bordo · Okyanus · Menekşe · Zeytin · Fildişi gövde şeması) henüz
+        belirteç değeri taşımadığı için ölçülmedi — uydurulmadı.</li>
+  </ul>
+</div>
+
+<p class="kucuk" style="margin-top:var(--bosluk-5)">
+  Dosya: <code>dokumanlar/02-mimari/sadelestirme/mockup-S1.html</code> · 23 Eylül 2026 ·
+  Saf CSS, betik yok, dış istek yok · Kaynak: <code>PLAN-SADELESTIRME-PUSULA-2026-09-23.md</code> § 5A/§ 8.1/§ 8.2/§ 8.5
+  ve <code>dotnet/Kuyumcu.Web/wwwroot/css/belirtecler.css</code> (yalnız okundu, değiştirilmedi).
+</p>
+
+</div>
+</body>
+</html>

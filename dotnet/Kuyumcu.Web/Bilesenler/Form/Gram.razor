@@ -1,0 +1,64 @@
+@using Kuyumcu.Web.Servisler
+@inherits SayisalAlan
+
+@* GRAM — ağırlık girdisi (paket P-36b).
+   Has karşılığı VERİLİRSE önizlemede gösterilir: kuyumcu ayar × gram'ı
+   kafadan hesaplamaz, ekran söyler (UX-S21). Hesabı ÇAĞIRAN yapar; bu
+   bileşen hiçbir iş kuralı bilmez. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <div class="alan-girdi-satir">
+        <input type="text" inputmode="decimal" class="girdi sayi @(EtkinHatali ? "hatali" : null)"
+               id="@ElemanId" value="@KutuDegeri" data-deger="@MakineDeger" placeholder="@YerTutucu"
+               data-maske="sayi" data-eksi="@EksiOzniteligi" data-tam="@TamOzniteligi"
+               aria-required="@(Zorunlu ? "true" : "false")"
+               aria-invalid="@(EtkinHatali ? "true" : "false")"
+               aria-describedby="@SayisalAciklayan"
+               disabled="@Kilitli" @oninput="Degisti" @onfocus="OdakGeldi" @onblur="OdakGitti" />
+        <span class="alan-son-ek" aria-hidden="true">g</span>
+    </div>
+    @* P-39 · K7: gramın yeniden biçimlenmiş hâli girdinin TEKRARIDIR; yalnız
+       BİLGİ EKLEYEN kısım kalır (has karşılığı — ekran hesaplamaz, çağıran
+       verir). İkisi de bilgi eklemiyorsa önizleme hiç çizilmez. *@
+    @if (OnizlemeGorunur && Deger is { } d)
+    {
+        <span class="alan-onizleme" id="@($"{ElemanId}-onizleme")">
+            @if (BicimBilgiEkliyor)
+            {@Bicim.Gram(d)}@if (HasKarsiligi is { } h)
+            {<span class="alan-onizleme-ek">@(BicimBilgiEkliyor ? " · " : "")@Bicim.Has(h)</span>}
+        </span>
+    }
+</AlanKabugu>
+
+@code {
+    /// <summary>BICIM-2: odak dışı gösterim (tek kaynak Servisler/Bicim.cs).</summary>
+    protected override string OdakDisiBicim(decimal d) => Bicim.GramGirdi(d);
+
+    /// <summary>Çağıranın hesapladığı has karşılığı. null ise gösterilmez (uydurulmaz).</summary>
+    [Parameter] public decimal? HasKarsiligi { get; set; }
+
+    /// <summary>P-39 K7 ölçütü bu metin üzerinden işler.</summary>
+    protected override string OnizlemeBicimi => Deger is { } d ? Bicim.Gram(d) : "";
+
+    /// <summary>Has karşılığı girdide OLMAYAN bilgidir — önizlemeyi ayakta tutar.</summary>
+    protected override bool OnizlemeEkBilgiVar => HasKarsiligi is not null;
+
+    // ── GIRDI-AILESI-2 tur 2 (doğrulayıcı bulgusu): K10 / K11 ağırlık kuralı ──────────
+    // Tur VERİLİRSE Core AgirlikKurali uygulanır (eksi yazılamaz, > 0 / taş < brüt, 3 ya da 6
+    // ondalık, kolon tavanı) — sunucudaki [Gram]/[Has] özniteliğiyle AYNI sınıf.
+    // Tur verilmezse BUGÜNKÜ davranış (EnAz/EnCok) korunur: 17 mevcut kullanımın anlamı
+    // (net gram, has, taş, kabul edilen has …) ekran ekran farklı → hangisinin hangi tür
+    // olduğu ekran göçünde (GOC-C) kararlaştırılır; bu paket ekran göçü yapmaz.
+
+    /// <summary>Ağırlık türü (null = bugünkü serbest davranış).</summary>
+    [Parameter] public Kuyumcu.Core.Domain.Girdi.AgirlikTuru? Tur { get; set; }
+
+    /// <summary>Tur = Tas iken brüt gram (taş brütten küçük olmalı — K10).</summary>
+    [Parameter] public decimal? Brut { get; set; }
+
+    protected override Kuyumcu.Core.Domain.Girdi.GirdiHatasi? KuralDenetle(decimal d) =>
+        Kuyumcu.Core.Domain.Girdi.AgirlikKurali.Denetle(d, Tur, Brut) ?? base.KuralDenetle(d);
+
+    protected override bool EksiYazilabilir => Tur is null && base.EksiYazilabilir;
+}

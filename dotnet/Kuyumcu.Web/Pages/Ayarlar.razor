@@ -1,0 +1,1563 @@
+@page "/ayarlar"
+@using Kuyumcu.Contracts.Sayfalar.Ayarlar
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject ArayuzModuServisi Modu
+@inject GorunumServisi Gorunum
+@inject KullaniciGorunumServisi BenimGorunum
+@inject IJSRuntime Js
+@inject SurumServisi Surum
+@inject NavigationManager Nav
+@inject IServiceProvider Sp
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/AyarlarPage.tsx *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Ayarlar.Baslik)</PageTitle>
+
+<div class="dikey-bosluk ayarlar-sayfa">
+    @* ═══ PAKET T-K3 · SAYFA_BASI_MUAFIYETI (YAZILI GEREKÇE, sessiz istisna DEĞİL) ═══
+       Kurucu talimatı (24.09 17:20) ve paket kapsamı: "sayfa üstündeki başlık/açıklama/
+       'Profili düzenle' bloğu kalkar". Tuval Ayarlar.dc.html'de sayfa başlığı ÜST
+       BARDADIR (UstBar <h1>) ve sekme hapı başlığın hemen yanındadır; gövde doğrudan
+       "Renk teması" kartıyla başlar. Ortak şerit burada kullanılırsa başlık ikinci kez
+       basılır ve tuval ölçüleri (gövde y=94) tutmaz. Başlık erişilebilir adıyla üst
+       barda, tek birincil eylem Görünüm kartında ("Bunu işletme varsayılanı yap"). *@
+    @* PAKET T-K3 — tuval Ayarlar.dc.html: sayfa başlığı üst bardadır ("Ayarlar",
+       UstBar <h1>); sayfanın kendi başlık/açıklama/"Profili düzenle" bloğu KALKTI.
+       "Profili düzenle" (#ay-profil-duzenle) SİLİNMEDİ: Güvenlik sekmesindeki
+       profil kartının başına taşındı (id aynı, çekmece aynı). *@
+
+    <BasariBandi Mesaj="@genelBasari" Jeton="@genelJeton" SureliMs="3000" Id="ayar-basari" />
+
+    @* ── PAKET S1-h — SEKMELER (kurucu 24.09: "tren gibi aşağıya doğru gidiyor,
+       birbiriyle alakasız kısımları tab tab ayır"). Bölümler dört sekmeye
+       TAŞINDI, hiçbiri silinmedi; id'ler aynı. Seçili sekme ?sekme= ile URL'de
+       (derin bağlantı + geri tuşu). Tüm paneller çizilir, seçili olmayan
+       `hidden` taşır (Sekmeler.razor). *@
+    @* PAKET T-K3 — beş sekme tuvaldeki ad ve sırayla (Görünüm · Dükkân · Kur ·
+       Yazıcı · Güvenlik); şerit ÜST BARDA başlığın yanında (UstBarda=true →
+       T-K2 yuvası). Eski Hesap/Sistem/Destek bölümleri Güvenlik sekmesinde
+       (tuvalde karşılığı yok — hesabın kendisi ve sistem künyesi; SİLİNMEDİ). *@
+    <Sekmeler Onek="ayar" Liste="@SekmeListesi" Etiket="@SM.SekmeSeridi" UstBarda="true">
+        <Panel Context="sekmeKodu">
+            @if (sekmeKodu == AyarlarSekmeSozlugu.Gorunum)
+            {
+                <div class="dikey-bosluk ayar-panel" id="ayar-panel-govde-gorunum">
+                @* ── PAKET S1-f — GÖRÜNÜM KARTI (tuval Ayarlar.dc.html, artboard 7) ──
+                   Tema · aydınlık/karanlık · yazı boyutu · ekran modu tek yerde; SAHİP
+                   "Bunu işletme varsayılanı yap" ile dükkân varsayılanını belirler.
+                   Eski dört kart SİLİNMEDİ (plan § 3 md.1): aşağıda "Ayrıntılı görünüm
+                   ayarları" altında katlandı; id'leri ve davranışları aynen yaşıyor. *@
+                <GorunumKarti />
+
+                @* PAKET T-K3: dil bir görünüm tercihidir (tuvalde yok; eski Hesap
+                   sekmesinden taşındı, SİLİNMEDİ — kart menüsünde de TR/EN var). *@
+                @* ── Dil seçimi ── *@
+                <div class="kart" id="ayar-dil">
+                    <div class="kart-baslik"><h2>@Dil.T.Ayarlar.Dil</h2></div>
+                    <div class="kart-govde">
+                        <div class="satir">
+                            @foreach (var secenek in DilSecenekleri)
+                            {
+                                <button class="sekme esit-pay @(Dil.Dil == secenek.Kod ? "secili" : null)" aria-pressed="@(Dil.Dil == secenek.Kod ? "true" : "false")" @onclick="() => Dil.DegistirAsync(secenek.Kod)">
+                                    <span aria-hidden="true" class="bayrak">@secenek.Bayrak</span> @secenek.Ad
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* S1-f: alan alan seçim (devral seçeneği), dükkân varsayılanının tek tek
+                   seçicileri ve bu cihazın tema tercihi — KATLANMIŞ, silinmedi. *@
+                <details class="gk-ayrinti" id="ayar-gorunum-ayrinti">
+                <summary class="gk-ayrinti-baslik" id="ayar-gorunum-ayrinti-baslik">@KesifP1Sozlugu.Al(Dil.Dil).AyrintiBaslik</summary>
+                <div class="dikey-bosluk gk-ayrinti-govde">
+
+                @* ── KESIF-P1 · KIYAS TEMA-TEK ──────────────────────────────────────
+                   Bu sayfada ÜÇ aydınlık/karanlık seçici vardı: Görünüm kartı (sunucu),
+                   eski "Tema" kartı (TemaSecici — cihaz/localStorage) ve "Benim
+                   görünümüm"deki tema radyosu (sunucu). İki doğruluk kaynağı sayfadan
+                   sayfaya tema değiştiriyordu. Tek seçici = üstteki Görünüm kartı
+                   (kullanıcı satırı, sunucu). Cihaz kartı ve ikinci radyo kaldırıldı;
+                   tema alanının "işletme varsayılanına dön" yolu Görünüm kartındaki
+                   "İşletmenin varsayılanına dön" düğmesi ve PATCH temaModu:null ucudur. *@
+
+                @* ── Görünüm: renk şeması + yazı boyutu (paket P-36b · kurucu talimatı 16) ──
+                   ⚠ /ayarlar KİLİTLİ listedeydi (P-31 buraya yazacaktı). P-31 BAŞLAMADI;
+                     kilit YALNIZ bu yeni bölüm için açıldı, mevcut bölümlere DOKUNULMADI
+                     (ham/TEK-EL-KILIT defterine yazıldı).
+                   ⚠ Sunucu kapısı [RolGerekli("SAHIP")]tir; ekran kapıyı TAKLİT ETMEZ,
+                     yalnız sebebini söyler (UX-S30) — son sözü sunucu söyler. *@
+                @* ── B-1: BENİM GÖRÜNÜMÜM — her kullanıcı kendi temasını seçer (tuval n4).
+                       Dükkân varsayılanı aşağıdaki "Görünüm" kartındadır ve SAHİP kilidi
+                       yalnız orada kalır. ── *@
+                <div class="kart" id="ayar-benim-gorunum">
+                    <div class="kart-baslik"><h2>@BenimBaslik</h2></div>
+                    <div class="kart-govde dikey-bosluk">
+                        <p class="metin-soluk metin-kucuk">@BenimAciklama</p>
+                        @* PAKET SADE-1 (göz #41): okuma hatası gri paragraf gibi basılıyordu —
+                           artık hata bandı + gerçek istek atan "Yeniden dene". *@
+                        @if (BenimGorunum.OkumaDenendi && !BenimGorunum.Yuklendi)
+                        {
+                            <div class="bant bant-hata" role="alert" id="benim-okuma-hata">
+                                <span>@SD.GorunumOkunamadi</span>
+                                <button type="button" class="dugme dugme-kucuk dugme-ikincil" id="benim-yeniden"
+                                        @onclick="BenimYenidenOku">@SD.YenidenDene</button>
+                            </div>
+                        }
+
+                        <Secim ElemanId="benim-sema" Etiket="@Dil.T.Gorunum.RenkSemasi"
+                               Secenekler="@BenimSemaSecenekleri" Deger="@BenimSemaDegeri"
+                               DegerChanged="BenimSemaSec"
+                               Devredisi="@BenimKilitli" DevredisiSebebi="@BenimKilitSebebi"
+                               KaynakRozeti="@BenimRozet(BenimGorunum.Durum?.SemaKaynagi)"
+                               Ipucu="@Dil.T.Gorunum.KontrastNotu" />
+
+                        @* KESIF-P1 · TEMA-TEK: tema radyosu burada DEĞİL — tek seçici üstteki
+                           Görünüm kartıdır; yeri tek cümleyle söylenir. *@
+                        <p class="metin-soluk metin-kucuk" id="benim-tema-notu">@KesifP1Sozlugu.Al(Dil.Dil).BenimTemaNotu</p>
+
+                        <Secim ElemanId="benim-yazi" Etiket="@Dil.T.Gorunum.YaziOlcegi"
+                               Secenekler="@BenimYaziSecenekleri" Deger="@BenimYaziDegeri"
+                               DegerChanged="BenimYaziSec"
+                               Devredisi="@BenimKilitli" DevredisiSebebi="@BenimKilitSebebi"
+                               KaynakRozeti="@BenimRozet(BenimGorunum.Durum?.YaziBoyutuKaynagi)" />
+
+                        <p class="metin-soluk metin-kucuk" id="benim-kagit-notu">@KagitNotu</p>
+
+                        <BasariBandi Mesaj="@benimBasari" Jeton="@benimJeton" SureliMs="3000" Id="benim-gorunum-basari" />
+                        <HataBandi Mesaj="@benimHata" Id="benim-gorunum-hata" />
+                    </div>
+                </div>
+
+                @* ── Arayüz modu (paket UX-3 Faz A) ── *@
+                <div class="kart" id="ayar-arayuz-modu">
+                    <div class="kart-baslik"><h2>@Dil.T.Arayuz.Baslik</h2></div>
+                    <div class="kart-govde">
+                        <div class="sekme-grubu" role="group" aria-label="@Dil.T.Arayuz.Baslik">
+                            <button type="button" id="arayuz-devral" class="sekme @(Modu.KullaniciModu is null ? "secili" : null)" aria-pressed="@(Modu.KullaniciModu is null ? "true" : "false")" disabled="@kaydediliyorMod" @onclick="ModDevral">
+                                <span class="satir-ici"><Ikon Ad="@Ikonlar.Isletme" /><span>@Dil.T.Arayuz.KiraciVarsayilani</span></span>
+                            </button>
+                            <button type="button" id="arayuz-basit" class="sekme @(Modu.KullaniciModu == ArayuzModuServisi.Basit ? "secili" : null)" aria-pressed="@(Modu.KullaniciModu == ArayuzModuServisi.Basit ? "true" : "false")" disabled="@kaydediliyorMod" @onclick="ModBasit">
+                                <span class="satir-ici"><Ikon Ad="@Ikonlar.BasitMod" /><span>@Dil.T.Arayuz.Basit</span></span>
+                            </button>
+                            <button type="button" id="arayuz-profesyonel" class="sekme @(Modu.KullaniciModu == ArayuzModuServisi.Profesyonel ? "secili" : null)" aria-pressed="@(Modu.KullaniciModu == ArayuzModuServisi.Profesyonel ? "true" : "false")" disabled="@kaydediliyorMod" @onclick="ModProfesyonel">
+                                <span class="satir-ici"><Ikon Ad="@Ikonlar.Ayarlar" /><span>@Dil.T.Arayuz.Profesyonel</span></span>
+                            </button>
+                        </div>
+                        <p class="metin-soluk metin-kucuk mt-1">@Dil.T.Arayuz.Aciklama</p>
+                        <p class="metin-soluk metin-kucuk">
+                            @(Modu.BasitMi ? Dil.T.Arayuz.ModAciklamaBasit : Dil.T.Arayuz.ModAciklamaPro)
+                        </p>
+                        <HataBandi Mesaj="@modHata" />
+                    </div>
+                </div>
+                </div>
+                </details>
+                </div>
+            }
+            else if (sekmeKodu == AyarlarSekmeSozlugu.Dukkan)
+            {
+                @* ── PAKET T-K3 — DÜKKÂN (tuval sekmesi) ──────────────────────────────
+                   Dükkân düzeyindeki ayarlar: (1) dükkânın görünüm VARSAYILANI (eski
+                   "Ayrıntılı görünüm" altındaki #ayar-gorunum kartı buraya taşındı —
+                   SAHİP kilidi ve sunucu kapısı aynen); (2) dükkân kimliği (unvan, vergi
+                   no, adres, şubeler) İşletme ekranında yaşar → bağlantı. Kopya form YOK
+                   (UX-S31: tek kaynak). *@
+                <div class="dikey-bosluk ayar-panel" id="ayar-panel-govde-dukkan">
+                @BaglantiKarti("ayar-dukkan-bilgi", AT.DukkanBaslik, AT.DukkanAciklama, "/isletme", AT.DukkanGit, AT.DukkanYetkiYok)
+                @* T-K3: dükkân varsayılanını TEK TEK seçme kartı tuvalde yoktur (tuvalde
+                   varsayılan "Bunu işletme varsayılanı yap" ile Görünüm'den belirlenir) →
+                   BASİT yüzde "Daha fazla" olarak KATLI, PROFESYONEL yüzde açık (silinmez). *@
+                <details class="gk-ayrinti ayar-daha-fazla" id="ayar-dukkan-gorunum-ayrinti" open="@Modu.ProfesyonelMi">
+                <summary class="gk-ayrinti-baslik" id="ayar-dukkan-gorunum-ayrinti-baslik">@AT.DukkanGorunumBaslik</summary>
+                <div class="dikey-bosluk gk-ayrinti-govde">
+                <div class="kart" id="ayar-gorunum">
+                    <div class="kart-baslik"><h2>@Dil.T.Gorunum.Baslik</h2></div>
+                    <div class="kart-govde dikey-bosluk">
+                        <p class="metin-soluk metin-kucuk">@Dil.T.Gorunum.Aciklama</p>
+
+                        <p class="metin-soluk metin-kucuk" id="gorunum-kapsam-notu">@DukkanKapsamNotu</p>
+                        @* PAKET SADE-1 (göz #41): sahip için okuma hatası = hata bandı (rol kilidi
+                           hata değildir, o gri sebep satırı olarak kalır). *@
+                        @if (SahipMi && Gorunum.OkumaDenendi && !Gorunum.Yuklendi)
+                        {
+                            <div class="bant bant-hata" role="alert" id="gorunum-okuma-hata">
+                                <span>@SD.GorunumOkunamadi</span>
+                                <button type="button" class="dugme dugme-kucuk dugme-ikincil" id="gorunum-yeniden"
+                                        @onclick="GorunumYenidenOku">@SD.YenidenDene</button>
+                            </div>
+                        }
+
+                        <Secim ElemanId="gorunum-sema" Etiket="@Dil.T.Gorunum.RenkSemasi"
+                               Secenekler="@SemaSecenekleri" Deger="@Gorunum.Sema"
+                               DegerChanged="SemaSec"
+                               Devredisi="@GorunumKilitli" DevredisiSebebi="@GorunumKilitSebebi"
+                               Ipucu="@Dil.T.Gorunum.KontrastNotu" />
+
+                        <Secim ElemanId="gorunum-olcek" Etiket="@Dil.T.Gorunum.YaziOlcegi"
+                               Secenekler="@OlcekSecenekleri" Deger="@Gorunum.YaziOlcegi"
+                               DegerChanged="OlcekSec"
+                               Devredisi="@GorunumKilitli" DevredisiSebebi="@GorunumKilitSebebi" />
+
+                        <BasariBandi Mesaj="@gorunumBasari" Jeton="@gorunumJeton" SureliMs="3000" Id="gorunum-basari" />
+                        <HataBandi Mesaj="@gorunumHata" Id="gorunum-hata" />
+                    </div>
+                </div>
+                </div>
+                </details>
+                </div>
+            }
+            else if (sekmeKodu == AyarlarSekmeSozlugu.Kur)
+            {
+                @* ── PAKET T-K3 — KUR (tuval sekmesi) ─────────────────────────────────
+                   Kur kaynağı seçimi, pariteler ve kur geçmişi Kur ekranındadır
+                   (PATCH /kur/kaynak orada; ikinci seçici AÇILMAZ — UX-S31). *@
+                <div class="dikey-bosluk ayar-panel" id="ayar-panel-govde-kur">
+                @BaglantiKarti("ayar-kur-bilgi", AT.KurBaslik, AT.KurAciklama, "/kur", AT.KurGit, AT.YetkiYok)
+                </div>
+            }
+            else if (sekmeKodu == AyarlarSekmeSozlugu.Yazici)
+            {
+                @* ── PAKET T-K3 — YAZICI (tuval sekmesi) ──────────────────────────────
+                   Üründe yazıcı/kâğıt AYARI YOKTUR (ölçüldü: sunucuda uç yok, tercih
+                   anahtarı yok). Sekme UYDURMA ayar göstermez; gerçek yazdırma yolunu
+                   söyler (tarayıcının yazdırma penceresi) ve etiket yazdırma ekranına
+                   bağlanır. Kâğıt notu Görünüm kartıyla TEK kaynaktan. *@
+                <div class="dikey-bosluk ayar-panel" id="ayar-panel-govde-yazici">
+                @BaglantiKarti("ayar-yazici-bilgi", AT.YaziciBaslik, AT.YaziciAciklama, "/urunler/etiketler", AT.YaziciEtiketGit, AT.YetkiYok,
+                               GorunumKartiSozlugu.Al(Dil.Dil).KagitNotu)
+                </div>
+            }
+            else if (sekmeKodu == AyarlarSekmeSozlugu.Guvenlik)
+            {
+                @* PAKET T-K3 — GÜVENLİK: hesabın kendisi (profil), şifre, iki aşamalı
+                   giriş, sistem künyesi ve (SAHİP) destek paketi. Alt bölümlerin
+                   kap id'leri (ayar-panel-govde-hesap/-guvenlik/-sistem/-destek) AYNI. *@
+                <div class="dikey-bosluk ayar-panel" id="ayar-guvenlik-bolumleri">
+                <div class="ayar-ikili" id="ayar-panel-govde-hesap">
+                @* ── Profil bilgileri ── *@
+                <div class="kart" id="ayar-profil">
+                    <div class="kart-baslik satir-arasi">
+                        <h2>@Dil.T.Ayarlar.ProfilBilgileri</h2>
+                        @* T-K3: sayfa başından taşındı (id aynı). Ekranın TEK birincil
+                           düğmesi Görünüm'deki "Bunu işletme varsayılanı yap"tır → ikincil. *@
+                        <button type="button" class="btn btn-ikincil" id="ay-profil-duzenle" @onclick="ProfilAc">
+                            <Ikon Ad="@Ikonlar.Kalem" /> @Dil.T.Yonetim.ProfilDuzenle
+                        </button>
+                    </div>
+                    <div class="kart-govde">
+                        <dl class="form-dikey kimlik-listesi">
+                            <div class="satir-arasi">
+                                <dt class="metin-soluk">@Dil.T.Auth.AdSoyad</dt>
+                                <dd class="hucre-vurgu" id="ay-adsoyad">@AdSoyad</dd>
+                            </div>
+                            <div class="satir-arasi">
+                                <dt class="metin-soluk">@Dil.T.Auth.Eposta</dt>
+                                <dd class="hucre-vurgu" id="ay-eposta">@(Oturum.Kullanici?.Email ?? "")</dd>
+                            </div>
+                            <div class="satir-arasi">
+                                <dt class="metin-soluk">@Dil.T.Auth.Rol</dt>
+                                <dd class="hucre-vurgu" id="ay-rol">@RolEtiket(Oturum.Kullanici?.Rol)</dd>
+                            </div>
+                        </dl>
+                        @* QA turu 1+2 (ORTA): rol bu ekranda düzenlenemez; ad/e-posta artık
+                           çekmeceden düzenlenebiliyor, rol için gerekçe yazılı (UX-S25). *@
+                        <DegismezIpucu Varlik="KendiRolum"
+                                       Gerekce="@Dil.T.Yonetim.KendiRolunDegismez"
+                                       AlternatifYol="@Dil.T.Yonetim.KendiRolunYolu" />
+                    </div>
+                </div>
+
+                </div>
+
+                <div class="ayar-ikili" id="ayar-panel-govde-guvenlik">
+                @* ── Şifre değiştir ── *@
+                <div class="kart">
+                    <div class="kart-baslik"><h2>@Dil.T.Ayarlar.SifreDegistir</h2></div>
+                    <div class="kart-govde">
+                        <form class="form-dikey" @onsubmit="SifreGuncelle" @onsubmit:preventDefault>
+                            <Sifre ElemanId="mevcut-sifre" Etiket="@Dil.T.Ayarlar.MevcutSifre" Zorunlu="true"
+                                   OtoTamamla="current-password"
+                                   Deger="@mevcutSifre" DegerChanged="@(v => mevcutSifre = v ?? "")" />
+                            <Sifre ElemanId="yeni-sifre" Etiket="@Dil.T.Ayarlar.YeniSifre" Zorunlu="true"
+                                   OtoTamamla="new-password"
+                                   Deger="@yeniSifre" DegerChanged="@(v => yeniSifre = v ?? "")" />
+                            @* Hata kimliği (#sifre-hata) göçte BİREBİR korundu. *@
+                            <Sifre ElemanId="yeni-sifre-tekrar" Etiket="@Dil.T.Auth.SifreTekrar" Zorunlu="true"
+                                   OtoTamamla="new-password"
+                                   Deger="@yeniSifreTekrar" DegerChanged="@(v => yeniSifreTekrar = v ?? "")"
+                                   Hata="@(Eslesmiyor ? Dil.T.Ayarlar.SifrelerEslesmiyor : null)"
+                                   HataKimligi="sifre-hata" />
+                            <HataBandi Mesaj="@hata" Id="hata-bandi" />
+                            @* UX-4c madde 13: 3 sn'lik gizleme BasariBandi'nin içinde. *@
+                            <BasariBandi Mesaj="@(basarili ? Dil.T.Ayarlar.SifreGuncellendi : null)"
+                                         Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+                            @* QA turu 2 (DÜŞÜK): üç alan boşken düğme ETKİNDİ ve tıklayınca
+                               sessizce hiçbir şey olmuyordu — diğer formlarla tutarsızdı. *@
+                            <button type="submit" class="btn btn-birincil btn-tam" id="ay-sifre-guncelle" disabled="@(kaydediliyor || Eslesmiyor || !SifreAlanlariDolu)">
+                                @Dil.T.Ayarlar.SifreyiGuncelle
+                            </button>
+                            @if (!kaydediliyor && (!SifreAlanlariDolu || Eslesmiyor))
+                            {
+                                <span id="ay-sifre-kilit" class="metin-soluk metin-kucuk">
+                                    @Dil.T.Yonetim.KilitSebebi:
+                                    @(!SifreAlanlariDolu ? Dil.T.Yonetim.SifreAlanlariBos : Dil.T.Ayarlar.SifrelerEslesmiyor)
+                                </span>
+                            }
+                        </form>
+                    </div>
+                </div>
+
+                @* ── İki aşamalı giriş (45-UI · MÜHÜR 2) ─────────────────────────────────
+                   ⚠ Giz DOM'a MASKESİZ basılmaz: varsayılan maskeli, göstermek KULLANICI
+                     isteğidir. Kurtarma kodları YALNIZ BİR KEZ gösterilir ve "kaydettim"
+                     onayı verilmeden kurulum tamamlanmaz. Hiçbir giz/kod günlüğe yazılmaz. *@
+                <div class="kart" id="ayar-mfa">
+                    <div class="kart-baslik"><h2>@Dil.T.Yonetim.MfaBaslik</h2></div>
+                    <div class="kart-govde form-dikey">
+                        <p class="metin-soluk metin-kucuk">@Dil.T.Yonetim.MfaAciklama</p>
+
+                        @if (mfaYukleniyor)
+                        {
+                            <Yukleniyor />
+                        }
+                        else
+                        {
+                            <div class="satir-arasi">
+                                <span class="metin-soluk">@Dil.T.Kullanici.Durum</span>
+                                <Rozet Renk="@(MfaEtkin ? "yesil" : "gri")">
+                                    <span id="mfa-durum">@MfaDurumMetni</span>
+                                </Rozet>
+                            </div>
+
+                            @if (mfaKilitli)
+                            {
+                                <p id="mfa-kilit" class="hata-metni" role="alert">@Dil.T.Yonetim.MfaKilitli</p>
+                            }
+
+                            <HataBandi Mesaj="@mfaHata" Id="mfa-hata" />
+
+                            @if (MfaEtkin)
+                            {
+                                <p id="mfa-kalan-kod" class="metin-soluk metin-kucuk">
+                                    @string.Format(Dil.T.Yonetim.MfaKalanKod, mfaKalanKod)
+                                </p>
+                                <div class="satir">
+                                    <button type="button" class="btn btn-ikincil" id="mfa-yenile-ac" @onclick="KurtarmaYenileAc">@Dil.T.Yonetim.MfaKurtarmaYenile</button>
+                                    <button type="button" class="btn btn-tehlike" id="mfa-kapat-ac" @onclick="KapatAc">@Dil.T.Yonetim.MfaKapat</button>
+                                </div>
+                            }
+                            else if (kurulumAcik)
+                            {
+                                <ol class="kural-listesi" id="mfa-adimlar">
+                                    <li>@Dil.T.Yonetim.MfaAdim1</li>
+                                    <li>@Dil.T.Yonetim.MfaAdim2</li>
+                                    <li>@Dil.T.Yonetim.MfaAdim3</li>
+                                </ol>
+
+                                <div class="alan">
+                                    <label for="mfa-anahtar">@Dil.T.Yonetim.MfaAnahtar</label>
+                                    <code class="girdi" id="mfa-anahtar">@(gizGorunur ? (gizBase32 ?? "") : GizMaske)</code>
+                                    <button type="button" class="btn btn-ikincil btn-kucuk" id="mfa-anahtar-goster" @onclick="GizGoruntule">
+                                        @(gizGorunur ? Dil.T.Yonetim.MfaAnahtarGizle : Dil.T.Yonetim.MfaAnahtarGoster)
+                                    </button>
+                                    <span class="metin-soluk metin-kucuk">@Dil.T.Yonetim.MfaGizUyari</span>
+                                </div>
+
+                                @if (kurtarmaKodlari is null)
+                                {
+                                    <Metin ElemanId="mfa-kod" Etiket="@Dil.T.Yonetim.MfaKod" Zorunlu="true" EnFazla="@Kuyumcu.Core.Domain.Girdi.YonetimSinirlari.MfaKurulumKodu"
+                                           YerTutucu="@Dil.T.Yonetim.MfaKodIpucu" OtoTamamla="one-time-code"
+                                           Deger="@mfaKod" DegerChanged="@(v => mfaKod = v ?? "")" />
+                                    <button type="button" class="btn btn-birincil" id="mfa-dogrula" disabled="@(mfaCalisiyor || string.IsNullOrWhiteSpace(mfaKod))"
+                                            @onclick="Dogrula">@Dil.T.Yonetim.MfaDogrula</button>
+                                    @if (!mfaCalisiyor && string.IsNullOrWhiteSpace(mfaKod))
+                                    {
+                                        <span id="mfa-dogrula-kilit" class="metin-soluk metin-kucuk">
+                                            @Dil.T.Yonetim.KilitSebebi: @Dil.T.Yonetim.MfaKodEksik
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="uyari-kutu" id="mfa-kurtarma">
+                                        <h3 class="metin-kucuk">@Dil.T.Yonetim.MfaKurtarmaBaslik</h3>
+                                        <p class="hata-metni" role="alert">@Dil.T.Yonetim.MfaKurtarmaUyari</p>
+                                        <ul class="kural-listesi" id="mfa-kurtarma-liste">
+                                            @foreach (var kk in kurtarmaKodlari)
+                                            {
+                                                <li><code>@kk</code></li>
+                                            }
+                                        </ul>
+                                        <button type="button" class="btn btn-ikincil" id="mfa-kurtarma-indir" @onclick="KurtarmaIndir">@Dil.T.Yonetim.MfaKurtarmaIndir</button>
+                                        <Onay ElemanId="mfa-kurtarma-onay" Etiket="@Dil.T.Yonetim.MfaKurtarmaOnay"
+                                              @bind-Deger="kurtarmaOnaylandi" />
+                                        <button type="button" class="btn btn-birincil" id="mfa-tamamla" disabled="@(!kurtarmaOnaylandi)" @onclick="KurulumTamamla">
+                                            @Dil.T.Yonetim.MfaTamamla
+                                        </button>
+                                        @if (!kurtarmaOnaylandi)
+                                        {
+                                            <span id="mfa-tamamla-kilit" class="metin-soluk metin-kucuk">
+                                                @Dil.T.Yonetim.KilitSebebi: @Dil.T.Yonetim.MfaKurtarmaOnay
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                @* P-09 (B-6): YARIM kalan kurulum ekranda ÇIKIŞSIZ bir durum
+                                   bırakıyordu — ne kapatma (ETKİN ister) ne temizleme yolu
+                                   vardı. Bu bir kilit değildir (giriş kod sormaz) ama
+                                   kullanıcıya durumu ve iki çıkışı da yazıyoruz. *@
+                                @if (mfaDurum == "BEKLIYOR")
+                                {
+                                    <div class="uyari-kutu" id="mfa-yarim">
+                                        <h3 class="metin-kucuk">@Dil.T.Yonetim.MfaYarimBaslik</h3>
+                                        <p class="metin-kucuk">@Dil.T.Yonetim.MfaYarimAciklama</p>
+                                    </div>
+                                }
+                                <div class="satir-eylemler">
+                                    <button type="button" class="btn btn-birincil" id="mfa-kur" disabled="@mfaCalisiyor" @onclick="Kur">@Dil.T.Yonetim.MfaKur</button>
+                                    @if (mfaDurum == "BEKLIYOR")
+                                    {
+                                        <button type="button" class="btn btn-ikincil" id="mfa-sifirla" disabled="@mfaCalisiyor" @onclick="Sifirla">@Dil.T.Yonetim.MfaSifirla</button>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+                </div>
+
+                @* PAKET T-K3: sistem künyesi ve destek paketi tuvalde YOKTUR → BASİT yüzde
+                   "Daha fazla" olarak KATLI başlar, PROFESYONEL yüzde açık (silinmez;
+                   id'ler ve davranış aynı, katlı <details> içindedir). *@
+                <details class="gk-ayrinti ayar-daha-fazla" id="ayar-sistem-destek" open="@Modu.ProfesyonelMi">
+                <summary class="gk-ayrinti-baslik" id="ayar-sistem-destek-baslik">@AT.SistemDestekBaslik</summary>
+                <div class="dikey-bosluk gk-ayrinti-govde">
+                <div class="dikey-bosluk ayar-panel" id="ayar-panel-govde-sistem">
+                @* ── Sistem künyesi (paket T-4a) ──────────────────────────────────────────
+                   Destek çağrısında "hangi sürüm, hangi şema" sorusu TAHMİNLE değil
+                   ürünün kendi beyanıyla cevaplanır. Kart kiracı verisi göstermez;
+                   şema adımı AYRINTISI yalnız SAHIP'e ve profesyonel modda açılır
+                   (sunucu kapısı da SAHIP'tir — ekran kapıyı taklit etmez). *@
+                <div class="kart" id="ayar-kunye">
+                    <div class="kart-baslik"><h2>@Dil.T.Kunye.Baslik</h2></div>
+                    <div class="kart-govde form-dikey">
+                        <p class="metin-soluk metin-kucuk">@Dil.T.Kunye.Aciklama</p>
+
+                        @if (kunyeYukleniyor)
+                        {
+                            <Yukleniyor />
+                        }
+                        else if (kunye is not null)
+                        {
+                            <div class="satir-arasi">
+                                <span class="metin-soluk">@Dil.T.Kunye.Surum</span>
+                                <span id="ayar-kunye-surum">@kunye.Surum</span>
+                            </div>
+                            <div class="satir-arasi">
+                                <span class="metin-soluk">@Dil.T.Kunye.Derleme</span>
+                                <span id="ayar-kunye-derleme">
+                                    @kunye.DerlemeZamani
+                                    <span class="metin-soluk metin-kucuk">(@DerlemeKaynagiMetni)</span>
+                                </span>
+                            </div>
+                            <div class="satir-arasi">
+                                <span class="metin-soluk">@Dil.T.Kunye.Ortam</span>
+                                <span id="ayar-kunye-ortam">@OrtamMetni</span>
+                            </div>
+                            <div class="satir-arasi">
+                                <span class="metin-soluk">@Dil.T.Kunye.MigrationSayisi</span>
+                                <span id="ayar-kunye-migration">@kunye.MigrationSayisi</span>
+                            </div>
+                            <div class="satir-arasi">
+                                <span class="metin-soluk">@Dil.T.Kunye.SonMigration</span>
+                                <span id="ayar-kunye-son-migration">@(kunye.SonMigration ?? "-")</span>
+                            </div>
+
+                            @if (kunye.BekleyenMigrationSayisi > 0)
+                            {
+                                <div class="satir-arasi">
+                                    <Rozet Renk="kirmizi">
+                                        <span id="ayar-kunye-bekleyen">
+                                            @Dil.T.Kunye.BekleyenMigration: @kunye.BekleyenMigrationSayisi
+                                        </span>
+                                    </Rozet>
+                                    <span class="metin-kucuk" id="ayar-kunye-sema-eski">@Dil.T.Kunye.SemaEski</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="satir-arasi">
+                                    <Rozet Renk="yesil"><span id="ayar-kunye-sema">@Dil.T.Kunye.SemaGuncel</span></Rozet>
+                                </div>
+                            }
+
+                            @* Şema adımı listesi: profesyonel mod + SAHIP. Basit modda
+                               yalnız yukarıdaki tek satır özet kalır (UX-S5). *@
+                            @if (SahipMi)
+                            {
+                                <ProAlan>
+                                    <div class="form-dikey">
+                                        <button type="button" id="ayar-kunye-ayrinti" @onclick="AyrintiYukle"
+                                                class="btn btn-ikincil" disabled="@ayrintiYukleniyor">
+                                            @Dil.T.Kunye.Ayrinti
+                                        </button>
+                                        @if (ayrinti is not null)
+                                        {
+                                            <ul id="ayar-kunye-ayrinti-liste">
+                                                @foreach (var m in ayrinti.Bekleyen)
+                                                {
+                                                    <li><code>@m</code> — @Dil.T.Kunye.BekleyenMigration</li>
+                                                }
+                                                @foreach (var m in ayrinti.Uygulanmis.AsEnumerable().Reverse().Take(10))
+                                                {
+                                                    <li><code>@m</code></li>
+                                                }
+                                            </ul>
+                                        }
+                                    </div>
+                                </ProAlan>
+                            }
+
+                            <div class="satir">
+                                <button type="button" class="btn btn-ikincil" id="ayar-kunye-kopyala" @onclick="KunyeKopyala">
+                                    @Dil.T.Kunye.Kopyala
+                                </button>
+                                @if (kunyeKopyalandi == true)
+                                {
+                                    <span class="metin-kucuk" id="ayar-kunye-kopyalandi">@Dil.T.Kunye.Kopyalandi</span>
+                                }
+                                else if (kunyeKopyalandi == false)
+                                {
+                                    <span class="metin-kucuk" id="ayar-kunye-elle">@Dil.T.Kunye.KopyalanamadiElle</span>
+                                }
+                            </div>
+                            <SaltOkunur ElemanId="ayar-kunye-satir" Etiket="@Dil.T.Kunye.Baslik"
+                                        Deger="@TekSatirKunye" MakineDeger="@TekSatirKunye"
+                                        BosMetin="@Dil.T.Ortak.DegerYok" />
+                        }
+
+                        @* UX-S28: hata BOŞ DURUMA çevrilmez; kimlik varsa destek kodu rozetiyle. *@
+                        <HataBandi Mesaj="@kunyeHata" Id="ayar-kunye-hata" Kimlik="@kunyeHataKimligi" />
+                    </div>
+                </div>
+                </div>
+
+                <div class="dikey-bosluk ayar-panel" id="ayar-panel-govde-destek">
+                @* ── PAKET P-31 (R-5 · T-4b) — MASKELİ DESTEK PAKETİ ──────────────────
+                   Yalnız SAHIP (sunucu kapısı [RolGerekli("SAHIP")]; ekran kapıyı taklit
+                   eder, çağrı hiç yapılmaz). Kanal BK-17 gereği yapılandırmayla kapalı
+                   olabilir: düğme kilitlenir ve SEBEBİ yazar (UX-S30). Oluşturma geri
+                   alınamaz → önce satır içi onay (UX-S27; yeni ModalPencere açılmadı).
+                   Paket kaydı değişmez → DegismezIpucu (UX-S25). *@
+                @if (SahipMi)
+                {
+                    <div class="kart" id="ayar-destek">
+                        <div class="kart-baslik"><h2>@DM.Baslik</h2></div>
+                        <div class="kart-govde form-dikey">
+                            <p class="metin-soluk metin-kucuk">@DM.Aciklama</p>
+                            <div class="ayar-ikili destek-icerik-ikili">
+                            <div id="destek-icerik-var">
+                                <strong>@DM.IcerikBaslik</strong>
+                                <ul>
+                                    @foreach (var m in DM.IcerikVar)
+                                    {
+                                        <li class="metin-kucuk">@m</li>
+                                    }
+                                </ul>
+                            </div>
+                            <div id="destek-icerik-yok">
+                                <strong>@DM.IcermezBaslik</strong>
+                                <ul>
+                                    @foreach (var m in DM.IcerikYok)
+                                    {
+                                        <li class="metin-kucuk">@m</li>
+                                    }
+                                </ul>
+                            </div>
+                            </div>
+
+                            @if (destekYukleniyor)
+                            {
+                                <Yukleniyor />
+                            }
+                            else if (destekGecmis is not null)
+                            {
+                                <div class="ayar-ikili destek-ikili">
+                                <div class="form-dikey" id="destek-form-sutun">
+                                @if (!destekGecmis.KanalAcik)
+                                {
+                                    <p class="metin-kucuk" id="destek-kanal-kapali">@DM.KilitKanal</p>
+                                }
+                                <Secim ElemanId="destek-konu" Etiket="@DM.KonuEtiket"
+                                       Secenekler="@DestekKonuSecenekleri" Deger="@destekKonu"
+                                       DegerChanged="@(v => destekKonu = v ?? DestekVarsayilanKonu)"
+                                       Devredisi="@(!destekGecmis.KanalAcik)" DevredisiSebebi="@DM.KilitKanal" />
+                                <GerekceAlani Id="destek-gerekce" Etiket="@DM.GerekceEtiket"
+                                              AsgariUzunluk="@DestekAsgari" AzamiUzunluk="500"
+                                              Deger="@destekGerekce" DegerChanged="@(v => destekGerekce = v)" />
+                                <Metin ElemanId="destek-hata-kodu" Etiket="@DM.HataKoduEtiket" EnFazla="@Kuyumcu.Core.Domain.Girdi.YonetimSinirlari.DestekHataKodu"
+                                       Deger="@destekHataKodu" DegerChanged="@(v => destekHataKodu = v ?? "")"
+                                       Hata="@(DestekHataKoduGecersiz ? DM.HataKoduGecersiz : null)" />
+                                @if (!destekOnay)
+                                {
+                                    <button type="button" class="btn btn-ikincil" id="destek-olustur" @onclick="DestekOnayAc"
+                                            disabled="@(!DestekGonderilebilir)">
+                                        @DM.Olustur
+                                    </button>
+                                    @if (!DestekGonderilebilir)
+                                    {
+                                        <span class="metin-soluk metin-kucuk" id="destek-olustur-kilit">@DestekKilitSebebi</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="form-dikey" id="destek-onay">
+                                        <p>@DM.OnayMetin</p>
+                                        <div class="satir">
+                                            <button type="button" class="btn btn-ikincil esit-pay" id="destek-vazgec" @onclick="DestekOnayKapat">
+                                                @DM.Vazgec
+                                            </button>
+                                            <button type="button" class="btn btn-ikincil esit-pay" id="destek-onayla" @onclick="DestekOlustur"
+                                                    disabled="@destekCalisiyor">@DM.Onayla</button>
+                                        </div>
+                                        @if (destekCalisiyor)
+                                        {
+                                            <span class="metin-soluk metin-kucuk" id="destek-onayla-kilit">@DM.KilitCalisiyor</span>
+                                        }
+                                    </div>
+                                }
+                                <BasariBandi Mesaj="@destekBasari" Jeton="@destekJeton" Id="destek-basari" />
+
+                                </div>
+                                <div class="form-dikey" id="destek-gecmis-sutun">
+                                <h3>@DM.GecmisBaslik</h3>
+                                <p class="metin-soluk metin-kucuk" id="destek-gecmis-sinir">@string.Format(DM.GecmisSinir, destekGecmis.Sinir)</p>
+                                @if (DestekKayitlari.Count == 0)
+                                {
+                                    <div id="destek-gecmis-bos"><BosDurum Mesaj="@DM.GecmisBos" /></div>
+                                }
+                                else
+                                {
+                                    @* PAKET GOC-D — ortak ızgara (grid:ayarlar:destek-gecmis): sütun sırası, göster/gizle,
+                                       sıralama, kullanıcıya+ekrana kalıcı, varsayılana dön. Tablo id'si AYNI. Liste sunucu
+                                       sınırına değdiyse sıralama KAPALI (yalnız görünen kısmı sıralamak yanıltır — UX-S29). *@
+                                    <Izgara T="Kuyumcu.Core.Sozlesmeler.DestekPaketiGecmisSatiri" Ekran="ayarlar" GridId="destek-gecmis"
+                                            TabloId="destek-gecmis" Kolonlar="@DestekKolonlari"
+                                            Ogeler="@IzgaraYerelSiralama.Uygula(DestekKayitlari, destekSira, DestekKolonlari)"
+                                            Baslik="@DM.GecmisBaslik"
+                                            SiralamaDegisti="@(x => destekSira = x)" GecerliSiralama="@destekSira" />
+                                }
+                                @if (destekGecmis.DahaFazlasiVar)
+                                {
+                                    <p class="metin-kucuk" id="destek-gecmis-fazla">@DM.DahaFazlasiVar</p>
+                                }
+                                <DegismezIpucu Varlik="@DM.DegismezVarlik" Gerekce="@DM.DegismezGerekce"
+                                               AlternatifYol="@DM.DegismezYol" />
+                                </div>
+                                </div>
+                            }
+
+                            @* UX-S28: hata BOŞ DURUMA çevrilmez; geçmiş listesi boşaltılmaz. *@
+                            <HataBandi Mesaj="@destekHata" Id="destek-hata" Kimlik="@destekHataKimligi" />
+                        </div>
+                    </div>
+                }
+                </div>
+                </div>
+                </details>
+                </div>
+            }
+        </Panel>
+    </Sekmeler>
+</div>
+
+@* ── Profil düzenleme (çok alanlı → ÇEKMECE, K6) ── *@
+<Cekmece Acik="profilAcik" Varlik="profil" Baslik="@Dil.T.Ayarlar.ProfilBilgileri"
+         Kaydediliyor="@profilKaydediliyor" KaydetAktif="@ProfilGecerli"
+         KilitSebebi="@(ProfilAdBos ? Dil.T.Yonetim.AdSoyadBos : Dil.T.Yonetim.EpostaGecersiz)"
+         Kapat="() => profilAcik = false" Kaydet="ProfilKaydet">
+    @* PİLOT GÖÇ (P-36b) — üç ham HTML girdisi ortak girdi ailesine devredildi.
+       Eleman kimlikleri (#pr-ad, #pr-soyad, #pr-eposta) BİREBİR korundu;
+       hata kimlikleri artık ailenin sözleşmesinden doğuyor (#pr-ad-hata,
+       #pr-eposta-hata) — ikinci bir hata çizim yolu kalmadı. *@
+    <div class="form-dikey">
+        <Metin ElemanId="pr-ad" Etiket="@Dil.T.Auth.Ad" Zorunlu="true"
+               @bind-Deger="PrAd" Hata="@(ProfilAdBos ? Dil.T.Yonetim.AdSoyadBos : null)" />
+        <Metin ElemanId="pr-soyad" Etiket="@Dil.T.Auth.Soyad" Zorunlu="true"
+               @bind-Deger="PrSoyad" />
+        <Eposta ElemanId="pr-eposta" Etiket="@Dil.T.Auth.Eposta" Zorunlu="true"
+                @bind-Deger="PrEposta"
+                Hata="@(ProfilEpostaHatali ? Dil.T.Yonetim.EpostaGecersiz : null)" />
+        <HataBandi Mesaj="@profilHata" Id="pr-hata" />
+    </div>
+</Cekmece>
+
+@* ── MFA kapatma / kurtarma yenileme (yıkıcı onay → ModalPencere) ── *@
+<ModalPencere Acik="kapatAcik" Baslik="@Dil.T.Yonetim.MfaKapat" Kapat="() => kapatAcik = false">
+    <div class="form-dikey">
+        <p id="mfa-kapat-onay">@Dil.T.Yonetim.MfaKapatOnay</p>
+        <p class="metin-soluk metin-kucuk">@Dil.T.Yonetim.MfaKapatAciklama</p>
+        <Sifre ElemanId="mfa-kapat-sifre" Etiket="@Dil.T.Yonetim.MfaSifre" Zorunlu="true"
+               OtoTamamla="current-password"
+               Deger="@kapatSifre" DegerChanged="@(v => kapatSifre = v ?? "")" />
+        <Metin ElemanId="mfa-kapat-kod" Etiket="@Dil.T.Yonetim.MfaKod" Zorunlu="true" EnFazla="@Kuyumcu.Core.Domain.Girdi.YonetimSinirlari.MfaKodGirisi"
+               OtoTamamla="one-time-code"
+               Deger="@kapatKod" DegerChanged="@(v => kapatKod = v ?? "")" />
+        <HataBandi Mesaj="@kapatHata" Id="mfa-kapat-hata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esit-pay" @onclick="() => kapatAcik = false"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-tehlike esit-pay" id="mfa-kapat-onayla" disabled="@(mfaCalisiyor || !KapatGecerli)" @onclick="Kapat">@Dil.T.Yonetim.MfaKapat</button>
+        </div>
+        @if (!mfaCalisiyor && !KapatGecerli)
+        {
+            <span id="mfa-kapat-kilit" class="metin-soluk metin-kucuk">
+                @Dil.T.Yonetim.KilitSebebi:
+                @(string.IsNullOrWhiteSpace(kapatSifre) ? Dil.T.Yonetim.MfaSifreEksik : Dil.T.Yonetim.MfaKodEksik)
+            </span>
+        }
+    </div>
+</ModalPencere>
+
+<ModalPencere Acik="yenileAcik" Baslik="@Dil.T.Yonetim.MfaKurtarmaYenile" Kapat="() => yenileAcik = false">
+    <div class="form-dikey">
+        <p class="metin-soluk metin-kucuk">@Dil.T.Yonetim.MfaKurtarmaUyari</p>
+        <Metin ElemanId="mfa-yenile-kod" Etiket="@Dil.T.Yonetim.MfaKod" Zorunlu="true" EnFazla="@Kuyumcu.Core.Domain.Girdi.YonetimSinirlari.MfaKodGirisi"
+               OtoTamamla="one-time-code"
+               Deger="@yenileKod" DegerChanged="@(v => yenileKod = v ?? "")" />
+        <HataBandi Mesaj="@yenileHata" Id="mfa-yenile-hata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esit-pay" @onclick="() => yenileAcik = false"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-birincil esit-pay" id="mfa-yenile-onayla" disabled="@(mfaCalisiyor || string.IsNullOrWhiteSpace(yenileKod))"
+                    @onclick="KurtarmaYenile">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@code {
+
+    // ── PAKET S1-h — sekmeler ──
+    private AyarlarSekmeMetinleri SM => AyarlarSekmeSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// PAKET T-K3 — tuval Ayarlar.dc.html: beş sekme, tuvaldeki ad ve sırayla,
+    /// HER ROLDE aynı (destek kartı Güvenlik içinde yalnız SAHİP'e çizilir;
+    /// boş sekme açılmaz çünkü Güvenlik'te profil/şifre herkes içindir).
+    /// </summary>
+    private IReadOnlyList<SekmeTanimi> SekmeListesi =>
+    [
+        new(AyarlarSekmeSozlugu.Gorunum, SM.Gorunum),
+        new(AyarlarSekmeSozlugu.Dukkan, SM.Dukkan),
+        new(AyarlarSekmeSozlugu.Kur, SM.Kur),
+        new(AyarlarSekmeSozlugu.Yazici, SM.Yazici),
+        new(AyarlarSekmeSozlugu.Guvenlik, SM.Guvenlik),
+    ];
+
+    private AyarlarTuvalMetinleri AT => AyarlarTuvalSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// T-K3: bağlantı kartının hedef ekranına erişim var mı? Menünün KENDİ kuralı
+    /// (MenuTanimi.YetkiliMi — modül + rol) kullanılır; ikinci kural yazılmaz.
+    /// YetkiServisi kayıtlı değilse (kabuk dışı çizim) tutucu: yalnız SAHİP.
+    /// </summary>
+    private bool EkranaErisir(string yol)
+    {
+        var oge = MenuTanimi.Ogeler.FirstOrDefault(o => o.Yol == yol);
+        if (oge is null) return false;
+        var yetki = Sp.GetService<YetkiServisi>();
+        Func<string, bool> modul = yetki is null ? _ => SahipMi : yetki.Erisebilir;
+        return MenuTanimi.YetkiliMi(oge, modul, Oturum.Kullanici?.Rol);
+    }
+
+    /// <summary>
+    /// T-K3: başka ekranda yaşayan ayarın kartı — açıklama + o ekrana bağlantı.
+    /// Yetki yoksa bağlantı ÇİZİLMEZ, sebebi yazılır (UX-S30; ölü bağlantı yok).
+    /// </summary>
+    private RenderFragment BaglantiKarti(string id, string baslik, string aciklama, string yol,
+        string git, string yetkiYok, string? not = null) => __builder =>
+    {
+        var erisir = EkranaErisir(yol);
+        <div class="kart ayar-baglanti-karti" id="@id">
+            <div class="kart-baslik"><h2>@baslik</h2></div>
+            <div class="kart-govde dikey-bosluk">
+                <p class="ayar-baglanti-aciklama" id="@($"{id}-aciklama")">@aciklama</p>
+                @if (not is not null)
+                {
+                    <p class="metin-soluk metin-kucuk" id="@($"{id}-not")">@not</p>
+                }
+                @if (erisir)
+                {
+                    <a class="btn btn-ikincil ayar-baglanti-git" id="@($"{id}-git")" href="@yol">
+                        <span>@git</span> <Ikon Ad="@Ikonlar.KatlamaKapali" />
+                    </a>
+                }
+                else
+                {
+                    <p class="metin-soluk metin-kucuk" id="@($"{id}-yetki-yok")" role="note">@yetkiYok</p>
+                }
+            </div>
+        </div>
+    };
+
+    /// <summary>
+    /// T-K3: eski sekme kodları (S1-h: hesap/sistem/destek) artık Güvenlik
+    /// sekmesindedir — eski derin bağlantı TAHMİNLE ilk sekmeye düşmez, doğru
+    /// sekmeye yönlenir (tarih kaydı değiştirilir, geri tuşu döngüye girmez).
+    /// </summary>
+    /// <remarks>
+    /// Yönlendirme bir tur ERTELENİR: canlı ölçümde (WASM) LocationChanged içinde
+    /// eşzamanlı NavigateTo etkisiz kalıyordu (URL ?sekme=hesap'ta kalıyordu).
+    /// </remarks>
+    private void KonumDegisti(object? _, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs __) =>
+        _ = InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            EskiSekmeyiYonlendir();
+        });
+
+    private void EskiSekmeyiYonlendir()
+    {
+        var kod = DerinBaglanti.Oku(Nav.Uri, "sekme");
+        if (kod is not null && AyarlarSekmeSozlugu.EskiKodlar.Contains(kod))
+            Nav.NavigateTo(Nav.GetUriWithQueryParameter("sekme", AyarlarSekmeSozlugu.Guvenlik), replace: true);
+    }
+
+    /// <summary>UX-S31: ham rol kodu ("SAHIP") basılmaz; sözlükten çevrilir. Tanınmayan kod tahmin edilmez, olduğu gibi kalır.</summary>
+    private string RolEtiket(string? rol) => rol switch
+    {
+        "SAHIP" => Dil.T.Kullanici.RolSahip,
+        "MUDUR" => Dil.T.Kullanici.RolMudur,
+        "MUHASEBE" => Dil.T.Kullanici.RolMuhasebe,
+        "TEZGAHTAR" => Dil.T.Kullanici.RolTezgahtar,
+        _ => rol ?? "",
+    };
+
+    private List<DilSecenegi> DilSecenekleri =>
+    [
+        new("tr", Dil.T.Ayarlar.Turkce, SM.DilKoduTr),
+        new("en", Dil.T.Ayarlar.Ingilizce, SM.DilKoduEn),
+    ];
+
+    // ── şifre formu durumu ──
+    private string mevcutSifre = "";
+    private string yeniSifre = "";
+    private string yeniSifreTekrar = "";
+    private bool kaydediliyor;
+    private bool basarili;
+    private string? hata;
+    /// <summary>Aynı başarı metnini yeniden göstermek için sayaç (BasariBandi).</summary>
+    private int basariJeton;
+
+    // ── görünüm: renk şeması + yazı boyutu (P-36b · talimat 16) ──
+    private string? gorunumBasari;
+    private string? gorunumHata;
+    private int gorunumJeton;
+
+    /// <summary>⚠ <c>SahipMi</c> bu sayfada ZATEN vardı (:867) — ikincisi açılmadı.
+    /// Sunucu kapısı [RolGerekli("SAHIP")]tir; ekran kapıyı taklit etmez, sebebini yazar.</summary>
+    private bool GorunumKilitli => !SahipMi || !Gorunum.Yuklendi;
+
+    private string? GorunumKilitSebebi =>
+        !SahipMi ? Dil.T.Gorunum.SahipGerekli
+        : !Gorunum.Yuklendi ? Dil.T.Gorunum.Yuklenmedi
+        : null;
+
+    /// <summary>
+    /// UX-S26 / UX-S31 — seçenek listeleri TEK diziden üretilir
+    /// (GorunumServisi.Semalar); ham kod ekrana basılmaz, sözlükten çevrilir.
+    /// </summary>
+    private IReadOnlyList<SecenekOgesi> SemaSecenekleri =>
+        GorunumServisi.Semalar.Select(k => new SecenekOgesi(k, SemaAdi(k), SemaAciklamasi(k))).ToList();
+
+    private IReadOnlyList<SecenekOgesi> OlcekSecenekleri =>
+        GorunumServisi.Olcekler.Select(k => new SecenekOgesi(k, OlcekAdi(k), OlcekAciklamasi(k))).ToList();
+
+    // ⚠ B-1: liste 3→8 şema, 2→3 punto oldu. Adlar Sozlukler.cs'e DEĞİL,
+    //   Kuyumcu.Core/I18n/GorunumSozlugu.cs'e yazıldı (9200 satırlık ortak hub
+    //   aynı dalgada başka şeritlerin elinde). Ham kod ekrana BASILMAZ: sözlükte
+    //   karşılığı olmayan kod BOŞ döner (UX-S31).
+    private string SemaAdi(string k) => GorunumSozlugu.Ad(GorunumSozlugu.Semalar, k, Dil.Dil);
+
+    private string SemaAciklamasi(string k) => GorunumSozlugu.Aciklama(GorunumSozlugu.Semalar, k, Dil.Dil);
+
+    private string OlcekAdi(string k) => GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, k, Dil.Dil);
+
+    private string OlcekAciklamasi(string k) => GorunumSozlugu.Aciklama(GorunumSozlugu.YaziBoyutlari, k, Dil.Dil);
+
+    // ═══ B-1 · BENİM GÖRÜNÜMÜM ═══════════════════════════════════════════════
+    private string? benimBasari;
+    private string? benimHata;
+    private int benimJeton;
+
+    /// <summary>Devral seçeneğinin değeri — boş dizge, sunucuya null gider.</summary>
+    private const string Devral = "";
+
+    private bool BenimKilitli => !BenimGorunum.Yuklendi;
+
+    private SadeMetinleri SD => SadeSozlugu.Al(Dil.Dil);
+
+    /// <summary>SADE-1: GET /gorunum yeniden okunur (sunucu otoritedir).</summary>
+    private async Task GorunumYenidenOku()
+    {
+        try { await Gorunum.YukleAsync(); }
+        catch (HttpRequestException) { /* Yuklendi=false kalır → bant görünür (md.1) */ }
+        catch (TaskCanceledException) { /* aynı */ }
+        StateHasChanged();
+    }
+
+    /// <summary>SADE-1: kullanıcının kendi görünümü yeniden okunur.</summary>
+    private async Task BenimYenidenOku() { await BenimGorunum.YukleAsync(); StateHasChanged(); }
+
+    private string? BenimKilitSebebi => BenimGorunum.Yuklendi ? null : Dil.T.Gorunum.Yuklenmedi;
+
+    private string BenimBaslik => Dil.Dil == "en" ? "My appearance" : "Benim görünümüm";
+
+    // KESIF-P1 · TEMA-TEK: kartta artık İKİ seçim var (şema + yazı boyutu).
+    private string BenimAciklama => KesifP1Sozlugu.Al(Dil.Dil).BenimAciklama;
+
+    private string DukkanKapsamNotu => Dil.Dil == "en"
+        ? "This is the shop default: it applies to every user who has not made their own choice on the Appearance tab."
+        : "Bu bölüm İŞLETME VARSAYILANIDIR: Görünüm sekmesinde kendi seçimini yapmamış her kullanıcı için geçerlidir.";
+
+    /// <summary>KIRMIZI ÇİZGİ — kâğıt daima beyaz (kurucu talimatı, 23 Eylül).</summary>
+    private string KagitNotu => Dil.Dil == "en"
+        ? "Paper is always white: printouts, receipts and invoices are never affected by the theme."
+        : "Kâğıt daima beyaz: yazdırma çıktısı, fiş ve fatura temadan etkilenmez.";
+
+    private string DevralAdi => Dil.Dil == "en" ? "Shop default" : "İşletme varsayılanı";
+
+    private string? BenimRozet(string? kaynak) =>
+        kaynak is null ? null : GorunumSozlugu.Ad(GorunumSozlugu.Kaynaklar, kaynak, Dil.Dil);
+
+    private SecenekOgesi DevralOgesi(string kiraciKodu, IReadOnlyDictionary<string, GorunumMetni> sozluk) =>
+        new(Devral, DevralAdi, GorunumSozlugu.Ad(sozluk, kiraciKodu, Dil.Dil));
+
+    private IReadOnlyList<SecenekOgesi> BenimSemaSecenekleri
+    {
+        get
+        {
+            var d = BenimGorunum.Durum;
+            List<SecenekOgesi> liste = [DevralOgesi(d?.KiraciSema ?? GorunumServisi.SemaVarsayilan, GorunumSozlugu.Semalar)];
+            liste.AddRange(GorunumServisi.Semalar.Select(k => new SecenekOgesi(k, SemaAdi(k), SemaAciklamasi(k))));
+            return liste;
+        }
+    }
+
+    private IReadOnlyList<SecenekOgesi> BenimYaziSecenekleri
+    {
+        get
+        {
+            var d = BenimGorunum.Durum;
+            var kiraci = (d?.KiraciYaziBoyutu ?? 18).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            List<SecenekOgesi> liste = [DevralOgesi(kiraci, GorunumSozlugu.YaziBoyutlari)];
+            liste.AddRange(GorunumServisi.Olcekler.Select(k => new SecenekOgesi(k, OlcekAdi(k), OlcekAciklamasi(k))));
+            return liste;
+        }
+    }
+
+    private string BenimSemaDegeri => BenimGorunum.Durum?.OzelSema ?? Devral;
+
+    private string BenimYaziDegeri => BenimGorunum.Durum?.OzelYaziBoyutu is { } p
+        ? p.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        : Devral;
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    private Task BenimSemaSec(string? kod) => BenimKaydet(() =>
+        string.IsNullOrEmpty(kod) ? BenimGorunum.SemaDevretAsync() : BenimGorunum.SemaSecAsync(kod));
+
+    private Task BenimYaziSec(string? kod) => BenimKaydet(() =>
+        string.IsNullOrEmpty(kod) || !int.TryParse(kod, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out var p)
+            ? BenimGorunum.YaziBoyutuDevretAsync()
+            : BenimGorunum.YaziBoyutuSecAsync(p));
+
+    /// <summary>
+    /// UX-S27 — kaydet sonrası sonuç GÖRÜNÜR; UX-S28 — hata "kayıt yok"a
+    /// çevrilmez, kendi bandında yazar.
+    /// </summary>
+    private async Task BenimKaydet(Func<Task> istek)
+    {
+        if (BenimKilitli) return;              // kilitli seçici istek atmaz
+        // ⚠ İKİ BANT DA DENEMEDEN ÖNCE temizlenir: catch içinde alan boşaltmak
+        //   P-11 "dış hatada veri düşüren yol" sayacına takılır (denetim.sh) —
+        //   oysa burada düşen VERİ değil, ÖNCEKİ başarı bandıdır. Temizlik
+        //   başa alınınca davranış AYNI kalır, sayaç yanılmaz.
+        benimBasari = null;
+        benimHata = null;
+        try
+        {
+            await istek();
+            benimBasari = Dil.T.Gorunum.Kaydedildi;
+            benimJeton++;
+        }
+        catch (ApiHata h)
+        {
+            benimHata = h.Message;
+        }
+    }
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    private Task SemaSec(string? kod) => GorunumKaydet(kod, null);
+    private Task OlcekSec(string? kod) => GorunumKaydet(null, kod);
+
+    /// <summary>
+    /// UX-S27 — kaydet sonrası sonuç GÖRÜNÜR: sunucunun döndürdüğü görünüm
+    /// uygulanır ve başarı bandı yazılır. POST/PATCH yanıtı okunmadan atılmaz.
+    /// </summary>
+    private async Task GorunumKaydet(string? sema, string? olcek)
+    {
+        if (GorunumKilitli) return;              // kilitli düğme istek atmaz
+        if (sema is null && olcek is null) return;
+        gorunumHata = null;
+        try
+        {
+            await Gorunum.DegistirAsync(sema, olcek);
+            gorunumBasari = Dil.T.Gorunum.Kaydedildi;
+            gorunumJeton++;
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28: hata gizlenmez, ayrı bantta görünür.
+            gorunumHata = ex.Message;
+        }
+    }
+
+    // ── arayüz modu (UX-3) ──
+    private bool kaydediliyorMod;
+    private string? modHata;
+
+    // ── genel başarı bandı (QA turu 2: tema/mod sessizce kaydediliyordu) ──
+    private string? genelBasari;
+    private int genelJeton;
+
+    private void BasariGoster(string mesaj)
+    {
+        genelBasari = mesaj;
+        genelJeton++;
+    }
+
+    // ── profil düzenleme (çekmece) ──
+    private bool profilAcik, profilKaydediliyor;
+    private string? profilHata;
+    private string pAd = "", pSoyad = "", pEmail = "";
+
+    // Girdi ailesi `string?` taşır, sayfanın alanları `string` — köprü BURADA
+    // kurulur ki sayfanın geri kalan mantığı (ProfilGecerli, ProfilKaydet)
+    // tek satır bile değişmesin.
+    private string? PrAd { get => pAd; set => pAd = value ?? ""; }
+    private string? PrSoyad { get => pSoyad; set => pSoyad = value ?? ""; }
+    private string? PrEposta { get => pEmail; set => pEmail = value ?? ""; }
+
+    private static bool EpostaGecerli(string? e) =>
+        !string.IsNullOrWhiteSpace(e) && System.Text.RegularExpressions.Regex.IsMatch(
+            e.Trim(), @"^[^@\s]+@[^@\s.]+\.[^@\s]+$");
+
+    private bool ProfilAdBos => string.IsNullOrWhiteSpace(pAd) || string.IsNullOrWhiteSpace(pSoyad);
+    private bool ProfilEpostaHatali => pEmail.Length > 0 && !EpostaGecerli(pEmail);
+    private bool ProfilGecerli => !ProfilAdBos && EpostaGecerli(pEmail);
+
+    private void ProfilAc()
+    {
+        profilHata = null;
+        pAd = Oturum.Kullanici?.Ad ?? "";
+        pSoyad = Oturum.Kullanici?.Soyad ?? "";
+        pEmail = Oturum.Kullanici?.Email ?? "";
+        profilAcik = true;
+    }
+
+    /// <summary>
+    /// QA turu 1+2 (ORTA): profil yalnız /kullanicilar ekranından düzenlenebiliyordu;
+    /// o ekran SAHIP/MUDUR'e kapalı olduğu için tezgâhtarın kendi adını düzeltme
+    /// yolu YOKTU. PATCH /kullanicilar/ben ucu zaten vardı (UX-S25 "uç var, düğme yok").
+    /// ⚠ İyimser kaydetme YOK: çekmece sunucu 200 döndükten sonra kapanır.
+    /// </summary>
+    private async Task ProfilKaydet()
+    {
+        if (!ProfilGecerli || profilKaydediliyor) return;
+        profilHata = null;
+        profilKaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<JsonElement>("/kullanicilar/ben",
+                new { ad = pAd.Trim(), soyad = pSoyad.Trim(), email = pEmail.Trim() });
+            if (Oturum.Kullanici is not null)
+                Oturum.KullaniciAta(Oturum.Kullanici with
+                {
+                    Ad = pAd.Trim(), Soyad = pSoyad.Trim(), Email = pEmail.Trim(),
+                });
+            profilAcik = false;
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);
+        }
+        catch (ApiHata ex) { profilHata = ex.Message; }
+        profilKaydediliyor = false;
+    }
+
+    // ── 45-UI · iki aşamalı giriş ────────────────────────────────────────────
+    // ⚠ Giz ve kurtarma kodları YALNIZ bellekte tutulur: günlüğe, denetim izine
+    //   ya da tarayıcı deposuna YAZILMAZ. Maske varsayılandır.
+
+    private bool mfaYukleniyor = true, mfaCalisiyor, kurulumAcik, gizGorunur, kurtarmaOnaylandi;
+    private bool mfaKilitli;
+    private string? mfaDurum, mfaHata, gizBase32, otpauthUri;
+    private string mfaKod = "";
+    private int mfaKalanKod;
+    private List<string>? kurtarmaKodlari;
+
+    private bool kapatAcik, yenileAcik;
+    private string kapatSifre = "", kapatKod = "", yenileKod = "";
+    private string? kapatHata, yenileHata;
+
+    private bool MfaEtkin => mfaDurum == "ETKIN";
+    private string MfaDurumMetni => mfaDurum switch
+    {
+        "ETKIN" => Dil.T.Yonetim.MfaDurumEtkin,
+        "BEKLIYOR" => Dil.T.Yonetim.MfaDurumBekliyor,
+        _ => Dil.T.Yonetim.MfaDurumKapali,
+    };
+
+    /// <summary>Giz DOM'a maskesiz basılmaz; maske uzunluk bile sızdırmaz.</summary>
+    private string GizMaske => new('•', 16);
+
+    private bool KapatGecerli =>
+        !string.IsNullOrWhiteSpace(kapatSifre) && !string.IsNullOrWhiteSpace(kapatKod);
+
+    private async Task MfaDurumYukle()
+    {
+        mfaYukleniyor = true;
+        mfaHata = null;
+        try
+        {
+            var d = await Api.GetAsync<JsonElement>("/auth/mfa/durum");
+            mfaDurum = d.TryGetProperty("durum", out var du) && du.ValueKind == JsonValueKind.String
+                ? du.GetString() : null;
+            mfaKalanKod = d.TryGetProperty("kalanKurtarmaKodu", out var kk) && kk.ValueKind == JsonValueKind.Number
+                ? kk.GetInt32() : 0;
+            mfaKilitli = d.TryGetProperty("kilitli", out var kl) && kl.ValueKind == JsonValueKind.True;
+        }
+        // UX-S28: hata "kayıt yok"a çevrilmez; bant ayrıdır.
+        catch (Exception ex) when (ex is ApiHata or JsonException) { mfaHata = ex.Message; }
+        mfaYukleniyor = false;
+    }
+
+    private async Task Kur()
+    {
+        if (mfaCalisiyor) return;
+        mfaHata = null;
+        mfaCalisiyor = true;
+        try
+        {
+            var y = await Api.PostAsync("/auth/mfa/kur", new { });
+            gizBase32 = y.GetProperty("gizBase32").GetString();
+            otpauthUri = y.TryGetProperty("otpauthUri", out var o) ? o.GetString() : null;
+            gizGorunur = false;
+            kurtarmaKodlari = null;
+            kurtarmaOnaylandi = false;
+            mfaKod = "";
+            kurulumAcik = true;
+        }
+        catch (ApiHata ex) { mfaHata = ex.Message; }
+        mfaCalisiyor = false;
+    }
+
+    /// <summary>
+    /// P-09 (B-6) — yarım kalan (BEKLIYOR) kurulumu temizler. ETKİN kurulumu
+    /// sunucu reddeder (409); orada parola + kod isteyen kapatma yolu vardır.
+    /// </summary>
+    private async Task Sifirla()
+    {
+        if (mfaCalisiyor) return;
+        mfaHata = null;
+        mfaCalisiyor = true;
+        try
+        {
+            await Api.PostAsync("/auth/mfa/sifirla", new { });
+            gizBase32 = null; otpauthUri = null; kurtarmaKodlari = null; kurulumAcik = false;
+            await MfaDurumYukle();
+            genelBasari = Dil.T.Yonetim.MfaSifirlandi;
+            genelJeton++;
+        }
+        catch (ApiHata ex) { mfaHata = ex.Message; }
+        mfaCalisiyor = false;
+    }
+
+    private void GizGoruntule() => gizGorunur = !gizGorunur;   // yalnız KULLANICI isteğiyle
+
+    private async Task Dogrula()
+    {
+        if (mfaCalisiyor || string.IsNullOrWhiteSpace(mfaKod)) return;
+        mfaHata = null;
+        mfaCalisiyor = true;
+        try
+        {
+            var y = await Api.PostAsync("/auth/mfa/dogrula", new { kod = mfaKod.Trim() });
+            kurtarmaKodlari = y.TryGetProperty("kurtarmaKodlari", out var kl) && kl.ValueKind == JsonValueKind.Array
+                ? [.. kl.EnumerateArray().Select(e => e.GetString() ?? "")]
+                : [];
+            // Giz artık gerekmiyor — bellekten düşür.
+            gizBase32 = null;
+            otpauthUri = null;
+            gizGorunur = false;
+            mfaKod = "";
+        }
+        catch (ApiHata ex) { mfaHata = ex.Message; }
+        mfaCalisiyor = false;
+    }
+
+    /// <summary>Kurtarma kodları düz metin olarak indirilir (indir.js).</summary>
+    private async Task KurtarmaIndir()
+    {
+        if (kurtarmaKodlari is null) return;
+        var metin = string.Join("\n", kurtarmaKodlari);
+        await Js.InvokeVoidAsync("kuyumcuIndir", "kuyumcu-kurtarma-kodlari.txt",
+            Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(metin)), "text/plain");
+    }
+
+    /// <summary>
+    /// "Kaydettim" onayı verilmeden kurulum kapanmaz — kodlar bir daha gösterilmez.
+    /// Sunucu tarafında MFA zaten ETKİN; bu adım yalnız kodların ekrandan
+    /// kaldırılmasını kullanıcının onayına bağlar.
+    /// </summary>
+    private async Task KurulumTamamla()
+    {
+        if (!kurtarmaOnaylandi) return;
+        kurtarmaKodlari = null;
+        kurulumAcik = false;
+        await MfaDurumYukle();
+        BasariGoster(Dil.T.Yonetim.MfaKuruldu);
+    }
+
+    private void KapatAc()
+    {
+        kapatHata = null;
+        kapatSifre = kapatKod = "";
+        kapatAcik = true;
+    }
+
+    private async Task Kapat()
+    {
+        if (mfaCalisiyor || !KapatGecerli) return;
+        kapatHata = null;
+        mfaCalisiyor = true;
+        try
+        {
+            await Api.PostAsync("/auth/mfa/kaldir", new { sifre = kapatSifre, kod = kapatKod.Trim() });
+            kapatAcik = false;
+            kapatSifre = kapatKod = "";
+            await MfaDurumYukle();
+            BasariGoster(Dil.T.Yonetim.MfaKapatildi);
+        }
+        catch (ApiHata ex) { kapatHata = ex.Message; }
+        mfaCalisiyor = false;
+    }
+
+    private void KurtarmaYenileAc()
+    {
+        yenileHata = null;
+        yenileKod = "";
+        yenileAcik = true;
+    }
+
+    private async Task KurtarmaYenile()
+    {
+        if (mfaCalisiyor || string.IsNullOrWhiteSpace(yenileKod)) return;
+        yenileHata = null;
+        mfaCalisiyor = true;
+        try
+        {
+            var y = await Api.PostAsync("/auth/mfa/kurtarma-yenile", new { kod = yenileKod.Trim() });
+            kurtarmaKodlari = y.TryGetProperty("kurtarmaKodlari", out var kl) && kl.ValueKind == JsonValueKind.Array
+                ? [.. kl.EnumerateArray().Select(e => e.GetString() ?? "")]
+                : [];
+            kurtarmaOnaylandi = false;
+            kurulumAcik = true;      // kodlar aynı kartta bir kez gösterilir
+            yenileAcik = false;
+            yenileKod = "";
+            await MfaDurumYukle();
+        }
+        catch (ApiHata ex) { yenileHata = ex.Message; }
+        mfaCalisiyor = false;
+    }
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    private Task ModDevral() => ModSec(null);
+    private Task ModBasit() => ModSec(ArayuzModuServisi.Basit);
+    private Task ModProfesyonel() => ModSec(ArayuzModuServisi.Profesyonel);
+
+    private async Task ModSec(string? mod)
+    {
+        if (kaydediliyorMod) return;
+        kaydediliyorMod = true;
+        modHata = null;
+        try
+        {
+            await Modu.DegistirAsync(mod);
+            BasariGoster(Dil.T.Yonetim.Kaydedildi);   // QA turu 2: sessizce kaydediliyordu
+        }
+        catch (ApiHata ex) { modHata = ex.Message; }
+        kaydediliyorMod = false;
+    }
+
+    private bool Eslesmiyor => yeniSifre != yeniSifreTekrar && yeniSifreTekrar.Length > 0;
+    private bool SifreAlanlariDolu =>
+        mevcutSifre.Length > 0 && yeniSifre.Length > 0 && yeniSifreTekrar.Length > 0;
+    private string AdSoyad => $"{Oturum.Kullanici?.Ad ?? ""} {Oturum.Kullanici?.Soyad ?? ""}".Trim();
+
+    protected override async Task OnInitializedAsync()
+    {
+        EskiSekmeyiYonlendir();
+        // Sayfa içi gezinmede (aynı bileşen, yalnız ?sekme= değişir) de yönlendir —
+        // canlı ölçüm: /ayarlar?sekme=dukkan → ?sekme=hesap ilk sekmeye düşüyordu.
+        Nav.LocationChanged += KonumDegisti;
+        if (Sp.GetService<YetkiServisi>() is { } yetki) yetki.Degisti += Yenile;
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += Yenile;
+        Modu.Degisti += Yenile;
+        BenimGorunum.Degisti += Yenile;
+        Gorunum.Degisti += Yenile;
+        await BenimGorunum.YukleAsync();
+        await MfaDurumYukle();
+        await KunyeYukle();
+        if (SahipMi) await DestekYukle();
+    }
+
+    // ── Destek paketi (PAKET P-31 · R-5 · T-4b) ──────────────────────────────
+    private DestekMetinleri DM => DestekSozlugu.Al(Dil.Dil);
+    private const string DestekVarsayilanKonu = "HATA";
+    private Kuyumcu.Core.Sozlesmeler.DestekPaketiGecmisi? destekGecmis;
+    private bool destekYukleniyor;
+    private string destekKonu = DestekVarsayilanKonu;
+    private string destekGerekce = "";
+    private string destekHataKodu = "";
+    private bool destekOnay;
+    private bool destekCalisiyor;
+    private string? destekBasari;
+    private int destekJeton;
+    private string? destekHata;
+    private string? destekHataKimligi;
+
+    /// <summary>Seçenekler SUNUCUNUN beyaz listesinden, adları sözlükten (UX-S31).</summary>
+    private IReadOnlyList<SecenekOgesi> DestekKonuSecenekleri =>
+        (destekGecmis?.Konular ?? [])
+            .Select(k => new SecenekOgesi(k, DestekSozlugu.KonuAdi(k, Dil.Dil)))
+            .ToList();
+
+    private List<Kuyumcu.Core.Sozlesmeler.DestekPaketiGecmisSatiri> DestekKayitlari =>
+        destekGecmis?.Kayitlar ?? [];
+
+    // PAKET GOC-D — destek paketi geçmişi ortak ızgarada. Sınıra değen listede sıralama düğmesi çıkmaz.
+    private IzgaraSiralama? destekSira;
+    private bool DestekTam => destekGecmis is { DahaFazlasiVar: false };
+    private IReadOnlyList<IzgaraKolonu<Kuyumcu.Core.Sozlesmeler.DestekPaketiGecmisSatiri>> DestekKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = DM.SutunTarih, ZorunluGorunur = true, SunucuSiralamaAdi = DestekTam ? "tarih" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = g => g.Tarih, Hucre = g => @<text>@Bicim.TarihSaat(g.Tarih)</text> },
+        new() { Anahtar = "paket", Baslik = DM.SutunPaketKodu, ZorunluGorunur = true, SunucuSiralamaAdi = DestekTam ? "paket" : null,
+                Deger = g => g.PaketKodu, Hucre = g => @<code>@g.PaketKodu</code> },
+        new() { Anahtar = "konu", Baslik = DM.SutunKonu, SunucuSiralamaAdi = DestekTam ? "konu" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = g => DestekSozlugu.KonuAdi(g.Konu, Dil.Dil) },
+    ];
+
+    private int DestekGerekceUzunlugu => destekGerekce.Trim().Length;
+    private int DestekAsgari => destekGecmis?.AsgariGerekce is > 0 and var a ? a : 20;
+
+    private bool DestekHataKoduGecersiz =>
+        !string.IsNullOrWhiteSpace(destekHataKodu)
+        && !Kuyumcu.Core.Sozlesmeler.HataKodu.GecerliMi(destekHataKodu);
+
+    private bool DestekGonderilebilir =>
+        destekGecmis is { KanalAcik: true } && !destekCalisiyor
+        && DestekGerekceUzunlugu >= DestekAsgari && !DestekHataKoduGecersiz;
+
+    /// <summary>UX-S30: kilitli düğmenin eksik koşulu yazılır.</summary>
+    private string DestekKilitSebebi =>
+        destekGecmis is not { KanalAcik: true } ? DM.KilitKanal
+        : destekCalisiyor ? DM.KilitCalisiyor
+        : DestekHataKoduGecersiz ? DM.HataKoduGecersiz
+        : string.Format(DM.KilitGerekce, DestekAsgari, DestekGerekceUzunlugu);
+
+    private async Task DestekYukle()
+    {
+        destekYukleniyor = true;
+        destekHata = null;
+        destekHataKimligi = null;
+        try
+        {
+            var y = await Api.GetAsync<Kuyumcu.Core.Sozlesmeler.DestekPaketiGecmisi>("/destek/paket/gecmis");
+            // Eksik liste alanı "kayıt yok" değil "alan gelmedi"dir; çizim
+            // çökmesin diye boş listeye normalize edilir (sayım sunucudan).
+            destekGecmis = y is null ? null : y with { Kayitlar = y.Kayitlar ?? [], Konular = y.Konular ?? [] };
+            if (destekGecmis is null) destekHata = DM.Yuklenemedi;
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28: eldeki geçmiş BOŞALTILMAZ; hata ayrı bantta.
+            destekHata = string.IsNullOrWhiteSpace(ex.Message) ? DM.Yuklenemedi : ex.Message;
+            destekHataKimligi = ex.IstekKimligi;
+        }
+        destekYukleniyor = false;
+    }
+
+    private void DestekOnayAc()
+    {
+        if (!DestekGonderilebilir) return;
+        destekBasari = null;
+        destekOnay = true;
+    }
+
+    private void DestekOnayKapat() => destekOnay = false;
+
+    private async Task DestekOlustur()
+    {
+        if (!DestekGonderilebilir) return;
+        destekCalisiyor = true;
+        destekHata = null;
+        destekHataKimligi = null;
+        try
+        {
+            var (veri, dosyaAdi) = await Api.PostBaytAsync("/destek/paket",
+                new Kuyumcu.Core.Sozlesmeler.DestekPaketiIstegi(
+                    destekGerekce.Trim(), destekKonu,
+                    string.IsNullOrWhiteSpace(destekHataKodu) ? null : destekHataKodu.Trim()));
+            var ad = dosyaAdi ?? "destek-paketi.json";
+            try
+            {
+                await Js.InvokeVoidAsync("kuyumcuIndir", ad, Convert.ToBase64String(veri), "application/json");
+            }
+            catch (JSException)
+            {
+                // İndirme tetiklenemese de paket üretildi ve kaydı düştü;
+                // sonuç yine banda yazılır (UX-S27).
+            }
+            destekBasari = string.Format(DM.Basari, ad);
+            destekJeton++;
+            destekGerekce = "";
+            destekHataKodu = "";
+            destekOnay = false;
+            await DestekYukle();
+        }
+        catch (ApiHata ex)
+        {
+            destekHata = ex.Message;
+            destekHataKimligi = ex.IstekKimligi;
+        }
+        destekCalisiyor = false;
+    }
+
+    // ── Sistem künyesi (paket T-4a) ──────────────────────────────────────────
+    private SurumKunyesi? kunye;
+    private SurumAyrintisi? ayrinti;
+    private bool kunyeYukleniyor = true;
+    private bool ayrintiYukleniyor;
+    private string? kunyeHata;
+    private string? kunyeHataKimligi;
+    private bool? kunyeKopyalandi;
+
+    private bool SahipMi => Oturum.Kullanici?.Rol == "SAHIP";
+
+    private string OrtamMetni => kunye?.Ortam == "Production"
+        ? Dil.T.Kunye.OrtamUretim
+        : Dil.T.Kunye.OrtamGelistirme;
+
+    private string DerlemeKaynagiMetni => kunye?.DerlemeZamaniKaynagi == "damga"
+        ? Dil.T.Kunye.DerlemeKaynagiDamga
+        : Dil.T.Kunye.DerlemeKaynagiDosya;
+
+    private string TekSatirKunye => kunye is null ? "" : SurumServisi.TekSatir(kunye, Dil.Dil);
+
+    private async Task KunyeYukle()
+    {
+        kunyeYukleniyor = true;
+        kunyeHata = null;
+        kunyeHataKimligi = null;
+        try
+        {
+            kunye = await Surum.Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28: künye okunamadı diye kart "boş" gösterilmez; hata yazılır.
+            kunye = null;
+            kunyeHata = string.IsNullOrWhiteSpace(ex.Message) ? Dil.T.Kunye.Yuklenemedi : ex.Message;
+            kunyeHataKimligi = ex.IstekKimligi;
+        }
+        kunyeYukleniyor = false;
+    }
+
+    private async Task AyrintiYukle()
+    {
+        if (ayrintiYukleniyor) return;
+        ayrintiYukleniyor = true;
+        kunyeHata = null;
+        kunyeHataKimligi = null;
+        try
+        {
+            ayrinti = await Surum.Ayrinti();
+        }
+        catch (ApiHata ex)
+        {
+            ayrinti = null;
+            kunyeHata = string.IsNullOrWhiteSpace(ex.Message) ? Dil.T.Kunye.Yuklenemedi : ex.Message;
+            kunyeHataKimligi = ex.IstekKimligi;
+        }
+        ayrintiYukleniyor = false;
+    }
+
+    private async Task KunyeKopyala()
+    {
+        if (kunye is null) return;
+        try
+        {
+            kunyeKopyalandi = await Js.InvokeAsync<bool>("kuyumcuPanoyaKopyala", TekSatirKunye);
+        }
+        catch
+        {
+            // Pano yoksa düğme sessizce ölmez: künye satırı zaten salt okunur
+            // bir alanda seçilebilir duruyor.
+            kunyeKopyalandi = false;
+        }
+    }
+
+    private async Task SifreGuncelle()
+    {
+        if (kaydediliyor || Eslesmiyor
+            || string.IsNullOrEmpty(mevcutSifre) || string.IsNullOrEmpty(yeniSifre) || string.IsNullOrEmpty(yeniSifreTekrar))
+            return;
+
+        hata = null;
+        basarili = false;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<JsonElement>("/kullanicilar/ben/sifre", new { mevcutSifre, yeniSifre, yeniSifreTekrar });
+            mevcutSifre = yeniSifre = yeniSifreTekrar = "";
+            basarili = true;
+            basariJeton++;
+            kaydediliyor = false;
+        }
+        catch (ApiHata ex)
+        {
+            hata = string.IsNullOrWhiteSpace(ex.Message) ? Dil.T.Ayarlar.SifreDegistirilemedi : ex.Message;
+            kaydediliyor = false;
+        }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+        BenimGorunum.Degisti -= Yenile;
+        Gorunum.Degisti -= Yenile;
+        Nav.LocationChanged -= KonumDegisti;
+        if (Sp.GetService<YetkiServisi>() is { } yetki) yetki.Degisti -= Yenile;
+    }
+}

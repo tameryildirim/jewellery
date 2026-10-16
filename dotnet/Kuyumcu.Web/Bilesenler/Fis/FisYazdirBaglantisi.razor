@@ -1,0 +1,61 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-5 — KAYDET → YAZDIR (PLAN § S-2 madde 2.7, F5) ═══════════════════
+   Kayıt başarılıysa fişin yazdırma sayfasına (/cikti/SATIS_FISI/{hareket})
+   giden bağlantı. Bileşen istek ATMAZ ve ApiIstemci bilmez (plan § 3 tek POST
+   yolu): kimlikleri sayfa Kaydet() yanıtından okur ve buraya verir.
+   ⚠ NEDEN BANDIN İÇİNDE DEĞİL, HEMEN ALTINDA: başarı bandı 3 sn sonra kendini
+     gizler (UX-4c madde 13). Yazdırma bağlantısı 3 sn'de kaybolursa tezgâhtar
+     yetişemez; bu yüzden bir sonraki Kaydet'e kadar durur.
+   ⚠ Yeni sekmede açılır: satış ekranı (barkod odağı, kasa) yerinde kalır,
+     sıradaki müşteri beklemez.
+   ⚠ UX-S28: kimlik okunamadıysa bağlantı UYDURULMAZ, sebebi hata olarak yazılır.
+   ⚠ Ham kimlik (ULID) metinde YOK — yalnız adreste. *@
+@if (Idler.Count > 0 || Hata is not null || FisNo is not null)
+{
+    <div class="satir" id="islem-yazdir-sar">
+        @* PAKET S1-i (QA-9 YÜKSEK): başarı bandı 3 sn'de kaybolur; fiş numarası
+           yazdırma bağlantısının YANINDA bir sonraki Kaydet'e kadar kalır. İkinci
+           bir "son fiş" bloğu AÇILMAZ — bağlantıyla aynı satırdır. *@
+        @if (FisNo is not null)
+        {
+            <span class="islem-son-fis" id="islem-son-fis" role="status">@string.Format(SatisEkraniSozlugu.Al(Dil.Dil).SonFis, FisNo)</span>
+        }
+        @for (var i = 0; i < Idler.Count; i++)
+        {
+            <a class="btn btn-ikincil" id="@(i == 0 ? "islem-yazdir" : $"islem-yazdir-{i + 1}")"
+               href="@FisYazdir.YazdirAdresi(Idler[i])" target="_blank" rel="noopener"
+               title="@M.FisYazdirIpucu">
+                <Ikon Ad="@Ikonlar.Faturalar" />
+                @(Idler.Count == 1 ? M.FisYazdir : string.Format(M.FisYazdirSira, i + 1, Idler.Count))
+            </a>
+        }
+        @if (Idler.Count > 0 && !(OtomatikAcildi && Idler.Count == 1))   @* T-S1: kendiliğinden açıldıysa aynı bilgiyi iki kez yazmaz *@
+        {
+            <span class="metin-kucuk metin-soluk" id="islem-yazdir-ipucu">@M.FisYazdirIpucu</span>
+        }
+        @if (OtomatikAcildi && Idler.Count == 1)
+        {
+            @* T-S1: "Kaydet ve yazdır" sayfayı kendiliğinden açtı; açılmadıysa yol bu bağlantıdır. *@
+            <span class="metin-kucuk" id="islem-yazdir-otomatik" role="status">@SatisTuvalSozlugu.Al(Dil.Dil).YazdirAcildi</span>
+        }
+    </div>
+    <HataBandi Mesaj="@(Hata is null ? null : string.Format(M.YazdirHata, Hata))" Id="islem-yazdir-hata" />
+}
+
+@code {
+    /// <summary>Yazdırılacak HAREKET kimlikleri (tek kalemli uçta kalem başına bir tane).</summary>
+    [Parameter] public IReadOnlyList<string> Idler { get; set; } = [];
+
+    /// <summary>Kimlik okunamadıysa sunucunun mesajı (UX-S28: yutulmaz).</summary>
+    [Parameter] public string? Hata { get; set; }
+
+    /// <summary>PAKET S1-i: son kaydedilen fişin OKUNUR numarası (ham ULID değil); null = satır yok.</summary>
+    [Parameter] public string? FisNo { get; set; }
+
+    /// <summary>T-S1: sayfa yazdırma sekmesini KENDİLİĞİNDEN açtı mı ("Kaydet ve yazdır").</summary>
+    [Parameter] public bool OtomatikAcildi { get; set; }
+
+    private FisYazdirMetinleri M => FisYazdirSozlugu.Al(Dil.Dil);
+}

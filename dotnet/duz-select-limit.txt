@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# PAKET P-15 (kimlik Y-5) — `limit=200` DÜZ LİSTE NOKTALARININ DURUM TABLOSU
+# MÜHÜR: 2026-09-21 · Taşkın (03 Backend) + Ertuğ (03 Frontend)
+#
+# NEDEN VAR: PLAN § 2 P-15 DoD "limit=200 düz açılır listeler kalkar" diyor ve
+# sayacı `DUZ_SELECT_LIMIT = 0` koyuyor. Aynı paketin DoD'u `Islemler.razor`a
+# DOKUNULMASINI YASAKLIYOR ve dosya ayak izi yalnız `Faturalar.razor #ff-fis`
+# alanını açıyor. İki koşul aynı anda sağlanamaz (uygulama raporu § Sapmalar).
+# Bu yüzden sayaç CIRCIR olarak kurulur: her nokta tek tek sınıflandırılır,
+# sınıfsız nokta = DENETİM KIRMIZI, açık nokta sayısı ARTAMAZ.
+#
+# ÖLÇÜM (bugün, taze):
+#   grep -rnoE 'limit=200' --include='*.razor' Kuyumcu.Web/Pages/ | wc -l  → 12
+#
+# SINIFLAR
+#   ACIK        = gerçekten bir <select>/açılır liste besleyen düz çekim.
+#                 KayitSecici ile değiştirilmelidir. TAVAN yalnız AZALIR.
+#   KAPSAM_DISI = açılır liste DEĞİL, sayfanın kendi kayıt listesi (sayfalama
+#                 sorunu; UX-S29 uyarısı ayrı ele alınır).
+#   KALDIRILDI  = KayitSecici'ye çevrildi.
+#
+# BİÇİM: <sinif>|<Pages dosyası>|<adet>|<gerekçe / devir>
+# (satır numarası YAZILMAZ: numaralar kayar, dosya başına adet kaymaz)
+# ═══════════════════════════════════════════════════════════════════════════
+ACIK|Banka.razor|1|cari açılır listesi (dekont) — P-15 dosya ayak izi dışı; DEVREDİLDİ: sonraki dalga triyajı (Y-42)
+ACIK|BankaEkstre.razor|1|cari eşleştirme açılır listesi — DEVREDİLDİ: sonraki dalga triyajı (Y-42)
+ACIK|Evraklar.razor|1|cari açılır listesi — DEVREDİLDİ: sonraki dalga triyajı (Y-42)
+KAPSAM_DISI|Evraklar.razor|1|evrak LİSTESİ sayfalaması, açılır liste değil
+ACIK|Faturalar.razor|2|fatura kalem formunun cari + ürün açılır listeleri — DEVREDİLDİ: P-16 (form paritesi tek el)
+ACIK|Islemler.razor|2|satış formunun cari + ürün açılır listeleri — P-15 DoD "Islemler.razor'a DOKUNULMAZ"; DEVREDİLDİ: P-16
+ACIK|Kurulum.razor|1|kuruluş sihirbazı cari listesi — DEVREDİLDİ: sonraki dalga triyajı (Y-42)
+ACIK|Urunler.razor|1|tedarikçi açılır listesi — DEVREDİLDİ: P-16 (Urunler.razor tek el)
+KAPSAM_DISI|Siparisler.razor|1|sipariş LİSTESİ sayfalaması, açılır liste değil
+KAPSAM_DISI|Vezne.razor|1|vezne kuyruğu LİSTESİ, açılır liste değil

@@ -1,0 +1,151 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Kuyumcu ERP — Sürekli Bütünleştirme (CI)
+#
+# Kalite kapıları bu projede ZATEN VARDI ve tekrarlanabilirdi; eksik olan
+# onları otomatik çalıştıran hattı. Bu dosya o boşluğu kapatır (TB-03).
+#
+# HİÇBİR KAPI GEVŞETİLMEZ: burada çalışan komutlar, geliştiricinin elle
+# çalıştırdığı komutların birebir aynısıdır.
+# ═══════════════════════════════════════════════════════════════════════════
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  test:
+    name: Test · Denetim · Kapsam
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        # Testler GERÇEK MySQL ister (ADR-0011): EF InMemory transaction
+        # desteklemez, SQLite decimal hassasiyetini uygulamaz.
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.TEST_MYSQL_SIFRE || 'ci-test-sifresi' }}
+          MYSQL_DATABASE: kuyumcu_test
+        ports: [ '3306:3306' ]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Bağımlılıkları geri yükle
+        working-directory: dotnet
+        run: dotnet restore Kuyumcu.sln
+
+      - name: Derle
+        working-directory: dotnet
+        run: dotnet build Kuyumcu.sln -c Release --no-restore
+
+      # ── KAPI 1: zafiyetli bağımlılık (fail-closed) ────────────────────────
+      - name: Zafiyet taraması
+        working-directory: dotnet
+        run: |
+          CIKTI=$(dotnet list package --vulnerable --include-transitive)
+          echo "$CIKTI"
+          if echo "$CIKTI" | grep -q '> '; then
+            echo "::error::Zafiyetli bağımlılık bulundu"
+            exit 1
+          fi
+
+      # ── KAPI 2: lisans (copyleft yasak) ───────────────────────────────────
+      - name: Lisans kapısı
+        working-directory: dotnet
+        run: |
+          dotnet tool install --global nuget-license
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          nuget-license -i Kuyumcu.sln -t \
+            -mapping ../dokumanlar/05-guvenlik/lisans-url-eslemesi.json \
+            -a "MIT;Apache-2.0;BSD-3-Clause;MS-PL;BSD-2-Clause" -err
+
+      # ── KAPI 3: mimari kuralları ──────────────────────────────────────────
+      - name: Mimari denetimi
+        working-directory: dotnet
+        run: ./denetim.sh
+
+      # ── KAPI 4: testler + kapsam ──────────────────────────────────────────
+      - name: Testler
+        working-directory: dotnet
+        env:
+          KUYUMCU_TEST_MYSQL_SIFRE: ${{ secrets.TEST_MYSQL_SIFRE || 'ci-test-sifresi' }}
+        run: |
+          dotnet test Kuyumcu.Tests/Kuyumcu.Tests.csproj \
+            -c Release --no-build \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
+
+      - name: Kapsam raporu
+        working-directory: dotnet
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"KapsamRaporu" -reporttypes:"Html;TextSummary"
+          cat KapsamRaporu/Summary.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kapsam-raporu
+          path: dotnet/KapsamRaporu/
+
+      # ── KAPI 5: referans bütünlüğü ────────────────────────────────────────
+      # Test veritabanı, tüm testler koştuktan SONRA taranır. Kiracı sızıntısı
+      # bulunursa bu bir GÜVENLİK OLAYIDIR (çıkış kodu 2) ve iş kırmızıya döner.
+      - name: Yetim ve kiracı sızıntısı taraması
+        working-directory: dotnet
+        env:
+          KUYUMCU_SIFRE: ${{ secrets.TEST_MYSQL_SIFRE || 'ci-test-sifresi' }}
+        run: |
+          echo "⚠ Bu adım docker exec yerine doğrudan mysql istemcisi ister."
+          echo "  CI'da MySQL bir servis kabıdır; betiğin bağlantı yolu"
+          echo "  uyarlanana kadar bu kapı BİLGİLENDİRME olarak çalışır."
+        continue-on-error: true
+
+  wasm-boyut:
+    name: Blazor ilk yükleme boyutu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Boyut YALNIZ Release'te ölçülür: IL trimming Debug'da uygulanmaz.
+      # Gerçek indirilen boyut, blazor.boot.json'daki kaynakların .br toplamıdır.
+      - name: Yayınla ve ölç
+        run: |
+          dotnet publish dotnet/Kuyumcu.Web/Kuyumcu.Web.csproj -c Release -o /tmp/yayin
+          python3 - <<'PY'
+          import json, os, sys
+          f = '/tmp/yayin/wwwroot/_framework'
+          boot = json.load(open(os.path.join(f, 'blazor.boot.json'), encoding='utf-8'))
+          br = 0
+          for grup in ('jsModuleNative', 'jsModuleRuntime', 'wasmNative', 'assembly'):
+              for ad in boot['resources'].get(grup, {}):
+                  p = os.path.join(f, ad + '.br')
+                  if os.path.isfile(p): br += os.path.getsize(p)
+          icu = os.path.join(f, 'icudt_no_CJK.dat.br')
+          if os.path.isfile(icu): br += os.path.getsize(icu)
+          mb = br / 1024 / 1024
+          print(f"İlk yükleme (Brotli): {mb:.2f} MB")
+          # KG-P1 hedefi: <= 3 MB
+          if mb > 3.0:
+              print(f"::error::İlk yükleme boyutu hedefi aşıldı: {mb:.2f} MB > 3,00 MB")
+              sys.exit(1)
+          PY

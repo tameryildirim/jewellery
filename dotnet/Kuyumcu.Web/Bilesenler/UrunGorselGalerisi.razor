@@ -1,0 +1,138 @@
+@using Kuyumcu.Contracts.Bilesenler.BelgeYukleyici
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ─────────────────────────────────────────────────────────────────────────────
+   ÜRÜN GÖRSEL GALERİSİ — PAKET P-10 (Y-8).
+
+   ⚠ NEDEN VAR: belge deposu (paket 4) GORSEL/FOTOGRAF türlerini BAŞINDAN BERİ
+   kabul ediyordu, yükleyici de vardı; yüklenen görsel HİÇBİR EKRANDA
+   görünmüyordu. "Kuyumda mal görselle satılır" (EKRAN-ALAN-DOGRULAMA § 8).
+
+   ⚠ NEDEN <img src="/belgeler/.../icerik"> DEĞİL: içerik ucu
+   `Authorization: Bearer` ister; tarayıcının kendi <img> isteği bu başlığı
+   TAŞIMAZ ve 401 döner (kırık resim). Bu yüzden içerik ApiIstemci.GetBaytAsync
+   ile çekilip `data:` adresine çevrilir — yeni uç AÇILMADI.
+
+   ⚠ YENİ İSTEMCİ TİPİ AÇILMADI: liste `BelgeSatiri` (Kuyumcu.Contracts) ile
+   okunur; görselin baytı `gorseller` sözlüğünde durur (PLAN § 1 md.9).
+
+   UX-S28: hata "kayıt yok"a çevrilmez — boş durum YALNIZ istek başarılıyken
+   ve sonuç gerçekten boşken çıkar; hata ayrı banttadır.
+   ───────────────────────────────────────────────────────────────────────────── *@
+
+<div class="gorsel-galerisi" id="@($"{Onek}-galeri")">
+    <h4>@Dil.T.Urun.Galeri</h4>
+    <p class="metin-kucuk metin-soluk" id="@($"{Onek}-galeri-ipucu")">@Dil.T.Urun.GaleriIpucu</p>
+
+    <HataBandi Mesaj="@hata" Id="@($"{Onek}-galeri-hata")" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (hata is null && Kareler.Count == 0)
+    {
+        <BosDurum Mesaj="@Dil.T.Urun.GaleriBos" />
+    }
+    else if (Kareler.Count > 0)
+    {
+        <ul class="gorsel-serit" id="@($"{Onek}-galeri-liste")">
+            @foreach (var kare in Kareler)
+            {
+                <li class="gorsel-kare" id="@($"{Onek}-galeri-{kare.Anahtar}")">
+                    <img class="gorsel-resim" src="@kare.Kaynak" alt="@kare.Baslik" loading="lazy" />
+                    <span class="gorsel-ad">@kare.Baslik</span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    /// <summary>Görselleri gösterilecek ürünün kimliği. Boşken istek gönderilmez.</summary>
+    [Parameter, EditorRequired] public string UrunId { get; set; } = "";
+
+    /// <summary>
+    /// Ürün kartındaki <c>gorselUrl</c> alanı. Dolu ise galerinin İLK karesidir:
+    /// kullanıcı formda girdiği adresin gerçekten çalıştığını aynı ekranda görür
+    /// (UX-S27 — kaydet sonrası sonuç görünür).
+    /// </summary>
+    [Parameter] public string? GorselUrl { get; set; }
+
+    /// <summary>Element id öneki — aynı sayfada iki galeri olursa id çakışmasın.</summary>
+    [Parameter] public string Onek { get; set; } = "urun";
+
+    /// <summary>Galeride gösterilen belge türleri — kapalı liste (BelgeTuru).</summary>
+    private static readonly string[] GorselTurleri = ["GORSEL", "FOTOGRAF"];
+
+    private readonly List<(string Anahtar, string Kaynak, string Baslik)> kareler = [];
+    private string? hata;
+    private bool yukleniyor;
+    private string yuklenenUrunId = "";
+
+    private List<(string Anahtar, string Kaynak, string Baslik)> Kareler => kareler;
+
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Aynı ürün için tekrar tekrar bayt indirilmez; ürün değişince yenilenir.
+        if (yuklenenUrunId == UrunId && kareler.Count > 0) { KapakYerlestir(); return; }
+        await Yukle();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    private async Task Yukle()
+    {
+        kareler.Clear();
+        hata = null;
+        yuklenenUrunId = UrunId;
+        if (string.IsNullOrWhiteSpace(UrunId)) { KapakYerlestir(); return; }
+
+        yukleniyor = true;
+        List<BelgeSatiri> belgeler;
+        try
+        {
+            belgeler = await Api.GetAsync<List<BelgeSatiri>>(
+                $"/belgeler?sahipTuru=URUN&sahipId={Uri.EscapeDataString(UrunId)}");
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28: liste BOŞALTILMAZ diye boş durum gösterilmez; sebep yazılır.
+            hata = ex.Message;
+            yukleniyor = false;
+            KapakYerlestir();
+            return;
+        }
+
+        foreach (var b in belgeler.Where(x => GorselTurleri.Contains(x.Tur)))
+        {
+            try
+            {
+                var (veri, _) = await Api.GetBaytAsync($"/belgeler/{b.Id}/icerik");
+                kareler.Add((b.Id, $"data:{b.Mime};base64,{Convert.ToBase64String(veri)}", b.Ad));
+            }
+            catch (ApiHata ex)
+            {
+                // Tek bir görselin indirilememesi galeriyi susturmaz; sebep bantta.
+                hata ??= ex.Message;
+            }
+        }
+
+        yukleniyor = false;
+        KapakYerlestir();
+    }
+
+    /// <summary>Ürün kartındaki adres galerinin başına konur (varsa, bir kez).</summary>
+    private void KapakYerlestir()
+    {
+        kareler.RemoveAll(k => k.Anahtar == "kapak");
+        if (!string.IsNullOrWhiteSpace(GorselUrl))
+            kareler.Insert(0, ("kapak", GorselUrl!.Trim(), Dil.T.Urun.GorselUrl));
+    }
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

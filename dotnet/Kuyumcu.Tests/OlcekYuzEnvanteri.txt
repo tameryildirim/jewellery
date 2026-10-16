@@ -1,0 +1,248 @@
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+# PAKET OLCEK-1 v13 — MOD YÜZÜ SINIFINDA KONTROL ÖLÇÜSÜ ENVANTERİ (onaylı liste, adıyla)
+# Neden (çapraz hakem 28.09 KRİTİK, doğrulayıcı mutasyonu M3): tuval-satis.css sonuna
+#   `.tuval-pro #islem-kaydet { height: 32px; min-height: 32px; font-size: 13px; }` eklenince
+#   hiçbir OLCEK testi ve denetim.sh kırılmıyordu (OL2 yalnız html[data-mod=…], OL16 yalnız !important
+#   görüyordu). Kurucunun şikâyeti ("aynı düğme PRO'da küçülüyor") bu yoldan geri gelebilirdi.
+# Kural (OlcekTekTestleri.OL26 + denetim.sh OLCEK-1: YUZ_OLCU_ENVANTER_DISI = 0):
+#   olcek.css DIŞINDAKİ bir css dosyasında, mod yüzü sınıfı (.tuval-pro, .tuval-tezgah, .*sade)
+#   taşıyan bir seçici parçası KONTROL öznesine (#kimlik, button/input/select/textarea/summary,
+#   .btn*, .girdi*, .secici-tetik, .sekme, .ekran-karo, .fis-salt-kutu) ölçü bildirimi (height,
+#   min/max-height, padding*, font, font-size, font-weight, line-height, border*-radius) yazıyorsa
+#   o bildirim BU LİSTEDE birebir (dosya | @kural | seçici parçası | özellik | değer) bulunmalıdır.
+#   Yeni ya da DEĞİŞMİŞ satır = ihlal. Listeye satır eklemenin yolu: (1) olcek.css'te iki yüz için
+#   tek kural (ya da gerekçe), (2) tutarlilik.mjs ile canlı BASİT↔PRO ölçümü 0 gerekçesiz fark,
+#   (3) bu dosyaya satır + uygulama raporunda gerekçe. Listede olup CSS'te artık olmayan satır
+#   ihlal değildir (bilgi olarak sayılır).
+# Onay dayanağı: bu 215 bildirim 28.09 22:20–22:52 (v13) güncel ağaçta canlı ölçüldü (tutarlilik.mjs 41 rota ×
+#   1440/1280/960/375, sen.mjs dolu fiş/çekmece senaryosu 6 genişlik/tema, prob.mjs düğme ailesi): ölçü kuralından doğan BASİT↔PRO fark 0; kalan farklar
+#   gerekçeli (#islem-cari rozet payı — SATIS-3; uzun ad sarması; /cariler 375 kart↔tablo). Çoğu olcek.css
+#   § 4 / § 7 / § 10 kurallarınca (html[data-mod] + iki yüz, daha özgül) ezilir; ezilmeyenler tek yüzde
+#   bulunan öğe (#islem-cari-bakiye rozeti, #islem-pro-yasal) ya da görsel gizleme kalıbıdır (height 1px).
+# Biçim: dosya | @kural | seçici parçası | özellik | değer   (boşluklar tekilleştirilmiş)
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+tuval-panel-musteri.css |  | .musteri-sade .musteri-ara .girdi.girdi-arama | height | 46px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-ara .girdi.girdi-arama | min-height | 0
+tuval-panel-musteri.css |  | .musteri-sade .musteri-ara .girdi.girdi-arama | padding | 0
+tuval-panel-musteri.css |  | .musteri-sade .musteri-ara .girdi.girdi-arama | font | inherit
+tuval-panel-musteri.css |  | .musteri-sade .musteri-ara .girdi.girdi-arama | font-size | calc(var(--yazi-govde) * .9444)
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni | height | 50px
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni | min-height | 50px
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni | padding | 0 20px
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni | border-radius | 9px
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni | font-size | calc(var(--yazi-govde) * .9444)
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni | font-weight | var(--kalin)
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni::before | height | 17px
+tuval-panel-musteri.css |  | .musteri-sade .btn.musteri-yeni::before | border-radius | 1px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > .btn | min-height | 38px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > button | min-height | 38px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > .btn | padding | 8px 12px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > button | padding | 8px 12px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > .btn | border-radius | 8px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > button | border-radius | 8px
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > .btn | font-size | calc(var(--yazi-govde) * .8333)
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > button | font-size | calc(var(--yazi-govde) * .8333)
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > .btn | font-weight | 400
+tuval-panel-musteri.css |  | .musteri-sade .musteri-tablo .satir-eylem > button | font-weight | 400
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari .girdi | height | 50px
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari .girdi | min-height | 50px
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari .girdi | padding | 0 14px
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari .girdi | border-radius | 9px
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari .girdi | font-size | calc(var(--yazi-govde) * .9444)
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari textarea.girdi | height | 50px
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari textarea.girdi | padding-block | 12px
+tuval-panel-musteri.css |  | .musteri-panel-kap--sade #cekmece-cari .cekmece-alt > #cekmece-cari-kaydet | font-weight | var(--kalin)
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir .secici-tetik | height | 52px
+tuval-satis.css |  | .tuval-tezgah .fis-salt-kutu | height | 52px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir .secici-tetik | min-height | 52px
+tuval-satis.css |  | .tuval-tezgah .fis-salt-kutu | min-height | 52px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir .secici-tetik | padding | 0 14px
+tuval-satis.css |  | .tuval-tezgah .fis-salt-kutu | padding | 0 14px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir .secici-tetik | border-radius | 9px
+tuval-satis.css |  | .tuval-tezgah .fis-salt-kutu | border-radius | 9px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir .secici-tetik | font-size | var(--ts-18)
+tuval-satis.css |  | .tuval-tezgah .fis-salt-kutu | font-size | var(--ts-18)
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir .secici-tetik | font-weight | 500
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir .secici-tetik | padding-right | 44px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir #islem-cari-bakiye | height | 28px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir #islem-cari-bakiye | padding | 0 12px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir #islem-cari-bakiye | border-radius | 999px
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir #islem-cari-bakiye | font-size | var(--ts-14)
+tuval-satis.css |  | .tuval-tezgah .fis-ust-satir #islem-cari-bakiye | font-weight | 500
+tuval-satis.css |  | .tuval-tezgah #islem-cari-pasif-notu | height | 1px
+tuval-satis.css |  | .tuval-tezgah #islem-pesin-notu | height | 1px
+tuval-satis.css |  | .tuval-tezgah #islem-cari-pasif-notu | padding | 0
+tuval-satis.css |  | .tuval-tezgah #islem-pesin-notu | padding | 0
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri .girdi-arama | height | 56px
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri .girdi-arama | min-height | 56px
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri .girdi-arama | padding | 0 16px 0 52px
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri .girdi-arama | border-radius | 10px
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri .girdi-arama | font-size | var(--ts-19)
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri > .btn | height | 56px
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri > .btn | min-height | 56px
+tuval-satis.css |  | .tuval-tezgah .barkod-satiri > .btn | padding | 0
+tuval-satis.css |  | .tuval-tezgah #islem-elle > summary | height | 56px
+tuval-satis.css |  | .tuval-tezgah #islem-elle > summary | min-height | 56px
+tuval-satis.css |  | .tuval-tezgah #islem-elle > summary | border-radius | 10px
+tuval-satis.css |  | .tuval-tezgah #islem-elle > summary | font-size | var(--ts-17)
+tuval-satis.css |  | .tuval-tezgah #islem-elle > summary.btn | font-size | var(--ts-16)
+tuval-satis.css |  | .tuval-tezgah #islem-elle > summary.btn | font-weight | 500
+tuval-satis.css |  | .tuval-tezgah #islem-elle > summary.btn | padding | 0 4px
+tuval-satis.css |  | .tuval-tezgah .fis-tuval-icerik > #islem-odeme-bol-kilit | padding | 0 18px
+tuval-satis.css | @media (min-width: 1400px) | .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .girdi | font-weight | 600
+tuval-satis.css | @media (min-width: 1400px) | .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] .secici-tetik | font-weight | 500
+tuval-satis.css | @media (min-width: 1400px) | .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik | font-size | var(--ts-15)
+tuval-satis.css | @media (min-width: 1400px) | .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik | padding-left | 10px
+tuval-satis.css | @media (min-width: 1400px) | .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik:disabled | padding | 0 2px
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir .girdi | height | 50px
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir .girdi | min-height | 50px
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir .girdi | padding | 0 14px
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir .girdi | border-radius | 9px
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir .girdi | font-size | var(--ts-17)
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir > .btn | height | 50px
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir > .btn | min-height | 50px
+tuval-satis.css |  | .tuval-tezgah .islem-alt-satir > .btn | border-radius | 9px
+tuval-satis.css |  | .tuval-tezgah #islem-vazgec | padding | 0 20px
+tuval-satis.css |  | .tuval-tezgah #islem-vazgec | font-size | var(--ts-17)
+tuval-satis.css |  | .tuval-tezgah #islem-vazgec | font-weight | 400
+tuval-satis.css |  | .tuval-tezgah #islem-kaydet | padding | 0 24px
+tuval-satis.css |  | .tuval-tezgah #islem-kaydet | font-size | var(--ts-18)
+tuval-satis.css |  | .tuval-tezgah #islem-kaydet | font-weight | 600
+tuval-satis.css |  | .tuval-tezgah .tuval-karo-izgara > .ekran-karo | height | 70px
+tuval-satis.css |  | .tuval-tezgah .tuval-karo-izgara > .ekran-karo | padding | 0 8px
+tuval-satis.css |  | .tuval-tezgah .tuval-karo-izgara > .ekran-karo | border-radius | 10px
+tuval-satis.css |  | .tuval-tezgah .tuval-karo-izgara > .ekran-karo | font-size | var(--ts-16)
+tuval-satis.css |  | .tuval-tezgah .tuval-karo-izgara > .ekran-karo | font-weight | 500
+tuval-satis.css |  | .tuval-tezgah .tuval-karo-izgara > .ekran-karo | line-height | 1.2
+tuval-satis.css | @media (max-width: 640px) | .tuval-tezgah #islem-elle > summary | height | 48px
+tuval-satis.css | @media (max-width: 640px) | .tuval-tezgah #islem-elle:not([open]) > summary | height | 48px
+tuval-satis.css | @media (max-width: 640px) | .tuval-tezgah #islem-elle > summary | min-height | 48px
+tuval-satis.css | @media (max-width: 640px) | .tuval-tezgah #islem-elle:not([open]) > summary | min-height | 48px
+tuval-satis.css | @media (max-width: 640px) | .tuval-tezgah #islem-elle > summary | padding | 0 16px
+tuval-satis.css | @media (max-width: 640px) | .tuval-tezgah #islem-elle:not([open]) > summary | padding | 0 16px
+tuval-satis.css | @media (max-width: 640px) | .tuval-tezgah .barkod-satiri .girdi-arama | font-size | var(--ts-17)
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme | padding | 9px 16px
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme | min-height | 0
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme | height | auto
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme | border-radius | 8px
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme | font-size | var(--tp-16)
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme | font-weight | 400
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme | line-height | 1.4
+tuval-satis.css |  | .tuval-pro .tuval-pro-sekmeler > .sekme.secili | font-weight | 500
+tuval-satis.css |  | .tuval-pro #islem-diger-ac.islem-diger-dugme | padding | 9px 16px
+tuval-satis.css |  | .tuval-pro #islem-diger-ac.islem-diger-dugme | min-height | 0
+tuval-satis.css |  | .tuval-pro #islem-diger-ac.islem-diger-dugme | height | auto
+tuval-satis.css |  | .tuval-pro #islem-diger-ac.islem-diger-dugme | border-radius | 8px
+tuval-satis.css |  | .tuval-pro #islem-diger-ac.islem-diger-dugme | font-size | var(--tp-16)
+tuval-satis.css |  | .tuval-pro #islem-diger-ac.islem-diger-dugme | font-weight | 400
+tuval-satis.css |  | .tuval-pro #islem-cari-pasif-notu | font-size | var(--tp-13)
+tuval-satis.css |  | .tuval-pro #islem-pesin-notu | font-size | var(--tp-13)
+tuval-satis.css |  | .tuval-pro #islem-cari-pasif-notu | line-height | 1.35
+tuval-satis.css |  | .tuval-pro #islem-pesin-notu | line-height | 1.35
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | height | 46px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .fis-salt-kutu | height | 46px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | min-height | 46px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .fis-salt-kutu | min-height | 46px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | padding | 0 12px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .fis-salt-kutu | padding | 0 12px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | border-radius | 8px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .fis-salt-kutu | border-radius | 8px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | font-size | var(--tp-16)
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .fis-salt-kutu | font-size | var(--tp-16)
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | font-weight | 400
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .fis-salt-kutu | font-weight | 400
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | font-weight | 500
+tuval-satis.css |  | .tuval-pro #islem-ust-satir .secici-tetik | padding-right | 36px
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | height | 26px
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | padding | 0 10px
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | border-radius | 999px
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | font-size | var(--tp-13)
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | font-weight | 400
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-hap > button | padding | 6px 14px
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-hap > button | border-radius | 999px
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-hap > button | font | inherit
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-hap > button | font-size | var(--tp-14)
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-hap > button | line-height | 1.4
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-hap > button | min-height | 0
+tuval-satis.css |  | .tuval-pro .islem-alt-satir > .btn | height | 46px
+tuval-satis.css |  | .tuval-pro .islem-alt-satir > .btn | min-height | 46px
+tuval-satis.css |  | .tuval-pro #islem-vazgec | padding | 0 18px
+tuval-satis.css |  | .tuval-pro #islem-vazgec | font-size | var(--tp-16)
+tuval-satis.css |  | .tuval-pro #islem-vazgec | font-weight | 400
+tuval-satis.css |  | .tuval-pro #islem-kaydet | padding | 0 22px
+tuval-satis.css |  | .tuval-pro #islem-kaydet | font-size | var(--tp-16)
+tuval-satis.css |  | .tuval-pro #islem-kaydet | font-weight | 600
+tuval-satis.css | @media (min-width: 1100px) and (max-width: 1399.98px) | .islem-sayfa.tuval-pro > #islem-pro-yan > #islem-pro-yasal | padding | 10px 16px
+tuval-satis.css |  | .tuval-tezgah #islem-aldim .fis-aldim-ayrinti > summary.metin-kucuk | font-size | var(--ts-15)
+tuval-satis.css |  | .tuval-tezgah #islem-aldim .fis-aldim-ayrinti[open] > #islem-tevsik-ipucu | padding | 10px 12px
+tuval-satis.css |  | .tuval-tezgah #islem-aldim .fis-aldim-ayrinti[open] > #islem-tevsik-ipucu | border-radius | 10px
+tuval-satis.css |  | .tuval-tezgah #islem-aldim .fis-aldim-ayrinti[open] > #islem-tevsik-ipucu | line-height | 1.4
+tuval-satis.css |  | .tuval-tezgah #islem-pesin-notu.fis-esik-bant | height | auto
+tuval-satis.css |  | .tuval-pro #islem-pesin-notu.fis-esik-bant | height | auto
+tuval-satis.css |  | .tuval-tezgah #islem-pesin-notu.fis-esik-bant | font-size | var(--tp-14, var(--ts-15))
+tuval-satis.css |  | .tuval-pro #islem-pesin-notu.fis-esik-bant | font-size | var(--tp-14, var(--ts-15))
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | height | auto
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | min-height | 24px
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | padding | 3px 10px
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | border-radius | 12px
+tuval-satis.css |  | .tuval-pro #islem-cari-bakiye | line-height | 1.15
+tuval-satis.css |  | .tuval-pro #islem-ust-satir > .alan:first-child:has(> .rozet-satir) .secici-tetik | padding-right | calc(46% + 36px)
+tuval-satis.css |  | .tuval-pro #islem-ust-satir > .alan:first-child:has(> .rozet-satir) .secici-tetik | line-height | 1.15
+tuval-satis.css |  | .tuval-pro #islem-fiyat-listesi | line-height | 1.15
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri .girdi-arama | height | 46px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri .girdi-arama | min-height | 46px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri .girdi-arama | padding | 0 14px 0 46px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri .girdi-arama | border-radius | 8px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri .girdi-arama | font-size | var(--tp-16)
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri > .btn | height | 46px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri > .btn | min-height | 46px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris .barkod-satiri > .btn | padding | 0
+tuval-satis.css |  | .tuval-pro .fis-pro-giris #islem-elle > summary | height | 46px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris #islem-elle > summary | min-height | 46px
+tuval-satis.css |  | .tuval-pro .fis-pro-giris #islem-elle > summary | font-weight | 500
+tuval-satis.css |  | .tuval-pro .fis-pro-giris #islem-elle > summary | padding | 0 4px
+tuval-satis.css |  | .tuval-pro .fis-pro-yasal-ayrinti > summary | font-weight | 500
+tuval-satis.css |  | .tuval-pro .fis-pro-yasal-ayrinti > summary | line-height | 1.4
+tuval-satis.css | @media (min-width: 1100px) and (max-width: 1399.98px) | .islem-sayfa.tuval-pro > #islem-pro-yan > #islem-pro-yasal.fis-pro-yasal-ozet | padding | 8px 16px
+tuval-satis.css |  | .tuval-tezgah .fis-diger-ayrinti > summary | font-size | var(--ts-15, var(--tp-15))
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-katman .btn | font-size | var(--tp-14)
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme #islem-kasa-durum | height | 1px
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-katman #islem-kasa-durum | height | 1px
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme #islem-kasa-durum | padding | 0
+tuval-satis.css |  | .tuval-pro .fis-pro-odeme-katman #islem-kasa-durum | padding | 0
+tuval-satis.css |  | html[data-mod] .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | height | auto
+tuval-satis.css |  | .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | height | auto
+tuval-satis.css |  | html[data-mod] .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | min-height | var(--kontrol-yuksekligi, 46px)
+tuval-satis.css |  | .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | min-height | var(--kontrol-yuksekligi, 46px)
+tuval-satis.css |  | html[data-mod] .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | padding-top | 4px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | padding-top | 4px
+tuval-satis.css |  | html[data-mod] .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | padding-bottom | 4px
+tuval-satis.css |  | .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu | padding-bottom | 4px
+tuval-satis.css | @media (max-width: 600px) | .tuval-pro .fis-pro-kart > #islem-pro-giris | padding | 12px
+tuval-satis.css | @media (max-width: 600px) | html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri #islem-barkod.girdi-arama | padding-left | 40px
+tuval-satis.css | @media (max-width: 600px) | html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri #islem-barkod.girdi-arama | padding-right | 8px
+tuval-satis.css | @media (max-width: 600px) | .tuval-pro .fis-pro-giris #islem-elle > summary | height | auto
+tuval-satis.css | @media (max-width: 600px) | .tuval-pro .fis-pro-giris #islem-elle:not([open]) > summary | height | auto
+tuval-satis.css | @media (max-width: 600px) | .tuval-pro .fis-pro-giris #islem-elle > summary | min-height | 36px
+tuval-satis.css | @media (max-width: 600px) | .tuval-pro .fis-pro-giris #islem-elle:not([open]) > summary | min-height | 36px
+tuval-satis.css | @media (max-width: 600px) | .tuval-pro .fis-pro-giris #islem-elle > summary | padding | 0 2px
+tuval-satis.css | @media (max-width: 600px) | .tuval-pro .fis-pro-giris #islem-elle:not([open]) > summary | padding | 0 2px
+tuval-satis.css |  | html[data-mod] .tuval-tezgah .tuval-karo-izgara > #islem-tur-HURDA_ALIS.ekran-karo-birincil | font-weight | 500
+tuval-satis.css |  | .tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri .girdi-arama | height | var(--kontrol-yuksekligi)
+tuval-satis.css |  | .tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri .girdi-arama | min-height | var(--kontrol-yuksekligi)
+tuval-satis.css |  | .tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri .girdi-arama | padding-left | 46px
+tuval-satis.css |  | .tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri > .btn | height | auto
+tuval-satis.css |  | .tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri > .btn | min-height | 0
+tuval-satis.css |  | .tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri > .btn | padding | 0
+tuval-satis.css |  | :root[data-tema="karanlik"] .islem-sayfa.tuval-pro .tuval-pro-sekmeler > .sekme.secili | font-weight | 600
+tuval-satis.css | @media (prefers-color-scheme: dark) | :root:not([data-tema="aydinlik"]) .islem-sayfa.tuval-pro .tuval-pro-sekmeler > .sekme.secili | font-weight | 600
+# YILDIZ-1 (08.10): Yıldız şemasının "Tüm ekranlar" kareleri (tuval-tezgah) — mod-bağımsız tek kural, :root[data-sema="yildiz"] ile sınırlı; BASIT↔PRO'da aynı ölçü (tuvaldeki hap karo).
+tema-yildiz.css |  | html:root[data-sema="yildiz"] .tuval-tezgah .tuval-karo-izgara > .ekran-karo | padding-left | 8px
+tema-yildiz.css |  | html:root[data-sema="yildiz"] .tuval-tezgah .tuval-karo-izgara > .ekran-karo | padding-right | 8px
+tema-yildiz.css |  | html:root[data-sema="yildiz"] body .ana-icerik .tuval-tezgah .tuval-karo-izgara > .ekran-karo | border-radius | 999px
+# GOC-C-2 (09.10): BASİT karma ödeme satır düzeni artık ALDIM sütununun KENDİ genişliğiyle (container query, ≥ 380 px) — satır 92–96 ile BİREBİR aynı değerler (1280'de de tek bacak ölçeği; hakem YÜKSEK "dikey yığılı/büyük punto").
+zo-islem.css | @container gc2-aldim (min-width: 380px) | html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .girdi | font-weight | 600
+zo-islem.css | @container gc2-aldim (min-width: 380px) | html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] .secici-tetik | font-weight | 500
+zo-islem.css | @container gc2-aldim (min-width: 380px) | html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik | font-size | var(--ts-15)
+zo-islem.css | @container gc2-aldim (min-width: 380px) | html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik | padding-left | 10px
+zo-islem.css | @container gc2-aldim (min-width: 380px) | html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik:disabled | padding | 0 2px

@@ -1,0 +1,37 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kuyumcu-api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "/Users/ramazanakkocan/Desktop/ByGatech/projeler/jewellery/dotnet/Kuyumcu.Api",
+        "--no-build",
+        "--urls",
+        "http://localhost:5199"
+      ],
+      "port": 5199
+    },
+    {
+      "name": "kuyumcu-qa",
+      "url": "http://localhost:5199",
+      "port": 5199,
+      "betik": "/Users/ramazanakkocan/Desktop/ByGatech/projeler/jewellery/dokumanlar/09-uygulama-kayitlari/betikler/qa-sunucu.sh",
+      "yayinYolu": "dokumanlar/09-uygulama-kayitlari/betikler/yayin-yolu.sh",
+      "yayinYoluNotu": "P-42: yayın dizini bu dosyaya SABİT YAZILMAZ. Tek kaynak yayin-yolu.sh (kalıcı varsayılanı o betik tanımlar; KUYUMCU_YAYIN_DIZINI hâlâ üstün). qa-sunucu.sh o dosyayı source eder; JSON bir kabuk betiğini source edemeyeceği için buraya yol kopyalamak yerine betiğe DEVREDİLİR. Kopyalanan yol, tur 8'de olduğu gibi sessizce ayrışır.",
+      "not": "BAĞLANMA kipi (komut yok, yalnız url). ÖLÇÜLDÜ 2026-09-21: önizleme kum havuzu ~/Desktop'ı okuyamıyor — depo içindeki betiği doğrudan çalıştıramaz ('can't open input file', çıkış 127). Oturumla yok olan scratchpad kopyasına dönmek de B-2'nin ta kendisiydi. Bu yüzden sunucu SÜRÜMLÜ betikle ('betik' alanı) kabuktan ya da nöbetçiden başlatılır, bölme yalnız 5199'a bağlanır. Nöbetçi (betikler/nobetci.sh) 5199 düştüğünde aynı betikle geri kaldırır, yani oturumdan bağımsızdır."
+    },
+    {
+      "name": "kuyumcu-web-eski-ts-yigini-gecersiz",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@kuyum/web",
+        "dev"
+      ],
+      "port": 3000
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+/* ═══ PAKET SATINALMA-EKRAN ═══════════════════════════════════════════════════
+   Mal kabul çekmecesi: "Bu siparişin irsaliyeleri" satırları kart kenarına YAPIŞMASIN.
+   Yıldız şeması .kart-govde yatay iç boşluğunu 0 yapar (tema-yildiz.css); bu kart için
+   boşluk ayrıca ve her şemada korunur. Belirteç kullanılır (sabit ölçü/renk yok). */
+html:root[data-sema] .kart > .kart-govde.sa-irs-icerik,
+.kart > .kart-govde.sa-irs-icerik {
+  padding: var(--bosluk-3) var(--bosluk-4);
+}
+
+/* ═══ PAKET SATINALMA-EKRAN-2 ═════════════════════════════════════════════════
+   Dar ekranda (Yıldız) çekmece başlığı "Sipariş SAS-2026-/00004" diye numaranın tire yerinden kırılıyordu
+   (K3). Başlık tek satır kalır; tuval ölçeğindeki 20 px (izinli boy) ile sığar. */
+@media (max-width: 480px) {
+  html:root[data-sema="yildiz"] .cekmece-bas :is(#cekmece-sa-detay-baslik, #cekmece-irs-detay-baslik) {
+    font-size: 20px;
+    white-space: nowrap;
+  }
+}
+
+/* Yıldız tuval ağırlık ölçeği 200–500: çekmecedeki tanım listesi etiketleri (dt) dar ekranda 600 çıkıyordu
+   (yildiz-tipo-tara: 56 kural dışı). Yalnız bu iki çekmecenin listesi; başka ekrana dokunmaz. */
+html:root[data-sema="yildiz"] :is(#sa-detay-bilgi, #irs-detay-bilgi) dt { font-weight: 500; }

@@ -1,0 +1,3314 @@
+/* ═════════════════════════════════════════════════════════════════════════
+   MİHENK — Blazor arayüz stilleri
+   React/Tailwind sürümünün görsel dilinin birebir karşılığı.
+
+   ⚠ PALET ARTIK BURADA DEĞİL: tüm renk/ölçü belirteçleri
+     `css/belirtecler.css` dosyasındadır ve index.html'de BU DOSYADAN ÖNCE
+     yüklenir. Ham palet adları (--amber-*, --slate-*, …) KALDIRILMADI,
+     yalnız taşındı; bu dosyadaki seçiciler ve özgüllükleri DEĞİŞMEDİ.
+
+   ⚠ Paket UX-2 Faz A1 kuralı: yeni kodda sabit renk (#rrggbb) YAZILMAZ;
+     yalnız semantik belirteç kullanılır. Tek istisna `.belge*`,
+     `.urun-etiket*` ve `@media print` blokları — KÂĞIT TEMADAN MUAFTIR
+     (kâğıt beyaz, mürekkep siyah). Bu muafiyet TasarimBelirtecTestleri
+     ile zorlanır: o bloklar semantik belirtece referans VERMEZ.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; }
+/* ── PAKET S1-g — GENEL [hidden] KURALI (KRİTİK, kurucu bulgusu 24.09) ─────
+   UA sayfasının `[hidden]{display:none}` kuralı ÖZGÜLLÜĞÜ en düşük kuraldır;
+   `.kenar-satir{display:flex}` gibi HERHANGİ bir sınıf kuralı onu ezer. Canlı
+   ölçüm: profesyonel modda kapalı grupların 33 satırı `hidden` taşıyor ama
+   getComputedStyle(display)='flex' — EKRANDA GÖRÜNÜYORDU (bUnit yalnız
+   özniteliği ölçtüğü için testler yeşildi). Bu kural `hidden` özniteliğini
+   HER bileşende gerçekten gizler; aynı sınıf hatanın başka yerdeki
+   örneklerini de kapatır. Kilit: S1gMenuTuvalTestleri + denetim.sh S1-g. */
+[hidden] { display: none !important; }
+
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--yazi-ailesi);
+  font-size: var(--yazi-govde);
+  color: var(--metin);
+  background: var(--govde);
+}
+h1, h2, h3, p, dl, dd { margin: 0; }
+button { font: inherit; cursor: pointer; }
+input, select { font: inherit; }
+a { color: inherit; text-decoration: none; }
+table { border-collapse: collapse; width: 100%; }
+
+/* ── Açılış yükleme ekranı ─────────────────────────────────────────────── */
+.uygulama-yukleniyor {
+  height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--bosluk-4);
+  background: var(--kenar-yuzey); color: var(--amber-300);
+}
+.donen-halka {
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 3px solid var(--amber-400); border-top-color: transparent;
+  animation: donme 0.9s linear infinite;
+}
+@keyframes donme { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .donen-halka { animation: none; } }
+
+#blazor-error-ui {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
+  background: var(--tehlike-yuzey); color: var(--tehlike);
+  padding: .75rem 1.25rem;
+}
+#blazor-error-ui .reload { font-weight: 600; margin-left: .5rem; text-decoration: underline; }
+#blazor-error-ui .dismiss { float: right; cursor: pointer; }
+
+/* ── Uygulama yerleşimi ────────────────────────────────────────────────── */
+.uygulama { display: flex; min-height: 100vh; }
+
+.kenar-cubugu {
+  width: 240px; flex-shrink: 0; min-height: 100vh;
+  background: var(--kenar-yuzey); color: var(--slate-100);
+  display: flex; flex-direction: column;
+}
+.kenar-logo {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.25rem; border-bottom: 1px solid var(--kenar-ayrac);
+}
+.kenar-logo .marka { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.1rem; color: var(--kenar-metin-guclu); }
+.kenar-nav { flex: 1; padding: 1rem .75rem; display: flex; flex-direction: column; gap: .25rem; }
+.kenar-nav a {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .5rem .75rem; border-radius: var(--radius-md);
+  font-size: .875rem; font-weight: 500; color: var(--kenar-metin);
+  transition: background .15s, color .15s;
+}
+.kenar-nav a:hover { background: var(--kenar-yuzey-2); color: var(--kenar-metin-guclu); }
+.kenar-nav a.aktif { background: var(--amber-700); color: var(--kenar-metin-guclu); }
+/* Paket P-14 (Y-9) — kenar çubuğu grup başlığı. Sabit renk YOK, yalnız belirteç. */
+.kenar-grup-baslik {
+  margin: .75rem .75rem .25rem; padding: 0;
+  font-size: .6875rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--kenar-metin);
+  opacity: .72;
+}
+.kenar-nav > .kenar-grup-baslik:first-child { margin-top: 0; }
+.kenar-alt { border-top: 1px solid var(--kenar-ayrac); padding: .75rem 1rem; }
+.kenar-alt .kullanici-ad { font-size: .75rem; font-weight: 600; color: var(--kenar-metin-guclu); }
+.kenar-alt .kullanici-rol { font-size: .75rem; color: var(--kenar-metin); }
+.kenar-alt-butonlar { display: flex; gap: .5rem; margin-top: .5rem; }
+.kenar-alt-butonlar a, .kenar-alt-butonlar button {
+  flex: 1; display: flex; align-items: center; gap: .25rem; justify-content: center;
+  font-size: .75rem; color: var(--kenar-metin); background: none; border: 0;
+  padding: .25rem .5rem; border-radius: var(--yaricap-sm);
+}
+.kenar-alt-butonlar a:hover { background: var(--kenar-yuzey-2); color: var(--kenar-metin-guclu); }
+.kenar-alt-butonlar button:hover { background: var(--kenar-yuzey-2); color: var(--kenar-tehlike); }
+
+.icerik-sutunu { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ust-bar {
+  background: var(--yuzey); border-bottom: 1px solid var(--ayrac);
+  padding: .75rem 1.5rem; display: flex; align-items: center; justify-content: space-between;
+}
+.ust-bar h1 { font-size: var(--yazi-xl); font-weight: 600; }
+.kur-bandi {
+  display: flex; align-items: center; gap: .5rem; font-size: .875rem;
+  background: var(--vurgu-yuzey); border: 1px solid var(--vurgu-kenar);
+  border-radius: var(--radius-md); padding: .375rem .75rem;
+}
+.ust-sag { display: flex; align-items: center; gap: .5rem; }
+.kur-guncelle-btn {
+  background: var(--vurgu-yuzey); border: 1px solid var(--vurgu-kenar); color: var(--vurgu);
+  border-radius: var(--radius-md); width: 2rem; height: 2rem; font-size: 1rem; line-height: 1;
+  cursor: pointer; flex-shrink: 0;
+}
+.kur-guncelle-btn:hover:not(:disabled) { background: var(--vurgu-kenar); }
+.kur-guncelle-btn:disabled { opacity: .6; cursor: default; }
+.kur-guncelle-btn.donuyor { animation: kur-don 1s linear infinite; }
+@keyframes kur-don { to { transform: rotate(360deg); } }
+.kur-hata { background: var(--tehlike-yuzey); color: var(--tehlike); font-size: .8125rem; padding: .375rem 1.5rem; }
+.kur-bandi { flex-wrap: wrap; }
+.kur-bandi .etiket { color: var(--metin-soluk); font-size: .75rem; }
+.kur-bandi .deger { font-weight: 700; color: var(--vurgu); }
+.kur-bandi .kur-oge { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; }
+.kur-bandi .kur-oge + .kur-oge { border-left: 1px solid var(--vurgu-kenar); padding-left: .5rem; }
+.ana-icerik { flex: 1; padding: 1.5rem; overflow: auto; }
+
+/* Son sorgu zamanı — kur çubuğunun yanında */
+.son-sorgu {
+  display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
+  font-size: .75rem; color: var(--metin-soluk);
+  background: var(--yuzey-2); border: 1px solid var(--ayrac);
+  border-radius: var(--radius-md); padding: .375rem .625rem;
+}
+.son-sorgu .etiket { color: var(--metin-soluk); }
+.son-sorgu .deger { font-weight: 600; color: var(--metin); }
+.son-sorgu.hatali { background: var(--tehlike-yuzey); border-color: var(--tehlike-kenar); }
+.son-sorgu.hatali .deger { color: var(--tehlike); }
+
+/* Dar ekranda kur çubuğu gizlenir; POS için Panel'den takip edilir */
+@media (max-width: 720px) { .kur-bandi, .son-sorgu { display: none; } }
+
+/* ── Dil seçici ────────────────────────────────────────────────────────── */
+.dil-secici { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-md); background: var(--yuzey-3); }
+.dil-secici.koyu { background: var(--kenar-yuzey-2); }
+.dil-secici button {
+  border: 0; background: none; padding: .25rem .5rem; border-radius: var(--yaricap-sm);
+  font-size: .75rem; font-weight: 600; color: var(--metin-soluk);
+}
+.dil-secici.koyu button { color: var(--slate-300); }
+.dil-secici button.secili { background: var(--vurgu); color: var(--vurgu-metin); }
+
+/* ── Arayüz modu anahtarı (paket UX-3 Faz A) ───────────────────────────────
+   DilSecici pill desenini izler. Sabit renk YOK, yalnız belirteç (UX-S6).
+   Kur bandının aksine 720px altında GİZLENMEZ: basit modun ana kullanıcısı
+   tezgâhtardır ve anahtar tam olarak onun içindir. */
+.mod-anahtar { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-md); background: var(--yuzey-3); }
+.mod-anahtar button {
+  border: 0; background: none; padding: .25rem .5rem; border-radius: var(--yaricap-sm);
+  font-size: .75rem; font-weight: 600; color: var(--metin-soluk); white-space: nowrap;
+}
+.mod-anahtar button.secili { background: var(--vurgu); color: var(--vurgu-metin); }
+.mod-anahtar button:disabled { opacity: .6; cursor: not-allowed; }
+.mod-anahtar button:focus-visible { outline: 2px solid var(--vurgu); outline-offset: 2px; }
+
+/* ── Butonlar ──────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem; justify-content: center;
+  font-weight: 500; font-size: .875rem; border-radius: var(--radius-md);
+  padding: .5rem 1rem; border: 1px solid transparent; transition: background .15s;
+}
+.btn:focus-visible { outline: 2px solid var(--vurgu); outline-offset: 2px; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.btn-birincil { background: var(--vurgu); color: var(--vurgu-metin); }
+.btn-birincil:hover:not(:disabled) { background: var(--vurgu-guclu); }
+.btn-ikincil { background: var(--yuzey); border-color: var(--kenarlik); color: var(--metin); }
+.btn-ikincil:hover:not(:disabled) { background: var(--yuzey-2); }
+.btn-tehlike { background: var(--tehlike-dolgu); color: var(--tehlike-dolgu-metin); }
+.btn-tehlike:hover:not(:disabled) { background: var(--tehlike); }
+.btn-kucuk { padding: .375rem .75rem; font-size: .8125rem; }
+/* UX-4c: modal alt satırındaki "Iptal / Kaydet" ikilisi ve arama kutuları eşit
+   genişlikte olsun diye her sayfada style="flex:1" yazılıyordu. Satır içi stil
+   UX sözleşmesinde yasak; kural tek yerde tanımlanır. */
+.esnek { flex: 1; }
+
+/* UX-4c madde 12 / UX-S30 — "kilitli düğme sebebini söyler": şifre kuralları
+   canlı listelenir, karşılanan madde işaretlenir. Sabit renk YOK, belirteç var. */
+.kural-listesi { margin: .25rem 0 0; padding-inline-start: 1.1rem; font-size: .8125rem; color: var(--metin-soluk); }
+.kural-listesi li::marker { content: "• "; }
+.kural-listesi li.kural-tamam { color: var(--basari); }
+.kural-listesi li.kural-tamam::marker { content: "✓ "; }
+.btn-buyuk { padding: .75rem 1.5rem; font-size: 1rem; }
+.btn-tam { width: 100%; }
+
+/* ── `.dugme*` TAKMA ADLARI (paket UX-2 Faz A1 · Aşkın K1) ────────────────
+   Uyum, Gider Pusulaları, Pusula Belgesi ve Denetim İzi ekranlarında
+   `class="dugme dugme-birincil"` yazılmıştı ama app.css'te `.dugme` seçicisi
+   HİÇ YOKTU → o düğmeler bugüne kadar STİLSİZ çizildi. Razor'daki sınıf
+   adları DEĞİŞTİRİLMEZ (EkranTestleri `.dugme-birincil`e bağlıdır);
+   burada `.btn` ailesinin karşılığı takma ad olarak açılır. */
+.dugme {
+  display: inline-flex; align-items: center; gap: .5rem; justify-content: center;
+  font-weight: 500; font-size: .875rem; border-radius: var(--radius-md);
+  padding: .5rem 1rem; border: 1px solid transparent; transition: background .15s;
+  background: var(--yuzey); border-color: var(--kenarlik); color: var(--metin);
+}
+.dugme:focus-visible { outline: 2px solid var(--vurgu); outline-offset: 2px; }
+.dugme:disabled { opacity: .6; cursor: not-allowed; }
+.dugme-birincil { background: var(--vurgu); border-color: var(--vurgu); color: var(--vurgu-metin); }
+.dugme-birincil:hover:not(:disabled) { background: var(--vurgu-guclu); }
+.dugme-ikincil { background: var(--yuzey); border-color: var(--kenarlik); color: var(--metin); }
+.dugme-ikincil:hover:not(:disabled) { background: var(--yuzey-2); }
+.dugme-tehlike { background: var(--tehlike-dolgu); border-color: var(--tehlike-dolgu); color: var(--tehlike-dolgu-metin); }
+.dugme-tehlike:hover:not(:disabled) { background: var(--tehlike); }
+.dugme-kucuk { padding: .375rem .75rem; font-size: .8125rem; }
+.dugme-satir { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+/* Satır içi ikon düğmesi (kart köşesindeki düzenle vb.) */
+.kasa-duzenle-btn {
+  border: 0; background: none; cursor: pointer;
+  font-size: .95rem; line-height: 1; padding: .2rem .3rem;
+  border-radius: var(--yaricap-sm); opacity: .65; transition: opacity .15s, background .15s;
+}
+.kasa-duzenle-btn:hover { opacity: 1; background: var(--yuzey-3); }
+.kasa-duzenle-btn:focus-visible { outline: 2px solid var(--vurgu); outline-offset: 1px; }
+
+/* ── Form ──────────────────────────────────────────────────────────────── */
+.alan { display: flex; flex-direction: column; gap: .25rem; }
+.alan label { font-size: .875rem; font-weight: 500; color: var(--metin); }
+.girdi, .secim {
+  padding: .5rem .75rem; font-size: .875rem; color: var(--metin);
+  border: 1px solid var(--kenarlik); border-radius: var(--radius-md); background: var(--yuzey);
+}
+.girdi:focus, .secim:focus { outline: 2px solid var(--vurgu); outline-offset: 0; border-color: transparent; }
+.girdi.hatali { border-color: var(--tehlike-vurgu); }
+.alan .hata-metni { font-size: .75rem; color: var(--tehlike); }
+/* UX-1-C0 — alan altı mesaj (AlanHatasi). `.alan` dışında da (tablo hücresi,
+   satır içi düzenleme) aynı görünümü taşır; ikinci renk/ölçü açılmaz. */
+.alan-hata { display: block; font-size: .75rem; color: var(--tehlike); margin-top: var(--bosluk-1); }
+.secim.hatali, .girdi.hatali { border-color: var(--tehlike-vurgu); }
+
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; }
+.form-dikey { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Kart ──────────────────────────────────────────────────────────────── */
+.kart { background: var(--yuzey); border: 1px solid var(--ayrac); border-radius: var(--radius-lg); box-shadow: var(--golge-sm); }
+.kart-baslik { padding: 1rem 1.5rem; border-bottom: 1px solid var(--ayrac); }
+.kart-baslik h2 { font-size: .875rem; font-weight: 600; color: var(--metin); }
+.kart-govde { padding: 1rem 1.5rem; }
+
+.stat-kart { border-left: 4px solid var(--uyari-vurgu); }
+.stat-kart.yesil  { border-left-color: var(--basari-vurgu); }
+.stat-kart.kirmizi{ border-left-color: var(--tehlike-vurgu); }
+.stat-kart.mavi   { border-left-color: var(--bilgi-vurgu); }
+.stat-kart .stat-etiket { font-size: .75rem; color: var(--metin-soluk); text-transform: uppercase; letter-spacing: .04em; }
+.stat-kart .stat-deger { font-size: 1.5rem; font-weight: 700; color: var(--metin-guclu); margin-top: .25rem; font-variant-numeric: tabular-nums; }
+.stat-kart .stat-alt { font-size: .75rem; color: var(--metin-soluk); margin-top: .25rem; }
+.stat-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+
+/* ── Tablo ─────────────────────────────────────────────────────────────── */
+.tablo-sar { overflow-x: auto; max-width: 100%; }
+.veri-tablosu { font-size: .875rem; }
+.veri-tablosu thead { background: var(--yuzey-2); border-bottom: 1px solid var(--ayrac); }
+.veri-tablosu th {
+  text-align: left; padding: .75rem 1rem; font-size: .75rem; font-weight: 600;
+  color: var(--metin-soluk); text-transform: uppercase; letter-spacing: .04em;
+}
+.veri-tablosu td { padding: .75rem 1rem; border-top: 1px solid var(--ayrac); }
+.veri-tablosu tbody tr:hover { background: var(--yuzey-2); }
+.hucre-vurgu { font-weight: 600; }
+/* PAKET P-11 — satır içi style yerine sınıf (SATIR_ICI_STYLE cırcırı). */
+.hucre-tek-satir { white-space: nowrap; }
+.sayi { font-variant-numeric: tabular-nums; text-align: right; }
+td.sayi, th.sayi { text-align: right; }
+/* Paket UX-1-C4 — satır içi style="" borcunu azaltan hizalama yardımcıları.
+   (Yetkiler matrisi ve Bildirimler tablosu bunları kullanır; sabit renk yok.) */
+.ortala, td.ortala, th.ortala { text-align: center; }
+.saga-yasla { justify-content: flex-end; }
+/* Kilitli/ayrıcalıklı tablo satırı (Yetkiler → SAHİP). Sabit renk yok: belirteç. */
+/* PAKET S-3e (QA turu 5 /fiyatlandirma): HAM palet belirteci (--amber-50) temayla
+   DEĞİŞMEZ; karanlık temada satır açık amber zeminde kalıyor, açık renkli metin
+   üstünde okunamıyordu. Çözüm SEMANTİK belirteç: --vurgu-yuzey aydınlık temada
+   --amber-50 ile AYNI değere çözülür (aydınlık görünüm DEĞİŞMEZ), karanlık temada
+   koyu amber zemine döner. Kontrastı TasarimBelirtecTestleri ölçer. */
+tr.satir-vurgu { background: var(--vurgu-yuzey); }
+/* Kimlik/özet tanım listeleri — 4px boşluk ritmi (çıplak rem yok). */
+.kimlik-listesi { gap: var(--bosluk-2); }
+.ayarlar-sutun { max-width: 32rem; }
+.bayrak { font-size: 1.25rem; }
+/* Kapsam uyarısı — kutu değil, satır içi vurgulu metin (sabit renk yok). */
+.uyari-metni { font-size: .75rem; color: var(--uyari); }
+
+/* ── PAKET P-17 — yazdırma düğmesi kutusu + vitrin panosu (belirteçli) ──── */
+.yazdir-kutu { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.pano-tablo td, .pano-tablo th { font-size: 1.05rem; }
+.pano-tablo tbody td { color: var(--metin-guclu); font-variant-numeric: tabular-nums; }
+.esit-pay { flex: 1; }
+
+/* ── Rozet ─────────────────────────────────────────────────────────────── */
+.rozet {
+  display: inline-flex; padding: .125rem .5rem; border-radius: var(--yaricap-tam);
+  font-size: .75rem; font-weight: 500; white-space: nowrap;
+}
+.rozet-yesil  { background: var(--basari-yuzey);  color: var(--basari); }
+.rozet-kirmizi{ background: var(--tehlike-yuzey); color: var(--tehlike); }
+.rozet-mavi   { background: var(--bilgi-yuzey);   color: var(--bilgi); }
+.rozet-sari   { background: var(--uyari-yuzey);   color: var(--uyari); }
+.rozet-gri    { background: var(--yuzey-3);       color: var(--metin-soluk); }
+.rozet-amber  { background: var(--vurgu-yuzey);   color: var(--vurgu-guclu); }
+
+/* ── Bantlar ───────────────────────────────────────────────────────────── */
+.bant { border-radius: var(--radius-md); padding: .75rem 1rem; font-size: .875rem; border: 1px solid; }
+.bant-hata   { background: var(--tehlike-yuzey); border-color: var(--tehlike-kenar); color: var(--tehlike); }
+.bant-basari { background: var(--basari-yuzey); border-color: var(--basari-kenar); color: var(--basari); }
+
+/* ── Modal ─────────────────────────────────────────────────────────────── */
+.modal-arka {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: rgb(0 0 0 / .4);
+}
+.modal-panel {
+  background: var(--yuzey); border-radius: var(--radius-xl); box-shadow: var(--golge-xl);
+  width: 100%; max-width: 32rem; margin: 0 1rem; max-height: 90vh; overflow-y: auto;
+}
+.modal-baslik {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.5rem; border-bottom: 1px solid var(--ayrac);
+}
+.modal-baslik h2 { font-weight: 600; }
+/* Sürüklenebilir modal: başlıkta metin seçimi olmasın, taşınırken üstte kalsın */
+.modal-panel.suruklenebilir { position: relative; z-index: 1; }
+.modal-panel.suruklenebilir .modal-baslik { user-select: none; touch-action: none; }
+.modal-kapat { background: none; border: 0; font-size: 1.25rem; line-height: 1; color: var(--metin-soluk); }
+.modal-kapat:hover { color: var(--metin); }
+.modal-govde { padding: 1rem 1.5rem; }
+
+/* ── Sekmeler / pill grupları ──────────────────────────────────────────── */
+.sekme-grubu { display: flex; gap: .5rem; flex-wrap: wrap; }
+.sekme {
+  padding: .5rem 1rem; border-radius: var(--radius-md); font-size: .875rem; font-weight: 500;
+  background: var(--yuzey); border: 1px solid var(--kenarlik); color: var(--metin);
+}
+.sekme:hover { background: var(--yuzey-2); }
+.sekme.secili { background: var(--vurgu); border-color: var(--vurgu); color: var(--vurgu-metin); }
+
+.pill-grubu { display: flex; background: var(--yuzey-3); border-radius: var(--radius-lg); padding: .25rem; }
+.pill { flex: 1; padding: .5rem; border: 0; background: none; border-radius: var(--radius-md); font-size: .875rem; font-weight: 600; color: var(--metin-soluk); }
+.pill.secili { background: var(--yuzey); color: var(--vurgu-guclu); box-shadow: var(--golge-sm); }
+
+/* ── Boş durum / yükleniyor ────────────────────────────────────────────── */
+.bos-durum {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 12rem; color: var(--metin-soluk);
+}
+.bos-durum .ikon { font-size: 2.25rem; margin-bottom: .5rem; }
+.yukleniyor-kutu { display: flex; align-items: center; justify-content: center; height: 12rem; }
+.yukleniyor-kutu .donen-halka { border-color: var(--amber-400); border-top-color: transparent; }
+
+/* ── Giriş sayfası ─────────────────────────────────────────────────────── */
+.giris-sayfa { min-height: 100vh; display: flex; background: var(--yuzey); }
+.giris-panel {
+  display: none; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, var(--giris-panel-bas), var(--giris-panel-orta) 55%, var(--giris-panel-son));
+  color: var(--kenar-metin-guclu);
+}
+@media (min-width: 1024px) { .giris-panel { display: flex; width: 50%; } }
+.giris-panel-icerik {
+  position: relative; z-index: 1; display: flex; flex-direction: column;
+  justify-content: space-between; width: 100%; padding: 3rem;
+}
+.giris-panel h1 { font-size: 2.25rem; font-weight: 700; line-height: 1.2; margin-bottom: 1rem; text-wrap: balance; }
+.giris-panel .alt-metin { color: var(--slate-300); margin-bottom: 2rem; }
+.giris-ozellik { display: flex; align-items: center; gap: .75rem; color: var(--slate-200); font-size: .875rem; margin-bottom: .75rem; }
+.giris-ozellik .onay {
+  display: inline-flex; padding: .25rem; border-radius: var(--yaricap-tam);
+  background: rgb(251 191 36 / .2); border: 1px solid rgb(251 191 36 / .4); color: var(--amber-300);
+}
+/* ── P-30 (R-4 · BK-47) — giriş ekranındaki kısıt beyanı ───────────────── */
+.giris-kisit { margin: 1.5rem 0; max-width: 28rem; }
+.giris-kisit-baslik { color: var(--amber-300); font-size: .8125rem; font-weight: 700; margin-bottom: .5rem; }
+.giris-kisit-liste { list-style: none; margin: 0; padding: 0; }
+.giris-kisit-satir { display: flex; align-items: baseline; gap: .5rem; color: var(--slate-300); font-size: .8125rem; margin-bottom: .25rem; }
+.giris-kisit-durum {
+  flex: none; font-size: .6875rem; font-weight: 700; letter-spacing: .02em; color: var(--amber-300);
+  border: 1px solid var(--amber-400); border-radius: var(--yaricap-tam); padding: 0 .375rem;
+}
+.giris-kisit-alt { color: var(--slate-400); font-size: .75rem; margin-top: .5rem; }
+.giris-kisit-hata { background: var(--tehlike-yuzey); color: var(--tehlike); font-size: .8125rem; padding: .375rem .5rem; border-radius: var(--radius-lg, .5rem); }
+
+.giris-form-sutun { flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.giris-form-sar { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 1.5rem 3rem; }
+.giris-form { width: 100%; max-width: 28rem; }
+.giris-form h2 { font-size: 1.5rem; font-weight: 700; color: var(--metin-guclu); margin-bottom: .25rem; }
+.giris-form .alt { color: var(--metin-soluk); font-size: .875rem; margin-bottom: 1.5rem; }
+
+/* ── Grafikler ─────────────────────────────────────────────────────────── */
+.grafik-sar { width: 100%; overflow-x: auto; min-width: 0; }
+.grafik-sar svg { display: block; width: 100%; height: auto; }
+
+/* ── Yardımcılar ───────────────────────────────────────────────────────── */
+.satir { display: flex; align-items: center; gap: .75rem; }
+/* Paket 38: satır içi style yerine belirteçli yardımcı (değişmez: inline style yok). */
+.satir--aralik-sm { gap: .5rem; }
+.satir-arasi { display: flex; align-items: center; justify-content: space-between; }
+.dikey-bosluk > * + * { margin-top: 1rem; }
+.metin-yesil { color: var(--basari); }
+.metin-kirmizi { color: var(--tehlike); }
+.metin-amber { color: var(--vurgu); }
+.metin-soluk { color: var(--metin-soluk); }
+.metin-kucuk { font-size: .75rem; }
+.mt-1 { margin-top: .5rem; } .mt-2 { margin-top: 1rem; } .mb-1 { margin-bottom: .5rem; } .mb-2 { margin-bottom: 1rem; }
+.gorunmez { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESMÎ BELGE YERLEŞİMİ VE YAZDIRMA — PLAN-2 Adım 1
+   Gider pusulası (VUK md.234) ve sonraki resmî belgeler bu deseni kullanır.
+   Sunucuda PDF üretimi YOK (ADR-0007): tarayıcının yazdırma motoru kullanılır,
+   "PDF olarak kaydet" seçeneği zaten oradadır.
+
+   ⚠ TEMADAN MUAF (UX-2 Faz A1 · Bertan KOŞUL 5): aşağıdaki `.belge*`
+   kuralları semantik belirteç KULLANMAZ. Kâğıt beyaz, mürekkep siyahtır;
+   karanlık temanın buraya sızması kâğıda siyah zemin bastırır.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.belge-sayfa { max-width: 800px; margin: 0 auto; }
+.belge-arac { display: flex; gap: .5rem; justify-content: space-between; margin-bottom: 1rem; }
+
+.belge {
+    background: #fff;
+    color: #111;
+    padding: 2rem;
+    border: 1px solid #e2e8f0;
+    border-radius: .5rem;
+    font-size: 10.5pt;
+    line-height: 1.5;
+}
+.belge h1 { font-size: 16pt; margin: 0; letter-spacing: .5px; }
+.belge h2 { font-size: 11pt; margin: 1.25rem 0 .4rem; padding-bottom: .2rem;
+            border-bottom: 1px solid #ddd; }
+.belge p { margin: .2rem 0; }
+
+.belge-ust { display: flex; justify-content: space-between; align-items: flex-start;
+             border-bottom: 2px solid #111; padding-bottom: .6rem; }
+.belge-no { text-align: right; }
+.belge-no .etiket { display: block; font-size: 8pt; color: #666; }
+.belge-dayanak { font-size: 9pt; color: #555; margin-top: .4rem; }
+
+.belge-taraflar { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem; }
+
+.belge-tablo { width: 100%; border-collapse: collapse; margin: .4rem 0; }
+.belge-tablo th, .belge-tablo td { padding: .35rem .5rem; border: 1px solid #ccc; }
+.belge-tablo th { background: #f5f5f5; font-size: 9pt; text-align: left; }
+.belge-toplam td { border-top: 2px solid #111; font-size: 11pt; }
+
+.belge-yazi { margin-top: .5rem; padding: .5rem; background: #fafafa; border-left: 3px solid #111; }
+.belge-yazi .etiket { font-size: 9pt; color: #666; }
+
+.belge-tarihler { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem; font-size: 9.5pt; }
+.belge-not { margin-top: 1rem; padding: .5rem; background: #fbf8f0;
+             border-left: 3px solid #c9a227; font-size: 9pt; }
+
+.belge-imza { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3rem; }
+.imza-cizgi { border-bottom: 1px solid #111; height: 2.5rem; }
+.belge-imza p { font-size: 9pt; color: #555; text-align: center; margin-top: .3rem; }
+
+/* ── PAKET P-17 (Y-6) — ortak A4 şablonunun ek kuralları ──────────────────
+   ⚠ Bu üç kural da YUKARIDAKİ kâğıt muafiyetinin içindedir (Bertan KOŞUL 5):
+     kâğıt beyaz, mürekkep siyahtır; karanlık tema kâğıda sızmaz. Muafiyet
+     dışındaki YENİ sınıflar (.yazdir-kutu, .pano-tablo) belirteç kullanır. */
+.belge-sag { text-align: right; }
+/* ⚠ HAM HEX YOK: bu iki kural mevcut kâğıt paletini YENİDEN TANIMLAMAZ.
+   Uyarı kutusu kendi metin rengini (currentColor) çerçeve yapar; hükümsüz
+   satır rengi DEĞİL TİPOGRAFİ ile işaretlenir — siyah-beyaz yazıcıda da
+   görünür kalır, ki asıl amaç budur. */
+.belge-uyari {
+    border: 2px solid currentColor;
+    font-weight: 700;
+    text-align: center;
+    padding: .4rem;
+    margin-bottom: .75rem;
+    letter-spacing: .5px;
+}
+.belge-satir-vurgu td { font-weight: 700; text-decoration: line-through; }
+
+/* ── BELGE 2 (sunum 14.10 · kurucu: "şu rapor hiç yakışıyor mu, adam gibi düzgün güzelce hazırla") ─────────
+   Etki: A4Belge (Cikti.razor tek rota) → satış/alış fişi, makbuz, ekstre… BÜTÜN belgeler aynı kalıba geçer.
+   Kâğıt muafiyeti korunur: belirteç yok, HAM HEX YOK — çizgi ve soluk yazı belgenin kendi mürekkebinden (currentColor) türer.
+   Yıldız şemasının genel başlık kuralları (h2 28 px, ağırlık 500 !important) kâğıda sızmasın diye başlıklar :not(#_) ve !important ile korunur. Sade kalıp: kutu/ızgara yok, ince yatay çizgiler, küçük büyük harf bölüm başlıkları, rakam sağda, toplam belirgin. */
+.belge { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums;
+         font-size: 10pt; line-height: 1.5; padding: 40px 44px; border-radius: 0; }
+.belge-ust { align-items: flex-end; border-bottom: 1px solid currentColor; padding-bottom: 14px; }
+.belge h1:not(#_) { font-size: 18pt; font-weight: 600 !important; letter-spacing: .06em; line-height: 1.2; }
+.belge-no .etiket { font-size: 7.5pt; letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, currentColor 62%, transparent); }
+.belge h2:not(#_) { margin: 24px 0 6px; padding: 0; border-bottom: 0; color: color-mix(in srgb, currentColor 62%, transparent);
+            font-size: 7.5pt; font-weight: 600 !important; letter-spacing: .16em; text-transform: uppercase; }
+.belge .belge-taraflar { gap: 48px; margin-top: 4px; }
+.belge-taraflar p { margin: 2px 0; }
+.belge-tablo { margin: 0; }
+.belge-tablo th, .belge-tablo td { padding: 8px 0 8px 16px; border: 0; border-bottom: 1px solid color-mix(in srgb, currentColor 16%, transparent); vertical-align: top; }
+.belge-tablo th:first-child, .belge-tablo td:first-child { padding-left: 0; }
+.belge-tablo th { background: none; border-bottom: 1px solid currentColor; color: color-mix(in srgb, currentColor 62%, transparent);
+                  font-size: 7.5pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.belge-toplam td { padding-top: 10px; border-top: 1px solid currentColor; border-bottom: 0; font-size: 12.5pt; font-weight: 700; }
+.belge .belge-tablo :is(th, td).belge-sag:not(#_) { text-align: right; }
+.belge-tarihler { margin-top: 18px; color: color-mix(in srgb, currentColor 70%, transparent); font-size: 8.5pt; }
+.belge .belge-imza { gap: 64px; margin-top: 64px; }
+.belge-imza p { margin-top: 6px; color: color-mix(in srgb, currentColor 62%, transparent); font-size: 8pt; letter-spacing: .12em; text-transform: uppercase; }
+@media print {
+    /* Yıldız kabuğunun üst şeridi (amblem, menü, kur, kullanıcı) kâğıda çıkmaz — eski kabukla aynı kural. */
+    .yildiz-ust, .yildiz-menu-dugme { display: none !important; }
+    .belge { padding: 0; }
+    /* A4 baskı genişliği (~720 px) dar ekran kırılımına (768) düşüyordu: taraflar ve imzalar alt alta diziliyordu. */
+    .belge .belge-taraflar:not(#_), .belge .belge-imza:not(#_) { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Kâr-zarar ekranı ─────────────────────────────────────────────────────── */
+.bolum-baslik { font-size: 1.05rem; font-weight: 600; margin: 1.75rem 0 .75rem; color: var(--metin-guclu); }
+.rozet-satir { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.uyari-kutu {
+    border-left: 4px solid var(--uyari-vurgu);
+    background: var(--uyari-yuzey);
+    padding: .9rem 1.1rem; border-radius: var(--yaricap-sm); margin: 1rem 0;
+}
+.uyari-kutu p { margin: .35rem 0 0; }
+/* TL'de kâr + gramda zarar: kuyumcunun görmesi gereken en kritik durum. */
+.uyari-kutu.uyari-kirmizi { border-left-color: var(--tehlike-vurgu); background: var(--tehlike-yuzey); }
+
+/* ── Ürün etiketleri (PLAN-2 Adım 5) ──────────────────────────────────────
+   Ekranda önizleme, kâğıtta kesilebilir etiket ızgarası. Etiket boyutu
+   50×30 mm: piyasadaki kuyumcu etiket ruloları ve A4 etiket sayfalarının
+   en yaygın ölçüsü. Ölçü mm cinsindendir; ekranda da aynı oranı korur.
+
+   ⚠ TEMADAN MUAF (Bertan KOŞUL 5) — bu blok semantik belirteç KULLANMAZ. */
+.urun-etiket-sayfa {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50mm, 1fr));
+    gap: 3mm;
+    margin-top: 1rem;
+}
+/* ⚠ Sınıf adı `urun-etiket`: `.etiket` kur bandında ve belgelerde "küçük
+   başlık" anlamında ZATEN kullanılıyor (bkz. .kur-bandi .etiket). Ürün
+   etiketi kurallarının oraya sızması 50×30 mm'lik kesikli kutular üretirdi. */
+.urun-etiket {
+    width: 50mm; height: 30mm;
+    border: 1px dashed #999;
+    padding: 1.5mm 2mm;
+    display: flex; flex-direction: column; justify-content: space-between;
+    background: #fff; color: #111;
+    font-size: 7pt; line-height: 1.15;
+    overflow: hidden;
+}
+.urun-etiket-ad { font-weight: 600; font-size: 8pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* md.11/(e) ibaresi: küçültülmez, soluklaştırılmaz — yönetmelik "açıkça" der. */
+/* Paket 20 — etikette maden + milyem ibaresi ("Platin 950"). Sabit renk YOK:
+   etiket yazdırma katmanı zaten siyah-beyazdır ve ölçüler pt/mm cinsindendir. */
+.urun-etiket-maden { font-size: 7pt; letter-spacing: .02em; opacity: .85; }
+.urun-etiket-ibare { font-weight: 700; font-size: 7pt; letter-spacing: .02em; border: 1px solid #111; padding: 0 1mm; align-self: flex-start; }
+.urun-etiket-satir { display: flex; justify-content: space-between; gap: 1mm; font-size: 6.5pt; }
+.urun-etiket-barkod { line-height: 0; }
+.urun-etiket-barkod svg { width: 100%; height: 8mm; }
+.urun-etiket-barkod-metin { font-family: ui-monospace, monospace; font-size: 6pt; text-align: center; letter-spacing: .08em; }
+.urun-etiket-kod { font-size: 6pt; text-align: right; color: #555; }
+
+@media print {
+    /* Uygulama kabuğu kâğıda çıkmaz: menü, kenar çubuğu, düğmeler. */
+    .kenar-cubugu, .ust-bar, .yazdirma-gizle, nav, .modal-arka { display: none !important; }
+
+    body, .ana-icerik, .belge-sayfa { margin: 0; padding: 0; max-width: none; background: #fff; }
+    .belge { border: none; padding: 0; }
+
+    @page { size: A4; margin: 15mm; }
+
+    /* Tablolar ve imza bloğu sayfa ortasından bölünmesin. */
+    .belge-tablo, .belge-imza, .belge-taraflar { page-break-inside: avoid; }
+    .belge h2 { page-break-after: avoid; }
+
+    /* Rozetler kâğıtta çerçeveyle görünsün (arka plan rengi basılmayabilir). */
+    .rozet { border: 1px solid #111; color: #111 !important; background: none !important; }
+
+    /* Etiket: kesim çizgisi kalmasın, etiket sayfa ortasından BÖLÜNMESİN. */
+    .urun-etiket { border: none; page-break-inside: avoid; break-inside: avoid; }
+    .urun-etiket-sayfa { gap: 0; grid-template-columns: repeat(4, 50mm); }
+    @page { size: A4; margin: 8mm; }
+}
+
+/* Tablo satırındaki eylem düğmeleri — dar ekranda alt satıra sarar,
+   böylece 4 düğme tabloyu yatay kaydırmaya zorlamaz. */
+.satir-eylemler { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+/* Kategori ağacı — iç içe liste, girinti seviyeyi anlatır. */
+.agac { list-style: none; margin: 0; padding: 0; }
+.agac .agac { margin: 0; }
+.agac-satir { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+              padding-block: .4rem; border-bottom: 1px solid var(--ayrac); }
+
+/* Ödeme bacağı satırı — dar ekranda alta sarar. */
+.bacak-satiri { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.bacak-satiri .secim { flex: 1 1 8rem; }
+.bacak-satiri .girdi { flex: 1 1 7rem; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DAR EKRAN TEMEL KATMANI — paket UX-2 Faz A1
+   Kapsam: ızgara kırılımı + modal genişliği + taşmayı tablonun İÇİNDE tutma.
+   ⚠ Kenar çubuğunun çekmeceye dönmesi (hamburger) BU FAZDA YOKTUR — DOM
+     eklemek gerekir ve Faz A1'in "sıfır DOM değişikliği" sözünü bozar
+     (Bertan KOŞUL 2). O iş Faz A2'dir; 375 px'te kenar çubuğu hâlâ 240 px
+     yer kaplar ve yatay kaydırma A2'ye kadar KAPANMAMIŞTIR.
+   ⚠ Ölçüm yeri (Aşkın K3): `.ana-icerik { overflow:auto }` yüzünden taşma
+     document'ta değil <main> içinde oluşur; `.icerik-sutunu`ndaki
+     `min-width:0` ve buradaki kurallar taşmayı kaydırılabilir kutulara
+     (`.tablo-sar`, `.grafik-sar`) hapseder.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+  .modal-panel { max-width: none; margin: 0 .75rem; }
+  .modal-baslik, .modal-govde { padding-left: 1rem; padding-right: 1rem; }
+  .kart-baslik, .kart-govde { padding-left: 1rem; padding-right: 1rem; }
+  .ana-icerik { padding: 1rem; }
+  .ust-bar { padding: .75rem 1rem; }
+  .belge-taraflar, .belge-imza { grid-template-columns: 1fr; }
+  .belge-imza { gap: 1.5rem; }
+  /* UX-1-C1 / QA turu 1+2: POS sekmeleri 375px'te 8 düğme olarak DİKEY yığılıp
+     sayfayı yatay taşırıyordu. Şerit artık kendi içinde YATAY kaydırılır;
+     düğmeler kırpılmaz, sayfa taşmaz. */
+  .sekme-serit {
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+    padding-bottom: var(--bosluk-1);
+  }
+  .sekme-serit .sekme { flex: 0 0 auto; white-space: nowrap; }
+}
+
+@media (max-width: 480px) {
+  .stat-izgara { grid-template-columns: 1fr; }
+  .sekme { padding: .5rem .75rem; }
+  .ana-icerik { padding: .75rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BELGE YÜKLEYİCİ — paket 4 Faz A.
+   ⚠ Sabit renk YOK: tüm renkler belirtecler.css üzerinden var() ile gelir
+     (UX-2 Faz A1 belirteç sistemi). Satır içi style kullanılmaz.
+   ⚠ Sınıf adları grep'lendi: mevcut `.belge-sayfa/-arac/-ust/-no/-dayanak/
+     -taraflar/-tablo/-imza` (gider pusulası çıktısı) ile ÇAKIŞMAZ.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.dosya-secici {
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap);
+  padding: var(--bosluk-3);
+  background: var(--yuzey-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--bosluk-2);
+}
+.dosya-secici h4 { margin: 0; font-size: var(--yazi-md); color: var(--metin-guclu); }
+.dosya-onizleme { margin: 0; font-size: var(--yazi-sm); color: var(--metin-soluk); }
+.dosya-listesi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--bosluk-1); }
+.dosya-satiri {
+  display: flex;
+  align-items: center;
+  gap: var(--bosluk-2);
+  flex-wrap: wrap;
+  padding: var(--bosluk-2);
+  border: 1px solid var(--kenar-yuzey);
+  border-radius: var(--yaricap-sm);
+  background: var(--yuzey);
+}
+.dosya-satiri .dosya-ad { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--metin-guclu); }
+.dosya-satiri .dosya-tur,
+.dosya-satiri .dosya-boyut { font-size: var(--yazi-sm); color: var(--metin-soluk); }
+
+/* ── Değişmez ipucu + gerekçe alanı (paket UX-1 Faz A) ─────────────────────
+   Sabit renk YOK — yalnız belirteçler (UX-2 Faz A1 belirtecler.css). */
+.degismez-ipucu {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+  padding: .6rem .75rem;
+  border: 1px solid var(--kenarlik);
+  border-left: 3px solid var(--uyari-vurgu);
+  border-radius: var(--yaricap-sm);
+  background: var(--yuzey-2);
+}
+.degismez-ipucu .degismez-kilit { line-height: 1.2; }
+.degismez-ipucu .degismez-govde { min-width: 0; }
+.degismez-ipucu .degismez-baslik {
+  margin: 0;
+  font-weight: 600;
+  color: var(--metin-guclu);
+}
+.degismez-ipucu .degismez-gerekce,
+.degismez-ipucu .degismez-alternatif {
+  margin: .25rem 0 0;
+  font-size: var(--yazi-sm);
+  color: var(--metin-soluk);
+  overflow-wrap: anywhere;
+}
+.gerekce-alani textarea { resize: vertical; }
+
+/* ═══ Bildirimler (paket 6 Faz A) ═══════════════════════════════════════════
+   Sabit renk YOKTUR; tümü mevcut tasarım belirteçlerinden okunur
+   (TasarimBelirtecTestleri sabit renk kullanımını yakalar). */
+.bant-uyari { background: var(--uyari-yuzey); border-color: var(--uyari-kenar); color: var(--uyari); }
+
+.bildirim-rozet {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .2rem .5rem; border-radius: var(--radius-md);
+  font-size: .8125rem; font-weight: 600; text-decoration: none;
+  background: var(--uyari-yuzey); color: var(--uyari);
+}
+.bildirim-rozet-kritik { background: var(--tehlike-yuzey); color: var(--tehlike); }
+.bildirim-rozet-hata   { background: var(--yuzey-3); color: var(--metin-soluk); }
+.bildirim-sayi { font-variant-numeric: tabular-nums; }
+
+.bildirim-kart { border-left: 3px solid var(--kenarlik); }
+.bildirim-kritik { border-left-color: var(--tehlike); }
+.bildirim-uyari  { border-left-color: var(--uyari); }
+.bildirim-bilgi  { border-left-color: var(--bilgi); }
+
+.dugme-benzeri {
+  display: inline-flex; align-items: center; padding: .375rem .75rem;
+  border-radius: var(--radius-md); border: 1px solid var(--kenarlik);
+  font-size: .875rem; text-decoration: none; color: var(--metin);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UX-2 FAZ A2 — CSP-TEMİZ BİLEŞEN ZIRHI
+   Kural: sabit renk YOK (yalnız var()), satır içi style YOK, yeni DOM id'si
+   yalnız EKLENİR. Bu blok hiçbir mevcut seçiciyi yeniden tanımlamaz.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Odak halkası: TEK kaynak (--odak-halka) ───────────────────────────────
+   Aşkın D koşulu: odak halkası tanımı olmayan etkileşim sınıfı kalmaz.
+   :focus-visible kullanılır → fare tıklamasında halka çizilmez, klavyede çizilir. */
+.btn:focus-visible,
+.secici-tetik:focus-visible,
+.dugme:focus-visible,
+.dugme-benzeri:focus-visible,
+.girdi:focus-visible,
+.secim:focus-visible,
+.sekme:focus-visible,
+.kenar-nav a:focus-visible,
+.dil-secici button:focus-visible,
+.mod-anahtar button:focus-visible,
+.kabuk-menu-dugme:focus-visible,
+.cekmece-kapat:focus-visible,
+.modal-kapat:focus-visible,
+.si-tetik:focus-visible,
+.si-girdi:focus-visible,
+.sayfa-basi-eylem button:focus-visible {
+  outline: var(--odak-halka-kalinlik) solid var(--odak-halka);
+  outline-offset: var(--odak-halka-boslugu);
+}
+
+/* ── Sayfa başı (SayfaBasi.razor) ──────────────────────────────────────────*/
+.sayfa-basi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--bosluk-3);
+  margin-bottom: var(--bosluk-4);
+}
+/* Başlık KENDİ satırında durur: filtreler onu sıkıştırıp satır kaydırmaz. */
+.sayfa-basi-metin { min-width: 0; flex: 1 1 100%; }
+.sayfa-basi-baslik { margin: 0; font-size: var(--yazi-xl); font-weight: var(--kalin); color: var(--metin-guclu); }
+.sayfa-basi-aciklama { margin: var(--bosluk-1) 0 0; font-size: var(--yazi-sm); color: var(--metin-soluk); }
+
+/* ═══ P-37 · ARAÇ ŞERİDİ DİSİPLİNİ — TEK YER ════════════════════════════════
+   Kurucu (21 Eylül 16:35): "sağda maden yazan yer ile yanında olması gereken
+   şey aynı hizada mı? Tüm projeyi adam gibi elden geçirsin front end."
+   ÖLÇÜLEN KÖK SEBEP: şeritteki çocuklar farklı YAPIDA — `Secici` görünür
+   etiket satırı taşır, `Arama` etiketi .gorsel-gizli'dir, eylem düğmesinin
+   etiketi hiç yoktur. `align-items: center` bunları ORTADAN hizalıyor, üst
+   kenarlar 20+px kayıyordu. ÇÖZÜM: etiketsiz her çocuk etiket satırı kadar
+   BOŞLUK alır, tüm kontroller TEK yüksekliğe sabitlenir.
+   ⚠ Bu blok DIŞINDA ekran başına hizalama CSS'i YAZILMAZ (SAYFA_BASI_DISI_DUZEN). */
+.sayfa-basi-filtre,
+.sayfa-basi-eylem {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bosluk-2);
+  align-items: flex-end;      /* ortadan değil ALTTAN: kontrol tabanları çakışır */
+  min-width: 0;
+}
+.sayfa-basi-filtre { flex: 1 1 auto; }
+.sayfa-basi-eylem  { flex: 0 0 auto; }
+
+/* Her filtre alanı: etiket ÜSTTE, kontrol ALTTA, ikisi TEK parça. */
+.sayfa-basi-filtre > * {
+  display: flex; flex-direction: column; justify-content: flex-end;
+  gap: var(--bosluk-1);
+  flex: 0 1 var(--arac-alan-genislik);
+  min-width: var(--arac-alan-genislik);
+  max-width: 100%;
+  margin: 0;
+}
+.sayfa-basi-filtre > .arama-kutu { flex: 2 1 var(--arac-arama-genislik); }
+
+/* Etiketi görünmeyen çocuk (arama kutusu) ve eylem düğmeleri, etiket satırı
+   kadar boşluk alır → ÜST KENARLAR EŞİT (ölçüm: rect.top farkı ≤ 2px). */
+.sayfa-basi-filtre > .arama-kutu { padding-top: var(--arac-etiket-bosluk); }
+.sayfa-basi-eylem { padding-top: var(--arac-etiket-bosluk); }
+
+/* Etiket TEK satır, KESİLMEZ (ölçüm: scrollWidth <= clientWidth). */
+.sayfa-basi-filtre .alan-etiket,
+.sayfa-basi-filtre .alan > label {
+  min-height: var(--arac-etiket-satir);
+  line-height: var(--arac-etiket-satir);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Tüm kontroller AYNI yükseklikte (ölçüm: rect.height farkı ≤ 2px). */
+.sayfa-basi-filtre .girdi,
+.sayfa-basi-filtre .secim,
+.sayfa-basi-filtre .secici-tetik,
+.sayfa-basi-eylem .btn,
+.sayfa-basi-eylem .dugme,
+.sayfa-basi-eylem button,
+.sayfa-basi-eylem > a {
+  min-height: var(--dokunma-hedefi);
+  height: var(--dokunma-hedefi);
+  box-sizing: border-box;
+}
+.sayfa-basi-eylem .btn,
+.sayfa-basi-eylem .dugme,
+.sayfa-basi-eylem button,
+.sayfa-basi-eylem > a { display: inline-flex; align-items: center; gap: var(--bosluk-2); }
+
+/* ═══ P-37c · AÇILIR PANEL SARMA ÖRTÜŞMESİ — KAPATILDI ══════════════════════
+   ÖNCEKİ ÖLÇÜLMÜŞ KUSUR (P-37 doğrulayıcısı): şerit TEK SATIRDAYKEN açık
+   panelin komşularla kesişimi 0'dı; şerit dar ekranda İKİNCİ SATIRA sardığında
+   mutlak konumlu panel alt satırın ÜSTÜNE biniyordu (1280px'te 5056 px²).
+
+   KÖK SEBEP: `position: absolute` panel AKIŞTAN ÇIKAR → şeridin sardığı ikinci
+   satır yukarıda kalır, panel onun üstünü kapatır. z-index bunu ÇÖZMEZ (panel
+   görünür olur ama altındaki kontrol TIKLANAMAZ ve okunamaz kalır).
+
+   ÇÖZÜM: araç şeridi İÇİNDE panel AKIŞTA kalır (`position: relative`). Panel
+   açılınca kendi sütununu uzatır, esnek satır büyür ve sarmış alt satır AŞAĞI
+   İTİLİR. Kesişim yapısal olarak 0'dır — ölçüme değil GEOMETRİYE dayanır.
+   `relative` seçildi (static değil): `.secici-perde` z-index 40'tır, panelin
+   z-index 41 alabilmesi için konumlanmış olması gerekir; aksi hâlde perde
+   panelin üstünü kapar ve seçenekler tıklanamaz.
+   ⚠ Bu kural YALNIZ araç şeridi kapsamındadır; şerit dışındaki seçicilerde
+     panel eskisi gibi mutlak konumludur (orada sarma sorunu yoktur).
+   Ölçüm: betikler/p37c-panel-olcum.js → 1280/1024/900/375 px'te kesisimAlani 0.
+   ═════════════════════════════════════════════════════════════════════════ */
+.sayfa-basi-filtre .secici-kap { position: relative; }
+.sayfa-basi-filtre .secici-liste-kap {
+  position: relative;
+  top: auto; left: auto; right: auto;
+  margin-top: var(--bosluk-1);
+  min-width: 100%; max-width: 100%;
+  z-index: 41;
+}
+/* Panel akışa girince şerit satırı UZAR. Varsayılan `align-items: flex-end`
+   bu durumda KOMŞULARI aşağı kaydırırdı (kontroller panel açılınca zıplardı).
+   Panel AÇIKKEN hizalama üstten yapılır: komşular YERİNDE kalır, yalnız panel
+   aşağı doğru büyür. Şerit çocuklarının yükseklikleri --arac-etiket-bosluk ile
+   zaten eşitlendiği için üstten hiza, alttan hiza ile aynı sonucu verir. */
+.sayfa-basi:has(.sayfa-basi-filtre .secici-liste-kap),
+.sayfa-basi-filtre:has(.secici-liste-kap) { align-items: flex-start; }
+
+@media (max-width: 640px) {
+  /* Dar ekranda alanlar alt alta; taşma 0 kalsın diye asgari genişlik düşer. */
+  .sayfa-basi-filtre > * { flex-basis: 100%; min-width: 0; }
+  .sayfa-basi-eylem { flex: 1 1 100%; padding-top: 0; }
+}
+
+/* ── Çekmece (Cekmece.razor · K6) ──────────────────────────────────────────*/
+.cekmece-arka {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / .45);
+  z-index: 40;
+}
+.cekmece {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: min(30rem, 100vw);
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--yuzey);
+  border-inline-start: 1px solid var(--ayrac);
+  box-shadow: var(--golge-yuksek);
+  z-index: 41;
+  transition: transform var(--gecis) var(--egri-cikis);
+}
+.cekmece-bas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bosluk-2);
+  padding: var(--bosluk-3) var(--bosluk-4);
+  border-bottom: 1px solid var(--ayrac);
+}
+.cekmece-bas h2 { margin: 0; font-size: var(--yazi-lg); font-weight: var(--kalin); color: var(--metin-guclu); }
+.cekmece-kapat {
+  background: none; border: none; cursor: pointer;
+  font-size: var(--yazi-2xl); line-height: 1; color: var(--metin-soluk);
+  min-width: var(--dokunma-hedefi); min-height: var(--dokunma-hedefi);
+}
+.cekmece-govde { flex: 1; overflow: auto; padding: var(--bosluk-4); min-width: 0; }
+.cekmece-alt {
+  display: flex; flex-wrap: wrap; gap: var(--bosluk-2); align-items: center;
+  padding: var(--bosluk-3) var(--bosluk-4);
+  border-top: 1px solid var(--ayrac);
+  background: var(--yuzey-2);
+}
+.cekmece-kilit-sebep { font-size: var(--yazi-sm); color: var(--metin-soluk); }
+@media (max-width: 768px) { .cekmece { width: 100vw; } }
+@media (prefers-reduced-motion: reduce) { .cekmece { transition: none; } }
+
+/* ── Satır içi düzenleme (SatirIciDuzenle.razor) ───────────────────────────*/
+.satir-ici { display: inline-flex; align-items: center; gap: var(--bosluk-1); flex-wrap: wrap; min-width: 0; }
+.si-tetik {
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: var(--yaricap-sm);
+  padding: var(--bosluk-1) var(--bosluk-2);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+  min-height: var(--dokunma-hedefi);
+}
+.si-tetik:hover { border-color: var(--kenarlik); background: var(--yuzey-2); }
+.si-girdi { max-width: 12rem; }
+.si-hata { font-size: var(--yazi-xs); color: var(--tehlike); }
+.si-bekliyor { font-size: var(--yazi-xs); color: var(--metin-soluk); }
+[data-duzenlenebilir="true"] { cursor: pointer; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KABUK — DAR EKRAN (≤768px): kenar çubuğu ÇEKMECEYE döner
+   QA turu 1: 27 rotanın HEPSİNDE 375px'te yatay taşma (scrollWidth 499–1000).
+   Sebebi tek: .uygulama{display:flex} + .kenar-cubugu{width:240px} 375px'te
+   içeriği 240px sağa itiyordu. Tek düzeltme 27 sayfayı birden kurtarır.
+   ⚠ DOM id'leri korunur; yalnız #ust-menu-ac ve #kenar-ortu EKLENİR.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kabuk-menu-dugme { display: none; }
+
+@media (max-width: 768px) {
+  .kabuk-menu-dugme {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--dokunma-hedefi);
+    min-height: var(--dokunma-hedefi);
+    margin-inline-end: var(--bosluk-2);
+    border: 1px solid var(--kenarlik);
+    border-radius: var(--yaricap-sm);
+    background: var(--yuzey);
+    color: var(--metin);
+    font-size: var(--yazi-lg);
+    cursor: pointer;
+  }
+  .uygulama { display: block; }
+  .kenar-cubugu {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 51;
+    transform: translateX(-100%);
+    transition: transform var(--gecis) var(--egri-cikis);
+  }
+  .uygulama.menu-acik .kenar-cubugu { transform: translateX(0); }
+  .kenar-ortu { position: fixed; inset: 0; z-index: 50; border: none; background: rgb(15 23 42 / .45); }
+  .icerik-sutunu { width: 100%; min-width: 0; }
+  .ana-icerik { padding: var(--bosluk-3); }
+  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+  .veri-tablosu { min-width: max-content; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kenar-cubugu { transition: none; }
+}
+
+/* ═══ paket UX-1-C2 — satır içi style'ın yerini alan sınıflar ═══════════════
+   Sabit renk YOK, belirteç var(); 4px boşluk ritmi (--bosluk-*). */
+.liste-satiri { padding: var(--bosluk-2) 0; border-bottom: 1px solid var(--ayrac); }
+.liste-satiri:last-child { border-bottom: 0; }
+.kart-eylem { width: 100%; margin-top: var(--bosluk-2); }
+.ozet-kutu { background: var(--yuzey-2); border-radius: var(--radius-md); padding: var(--bosluk-3); }
+/* P-18 (B-32): ham palet (--amber-50/200) TEMAYLA DEĞİŞMEZ; uyarı ailesinin
+   semantik belirteçlerine bağlandı. Sınıf adı korundu (çağıranlar değişmesin). */
+.ozet-kutu--amber { background: var(--uyari-yuzey); border: 1px solid var(--uyari-kenar); padding: var(--bosluk-4); }
+.kir-uzun { overflow-wrap: anywhere; }
+.satir--aralik-xs { gap: var(--bosluk-1); }
+.metin-mavi { color: var(--bilgi); }
+
+/* ═══ paket UX-5 — ikon seti (emoji yerine yerel inline SVG sprite) ═════════
+   Kaynak: wwwroot/img/ikon.svg (Lucide 1.47.0, ISC). Sabit renk YOK: ikon
+   currentColor ile içinde bulunduğu metnin rengini alır → karanlık temada
+   ayrı kural GEREKMEZ, kontrast metinle birlikte sağlanır.
+   Boyut em tabanlıdır: ikon yanındaki yazıyla birlikte büyür/küçülür. */
+.ikon {
+  width: 1.25em; height: 1.25em;
+  flex: 0 0 auto;
+  vertical-align: -.2em;
+  stroke: currentColor; fill: none;
+}
+.ikon-buyuk { width: var(--bosluk-6); height: var(--bosluk-6); }
+
+
+/* Boş durumdaki büyük ikon: eski 2.25rem emoji yerine belirteçli ölçü. */
+.bos-durum .ikon { width: var(--bosluk-6); height: var(--bosluk-6); margin-bottom: var(--bosluk-2); }
+
+/* KÂĞIT (UX-2 kâğıt muafiyeti): ikon çizgiseldir, arka plan değildir —
+   "arka planları basma" ayarı açıkken bile görünür. Yine de rengi kâğıtta
+   tema belirtecine değil metnin kendi rengine bırakıyoruz. */
+@media print {
+  .ikon { stroke: currentColor; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ═══ UX-3 Faz B — basit modda POS adım şeridi ═══════════════════════════════
+   Sabit renk YOKTUR: yalnız belirtecler.css'teki var() belirteçleri kullanılır,
+   böylece karanlık kip ayrı bir kural yazmadan doğru çalışır. */
+.basit-akis {
+    display: flex;
+    flex-direction: column;
+    gap: var(--bosluk-2);
+    margin-bottom: var(--bosluk-3);
+}
+
+.adim-serit {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--bosluk-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.adim-serit .adim {
+    display: flex;
+    align-items: center;
+    gap: var(--bosluk-2);
+    padding: var(--bosluk-2) var(--bosluk-3);
+    border: 1px solid var(--kenar-yuzey);
+    border-radius: var(--yaricap-lg);
+    background: var(--yuzey-2);
+    color: var(--metin-soluk);
+    font-size: var(--yazi-sm);
+}
+
+.adim-serit .adim-no {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--yaricap-tam);
+    background: var(--yuzey-3);
+    color: var(--metin);
+    font-weight: var(--kalin-orta);
+}
+
+.adim-serit .adim-aktif {
+    border-color: var(--vurgu-kenar);
+    background: var(--vurgu-yuzey);
+    color: var(--vurgu-guclu);
+    font-weight: var(--kalin-orta);
+}
+
+.adim-serit .adim-aktif .adim-no {
+    background: var(--vurgu);
+    color: var(--vurgu-metin);
+}
+
+.adim-serit .adim-bitti {
+    border-color: var(--basari-kenar);
+    background: var(--basari-yuzey);
+    color: var(--basari-vurgu);
+}
+
+@media (max-width: 768px) {
+    .adim-serit {
+        gap: var(--bosluk-1);
+    }
+
+    .adim-serit .adim {
+        padding: var(--bosluk-1) var(--bosluk-2);
+        font-size: var(--yazi-xs);
+    }
+}
+
+/* ── DP4-03 — hurda alışta satıcı kimliği alan kümesi ──────────────────────
+   Renkler SABİT DEĞİL, belirteçlerden okunur; karanlık tema :root belirteçleri
+   üzerinden otomatik gelir. */
+.alan-kume {
+  border: 1px solid var(--kenarlik); border-radius: var(--radius-md);
+  padding: var(--bosluk-3); margin-top: var(--bosluk-3); background: var(--yuzey);
+}
+.alan-kume > legend { font-size: .8125rem; font-weight: 600; padding: 0 var(--bosluk-2); }
+
+/* ── QA turu 5 (YÜKSEK) — yatayda kayan matriste ROL sütunu donuk kalır ──────
+   /yetkiler: bir onay kutusuna tıklandığında tarayıcı odaklanan hücreyi görünür
+   kılmak için kabı sağa kaydırıyor (scrollLeft 252) ve satırın HANGİ ROLE ait
+   olduğu ekrandan çıkıyordu. İlk sütun (başlık hücresi dâhil) yapışkan yapılır.
+   Renk SABİT DEĞİL, belirteçten gelir; aydınlık/karanlık tema kendiliğinden
+   doğru çalışır. */
+.tablo-yapiskan-ilk th:first-child,
+.tablo-yapiskan-ilk td:first-child {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--yuzey);
+  box-shadow: 1px 0 0 0 var(--ayrac);
+}
+.tablo-yapiskan-ilk thead th:first-child { z-index: 3; background: var(--yuzey-2); }
+.tablo-yapiskan-ilk tbody tr.satir-vurgu td:first-child { background: var(--vurgu-yuzey); }
+
+/* ── PAKET P-10 (Y-8) — ÜRÜN GÖRSEL GALERİSİ ─────────────────────────────────
+   Sabit renk YOK: her değer belirteçten (var()) gelir; satır içi style yoktur.
+   375 px mobil genişlikte tek sütuna düşmez, yatay şerit olarak kaydırılır. */
+.gorsel-galerisi {
+  border: 1px solid var(--kenar-yuzey);
+  border-radius: var(--yaricap-sm);
+  padding: var(--bosluk-3);
+  background: var(--yuzey-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--bosluk-2);
+}
+.gorsel-galerisi h4 { margin: 0; font-size: var(--yazi-md); color: var(--metin-guclu); }
+.gorsel-serit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--bosluk-2);
+}
+.gorsel-kare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bosluk-1);
+  width: 8rem;
+  max-width: 100%;
+}
+.gorsel-resim {
+  width: 100%;
+  height: 8rem;
+  object-fit: contain;
+  border: 1px solid var(--kenar-yuzey);
+  border-radius: var(--yaricap-sm);
+  background: var(--yuzey);
+}
+.gorsel-ad {
+  font-size: var(--yazi-sm);
+  color: var(--metin-soluk);
+  overflow-wrap: anywhere;
+}
+/* Liste satırındaki küçük kapak görseli (ürün tablosu "Görsel" sütunu). */
+.gorsel-kucuk {
+  width: 3rem;
+  height: 3rem;
+  object-fit: contain;
+  border: 1px solid var(--kenar-yuzey);
+  border-radius: var(--yaricap-sm);
+  background: var(--yuzey);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   PAKET P-15 — KABUK: GENEL ARAMA · KOMUT PALETİ · ŞUBE SEÇİCİ · KAYIT SEÇİCİ
+   Kural: yeni CSS'te SABİT RENK YOK — yalnız belirteç var(); satır içi style
+   yok. Ölçüler var(--bosluk-*) / var(--yaricap*) belirteçlerinden gelir.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.kabuk-arama { position: relative; }
+
+.kabuk-arama-dugme {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--bosluk-2);
+  padding: var(--bosluk-2) var(--bosluk-3);
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap-sm);
+  background: var(--yuzey-2);
+  color: var(--metin);
+  cursor: pointer;
+}
+
+.kabuk-arama-paneli {
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(100% + var(--bosluk-2));
+  z-index: 40;
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--bosluk-3);
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap-md, var(--yaricap));
+  background: var(--yuzey);
+}
+
+.kabuk-arama-ust { display: flex; gap: var(--bosluk-2); align-items: center; }
+.kabuk-arama-ust .girdi { flex: 1 1 auto; }
+
+.kabuk-arama-baslik {
+  margin: var(--bosluk-3) 0 var(--bosluk-1);
+  font-size: .8125rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--metin-soluk);
+}
+
+/* ── Kayıt seçici ───────────────────────────────────────────────────────── */
+
+.kayit-secici { display: flex; flex-direction: column; gap: var(--bosluk-2); }
+
+.secici-arama { display: flex; gap: var(--bosluk-2); align-items: center; }
+.secici-arama .girdi { flex: 1 1 auto; min-width: 0; }
+
+.secici-secili {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bosluk-2);
+  padding: var(--bosluk-2);
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap-sm);
+  background: var(--yuzey-2);
+}
+
+.secici-sonuclar { list-style: none; margin: 0; padding: 0; }
+
+.secici-sonuc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bosluk-2);
+  width: 100%;
+  padding: var(--bosluk-2);
+  border: 0;
+  border-bottom: 1px solid var(--kenarlik);
+  background: transparent;
+  color: var(--metin);
+  text-align: start;
+  cursor: pointer;
+}
+
+.secici-sonuc:hover, .secici-sonuc:focus-visible { background: var(--yuzey-3); }
+
+.secici-ad { font-weight: 600; overflow-wrap: anywhere; }
+
+/* ── Şube seçici ────────────────────────────────────────────────────────── */
+
+.sube-secici { display: inline-flex; align-items: center; gap: var(--bosluk-2); }
+.sube-secici .etiket { color: var(--metin-soluk); }
+.sube-sabit { font-weight: 600; }
+.secim-kucuk { padding: var(--bosluk-1) var(--bosluk-2); font-size: .875rem; }
+
+/* Uyarı metni — rozet değil, satır içi not (sınıra değildi vb.). */
+.metin-uyari { color: var(--sari-700); }
+
+/* 375 px: palet tam genişlik, şube seçici alta iner. */
+@media (max-width: 480px) {
+  .kabuk-arama-paneli { width: calc(100vw - 2rem); }
+  .kabuk-arama-dugme span { display: none; }
+}
+
+/* ── PAKET P-16 (Y-4) — fiş iskontosu satırı ───────────────────────────────
+   Satır içi style YASAK (denetim.sh SATIR_ICI_STYLE cırcırı): hizalama ve
+   genişlik belirteçlere bağlı sınıflardan gelir, sabit renk yoktur. */
+.satir--alt-hizali { align-items: flex-end; }
+.alan--dar         { width: 11rem; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-18 (B-9 · B-30 · B-32) — MOBİL PARİTE · TEMA BELİRTEÇLERİ · STICKY
+   ───────────────────────────────────────────────────────────────────────────
+   ÖLÇÜLDÜ (2026-09-21, gerçek Chrome/CDP, 375×812, 44/44 rota tek tek):
+   TÜM rotalar 565-814 px `document.scrollWidth` veriyordu. Suçlu TABLOLAR
+   DEĞİL (onlar zaten `.tablo-sar` içinde hapsedilmişti) — suçlu ÜST BARDI:
+   `.ust-bar{display:flex}` + `.ust-sag`/`.sube-secici`/`.kabuk-arama`
+   sarmıyordu, `h1` küçülmüyordu; min-content genişliği 580-630 px'e çıkıyordu.
+   Bu yüzden düzeltme sayfa sayfa değil KABUK düzeyindedir: tek blok 44 rotayı
+   birden kurtarır (PLAN § 1 md.1 "mekanizma önce").
+   ⚠ Sabit renk YOK: her değer belirteçten (var()) gelir; satır içi style yok.
+   ⚠ `overflow-x:hidden` ile TAŞMA GİZLENMEZ (Anayasa md.1): içerik sarar ya da
+     kendi kaydırılabilir kutusunda kalır.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── B-9 · KABUK: üst bar dar ekranda sarar ────────────────────────────────
+   Geniş ekran görünümü DEĞİŞMEZ; kurallar yalnız ≤768 px'te devreye girer. */
+@media (max-width: 768px) {
+  .ust-bar { flex-wrap: wrap; gap: var(--bosluk-2); justify-content: flex-start; }
+  .ust-bar h1 { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; font-size: var(--yazi-lg); }
+  .kabuk-arama, .sube-secici, .ust-sag { min-width: 0; }
+  .ust-sag { flex-wrap: wrap; justify-content: flex-start; row-gap: var(--bosluk-2); }
+  .sube-secici { flex-wrap: wrap; row-gap: var(--bosluk-1); max-width: 100%; }
+  .sube-secici .secim { max-width: 100%; }
+  .mod-anahtar { flex-wrap: wrap; }
+  /* Kenar çubuğu çekmecesi 375 px'te ekranı taşırmasın (P-15 çekmecesi). */
+  .kenar-cubugu { max-width: 88vw; }
+}
+
+/* 375 px: mod anahtarı ve arama düğmesi metinsiz (ikon + title) çalışır. */
+@media (max-width: 480px) {
+  .mod-anahtar button { font-size: var(--yazi-xs); padding: var(--bosluk-1) var(--bosluk-1); }
+  .sube-secici > .etiket { flex: 1 1 100%; }
+}
+
+/* ── B-9 · KartListe sarmalayıcısı (Bilesenler/KartListe.razor) ────────────
+   Veri tablosunun TEK sarmalayıcısı. `.tablo-sar`ı içerir, kaydırılabilir
+   bölgeyi klavyeyle erişilebilir kılar ve "yatay kaydırılabilir" ipucunu
+   YALNIZ gerçekten kaydırılabilir dar ekranda gösterir (UX-S29: sessiz
+   kırpma yok, sınır ekranda söylenir). */
+.kart-liste { display: block; min-width: 0; }
+.kart-liste > .tablo-sar:focus-visible {
+  outline: var(--odak-halka-kalinlik) solid var(--odak-halka);
+  outline-offset: var(--odak-halka-boslugu);
+}
+.kart-liste-ipucu {
+  display: none; margin: var(--bosluk-1) 0 0;
+  font-size: var(--yazi-xs); color: var(--metin-soluk);
+}
+@media (max-width: 768px) {
+  .kart-liste-ipucu { display: block; }
+}
+
+/* ── B-30 · /yetkiler ROL sütunu yapışkan (mekanizma: .tablo-yapiskan-ilk) ──
+   Kural gövdesi yukarıda (QA turu 5 bloğu) tanımlıdır; P-18 onu KartListe
+   üzerinden sözleşmeye bağlar ve karanlık temada da belirteçten besler. */
+.kart-liste--yapiskan > .tablo-sar > .veri-tablosu th:first-child,
+.kart-liste--yapiskan > .tablo-sar > .veri-tablosu td:first-child {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--yuzey);
+  box-shadow: 1px 0 0 0 var(--ayrac);
+}
+.kart-liste--yapiskan > .tablo-sar > .veri-tablosu thead th:first-child {
+  z-index: 3; background: var(--yuzey-2);
+}
+
+/* ── B-32 · karanlık temada vurgu HAM PALETTEN değil BELİRTEÇTEN gelir ─────
+   `.ozet-kutu--amber` --amber-50/--amber-200 kullanıyordu; ham palet temayla
+   DEĞİŞMEZ, bu yüzden karanlık temada açık sarı zemin üstüne açık metin
+   düşüyordu (okunamıyordu). Uyarı ailesinin semantik belirteçlerine bağlandı.
+   Sınıf adı KORUNDU (çağıran sayfalar değişmesin). */
+/* (Kural gövdesi yukarıda, .ozet-kutu ailesinin yanında düzeltildi — ikinci
+   bir tanım bırakılmadı; tek kaynak ilkesi.) */
+
+/* MASAK bilgi kutusu — satır içi style'ın yerini alır (sabit/ham renk yok). */
+.kart--masak { border-left: 4px solid var(--uyari-vurgu); background: var(--uyari-yuzey); }
+
+/* Yaşlandırma sütunları (/raporlar) — satır içi `color:#…` yerine belirteç.
+   Renk TEK BAŞINA anlam taşımaz: sütun başlığı dilimi zaten yazar. */
+.yas-0-30  { color: var(--basari); }
+.yas-31-60 { color: var(--uyari); }
+.yas-61-90 { color: var(--vurgu); }
+.yas-90-usta { color: var(--tehlike); }
+
+/* Pasta grafik lejantı — satır içi style yerine sınıf. */
+.grafik-lejant { display: flex; flex-wrap: wrap; gap: var(--bosluk-2) var(--bosluk-4); justify-content: center; margin-top: var(--bosluk-2); }
+.grafik-lejant-oge { display: inline-flex; align-items: center; gap: var(--bosluk-1); font-size: var(--yazi-xs); color: var(--metin-soluk); }
+.grafik-lejant-kutu { width: 10px; height: 10px; border-radius: 2px; }
+
+/* Soluk zeminli özet kartı — satır içi `background:var(--slate-50)` yerine.
+   Ham palet değil semantik belirteç: karanlık temada da doğru okunur. */
+.kart--soluk { background: var(--yuzey-2); }
+
+/* Pasta grafik SVG'si — satır içi style yerine sınıf. */
+.grafik-pasta { max-width: 220px; margin: 0 auto; display: block; }
+
+/* ── B-9 · kaydırma kutusu MUTLAK KONUMLU torununu da hapseder ─────────────
+   ÖLÇÜLDÜ: `/isletme` 412 px taşıyordu. Sebep `.gorunmez` (ekran okuyucu
+   metni, `position:absolute`): `.tablo-sar` KONUMSUZ olduğu için onun
+   kapsayıcı bloğu değildi ve öğe `overflow` kırpmasından KAÇIYORDU.
+   `position:relative` kutuyu kapsayıcı blok yapar — taşma gizlenmez,
+   gerçekten kutunun içinde kalır. */
+.tablo-sar { position: relative; }
+
+/* ── PAKET P-20 (Y-10) — hurda bakiye kartı ─────────────────────────────────
+   Tıklanabilir bakiye kutusu bir <button>'dır (UX-S23: sayı, kayda götürür).
+   Burada YALNIZ yerleşim vardır: renk/kenarlık .dugme-ikincil'den, yani
+   belirteçlerden (var(--yuzey), var(--kenarlik)) gelir — sabit renk YOKTUR. */
+.hurda-bakiye-kart {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .25rem;
+  text-align: left;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   P-36 — GÖRSEL DİL + KULLANICI DOSTU EŞİĞİ (frontend şeridi, 2026-09-21)
+   Kural: sabit renk/px YOK, yalnız var(); satır içi style YOK.
+   Bu blok yalnız ÖLÇÜLMÜŞ dört kök nedeni kapatır ve ortak Secici'yi giydirir.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1) MOBİL TAŞMA — ölçülmüş kök neden (FRONTEND-SARTNAME § 7) ───────────
+   375px'te 6 ekranda yatay taşma vardı; BEŞİ iki satır yardımcısından:
+   `.satir` ve `.satir-arasi` flex-wrap TAŞIMIYORDU (diğer tüm satır
+   yardımcıları taşıyor). Taşma `document`ta değil `main.ana-icerik` içinde
+   birikiyordu (app.css:122 overflow:auto) — ölçüm yeri budur. */
+.satir       { flex-wrap: wrap; min-width: 0; }
+.satir-arasi { flex-wrap: wrap; min-width: 0; }
+/* /islemler: sekme şeridinin ata zincirinde min-width:0 yoktu → 104px taşma. */
+.sekme-serit { min-width: 0; max-width: 100%; }
+
+/* ── 2) MODAL: KAYDIRMA YALNIZ GÖVDEDE (FRONTEND-POPUP § kök neden) ────────
+   `.modal-panel` kaydırma kabının KENDİSİYDİ (max-height:90vh; overflow-y:auto)
+   → başlık ve düğmeler içerikle birlikte kayıyordu; Yeni Ürün @375'te 731px
+   pencerede 2760px içerik = +2029px taşma. DOĞRU DESEN ZATEN KODDA: Cekmece
+   (app.css:757 `.cekmece-govde{flex:1;overflow:auto}`). Modal aynı desene
+   çevrildi — tek düzeltme 55 pencereyi birden düzeltir.
+   MODAL_GOVDE_DISI_KAYDIRMA = 0 sayacının CSS karşılığı budur. */
+.modal-panel {
+  display: flex; flex-direction: column;
+  overflow: hidden;              /* ← kaydırma kabı ARTIK panel DEĞİL */
+  overflow-x: hidden;            /* yatay çubuk da buradan doğuyordu */
+}
+.modal-govde { flex: 1 1 auto; overflow: auto; min-width: 0; overscroll-behavior: contain; }
+/* URUN-FORM-2: tarayıcının kendi odak kaydırması da alt şeridi hesaba katsın (tüm pencereler);
+   hata anında açıklama ipucu gizlenir — alan altında yalnız hata cümlesi kalır. */
+.modal-govde { scroll-padding-bottom: var(--bosluk-4, 1rem); }
+.modal-panel .alan-hatali .alan-ipucu { display: none; }
+/* TOPLU-7B (GOC-A devri "aynı hata metni iki kez"): kural TEK yerde ve HER kapta — çekmece, sayfa içi form,
+   sekme paneli: hata anında gri açıklama ipucu gizlenir, alan altında yalnız hata cümlesi kalır
+   (ortak AlanKabugu; ekran ekran yama yok). Hata düzelince ipucu geri gelir. */
+.alan-hatali .alan-ipucu { display: none; }
+.modal-baslik { flex: 0 0 auto; }
+/* Sabit düğme şeridi: Kaydet/İptal artık açılışta GİZLENMEZ. */
+.modal-alt {
+  flex: 0 0 auto;
+  display: flex; flex-wrap: wrap; gap: var(--bosluk-2); align-items: center;
+  padding: var(--bosluk-3) var(--bosluk-4);
+  border-top: 1px solid var(--ayrac);
+  background: var(--yuzey-2);
+}
+
+/* ── 3) ORTAK SEÇİM BİLEŞENİ (kurucu talimatı 19) ──────────────────────────
+   Yerleşik <select> açılır listesi CSS ile biçimlendirilemez; özel bileşenin
+   TÜM görsel değerleri buradadır ki "tek seferde değiştiririz" şartı tutsun. */
+/* ⚠ P-39 · K2 (canlı ölçüm artığı): `Secici` kendi kabuğunu çizer
+   (`.secici-alan` = etiket + `.secici-kap`), yani AlanKabugu'nun YANINDA
+   İKİNCİ bir alan hücresi ailesi vardır. Hizayı bozan da buydu: ölçümde
+   /emanet satırında arama kutusu 44 px, seçici hücresi 65 px yükseklikte ve
+   10,5 px kaymış çıkıyordu (4 genişlikte de). Aile AYNI ÜÇ RAYA oturur —
+   düzeltme yine tek yerde, ekran başına CSS yok. */
+.secici-alan { display: grid; grid-template-rows: auto auto auto; row-gap: var(--bosluk-1, .25rem); min-width: 0; }
+.secici-kap  { position: relative; min-width: 0; }
+.secici-tetik {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--bosluk-2);
+  width: 100%; min-height: var(--dokunma-hedefi);
+  padding: var(--bosluk-2) var(--bosluk-3);
+  background: var(--yuzey); color: var(--metin);
+  border: 1px solid var(--kenarlik); border-radius: var(--yaricap);
+  font-size: var(--yazi-md); text-align: left; cursor: pointer;
+}
+.secici-tetik:hover:not(:disabled) { background: var(--yuzey-2); }
+.secici-tetik.acik   { border-color: var(--vurgu); }
+.secici-tetik.acik .secici-ok { transform: rotate(180deg); }
+.secici-tetik.hatali { border-color: var(--tehlike); }
+.secici-tetik:disabled { opacity: .6; cursor: not-allowed; }
+.secici-metin { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.secici-metin.yer-tutucu { color: var(--metin-soluk); }
+.secici-ok { color: var(--metin-soluk); flex: 0 0 auto; }
+/* Dışarı tıklama perdesi: modal katmanının ALTINDA kalır. */
+.secici-perde { position: fixed; inset: 0; z-index: 40; background: transparent; }
+.secici-liste-kap {
+  position: absolute; top: calc(100% + var(--bosluk-1, .25rem)); left: 0; z-index: 41;
+  min-width: 100%; max-width: 150%;
+  background: var(--yuzey); border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap); box-shadow: var(--golge-lg);
+}
+.secici-ara-sar { padding: var(--bosluk-2); border-bottom: 1px solid var(--ayrac); }
+.secici-ara { width: 100%; min-height: var(--dokunma-hedefi); }
+.secici-liste {
+  list-style: none; margin: 0; padding: 0;
+  max-height: 20rem;                     /* § 6.9: ~320px, sonrası liste İÇİNDE kayar */
+  overflow: auto; overscroll-behavior: contain;   /* sayfa kaymaz */
+}
+.secici-secenek {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  min-height: var(--dokunma-hedefi);
+  padding: var(--bosluk-2) var(--bosluk-3);
+  cursor: pointer; border-bottom: 1px solid var(--ayrac);
+}
+.secici-secenek:last-child { border-bottom: none; }
+.secici-secenek:hover  { background: var(--yuzey-2); }
+.secici-secenek.etkin  { background: var(--yuzey-3); }
+.secici-secenek.secili { background: var(--vurgu-yuzey); color: var(--vurgu); }
+.secici-secenek.pasif  { opacity: .6; cursor: not-allowed; }
+.secici-isaret { flex: 0 0 auto; width: 1em; }   /* yalnız renkle anlatılmaz: ✓ */
+.secici-ad  { display: flex; flex-direction: column; min-width: 0; }
+.secici-alt { font-size: var(--yazi-sm); color: var(--metin-soluk); }
+.secici-rozet { margin-left: auto; font-size: var(--yazi-sm); color: var(--metin-soluk); }
+.secici-bos, .secici-sinir {
+  padding: var(--bosluk-3); margin: 0;
+  font-size: var(--yazi-sm); color: var(--metin-soluk);
+}
+.secici-kilit-sebep { font-size: var(--yazi-sm); color: var(--metin-soluk); }
+/* Dar ekran: liste tetikleyiciden taşmasın (tam ekran katman P-37'ye devredildi). */
+@media (max-width: 768px) {
+  .secici-liste-kap { max-width: 100%; }
+  .secici-secenek   { min-height: 3rem; }
+}
+
+/* P-36 ek: seçici oku CSS ile çizilir (çıplak sembol/emoji YOK — denetim.sh
+   "Layout+Bilesenler emoji ikon = 0" kuralı). Renk belirteçten gelir. */
+.secici-ok {
+  width: 0; height: 0;
+  border-left: .3rem solid transparent; border-right: .3rem solid transparent;
+  border-top: .35rem solid currentColor;
+  transition: transform .15s ease;
+}
+.secici-isaret.secili-isaret { color: var(--vurgu); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-37 — MENÜ ARAMASI · FAVORİLER · GRUP İÇİ SIRALAMA · KARŞILAMA EKRANI
+   Kurucu talimatı 20 (21 Eylül). Sabit renk YOK, satır içi style YOK: her değer
+   belirtecler.css'teki belirteçten gelir.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── Menü araması: kutu her zaman görünür, menünün EN ÜSTÜNDE ────────────── */
+.menu-arama {
+  padding: var(--bosluk-3);
+  border-bottom: 1px solid var(--kenar-ayrac);
+  position: relative;
+}
+.menu-arama-etiket {
+  display: block;
+  font-size: var(--yazi-xs);
+  color: var(--kenar-metin);
+  margin-bottom: var(--bosluk-1);
+}
+/* P-37 revizyon: TEK PARÇA alan — çerçeve satırın kendisindedir, girdi
+   çerçevesizdir; ikon solda, kısayol/temizle sağda, hepsi AYNI kutunun içinde. */
+.menu-arama-satir {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  min-height: var(--dokunma-hedefi);
+  padding: 0 var(--bosluk-2);
+  background: var(--kenar-yuzey-2, var(--yuzey));
+  border: 1px solid var(--kenar-ayrac);
+  border-radius: var(--yaricap);
+}
+.menu-arama-satir:focus-within {
+  border-color: var(--vurgu);
+  outline: var(--odak-halka-kalinlik) solid var(--odak-halka);
+  outline-offset: var(--odak-halka-boslugu);
+}
+.menu-arama-ikon { flex: 0 0 auto; color: var(--kenar-metin); display: inline-flex; }
+/* Girdi, yer tutucusu KESİLMEYECEK kadar geniş kalır: rozet ve ikon
+   sıkıştırılamaz alan değildir, önce ONLAR küçülür (ölçüm: girdi ≥ 8rem). */
+.menu-arama-girdi {
+  flex: 1 1 auto; min-width: 8rem;
+  min-height: calc(var(--dokunma-hedefi) - 2px);
+  background: transparent; border: 0; outline: none;
+  color: var(--kenar-metin-guclu, var(--metin));
+  font-size: var(--yazi-sm);
+}
+.menu-arama-girdi::placeholder { color: var(--kenar-metin); opacity: 1; }
+.menu-arama-girdi::-webkit-search-cancel-button { display: none; }
+.menu-arama-temizle {
+  flex: 0 0 auto; border: 0; background: transparent; cursor: pointer;
+  color: var(--kenar-metin); font-size: var(--yazi-md); line-height: 1;
+  padding: var(--bosluk-1);
+}
+.menu-arama-temizle:hover { color: var(--kenar-metin-guclu, var(--metin)); }
+.menu-arama-kisayol {
+  flex: 0 1 auto; min-width: 0;
+  font-size: var(--yazi-xs);
+  color: var(--kenar-metin);
+  opacity: .7;
+  border: 1px solid var(--kenar-ayrac);
+  border-radius: var(--yaricap-sm);
+  padding: 0 var(--bosluk-1);
+  white-space: nowrap;
+}
+@media (max-width: 480px) { .menu-arama-kisayol { display: none; } }
+
+/* Sonuç listesi KUTUNUN ALTINDA açılır; ekranın ortasına/sağına SIÇRAMAZ.
+   En fazla 8 satır gösterir, gerisi KENDİ İÇİNDE kayar (kurucu isteği 3). */
+.menu-arama .kabuk-arama-paneli {
+  position: static;
+  margin-top: var(--bosluk-2);
+  max-height: calc(8 * var(--dokunma-hedefi));
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.menu-arama .secici-sonuclar {
+  max-height: calc(8 * var(--dokunma-hedefi));
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── Sürükleme tutamacı: YALNIZ hover / odakta görünür (görünür ok düğmesi 0) */
+.kenar-tutamac {
+  flex: 0 0 auto;
+  color: var(--kenar-metin);
+  opacity: 0;
+  cursor: grab;
+  user-select: none;
+  transition: opacity .12s ease;
+}
+.kenar-satir:hover .kenar-tutamac,
+.kenar-satir:focus-within .kenar-tutamac,
+.kenar-satir:focus .kenar-tutamac { opacity: .8; }
+
+/* ── Yetki / sıra hatası bandı (sessiz yutma kaldırıldı) ─────────────────── */
+.kenar-uyari {
+  margin: var(--bosluk-2) var(--bosluk-3);
+  padding: var(--bosluk-2);
+  border: 1px solid var(--tehlike-kenar);
+  background: var(--tehlike-yuzey);
+  color: var(--tehlike-vurgu);
+  border-radius: var(--yaricap-sm);
+  font-size: var(--yazi-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--bosluk-2);
+}
+
+/* ── Menü satırı: bağlantı + taşı düğmeleri + yıldız ─────────────────────── */
+.kenar-satir { display: flex; align-items: center; gap: var(--bosluk-1); }
+.kenar-satir > a { flex: 1 1 auto; min-width: 0; }
+.kenar-tasi,
+.kenar-yildiz {
+  flex: 0 0 auto;
+  min-width: var(--dokunma-hedefi);
+  min-height: var(--dokunma-hedefi);
+  background: none;
+  border: 0;
+  color: var(--kenar-metin);
+  cursor: pointer;
+  border-radius: var(--yaricap-sm);
+}
+.kenar-tasi:hover,
+.kenar-yildiz:hover { color: var(--kenar-metin-guclu); background: var(--kenar-yuzey-2); }
+.kenar-tasi:disabled { opacity: .4; cursor: not-allowed; }
+/* P-36b kapanışı (P-37 artığı): favori yıldızı artık ★/☆ emojisi DEĞİL, sprite
+   sembolüdür (ikon-star). Dolu/boş ayrımı ikinci bir sembolle değil, konturun
+   içini doldurarak yapılır — sprite büyümedi, renk temadan gelir. */
+.kenar-yildiz.dolu { color: var(--amber-400); }
+.kenar-yildiz.dolu .ikon { fill: currentColor; }
+.kenar-grup-ipucu {
+  font-size: var(--yazi-xs);
+  color: var(--kenar-metin);
+  padding: 0 var(--bosluk-3);
+  margin: var(--bosluk-1) 0;
+}
+.sira-suruklemede { cursor: grabbing; user-select: none; }
+.sira-suruklemede .kenar-satir { opacity: .85; }
+
+/* ── Karşılama ekranı: "pencere pencere" kutucuk ızgarası ────────────────── */
+.karsilama-bas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--bosluk-3);
+  margin-bottom: var(--bosluk-4);
+}
+.karsilama-selam { font-size: var(--yazi-2xl); font-weight: var(--kalin); color: var(--metin-guclu); }
+.karsilama-tarih { color: var(--metin-soluk); font-size: var(--yazi-sm); }
+.karsilama-hava {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--bosluk-2);
+  color: var(--metin-soluk);
+  font-size: var(--yazi-sm);
+}
+.karsilama-izgara {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--bosluk-3);
+}
+.karsilama-kutucuk {
+  background: var(--yuzey);
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap);
+  padding: var(--bosluk-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--bosluk-2);
+  min-width: 0;
+}
+.karsilama-kutucuk-bas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--bosluk-2);
+}
+.karsilama-kutucuk-bas h3 { font-size: var(--yazi-sm); color: var(--metin-soluk); margin: 0; }
+.karsilama-araclar { display: flex; gap: var(--bosluk-1); }
+.karsilama-araclar button {
+  min-width: var(--dokunma-hedefi);
+  min-height: var(--dokunma-hedefi);
+  background: none;
+  border: 0;
+  color: var(--metin-soluk);
+  cursor: pointer;
+  border-radius: var(--yaricap-sm);
+}
+.karsilama-araclar button:disabled { opacity: .4; cursor: not-allowed; }
+.karsilama-buyuk-sayi { font-size: var(--yazi-2xl); font-weight: var(--kalin); margin: 0; }
+/* İLK EKRANDA CEVAP (P-37b ölçüt 1 — CANLI ÖLÇÜMDEN DOĞDU, md.1):
+   1440×900'de hızlı eylemler satırı ilk ekrana SIĞMIYORDU (alt kenar 963 px).
+   Gün özeti kartları kutucuk içinde tek sütuna düşüp kutucuğu gereksiz
+   uzatıyordu. Geniş ekranda iki sütuna alınır; ölçüm raporda tekrarlanır. */
+@media (min-width: 1200px) {
+  .karsilama-kutucuk .stat-izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* İSKELET: kutucuk kendi başına yüklenir, diğerlerini BEKLETMEZ. */
+.karsilama-iskelet {
+  height: var(--bosluk-8);
+  border-radius: var(--yaricap-sm);
+  background: var(--yuzey-2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GİRDİ AİLESİ — Bilesenler/Form/* (paket P-36b · kurucu talimatı 20/a)
+
+   ⚠ TEK GÖRSEL KAYNAK: 12 girdi bileşeninin görünümü YALNIZ buradadır;
+     bileşen dosyalarında satır içi renk/px YOKTUR (denetim.sh:
+     GIRDI_AILESI_TEK_KAYNAK). Kurucunun "tek seferde değiştiririz" şartı
+     mekanik olarak ancak böyle tutar.
+   ⚠ Değerlerin tamamı belirtecler.css belirteçleridir — ham hex yok
+     (TasarimBelirtecTestleri.Ham_hex_beyaz_listeyi_asmaz, tavan 0).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.alan-etiket {
+  display: flex; align-items: center; gap: var(--bosluk-2); flex-wrap: wrap;
+  font-size: var(--yazi-md); font-weight: var(--kalin-orta); color: var(--metin);
+}
+.alan-etiket-metin { min-width: 0; }
+.zorunlu-isaret { color: var(--tehlike); font-weight: var(--kalin); }
+.alan-istege { font-size: var(--yazi-xs); color: var(--metin-soluk); font-weight: 400; }
+/* UX-S21 — değerin NEREDEN geldiği rozetle söylenir. */
+.alan-kaynak {
+  font-size: var(--yazi-xs); color: var(--vurgu);
+  background: var(--vurgu-yuzey); border: 1px solid var(--vurgu-kenar);
+  border-radius: var(--yaricap-tam); padding: 0 var(--bosluk-2);
+}
+.alan-ipucu { font-size: var(--yazi-xs); color: var(--metin-soluk); }
+/* UX-S30 — kilitli alanın sebebi görünür. */
+.alan-kilit-sebep { font-size: var(--yazi-sm); color: var(--metin-soluk); }
+/* Biçimli önizleme — kaynağı YALNIZ Servisler/Bicim.cs'tir. */
+.alan-onizleme { font-size: var(--yazi-sm); color: var(--metin-soluk); font-variant-numeric: tabular-nums; }
+.alan-onizleme-ek { color: var(--metin-soluk); }
+.alan-sayac { font-size: var(--yazi-xs); color: var(--metin-soluk); align-self: flex-end; }
+.alan-girdi-satir { display: flex; align-items: center; gap: var(--bosluk-2); flex-wrap: wrap; min-width: 0; }
+.alan-girdi-satir > .girdi { flex: 1 1 8rem; min-width: 0; }
+.alan-son-ek { font-size: var(--yazi-sm); color: var(--metin-soluk); flex: 0 0 auto; }
+.alan-ayirac { color: var(--metin-soluk); flex: 0 0 auto; }
+.alan-tek-secenek {
+  margin: 0; padding: var(--bosluk-2) var(--bosluk-3);
+  background: var(--yuzey-2); border: 1px solid var(--ayrac);
+  border-radius: var(--yaricap-sm); color: var(--metin);
+}
+/* ≥44px dokunma hedefi (FRONTEND-SARTNAME kural 28) — aile GENELİNDE. */
+.alan .girdi, .alan-girdi-satir .girdi { min-height: var(--dokunma-hedefi); }
+.girdi-cok-satir { min-height: calc(var(--dokunma-hedefi) * 2); resize: vertical; width: 100%; }
+.alan-hatali .alan-etiket-metin { color: var(--tehlike); }
+
+/* ── Arama kutusu (P-36c/3) ──────────────────────────────────────────────
+   20+ ekranda `style="flex:1"` satır içi yazılıyordu; tek sınıfa indi.
+   Etiket DOM'da durur, görsel olarak gizlenir (ekran okuyucu okur). */
+.arama-kutu { display: flex; flex-direction: column; gap: var(--bosluk-1); flex: 1 1 12rem; min-width: 0; }
+.arama-kutu > .girdi-arama { width: 100%; min-width: 0; min-height: var(--dokunma-hedefi); }
+.gorsel-gizli {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── Onay kutusu ── */
+.alan-onay { gap: var(--bosluk-1); }
+.onay-etiket {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  min-height: var(--dokunma-hedefi); cursor: pointer;
+}
+.onay-kutu { width: 1.15rem; height: 1.15rem; accent-color: var(--vurgu); flex: 0 0 auto; }
+
+/* ── Seçim (radyo) ── */
+.secim-grubu { display: flex; flex-wrap: wrap; gap: var(--bosluk-2); min-width: 0; }
+.secim-secenek {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  min-height: var(--dokunma-hedefi); padding: var(--bosluk-2) var(--bosluk-3);
+  border: 1px solid var(--kenarlik); border-radius: var(--yaricap-sm);
+  background: var(--yuzey); cursor: pointer;
+}
+.secim-secenek.secili { border-color: var(--vurgu); background: var(--vurgu-yuzey); color: var(--vurgu); }
+.secim-secenek.pasif { opacity: .6; cursor: not-allowed; }
+.secim-radyo { accent-color: var(--vurgu); flex: 0 0 auto; }
+.secim-ad { display: flex; flex-direction: column; min-width: 0; }
+
+/* ── Anahtar (switch) ── */
+.anahtar-satir { display: flex; align-items: center; gap: var(--bosluk-3); flex-wrap: wrap; }
+.anahtar {
+  display: inline-flex; align-items: center; gap: var(--bosluk-2);
+  min-height: var(--dokunma-hedefi); padding: var(--bosluk-1) var(--bosluk-3);
+  border: 1px solid var(--kenarlik); border-radius: var(--yaricap-tam);
+  background: var(--yuzey); color: var(--metin); cursor: pointer;
+}
+.anahtar:disabled { opacity: .6; cursor: not-allowed; }
+.anahtar.acik { border-color: var(--vurgu); background: var(--vurgu-yuzey); color: var(--vurgu); }
+/* Renk TEK BAŞINA anlam taşımaz (UX-S7): topuz konumu + metin de söyler. */
+.anahtar-topuz {
+  width: 1rem; height: 1rem; border-radius: var(--yaricap-tam);
+  background: var(--metin-soluk); transition: background var(--gecis-hizli);
+}
+.anahtar.acik .anahtar-topuz { background: var(--vurgu); }
+.anahtar-metin { font-size: var(--yazi-sm); font-weight: var(--kalin-orta); }
+
+/* ── Secici Uzak kipi (P-36b) ── */
+.secici-hata { padding: var(--bosluk-2) var(--bosluk-3); color: var(--tehlike); font-size: var(--yazi-sm); }
+
+/* ── /ayarlar → Görünüm bölümü (P-36b) ── */
+.gorunum-izgara { display: flex; flex-wrap: wrap; gap: var(--bosluk-3); }
+.sema-ornek {
+  display: inline-flex; align-items: center; gap: var(--bosluk-2);
+}
+.sema-nokta {
+  width: 1rem; height: 1rem; border-radius: var(--yaricap-tam);
+  border: 1px solid var(--kenarlik);
+}
+.sema-nokta.sema-altin    { background: var(--amber-700); }
+.sema-nokta.sema-kurumsal { background: var(--mavi-700); }
+.sema-nokta.sema-zumrut   { background: var(--yesil-koyu); }
+
+
+/* ── P-36c: ARKA PLAN KAYDIRMA KİLİDİ ───────────────────────────────────────
+   Pencere (modal/çekmece) açıkken arkadaki sayfa KAYMAZ. Sınıfı cekmece.js
+   sayaçlı olarak koyar/kaldırır; tek yer kuralı — ikinci bir kilit AÇILMAZ. */
+/* ⚠ `overflow-y` — `overflow` DEĞİL: yatay taşma GİZLENMEZ (Anayasa md.1 /
+   P-18 MOBIL_TASMA_GIZLEME). Kilit yalnız DİKEY kaydırmayı durdurur. */
+body.pencere-acik { overflow-y: hidden; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-39 — TASARIM DENETİMİ KÖK NEDENLERİ (8 kök · 43 ekran)
+   ───────────────────────────────────────────────────────────────────────────
+   Kaynak: dokumanlar/09-uygulama-kayitlari/TASARIM-DENETIMI-2026-09-21.md
+   (43 rota + 25 açılan form = 68 anahtar × 4 genişlik = 267 ölçüm satırı,
+   tamamı getBoundingClientRect ile; göz kararı YOK).
+
+   ⚠ KÖK NEDEN, BELİRTİ DEĞİL: ekran başına özel CSS YAZILMAZ. Her kural
+     KABUK ya da ORTAK BİLEŞEN düzeyindedir; 43 ekran tek dokunuşla düzelir.
+   ⚠ Sabit renk YOK (yalnız var()), satır içi style YOK, taşma
+     `overflow-x:hidden` ile GİZLENMEZ (Anayasa md.1).
+   ⚠ denetim.sh `# >>> P-39` bloğundaki 8 sayaç bu blokları ZORUNLU tutar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── K1 · ÜST BAR 1024 px'te BELGEYİ YATAY KAYDIRIYORDU ────────────────────
+   Ölçüldü: `header.ust-bar > div.ust-sag` içindeki `#ust-mod-anahtar` sağ
+   kenarı 1115-1178 px (viewport 1024) → 43 rotanın TAMAMINDA 91-160 px yatay
+   kayma, `scrollTo(2000,0)` sonrası `scrollX = 124,5` ile kanıtlı; "Profesyonel"
+   düğmesi ekran DIŞINDA kalıyordu.
+   SEBEP: sarma kuralı yalnız `@media (max-width:768px)` içindeydi; 769-1100 px
+   arası bandda üst bar tek satıra zorlanıyordu.
+   ÇÖZÜM: sarma TÜM genişliklerde geçerli — 1440/1280'de görünüm DEĞİŞMEZ
+   (içerik zaten tek satıra sığıyor, `flex-wrap` yalnız sığmayınca devreye
+   girer). 1024'te ikinci satıra iner; yatay kaydırma çubuğu KALKAR. */
+.ust-bar   { flex-wrap: wrap; row-gap: var(--bosluk-2); }
+.ust-bar h1 { min-width: 0; overflow-wrap: anywhere; }
+.kabuk-arama, .sube-secici, .ust-sag { min-width: 0; }
+.ust-sag   { flex-wrap: wrap; row-gap: var(--bosluk-1); }
+.kur-bandi { min-width: 0; }
+.mod-anahtar { flex-wrap: wrap; }
+
+/* ── K2 · SATIR ETİKETE GÖRE HİZALANIYORDU, KONTROLE GÖRE DEĞİL ────────────
+   Ölçüldü: 28 kesin (kademe A) hiza kusuru / 8 satır kalıbı / 6 ekran —
+   `/islemler` 19 px (Ekle sonrası 41 px), `/cariler` 22 px ×2, `/evraklar`
+   22 px, `/urunler/etiketler` 20,5 px, `/emanet` 10,2 px (4 genişlikte de).
+   SEBEP: alan hücresi `etiket + kontrol (+ altı)` dikey yığınıdır; "(isteğe
+   bağlı)" eki ikinci satıra sarınca kontrol aşağı kayar. `align-items:flex-end`
+   denemesi (Islemler.razor satır içi style) İŞE YARAMADI, çünkü alanların
+   ALTINDAKİ içerik (önizleme/ipucu/hata) de farklı yükseklikte.
+   ÇÖZÜM: alan hücresi ÜÇ SATIRLI bir ızgaradır [etiket | kontrol | alt] ve
+   satır kapsayıcısında `subgrid` ile ORTAK raylara oturur → etiket kaç satıra
+   sararsa sarsın KONTROLLER AYNI y'de başlar. Ekran başına CSS yok. */
+.alan            { display: grid; grid-template-rows: auto auto auto; row-gap: .25rem; }
+.alan-kontrol    { display: flex; flex-direction: column; min-width: 0; }
+.alan-alt        { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.alan-alt:empty  { display: none; }
+
+/* Izgara satırları: 2'li / 3'lü form ızgarası ve alan kümesi (fieldset). */
+.form-grid-2, .form-grid-3, .alan-kume > .form-grid-2, .alan-kume > .form-grid-3 {
+  grid-template-rows: auto auto auto;
+  align-items: start;
+}
+.form-grid-2 > .alan, .form-grid-3 > .alan,
+.form-grid-2 > .secici-alan, .form-grid-3 > .secici-alan {
+  grid-template-rows: subgrid;
+  grid-row: span 3;
+  /* ⚠ ALT IZGARANIN KENDİ BOŞLUĞU RAYLARI KAYDIRIR: alt ızgara, üst
+     ızgaranın raylarına oturur ama SATIR BOŞLUĞU kendisinindir. Hücre .25rem,
+     satır .5rem kullanınca kontrol 4 px yukarı kayıyordu (ölçüldü: /emanet ve
+     /urunler/etiketler, 3 genişlikte). Boşluk TEK kaynaktan: üst ızgaradan. */
+  row-gap: inherit;
+}
+/* Izgara satırındaki alan OLMAYAN öğe (düğme, metin) üç rayı birden kaplar. */
+.form-grid-2 > :not(.alan):not(.secici-alan):not(.arama-kutu),
+.form-grid-3 > :not(.alan):not(.secici-alan):not(.arama-kutu) { grid-row: span 3; align-self: end; }
+
+/* Esnek satır (`div.satir`) — yalnız içinde alan hücresi varsa ızgaraya döner.
+   ≥769 px: sütunlar yan yana ve subgrid ile hizalı.
+   ≤768 px: eski esnek/sarmalı davranış korunur (K5 ile çakışmasın). */
+@media (min-width: 769px) {
+  .satir:has(> .alan), .satir:has(> .secici-alan) {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, auto);
+    grid-template-rows: auto auto auto;
+    align-items: start;
+  }
+  .satir:has(> .alan) > .alan, .satir:has(> .secici-alan) > .alan,
+  .satir:has(> .alan) > .secici-alan, .satir:has(> .secici-alan) > .secici-alan
+                                     { grid-template-rows: subgrid; grid-row: span 3; row-gap: inherit; }
+  .satir:has(> .alan) > :not(.alan):not(.secici-alan):not(.arama-kutu),
+  .satir:has(> .secici-alan) > :not(.alan):not(.secici-alan):not(.arama-kutu)
+                                     { grid-row: span 3; align-self: end; }
+  .satir:has(> .alan) > .arama-kutu, .satir:has(> .secici-alan) > .arama-kutu
+                                     { grid-row: 2 / 3; align-self: start; }
+}
+
+/* ── K2 ARTIĞI · CANLI ÖLÇÜMDEN (2026-09-21 22:5x, 5198) ───────────────────
+   İlk düzeltmeden SONRA ölçüldü: 41 rota × 4 genişlik + 13 açılan form
+   durumunda yalnız ÜÇ kalıp kaldı ve üçü de AYNI iki sebepten doğuyor —
+   ekran kusuru değil, kabuk kuralının iki boşluğu:
+
+   (a) `Arama` bileşeni `div.arama-kutu` çizer, `.alan` DEĞİLDİR (etiketi
+       `.gorsel-gizli`). Üç raylı komşularının yanında "en alta yasla" onu
+       alan-altı yüksekliği kadar aşağı itiyordu:
+         /emanet `div.satir` 10,5 px (4 genişlikte de — denetimin 10,2 px'i)
+         /urunler/etiketler `form-grid-2` 8 px (denetimin 20,5 px'i azaldı,
+         sıfırlanmadı).
+   (b) Kabuk yapısı taşımayan sarmalayıcı `.alan` (içinde yalnız düğme var,
+       `alan-kontrol` rayı yok) içeriğini BİRİNCİ raya koyuyordu:
+         /pos/tahsilatlar `form-grid-3` — 3 genişlikte 1 kusur.
+
+   ÇÖZÜM YİNE TEK YERDE: ikisi de KONTROL rayına (2) oturur. */
+.form-grid-2 > .arama-kutu, .form-grid-3 > .arama-kutu { grid-row: 2 / 3; align-self: start; }
+
+/* (b) Kabuk yapısı taşımayan sarmalayıcı `.alan` — içinde yalnız düğme var.
+   ⚠ İKİNCİ AİLEYİ SARAN sarmalayıcı HARİÇTİR: `<div class="alan"><Secici/></div>`
+   kalıbında içerik rayları AKTARIR, tek raya sıkışmaz (ölçüldü: sıkıştırınca
+   /cariler # Düzenle `fieldset#duz-p16` 21 px kayıyor). */
+/* ⚠ YALNIZ TEK ÇOCUK: çok çocuklu sarmalayıcıda hepsini aynı raya koymak
+   onları YAN YANA sütunlara dağıtır — ölçüldü: /veri-ice-aktarim @375 ana
+   içerik 72 px yatay kaydı (dosya seçici + ipucu + önizleme aynı `.alan`da). */
+.alan:not(:has(> .alan-kontrol)):not(:has(> .secici-alan)) > :only-child { grid-row: 2 / 3; align-self: start; }
+.alan > .secici-alan { grid-row: span 3; grid-template-rows: subgrid; row-gap: inherit; }
+
+/* ── K8 · TEK SATIRLIK KONTROLLER TEK YÜKSEKLİKTE ──────────────────────────
+   Ölçüldü: metin kutusu 34,5 px ↔ seçici tetiği 32 px ↔ bazı seçiciler 37 px
+   (31 yükseklik kaydı / 10 grup). ÇÖZÜM: tek belirteç, `padding-block: 0`.
+   Çok satırlı kutu (textarea) HARİÇTİR. */
+.girdi:not(.girdi-cok-satir), .secim, .secici-tetik, .secici-ara {
+  box-sizing: border-box;
+  /* ⚠ GERİ DÜŞÜŞ ŞART: belirteç bir sebeple yüklenmezse `height: var(…)`
+     GEÇERSİZ olur ve `padding-block: 0` ile birlikte kutu 18,5 px'e çöker
+     (canlı ölçümde görüldü: eski belirteç dosyası önbellekten gelmişti).
+     Anayasa md.1 — bilinmeyen tahmin edilmez, güvenli varsayılan yazılır. */
+  height: var(--kontrol-yuksekligi, 2.25rem);
+  min-height: var(--kontrol-yuksekligi, 2.25rem);
+  padding-block: 0;
+  line-height: normal;
+}
+.alan .girdi:not(.girdi-cok-satir), .alan-girdi-satir > .girdi { min-height: var(--kontrol-yuksekligi, 2.25rem); }
+
+/* ── K4 · DÜĞME ÖLÇEĞİ İKİ DEĞERE İNER · KART YARIÇAPI TEKTİR ──────────────
+   Ölçüldü: 15 farklı düğme yüksekliği (22-71 px), 5 farklı kart yarıçapı. */
+.dugme, .btn, .pill, .dil-secici button {
+  box-sizing: border-box; min-height: var(--dugme-yuksekligi, 2.25rem); padding-block: 0;
+}
+.dugme-kucuk, .btn-kucuk { min-height: var(--dugme-yuksekligi-kucuk, 1.75rem); }
+.dugme-benzeri{ box-sizing: border-box; min-height: var(--dugme-yuksekligi, 2.25rem); }
+.sekme        { box-sizing: border-box; min-height: var(--dugme-yuksekligi, 2.25rem); }
+/* ⚠ CANLI ÖLÇÜM DERSİ (5198, `/giris` @1024): giriş ekranı PARALEL bir düğme
+   ailesi kullanıyordu — `.btn`/`.btn-buyuk` 45 px, `.pill` 33 px,
+   `.dil-secici button` 22 px. Denetimin saydığı "15 farklı düğme yüksekliği"
+   tam olarak bu paralel ailelerden doğuyor; ölçek ONLARI DA kapsar. */
+.kart, .ozet-kutu { border-radius: var(--kart-yaricap, .75rem); }
+
+/* ── K3 · DOKUNMA HEDEFİ 44 px (≤480 px) ───────────────────────────────────
+   Ölçüldü: 375 px'te ekran içi 455 tıklanabilir öğenin 443'ü (%97,4) 44 px
+   altında; kabuk düğmeleri (Çıkış 62×23, Menüyü aç 34×32, ⟳ 32×32, Basit
+   56×23, Profesyonel 96×23) HER ekranda tekrar ediyordu.
+   ÇÖZÜM: belirteç telefonda 2,75rem'e sabitlenir (belirtecler.css) ve eylem
+   öğelerine asgari kutu verilir. Metin içi bağlantılar (`a` — düğme değil)
+   kapsam DIŞIDIR: satır içi bağlantıyı 44 px yapmak metni bozar. */
+@media (max-width: 480px) {
+  /* Düğme ailesi TEK ölçekten (K4 sayacı: iki değer) — telefonda ikisi de
+     2,75rem'dir (belirtecler.css `@media (max-width:480px)` bloğu). */
+  .dugme, .dugme-benzeri, .sekme, .btn, .pill,
+  .kabuk-menu-dugme, .kur-guncelle-btn, .mod-anahtar button,
+  .kenar-alt-butonlar a, .kenar-alt-butonlar button,
+  /* ⚠ ÇIPLAK `button`: canlı ölçümde `.dil-secici` düğmeleri (TR/EN 32×22)
+     tür niteliği taşımadığı için `button[type=…]` seçicisinden KAÇMIŞTI.
+     Telefonda taban kural türe bakmaz — eylem eylemdir. */
+  button, summary, [role="button"] {
+    min-height: var(--dugme-yuksekligi);
+    min-width: var(--dokunma-hedefi);
+  }
+  .dugme-kucuk, .btn-kucuk { min-height: var(--dugme-yuksekligi-kucuk); }
+  .secici-tetik { min-width: var(--dokunma-hedefi); }
+  .kur-guncelle-btn { width: var(--dokunma-hedefi); height: var(--dokunma-hedefi); }
+}
+
+/* ── K5 · TABLO TAŞMASI: ORTAK SARMALAYICI ─────────────────────────────────
+   Ölçüldü: 14+ ekranda tablo 375 px'te ekranı aşıyor; `/hurda` @375'te
+   `main.ana-icerik`in KENDİSİ 58 px kayıyordu (kaynak `table#hrd-defter`,
+   sarmalayıcı sınıfı `tablo-sarmal` CSS'te TANIMSIZDI → ölü sınıf).
+   ÇÖZÜM: tek sarmalayıcı `.tablo-sar` (KartListe ile aynı); ana içerik
+   hiçbir koşulda yatay kaymaz — tablo KENDİ kutusunda kayar. */
+/* Dosya seçici girdinin İÇSEL genişliği vardır (yerel düğme + dosya adı) ve
+   esnek kutuda KÜÇÜLMEZ: 375 px'te `/veri-ice-aktarim` ana içeriği 72 px
+   yatay kaydırıyordu (canlı ölçüm, 2026-09-21). Kural tek yerde, tür bazlı. */
+input[type="file"].girdi { max-width: 100%; }
+.ana-icerik { min-width: 0; }
+.ana-icerik > *, .kart-govde > .tablo-sar { min-width: 0; }
+.tablo-sar { overscroll-behavior-x: contain; }
+
+/* ── K6 · AÇILIR PANEL GÖRÜŞ ALANI DENETİMİ ────────────────────────────────
+   Ölçüldü: 5 vakada panel TAMAMEN katlamanın altında açılıyor (`/isletme`
+   1024'te 3 panel 136-471 px, `/hurda` 249-407 px); kullanıcı için
+   "seçiciye bastım, bir şey olmadı".
+   ÇÖZÜM: js/secici-yerlesim.js yer yoksa `.yukari` sınıfını koyar → panel
+   tetiğin ÜSTÜNDE açılır. Sınıf yoksa davranış eskisi gibidir. */
+.secici-liste-kap.yukari {
+  top: auto;
+  bottom: calc(100% + var(--bosluk-1, .25rem));
+}
+/* Panel hiçbir koşulda görüş alanından daha uzun olmaz (liste kendi içinde kayar). */
+.secici-liste-kap { max-height: min(24rem, 70vh); display: flex; flex-direction: column; }
+.secici-liste     { max-height: none; flex: 1 1 auto; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S1-b — KENAR ÇUBUĞU: KATLANIR GRUP + EKRAN ADI ÖNİZLEMESİ (2026-09-23)
+
+   Kaynak: kurucunun onayladığı tasarım tuvali
+   dokumanlar/02-mimari/sadelestirme/tuval/project/Panel.dc.html <nav>.
+   Tuvalin satır içi renkleri BELİRTECE bağlandı (sabit renk yasak, plan § 3):
+     menü zemini → --kenar-yuzey · kart → --kenar-yuzey-2 ·
+     menü metni → --kenar-metin · soluk metin → --menu-baslik ·
+     aktif satır → --menu-aktif-yuzey. Ham değerler belirtecler.css'tedir.
+   Ölçüler (tuval notu n6): menü 17 px, grup başlığı 15 px, önizleme 14 px.
+
+   GERİ DÖNÜŞ: bu blok tek parçadır; silinince menü eski düz hâline döner
+   (Razor'daki `hidden` yalnız katlamayı sürdürür, düzen bozulmaz).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tuvalde aktif satır menü mavisidir; app.css'te kalan --amber-700 P-14
+   öncesinden artmış tek ham vurgudur ve şema değiştiğinde menüyle
+   çelişiyordu (fildişi şemasında kehribar satır). */
+.kenar-nav a.aktif { background: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin); }
+/* Marka adı tuvalde Sora'dır (S1-b'de vendored). Gövde Manrope'tur ve
+   --yazi-ailesi üzerinden BÜTÜN ekranlara tek yerden iner. */
+.kenar-logo .marka { font-family: var(--yazi-marka); }
+.kenar-nav a { font-size: 17px; }
+
+/* ── "Tüm ekranlar (38)" — aramanın hemen altı ────────────────────────────
+   S1-d'ye kadar KİLİTLİ: sebebi title + aria-describedby ile yazılıdır
+   (DoD EK md.1 + UX-S30). Kilitli hâli SOLUK ama okunur kalır. */
+.kenar-tum-ekranlar {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  width: calc(100% - 1.5rem); margin: 0 .75rem;
+  padding: var(--bosluk-2) var(--bosluk-3);
+  border: 0; border-radius: var(--yaricap);
+  background: transparent; color: var(--menu-baslik);
+  font: inherit; font-size: 16px; text-align: left;
+}
+.kenar-tum-ekranlar:disabled { cursor: not-allowed; opacity: .75; }
+.kenar-tum-ekranlar:not(:disabled):hover {
+  background: var(--kenar-yuzey-2); color: var(--kenar-metin-guclu);
+}
+
+/* ── Katlanır grup başlığı ────────────────────────────────────────────────
+   <h2> kabı DURUYOR (id sözleşmesi: #kenar-grup-<slug> değişmedi);
+   tıklanabilir yüzey içindeki <button>'dır. */
+.kenar-grup-baslik { padding: 0; }
+.kenar-grup-dugme {
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+  width: 100%; padding: var(--bosluk-2) var(--bosluk-3);
+  border: 0; border-radius: var(--yaricap);
+  background: transparent; color: var(--kenar-metin);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.kenar-grup-dugme:hover { background: var(--kenar-yuzey-2); }
+.kenar-grup-satir { display: flex; justify-content: space-between; align-items: center; gap: var(--bosluk-2); }
+.kenar-grup-ad { font-size: 15px; font-weight: var(--kalin); }
+.kenar-grup-sayi {
+  display: inline-flex; align-items: center; gap: var(--bosluk-1);
+  color: var(--menu-baslik); font-size: var(--yazi-sm);
+}
+/* Kapalı grubun ekran adları: TEK SATIR, taşarsa "…" ile kırpılır.
+   Metin DOM'da tamdır — kırpma yalnız görseldir (ekran okuyucu tamamını okur). */
+.kenar-grup-onizleme {
+  display: block; font-size: var(--yazi-sm); color: var(--menu-baslik);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Kullanıcı kartı (menünün en altı) ────────────────────────────────── */
+.kenar-kullanici {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  padding: var(--bosluk-2) var(--bosluk-3);
+  border-radius: var(--yaricap-lg); background: var(--kenar-yuzey-2);
+}
+.kenar-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem; flex: 0 0 auto;
+  border-radius: var(--yaricap-tam);
+  background: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin);
+  font-size: var(--yazi-sm); font-weight: var(--kalin);
+}
+.kenar-kullanici-metin { display: flex; flex-direction: column; min-width: 0; }
+.kenar-kullanici-metin .kullanici-ad,
+.kenar-kullanici-metin .kullanici-rol {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── S1-b (devir turu) — tuvalle birebir kalan üç ayrıntı ─────────────────
+   (1) Menü genişliği tuvalde 268 px'tir (plan § 5A "240 px" yazıyordu; ÜSTÜN
+       kaynak tuvaldir). Dar ekranda 88vw tavanı (satır ~1266) geçerli kalır.
+   (2) AÇIK grubun başlığı tuvalde küçük, BÜYÜK HARF, soluk bir etikettir
+       ("GÜNLÜK İŞ ▾"); KAPALI grubun başlığı ise 17 px kalın satırdır ve
+       altında önizleme durur. Türkçe büyük harf (i → İ) <html lang="tr">
+       sayesinde doğru çevrilir.
+   (3) Marka satırı Sora 21 px (tuval). */
+.kenar-cubugu { width: 268px; }
+.kenar-grup-dugme[aria-expanded="false"] .kenar-grup-ad { font-size: 17px; }
+.kenar-grup-dugme[aria-expanded="true"] .kenar-grup-ad {
+  font-size: 15px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--menu-baslik);
+}
+.kenar-logo .marka { font-size: 21px; font-weight: var(--kalin); letter-spacing: -.01em; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S1-c — ÜST BAR: KUR ŞERİDİ + YARDIM + BASİT/PROFESYONEL (2026-09-23)
+
+   Kaynak: kurucunun onayladığı tasarım tuvali
+   dokumanlar/02-mimari/sadelestirme/tuval/project/Panel.dc.html <header>
+   (Profesyonel.dc.html profesyonel yüz ölçüleri). Tuvalin satır içi değerleri
+   BELİRTECE bağlandı (sabit renk yasak, plan § 3):
+     beyaz bar → --yuzey · alt çizgi → --ayrac · ikincil metin →
+     --metin-soluk · Yardım → --vurgu · seçili hap → --kenar-yuzey
+     (menü zemini; yazısı --kenar-metin-guclu). Ham değerler belirtecler.css'te.
+   Ölçüler: bar 68 px · başlık Sora 22/600 · etiket 14 px BÜYÜK HARF .04em ·
+   değer 19/600 tabular · saat 14 · Yardım 16 · hap 15 px, 999 px yarıçap.
+   Profesyonel yüz: etiket 13 · değer 18 · aralık 22 · Yardım 15.
+
+   ⚠ Tipografi ve iç boşluklar YALNIZ ≥769 px'te: ≤768/≤480 px blokları
+     (B-9, P-39 K3 dokunma hedefi) dar ekranda geçerli kalır.
+   ⚠ Taşma GİZLENMEZ: 1024 px'te sarma P-39 K1 taban kuralındadır.
+   GERİ DÖNÜŞ: bu blok tek parçadır; silinince üst bar eski görünüme döner.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ust-bar {
+  min-height: 68px; justify-content: flex-start; column-gap: 26px;
+  background: var(--yuzey); border-bottom: 1px solid var(--ayrac);
+}
+.ust-bar h1 { font-family: var(--yazi-marka); font-weight: 600; }
+.ust-kur-serit {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--bosluk-2) 24px;
+  min-width: 0; font-variant-numeric: tabular-nums;
+}
+/* Tuvalde şerit KUTUSUZ düz metindir: eski vurgu-yüzeyli kutu kalkar. */
+.ust-kur-serit .kur-bandi {
+  background: transparent; border: 0; padding: 0; border-radius: 0;
+  gap: var(--bosluk-1) 24px; font-size: inherit;
+}
+.ust-kur-serit .kur-bandi .kur-oge { align-items: baseline; gap: 7px; }
+.ust-kur-serit .kur-bandi .kur-oge + .kur-oge { border-left: 0; padding-left: 0; }
+.ust-kur-serit .kur-bandi .etiket {
+  color: var(--metin-soluk); text-transform: uppercase; letter-spacing: .04em;
+}
+.ust-kur-serit .kur-bandi .deger { color: var(--metin); font-weight: 600; }
+/* Saat: tuvalde kutusuz soluk metin. Hatalı sorgu KIRMIZI bantta kalır
+   (UX-S28: hata gizlenmez; sebep title'dadır). */
+.ust-kur-serit .son-sorgu {
+  background: transparent; border: 0; padding: 0; gap: 0;
+  color: var(--metin-soluk);
+}
+.ust-kur-serit .son-sorgu .deger { font-weight: 400; color: inherit; }
+/* "14:32 · Altınkaynak": inline-flex baştaki boşluğu yutar; aralık kenar boşluğuyla. */
+.ust-kur-serit .kur-kaynak { margin-left: .3em; }
+.ust-kur-serit .son-sorgu.hatali {
+  background: var(--tehlike-yuzey); border: 1px solid var(--tehlike-kenar);
+  border-radius: var(--yaricap-tam); padding: 0 var(--bosluk-2); color: var(--tehlike);
+}
+.ust-kur-serit .kur-yok { color: var(--tehlike); font-weight: 600; }
+/* Sağ küme tuvaldeki `flex-grow:1` boşluğunun yerini alır. */
+.ust-bar .ust-sag { margin-left: auto; gap: var(--bosluk-2) 26px; }
+.ust-yardim { color: var(--vurgu); text-decoration: none; white-space: nowrap; }
+.ust-yardim:hover { text-decoration: underline; }
+.ust-yardim:focus-visible { outline: var(--odak-halka-kalinlik) solid var(--odak-halka); outline-offset: var(--odak-halka-boslugu); }
+/* Basit | Profesyonel — tuvaldeki hap. */
+.ust-bar .mod-anahtar {
+  align-items: center; gap: 4px; padding: 3px;
+  background: transparent; border: 1px solid var(--ayrac); border-radius: var(--yaricap-tam);
+}
+.ust-bar .mod-anahtar button {
+  border-radius: var(--yaricap-tam); color: var(--metin-soluk); font-weight: 400;
+}
+.ust-bar .mod-anahtar button.secili {
+  background: var(--kenar-yuzey); color: var(--kenar-metin-guclu); font-weight: 500;
+}
+/* Fildişi (açık menü) şemasında menü zemini krem, yazısı koyudur; beyaz bar
+   üstünde seçili hap ayırt edilemiyordu → koyu aktif satır belirteci. */
+:root[data-sema="fildisi"] .ust-bar .mod-anahtar button.secili {
+  background: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin);
+}
+@media (min-width: 769px) {
+  .ust-bar { padding: var(--bosluk-2) 28px; }
+  .ust-bar h1 { font-size: 22px; }
+  .ust-kur-serit { margin-left: 8px; }
+  .ust-kur-serit .kur-bandi .etiket { font-size: 14px; }
+  .ust-kur-serit .kur-bandi .deger { font-size: 19px; }
+  .ust-kur-serit .son-sorgu { font-size: 14px; }
+  .ust-yardim { font-size: 16px; }
+  .ust-bar .mod-anahtar { font-size: 15px; }
+  .ust-bar .mod-anahtar button { font-size: 15px; padding: 6px 14px; }
+  /* Profesyonel yüz (Profesyonel.dc.html): bir kademe sıkı. */
+  html[data-mod="profesyonel"] .ust-kur-serit,
+  html[data-mod="profesyonel"] .ust-kur-serit .kur-bandi { column-gap: 22px; }
+  html[data-mod="profesyonel"] .ust-kur-serit .kur-bandi .etiket,
+  html[data-mod="profesyonel"] .ust-kur-serit .son-sorgu { font-size: 13px; }
+  html[data-mod="profesyonel"] .ust-kur-serit .kur-bandi .deger { font-size: 18px; }
+  html[data-mod="profesyonel"] .ust-yardim { font-size: 15px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S1-d — TÜM EKRANLAR (KARO MENÜ) · tuval Ekranlar.dc.html
+   Geri dönüş: bu bloğu kaldır (sayfa çıplak ama çalışır kalır).
+   Renkler YALNIZ belirteç; ölçüler tuvalden (1440 px artboard).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.uygulama-tam-ekran { min-height: 100%; background: var(--yuzey-govde); }
+a.kenar-tum-ekranlar { text-decoration: none; }
+a.kenar-tum-ekranlar.aktif {
+  background: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin);
+}
+
+.ekranlar-sayfa {
+  display: flex; flex-direction: column; min-height: 100vh;
+  background: var(--yuzey-govde); color: var(--metin);
+  font-family: var(--yazi-ailesi); font-size: var(--yazi-govde); line-height: 1.4;
+}
+.ekranlar-ust {
+  min-height: 68px; box-sizing: border-box; padding: 0 32px;
+  display: flex; align-items: center; gap: 20px;
+  background: var(--kenar-yuzey); color: var(--kenar-metin-guclu);
+}
+.ekranlar-marka {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--kenar-metin-guclu); text-decoration: none;
+}
+.ekranlar-marka-rozet {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--vurgu); color: var(--vurgu-metin);
+}
+.ekranlar-marka-rozet .ikon { width: 18px; height: 18px; }
+.ekranlar-marka-ad {
+  font-family: var(--yazi-marka); font-weight: 700; font-size: 21px; letter-spacing: -0.01em;
+}
+.ekranlar-baslik {
+  margin: 0 0 0 8px; font-family: var(--yazi-marka); font-size: 22px; font-weight: 600;
+  color: var(--kenar-metin-guclu);
+}
+.ekranlar-arama {
+  display: flex; align-items: center; gap: 8px; margin-left: 16px;
+  width: 360px; box-sizing: border-box; padding: 9px 14px;
+  border: 1px solid var(--kenar-ayrac); border-radius: 9px;
+  background: var(--kenar-yuzey-2); color: var(--menu-baslik); font-size: 16px;
+}
+.ekranlar-arama:focus-within { outline: 2px solid var(--kenar-metin-guclu); outline-offset: 2px; }
+.ekranlar-arama .ikon { width: 17px; height: 17px; }
+/* Ortak Arama bileşeni (.arama-kutu > .girdi-arama) koyu kabın İÇİNDE
+   kendi beyaz kutusunu çizmez: tuvalde kutu kabın kendisidir. */
+.ekranlar-arama .arama-kutu { flex: 1 1 auto; min-width: 0; gap: 0; }
+.ekranlar-arama .arama-kutu > .girdi-arama {
+  min-height: 0; padding: 0; border: 0; border-radius: 0; outline: 0;
+  background: transparent; font: inherit; color: var(--kenar-metin-guclu);
+}
+.ekranlar-arama .girdi-arama::placeholder { color: var(--menu-baslik); opacity: 1; }
+.ekranlar-bosluk { flex-grow: 1; }
+.ekranlar-ipucu { font-size: 15px; color: var(--menu-baslik); }
+
+.ekranlar-govde {
+  flex-grow: 1; box-sizing: border-box; padding: 20px 32px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.ekranlar-bant { margin: 0; }
+.ekranlar-grup { display: flex; flex-direction: column; gap: 8px; }
+.ekranlar-grup-baslik {
+  margin: 0; font-size: 15px; font-weight: 600; color: var(--metin-soluk);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.ekranlar-izgara { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
+.ekran-karo-kap { position: relative; }
+.ekran-karo {
+  height: 68px; box-sizing: border-box; padding: 0 14px;
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--ayrac); border-radius: 10px;
+  background: var(--yuzey); color: var(--metin); text-decoration: none;
+  font-size: 17px; font-weight: 500; line-height: 1.2;
+}
+.ekran-karo .ikon { width: 20px; height: 20px; color: var(--vurgu); }
+.ekran-karo:hover { color: var(--vurgu-guclu); }
+.ekran-karo:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+.ekran-karo-birincil {
+  border-color: transparent; background: var(--vurgu); color: var(--vurgu-metin); font-weight: 600;
+}
+.ekran-karo-birincil .ikon { color: currentColor; }
+.ekran-karo-birincil:hover { background: var(--vurgu-guclu); color: var(--vurgu-metin); }
+.ekran-karo-ad { min-width: 0; word-break: break-word; }
+/* Yıldızın yeri AYRILIR (tuvalde yıldız çizilmemiş, ipucu "yıldızla favorine
+   ekle" diyor): dolu ya da üstüne gelinmiş yıldız uzun adın üstüne binmez. */
+.ekran-karo-kap > .ekran-karo { padding-right: 36px; }
+/* Yıldız: tuval ipucu "yıldızla favorine ekle". Dolu yıldız HEP görünür,
+   boşu karonun üstüne gelince / odakta görünür; dokunmatikte hep görünür. */
+.ekran-yildiz {
+  position: absolute; top: 4px; right: 4px;
+  width: 28px; height: 28px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 6px; background: transparent;
+  color: var(--metin-soluk); cursor: pointer; opacity: 0;
+}
+.ekran-yildiz .ikon { width: 16px; height: 16px; }
+.ekran-karo-kap:hover .ekran-yildiz,
+.ekran-karo-kap:focus-within .ekran-yildiz,
+.ekran-yildiz.dolu { opacity: 1; }
+.ekran-yildiz:hover { background: var(--yuzey-hover); }
+.ekran-yildiz.dolu { color: var(--uyari); }
+.ekran-yildiz.dolu .ikon { fill: currentColor; }
+.ekran-karo-birincil + .ekran-yildiz,
+.ekran-karo-birincil + .ekran-yildiz.dolu { color: var(--vurgu-metin); }
+.ekran-karo-birincil + .ekran-yildiz:hover { background: var(--vurgu-guclu); }
+@media (hover: none) {
+  .ekran-yildiz { opacity: 1; }
+  /* Yıldız hep görünürken ad yıldızın altına girmez (dokunmatikte düğme
+     en az --dokunma-hedefi genişliğindedir). */
+  .ekran-karo-kap > .ekran-karo { padding-right: calc(var(--dokunma-hedefi) + 8px); }
+}
+
+.ekranlar-bos { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.ekranlar-alt { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2px; }
+.ekranlar-alt-bag {
+  padding: 10px 16px; border: 1px solid var(--ayrac); border-radius: 9px;
+  background: var(--yuzey); color: var(--metin); text-decoration: none; font-size: 16px;
+}
+.ekranlar-alt-bag:hover { color: var(--vurgu-guclu); }
+
+@media (max-width: 1199px) {
+  .ekranlar-izgara { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ekranlar-ust { flex-wrap: wrap; padding: 12px 24px; }
+  .ekranlar-bosluk { display: none; }
+}
+@media (max-width: 768px) {
+  .ekranlar-izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ekranlar-ust { padding: 12px 16px; gap: 12px; }
+  .ekranlar-arama { width: 100%; margin-left: 0; }
+  .ekranlar-govde { padding: 16px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S1-e — GİRİŞ EKRANI: İKİ PANEL · tuval Giris.dc.html (1440×900 artboard)
+   Geri dönüş: bu bloğu kaldır (eski .giris-* kuralları silinmedi, geçersiz
+   kılındı). Renkler YALNIZ belirteç; ölçüler tuvalden. Sağ panel zemini
+   şemanın menü zeminidir (--kenar-yuzey) — 8 şemada kendiliğinden değişir.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.giris-iki-panel {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  min-height: 100vh; box-sizing: border-box;
+  background: var(--yuzey-govde); color: var(--metin);
+  font-family: var(--yazi-ailesi); font-size: var(--yazi-govde); line-height: 1.45;
+}
+.giris-sol {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0; box-sizing: border-box; padding: 56px;
+}
+.giris-kart {
+  width: 440px; max-width: 100%; min-width: 0;
+  display: flex; flex-direction: column; gap: 30px;
+}
+.giris-kart-ust { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.giris-marka { display: flex; align-items: center; gap: 12px; }
+.giris-marka-rozet {
+  width: 44px; height: 44px; border-radius: 11px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--vurgu); color: var(--vurgu-metin);
+}
+.giris-marka-rozet .ikon { width: 22px; height: 22px; }
+.giris-marka-ad {
+  margin: 0; font-family: var(--yazi-marka); font-weight: 700; font-size: 24px;
+  letter-spacing: -0.01em; line-height: 1.2; color: var(--metin);
+}
+/* Başlık SayfaBasi bileşeninden gelir (id sözleşmesi) — görünüşü tuvalden. */
+.giris-kart .sayfa-basi { margin: 0; padding: 0; border: 0; }
+.giris-kart .sayfa-basi-baslik {
+  margin: 0; font-family: var(--yazi-marka); font-size: 34px; font-weight: 700;
+  line-height: 1.2; letter-spacing: -0.01em; color: var(--metin);
+}
+.giris-kart .sayfa-basi-aciklama { margin: 8px 0 0; font-size: 18px; color: var(--metin-soluk); }
+.giris-form-alan { display: flex; flex-direction: column; gap: 18px; }
+.giris-form-alan .alan { gap: 7px; }
+.giris-form-alan .alan-etiket { font-size: 15px; color: var(--metin-soluk); }
+.giris-form-alan .girdi {
+  height: 54px; min-height: 54px; box-sizing: border-box; padding: 0 16px;
+  border-radius: 9px; background: var(--yuzey); font: inherit; font-size: 18px; color: var(--metin);
+}
+.giris-iki-alan { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+/* Parola kutusu: "Göster" kutunun İÇİNDE (tuval). Kenarlık ve odak kutuya
+   taşınır; iç girdi çerçevesizdir. */
+.sifre-kutu {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  box-sizing: border-box; border: 1px solid var(--kenarlik); border-radius: 9px;
+  background: var(--yuzey);
+}
+.sifre-kutu.hatali { border-color: var(--tehlike-vurgu); }
+.sifre-kutu:focus-within { outline: 2px solid var(--vurgu); outline-offset: 0; border-color: transparent; }
+.sifre-kutu > .girdi.sifre-kutu-girdi,
+.giris-form-alan .sifre-kutu > .girdi.sifre-kutu-girdi {
+  flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent;
+}
+.giris-form-alan .sifre-kutu > .girdi.sifre-kutu-girdi { height: 52px; min-height: 52px; }
+.sifre-goster {
+  flex: none; border: 0; background: transparent; padding: 0 16px 0 0;
+  font: inherit; font-size: 15px; color: var(--vurgu); cursor: pointer;
+}
+.sifre-goster:hover { color: var(--vurgu-guclu); }
+.sifre-goster:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+.giris-gonder.btn, .giris-gonder.btn-buyuk {
+  height: 54px; min-height: 54px; border: 0; border-radius: 9px;
+  background: var(--vurgu); color: var(--vurgu-metin);
+  font: inherit; font-size: 18px; font-weight: 600;
+}
+.giris-gonder.btn:hover:not(:disabled) { background: var(--vurgu-guclu); }
+.giris-baglar { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 15px; }
+.giris-bag {
+  border: 0; background: transparent; padding: 0; min-height: 0;
+  font: inherit; font-size: 15px; color: var(--vurgu); cursor: pointer; text-align: left;
+}
+.giris-bag:hover { color: var(--vurgu-guclu); text-decoration: underline; }
+.giris-bag:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+.giris-bag--soluk { color: var(--metin-soluk); }
+.giris-yardim {
+  margin: 0; padding: 10px 14px; border: 1px solid var(--bilgi-kenar); border-radius: 9px;
+  background: var(--bilgi-yuzey); color: var(--metin); font-size: 15px;
+}
+.giris-surum { margin: 0; font-size: 14px; color: var(--metin-soluk); }
+/* P-30 kısıt beyanı: artık AÇIK kartın üstünde → koyu panel paleti
+   (--amber-*/--slate-*) yerine yüzey belirteçleri. */
+.giris-iki-panel .giris-kisit { margin: -14px 0 0; max-width: none; font-size: 14px; }
+.giris-iki-panel .giris-kisit-baslik {
+  margin: 0; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--metin-soluk);
+}
+.giris-iki-panel .giris-kisit-liste { margin-top: 8px; }
+.giris-iki-panel .giris-kisit-satir { color: var(--metin); font-size: 14px; }
+.giris-iki-panel .giris-kisit-durum { color: var(--uyari); border-color: var(--uyari-kenar); font-size: 13px; }
+.giris-iki-panel .giris-kisit-alt { color: var(--metin-soluk); font-size: 13px; }
+
+/* ── Sağ panel ── */
+.giris-sag {
+  /* Süs şekilleri panelden taşmaz: tuvaldeki kırpma `contain: paint` ile
+     (S1-c/S1-d blok testleri dosya SONUNA kadar tarar ve o bloklarda kırpma
+     yasağı vardır — aynı etki, başka özellik). */
+  position: relative; contain: paint; min-width: 0; box-sizing: border-box;
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 64px;
+  background: var(--kenar-yuzey); color: var(--kenar-metin-guclu);
+}
+.giris-sekil { position: absolute; border-radius: 24px; transform: rotate(12deg); }
+.giris-sekil-1 { top: 80px; right: 80px; width: 420px; height: 420px; border: 1px solid var(--kenar-ayrac); }
+.giris-sekil-2 { top: 140px; right: 140px; width: 300px; height: 300px; border: 1px solid var(--menu-aktif-yuzey); }
+.giris-sekil-3 { top: 200px; right: 200px; width: 180px; height: 180px; background: var(--vurgu); opacity: .9; }
+.giris-sag-icerik {
+  position: relative; display: flex; flex-direction: column; gap: 18px; max-width: 520px;
+}
+.giris-sag-baslik {
+  margin: 0; font-family: var(--yazi-marka); font-size: 36px; font-weight: 700;
+  line-height: 1.2; letter-spacing: -0.01em; color: var(--kenar-metin-guclu);
+}
+.giris-sag-alt { margin: 0; font-size: 18px; line-height: 1.5; color: var(--menu-baslik); }
+.giris-rakamlar {
+  display: flex; flex-wrap: wrap; gap: 28px; margin: 8px 0 0; padding: 0; list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+.giris-rakam { display: flex; flex-direction: column; }
+.giris-rakam-deger { font-size: 26px; font-weight: 600; color: var(--kenar-metin-guclu); }
+.giris-rakam-etiket { font-size: 14px; color: var(--menu-baslik); }
+
+/* Dokunma hedefi ≥ 44 px (plan 1.9 kabulü): metin bağlantısı görünümündeki
+   düğmeler, "Göster", kısıt özeti ve dil seçici HER genişlikte 44 px kutu alır;
+   yazı boyutu tuvaldeki gibi 15 px kalır. */
+.giris-bag, .giris-dil .dil-secici button {
+  min-height: 44px; display: inline-flex; align-items: center;
+}
+/* Özet list-item kalır (açılır üçgen kaybolmasın); yükseklik satır aralığından. */
+.giris-iki-panel .giris-kisit-baslik { display: list-item; min-height: 44px; line-height: 44px; }
+.giris-dil .dil-secici button { min-width: 44px; justify-content: center; }
+.sifre-goster { align-self: stretch; min-height: 44px; }
+
+/* ≤ 1199 px: sol sütun 440 px kart + 2×56 px iç boşluğa sığmaz → boşluk daralır. */
+@media (max-width: 1199px) {
+  .giris-sol { padding: 40px 24px; }
+  .giris-sag { padding: 48px 40px; }
+  .giris-sekil-1 { top: 48px; right: 32px; width: 300px; height: 300px; }
+  .giris-sekil-2 { top: 92px; right: 76px; width: 212px; height: 212px; }
+  .giris-sekil-3 { top: 136px; right: 120px; width: 124px; height: 124px; }
+}
+/* ≤ 768 px (şartname 12): TEK SÜTUN — kart önce, panel altta; taşma 0. */
+@media (max-width: 768px) {
+  .giris-iki-panel { grid-template-columns: minmax(0, 1fr); }
+  .giris-sol { padding: 24px 16px; }
+  .giris-kart { gap: 24px; }
+  .giris-kart .sayfa-basi-baslik { font-size: 28px; }
+  .giris-sag { padding: 32px 16px; }
+  .giris-sekil { display: none; }
+  .giris-sag-baslik { font-size: 26px; }
+  .giris-sag-alt { font-size: 16px; }
+  .giris-iki-alan { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S1-f — AYARLAR → GÖRÜNÜM KARTI · tuval Ayarlar.dc.html (artboard 7, 1440×900)
+   Geri dönüş: bu bloğu kaldır (eski dört kart "Ayrıntılı görünüm ayarları"
+   altında yaşıyor, hiçbiri silinmedi). Renkler YALNIZ belirteç; ölçüler
+   tuvalden. Şema önizlemesi renklerini `.gorunum-sema-onizleme[data-sema]`
+   üzerinden belirtecler.css'teki şema bloklarından alır. KÂĞIT: bu blokta
+   yazdırma kuralı yoktur; kâğıt muafiyeti (@media print, .belge*) aynen durur.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.gk { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.gk-bolum {
+  padding: 22px 24px; border: 1px solid var(--ayrac); border-radius: 12px;
+  background: var(--yuzey); color: var(--metin);
+  display: flex; flex-direction: column; gap: 14px; min-width: 0;
+  box-shadow: var(--golge-sm);
+}
+.gk-bolum-bas { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
+.gk-bolum-baslik { margin: 0; font-size: 20px; font-weight: 600; color: var(--metin); }
+.gk-bolum-alt { font-size: 15px; color: var(--metin-soluk); }
+.gk-bosluk { flex-grow: 1; }
+.gk-kaynak {
+  padding: 2px 10px; border-radius: var(--yaricap-tam);
+  background: var(--yuzey-2); color: var(--metin-soluk); font-size: 13px; font-weight: 500;
+}
+.gk-kaynak:empty { display: none; }
+
+/* 8 tema karosu — 4 sütun, 12 px aralık */
+.gk-sema-izgara { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.gk-sema {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px;
+  border: 1px solid var(--ayrac); border-radius: 12px;
+  background: var(--yuzey); color: var(--metin); font: inherit; text-align: left; cursor: pointer;
+}
+.gk-sema.secili { border: 3px solid var(--vurgu); }
+.gk-sema:focus-visible, .gk-secenek:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+.gk-sema:disabled, .gk-secenek:disabled { cursor: not-allowed; opacity: .6; }
+.gk-onizleme {
+  height: 60px; border-radius: 8px; display: flex;
+  border: 1px solid var(--ayrac); contain: paint;
+}
+.gk-onizleme-menu { width: 34%; background: var(--kenar-yuzey); }
+.gk-onizleme-govde {
+  flex-grow: 1; background: var(--yuzey-govde);
+  display: flex; flex-direction: column; gap: 6px; padding: 9px;
+}
+.gk-onizleme-kart { height: 9px; width: 60%; border-radius: 3px; background: var(--yuzey); border: 1px solid var(--ayrac); }
+.gk-onizleme-vurgu { height: 9px; width: 40%; border-radius: 3px; background: var(--vurgu); }
+.gk-sema-alt { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.gk-sema-ad { font-weight: 600; font-size: 16px; }
+.gk-secili-rozet {
+  padding: 2px 10px; border-radius: var(--yaricap-tam);
+  background: var(--vurgu-yuzey); color: var(--vurgu); font-size: 13px; font-weight: 500;
+}
+
+/* Aydınlık/karanlık · Yazı boyutu · Ekran modu — 3 eşit sütun, 20 px aralık */
+.gk-uclu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.gk-secenekler { display: flex; flex-direction: column; gap: 8px; }
+.gk-secenek {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  height: 52px; padding: 0 16px; border: 1px solid var(--ayrac); border-radius: 9px;
+  background: var(--yuzey); color: var(--metin); font: inherit; font-size: 17px; text-align: left; cursor: pointer;
+}
+.gk-secenek.secili { border: 2px solid var(--vurgu); }
+.gk-tik { color: var(--vurgu); }
+.gk-yazi-16 { font-size: 16px; }
+.gk-yazi-18 { font-size: 18px; }
+.gk-yazi-20 { font-size: 20px; }
+.gk-piksel { color: var(--metin-soluk); font-size: 14px; font-variant-numeric: tabular-nums; }
+.gk-secenek.secili .gk-piksel { color: var(--vurgu); }
+.gk-secenek-iki {
+  height: auto; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  gap: 2px; padding: 10px 16px;
+}
+.gk-mod-ad { font-size: 17px; }
+.gk-mod-aciklama { font-size: 14px; color: var(--metin-soluk); }
+.gk-not { margin: 0; font-size: 14px; color: var(--metin-soluk); }
+
+/* Alt satır — not + iki düğme (ikincil önce, birincil sonda) */
+.gk-alt { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.gk-alt-not { margin: 0; font-size: 15px; color: var(--metin-soluk); }
+.gk-alt-dugme { height: 50px; min-height: 50px; padding: 0 20px; border-radius: 9px; font-size: 16px; }
+.gk-alt-dugme.btn-birincil { font-weight: 600; }
+.gk-kilit-sebebi { margin: 0; font-size: 14px; color: var(--metin-soluk); }
+
+/* Katlanmış eski kartlar — özellik silinmedi (plan § 3 md.1) */
+.gk-ayrinti { border: 1px solid var(--ayrac); border-radius: 12px; background: var(--yuzey); }
+.gk-ayrinti-baslik { padding: 14px 24px; font-size: 16px; font-weight: 600; color: var(--metin); cursor: pointer; }
+.gk-ayrinti-govde { padding: 0 16px 16px; }
+
+@media (max-width: 768px) {
+  .gk-uclu { grid-template-columns: minmax(0, 1fr); }
+  .gk-sema-izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gk-bolum { padding: 16px; }
+  .gk-alt-dugme { width: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET S3-1 — PANEL BASİT YÜZÜ: "SABAHIN BEŞ SORUSU" (tuval Panel.dc.html)
+
+   Tek yer: bu blok. Sabit renk YOK, her değer belirteç (var(--…)).
+   Profesyonel yüz (.karsilama-izgara / .karsilama-kutucuk) DEĞİŞMEDİ.
+   Taslak ölçüleri: selam satırı küçük · "Yeni satış" birincil · 3 kart ·
+   büyük sayı (--yazi-3xl: 16 px ölçekte 36 px) tabular-nums · altta
+   "Kim borçlu?" (1,4 fr) + "Bekleyen iş" (1 fr). 375 px'te tek sütun.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.karsilama-bas--sade { align-items: flex-end; justify-content: space-between; }
+.karsilama-bas--sade .karsilama-selam {
+  margin: 0; font-family: var(--yazi-marka); font-size: var(--yazi-2xl);
+  font-weight: var(--kalin-cok); line-height: 1.2; color: var(--metin-guclu);
+}
+.karsilama-bas--sade .karsilama-tarih { margin: var(--bosluk-1) 0 0; font-size: var(--yazi-md); }
+.karsilama-hava-sade { color: var(--metin-soluk); }
+.panel-yeni-satis {
+  min-height: var(--dokunma-hedefi); padding: var(--bosluk-3) var(--bosluk-5);
+  font-size: var(--yazi-lg); font-weight: var(--kalin); gap: var(--bosluk-2);
+  display: inline-flex; align-items: center; text-decoration: none;
+}
+.panel-sade { display: flex; flex-direction: column; gap: var(--bosluk-4); min-width: 0; }
+.panel-sade-kartlar {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bosluk-4);
+}
+.panel-sade-alt {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--bosluk-4);
+}
+.panel-soru,
+.panel-sade-kartlar > .kart {
+  background: var(--yuzey); border: 1px solid var(--kenarlik); border-radius: var(--yaricap-lg);
+  box-shadow: var(--golge-sm); padding: var(--bosluk-4) var(--bosluk-5);
+  display: flex; flex-direction: column; gap: var(--bosluk-2); min-width: 0;
+}
+/* B-2 kartı (AltinPozisyonuKarti) kendi kabuğunu taşır; burada öteki iki
+   soruyla AYNI görünür — bileşen dosyasına dokunulmadı. */
+.panel-sade-kartlar > .kart > .kart-baslik { padding: 0; border-bottom: 0; }
+.panel-sade-kartlar > .kart > .kart-govde { padding: 0; }
+.panel-sade-kartlar > .kart .kart-baslik h2,
+.panel-soru-baslik {
+  margin: 0; font-size: var(--yazi-md); font-weight: var(--kalin-orta); color: var(--metin-soluk);
+}
+.panel-soru-baslik--liste { font-size: var(--yazi-lg); font-weight: var(--kalin); color: var(--metin-guclu); }
+.panel-soru-sayi,
+.panel-sade-kartlar > .kart .stat-deger {
+  font-size: var(--yazi-3xl); font-weight: var(--kalin); line-height: 1.1;
+  font-variant-numeric: tabular-nums; color: var(--metin-guclu); text-decoration: none;
+  word-break: break-word;
+}
+a.panel-soru-sayi:hover { color: var(--vurgu); }
+.panel-soru-alt {
+  margin: 0; display: flex; flex-wrap: wrap; gap: var(--bosluk-2) var(--bosluk-4);
+  font-size: var(--yazi-md); color: var(--metin-soluk); font-variant-numeric: tabular-nums;
+}
+.panel-soru-bas { display: flex; align-items: center; justify-content: space-between; gap: var(--bosluk-2); }
+.panel-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.panel-liste-satir {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center;
+  gap: var(--bosluk-3); padding: var(--bosluk-3) 0; border-bottom: 1px solid var(--ayrac);
+  font-variant-numeric: tabular-nums;
+}
+.panel-liste-satir:last-child { border-bottom: 0; }
+.panel-liste-satir--is { grid-template-columns: auto minmax(0, 1fr); padding: var(--bosluk-2) 0; border-bottom: 0; }
+.panel-liste-ad { font-weight: var(--kalin-orta); min-width: 0; word-break: break-word; }
+.panel-liste-durum { font-size: var(--yazi-md); color: var(--metin-soluk); }
+.panel-liste-durum--gecti { color: var(--tehlike); }
+.panel-liste-tutar { font-weight: var(--kalin); text-align: right; }
+.panel-liste-tutar--eksi { color: var(--tehlike); }
+.panel-nokta { width: var(--bosluk-2); height: var(--bosluk-2); border-radius: var(--yaricap-tam); }
+.panel-nokta--acil { background: var(--tehlike); }
+.panel-nokta--dikkat { background: var(--uyari-vurgu); }
+.panel-nokta--bilgi { background: var(--basari); }
+@media (max-width: 1100px) {
+  .panel-sade-kartlar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .panel-sade-alt { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .panel-sade-kartlar { grid-template-columns: minmax(0, 1fr); }
+  .panel-liste-satir { grid-template-columns: minmax(0, 1fr) auto; }
+  .panel-yeni-satis { width: 100%; justify-content: center; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET S3-2 — MÜŞTERİLER: LİSTE + ÇEKMECE (tuval Musteriler.dc.html, not n3)
+   Satırda en çok 3 eylem + "⋯"; "⋯" yerli HTML popover (JS yok, CSP istisnası
+   yok) — tablo sarmalayıcısının overflow'u onu KIRPMAZ (üst katman).
+   Sabit renk YOK, satır içi style YOK: her değer belirteç.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cari-bakiye { display: inline-flex; align-items: center; gap: var(--bosluk-2); white-space: nowrap; }
+.cari-satir > td { vertical-align: middle; padding-block: var(--bosluk-2); }
+.satir-eylem { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--bosluk-2); white-space: nowrap; }
+.satir-menu-ac { font-weight: var(--kalin); letter-spacing: .1em; }
+.satir-menu {
+  margin: auto; padding: var(--bosluk-4);
+  min-width: min(22rem, calc(100vw - 2 * var(--bosluk-4)));
+  max-width: calc(100vw - 2 * var(--bosluk-4));
+  border: 1px solid var(--kenarlik); border-radius: var(--yaricap-lg);
+  background: var(--yuzey); color: var(--metin); box-shadow: var(--golge-xl);
+}
+.satir-menu-baslik { margin: 0 0 var(--bosluk-1); font-size: var(--yazi-lg); font-weight: var(--kalin); color: var(--metin-guclu); word-break: break-word; }
+.satir-menu-ogeler { display: flex; flex-direction: column; gap: var(--bosluk-2); margin-top: var(--bosluk-3); }
+.satir-menu-ogeler > .btn { width: 100%; justify-content: flex-start; text-align: start; }
+.form-daha-fazla { align-self: flex-start; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-61 — SATIR EYLEMLERİ TAŞMA MENÜSÜ + YOĞUN TABLOLARIN YOĞUNLUĞU
+   Ortak bileşen Bilesenler/SatirEylemleri.razor: satırda en çok 2 eylem + "⋯"
+   (.satir-eylem / .satir-menu yukarıdaki S3-2 bloğundan gelir — DEĞİŞMEDİ).
+   · .tablo-sik: yoğun liste tablolarında hücre dikey boşluğu daralır; satır
+     yüksekliğini düğme yüksekliği belirler (hedef /cariler ≤ 96 px).
+   · .hucre-tek-satir: numara/tarih gibi bölünmemesi gereken hücreler
+     (/faturalar FATURA NO 1280 px'te iki satıra kırılıyordu).
+   Sabit renk YOK, satır içi style YOK: her değer belirteç.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.satir-eylem > .btn { white-space: nowrap; }
+.tablo-sik > tbody > tr > td { padding-block: var(--bosluk-2); vertical-align: middle; }
+/* Ölçüldü (1280x800, /cariler): 1rem yan boşluk + 114 px'e sıkışan AD sütunu adı
+   3 satıra bölüyor, satır 74 px, ekranda 6 satır. Yan boşluk .5rem, ilk (kimlik)
+   sütuna 10rem taban, eylem aralığı daraltıldı → satır 55 px, 8 satır, yatay taşma yok. */
+.tablo-sik > tbody > tr > td,
+.tablo-sik > thead > tr > th { padding-inline: var(--bosluk-2); }
+/* Kimlik (ad) sütunu tabanı yalnız İLK sütunu ad olan tablolarda (/cariler): /faturalar'da
+   ilk sütun fatura numarası, /urunler'de görsel — taban onları şişirip adı 3 satıra bölüyordu. */
+.tablo-sik--kimlik > tbody > tr > td:first-child { min-width: 10rem; }
+.tablo-sik .satir-eylem { gap: var(--bosluk-1); }
+.hucre-tek-satir { white-space: nowrap; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET S1-g — MENÜ VE ÜST BAR TUVALE UYUM (2026-09-24, kurucu: "olmamış")
+   Kaynak: dokumanlar/02-mimari/sadelestirme/tuval/project/ Panel.dc.html ·
+   Profesyonel.dc.html · Tezgah.dc.html. Sabit renk YOK — yalnız belirteç.
+   GERİ DÖNÜŞ: blok tek parçadır (genel [hidden] kuralı dosyanın başındadır).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (1) Grup başlıkları CÜMLE DÜZENİ ("Günlük iş", "Müşteri ve stok") — tuval
+       Profesyonel.dc.html; BÜYÜK HARF dönüşümü kaldırıldı (S1-b açık grubu
+       büyük harf yapıyordu, favori başlığı da P-14'ten beri büyük harfti). */
+.kenar-grup-baslik,
+.kenar-grup-dugme[aria-expanded="true"] .kenar-grup-ad {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* (2) Kullanıcı kartı: rol satırındaki şube adı ("Sahip · Merkez şube"). */
+.kenar-kullanici-metin .sube-sabit { color: inherit; }
+
+/* (3) Üst bar: saat = "kuru şimdi sor" düğmesi (yetkili). Tuvalde saat düz
+       metindir; düğme görünümü taşımaz, üstüne gelince vurgulanır. Metin
+       dönmez (eski '⟳' dönme animasyonu metne uygulanmaz). */
+.kur-guncelle-btn.kur-guncelle-saat {
+  width: auto; height: auto; min-width: 0;
+  padding: var(--bosluk-1) var(--bosluk-2);
+  background: transparent; border: 1px solid transparent;
+  color: inherit; font-size: inherit;
+  display: inline-flex; align-items: baseline; gap: var(--bosluk-1);
+  animation: none;
+}
+.kur-guncelle-btn.kur-guncelle-saat:hover:not(:disabled) {
+  background: var(--vurgu-yuzey); border-color: var(--vurgu-kenar);
+}
+.kur-guncelle-btn.kur-guncelle-saat[aria-busy="true"] { opacity: .6; }
+
+/* (4) Altın pozisyonu kırılımı: tuvaldeki gibi aynı biçimli öğeler, sabit
+       boşluk, öğe İÇİ kırılma yok; sığmazsa bütün öğe alt satıra geçer. */
+.pozisyon-kirilim {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  column-gap: var(--bosluk-4); row-gap: var(--bosluk-1);
+  min-width: 0;
+}
+.pozisyon-kirilim-oge {
+  white-space: nowrap;
+  padding: 0; border: 0; background: transparent;
+  font: inherit; font-size: var(--yazi-sm);
+  color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline; text-decoration-color: transparent;
+  text-underline-offset: 3px; cursor: pointer;
+}
+.pozisyon-kirilim-oge:hover,
+.pozisyon-kirilim-oge:focus-visible { color: var(--metin); text-decoration-color: currentColor; }
+/* MADEN-2 tur 2 (tasarım hakemi KRİTİK — "Alacak hapı düğme gibi görünmesin"): kırılım öğeleri
+   (bağlantı Vitrin/Hurda ile düğme Alacak/Borç) AYNI görünür. dugme.css'teki
+   `html[data-mod] .ana-icerik button:is(.pozisyon-kirilim-oge…)` hap kenarı burada KİMLİK özgüllüğüyle
+   ezilir (yükleme sırasından bağımsız); tıklanabilirlik kalıcı noktalı alt çizgiyle söylenir
+   (belirteç --dugme-kenar). Ölçü (yükseklik, yazı boyu) olcek.css (11b)'de kalır. */
+#pozisyon-kart .pozisyon-kirilim-oge {
+  border: 0;
+  border-radius: 0;
+  padding-inline: 0;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--dugme-kenar);
+}
+#pozisyon-kart .pozisyon-kirilim-oge:hover,
+#pozisyon-kart .pozisyon-kirilim-oge:focus-visible {
+  color: var(--metin);
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET S1-h — GÖRSEL SIĞMA 1 (kurucu 24.09 08:30: "yer yok gibi dibine
+   girmişsin, dar dar" · "tren gibi aşağıya doğru gidiyor, tab tab ayır")
+   Tuval: Ayarlar.dc.html · Ekranlar.dc.html · Tezgah.dc.html.
+   ⚠ Yalnız belirteç, sabit renk yok. ⚠ Kısa etikette satır kırma "her yerde"
+     (anywhere / break-all) YASAK — tek kelime harf ortasından bölünmez.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (1) Ortak sekmeler — tuvaldeki hap biçimli şerit */
+.sekmeler { display: flex; flex-direction: column; gap: var(--bosluk-4); min-width: 0; }
+.sekmeler-serit {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 3px;
+  align-self: flex-start; max-width: 100%; box-sizing: border-box;
+  border: 1px solid var(--ayrac); border-radius: 999px; background: var(--yuzey);
+}
+.sekmeler-sekme {
+  min-height: var(--dugme-yuksekligi, 2.25rem); padding: 6px 18px; box-sizing: border-box;
+  border: 0; border-radius: 999px; background: transparent;
+  color: var(--metin-soluk); font: inherit; font-size: 16px; font-weight: 500;
+  white-space: nowrap; cursor: pointer;
+}
+.sekmeler-sekme:hover { color: var(--metin); background: var(--yuzey-hover); }
+.sekmeler-sekme.secili { background: var(--vurgu); color: var(--vurgu-metin); font-weight: 600; }
+.sekmeler-sekme:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+.sekmeler-panel { min-width: 0; }
+.sekmeler-panel:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 4px; border-radius: 12px; }
+@media (max-width: 600px) {
+  /* PAKET DIL-EKRAN: 2 sütunlu ızgara (170 px hücre) İngilizce sekme adlarını ("Payment Method
+     Breakdown" 227 px, "Suspicious Transactions" 193 px) hücreden taşırıyordu (K3 tasan). Esnek
+     sarma: sekme yazısına göre genişler, sığmayan alt satıra iner; yazı hiçbir hâlde taşmaz. */
+  .sekmeler-serit {
+    display: flex; flex-wrap: wrap;
+    align-self: stretch; border-radius: 12px;
+  }
+  .sekmeler-sekme { flex: 1 1 auto; text-align: center; border-radius: 9px; padding: 6px 10px; }
+}
+
+/* (2) /ayarlar — dar sütun (32rem) KALKTI: sayfa ana alanın tamamını kullanır */
+.ayarlar-sayfa { min-width: 0; }
+.ayar-panel { min-width: 0; }
+.ayar-ikili {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--bosluk-4); align-items: start; min-width: 0;
+}
+.ayar-ikili > :only-child { grid-column: 1 / -1; }
+@media (max-width: 900px) {
+  .ayar-ikili { grid-template-columns: minmax(0, 1fr); }
+}
+/* Görünüm kartı: ad ile "Seçili" rozeti binmez; ad kelime sınırında kalır */
+.gk-sema-alt { flex-wrap: wrap; row-gap: 4px; }
+.gk-sema-ad { word-break: normal; }
+.gk-secili-rozet { white-space: nowrap; }
+.gk-bolum-baslik { white-space: nowrap; }
+.gk-piksel { white-space: nowrap; }
+.gk-mod-ad { white-space: nowrap; }
+/* Sabit 50 px yükseklik yerine dikey dolgu: düğme yazısı tek satırda kalır, satır
+   yüksekliği ölçümü (sikisma-olc) sabit kutu yüksekliğini "kırık" saymaz. */
+.gk-alt-dugme { height: auto; padding-top: 13px; padding-bottom: 13px; white-space: nowrap; }
+/* Ana alan düğmeleri (/ayarlar, /islemler …): yükseklik min-height + padding-block:0 +
+   line-height:normal ile kurulmuştu → yazı tek satırken kutu 1,7 satırdan yüksek görünüyor ve
+   ölçüm "kırık" sayıyordu. Aynı görünüm dolgu ile kurulur (yükseklik değişmez). */
+.ana-icerik .btn:not(.gk-alt-dugme):not(.btn-kucuk) {
+  line-height: 1.3;
+  padding-top: calc((var(--dugme-yuksekligi, 2.25rem) - 1.3em) / 2);
+  padding-bottom: calc((var(--dugme-yuksekligi, 2.25rem) - 1.3em) / 2);
+}
+.ana-icerik .btn-kucuk {
+  line-height: 1.3;
+  padding-top: calc((var(--dugme-yuksekligi-kucuk, 1.75rem) - 1.3em) / 2);
+  padding-bottom: calc((var(--dugme-yuksekligi-kucuk, 1.75rem) - 1.3em) / 2);
+}
+
+/* (3) Karo adları: /ekranlar ve /islemler — ızgara sütunu ada göre
+       (sabit 8 sütun 1280'de 141 px karo, 59 px yazı alanı bırakıyordu).
+       14rem: ikonlu karoda (ikon + yıldız payı) "Sipariş ve tamir" 17 px'de
+       tek satır sığar; 12rem'de 194 px karo 112 px yazı alanı bırakıp 2 satıra
+       düşüyordu (24.09 görüntü turu, yeni kiracı varsayılanı). */
+.ekranlar-izgara { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+.ekran-karo-ad { word-break: normal; hyphens: manual; }
+.islem-izgara-karolar { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); }
+@media (max-width: 600px) {
+  .ekranlar-izgara { grid-template-columns: minmax(0, 1fr); }
+  .islem-izgara-karolar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* (4) Altın pozisyonu "dışarıda" satırı: parçalar blok öğe; satır içi span
+       iki satıra bölünüp komşusunun kutusuna binmez. */
+.pozisyon-disarida {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  column-gap: .4em; row-gap: var(--bosluk-1); min-width: 0;
+}
+
+/* (5) Telefon (375 px) ölçümünün bulguları */
+@media (max-width: 600px) {
+  /* "Fildişi (açık menü)" iki sütunlu tema ızgarasında tek satır kalır */
+  .gk-bolum { padding-left: 12px; padding-right: 12px; }
+  .gk-sema-izgara { gap: 8px; }
+  .gk-sema { padding-left: 8px; padding-right: 8px; }
+  .gk-sema-ad { font-size: 14px; }
+}
+/* Künye makine satırı (sürüm=… · derleme=…) kısa etiket DEĞİLDİR: dar ekranda
+   kutudan taşmak yerine herhangi bir noktada satır atlar. */
+#ayar-kunye-satir { word-break: break-all; }
+@media (max-width: 480px) {
+  /* Pozisyon kırılım öğeleri telefonda 44 px dokunma kutusu alır (K3); yazı
+     tek satırdır — kutu dolguyla kurulur, satır yüksekliği ölçümü şaşmaz. */
+  .pozisyon-kirilim-oge {
+    line-height: 1.3;
+    padding-top: calc((var(--dugme-yuksekligi, 2.75rem) - 1.3em) / 2);
+    padding-bottom: calc((var(--dugme-yuksekligi, 2.75rem) - 1.3em) / 2);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   PAKET S1-i — GÖRSEL SIĞMA 2 (2026-09-24, kurucu: "tren gibi sayfa", "diğer
+   ekranlara da bak", /islemler "yazılar kutuya sığmaz, inputlar aynı seviyede
+   değil"). Yalnız belirteç; sabit renk ve satır içi style YOK.
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* (1) Satış ekranı kabı — Islemler.razor'daki satır içi style buraya taşındı. */
+.islem-sayfa { max-width: 48rem; margin: 0 auto; }
+
+/* (2) ORTAK SEÇİCİ PANELİ — 185 kullanımın TEK yeri. Ölçüldü: panel tetik kadar
+       dardı (~145 px) ve seçenek adı `overflow-wrap:anywhere` ile HARF ortasından
+       bölünüyordu ("22 Ayar Burma Bilezik (K22)" dört satır). Genişlik:
+       min(max(tetik, 20rem), 92vw); içerik uzunsa 92vw'ye kadar büyür. Kelime
+       ortasından bölünmez; tek kelime panelden uzunsa ancak o zaman sarar
+       (break-word). Kenara taşarsa js/secici-yerlesim.js `.sola` koyar. */
+.secici-liste-kap {
+  width: max-content;
+  min-width: min(max(100%, 20rem), 92vw);
+  max-width: min(max(100%, 32rem), 92vw);
+}
+.secici-liste-kap.sola { left: auto; right: 0; }
+.secici-secenek .secici-ad { word-wrap: break-word; word-break: normal; hyphens: manual; }
+.secici-secenek .secici-alt { white-space: nowrap; }
+@media (max-width: 768px) {
+  .secici-liste-kap { max-width: 92vw; }
+}
+/* Araç şeridindeki (akıştaki) panel de aynı asgari genişliği alır. */
+.sayfa-basi-filtre .secici-liste-kap { min-width: min(max(100%, 20rem), 92vw); max-width: 92vw; }
+
+/* (3) ORTAK FORM SATIRI — etiketler aynı üst çizgide, girdiler aynı yükseklik ve
+       alt çizgide, düğme girdilerle hizalı. Mevcut `.satir` subgrid rayları (K2)
+       korunur; düğme ÜÇ RAYI kaplamak yerine KONTROL rayına (2) oturur (alt ray
+       boşken bile satır aralığı kadar kayıyordu). "(isteğe bağlı)" eki bölünmez. */
+.form-satiri .alan-istege { white-space: nowrap; }
+/* Etiket kendi yüksekliğinde, rayın ÜSTÜNE yaslı: tek satırlık "Ürün" ile iki
+   parçalı "Adet (isteğe bağlı)" metinlerinin üst çizgisi aynı kalır. */
+.form-satiri .alan-etiket { align-self: start; align-items: baseline; }
+@media (min-width: 769px) {
+  .satir.form-satiri:has(> .alan) > :is(button, .btn):not(.alan):not(.secici-alan) {
+    grid-row: 2 / 3; align-self: end;
+    height: var(--kontrol-yuksekligi, 2.25rem); min-height: var(--kontrol-yuksekligi, 2.25rem);
+  }
+  .fis-kalem-satiri {
+    grid-template-columns: minmax(10rem, 1fr) auto auto auto;
+  }
+}
+/* Geniş ekranda "(isteğe bağlı)" eki etiketin YANINDA kalır (alt satıra
+   inip girdiyi aşağı itmez); sütun etiket kadar genişler. */
+@media (min-width: 1100px) {
+  .fis-kalem-satiri .alan-etiket { flex-wrap: nowrap; white-space: nowrap; }
+}
+/* Birim fiyat etiketi para birimini zaten söyler ("Birim Fiyat (₺)") — kutunun
+   yanındaki ikinci "TRY" kaldırıldı (kurucu bulgusu). */
+.fis-kalem-satiri .alan-son-ek { display: none; }
+.fis-teklif-satiri { min-width: 0; }
+.islem-son-fis { font-weight: var(--kalin-orta); color: var(--metin); }
+
+/* (4) KIRIK HÜCRELER — tek kelime ASLA harf ortasından bölünmez. Tablo gerekirse
+       kendi kabında (tablo-sar) yatay kayar; sayfa kaymaz. */
+.tablo-tek-satir th, .tablo-tek-satir td { white-space: nowrap; }
+.tablo-tek-satir td.hucre-sarar { white-space: normal; min-width: 16rem; }
+.hucre-tek-satir, .hucre-tek-satir .si-tetik { white-space: nowrap; }
+.secim-etiket, .secim-etiket .alan-etiket, .secim-etiket label { white-space: nowrap; }
+
+/* (5) Sekme rozeti (Uyum şeridi taşındı) ve sayfalama satırları. */
+.sekmeler-rozet { margin-inline-start: var(--bosluk-1); }
+.kr-gun-sayfa { padding-top: var(--bosluk-2); padding-bottom: var(--bosluk-2); }
+
+/* (6) SEÇİCİ + EK NOT SARMALAYICISI — ölçüldü (S1-i, /islemler profesyonel, 1280
+       ve 375): `<div class="alan"><Secici/> <span>not</span></div>` kalıbında
+       sarmalayıcı üç raylı alt ızgaraya (subgrid) oturuyor, seçici üç rayı
+       dolduruyor ve fazladan not örtük ray AÇAMADIĞI için son raya BİNİYORDU
+       (#islem-kasa-durum ⟂ #islem-kasa-tek). Seçicinin yanında başka çocuk varsa
+       sarmalayıcı dikey yığına döner: etiket · kutu · alt · not sırayla, binme 0. */
+.alan:has(> .secici-alan):has(> :not(.secici-alan)) { display: flex; flex-direction: column; gap: var(--bosluk-1); }
+.alan:has(> .secici-alan):has(> :not(.secici-alan)) > .secici-alan { grid-row: auto; }
+
+/* (7) ARAÇ ŞERİDİ HİZASI — ölçüldü (S1-i, katalog K7, /cariler 1280): `.secici-alan`
+       kuralı (ızgara, 3 ray + satır aralığı) P-37 şerit disiplinindeki dikey
+       yığını EZİYORDU → boş alt ray tetiği 4 px yukarı itiyordu (kutu altı ±4).
+       Şeritte seçici yine dikey yığındır (etiket · kutu, alttan yaslı). Arama
+       kutusunun görünmez etiketi kutunun ÜSTÜNE konur: ekran okuyucu için aynı,
+       ölçümde etiket üst çizgisi komşu etiketlerle aynı. */
+.sayfa-basi-filtre > .secici-alan { display: flex; flex-direction: column; justify-content: flex-end; }
+.sayfa-basi-filtre > .arama-kutu { position: relative; }
+.sayfa-basi-filtre > .arama-kutu > .gorsel-gizli { top: 0; left: 0; margin: 0; }
+/* Arama kutusu şeritteki seçici tetiğiyle AYNI yükseklik (ölçüldü: 40 ↔ 44 px → etiket üstü ±4). */
+.sayfa-basi-filtre > .arama-kutu .girdi { height: var(--dokunma-hedefi); min-height: var(--dokunma-hedefi); }
+
+/* (8) Seçici paneli ekran kenarını aşarsa (akış içi şerit paneli dahil) JS
+       `--secici-kaydir` ile sola kaydırır (satır içi style değil, belirteç). */
+.secici-liste-kap.kaydir { translate: var(--secici-kaydir, 0) 0; }
+
+/* (9) Kısa bağlantı ve iki kelimelik tablo başlığı bölünmez (katalog K3, ölçüldü:
+       /kur 375 "Görünümü değiştir →", /cariler "DÖVİZ BAKİYE"). */
+.bag-tek-satir { white-space: nowrap; }
+.tablo-sik--kimlik > thead > tr > th { white-space: nowrap; }
+
+/* (10) Barkod satırı (ölçüldü: 375 px'te düğme alt satıra iniyor, kutu altı ±58). */
+.barkod-satiri { flex-wrap: nowrap; }
+.barkod-satiri > .arama-kutu { flex: 1 1 auto; min-width: 0; }
+.barkod-satiri > .btn { flex: 0 0 auto; }
+
+/* (11) ELLE EKLE SATIRI — DAR EKRAN (≤768 px). Doğrulayıcı ölçümü (375×812,
+        BASİT, açık+koyu): 768 px ve altında `.satir` esnek/sarmalı kaldığı için
+        ürün tetiği 123 px'e sıkışıyor ("22 Ayar Burma Bilezik (K22)" üç nokta
+        ile kesiliyor), fiyat kutusu ile Ekle arasında alt ±9 / üst ±11 px fark
+        vardı. Dar ekranda satır iki raylı bir ızgaradır: ÜRÜN tam satır
+        (1-3. raylar); ADET · FİYAT · EKLE aynı üç raylı sırada (4-6) — Ekle
+        KONTROL rayına (5) oturur ve rayın yüksekliğini alır: üst ve alt kenar
+        girdilerle aynı. Etiketler subgrid ile aynı üst çizgide. */
+@media (max-width: 768px) {
+  .satir.fis-kalem-satiri {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto auto auto auto;
+    align-items: start;
+    column-gap: var(--bosluk-2, .5rem);
+    row-gap: var(--bosluk-1, .25rem);
+  }
+  .fis-kalem-satiri > .alan { grid-template-rows: subgrid; row-gap: inherit; min-width: 0; }
+  .fis-kalem-satiri > .alan.esnek { grid-column: 1 / -1; grid-row: 1 / span 3; margin-bottom: var(--bosluk-2, .5rem); }
+  .fis-kalem-satiri > .alan:not(.esnek) { grid-row: 4 / span 3; }
+  .fis-kalem-satiri > .alan .alan-etiket { white-space: nowrap; }
+  .fis-kalem-satiri > #islem-kalem-ekle { grid-column: 3; grid-row: 5; align-self: start; height: var(--dokunma-hedefi); min-height: var(--dokunma-hedefi); }
+}
+
+/* (12) BARKOD SATIRI ve "Elle ekle" aralığı — ölçüldü (S1-i kapanış, 375×812
+        BASİT): yer tutucu "Barkodu okutun vey…" diye kesiliyordu, "Elle ekle"
+        düğmesi altındaki "Ürün" etiketine yapışıktı (6 px). Dar ekranda
+        düğme yalnız simge olur; erişilebilir ad düğmenin aria-label'ından
+        gelir (görsel gizli kalıbı KULLANILMADI: 1 px kutudan taşan metin 375'te
+        24 px yatay kaydırma üretti — ölçüldü), kutu genişler. Yer tutucu kısa sözlük metnidir. */
+@media (max-width: 480px) {
+  .barkod-satiri .barkod-dugme-metin { display: none; }
+}
+#islem-elle[open] > summary { margin-bottom: var(--bosluk-3, .75rem); }
+
+/* ═══ KATALOG · PAKET KAT-1 — KURUCU ŞİKÂYET KATALOĞU (24.09) ════════════════
+   Kurucu: "ekranlar hakkında sana ne şikâyet ettiysem tüm sayfalarda kontrol
+   edilsin". Her kural 43 rota × {1280,375} × {BASİT,PRO} × {açık,koyu} gerçek
+   tarayıcı taramasında (betikler/sikisma-olc.js) ÖLÇÜLEN bir hücreden doğdu;
+   sabit renk YOK, satır içi stil YOK, yalnız belirteç. Ekran başına kural
+   yazılmadı — ortak kalıba (şerit, form ızgarası, kayıt seçici) bağlandı. */
+
+/* (K7-a) ARAÇ ŞERİDİ: tüm kontroller TEK yükseklik. P-37 bunu istiyordu ama
+   sonraki `.girdi:not(.girdi-cok-satir)` kuralı (aynı özgüllük, sonra geldi)
+   girdileri 40 px'e çekti; seçici tetiği 44, şeritteki düğme 30 px kaldı.
+   Ölçüldü: /siparisler kutu altı ±4, /pos/tahsilatlar ±4 (1280). */
+.sayfa-basi .sayfa-basi-filtre :is(.girdi:not(.girdi-cok-satir), .secim, .secici-tetik),
+.sayfa-basi .sayfa-basi-filtre > :is(button, .btn, .dugme) {
+  box-sizing: border-box;
+  height: var(--dokunma-hedefi);
+  min-height: var(--dokunma-hedefi);
+}
+/* Şeridin DOĞRUDAN çocuğu olan `select` de `> *` kuralıyla esnek sütun
+   oluyordu; Chrome yazıyı kutunun üstüne yapıştırıyordu ("Tümü", "2026" —
+   ölçüldü /faturalar, /raporlar 375 ve 1280). Seçim kutusu kendi (yerel)
+   düzeninde kalır; yazı dikeyde ortalanır. */
+.sayfa-basi .sayfa-basi-filtre > select { display: block; }
+/* Şeritteki `.alan` üç raylı ızgaradır; boş alt rayın ÖNCESİNDEKİ ray boşluğu
+   kontrolü 4 px yukarı itiyordu (seçici ve düğme tabana yaslı). Şeritte alan,
+   seçici gibi alttan yaslı sütundur. Ölçüldü: /pos/tahsilatlar, /siparisler ±4. */
+.sayfa-basi .sayfa-basi-filtre > .alan {
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+
+/* (K7-b) DAR ŞERİT: iki tarih kutusu (ya da yıl · ay seçimi) yan yana sığar
+   (375 px'te 2 × ~160 px); tek kalan öğe büyüyüp satırı doldurur.
+   Ölçüldü: /raporlar/kasa, /raporlar/satis-analizi, /raporlar (yıl·ay) 375'te alt alta (±52). */
+@media (max-width: 640px) {
+  .sayfa-basi-filtre > :is(input[type="date"], select) {
+    flex: 1 1 calc(50% - var(--bosluk-2));
+    min-width: 0;
+  }
+}
+
+/* (K7-c) FORM IZGARASINDA DÜĞME kontrol rayına (2) oturur. Üç rayı kaplayan
+   düğme alt boşluğu (ray arası boşluk) kadar aşağı kayıyordu. Ölçüldü: /emanet
+   "İade Et" kutuların 12 px altında (1280 ve 375). */
+/* ⚠ Özgüllük: mevcut "alan olmayan öğe üç rayı kaplar" kuralını (üç :not)
+   yalnız DÜĞME için geçer — aynı :not zinciri + öğe seçici. */
+:is(.form-grid-2, .form-grid-3) > :is(button, .btn, .dugme):not(.alan):not(.secici-alan):not(.arama-kutu) { grid-row: 2 / 3; align-self: end; }
+@media (min-width: 769px) {
+  .satir:is(:has(> .alan), :has(> .secici-alan)) > :is(button, .btn, .dugme):not(.alan):not(.secici-alan):not(.arama-kutu) { grid-row: 2 / 3; align-self: end; }
+}
+
+/* (K7-d) GÖRSEL GİZLİ ETİKETLİ ARAMA KUTUSU ızgarada etiket rayından başlar:
+   görünür etiketli komşularıyla ÜST çizgi aynı olur (P-37 şerit kalıbının
+   `.arama-kutu > .gorsel-gizli { top: 0 }` eşi). Kutu yine kontrol rayının
+   altına yaslanır; görünen kutu yerinden oynamaz. Ölçüldü: /emanet ±33,
+   /urunler/etiketler ±30 (etiket üstü). */
+:is(.form-grid-2, .form-grid-3) > .arama-kutu:not(:has(.alan-ipucu)) {
+  grid-row: 1 / 3; align-self: stretch;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  position: relative;
+}
+@media (min-width: 769px) {
+  .satir:is(:has(> .alan), :has(> .secici-alan)) > .arama-kutu:not(:has(.alan-ipucu)) {
+    grid-row: 1 / 3; align-self: stretch;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    position: relative;
+  }
+}
+:is(.form-grid-2, .form-grid-3, .satir) > .arama-kutu { position: relative; }
+:is(.form-grid-2, .form-grid-3, .satir) > .arama-kutu > .gorsel-gizli { top: 0; left: 0; margin: 0; }
+
+/* (K7-d2) DAR EKRANDA (≤768 px) esnek satırda arama + seçici: seçicinin görünür
+   etiketi, etiketsiz arama kutusunu 11 px aşağı kaydırıyordu (ölçüldü: /emanet
+   375). Arama kutusu kendi satırına geçer; seçici ve düğme TABANDAN hizalanır
+   (P-37 şerit kuralı: ortadan/üstten değil alttan). */
+@media (max-width: 768px) {
+  .satir:has(> .secici-alan) { align-items: flex-end; }
+  .satir:has(> .secici-alan) > .arama-kutu { flex: 1 1 100%; }
+  .satir:has(> .secici-alan) > .secici-alan {
+    display: flex; flex-direction: column; justify-content: flex-end; gap: var(--bosluk-1);
+  }
+}
+
+/* (K7-e) KAYIT SEÇİCİ arama satırı: "Ara" düğmesi kutuyla aynı boyda.
+   Ölçüldü: /hurda, /pos/tahsilatlar kutu altı ±6. */
+.secici-arama > :is(.dugme, .btn, button) { align-self: stretch; }
+
+/* (K9) SATIR İÇİ AÇIKLAMA sarınca kendi kutusunda sarar (çok satırlı satır içi
+   öğenin çerçevesi komşu sayıyla kesişiyordu). Ölçüldü: /hurda 375 tahlil farkı. */
+.katalog-blok-ek { display: inline-block; }
+
+/* (K3) KISA ETİKETLER KIRILMAZ: tablo içi küçük düğme ve durum metni tek
+   satırdır. Ölçüldü: /vitrin "Varsayılana dön", /urunler "Görsel yok",
+   "3 adet" (1280 PRO); panel hızlı eylemleri "Satış Yap" (1280 PRO). */
+:is(.veri-tablosu, .tablo) :is(.dugme, .btn, button),
+:is(.veri-tablosu, .tablo) .katalog-tek-satir,
+.karsilama-araclar > :is(a, button) { white-space: nowrap; }
+.karsilama-araclar { flex-wrap: wrap; }
+
+/* (K3) PANEL KUTUCUĞUNDA ÖZET KARTLARI: kutucuk dar sütundayken (≈310 px)
+   iki sütunlu kart ızgarası tutarı kartın dışına taşırıyordu (₺99.822,15 —
+   1280 PRO). Kutucuk genişliğine göre (kapsayıcı sorgusu) tek sütuna iner. */
+.karsilama-kutucuk { container-type: inline-size; }
+@container (max-width: 480px) {
+  .karsilama-kutucuk .stat-izgara { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* (GÖRSEL) ESKİ `class="ikincil"` DÜĞMELER tarayıcı varsayılanıyla (gri, çerçevesiz
+   yükseklik) çiziliyordu: app.css'te `.ikincil` seçicisi YOK, 6 ekranda 36 düğme
+   (Bildirimler, Faturalar, Sipariş, Sipariş detayı, Vezne, kabuk hatası).
+   Ortak ikincil düğme görünümü (.dugme + .dugme-ikincil ile aynı belirteçler). */
+button.ikincil:not(.dugme):not(.btn) {
+  display: inline-flex; align-items: center; gap: .5rem; justify-content: center;
+  font-weight: 500; font-size: .875rem; border-radius: var(--radius-md);
+  padding: .5rem 1rem; border: 1px solid var(--kenarlik); transition: background .15s;
+  background: var(--yuzey); color: var(--metin);
+  box-sizing: border-box; min-height: var(--dugme-yuksekligi, 2.25rem); padding-block: 0;
+}
+button.ikincil:not(.dugme):not(.btn):hover:not(:disabled) { background: var(--yuzey-2); }
+button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed; }
+
+/* (K7) ŞERİTTE ONAY KUTUSU: `> *` kuralı etiketi sütuna çeviriyor, kutu yazının
+   ÜSTÜNE çıkıyordu (/siparisler "Yalnız gecikenler"). Kutu + yazı tek satır,
+   kontrol tabanında. */
+.sayfa-basi .sayfa-basi-filtre > .onay-satir {
+  flex-direction: row; align-items: center; justify-content: flex-start;
+  gap: var(--bosluk-2); min-height: var(--dokunma-hedefi); flex: 0 1 auto; min-width: 0;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   PAKET S1-j — MENÜ İÇİ ARAMA + Ctrl+K KAYIT PALETİ (kurucu 24.09 14:40)
+   Menü kutusu menünün KENDİSİNİ süzer (eşleşmeyen satır/grup [hidden] —
+   genel kural dosyanın başında); menünün dışında açılır pencere YOKTUR.
+   Kayıt araması üst bardaki "Müşteri, ürün ara" düğmesinin açtığı palettedir.
+   Sabit renk yok (yalnız belirteç), satır içi style yok.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Klavyeyle (↑/↓) seçili menü satırı: aktif sayfa rengiyle karışmasın diye
+   yalnız zemin + odak halkası. */
+.kenar-satir.secili > a,
+.kenar-alt-butonlar a.secili {
+  background: var(--kenar-yuzey-2);
+  color: var(--kenar-metin-guclu);
+  outline: var(--odak-halka-kalinlik) solid var(--odak-halka);
+  outline-offset: calc(-1 * var(--odak-halka-kalinlik));
+}
+
+/* Arama sürerken grup başlığı düğme değil, düz başlıktır (katlanmaz). */
+.kenar-grup-baslik-arama .kenar-grup-satir {
+  padding: var(--bosluk-2) var(--bosluk-3) var(--bosluk-1);
+  color: var(--kenar-metin);
+}
+
+/* Eşleşme yoksa menünün içindeki TEK satır. */
+.kenar-arama-yok {
+  padding: var(--bosluk-2) var(--bosluk-3);
+  color: var(--kenar-metin);
+  font-size: var(--yazi-sm);
+}
+
+/* ── Üst bar: kayıt araması düğmesi (GÖRÜNÜR YAZILI) ─────────────────────── */
+.kayit-arama { position: relative; min-width: 0; }
+.kayit-arama-dugme {
+  display: inline-flex; align-items: center; gap: var(--bosluk-2);
+  min-height: var(--dokunma-hedefi);
+  padding: 0 var(--bosluk-3);
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap);
+  background: var(--yuzey);
+  color: var(--metin);
+  font: inherit; font-size: var(--yazi-sm);
+  cursor: pointer; white-space: nowrap;
+}
+.kayit-arama-dugme:hover { background: var(--yuzey-2); }
+.kayit-arama-dugme .kayit-arama-kisayol {
+  color: var(--metin-soluk);
+  border-color: var(--kenarlik);
+}
+/* Dar ekranda yazı ve kısayol rozeti gizlenir; düğmenin adı aria-label'da tamdır. */
+@media (max-width: 768px) {
+  .kayit-arama-dugme .kayit-arama-yazi,
+  .kayit-arama-dugme .kayit-arama-kisayol { display: none; }
+  .kayit-arama-dugme { padding: 0 var(--bosluk-2); }
+}
+
+/* ── Palet: sayfanın ortasında, perdenin üstünde (menüden BAĞIMSIZ) ───────── */
+.kayit-arama-perde {
+  position: fixed; inset: 0; z-index: 60;
+  background: color-mix(in srgb, var(--metin) 40%, transparent);
+}
+.kayit-arama-palet {
+  position: fixed; z-index: 61;
+  top: 10vh; left: 50%; transform: translateX(-50%);
+  width: min(36rem, calc(100vw - 2rem));
+  display: flex; flex-direction: column; gap: var(--bosluk-2);
+  padding: var(--bosluk-4, var(--bosluk-3));
+  background: var(--yuzey); color: var(--metin);
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap-md, var(--yaricap));
+  box-shadow: var(--golge-xl);
+  white-space: normal;
+}
+.kayit-arama-palet .kabuk-arama-ust { justify-content: space-between; }
+.kayit-arama-baslik { margin: 0; font-size: var(--yazi-md); font-weight: var(--kalin); }
+.kayit-arama-satir {
+  background: var(--yuzey-2);
+  border-color: var(--kenarlik);
+}
+.kayit-arama-satir .menu-arama-ikon,
+.kayit-arama-satir .menu-arama-temizle,
+.kayit-arama-satir .menu-arama-girdi { color: var(--metin); }
+.kayit-arama-satir .menu-arama-girdi::placeholder { color: var(--metin-soluk); }
+/* Palet içindeki sonuç bölümü akışta durur (eski üst-bar açılırının
+   position:absolute'u burada GEÇERSİZ). Yükseklik sınırı ve kendi içinde
+   kaydırma P-15 temel kuralından (70vh) gelir: palet boyu 10vh + başlık +
+   kutu + 70vh < ekran boyu (800 ve 812 px'te ölçüldü) — S1-c bloğu sonrası
+   CSS'te taşma özelliği yazılmaz (S1c_CSS_blogu testi). */
+.kayit-arama-palet .kabuk-arama-paneli {
+  position: static; width: auto;
+  padding: 0; border: 0; background: transparent;
+}
+
+/* Basit Panel: hava artık GERÇEKTEN geliyor (S1-j öncesi CSP yüzünden hiç
+   çizilmiyordu). 375 px'te "Az bulutlu" iki satıra bölünüp tarih satırının
+   üstüne biniyordu (ölçüm: K3 kırık 1 · K9 binen 2). Hava parçası tek birimdir:
+   sığmazsa BÜTÜN olarak alt satıra iner, kendi içinde kırılmaz. */
+.karsilama-hava-sade { display: inline-block; white-space: nowrap; }
+
+/* Menü kutusu artık ortak Form/Arama bileşenidir (P-36c: ham girdi yok).
+   Bileşenin çerçevesi/zemini tek parça kutunun (.menu-arama-satir) içinde
+   görünmez olur; görünüm P-37'nin menü kutusuyla aynı kalır. */
+.menu-arama-satir > .arama-kutu { flex: 1 1 auto; gap: 0; min-width: 0; }
+.menu-arama-satir input.girdi-arama,
+.menu-arama-satir input.girdi-arama:hover,
+.menu-arama-satir input.girdi-arama:focus,
+.menu-arama-satir input.girdi-arama:focus-visible {
+  min-height: calc(var(--dokunma-hedefi) - 2px);
+  padding: 0; border: 0; border-radius: 0;
+  background: transparent; box-shadow: none; outline: none;
+  color: var(--kenar-metin-guclu, var(--metin));
+  font-size: var(--yazi-sm);
+}
+.menu-arama-satir input.girdi-arama::placeholder { color: var(--kenar-metin); opacity: 1; }
+.menu-arama-satir input.girdi-arama::-webkit-search-cancel-button { display: none; }

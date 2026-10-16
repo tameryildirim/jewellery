@@ -1,0 +1,136 @@
+@page "/vitrin/ekran"
+@using Kuyumcu.Contracts.Pano
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET EKSIK-KUCUK (B2-10) — VİTRİN PANOSU, DÜKKÂN EKRANI (TAM EKRAN).
+
+   • KABUKSUZ: kenar çubuğu ve üst bar çizilmez (AnaYerlesim.VitrinEkranRotasi);
+     oturum kapısı + yetki kapısı + hata sınırı AYNEN sarar.
+   • Yalnız müşteriye dönük veri: kalem, alış, satış. Marj ve yönetim YOK.
+   • YASAL İBARE (Fiyat Etiketi Yönetmeliği md.6): "Bu satış fiyatlarına işçilik
+     bedelinin dahil olup olmadığı ayrıca belirtilir." İbare dükkânın seçimidir
+     (GET /pano/guncel · iscilikIbaresi). SEÇİLMEMİŞSE fiyatlar BU EKRANDA
+     GÖSTERİLMEZ (fail-closed): ibaresiz fiyat listesi asmak yasaya aykırıdır.
+   • Kâğıt = ekran: ibare yazdırmada gizlenmez (yazdirma-gizle sınıfı YOK).
+   • Fiyatlar 60 sn'de bir yenilenir; hata "kayıt yok"a çevrilmez (UX-S28).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(E.TamEkranRotaBaslik)</PageTitle>
+
+<div class="vtam" id="vtam">
+    @* Ortak sayfa başı (P-37c SAYFA_BASI_KAPSAM): başlık rota başlığından ("Dükkân ekranı")
+       FARKLIDIR → üst bar olmayan bu ekranda gizlenmez. Eylemler yazdırmada gizlenir. *@
+    <SayfaBasi Anahtar="vtam" Baslik="@E.TamEkranBaslik">
+        <Eylem>
+            <span class="vtam-eylem yazdirma-gizle">
+                <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="vtam-tarayici"
+                        @onclick="TarayiciTamEkran">@E.TamEkranTarayici</button>
+                <a class="dugme dugme-ikincil dugme-kucuk" id="vtam-cik" href="/vitrin">@E.TamEkranCik</a>
+            </span>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" Id="vtam-hata" />
+
+    @if (yukleniyor && pano is null)
+    {
+        <Yukleniyor />
+    }
+    else if (pano is { } p)
+    {
+        @if (p.IscilikIbaresi is null)
+        {
+            <p class="bant bant-uyari vtam-kilitli" id="vtam-kilitli" role="alert">@E.IbareSecilmedi</p>
+        }
+        else if (p.Satirlar.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.Pano.BosDurum" />
+        }
+        else
+        {
+            <div class="vtam-tablo" id="vtam-tablo" role="table" aria-label="@E.TamEkranBaslik">
+                <div class="vtam-satir vtam-basliklar" role="row">
+                    <span role="columnheader">@Dil.T.Pano.Kalem</span>
+                    <span role="columnheader" class="sayi">@Dil.T.Pano.Alis</span>
+                    <span role="columnheader" class="sayi">@Dil.T.Pano.Satis</span>
+                </div>
+                @foreach (var s in p.Satirlar)
+                {
+                    <div class="vtam-satir" role="row" id="@($"vtam-satir-{s.Kod}")">
+                        <span class="vtam-kalem" role="cell">@s.Etiket</span>
+                        <span class="vtam-fiyat sayi" role="cell">@Fiyat(s.Alis)</span>
+                        <span class="vtam-fiyat vtam-satis sayi" role="cell">@Fiyat(s.Satis)</span>
+                    </div>
+                }
+            </div>
+            <p class="vtam-ibare" id="vtam-ibare">@IbareMetni(p.IscilikIbaresi, E)</p>
+            <p class="vtam-alt metin-soluk" id="vtam-zaman">
+                @string.Format(E.TamEkranGuncelleme, Bicim.TarihSaat(p.Zaman)) · @KurKaynakAdi.Ad(p.Kaynak, Dil.T)
+            </p>
+        }
+    }
+</div>
+
+@code {
+    private EksikKucukMetinleri E => EksikKucukSozlugu.Al(Dil.Dil);
+
+    private PanoGorunum? pano;
+    private string? hata;
+    private bool yukleniyor = true;
+    private Timer? zamanlayici;
+
+    /// <summary>Dükkân ekranının kendini yenileme aralığı.</summary>
+    public const int YenilemeSaniye = 60;
+
+    /// <summary>İbare kodu → ekrana basılan cümle (UX-S31: ham kod basılmaz). Seçilmemişse null.</summary>
+    public static string? IbareMetni(string? ibare, EksikKucukMetinleri m) => ibare switch
+    {
+        IscilikIbaresiDegerleri.Dahil => m.IbareDahil,
+        IscilikIbaresiDegerleri.Haric => m.IbareHaric,
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Ciz;
+        await Yukle();
+        zamanlayici = new Timer(_ => InvokeAsync(async () => { await Yukle(); StateHasChanged(); }),
+            null, TimeSpan.FromSeconds(YenilemeSaniye), TimeSpan.FromSeconds(YenilemeSaniye));
+    }
+
+    private async Task Yukle()
+    {
+        try
+        {
+            pano = await Api.GetAsync<PanoGorunum>("/pano/guncel");
+            hata = null;
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException)
+        {
+            // UX-S28: hata boş listeye çevrilmez; eldeki pano SİLİNMEZ.
+            hata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    /// <summary>Tarayıcının kendi tam ekranı (F11 karşılığı). Tarayıcı reddederse sayfa yine kabuksuzdur.</summary>
+    private async Task TarayiciTamEkran()
+    {
+        try { await JS.InvokeVoidAsync("document.documentElement.requestFullscreen"); }
+        catch (JSException) { /* tarayıcı izin vermedi — sayfa zaten kabuksuz tam ekran */ }
+    }
+
+    private static string Fiyat(decimal? d) => d is { } v ? Bicim.Tl(v) : "—";
+
+    private void Ciz() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Ciz;
+        zamanlayici?.Dispose();
+    }
+}

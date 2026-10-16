@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- ⚠ PAKET T-4a: sürüm künyesinin KAYNAĞI. Sürümü YALNIZ yayın hattı
+         (T-1 publish) artırır; kod içine ikinci bir sürüm sabiti yazılmaz.
+         Yayın betiği gerekirse -p:InformationalVersion=... ile ezer. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <!-- ⚠ PAKET T-4a: DERLEME ZAMANI DAMGASI — yalnız Release.
+       Neden yalnız Release: damga her derlemede değişir, bu da AssemblyInfo'yu
+       her seferinde yeniden ürettiği için Debug/test döngüsünde API ve ona
+       bağlı test projesi GEREKSİZ YERE yeniden derlenirdi. Debug derlemesinde
+       künye, damga yerine assembly DOSYASININ yazılma anını bildirir ve bunu
+       yanıtta "derlemeZamaniKaynagi" alanıyla AÇIKÇA söyler (sessiz varsayım
+       yok — Anayasa md.1). -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <AssemblyMetadata Include="DerlemeZamani"
+                      Value="$([System.DateTime]::UtcNow.ToString('o'))" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.20" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.20" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.20" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <PackageReference Include="NUlid" Version="1.7.3" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.3" />
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ⚠ PAKET T-1: geliştirme ayarları YAYIN ÇIKTISINA GİRMEZ.
+         İlk gerçek publish provasında (2026-09-17) appsettings.Development.json
+         self-contained çıktıya kopyalanmıştı: geliştirme MySQL parolası ve JWT
+         sırrı müşteri sunucusuna taşınırdı. Üretim süreci Production profilini
+         okur, ama dosyanın orada DURMASI bile sızıntıdır. -->
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kuyumcu.Contracts\Kuyumcu.Contracts.csproj" />
+    <ProjectReference Include="..\Kuyumcu.Core\Kuyumcu.Core.csproj" />
+    <ProjectReference Include="..\Kuyumcu.Web\Kuyumcu.Web.csproj" />
+  </ItemGroup>
+
+</Project>

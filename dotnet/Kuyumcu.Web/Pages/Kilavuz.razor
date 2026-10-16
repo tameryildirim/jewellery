@@ -1,0 +1,136 @@
+@page "/kilavuz"
+@inject DilServisi Dil
+@using Kuyumcu.Core.Kilavuz
+@implements IDisposable
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   UX-4d madde 14 — /kilavuz sayfası BOŞTU.
+
+   Kök neden (QA turu 1, tarayıcı konsolu): sayfa <iframe src="/kilavuz.html">
+   kullanıyordu; sunucu güvenlik başlıkları `X-Frame-Options: DENY` ve
+   `Content-Security-Policy: frame-ancestors 'none'` gönderdiği için tarayıcı
+   çerçeveyi ENGELLİYOR ve kullanıcı bomboş bir sayfa görüyordu.
+
+   Karar (Mehmet'in vetosu geçerli): CSP GEVŞETİLMEDİ. iframe kaldırıldı;
+   kılavuz ayrı sekmede açılıyor ve bu sayfa bölüm bölüm doğrudan bağlantı
+   veriyor. HTML gövdesi fetch edilip MarkupString ile basılmıyor — o yol
+   sayfaya güvenilmeyen işaretleme enjekte etme riski taşır.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Nav.Kilavuz)</PageTitle>
+
+<div class="sayfa">
+    @* UX-1-C4 · K7 — tek başlık kabuğu + ekran başına TEK birincil eylem.
+       Mevcut başlık DOM'u (ve #kl-yeni-sekme id'si) KALDIRILMADI, sarıldı. *@
+    <SayfaBasi Anahtar="kilavuz" Baslik="@Dil.T.Nav.Kilavuz"
+               Aciklama="@Dil.T.Yonetim.KilavuzSayfaAciklama">
+        <Eylem>
+            <a id="kl-yeni-sekme" class="dugme dugme-birincil"
+               href="/kilavuz.html" target="_blank" rel="noopener noreferrer">
+                @Dil.T.Ortak.YeniSekmedeAc
+            </a>
+        </Eylem>
+    </SayfaBasi>
+
+    <div class="kart">
+        <div class="kart-govde form-dikey">
+            <p id="kl-aciklama" class="metin-soluk">@Dil.T.Ortak.KilavuzAciklama</p>
+        </div>
+    </div>
+
+    <div class="kart">
+        <div class="kart-govde">
+            <h2 class="metin-kucuk">@Dil.T.Ortak.KilavuzBolumler</h2>
+            @* PAKET SADE-1 (göz #18): madde işaretli uzun liste yerine kısa kart ızgarası. *@
+            <ul id="kl-bolumler" class="sade-kart-izgara">
+                @foreach (var (capa, baslik) in Bolumler)
+                {
+                    <li class="sade-kart-oge">
+                        <a id="@($"kl-bolum-{capa}")"
+                           href="@($"/kilavuz.html#{capa}")" target="_blank" rel="noopener noreferrer">
+                            @BolumAdi(capa, baslik)
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
+    @* PAKET P-33 (B-11): EKRAN EKRAN — liste RotaBasliklari.Harita'dan ÜRETİLİR.
+       Yeni bir @page eklenince (RotaBasliklari zorunlu satırıyla) buraya
+       kendiliğinden gelir; kılavuzdaki karşılığı olmayan rota
+       KilavuzUretimTestleri + denetim.sh KILAVUZ_EKSIK_EKRAN ile kırmızıdır.
+       Çıpa KilavuzCapasi'ndan gelir (kılavuz üreticisiyle TEK kaynak). *@
+    <div class="kart">
+        <div class="kart-govde">
+            <h2 class="metin-kucuk">@KilavuzSozlugu.EkranListesiBasligi(Dil.Dil)</h2>
+            <p id="kl-ekran-aciklama" class="metin-soluk">@KilavuzSozlugu.EkranListesiAciklama(Dil.Dil, RotaBasliklari.Harita.Count)</p>
+            @* PAKET SADE-1 (göz #18): tüm ekranların uzun envanteri BASİT yüzde katlıdır
+               ("Daha fazla"), PROFESYONEL yüzde açık gelir — liste SİLİNMEDİ, id'ler aynı. *@
+            <details class="sade-ayrinti" id="kl-ekranlar-ayrinti" open="@(!Dil.BasitMi)">
+            <summary class="sade-ayrinti-ozet" id="kl-ekranlar-ozet">@string.Format(SadeSozlugu.Al(Dil.Dil).KilavuzEkranlarOzet, RotaBasliklari.Harita.Count)</summary>
+            <ul id="kl-ekranlar" class="sade-kart-izgara">
+                @foreach (var (rota, secici) in RotaBasliklari.Harita)
+                {
+                    <li class="sade-kart-oge">
+                        <a id="@($"kl-{KilavuzCapasi.Ekran(rota)}")"
+                           href="@KilavuzCapasi.Adres(rota)" target="_blank" rel="noopener noreferrer">
+                            @EkranAdi(rota, secici)
+                        </a>
+                    </li>
+                }
+            </ul>
+            </details>
+        </div>
+    </div>
+</div>
+
+@code {
+    // PAKET Q10-5 tur 3 (doğrulama KRİTİK): sayfanın veri yüklemesi yok; doğrudan
+    // açılışta (F5/derin bağlantı) ilk çizim oturum (/auth/ben) çözülmeden yapılır
+    // ve BolumAdi PRO adı ("Cariler") basar. Mod sonradan çözülünce DilServisi.Degisti
+    // tetiklenir (Program.cs: oturum/arayüz modu → ModuDenetle) — abone olunmazsa
+    // sayfa yeniden çizilmez. Abonelik + Dispose.
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+
+    /// <summary>Ekran adı Sozluk.Nav'dan (UX-S31); kayıt ayrıntısı rotası ayrıca belirtilir.</summary>
+    private string EkranAdi(string rota, Func<Sozluk, string> secici) =>
+        rota.Contains('{')
+            ? $"{secici(Dil.T)} — {KilavuzSozlugu.KayitAyrintisi(Dil.Dil)}"
+            : secici(Dil.T);
+
+    /// <summary>
+    /// wwwroot/kilavuz.html içindeki &lt;section id="..."&gt; çıpalarıyla BİREBİR
+    /// aynı. Kılavuza yeni bölüm eklenince buraya da eklenir (tek liste).
+    /// </summary>
+    /// <summary>
+    /// KAT-1 (K8 · D10): basit modda "Cariler" bölüm bağlantısı "Müşteriler"
+    /// okunur (çıpa aynı). Diğer başlıklar jargonsuzdur.
+    /// </summary>
+    private string BolumAdi(string capa, string baslik) => (capa, Dil.BasitMi) switch
+    {
+        ("cariler", true) => KatalogSozlugu.Al(Dil.Dil).Musteriler,
+        // PAKET Q10-5 (K8): "Kuyum-KDV" kod benzeri birleşik yazım basit modda sade okunur.
+        ("faturalar", true) => Q105Sozlugu.Al(Dil.Dil).KilavuzFaturaBolumuBasit,
+        _ => DilEkranSozlugu.KilavuzBolum(Dil.Dil, capa, baslik),
+    };
+
+    private static readonly (string Capa, string Baslik)[] Bolumler =
+    [
+        ("tanitim",   "Tanıtım ve temel kavramlar"),
+        ("baslat",    "Uygulamayı başlatma"),
+        ("giris",     "Giriş yapma"),
+        ("arayuz",    "Arayüz turu"),
+        ("kur",       "Kur çubuğu (canlı)"),
+        ("panel",     "Panel"),
+        ("cariler",   "Cariler"),
+        ("urunler",   "Ürünler"),
+        ("islemler",  "İşlemler (satış · alış · takas · transfer)"),
+        ("kasalar",   "Kasalar"),
+        ("banka",     "Banka"),
+        ("faturalar", "Faturalar ve Kuyum-KDV"),
+        ("raporlar",  "Raporlar"),
+    ];
+}

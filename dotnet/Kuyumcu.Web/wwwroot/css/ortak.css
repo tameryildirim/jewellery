@@ -1,0 +1,793 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORTAK GÖRÜNÜM ARTIKLARI — paket ORTAK-1 (tam tur v3, 2026-09-25)
+
+   Kaynak ölçüm: ham/TAM-TUR-v3-2026-09-25.txt (başsız Chrome, 24 kombinasyon)
+   ve bu paketin kendi ÖNCE/SONRA turu (betikler/tur, kiracı PAKET-ORTAK-1-TEST).
+   Diğer şeritlerin kapsamadığı, ORTAK bileşen ya da ORTAK kalıpla çözülen
+   bulgular burada TEK yerde durur:
+     (A) tablo başlığı iki satıra kırılıyordu (K3 kirik th) — 13 ekran;
+     (B) para kartının değeri kutusundan taşıyordu (K3 tasan .stat-deger,
+         #panel-soru-kasa-deger) — 960/1024 px, 7 ekran;
+     (C) 375 px'te sayfa başı filtre satırı hizasızdı (K7 kutuAlt ±52);
+     (E) Panel "Kim borçlu?" adı dar kartta üç noktayla kesiliyordu (K10);
+     (F) tablo içi kısa not ("Bu reyonda mal yok.") iki satıra kırılıyordu;
+     (H) /kullanicilar "Yeniden dene" ile otomatik deneme notu üst üste
+         biniyordu (K9) — not artık kendi satırındadır.
+   (D) çekmece açılınca sayfanın zıplaması js/cekmece.js'teki yükseklik
+       sabitlemesiyle çözülür; buradaki kural o sabitlemenin CSS karşılığıdır.
+
+   ⚠ app.css'e YAZILMAZ (orkestratör koşulu); ezilen kural burada daha özgül
+     seçiciyle ezilir. index.html bu dosyayı EN SONA (katman.css'ten sonra) yükler.
+   ⚠ Sabit renk yok; yalnız var(--…) belirteçleri. Satır içi style yok.
+   ⚠ TAŞMA GİZLENMEZ (Anayasa md.1): overflow:hidden/ellipsis ile değil, yazı
+     kutuya sığacak biçimde (tek satır + kaydırılabilir kap, akışkan boy) çözülür.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── (A) TABLO BAŞLIĞI TEK SATIR ─────────────────────────────────────────────
+   Tablolar zaten kaydırılabilir kaptadır (.tablo-sar { overflow-x: auto }).
+   Başlık sarmak yerine tablo kendi kabında yatay kayar; SAYFA yatay kaymaz.
+   Kısa ad hücresi (ürün/müşteri adı: ilk sütunun ilk metni) de kırılmaz —
+   "14 Ayar Alyans Çifti" iki satıra bölünmez; tamamı okunur, kap kayar. */
+.tablo-sar > table > thead > tr > th,
+.tablo-sar > table > tbody > tr > th,
+.tablo-sar > table > tfoot > tr > th,
+.tablo-sar > table > tr > th {
+  white-space: nowrap;
+}
+.tablo-sar > .veri-tablosu > tbody > tr > td:first-child > :is(span, a):first-child {
+  white-space: nowrap;
+}
+/* Tablo içi kısa kilit/durum notu (ör. "Bu reyonda mal yok.") kırılmaz. */
+.tablo-sar .hucre-not-tek-satir { white-space: nowrap; }
+/* Ad hücresi ilk sütunda değilse (ör. /siparisler "Müşteri"): 960 px'te
+   "Karadeniz Kuyumculuk ve Mücevherat Ltd. Şti." 4 satıra bölünüyordu
+   (27.09 ekran görüntüsü). Makul en az genişlik: uzun ad en çok 2 satır,
+   kap yatay kayar (sayfa kaymaz). Metin kesilmez. */
+.tablo-sar .hucre-ad { min-width: 14em; }
+
+/* ── (B) PARA KARTI DEĞERİ KUTUYA SIĞAR ─────────────────────────────────────
+   Değer (−728.188,36 ₺ gibi 7 haneli eksi tutar) kırılamaz bir dizgedir; kart
+   960/1024 px'te daralınca kutudan taşıyordu. Kartın içerik kutusu kap
+   sorgusu kabıdır; değerin yazı boyu ÖZGÜN boyuyla (geniş ekranda tuval
+   ölçüsü aynen) "oran × 1cqi"nin KÜÇÜĞÜDÜR. Oran değerin uzunluk kademesinden
+   gelir (Bilesenler/DegerBoyu.cs → data-deger-boy): kısa değer büyük kalır,
+   uzun değer tek satıra sığar. Kademesiz değer (Kasalar, cari detayı) 15
+   karaktere göre (oran 11) boyutlanır. Geniş kartta min() özgün boyu seçer:
+   görünüm DEĞİŞMEZ. */
+.stat-kart > .kart-govde,
+.kart-govde:has(> .stat-deger),
+.panel-soru:has(> .panel-soru-sayi) {
+  container-type: inline-size;
+}
+.stat-deger,
+.panel-soru-sayi { --deger-oran: 11; }
+[data-deger-boy="kisa"] { --deger-oran: 17; }       /* ≤ 9 karakter  */
+[data-deger-boy="orta"] { --deger-oran: 13.5; }     /* 10–12         */
+[data-deger-boy="uzun"] { --deger-oran: 11; }       /* 13–15         */
+[data-deger-boy="cok-uzun"] { --deger-oran: 8; }    /* 16–20         */
+[data-deger-boy="en-uzun"] { --deger-oran: 6.5; }   /* 21+           */
+
+.stat-kart > .kart-govde > .stat-deger {
+  font-size: min(1.5rem, calc(var(--deger-oran) * 1cqi));
+  white-space: nowrap;
+}
+.kart-govde > .stat-deger {
+  font-size: min(1em, calc(var(--deger-oran) * 1cqi));
+  white-space: nowrap;
+}
+.panel-soru > .panel-soru-sayi {
+  font-size: min(var(--yazi-3xl), calc(var(--deger-oran) * 1cqi));
+  white-space: nowrap;
+}
+.panel-sade .panel-soru > .panel-soru-sayi {
+  font-size: min(calc(var(--yazi-govde) * 2), calc(var(--deger-oran) * 1cqi));
+}
+/* Panel'in altın pozisyonu kartı (#pozisyon-net): panelin kendi boyu korunur. */
+.panel-sade-kartlar > .kart > .kart-govde > .stat-deger {
+  font-size: min(var(--yazi-3xl), calc(var(--deger-oran) * 1cqi));
+}
+.panel-sade .panel-sade-kartlar > .kart > .kart-govde > .stat-deger {
+  font-size: min(calc(var(--yazi-govde) * 2), calc(var(--deger-oran) * 1cqi));
+}
+/* OKUNAKLILIK TABANI (27.09 ekran görüntüsü, /raporlar/satis-analizi PRO 960):
+   16+ karakterlik değer ("Giriş: 7.876.185,49 ₺") oran 6.5 ile ~10 px'e
+   iniyordu — sığıyor ama okunmuyor. Uzun kademede boy 1rem'in altına inmez;
+   değer boşluktan (etiket | tutar) alt satıra sarar, tutarın kendisi bölünmez. */
+.stat-kart > .kart-govde > .stat-deger:is([data-deger-boy="cok-uzun"], [data-deger-boy="en-uzun"]) {
+  font-size: clamp(1rem, calc(var(--deger-oran) * 1cqi), 1.5rem);
+  white-space: normal;
+}
+/* Hakem turu 29.09 (DÜŞÜK, stres ölçümü): Panel büyük değerlerinde (.panel-soru-sayi ve
+   pozisyon kartı #pozisyon-net) aynı taban yoktu — "−999.999.999,99 ₺" 960 px'te 12,5 px'e
+   iniyordu. Uzun kademede boy 1rem'in altına inmez; tutar boşluktan (₺ / birim) alt satıra
+   sarar, sayının kendisi bölünmez. Tuval boyu (üst sınır) değişmez. */
+.panel-soru > .panel-soru-sayi:is([data-deger-boy="cok-uzun"], [data-deger-boy="en-uzun"]),
+.panel-sade-kartlar > .kart > .kart-govde > .stat-deger:is([data-deger-boy="cok-uzun"], [data-deger-boy="en-uzun"]) {
+  font-size: max(1rem, min(var(--yazi-3xl), calc(var(--deger-oran) * 1cqi)));
+  white-space: normal;
+}
+.panel-sade .panel-soru > .panel-soru-sayi:is([data-deger-boy="cok-uzun"], [data-deger-boy="en-uzun"]),
+.panel-sade .panel-sade-kartlar > .kart > .kart-govde > .stat-deger:is([data-deger-boy="cok-uzun"], [data-deger-boy="en-uzun"]) {
+  font-size: max(1rem, min(calc(var(--yazi-govde) * 2), calc(var(--deger-oran) * 1cqi)));
+}
+
+/* ── (C) SAYFA BAŞI FİLTRE YUVASI · DAR EKRAN ───────────────────────────────
+   375 px'te iki tarih kutusu yan yana, seçim kutusu alt satıra sarıyordu:
+   aynı "görsel satır" sayılan kutuların alt kenarı 52 px ayrışıyordu (K7).
+   Dar ekranda yuva TEK sütundur: her alan tam genişlik, alt alta, hizalı. */
+/* Şeridin DOĞRUDAN çocuğu olan düğme ("Daha fazla") etiket taşımaz. Satır
+   dolup alt satıra sardığında kontrolü, etiketli komşuların kontrol çizgisine
+   değil 8 px altına düşüyordu (ölçüldü: /urunler 960 px, kutuAlt ±52). Düğme
+   etiket satırı kadar ÜST PAY alır (P-37 ilkesi: etiketsiz çocuk etiket satırı
+   kadar boşluk alır) — aynı satırdayken alttan hiza değişmez, sarınca kendi
+   satırının kontrol çizgisine oturur. */
+.sayfa-basi .sayfa-basi-filtre > :is(button, .btn, .dugme) {
+  margin-top: var(--arac-etiket-bosluk);
+}
+/* ORTAK-1 devir turu (27.09, ölçüldü): app.css "her filtre alanı etiket üstte,
+   kontrol altta" kuralı (.sayfa-basi-filtre > * { flex-direction: column;
+   justify-content: flex-end }) DÜĞMEYE de uyuyordu → düğme yazısı kutunun
+   dibine yapışıyordu ("Süzgeç ▾", /urunler 375 px: 44 px kutuda yazı altta).
+   Düğme bir alan değildir; yazısı kendi kutusunda ortalanır. */
+.sayfa-basi .sayfa-basi-filtre > :is(button, .btn, .dugme) {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .sayfa-basi .sayfa-basi-filtre > :is(button, .btn, .dugme) { margin-top: 0; }
+  .sayfa-basi .sayfa-basi-filtre {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+  .sayfa-basi .sayfa-basi-filtre > :is(*, input[type="date"], select) {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* ── (D) ÇEKMECE AÇIKKEN SAYFA ZIPLAMAZ ─────────────────────────────────────
+   Çekmece açılınca bazı ekranlar arkadaki listeyi çizmiyor (dar ekranda panel
+   tam ekrandır); belge kısalınca tarayıcı kaydırma konumunu 0'a çekiyordu
+   (ölçüldü: /cariler 768 px'te −85…−782 px). js/cekmece.js açılış anındaki
+   belge yüksekliğini --pencere-sabit-boy belirtecine yazar; gövde en az o
+   kadar uzun kalır → kaydırma konumu KORUNUR. Pencere kapanınca belirteç
+   kaldırılır (kural devre dışı kalır).
+   ⚠ Sabitleme ÇİZİMDEN ÖNCE yapılır (Cekmece.OnParametersSet → js
+     kuyumcuCekmece.sabitle): ilk denemede açılışta (OnAfterRender) yapılıyordu;
+     o anda liste zaten gizlenmiş, belge kısalmış ve kaydırma 0'a inmişti —
+     SONRA turunda 92 zıplama sürdü (ölçüldü). */
+body.pencere-sabit {
+  min-height: var(--pencere-sabit-boy, auto);
+}
+
+/* ── (B) EK · AD + TUTAR LİSTE SATIRI ──────────────────────────────────────
+   27.09 son turda ölçüldü: /raporlar "Bugün" kasa listesinde uzun kasa adı
+   ("Merkez Vitrin Kasası Büyük Tezgâh") app.css --is ızgarasında (auto |
+   minmax(0,1fr)) 'auto' sütunu alıp tutarı sıfıra sıkıştırıyordu → span.
+   panel-liste-tutar "7.681.959,97 ₺" taşıyordu (1440 BASİT). Tutar kendi
+   genişliğini alır ve bölünmez; ad kalan yere sarar (kesilmez). */
+.panel-liste-satir--is:has(> .panel-liste-ad + .panel-liste-tutar) {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.panel-liste-satir--is > .panel-liste-ad + .panel-liste-tutar { white-space: nowrap; }
+
+/* Panel "Altın pozisyonum" başlığı 960 px'te "Ayrıntı" düğmesiyle aynı satıra
+   sığmayıp iki satıra kırılıyordu (K3 kirik #pozisyon-baslik, 25.09 ve 27.09
+   turları). Başlık bölünmez; dar kartta "Ayrıntı" alt satıra iner. */
+.panel-sade .pozisyon-kart--sade > .kart-baslik { flex-wrap: wrap; }
+.panel-sade .pozisyon-kart--sade #pozisyon-baslik { white-space: nowrap; }
+
+/* Panel kart alt satırı ("Dolar kasalar 125.000,00 $") 960 px'te kartın
+   sağ kenarını 6 px aşıyordu (27.09 ölçüm: öğe 185 px, kap 157 px) —
+   tuval kuralı öğeyi tek satıra kilitliyordu. Öğe önce kendi satırına sarar
+   (flex-wrap); satırdan da genişse ancak o zaman kendi içinde bölünür. */
+.panel-sade .panel-soru .panel-soru-alt > * { white-space: normal; min-width: 0; }
+
+/* ── (E) PANEL "KİM BORÇLU?" · DAR KART ─────────────────────────────────────
+   Tuval satırı (ad · durum 130 · tutar 130 · eylem 110) 1440 px'te 601 px'lik
+   kart içeriğine göredir. 1280 px'te kart içeriği 508 px'e iner (ölçüldü) ve ada
+   100 px kalıyordu ("Anadolu Holding A.Ş." kesiliyordu). Kart içeriği 560 px'in
+   altına inince satır iki katlıdır: "ad · eylem" / "durum · tutar" (tuvalin
+   dar ekran yığını ile aynı) — ad tek satırda TAM okunur. 1440'ta DEĞİŞMEZ. */
+.panel-sade #panel-soru-borclu {
+  container-type: inline-size;
+}
+/* Ad KESİLMEZ (üç nokta yok): sığmayan uzun ad (ölçüldü: "Anadolu Döküm Toptan
+   Kuyum", 1440/960 px) ikinci satıra sarar; kısa ad tek satırda kalır. */
+.panel-sade #panel-soru-borclu .panel-liste-ad {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+}
+@container (max-width: 559px) {
+  .panel-sade #panel-soru-borclu .panel-liste-satir {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "ad eylem" "durum tutar";
+    row-gap: var(--bosluk-1);
+    column-gap: var(--bosluk-3);
+  }
+  .panel-sade #panel-soru-borclu .panel-liste-ad { grid-area: ad; }
+  .panel-sade #panel-soru-borclu .panel-liste-durum { grid-area: durum; }
+  .panel-sade #panel-soru-borclu .panel-liste-tutar { grid-area: tutar; }
+  .panel-sade #panel-soru-borclu .panel-liste-satir > .dugme {
+    grid-area: eylem;
+    padding-inline: var(--bosluk-3);
+  }
+}
+
+/* ── (H) KENDİ SATIRINDAKİ DURUM NOTU ───────────────────────────────────────
+   Satır içi <span> not, önündeki düğmeyle aynı satır kutusuna düşüp 375 px'te
+   sarınca düğmenin üstüne biniyordu (K9). Not kendi satırında durur. */
+.durum-notu-blok {
+  display: block;
+}
+
+/* ── (G) /vezne KART NOTLARI (28.09, ekran görüntüsünden) ───────────────────
+   #vz-defter-notu ve #vz-sinir-uyarisi .kart'ın DOĞRUDAN çocuğu; .kart-govde
+   iç boşluğunu almadıkları için metin kart kenarına yapışıyordu (960/1440,
+   BASİT+PRO). Aynı iç boşluk verilir; id ve metin aynı. */
+/* Hakem turu 29.09: /siparisler #sip-defter-notu da aynı kalıpla kart kenarına taşıyordu
+   (siparisler BASİT 960); aynı iç boşluk. */
+.kart > #sip-defter-notu,
+.kart > #vz-defter-notu,
+.kart > #vz-sinir-uyarisi {
+  margin: 0;
+  padding: 0 1.5rem 1rem;
+}
+@media (max-width: 768px) {
+  .kart > #sip-defter-notu,
+  .kart > #vz-defter-notu,
+  .kart > #vz-sinir-uyarisi { padding-left: 1rem; padding-right: 1rem; }
+}
+/* Hakem turu 29.09: BASİT /vezne'de ayar rozeti çizilmez; boş kalan rozet satırı alt
+   boşluğunu bırakır ki not kartın ortasında yüzmesin. */
+.kart > .kart-govde.rozet-satir:not(:has(*)) { padding-bottom: 0; }
+
+/* ── (G) /vezne KİLİT GEREKÇESİ SATIRDA KATLI (28.09, ekran görüntüsünden) ──
+   Kuyruktaki her fişin eylem hücresinde tam boy DegismezIpucu kutusu satırı
+   ~300 px'e uzatıyor, satır içeriği dikeyde ortada boşlukta kalıyordu (960/1440).
+   Gerekçe SİLİNMEDİ (UX-S25): <details> içinde, "Neden değiştirilemez?" ile açılır. */
+.vz-kilit-ayrinti > summary {
+  cursor: pointer;
+  color: var(--vurgu);
+  font-size: .875rem;
+  white-space: nowrap;
+}
+.vz-kilit-ayrinti[open] > summary { margin-bottom: var(--bosluk-2); }
+
+/* ══ KIYAS DEVRİ 28.09 (orkestratör: ham/KIYAS-BULGULARI-2026-09-28.md § ORTAK-1) ══ */
+
+/* ── Çift başlık: şerit başlığı üst barın <h1>'iyle AYNIYSA görsel gizli ──────
+   SayfaBasi.razor sınıfı yalnız eşitlikte koyar (RotaBasliklari). Emsal:
+   tuval-panel-musteri.css .musteri-sade (DOM'da kalır).
+   Açıklama ve eylem yuvası görünür kalır; eylem sağa yaslı durur. */
+/* display:none (29.09 tur ölçümü): 1 px'lik görsel-gizli kutu ölçerde taşan
+   başlık (K3) sayılıyordu. Sayfa adı ekran okuyucuya üst barın <h1>'iyle zaten
+   söyleniyor; şerit başlığı DOM'da (id ile bulunur) ama çizilmez. */
+.sayfa-basi.sayfa-basi--baslik-ustte > .sayfa-basi-metin > .sayfa-basi-baslik {
+  display: none;
+}
+.sayfa-basi.sayfa-basi--baslik-ustte > .sayfa-basi-eylem { margin-left: auto; }
+
+/* ── StatKart renkli sol şerit nötr (sade dil; tuval kartları düz kenarlı) ───
+   app.css .stat-kart 4 px renkli sol kenar çizer (amber/yeşil/kırmızı/mavi);
+   tuvalde kart kenarı tek renk ince çizgidir. Anlam değerin kendisinde
+   (eksi işaret, etiket) taşınır. app.css'e dokunulmaz — üstün özgüllük. */
+.kart.stat-kart,
+.kart.stat-kart.yesil,
+.kart.stat-kart.kirmizi,
+.kart.stat-kart.mavi {
+  border-left: 1px solid var(--ayrac);
+}
+
+/* ── Panel "Bekleyen iş": ayırt edici alt satır (müşteri · tutar · gün) ───── */
+#panel-soru-bekleyen .panel-is-govde {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Ayraç nokta YOK: dar kartta öğe alt satıra sarınca satır başında yetim "·"
+   kalıyordu (29.09 1280 görüntüsü). Öğeler boşlukla ayrılır; ad bağlantı
+   rengi, tutar kalın, gün soluk — üçü görsel olarak zaten ayrışır. */
+#panel-soru-bekleyen .panel-is-ayrinti {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--bosluk-3);
+  row-gap: 2px;
+  font-size: calc(var(--yazi-govde) * .7778);
+  color: var(--metin-soluk);
+}
+#panel-soru-bekleyen .panel-is-ayrinti-tutar {
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--metin);
+  font-variant-numeric: tabular-nums;
+}
+/* Çok satırlı satırda nokta ve kaynak etiketi ilk satırla hizalı durur. */
+#panel-soru-bekleyen .panel-liste-satir--is:has(.panel-is-ayrinti) { align-items: flex-start; }
+#panel-soru-bekleyen .panel-liste-satir--is:has(.panel-is-ayrinti) > .panel-nokta { margin-top: .45em; }
+
+/* ── /gider form kartları: iç boşluk (29.09 960 görüntüsü) ───────────────────
+   "Yeni gider", "Yeni kategori" ve "Virman" kartlarında .form-dikey doğrudan
+   .kart'ın çocuğu; .kart-govde iç boşluğunu almadığı için etiketler ve alanlar
+   kart kenarına yapışıktı. Yalnız bu formlar (id'leriyle) — başka sayfaya sızmaz. */
+.kart > .form-dikey:has(#gd-kaydet),
+.kart > .form-dikey:has(#gd-kat-ad),
+.kart > .form-dikey:has(#gd-v-kaynak),
+.kart > #gd-virman-aciklama {
+  margin: 0;
+  padding: 1rem 1.5rem;
+}
+.kart > #gd-virman-aciklama { padding-bottom: 0; }
+@media (max-width: 768px) {
+  .kart > .form-dikey:has(#gd-kaydet),
+  .kart > .form-dikey:has(#gd-kat-ad),
+  .kart > .form-dikey:has(#gd-v-kaynak),
+  .kart > #gd-virman-aciklama { padding-left: 1rem; padding-right: 1rem; }
+}
+
+/* ── /vezne eylem hücresi (29.09 tur ölçümü) ─────────────────────────────────
+   Esnek dizilim artık <td>'nin içindeki kapta (Vezne.razor). Katlı kilit
+   gerekçesi kendi satırında durur (düğmelerin altına binmez); açılınca
+   hücre genişliğinde kalır, ekran dışına taşmaz. */
+/* Seç + İptal yan yana sığar; kilit satırı altta (29.09 960 görüntüsü: düğmeler üst üste binip satırı 140 px yapıyordu). */
+.vz-eylem-hucre { min-width: 15rem; }
+.vz-eylem-hucre > .vz-kilit-ayrinti { flex-basis: 100%; min-width: 0; }
+.vz-eylem-hucre > .vz-kilit-ayrinti[open] { max-width: min(28rem, 80vw); }
+
+/* ── /kullanicilar ad hücresi (29.09 tur ölçümü, K3 kırık 10 durum) ──────────
+   "Ortak Sahip (siz)" tek satırdı (nowrap) ama "(siz)" küçük yazıyla aynı
+   satırda farklı üst kenara oturuyor, ölçer bunu iki satır sayıyordu; göze de
+   taban çizgisi kaymış görünüyordu. Tablo hücresinde rozet ana metinle AYNI
+   boyda, yalnız soluk renkle ayrışır. */
+.tablo-sar td > #k-siz { font-size: inherit; }
+/* Hakem turu 29.09 (KRİTİK, K9 binen, 960 px 4 durum): 769–1099 px'te tablo ızgaraya
+   dönüşür (dugme.css) ve olcek.css ad hücresine "min-width: 9em" verir. Açık bir
+   min-width ızgaranın İÇERİKTEN gelen en az genişliğini (min-width:auto) kapatır:
+   sütun 9em'de (126 px) kalıyor, tek satırlık (nowrap) "Ayşe Yılmazoğlu (siz)" 438 px'e
+   uzanıp e-posta sütununun üstüne biniyordu. Tek satır hücrede en az genişlik İÇERİĞİN
+   kendisidir; tablo kendi kabında kayar (sayfa kaymaz). */
+html[data-mod] .ana-icerik .veri-tablosu > tbody > tr > td.hucre-vurgu.hucre-tek-satir:not(.sayi) {
+  min-width: max-content;
+}
+
+/* ── Panel dar kart alt satırı (29.09 tur ölçümü, BASİT 960, K3 kırık) ───────
+   960 px'te üç kart 202 px'e iniyor, alt satırın iç genişliği 157 px:
+   "Bugün henüz satış yok." 156 px + boşluk sığmıyor, son sözcük alt satıra
+   düşüyordu. Kart kap sorgusu kabıdır ((B) bölümü); yalnız bu dar kapta alt
+   satır bir kademe küçülür. Geniş ekranda (tuval 1440) boy DEĞİŞMEZ. */
+@container (max-width: 170px) {
+  .panel-sade .panel-soru > .panel-soru-alt { font-size: calc(var(--yazi-govde) * .7778); }
+}
+
+/* ── /vezne Toplam rozeti (hakem turu 30.09, DÜŞÜK) ──────────────────────────
+   960'ta "Kesin — kuyruğa gidince sabitlendi" rozeti tutarın yanında tek satır
+   kaldığı için Toplam sütunu genişliyor, eylem sütunu kabın kenarında kesiliyordu.
+   Rozet tutarın ALTINA iner ve dar bir genişlikte satır kırar. id aynı. */
+#vz-liste .vz-toplam-rozet { display: block; margin-top: var(--bosluk-1); }
+#vz-liste .vz-toplam-rozet > .rozet { white-space: normal; max-width: 12rem; border-radius: var(--radius-md); }
+/* Eylem sütununu sağa YAPIŞTIRMA denendi (30.09) ve GERİ ALINDI: tur ölçümünde yapışık hücre,
+   altından kayan "Hazırlayan" hücresiyle K9 binme sayıldı (8 durum, 960/1024). Tablo, (A) kalıbıyla
+   kendi kabında yatay kayar (sayfa kaydırma 0); rozet artık tutarın altında ve tam görünür. */
+
+/* ═══ PAKET KESIF-P7 — BİLEŞEN-GÖRÜNÜM (keşif 30.09, ortak sınıf: K10 · K7 · K3) ═══════════
+   Kaynak: ham/KESIF-TRIYAJ-2026-09-30.md § KESIF-P7 (29 bulgu) + TOPLU kuyruk birleştirmeleri.
+   Önce ölçüldü, sonra yazıldı (başsız Chrome, /private/tmp/kuyumcu-serit/KESIF-P7/olc):
+   her bölümün başında ölçülen KÖK NEDEN yazılıdır. Sayfa .razor dosyasına dokunulmadı;
+   sayfa kapsamlı kurallar sayfanın SayfaBasi kimliğiyle (#sayfa-basi-<anahtar>) sınırlanır.
+   ⚠ Sabit renk yok · gizleyen taşma yok (O7) · tuval-satis.css'in Satış'a özgü seçici-metin
+     kuralları (0,3,0 ve üstü) EZİLMEZ: genel kurallar (0,2,0) özgüllükte tutulur.
+   ═══════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── (P7-K10) SEÇİCİ DEĞERİ KESİLMEZ ───────────────────────────────────────────────────────
+   Kök neden: app.css `.secici-metin { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }`
+   — "Merkez Şube Altın ve Döviz Ana Kasası (E…" (/raporlar/kasa, /gider), "Vergi Kimlik No (10 ha…"
+   (/cariler), "30.09.2026 · 24 Ayar Gram Altın · Anadol…" (/islemler Değişim), "Ege Sarraflık …
+   Topta…" (/banka, /uyum, /vezne 375). Secici.razor tam metin sınıfını (`secici-metin--tam`) ve
+   `title`'ı taşır; metin gerekirse İKİNCİ SATIRA sarar. Kutu yüksekliği DEĞİŞMEZ: iki satır
+   (2 × 16 px × 1,3 = 41,6 px) kontrol yüksekliğine (44 px) sığar → aynı satırdaki komşu kutuyla
+   üst/alt çizgi aynı kalır (K7x). Daha uzun değerde kutu büyür (min-height korunur). */
+.secici-tetik > .secici-metin--tam {
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+}
+.secici-tetik:has(> .secici-metin--tam) { height: auto; }
+/* (TOPLU-1 · KRİTİK, keşif P5 01.10) P7 kuralı HER Secici'de geçerli: sayfaya özgü sabit-boy kuralları
+   (ör. tuval-satis/olcek.css `.tuval-pro #islem-ust-satir .secici-tetik { height: 46px; overflow: hidden }`,
+   özgüllük 1,3,1) yukarıdaki genel kuralı eziyordu → PRO Satış'ta 3 satıra inen uzun müşteri adı
+   ("Karadeniz Altın Döviz ve Kıymetli Madenler Ticaret Limited Şirketi", 1440) 44 px kutuda üstten ve
+   alttan 6'şar px KIRPILIYORDU (ölçüm: metin 55 px / kutu 44 px). Kural: seçili değer kutuyu aşarsa
+   kutu BÜYÜR (asgari boy korunur — tek/iki satırda komşu kutuyla hiza değişmez), kırpılmaz.
+   `:not(#_):not(#__)` yalnız özgüllük içindir (her öğeyi seçer; 2 kimlik ağırlığı) — sayfa kurallarının
+   ölçüsüne dokunmadan YALNIZ boy/taşma bildirimini kazanır; !important kullanılmaz (OLCEK-1 OL16). */
+.secici-kap > .secici-tetik:has(> .secici-metin--tam):not(#_):not(#__) { height: auto; overflow: visible; padding-block: 3px; }
+/* TOPLU-1 tur 3 (orkestratör 12:45 — BİLEŞEN düzeyinde TEK kural, sayfaya özgü düzeltme yok): kutu sınırsız
+   büyümez. Ölçüm (tasarım hakemi 3, 86 karakterlik ad): PRO Satış 1440'ta kutu 83 px / 4 satır, 375'te
+   /faturalar taslak 4 satır — komşu kutularla hiza (K7x) bozuluyordu. Kural: seçili değer EN ÇOK İKİ SATIR,
+   fazlası satır sonunda '…' ile biter; tam ad Secici.razor'daki `title` ipucunda ve ekran okuyucuda
+   (button adı) kalır. İki satır × 1,2 satır aralığı (16 px → 38,4 px; 18 px → 43,2 px) kontrol yüksekliğine
+   (44–52 px) sığar → kutu komşusuyla aynı boyda kalır. Satış'ın white-space/text-overflow kuralları
+   EZİLMEZ (burada bildirilmez); -webkit-line-clamp üç noktayı kendisi koyar. İki satırlı değer çerçeveye
+   yapışmasın diye tetiğin dikey iç boşluğu 3 px (üstteki kural; sayfa kuralları 0–1 px'e indiriyordu —
+   eski sayfaya özgü `#islem-cari` dolgu kuralının yerine). */
+.secici-kap > .secici-tetik > .secici-metin--tam:not(#_):not(#__) {
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+/* TOPLU-1 tur 2 (canlı ölçüm, /faturalar Fişten Fatura Kes seçicisi PRO 1440: K3 1 taşan + 9 kırık): seçenek satırının
+   alt bilgisi (cari adı) `white-space: nowrap` ile panel dışına taşıyor, sağdaki rozet ("Tek satış") ise kelimesinden
+   kırılıyordu. P7 kuralının seçenek karşılığı: uzun alt bilgi SARAR (kırpılmaz/taşmaz), kısa rozet tek satır kalır. */
+.secici-secenek .secici-ad:not(#_) { min-width: 0; flex: 1 1 auto; }
+.secici-secenek .secici-alt:not(#_) { white-space: normal; overflow-wrap: anywhere; }
+.secici-secenek .secici-rozet:not(#_) { white-space: nowrap; flex: 0 0 auto; }
+/* Süzgeç şeridinde seçici İÇERİĞİ KADAR yer alır (uzun seçenek "G800 — 800 Gümüş (800‰)", /urunler
+   Süzgeç); daralırsa EN UZUN SÖZCÜĞÜNÜN altına inmez (app.css `.secici-alan { min-width: 0 }` tuvalin
+   tek satırlık şeridinde "Tümü"yü "Tüm/ü" diye bölüyordu — sonra turu ölçümü). */
+.sayfa-basi .sayfa-basi-filtre > .secici-alan { flex: 0 1 auto; min-width: auto; max-width: 100%; }
+/* Tuval yüzü (.musteri-sade) şeridi TEK SATIRA kilitler (1440 tuval ölçüsü). 769–1279 px'te "Diğer
+   süzgeçler" açılınca (arama + segment + Tür + Pasifleri göster) tek satıra sığmıyor: arama kutusu
+   yalnız büyütece iniyor, Tür 25 px'e eziliyor, "Pasifleri göster" "+ Yeni müşteri"nin üstüne
+   biniyordu (ölçüldü 960 BASİT, K9). Bu aralıkta yuva gerektiğinde alt satıra sarar; 1440 değişmez. */
+@media (max-width: 1279px) {
+  .sayfa-basi .sayfa-basi-filtre.filtre-yuvasi { flex-wrap: wrap; }
+}
+/* Çekmecede öğe yazısı 18 px'tir (katman.css (5)); iki satırlık seçici değeri 1,3 satır aralığıyla
+   47 px'e çıkıp kutuyu komşusundan 5 px uzatıyordu (/cariler Düzenle "T.C. Kimlik No (11 hane)",
+   sonra turu ölçümü). Çekmecede tam metin 1,2 aralıkla iki satırda kontrol yüksekliğine sığar. */
+html[data-mod] .cekmece .secici-tetik > .secici-metin--tam { line-height: 1.2; }
+/* Ürün değişimi "Geri gelen satış" değeri doğası gereği uzundur (tarih · ürün · müşteri — keşif #26):
+   960 px'te yarım sütunda 3 satıra sarıp "Geri gelen adet" kutusundan 20 px uzun kalıyordu (sonra
+   turu ölçümü). Bu alan ızgarada kendi satırının tamamını alır (komşusuz, 1–2 satır). */
+.form-izgara > :is(.alan, .secici-alan):has(#degisim-kaynak) { grid-column: 1 / -1; }
+/* Dar ekranda (≤ 480 px) seçici ile sayı kutusu aynı esnek satırda sıkışıyordu: Transfer "Ürün"
+   değeri 4 satıra bölünüp "Adet" kutusu 21 px kayıyordu (keşif #27/#69, PRO 375). Seçicili alan
+   kendi satırına iner; komşu alt satırda kendi etiketiyle durur (K7x 0). Satış ödeme bacağı
+   (.bacak-satiri) bu kalıbın dışındadır — kurucunun Havale · Kasa hizası korunur. */
+@media (max-width: 480px) {
+  .satir:has(> .alan > .secici-alan) { flex-wrap: wrap; }
+  .satir:has(> .alan > .secici-alan) > .alan:has(> .secici-alan) { flex: 1 1 100%; }
+}
+
+/* ── (P7-K7a) SÜZGEÇ YUVASI TEK TABAN ÇİZGİSİ ───────────────────────────────────────────────
+   Kök neden (ölçüldü, /cariler BASİT 1440 "Diğer süzgeçler"): tuval yüzü (tuval-panel-musteri.css
+   `.musteri-sade .sayfa-basi .sayfa-basi-filtre { align-items: center }`) etiketli "Tür" alanını
+   (72 px) etiketsiz arama kutusuyla (44 px) ORTADAN hizalıyordu → Tür kutusu +14 px aşağıda
+   (kutuAlt ±14, etiketÜst ±14). SayfaBasi yuvası artık her içerikte AYNI hiza sınıfını
+   (`filtre-yuvasi`) taşır: kontroller ALTTAN hizalanır (P-37 ilkesi). Panel açıkken üstten
+   hiza (P-37c) korunur. Kısa çocuk (onay kutusu satırı) kontrol yüksekliğinde ortalanır. */
+.sayfa-basi .sayfa-basi-filtre.filtre-yuvasi { align-items: flex-end; }
+.sayfa-basi .sayfa-basi-filtre.filtre-yuvasi:has(.secici-liste-kap) { align-items: flex-start; }
+.sayfa-basi .sayfa-basi-filtre.filtre-yuvasi > .alan-onay {
+  min-height: var(--dokunma-hedefi);
+  justify-content: center;
+}
+/* Etiketi görsel gizli olan kutu (tuval arama kabı .musteri-ara) etiket payı almaz; gizli etiket
+   kutunun üst kenarında kalınca ölçer etiket üstünü 28 px kayık sayıyordu. Gizli etiket etiket
+   satırına taşınır (görünüm değişmez; ekran okuyucu aynı etiketi okur). */
+.sayfa-basi .sayfa-basi-filtre.filtre-yuvasi > :not(.arama-kutu) .arama-kutu > label.gorsel-gizli {
+  top: calc(-1 * var(--arac-etiket-bosluk));
+}
+
+/* ── (P7-K7b) FORM IZGARASINDA SEÇİCİ + NOT ALANI ──────────────────────────────────────────
+   Kök neden (ölçüldü, /urunler/agac "Yeni kategori", /urunler "Parite kodu"): ızgarada seçici
+   alanının altında not varsa app.css `.alan:has(> .secici-alan):has(> :not(.secici-alan))` alanı
+   esnek sütuna çeviriyor, etiket–kutu arası 4 px kalıyordu; yanındaki sayı/metin alanı ızgaranın
+   alt ızgarasında (subgrid) 12 px aralık alıyor → kutular 8 px kayık (kutuAlt ±8, keşif #39/#41/#80).
+   Aralık ızgaranın satır aralığından devralınır (belirteç ne ise o). */
+:is(.form-grid-2, .form-grid-3) > .alan:has(> .secici-alan):has(> :not(.secici-alan)) { row-gap: inherit; }
+:is(.form-grid-2, .form-grid-3) > .alan:has(> .secici-alan):has(> :not(.secici-alan)) > .secici-alan { row-gap: inherit; }
+/* Sonra turu ölçümü (/urunler Yeni ürün #u-p16 "Tedarik, maliyet ve stok"): notlu sayı alanı bir
+   sarmalayıcı .alan içinde İKİNCİ .alan olarak duruyor, iç aralığı 4 px kalıyordu → notlu seçiciyle
+   8 px kayık. Izgarada her alanın etiket–kutu aralığı ızgaranın satır aralığıdır. */
+:is(.form-grid-2, .form-grid-3) > .alan > .alan { row-gap: inherit; }
+/* /raporlar/kasa geçmiş süzgeci (#kr-suzgec, 3 sütun): 960 px'te 195 px'lik sütunda uzun kasa adı
+   ("Merkez Şube Altın ve Döviz Ana Kasası (Euro)") 3 satıra sarıp tarih kutularından 20 px uzun
+   kalıyordu. Dar–orta genişlikte kasa seçicisi kendi satırında tam genişlik alır (komşusuz). */
+@media (max-width: 1279px) {
+  #kr-suzgec > .alan:has(.secici-tetik) { grid-column: 1 / -1; }
+}
+
+/* ── (P7-K7c) SATIR İÇİ DÜZENLEME AÇIKKEN TEK PARÇA ────────────────────────────────────────
+   Kök neden (ölçüldü, /cariler PRO telefon, /kasalar geçmiş açıklama, /faturalar kalem): app.css
+   `.satir-ici { flex-wrap: wrap }` — dar hücrede Kaydet/İptal alt satıra düşüyor, satır uzuyor,
+   kutu ile düğmeler 5–48 px kayık duruyordu. SatirIciDuzenle açıkken kök `si-acik`, girdi +
+   düğmeler `si-kutu` içindedir: kutu SARMAZ, düğmeler girdi boyuna uzar; not/bekliyor kendi
+   satırında. */
+.satir-ici.si-acik {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  row-gap: var(--bosluk-1);
+  max-width: 100%;
+}
+.satir-ici.si-acik > .si-kutu {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: var(--bosluk-1);
+  min-width: 0;
+}
+.satir-ici.si-acik > .si-kutu > .si-girdi { flex: 1 1 8rem; min-width: 5rem; }
+.satir-ici.si-acik > .si-kutu > .dugme { flex: 0 0 auto; }
+/* KESIF-P7 tur 2 (doğrulayıcı [DÜŞÜK], ölçüldü: /cariler PRO 1280 telefon açık): tablo hücresinde girdinin
+   kendi boyu (size=20 → 192 px) sütunu genişletiyor, tablo kabı 1021 > 962 kayıyor, "Aktif" rozeti
+   yapışık eylem sütununun altına giriyordu (K9=3). Hücre içinde girdi 8,25rem + 0,5rem iç boşluk (ölçüldü: 8rem telefonun ilk hanesini kesti, 9,5rem kabı
+   981 > 962 taşırdı K9=4; 8,25rem: değer tam, kap 962 = 962, K9 0). */
+td .satir-ici.si-acik > .si-kutu > .si-girdi { inline-size: 8.25rem; padding-inline: var(--bosluk-2); }
+
+/* ── (P7-K3) KISA DEĞER HÜCRESİ BÖLÜNMEZ ────────────────────────────────────────────────────
+   Kök neden (ölçüldü): tablo kabına sığmayan sütunlar tarayıcıda en dar içeriklerine iniyor;
+   kısa değerler tire ve boşluktan bölünüyordu: "GP-2026-/000002" (kod), "K22 · /0,50 g",
+   "Tuna /Akarsu" (/gider-pusulalari 960/1440), "Sahip (Tam /yetkili)" (/yetkiler), tutar
+   "1.095.125,00 /₺" ve "Vergi /levhası" (/uyum 960). (A) kalıbı: kısa değer TEK satır, tablo
+   kendi kabında kayar, sayfa kaymaz. Kod (belge no, maskeli kimlik) ve rozet her tabloda
+   bölünmez; ad ile arkasındaki rozet arasında görünür boşluk ("Tuna AkarsuDüşük" bitişik
+   okunuyordu — Blazor ad metni ile rozet arasındaki boşluğu çizmez). */
+.veri-tablosu > tbody > tr > td > code,
+.belge-tablo td > code { white-space: nowrap; }
+.veri-tablosu > tbody > tr > td :is(.rozet, .cari-rozet) { white-space: nowrap; }
+.veri-tablosu > tbody > tr > td.hucre-vurgu > :is(.rozet, .cari-rozet, span:has(> .rozet)) { margin-inline-start: var(--bosluk-2); }
+/* /gider-pusulalari: satıcı adı ve mal (ayar · gram). Tutarlar zaten bölünmüyordu (ölçüm); tek satıra
+   zorlanmaz — 960'ta eylem sütununun tutarların üstüne binmesi (keşif #11, sahibi KESIF-P3) büyümesin. */
+.ana-icerik:has(#sayfa-basi-gider-pusulalari) .veri-tablosu > tbody > tr > td.metin-kucuk { white-space: nowrap; }
+/* 1440'ta bölünmeyen kısa değerlerle tablo kaba (1122 px) 63 px sığmıyor, "Yazdır" sağ kenarda kesiliyordu
+   (son tur ölçümü). Bu genişlikte hücre yatay dolgusu olcek.css'in 769–1399 px kademesine yakın
+   (6 px) tutulur → tablo kaba sığar; uzun satıcı adı sarar (kısa ad bölünmez). */
+@media (min-width: 1400px) {
+  .ana-icerik:has(#sayfa-basi-gider-pusulalari) .veri-tablosu { --tablo-dolgu: .5rem .375rem; }
+}
+/* 769–1399 px: tablo zaten kendi kabında kayar; satıcı adı sütunu en az 9em ("Tuna /Akarsu" bölünmez). */
+@media (max-width: 1399px) {
+  .ana-icerik:has(#sayfa-basi-gider-pusulalari) .veri-tablosu > tbody > tr > td:nth-child(2) { min-width: 9em; }
+}
+/* /yetkiler: rol adı ve "(Tam yetkili)" notu tek satır. */
+.ana-icerik:has(#sayfa-basi-yetkiler) .veri-tablosu > tbody > tr > td.hucre-vurgu { white-space: nowrap; }
+/* "(Tam yetkili)" küçük yazıyla aynı satırda farklı üst kenara oturuyor, ölçer iki satır sayıyordu
+   (ORTAK-1 /kullanicilar "(siz)" emsali): not ad ile AYNI boyda, yalnız soluk renkle ayrışır. */
+.ana-icerik:has(#sayfa-basi-yetkiler) .veri-tablosu > tbody > tr > td.hucre-vurgu > .metin-kucuk { font-size: inherit; }
+/* /uyum: tutar, belge türü ("T.C. kimlik kartı") ve saklama tarihi tek satır; ad sütunu (960'ta
+   "Tuna /Akarsu") en az 9em. */
+.ana-icerik:has(#sayfa-basi-uyum) .veri-tablosu > tbody > tr > td:is(.metin-kucuk, [style*="text-align:right"]) { white-space: nowrap; }
+.ana-icerik:has(#sayfa-basi-uyum) .veri-tablosu > tbody > tr > td:nth-child(2) { min-width: 9em; }
+/* /siparisler "Yeni sipariş" (TOPLU DUGME-2 ORTA, ölçüldü 375): kalem tablosu (#sip-f-kalemler, 1472 px)
+   kaydırma kabı olmadan formun içinde duruyor; formu, Müşteri kutusunu ve seçiciyi 560 px'e
+   genişletip SAYFAYI 214 px yatay kaydırıyordu. Dar ekranda tablo kendi kabında kayar ((A) kalıbı).
+   Sayfa işaretlemesi (tabloyu .tablo-sar'a almak) sahibi KESIF-P6'ya istek olarak yazıldı. */
+@media (max-width: 640px) {
+  #sip-f-kalemler { display: block; max-width: 100%; overflow-x: auto; }
+}
+/* Gider pusulası belgesi: "Pusulayı düzenle" eylemi iki satıra bölünmez. */
+#gpb-duzenle { white-space: nowrap; }
+
+/* ── (P7-K17) SAYFA BAŞI AÇIKLAMA SATIRI ÇİZİLMEZ ────────────────────────────────────────────
+   Katalog K17 (kurucu "daha basit olamaz mı, Pusula da böyle mi"): tuvalde başlık altında
+   açıklama satırı YOKTUR; SayfaBasi'nin açıklaması (Siparişler "Sipariş deftere yazmaz…",
+   Gider pusulaları "(VUK md.234)", Satış analizi, Kâr-zarar, Etiketler) görünür kalıyordu.
+   Metin SİLİNMEZ (SADE-1): DOM'da id'siyle durur, çizilmez (çift başlık emsali).
+   KESIF-P7 tur 2 (doğrulayıcı [DÜŞÜK]): display:none metni ekran okuyucudan da düşürüyordu → görsel
+   gizleme (app.css .gorsel-gizli kalıbı; ortak.css "overflow: hidden" taşımaz — OrtakGorunum O7 — kırpma
+   "overflow: clip" ile — clip taşan içeriği kaydırma alanına katmaz, sayfa yatay kaymaz): yer kaplamaz, çizilmez, erişilebilirlik ağacında kalır. */
+.sayfa-basi > .sayfa-basi-metin > .sayfa-basi-aciklama {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: clip;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* Yazdırma önizlemesi (/cikti/*, A4Belge) dar ekranda: belge tablosunun en dar içeriği (390 px)
+   375 px'lik kağıda sığmıyor, SAYFA 60 px yatay kayıyor ve "Tezgah satisi", "24 Ayar Gram Altın"
+   bölünüyordu (keşif #51/#53, ölçüldü). Ekranda tablo kendi kabında kayar, kısa hücre tek satır;
+   BASKI düzeni (@media print) DEĞİŞMEZ. */
+@media screen and (max-width: 640px) {
+  .belge-tablo { display: block; max-width: 100%; overflow-x: auto; }
+  .belge-tablo th, .belge-tablo td { white-space: nowrap; }
+}
+
+/* ═══ PAKET TOPLU-1 — toplu tasarım kuyruğu (30.09–01.10) ════════════════════════════════════
+   Ölçüldü (başsız Chrome, /private/tmp/kuyumcu-serit/TOPLU-1), sonra yazıldı. Sabit renk yok. */
+
+/* MASAK "Beyan Açıklaması" (ve bütün çok satırlı kutular) EŞ ARALIKLI (monospace) yazıyordu.
+   Kök neden: app.css `input, select { font: inherit; }` textarea'yı saymıyor → tarayıcı varsayılanı
+   monospace. Kutu sayfanın yazı ailesini alır (boyutu kendi sınıfından). */
+textarea { font-family: inherit; }
+
+/* /vezne yeni fiş: fiş toplamı 12 px dipnot gibiydi (K20) — formun sonucu, gövde boyunda, kalın,
+   etiket + tutar bir satırda; dar ekranda sarar. */
+.form-toplam-satir {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--bosluk-2);
+  margin: var(--bosluk-3) 0 0; font-size: var(--yazi-govde, 1rem); color: var(--metin);
+}
+/* TOPLU-1 tur 2 (doğrulayıcı DÜŞÜK): toplam satırı "Kalem ekle" düğmesine ~4 px yapışıktı → üst boşluk belirteci
+   (yukarıda). Vezne birim fiyat kutusunun ₺ son eki ~10 px idi → gövde boyu (yalnız bu formda). */
+#vz-form .alan-son-ek { font-size: var(--yazi-govde, 1rem); }
+.form-toplam-satir > strong { font-weight: 600; }
+
+/* Faturalar: düzenlenebilir taslakta tek satır silme notu (eski amber "değiştirilemez" bandı yerine). */
+.fatura-kalem-silme-notu { margin: 0; }
+
+/* /cariler PRO 375 (CARI-BAKIYE 01.10): kart düzeni GRID-1 tur 3'te ORTAK IZGARANIN tek kart
+   kalıbına (css/izgara.css) devredildi — sayfaya özgü #cari-liste-sar kart kuralı kaldırıldı
+   (kimlik özgüllüğü ortak kalıbı eziyor, telefon ile tutar aynı satırda bitişik çıkıyordu). */
+
+/* /cariler BASİT "Diğer süzgeçler" açık (KESIF-P7 devri, YÜKSEK · K7x): şerit `align-items: center`
+   olduğu için etiketli "Tür" alanı şeridi uzatınca "+ Yeni müşteri" kutulardan 14 px YUKARIDA kalıyordu
+   (ölçüm 1280/1440: düğme 106–150, kutular 120–164) ve tek satıra kilitli şeritte "Kullanım dışı
+   olanları göster" düğmenin altına giriyordu (K9). Süzgeçler açıkken: düğme kutularla ALTTAN hizalı,
+   şerit sığmazsa alt satıra sarar (kapalıyken tuval tek satırı değişmez). */
+.musteri-sade .sayfa-basi:has(#cari-tur-filtre) { align-items: flex-end; }
+.musteri-sade .sayfa-basi .sayfa-basi-filtre.filtre-yuvasi:has(#cari-tur-filtre) { flex-wrap: wrap; }
+
+/* Gün sonu mutabakatı 375 (BELGE-KALAN 01.10, YÜKSEK): özet tablosunun tutar hücreleri ("9 adet · 98.215,67 ₺")
+   tek satıra kilitli olduğundan tablo 400 px'e uzuyor, tutarlar ekranın sağından KESİLİYORDU (ölçüm: hücre sağı
+   400 > 375). Dar ekranda tablo kabına sığar, etiket hücresi sarar, tutar tek satırda kalır. */
+@media (max-width: 560px) {
+  #mut-ozet-tablo { min-width: 0; width: 100%; }
+  #mut-ozet-tablo td.sayi { white-space: nowrap; text-align: right; padding-inline-start: var(--bosluk-2); }
+  #mut-ozet-tablo td:not(.sayi) { white-space: normal; }
+}
+
+/* ═══ PAKET TOPLU-2 — toplu tasarım kuyruğunun KALAN görünüm maddeleri (01.10) ══════════════════
+   Ölçüldü (başsız Chrome, /private/tmp/kuyumcu-serit/TOPLU-2), sonra yazıldı. Sabit renk yok;
+   yalnız belirteç. Her kuralın kuyruk maddesi yanında yazılı. */
+
+/* (T2-1) KATMAN-1b / KESIF-P8 "375'te üst çubuk mod anahtarı sıkışıyor": app.css ≤480 kuralı
+   düğme yazısını --yazi-xs'e ve iç boşluğu 4 px'e indiriyordu; 44 px asgari kutuyla seçili "Basit"
+   bir DAİREYE, "Profesyonel" okunmaz küçüklüğe düşüyordu. İki düğme aynı okunur boy ve yatay dolgu. */
+@media (max-width: 480px) {
+  .ust-bar .mod-anahtar { flex-wrap: nowrap; }
+  .ust-bar .mod-anahtar button { font-size: var(--yazi-sm); padding: 0 var(--bosluk-3); min-width: 0; white-space: nowrap; }
+}
+
+/* (T2-2) /cariler 375 "Hepsi · Borçlu · Toptancı" anahtarı tam genişliğe gerilip öğeleri SAĞA
+   yığıyordu (solda boş hap). Dar ekranda öğeler kabı eşit paylaşır. */
+@media (max-width: 640px) {
+  .sayfa-basi .sayfa-basi-filtre > .musteri-segment > .musteri-segment-oge { flex: 1 1 0; text-align: center; }
+}
+
+/* (T2-3) ZO-BELGE "Veri içe aktar: 'Boş şablonu indir' düğmesi alttaki katlanıra yapışık (0 boşluk)". */
+.zo-belge .alan.zo-ice-sablon + .katlanir { margin-top: var(--bosluk-3); }
+
+/* (T2-5) KATMAN-2 "Kalıcı hata bandı kenar çubuğunda tek satır değil (216 px'te 4 satır, 13 px)":
+   metin tek kısa cümle (MenuSozlugu), yazı ≥14 px, Kapat × ikon düğme aynı satırda. */
+#kenar-sira-hatasi { flex-direction: row; align-items: center; font-size: var(--yazi-sm); }
+#kenar-sira-hatasi > span { flex: 1 1 auto; min-width: 0; }
+.kenar-uyari-kapat {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--tehlike-kenar); border-radius: var(--yaricap-sm);
+  background: transparent; color: inherit; font: inherit; font-size: 1.125rem; line-height: 1; cursor: pointer;
+}
+.kenar-uyari-kapat:focus-visible { outline: var(--odak-halka-kalinlik) solid var(--odak-halka); outline-offset: var(--odak-halka-boslugu); }
+
+/* (T2-6) KESIF-P4/P8 "#urun-durum-filtre ve #cari-tur-filtre ezik (84 px)": süzgeç seçicisi
+   "Hepsi" kadar daralıyordu; seçenekler ("Pasifler dahil", "Toptancı") açılınca kutu zıplıyordu.
+   Geniş ekranda süzgeç seçicileri ortak asgari genişlik alır (dar ekranda zaten %100).
+   PRO'da UYGULANMAZ (ölçüldü: 6 süzgeçli /urunler PRO 1280'de satırı ikiye bölüyordu); PRO süzgeç dizisi doğal genişlikte. */
+@media (min-width: 641px) {
+  html[data-mod="basit"] :is(#urun-durum-filtre-sar, #cari-tur-filtre-sar, #sip-durum-suzgec-sar) { min-width: 7.5rem; }
+}
+
+/* (T2-8) KATMAN-1b "/vitrin: 'Kalem' başlığı ortada, değerler solda": başlık hücresi tarayıcı
+   varsayılanıyla ortalanıyordu. Metin sütununun başlığı değeriyle aynı (başa) hizalı. */
+#vitrin-pano thead th:not(.sayi) { text-align: start; }
+
+/* ── TOPLU-2 tur 2 (tasarım hakemi KRİTİK, 01.10) ─────────────────────────────────────────────── */
+
+/* (T2-9) K14 "PRO üst çubuk 1440'ta iki satıra iniyor": ≥1440'ta tuval aralıkları (26/22 px) + saatin
+   yanındaki kaynak adı ("· Altınkaynak") + PRO'nun fazladan EUR öğesi, kur verisi gelince 1172 px'lik
+   çubuğa 10 px payla sığıyordu; daha uzun başlıkta (İşlem defteri, Gider pusulaları…) ya da kur
+   değerleri büyüyünce bar 93 px'e iniyordu (ölçüldü: 24 rotanın 14'ünde). 1280'de aynı öğeler 68 px'te
+   sığıyor, çünkü 769–1439'da kaynak adı saatin ipucuna iner ve aralıklar daralır. PRO'da bu kural
+   GENİŞLİKTEN BAĞIMSIZ uygulanır (≥1440 dahil): kaynak adı SİLİNMEZ — saatin title'ında ("Kaynak: …",
+   UstBar.SaatIpucu) durur; aralıklar 18/14. BASİT'te EUR yoktur, 1440'ta 68 px ölçüldü → dokunulmaz. */
+@media (min-width: 1440px) {
+  html[data-mod="profesyonel"] .ust-bar { column-gap: 18px; }
+  html[data-mod="profesyonel"] .ust-kur-serit,
+  html[data-mod="profesyonel"] .ust-kur-serit .kur-bandi { column-gap: 14px; }
+  html[data-mod="profesyonel"] .ust-kur-serit #ust-kur-kaynak { display: none; }
+}
+
+/* (T2-10) Basılı belge: okunur sıra numarası olmayan belgede kayıt kimliği TEK SATIR, küçük ve soluk
+   (C_ekstre 375: 26 karakterlik kimlik 46 px'e sıkışıp 6 satıra kırılıyordu). Kâğıt beyaz kalır;
+   renk sabiti yerine saydamlık. Dar ekranda başlık ile numara alt alta iner. */
+.belge-no .belge-no-kimlik { font-size: 8pt; font-weight: 400; opacity: .7; white-space: nowrap; }
+@media screen and (max-width: 640px) {
+  .belge-ust { flex-wrap: wrap; column-gap: 1rem; row-gap: .25rem; }
+  .belge-ust .belge-no { text-align: start; }
+}
+
+/* (T2-11) /cikti 375 "belge tablosu yatay kayıyor (sw 529 / cw 285)": dar EKRANDA başlıklı tablo
+   (hareket satırları) DİKEY KART düzenine geçer — her satır bir kart, her hücre "başlık · değer"
+   satırı (başlık td[data-etiket]'ten). BASKI (@media print) ve geniş ekran DEĞİŞMEZ; başlıksız
+   tutarlar tablosu iki sütundur, eski kuralla kalır. Başlık satırı kartta tekrar etmez (display:none —
+   görsel-gizli 1 px'lik başlık hücreleri ölçümde td'lerin üstüne "binen" sayılıyordu); her değerin adı
+   hücrenin kendi etiketindedir (::before, ekran okuyucu da okur). */
+@media screen and (max-width: 640px) {
+  .belge-tablo:has(thead) { display: block; overflow: visible; border: 0; }
+  .belge-tablo:has(thead) thead { display: none; }
+  .belge-tablo:has(thead) tbody { display: block; }
+  .belge-tablo:has(thead) tbody tr {
+    display: block; margin: 0 0 .5rem; padding: .35rem .5rem;
+    border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: var(--yaricap-sm);
+  }
+  .belge-tablo:has(thead) tbody td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: .75rem;
+    padding: .15rem 0; border: 0; white-space: normal; text-align: end; overflow-wrap: anywhere;
+  }
+  .belge-tablo:has(thead) tbody td[data-etiket]::before {
+    content: attr(data-etiket); flex: 0 0 auto; max-width: 45%;
+    font-size: 9pt; opacity: .7; text-align: start; white-space: normal;
+  }
+}
+
+/* (T2-12) Düzenleyen bilgisi eksik uyarısı belgenin DIŞINDA, önizlemenin üstünde. */
+.cikti-kimlik-uyari { display: flex; flex-direction: column; align-items: flex-start; gap: var(--bosluk-2); margin-bottom: var(--bosluk-3); }
+
+/* (T2-13) Kuyruk DÜŞÜK "Bildirimler sekme seçimi başka ekranlardan farklı": düğmeler ortak sekme hapına
+   taşındı (Bildirimler.razor .sekmeler-serit/.sekmeler-sekme). olcek.css (10f) bu kimliklere eski yerli
+   düğme köşesi/dolgusu veriyordu; hap içinde hap biçimi korunur (kimlik ağırlığıyla, olcek.css'e dokunmadan). */
+#bildirim-sekme-seridi { width: fit-content; }
+html[data-mod] .ana-icerik #bildirim-sekme-seridi > .sekmeler-sekme { border-radius: 999px; padding: 6px 18px; }
+
+/* (T2-14) Kuyruk DÜŞÜK "Uyum risk sekmesinde metin satırı karta yapışık": açıklama satırları üstteki
+   yasal liste kartından ve alttaki sayı kartlarından ayrık. */
+.sekmeler-panel #uy-risk-aciklama { margin-top: var(--bosluk-3); }
+.sekmeler-panel :is(#uy-risk-aciklama, #uy-risk-durdurmaz, #uy-risk-kapali):has(+ .stat-izgara) { margin-bottom: var(--bosluk-3); }
+
+/* (T2-15) Kuyruk DÜŞÜK "Etiketler: 'En çok 500 kayıt gösterilir…' tablo başlığına yapışık": ayrıca kartın
+   iç boşluğu yoktu (arama kutusu kart kenarına değiyordu) ve kilit sebebi karta yapışıktı. */
+.kart:has(#et-ara) { padding: var(--bosluk-4); }
+#et-sinir { margin-block: var(--bosluk-3) var(--bosluk-2); }
+#et-yazdir-kilit { display: block; margin-bottom: var(--bosluk-3); }
+
+/* ── TOPLU-2 tur 3 (doğrulama KRİTİK, 01.10) ───────────────────────────────────────────────────── */
+
+/* (T2-16) KRİTİK "Süzgeç seçicisi açılınca sayfa zıplıyor" (ölçüldü, BASİT 1280: /urunler #urun-durum-filtre
+   tetiği 120 → 320 px, tablo +199 px; /cariler #cari-tur-filtre +331 px; /siparisler #sip-durum-suzgec
+   143 → 320 px, liste +375 px; 375'te +211/+355/+388 px). Kök neden: app.css P-37c araç şeridindeki
+   paneli AKIŞTA tutuyordu (position: relative) ve S1-i/app.css (2) ona 20rem asgari genişlik veriyordu;
+   akıştaki panel kendi sütununu (tetiği) 320 px'e genişletiyor, şeridi sardırıyor, tabloyu itiyordu.
+   Karar (orkestratör doğrulaması): şeritteki liste de diğer seçiciler gibi AKIŞ DIŞI, tetiğe bağlı
+   mutlak katmandır. 320 px asgari genişlik YALNIZ listede kalır (app.css (2), 100% = tetik); tetik
+   genişliği ve sayfa düzeni açıkken değişmez. P-37c'nin "panel sarmış alt satırın üstüne biner"
+   kaygısı: panel açıkken `.secici-perde` (z 40) zaten tüm sayfayı kapatır, alttaki kontrol o anda
+   tıklanamaz — her açılır listede olduğu gibi; dışarı tıklama paneli kapatır. Kırpan ata varsa
+   js/secici-yerlesim.js `.sabit` (katman.css) yine devreye girer (:not(.sabit)); `.yukari` / `.sola`
+   yerleşimleri mutlak panelde aynı anlamı taşır. */
+.sayfa-basi .sayfa-basi-filtre .secici-kap > .secici-liste-kap:not(.sabit) {
+  position: absolute;
+  top: calc(100% + var(--bosluk-1));
+  right: auto;
+  bottom: auto;
+  left: 0;
+  margin-top: 0;
+}
+.sayfa-basi .sayfa-basi-filtre .secici-kap > .secici-liste-kap.yukari:not(.sabit) {
+  top: auto;
+  bottom: calc(100% + var(--bosluk-1));
+}
+.sayfa-basi .sayfa-basi-filtre .secici-kap > .secici-liste-kap.sola:not(.sabit) { left: auto; right: 0; }
+/* Panel akışta değilken P-37c'nin "panel açıkken üstten hiza" kuralları (app.css :has, ortak.css P7-K7a)
+   artık bir şey korumaz, ama açılınca hizayı flex-end → flex-start çevirip farklı boylu komşuları
+   kaydırırdı. Açıkken hiza KAPALIYKENKİ ile aynıdır (alttan; P-37 ilkesi). Tuval yüzünde (.musteri-sade)
+   şeritte seçici yalnız #cari-tur-filtre'dir ve o varken kapalı hiza da flex-end'dir (ortak.css). */
+.sayfa-basi:has(.sayfa-basi-filtre .secici-liste-kap):not(#_) { align-items: flex-end; }
+.sayfa-basi .sayfa-basi-filtre.filtre-yuvasi:has(.secici-liste-kap):not(#_) { align-items: flex-end; }

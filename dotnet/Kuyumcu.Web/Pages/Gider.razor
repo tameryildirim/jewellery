@@ -1,0 +1,1185 @@
+@page "/gider"
+@using Kuyumcu.Contracts.Sayfalar.Gider
+@using KasaSz = Kuyumcu.Contracts.Sayfalar.Kasalar
+@using BankaSz = Kuyumcu.Contracts.Sayfalar.Banka
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@inject ArayuzModuServisi Modu
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-19 (Y-11 · Y-12) — GİDER + VİRMAN
+
+   İki kayıt ailesi, tek ekran; ikisi de "iki bacaklı atomik desen"in yüzüdür:
+     • GİDER  : kasadan çıkan para + gider KATEGORİSİ → kâr-zararda ayrı satır.
+     • VİRMAN : kasa/banka arası aktarım; İKİ bacak tek işlemde yazılır.
+
+   UX sözleşmesi:
+     S22 tek kasa/hesap varsa seçici gizlenir, değer salt okunur yazılır.
+     S25 her kayıt ya düzeltilebilir ya gerekçesi yazılıdır (gider → STORNO).
+     S27 her yazma başarı bandıyla biter, sunucunun döndürdüğü sonuç banda yazılır.
+     S28 hata "kayıt yok"a çevrilmez: hata bandı ayrıdır, liste boşaltılmaz.
+     S29 sunucu sınırı ekranda yazar.
+     S30 kilitli düğmenin sebebi yanında yazar.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Gider.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Gidervevirman (BİREBİR). Alanlar AŞAĞIDAKİ özgün gider
+   formunun bileşenleridir (aynı kimlik, kapı ve kilit; özgün form bu görünümde çizilmediği için kimlik tek). Virman,
+   geçmiş, kategoriler ve storno yalnız "Virman" / "Ayrıntı ekle" görünümünde (data-yz-ozgun). Öteki 8 şemada AYNEN. *@
+@if (YildizMi)
+{
+    <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizBaglami">
+        @if (kasalar.Count > 1)
+        {
+            <div class="alan">
+                <Secici ElemanId="gd-kasa" Etiket="@Dil.T.Gider.Kasa" Secenekler="@KasaSecenekleri"
+                        @bind-Deger="giderKasaId" Hata="@giderForm.Mesaj("gd-kasa")" BosSecenekMetni="—" />
+                <AlanHatasi Alan="gd-kasa" Durum="giderForm" />
+                @if (GiderKilitAlani == "kasa") { @GiderKilitMesaji }
+            </div>
+        }
+        else if (kasalar.Count == 1)
+        {
+            <SaltOkunur ElemanId="gd-kasa-sabit" Etiket="@Dil.T.Gider.Kasa" Deger="@kasalar[0].Ad" MakineDeger="@kasalar[0].Id" />
+        }
+        @if (TekKategori is null)
+        {
+            <div class="alan">
+                <Secici ElemanId="gd-kategori" Etiket="@Dil.T.Gider.Kategori"
+                        Secenekler="@(AktifKategoriler.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                        @bind-Deger="giderKategoriId" BosSecenekMetni="—" />
+                <AlanHatasi Alan="gd-kategori" Durum="giderForm" />
+                @if (GiderKilitAlani == "kategori") { @GiderKilitMesaji }
+            </div>
+        }
+        <Para ElemanId="gd-tutar" Etiket="@Dil.T.Ortak.Tutar" Zorunlu="true" Tur="TutarTuru.Pozitif"
+              @bind-Deger="giderTutar" Durum="giderForm" HataAlani="gd-tutar" />
+        @if (GiderKilitAlani == "tutar") { @GiderKilitMesaji }
+        <Metin ElemanId="gd-aciklama" Etiket="@YildizGiderSozlugu.NeIcin(Dil.Dil)" EnFazla="@AlanSinirlari.HareketAciklama"
+               @bind-Deger="giderAciklama" />
+    </Kuyumcu.Web.Bilesenler.Yildiz.YildizForm>
+}
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    <SayfaBasi Anahtar="gider" AciklamaKatli="true" Baslik="@Dil.T.Gider.Baslik" Aciklama="@(Dil.BasitMi ? T6.SayfaAciklamaBasit : Dil.T.Gider.SayfaAciklama)" />
+
+    @* PAKET S1-i: elle yazılmış tablist ORTAK Sekmeler bileşenine taşındı. id'ler
+       aynı (#gd-sekme-giderler/-kategoriler/-virman); seçili sekme URL'dedir
+       (?sekme=). Eski derin bağlar (/gider?sekme=virman, ?sekme=kategori) çalışır. *@
+
+    <HataBandi Mesaj="@hata" Id="gd-hata" />
+    <BasariBandi Mesaj="@basari" Id="gd-basari" Jeton="@basariJeton" />
+
+    <Sekmeler Onek="gd" Liste="@GdSekmeleri" Etiket="@GS.GiderSerit">
+        <Panel Context="gdKod">
+    @if (Durum(gdKod) != sekme)
+    {
+        @* seçili olmayan panel boş — tek form/liste görünür *@
+    }
+    else if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (sekme == "GIDER")
+    {
+        <div class="kart">
+            <div class="kart-baslik"><h3>@Dil.T.Gider.YeniGider</h3></div>
+            @* PAKET P-50: EKSİ bakiyeli kasa seçiliyken formun ÜSTÜNDE kalıcı uyarı şeridi +
+               kasa raporuna bağlantı. Kural sunucudadır (KasaBakiyeKapisi, P-44); ekran
+               yalnız ERKEN söyler ve çıkış yolunu gösterir. *@
+            @if (SecilenKasa is { } eksiKasa && eksiKasa.Bakiye < 0m)
+            {
+                <div class="bant bant-uyari" role="status" id="gd-eksi-kasa-uyari">
+                    <span>@string.Format(Dil.BasitMi ? T6.EksiKasaUyariBasit : Dil.T.Gider.EksiKasaUyari, Bicim.Para(eksiKasa.Bakiye, eksiKasa.ParaBirimi))</span>
+                    <a href="/raporlar/kasa" id="gd-eksi-kasa-rapor">@Dil.T.Gider.KasaRaporunaGit</a>
+                </div>
+            }
+            <div class="form-dikey">
+                @* UX-S22: tek kasa varsa seçici GİZLENİR, değer salt okunur satırdır. *@
+                @if (kasalar.Count > 1)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="gd-kasa"
+                                Etiket="@Dil.T.Gider.Kasa"
+                                Secenekler="@KasaSecenekleri"
+                                @bind-Deger="giderKasaId"
+                                Hata="@giderForm.Mesaj("gd-kasa")"
+                                BosSecenekMetni="—" />
+                        <AlanHatasi Alan="gd-kasa" Durum="giderForm" />
+                        @if (GiderKilitAlani == "kasa") { @GiderKilitMesaji }
+                    </div>
+                }
+                else if (kasalar.Count == 1)
+                {
+                    <p class="metin-kucuk metin-soluk" id="gd-kasa-sabit">
+                        @Dil.T.Gider.Kasa: @kasalar[0].Ad (@Bicim.ParaIsareti(kasalar[0].ParaBirimi))
+                    </p>
+                }
+                @* PAKET P-50 / UX-S21: sistemin bildiği bakiye kullanıcıya SÖYLENİR (para
+                   birimiyle, tr-TR biçiminde — UX-S32). Eksi bakiye kırmızı rozet taşır. *@
+                @* PARA-DEMO-3 (hakem ORTA): gider nakit çıkışıdır — önce ÇEKMECEDEKİ NAKİT (sunucu: /kasalar/nakit-ayrimi,
+                   Kasalar ve Panel ile aynı uç), toplam (kart/havale dahil) ikinci sırada. Ayrım okunamazsa toplam
+                   "nakit" diye basılmaz: eski "Kasa bakiyesi" satırı + kısa hata. *@
+                @if (SecilenKasa is { } nakitKasa && SecilenAyrim is { } ayr)
+                {
+                    <p class="metin-kucuk" id="gd-kasa-nakit">
+                        @PD3.GiderNakit:
+                        <Rozet Renk="@(ayr.Nakit < 0m ? "kirmizi" : "yesil")">@Bicim.Para(ayr.Nakit, nakitKasa.ParaBirimi)</Rozet>
+                    </p>
+                }
+                else if (SecilenKasa is not null && nakitAyrimHata is { } nah)
+                {
+                    <p class="metin-kucuk metin-soluk" id="gd-kasa-ayrim-hata">@nah</p>
+                }
+                @* TOPLU-5 (hakem DÜŞÜK "asıl sayı en küçük yazı" + zorunlu önce): BASİT'te çekmecedeki nakit
+                   görünürken toplam (kart/havale dahil) satırı çizilmez — gider nakitten ödenir; PRO'da AYNEN.
+                   Ayrım okunamazsa toplam iki modda da görünür (bilgi kaybolmaz). *@
+                @if (SecilenKasa is { } bakiyeKasa && !(Dil.BasitMi && SecilenAyrim is not null))
+                {
+                    <p class="metin-kucuk@(SecilenAyrim is null ? "" : " metin-soluk")" id="gd-kasa-bakiye">
+                        @(SecilenAyrim is null ? Dil.T.Gider.KasaBakiyesi : PD3.GiderToplam):
+                        <Rozet Renk="@BakiyeRenk(bakiyeKasa)">@Bicim.Para(bakiyeKasa.Bakiye, bakiyeKasa.ParaBirimi)</Rozet>
+                        @if (bakiyeKasa.Bakiye < 0m)
+                        {
+                            <Rozet Renk="kirmizi">@Dil.T.Gider.KasaBakiyeEksi</Rozet>
+                        }
+                    </p>
+                }
+
+                @* TOPLU-1 (QA10, UX-S22): tek aktif kategori varsa seçici "—" ile açılıp kullanıcıdan seçim
+                   istiyordu. Tek seçenekte seçici GİZLENİR: değer salt okunur satır, gövdeye kendiliğinden
+                   girer (kasa satırıyla aynı kural). İkiden fazla kategoride seçici aynen. *@
+                @if (TekKategori is { } tk)
+                {
+                    <SaltOkunur ElemanId="gd-kategori-sabit" Etiket="@Dil.T.Gider.Kategori" Deger="@tk.Ad"
+                                KaynakRozeti="@Toplu1Sozlugu.Al(Dil.Dil).GiderTekKategoriKaynak" MakineDeger="@tk.Id" />
+                }
+                else
+                {
+                    <div class="alan">
+                        <Secici ElemanId="gd-kategori"
+                                Etiket="@Dil.T.Gider.Kategori"
+                                Secenekler="@(AktifKategoriler.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                                @bind-Deger="giderKategoriId"
+                                BosSecenekMetni="—" />
+                        <AlanHatasi Alan="gd-kategori" Durum="giderForm" />
+                        @if (GiderKilitAlani == "kategori") { @GiderKilitMesaji }
+                    </div>
+                }
+
+                @* PAKET GOC-A (K9): Core tutar kuralı; sunucu AYNI kural (2'den fazla ondalık 400 — yuvarlama yok). *@
+                <Para ElemanId="gd-tutar" Etiket="@Dil.T.Ortak.Tutar" Zorunlu="true" Tur="TutarTuru.Pozitif"
+                      @bind-Deger="giderTutar" Durum="giderForm" HataAlani="gd-tutar" />
+                @if (GiderKilitAlani == "tutar") { @GiderKilitMesaji }
+
+                @* SON-KALANLAR (QA K16, "zorunlu önce"): isteğe bağlı açıklama "+ Not ekle" arkasında; yazılmışsa açık kalır. *@
+                @if (giderNotAcik || !string.IsNullOrEmpty(giderAciklama))
+                {
+                <Metin ElemanId="gd-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+                       @bind-Deger="giderAciklama" />
+                }
+                else
+                {
+                    <div class="satir" id="gd-istege-bagli">
+                        <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="gd-not-ekle" @onclick="() => giderNotAcik = true">@PD2G.NotEkle</button>
+                    </div>
+                }
+
+                <div class="satir-arasi">
+                    <button id="gd-kaydet" type="button" class="dugme dugme-birincil" disabled="@(GiderKilidi is not null || kaydediliyor)" @onclick="GiderKaydet">
+                        @Dil.T.Gider.GiderKaydet
+                    </button>
+                    @* UX-S30: kilitli düğmenin sebebi YAZILIR — TOPLU-6 (TOPLU-5 hakemi DÜŞÜK "gerekçe uzakta ve 12 px"):
+                       düğmenin yanında değil, eksik olan ALANIN altında 14 px alan mesajı (#gd-kaydet-kilit; GiderKilitAlani). *@
+                </div>
+
+                @* PAKET P-50: YETERSİZ BAKİYE BANDI — sunucunun ham metni ("-738298.80 TRY")
+                   EKRANA BASILMAZ; biçimlendirilmiş cümle + iki ÇIKIŞ YOLU bağlantısı.
+                   Sunucu reddi (bayat bakiye) ya da istemcinin erken uyarısı aynı bandı üretir. *@
+                @if (YetersizBandi is { } yb)
+                {
+                    @* PARA-DEMO-3 tur 2 (tasarım hakemi KRİTİK): iki çıkış yolu metnin İÇİNDE alt çizgisiz, aynı renkte
+                       bağlantıydı ("…eksiye düşemez. Kasaya giriş yap Virman yap" tek cümle gibi okunuyordu). Artık
+                       metnin ALTINDA ayrı satırda, ikincil küçük düğme görünümünde (kimlikler aynı). *@
+                    <div class="bant bant-hata" role="alert" id="gd-yetersiz">
+                        <p id="gd-yetersiz-metin">@yb.Metin</p>
+                        <div class="satir mt-1" id="gd-yetersiz-eylemler">
+                            <a href="@GirisBaglantisi(yb.KasaId)" id="gd-yetersiz-giris" class="dugme dugme-ikincil dugme-kucuk">@Dil.T.Gider.KasayaGirisYap</a>
+                            <a href="@VirmanBaglantisi(yb.KasaId)" id="gd-yetersiz-virman" class="dugme dugme-ikincil dugme-kucuk">@(Dil.BasitMi ? T6.VirmanYapBasit : Dil.T.Gider.VirmanYapBaglanti)</a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* SON-KALANLAR (QA K15/K17, kurucu kuralı "geçmiş kayıtlar katlanır"): geçmiş giderler KAPALI akordeon
+           (ortak Bilesenler/Katlanir); ekran açılışta yalnız yapılacak işi (yeni gider) gösterir. Liste sayfa
+           açılışında okunur (rozet sayısı gerçek); hata bandı akordeonun DIŞINDA (#gd-hata, UX-S28). Satır,
+           düğme ve toplam kimlikleri DEĞİŞMEDİ. *@
+        <Katlanir Id="gd-gecmis" Baslik="@Dil.T.Gider.SekmeGiderler" Sayi="@(veriGeldi ? giderler.Count : null)"
+                  Sinif="zo-gecmis" BaslangictaAcik="@giderGecmisAcik" Degisti="@(v => giderGecmisAcik = v)">
+            <p class="metin-kucuk metin-soluk" id="gd-toplam">
+                @Dil.T.Gider.ToplamGider: @ToplamMetni
+            </p>
+            @* UX-S28: boş durum YALNIZ istek BAŞARILIYKEN çıkar. Hata varsa liste
+               boşaltılmaz ve "kayıt yok" YAZILMAZ — hata bandı yukarıda durur. *@
+            @if (giderler.Count == 0 && veriGeldi)
+            {
+                <BosDurum Mesaj="@Dil.T.Gider.GiderYok" />
+            }
+            else
+            {
+                @* PAKET GOC-A — ORTAK IZGARA (grid:gider:gd-gider). Liste sunucu sınırlı → sınıra değdiyse sıralama kapalı. *@
+                <Izgara T="GiderSatiri" Ekran="gider" GridId="gd-gider" Kolonlar="@GiderKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(giderler, giderDahaFazlasi ? null : giderSira, GiderKolonlari)"
+                        Baslik="@Dil.T.Gider.SekmeGiderler" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@GiderSiralandi" GecerliSiralama="@giderSira" TercihIstemcisi="@GdTercih" />
+
+                @if (giderDahaFazlasi)
+                {
+                    <p class="metin-kucuk metin-soluk" id="gd-sinir">@Dil.T.Gider.DahaFazlasiVar</p>
+                }
+            }
+            @* UX-S25: gider tutarı yerinde düzeltilemez — GEREKÇESİ yazılıdır. TOPLU-5 (hakem DÜŞÜK "boş listede
+               'Bu kayıt değiştirilemez' kutusu"): kutu yalnız listede KAYIT varken çizilir (düzeltilecek kayıt yokken
+               "bu kayıt" yoktur). Metin ve id aynen. *@
+            @if (giderler.Count > 0)
+            {
+                <DegismezIpucu Varlik="Gider" Gerekce="@(Dil.BasitMi ? StornoOnekiSozlugu.Al(Dil.Dil).GiderDegismezNotuBasit : Dil.T.Gider.GiderDegismezNotu)"
+                               AlternatifYol="@Dil.T.Gider.Storno" />
+            }
+        </Katlanir>
+    }
+    else if (sekme == "KATEGORI")
+    {
+        <div class="kart">
+            <div class="kart-baslik"><h3>@Dil.T.Gider.YeniKategori</h3></div>
+            <div class="form-dikey">
+                <Metin ElemanId="gd-kat-ad" Etiket="@Dil.T.Gider.KategoriAdi" Zorunlu="true" EnFazla="@AlanSinirlari.KategoriAdi"
+                       @bind-Deger="yeniKategoriAd" Durum="kategoriForm" HataAlani="gd-kat-ad" />
+                <Metin ElemanId="gd-kat-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+                       @bind-Deger="yeniKategoriAciklama" />
+                <div class="satir-arasi">
+                    <button id="gd-kat-ekle" type="button" class="dugme dugme-birincil" disabled="@(KategoriKilidi is not null || kaydediliyor)" @onclick="KategoriEkle">
+                        @Dil.T.Ortak.Ekle
+                    </button>
+                    @if (KategoriKilidi is { } ks)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="gd-kat-ekle-kilit">@ks</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="kart">
+            <div class="kart-baslik"><h3>@Dil.T.Gider.SekmeKategoriler</h3></div>
+            @if (kategoriler.Count == 0 && veriGeldi)
+            {
+                <BosDurum Mesaj="@Dil.T.Gider.KategoriYok" />
+            }
+            else
+            {
+                @* PAKET GOC-A — ORTAK IZGARA (grid:gider:gd-kategori). Kategori listesi TAMDIR → yerel sıralama. *@
+                <Izgara T="GiderKategoriVeri" Ekran="gider" GridId="gd-kategori" Kolonlar="@KategoriKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(kategoriler, kategoriSira, KategoriKolonlari)"
+                        SatirSinif="@(k => k.Aktif ? null : "metin-soluk")"
+                        Baslik="@Dil.T.Gider.SekmeKategoriler" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@KategoriSiralandi" GecerliSiralama="@kategoriSira" TercihIstemcisi="@GdTercih" />
+                <p class="metin-kucuk metin-soluk" id="gd-kat-silinmez">@Dil.T.Gider.KategoriSilinmez</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="kart">
+            @* TOPLU-5 (hakem ORTA "Virman BASİT jargon"): BASİT'te başlık ve açıklama "bacak/ciro"suz; PRO AYNEN. *@
+            @* TOPLU-6 (TOPLU-5 hakemi ORTA): açıklama satırı başlığın yanındaki ⓘ içinde (metin ve id AYNI). *@
+            <div class="kart-baslik t4-ipucu-satir" id="gd-virman-baslik-satir">
+                <h3>@(Dil.BasitMi ? T5.VirmanBaslikBasit : Dil.T.Gider.VirmanBaslik)</h3>
+                <details class="zo-ipucu" id="gd-virman-ipucu">
+                    <summary aria-label="@T6.VirmanAciklamaBilgi">i</summary>
+                    <p id="gd-virman-aciklama">@(Dil.BasitMi ? T5.VirmanAciklamaBasit : Dil.T.Gider.VirmanAciklama)</p>
+                </details>
+            </div>
+            @* TOPLU-6 (TOPLU-5 hakemi ORTA "aktarılacak hesap yoksa boş durum"): banka hesabı yoksa bunu söyler ve
+               ekleme yoluna götürür; iki taraf bile yoksa form yerine boş durum (kasa ↔ kasa aktarımı, iki kasa
+               varsa, AYNEN mümkün). Kural/uç DEĞİŞMEDİ. *@
+            @if (veriGeldi && !Taraflar.Any(t => t.Tur == "BANKA") && Taraflar.Count >= 2)
+            {
+                <p class="bant t6-bant-bilgi" id="gd-v-banka-yok" role="status">
+                    <span>@T6.VirmanBankaYok</span>
+                    <a href="/banka" id="gd-v-banka-ekle">@T6.VirmanBankaEkle →</a>
+                </p>
+            }
+            @if (veriGeldi && Taraflar.Count < 2)
+            {
+                <BosDurum Mesaj="@T6.VirmanHesapYok" />
+                <p class="t6-bos-eylem"><a href="/banka" class="dugme dugme-ikincil" id="gd-v-hesap-yok-ekle">@T6.VirmanBankaEkle</a></p>
+            }
+            else
+            {
+            <div class="form-dikey">
+                <div class="alan">
+                    <Secici ElemanId="gd-v-kaynak"
+                            Etiket="@Dil.T.Gider.Kaynak"
+                            Secenekler="@(Taraflar.Select(t => new SecenekOgesi(Anahtar(t), Etiket(t))).ToList())"
+                            @bind-Deger="virmanKaynak"
+                            @bind-Deger:after="VirmanKaynakDegisti"
+                            BosSecenekMetni="—" />
+                    <AlanHatasi Alan="gd-v-kaynak" Durum="virmanForm" />
+                    @if (VirmanKilitAlani == "kaynak") { @VirmanKilitMesaji }
+                </div>
+                @* PAKET PARA-DEMO tur 2: kasada kart/havale payı varsa aktarılan aracı sor (yoksa gizli). *@
+                @if (virmanAyrimHata is not null)
+                {
+                    <HataBandi Mesaj="@string.Format(PdV.VirmanAyrimHata, virmanAyrimHata)" Id="gd-v-arac-hata" />
+                }
+                @if (VirmanAracGorunur)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="gd-v-arac"
+                                Etiket="@PdV.VirmanAracEtiket"
+                                Secenekler="@VirmanAracSecenekleri"
+                                @bind-Deger="virmanArac" />
+                        @* TOPLU-5: açıklama paragrafı ⓘ içinde (metin ve id aynen). *@
+                        <div class="t4-ipucu-satir" id="gd-v-arac-ipucu-satir">
+                            <details class="zo-ipucu" id="gd-v-arac-bilgi">
+                                <summary aria-label="@T5.VirmanAracBilgi">i</summary>
+                                <p id="gd-v-arac-ipucu">@PdV.VirmanAracIpucu</p>
+                            </details>
+                            <span class="metin-soluk">@T5.VirmanAracBilgi</span>
+                        </div>
+                    </div>
+                }
+                <div class="alan">
+                    @* UX-S26: iki seçici TEK diziden üretilir. PARA-DEMO-2 (madde 10): ayrı <label for="gd-v-hedef"> kalktı —
+                       Secici kendi etiketini ("Hedef") basıyordu, etiket iki kez görünüyordu. *@
+                    <Secici ElemanId="gd-v-hedef"
+                            Etiket="@Dil.T.Gider.VirmanHedef"
+                            Secenekler="@TarafSecenekleri"
+                            @bind-Deger="virmanHedef"
+                            Hata="@virmanForm.Mesaj("gd-v-hedef")"
+                            BosSecenekMetni="—" />
+                    <AlanHatasi Alan="gd-v-hedef" Durum="virmanForm" />
+                    @if (VirmanKilitAlani == "hedef") { @VirmanKilitMesaji }
+                </div>
+                <Para ElemanId="gd-v-tutar" Etiket="@Dil.T.Ortak.Tutar" Zorunlu="true" Tur="TutarTuru.Pozitif"
+                      @bind-Deger="virmanTutar" Durum="virmanForm" HataAlani="gd-v-tutar" />
+                @if (VirmanKilitAlani == "tutar") { @VirmanKilitMesaji }
+                @* PAKET GOC-A (envanter C · gd-v-aciklama "ekran 500, sunucu 500 − kasa/hesap adları"): kasa bacağı varsa
+                   açıklama "VİRMAN: kaynak → hedef · " etiketiyle birlikte 500'e sığmalı — kalan yer EKRANDA hesaplanır ve
+                   maxlength + ipucu olarak yazılır (sunucu aynı hesabı yapıp kalan yeri söyler). *@
+                <Metin ElemanId="gd-v-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@VirmanAciklamaSiniri"
+                       Ipucu="@(VirmanAciklamaSiniri < AlanSinirlari.HareketAciklama ? string.Format(GocASozlugu.Al(Dil.Dil).VirmanAciklamaKalan, VirmanAciklamaSiniri) : null)"
+                       @bind-Deger="virmanAciklama" />
+                <div class="satir-arasi">
+                    <button id="gd-v-kaydet" type="button" class="dugme dugme-birincil" disabled="@(VirmanKilidi is not null || kaydediliyor)" @onclick="VirmanKaydet">
+                        @(Dil.BasitMi ? T6.VirmanYapBasit : Dil.T.Gider.VirmanYap)
+                    </button>
+                    @* TOPLU-6: kilit gerekçesi ilgili alanın altında (#gd-v-kaydet-kilit; VirmanKilitAlani). *@
+                </div>
+                @* PARA-DEMO-3 tur 2 (tasarım hakemi KRİTİK): virman reddi sayfanın EN ÜSTÜNDEKİ #gd-hata'ya yazılıyordu
+                   (1280'de y=−163, 375'te y=−409): "Virmanı kaydet"e basan kullanıcı hiçbir tepki görmüyordu. Ret ve
+                   sonuç artık düğmenin HEMEN ALTINDA, formun içinde (DoD EK 3: sessiz etkisizlik yasak). *@
+                <HataBandi Mesaj="@virmanHata" Id="gd-v-hata" />
+                <BasariBandi Mesaj="@virmanSonuc" Id="gd-v-sonuc" Jeton="@basariJeton" />
+            </div>
+            }
+        </div>
+
+        @* SON-KALANLAR (QA K17): geçmiş para aktarımları KAPALI akordeon (kimlikler aynen). *@
+        <Katlanir Id="gd-virman-gecmis" Baslik="@(Dil.BasitMi ? T6.VirmanListeBasit : Dil.T.Gider.SekmeVirman)" Sayi="@(veriGeldi ? virmanlar.Count : null)"
+                  Sinif="zo-gecmis" BaslangictaAcik="@virmanGecmisAcik" Degisti="@(v => virmanGecmisAcik = v)">
+            @if (virmanlar.Count == 0 && veriGeldi)
+            {
+                <BosDurum Mesaj="@(Dil.BasitMi ? T6.VirmanYokBasit : Dil.T.Gider.VirmanYok)" />
+            }
+            else
+            {
+                @* PAKET GOC-A — ORTAK IZGARA (grid:gider:gd-virman-liste — "gd-virman-ipucu" sayfa kimliğiyle çakışmasın). Liste sunucu sınırlı → sınıra değdiyse sıralama kapalı. *@
+                <Izgara T="VirmanSatiri" Ekran="gider" GridId="gd-virman-liste" Kolonlar="@VirmanKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(virmanlar, virmanDahaFazlasi ? null : virmanSira, VirmanKolonlari)"
+                        Baslik="@Dil.T.Gider.SekmeVirman" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@VirmanSiralandi" GecerliSiralama="@virmanSira" TercihIstemcisi="@GdTercih" />
+                @if (virmanDahaFazlasi)
+                {
+                    <p class="metin-kucuk metin-soluk" id="gd-v-sinir">@Dil.T.Gider.DahaFazlasiVar</p>
+                }
+            }
+            @* TOPLU-5 (hakem ORTA "hizasız alt not"): not kartın iç dolgusuyla hizalı (t5-kart-not) ve yalnız
+               listede kayıt varken; BASİT'te "bacak/storno"suz dil. *@
+            @if (virmanlar.Count > 0)
+            {
+                <p class="metin-kucuk metin-soluk t5-kart-not" id="gd-v-iki-bacak">@(Dil.BasitMi ? T5.VirmanIkiBacakBasit : Dil.T.Gider.IkiBacakNotu)</p>
+            }
+        </Katlanir>
+    }
+        </Panel>
+    </Sekmeler>
+</div>
+}
+
+@* ── Kategori düzenleme ÇEKMECESİ (tek düzenleme kalıbı: çok alanlı → Cekmece) ── *@
+<Cekmece Acik="duzenleKategori is not null" Varlik="gider-kategori" Baslik="@Dil.T.Gider.KategoriDuzenle"
+         Kapat="() => duzenleKategori = null" Kaydet="KategoriGuncelle" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(!kaydediliyor)">
+    <div class="form-dikey">
+        <Metin ElemanId="gd-kd-ad" Etiket="@Dil.T.Gider.KategoriAdi" Zorunlu="true" EnFazla="@AlanSinirlari.KategoriAdi"
+               @bind-Deger="duzenleAd" Durum="duzenleForm" HataAlani="gd-kd-ad" />
+        <Metin ElemanId="gd-kd-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+               @bind-Deger="duzenleAciklama" />
+        <p class="metin-kucuk metin-soluk" id="gd-kd-pasif-notu">@Dil.T.Gider.KategoriPasifNotu</p>
+        <HataBandi Mesaj="@cekmeceHata" Id="gd-kd-hata" />
+    </div>
+</Cekmece>
+
+@* ── Yıkıcı eylem ONAYI (ModalPencere YALNIZ burada: storno) ── *@
+<ModalPencere Acik="@(stornoGider is not null || stornoVirman is not null)"
+              Baslik="@Dil.T.Gider.Storno" Kapat="StornoKapat">
+    <div class="form-dikey">
+        <p id="gd-storno-onay">@(stornoVirman is not null ? (Dil.BasitMi ? T6.VirmanStornoOnayBasit : Dil.T.Gider.VirmanStornoOnay) : Dil.T.Gider.StornoOnay)</p>
+        <CokSatir ElemanId="gd-storno-gerekce" Etiket="@Dil.T.Gider.StornoGerekcesi" Zorunlu="true"
+                  Satir="3" EnFazla="@AlanSinirlari.GerekceEnCok"
+                  @bind-Deger="stornoGerekce" Durum="stornoForm" HataAlani="gd-storno-gerekce" />
+        <HataBandi Mesaj="@modalHata" Id="gd-storno-hata" />
+        <div class="satir-arasi">
+            <button id="gd-storno-vazgec" type="button" class="dugme dugme-ikincil" @onclick="StornoKapat">
+                <Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec />
+            </button>
+            <button id="gd-storno-onayla" type="button" class="dugme dugme-tehlike" disabled="@(StornoKilidi is not null || kaydediliyor)" @onclick="StornoOnayla">
+                @Dil.T.Gider.Storno
+            </button>
+            @if (StornoKilidi is { } ss)
+            {
+                <span class="metin-kucuk metin-soluk" id="gd-storno-kilit">@ss</span>
+            }
+        </div>
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    /// <summary>
+    /// PAKET P-50 / UX-S21: seçicideki her kasa GÜNCEL bakiyesini para birimiyle
+    /// (tr-TR biçimi, Bicim.Para) taşır — kullanıcı eksi kasayı seçmeden görür.
+    /// </summary>
+    /// <summary>
+    /// TOPLU-5 (hakem YÜKSEK "kasa seçicisi kasa TOPLAMINI gösteriyor"): gider nakit çıkışıdır — seçenekte
+    /// ÇEKMECEDEKİ NAKİT yazar (sunucu /kasalar/nakit-ayrimi; Kasalar ve Panel ile aynı uç). Ayrım okunamazsa
+    /// bakiye kaybolmaz (P-50: seçmeden görülür) ama "toplam" diye ETİKETLENİR — nakit sanılmaz. Seçilen kimlik AYNEN.
+    /// </summary>
+    private IReadOnlyList<SecenekOgesi> KasaSecenekleri =>
+        [.. kasalar.Select(k => new SecenekOgesi(k.Id, KasaSecenekMetni(k)))];
+
+    private string KasaSecenekMetni(KasaSz.KasaVeri k)
+    {
+        var ad = $"{k.Ad} ({Bicim.ParaIsareti(k.ParaBirimi)})";
+        return nakitAyrimHata is null && nakitAyrimlari.TryGetValue(k.Id, out var a)
+            ? string.Format(T5.GiderKasaNakitSecenek, ad, Bicim.Para(a.Nakit, k.ParaBirimi))
+            : string.Format(T5.GiderKasaToplamSecenek, ad, Bicim.Para(k.Bakiye, k.ParaBirimi));
+    }
+
+    /// <summary>TOPLU-5 metinleri (Sozlukler.Toplu5.cs).</summary>
+    private Toplu5Metinleri T5 => Toplu5Sozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// TOPLU-5 (hakem ORTA "nakit aşımında aynı bilgi iki kez; 'havale (0 ₺)' gereksiz"): istemcinin ERKEN
+    /// uyarısı yalnız kilidin söylemediğini söyler — kasadaki kart/havale payı çekmecede değildir. Sayılar
+    /// (nakit X var) Kaydet kilidinde zaten yazılı; SIFIR kalem yazılmaz. Sunucu reddi metni DEĞİŞMEDİ.
+    /// </summary>
+    public static string NakitBantMetni(Toplu5Metinleri t5, decimal kart, decimal havale, string paraBirimi)
+    {
+        var parca = new List<string>(2);
+        if (kart > 0m) parca.Add(string.Format(t5.GiderKartPayi, Bicim.Para(kart, paraBirimi)));
+        if (havale > 0m) parca.Add(string.Format(t5.GiderHavalePayi, Bicim.Para(havale, paraBirimi)));
+        return string.Format(t5.GiderNakitBant, string.Join(", ", parca));
+    }
+
+    private IReadOnlyList<SecenekOgesi> TarafSecenekleri =>
+        [.. Taraflar.Select(t => new SecenekOgesi(Anahtar(t), Etiket(t)))];
+
+    // ── durum ───────────────────────────────────────────────────────────────
+    private string sekme = "GIDER";
+
+    /// <summary>
+    /// PAKET P-19 (Y-11) — sapma S1 kapanışı: kasa/banka ekranındaki virman
+    /// bacağı satırı buraya DERİN BAĞ ile gelir (/gider?sekme=virman) ve
+    /// Virman sekmesi doğrudan açılır. Bilinmeyen değer sessizce yok sayılır,
+    /// varsayılan sekme (GIDER) korunur — kullanıcı boş ekranla karşılaşmaz.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "sekme")]
+    public string? SekmeSorgu { get; set; }
+    private bool yukleniyor = true;
+    /// <summary>UX-S28: yalnız BAŞARILI bir yükleme sonrası true. Boş durumun ön koşulu.</summary>
+    private bool veriGeldi;
+    private bool kaydediliyor;
+    private string? hata;
+    private string? basari;
+    private int basariJeton;
+    private string? modalHata;
+    private string? cekmeceHata;
+
+    private List<GiderKategoriVeri> kategoriler = [];
+
+    // ── PAKET GOC-A — virman açıklamasının kalan yeri (sunucu VirmanServisi ile AYNI hesap) ──────
+    private int VirmanAciklamaSiniri
+    {
+        get
+        {
+            var k = Taraflar.FirstOrDefault(t => Anahtar(t) == virmanKaynak);
+            var h = Taraflar.FirstOrDefault(t => Anahtar(t) == virmanHedef);
+            if (k is null || h is null || (k.Tur != "KASA" && h.Tur != "KASA")) return AlanSinirlari.HareketAciklama;
+            return Math.Max(0, AlanSinirlari.HareketAciklama - $"VİRMAN: {k.Ad} → {h.Ad} · ".Length);
+        }
+    }
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:gider:*) ──────────────────────────────
+    private IzgaraTercihIstemcisi? gdTercih;
+    private IzgaraTercihIstemcisi GdTercih => gdTercih ??= new IzgaraTercihIstemcisi(Api);
+    private IzgaraSiralama? giderSira, kategoriSira, virmanSira;
+    private void GiderSiralandi(IzgaraSiralama? s) => giderSira = s;
+    private void KategoriSiralandi(IzgaraSiralama? s) => kategoriSira = s;
+    private void VirmanSiralandi(IzgaraSiralama? s) => virmanSira = s;
+    private string? GiderSiraAdi(string ad) => giderDahaFazlasi ? null : ad;
+    private string? VirmanSiraAdi(string ad) => virmanDahaFazlasi ? null : ad;
+
+    private IReadOnlyList<IzgaraKolonu<GiderSatiri>> GiderKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = GiderSiraAdi("tarih"),
+                HucreSinif = _ => "metin-kucuk", Deger = g => g.Tarih, Hucre = g => @<text>@Bicim.Tarih(g.Tarih, Dil.Dil)</text> },
+        // ORTAK-1 (A): kısa ad/açıklama iki satıra kırılmaz (hucre-ad); tablo kendi kabında kayar.
+        new() { Anahtar = "kategori", Baslik = Dil.T.Gider.Kategori, SunucuSiralamaAdi = GiderSiraAdi("kategori"),
+                HucreSinif = _ => "hucre-ad", Deger = g => g.KategoriAdi ?? "—" },
+        new() { Anahtar = "kasa", Baslik = Dil.T.Gider.Kasa, SunucuSiralamaAdi = GiderSiraAdi("kasa"),
+                HucreSinif = _ => "metin-kucuk hucre-ad", Deger = g => g.KasaAdi ?? "—" },
+        new() { Anahtar = "aciklama", Baslik = Dil.T.Ortak.Aciklama, HucreSinif = _ => "metin-kucuk hucre-ad",
+                Deger = g => StornoOnekiSozlugu.Goster(g.Aciklama, Dil.Dil, Dil.BasitMi) ?? "—" },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Ortak.Tutar, ZorunluGorunur = true, SunucuSiralamaAdi = GiderSiraAdi("tutar"),
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = g => g.ParaBirimi, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = g => g.Tutar },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = g => @<text>@if (g.StornoSatiri)
+                {
+                    <Rozet>@Dil.T.Gider.StornoSatiri</Rozet>
+                }
+                else if (g.Stornolandi)
+                {
+                    @* Q10-1 (D10): basit modda "Stornolandı" yerine "Geri alındı". *@
+                    <Rozet>@(Dil.BasitMi ? KatalogSozlugu.Al(Dil.Dil).GeriAlindi : Dil.T.Gider.Stornolandi)</Rozet>
+                }
+                else
+                {
+                    <button id="@($"gd-storno-{g.Id}")" type="button" class="dugme dugme-ikincil dugme-kucuk" @onclick="() => StornoAc(g)">@Dil.T.Gider.Storno</button>
+                }</text> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<GiderKategoriVeri>> KategoriKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Gider.KategoriAdi, ZorunluGorunur = true, SunucuSiralamaAdi = "ad",
+                HucreSinif = _ => "hucre-ad", Deger = k => k.Ad,
+                Hucre = k => @<text>@k.Ad @if (!k.Aktif) {<Rozet>@Dil.T.Ortak.Pasif</Rozet>}</text> },
+        new() { Anahtar = "aciklama", Baslik = Dil.T.Ortak.Aciklama, HucreSinif = _ => "metin-kucuk", Deger = k => k.Aciklama ?? "—" },
+        // UX-S23: sayı gösteren yer o kayıtlara GİDEN bağlantıdır.
+        new() { Anahtar = "adet", Baslik = Dil.T.Gider.KullanimAdedi, SunucuSiralamaAdi = "adet", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = k => k.GiderAdedi,
+                Hucre = k => @<button id="@($"gd-kat-adet-{k.Id}")" type="button" class="dugme dugme-ikincil dugme-kucuk" @onclick="() => KategoriyeGit(k.Id)">@k.GiderAdedi</button> },
+        new() { Anahtar = "toplam", Baslik = Dil.T.Gider.KategoriToplami, SunucuSiralamaAdi = "toplam", Tur = IzgaraHucreTuru.Para,
+                ParaBirimi = _ => ParaBirimi, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = k => k.GiderToplamTl },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = k => @<text><button id="@($"gd-kat-duzenle-{k.Id}")" type="button" class="dugme dugme-ikincil dugme-kucuk" @onclick="() => KategoriDuzenleAc(k)">@Dil.T.Ortak.Duzenle</button>
+                    <button id="@($"gd-kat-durum-{k.Id}")" type="button" class="dugme dugme-ikincil dugme-kucuk" @onclick="() => KategoriDurumDegistir(k)">@(k.Aktif ? Dil.T.Gider.KategoriPasifeAl : Dil.T.Gider.KategoriAktifeAl)</button></text> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<VirmanSatiri>> VirmanKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = VirmanSiraAdi("tarih"),
+                HucreSinif = _ => "metin-kucuk", Deger = v => v.Tarih, Hucre = v => @<text>@Bicim.Tarih(v.Tarih, Dil.Dil)</text> },
+        new() { Anahtar = "kaynak", Baslik = Dil.T.Gider.Kaynak, Deger = v => $"{TurAdi(v.KaynakTur)} · {v.KaynakAdi ?? "—"}" },
+        new() { Anahtar = "hedef", Baslik = Dil.T.Gider.Hedef, Deger = v => $"{TurAdi(v.HedefTur)} · {v.HedefAdi ?? "—"}" },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Ortak.Tutar, ZorunluGorunur = true, SunucuSiralamaAdi = VirmanSiraAdi("tutar"),
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = v => v.ParaBirimi, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = v => v.Tutar },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = v => @<text>@if (v.StornoSatiri)
+                {
+                    <Rozet>@Dil.T.Gider.StornoSatiri</Rozet>
+                }
+                else
+                {
+                    <button id="@($"gd-v-storno-{v.CikisBacakId}")" type="button" class="dugme dugme-ikincil dugme-kucuk" @onclick="() => VirmanStornoAc(v)">@Dil.T.Gider.Storno</button>
+                }</text> },
+    ];
+    private List<GiderSatiri> giderler = [];
+    private List<GiderToplamVeri>? giderToplamlari = [];
+    private bool giderDahaFazlasi;
+    private List<VirmanSatiri> virmanlar = [];
+    private bool virmanDahaFazlasi;
+    private List<KasaSz.KasaVeri> kasalar = [];
+    private List<BankaSz.HesapVeri> hesaplar = [];
+
+    // ── form alanları ───────────────────────────────────────────────────────
+    private string? giderKasaId;
+    private string? giderKategoriId;
+    private decimal? giderTutar;
+    private string? giderAciklama;
+    private readonly FormDurumu giderForm = new();
+
+    private string? yeniKategoriAd;
+    private string? yeniKategoriAciklama;
+    private readonly FormDurumu kategoriForm = new();
+
+    private GiderKategoriVeri? duzenleKategori;
+    private string? duzenleAd;
+    private string? duzenleAciklama;
+    private readonly FormDurumu duzenleForm = new();
+
+    private string? virmanKaynak;
+    private string? virmanHedef;
+    private decimal? virmanTutar;
+    private string? virmanAciklama;
+    private readonly FormDurumu virmanForm = new();
+    private string? virmanHata;    // PARA-DEMO-3 tur 2: virman reddi formun içinde
+    private string? virmanSonuc;   // PARA-DEMO-3 tur 2: virman sonucu formun içinde
+
+    private GiderSatiri? stornoGider;
+    private VirmanSatiri? stornoVirman;
+    private string? stornoGerekce;
+    private readonly FormDurumu stornoForm = new();
+
+    // ── türetilmiş ──────────────────────────────────────────────────────────
+    private IEnumerable<GiderKategoriVeri> AktifKategoriler => kategoriler.Where(k => k.Aktif);
+
+    /// <summary>
+    /// UX-S32: tutar para birimiyle taşınır. Tek kasa varsa onunki, birden çok
+    /// kasa varsa SEÇİLEN kasanınki; hiç kasa yoksa "TRY" VARSAYILMAZ — ilk
+    /// kasanın para birimi yoksa boş geçilir ve toplam kartı bunu söyler.
+    /// </summary>
+    private string ParaBirimi =>
+        (giderKasaId is { } id ? kasalar.FirstOrDefault(k => k.Id == id)?.ParaBirimi : null)
+        ?? kasalar.FirstOrDefault()?.ParaBirimi
+        ?? "";
+
+    /// <summary>
+    /// PAKET Q10-1 (QA turu 10, KRİTİK): "Toplam gider" İSTEMCİDE HESAPLANMAZ.
+    /// Eski satır <c>StornoSatiri ? -Tutar : Tutar</c> idi; sunucu storno satırını
+    /// ZATEN eksi döndürdüğü için eksi × eksi = artı oluyor, 125,50 + storno
+    /// 251,00 görünüyordu. Toplam artık sunucudan gelir (UX-S21): işaretli, satır
+    /// sınırından (limit 100) bağımsız ve para birimi başına ayrı (UX-S32).
+    /// Sunucu toplam döndürmediyse (null) rakam UYDURULMAZ, "—" yazılır.
+    /// </summary>
+    private string ToplamMetni =>
+        giderToplamlari is null ? "—"
+        : giderToplamlari.Count == 0 ? Bicim.Para(0m, ParaBirimi)
+        : string.Join(" · ", giderToplamlari.Select(t => Bicim.Para(t.Tutar, t.ParaBirimi)));
+
+    /// <summary>Virman seçicilerinin TEK dizisi (UX-S26).</summary>
+    private List<VirmanTarafSecenegi> Taraflar =>
+        [.. kasalar.Where(k => k.Aktif).Select(k => new VirmanTarafSecenegi("KASA", k.Id, k.Ad, k.ParaBirimi, k.Bakiye)),
+         .. hesaplar.Where(h => h.Aktif).Select(h => new VirmanTarafSecenegi("BANKA", h.Id, h.HesapAdi, h.ParaBirimi, h.Bakiye))];
+
+    private static string Anahtar(VirmanTarafSecenegi t) => $"{t.Tur}:{t.Id}";
+    private string Etiket(VirmanTarafSecenegi t) => $"{TurAdi(t.Tur)} · {t.Ad} ({Bicim.ParaIsareti(t.ParaBirimi)})";
+    private string TurAdi(string tur) => tur == "KASA" ? Dil.T.Gider.TurKasa
+                                       : tur == "BANKA" ? Dil.T.Gider.TurBanka : tur;
+
+    // ── kilit sebepleri (UX-S30) ────────────────────────────────────────────
+    private string? GiderKilidi => sayiKapisi.Sebep(Dil.Dil, "gd-tutar") ?? GiderKuralKilidi;   // ORTAK-1
+    private string? GiderKuralKilidi =>
+        AktifKategoriler.Any() is false ? Dil.T.Gider.KategoriYok
+        : string.IsNullOrWhiteSpace(SecilenKasaId) ? Dil.T.Gider.KilitKasaSec
+        : string.IsNullOrWhiteSpace(SecilenKategoriId) ? Dil.T.Gider.KilitKategoriSec
+        : giderTutar is not > 0m ? Dil.T.Gider.KilitTutar
+        // PAKET P-50: istemci ERKEN uyarır; tek gerçek sunucu kapısıdır (KasaBakiyeKapisi).
+        // PARA-DEMO-3 tur 2 (doğrulayıcı DÜŞÜK, UX-S30): gider NAKİT çıkışıdır — kilit çekmecedeki nakde bağlı
+        // (ekran zaten önce nakdi gösteriyor) ve toplam kilidinden ÖNCE gelir: tutar toplamı aşsa da sebep
+        // "kasada X var" (kart/havale dahil) değil, çekmecedeki nakittir. Ayrım okunamazsa yalnız toplam kilidi.
+        : SecilenKasa is { } nk && SecilenAyrim is { } na && giderTutar > na.Nakit
+            // TOPLU-6 (TOPLU-5 hakemi ORTA "nakit aşımı mesajı yanıltıcı"): tek cümle, iki sayı — kural AYNI.
+            ? string.Format(T6.GiderNakitYetmiyor, Bicim.Para(Math.Max(0m, na.Nakit), nk.ParaBirimi), Bicim.Para(giderTutar!.Value, nk.ParaBirimi))
+        : SecilenKasa is { } sk && giderTutar > sk.Bakiye
+            ? string.Format(Dil.T.Gider.KilitBakiyeYetersiz, Bicim.Para(sk.Bakiye, sk.ParaBirimi))
+        : null;
+
+    private string? SecilenKasaId => kasalar.Count == 1 ? kasalar[0].Id : giderKasaId;
+
+    // ── TOPLU-6: kilit gerekçesi hangi alanın altında (UX-S30 + TOPLU-5 hakemi DÜŞÜK) ──────
+    private Toplu6Metinleri T6 => Toplu6Sozlugu.Al(Dil.Dil);
+    /// <summary>SON-KALANLAR — geçmiş akordeonları (varsayılan KAPALI) ve "+ Not ekle" durumu.</summary>
+    private bool giderGecmisAcik, virmanGecmisAcik, giderNotAcik;
+    private ParaDemo2Metinleri PD2G => ParaDemo2Sozlugu.Al(Dil.Dil);
+
+    /// <summary>Kaydet kilidinin ait olduğu alan: kategori · kasa · tutar (kural ve metin AYNI, yalnız yeri).</summary>
+    private string? GiderKilitAlani =>
+        GiderKilidi is not { } k ? null
+        : k == Dil.T.Gider.KategoriYok || k == Dil.T.Gider.KilitKategoriSec ? "kategori"
+        : k == Dil.T.Gider.KilitKasaSec ? (kasalar.Count > 1 ? "kasa" : "tutar")
+        : "tutar";
+
+    private RenderFragment GiderKilitMesaji => @<p class="t6-alan-kilit" id="gd-kaydet-kilit" role="status">@GiderKilidi</p>;
+
+    /// <summary>Virman kilidinin ait olduğu alan: kaynak · hedef · tutar.</summary>
+    private string? VirmanKilitAlani =>
+        VirmanKilidi is not { } k ? null
+        : k == Dil.T.Gider.KilitKaynakSec ? "kaynak"
+        : k == Dil.T.Gider.KilitHedefSec || k == Dil.T.Gider.KilitAyniTaraf ? "hedef"
+        : "tutar";
+
+    private RenderFragment VirmanKilitMesaji => @<p class="t6-alan-kilit" id="gd-v-kaydet-kilit" role="status">@VirmanKilidi</p>;
+
+    /// <summary>TOPLU-1 (UX-S22): tek aktif kategori varsa o; yoksa null (seçici görünür).</summary>
+    private GiderKategoriVeri? TekKategori => AktifKategoriler.Take(2).Count() == 1 ? AktifKategoriler.First() : null;
+
+    /// <summary>Gövdeye giden kategori: tek kategoride kendiliğinden, aksi hâlde kullanıcının seçimi.</summary>
+    private string? SecilenKategoriId => TekKategori?.Id ?? giderKategoriId;
+
+
+    // ── PAKET P-50: negatif kasadan çıkış yolu ─────────────────────────────
+    /// <summary>Formda seçili (ya da tek olduğu için sabit) kasanın kaydı.</summary>
+    private KasaSz.KasaVeri? SecilenKasa =>
+        SecilenKasaId is { } id ? kasalar.FirstOrDefault(k => k.Id == id) : null;
+
+    private static string BakiyeRenk(KasaSz.KasaVeri k) => k.Bakiye < 0m ? "kirmizi" : "gri";
+
+    /// <summary>
+    /// Sunucunun SON reddi (bayat bakiye: ekran yeterli sanırken kapı reddetti).
+    /// Yalnız aynı kasa + aynı tutar ekrandayken gösterilir; kullanıcı kasayı ya
+    /// da tutarı değiştirince kendiliğinden kalkar.
+    /// </summary>
+    private (string KasaId, decimal Tutar, string Metin)? sunucuYetersiz;
+
+    /// <summary>
+    /// Yetersiz bakiye bandının içeriği (kasa kimliği bağlantılar içindir). Yeni istemci
+    /// tip AÇILMADI (denetim.sh SAYFA_RECORD tavanı) — değer demeti kullanılır.
+    /// </summary>
+    private (string KasaId, decimal Tutar, string Metin)? YetersizBandi
+    {
+        get
+        {
+            if (sunucuYetersiz is { } s && s.KasaId == SecilenKasaId && s.Tutar == giderTutar) return s;
+            // PARA-DEMO-3 tur 2: kasada kart/havale payı varsa erken uyarı NAKİT cümlesiyle (toplam "kasada var" denmez).
+            // TOPLU-6 (TOPLU-5 hakemi ORTA): kart/havale payı YALNIZ gerçekten fark yaratıyorsa (tutar kasa toplamına
+            // sığıyor ama çekmecedeki nakde sığmıyor) söylenir; sığmıyorsa o pay yardım etmez → yalnız çıkış yolu.
+            if (SecilenKasa is { } nk && SecilenAyrim is { } na && na.Kart + na.Havale > 0m && giderTutar is > 0m && giderTutar > na.Nakit)
+                return (nk.Id, giderTutar.Value, giderTutar <= nk.Bakiye ? NakitBantMetni(T5, na.Kart, na.Havale, nk.ParaBirimi) : T6.GiderCikisYolu);
+            if (SecilenKasa is { } k && giderTutar is > 0m && giderTutar > k.Bakiye)
+                return (k.Id, giderTutar.Value, string.Format(Dil.T.Gider.YetersizBakiye, k.Ad,
+                    Bicim.Para(k.Bakiye, k.ParaBirimi), Bicim.Para(giderTutar.Value, k.ParaBirimi)));
+            return null;
+        }
+    }
+
+    private static string GirisBaglantisi(string kasaId) =>
+        $"/kasalar?kasa={Uri.EscapeDataString(kasaId)}&yon=giris";
+
+    /// <summary>
+    /// SAPMA (rapor § sapmalar): triyaj "/kasalar?virman={id}" dedi; /kasalar
+    /// sayfasında virman formu YOKTUR (P-19: virman bu sayfanın sekmesidir ve
+    /// Kasalar.razor zaten /gider?sekme=virman bağlantısı verir). Ölü bağlantı
+    /// yerine bu kasayı HEDEF seçili açan virman sekmesine gidilir.
+    /// </summary>
+    private static string VirmanBaglantisi(string kasaId) =>
+        $"/gider?sekme=virman&hedef={Uri.EscapeDataString(kasaId)}";
+
+    /// <summary>
+    /// Sunucunun P-44 kapı mesajı (KasaBakiyeKapisi.Mesaj). PARA-DEMO-3: ret gövdesi makine kodu taşır
+    /// (KASA_BAKIYE_YETERSIZ); sayılar TEK ayrıştırıcıdan (KasaBakiyeMesaji — yeni tr-TR ve eski invariant
+    /// biçim) okunur. Ekrana ham hâli BASILMAZ.
+    /// </summary>
+    private static bool YetersizBakiyeReddi(ApiHata e) =>
+        e.StatusCode == 400 && (e.Kod is "KASA_BAKIYE_YETERSIZ" or "KASA_NAKIT_YETERSIZ"   // tur 2: nakit reddi de formdaki banda
+            || e.Message.Contains("bakiyesi yetersiz", StringComparison.Ordinal));
+
+    private string YetersizMetni(ApiHata e) =>
+        KasaBakiyeMesaji.Bicimle(e.Message, Dil, SecilenAyrim)
+        // Kalıp tutmazsa ham metin YİNE basılmaz: sayısız genel cümle.
+        ?? Dil.T.Gider.YetersizBakiyeGenel;
+
+    // ── PARA-DEMO-3: çekmecedeki nakit (gider nakit çıkışıdır) ──────────────
+    private Kuyumcu.Core.I18n.ParaDemo3Metinleri PD3 => Kuyumcu.Core.I18n.ParaDemo3Sozlugu.Al(Dil.Dil);
+    private Dictionary<string, KasaSz.KasaNakitAyrimiOzeti> nakitAyrimlari = [];
+    private string? nakitAyrimHata;
+    private KasaSz.KasaNakitAyrimiOzeti? SecilenAyrim =>
+        nakitAyrimHata is null && SecilenKasaId is { } id && nakitAyrimlari.TryGetValue(id, out var a) ? a : null;
+
+    /// <summary>Zenginleştirme: okunamazsa form DURUR, toplam "nakit" diye basılmaz, kısa hata görünür (UX-S28).</summary>
+    private async Task NakitAyrimiYukle()
+    {
+        nakitAyrimHata = null;
+        try
+        {
+            nakitAyrimlari = (await Api.GetAsync<List<KasaSz.KasaNakitAyrimiOzeti>>("/kasalar/nakit-ayrimi") ?? [])
+                .Where(a => !string.IsNullOrEmpty(a.KasaId)).GroupBy(a => a.KasaId).ToDictionary(g => g.Key, g => g.First());
+        }
+        // UX-S28 / P-11: son bilinen ayrım SİLİNMEZ; hata varken nakit satırı çizilmez (bayat sayı "nakit" diye basılmaz).
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { nakitAyrimHata = string.Format(PD3.GiderAyrimYok, ex.Message); }
+    }
+
+    private string? KategoriKilidi =>
+        (yeniKategoriAd ?? "").Trim().Length < 2 ? Dil.T.Gider.KategoriAdi : null;
+
+    private string? VirmanKilidi => sayiKapisi.Sebep(Dil.Dil, "gd-v-") ?? VirmanKuralKilidi;   // ORTAK-1
+    private string? VirmanKuralKilidi =>
+        string.IsNullOrWhiteSpace(virmanKaynak) ? Dil.T.Gider.KilitKaynakSec
+        : string.IsNullOrWhiteSpace(virmanHedef) ? Dil.T.Gider.KilitHedefSec
+        : virmanKaynak == virmanHedef ? Dil.T.Gider.KilitAyniTaraf
+        : virmanTutar is not > 0m ? Dil.T.Gider.KilitTutar
+        : VirmanAracKilidi;
+
+    private string? StornoKilidi =>
+        (stornoGerekce ?? "").Trim().Length < 20 ? Dil.T.Gider.KilitGerekce : null;
+
+    // ── yükleme ─────────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        // PAKET Q10-1: basit/profesyonel geçişinde gövde metni (Geri alındı ↔ STORNO,
+        // değişmezlik notu) sayfa yenilenmeden güncellenir — tarayıcıda ölçüldü:
+        // abonelik yokken mod düğmesine basınca tablo eski modda kalıyordu.
+        Dil.Degisti += Yenile;
+        Modu.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+    }
+
+    /// <summary>
+    /// PAKET P-50 — yetersiz bakiye bandının "Virman yap" bağlantısı bu sayfaya
+    /// (/gider?sekme=virman&amp;hedef={kasaId}) döner: virman HEDEFİ o kasa seçili açılır.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "hedef")]
+    public string? HedefSorgu { get; set; }
+
+    /// <summary>Son uygulanan sorgu imzası — aynı sorgu kullanıcının sekme seçimini EZMEZ.</summary>
+    private string? uygulananSorgu;
+
+    /// <summary>
+    /// PAKET P-19 derin bağ sekmesi (yalnız TANINAN değer uygulanır) — P-50'de
+    /// OnInitializedAsync'ten buraya taşındı: bant bağlantısı AYNI sayfaya
+    /// (yalnız sorgu değişerek) döndüğünde Blazor bileşeni yeniden kurmaz,
+    /// yalnız parametreleri yeniler.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        var imza = $"{SekmeSorgu}|{HedefSorgu}";
+        if (imza == uygulananSorgu) return;
+        uygulananSorgu = imza;
+        if (string.Equals(SekmeSorgu, "virman", StringComparison.OrdinalIgnoreCase))
+        {
+            sekme = "VIRMAN";
+            if (!string.IsNullOrWhiteSpace(HedefSorgu)) virmanHedef = $"KASA:{HedefSorgu}";
+        }
+        else if (string.Equals(SekmeSorgu, "kategori", StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(SekmeSorgu, "kategoriler", StringComparison.OrdinalIgnoreCase))
+        {
+            sekme = "KATEGORI";
+            // PAKET S1-i: Sekmeler bileşeni URL'deki kodu okur ("kategoriler");
+            // eski kısa bağ aynı sekmeye yönlendirilir (tarihe yeni kayıt açmadan).
+            if (!string.Equals(SekmeSorgu, "kategoriler", StringComparison.Ordinal))
+                Nav.NavigateTo(Nav.GetUriWithQueryParameter("sekme", "kategoriler"), replace: true);
+        }
+        else if (string.Equals(SekmeSorgu, "giderler", StringComparison.OrdinalIgnoreCase)) sekme = "GIDER";
+    }
+
+    // ── PAKET S1-i — ortak Sekmeler ──
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    /// <summary>Sekme kodları = eski id sonekleri (#gd-sekme-&lt;kod&gt;).</summary>
+    private IReadOnlyList<SekmeTanimi> GdSekmeleri =>
+    [
+        new("giderler", Dil.T.Gider.SekmeGiderler),
+        new("kategoriler", Dil.T.Gider.SekmeKategoriler),
+        // TOPLU-6 (TOPLU-5 hakemi ORTA): BASİT'te "Para aktarımı" adı HER YERDE (sekme dahil); kod/id AYNI.
+        new("virman", Dil.BasitMi ? T6.VirmanSekmeBasit : Dil.T.Gider.SekmeVirman),
+    ];
+
+    private static string Durum(string kod) => kod switch
+    {
+        "kategoriler" => "KATEGORI",
+        "virman" => "VIRMAN",
+        _ => "GIDER",
+    };
+
+    // ⚠ TEK KAYNAK: sekme tıklaması URL'ye ?sekme= yazar; sayfa durumu yalnız
+    //   SupplyParameterFromQuery → OnParametersSet yolundan izler (ikinci bir
+    //   SeciliDegisti yolu AÇILMAZ — mutasyon MS1i-10 iki yolun birbirini
+    //   örttüğünü gösterdi).
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        veriGeldi = false;
+        try
+        {
+            // ⚠ UX-S28: hata "kayıt yok"a ÇEVRİLMEZ. İstek patlarsa listeler
+            //   BOŞALTILMAZ; hata bandı gösterilir ve ekrandaki veri kalır.
+            var katYanit = await Api.GetAsync<GiderKategoriYaniti>("/gider-kategorileri");
+            kategoriler = katYanit.Kategoriler ?? [];
+
+            var giderYanit = await Api.GetAsync<GiderYaniti>("/giderler?limit=100");
+            giderler = giderYanit.Satirlar ?? [];
+            giderToplamlari = giderYanit.Toplamlar;
+            giderDahaFazlasi = giderYanit.DahaFazlasiVar;
+
+            var virmanYanit = await Api.GetAsync<VirmanYaniti>("/virman?limit=50");
+            virmanlar = virmanYanit.Satirlar ?? [];
+            virmanDahaFazlasi = virmanYanit.DahaFazlasiVar;
+
+            kasalar = await Api.GetAsync<List<KasaSz.KasaVeri>>("/kasalar");
+            await NakitAyrimiYukle();
+            hesaplar = (await Api.GetAsync<BankaSz.HesapYaniti>("/bankalar")).Hesaplar ?? [];
+            veriGeldi = true;
+        }
+        catch (ApiHata e) { hata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { yukleniyor = false; }
+    }
+
+    // ── gider ───────────────────────────────────────────────────────────────
+    private async Task GiderKaydet()
+    {
+        if (sayiKapisi.OnekleVar("gd-tutar")) return;   // ORTAK-1: POST YOK
+        giderForm.Temizle();
+        var kasaId = SecilenKasaId;
+        giderForm.Zorunlu("gd-kasa", kasaId, Dil);
+        var kategoriId = SecilenKategoriId;
+        giderForm.Zorunlu("gd-kategori", kategoriId, Dil);
+        giderForm.Pozitif("gd-tutar", giderTutar, Dil);
+        if (!giderForm.Gecerli) return;
+
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var s = await Api.PostAsync<GiderSonucu>("/giderler", new
+            {
+                kasaId,
+                giderKategoriId = kategoriId,
+                tutar = giderTutar!.Value,
+                aciklama = giderAciklama,
+            });
+            // UX-S27: sunucunun DÖNDÜRDÜĞÜ sonuç banda yazılır (yeni bakiye dâhil).
+            basari = $"{Dil.T.Gider.GiderKaydedildi}: {s.KategoriAdi} · "
+                   + $"{Bicim.Para(s.Tutar, s.ParaBirimi)} · {s.KasaAdi} → {Bicim.Para(s.KasaBakiyesi, s.ParaBirimi)}";
+            basariJeton++;
+            giderTutar = null; giderAciklama = null; giderNotAcik = false;
+            await Yukle();
+        }
+        catch (ApiHata e) when (YetersizBakiyeReddi(e))
+        {
+            // PAKET P-50: ham sunucu metni ("-738298.80 TRY") hata bandına YAZILMAZ;
+            // biçimlendirilmiş bant + iki çıkış yolu. Ekrandaki bakiye bayatmış —
+            // kasa listesi tazelenir ki rozet gerçeği söylesin.
+            sunucuYetersiz = (kasaId!, giderTutar!.Value, YetersizMetni(e));
+            try { kasalar = await Api.GetAsync<List<KasaSz.KasaVeri>>("/kasalar"); await NakitAyrimiYukle(); }
+            catch (ApiHata e2) { hata = FormDurumu.SunucuMesaji(e2, Dil); }
+        }
+        catch (ApiHata e) { giderForm.Sunucudan(e); hata = KasaBakiyeMesaji.Bicimle(e.Message, Dil) ?? FormDurumu.SunucuMesaji(e, Dil); }   // PARA-DEMO-3: nakit reddi de sözlükten
+        finally { kaydediliyor = false; }
+    }
+
+    // ── kategori ────────────────────────────────────────────────────────────
+    private async Task KategoriEkle()
+    {
+        kategoriForm.Temizle();
+        kategoriForm.EnAzKarakter("gd-kat-ad", yeniKategoriAd, 2, Dil);
+        if (!kategoriForm.Gecerli) return;
+
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var k = await Api.PostAsync<GiderKategoriVeri>("/gider-kategorileri", new
+            {
+                ad = yeniKategoriAd!.Trim(),
+                aciklama = yeniKategoriAciklama,
+            });
+            basari = $"{Dil.T.Gider.KategoriKaydedildi}: {k.Ad}";
+            basariJeton++;
+            yeniKategoriAd = null; yeniKategoriAciklama = null;
+            await Yukle();
+        }
+        catch (ApiHata e) { kategoriForm.Sunucudan(e); hata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { kaydediliyor = false; }
+    }
+
+    private void KategoriDuzenleAc(GiderKategoriVeri k)
+    {
+        duzenleKategori = k;
+        duzenleAd = k.Ad;
+        duzenleAciklama = k.Aciklama;
+        duzenleForm.Temizle();
+        cekmeceHata = null;
+    }
+
+    private async Task KategoriGuncelle()
+    {
+        if (duzenleKategori is not { } k) return;
+        duzenleForm.Temizle();
+        duzenleForm.EnAzKarakter("gd-kd-ad", duzenleAd, 2, Dil);
+        if (!duzenleForm.Gecerli) return;
+
+        kaydediliyor = true; cekmeceHata = null;
+        try
+        {
+            // PATCH: yalnız GÖNDERİLEN alanlar değişir; "aktif" gönderilmez,
+            // korunur (durum değişimi ayrı düğmenin işidir).
+            var y = await Api.PatchAsync<GiderKategoriVeri>($"/gider-kategorileri/{k.Id}", new
+            {
+                ad = duzenleAd!.Trim(),
+                aciklama = duzenleAciklama,
+            });
+            basari = $"{Dil.T.Gider.KategoriGuncellendi}: {y.Ad}";
+            basariJeton++;
+            duzenleKategori = null;
+            await Yukle();
+        }
+        catch (ApiHata e) { duzenleForm.Sunucudan(e); cekmeceHata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task KategoriDurumDegistir(GiderKategoriVeri k)
+    {
+        kaydediliyor = true; hata = null;
+        try
+        {
+            if (k.Aktif)
+                await Api.DeleteAsync<GiderKategoriVeri>($"/gider-kategorileri/{k.Id}");
+            else
+                await Api.PatchAsync<GiderKategoriVeri>($"/gider-kategorileri/{k.Id}", new { aktif = true });
+
+            basari = k.Aktif ? Dil.T.Gider.KategoriPasifeAl : Dil.T.Gider.KategoriAktifeAl;
+            basariJeton++;
+            await Yukle();
+        }
+        catch (ApiHata e) { hata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { kaydediliyor = false; }
+    }
+
+    /// <summary>UX-S23: adet rozeti o kategorinin gider satırlarına GÖTÜRÜR.</summary>
+    private void KategoriyeGit(string kategoriId)
+    {
+        giderKategoriId = kategoriId;
+        sekme = "GIDER";
+        // PAKET S1-i: seçili sekme URL'dedir — Sekmeler'in göstereceği sekme de değişir.
+        Nav.NavigateTo(Nav.GetUriWithQueryParameter("sekme", "giderler"));
+    }
+
+    // ── virman ──────────────────────────────────────────────────────────────
+    private async Task VirmanKaydet()
+    {
+        if (sayiKapisi.OnekleVar("gd-v-")) return;   // ORTAK-1: POST YOK
+        virmanForm.Temizle();
+        virmanForm.Zorunlu("gd-v-kaynak", virmanKaynak, Dil);
+        virmanForm.Zorunlu("gd-v-hedef", virmanHedef, Dil);
+        virmanForm.Pozitif("gd-v-tutar", virmanTutar, Dil);
+        if (virmanKaynak is not null && virmanKaynak == virmanHedef)
+            virmanForm.Ekle("gd-v-hedef", Dil.T.Gider.KilitAyniTaraf);
+        if (!virmanForm.Gecerli) return;
+
+        var (kTur, kId) = Coz(virmanKaynak!);
+        var (hTur, hId) = Coz(virmanHedef!);
+
+        kaydediliyor = true; hata = null; virmanHata = null; virmanSonuc = null;
+        try
+        {
+            var s = await Api.PostAsync<VirmanSonucu>("/virman", new
+            {
+                kaynakTur = kTur, kaynakId = kId,
+                hedefTur = hTur, hedefId = hId,
+                tutar = virmanTutar!.Value,
+                aciklama = virmanAciklama,
+                kasaAraci = VirmanAracGonder,   // PARA-DEMO tur 2 (null = nakit)
+            });
+            basari = $"{(Dil.BasitMi ? T6.VirmanKaydedildiBasit : Dil.T.Gider.VirmanKaydedildi)}: {s.KaynakAdi} → {s.HedefAdi} · "
+                   + Bicim.Para(s.Tutar, s.ParaBirimi)
+                   + (s.SubelerArasi ? $" ({Dil.T.Gider.SubelerArasi})" : "");
+            virmanSonuc = basari;   // tur 2: sonuç düğmenin altında da görünür (UX-S27)
+            basariJeton++;
+            virmanTutar = null; virmanAciklama = null;
+            await Yukle();
+            await VirmanKaynakDegisti();   // kalan kart/havale payı yeniden okunur
+        }
+        // PARA-DEMO-3: kasa kapısı reddi tr-TR. Tur 2: ret formun İÇİNDE (#gd-v-hata); nakit kaynağında kart/havale payı
+        // varsa toplam reddi nakit cümlesiyle yazılır.
+        catch (ApiHata e)
+        {
+            virmanForm.Sunucudan(e);
+            var kaynakAyrim = kTur == "KASA" && VirmanAracGonder is null && nakitAyrimlari.TryGetValue(kId, out var va) ? va : null;
+            virmanHata = KasaBakiyeMesaji.Bicimle(e.Message, Dil, kaynakAyrim) ?? FormDurumu.SunucuMesaji(e, Dil);
+        }
+
+        finally { kaydediliyor = false; }
+    }
+
+    private static (string Tur, string Id) Coz(string anahtar)
+    {
+        var i = anahtar.IndexOf(':');
+        return i < 0 ? (anahtar, "") : (anahtar[..i], anahtar[(i + 1)..]);
+    }
+
+    // ── storno (yıkıcı eylem: onay modalı + gerekçe) ────────────────────────
+    private void StornoAc(GiderSatiri g)
+    {
+        stornoGider = g; stornoVirman = null;
+        stornoGerekce = null; stornoForm.Temizle(); modalHata = null;
+    }
+
+    private void VirmanStornoAc(VirmanSatiri v)
+    {
+        stornoVirman = v; stornoGider = null;
+        stornoGerekce = null; stornoForm.Temizle(); modalHata = null;
+    }
+
+    private void StornoKapat()
+    {
+        stornoGider = null; stornoVirman = null; stornoGerekce = null; modalHata = null;
+    }
+
+    private async Task StornoOnayla()
+    {
+        stornoForm.Temizle();
+        stornoForm.EnAzKarakter("gd-storno-gerekce", stornoGerekce, 20, Dil);
+        if (!stornoForm.Gecerli) return;
+
+        kaydediliyor = true; modalHata = null;
+        try
+        {
+            if (stornoVirman is { } v)
+            {
+                var s = await Api.PostAsync<VirmanStornoSonucu>(
+                    $"/virman/{v.CikisBacakId}/storno", new { gerekce = stornoGerekce!.Trim() });
+                // QA10-KRITIK: BASİT modda "storno" jargonu bantta YOK (rozetle aynı "geri alındı" dili).
+                // TOPLU-6 t2: BASİT bant "virman" da demez (ekranın BASİT adı "para aktarımı").
+                basari = Dil.BasitMi
+                    ? T6.VirmanStornoYapildiBasit
+                    : $"{Dil.T.Gider.VirmanStornoYapildi} · {string.Format(QA10Sozlugu.Al(Dil.Dil).VirmanBacakSayisi, s.BacakSayisi)}";
+            }
+            else if (stornoGider is { } g)
+            {
+                await Api.PostAsync<System.Text.Json.JsonElement>(
+                    $"/kasalar/{g.KasaId}/hareket/{g.Id}/storno", new { gerekce = stornoGerekce!.Trim() });
+                basari = Dil.BasitMi ? QA10Sozlugu.Al(Dil.Dil).GiderGeriAlindiBasit : Dil.T.Gider.StornoYapildi;
+            }
+            basariJeton++;
+            StornoKapat();
+            await Yukle();
+        }
+        catch (ApiHata e) { stornoForm.Sunucudan(e); modalHata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { kaydediliyor = false; }
+    }
+}

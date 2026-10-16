@@ -1,0 +1,161 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-2 — İŞLEM TÜRÜ SEÇİMİ: pro modda SEKMELER, basit modda DÜĞME IZGARASI ═══
+   PLAN-SADELESTIRME § S-2 madde 2.2 · taslak Tezgah.dc.html ("Ne yapıyorsun?").
+   • Pro mod: Islemler.razor'daki sekme şeridi BİREBİR buraya taşındı (8 sekme
+     aynen, sınıflar ve id'ler aynı).
+   • Basit mod (PAKET T-S1, tuval Tezgah.dc.html): BasitPos.Karolar sırasıyla 2×4
+     ikonsuz düğme (70 px ≥ 44 px dokunma hedefi) — css/tuval-satis.css.
+   • Her tür düğmesi #islem-tur-{TÜR} id'sini KORUR (bUnit id ile buluyor).
+   ⚠ Bileşen İSTEK ATMAZ, ApiIstemci enjekte etmez: tür seçimi sayfanın TurSec'i,
+     kısayollar düz bağlantıdır (tek POST yolu Islemler.Kaydet — PLAN § 3 md.5).
+   ⚠ Kilitli kısayol sebebini yazar (DoD EK md.1, UX-S30). *@
+@if (!Basit)
+{
+    @* ═══ PAKET T-S2 — tuval Profesyonel.dc.html sekme şeridi (TUVAL SIRASIYLA) ═══
+       Satış · Alış · Hurda alış · Tahsilat · Ödeme · Takas · Satış iadesi · Alış iadesi
+       (FisTurleri.ProSekmeler). Tahsilat → Müşteriler (seçili gerçek müşteriyle), Ödeme
+       kilitli + sebep (UX-S30) — basit karolarla AYNI kaynak (BasitPos.Kisayollar).
+       İşçilik / Transfer tuvalde sekme değil → "Diğer ▾" menüsünde (FisDigerIslemler,
+       id'ler AYNEN). Şerit sayfanın .islem-tur-satiri sarmalayıcısında "Diğer ▾" ile
+       aynı satıra akar (css/tuval-satis.css); dar ekranda sarar, yatay kaydırma yok. *@
+    <div class="sekme-grubu sekme-serit tuval-pro-sekmeler" role="group" aria-label="@Dil.T.Islem.Baslik">
+        @foreach (var kod in FisTurleri.ProSekmeler)
+        {
+            var tur = Turler.FirstOrDefault(x => x.Deger == kod);
+            if (tur.Deger is not null)
+            {
+                @* UX-3 Faz B · Aşkın K4: yeni id kalıbı "<önek>-<alan>": islem-tur-SATIS … *@
+                <button class="sekme @(Secili == kod ? "secili" : null)"
+                        id="@($"islem-tur-{kod}")"
+                        aria-pressed="@(Secili == kod ? "true" : "false")"
+                        @onclick="() => TurSec.InvokeAsync(kod)">@tur.Etiket</button>   @* UX-S31: hub adı (form başlığı ve Kaydet etiketiyle TEK ad) *@
+            }
+            else if (BasitPos.Kisayollar.FirstOrDefault(k => k.Kod == kod) is { Kod: not null } ks)
+            {
+                var id = $"islem-git-{kod.ToLowerInvariant()}";
+                if (ks.Adres is not null)
+                {
+                    <a class="sekme" id="@id" href="@Hedef(kod, ks.Adres)" title="@KisayolIpucu(kod)">@KisayolEtiket(kod)</a>
+                }
+                else
+                {
+                    <button type="button" class="sekme" id="@id" disabled aria-describedby="@($"{id}-kilit")" title="@M.OdemeKilitSebebi">@KisayolEtiket(kod)</button>
+                }
+            }
+        }
+    </div>
+    @foreach (var (kod, adres) in BasitPos.Kisayollar.Where(k => k.Adres is null && FisTurleri.ProSekmeler.Contains(k.Kod)))
+    {
+        @* SATIS-2 (a): sebep ekranı doldurmaz — kilitli sekmenin ipucunda (title) ve ekran okuyucuda (aria-describedby) kalır (UX-S30). *@
+        <p class="metin-kucuk metin-soluk tuval-pro-sekme-not gorunmez" id="@($"islem-git-{kod.ToLowerInvariant()}-kilit")" role="note">
+            @KisayolEtiket(kod): @M.OdemeKilitSebebi
+        </p>
+    }
+}
+else
+{
+    @* ═══ PAKET T-S1 — tuval Tezgah.dc.html sağ sütunu: "Ne yapıyorsun?" 2×4 ═══
+       Sıra ve adlar TUVALDEN (BasitPos.Karolar): Satış · Alış·eski altın ·
+       Tahsilat · Ödeme · İade · Değişim · Emanet · İndirim. Tuvalde ikon YOK →
+       karolar ikonsuz. id'ler KORUNDU (#islem-tur-*, #islem-git-*); yeni karo
+       #islem-indirim (fiş iskontosu satırını açar — istek atmaz, sayfanın geri
+       çağrısı). Kilitli karo sebebini yazar (UX-S30 / DoD EK md.1). *@
+    <nav class="ekranlar-grup tuval-karolar" id="islem-izgara" aria-label="@M.IzgaraEtiket">
+        <h2 class="tuval-karo-baslik">@M.IzgaraEtiket</h2>
+        <div class="tuval-karo-izgara">
+            @foreach (var kod in BasitPos.Karolar)
+            {
+                var tur = Turler.FirstOrDefault(x => x.Deger == kod);
+                if (tur.Deger is not null)
+                {
+                    <button type="button" class="@(Secili == kod ? "ekran-karo ekran-karo-birincil" : "ekran-karo")"
+                            id="@($"islem-tur-{kod}")" title="@(KaroEtiket(kod, tur.Etiket) != tur.Etiket ? tur.Etiket : null)"
+                            aria-pressed="@(Secili == kod ? "true" : "false")"
+                            @onclick="() => TurSec.InvokeAsync(kod)"><span class="ekran-karo-ad">@KaroEtiket(kod, tur.Etiket)</span></button>
+                }
+                else if (kod == BasitPos.Indirim)
+                {
+                    <button type="button" class="@(IndirimAcik ? "ekran-karo ekran-karo-birincil" : "ekran-karo")" id="islem-indirim"
+                            aria-pressed="@(IndirimAcik ? "true" : "false")" disabled="@(!IndirimKullanilir)" title="@(IndirimKullanilir ? null : T.IndirimKilit)"
+                            aria-describedby="@(IndirimKullanilir ? null : "islem-indirim-kilit")"
+                            @onclick="() => IndirimDegistir.InvokeAsync()"><span class="ekran-karo-ad">@T.KaroIndirim</span></button>
+                }
+                else if (BasitPos.Kisayollar.FirstOrDefault(k => k.Kod == kod) is { Kod: not null } ks)
+                {
+                    var id = $"islem-git-{kod.ToLowerInvariant()}";
+                    if (ks.Adres is not null)
+                    {
+                        <a class="ekran-karo" id="@id" href="@Hedef(kod, ks.Adres)" title="@KisayolIpucu(kod)"><span class="ekran-karo-ad">@KisayolEtiket(kod)</span></a>
+                    }
+                    else
+                    {
+                        <button type="button" class="ekran-karo" id="@id" disabled title="@M.OdemeKilitSebebi"
+                                aria-describedby="@($"{id}-kilit")"><span class="ekran-karo-ad">@KisayolEtiket(kod)</span></button>
+                    }
+                }
+            }
+        </div>
+        @foreach (var (kod, adres) in BasitPos.Kisayollar)
+        {
+            if (adres is null)
+            {
+                <p class="metin-kucuk metin-soluk tuval-karo-not gorunmez" id="@($"islem-git-{kod.ToLowerInvariant()}-kilit")" role="note">
+                    @KisayolEtiket(kod): @M.OdemeKilitSebebi
+                </p>
+            }
+        }
+        @if (!IndirimKullanilir)
+        {
+            <p class="metin-kucuk metin-soluk tuval-karo-not gorunmez" id="islem-indirim-kilit" role="note">@T.IndirimKilit</p>
+        }
+    </nav>
+}
+
+@code {
+    /// <summary>Çizilecek türler (sayfa moduna göre süzülmüş liste — BasitPos tek karar yeri).</summary>
+    [Parameter, EditorRequired] public (string Deger, string Etiket)[] Turler { get; set; } = [];
+    /// <summary>Seçili tür.</summary>
+    [Parameter] public string Secili { get; set; } = "SATIS";
+    /// <summary>Basit mod mu (ızgara) — değilse sekme şeridi.</summary>
+    [Parameter] public bool Basit { get; set; }
+    /// <summary>Tür seçildi — sayfanın TurSec'i.</summary>
+    [Parameter] public EventCallback<string> TurSec { get; set; }
+    /// <summary>Seçili müşteri (Tahsilat derin bağlantısı için).</summary>
+    [Parameter] public string? CariId { get; set; }
+    /// <summary>Peşin Müşteri kartının kimliği — ona tahsilat bağlantısı kurulmaz (borcu olamaz).</summary>
+    [Parameter] public string? PesinCariId { get; set; }
+
+    private TezgahFisiMetinleri M => TezgahFisiSozlugu.Al(Dil.Dil);
+    private SatisTuvalMetinleri T => SatisTuvalSozlugu.Al(Dil.Dil);
+    private SatisProMetinleri P => SatisProSozlugu.Al(Dil.Dil);
+
+    /// <summary>PAKET T-S1 — İndirim karosu: fiş iskontosu satırı açık mı (sayfa tutar).</summary>
+    [Parameter] public bool IndirimAcik { get; set; }
+    /// <summary>İndirim uygulanabilir mi (satış fişinde en az bir kalem) — değilse karo kilitli + sebep.</summary>
+    [Parameter] public bool IndirimKullanilir { get; set; }
+    /// <summary>İndirim karosu tıklandı — sayfa iskonto satırını açar/kapatır (istek atmaz).</summary>
+    [Parameter] public EventCallback IndirimDegistir { get; set; }
+
+    /// <summary>Tuvalin sade karo adı; pro sekme adı başlıkta (title) kalır.</summary>
+    private string KaroEtiket(string kod, string etiket) => FisTurleri.KaroEtiket(T, kod, etiket);   // t6: tek kaynak
+
+    /// <summary>
+    /// UX-S23/P-15: seçili GERÇEK müşteri varsa Tahsilat o müşteriye açılır
+    /// (/cariler?cariId=… — Cariler sayfası bu süzgeci okur ve kutuda gösterir).
+    /// </summary>
+    internal string Hedef(string kod, string adres) =>
+        kod == "TAHSILAT" && !string.IsNullOrEmpty(CariId) && CariId != PesinCariId
+            ? $"{adres}?cariId={Uri.EscapeDataString(CariId)}"
+            : adres;
+
+    private string KisayolEtiket(string kod) => kod switch
+    {
+        "TAHSILAT" => Dil.T.Cari.Tahsilat,
+        "EMANET" => Dil.T.Nav.Emanet,
+        _ => M.Odeme,
+    };
+
+    private string KisayolIpucu(string kod) => kod == "TAHSILAT" ? M.TahsilatIpucu : M.EmanetIpucu;
+}

@@ -1,0 +1,362 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+@inject ArayuzModuServisi Modu
+
+@* ═══ PAKET S2-1 — ÖDEME TÜRÜ + KASA + VADE + KARMA ANAHTARI ══════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Bileşen istek ATMAZ;
+   değerler iki yönlü bağdır (@bind-OdemeTuru / @bind-KasaId / @bind-VadeGun)
+   ve sahibi sayfadır — gövde Kaydet()'te kurulur. YASAL KAPI bayrakları
+   (OdemeKapisiAcik, TevsikOnerisiGerekli) SUNUCU kaynaklıdır ve sayfadan gelir;
+   eşik SAYISI bileşene gömülmez (Mehmet K2). Mevcut element id'leri DEĞİŞMEDİ. *@
+@* ── Ödeme türü + kasa (transferde yok) ──
+   ⚠ Ödeme aracı ALIŞ ve HURDA ALIŞ'ta da SORULUR. Sorulmadığı
+   sürece gövdede alan gitmiyor, sunucu varsayılanı "NAKIT"
+   devreye giriyor ve 30.000 TL üstü HAVALELİ alış tevsik
+   kapısına takılıp EKRANDAN HİÇ GİRİLEMİYORDU. Sunucu tarafı
+   14 Eylül'de düzeltilmişti; ekran açık kalmıştı.
+   Alışta ALTIN/VERESIYE yoktur: AlisOlusturDto yalnız
+   NAKIT|KART|HAVALE kabul eder, veresiye payı OdenenTl ile
+   belirlenir. *@
+@* ── Karma ödeme anahtarı (yalnız satışta) ──
+   Çok bacaklı fiş AYRI BİR UÇTAN gider (/islemler/satis-fisi);
+   tek ödemeli akış hiç değişmez. *@
+@if (Tur == "SATIS")
+{
+    @* UX-3 Faz B: karma ödeme PROFESYONEL alandır. Basit modda
+       hiç çizilmez → Karma false kalır, gövde tek bacaklı
+       gider. Yasal kapı karma ödemeyi GEREKTİRMEZ, bu yüzden
+       ZorunluGorunur bağlanmaz. *@
+    <ProAlan>
+        @* SATIS-2 (kurucu 11:35): PRO satışta aynı soru alt çubuktaki "+ Başka ödeme ekle"
+           bağlantısıyla sorulur — anahtar ekran okuyucuda kalır, görsel olarak ikinci kez çizilmez (UX-S22). *@
+        <div class="@(KarmaAnahtariGizli ? "gorsel-gizli" : null)" id="islem-karma-sar">
+        <Onay ElemanId="islem-karma" Etiket="@Dil.T.Islem.KarmaOdeme"
+              Deger="@Karma"
+              DegerChanged="@(v => KarmaDegisti.InvokeAsync(v))"
+              Ipucu="@Dil.T.Islem.KarmaOdemeIpucu" />
+        </div>
+    </ProAlan>
+}
+
+@if (((Tur is "SATIS" or "ALIS" or "HURDA_ALIS" or "SATIS_IADE" or "ALIS_IADE") || Tur == "TAKAS") && !Karma)   @* SATIS-3 t15: Takas farkı hadde varınca farkın ödeme türü sorulur (TakasDto.OdemeTuru) · DEGISIM-2: BASİT'te eşik altında da salt okunur "Ödeme türü: Nakit" (Satış'la aynı) — eşikte satır seçiciye döner, yerleşim zıplamaz; kasa her durumda aynı rozetli biçim *@
+{
+    <div class="form-grid-2">
+        @* ═══ UX-3 Faz B — ÖDEME TÜRÜ ═══════════════════════════
+           Basit modda ödeme NAKİT'tir ve sorulmaz (UX-S21/S22):
+           değer salt okunur satır olarak yazılır, gövdeye yine
+           "NAKIT" gider — kapıyı atlatan "ödeme türü yok" gövdesi
+           ÜRETİLMEZ (Mehmet K7).
+           YASAL KAPI tetiklenince seçici BASİT MODDA DA AÇILIR
+           (ZorunluGorunur): tevsik önizlemesi nakdi kapattığında,
+           had aşıldığında ya da sunucu 400 verdiğinde. Eşik SAYISI
+           buraya gömülmez; bayrak sunucudan gelir (Mehmet K2). *@
+        <ProAlan ZorunluGorunur="@(OdemeKapisiAcik || (OdemeTuru != "NAKIT" && !OdemeSatirda))">   @* t15: seçilen kart/havale BASİT'te "Nakit" diye gizlenmez · PARA-DEMO-2: tezgâh fişinde tür ALDIM satırında seçilir (ikinci seçici yok, UX-S22) *@
+            <BasitAlternatif>
+                <div class="alan">
+                    <label for="islem-odeme-sade">@OdemeEtiketi</label>
+                    <p class="hucre-vurgu" id="islem-odeme-sade">
+                        @SadeOdemeAdi   @* t3: etiket zaten "Ödeme Türü" · PARA-DEMO-2: seçilen tür yazar *@
+                        <Rozet Renk="gri">@Dil.T.Arayuz.SistemBelirledi</Rozet>
+                    </p>
+                </div>
+            </BasitAlternatif>
+            <ChildContent>
+        <div class="alan">
+            <Secici ElemanId="islem-odeme"
+                    Etiket="@OdemeEtiketi"
+                    Secenekler="@(OdemeListesi.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                    Deger="@OdemeTuru" DegerChanged="@((string? v) => OdemeTuruChanged.InvokeAsync(v))" />
+            @* SATIS-4 (a): tutar nakit sınırını aşınca ödeme kendiliğinden nakit dışına döndü — neden, tek satır (sayı sunucudan). *@
+            @if (OtomatikNot is { } otoNot)   @* YASAL-KAPI-3: sayfa yalnız başka yasal mesaj yokken verir (tek yer) *@
+            {
+                <span id="islem-odeme-otomatik" class="metin-kucuk metin-soluk" role="status">@otoNot</span>
+            }
+            @* PAKET B-4 (B4-3): eski altın tek ödeme listesinde YOK — yolu söylenir. *@
+            @if (Tur == "SATIS")
+            {
+                @* CUMA-S: basit tezgâh fişinde ipucu görsel gizli (aynı metin "Eski altın" düğmesinin title'ında) — sütunu büyütmez. *@
+                <span id="islem-odeme-altin-ipucu" class="metin-kucuk metin-soluk gorsel-gizli">   @* t3: PRO'da da görsel satır değil ("bacak" jargonu; yol "+ Başka ödeme ekle") *@
+                    @AltinIpucu
+                </span>
+            }
+            @* ═══ UX-4d madde 5 ═══
+               Hurda/alışta ödeme türü varsayılanı NAKIT'ti; tevsik haddi
+               (30.000 TL) yüzünden çoğu gerçek işlemde sunucu bunu
+               REDDEDİYORDU ve kuyumcu nedenini ekranda göremiyordu.
+               Sunucu kuralı DEĞİŞMEDİ (Mehmet); yalnız ekran, tutar haddi
+               aştığında BANKA yolunu ÖNERİYOR (UX-S21/UX-S30). *@
+            @if (TevsikOnerisiGerekli && Sade && !YasalBaskaYerde)   @* YASAL-KAPI-3: engel sayfanın TEK yerinde (BASİT bant / PRO Kaydet yanı) yazıyorsa durum + "Neden?" çizilmez *@
+            {
+                @* ═══ PAKET CUMA-S — basit tezgâh fişi: TEK SATIR kısa durum + katlanır ayrıntı.
+                   Uzun açıklama sütunu BÜYÜTMEZ (ayrıntı <details> içinde, açılınca katman olarak
+                   sütunun üstüne düşer — css/tuval-satis.css). Bayrak ve had SUNUCUDAN (değişmedi). *@
+                <div class="fis-aldim-durum" id="islem-tevsik-durum" role="status">
+                    <span class="metin-kucuk metin-kirmizi@(DurumGizli ? " gorsel-gizli" : "")" id="islem-tevsik-durum-metin">   @* t24: sayfa engeli TEK cümleyle söylüyorsa kısa durum görsel gizli (ekran okuyucuda aynı anlam); "Neden?" ayrıntısı yerinde *@
+                    @(PesinSecili ? A.DurumKimlik : A.DurumNakitYok)</span>
+                    <details class="fis-aldim-ayrinti" id="islem-tevsik-ayrinti">
+                        <summary class="metin-kucuk" id="islem-tevsik-neden">@A.Neden</summary>
+                        <span id="islem-tevsik-ipucu" class="metin-kucuk">
+                            @AyrintiMetni
+                        </span>
+                    </details>
+                </div>
+            }
+            else if (TevsikOnerisiGerekli && !YasalBaskaYerde)
+            {
+                @* t10 (canlı ölçüm, hurda BASİT): aynı engel Kaydet'in yanında kısa cümleyle yazılı — BASİT'te "tevsik" jargonlu ikinci kırmızı satır görünmez (ekran okuyucuya kalır). *@
+                <span id="islem-tevsik-ipucu" class="metin-kucuk metin-kirmizi@(Basit ? " gorsel-gizli" : "")">
+                    @string.Format(Dil.T.Islem.TevsikNakitOnerisi, Bicim.Tl(TevsikHaddi))
+                </span>
+            }
+        </div>
+            </ChildContent>
+        </ProAlan>
+        @* SATIS-3 t16 (doğrulayıcı DÜŞÜK): takas farkı KARTLA ödenirken şubede birden çok POS cihazı varsa sunucu cihaz ister
+           (TakasDto.PosCihazId — fail-closed, ilk cihaz seçilmez). Tek cihazda seçici YOK (sunucu otomatik seçer, UX-S22). *@
+        @if (Tur == "TAKAS" && OdemeTuru == "KART" && PosCihazlari.Count > 1)
+        {
+            <div class="alan">   @* ödeme türü kutusuyla aynı sarmalayıcı → aynı hiza (K7) *@
+                <Secici ElemanId="islem-pos"
+                        Etiket="@Dil.T.Islem.BacakPosCihazi"
+                        Secenekler="@(PosCihazlari.Select(_p => new SecenekOgesi(_p.Id, _p.Ad)).ToList())"
+                        Deger="@PosCihazId" DegerChanged="@((string? v) => PosCihazIdChanged.InvokeAsync(v))"
+                        BosSecenekMetni="@Dil.T.Islem.BacakPosCihazi" />
+            </div>
+        }
+        @* ═══ UX-3 Faz B — KASA ═══════════════════════════════
+           Basit modda TEK aktif TL kasası varsa seçici HİÇ
+           ÇİZİLMEZ, değer salt okunur satır olur (UX-S22) ve
+           gövdeye o kasanın id'si gider (KasalariYukle atar;
+           sunucu kasayı yine kiracıya karşı doğrular — Mehmet K9).
+           İKİ aktif kasa varsa VARSAYIM YAPILMAZ: seçici basit
+           modda da GÖRÜNÜR (Anayasa md.1). *@
+        @* SATIS-3 t3 (KAYNAK 5): kasa otomatik — BASİT'te seçici yalnız varsayılan kasa YOKSA açılır (fail-closed). *@
+        <ProAlan ZorunluGorunur="@string.IsNullOrEmpty(KasaId)">
+            <BasitAlternatif>
+                <div class="alan">
+                    <label for="islem-kasa-tek">@Dil.T.Islem.Kasa</label>
+                    <p class="hucre-vurgu" id="islem-kasa-tek">
+                        @(AnaKasalar.FirstOrDefault(k => k.Id == KasaId)?.Ad ?? Dil.T.Islem.KasaSecin)
+                        <Rozet Renk="gri">@Dil.T.Arayuz.SistemBelirledi</Rozet>
+                    </p>
+                </div>
+            </BasitAlternatif>
+            <ChildContent>
+        @if (AnaKasaTek && !KasaKilitli && KasaOzette) { @* YASAL-KAPI-3 (hakem KRİTİK): PRO satışta tek kasa alt çubuktaki ödeme özetinde yazar — ikinci kasa bloğu yok (UX-S22) *@ }
+        else if (AnaKasaTek && !KasaKilitli)
+        {
+            @* SATIS-3 (kurucu 25.09 "kasa otomatik", UX-S22): tek TL kasasında kilitli seçici + iki
+               açıklama satırı yerine TEK salt okunur satır; değer gövdeye yine gider. *@
+            <div class="alan fis-kasa-tek">
+                <label class="alan-etiket" for="islem-kasa-tek"><span class="alan-etiket-metin">@Dil.T.Islem.Kasa</span></label>
+                <span id="islem-kasa-tek" class="fis-kasa-tek-deger">@AnaKasalar[0].Ad</span>   @* YASAL-KAPI-3: teknik not ("tek kasa var — otomatik seçildi") yok *@
+            </div>
+        }
+        else
+        {
+        <div class="alan">
+            @* UX-S22: tek TL kasası varsa seçici KİLİTLİ ve otomatik doludur.
+               UX-4b madde 7(c): ana kasa yalnız TRY kasalarını listeler —
+               TL satış döviz kasasına yazılamaz (sunucu kapısı K6). *@
+            <Secici ElemanId="islem-kasa"
+                    Etiket="@Dil.T.Islem.Kasa"
+                    Secenekler="@AnaKasaSecenekleri"
+                    Deger="@KasaId" DegerChanged="@((string? v) => KasaIdChanged.InvokeAsync(v))"
+                    Devredisi="@(KasaKilitli || AnaKasaTek)"
+                    DevredisiSebebi="@AnaKasaKilitSebebi"
+                    BosSecenekMetni="@Dil.T.Islem.KasaSecin" />
+            @if (AnaKasaTek)
+            {
+                @* SATIS-2: sade yüzde seçicinin kilit sebebi zaten yazılı — aynı bilgi ikinci satır olmaz. *@
+                @* YASAL-KAPI-3: "tek kasa — otomatik seçildi" teknik notu yok; seçicinin kilit sebebi yazılı. *@
+            }
+        </div>
+        }
+            </ChildContent>
+        </ProAlan>
+        @if (VadeGorunur)
+        {
+            @* Vade PROFESYONEL alandır: basit modda ödeme NAKİT
+               olduğu için zaten doğmaz; ProAlan ile açıkça
+               kapatılır ve gövdeye de KONMAZ (BasitPos.GovdedenCikan). *@
+            <ProAlan>
+            @* Boş bırakılırsa carinin varsayılan vadesi uygulanır;
+               o da yoksa borç aynı gün muaccel olur. *@
+            @* PAKET GOC-C: ortak GunSayisi (K17 tam sayı 0–3650; 2,7 gün eskiden 2'ye kırpılıyordu). *@
+            <GunSayisi ElemanId="islem-vade" Etiket="@Dil.T.Vade.VadeGun" EnAz="0" EnCok="3650"
+                  YerTutucu="@Dil.T.Vade.VarsayilanVadeGun"
+                  Deger="@(VadeGun is { } _v1 ? (decimal?)_v1 : null)"
+                  DegerChanged="@(v => VadeGunChanged.InvokeAsync(v is { } _d1 ? (int)_d1 : null))" />
+            </ProAlan>
+        }
+    </div>
+    @* PAKET S2-5 (PLAN 2.8, D7) — tek ödemeli NAKİT satışta para üstü. Alınan gövdeye KONMAZ. *@
+    @* CUMA-S: basit tezgâh fişinde nakit bu tutarda kabul edilmiyorken (TevsikOnerisiGerekli —
+       sunucu haddi) "Alınan / para üstü" anlamsızdır ve sütunu taşırıyordu → çizilmez; ödeme
+       kart/havaleye dönünce zaten yok, nakit tutar sınırın altına inince geri gelir. PRO DEĞİŞMEDİ. *@
+    @if (Tur == "SATIS" && OdemeTuru == "NAKIT" && !(Sade && TevsikOnerisiGerekli))
+    {
+        <FisParaUstu Nakit="@Toplam" Katli="true" />   @* t22 (tasarım hakemi YÜKSEK): tek ödemede de isteğe bağlı → kapalı "+ Para üstü hesapla" (kurucu 11:35) *@
+    }
+}
+else if (Tur != "TRANSFER" && !KarmaAcik)
+{
+    @* UX-4b madde 7(d) — KARMA ÖDEME AÇIKKEN ÜST KASA SEÇİCİSİ HİÇ ÇİZİLMEZ
+       (dal koşulundaki !KarmaAcik). Karma fiş POST /islemler/satis-fisi
+       gövdesinde yalnız BACAK kasaları gider (bkz. Kaydet()); üstteki
+       kasaId ölü alandır. Çizilseydi aynı ekranda aynı soru iki kez
+       sorulur (UX-S22 ihlali) ve kullanıcı hiçbir yere yazılmayan bir
+       kasa seçerdi. *@
+    @if (AnaKasaTek || (Modu.BasitMi && AnaKasalar.Any(k => k.Id == KasaId)))
+    {
+        @* SATIS-3: tek kasa → seçici yok, tek salt okunur satır (UX-S22). t3: BASİT'te varsayılan kasa da salt okunur. *@
+        <div class="alan fis-kasa-tek">
+            <label class="alan-etiket" for="islem-kasa-tek"><span class="alan-etiket-metin">@Dil.T.Islem.Kasa</span></label>
+            <span id="islem-kasa-tek" class="fis-kasa-tek-deger">@(AnaKasalar.FirstOrDefault(k => k.Id == KasaId)?.Ad ?? AnaKasalar[0].Ad)</span>   @* YASAL-KAPI-3: teknik not yok *@
+        </div>
+    }
+    else
+    {
+    <div class="alan">
+        <Secici ElemanId="islem-kasa"
+                Etiket="@Dil.T.Islem.Kasa"
+                Secenekler="@AnaKasaSecenekleri"
+                Deger="@KasaId" DegerChanged="@((string? v) => KasaIdChanged.InvokeAsync(v))"
+                BosSecenekMetni="@Dil.T.Islem.KasaSecin" />
+    </div>
+    }
+}
+
+@code {
+    /// <summary>DEGISIM-2 (hakem DÜŞÜK "BASİT Değişim'de 'Ödeme Türü' büyük harfle"): BASİT Değişim'de cümle düzeni; diğer türler AYNEN.</summary>
+    private string OdemeEtiketi => Tur == "TAKAS" && Basit ? DegisimGunSonuSozlugu.Al(Dil.Dil).OdemeTuruSade : Dil.T.Islem.OdemeTuru;
+
+    /// <summary>İşlem türü (SATIS, ALIS, HURDA_ALIS, …) — sayfanın sekmesi.</summary>
+    [Parameter, EditorRequired] public string Tur { get; set; } = "SATIS";
+    /// <summary>Karma ödeme açık mı (yalnız satış, profesyonel alan).</summary>
+    [Parameter] public bool Karma { get; set; }
+    /// <summary>Karma anahtarı değişti — sayfa bacakları/kasayı uyarlar ve önizlemeyi tazeler.</summary>
+    [Parameter] public EventCallback<bool> KarmaDegisti { get; set; }
+    /// <summary>SATIS-4 (a): ödeme otomatik nakit dışına döndüyse seçicinin altındaki not (null: yok).</summary>
+    [Parameter] public string? OtomatikNot { get; set; }
+    [Parameter] public string? OdemeTuru { get; set; }
+    [Parameter] public EventCallback<string?> OdemeTuruChanged { get; set; }
+    [Parameter] public string? KasaId { get; set; }
+    [Parameter] public EventCallback<string?> KasaIdChanged { get; set; }
+    [Parameter] public int? VadeGun { get; set; }
+    [Parameter] public EventCallback<int?> VadeGunChanged { get; set; }
+    /// <summary>Aktif TL kasaları (UX-4b 7(c): ana kasa yalnız TRY).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<KasaVeri> AnaKasalar { get; set; } = [];
+    /// <summary>Veresiye satışta kasa kilitlenir.</summary>
+    [Parameter] public bool KasaKilitli { get; set; }
+    [Parameter] public bool VadeGorunur { get; set; }
+    /// <summary>YASAL KAPI — sunucu kaynaklı; basit modda gizli ödeme seçicisini açar.</summary>
+    [Parameter] public bool OdemeKapisiAcik { get; set; }
+    [Parameter] public bool TevsikOnerisiGerekli { get; set; }
+    /// <summary>t10: BASİT yüz — jargonlu açıklama satırı görsel gizli.</summary>
+    [Parameter] public bool Basit { get; set; }
+    /// <summary>Sunucunun tevsik haddi (/tevsik/gunluk) — yalnız öneri metninde gösterilir.</summary>
+    [Parameter] public decimal TevsikHaddi { get; set; }
+    /// <summary>PAKET S2-5 — fiş toplamı (tek ödemede nakit tutarı); yalnız para üstü önizlemesi içindir.</summary>
+    [Parameter] public decimal Toplam { get; set; }
+
+    /// <summary>
+    /// PAKET CUMA-S — basit tezgâh fişinin ALDIM sütunu mu (sayfanın TezgahFisi'si)? true ise
+    /// yasal kapı açıldığında uzun kırmızı metin yerine tek satır kısa durum + katlanır ayrıntı
+    /// çizilir, para üstü nakit reddedilirken gizlenir. PRO ve diğer türler: false (DEĞİŞMEZ).
+    /// </summary>
+    [Parameter] public bool Sade { get; set; }
+    /// <summary>t24: sayfa yasal engeli tek cümleyle söylüyorsa ödeme sütunundaki kısa durum satırı çizilmez.</summary>
+    [Parameter] public bool DurumGizli { get; set; }
+    /// <summary>YASAL-KAPI-3: yasal engel sayfanın TEK yerinde (BASİT üst bant / PRO Kaydet yanı / kimlik formu) yazıyor —
+    /// ödeme sütunundaki kısa durum, "Neden?" ve kırmızı ipucu o anda çizilmez (aynı uyarı tek kez).</summary>
+    [Parameter] public bool YasalBaskaYerde { get; set; }
+    /// <summary>YASAL-KAPI-3: PRO satış — tek kasa alt çubuktaki ödeme özetinde yazar; kasa bloğu çizilmez.</summary>
+    [Parameter] public bool KasaOzette { get; set; }
+    /// <summary>PAKET CUMA-S — fişte Peşin Müşteri (sistem carisi) mi seçili? Kısa durum "Kimlik gerekli" olur.</summary>
+    [Parameter] public bool PesinSecili { get; set; }
+    /// <summary>PAKET SATIS-2 — PRO satış: karma anahtarı görsel gizli (alt çubukta "+ Başka ödeme ekle" var).</summary>
+    [Parameter] public bool KarmaAnahtariGizli { get; set; }
+
+    /// <summary>PARA-DEMO-2 (madde 1): BASİT tezgâh fişinde ödeme türü ALDIM satırında seçilir; bu bileşen ikinci seçici çizmez.</summary>
+    [Parameter] public bool OdemeSatirda { get; set; }
+    private string SadeOdemeAdi => OdemeTuru switch
+    {
+        "KART" => Dil.T.Islem.OdemeKart,
+        "HAVALE" => Dil.T.Islem.OdemeHavale,
+        _ => Dil.T.Islem.OdemeNakit,
+    };
+    /// <summary>SATIS-3 t16 — aktif POS cihazları (takas KART farkında birden çoksa seçici açılır).</summary>
+    [Parameter] public IReadOnlyList<PosCihazSatir> PosCihazlari { get; set; } = [];
+    [Parameter] public string? PosCihazId { get; set; }
+    [Parameter] public EventCallback<string?> PosCihazIdChanged { get; set; }
+
+    private SatisAldimMetinleri A => SatisAldimSozlugu.Al(Dil.Dil);
+    /// <summary>CUMA-S — "Neden?" ayrıntısı: had SUNUCUDAN (sayfanın TevsikHaddi'si), Peşin'de müşteri cümlesi eklenir.</summary>
+    private string AyrintiMetni =>
+        string.Format(A.Ayrinti, Bicim.Tl(TevsikHaddi)) + (PesinSecili ? " " + A.AyrintiPesin : "");
+
+    private bool KarmaAcik => Tur == "SATIS" && Karma;
+
+    /// <summary>
+    /// PAKET S2-4 (UX-S30) — eski altının YOLU, ekranda GERÇEKTEN var olan
+    /// kontrolle söylenir: profesyonelde "Karma ödeme" anahtarı; basit modda o
+    /// anahtar çizilmez, tezgâh fişinin "Eski altın" düğmesi vardır.
+    /// </summary>
+    private string AltinIpucu
+    {
+        get
+        {
+            var e = Kuyumcu.Core.I18n.EskiAltinSozlugu.Al(Dil.Dil);
+            return Modu.BasitMi
+                ? string.Format(Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).EskiAltinYolu,
+                                Kuyumcu.Core.I18n.SatisSadeSozlugu.Al(Dil.Dil).BaskaOdemeEkle.TrimStart('+', ' '), e.EskiAltin)   // k2: ayrı düğme yok, tek kapı
+                : string.Format(Kuyumcu.Core.I18n.AltinBacagiSozlugu.Al(Dil.Dil).TekOdemedeYok,
+                                Dil.T.Islem.KarmaOdeme, e.EskiAltin);
+        }
+    }
+    private bool AnaKasaTek => AnaKasalar.Count == 1;
+    private IReadOnlyList<SecenekOgesi> AnaKasaSecenekleri => FisHesap.KasaSecenekleri(AnaKasalar);
+
+    /// <summary>UX-S30 — ana kasa seçicisi kilitliyse SEBEBİ; değilse null.</summary>
+    private string? AnaKasaKilitSebebi =>
+        KasaKilitli ? Dil.T.Islem.BacakKasaOtomatik
+        : AnaKasaTek ? Dil.T.Islem.BacakKasaOtomatik
+        : null;
+
+    /// <summary>
+    /// Ödeme araçları — SUNUCUNUN KABUL ETTİĞİ değerlerle sınırlı.
+    /// SatisOlusturDto: NAKIT|KART|HAVALE|VERESIYE (PAKET B-4 / G-1: tek etiketli
+    /// "ALTIN" sunucuda artık 400 — eski altın YALNIZ karma ödemenin ALTIN
+    /// bacağıyla alınır, has + TL iki deftere birden ve gider pusulasıyla).
+    /// AlisOlusturDto ve HurdaAlisDto: yalnız NAKIT|KART|HAVALE
+    /// (veresiye payı ayrı bir alanla, OdenenTl ile belirlenir).
+    /// Ekranda sunucunun reddedeceği bir seçenek gösterilmez.
+    /// </summary>
+    private (string Deger, string Etiket)[] OdemeListesi => Tur switch
+    {
+        "SATIS" =>
+        [
+            ("NAKIT", Dil.T.Islem.OdemeNakit),
+            ("KART", Dil.T.Islem.OdemeKart),
+            ("HAVALE", Dil.T.Islem.OdemeHavale),
+            ("VERESIYE", Dil.T.Islem.OdemeVeresiye),
+        ],
+        // İadede VERESIYE geçerlidir (borç azaltma) ama ALTIN yoktur:
+        // IadeDto yalnız NAKIT|KART|HAVALE|VERESIYE kabul eder.
+        "SATIS_IADE" or "ALIS_IADE" =>
+        [
+            ("NAKIT", Dil.T.Islem.OdemeNakit),
+            ("KART", Dil.T.Islem.OdemeKart),
+            ("HAVALE", Dil.T.Islem.OdemeHavale),
+            ("VERESIYE", Dil.T.Islem.OdemeVeresiye),
+        ],
+        _ =>
+        [
+            ("NAKIT", Dil.T.Islem.OdemeNakit),
+            ("KART", Dil.T.Islem.OdemeKart),
+            ("HAVALE", Dil.T.Islem.OdemeHavale),
+        ],
+    };
+}

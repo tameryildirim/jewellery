@@ -1,0 +1,77 @@
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   BAŞARI BANDI — UX-S27 ("kaydet sonrası sonuç görünür").
+
+   ⚠ UX-4c madde 13: süreli gösterim (3 sn sonra kaybolma) daha önce HER
+   SAYFADA ELLE kopyalanmıştı (Kullanicilar.razor, Yetkiler.razor, Kur.razor,
+   Ayarlar.razor — dördü de kendi `basariJeton` sayacını taşıyordu). Aynı işin
+   dört kopyası demek, birinde jeton kontrolü unutulduğunda bandın erken
+   kaybolması ya da hiç kaybolmaması demekti. Süre artık BURADA, tek yerde.
+
+   Kullanım:
+     <BasariBandi Mesaj="@basari" />                    → kalıcı (varsayılan)
+     <BasariBandi Mesaj="@basari" SureliMs="3000" />    → 3 sn sonra gizlenir
+   Mesaj DEĞİŞTİĞİNDE bant yeniden görünür ve süre sıfırlanır. Aynı metin
+   ikinci kez kaydedilirse (iki kez üst üste "Kaydedildi") dizge değişmediği
+   için bant yeniden açılmaz; bu durumda çağıran taraf `Jeton`u ARTIRIR. Jeton
+   yalnızca bir sayaçtır — süre/zamanlayıcı mantığı sayfalara geri sızmaz.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@if (gorunur && !string.IsNullOrEmpty(Mesaj))
+{
+    @* Id null ise Blazor id özniteliğini HİÇ basmaz — mevcut kullanımlar aynen kalır. *@
+    <div class="bant bant-basari" role="status" id="@Id">@Mesaj</div>
+}
+
+@code {
+    [Parameter] public string? Mesaj { get; set; }
+
+    /// <summary>0 = kalıcı (varsayılan). &gt;0 ise bu kadar milisaniye sonra gizlenir.</summary>
+    [Parameter] public int SureliMs { get; set; }
+
+    /// <summary>İsteğe bağlı DOM kimliği (bUnit seçicileri için).</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Aynı mesajı yeniden göstermek için artırılan sayaç (isteğe bağlı).</summary>
+    [Parameter] public int Jeton { get; set; }
+
+    private string? oncekiMesaj;
+    private int oncekiJeton;
+    private bool gorunur = true;
+    private CancellationTokenSource? zamanlayici;
+
+    protected override void OnParametersSet()
+    {
+        if (Mesaj == oncekiMesaj && Jeton == oncekiJeton) return;
+        oncekiMesaj = Mesaj;
+        oncekiJeton = Jeton;
+        gorunur = true;
+        Durdur();
+        if (SureliMs > 0 && !string.IsNullOrEmpty(Mesaj)) _ = Zamanla(SureliMs);
+    }
+
+    private async Task Zamanla(int ms)
+    {
+        var kaynak = new CancellationTokenSource();
+        zamanlayici = kaynak;
+        try
+        {
+            await Task.Delay(ms, kaynak.Token);
+            gorunur = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (TaskCanceledException) { /* mesaj değişti ya da bileşen kapandı */ }
+    }
+
+    private void Durdur()
+    {
+        var k = zamanlayici;
+        zamanlayici = null;
+        if (k is null) return;
+        try { k.Cancel(); } catch (ObjectDisposedException) { }
+        k.Dispose();
+    }
+
+    public void Dispose() => Durdur();
+}

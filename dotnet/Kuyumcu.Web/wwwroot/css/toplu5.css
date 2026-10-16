@@ -1,0 +1,78 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET TOPLU-5 — para ekranları görünüm kuyruğu (şerit dosyası).
+   toplu4.css'ten SONRA, olcek.css'ten ÖNCE yüklenir (DUGME-2/O1 zinciri korunur).
+   YALNIZ yeni seçici yazılır; mevcut kural değiştirilmez. Sabit renk YOK, yalnız belirteç.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (T5-1) /cikti: değişmezlik notu TEK satır (VadeTakibi .t4-degismez-satir kalıbı) — önizlemenin altında
+   belge ile arasında nefes payı. */
+#cikti-degismez-satir { margin-top: var(--bosluk-3); }
+
+/* (T5-2) /cariler döviz çekmeceleri: müşteri düzenleme çekmecesiyle (#cekmece-cari, olcek.css 10a) AYNI tuval
+   ölçüsü — 440 px (≥ 1024), dolgu 24/26, başlık çekmece başlık boyu, etiket 400, alt şerit kenarsız, Kaydet esnek.
+   Sarmalayıcı .t5-cekmece-kap yalnız Cariler.razor'daki iki döviz çekmecesini kapsar. */
+@media (min-width: 1024px) {
+  html[data-mod] .t5-cekmece-kap .cekmece:is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) { width: min(440px, 100vw); }
+}
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-bas { padding: 24px 26px 0; border-bottom: 0; }
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-bas h2 {
+  font-size: var(--yazi-cekmece-baslik);
+  font-weight: var(--kalin);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-govde { padding: 18px 26px 0; }
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .alan-etiket { font-size: var(--yazi-etiket); font-weight: 400; }
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-alt {
+  padding: 18px 26px 24px;
+  border-top: 0;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-alt:has(> .cekmece-kilit-sebep) { flex-wrap: wrap; }
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-alt > .cekmece-kilit-sebep { flex: 1 1 100%; }
+html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-alt > .dugme-birincil { flex: 1 1 auto; }
+@media (max-width: 768px) {
+  html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-bas { padding: 16px 16px 0; }
+  html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-govde { padding: 14px 16px 0; }
+  html[data-mod] .t5-cekmece-kap :is(#cekmece-doviz-veresiye, #cekmece-doviz-tahsilat) .cekmece-alt { padding: 14px 16px 16px; }
+}
+/* PRO döviz veresiye ⓘ satırı: ⓘ + kısa ad tek satır (üç 12 px paragraf yerine). */
+#dv-bilgi-satir { display: flex; align-items: center; gap: var(--bosluk-2); font-size: max(14px, var(--yazi-sm)); }
+#dv-bilgi-satir > .zo-ipucu { margin: 0; }
+
+/* (T5-3) Müşteri paneli gecikme bandındaki "Tahsilat" bağlantısı fark edilmiyordu (hakem K22): alt çizgili ve
+   kalın — bant metniyle aynı renkte kalır (renk belirteci DEĞİŞMEDİ). */
+#cari-panel-tahsilat { text-decoration: underline; text-underline-offset: 2px; font-weight: var(--kalin); }
+
+/* (T5-4) /gider: asıl sayı (çekmecedeki nakit) en küçük yazı değil; kasa satırları ve toplam gider en az 14 px. */
+#gd-kasa-sabit, #gd-kasa-nakit, #gd-kasa-bakiye, #gd-toplam { font-size: max(14px, var(--yazi-sm)); }
+#gd-kasa-nakit > .rozet { font-size: var(--yazi-md); font-weight: var(--kalin); }
+/* Virman alt notu kart iç dolgusuyla hizalı (önce kart kenarına yapışık, x = kart sol kenarı). */
+.kart > #gd-v-iki-bacak.t5-kart-not { margin: 0; padding: var(--bosluk-3) 1.5rem; }
+@media (max-width: 768px) {
+  .kart > #gd-v-iki-bacak.t5-kart-not { padding-left: 1rem; padding-right: 1rem; }
+}
+/* 375'te sekme şeridi iki satıra düşüyordu (100 px): app.css ≤ 600 px kuralı şeridi 2 sütunlu IZGARAYA çevirir,
+   üç sekme 2+1 dizilir. Yalnız bu şeritte (3 kısa sekme) dar ekranda tek satır esnek dizi; dolgu ve yazı küçülür. */
+@media (max-width: 600px) {
+  #gd-sekme-seridi { display: flex; flex-wrap: wrap; }   /* DIL-EKRAN: İngilizce adlar ("Expense Categories") tek sıraya sığmaz → sarar */
+  #gd-sekme-seridi > .sekmeler-sekme { flex: 1 1 auto; padding-left: var(--bosluk-2); padding-right: var(--bosluk-2); font-size: max(14px, var(--yazi-sm)); white-space: nowrap; }
+}
+/* Virman "Ne aktarılıyor?" ⓘ satırı. */
+#gd-v-arac-ipucu-satir { display: flex; align-items: center; gap: var(--bosluk-2); font-size: max(14px, var(--yazi-sm)); }
+#gd-v-arac-ipucu-satir > .zo-ipucu { margin: 0; }
+
+/* (T5-5) /kasalar kartında "Nakit · Kart/Havale" satırı 12 px soluktu → 14 px, gövde rengi. */
+.kart p[id^="kasa-ayrim-"]:not([id^="kasa-ayrim-hata-"]) { font-size: max(14px, var(--yazi-sm)); color: var(--metin); }
+
+/* (T5-6) Gün sonu (BASİT kart): tahsilat kırılımı kalem sınırında kırılır, tutar ortasından değil; 14 px. */
+.t5-kirilim { margin: 0; font-size: max(14px, var(--yazi-sm)); color: var(--metin-soluk); }
+.t5-kirilim-parca { white-space: nowrap; }
+/* PRO gün sonu "Nasıl hesaplanır?" ⓘ satırı. */
+#mut-fark-tanimi-satir { display: flex; align-items: center; gap: var(--bosluk-2); font-size: max(14px, var(--yazi-sm)); }
+#mut-fark-tanimi-satir > .zo-ipucu { margin: 0; }
+
+/* (T5-tur2) /cikti fişlerinde ham 26 haneli kimlik yerine KISA kayıt kodu: artık okunur bir kod —
+   küçük/soluk (ortak.css .belge-no-kimlik) değil, belge başlığının numarası gibi okunur boyda. */
+.belge-no .belge-no-kimlik.belge-no-kisa { font-size: 11pt; font-weight: var(--kalin); opacity: 1; letter-spacing: .04em; }

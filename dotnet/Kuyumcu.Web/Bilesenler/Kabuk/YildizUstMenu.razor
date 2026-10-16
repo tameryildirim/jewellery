@@ -1,0 +1,304 @@
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject YetkiServisi Yetki
+@inject CanliKurServisi Canli
+@inject NavigationManager Nav
+@inject ArayuzModuServisi Modu
+@implements IDisposable
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-2 — "YILDIZ" ÜST MENÜSÜ (tuval Bugun4.dc.html <nav>)
+
+   YALNIZ data-sema="yildiz" iken AnaYerlesim bu bileşeni KENAR ÇUBUĞUNUN YERİNE
+   çizer; öteki 8 şemada çizilmez (kabuk piksel farkı 0).
+
+   Sol: halkasız elmas çizgisi → Bugün · Tezgâh · Müşteriler · Kasa · Tüm ekranlar
+   (seçili olanın altında 1 px çizgi). Sağ: HAS · 22 AYAR · saat · kullanıcı.
+
+   ⚠ YETKİ: ilk dört öğe sol menüyle AYNI kaynaktan süzülür (MenuTanimi.YetkiliMi
+     → YildizKabuk.Gorunur); yetkisiz ekranın sözcüğü ÇİZİLMEZ. "Tüm ekranlar" her
+     zaman vardır — sayfanın kendisi de yetkiye göre süzülür.
+   ⚠ 375 PX: beş kelime sığmaz → tek "Menü" düğmesi (#yildiz-menu-ac,
+     aria-expanded/aria-controls) + açılır liste; Esc kapatır, ekran değişince
+     kapanır. Geniş ekranda düğme CSS ile gizlidir; liste yatay durur.
+   ⚠ SİLİNEN ÖZELLİK YOK: sol menüdeki dil seçici, şube seçici, Kılavuz, Ayarlar
+     ve Çıkış, kullanıcı adının açtığı hesap menüsüne taşındı (kenar çubuğu
+     kart menüsünün karşılığı; kapalıyken DOM'da `hidden` ile durur).
+   ⚠ Kur burada YALNIZ OKUNUR; "kuru şimdi sor" düğmesi üst barda (UstBar) kalır.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<header class="yildiz-ust" id="yildiz-ust" @onkeydown="Tus">
+    @* PAKET YILDIZ-AMBLEM-2 (EMİR-AMBLEM-YILDIZ-2026-10-10 · kurucu 10.10 "eksiksiz ve aynen"): tuval
+       Amblem_sol(.acik).dc.html <a class="amb"> BİREBİR — 3B 8 yüzlü pırlanta taş (52 px, 20° duruş, 28 sn
+       düşey dönüş) + 14 px + "MİHENK" (bütün olarak karanlıktan çıkar, 11 sn). Taş ve yazı AYNI gradyanı
+       (url(#yildiz-amb-ti)) paylaşır; SMIL değerleri tuvalin kendisi. Parlama süzgeci DIŞ sarmalayıcıda
+       (.amb-parla), 3B kutuda (.tas3d) DEĞİL. Tuvaldeki satır içi stiller tema-yildiz.css "AMBLEM" bloğunda
+       sınıf olarak (CSP: satır içi style yok); durak renkleri açık/koyu belirteçten (razor'da sabit renk yok).
+       Harfler marka sözlüğünden (çıplak metin yok); tspan'lar arasında BOŞLUK DÜĞÜMÜ YOK. *@
+    <a href="/" class="yildiz-marka amb" id="yildiz-marka" aria-label="@KabukTuvalSozlugu.MarkaYazimi">
+        @AmblemTasi(KabukTasi)
+        <svg class="amb-yz" width="110" height="16" viewBox="0 0 110 16" aria-hidden="true" focusable="false"><text x="0" y="13" fill="url(#yildiz-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg>
+    </a>
+
+    <button type="button" class="yildiz-menu-dugme" id="yildiz-menu-ac"
+            aria-expanded="@(menuAcik ? "true" : "false")" aria-controls="yildiz-menu"
+            @onclick="MenuDegistir">@(menuAcik ? YildizSozlugu.MenuKapat(Dil.Dil) : YildizSozlugu.MenuAc(Dil.Dil))</button>
+
+    <nav class="@(menuAcik ? "yildiz-menu acik" : "yildiz-menu")" id="yildiz-menu"
+         aria-label="@YildizSozlugu.UstMenuEtiketi(Dil.Dil)">
+        @{ var seciliKimlik = YildizKabuk.SeciliKimlik(MutlakYol, o => YildizKabuk.Gorunur(o, Yetki.Erisebilir, Oturum.Kullanici?.Rol)); }
+        @foreach (var oge in YildizKabuk.UstMenu)
+        {
+            if (!YildizKabuk.Gorunur(oge, Yetki.Erisebilir, Oturum.Kullanici?.Rol))
+            {
+                continue;
+            }
+            @* YILDIZ-KATMAN: seçim ekranın menü grubundan (tuval a.on) — her ekranda tek sözcük altı çizili. *@
+            var aktif = oge.Kimlik == seciliKimlik;
+            <a href="@oge.Yol" id="@($"yildiz-menu-{oge.Kimlik}")"
+               class="@(aktif ? "yildiz-menu-oge aktif" : "yildiz-menu-oge")"
+               aria-current="@(aktif ? "page" : null)">@oge.Ad(Dil.Dil)</a>
+        }
+    </nav>
+
+    <div class="yildiz-ust-bosluk"></div>
+
+    @* YILDIZ-4A (tuval BİREBİR): "HAS 6.656 · 22 AYAR 6.097 · 17:40" — tek satır metin, değerler tam lira
+       ₺ İŞARETSİZ (tuval), ayraç " · " metnin kendisidir (eski ::before ayracı kalktı). Kuruşlu tam değer
+       üzerine gelince (title) okunur; hesapta KULLANILMAZ. *@
+    @* KURUCU 15.10: HAS · 22 AYAR şeridi tıklanınca Kur ekranı açılır (menüdeki Kur ile aynı modül kapısı "islem").
+       Dış span ve metinler AYNEN kalır; yalnız içerik tek bağlantıyla sarılır. *@
+    <span class="yildiz-kur" id="yildiz-kur" role="status">
+        @if (Yetki.Erisebilir("islem") && (Canli.Son is not null || Canli.SonHata is not null))
+        {
+            <a href="/kur" class="yildiz-kur-bag" id="yildiz-kur-ac" title="@YildizSozlugu.KurEkraniAc(Dil.Dil)">@KurSeridi</a>
+        }
+        else
+        {
+            @KurSeridi
+        }
+    </span>
+
+    @if (Oturum.Kullanici is not null)
+    {
+        <div class="yildiz-kullanici" id="yildiz-kullanici">
+            <button type="button" class="yildiz-kullanici-dugme" id="yildiz-kullanici-ac"
+                    aria-expanded="@(kullaniciAcik || subeHatasi ? "true" : "false")" aria-controls="yildiz-kullanici-menu"
+                    title="@YildizSozlugu.KullaniciMenusuAc(Dil.Dil)" data-bas="@BasHarfler()"
+                    @onclick="KullaniciDegistir"><span class="yildiz-kullanici-ad">@KartAdi()</span></button>
+            <div class="yildiz-kullanici-menu" id="yildiz-kullanici-menu" role="group"
+                 aria-label="@YildizSozlugu.KullaniciMenusu(Dil.Dil)"
+                 hidden="@(!(kullaniciAcik || subeHatasi))">
+                <div class="yildiz-menu-satir" id="yildiz-menu-dil">
+                    <span class="yildiz-menu-etiket">@YildizSozlugu.DilEtiketi(Dil.Dil)</span>
+                    <DilSecici />
+                </div>
+                @* YILDIZ-4A: Basit/Profesyonel anahtarı tuvalde YOK → kullanıcı adının menüsüne taşındı
+                   (üst bardaki #ust-mod-anahtar bu kabukta gizli; ikisi AYNI servisi çağırır). *@
+                <div class="yildiz-menu-satir" id="yildiz-menu-mod">
+                    <span class="yildiz-menu-etiket">@YildizBugunSozlugu.Gorunum(Dil.Dil)</span>
+                    <span class="yildiz-mod-anahtar" role="group" aria-label="@Dil.T.Arayuz.Baslik">
+                        <button type="button" id="yildiz-mod-basit" class="yildiz-mod-oge"
+                                aria-pressed="@(Modu.BasitMi ? "true" : "false")"
+                                title="@Dil.T.Arayuz.ModAciklamaBasit"
+                                disabled="@modDegisiyor" @onclick="ModuBasitYap">@Dil.T.Arayuz.Basit</button>
+                        <button type="button" id="yildiz-mod-profesyonel" class="yildiz-mod-oge"
+                                aria-pressed="@(Modu.ProfesyonelMi ? "true" : "false")"
+                                title="@Dil.T.Arayuz.ModAciklamaPro"
+                                disabled="@modDegisiyor" @onclick="ModuProYap">@Dil.T.Arayuz.Profesyonel</button>
+                    </span>
+                </div>
+                <HataBandi Mesaj="@modHata" Id="yildiz-mod-hata" />
+                <SubeSecici HataDegisti="SubeHatasiDegisti" />
+                <div class="yildiz-menu-baglantilar">
+                    @foreach (var oge in MenuTanimi.AltBlok)
+                    {
+                        <a href="@oge.Yol" id="@($"yildiz-alt-{MenuTanimi.Slug(oge.Yol)}")">@oge.Etiket(Dil.T)</a>
+                    }
+                    <button type="button" id="yildiz-cikis" @onclick="CikisYap">@Dil.T.Ortak.CikisYap</button>
+                </div>
+            </div>
+        </div>
+    }
+</header>
+
+@code {
+    /// <summary>HAS · 22 AYAR · saat metni (kurucu 15.10: tıklanınca Kur ekranı — bağlantı dışarıda sarılır).</summary>
+    private RenderFragment KurSeridi => __builder =>
+    {
+        if (Canli.Son is { } kur)
+        {
+            <span class="yildiz-kur-oge" id="yildiz-kur-has" title="@Bicim.TlKurus(kur.AltinHasFiyati)">@YildizSozlugu.Has(Dil.Dil) <b class="yildiz-kur-deger">@Kuyumcu.Web.Bilesenler.Yildiz.YildizBugunBicim.KurTam(kur.AltinHasFiyati)</b></span>
+            if (kur.AyarGramFiyati(UstBar.Ayar22) is decimal g22)
+            {
+                <span class="yildiz-kur-oge yildiz-kur-22" id="yildiz-kur-22" title="@Bicim.TlKurus(g22)"> &nbsp;·&nbsp; @YildizSozlugu.Ayar22(Dil.Dil) <b class="yildiz-kur-deger">@Kuyumcu.Web.Bilesenler.Yildiz.YildizBugunBicim.KurTam(g22)</b></span>
+            }
+            if (Canli.SonSorgu is DateTime sorgu)
+            {
+                <span class="yildiz-kur-saat" id="yildiz-kur-saat"> &nbsp;·&nbsp; @Bicim.Saat(sorgu)</span>
+            }
+        }
+        else if (Canli.SonHata is not null)
+        {
+            @* UX-S28: kur alınamadıysa şerit sessizce BOŞ kalmaz. *@
+            <span class="yildiz-kur-yok" id="yildiz-kur-yok" title="@Canli.SonHata">@YildizSozlugu.KurYok(Dil.Dil)</span>
+        }
+    };
+
+    /// <summary>YILDIZ-AMBLEM: tuval "M İ H E N K" — marka sözlüğünden, tr-TR büyük harf (i → İ); dilden bağımsız (marka adı).</summary>
+    public static readonly string AmblemHarfleri =
+        KabukTuvalSozlugu.MarkaYazimi.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    /// <summary>
+    /// YILDIZ-AMBLEM-2 — taşın tuvaldeki ölçüleri (emir § 3; S = kutu boyu). Değerler tuval dizgeleridir:
+    /// e = r·√2 (yüz tabanı), s = √(h² + (r/√2)²) (yüz yüksekliği), r/√2 (yarı taban = translateZ),
+    /// çizgi kalınlığı. Kabuk S=52 (r=22,88 · h=26; YILDIZ-AMBLEM-4 — 40 px kurucu reddetti), giriş S=96 (r=42,24 · h=48).
+    /// </summary>
+    /// Değer taşıyan salt okunur sınıf (denetim.sh istemci tip tavanı: yeni kayıt tipi açılmaz).
+    public sealed class TasOlcusu(string gradyanId, string[][] kenarlar)
+    {
+        public string GradyanId { get; } = gradyanId;
+        /// <summary>Kenar şeridi başına { uzunluk, kalınlık, köşe, çift yüz (1 = siluet, iki yandan görünür) } — 3B yeri CSS .amb-f{i} matrix3d.</summary>
+        public string[][] Kenarlar { get; } = kenarlar;
+    }
+
+    /// <summary>Kabuk (sol üst, 52 px — YILDIZ-AMBLEM-4) — tuval Amblem_sol(.acik).</summary>
+    public static readonly TasOlcusu KabukTasi = new("yildiz-amb-ti", new[] { new[] { "23.39", "1.00", "0.50", "0" }, new[] { "23.39", "1.00", "0.50", "0" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "24.64", "1.00", "0.50", "0" }, new[] { "23.71", "1.00", "0.50", "0" }, new[] { "24.64", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "13.50", "1.00", "0.50", "1" }, new[] { "13.50", "1.00", "0.50", "1" }, new[] { "37.70", "1.00", "0.50", "1" }, new[] { "37.70", "1.00", "0.50", "1" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "23.39", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "23.39", "1.00", "0.50", "0" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "24.64", "1.00", "0.50", "0" }, new[] { "23.71", "1.00", "0.50", "0" }, new[] { "24.64", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "13.50", "1.00", "0.50", "0" }, new[] { "13.50", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "16.80", "1.00", "0.50", "0" }, new[] { "24.14", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" }, new[] { "37.70", "1.00", "0.50", "0" } });
+
+    /// <summary>Giriş ekranı (ortada, 96 px) — tuval Giris4(a).</summary>
+    public static readonly TasOlcusu GirisTasi = new("giris-amb-ti", new[] { new[] { "44.74", "2.37", "1.18", "0" }, new[] { "44.74", "2.37", "1.18", "0" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "47.11", "2.37", "1.18", "0" }, new[] { "45.34", "2.37", "1.18", "0" }, new[] { "47.11", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "26.02", "2.37", "1.18", "1" }, new[] { "26.02", "2.37", "1.18", "1" }, new[] { "71.83", "2.37", "1.18", "1" }, new[] { "71.83", "2.37", "1.18", "1" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "44.74", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "44.74", "2.37", "1.18", "0" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "47.11", "2.37", "1.18", "0" }, new[] { "45.34", "2.37", "1.18", "0" }, new[] { "47.11", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "26.02", "2.37", "1.18", "0" }, new[] { "26.02", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "32.27", "2.37", "1.18", "0" }, new[] { "46.17", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" }, new[] { "71.83", "2.37", "1.18", "0" } });
+
+
+    /// <summary>
+    /// KURUCU 14.10 — taş kurucunun pırlanta çiziminden 3B kurulur: her kenar ekrana bakan bir şerit (duruşta çizgi
+    /// kalınlığı çizimdeki gibi eşit) + eğik kenarlara dik ikinci şerit (dönüşte çizgi incelmez). Önden izdüşüm = çizim.
+    /// YILDIZ-AMBLEM-2 — tuvaldeki &lt;span class="amb-parla"&gt; bloğu (kabuk ve giriş AYNI çizim, yalnız ölçü
+    /// farklı). Dış sarmalayıcı .amb-parla (süzgeç) → .amb-ik (perspektif kutusu) → gradyan tanımı + .tas3d
+    /// (preserve-3d, dönen kutu) → 8 yüz. Taç yüzü kapalı üçgen (Z: ekvator çizgisi), pavyon açık "V".
+    /// </summary>
+    public static RenderFragment AmblemTasi(TasOlcusu o) =>
+        @<span class="amb-parla" aria-hidden="true"><span class="amb-ik"><svg class="amb-tanim" width="0" height="0" aria-hidden="true" focusable="false"><defs><linearGradient id="@o.GradyanId" x1="0" y1="0" x2="1" y2="0"><stop class="amb-s-govde" offset="0"></stop><stop class="amb-s-orta" offset=".42"></stop><stop class="amb-s-parilti" offset=".5"></stop><stop class="amb-s-orta" offset=".58"></stop><stop class="amb-s-govde" offset="1"></stop><animateTransform attributeName="gradientTransform" type="translate" values="-1.2 0;-1.2 0;1.2 0;1.2 0" keyTimes="0;0.06;0.22;1" dur="11s" repeatCount="indefinite"></animateTransform></linearGradient></defs></svg><span class="tas3d">@for (var i = 0; i < o.Kenarlar.Length; i++)
+        {
+            var y = o.Kenarlar[i];
+            <svg class="@(y[3] == "1" ? $"amb-yuz amb-cift amb-f{i}" : $"amb-yuz amb-f{i}")" width="@y[0]" height="@y[1]" viewBox="@($"0 0 {y[0]} {y[1]}")" aria-hidden="true" focusable="false"><rect width="@y[0]" height="@y[1]" rx="@y[2]" fill="@($"url(#{o.GradyanId})")"></rect></svg>
+        }</span></span></span>;
+
+    private bool menuAcik;
+    private bool kullaniciAcik;
+    private bool subeHatasi;
+
+    private string MutlakYol => new Uri(Nav.Uri).AbsolutePath;
+
+    private void MenuDegistir()
+    {
+        menuAcik = !menuAcik;
+        if (menuAcik) kullaniciAcik = false;
+    }
+
+    private void KullaniciDegistir()
+    {
+        kullaniciAcik = !kullaniciAcik;
+        if (kullaniciAcik) menuAcik = false;
+    }
+
+    private void SubeHatasiDegisti(bool var) => subeHatasi = var;
+
+    // ── YILDIZ-4A: Basit/Profesyonel (UstBar.ModuDegistir ile AYNI akış; hata bantta) ──
+    private bool modDegisiyor;
+    private string? modHata;
+    private Task ModuBasitYap() => ModuDegistir(ArayuzModuServisi.Basit);
+    private Task ModuProYap() => ModuDegistir(ArayuzModuServisi.Profesyonel);
+    private async Task ModuDegistir(string mod)
+    {
+        if (modDegisiyor || Modu.EtkinMod == mod) return;
+        modDegisiyor = true;
+        modHata = null;
+        StateHasChanged();
+        try { await Modu.DegistirAsync(mod); }
+        catch (ApiHata ex) { modHata = ex.Message; }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { modHata = ex.Message; }
+        modDegisiyor = false;
+        StateHasChanged();
+    }
+
+    private void Tus(KeyboardEventArgs e)
+    {
+        if (e.Key != "Escape") return;
+        menuAcik = false;
+        kullaniciAcik = false;
+    }
+
+    private string KartAdi()
+    {
+        var k = Oturum.Kullanici;
+        if (k is null) return "";
+        // YILDIZ-AMBLEM-2 tur 2 (hakem KRİTİK: "HATİCE GÜLİZAR K." 1366/1280/1024/375'te şeridi taşırıyordu):
+        // birden çok ön ad varsa yalnız İLKİ yazılır — tuval kalıbı "AD S." korunur ("HAKAN T." değişmez).
+        var ilk = IlkAd(k.Ad);
+        var ad = k.Soyad.Length > 0 ? $"{ilk} {k.Soyad[..1]}." : ilk;
+        // YILDIZ-4A: tuval "HAKAN T." — büyük harf metnin kendisidir (CSS dönüşümü değil), dil kültürüyle.
+        return ad.ToUpper(AdKulturu());
+    }
+
+    // ≤600 px'te düğme yalnız baş harfleri çizer (CSS ::before attr(data-bas)); metin düğümü aynen kalır
+    // (erişilebilir ad ve "HAKAN T." sözleşmesi değişmez).
+    private string BasHarfler()
+    {
+        var k = Oturum.Kullanici;
+        if (k is null) return "";
+        var ilk = IlkAd(k.Ad);
+        var bas = (ilk.Length > 0 ? ilk[..1] : "") + (k.Soyad.Length > 0 ? k.Soyad[..1] : "");
+        return bas.ToUpper(AdKulturu());
+    }
+
+    private static string IlkAd(string ad)
+    {
+        var parca = (ad ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parca.Length > 0 ? parca[0] : "";
+    }
+
+    private System.Globalization.CultureInfo AdKulturu() =>
+        Dil.Dil == "en" ? System.Globalization.CultureInfo.InvariantCulture : System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    private async Task CikisYap()
+    {
+        await Oturum.CikisAsync();
+        Nav.NavigateTo("/giris");
+    }
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += OturumDegisti;
+        Yetki.Degisti += Yenile;
+        Canli.Degisti += Yenile;
+        Modu.Degisti += Yenile;
+        Nav.LocationChanged += KonumDegisti;
+        _ = Yetki.HazirlaAsync();
+    }
+
+    private async void OturumDegisti()
+    {
+        await Yetki.HazirlaAsync();
+        Yenile();
+    }
+
+    private void KonumDegisti(object? s, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        menuAcik = false;
+        kullaniciAcik = false;
+        Yenile();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= OturumDegisti;
+        Yetki.Degisti -= Yenile;
+        Canli.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+        Nav.LocationChanged -= KonumDegisti;
+    }
+}

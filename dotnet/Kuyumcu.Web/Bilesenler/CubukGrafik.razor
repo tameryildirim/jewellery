@@ -1,0 +1,250 @@
+@* Recharts BarChart karşılığı — iki serili saf SVG (yeşil=1. seri, amber=2. seri).
+   Not: <text> Razor'da rezerve olduğundan eksen etiketleri MarkupString ile basılır.
+
+   P-64 (tur 8): kâr-zarar ekranı bu bileşeni "gelir / gider / kâr" için kullanır
+   ve kâr NEGATİF olabilir. Eski çizim negatif değerde eksi yükseklikli <rect>
+   üretiyordu (tarayıcı çizmez → zarar ekranda "yok" görünürdü). Artık taban
+   çizgisi sıfırdır; negatif çubuk tabanın ALTINA iner. Tüm değerler ≥ 0 iken
+   üretilen SVG birebir eskisiyle aynıdır (Raporlar.razor çıktısı değişmez).
+   Seri adları verilirse lejant çizilir; verilmezse (eski kullanım) çizilmez. *@
+@if (Yatay)
+{
+    @* PAKET RAPOR-4 tur 2 (tasarım KRİTİK + ölçer K3): Kâr-zarar "Gelir, maliyet ve kâr" grafiği beş kalemi
+       ("Toplam satış", "Maliyeti bilinen satış", …) dikey sütun altına sığdıramıyordu — 1280'de etiketler iki
+       satıra kırılıyor, 375'te kart taşıp son çubuk görünmüyordu. YATAY kip: her kalem bir satır — solda TAM ad
+       (tek satır), ortada çubuk, sağda tutar; dar ekranda ad kendi satırında, altında çubuk + tutar.
+       Çubuk genişliği SVG özniteliğidir (satır içi style yok); negatif değer sıfır çizgisinin soluna iner.
+       Sınıf adları (grafik-eksen-alt / -oge / -ad / -deger, grafik-sar svg rect) dikey kiple ortaktır. *@
+    <div class="grafik-eksen-alt grafik-yatay" role="img" aria-label="@Aciklama">
+        @for (var i = 0; i < Noktalar.Count; i++)
+        {
+            var n = Noktalar[i];
+            <div class="grafik-eksen-oge">
+                <span class="grafik-eksen-ad">@n.Etiket</span>
+                <div class="grafik-sar grafik-yatay-cubuk" aria-hidden="true">
+                    <svg viewBox="0 0 100 10" preserveAspectRatio="none">@YatayCubuk(n)</svg>
+                </div>
+                @if (DegerBicimi is not null)
+                {
+                    <span class="grafik-eksen-deger sayi">@DegerBicimi(n.Deger1)</span>
+                }
+            </div>
+        }
+    </div>
+}
+else if (DegerEkseni is not null)
+{
+    @* PAKET RAPOR-4 (tasarım YÜKSEK, Rapor merkezi "Günlük satış / alış"): değer ekseni yoktu ve 31 günün tarih
+       yazıları SVG içinde ~7 px'e eziliyordu. Bu kipte: solda HTML değer ekseni (en yüksek · yarısı · 0, gerçek
+       yazı boyunda), altta SEYREK tarih ekseni (en çok 6 yazı; her yazı kendi çubuk sütununun ortasında, ilk sola,
+       son sağa yaslı — AlanGrafik ile aynı ızgara kuralı). Parametre verilmezse çıktı BİREBİR eskisi. *@
+    <div class="grafik-izgara">
+        <div class="grafik-y-eksen" aria-hidden="true">
+            <span class="grafik-y-etiket" id="@($"{EksenOnEki}-y-ust")">@DegerEkseni(Math.Round(Maks, 0, MidpointRounding.AwayFromZero))</span>
+            <span class="grafik-y-etiket">@DegerEkseni(Math.Round((Maks + Min) / 2m, 0, MidpointRounding.AwayFromZero))</span>
+            <span class="grafik-y-etiket" id="@($"{EksenOnEki}-y-alt")">@DegerEkseni(Math.Round(Min, 0, MidpointRounding.AwayFromZero))</span>
+        </div>
+        <div class="grafik-sar" role="img" aria-label="@Aciklama">
+            @* RAPOR-4 tur 2 (hasım DÜŞÜK): satır içi style yok — yükseklik (Y = 220) rapor-gorunum.css .grafik-svg-sabit. *@
+            <svg class="grafik-svg-sabit" viewBox="0 0 @G @Y" preserveAspectRatio="none">
+                @Cubuklar
+            </svg>
+        </div>
+        <span aria-hidden="true"></span>
+        <div class="grafik-eksen grafik-eksen--cubuk" aria-hidden="true">
+            @for (var i = 0; i < Noktalar.Count; i++)
+            {
+                var j = i;
+                <span class="grafik-eksen-hucre">
+                    @if (SeyrekYazilacak.Contains(j))
+                    {
+                        <span class="@SeyrekSinif(j)" data-indeks="@j">@Noktalar[j].Etiket</span>
+                    }
+                </span>
+            }
+        </div>
+    </div>
+}
+else
+{
+<div class="grafik-sar" role="img" aria-label="@Aciklama">
+    <svg viewBox="0 0 @G @Y" preserveAspectRatio="none" style="height:@(Y)px">
+        @Cubuklar
+        @if (!EtiketAltta)
+        {
+            @EksenIsaretlemesi
+        }
+    </svg>
+</div>
+}
+@if (EtiketAltta && !Yatay && DegerEkseni is null && Noktalar.Count > 0)
+{
+    @* RAPOR-GORUNUM: SVG içi <text> viewBox ölçeğiyle küçülür (600 → ~250 px kartta 9 → ~4-6 px) ve değer
+       yazmaz. EtiketAltta: etiket + değer SVG'nin ALTINDA gerçek yazı boyunda, çubuk sütunlarıyla aynı eşit
+       genişlikte. Parametre verilmezse SVG çıktısı BİREBİR eskisi (Panel / Raporlar değişmez). *@
+    <div class="grafik-eksen-alt" aria-hidden="true">
+        @foreach (var n in Noktalar)
+        {
+            <span class="grafik-eksen-oge">
+                <span class="grafik-eksen-ad">@n.Etiket</span>
+                @if (DegerBicimi is not null)
+                {
+                    <span class="grafik-eksen-deger sayi">@DegerBicimi(n.Deger1)</span>
+                }
+            </span>
+        }
+    </div>
+}
+@if (!string.IsNullOrEmpty(Seri1Adi))
+{
+    <div class="grafik-lejant">
+        <span class="grafik-lejant-oge">
+            <svg class="grafik-lejant-kutu" viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2" fill="var(--grafik-3)" /></svg>
+            @Seri1Adi
+        </span>
+        @if (!string.IsNullOrEmpty(Seri2Adi))
+        {
+            <span class="grafik-lejant-oge">
+                <svg class="grafik-lejant-kutu" viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" rx="2" fill="var(--grafik-1)" /></svg>
+                @Seri2Adi
+            </span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<CiftNokta> Noktalar { get; set; } = [];
+    [Parameter] public string Aciklama { get; set; } = "";
+    /// <summary>P-64: 1. serinin lejant adı (boşsa lejant çizilmez).</summary>
+    [Parameter] public string? Seri1Adi { get; set; }
+    /// <summary>P-64: 2. serinin lejant adı (boşsa 2. seri lejantta yer almaz).</summary>
+    [Parameter] public string? Seri2Adi { get; set; }
+    /// <summary>RAPOR-GORUNUM: true ise eksen etiketleri (ve <see cref="DegerBicimi"/> verilmişse 1. seri değeri)
+    /// SVG dışında, okunur yazı boyunda çizilir. Varsayılan false — eski çıktı birebir.</summary>
+    [Parameter] public bool EtiketAltta { get; set; }
+    /// <summary>RAPOR-GORUNUM: etiketin altında 1. serinin değeri (ör. Bicim.Tl). Yalnız EtiketAltta ile.</summary>
+    [Parameter] public Func<decimal, string>? DegerBicimi { get; set; }
+    /// <summary>PAKET RAPOR-4: verilirse solda HTML değer ekseni + altta seyrek HTML tarih ekseni çizilir.</summary>
+    [Parameter] public Func<decimal, string>? DegerEkseni { get; set; }
+    /// <summary>PAKET RAPOR-4 tur 2: yatay kip — kalem başına satır (ad · çubuk · tutar). Uzun kalem adları için.</summary>
+    [Parameter] public bool Yatay { get; set; }
+
+    /// <summary>Yatay kipte bir satırın çubukları (viewBox 100 × 10; tek seri 8 birim, iki seri 4,5'er birim).</summary>
+    private MarkupString YatayCubuk(CiftNokta n)
+    {
+        var sifirX = (double)((0m - Min) / Aralik) * 100.0;
+        string Dik(decimal v, double y, double h, string renk)
+        {
+            var gen = (double)(Math.Abs(v) / Aralik) * 100.0;
+            var x = v >= 0m ? sifirX : sifirX - gen;
+            return string.Create(Inv, $"<rect x=\"{x:F2}\" y=\"{y:F1}\" width=\"{gen:F2}\" height=\"{h:F1}\" rx=\"1\" fill=\"{renk}\" />");
+        }
+        var cift = !string.IsNullOrEmpty(Seri2Adi);
+        var sb = new System.Text.StringBuilder();
+        if (cift)
+        {
+            sb.Append(Dik(n.Deger1, 0.5, 4.25, "var(--grafik-3)"));
+            sb.Append(Dik(n.Deger2, 5.25, 4.25, "var(--grafik-1)"));
+        }
+        else sb.Append(Dik(n.Deger1, 1, 8, "var(--grafik-3)"));
+        if (Min < 0m)
+            sb.Append(string.Create(Inv, $"<line x1=\"{sifirX:F2}\" x2=\"{sifirX:F2}\" y1=\"0\" y2=\"10\" stroke=\"var(--metin-soluk)\" stroke-width=\"0.5\" />"));
+        return new MarkupString(sb.ToString());
+    }
+
+    /// <summary>PAKET RAPOR-4: değer ekseni öğelerinin id öneki (sayfada birden çok grafik olabilir).</summary>
+    [Parameter] public string EksenOnEki { get; set; } = "grafik";
+
+    /// <summary>Seyrek eksen: en çok 6 yazı (0, adım, 2·adım…), son nokta her zaman; sona tam adımdan yakın olan düşer.</summary>
+    internal IReadOnlySet<int> SeyrekYazilacak
+    {
+        get
+        {
+            var k = new HashSet<int>();
+            if (Noktalar.Count == 0) return k;
+            var adim = Math.Max(1, (int)Math.Ceiling(Noktalar.Count / 6.0));
+            var son = Noktalar.Count - 1;
+            // RAPOR-4 (375 ölçümü: "07.10" ile "08.10" üst üste): son yazıya TAM adımdan yakın olan yazı düşer.
+            for (var i = 0; i < Noktalar.Count; i += adim)
+                if (i == 0 || son - i >= adim) k.Add(i);
+            k.Add(son);
+            return k;
+        }
+    }
+
+    private string SeyrekSinif(int i) =>
+        i == 0 && Noktalar.Count > 1 ? "grafik-eksen-etiket grafik-eksen-etiket--ilk"
+        : i == Noktalar.Count - 1 && Noktalar.Count > 1 ? "grafik-eksen-etiket grafik-eksen-etiket--son"
+        : "grafik-eksen-etiket grafik-eksen-etiket--orta";
+
+    /// <summary>
+    /// PAKET RAPOR-4 (tasarım DÜŞÜK, Kâr-zarar grafiği): tek seri (lejantta 2. seri yok ve tüm 2. değerler 0)
+    /// iken 1. çubuk grubun SOLUNDA duruyordu, etiket ortada → çubuk sütunun ORTASINA alınır.
+    /// </summary>
+    private bool TekSeri => !string.IsNullOrEmpty(Seri1Adi) && string.IsNullOrEmpty(Seri2Adi) && Noktalar.Count > 0 && Noktalar.All(n => n.Deger2 == 0m);
+
+    private const int G = 600, Y = 220, KenarUst = 12, KenarAlt = 22;
+    private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
+
+    private decimal Maks => Math.Max(1m,
+        Noktalar.Count == 0 ? 1m : Noktalar.Max(n => Math.Max(n.Deger1, n.Deger2)));
+
+    /// <summary>Alt sınır: hiç negatif yoksa 0 (eski çizim birebir korunur).</summary>
+    private decimal Min => Math.Min(0m,
+        Noktalar.Count == 0 ? 0m : Noktalar.Min(n => Math.Min(n.Deger1, n.Deger2)));
+
+    private decimal Aralik => Maks - Min;
+    private double CizimYuksekligi => Y - KenarUst - KenarAlt;
+
+    private double GrupGen => Noktalar.Count == 0 ? G : (double)G / Noktalar.Count;
+    private double CubukGen => Math.Max(2, GrupGen * 0.35);
+    private double YKord(decimal v) => KenarUst + (double)((Maks - v) / Aralik) * CizimYuksekligi;
+    private double Yukseklik(decimal v) => (double)(Math.Abs(v) / Aralik) * CizimYuksekligi;
+
+    private MarkupString Cubuklar
+    {
+        get
+        {
+            var sb = new System.Text.StringBuilder();
+            for (var i = 0; i < Noktalar.Count; i++)
+            {
+                var n = Noktalar[i];
+                if (TekSeri)
+                {
+                    sb.Append(Dikdortgen(i * GrupGen + (GrupGen - CubukGen) / 2, n.Deger1, "var(--grafik-3)"));
+                    continue;
+                }
+                var grupX = i * GrupGen + (GrupGen - 2 * CubukGen - 2) / 2;
+                sb.Append(Dikdortgen(grupX, n.Deger1, "var(--grafik-3)"));
+                sb.Append(Dikdortgen(grupX + CubukGen + 2, n.Deger2, "var(--grafik-1)"));
+            }
+            if (Min < 0m)
+            {
+                // Negatif varsa sıfır taban çizgisi görünür olur.
+                sb.Append(string.Create(Inv,
+                    $"<line x1=\"0\" x2=\"{G}\" y1=\"{YKord(0m):F1}\" y2=\"{YKord(0m):F1}\" stroke=\"var(--metin-soluk)\" stroke-width=\"1\" />"));
+            }
+            return new MarkupString(sb.ToString());
+        }
+    }
+
+    private string Dikdortgen(double x, decimal deger, string renk) =>
+        string.Create(Inv,
+            $"<rect x=\"{x:F1}\" y=\"{(deger >= 0m ? YKord(deger) : YKord(0m)):F1}\" width=\"{CubukGen:F1}\" height=\"{Yukseklik(deger):F1}\" rx=\"2\" fill=\"{renk}\" />");
+
+    private MarkupString EksenIsaretlemesi
+    {
+        get
+        {
+            var sb = new System.Text.StringBuilder();
+            var adim = Math.Max(1, (int)Math.Ceiling(Noktalar.Count / 10.0));
+            for (var i = 0; i < Noktalar.Count; i += adim)
+            {
+                var x = (i * GrupGen + GrupGen / 2).ToString("F1", Inv);
+                var etiket = System.Net.WebUtility.HtmlEncode(Noktalar[i].Etiket);
+                sb.Append($"<text x=\"{x}\" y=\"{Y - 4}\" font-size=\"9\" fill=\"var(--metin-soluk)\" text-anchor=\"middle\">{etiket}</text>");
+            }
+            return new MarkupString(sb.ToString());
+        }
+    }
+}

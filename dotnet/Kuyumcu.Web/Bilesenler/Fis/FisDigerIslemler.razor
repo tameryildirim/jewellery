@@ -1,0 +1,169 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-6 — PRO MODDA "DİĞER ▾" (PLAN-SADELESTIRME § S-2 madde 2.9) ═══
+   Taslak Profesyonel.dc.html (not n5): 8 sekmenin yanında "Diğer ▾" —
+   rezerv · avans · konsinye · değişim · siparişten satış · çek devri.
+   • BASİT MODDA HİÇ ÇİZİLMEZ (DOM'da yok): tezgâh yüzü sade kalır (§ 5B).
+     Yetki ≠ mod: sunucu kapıları mod ne olursa olsun aynıdır.
+   • Menü yerli HTML popover'dır (S3-2 deseni); KATMAN-1: konum js/katman.js
+     açıcıya bağlar (ortada serbest yüzmez), CSP istisnası yok.
+   ⚠ Bileşen İSTEK ATMAZ, ApiIstemci enjekte etmez: niyet DigerIstek ile
+     sayfaya gider, isteği Islemler.Diger.cs atar (PLAN § 3 md.5). *@
+@if (!Basit)
+{
+    <div class="satir" id="islem-diger">
+        @* T-S2 (tuval Profesyonel.dc.html): kesik kenarlı düğme "Diğer ▾ <küçük özet>". Özet menünün
+           GERÇEK adlarından üretilir (UX-S31: tuvaldeki "rezerv/avans/ciro" bizde "Ürün ayır/Kapora/
+           Çek/senet devri"); menüdeki bir sayfa türü (İşçilik/Transfer) seçiliyse onu yazar. *@
+        <button type="button" class="btn btn-ikincil islem-diger-dugme@(EkSecili is not null ? " secili" : null)"
+                id="islem-diger-ac" popovertarget="islem-diger-menu" aria-haspopup="dialog"
+                aria-expanded="@(Durum.Secim is not null ? "true" : "false")" title="@M.MenuIpucu">
+            <span class="islem-diger-etiket">@M.MenuAc ▾</span> <span class="islem-diger-ozet" id="islem-diger-ozet">@Ozet</span>
+        </button>
+        <div popover="auto" class="satir-menu" id="islem-diger-menu" role="dialog" aria-labelledby="islem-diger-menu-baslik">
+            <p class="satir-menu-baslik" id="islem-diger-menu-baslik">@M.MenuBaslik</p>
+            <p class="metin-kucuk metin-soluk">@M.MenuIpucu</p>
+            <div class="satir-menu-ogeler">
+                @* T-S2: tuvalde sekmesi olmayan sayfa türleri (İşçilik · Transfer) — id'ler AYNEN (#islem-tur-*). *@
+                @foreach (var (deger, etiket) in EkTurler)
+                {
+                    <button type="button" class="btn btn-ikincil btn-kucuk@(SeciliTur == deger ? " secili" : null)" id="@($"islem-tur-{deger}")"
+                            aria-pressed="@(SeciliTur == deger ? "true" : "false")"
+                            popovertarget="islem-diger-menu" popovertargetaction="hide"
+                            @onclick="() => EkTurSec(deger)">@etiket</button>
+                }
+                @foreach (var tur in DigerTurleri.Tumu)
+                {
+                    var kilit = DigerTurleri.KilitSebebi(M, tur, Baglam.Rol);
+                    var id = $"islem-diger-{tur.ToLowerInvariant()}";
+                    if (kilit is null)
+                    {
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@id"
+                                popovertarget="islem-diger-menu" popovertargetaction="hide"
+                                @onclick="() => Sec(tur)">@DigerTurleri.Etiket(M, tur)</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@id" disabled
+                                aria-describedby="@($"{id}-kilit")">@DigerTurleri.Etiket(M, tur)</button>
+                        <span class="metin-kucuk metin-soluk" id="@($"{id}-kilit")" role="note">@kilit</span>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (Durum.Secim is { } secim)
+    {
+        <section class="kart" id="islem-diger-panel" aria-labelledby="islem-diger-baslik">
+            <div class="kart-baslik satir-arasi">
+                <h2 id="islem-diger-baslik">@DigerTurleri.Etiket(M, secim)</h2>
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-diger-kapat" @onclick="() => Sec(null)">@M.FiseDon</button>
+            </div>
+            <div class="kart-govde form-dikey">
+                <p class="metin-soluk" id="islem-diger-aciklama">@DigerTurleri.Aciklama(M, secim)</p>
+                @if (!Baglam.KurVar)
+                {
+                    <div class="bant bant-uyari" id="islem-diger-kur-yok" role="status">@M.KurYok</div>
+                }
+                <HataBandi Mesaj="@Durum.ListeHata" Id="islem-diger-liste-hata" />
+                @switch (secim)
+                {
+                    case DigerTurleri.Rezerv:
+                        <FisDigerRezerv Durum="Durum" Baglam="Baglam" Istek="Istek" />
+                        break;
+                    case DigerTurleri.Avans:
+                        <FisDigerAvans Durum="Durum" Baglam="Baglam" Istek="Istek" />
+                        break;
+                    case DigerTurleri.Konsinye:
+                        <FisDigerKonsinye Durum="Durum" Baglam="Baglam" Istek="Istek" />
+                        break;
+                    case DigerTurleri.Degisim:
+                        <FisDigerDegisim Durum="Durum" Baglam="Baglam" Istek="Istek" />
+                        break;
+                    case DigerTurleri.Siparis:
+                        <FisDigerSiparis Durum="Durum" Baglam="Baglam" Istek="Istek" />
+                        break;
+                    default:
+                        <FisDigerEvrak Durum="Durum" Baglam="Baglam" Istek="Istek" />
+                        break;
+                }
+                <HataBandi Mesaj="@Durum.Hata" Id="islem-diger-hata" />
+                <BasariBandi Mesaj="@Durum.Basari" Jeton="@Durum.Jeton" Id="islem-diger-basari" />
+            </div>
+        </section>
+
+        @* Geri alınamaz eylemler ORTAK onay modalında (DoD EK md.4, UX-S27). *@
+        <ModalPencere Acik="@(Durum.Onay is not null)" Baslik="@M.MenuBaslik" Kapat="OnayKapat">
+            <p id="islem-diger-onay-metin">@OnaySorusu</p>
+            <div class="satir">
+                <button type="button" class="btn btn-tehlike" id="islem-diger-onay-evet" disabled="@Durum.Mesgul"
+                        @onclick="OnayEvet">@M.Onayla</button>
+                <button type="button" class="btn btn-ikincil" id="islem-diger-onay-vazgec" @onclick="OnayKapat">@M.Vazgec</button>
+            </div>
+        </ModalPencere>
+    }
+}
+
+@code {
+    /// <summary>Durumun sahibi sayfadır (Islemler.Diger.cs).</summary>
+    [Parameter, EditorRequired] public DigerIslemDurumu Durum { get; set; } = new();
+    /// <summary>Sayfanın zaten yüklediği veriler.</summary>
+    [Parameter, EditorRequired] public DigerBaglam Baglam { get; set; } = new([], [], [], [], false, null);
+    /// <summary>Basit mod: menü ve panel DOM'da YOK.</summary>
+    [Parameter] public bool Basit { get; set; }
+    /// <summary>Niyet → sayfa isteği atar.</summary>
+    [Parameter] public EventCallback<DigerIstek> Istek { get; set; }
+
+    private FisDigerMetinleri M => FisDigerSozlugu.Al(Dil.Dil);
+
+    // ── PAKET T-S2 — tuval "Diğer ▾": sekmesi olmayan sayfa türleri menüde ──
+    /// <summary>Menüde çizilecek sayfa türleri (İşçilik · Transfer); boşsa menü eskisi gibi.</summary>
+    [Parameter] public (string Deger, string Etiket)[] EkTurler { get; set; } = [];
+    /// <summary>Sayfanın seçili türü (menüdeki tür seçiliyse düğme vurgulanır ve adını yazar).</summary>
+    [Parameter] public string? SeciliTur { get; set; }
+    /// <summary>Menüden sayfa türü seçildi — sayfanın TurSec'i (istek yok).</summary>
+    [Parameter] public EventCallback<string> TurSec { get; set; }
+
+    private string? EkSecili => Durum.Secim is null ? EkTurler.FirstOrDefault(x => x.Deger == SeciliTur).Etiket : null;
+
+    /// <summary>Düğmedeki küçük özet: seçili ek tür ya da menünün tuval sırasındaki adları.</summary>
+    private string Ozet => EkSecili is { } ad
+        ? string.Format(SatisProSozlugu.Al(Dil.Dil).DigerSecili, ad)
+        : string.Join(" · ", new[] { DigerTurleri.Rezerv, DigerTurleri.Avans, DigerTurleri.Konsinye, DigerTurleri.Siparis, DigerTurleri.Evrak }
+            .Select(t => DigerTurleri.Etiket(M, t).ToLower(System.Globalization.CultureInfo.GetCultureInfo(Dil.Dil == "en" ? "en-GB" : "tr-TR"))));
+
+    private async Task EkTurSec(string tur)
+    {
+        Durum.Sec(null);
+        await TurSec.InvokeAsync(tur);
+    }
+
+    private async Task Sec(string? tur)
+    {
+        Durum.Sec(tur);
+        // Sayfa da yeniden çizilir (fiş gizlenir / geri gelir) — EventCallback sayfayı tazeler.
+        await Istek.InvokeAsync(new DigerIstek(tur is null ? DigerEylemler.Kapat : DigerEylemler.Yukle));
+    }
+
+    private string OnaySorusu => Durum.Onay switch
+    {
+        DigerEylemler.RezervIptal => M.RezervKaldirSoru,
+        DigerEylemler.AvansIade => M.AvansIadeSoru,
+        DigerEylemler.SiparisCevir => M.SiparisSoru,
+        DigerEylemler.EvrakCiro => M.DevretSoru,
+        _ => M.DonenSoru,
+    };
+
+    private void OnayKapat() { Durum.Onay = null; Durum.OnayId = null; }
+
+    private async Task OnayEvet()
+    {
+        var eylem = Durum.Onay;
+        var id = Durum.OnayId;
+        Durum.Onay = null;
+        Durum.OnayId = null;
+        if (eylem is not null) await Istek.InvokeAsync(new DigerIstek(eylem, id));
+    }
+}

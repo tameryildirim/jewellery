@@ -1,0 +1,582 @@
+@using System.Globalization
+@using Kuyumcu.Contracts.Bilesenler.FiyatListesiUrunPaneli
+@using Kuyumcu.Contracts.Fiyat
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject ArayuzModuServisi Modu
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   FİYAT LİSTESİ → ÜRÜN GÖRÜNÜMÜ — paket 49 (UX-4a madde 3'ün genişletilmiş hâli).
+
+   NEDEN VAR: fiyat listesi SOYUT bir kayıttı; "bu marjla hangi ürün kaça
+   satılıyor" hiçbir yerde görünmüyordu (kurucunun "farklı bir fiyat giriliyor
+   ama ürün listesi gelmiyor" şikâyeti). UX-4a'da panel ürün başına
+   /fiyat/teklif çağırıyordu; paket 49 ile TEK önizleme ucuna döndü —
+   iki panel/iki mekanizma bırakılmadı.
+
+   ⚠ TEK MOTOR: fiyat SUNUCUDA hesaplanır (FiyatServisi → FiyatMotoru). Bu
+     ekranda hiçbir marj formülü yoktur; yalnız sunucunun kırılımı basılır
+     (PANO-KARAR §88 — marj ticari sırdır).
+
+   ⚠ ONAYSIZ TOPLU YAZMA YOK: "toplu uygula" önce ?onizleme=true ile ETKİ
+     ÖZETİ alır (hiçbir satır yazılmaz), kullanıcı onaylayınca aynı uca
+     önizlemeden dönen parmak izi ile yazar. Sunucu damgayı yeniden hesaplar.
+
+   ⚠ UX-3: toplu uygulama ve ürüne özel fiyat PROFESYONEL alandır; basit modda
+     liste fiyatı SALT OKUNURDUR (ProAlan + sebebi yazan basit alternatif).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+<div class="kart" id="flp-panel">
+    <div class="kart-baslik satir-arasi">
+        <h3>@Dil.T.Fiyat.UrunPaneli — @ListeAdi</h3>
+        <button class="btn btn-ikincil btn-kucuk" id="flp-kapat" @onclick="Kapat">@Dil.T.Fiyat.PanelKapat</button>
+    </div>
+    <div class="kart-govde">
+        @* Tur 3 (orkestratör 18:10): teknik açıklama satırı ("fiyatlar sunucuda hesaplanır; sayfa başına
+           en fazla 50 satır…") ve "Süzgeçe uyan toplam ürün" satırı KALDIRILDI. Sınır bilgisi yalnız
+           sınıra değince tek kısa uyarıdır (#flp-daha-fazla, UX-S29). *@
+        <HataBandi Mesaj="@hata" />
+        <div id="flp-basari"><BasariBandi Mesaj="@basari" /></div>
+
+        @if (string.IsNullOrEmpty(KurId))
+        {
+            <div class="uyari-kutu" id="flp-kur-yok"><p><Ikon Ad="@Ikonlar.Uyari" /> @Dil.T.Fiyat.KurYok</p></div>
+        }
+        else
+        {
+            @* Tur 3 (orkestratör 18:10) TEK ETİKET DÜZENİ: iki kutu yan yana, İKİSİNİN de etiketi
+               kutunun üstünde (arama kutusunun görsel etiketi yoktu, kategori etiketi tek başına
+               yukarıda kalıyordu); onay kutusu kendi satırında. *@
+            <div class="form-grid-2" id="flp-suzgec">
+                <div class="alan" id="flp-ara-alan">
+                    <span class="alan-etiket" aria-hidden="true" id="flp-ara-etiket">@P1.FiyatUrunAra</span>
+                    <Arama ElemanId="flp-ara" Etiket="@Dil.T.Fiyat.PanelAra" YerTutucu="@P1.FiyatUrunAraOrnek"
+                           Deger="@arama" DegerChanged="@(async v => { arama = v ?? ""; await Yukle(); })" />
+                </div>
+                <div class="alan">
+                    <Secici ElemanId="flp-kategori"
+                            Etiket="@Dil.T.Fiyat.PanelKategori"
+                            Secenekler="@(Kategoriler.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                            @bind-Deger="kategoriId"
+                            @bind-Deger:after="Yukle"
+                            BosSecenekMetni="—" />
+                </div>
+            </div>
+            <Onay ElemanId="flp-yalniz-gk" Etiket="@Dil.T.Fiyat.YalnizGecersizKilinan"
+                  Deger="@yalnizGecersizKilinan"
+                  DegerChanged="@(async v => { yalnizGecersizKilinan = v; await Yukle(); })" />
+
+            @if (yukleniyor)
+            {
+                <Yukleniyor />
+            }
+            else if (hata is null && satirlar.Count == 0)
+            {
+                <div id="flp-bos"><BosDurum Mesaj="@Dil.T.Fiyat.PanelBos" /></div>
+            }
+            else if (satirlar.Count > 0)
+            {
+                @if (toplam > satirlar.Count)
+                {
+                    <div class="uyari-kutu" id="flp-daha-fazla"><p>@string.Format(P1.FiyatDahaFazla, toplam, satirlar.Count)</p></div>
+                }
+
+                <ProAlan BasitAlternatif="BasitNot">
+                    <div class="form-grid-3" id="flp-toplu-alan">
+                        <Sayi ElemanId="flp-toplu-marj" Etiket="@Dil.T.Fiyat.HasMarj" Birim="%"
+                              Deger="@topluMarj" DegerChanged="@(v => { topluMarj = v; RiskSifirla(); })" />
+                        <Sayi ElemanId="flp-toplu-carpan" Etiket="@Dil.T.Fiyat.IscilikCarpan" EnAz="0" Birim="%"
+                              Deger="@topluCarpan" DegerChanged="@(v => { topluCarpan = v; RiskSifirla(); })" />
+                        @* ── Makul aralık kapısı (S-3c 2. dilim) — TOPLU yol ──
+                           Toplu uygulama tek istekte yüzlerce ürünü etkiler: riskli
+                           değer ONAYSIZ uygulanamaz (sunucu da 400 döner). Eşikler
+                           TEK kaynaktan: Kuyumcu.Core.Sozlesmeler.FiyatAraliklari. *@
+                        @if (TopluRiskMetni is { } trm)
+                        {
+                            <div class="alan" id="flp-toplu-risk">
+                                <p class="uyari-metni" id="flp-toplu-risk-uyari" role="alert">@trm</p>
+                                <Onay ElemanId="flp-toplu-risk-onay" Etiket="@Dil.T.Fiyat.RiskOnayiEtiket"
+                                      @bind-Deger="topluRiskOnayi" />
+                                @if (TopluRiskBekliyor)
+                                {
+                                    <p class="metin-kucuk metin-soluk" id="flp-toplu-risk-not">@Dil.T.Fiyat.RiskOnayiSart</p>
+                                }
+                            </div>
+                        }
+                        <div class="alan">
+                            <div class="satir-eylemler">
+                                <button class="btn btn-birincil btn-kucuk" id="flp-toplu"
+                                        disabled="@(TopluKapali || secilenler.Count == 0)" @onclick="SeciliOnizle">
+                                    @Dil.T.Fiyat.TopluUygulaSecili (@secilenler.Count)
+                                </button>
+                                @if (!string.IsNullOrEmpty(kategoriId))
+                                {
+                                    <button class="btn btn-ikincil btn-kucuk" id="flp-toplu-kategori"
+                                            disabled="@TopluKapali" @onclick="KategoriOnizle">
+                                        @Dil.T.Fiyat.TopluKategoriye
+                                    </button>
+                                }
+                            </div>
+                            @* UX-S30: kilidin sebebi yazılır. *@
+                            @if (sayiKapisi.OnekleVar("flp-toplu-"))
+                            {
+                                <SayiKapisiSebebi Kapi="sayiKapisi" Onek="flp-toplu-" ElemanId="flp-toplu-sayi-kilit" />
+                            }
+                            else if (TopluKapali)
+                            {
+                                <p class="metin-kucuk metin-soluk" id="flp-toplu-kilit">@Dil.T.Fiyat.TopluKilit</p>
+                            }
+                        </div>
+                    </div>
+                </ProAlan>
+
+                @* PAKET GOC-C — ORTAK IZGARA (grid:fiyatlandirma:flp-tablo). Sunucu sayfalıdır (toplam > satır ise üstte
+                   "daha fazla" uyarısı, UX-S29) → o durumda sıralama KAPALI. Teklif üretilemeyen satırda sebep rozeti
+                   has değeri hücresinde, diğer fiyat hücreleri "—" (eski colspan yerine — ortak ızgarada birleşik hücre yok).
+                   Mevcut id'ler (flp-satir-*, flp-ad-*, flp-sec-*, flp-kod-*, flp-ozel-*, flp-kaynak-*, flp-rozet-*) korunur. *@
+                <Izgara T="Satir" Ekran="fiyatlandirma" GridId="flp-tablo" TabloId="flp-tablo" Kolonlar="@FiyatKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(satirlar, fiyatSira, FiyatKolonlari)"
+                        SatirId="@(x => $"flp-satir-{x.UrunId}")" Baslik="@Dil.T.Fiyat.HedefUrun"
+                        SiralamaDegisti="@(x => fiyatSira = x)" GecerliSiralama="@fiyatSira" />
+            }
+        }
+
+        @* ── Tekil geçersiz kılma (UX-S24/S25: her satırın düzenleme yolu) ── *@
+        @if (ozel is { } o)
+        {
+            <div class="kart-govde form-grid-3" id="flp-ozel-form">
+                <h4>@Dil.T.Fiyat.UruneOzelBaslik — @o.Ad</h4>
+                @* PAKET GOC-C: sabit fiyat > 0, en çok 2 ondalık (ortak Para Tur=Pozitif — sunucu aynı sınır). *@
+                <Para ElemanId="flp-ozel-sabit" Etiket="@Dil.T.Fiyat.SabitFiyatAlan" Tur="TutarTuru.Pozitif" ParaBirimi="TRY"
+                      Deger="@o.SabitFiyat" DegerChanged="@((decimal? v) => o.SabitFiyat = v)" />
+                <Sayi ElemanId="flp-ozel-marj" Etiket="@Dil.T.Fiyat.HasMarj" Birim="%"
+                      Deger="@o.HasMarjYuzde" DegerChanged="@((decimal? v) => o.HasMarjYuzde = v)"
+                      Devredisi="@o.Gumus" DevredisiSebebi="@Dil.T.Fiyat.GumusSabitUyari" />
+                <Sayi ElemanId="flp-ozel-carpan" Etiket="@Dil.T.Fiyat.IscilikCarpan" EnAz="0" Birim="%"
+                      Deger="@o.IscilikCarpanYuzde" DegerChanged="@((decimal? v) => o.IscilikCarpanYuzde = v)"
+                      Devredisi="@o.Gumus" DevredisiSebebi="@Dil.T.Fiyat.GumusSabitUyari" />
+                <Metin ElemanId="flp-ozel-not" Etiket="@Dil.T.Fiyat.NotAlan" EnFazla="@AlanSinirlari.FiyatUrunNotu"
+                       Deger="@o.Not" DegerChanged="@(v => o.Not = v)" />
+                @if (o.Gumus)
+                {
+                    <p class="metin-kucuk metin-soluk" id="flp-ozel-gumus">@Dil.T.Fiyat.GumusSabitUyari</p>
+                }
+                @* Makul aralık kapısı (S-3c 2. dilim) — ÜRÜNE ÖZEL yol. *@
+                @if (OzelRiskMetni is { } orm)
+                {
+                    <div class="alan" id="flp-ozel-risk">
+                        <p class="uyari-metni" id="flp-ozel-risk-uyari" role="alert">@orm</p>
+                        <Onay ElemanId="flp-ozel-risk-onay" Etiket="@Dil.T.Fiyat.RiskOnayiEtiket"
+                              Deger="@o.RiskOnayi" DegerChanged="@((bool v) => o.RiskOnayi = v)" />
+                        @if (OzelRiskBekliyor)
+                        {
+                            <p class="metin-kucuk metin-soluk" id="flp-ozel-risk-not">@Dil.T.Fiyat.RiskOnayiSart</p>
+                        }
+                    </div>
+                }
+                <HataBandi Mesaj="@ozelHata" />
+                <SayiKapisiSebebi Kapi="sayiKapisi" Onek="flp-ozel-" ElemanId="flp-ozel-sayi-kilit" />
+                <div class="satir">
+                    <button class="btn btn-ikincil" id="flp-ozel-iptal" @onclick="OzelKapat">@Dil.T.Ortak.Iptal</button>
+                    <button class="btn btn-birincil" id="flp-ozel-kaydet" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("flp-ozel-") || !o.Doldurulmus || OzelRiskBekliyor)"
+                            @onclick="OzelKaydet">@Dil.T.Ortak.Kaydet</button>
+                    @if (o.Mevcut)
+                    {
+                        <button class="btn btn-ikincil" id="flp-ozel-kaldir" disabled="@kaydediliyor"
+                                @onclick="OzelKaldir">@Dil.T.Fiyat.GecersizKilmayiKaldir</button>
+                    }
+                </div>
+                @if (!o.Doldurulmus)
+                {
+                    <p class="metin-kucuk metin-soluk" id="flp-ozel-kilit">@Dil.T.Fiyat.EnAzBirAlan</p>
+                }
+            </div>
+        }
+
+        @* ── Toplu uygulama ETKİ ÖZETİ — onay olmadan yazma yok (UX-S27) ── *@
+        @if (ozet is { } z)
+        {
+            <div class="kart-govde" id="flp-toplu-ozet">
+                <h4>@Dil.T.Fiyat.TopluOzetBaslik</h4>
+                <p id="flp-ozet-sayi">@Dil.T.Fiyat.EtkilenenUrun: @z.Uygulanacak / @z.Hedeflenen</p>
+                <p id="flp-ozet-fark">@Dil.T.Fiyat.ToplamFark: @Para(z.ToplamFark)</p>
+                @* PAKET GOC-C — ORTAK IZGARA (grid:fiyatlandirma:flp-ozet-tablo). Örnek satırlar (sunucu seçer) → yerel sıralama. *@
+                <Izgara T="TopluSatir" Ekran="fiyatlandirma" GridId="flp-ozet-tablo" TabloId="flp-ozet-tablo" Kolonlar="@OzetKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(z.Ornekler.ToList(), ozetSira, OzetKolonlari)"
+                        SatirId="@(r => $"flp-ozet-satir-{r.UrunId}")" Baslik="@Dil.T.Fiyat.TopluOzetBaslik"
+                        SiralamaDegisti="@(x => ozetSira = x)" GecerliSiralama="@ozetSira" />
+                @if (z.Atlandi.Count > 0)
+                {
+                    <p class="metin-kucuk metin-soluk" id="flp-ozet-atlanan">
+                        @Dil.T.Fiyat.Atlananlar: @string.Join(", ", z.Atlandi.Select(a => $"{a.Kod} ({AtlamaMetni(a.Sebep)})"))
+                    </p>
+                }
+                <HataBandi Mesaj="@topluHata" />
+                <div class="satir">
+                    <button class="btn btn-ikincil" id="flp-toplu-vazgec" @onclick="OzetKapat">@Dil.T.Ortak.Iptal</button>
+                    <button class="btn btn-birincil" id="flp-toplu-onayla" disabled="@(kaydediliyor || z.Uygulanacak == 0 || TopluRiskBekliyor)"
+                            @onclick="TopluOnayla">@Dil.T.Fiyat.TopluOnayla</button>
+                </div>
+                @if (TopluRiskBekliyor)
+                {
+                    @* UX-S30 — kilitli düğme SEBEBİNİ söyler. *@
+                    <p class="metin-kucuk metin-soluk" id="flp-ozet-risk-not">@Dil.T.Fiyat.RiskOnayiSart</p>
+                }
+            </div>
+        }
+    </div>
+</div>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    /// <summary>Panelin fiyatladığı liste — önizleme ucuna yol parametresi olarak gider.</summary>
+    [Parameter, EditorRequired] public string ListeId { get; set; } = "";
+    [Parameter, EditorRequired] public string ListeAdi { get; set; } = "";
+
+    /// <summary>Çağıranın zaten çektiği kategoriler — panel ikinci kez ağaç çağırmaz.</summary>
+    [Parameter] public IReadOnlyList<PanelKategori> Kategoriler { get; set; } = [];
+
+    /// <summary>Güncel kur kaydı; boşsa panel fiyat hesaplamaz ve bunu söyler.</summary>
+    [Parameter] public string? KurId { get; set; }
+
+    [Parameter] public EventCallback Kapandi { get; set; }
+
+
+
+
+
+
+    /// <summary>Tekil geçersiz kılma formu — POST/PATCH aynı alan kümesi (UX-S26).</summary>
+    private sealed class OzelForm
+    {
+        public string UrunId = ""; public string Ad = ""; public bool Gumus; public bool Mevcut;
+        public decimal? SabitFiyat, HasMarjYuzde, IscilikCarpanYuzde;
+        public string? Not;
+        /// <summary>Rahat aralık dışı değerin bilinçli onayı — her form açılışında KAPALI doğar.</summary>
+        public bool RiskOnayi;
+        public bool Doldurulmus => SabitFiyat is not null || HasMarjYuzde is not null || IscilikCarpanYuzde is not null;
+    }
+
+    private List<Satir> satirlar = [];
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? fiyatSira, ozetSira;
+    private bool FiyatListesiTam => toplam <= satirlar.Count;
+    private IReadOnlyList<IzgaraKolonu<Satir>> FiyatKolonlari
+    {
+        get
+        {
+            var tam = FiyatListesiTam;
+            var k = new List<IzgaraKolonu<Satir>>
+            {
+                // Tur 3: seçim kutusu, ad, kod ve "Ürüne özel" TEK ilk sütunda (yapışık ilk sütun ızgaranın kendisinde).
+                new() { Anahtar = "urun", Baslik = Dil.T.Fiyat.HedefUrun, ZorunluGorunur = true, SunucuSiralamaAdi = tam ? "urun" : null,
+                        BaslikSinif = "flp-urun-baslik", HucreSinif = _ => "flp-urun", Deger = s => s.Ad,
+                        Hucre = s => @<div class="flp-urun-ic" id="@($"flp-ad-{s.UrunId}")">
+                            <ProAlan>
+                                <Onay ElemanId="@($"flp-sec-{s.UrunId}")" EtiketGizli="true" Etiket="@s.Ad"
+                                      Deger="@secilenler.Contains(s.UrunId)"
+                                      DegerChanged="@((bool _v) => SecimDegisti(s.UrunId, _v))" />
+                            </ProAlan>
+                            <div class="flp-urun-metin">
+                                <div class="hucre-vurgu">@s.Ad</div>
+                                <div class="metin-kucuk metin-soluk hucre-tek-satir" id="@($"flp-kod-{s.UrunId}")">@s.Kod</div>
+                                <ProAlan>
+                                    <button class="btn btn-ikincil btn-kucuk" id="@($"flp-ozel-{s.UrunId}")"
+                                            @onclick="() => OzelAc(s)"><span class="satir-ici"><Ikon Ad="@Ikonlar.Kalem" /><span>@Dil.T.Fiyat.UruneOzel</span></span></button>
+                                </ProAlan>
+                            </div>
+                        </div> },
+                // KESIF-P1: ayar ADI (ham kod yalnız title'da).
+                new() { Anahtar = "ayar", Baslik = Dil.T.Fiyat.Ayar, SunucuSiralamaAdi = tam ? "ayar" : null, HucreSinif = _ => "metin-kucuk hucre-tek-satir",
+                        Deger = s => KurKaynakAdi.AyarAdi(s.AyarId), Hucre = s => @<span title="@s.AyarId">@KurKaynakAdi.AyarAdi(s.AyarId)</span> },
+                new() { Anahtar = "gram", Baslik = Dil.T.Fiyat.Gram, SunucuSiralamaAdi = tam ? "gram" : null, BaslikSinif = "sayi",
+                        HucreSinif = _ => "sayi hucre-tek-satir", Deger = s => s.HasGrami, Hucre = s => @<text>@GramYaz(s.HasGrami)</text> },
+                new() { Anahtar = "has-degeri", Baslik = Dil.T.Fiyat.HasDegeri, SunucuSiralamaAdi = tam ? "has-degeri" : null, BaslikSinif = "sayi",
+                        HucreSinif = _ => "sayi hucre-tek-satir", Deger = s => s.TeklifVar ? s.HasDegeri : null,
+                        Hucre = s => @<text>@if (s.TeklifVar)
+                            {@Para(s.HasDegeri)}
+                            else
+                            {<span class="rozet rozet-amber" id="@($"flp-rozet-{s.UrunId}")">@Sebep(s)</span>}</text> },
+                FiyatKolonu("marj", Dil.T.Fiyat.MarjTl, s => s.MarjTl, tam),
+            };
+            // Tur 3: BASİT'te İşçilik ve Kaynak gizli (ayrıntı PRO'da).
+            if (Modu.ProfesyonelMi) k.Add(FiyatKolonu("iscilik", Dil.T.Fiyat.IscilikTl, s => s.IscilikTlUygulanan, tam));
+            var liste = FiyatKolonu("liste", Dil.T.Fiyat.ListeFiyati, s => s.ListeFiyati, tam);
+            k.Add(liste);
+            k.Add(FiyatKolonu("indirim", Dil.T.Fiyat.Indirim, s => s.IndirimTutari, tam));
+            k.Add(FiyatKolonu("satis", Dil.T.Fiyat.SatisFiyati, s => s.SatisFiyati, tam));
+            if (Modu.ProfesyonelMi)
+                k.Add(new() { Anahtar = "kaynak", Baslik = Dil.T.Fiyat.Kaynak, Deger = s => s.TeklifVar ? KaynakMetni(s) : null,
+                              Hucre = s => @<text>@if (s.TeklifVar)
+                                  {<span class="rozet @KaynakSinif(s)" id="@($"flp-kaynak-{s.UrunId}")">@KaynakMetni(s)</span>}
+                                  else
+                                  {<span class="metin-soluk">—</span>}</text> });
+            return k;
+        }
+    }
+
+    /// <summary>Teklif yoksa "—" basan fiyat sütunu (sebep rozeti has değeri hücresinde).</summary>
+    private IzgaraKolonu<Satir> FiyatKolonu(string anahtar, string baslik, Func<Satir, decimal> deger, bool tam) => new()
+    {
+        Anahtar = anahtar, Baslik = baslik, SunucuSiralamaAdi = tam ? anahtar : null, BaslikSinif = "sayi",
+        HucreSinif = s => s.TeklifVar && anahtar == "liste" ? "sayi hucre-vurgu hucre-tek-satir" : "sayi hucre-tek-satir",
+        Deger = s => s.TeklifVar ? deger(s) : null,
+        Hucre = s => @<text>@(s.TeklifVar ? Para(deger(s)) : "—")</text>,
+    };
+
+    private IReadOnlyList<IzgaraKolonu<TopluSatir>> OzetKolonlari =>
+    [
+        new() { Anahtar = "kod", Baslik = Dil.T.Fiyat.Kod, ZorunluGorunur = true, SunucuSiralamaAdi = "kod", HucreSinif = _ => "metin-kucuk hucre-tek-satir", Deger = r => r.Kod },
+        new() { Anahtar = "eski", Baslik = Dil.T.Fiyat.EskiFiyat, SunucuSiralamaAdi = "eski", BaslikSinif = "sayi", HucreSinif = _ => "sayi hucre-tek-satir",
+                Deger = r => r.EskiFiyat, Hucre = r => @<text>@Para(r.EskiFiyat)</text> },
+        new() { Anahtar = "yeni", Baslik = Dil.T.Fiyat.YeniFiyat, ZorunluGorunur = true, SunucuSiralamaAdi = "yeni", BaslikSinif = "sayi", HucreSinif = _ => "sayi hucre-tek-satir",
+                Deger = r => r.YeniFiyat, Hucre = r => @<text>@Para(r.YeniFiyat)</text> },
+        new() { Anahtar = "fark", Baslik = Dil.T.Fiyat.Fark, SunucuSiralamaAdi = "fark", BaslikSinif = "sayi", HucreSinif = _ => "sayi hucre-tek-satir",
+                Deger = r => r.Fark, Hucre = r => @<text>@Para(r.Fark)</text> },
+    ];
+    private readonly HashSet<string> secilenler = [];
+    private int toplam;
+    private string? hata, basari, ozelHata, topluHata;
+    private bool yukleniyor, kaydediliyor;
+    private string? kategoriId, arama;
+    private bool yalnizGecersizKilinan;
+    private decimal? topluMarj, topluCarpan;
+    private bool topluRiskOnayi;
+    private OzelForm? ozel;
+    private TopluSonuc? ozet;
+    private string? sonHedefTur;
+    private string? yuklenenAnahtar;
+
+    private bool TopluKapali => kaydediliyor || sayiKapisi.OnekleVar("flp-toplu-") || (topluMarj is null && topluCarpan is null);
+
+    // ── Makul aralık (S-3c 2. dilim) — eşik TEK kaynaktan; ekran sunucuyla AYNI kapıyı gösterir ──
+    private string? RiskMetni(decimal? marj, decimal? carpan) =>
+        Kuyumcu.Core.Sozlesmeler.FiyatAraliklari.RiskKoduKismi(marj, carpan) switch
+        {
+            "MARJ_EKSI" => Dil.T.Fiyat.MarjEksiUyari,
+            "MARJ_YUKSEK" => Dil.T.Fiyat.MarjYuksekUyari,
+            "CARPAN_YUKSEK" => Dil.T.Fiyat.CarpanYuksekUyari,
+            _ => null,
+        };
+
+    private string? TopluRiskMetni => topluMarj is null && topluCarpan is null ? null : RiskMetni(topluMarj, topluCarpan);
+    private bool TopluRiskBekliyor => TopluRiskMetni is not null && !topluRiskOnayi;
+
+    /// <summary>Değer değişince onay DÜŞER: onaylanan şey artık ekrandaki değer değil.</summary>
+    private void RiskSifirla() => topluRiskOnayi = false;
+
+    private string? OzelRiskMetni => ozel is not { } f || f.Gumus ? null : RiskMetni(f.HasMarjYuzde, f.IscilikCarpanYuzde);
+    private bool OzelRiskBekliyor => OzelRiskMetni is not null && ozel?.RiskOnayi != true;
+
+    // KESIF-P1 (#10): Say() InvariantCulture ile "92,206.95" basıyordu (en-US kalıbı,
+    // ₺ yok; "3,200" Türkçe okunuşta 3,2). Tutar artık TEK biçimciden (Bicim.Tl →
+    // "92.206,95 ₺"); fiyat listesi teklifleri sunucuda TL hesaplanır (FiyatMotoru).
+    // Kültür AÇIKÇA tr-TR (Bicim içinde): tarayıcı/iş parçacığı kültürü en-US olsa da çıktı değişmez.
+
+    private static string Para(decimal v) => Bicim.Tl(v);
+
+    /// <summary>
+    /// Has gramı (tr-TR SABİT): 2 hane ("13,92") — ANCAK 2 haneye yuvarlanınca sıfıra düşen
+    /// sıfırdan farklı değer 4 haneye kadar yazılır ("0,0001"): sıfırdan farklı has "0" görünmez
+    /// (KESIF-P1 tur 2, doğrulayıcı KRİTİK). Tek kaynak Bicim.KarHasGram (sade kip).
+    /// </summary>
+    private static string GramYaz(decimal v) => Bicim.KarHasGram(v, sade: true);
+
+    private KesifP1Metinleri P1 => KesifP1Sozlugu.Al(Dil.Dil);
+
+    private RenderFragment BasitNot => @<p class="metin-kucuk metin-soluk" id="flp-basit-not">@Dil.T.Fiyat.SaltOkunurBasitMod</p>;
+
+    private string KaynakMetni(Satir s) => s.Kaynak switch
+    {
+        "URUN_GECERSIZ_KILMA" => Dil.T.Fiyat.KaynakUrunOzel,
+        "URUN_SABIT_FIYAT" => Dil.T.Fiyat.KaynakUrunSabit,
+        _ => Dil.T.Fiyat.KaynakListe,
+    };
+
+    private static string KaynakSinif(Satir s) => s.Kaynak switch
+    {
+        "URUN_GECERSIZ_KILMA" => "rozet-mavi",
+        "URUN_SABIT_FIYAT" => "rozet-amber",
+        _ => "rozet-gri",
+    };
+
+    private string Sebep(Satir s) => s.Sebep switch
+    {
+        "GUMUS" => Dil.T.Fiyat.SebepGumus,
+        "LISTE_YOK" => Dil.T.Fiyat.SebepListeYok,
+        _ => Dil.T.Fiyat.SebepFiyatYok,
+    };
+
+    private string AtlamaMetni(string sebep) => sebep switch
+    {
+        "GUMUS" => Dil.T.Fiyat.SebepGumus,
+        "URUN_SABIT_FIYAT" => Dil.T.Fiyat.SebepSabitFiyat,
+        "GECERSIZ_KILMA_SABIT_FIYAT" => Dil.T.Fiyat.SebepGecersizKilmaSabit,
+        _ => Dil.T.Fiyat.SebepFiyatYok,
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var anahtar = $"{ListeId}|{KurId}";
+        if (anahtar == yuklenenAnahtar) return;
+        yuklenenAnahtar = anahtar;
+        await Yukle();
+    }
+
+    private string OnizlemeYolu()
+    {
+        var yol = $"/fiyat/listeler/{ListeId}/onizleme?kurSnapshotId={KurId}&limit=50&offset=0";
+        if (!string.IsNullOrEmpty(kategoriId)) yol += $"&kategoriId={Uri.EscapeDataString(kategoriId)}";
+        if (!string.IsNullOrWhiteSpace(arama)) yol += $"&q={Uri.EscapeDataString(arama.Trim())}";
+        if (yalnizGecersizKilinan) yol += "&yalnizGecersizKilinan=true";
+        return yol;
+    }
+
+    private async Task Yukle()
+    {
+        satirlar = []; hata = null;
+        if (string.IsNullOrEmpty(KurId) || string.IsNullOrEmpty(ListeId)) return;
+        yukleniyor = true;
+        try
+        {
+            var s = await Api.GetAsync<Sonuc>(OnizlemeYolu());
+            satirlar = s.Satirlar ?? [];
+            toplam = s.Toplam;
+            secilenler.RemoveWhere(id => satirlar.All(x => x.UrunId != id));
+        }
+        // ⚠ UX-S28 / Anayasa md.1: hata "kayıt yok"a çevrilmez.
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            hata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    // P-36c/3: değer artık ortak Onay bileşeninden ÇÖZÜLMÜŞ bool olarak gelir.
+    private void SecimDegisti(string urunId, bool secili)
+    {
+        if (secili) secilenler.Add(urunId); else secilenler.Remove(urunId);
+    }
+
+    // ── Tekil geçersiz kılma ────────────────────────────────────────────────
+
+    private void OzelAc(Satir s)
+    {
+        ozelHata = null; basari = null;
+        var g = s.GecersizKilma is { Aktif: true } ? s.GecersizKilma : null;
+        ozel = new OzelForm
+        {
+            UrunId = s.UrunId, Ad = s.Ad, Gumus = s.AyarId.StartsWith("G", StringComparison.Ordinal),
+            Mevcut = g is not null, SabitFiyat = g?.SabitFiyat,
+            HasMarjYuzde = g?.HasMarjYuzde, IscilikCarpanYuzde = g?.IscilikCarpanYuzde, Not = g?.Not,
+        };
+    }
+
+    private void OzelKapat() => ozel = null;
+
+    private object OzelGovde(OzelForm f) => new
+    {
+        urunId = f.UrunId,
+        sabitFiyat = f.SabitFiyat,
+        // Gümüşte marj/işçilik alanları kapalıdır; gövdeye de KONMAZ (sunucu da reddeder).
+        hasMarjYuzde = f.Gumus ? null : f.HasMarjYuzde,
+        iscilikCarpanYuzde = f.Gumus ? null : f.IscilikCarpanYuzde,
+        not = f.Not,
+        riskOnayi = f.RiskOnayi,
+    };
+
+    private async Task OzelKaydet()
+    {
+        if (ozel is not { } f || sayiKapisi.OnekleVar("flp-ozel-")) return;   // ORTAK-1: POST YOK
+        kaydediliyor = true; ozelHata = null;
+        try
+        {
+            if (f.Mevcut) await Api.PatchAsync($"/fiyat/listeler/{ListeId}/urun-fiyatlari/{f.UrunId}", OzelGovde(f));
+            else await Api.PostAsync($"/fiyat/listeler/{ListeId}/urun-fiyatlari", OzelGovde(f));
+            ozel = null;
+            basari = Dil.T.Fiyat.UruneOzelKaydedildi;
+            await Yukle();
+        }
+        catch (ApiHata ex) { ozelHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>Pasife alma — kayıt SİLİNMEZ, fiyat listeye döner (denetim izi korunur).</summary>
+    private async Task OzelKaldir()
+    {
+        if (ozel is not { } f) return;
+        kaydediliyor = true; ozelHata = null;
+        try
+        {
+            await Api.PatchAsync($"/fiyat/listeler/{ListeId}/urun-fiyatlari/{f.UrunId}", new { aktif = false });
+            ozel = null;
+            basari = Dil.T.Fiyat.GecersizKilmaKaldirildi;
+            await Yukle();
+        }
+        catch (ApiHata ex) { ozelHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Toplu uygulama: ÖNİZLE → ONAYLA → UYGULA ────────────────────────────
+
+    private object TopluGovde(string hedefTur, string? parmakIzi) => new
+    {
+        hedefTur,
+        urunIdler = hedefTur == "SECILI" ? secilenler.ToList() : null,
+        kategoriId = hedefTur == "KATEGORI" ? kategoriId : null,
+        hasMarjYuzde = topluMarj,
+        iscilikCarpanYuzde = topluCarpan,
+        kurSnapshotId = KurId,
+        parmakIzi,
+        riskOnayi = topluRiskOnayi,
+    };
+
+    private Task SeciliOnizle() => Onizle("SECILI");
+    private Task KategoriOnizle() => Onizle("KATEGORI");
+
+    /// <summary>
+    /// ⚠ YAZMAZ: ?onizleme=true kuru çalıştırmadır. Onay modalı buradan doğar;
+    /// yazma yalnız <see cref="TopluOnayla"/> içinde ve parmak iziyle olur.
+    /// </summary>
+    private async Task Onizle(string hedefTur)
+    {
+        if (sayiKapisi.OnekleVar("flp-toplu-")) return;   // ORTAK-1: önizleme/uygulama yok
+        kaydediliyor = true; topluHata = null; basari = null;
+        try
+        {
+            sonHedefTur = hedefTur;
+            ozet = await Api.PostAsync<TopluSonuc>(
+                $"/fiyat/listeler/{ListeId}/toplu-uygula?onizleme=true", TopluGovde(hedefTur, null));
+        }
+        catch (ApiHata ex) { topluHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private void OzetKapat() { ozet = null; topluHata = null; }
+
+    private async Task TopluOnayla()
+    {
+        if (ozet is not { } z || sonHedefTur is not { } hedef) return;
+        kaydediliyor = true; topluHata = null;
+        try
+        {
+            var sonuc = await Api.PostAsync<TopluSonuc>(
+                $"/fiyat/listeler/{ListeId}/toplu-uygula", TopluGovde(hedef, z.ParmakIzi));
+            ozet = null;
+            basari = $"{Dil.T.Fiyat.TopluUygulandi}: {sonuc.Uygulanacak}";
+            await Yukle();
+        }
+        catch (ApiHata ex) { topluHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private Task Kapat() => Kapandi.InvokeAsync();
+}

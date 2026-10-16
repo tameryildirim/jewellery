@@ -1,0 +1,57 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET EKSIK-KUCUK — şerit dosyası.
+   B2-10: vitrin işçilik ibaresi + dükkân ekranı (/vitrin/ekran, kabuksuz tam ekran).
+   B2-12: satış ekranında "fiyat listesi değişti — güncelle" bandı.
+   Sabit renk YOK; yalnız belirteç (var()). Satır içi style YOK.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── B2-10 · Vitrin sayfasındaki ibare bloğu ─────────────────────────────── */
+.vitrin-ibare-blok { display: flex; flex-direction: column; gap: var(--bosluk-2); margin-top: var(--bosluk-3); }
+.vitrin-ibare { font-weight: 700; color: var(--metin-guclu); margin: 0; }
+.vitrin-ibare-secim { display: flex; flex-wrap: wrap; align-items: center; gap: var(--bosluk-2); }
+#vitrin-ibare-yasal { margin: 0; }
+
+/* ── B2-10 · Dükkân ekranı (tam ekran, kabuksuz) ─────────────────────────── */
+.vitrin-tam-ekran { min-height: 100vh; background: var(--yuzey-govde); color: var(--metin); }
+.vtam { box-sizing: border-box; max-width: 1600px; margin: 0 auto; padding: var(--bosluk-5) var(--bosluk-6);
+        display: flex; flex-direction: column; gap: var(--bosluk-4); }
+
+
+.vtam-eylem { display: flex; flex-wrap: wrap; gap: var(--bosluk-2); }
+.vtam-tablo { display: flex; flex-direction: column; background: var(--yuzey); border-radius: var(--yaricap-lg);
+              overflow: hidden; }
+.vtam-satir { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--bosluk-3);
+              align-items: baseline; padding: var(--bosluk-3) var(--bosluk-5);
+              font-size: clamp(1.125rem, .75rem + 1.6vw, 2.5rem); border-top: 1px solid var(--ayrac); }
+.vtam-satir:first-child { border-top: 0; }
+.vtam-basliklar { background: var(--yuzey-2); color: var(--metin-soluk); font-size: clamp(.875rem, .7rem + .6vw, 1.25rem);
+                  font-weight: 700; padding-top: var(--bosluk-2); padding-bottom: var(--bosluk-2); }
+.vtam-satir .sayi { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vtam-kalem { font-weight: 600; color: var(--metin-guclu); overflow-wrap: anywhere; }
+.vtam-satis { font-weight: 800; color: var(--metin-guclu); }
+.vtam-ibare { margin: 0; text-align: center; font-weight: 800; color: var(--metin-guclu);
+              font-size: clamp(1.125rem, .8rem + 1.2vw, 2rem); padding: var(--bosluk-3); border-radius: var(--yaricap);
+              background: var(--uyari-yuzey); }
+.vtam-alt { margin: 0; text-align: center; font-size: var(--yazi-sm); }
+.vtam-kilitli { font-size: var(--yazi-lg); }
+
+@media (max-width: 640px) {
+  .vtam { padding: var(--bosluk-3); }
+  .vtam-satir { padding: var(--bosluk-2) var(--bosluk-3); gap: var(--bosluk-2); }
+}
+
+/* ── B2-12 · Satış: liste değişti bandı ─────────────────────────────────── */
+.islem-liste-bant { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--bosluk-2); }
+.islem-liste-eylem { display: flex; flex-wrap: wrap; gap: var(--bosluk-2); }
+
+/* Yazdırma: ibare kâğıtta da görünür (kâğıt = ekran). */
+@media print {
+  .vtam-ibare { background: none; }
+}
+
+/* Seçili ibare düğmesi: ekranın tek birincil düğmesi kuralını bozmadan vurgulanır. */
+.vitrin-ibare-secim .vitrin-ibare-secili { border-color: var(--vurgu); color: var(--vurgu); background: var(--vurgu-yuzey); font-weight: 700; }
+
+/* Dükkân ekranında başlık uzaktan okunur (sayfa başı ortak bileşen, üst bar yok). */
+.vtam .sayfa-basi-baslik { font-family: var(--yazi-marka); font-size: clamp(1.5rem, 1rem + 2vw, 3rem); color: var(--metin-guclu); }
+.vtam .vtam-eylem { display: flex; flex-wrap: wrap; gap: var(--bosluk-2); }

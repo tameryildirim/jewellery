@@ -1,0 +1,144 @@
+/* ═══ PAKET EMANET-1 — EMANET EKRANI "ZORUNLU ÖNCE" (Pages/Emanet.razor) ═══════
+   Açılış: sade cümle · (i) ipucu · müşteri kartı (seçici + özet) · iki büyük
+   EŞİT eylem · "Eski kayıtlar" katlanırı (kapalı).
+   Tuval kart dili (Musteriler/Tezgah taslağı): 1 px ayraç kenar · 12 px köşe ·
+   yüzey zemin · gövde 18 px Manrope. Renkler YALNIZ belirteçten (8 tema).
+   Satır içi stil yok; app.css'e dokunulmaz — bu dosya #emanet-sayfa kapsamlı.
+   Büyük harf vurgusu YOK (text-transform kullanılmaz). */
+
+#emanet-sayfa .sayfa-basi-aciklama { font-size: 16px; }
+
+/* ── (i) ipucu ─────────────────────────────────────────────────────────── */
+#emanet-sayfa .emanet-bilgi { margin: -8px 0 0; }
+#emanet-sayfa .emanet-bilgi-ac {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px;
+  list-style: none; cursor: pointer; color: var(--metin-soluk); font-size: 15px;
+}
+#emanet-sayfa .emanet-bilgi-ac::-webkit-details-marker { display: none; }
+#emanet-sayfa .emanet-bilgi-ac:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; border-radius: 6px; }
+#emanet-sayfa .emanet-bilgi-i {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; flex: 0 0 20px; border: 1.5px solid currentColor; border-radius: 50%;
+  font-size: 13px; font-weight: 700; line-height: 1; font-style: normal;
+}
+#emanet-sayfa .emanet-bilgi-metin {
+  margin: 6px 0 0; padding: 10px 14px; max-width: 60ch;
+  border: 1px solid var(--ayrac); border-radius: 10px; background: var(--yuzey-2);
+  color: var(--metin); font-size: 15px; line-height: 1.45;
+}
+
+/* ── Müşteri kartı ─────────────────────────────────────────────────────── */
+#emanet-sayfa .emanet-musteri { border-radius: 12px; box-shadow: none; }
+#emanet-sayfa .emanet-musteri-govde { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; }
+/* Doğrulayıcı 28.09 (ORTA, K10): uzun ticari unvan ("… Ticaret Limited Şirketi")
+   520 px'te üç noktayla kesiliyordu. Seçici ana alanı kullanır (üst sınır 760 px)
+   ve seçili ad KESİLMEZ: gerekirse ikinci satıra iner, tetik boyu büyür. */
+#emanet-sayfa .emanet-musteri .secici-alan { max-width: 760px; }
+html[data-mod] #emanet-sayfa #e-cari.secici-tetik { height: auto; padding-block: 8px; }
+html[data-mod] #emanet-sayfa #e-cari > .secici-metin {
+  white-space: normal; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.3;
+}
+#emanet-sayfa .emanet-ozet {
+  /* Doğrulayıcı 27.09: space-between 1280'de etiketle değer arasında ~800 px
+     boşluk bırakıyordu; özet seçici genişliğiyle (520 px) sınırlı. */
+  max-width: 520px;
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px;
+  padding-top: 12px; border-top: 1px solid var(--ayrac);
+}
+#emanet-sayfa .emanet-ozet-etiket { color: var(--metin-soluk); font-size: 15px; }
+#emanet-sayfa .emanet-ozet-deger { font-family: "Sora", var(--font-govde, sans-serif); font-size: 20px; font-weight: 600; color: var(--metin); }
+
+/* ── İki büyük EŞİT eylem ──────────────────────────────────────────────── */
+#emanet-sayfa .emanet-eylemler { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#emanet-sayfa .emanet-eylemler > .emanet-eylem { width: 100%; min-width: 0; justify-content: center; }
+/* Kilit sebebi düğmelerin ALTINDA, binmeden (K9) ve okunur boyda (≥ 15 px). */
+#emanet-sayfa .emanet-eylemler + .emanet-kilit { margin: 8px 0 0; font-size: 15px; line-height: 1.4; }
+
+/* ── Eski kayıtlar ─────────────────────────────────────────────────────── */
+/* katlanir.css margin:0 verir; eylem satırına yapışmasın. */
+#emanet-sayfa .emanet-gecmis { border-radius: 12px; margin-top: 16px; }
+
+/* ── Çekmecedeki isteğe bağlı alanlar ("+ ekle") ───────────────────────── */
+.emanet-detay > .emanet-detay-ac {
+  display: inline-flex; align-items: center; min-height: 40px; cursor: pointer;
+  list-style: none; color: var(--vurgu); font-weight: 600;
+}
+.emanet-detay > .emanet-detay-ac::-webkit-details-marker { display: none; }
+.emanet-detay > .emanet-detay-ac:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; border-radius: 6px; }
+.emanet-detay[open] > .emanet-detay-ac { color: var(--metin-soluk); }
+.emanet-detay-govde { padding-top: 8px; }
+
+/* Eski kayıtlar tablosu: iki kelimelik başlık ("Has gram") 960 px'te iki
+   satıra kırılıyordu (K3_kirik, 27.09 ölçümü). Tablo zaten kendi kaydırma
+   kabında (.tablo-sar) — başlık tek satır kalır, taşarsa kap kaydırır. */
+#emanet-sayfa .emanet-gecmis .veri-tablosu th,
+#emanet-sayfa .emanet-gecmis .veri-tablosu td.sayi { white-space: nowrap; }
+
+@media (max-width: 600px) {
+  #emanet-sayfa .emanet-eylemler { grid-template-columns: 1fr; }
+  #emanet-sayfa .emanet-musteri-govde { padding: 14px; }
+  /* Doğrulayıcı 28.09 (ORTA, K6): 375 px'te gerçekçi uzun ticari unvan ("Mehmet
+     Karaosmanoğlu Kuyumculuk ve Mücevherat Ticaret Limited Şirketi") müşteri
+     listesinde 18 px'te 3 satıra bölünüyordu (345 px panel, 293 px ad sütunu;
+     ölçüldü: 18 px → 3 satır, 16 px → 2 satır). Yalnız dar ekranda ve yalnız bu
+     listede ad 16 px; kesme/üç nokta YOK, ad tam okunur. */
+  html[data-mod] #e-cari-liste-kap .secici-secenek .secici-ad { font-size: 16px; }
+}
+
+/* Doğrulayıcı/tasarım hakemi 27.09 (KRİTİK): BASİT modda satır eylemleri
+   ("Ayrıntı" + "Geri al (düzeltme fişi)") alt alta dizilip kesiliyor, tablo
+   1280'de kabını aşıyordu. Satır düğmesi artık kısa "Geri al" (tam yol
+   Ayrıntı çekmecesinde), iki düğme YAN YANA ve kırılmaz; tarih tek satır. */
+#emanet-sayfa .emanet-gecmis .veri-tablosu td.emanet-tarih { white-space: nowrap; }
+#emanet-sayfa .emanet-gecmis .emanet-satir-eylem { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
+#emanet-sayfa .emanet-gecmis .emanet-satir-eylem > .btn { white-space: nowrap; flex: 0 0 auto; }
+/* 960 px (27.09 ölçümü): yan yana iki satır düğmesi dar ana alanda kaydırma
+   kabının kenarında kesik görünüyordu → dar ekranda düğmeler alt alta. */
+@media (max-width: 1100px) {
+  #emanet-sayfa .emanet-gecmis .emanet-satir-eylem { flex-wrap: wrap; }
+}
+
+/* Doğrulayıcı 28.09 (KRİTİK): HamMetinKabi (Pages/EmanetParcalari) kutuya yazılan ham metni izler;
+   yerleşime katılmaz (ızgara/sütun çocukları olduğu gibi kalır). */
+.emanet-ham { display: contents; }
+/* Tasarım hakemi 28.09 (KRİTİK — K7 "inputlar aynı seviyede değil"): ortak kural
+   `.form-grid-2 > .alan { grid-template-rows: subgrid; grid-row: span 3 }` DOM
+   ebeveynine bakar; kabın içindeki Gram `.alan`ı ona uymuyor, tek satıra
+   oturup Ayar seçicisini 60 px aşağı itiyordu (#e-ayar 173 ↔ #e-gram 113).
+   Kap kutu üretmediği için Gram yine ızgaranın hücresidir: aynı üç raylı
+   alt ızgara buradan verilir → etiketler ve kutular aynı y'de. */
+.form-grid-2 > .emanet-ham > .alan,
+.form-grid-3 > .emanet-ham > .alan { grid-template-rows: subgrid; grid-row: span 3; row-gap: inherit; }
+
+/* Doğrulayıcı 28.09 (DÜŞÜK): Eski kayıtlarda satırın madeni (tür rozetinin yanında). */
+#emanet-sayfa .emanet-gecmis .emanet-satir-maden { margin-inline-start: 6px; white-space: nowrap; }
+
+/* Doğrulayıcı 28.09 (DÜŞÜK, 375 px): karma özette maden adı sayısından ayrılmaz;
+   satır yalnız parçalar arasındaki " · " ayırıcısında kırılır. */
+#emanet-sayfa .emanet-ozet-deger .emanet-ozet-parca { white-space: nowrap; }
+
+/* ── Tasarım hakemi 28.09 (KRİTİK): çekmece tabanı "Vazgeç + Kaydet" ─────────
+   Kaydet gövdenin ortasında, İptal ekranın dibinde tek başına duruyordu.
+   Tuval (Musteriler.dc.html aside): düğmeler çekmecenin DİBİNDE yan yana,
+   aralık 10 px, yükseklik 50 px, köşe 9 px, yazı 17 px; Vazgeç içerik kadar,
+   Kaydet kalan genişliği doldurur. Ortak Cekmece'nin taban yuvası yok
+   (ORTAK-1 alanı): taban gövdenin sonunda yapışkan çizilir, çekmecenin kendi
+   tabanı YALNIZ bu iki çekmecede gizlenir (× ve Esc yine kapatır). */
+#cekmece-emanet-giris > .cekmece-alt,
+#cekmece-emanet-cikis > .cekmece-alt { display: none; }
+#cekmece-emanet-giris-govde,
+#cekmece-emanet-cikis-govde { display: flex; flex-direction: column; padding-bottom: 0; }
+#cekmece-emanet-giris-govde > .form-dikey,
+#cekmece-emanet-cikis-govde > .form-dikey { flex: 1 0 auto; }
+.emanet-cekmece-alt {
+  position: sticky; bottom: 0; z-index: 1;
+  display: flex; align-items: center; gap: 10px;
+  margin-top: auto; padding: 16px 0 var(--bosluk-4);
+  background: var(--yuzey);
+}
+html[data-mod] .emanet-cekmece-alt > .btn {
+  height: 50px; min-height: 50px; border-radius: 9px; font-size: 17px;
+  white-space: nowrap; justify-content: center;
+}
+html[data-mod] .emanet-cekmece-alt > .btn-ikincil { flex: 0 0 auto; padding-inline: 18px; }
+html[data-mod] .emanet-cekmece-alt > .btn-birincil { flex: 1 1 auto; min-width: 0; font-weight: 600; }

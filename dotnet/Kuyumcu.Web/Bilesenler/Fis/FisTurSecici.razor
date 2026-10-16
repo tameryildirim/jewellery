@@ -1,0 +1,80 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET P-TEZGAH-TUR-KIMLIK — YILDIZ İŞLEM TÜRÜ SEÇİCİSİ (denetim Y4, 10.10) ═══
+   Kusur: Alış/İade/Tahsilat küçük, alt çizgisiz "SATIŞ" yazısının arkasındaydı (yalnız title); açılınca
+   Kaydet ekran dışına iniyordu. Artık türler GÖRÜNÜR, tek tıkla: Satış · Alış · İade · Tahsilat (+ seçili
+   tür bunlardan biri değilse kendisi) — tuvalin .sek kalıbı (14 px, .1em, büyük harf, seçili --m + alt çizgi --p).
+   "Diğer" (tüm türler + PRO "Diğer ▾" menüsü) çağıranın düğmesidir: Satış yüzünde #yildiz-tezgah-tur
+   (mevcut id), öteki türlerde #yildiz-tur-diger.
+   ⚠ Bileşen İSTEK ATMAZ: tür seçimi sayfanın TurSec'i (Islemler.TurSecDiger — kural/gövde AYNEN); Tahsilat
+     Müşteriler'e derin bağlantıdır (FisIslemIzgarasi.Hedef ile aynı kural: seçili GERÇEK müşteri varsa ?cariId=).
+   Türler sayfanın süzülmüş listesinden (TurListesi — yetki/mod) gelir; listede olmayan tür çizilmez. *@
+<span class="yz-tur-sekmeler" id="@Id" role="group" aria-label="@M.TurSeciciEtiket">
+    @foreach (var (kod, etiket, baslik) in Sekmeler)
+    {
+        var secili = kod == Secili;
+        <button type="button" class="@(secili ? "yz-tur-sekme yz-tur-sekme--secili" : "yz-tur-sekme")" id="@($"yildiz-tur-{kod}")"
+                aria-pressed="@(secili ? "true" : "false")" title="@baslik" @onclick="() => TurSec.InvokeAsync(kod)">@etiket</button>
+    }
+    @if (TahsilatVar)
+    {
+        <a class="yz-tur-sekme" id="yildiz-tur-tahsilat" href="@TahsilatAdresi">@Dil.T.Cari.Tahsilat</a>
+    }
+    @Diger
+</span>
+
+@code {
+    /// <summary>Sayfanın süzülmüş tür listesi (TurListesi — mod ve yetkiyle).</summary>
+    [Parameter, EditorRequired] public (string Deger, string Etiket)[] Turler { get; set; } = [];
+    /// <summary>Seçili tür.</summary>
+    [Parameter] public string Secili { get; set; } = "SATIS";
+    /// <summary>BASİT mi (Alış = eski altın alışı) — değilse PRO (Alış = ürün alışı).</summary>
+    [Parameter] public bool Basit { get; set; }
+    /// <summary>Tür seçildi — sayfanın TurSec'i.</summary>
+    [Parameter] public EventCallback<string> TurSec { get; set; }
+    /// <summary>Seçili müşteri (Tahsilat derin bağlantısı).</summary>
+    [Parameter] public string? CariId { get; set; }
+    /// <summary>Peşin Müşteri kartı — ona tahsilat bağlantısı kurulmaz.</summary>
+    [Parameter] public string? PesinCariId { get; set; }
+    /// <summary>Sondaki "Diğer" düğmesi (çağıranın — id'si ve geri çağrısı onun).</summary>
+    [Parameter] public RenderFragment? Diger { get; set; }
+    /// <summary>Kabın kimliği (iki yüzde iki ayrı kimlik).</summary>
+    [Parameter] public string Id { get; set; } = "yildiz-tur-secici";
+
+    private TurKimlikMetinleri M => TurKimlikSozlugu.Al(Dil.Dil);
+
+    /// <summary>Ana türler: Satış · Alış · İade. Tur 2 (tasarım hakemi KRİTİK "PRO'da Alış eski form, BASİT'ten farklı ekran"):
+    /// Yıldız'da "Alış" İKİ MODDA da müşteriden altın alışıdır (HURDA_ALIS — tezgâhtar dilinde "alış"); toptancıdan ürün alışı
+    /// (ALIS) "Diğer" listesinde kalır (özellik silinmedi). Basit parametresi geriye uyum için durur, seçimi değiştirmez.</summary>
+    internal string[] AnaTurler => ["SATIS", "HURDA_ALIS", "SATIS_IADE"];
+
+    private IEnumerable<(string Kod, string Etiket, string? Baslik)> Sekmeler
+    {
+        get
+        {
+            foreach (var kod in AnaTurler)
+            {
+                var t = Turler.FirstOrDefault(x => x.Deger == kod);
+                if (t.Deger is null) continue;
+                var kisa = kod switch { "SATIS" => M.Satis, "SATIS_IADE" => M.Iade, _ => M.Alis };
+                yield return (kod, kisa, kisa == t.Etiket ? null : t.Etiket);
+            }
+            // Seçili tür ana türlerden değilse (Takas, Alış iadesi, Hurda alış …) kendi adıyla görünür — kullanıcı nerede olduğunu görür.
+            if (Array.IndexOf(AnaTurler, Secili) < 0 && Turler.FirstOrDefault(x => x.Deger == Secili) is { Deger: not null } s)
+                yield return (s.Deger, s.Deger == "ALIS" ? M.UrunAlisi : s.Etiket, s.Deger == "ALIS" ? s.Etiket : null);   // tur 2: iki "Alış" sekmesi olmaz
+        }
+    }
+
+    private bool TahsilatVar => BasitPos.Kisayollar.Any(k => k.Kod == "TAHSILAT" && k.Adres is not null);
+
+    /// <summary>FisIslemIzgarasi.Hedef ile aynı kural (UX-S23/P-15).</summary>
+    internal string TahsilatAdresi
+    {
+        get
+        {
+            var adres = BasitPos.Kisayollar.First(k => k.Kod == "TAHSILAT").Adres!;
+            return !string.IsNullOrEmpty(CariId) && CariId != PesinCariId ? $"{adres}?cariId={Uri.EscapeDataString(CariId)}" : adres;
+        }
+    }
+}

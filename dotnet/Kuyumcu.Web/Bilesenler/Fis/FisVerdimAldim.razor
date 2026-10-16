@@ -1,0 +1,230 @@
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Web.Bilesenler.Form
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-2 — TEK GRID: VERDİM / ALDIM + FARK (Pusula formülü) ═══════════
+   PLAN-SADELESTIRME § S-2 madde 2.3 · taslak Tezgah.dc.html: kalemler (çıkış)
+   ve ödeme (giriş) AYNI kartta iki sütun, altta FARK.
+   • Sütunların İÇERİĞİ sayfanın mevcut bileşenleridir (FisKalemTablosu,
+     FisOdemeKasa, FisOdemeBacaklari) — satır içi düzenleme, kasa, POS, döviz,
+     iskonto aynen durur (özellik silinmez; id'ler değişmez).
+   • FARK kuralı TEK YERDE: FisFark (saf). Kaydet kilidi de aynı kuraldan okur.
+   • Fark > 0 ve gerçek müşteri → "Açık hesap olarak kaydet" (mevcut VERESİYE
+     bacağı). Peşin Müşteri'de kilitli ve sebebini yazar (UX-S30); sunucu da
+     reddeder (B-3 K3).
+   ⚠ Bileşen İSTEK ATMAZ, ApiIstemci enjekte etmez (PLAN § 3 md.5): açık hesap
+     ve böl/birleştir sayfanın geri çağrılarıdır, POST yalnız Islemler.Kaydet.
+   ⚠ Sabit renk / satır içi style yok: app.css'in mevcut belirteçli sınıfları. *@
+@* ═══ PAKET T-S1 — TUVAL (Tezgah.dc.html) FİŞ KARTI ════════════════════════
+   İki eşit sütun, ÜSTTEN HİZALI (QA-10): her sütun başlık · tablo · boşluk ·
+   alt çubuk. VERDİM: Ürün · Ayar · Gram · Tutar tablosu (FisKalemTablosu
+   Basit) + alt çubuk "Toplam · N g | tutar". ALDIM: Ödeme · ayrıntı · Tutar
+   tablosu (tek ödemede tek satır; karmada bacaklar FisOdemeBacaklari) + alt
+   çubuk "Fark | 0 ₺ ✓". Böl / eski altın / açık hesap düğmeleri ve id'ler
+   AYNEN (özellik silinmez). Renkler belirteçle (css/tuval-satis.css). *@
+<section class="kart fis-tuval@(Karma && Bacaklar.Count > 1 ? " fis-tuval-karma" : null)" id="islem-verdim-aldim" aria-label="@($"{M.VerdimBaslik} / {M.AldimBaslik}")">
+    <div class="fis-tuval-izgara">
+        <div class="fis-tuval-sutun" id="islem-verdim">
+            <h3 class="fis-tuval-baslik">@M.VerdimBaslik</h3>
+            <div class="fis-tuval-icerik">
+                @if (KalemVar)
+                {
+                    @Verdim
+                }
+                else
+                {
+                    <p class="metin-soluk fis-tuval-bos" id="islem-verdim-bos">@M.VerdimBos</p>
+                }
+            </div>
+            <div class="fis-tuval-alt" id="islem-verdim-toplam">
+                <span class="metin-soluk" id="islem-verdim-gram">@string.Format(T.ToplamGram, ToplamGram.ToString("#,0.00", Tr))</span>
+                <span class="fis-tuval-tutar sayi">@Bicim.Para(Toplam, "TRY")</span>
+            </div>
+        </div>
+        <div class="fis-tuval-sutun" id="islem-aldim">
+            <h3 class="fis-tuval-baslik">@M.AldimBaslik</h3>
+            <div class="fis-tuval-icerik">
+                @if (!Karma)
+                {
+                    @* PAKET GOC-C-2 (tasarım hakemi YÜKSEK "ham tablo kaldı"): tek ödeme satırı ORTAK IZGARADA
+                       (grid:islemler:aldim). Tablo/satır kimlikleri (islem-aldim-tablo, islem-aldim-satir) ve hücre
+                       sınıfları AYNEN. GOC-C istisnası (satır içi ödeme seçici, colspan 2) şöyle kapandı: seçici ve
+                       kasa adı TEK hücrede (ızgara hücre şablonu); seçici varken "Ayrıntı" sütunu çizilmez — colspan gerekmez. *@
+                    <Izgara T="int" Ekran="islemler" GridId="aldim" KartListeId="islem-aldim-liste" TabloId="islem-aldim-tablo"
+                            TabloSinif="fis-tuval-tablo" YapiskanIlkSutun="false" Kolonlar="@AldimKolonlari" Ogeler="@TekSatir"
+                            SatirId="@(_ => "islem-aldim-satir")" Baslik="@M.AldimBaslik" />
+                }
+                else
+                {
+                    @* T-S1: bölünmüş ödemede bacaklar tuvalin ALDIM tablosu gibi satır satır
+                       (Ödeme · ayrıntı · Tutar) — sütun başlıkları; düzenleme alanları aynı (FisOdemeBacaklari). *@
+                    <div class="fis-tuval-bacak-baslik" id="islem-aldim-bacak-baslik" aria-hidden="true">
+                        <span>@T.SutunOdeme</span><span>@T.SutunAyrinti</span><span class="sayi">@T.SutunTutar</span><span></span>
+                    </div>
+                }
+                @Aldim
+                <div class="fis-tuval-eylemler">
+                    @if (!Karma)
+                    {
+                        <p class="gorsel-gizli" id="islem-aldim-tek">@M.TekOdeme</p>
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-odeme-bol"
+                                disabled="@(!KalemVar || Kaydediliyor)" title="@(KalemVar ? null : M.VerdimBos)" aria-describedby="@(KalemVar ? null : "islem-odeme-bol-kilit")" @onclick="() => OdemeyiBol.InvokeAsync()">
+                            @SatisSadeSozlugu.Al(Dil.Dil).BaskaOdemeEkle   @* SATIS-2 (kurucu 11:35): ikinci bacak isteğe bağlı — "+ Başka ödeme ekle" (PRO ile aynı söz) *@
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-odeme-birlestir"
+                                disabled="@Kaydediliyor" @onclick="() => TekOdemeyeDon.InvokeAsync()">
+                            @M.TekOdemeyeDon
+                        </button>
+                    }
+                    @* k2 (tasarım hakemi K19, 29.09): ayrı "Eski altın" düğmesi KALKTI — tek kapı "+ Başka ödeme ekle";
+                       eski altın açılan satırın ödeme türü listesinden seçilir (#islem-bacak-N-arac → "Eski altın").
+                       İki kapı aynı ekranda farklı sonuç veriyordu (kart kalana düşmüyordu). Özellik silinmedi. *@
+                </div>
+                @if (!Karma && !KalemVar)
+                {
+                    @* SATIS-2: VERDİM'deki boş durum metninin AYNISI ikinci kez yazılmaz — sebep düğmenin ipucunda + ekran okuyucuda (UX-S30). *@
+                    <span class="metin-kucuk metin-soluk gorunmez" id="islem-odeme-bol-kilit">@M.VerdimBos</span>
+                }
+            </div>
+            @* ── FARK: VERDİM − ALDIM (FisFark) — ALDIM sütununun alt çubuğu ── *@
+            <div class="fis-tuval-alt @FarkSinif" id="islem-fark" role="status">
+                <span>@M.Fark</span>
+                <span class="fis-tuval-tutar sayi" id="islem-fark-tutar">@(OdemeBelirsiz ? "—" : Bicim.Para(Fark, "TRY"))@if (Durum == FarkDurumu.Tamam && !OdemeBelirsiz) {<Ikon Ad="@Ikonlar.Onay" Sinif="fis-fark-onay" />}</span>
+            </div>
+        </div>
+    </div>
+    <div class="fis-tuval-not">
+        <span class="metin-kucuk @FarkRenk @(Durum == FarkDurumu.Tamam && !OdemeBelirsiz ? "gorsel-gizli" : null)" id="islem-fark-durum">@FarkMetni</span>   @* t17: ödeme tutarı anlaşılamıyorsa "0 ₺ ✓" DENMEZ *@
+        @if (Durum == FarkDurumu.Eksik)
+        {
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-acik-hesap"
+                    disabled="@(AcikHesapKilidi is not null || Kaydediliyor)"
+                    @onclick="() => AcikHesap.InvokeAsync()">
+                @M.AcikHesapKaydet
+            </button>
+            @if (AcikHesapKilidi is { } kilit)
+            {
+                <span class="metin-kucuk metin-amber" id="islem-acik-hesap-kilit" role="status">@kilit</span>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    // ── PAKET GOC-C-2 — ALDIM tek ödeme satırı (ortak ızgara) ──
+    private static readonly IReadOnlyList<int> TekSatir = [0];
+    private bool SeciciVar => KalemVar && OdemeSecenekleri is { Count: > 0 };
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.Grid.IzgaraKolonu<int>> AldimKolonlari
+    {
+        get
+        {
+            var k = new List<Kuyumcu.Web.Bilesenler.Grid.IzgaraKolonu<int>>
+            {
+                new() { Anahtar = "odeme", Baslik = T.SutunOdeme, ZorunluGorunur = true, KartEtiketsiz = true, HucreSinif = _ => "fis-tuval-ad",
+                        Hucre = _ => SeciciVar && OdemeSecenekleri is { } secenekler
+                            ? @<text>
+                                @* PARA-DEMO-2 (madde 1): BASİT tek ödeme satırından Nakit / Kart / Havale seçilir; seçici + kasa adı aynı hücrede
+                                   (kasa adı seçicinin ALTINDA — dar ALDIM sütununda tutar kırpılmasın). Ortak seçici (ham <select> yok). *@
+                                <span class="fis-aldim-odeme-sar" id="islem-aldim-odeme-sar">
+                                    <Secici ElemanId="islem-aldim-odeme" Etiket="@ParaDemo2Sozlugu.Al(Dil.Dil).AldimOdemeEtiket"
+                                            Secenekler="secenekler" Deger="@(OdemeTuru ?? "NAKIT")" Devredisi="Kaydediliyor"
+                                            DegerChanged="@((string? v) => OdemeTuruSec.InvokeAsync(v ?? "NAKIT"))" />
+                                </span>
+                                <span class="fis-tuval-ayrinti fis-aldim-kasa" id="islem-aldim-kasa">@(KasaAdi ?? T.KasaYok)</span>
+                              </text>
+                            : @<text>@OdemeAdi</text> },
+            };
+            if (!SeciciVar)
+                k.Add(new() { Anahtar = "ayrinti", Baslik = T.SutunAyrinti, BaslikGizli = true, KartEtiketsiz = true, HucreSinif = _ => "fis-tuval-ayrinti",
+                              Hucre = _ => @<text>@(KasaAdi ?? T.KasaYok)</text> });
+            k.Add(new() { Anahtar = "tutar", Baslik = T.SutunTutar, ZorunluGorunur = true, KartEtiketsiz = true, BaslikSinif = "sayi",
+                          HucreSinif = _ => "sayi fis-tuval-hucre-tutar", Hucre = _ => @<text>@Bicim.Para(Toplam, "TRY")</text> });
+            return k;
+        }
+    }
+
+    /// <summary>VERDİM sütununun içeriği (kalem tablosu + fiş iskontosu — sayfadan).</summary>
+    [Parameter] public RenderFragment? Verdim { get; set; }
+    /// <summary>ALDIM sütununun içeriği (ödeme türü/kasa ya da bacaklar — sayfadan).</summary>
+    [Parameter] public RenderFragment? Aldim { get; set; }
+    /// <summary>Fişte en az bir kalem var mı?</summary>
+    [Parameter] public bool KalemVar { get; set; }
+    /// <summary>VERDİM: fişin NET toplamı (FisHesap.Toplam — sunucu formülü).</summary>
+    [Parameter] public decimal Toplam { get; set; }
+    /// <summary>Ödeme bölünmüş mü (karma)? Değilse tek ödeme fişin tamamıdır, fark 0.</summary>
+    [Parameter] public bool Karma { get; set; }
+    /// <summary>ALDIM: ödeme bacakları (sahibi sayfa).</summary>
+    [Parameter] public IReadOnlyCollection<FisBacagi> Bacaklar { get; set; } = [];
+    [Parameter] public string? CariId { get; set; }
+    [Parameter] public string? PesinCariId { get; set; }
+    [Parameter] public bool Kaydediliyor { get; set; }
+    [Parameter] public EventCallback OdemeyiBol { get; set; }
+    [Parameter] public EventCallback TekOdemeyeDon { get; set; }
+    /// <summary>Kalanı VERESİYE bacağıyla kapatıp kaydeder — sayfanın Kaydet'i.</summary>
+    [Parameter] public EventCallback AcikHesap { get; set; }
+
+    /// <summary>PAKET T-S1 — tek ödemenin türü (ALDIM satırının adı; sözlükten, ham kod basılmaz).</summary>
+    [Parameter] public string? OdemeTuru { get; set; }
+    /// <summary>PARA-DEMO-2 (madde 1) — BASİT tek ödeme satırının seçenekleri (null = seçici yok, ad yazılır).</summary>
+    [Parameter] public IReadOnlyList<SecenekOgesi>? OdemeSecenekleri { get; set; }
+    /// <summary>PARA-DEMO-2 (madde 1) — tek ödemenin türü seçilince (sayfa odemeTuru'nu yazar).</summary>
+    [Parameter] public EventCallback<string> OdemeTuruSec { get; set; }
+
+    /// <summary>PAKET T-S1 — tek ödemenin kasası (ALDIM satırının ayrıntısı); null = seçilmedi.</summary>
+    [Parameter] public string? KasaAdi { get; set; }
+    /// <summary>PAKET T-S1 — fişin toplam gramı (FisHesap.ToplamGram) — "Toplam · N g".</summary>
+    [Parameter] public decimal ToplamGram { get; set; }
+
+    private TezgahFisiMetinleri M => TezgahFisiSozlugu.Al(Dil.Dil);
+    private SatisTuvalMetinleri T => SatisTuvalSozlugu.Al(Dil.Dil);
+    /// <summary>Gram sayısı tr-TR (kurucu kuralı: sayı biçimi tarayıcı diline göre değişmez).</summary>
+    private static readonly System.Globalization.CultureInfo Tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    private string OdemeAdi => OdemeTuru switch
+    {
+        "KART" => Dil.T.Islem.OdemeKart,
+        "HAVALE" => Dil.T.Islem.OdemeHavale,
+        "VERESIYE" => Dil.T.Islem.OdemeVeresiye,
+        "DOVIZ" => Dil.T.Islem.OdemeDoviz,
+        null or "" or "NAKIT" => Dil.T.Islem.OdemeNakit,
+        _ => Dil.T.Islem.OdemeTuru,   // bilinmeyen kod UYDURULMAZ ve ham basılmaz (UX-S31)
+    };
+
+    private string FarkSinif => Durum == FarkDurumu.Tamam && !OdemeBelirsiz ? "fis-fark-tamam" : "fis-fark-acik";
+
+    /// <summary>SATIS-3 t17 ("görünen ≠ giden"): sayfanın geçersiz sayı kapısı.</summary>
+    [CascadingParameter] public GecersizAlanKapisi? GecersizKapi { get; set; }
+
+    /// <summary>Bir ödeme satırının tutar kutusu anlaşılamayan sayı taşıyor mu? Taşıyorsa fark hesaplanmış sayılmaz:
+    /// kutu "1.500" derken alt çubuk "0 ₺ ✓" demez (o satır hesaba 0 olarak giriyordu).</summary>
+    private bool OdemeBelirsiz => GecersizKapi?.OnekleVar("islem-bacak-") == true || KurEksik;
+    /// <summary>t21 (hasım doğrulayıcı KRİTİK): döviz miktarı girildi ama kur yok — TL karşılığı bilinmiyor, fark "0 ₺ ✓" denmez.</summary>
+    private bool KurEksik => Karma && FisFark.DovizKuruEksik(Bacaklar);
+    private EskiAltinMetinleri E => EskiAltinSozlugu.Al(Dil.Dil);
+
+    internal decimal Fark => FisFark.Hesapla(Toplam, Karma ? Bacaklar : null);
+    private FarkDurumu Durum => FisFark.Durum(Fark);
+
+    private string? AcikHesapKilidi =>
+        FisFark.AcikHesapKilidi(Fark, CariId, PesinCariId, Bacaklar, M);
+
+    private string FarkRenk => Durum == FarkDurumu.Tamam && !OdemeBelirsiz ? "metin-yesil" : "metin-kirmizi";
+
+    /// <summary>PAKET YASAL-KAPI-2 (tasarım hakemi): Kaydet başka bir sebeple (kimlik formu, kasa …) kilitli mi —
+    /// kilitliyken fark satırı "kaydedebilirsiniz" DEMEZ; kilidin sebebi Kaydet'in yanında tek yerde yazar.</summary>
+    [Parameter] public bool KaydetKilitli { get; set; }
+
+    private string FarkMetni => KurEksik ? Satis3Sozlugu.Al(Dil.Dil).DovizKuruYok
+        : OdemeBelirsiz
+        ? string.Format(Satis3Sozlugu.Al(Dil.Dil).AlanDuzeltin, string.Join(" · ", GecersizKapi!.Etiketler("islem-bacak-")))
+        : Durum switch
+    {
+        FarkDurumu.Tamam => KaydetKilitli ? YasalKapi2Sozlugu.Al(Dil.Dil).FarkYok : M.FarkTamam,
+        FarkDurumu.Eksik => M.FarkEksik,
+        _ => M.FarkFazla,
+    };
+}

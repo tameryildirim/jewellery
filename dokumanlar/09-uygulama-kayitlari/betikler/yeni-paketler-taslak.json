@@ -1,0 +1,84 @@
+{
+ "katman": "Yeni paketler (hazırlık kurulu tur 1)",
+ "parti": 3,
+ "paketler": [
+  {
+   "no": "T-1",
+   "ad": "Yayın ve kurulum paketi (.NET 8 self-contained publish, servis kurulumu, üretim ayarları, migration bundle, TLS, sır üretimi)",
+   "tanim": "[KRİTİK] Yayın/kurulum yolu yok: DEPLOY.md hâlâ NestJS anlatıyor, API açılışta Migrate() çağırmıyor, start.bat müşteriye SDK + Development dayatıyor → Yeni paket T-1: dotnet publish (self-contained), Windows Service/systemd birimi, appsettings.Production şablonu, nginx/IIS ters vekil, 'dotnet ef migrations bundle' + 'önce yedek al' runbook'u, tek kaynaktan DB adı (compose 'kuyumcu' vs canlı 'kuyumcu_net' çelişkisi kapanır). Kanıt: temiz makinede baştan sona kurulum kaydı. || [KRİTİK] Kurulum sırları depoda düz metin, 3306 dışa açık, TLS yok, sabit parola her müşteride aynı → F-6/T-1 ortak: docker-compose.uretim.yml (sır .env, 3306 yalnız iç ağ, kaynak limiti, log rotasyonu), kurulumda parola + JWT sırrı üretimi zorunlu, varsayılan sırla açılışta fail-closed kontrol; F-7 Let's Encrypt + otomatik yenileme + HSTS + 80→443. Mehmet ile ortak mühür. || [YÜKSEK] Ticari paket yok: fiyat kademeleri, demo betiği/demo kiracısı, kurulum-eğitim-destek SLA, referans tanımsız → S-1/SATIS-1 (Eray + Mustafa ortak): fiyat kademeleri (F-8 sonrası), 15 dakikalık demo betiği, gerçek görünümlü demo kiracısı (QA-TEST-1 değil), veri taşıma sözü, kurulum/eğitim SLA'sı, 3 pilot referans. 1.0 ile aynı anda yayımlanır; erken fiyat ilanı itibar riski.",
+   "dalga_onerisi": "3"
+  },
+  {
+   "no": "T-2",
+   "ad": "Açılış bakiyeleri ve işletme kuruluş sihirbazı (ilk gün: kasa/banka/cari/stok açılış, şube, kullanıcılar)",
+   "tanim": "[KRİTİK] Veri göçü ve açılış bakiyeleri yok — mevcut dükkân ilk gününü kuramaz → Paket 47 dalga 7'den dalga 3'e: kapılı içe aktarım (Mehmet'in seçenek 2 kararı) — CSV/Excel şablonu, kuru prova, doğrulama raporu, geri alınabilir toplu yükleme. Yanına T-2 'İşletme kurulum sihirbazı': açılış stoğu, cari açılış bakiyesi, kasa/banka açılış tutarı, denetim izli.",
+   "dalga_onerisi": "3"
+  },
+  {
+   "no": "T-3",
+   "ad": "Yedek otomasyonu ve geri yükleme (docker'sız mysqldump, zamanlayıcı, şifreli dış kopya, 30 gün saklama, uygulama içi Yedekler ekranı, doğrulanmış geri yükleme)",
+   "tanim": "[KRİTİK] Yayın/kurulum yolu yok: DEPLOY.md hâlâ NestJS anlatıyor, API açılışta Migrate() çağırmıyor, start.bat müşteriye SDK + Development dayatıyor → Yeni paket T-1: dotnet publish (self-contained), Windows Service/systemd birimi, appsettings.Production şablonu, nginx/IIS ters vekil, 'dotnet ef migrations bundle' + 'önce yedek al' runbook'u, tek kaynaktan DB adı (compose 'kuyumcu' vs canlı 'kuyumcu_net' çelişkisi kapanır). Kanıt: temiz makinede baştan sona kurulum kaydı. || [YÜKSEK] Yedek otomasyonu yok, betik Docker'a bağlı; RPO/RTO taahhüdü ve uygulama içi yedek ekranı yok → T-3/F-5: docker'sız mysqldump yolu, systemd timer (gecelik tam + 6 saatlik artımlı — Dezy çıtası), şifreli dış kopya, 30 gün saklama, uygulama içi 'Yedekler' ekranı (son yedek + doğrulama durumu), aylık otomatik geri-yükleme tatbikat raporu.",
+   "dalga_onerisi": "3"
+  },
+  {
+   "no": "T-4",
+   "ad": "Destek ve işletim görünürlüğü (kopyalanabilir hata kimliği, sürüm/derleme/migration damgası, maskeli destek paketi)",
+   "tanim": "[YÜKSEK] Destek ve işletim körlüğü: hata kimliği/sürüm damgası yok, telemetri yok, üç düzenleme kalıbı ikizleniyor, migration dizini kirli → T-4 (kopyalanabilir hata kimliği, sürüm/derleme/migration damgası, maskeli destek paketi) + F-4 (kiracı etiketli OpenTelemetry sayaçları, gecelik kullanım özeti) + UX-2-A2 koşuluna 'ModalPencere ve duzenlenenId kalıbı Cekmece'ye göç, denetim.sh ModalPencere=0' + TB-M1 (8 sıfır baytlık migration + .mutorj temizliği, silme Kurucu'da).",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "F-1",
+   "ad": "Abonelik ve faturalama çekirdeği (abonelik + hareket tablosu, DENEME/AKTIF/GECIKMIS/ASKIDA/IPTAL, durum değişince yazma kapısı)",
+   "tanim": "[KRİTİK] Abonelik/faturalama katmanı yok; kayıt ucu bedava-sınırsız; plan kademeleri teknik olarak uygulanmıyor → F-1 (abonelik + hareket tablosu, DENEME/AKTIF/GECIKMIS/ASKIDA/IPTAL, durum değişince yazma kapısı) + F-2 (14 gün deneme, süre bitince salt-okunur + dışa aktarım açık) + F-3 (PlanKapisi middleware, KiraciYazmaDenetcisi deseniyle kota/özellik kapısı). F-1 olmadan sözleşme imzalanmaz.",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "F-2",
+   "ad": "Deneme hunisi (14 gün deneme, süre bitince salt-okunur + dışa aktarım açık, uyarı bandı)",
+   "tanim": "[KRİTİK] Abonelik/faturalama katmanı yok; kayıt ucu bedava-sınırsız; plan kademeleri teknik olarak uygulanmıyor → F-1 (abonelik + hareket tablosu, DENEME/AKTIF/GECIKMIS/ASKIDA/IPTAL, durum değişince yazma kapısı) + F-2 (14 gün deneme, süre bitince salt-okunur + dışa aktarım açık) + F-3 (PlanKapisi middleware, KiraciYazmaDenetcisi deseniyle kota/özellik kapısı). F-1 olmadan sözleşme imzalanmaz.",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "F-3",
+   "ad": "Plan kademeleri ve kapasite sınırları (PlanKapısı: kullanıcı/şube/işlem sınırları, plan yükseltme)",
+   "tanim": "[KRİTİK] Abonelik/faturalama katmanı yok; kayıt ucu bedava-sınırsız; plan kademeleri teknik olarak uygulanmıyor → F-1 (abonelik + hareket tablosu, DENEME/AKTIF/GECIKMIS/ASKIDA/IPTAL, durum değişince yazma kapısı) + F-2 (14 gün deneme, süre bitince salt-okunur + dışa aktarım açık) + F-3 (PlanKapisi middleware, KiraciYazmaDenetcisi deseniyle kota/özellik kapısı). F-1 olmadan sözleşme imzalanmaz.",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "F-4",
+   "ad": "Telemetri ve sağlık (kiracı etiketli OpenTelemetry sayaçları, sağlık ucu, uyarı eşikleri; kişisel veri yok)",
+   "tanim": "[YÜKSEK] Destek ve işletim körlüğü: hata kimliği/sürüm damgası yok, telemetri yok, üç düzenleme kalıbı ikizleniyor, migration dizini kirli → T-4 (kopyalanabilir hata kimliği, sürüm/derleme/migration damgası, maskeli destek paketi) + F-4 (kiracı etiketli OpenTelemetry sayaçları, gecelik kullanım özeti) + UX-2-A2 koşuluna 'ModalPencere ve duzenlenenId kalıbı Cekmece'ye göç, denetim.sh ModalPencere=0' + TB-M1 (8 sıfır baytlık migration + .mutorj temizliği, silme Kurucu'da).",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "F-6",
+   "ad": "Üretim compose ve sır yönetimi (docker-compose.uretim.yml, sır .env, 3306 yalnız iç ağ, kaynak limiti, log rotasyonu, varsayılan sırla açılışta fail)",
+   "tanim": "[KRİTİK] MASAK banka kapısı (41) ve risk skorlama (40) uygulanmadı — nakit dışı işlemler MASAK'tan bağımsız → 41 → 40 sırasıyla; banka_hareketleri MASAK kümülatifine bağlanır (185.000 TL eşiği + dekont tarihi kuralı, ADR-0023). 40-B yaptırım listesi ad alanı şifrelemesi Mehmet'in yazılı onayı + KVKK aydınlatma metni olmadan sevk edilmez. || [KRİTİK] Kurulum sırları depoda düz metin, 3306 dışa açık, TLS yok, sabit parola her müşteride aynı → F-6/T-1 ortak: docker-compose.uretim.yml (sır .env, 3306 yalnız iç ağ, kaynak limiti, log rotasyonu), kurulumda parola + JWT sırrı üretimi zorunlu, varsayılan sırla açılışta fail-closed kontrol; F-7 Let's Encrypt + otomatik yenileme + HSTS + 80→443. Mehmet ile ortak mühür.",
+   "dalga_onerisi": "3"
+  },
+  {
+   "no": "F-8",
+   "ad": "Birim ekonomi ve fiyatlandırma dosyası (entegratör kontörü, mali mühür, yaptırım listesi, kur verisi maliyetleri; kiracı başı maliyet tablosu; fiyat kademeleri önerisi)",
+   "tanim": "[KRİTİK] Birim ekonomi bilinmiyor: entegratör kontörü, mali mühür, yaptırım listesi, kur verisi maliyetleri imzasız ve fiyata girmemiş → F-8 birim ekonomi dosyası: üç entegratörden yazılı kontör teklifi, mühür + yaptırım listesi yıllık bedeli, kiracı başı maliyet tablosu. F-8 dolmadan fiyat İLAN EDİLMEZ (Madde 1). Kur için F-9: iki kaynak + otomatik yedeğe düşme + bayat kur fail-closed şeridi; veri sözleşmeleri Kurucu'da. || [YÜKSEK] Ticari paket yok: fiyat kademeleri, demo betiği/demo kiracısı, kurulum-eğitim-destek SLA, referans tanımsız → S-1/SATIS-1 (Eray + Mustafa ortak): fiyat kademeleri (F-8 sonrası), 15 dakikalık demo betiği, gerçek görünümlü demo kiracısı (QA-TEST-1 değil), veri taşıma sözü, kurulum/eğitim SLA'sı, 3 pilot referans. 1.0 ile aynı anda yayımlanır; erken fiyat ilanı itibar riski.",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "S-1",
+   "ad": "Ticari paket (fiyat kademeleri, 15 dakikalık demo betiği, gerçek görünümlü demo kiracısı tohumu, veri taşıma sözü, kurulum/eğitim/destek SLA, pilot referans planı)",
+   "tanim": "[YÜKSEK] Ticari paket yok: fiyat kademeleri, demo betiği/demo kiracısı, kurulum-eğitim-destek SLA, referans tanımsız → S-1/SATIS-1 (Eray + Mustafa ortak): fiyat kademeleri (F-8 sonrası), 15 dakikalık demo betiği, gerçek görünümlü demo kiracısı (QA-TEST-1 değil), veri taşıma sözü, kurulum/eğitim SLA'sı, 3 pilot referans. 1.0 ile aynı anda yayımlanır; erken fiyat ilanı itibar riski.",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "PWA-1",
+   "ad": "PWA kabuğu asgarisi (manifest, ikonlar, ana ekrana ekle; service worker yalnız kabuk önbelleği) — paket 44'ün küçültülmüşü",
+   "tanim": "[KRİTİK] 375px'te 27/27 rotada yatay kaydırma; PWA/mobil kabuk yok → UX-2-A2 kabuk işi (≤768px çekmece menü + üst bar) — tek düzeltme 27 sayfayı kapatır; K14 '375px scrollWidth ≤ istemci genişliği JSON kanıtı' bağlayıcı kalır. Paket 43 kalanı + 44 (PWA) 1.1'e ertelenir.",
+   "dalga_onerisi": "6"
+  },
+  {
+   "no": "E-BELGE",
+   "ad": "e-Fatura / e-Arşiv entegrasyonu (paket 38 Faz B: entegratör API, UBL 2.1, GİB durum sorgu, mali mühür; kurucu sözleşmesi önkoşul)",
+   "tanim": "[KRİTİK] e-Fatura / e-Arşiv altyapısı sıfır — 2026'da eleme kriteri → Paket 38 Faz A (OzelMatrahMotoru + 805 kodu, tek motor şartı) + Faz B (entegratör API, UBL 2.1, GİB durum sorgu). Entegratör sözleşmesi + mali mühür KURUCU imzası — takvim bugün başlatılır, teknik işlerle paralel yürür (3-6 hafta dış takvim).",
+   "dalga_onerisi": "5"
+  }
+ ]
+}

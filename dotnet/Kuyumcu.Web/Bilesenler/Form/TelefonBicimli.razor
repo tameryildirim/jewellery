@@ -1,0 +1,15 @@
+@inherits FormAlani
+
+@* PAKET GIRDI-AILESI-2 — <TelefonBicimli> artık <Telefon>'un AYNISIDIR (envanter F2:
+   "Telefon ile TelefonBicimli birleşir"). Mevcut çağrılar (Cariler) bozulmasın diye ad
+   korunur; davranış, maske ve kural TEK bileşende (Telefon.razor). *@
+
+<Telefon ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Devredisi="@Devredisi"
+         DevredisiSebebi="@DevredisiSebebi" Hata="@Hata" Ipucu="@Ipucu" Yukleniyor="@Yukleniyor"
+         YerTutucu="@YerTutucu" KaynakRozeti="@KaynakRozeti" Durum="@Durum" HataAlani="@HataAlani"
+         HataKimligi="@HataKimligi" Deger="@Deger" DegerChanged="@DegerChanged" />
+
+@code {
+    [Parameter] public string? Deger { get; set; }
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+}

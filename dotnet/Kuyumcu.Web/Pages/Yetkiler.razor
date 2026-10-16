@@ -1,0 +1,195 @@
+@page "/yetkiler"
+@using Kuyumcu.Contracts.Sayfalar.Yetkiler
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Rol → modül (ekran) yetki matrisi. Yalnız SAHIP (API de doğrular).
+   SAHIP satırı kilitli/tam yetkilidir; MÜDÜR/MUHASEBE/TEZGÂHTAR ayarlanabilir. *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Yetki.Baslik)</PageTitle>
+
+<div class="dikey-bosluk">
+    @* UX-1-C4 · K7: tek başlık kabuğu + EKRAN BAŞINA TEK birincil eylem (Kaydet). *@
+    <SayfaBasi Anahtar="yetkiler" Baslik="@Dil.T.Yetki.Baslik" Aciklama="@Dil.T.Yonetim.YetkilerAciklama">
+        <Eylem>
+            <button class="btn btn-birincil" id="y-kaydet" disabled="@(kaydediliyor || yukleniyor || !Kirli)" @onclick="Kaydet">@Dil.T.Ortak.Kaydet</button>
+            @* DoD/UX-S30: kilitli düğme SEBEBİNİ söyler — görünmez kural olmaz. *@
+            @if (!kaydediliyor && !yukleniyor && !Kirli)
+            {
+                <span class="metin-soluk metin-kucuk" id="y-kaydet-kilit">
+                    @Dil.T.Yonetim.KilitSebebi: @Dil.T.Yonetim.DegisiklikYok
+                </span>
+            }
+        </Eylem>
+    </SayfaBasi>
+
+    <p class="metin-soluk">@Dil.T.Yetki.Aciklama</p>
+
+    @if (Kirli)
+    {
+        <p class="metin-soluk metin-kucuk" id="y-kirli" role="status">@Dil.T.Yonetim.KaydedilmemisDegisiklik</p>
+    }
+
+    <HataBandi Mesaj="@hata" Id="hata-bandi" />
+    @* UX-4c madde 13: 3 sn'lik gizleme mantığı BasariBandi'nin içinde. *@
+    <BasariBandi Mesaj="@basariMesaj" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (matrisOkunamadi)
+    {
+        @* PAKET SADE-1 (göz #38): matris OKUNAMADIYSA (ör. 403 "gerekli rol: SAHİP")
+           yalnız bant kalır. Önceden bandın altında tek satırlık boş tablo, konu dışı
+           "tabloyu kaydırın" talimatı ve aynı şeyi tekrar eden kilit kutusu çiziliyordu. *@
+    }
+    else
+    {
+        <div class="kart">
+            @* PAKET GOC-D — ortak ızgara (grid:yetkiler:yetki-tablo): modül sütunlarının sırası ve göster/gizle
+               tercihi kullanıcıya+ekrana kalıcı, varsayılana dön. Kap kimliği (yetki-matris), tablo id'si ve
+               sınıfları, ilk sütun yapışkanlığı (QA turu 5) ve onay kutusu kimlikleri (yetki-sahip-*, yetki-<rol>-*)
+               AYNEN. Matristir: satırlar rol sırasıyla durur, sıralama düğmesi YOK. Gizlenen modül sütunu yalnız
+               GÖRÜNÜMDEN kalkar — yetki değişmez (kaydet gövdesi seçili kümeden kurulur). *@
+            <Izgara T="YetkiSatiri" Ekran="yetkiler" GridId="yetki-tablo" TabloId="yetki-tablo" KartListeId="yetki-matris" YapiskanIlkSutun="true"
+                    TabloSinif="tablo-yapiskan-ilk tablo-tek-satir" Kolonlar="@YetkiKolonlari" Ogeler="@YetkiSatirlari"
+                    Baslik="@Dil.T.Yetki.Baslik" SatirSinif="@(y => y.Sahip ? "satir-vurgu" : null)" />
+        </div>
+
+        @* UX-S25: SAHİP satırındaki onay kutuları KİLİTLİ — devre dışı düğme yerine
+           neden kilitli olduğu ve doğru yol yazılır (DegismezIpucu). *@
+        <DegismezIpucu Varlik="SahipYetkisi"
+                       Gerekce="@Dil.T.Yonetim.SahipKilitliGerekce"
+                       AlternatifYol="@Dil.T.Yonetim.SahipKilitliYolu" />
+    }
+</div>
+
+@code {
+
+    private string[] moduller = [];
+
+    // ── PAKET GOC-D — yetki matrisi ortak ızgarada (hücre içerikleri eski tablonun AYNISI) ──
+    private IReadOnlyList<YetkiSatiri> YetkiSatirlari => [new("SAHIP", true), .. roller.Select(r => new YetkiSatiri(r, false))];
+
+    /// <summary>Modül kodu → kalıcı kolon anahtarı (^[a-z0-9-]{1,40}$; tercihte saklanır).</summary>
+    private static string ModulAnahtari(string m) => "m-" + m.ToLowerInvariant().Replace('_', '-');
+
+    private IReadOnlyList<IzgaraKolonu<YetkiSatiri>> YetkiKolonlari =>
+    [
+        new() { Anahtar = "rol", Baslik = Dil.T.Yetki.Rol, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu",
+                Deger = y => RolEtiket(y.Rol),
+                Hucre = y => @<text>@RolEtiket(y.Rol)
+                    @if (y.Sahip)
+                    {
+                        <span class="metin-soluk metin-kucuk">(@Dil.T.Yetki.TamYetkili)</span>
+                    }</text> },
+        .. moduller.Select(m => new IzgaraKolonu<YetkiSatiri>
+        {
+            Anahtar = ModulAnahtari(m), Baslik = ModulAd(m), BaslikSinif = "ortala", HucreSinif = _ => "ortala",
+            Hucre = y => y.Sahip
+                ? @<Onay ElemanId="@($"yetki-sahip-{m}")" EtiketGizli="true" Etiket="@ModulAd(m)"
+                         Deger="true" Devredisi="true" DevredisiSebebi="@Dil.T.Yetki.TamYetkili" />
+                : @<Onay ElemanId="@($"yetki-{y.Rol}-{m}")" EtiketGizli="true"
+                         Etiket="@($"{RolEtiket(y.Rol)} — {ModulAd(m)}")"
+                         Deger="@Secili(y.Rol, m)"
+                         DegerChanged="@((bool _v) => Degistir(y.Rol, m, _v))" />,
+        }),
+    ];
+    private string[] roller = [];
+    private Dictionary<string, HashSet<string>> secili = new();
+    /// <summary>Sunucudan gelen ilk hâl — "kirli mi" sorusunun tek kaynağı.</summary>
+    private Dictionary<string, HashSet<string>> ilkHal = new();
+
+    private bool yukleniyor = true;
+    /// <summary>SADE-1: GET /yetkiler düştü mü (yalnız YÜKLEME hatası; kaydetme hatası tabloyu gizlemez).</summary>
+    private bool matrisOkunamadi;
+    private bool kaydediliyor;
+    private string? basariMesaj;
+    private int basariJeton;
+    private string? hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        matrisOkunamadi = false;
+        try
+        {
+            var m = await Api.GetAsync<YetkiMatrisi>("/yetkiler");
+            moduller = m.Moduller;
+            roller = m.Roller;
+            secili = m.Roller.ToDictionary(
+                r => r,
+                r => new HashSet<string>(m.Matris.TryGetValue(r, out var arr) ? arr : []));
+            ilkHal = secili.ToDictionary(kv => kv.Key, kv => new HashSet<string>(kv.Value));
+        }
+        catch (ApiHata ex) { hata = ex.Message; matrisOkunamadi = true; }
+        yukleniyor = false;
+    }
+
+    private bool Secili(string rol, string modul) =>
+        secili.TryGetValue(rol, out var s) && s.Contains(modul);
+
+    /// <summary>
+    /// UX-4c/QA turu 2: "Kaydet değişiklik olmadan da aktif" — kullanıcı hiçbir
+    /// şey değiştirmeden Kaydet'e basıp PUT atabiliyordu ve ayrılırken uyarı yoktu.
+    /// </summary>
+    private bool Kirli =>
+        secili.Count != ilkHal.Count
+        || secili.Any(kv => !ilkHal.TryGetValue(kv.Key, out var e) || !e.SetEquals(kv.Value));
+
+    private void Degistir(string rol, string modul, bool acik)
+    {
+        if (!secili.TryGetValue(rol, out var s)) { s = []; secili[rol] = s; }
+        if (acik) s.Add(modul); else s.Remove(modul);
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            var matris = secili.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray());
+            await Api.PutAsync("/yetkiler", new { matris });
+            // ⚠ İYİMSER KAYDETME YOK: "kirli" damgası ancak sunucu 200 döndükten
+            // sonra kalkar; PutAsync hata atarsa aşağıdaki satırlara gelinmez.
+            ilkHal = secili.ToDictionary(kv => kv.Key, kv => new HashSet<string>(kv.Value));
+            basariMesaj = Dil.T.Yetki.Kaydedildi;
+            basariJeton++;               // aynı metin ikinci kez de görünsün
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// P-09 (Y-39 · UX-S31): modül adı TEK KAYNAKTAN gelir.
+    /// <para>
+    /// ⚠ Eskiden burada 8 satırlık bir switch ve <c>_ =&gt; m</c> geri dalı vardı:
+    /// sunucu "bildirim", "siparis", "kurulum", "evrak" anahtarlarını
+    /// döndürdüğünde ekran HAM VERİTABANI KODUNU basıyordu. Geri dal YOK;
+    /// eksik anahtar <c>RotaModulleri.Etiket</c> içinde istisna atar ve testi kırar.
+    /// </para>
+    /// </summary>
+    private string ModulAd(string m) => Kuyumcu.Core.Erisim.RotaModulleri.Etiket(m, Dil.T);
+
+    private string RolEtiket(string rol) => rol switch
+    {
+        "SAHIP" => Dil.T.Kullanici.RolSahip,
+        "MUDUR" => Dil.T.Kullanici.RolMudur,
+        "MUHASEBE" => Dil.T.Kullanici.RolMuhasebe,
+        _ => Dil.T.Kullanici.RolTezgahtar,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

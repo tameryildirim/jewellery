@@ -1,0 +1,158 @@
+@page "/cikti/{Tur}/{Id}"
+@using Kuyumcu.Contracts.Cikti
+@using Kuyumcu.Web.Bilesenler.Yazdirma
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-17 (Y-6) — ORTAK A4 ÇIKTI SAYFASI.
+
+   Dört belge türü (satış fişi · tahsilat makbuzu · emanet teslim belgesi ·
+   cari ekstresi) TEK rotadan, TEK şablondan (A4Belge) çıkar.
+
+   NEDEN TEK SAYFA, DÖRT SAYFA DEĞİL: kâğıt düzeni dört kez yazılırsa dört kez
+   ayrışır — P-17'nin var oluş sebebi tam olarak budur. Tür yalnız VERİYİ
+   değiştirir, düzeni değil.
+
+   NEDEN AYRI ROTA (Bertan, PusulaBelgesi.razor notu): yazdırılabilir belge
+   uygulama kabuğundan ayrı bir yerleşim ister; modalde yazdırmak menüyü kâğıda
+   taşır.
+
+   ⚠ UX-S25: BU SAYFA TÜRETİLMİŞ ÇIKTIDIR — düzenleme yolu yoktur ve gerekçesi
+     DegismezIpucu ile yazılıdır. Kaydı düzeltmenin yolu kaynağındadır.
+   ⚠ UX-S28: hata "kayıt yok"a çevrilmez — hata bandı ayrıdır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(belge?.BelgeAdi ?? Dil.T.Cikti.Baslik)</PageTitle>
+
+<div class="belge-sayfa">
+    <div class="belge-arac yazdirma-gizle">
+        @* PAKET Q9-4 (QA turu 9): şerit başlığı eskiden belge adını ("SATIŞ FİŞİ")
+           <h2> olarak belgenin kendi <h1>'inden ÖNCE ikinci kez yazıyordu. Bu
+           sayfada TEK başlık belgenin kendisidir (A4Belge <h1>); şerit "Yazdırma
+           önizlemesi" der ve başlık öğesi çizmez (BaslikOgesiYok). *@
+        <SayfaBasi Anahtar="cikti-belge" Baslik="@CiktiBelgeSozlugu.Al(Dil.Dil).OnizlemeBasligi"
+                   BaslikOgesiYok="true" Aciklama="@Dil.T.Cikti.Aciklama">
+            <Filtreler>
+                <button type="button" class="dugme dugme-ikincil" id="cikti-geri" @onclick="Geri">
+                    ← @Dil.T.Ortak.Geri
+                </button>
+            </Filtreler>
+            <Eylem>
+                @* UX-S30 + DoD EK md.1: düğme ya istek atar ya disabled + sebep. *@
+                <YazdirDugmesi Id="cikti-yazdir" Kilit="@YazdirKilidi" HataOlustu="HataYaz"
+                               Otomatik="OtomatikYazdir" />
+            </Eylem>
+        </SayfaBasi>
+    </div>
+
+    <div class="yazdirma-gizle">
+        <HataBandi Mesaj="@hata" Id="cikti-hata" />
+    </div>
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (belge is { } b)
+    {
+        if (A4Belge.KimlikEksikMi(b))
+        {
+            @* TOPLU-2 tur 2 (tasarım hakemi KRİTİK): "düzenleyen eksik" uyarısı belgenin İÇİNDE değil,
+               önizlemenin ÜSTÜNDE durur — kâğıt görünümüne amber kutu karışmaz. UX-S25: boş alan
+               UYDURULMAZ; doğru düzeltme yolu (işletme kartı) gösterilir. id'ler aynı. *@
+            <div class="yazdirma-gizle cikti-kimlik-uyari" id="cikti-kimlik-uyari">
+                <DegismezIpucu Varlik="IsletmeKimligi"
+                               Gerekce="@Dil.T.Cikti.KimlikEksikGerekce"
+                               AlternatifYol="@Dil.T.SayfaDuzeltme.IsletmeKartinaGit" />
+                <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="cikti-isletme-karti" @onclick="IsletmeKartinaGit">
+                    @Dil.T.SayfaDuzeltme.IsletmeKartinaGit
+                </button>
+            </div>
+        }
+        <A4Belge Belge="b" Onek="cikti" />
+
+        <div class="yazdirma-gizle t4-degismez-satir" id="cikti-degismez-satir">
+            @* UX-S25: türetilmiş çıktıda düzenleme YOKTUR; gerekçesi yazılır. TOPLU-5: kutu TEK satır,
+               uzun gerekçe ve düzeltme yolu ⓘ içinde (VadeTakibi T4 kalıbı; metin silinmedi). *@
+            <DegismezIpucu Varlik="CiktiBelgesi" Gerekce="@T5.CiktiDegismezKisa" />
+            <details class="zo-ipucu" id="cikti-degismez-ipucu">
+                <summary aria-label="@T5.CiktiDegismezBilgi">i</summary>
+                <p id="cikti-degismez-aciklama">@Dil.T.Cikti.TuretilmisGerekce @Dil.T.Duzeltme.AlternatifYol @Dil.T.Cikti.KaynaktaDuzelt</p>
+            </details>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Tur { get; set; } = "";
+    [Parameter] public string Id { get; set; } = "";
+
+    /// <summary>
+    /// PAKET S2-5b — "?yazdir=1": satış ekranının "Fiş yazdır" bağlantısı bu sorguyla
+    /// açar; belge çizilince yazdırma penceresi BİR KEZ kendiliğinden gelir.
+    /// Sorgusuz açılışta davranış DEĞİŞMEZ (düğmeye basılır).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "yazdir")] public string? YazdirSorgusu { get; set; }
+
+    private bool OtomatikYazdir => YazdirSorgusu == "1";
+
+    private OrtakBelge? belge;
+    private string? hata;
+    private bool yukleniyor = true;
+
+    /// <summary>UX-S30 — yazdırma neden kapalı: belge yoksa basacak bir şey yoktur.</summary>
+    private string? YazdirKilidi => belge is null ? Dil.T.Cikti.YazdirKilidi : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        hata = null;
+        belge = null;
+        yukleniyor = true;
+
+        if (!BelgeTurleri.Gecerli(Tur))
+        {
+            // Anayasa md.1: bilinmeyen tür sessizce boş sayfa göstermez.
+            hata = string.Format(Dil.T.Cikti.GecersizTur, Tur);
+            yukleniyor = false;
+            return;
+        }
+
+        try
+        {
+            belge = await Api.GetAsync<OrtakBelge>($"/cikti/{Tur}/{Id}");
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException)
+        {
+            // UX-S28: hata "kayıt yok"a çevrilmez, hata bandına yazılır.
+            hata = ex.Message;
+        }
+        finally
+        {
+            yukleniyor = false;
+        }
+    }
+
+    private void HataYaz(string mesaj) => hata = mesaj;
+
+    /// <summary>TOPLU-5 metinleri (Sozlukler.Toplu5.cs).</summary>
+    private Toplu5Metinleri T5 => Toplu5Sozlugu.Al(Dil.Dil);
+
+    private void IsletmeKartinaGit() => Nav.NavigateTo("/isletme");
+
+    /// <summary>
+    /// PAKET EKSIK-B1-YAZDIR: belge Emanet / Sipariş ekranından açıldıysa "Geri" oraya döner.
+    /// Yalnız UYGULAMA İÇİ yol kabul edilir ("/" ile başlar, "//" ya da "\" değil) —
+    /// dışarıya yönlendirme açılmaz; geçersizse eski varsayılan.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "donus")] public string? Donus { get; set; }
+
+    /// <remarks>PAKET KAPORA-ESZAMAN: kural TEK yerde (Core <c>GuvenliYol</c>) — kontrol karakteri,
+    /// ters bölü ve URL-kodlu "//" (%2F, %09, %0A, %0D, %5C) reddedilir.</remarks>
+    public static string? GuvenliDonus(string? donus) => Kuyumcu.Core.Domain.GuvenliYol.UygulamaIci(donus);
+
+    private void Geri() => Nav.NavigateTo(Kuyumcu.Core.Domain.GuvenliYol.Donus(Donus,
+        Tur == BelgeTurleri.CariEkstre ? "/cariler" : "/raporlar/islem-defteri"));
+
+}

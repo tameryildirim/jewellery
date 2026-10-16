@@ -1,0 +1,113 @@
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-6 — KONSİNYE ÇIKIŞ / İADE (P-21 · Y-20) ═══
+   Uçlar: POST /islemler/konsinye-cikis · GET /islemler/konsinye-acik ·
+          POST /islemler/konsinye-iade (satır başına "Geri al").
+   Gönderim kaydı stok hareketidir → DegismezIpucu + doğru yol (geri al).
+   ⚠ İstek atmaz — niyet DigerIstek ile sayfaya gider. *@
+<div class="form-dikey" id="konsinye-form">
+    <Secici ElemanId="konsinye-cari" Etiket="@M.Kime" Zorunlu="true" BosSecenekMetni="@Satis3Sozlugu.Al(Dil.Dil).MusteriSecin"
+            Secenekler="@CariSecenekleri" Deger="@K.CariId" DegerChanged="@(v => K.CariId = v)"
+            Hata="@Hata("cari")" />
+    <Secici ElemanId="konsinye-urun" Etiket="@M.Urun" Zorunlu="true" YerTutucu="@Satis3Sozlugu.Al(Dil.Dil).UrunSecin"
+            Secenekler="@(Baglam.Urunler.Select(u => new SecenekOgesi(u.Id, u.Ad)).ToList())"
+            Deger="@K.UrunId" DegerChanged="@(v => K.UrunId = v)" Hata="@Hata("urun")" />
+    <Sayi ElemanId="konsinye-adet" Etiket="@M.Adet" Zorunlu="true" EnAz="0.001m" EnCokOndalik="3"
+          Deger="@K.Adet" DegerChanged="@(v => K.Adet = v)" Hata="@Hata("adet")" />
+    <details class="fis-diger-ayrinti" id="konsinye-ayrinti" open="@(!string.IsNullOrEmpty(K.Aciklama))">   @* SATIS-3: isteğe bağlı alanlar "+ Ayrıntı ekle" altında KATLI (kurucu 11:35) *@
+        <summary id="konsinye-ayrinti-ac">@SatisSadeSozlugu.Al(Dil.Dil).DigerAyrintilar</summary>
+        <Metin ElemanId="konsinye-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IslemAciklama"
+               Deger="@K.Aciklama" DegerChanged="@(v => K.Aciklama = v ?? "")" />
+    </details>
+    <FisDigerEylem Id="konsinye-gonder" Metin="@M.KonsinyeGonder" Mesgul="Durum.Mesgul" KurVar="Baglam.KurVar" Tikla="Gonder"
+                   Eksik="@FisDigerEylem.Etiketler(K.Hatalar(M), ("cari", M.Kime), ("urun", M.Urun), ("adet", M.Adet))" />   @* t10 *@
+    @* t3 hakemi: değişmezlik gerekçesi katlı "Bilgi" ipucunda (UX-S25 korunur). *@
+    <details class="fis-bilgi" id="konsinye-degismez-bilgi"><summary class="metin-kucuk">@Satis3Sozlugu.Al(Dil.Dil).BilgiIpucu</summary>
+    <DegismezIpucu Varlik="KonsinyeCikis" Gerekce="@M.KonsinyeDegismez" AlternatifYol="@M.KonsinyeDegismezYol" />
+    </details>
+</div>
+
+<details class="katlanir fis-gecmis" id="konsinye-gecmis">   @* SATIS-3: geçmiş/ikincil bölüm KAPALI katlanır (kurucu 25.09 "piyano gibi"); içerik DOM'da — id'ler aynı *@
+<summary class="katlanir-baslik" id="konsinye-gecmis-ac"><h3 id="konsinye-liste-baslik" class="katlanir-ad">@M.KonsinyeListe</h3></summary>
+@if (Durum.Konsinyeler is { } liste)
+{
+    var satirlar = (liste.Satirlar ?? []).Where(s => s.AcikAdet > 0m).ToList();
+    @if (liste.SinirAsildi)
+    {
+        <p class="bant bant-uyari" id="konsinye-sinir" role="status">@string.Format(M.SinirUyari, liste.Limit)</p>
+    }
+    @if (satirlar.Count == 0)
+    {
+        <BosDurum Mesaj="@M.KonsinyeBos" />
+    }
+    else
+    {
+        @* PAKET GOC-C — ORTAK IZGARA (grid:islemler:konsinye-liste). Açık çıkışlar TAM → yerel sıralama; id'ler korunur. *@
+        <Izgara T="KonsinyeSatiri" Ekran="islemler" GridId="konsinye-liste" TabloId="konsinye-liste" Kolonlar="@KonsinyeKolonlari"
+                Ogeler="@IzgaraYerelSiralama.Uygula(satirlar, konsinyeSira, KonsinyeKolonlari)"
+                SatirId="@(s => $"konsinye-satir-{s.Id}")" Baslik="@M.Urun"
+                SiralamaDegisti="@(x => konsinyeSira = x)" GecerliSiralama="@konsinyeSira" />
+    }
+}
+</details>
+
+@code {
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? konsinyeSira;
+    private IReadOnlyList<IzgaraKolonu<KonsinyeSatiri>> KonsinyeKolonlari =>
+    [
+        new() { Anahtar = "kime", Baslik = M.Kime, ZorunluGorunur = true, SunucuSiralamaAdi = "kime", Deger = s => Baglam.CariAdi(s.CariId) },
+        new() { Anahtar = "urun", Baslik = M.Urun, ZorunluGorunur = true, SunucuSiralamaAdi = "urun", Deger = s => Baglam.UrunAdi(s.UrunId) },
+        new() { Anahtar = "giden", Baslik = M.Giden, SunucuSiralamaAdi = "giden", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = s => s.CikanAdet, Hucre = s => @<text>@s.CikanAdet.ToString("0.###", Kultur)</text> },
+        new() { Anahtar = "donmemis", Baslik = M.Donmemis, SunucuSiralamaAdi = "donmemis", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = s => s.AcikAdet, Hucre = s => @<text>@s.AcikAdet.ToString("0.###", Kultur)</text> },
+        new() { Anahtar = "geri-adet", Baslik = M.GeriGelenAdet, ZorunluGorunur = true,
+                Hucre = s => @<Sayi ElemanId="@($"konsinye-geri-adet-{s.Id}")" Etiket="@M.GeriGelenAdet" EnAz="0.001m" EnCok="@s.AcikAdet" EnCokOndalik="3"
+                                    Deger="@K.GeriAdet.GetValueOrDefault(s.Id)" DegerChanged="@(v => K.GeriAdet[s.Id] = v)"
+                                    Hata="@(Durum.Denenen.Contains($"{DigerEylemler.KonsinyeIade}:{s.Id}") ? GeriHata(s) : null)" /> },
+        new() { Anahtar = "eylem", Baslik = M.GeriAl, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "satir-eylem",
+                Hucre = s => @<button type="button" class="btn btn-ikincil btn-kucuk" id="@($"konsinye-geri-al-{s.Id}")"
+                                      disabled="@(Durum.Mesgul || !Baglam.KurVar)" @onclick="() => GeriAl(s)">@M.GeriAl</button> },
+    ];
+
+    [Parameter, EditorRequired] public DigerIslemDurumu Durum { get; set; } = new();
+    [Parameter, EditorRequired] public DigerBaglam Baglam { get; set; } = new([], [], [], [], false, null);
+    [Parameter] public EventCallback<DigerIstek> Istek { get; set; }
+
+    private FisDigerMetinleri M => FisDigerSozlugu.Al(Dil.Dil);
+    private KonsinyeGirisi K => Durum.Konsinye;
+    private static readonly System.Globalization.CultureInfo Kultur = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    private IReadOnlyList<SecenekOgesi> CariSecenekleri =>
+        Baglam.Cariler.Where(c => !c.SistemCarisi).Select(c => new SecenekOgesi(c.Id, c.Ad)).ToList();
+
+    private string? Hata(string alan) =>
+        Durum.Denenen.Contains(DigerEylemler.KonsinyeCikis) ? K.Hatalar(M).GetValueOrDefault(alan) : null;
+
+    /// <summary>Geri gelen adet boş/sıfır ya da dönmemişten fazla olamaz (sunucu da reddeder).</summary>
+    private string? GeriHata(KonsinyeSatiri s) => K.GeriAdet.GetValueOrDefault(s.Id) switch
+    {
+        null => M.ZorunluAlan,
+        <= 0m => M.SifirdanBuyuk,
+        var a when a > s.AcikAdet => string.Format(M.KalanHak, s.AcikAdet.ToString("0.###", Kultur)),
+        _ => null,
+    };
+
+    private async Task Gonder()
+    {
+        Durum.Denenen.Add(DigerEylemler.KonsinyeCikis);
+        if (K.Hatalar(M).Count > 0) return;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.KonsinyeCikis));
+    }
+
+    private async Task GeriAl(KonsinyeSatiri s)
+    {
+        Durum.Denenen.Add($"{DigerEylemler.KonsinyeIade}:{s.Id}");
+        if (GeriHata(s) is not null) return;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.KonsinyeIade, s.Id));
+    }
+}

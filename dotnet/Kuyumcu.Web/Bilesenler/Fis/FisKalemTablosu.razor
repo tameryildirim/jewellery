@@ -1,0 +1,263 @@
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-1 — KALEM TABLOSU (VERDİM sütunu) ══════════════════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Sarmalayıcı KartListe
+   sayfada kalır (tek tablo kalıbı, MobilParite B9); bu bileşen yalnız tabloyu
+   çizer. İstek ATMAZ: satır içi düzeltme kalem nesnesini günceller ve
+   Degisti(true) ile sayfaya haber verir — sayfa tevsik önizlemesini tazeler.
+   Mevcut element id'leri DEĞİŞMEDİ. *@
+@* ═══ PAKET T-S1 — tuval (Tezgah.dc.html) VERDİM tablosu: Ürün · Ayar · Gram · Tutar ═══
+   Basit tezgâh fişinde yalnız tuvalin dört sütunu + satırı silme düğmesi (UX-S25:
+   eklenen kalem geri alınabilir). Adet / birim fiyat / satır iskontosu / hediye
+   satır içi düzeltmeleri PROFESYONEL moddadır (özellik silinmedi; pazarlık için
+   basitte İndirim karosu fiş iskontosunu açar). Ayar ham kod değil ("K22" → "22"). *@
+@* ═══ PAKET GOC-C-2 (tasarım hakemi YÜKSEK "ham tablo kaldı") — iki kalem tablosu ORTAK IZGARADA ═══════════════
+   grid:islemler:kalem-tuval (BASİT) · grid:islemler:kalem-pro (PRO). Tablo kimlikleri (islem-kalem-tablo,
+   islem-kalem-pro), KartListe kimliği (islem-kalem-liste — eskiden sayfada, artık ızgaranın), satır/hücre sınıfları,
+   sütun SIRASI (tuval-satis.css nth-child kuralları) ve tüm eylem/alan kimlikleri AYNEN. GOC-C istisnası şöyle kapandı:
+   • satır içi adet düzenlemesi hücre şablonunda (SatirIciDuzenle aynen);
+   • hücre kimlikleri (islem-kalem-milyem/gram/has/iscilik-N) hücrenin içindeki span'da (ızgara td'si satıra özgü id almaz);
+   • BASİT adın altındaki "ayar · gram" eskiden td'nin data-ayrinti'siydi (::after) → aynı metin ad hücresinde span;
+   • ✎ satır düzenlemesi ve satır altı adet iletisi ızgaranın ALTINDA panel (aria-controls ile bağlı) — colspan gerekmez. *@
+@if (Basit)
+{
+<Izgara T="FisKalemi" Ekran="islemler" GridId="kalem-tuval" KartListeId="islem-kalem-liste" TabloId="islem-kalem-tablo"
+        TabloSinif="fis-tuval-tablo" YapiskanIlkSutun="false" Kolonlar="@TuvalKolonlari" Ogeler="@Kalemler" Baslik="@T.SutunUrun" />
+}
+else
+{
+<Izgara T="FisKalemi" Ekran="islemler" GridId="kalem-pro" KartListeId="islem-kalem-liste" TabloId="islem-kalem-pro"
+        TabloSinif="fis-pro-tablo" YapiskanIlkSutun="false" Kolonlar="@ProKolonlari" Ogeler="@Kalemler"
+        SatirSinif="@(_ => "fis-pro-satir")" Baslik="@P.SutunUrun" />
+@foreach (var k in Kalemler)
+{
+    var ix = Kalemler.IndexOf(k);
+    @* PATCH-4 t2: adet hücresi dar — ileti satırın altında tam genişlikte (id aynı: #alan-hata-si-kalem-adet-{id}). *@
+    @if (Form.Mesaj($"si-kalem-adet-{k.UrunId}") is { Length: > 0 })
+    {
+        <div class="fis-pro-satir-hata" id="@($"islem-kalem-hata-{ix}")"><AlanHatasi Alan="@($"si-kalem-adet-{k.UrunId}")" Durum="Form" /></div>
+    }
+    @if (acikSatirlar.Contains(k.UrunId))
+    {
+        <div class="fis-pro-ayrinti" id="@($"islem-kalem-ayrinti-{ix}")" role="region" aria-labelledby="@($"islem-kalem-ayrinti-{ix}-baslik")">
+            <p class="fis-pro-ayrinti-baslik metin-kucuk" id="@($"islem-kalem-ayrinti-{ix}-baslik")">@string.Format(GocC2Sozlugu.Al(Dil.Dil).SatirDuzenleBaslik, k.UrunAdi)</p>
+            <div class="fis-pro-ayrinti-govde">
+                <div class="fis-pro-ayrinti-alan" data-duzenlenebilir="true">
+                    <span class="alan-etiket">@Dil.T.Islem.BirimFiyat</span>
+                    <SatirIciDuzenle Varlik="kalem" Alan="fiyat" Id="@k.UrunId"
+                                     Etiket="@Dil.T.Islem.BirimFiyat"
+                                     Deger="@BirimFiyatMetni(k.BirimFiyat)"
+                                     Kaydedildi="@(d => FiyatDegistir(k, d))" />
+                    <AlanHatasi Alan="@($"si-kalem-fiyat-{k.UrunId}")" Durum="Form" />
+                </div>
+                @* ── PAKET P-16 (Y-4) — SATIR İSKONTOSU: yüzde girilir, TL karşılığını SUNUCU hesaplar ── *@
+                <div class="fis-pro-ayrinti-alan" data-duzenlenebilir="true">
+                    <span class="alan-etiket">@Dil.T.Islem.SatirIskonto</span>
+                    <SatirIciDuzenle Varlik="kalem" Alan="iskonto" Id="@k.UrunId"
+                                     Etiket="@Dil.T.Islem.SatirIskonto"
+                                     Deger="@Bicim.Girdi(k.SatirIskontoYuzde, "0.##")"
+                                     Kaydedildi="@(d => IskontoDegistir(k, d))" />
+                    <AlanHatasi Alan="@($"si-kalem-iskonto-{k.UrunId}")" Durum="Form" />
+                </div>
+                @if (Satis)
+                {
+                    <Onay ElemanId="@($"islem-kalem-hediye-{ix}")"
+                          Etiket="@Dil.T.Fiyat.Hediye"
+                          Deger="@k.Hediye"
+                          DegerChanged="@((bool _v) => HediyeYaz(k, _v))" />
+                }
+                <button type="button" class="btn btn-ikincil btn-kucuk metin-kirmizi" id="@($"islem-kalem-sil-{ix}")"
+                        aria-label="@($"{k.UrunAdi} — {Dil.T.Ortak.Sil}")"
+                        @onclick="() => Sil.InvokeAsync(k)">@Dil.T.Ortak.Sil</button>
+            </div>
+        </div>
+    }
+}
+}
+
+@code {
+    // ── PAKET GOC-C-2 — ızgara kolonları (eski tabloların sütunları, SIRASI ve hücre içerikleri AYNEN) ──
+    // Tüm hücreler KartEtiketsiz: tuvalin dar ekran düzeni etiket yazmaz (tutar ₺ ile, adet kutusu kendi etiketiyle — t19).
+    private static readonly IReadOnlyDictionary<string, object> Duzenlenebilir = new Dictionary<string, object> { ["data-duzenlenebilir"] = "true" };
+
+    /// <summary>T-S1 BASİT tuval: Ürün · Ayar · Gram · Tutar + sil (Ayar/Gram ≤ tuvalde gizli; değerleri adın altında).</summary>
+    private IReadOnlyList<IzgaraKolonu<FisKalemi>> TuvalKolonlari =>
+    [
+        new() { Anahtar = "urun", Baslik = T.SutunUrun, ZorunluGorunur = true, KartEtiketsiz = true, HucreSinif = _ => "fis-tuval-ad",
+                Hucre = k => @<text><span class="fis-tuval-ad-metin" title="@k.UrunAdi">@k.UrunAdi</span><span class="fis-tuval-ad-ayrinti">@($"{AyarKisa(k.UrunId)} · {(KalemGram(k.UrunId) * k.Adet).ToString("#,0.00", TrKultur)} g")</span></text> },
+        new() { KartEtiketsiz = true, Anahtar = "ayar", Baslik = T.SutunAyar, Hucre = k => @<text>@AyarKisa(k.UrunId)</text> },
+        new() { KartEtiketsiz = true, Anahtar = "gram", Baslik = T.SutunGram, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Hucre = k => @<text>@((KalemGram(k.UrunId) * k.Adet).ToString("#,0.00", TrKultur))</text> },
+        new() { KartEtiketsiz = true, Anahtar = "tutar", Baslik = T.SutunTutar, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi fis-tuval-hucre-tutar",
+                Hucre = k => @<text>@Bicim.Tl(FisHesap.SatirNet(k))</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "fis-tuval-eylem",
+                Hucre = k => @<button type="button" class="btn btn-ikincil btn-kucuk fis-tuval-sil" id="@($"islem-kalem-sil-{Kalemler.IndexOf(k)}")"
+                                      aria-label="@($"{k.UrunAdi} — {Dil.T.Ortak.Sil}")" title="@Dil.T.Ortak.Sil"
+                                      @onclick="() => Sil.InvokeAsync(k)"><Ikon Ad="@Ikonlar.Carpi" /></button> },
+    ];
+
+    /// <summary>T-S2 PRO geniş tablo: Barkod · Ürün · Ayar · Milyem · Gram · Has · Adet · İşçilik · Tutar + ✎.</summary>
+    private IReadOnlyList<IzgaraKolonu<FisKalemi>> ProKolonlari =>
+    [
+        new() { KartEtiketsiz = true, Anahtar = "barkod", Baslik = P.SutunBarkod, HucreSinif = _ => "metin-soluk fis-pro-barkod", Hucre = k => @<text>@BarkodMetni(k.UrunId)</text> },
+        new() { KartEtiketsiz = true, Anahtar = "urun", Baslik = P.SutunUrun, ZorunluGorunur = true, HucreSinif = _ => "fis-pro-ad",
+                Hucre = k => @<text><span class="fis-pro-ad-metin" title="@k.UrunAdi">@k.UrunAdi</span><span class="fis-pro-ad-barkod metin-soluk" aria-hidden="true">@BarkodMetni(k.UrunId)</span><span class="fis-pro-ad-ozet metin-soluk" aria-hidden="true">@($"{AyarKisa(k.UrunId)} · {(KalemGram(k.UrunId) * k.Adet).ToString("#,0.00", TrKultur)} g")</span></text> },
+        new() { KartEtiketsiz = true, Anahtar = "ayar", Baslik = P.SutunAyar, Hucre = k => @<text>@AyarKisa(k.UrunId)</text> },
+        new() { KartEtiketsiz = true, Anahtar = "milyem", Baslik = P.SutunMilyem,
+                Hucre = k => @<span id="@($"islem-kalem-milyem-{Kalemler.IndexOf(k)}")">@(ProMilyem(k.UrunId) is { } mil ? mil.ToString("0.##", CultureInfo.InvariantCulture) : "—")</span> },
+        new() { KartEtiketsiz = true, Anahtar = "gram", Baslik = P.SutunGram, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Hucre = k => @<span id="@($"islem-kalem-gram-{Kalemler.IndexOf(k)}")" title="@ProGram(k)">@ProGram(k)</span> },
+        new() { KartEtiketsiz = true, Anahtar = "has", Baslik = P.SutunHas, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Hucre = k => @<span id="@($"islem-kalem-has-{Kalemler.IndexOf(k)}")" title="@ProHas(k)">@ProHas(k)</span> },
+        new() { KartEtiketsiz = true, Anahtar = "adet", Baslik = P.SutunAdet, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi", HucreOznitelikleri = Duzenlenebilir,
+                Hucre = k => @<text><SatirIciDuzenle Varlik="kalem" Alan="adet" Id="@k.UrunId" Etiket="@Dil.T.Ortak.Adet"
+                                                     Deger="@Bicim.Girdi(k.Adet, "0.###")" Kaydedildi="@(d => AdetDegistir(k, d))" />@BirimEtiketi(k.UrunId)</text> },
+        new() { KartEtiketsiz = true, Anahtar = "iscilik", Baslik = P.SutunIscilik, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Hucre = k => @<span id="@($"islem-kalem-iscilik-{Kalemler.IndexOf(k)}")" title="@(FisHesap.SatirIscilik(k) is null ? P.IscilikBilinmiyor : null)">@(FisHesap.SatirIscilik(k) is { } isc ? Bicim.Tl(isc) : "—")</span> },
+        new() { KartEtiketsiz = true, Anahtar = "tutar", Baslik = P.SutunTutar, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi fis-pro-tutar",
+                Hucre = k => @<text>@Bicim.Tl(FisHesap.SatirNet(k))</text> },   @* UX-S32: tutar para birimiyle *@
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "fis-pro-eylem",
+                Hucre = k => @<button type="button" class="btn btn-ikincil btn-kucuk fis-pro-duzenle" id="@($"islem-kalem-duzenle-{Kalemler.IndexOf(k)}")"
+                                      aria-expanded="@(acikSatirlar.Contains(k.UrunId) ? "true" : "false")" aria-controls="@($"islem-kalem-ayrinti-{Kalemler.IndexOf(k)}")"
+                                      aria-label="@($"{k.UrunAdi} — {(acikSatirlar.Contains(k.UrunId) ? P.SatirDuzenleKapat : P.SatirDuzenle)}")"
+                                      title="@(acikSatirlar.Contains(k.UrunId) ? P.SatirDuzenleKapat : P.SatirDuzenle)"
+                                      @onclick="() => AyrintiDegistir(k)"><Ikon Ad="@Ikonlar.Kalem" /></button> },
+    ];
+
+    /// <summary>Fiş kalemleri — SAHİBİ Islemler.razor (Kaydet gövdesi buradan okunur).</summary>
+    [Parameter, EditorRequired] public List<FisKalemi> Kalemler { get; set; } = [];
+    /// <summary>Ürün listesi — ayar/milyem/gram/has ÜRÜN KARTINDAN türetilir (UX-S21).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<UrunVeri> Urunler { get; set; } = [];
+    /// <summary>Satış mı? Hediye işareti yalnız satışta çizilir.</summary>
+    [Parameter] public bool Satis { get; set; }
+    /// <summary>Fişin NET toplamı (FisHesap.Toplam) — sayfa hesaplar.</summary>
+    [Parameter] public decimal Toplam { get; set; }
+    /// <summary>Sayfanın form durumu — satır içi alan altı mesajlar.</summary>
+    [Parameter, EditorRequired] public FormDurumu Form { get; set; } = new();
+    /// <summary>Satır değişti: true = fiş toplamı değişti (sayfa tevsik önizlemesini tazeler).</summary>
+    [Parameter] public EventCallback<bool> Degisti { get; set; }
+    /// <summary>Hediye işareti değişti — sayfa önizlemeyi ateşle-unut başlatır (eski davranış).</summary>
+    [Parameter] public EventCallback HediyeDegisti { get; set; }
+    /// <summary>Kalem sil — sayfa listeden çıkarır ve önizlemeyi tazeler.</summary>
+    [Parameter] public EventCallback<FisKalemi> Sil { get; set; }
+
+    /// <summary>PAKET T-S1 — basit tezgâh fişinde tuvalin dört sütunlu tablosu.</summary>
+    [Parameter] public bool Basit { get; set; }
+    private SatisTuvalMetinleri T => SatisTuvalSozlugu.Al(Dil.Dil);
+    private static readonly CultureInfo TrKultur = CultureInfo.GetCultureInfo("tr-TR");
+    /// <summary>Ayarın ekran adı: ham kod ("K22") basılmaz → "22"; bilinmeyen kod ürün kartındaki ayar adına düşer.</summary>
+    public static string AyarKisa(UrunVeri? u) =>
+        u is null ? "—"
+        : u.AyarId is { Length: > 1 } id && id[0] == 'K' && id[1..].All(char.IsDigit) ? id[1..]
+        : u.Ayar ?? "—";
+    private string AyarKisa(string urunId) => AyarKisa(KalemUrun(urunId));
+
+    // Kalem satırındaki ayar/milyem/gram/has ÜRÜN KARTINDAN türetilir (UX-S21):
+    // kasiyerden istenmez, ürün listesinden okunur.
+    private UrunVeri? KalemUrun(string urunId) => Urunler.FirstOrDefault(u => u.Id == urunId);
+    // ── PAKET T-S2 — tuval Profesyonel geniş tablo ──
+    private SatisProMetinleri P => SatisProSozlugu.Al(Dil.Dil);
+    /// <summary>✎ ile açılan düzenleme satırları (ürün kimliğiyle; yalnız görünüm durumu, gövdeye gitmez).</summary>
+    private readonly HashSet<string> acikSatirlar = [];
+    private void AyrintiDegistir(FisKalemi k) { if (!acikSatirlar.Remove(k.UrunId)) acikSatirlar.Add(k.UrunId); }
+    /// <summary>Barkod kolonu: ürün kartının barkodu, yoksa ürün kodu, o da yoksa "—" (UX-S21: kasiyerden istenmez).</summary>
+    private string BarkodMetni(string urunId) =>
+        KalemUrun(urunId) is { } u ? (!string.IsNullOrWhiteSpace(u.Barkod) ? u.Barkod! : !string.IsNullOrWhiteSpace(u.Kod) ? u.Kod! : "—") : "—";
+    private decimal KalemMilyem(string urunId) => KalemUrun(urunId)?.Milyem ?? 0m;
+    // PAKET T-S2b — PRO hücreleri: ürün kartı listede YOKSA (ya da milyem kayıtlı değilse) "—";
+    // 0 uydurulmaz (UX-S21: bilinmeyen değer istemcide üretilmez).
+    private decimal? ProMilyem(string urunId) => KalemUrun(urunId) is { Milyem: > 0m } u ? u.Milyem : null;
+    private string ProGram(FisKalemi k) => KalemUrun(k.UrunId) is { } u ? FisHesap.GramSayi(u.GramAgirlik * k.Adet) : "—";
+    private string ProHas(FisKalemi k) => KalemUrun(k.UrunId) is { } u ? FisHesap.HasSayi(u.HasGrami * k.Adet) : "—";
+    private decimal KalemGram(string urunId) => KalemUrun(urunId)?.GramAgirlik ?? 0m;
+    private decimal KalemHas(string urunId) => KalemUrun(urunId)?.HasGrami ?? 0m;
+    private string BirimEtiketi(string urunId) => KalemUrun(urunId)?.Birim == "GRAM" ? " g" : "";
+
+    private Task HediyeYaz(FisKalemi k, bool deger)
+    {
+        k.Hediye = deger;
+        k.HediyeUygula();
+        return HediyeDegisti.InvokeAsync();
+    }
+
+    /// <summary>Satır içi kalem düzeltmesi — adet (QA turu 1+2 ORTA).</summary>
+    private Task AdetDegistir(FisKalemi k, string metin)
+    {
+        var alan = $"si-kalem-adet-{k.UrunId}";
+        Form.Temizle();
+        // P-78: tr-TR tek merkez ("1,5" = 1,5 · "1.500" belirsiz → açık mesaj).
+        var cozum = FormAlani.SayiCoz(metin);
+        if (cozum.Deger is not { } d || d <= 0m)
+        {
+            Form.Ekle(alan, cozum.Mesaj(Dil.Dil) ?? Dil.T.Kabuk.SifirdanBuyuk);
+            return Degisti.InvokeAsync(false);
+        }
+        // PAKET PATCH-4 t2 (hasım DÜŞÜK): satır içi ADET de istemci tutar tavanına tabidir —
+        // Ekle ve satır içi fiyat ile TEK kural (FisKalemGirisi.TavanAsildi). Adet değişmez.
+        if (FisKalemGirisi.TavanAsildi(d, k.BirimFiyat))
+        {
+            Form.Ekle(alan, PatchDortSozlugu.Al(Dil.Dil).SatirTutariCokBuyuk);   // dar hücre: kısa biçim
+            return Degisti.InvokeAsync(false);
+        }
+        k.Adet = d;
+        return Degisti.InvokeAsync(true);   // fiş toplamı değişti → nakit kilidi yeniden hesaplanır
+    }
+
+    /// <summary>
+    /// PAKET P-16 (Y-4) — satır içi iskonto düzeltmesi (YÜZDE).
+    /// Geçersiz girişte SESSİZ ETKİSİZLİK YASAK: alan altında Türkçe mesaj.
+    /// </summary>
+    private Task IskontoDegistir(FisKalemi k, string metin)
+    {
+        var alan = $"si-kalem-iskonto-{k.UrunId}";
+        Form.Temizle();
+        // P-78: tr-TR tek merkez. Boş = %0 (eski davranış korunur).
+        var cozum = string.IsNullOrWhiteSpace(metin)
+            ? new FormAlani.SayiCozumu(FormAlani.SayiSonucu.Tamam, 0m)
+            : FormAlani.SayiCoz(metin);
+        if (cozum.Deger is not { } y || y is < 0m or > 100m)
+        {
+            Form.Ekle(alan, cozum.Mesaj(Dil.Dil) ?? Dil.T.Islem.IskontoIpucu);
+            return Degisti.InvokeAsync(false);
+        }
+        k.SatirIskontoYuzde = y;
+        return Degisti.InvokeAsync(true);   // fiş toplamı değişti; nakit kilidi kalkmış olabilir
+    }
+
+    /// <summary>
+    /// KESIF-P5 #70: satır içi birim fiyat tr-TR BİNLİKLİ ("11.052,67"; "11052,67" idi). Kuruş HEP yazılır —
+    /// "1.500" P-78 kuralında BELİRSİZ sayılır (FormAlani.SayiCoz), "1.500,00" değil; kutu açılıp aynen
+    /// kaydedilse de değer değişmez. İkiden fazla hane varsa YUVARLANMAZ (kutu değeri saklamaz, gösterir).
+    /// </summary>
+    public static string BirimFiyatMetni(decimal n) => n.ToString("#,##0.00########", TrKultur);
+
+    /// <summary>Satır içi kalem düzeltmesi — birim fiyat.</summary>
+    private Task FiyatDegistir(FisKalemi k, string metin)
+    {
+        var alan = $"si-kalem-fiyat-{k.UrunId}";
+        Form.Temizle();
+        // P-78: tr-TR tek merkez ("45.000" = 45000 TL; eskiden 45 okunuyordu).
+        var cozum = FormAlani.SayiCoz(metin);
+        if (cozum.Deger is not { } d || d < 0m)
+        {
+            Form.Ekle(alan, cozum.Mesaj(Dil.Dil) ?? Dil.T.Kabuk.NegatifOlamaz);
+            return Degisti.InvokeAsync(false);
+        }
+        // PAKET PATCH-4: satır içi fiyat da istemci tutar tavanına tabidir (FisKalemGirisi ile TEK kural).
+        if (FisKalemGirisi.TavanAsildi(k.Adet, d))
+        {
+            Form.Ekle(alan, FisKalemGirisi.TavanMesaji(Dil.Dil));
+            return Degisti.InvokeAsync(false);
+        }
+        k.BirimFiyat = d;
+        k.OncekiFiyat = d;
+        k.IscilikTl = null;   // T-S2: fiyat elle değişti → teklifin işçiliği artık bu fiyatın parçası DEĞİL (ekran "—" der)
+        return Degisti.InvokeAsync(true);
+    }
+}

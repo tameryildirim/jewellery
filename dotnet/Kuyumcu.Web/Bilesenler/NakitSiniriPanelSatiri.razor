@@ -1,0 +1,90 @@
+@using Kuyumcu.Contracts.Sayfalar.NakitSiniri
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══ PAKET YASAL-2 (TB-16) — PANEL "NAKİT SINIRI AŞIMI" KRİTİK SATIRI ═══════════
+   • Kapanmamış (AÇIK ya da SÜRE DOLDU) kayıt varsa KRİTİK satır; kayıt "bildirildi"
+     ya da "yanlış kayıt" diye kapatılana kadar durur. Yalnız SAHİP ve MUHASEBE.
+   • ODEME yönü: "n nakit sınırı aşımı — bildirim için son gün 07.10 (3 iş günü)".
+     TAHSILAT yönü: "n nakit sınırı aşımı — mali müşavirinize danışın" (geri sayım YOK).
+   • Rakam ve son gün SUNUCUDAN gelir. Yetkisiz rolde istek ATILMAZ.
+   • OTURUM HAZIR OLUNCA yükler (YasalDegisiklikBandi deseni): ilk çizimde
+     Kullanici null olabilir; OturumServisi.Degisti'ye abone olunur.
+   • UX-S28: istek hatası "aşım yok"a çevrilmez — hata bandı çizilir.
+   ════════════════════════════════════════════════════════════════════════════ *@
+
+@if (hata is not null)
+{
+    <p class="bant bant-hata nakit-siniri-panel" id="nsp-hata" role="alert">@hata</p>
+}
+else if (!Gorunmez && (Odeme.Count > 0 || Tahsilat.Count > 0))
+{
+    @* KRİTİK: kırmızı uyarı kutusu (mevcut .uyari-kutu.uyari-kirmizi) — Panel'in kapsamlı
+       (scoped) liste stillerine bağlı değil; iki modda da aynı görünür. *@
+    <div class="uyari-kutu uyari-kirmizi nakit-siniri-panel" id="nsp" role="alert">
+        @if (Odeme.Count > 0)
+        {
+            var ilk = Odeme.OrderBy(s => s.BildirimSonGunu).First();
+            <p class="nakit-siniri-panel-satir" id="nsp-odeme">
+                <span><strong>@Odeme.Count</strong> @string.Format(T.PanelOdeme, NakitSiniriBicim.KisaGun(ilk.BildirimSonGunu), ilk.KalanIsGunu)</span>
+                <a href="/uyum?sekme=nakit" id="nsp-odeme-git">@T.PanelGit →</a>
+            </p>
+        }
+        @if (Tahsilat.Count > 0)
+        {
+            <p class="nakit-siniri-panel-satir" id="nsp-tahsilat">
+                <span><strong>@Tahsilat.Count</strong> @T.PanelTahsilat</span>
+                <a href="/uyum?sekme=nakit" id="nsp-tahsilat-git">@T.PanelGit →</a>
+            </p>
+        }
+    </div>
+}
+
+@code {
+    private TevsikIhlalListesi? veri;
+    private string? hata;
+    private bool yuklemeBasladi;
+
+    private TevsikTaksitMetinleri T => TevsikTaksitSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// YASAL-2 tur 3 (TEK KAYNAK): kapanmamış aşım sayısı yüklendiğinde Panel'e bildirilir —
+    /// "Bekleyen iş" kutusu aynı sayıyı bu şeritten okur, "iş yok" demez.
+    /// </summary>
+    [Parameter] public EventCallback<int> SayiDegisti { get; set; }
+
+    /// <summary>PAKET RAPOR-3: true iken kırmızı kutu çizilmez (Rapor merkezi "Bekleyen iş" kartı aşımı kendi
+    /// satırında gösterir — BekleyenUyumSatirlari); hata bandı YİNE çizilir (UX-S28).</summary>
+    [Parameter] public bool Gorunmez { get; set; }
+    private bool Yetkili => Oturum.Kullanici?.Rol is "SAHIP" or "MUHASEBE";
+
+    private List<TevsikIhlalSatiri> Kapanmamis =>
+        Yetkili ? (veri?.Ihlaller ?? []).Where(s => s.Kapanmamis).ToList() : [];
+    private List<TevsikIhlalSatiri> Odeme => Kapanmamis.Where(s => s.Yon == "ODEME").ToList();
+    private List<TevsikIhlalSatiri> Tahsilat => Kapanmamis.Where(s => s.Yon != "ODEME").ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Oturum.Degisti += OturumDegisti;
+        await YukleGerekirse();
+    }
+
+    private async Task YukleGerekirse()
+    {
+        if (!Yetkili || yuklemeBasladi) return;
+        yuklemeBasladi = true;
+        try { veri = await Api.GetAsync<TevsikIhlalListesi>("/tevsik/ihlaller?durum=KAPANMAMIS"); }
+        catch (ApiHata ex) { hata = string.Format(T.PanelHata, ex.Message); }
+        if (veri is not null) await SayiDegisti.InvokeAsync(Kapanmamis.Count);
+    }
+
+    private void OturumDegisti() => _ = InvokeAsync(async () =>
+    {
+        await YukleGerekirse();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Oturum.Degisti -= OturumDegisti;
+}

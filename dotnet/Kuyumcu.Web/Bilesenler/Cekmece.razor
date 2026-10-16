@@ -1,0 +1,194 @@
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@inject IServiceProvider Hizmetler
+@implements IAsyncDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ÇEKMECE — paket UX-2 Faz A2 · K6 sözleşmesi
+
+   id sözleşmesi (K4: yalnız EKLENEN id):
+     #cekmece-{varlik} · #cekmece-kapat · #cekmece-{varlik}-govde
+     #cekmece-{varlik}-kaydet · #cekmece-{varlik}-iptal
+   Erişilebilirlik: role="dialog" aria-modal aria-labelledby; Esc kapatır;
+   açılışta odak İÇERİ (js/cekmece.js), kapanışta TETİKLEYİCİYE döner.
+   ⚠ ModalPencere ile AYNI yardımcıyı kullanır — ikinci mekanizma yoktur.
+
+   ⚠ İYİMSER KAYDETME YOK: bu bileşen kendini kaydetmez ve kendini KAPATMAZ.
+     "Kaydet" yalnız olayı yukarı verir; sunucu onayı gelince ebeveyn
+     Acik=false yapar. Parasal kayıtta "kaydedildi" sunucudan önce yazılmaz
+     (Anayasa md.1'in arayüz karşılığı).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@if (Acik)
+{
+    <div class="cekmece-arka" id="@($"cekmece-{Varlik}-arka")" @onclick="KapatIstegi"></div>
+    <aside class="cekmece" id="@($"cekmece-{Varlik}")" role="dialog" aria-modal="true"
+           aria-labelledby="@($"cekmece-{Varlik}-baslik")" tabindex="-1"
+           @ref="panelRef" @onkeydown="TusYakala">
+        <header class="cekmece-bas">
+            <h2 id="@($"cekmece-{Varlik}-baslik")">@Baslik</h2>
+            <button type="button" class="cekmece-kapat" id="cekmece-kapat"
+                    aria-label="@Dil.T.Ortak.Kapat" @onclick="KapatIstegi">&times;</button>
+        </header>
+        <div class="cekmece-govde" id="@($"cekmece-{Varlik}-govde")">
+            @ChildContent
+        </div>
+        <footer class="cekmece-alt">
+            @* PAKET S-3b (QA turu 3, KRİTİK): salt okunur çekmecede KİLİTLİ bir
+               "Kaydet" düğmesi göstermek YANILTICIDIR — kullanıcı düzenlenebilir
+               sanıp alan arıyor. Düzenlenecek alanı olmayan çekmece düğmeyi hiç
+               çizmez; sebep metni yine yazılır (UX-S30). *@
+            @* ── P-36c: DÜĞME SIRASI TEK TİP ────────────────────────────────
+               ÖLÇÜLDÜ (2026-09-21): ModalPencere kullanan 25 pencereden 20'si
+               "İptal → Kaydet" (birincil SONDA), yalnız 2'si tersiydi; Çekmece
+               ise birincili ÖNE koyuyordu. İki farklı sıra = kaslı hafıza
+               bozulması. Standart ÖLÇÜLEN ÇOĞUNLUK + yerleşik platform kuralı:
+               İKİNCİL ÖNCE, BİRİNCİL SONDA. Çekmece buna çekildi; kimlikler
+               (cekmece-*-kaydet / -iptal) DEĞİŞMEDİ, testler etkilenmez. *@
+            <button type="button" class="dugme dugme-ikincil" id="@($"cekmece-{Varlik}-iptal")"
+                    @onclick="KapatIstegi">@(IptalMetni ?? (YildizMi ? Kuyumcu.Core.I18n.YildizKatmanSozlugu.Vazgec(Dil.Dil) : Dil.T.Ortak.Iptal))</button>
+            @if (KaydetGoster)
+            {
+                <button type="button" class="dugme dugme-birincil" id="@(KaydetElemanId ?? $"cekmece-{Varlik}-kaydet")"
+                        disabled="@KaydetKapali" @onclick="KaydetIstegi">
+                    @(Kaydediliyor ? Dil.T.Kabuk.Kaydediliyor : KaydetMetni ?? Dil.T.Ortak.Kaydet)
+                </button>
+            }
+            @* TOPLU-7B (GOC-A devri DÜŞÜK): çekmecenin kendi Kaydet'i çizilmeyen ekranlarda (Manuel Kur, Yeni Kasa)
+               birincil düğme GÖVDEDE, İptal altbilgide kalıyordu (375'te Kaydet üstte, İptal altta). Ekran düğmeyi
+               <Alt> içine koyar: aynı düğme (kimlik, sınıf, olay AYNEN) altbilgide İptal'in SONUNA oturur —
+               sıra her çekmecede aynı: ikincil önce, birincil sonda. *@
+            @Alt
+            @* DoD: kilitli düğme SEBEBİNİ söyler (UX-S30). PARA-DEMO-2: düğmenin kendi adı varsa
+               (KaydetMetni) sebep "Kaydet kilitli:" ön ekini taşımaz; sebep başka yerde yazılıysa (null) ikinci kez yazılmaz. *@
+            @if (KaydetKapali && (Kaydediliyor || KaydetMetni is null || KilitSebebi is not null))
+            {
+                <span class="cekmece-kilit-sebep" id="@(KilitElemanId ?? $"cekmece-{Varlik}-kilit")">
+                    @(Kaydediliyor ? Dil.T.Kabuk.SunucuOnayiBekleniyor
+                                   : KaydetMetni is not null ? KilitSebebi : $"{Dil.T.Kabuk.KaydetKilitli}: {KilitSebebi}")
+                </span>
+            }
+        </footer>
+    </aside>
+}
+
+@code {
+    /// <summary>YILDIZ-KATMAN tur 2: Yıldız'da ikincil düğme metni tuval b2 "Vazgeç" (IptalMetni verilmediyse). Öteki şemalar "İptal" AYNEN.</summary>
+    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
+    [Parameter] public bool Acik { get; set; }
+    /// <summary>id gövdesi: cari, urun, fatura … (<c>#cekmece-{varlik}</c>).</summary>
+    [Parameter, EditorRequired] public string Varlik { get; set; } = "";
+    [Parameter] public string Baslik { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>TOPLU-7B: altbilgide İptal'den SONRA çizilen ekran düğmesi (KaydetGoster=false ekranlar için).</summary>
+    [Parameter] public RenderFragment? Alt { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+    [Parameter] public EventCallback Kaydet { get; set; }
+    /// <summary>Sunucu yanıtı beklenirken true — düğme kilitlenir, "kaydedildi" YAZILMAZ.</summary>
+    [Parameter] public bool Kaydediliyor { get; set; }
+    /// <summary>false ise Kaydet kilitlidir ve <see cref="KilitSebebi"/> ekranda yazar.</summary>
+    [Parameter] public bool KaydetAktif { get; set; } = true;
+
+    /// <summary>
+    /// false ise Kaydet düğmesi HİÇ ÇİZİLMEZ (salt okunur çekmece). Kilitli bir
+    /// Kaydet düğmesi, düzenlenecek alanı olmayan bir kayıtta yanıltıcıdır.
+    /// </summary>
+    [Parameter] public bool KaydetGoster { get; set; } = true;
+    [Parameter] public string? KilitSebebi { get; set; }
+
+    /// <summary>
+    /// PAKET CUMA-M: ikincil (formu kapat) düğmenin metni. Verilmezse ESKİSİ GİBİ
+    /// "İptal" (Ortak.Iptal) — diğer ekranlar DEĞİŞMEZ. Müşteriler tuvali "Vazgeç"
+    /// der (OnayKilit standardı: vazgeç düğmesi "iptal" demez). id AYNEN.
+    /// </summary>
+    [Parameter] public string? IptalMetni { get; set; }
+
+    /// <summary>
+    /// PAKET PARA-DEMO-2 (madde 2): birincil düğmenin ADI ve kimliği ("Günü Kapat" · #gun-kapat-onayla) ve
+    /// kilit sebebi satırının kimliği. Verilmezse ESKİSİ GİBİ "Kaydet" · cekmece-{Varlik}-kaydet/-kilit —
+    /// diğer çekmeceler DEĞİŞMEZ. Birincil düğme böylece altlıkta Vazgeç'in yanında durur.
+    /// </summary>
+    [Parameter] public string? KaydetMetni { get; set; }
+    [Parameter] public string? KaydetElemanId { get; set; }
+    [Parameter] public string? KilitElemanId { get; set; }
+
+    private ElementReference panelRef;
+    private bool odakKuruldu;
+
+    private bool KaydetKapali => Kaydediliyor || !KaydetAktif;
+
+    // ── PAKET ORTAK-1 (D): AÇILIŞTA SAYFA ZIPLAMASI ────────────────────
+    // ÖLÇÜLDÜ (tam tur v3 + ORTAK-1 turu): dar ekranda çekmece tam ekrandır ve
+    // bazı sayfalar AYNI çizimde arkadaki listeyi gizler → belge kısalır →
+    // kaydırma 0'a iner (/cariler 768 px'te −85…−782 px). Sabitleme bu yüzden
+    // ÇİZİMDEN ÖNCE, eşzamanlı yapılır (WASM'da JS süreç içidir): belge boyu ve
+    // konum DOM değişmeden saklanır (js/cekmece.js · css/ortak.css).
+    private bool oncekiAcik;
+
+    protected override void OnParametersSet()
+    {
+        if (Acik && !oncekiAcik) SayfayiSabitle();
+        oncekiAcik = Acik;
+    }
+
+    // ORTAK-1 (D): açık çekmece sayfa değişince yok edilir; kapat() hiç
+    // çağrılmadığı için pencere sayacı ve gövde kilidi SIZIYORDU (ölçüldü).
+    public async ValueTask DisposeAsync()
+    {
+        if (!odakKuruldu) return;
+        odakKuruldu = false;
+        try { await JS.InvokeVoidAsync("kuyumcuCekmece.birak"); }
+        catch (JSDisconnectedException) { /* devre koptu: kilit de sayfayla gitti */ }
+        catch (JSException) { /* JS yoksa kilit de kurulmamıştır */ }
+    }
+
+    private void SayfayiSabitle()
+    {
+        if (JS is not IJSInProcessRuntime esz) return;   // sunucu tarafı çizimde yok
+        try { esz.InvokeVoid("kuyumcuCekmece.sabitle"); }
+        catch (JSException) { /* JS yüklenmediyse çekmece yine açılır; yalnız konum korunmaz */ }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Acik && !odakKuruldu)
+        {
+            odakKuruldu = true;
+            try { await JS.InvokeVoidAsync("kuyumcuCekmece.ac", panelRef); }
+            catch (JSDisconnectedException) { /* devre koptu */ }
+            catch (JSException) { /* JS yoksa çekmece yine çalışır; Esc panel odaklandığında gelir */ }
+        }
+        else if (!Acik && odakKuruldu)
+        {
+            odakKuruldu = false;
+            try { await JS.InvokeVoidAsync("kuyumcuCekmece.kapat", panelRef); }
+            catch (JSDisconnectedException) { /* devre koptu */ }
+            catch (JSException) { /* öğe DOM'dan çıkmış olabilir */ }
+        }
+    }
+
+    // ── ODAK TUZAĞI DÜZELTMESİ (P-36c) ──────────────────────────────────
+    // ÖLÇÜLEN HATA: `Acik=false` olunca panel @if bloğuyla DOM'DAN ÇIKIYOR,
+    // `kuyumcuCekmece.kapat` ANCAK ONDAN SONRA (OnAfterRenderAsync) kopmuş bir
+    // ElementReference ile çağrılıyordu → odak tetikleyiciye HİÇ dönmüyordu ve
+    // hata `catch { }` ile yutuluyordu (Anayasa md.1: sessiz yutma yasak).
+    // Doğru sıra: ÖNCE odağı geri ver (panel hâlâ DOM'da), SONRA kapat.
+    private async Task KapatIstegi()
+    {
+        await OdakGeriVer();
+        await Kapat.InvokeAsync();
+    }
+
+    /// <summary>Odağı tetikleyiciye geri verir; panel HÂLÂ DOM'dayken çağrılır.</summary>
+    private async Task OdakGeriVer()
+    {
+        if (!odakKuruldu) return;
+        odakKuruldu = false;
+        try { await JS.InvokeVoidAsync("kuyumcuCekmece.kapat", panelRef); }
+        catch (JSDisconnectedException) { /* devre koptu: geri verilecek odak da yok */ }
+    }
+    private Task KaydetIstegi() => KaydetKapali ? Task.CompletedTask : Kaydet.InvokeAsync();
+
+    private Task TusYakala(KeyboardEventArgs e) =>
+        e.Key == "Escape" ? KapatIstegi() : Task.CompletedTask;
+}

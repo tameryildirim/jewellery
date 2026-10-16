@@ -1,0 +1,28 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — PASAPORT NO (K7 · ICAO 9303): büyük harf; boşluk, tire ve Türkçe harf yazılamaz; 5–20 harf/rakam. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="text" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@YerTutucu" maxlength="@AlanSinirlari.Pasaport" autocomplete="off"
+           data-maske="pasaport"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    /// <summary>girdi-maske.js 'pasaport' ile AYNI.</summary>
+    public static string Maskele(string? g)
+    {
+        if (string.IsNullOrEmpty(g)) return "";
+        var b = new System.Text.StringBuilder(g.Length);
+        foreach (var ch in g.ToUpperInvariant()) if (ch is >= 'A' and <= 'Z' or >= '0' and <= '9') b.Append(ch);
+        return b.Length > AlanSinirlari.Pasaport ? b.ToString(0, AlanSinirlari.Pasaport) : b.ToString();
+    }
+    protected override string Temizle(string? g) => Maskele(g);
+    protected override GirdiHatasi? TamDenetle(string t) => PasaportKurali.Denetle(t);
+}

@@ -1,0 +1,29 @@
+%% C4 Seviye 2 — Container
+%% Olculdu 2026-09-13: tek surec, 3 derleme birimi, 1 veritabani.
+flowchart TB
+    kullanici["<b>Kullanici</b><br/><i>[Kisi]</i>"]
+
+    subgraph surec["Kuyumcu ERP — TEK SUREC (uretimde ayni origin)"]
+        web["<b>Blazor WebAssembly SPA</b><br/><i>[Container: .NET 8 / WASM]</i><br/>14 sayfa · 5.072 satir .razor<br/>Ilk yukleme 19,59 MB -> 7,53 MB (br/gzip)"]
+        api["<b>ASP.NET Core Web API</b><br/><i>[Container: .NET 8]</i><br/>17 modul · 100 uc<br/>JWT · oran siniri · denetim izi"]
+        hub["<b>SignalR Hub</b><br/><i>[Container: .NET 8]</i><br/>/hubs/kur — canli kur yayini"]
+    end
+
+    db[("<b>MySQL 8.4</b><br/><i>[Veritabani]</i><br/>21 tablo · 262 sutun · 54 indeks<br/>Kiraci basina global query filter")]
+    kur["<b>Kur saglayicilari</b><br/><i>[Dis sistem]</i>"]
+
+    kullanici -->|"HTTPS"| web
+    web -->|"JSON/HTTPS<br/>Bearer JWT"| api
+    web -->|"WebSocket<br/>access_token query"| hub
+    api -->|"EF Core / Pomelo<br/>[TCP 3306]"| db
+    hub -->|"kur yayini"| web
+    api -->|"zamanlayici ile ceker"| kur
+
+    classDef kisi fill:#08427b,stroke:#052e56,color:#fff
+    classDef kon fill:#438dd5,stroke:#2e6295,color:#fff
+    classDef veri fill:#438dd5,stroke:#2e6295,color:#fff
+    classDef dis fill:#999,stroke:#6b6b6b,color:#fff
+    class kullanici kisi
+    class web,api,hub kon
+    class db veri
+    class kur dis

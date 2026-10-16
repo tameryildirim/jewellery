@@ -1,0 +1,188 @@
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-6 — ÜRÜN AYIR (rezerv, P-21 · Y-23) ═══
+   Uçlar: POST /islemler/rezervler · GET /islemler/rezervler ·
+          PATCH /islemler/rezervler/{id} (Cekmece — tek düzenleme kalıbı) ·
+          POST /islemler/rezervler/{id}/iptal (gerekçe + ortak onay modalı).
+   ⚠ İstek atmaz — niyet DigerIstek ile sayfaya gider. *@
+<div class="form-dikey" id="rezerv-form">
+    <Secici ElemanId="rezerv-urun" Etiket="@M.Urun" Zorunlu="true" YerTutucu="@Satis3Sozlugu.Al(Dil.Dil).UrunSecin"
+            Secenekler="@UrunSecenekleri" Deger="@R.UrunId" DegerChanged="@(v => R.UrunId = v)"
+            Hata="@Hata(DigerEylemler.RezervAc, "urun")" />
+    <Secici ElemanId="rezerv-cari" Etiket="@M.Musteri" Zorunlu="true" BosSecenekMetni="@Satis3Sozlugu.Al(Dil.Dil).MusteriSecin"
+            Secenekler="@CariSecenekleri" Deger="@R.CariId" DegerChanged="@(v => R.CariId = v)"
+            Hata="@Hata(DigerEylemler.RezervAc, "cari")" />
+    <Sayi ElemanId="rezerv-adet" Etiket="@M.Adet" Zorunlu="true" EnAz="0.001m" EnCokOndalik="3"
+          Deger="@R.Adet" DegerChanged="@(v => R.Adet = v)" Hata="@Hata(DigerEylemler.RezervAc, "adet")" />
+    <details class="fis-diger-ayrinti" id="rezerv-ayrinti" open="@(R.BitisGunu is not null || !string.IsNullOrEmpty(R.Aciklama))">   @* SATIS-3: isteğe bağlı alanlar "+ Ayrıntı ekle" altında KATLI (kurucu 11:35) *@
+        <summary id="rezerv-ayrinti-ac">@SatisSadeSozlugu.Al(Dil.Dil).DigerAyrintilar</summary>
+        <Tarih ElemanId="rezerv-son-gun" Etiket="@M.SonGun" EnErken="@Bugun"
+               Deger="@R.BitisGunu" DegerChanged="@(v => R.BitisGunu = v)" />
+        <Metin ElemanId="rezerv-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IslemAciklama"
+               Deger="@R.Aciklama" DegerChanged="@(v => R.Aciklama = v ?? "")" />
+    </details>
+    <FisDigerEylem Id="rezerv-kaydet" Metin="@M.RezervKaydet" Mesgul="Durum.Mesgul" KurVar="Baglam.KurVar" Tikla="Ac"
+                   Eksik="@FisDigerEylem.Etiketler(R.Hatalar(M), ("urun", M.Urun), ("cari", M.Musteri), ("adet", M.Adet))" />   @* t10 *@
+</div>
+
+<details class="katlanir fis-gecmis" id="rezerv-gecmis">   @* SATIS-3: geçmiş/ikincil bölüm KAPALI katlanır (kurucu 25.09 "piyano gibi"); içerik DOM'da — id'ler aynı *@
+<summary class="katlanir-baslik" id="rezerv-gecmis-ac"><h3 id="rezerv-liste-baslik" class="katlanir-ad">@M.RezervListe</h3></summary>
+@if (Durum.Rezervler is { } liste)
+{
+    var satirlar = liste.Satirlar ?? [];
+    @if (liste.SinirAsildi)
+    {
+        <p class="bant bant-uyari" id="rezerv-sinir" role="status">@string.Format(M.SinirUyari, liste.Limit)</p>
+    }
+    @if (satirlar.Count == 0)
+    {
+        <BosDurum Mesaj="@M.RezervBos" />
+    }
+    else
+    {
+        @* PAKET GOC-C — ORTAK IZGARA (grid:islemler:rezerv-liste). Açık rezervler TAM → yerel sıralama; id'ler korunur. *@
+        <Izgara T="RezervSatiri" Ekran="islemler" GridId="rezerv-liste" TabloId="rezerv-liste" Kolonlar="@RezervKolonlari"
+                Ogeler="@IzgaraYerelSiralama.Uygula(satirlar, rezervSira, RezervKolonlari)"
+                SatirId="@(r => $"rezerv-satir-{r.Id}")" Baslik="@M.Urun"
+                SiralamaDegisti="@(x => rezervSira = x)" GecerliSiralama="@rezervSira" />
+        @if (!DigerYetki.SahipMudur(Baglam.Rol))
+        {
+            <p class="metin-kucuk metin-soluk" id="rezerv-kaldir-kilit" role="note">@M.RezervKaldir: @M.YetkiSahipMudur</p>
+        }
+    }
+}
+</details>
+
+@* Ayırmayı kaldırma gerekçesi — onay modalından ÖNCE yazılır (sunucu da ister). *@
+@if (kaldirilacak is not null)
+{
+    <div class="bant bant-uyari form-dikey" id="rezerv-kaldir-form" role="group">
+        <p>@Baglam.UrunAdi(kaldirilacak.UrunId) — @Baglam.CariAdi(kaldirilacak.CariId)</p>
+        <GerekceAlani Id="rezerv-kaldir-gerekce" Etiket="@M.Gerekce" AsgariUzunluk="@AvansGirisi.IadeGerekceAsgari"
+                      Deger="@Durum.RezervIptalGerekce" DegerChanged="@(v => Durum.RezervIptalGerekce = v)" />
+        @if (Hata(DigerEylemler.RezervIptal, "gerekce") is { } gh)
+        {
+            <span class="hata-metni alan-hata" id="rezerv-kaldir-gerekce-hata" role="alert">@gh</span>
+        }
+        <div class="satir">
+            <button type="button" class="btn btn-tehlike" id="rezerv-kaldir-devam" @onclick="KaldirOnayla">@M.RezervKaldir</button>
+            <button type="button" class="btn btn-ikincil" id="rezerv-kaldir-vazgec" @onclick="KaldirVazgec">@M.Vazgec</button>
+        </div>
+    </div>
+}
+
+<Cekmece Acik="@(Durum.RezervDuzen.Asil is not null)" Varlik="Rezervasyon" Baslik="@M.RezervDuzenleBaslik"
+         Kapat="DuzenKapat" Kaydet="Duzenle" Kaydediliyor="@Durum.Mesgul">
+    <Sayi ElemanId="rezerv-duz-adet" Etiket="@M.Adet" Zorunlu="true" EnAz="0.001m" EnCokOndalik="3"
+          Deger="@Durum.RezervDuzen.Adet" DegerChanged="@(v => Durum.RezervDuzen.Adet = v)"
+          Hata="@Hata(DigerEylemler.RezervDuzenle, "adet")" />
+    <Tarih ElemanId="rezerv-duz-son-gun" Etiket="@M.SonGun" EnErken="@Bugun"
+           Deger="@Durum.RezervDuzen.BitisGunu" DegerChanged="@(v => Durum.RezervDuzen.BitisGunu = v)" />
+    <Metin ElemanId="rezerv-duz-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IslemAciklama"
+           Deger="@Durum.RezervDuzen.Aciklama" DegerChanged="@(v => Durum.RezervDuzen.Aciklama = v ?? "")" />
+</Cekmece>
+
+@code {
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? rezervSira;
+    private IReadOnlyList<IzgaraKolonu<RezervSatiri>> RezervKolonlari =>
+    [
+        new() { Anahtar = "urun", Baslik = M.Urun, ZorunluGorunur = true, SunucuSiralamaAdi = "urun", Deger = r => Baglam.UrunAdi(r.UrunId) },
+        new() { Anahtar = "musteri", Baslik = M.Musteri, SunucuSiralamaAdi = "musteri", Deger = r => Baglam.CariAdi(r.CariId) },
+        new() { Anahtar = "adet", Baslik = M.Adet, ZorunluGorunur = true, SunucuSiralamaAdi = "adet", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = r => r.Adet, Hucre = r => @<text>@r.Adet.ToString("0.###", Kultur)</text> },
+        new() { Anahtar = "son-gun", Baslik = M.SonGun, SunucuSiralamaAdi = "son-gun", Deger = r => r.BitisGunu,
+                Hucre = r => @<text>@(r.BitisGunu is { } bgun ? Bicim.Gun(bgun) : "—")
+                    @if (r.SuresiDoldu)
+                    {
+                        <Rozet Renk="amber">@M.SuresiGecti</Rozet>
+                    }</text> },
+        new() { Anahtar = "eylem", Baslik = M.Duzenle, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "satir-eylem",
+                Hucre = r => @<text>@if (r.Duzenlenebilir)
+                    {
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"rezerv-duzenle-{r.Id}")"
+                                @onclick="() => Durum.RezervDuzen.Ac(r)">@M.Duzenle</button>
+                        <button type="button" class="btn btn-tehlike btn-kucuk" id="@($"rezerv-kaldir-{r.Id}")"
+                                disabled="@(!DigerYetki.SahipMudur(Baglam.Rol))"
+                                aria-describedby="@(DigerYetki.SahipMudur(Baglam.Rol) ? null : "rezerv-kaldir-kilit")"
+                                @onclick="() => KaldirAc(r)">@M.RezervKaldir</button>
+                    }
+                    else
+                    {
+                        <DegismezIpucu Varlik="@($"Rezervasyon-{r.Id}")" Gerekce="@M.RezervDegismez" AlternatifYol="@M.RezervDegismezYol" />
+                    }</text> },
+    ];
+
+    [Parameter, EditorRequired] public DigerIslemDurumu Durum { get; set; } = new();
+    [Parameter, EditorRequired] public DigerBaglam Baglam { get; set; } = new([], [], [], [], false, null);
+    [Parameter] public EventCallback<DigerIstek> Istek { get; set; }
+
+    private FisDigerMetinleri M => FisDigerSozlugu.Al(Dil.Dil);
+    private RezervGirisi R => Durum.Rezerv;
+    private static readonly System.Globalization.CultureInfo Kultur = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    private static DateOnly Bugun => DateOnly.FromDateTime(DateTime.Now);
+    private RezervSatiri? kaldirilacak;
+
+    private IReadOnlyList<SecenekOgesi> UrunSecenekleri => Baglam.Urunler.Select(u => new SecenekOgesi(u.Id, u.Ad)).ToList();
+    private IReadOnlyList<SecenekOgesi> CariSecenekleri =>
+        Baglam.Cariler.Where(c => !c.SistemCarisi).Select(c => new SecenekOgesi(c.Id, c.Ad)).ToList();
+
+    private string? Hata(string eylem, string alan) =>
+        Durum.Denenen.Contains(eylem) ? Hatalar(eylem).GetValueOrDefault(alan) : null;
+
+    private Dictionary<string, string> Hatalar(string eylem) => eylem switch
+    {
+        DigerEylemler.RezervAc => R.Hatalar(M),
+        DigerEylemler.RezervDuzenle => Durum.RezervDuzen.Hatalar(M),
+        _ => GerekceHatasi(),
+    };
+
+    private Dictionary<string, string> GerekceHatasi()
+    {
+        var h = DigerDogrula.Yeni();
+        DigerDogrula.Gerekce(h, "gerekce", Durum.RezervIptalGerekce, AvansGirisi.IadeGerekceAsgari, M);
+        return h;
+    }
+
+    private async Task Ac()
+    {
+        Durum.Denenen.Add(DigerEylemler.RezervAc);
+        if (R.Hatalar(M).Count > 0) return;   // alan altı mesajlar çizilir — sessiz etkisizlik yok
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.RezervAc));
+    }
+
+    private async Task Duzenle()
+    {
+        Durum.Denenen.Add(DigerEylemler.RezervDuzenle);
+        if (Durum.RezervDuzen.Hatalar(M).Count > 0) return;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.RezervDuzenle, Durum.RezervDuzen.Asil?.Id));
+    }
+
+    private void DuzenKapat()
+    {
+        Durum.RezervDuzen.Kapat();
+        Durum.Denenen.Remove(DigerEylemler.RezervDuzenle);
+    }
+
+    private void KaldirAc(RezervSatiri r)
+    {
+        kaldirilacak = r;
+        Durum.RezervIptalGerekce = "";
+        Durum.Denenen.Remove(DigerEylemler.RezervIptal);
+    }
+
+    private void KaldirVazgec() => kaldirilacak = null;
+
+    private async Task KaldirOnayla()
+    {
+        Durum.Denenen.Add(DigerEylemler.RezervIptal);
+        if (GerekceHatasi().Count > 0 || kaldirilacak is null) return;
+        Durum.Onay = DigerEylemler.RezervIptal;
+        Durum.OnayId = kaldirilacak.Id;
+        kaldirilacak = null;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.Ciz));   // üst bileşen onay modalını çizsin
+    }
+}

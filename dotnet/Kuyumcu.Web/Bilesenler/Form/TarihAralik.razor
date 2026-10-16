@@ -1,0 +1,116 @@
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Web.Servisler
+@implements IDisposable
+@inherits FormAlani
+
+@* TARİH ARALIĞI — başlangıç + bitiş TEK alan olarak (paket P-36b → GIRDI-AILESI-2 · K8e).
+   ⚠ "Bitiş başlangıçtan önce olamaz" kuralı 7 ekranda ayrı ayrı yazılmıştı;
+     artık BURADA, tek yerde ve sözlükten söylenir.
+   GIRDI-AILESI-2: iki kutu da <Tarih> ile AYNI gg.aa.yyyy maskesini taşır (girdi-maske.js
+   'tarih'); pencere Rapor (2000..gelecek yıl), aralık en çok 5 yıl (TarihPenceresi.AralikDenetle).
+   id sözleşmesi: <ElemanId>-bas · <ElemanId>-bit *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <div class="alan-girdi-satir">
+        <input type="text" inputmode="numeric" class="girdi tarih-girdi @(EtkinHatali ? "hatali" : null)" id="@($"{ElemanId}-bas")"
+               value="@basHam" placeholder="@GirdiSozlugu.Al(Dil.Dil).TarihYerTutucu" maxlength="10" autocomplete="off"
+               data-maske="tarih" data-yil-en-az="@Pencere.EnErken.Year" data-yil-en-cok="@Pencere.EnGec.Year"
+               aria-label="@Dil.T.Form.AralikBaslangic"
+               aria-invalid="@(EtkinHatali ? "true" : "false")"
+               aria-describedby="@AciklayanId"
+               disabled="@Kilitli" @oninput="BasYazildi" @onchange="BasDegisti" />
+        <span class="alan-ayirac" aria-hidden="true">–</span>
+        <input type="text" inputmode="numeric" class="girdi tarih-girdi @(EtkinHatali ? "hatali" : null)" id="@($"{ElemanId}-bit")"
+               value="@bitHam" placeholder="@GirdiSozlugu.Al(Dil.Dil).TarihYerTutucu" maxlength="10" autocomplete="off"
+               data-maske="tarih" data-yil-en-az="@Pencere.EnErken.Year" data-yil-en-cok="@Pencere.EnGec.Year"
+               aria-label="@Dil.T.Form.AralikBitis"
+               aria-invalid="@(EtkinHatali ? "true" : "false")"
+               aria-describedby="@AciklayanId"
+               disabled="@Kilitli" @oninput="BitYazildi" @onchange="BitDegisti" />
+    </div>
+</AlanKabugu>
+
+@code {
+    [Inject] private DilServisi Dil { get; set; } = default!;
+    [CascadingParameter] public GecersizAlanKapisi? GecersizKapi { get; set; }
+
+    [Parameter] public DateOnly? Bas { get; set; }
+    [Parameter] public EventCallback<DateOnly?> BasChanged { get; set; }
+    [Parameter] public DateOnly? Bit { get; set; }
+    [Parameter] public EventCallback<DateOnly?> BitChanged { get; set; }
+
+    private string basHam = "", bitHam = "";
+    private string? basHata, bitHata;
+
+    private static DateOnly Bugun => DateOnly.FromDateTime(Bicim.IsletmeBugun);
+    private static (DateOnly EnErken, DateOnly EnGec) Pencere => TarihPenceresi.Pencere(TarihTuru.Rapor, Bugun);
+
+    /// <summary>Ters aralık İÇ hatadır; çağıranın kendi hatasını EZMEZ.</summary>
+    private bool TersAralik => Bas is { } b && Bit is { } s && s < b;
+
+    private string? AralikHatasi =>
+        basHata ?? bitHata
+        ?? (TersAralik ? Dil.T.Kabuk.TarihAraligi
+            : TarihPenceresi.AralikDenetle(Bas, Bit) is { } h ? GirdiSozlugu.Mesaj(h, Dil.Dil) : null);
+
+    private string? EtkinHata => GorunenHata is { Length: > 0 } ? GorunenHata : AralikHatasi;
+
+    private bool EtkinHatali => EtkinHata is { Length: > 0 };
+
+    // Tur 3: çağıranın SON verdiği değerler — değişmediyse kullanıcının metni/hatası korunur
+    // (çağıran null'u yok sayıp eski değeri geri verince "31.12" kutuda kalıp hata siliniyordu).
+    private DateOnly? sonBas, sonBit;
+    private bool ilkParam = true;
+
+    protected override void OnParametersSet()
+    {
+        var basDegisti = ilkParam || Bas != sonBas;
+        var bitDegisti = ilkParam || Bit != sonBit;
+        ilkParam = false;
+        sonBas = Bas; sonBit = Bit;
+        if (basDegisti && Bas is { } b && TarihPenceresi.Coz(basHam).Deger != b) { basHam = TarihPenceresi.Yaz(b); basHata = null; }
+        if (bitDegisti && Bit is { } s && TarihPenceresi.Coz(bitHam).Deger != s) { bitHam = TarihPenceresi.Yaz(s); bitHata = null; }
+        KapiyaYaz();
+    }
+
+    private void KapiyaYaz()
+    {
+        var h = AralikHatasi;
+        GecersizKapi?.Bildir(ElemanId, Etiket, h is not null, h);
+    }
+
+    public void Dispose() => GecersizKapi?.Bildir(ElemanId, Etiket, false, null);
+
+    private (string Ham, string? Hata, DateOnly? Deger) Coz(string? deger, bool tamam)
+    {
+        var ham = Tarih.Maskele(deger);
+        if (ham.Length == 0) return (ham, null, null);
+        var (h, d) = TarihPenceresi.Coz(ham);
+        if (h is { } hh) return (ham, tamam || ham.Length == 10 ? GirdiSozlugu.Mesaj(hh, Dil.Dil) : null, null);
+        var p = TarihPenceresi.Denetle(d, TarihTuru.Rapor, Bugun);
+        return p is not null ? (ham, GirdiSozlugu.Mesaj(p.Value, Dil.Dil), null) : (ham, null, d);
+    }
+
+    private Task BasYazildi(ChangeEventArgs e) => BasIsle(e.Value?.ToString(), false);
+    private Task BasDegisti(ChangeEventArgs e) => BasIsle(e.Value?.ToString(), true);
+    private Task BitYazildi(ChangeEventArgs e) => BitIsle(e.Value?.ToString(), false);
+    private Task BitDegisti(ChangeEventArgs e) => BitIsle(e.Value?.ToString(), true);
+
+    private async Task BasIsle(string? v, bool tamam)
+    {
+        DefterdenSil();
+        (basHam, basHata, var d) = Coz(v, tamam);
+        if (d != Bas) { Bas = d; await BasChanged.InvokeAsync(d); }
+        KapiyaYaz();
+    }
+
+    private async Task BitIsle(string? v, bool tamam)
+    {
+        DefterdenSil();
+        (bitHam, bitHata, var d) = Coz(v, tamam);
+        if (d != Bit) { Bit = d; await BitChanged.InvokeAsync(d); }
+        KapiyaYaz();
+    }
+}

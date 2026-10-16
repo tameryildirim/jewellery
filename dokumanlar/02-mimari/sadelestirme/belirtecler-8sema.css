@@ -1,0 +1,1779 @@
+/* ═════════════════════════════════════════════════════════════════════════
+   MİHENK — 8 RENK ŞEMASI × AYDINLIK/KARANLIK × 3 YAZI BOYUTU
+   Üreten: Ertuğ (03 Frontend) + Bertan (02 Mimari) · 23 Eylül 2026
+   Kaynak karar: PLAN-SADELESTIRME-PUSULA-2026-09-23.md § 5A (BAĞLAYICI).
+   Gerekçe + ölçüm tablosu: TEMA-SISTEMI-2026-09-23.md
+
+   ⚠ BU DOSYA ÜRETİME KOPYALANMAZ. S-1 paketi değerleri
+     dotnet/Kuyumcu.Web/wwwroot/css/belirtecler.css içine TAŞIR.
+     Belirteç ADLARI bugünküyle birebir aynıdır; yalnız 5 YENİ ad eklenmiştir:
+       --yuzey-hover · --yuzey-secili · --menu-baslik · --menu-aktif-yuzey
+       · --menu-aktif-metin
+     Hiçbir mevcut ad değişmedi, hiçbiri silinmedi.
+
+   ⚠ ALTIN/AMBER YOK. Ölçülen kural: hiçbir --vurgu / --vurgu-guclu /
+     --odak-halka değeri "hue 55–100° VE chroma ≥0,10 VE L ≥0,55" bandında
+     değildir (8 şema × 2 tema × 3 belirteç = 48 değer denetlendi, ihlal 0).
+     Ham --amber-* merdiveni belirtecler.css'te DURUR ama yalnız "uyarı"
+     semantiğini besler; hiçbir şemanın vurgusu değildir.
+
+   ⚠ Karanlık tema aydınlığın ters çevrilmişi DEĞİLDİR. 16 değer bloğunun
+     her biri ayrı hesaplandı: yüzey yönü tersine döner (K3), vurgu açılır ve
+     doygunluğu düşer (K-4, M3 ton 40→80), vurgu üstündeki metin ölçülerek
+     seçilir (K-5, Spectrum eşiği), saf siyah zemin ve saf beyaz gövde metni
+     yoktur (K-1/K-2), gövde metni bandı 12:1–16:1'de tutulur (halation).
+
+   ⚠ TÜRETİM: değerler elle seçilmedi; OKLCH (algısal açıklık) merdiveninden
+     sabit rol tonlarıyla üretildi, sonra WCAG 2.2 nispi parlaklık formülüyle
+     ÖLÇÜLDÜ ve eşiği tutana kadar L kaydırıldı. 496 çift ölçüldü, 496'sı
+     geçti (AA: metin 4,5:1 · metin dışı 3:1). Tablo belgede.
+
+   ⚠ CSP: saf CSS. CDN/npm/inline script yok, @import yok, dış font yok.
+
+   ÖZGÜLLÜK SIRASI (bozulursa karanlıkta koyu üstüne koyu biner):
+     1) :root                                   → Platin Mavi aydınlık (varsayılan)
+     2) :root[data-sema="…"]                    (0,1,1)  aydınlık şemalar
+     3) @media dark + :not([data-tema="aydinlik"])(0,2,1) sistem karanlığı
+     4) :root[data-tema="karanlik"][data-sema=…](0,2,1)  açık karanlık seçimi
+   Blok sırası DOSYADAKİ SIRAYLA anlamlıdır; blok taşınmaz.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1) VARSAYILAN = PLATİN MAVİ · AYDINLIK ─────────────────────────────
+   Ekip kararı (23 Eylül, oy birliği): varsayılan şema Platin Mavi,
+   varsayılan tema AYDINLIK, varsayılan yazı 16 px. Gerekçe belgede § 7. */
+:root {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fefeff;
+  --yuzey-2:               #f3f5f9;
+  --yuzey-3:               #eceef3;
+  --yuzey-govde:           #f6f7fa;
+  --yuzey-hover:           #f0f2f6;
+  --yuzey-secili:          #e7e9f0;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #32353e;
+  --metin-guclu:           #1e212a;
+  --metin-soluk:           #646870;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #80838c;
+  --ayrac:                 #dbdee5;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #4960bb;
+  --vurgu-guclu:           #32469e;
+  --vurgu-metin:           #f9fafd;
+  --vurgu-yuzey:           #eef2ff;
+  --vurgu-kenar:           #c4d3ff;
+  --odak-halka:            #3f54ae;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #1f2024;
+  --kenar-yuzey-2:         #2e2f33;
+  --kenar-metin:           #adb1bc;
+  --kenar-metin-guclu:     #e6e8ed;
+  --kenar-ayrac:           #3c3d41;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #9b9ea7;
+  --menu-aktif-yuzey:      #293354;
+  --menu-aktif-metin:      #c8d6ff;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #556ab1;
+  --grafik-2:              #9e5c1a;
+  --grafik-3:              #975389;
+  --grafik-4:              #587b2d;
+  --grafik-5:              #007e84;
+  color-scheme: light;
+}
+
+/* ── 2) AYDINLIK ŞEMALAR ────────────────────────────────────────────── */
+/* Platin Mavi — aydınlık */
+:root[data-sema="platin-mavi"], .tema-onizleme[data-sema="platin-mavi"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fefeff;
+  --yuzey-2:               #f3f5f9;
+  --yuzey-3:               #eceef3;
+  --yuzey-govde:           #f6f7fa;
+  --yuzey-hover:           #f0f2f6;
+  --yuzey-secili:          #e7e9f0;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #32353e;
+  --metin-guclu:           #1e212a;
+  --metin-soluk:           #646870;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #80838c;
+  --ayrac:                 #dbdee5;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #4960bb;
+  --vurgu-guclu:           #32469e;
+  --vurgu-metin:           #f9fafd;
+  --vurgu-yuzey:           #eef2ff;
+  --vurgu-kenar:           #c4d3ff;
+  --odak-halka:            #3f54ae;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #1f2024;
+  --kenar-yuzey-2:         #2e2f33;
+  --kenar-metin:           #adb1bc;
+  --kenar-metin-guclu:     #e6e8ed;
+  --kenar-ayrac:           #3c3d41;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #9b9ea7;
+  --menu-aktif-yuzey:      #293354;
+  --menu-aktif-metin:      #c8d6ff;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #556ab1;
+  --grafik-2:              #9e5c1a;
+  --grafik-3:              #975389;
+  --grafik-4:              #587b2d;
+  --grafik-5:              #007e84;
+  color-scheme: light;
+}
+
+/* Zümrüt — aydınlık */
+:root[data-sema="zumrut"], .tema-onizleme[data-sema="zumrut"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fdfffe;
+  --yuzey-2:               #f1f6f5;
+  --yuzey-3:               #e9f0ee;
+  --yuzey-govde:           #f4f8f7;
+  --yuzey-hover:           #edf3f2;
+  --yuzey-secili:          #e4ece9;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #2d3835;
+  --metin-guclu:           #192422;
+  --metin-soluk:           #5f6b68;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #7b8683;
+  --ayrac:                 #d7e0de;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #007b69;
+  --vurgu-guclu:           #005e50;
+  --vurgu-metin:           #f7fbfa;
+  --vurgu-yuzey:           #dff9f2;
+  --vurgu-kenar:           #ace1d4;
+  --odak-halka:            #006e5e;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #1d2220;
+  --kenar-yuzey-2:         #2b302f;
+  --kenar-metin:           #a7b5b1;
+  --kenar-metin-guclu:     #e3eae8;
+  --kenar-ayrac:           #393e3d;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #96a19e;
+  --menu-aktif-yuzey:      #153d35;
+  --menu-aktif-metin:      #afe5d7;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #00816f;
+  --grafik-2:              #925490;
+  --grafik-3:              #2275ac;
+  --grafik-4:              #a6543a;
+  --grafik-5:              #767305;
+  color-scheme: light;
+}
+
+/* Grafit — aydınlık */
+:root[data-sema="grafit"], .tema-onizleme[data-sema="grafit"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #feffff;
+  --yuzey-2:               #f3f5f8;
+  --yuzey-3:               #eceef1;
+  --yuzey-govde:           #f6f7f9;
+  --yuzey-hover:           #f0f2f5;
+  --yuzey-secili:          #e7eaee;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #33363a;
+  --metin-guclu:           #1f2226;
+  --metin-soluk:           #66686d;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #7f848c;
+  --ayrac:                 #dbdee2;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #5c6a7f;
+  --vurgu-guclu:           #435165;
+  --vurgu-metin:           #f8fafd;
+  --vurgu-yuzey:           #eef3fa;
+  --vurgu-kenar:           #ccd5e2;
+  --odak-halka:            #505f73;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #1f2123;
+  --kenar-yuzey-2:         #2e2f31;
+  --kenar-metin:           #abb2bb;
+  --kenar-metin-guclu:     #e5e8ed;
+  --kenar-ayrac:           #3c3d40;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #999fa7;
+  --menu-aktif-yuzey:      #30363e;
+  --menu-aktif-metin:      #cfd8e6;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #426fb1;
+  --grafik-2:              #a3572c;
+  --grafik-3:              #8e5695;
+  --grafik-4:              #697719;
+  --grafik-5:              #008079;
+  color-scheme: light;
+}
+
+/* Bordo — aydınlık */
+:root[data-sema="bordo"], .tema-onizleme[data-sema="bordo"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fffeff;
+  --yuzey-2:               #f9f3f5;
+  --yuzey-3:               #f2ecee;
+  --yuzey-govde:           #faf6f7;
+  --yuzey-hover:           #f6f0f2;
+  --yuzey-secili:          #efe7ea;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #3c3236;
+  --metin-guclu:           #291e22;
+  --metin-soluk:           #706569;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #8b8084;
+  --ayrac:                 #e4dbde;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #a2426d;
+  --vurgu-guclu:           #852753;
+  --vurgu-metin:           #fcf9fa;
+  --vurgu-yuzey:           #ffedf3;
+  --vurgu-kenar:           #fdc1d7;
+  --odak-halka:            #953661;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #231f21;
+  --kenar-yuzey-2:         #322e2f;
+  --kenar-metin:           #baadb1;
+  --kenar-metin-guclu:     #ede6e8;
+  --kenar-ayrac:           #403c3d;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #a69b9f;
+  --menu-aktif-yuzey:      #4d2837;
+  --menu-aktif-metin:      #ffc5da;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #a14f72;
+  --grafik-2:              #3e8042;
+  --grafik-3:              #9e5c1a;
+  --grafik-4:              #007c91;
+  --grafik-5:              #6963ae;
+  color-scheme: light;
+}
+
+/* Okyanus — aydınlık */
+:root[data-sema="okyanus"], .tema-onizleme[data-sema="okyanus"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fdffff;
+  --yuzey-2:               #f1f6f6;
+  --yuzey-3:               #e8eff0;
+  --yuzey-govde:           #f4f8f8;
+  --yuzey-hover:           #edf3f3;
+  --yuzey-secili:          #e3ebec;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #2c3838;
+  --metin-guclu:           #182425;
+  --metin-soluk:           #5f6a6b;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #7a8686;
+  --ayrac:                 #d7e0e0;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #00787b;
+  --vurgu-guclu:           #005c5e;
+  --vurgu-metin:           #f7fbfb;
+  --vurgu-yuzey:           #ddf9fa;
+  --vurgu-kenar:           #a8e1e2;
+  --odak-halka:            #006b6e;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #1d2222;
+  --kenar-yuzey-2:         #2b3030;
+  --kenar-metin:           #a6b4b5;
+  --kenar-metin-guclu:     #e2eaea;
+  --kenar-ayrac:           #393e3e;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #95a1a1;
+  --menu-aktif-yuzey:      #103d3e;
+  --menu-aktif-metin:      #abe4e5;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #007f82;
+  --grafik-2:              #9e507a;
+  --grafik-3:              #4a6db1;
+  --grafik-4:              #9f5b1d;
+  --grafik-5:              #5b7b2a;
+  color-scheme: light;
+}
+
+/* Menekşe — aydınlık */
+:root[data-sema="menekse"], .tema-onizleme[data-sema="menekse"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fffeff;
+  --yuzey-2:               #f6f4f8;
+  --yuzey-3:               #efedf2;
+  --yuzey-govde:           #f8f6fa;
+  --yuzey-hover:           #f3f1f5;
+  --yuzey-secili:          #ebe8ee;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #37333c;
+  --metin-guclu:           #232029;
+  --metin-soluk:           #6a666f;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #86828b;
+  --ayrac:                 #dfdce3;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #7d4fab;
+  --vurgu-guclu:           #63348e;
+  --vurgu-metin:           #fbf9fc;
+  --vurgu-yuzey:           #f6efff;
+  --vurgu-kenar:           #e0c8ff;
+  --odak-halka:            #71439e;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #212023;
+  --kenar-yuzey-2:         #302e32;
+  --kenar-metin:           #b3afb9;
+  --kenar-metin-guclu:     #e9e7ec;
+  --kenar-ayrac:           #3e3c40;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #a09ca6;
+  --menu-aktif-yuzey:      #3d2d4e;
+  --menu-aktif-metin:      #e2ccff;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #7e5ca4;
+  --grafik-2:              #836d00;
+  --grafik-3:              #a64f5f;
+  --grafik-4:              #00835e;
+  --grafik-5:              #0078a7;
+  color-scheme: light;
+}
+
+/* Zeytin — aydınlık */
+:root[data-sema="zeytin"], .tema-onizleme[data-sema="zeytin"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fffffd;
+  --yuzey-2:               #f5f5f1;
+  --yuzey-3:               #eeeee9;
+  --yuzey-govde:           #f7f7f4;
+  --yuzey-hover:           #f2f2ed;
+  --yuzey-secili:          #e9eae3;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #35362d;
+  --metin-guclu:           #222319;
+  --metin-soluk:           #67685f;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #83847b;
+  --ayrac:                 #dedfd7;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #6a6e2f;
+  --vurgu-guclu:           #515413;
+  --vurgu-metin:           #fafaf7;
+  --vurgu-yuzey:           #f2f4e2;
+  --vurgu-kenar:           #d4d8b5;
+  --odak-halka:            #5f6223;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #20211d;
+  --kenar-yuzey-2:         #2f2f2b;
+  --kenar-metin:           #b1b2a7;
+  --kenar-metin-guclu:     #e8e8e2;
+  --kenar-ayrac:           #3d3e39;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #9e9f96;
+  --menu-aktif-yuzey:      #363720;
+  --menu-aktif-metin:      #d8dbb8;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #71750e;
+  --grafik-2:              #496db1;
+  --grafik-3:              #00816e;
+  --grafik-4:              #95538c;
+  --grafik-5:              #a55535;
+  color-scheme: light;
+}
+
+/* Fildişi — aydınlık */
+:root[data-sema="fildisi"], .tema-onizleme[data-sema="fildisi"]:not([data-tema="karanlik"]) {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #fffefe;
+  --yuzey-2:               #fdf3ed;
+  --yuzey-3:               #f8ebe3;
+  --yuzey-govde:           #fdf5f1;
+  --yuzey-hover:           #fbefe9;
+  --yuzey-secili:          #f6e6dd;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #3c332e;
+  --metin-guclu:           #291f1a;
+  --metin-soluk:           #6f6661;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #8b817c;
+  --ayrac:                 #ebdad1;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #796458;
+  --vurgu-guclu:           #5f4b40;
+  --vurgu-metin:           #fcf9f8;
+  --vurgu-yuzey:           #f8f1ed;
+  --vurgu-kenar:           #dfd1ca;
+  --odak-halka:            #6d594d;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #27762f;
+  --basari-vurgu:          #60ad64;
+  --basari-yuzey:          #e3fae3;
+  --basari-kenar:          #b8e1b8;
+  --uyari:                 #8a5619;
+  --uyari-vurgu:           #c38b53;
+  --uyari-yuzey:           #ffefe1;
+  --uyari-kenar:           #eeceaf;
+  --tehlike:               #ac312c;
+  --tehlike-vurgu:         #ea6b60;
+  --tehlike-dolgu:         #c0453d;
+  --tehlike-dolgu-metin:   #fdf9f9;
+  --tehlike-yuzey:         #ffeeec;
+  --tehlike-kenar:         #ffc3bc;
+  --bilgi:                 #006b9b;
+  --bilgi-vurgu:           #26a3e4;
+  --bilgi-yuzey:           #e6f5ff;
+  --bilgi-kenar:           #a8dcff;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #fbf2ec;
+  --kenar-yuzey-2:         #f5e8e1;
+  --kenar-metin:           #655b57;
+  --kenar-metin-guclu:     #352c27;
+  --kenar-ayrac:           #e5d5cd;
+  --kenar-tehlike:         #ea6b60;
+  --menu-baslik:           #6f6763;
+  --menu-aktif-yuzey:      #e8dfdb;
+  --menu-aktif-metin:      #5e4b41;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #a35829;
+  --grafik-2:              #007e84;
+  --grafik-3:              #6d7614;
+  --grafik-4:              #556ab1;
+  --grafik-5:              #9a5284;
+  color-scheme: light;
+}
+
+/* ── 3) SİSTEM KARANLIĞI — kullanıcı açıkça "aydinlik" demediyse ─────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="aydinlik"]) {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #1c1e24;
+    --yuzey-2:               #23262d;
+    --yuzey-3:               #2e313a;
+    --yuzey-govde:           #0f1117;
+    --yuzey-hover:           #282b33;
+    --yuzey-secili:          #343841;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #d7dbe6;
+    --metin-guclu:           #e5e7ec;
+    --metin-soluk:           #9fa2ac;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #80848e;
+    --ayrac:                 #3c3f49;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #a4b8f5;
+    --vurgu-guclu:           #bfd0ff;
+    --vurgu-metin:           #111524;
+    --vurgu-yuzey:           #242c47;
+    --vurgu-kenar:           #414e75;
+    --odak-halka:            #b2c3f4;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #0a0c11;
+    --kenar-yuzey-2:         #15171d;
+    --kenar-metin:           #adb1bc;
+    --kenar-metin-guclu:     #e6e8ed;
+    --kenar-ayrac:           #24262c;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #9b9ea7;
+    --menu-aktif-yuzey:      #202949;
+    --menu-aktif-metin:      #c8d6ff;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #9cafe8;
+    --grafik-2:              #daa57a;
+    --grafik-3:              #d39dc7;
+    --grafik-4:              #9fbc83;
+    --grafik-5:              #6ac2c6;
+    color-scheme: dark;
+  }
+  /* Platin Mavi — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="platin-mavi"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #1c1e24;
+    --yuzey-2:               #23262d;
+    --yuzey-3:               #2e313a;
+    --yuzey-govde:           #0f1117;
+    --yuzey-hover:           #282b33;
+    --yuzey-secili:          #343841;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #d7dbe6;
+    --metin-guclu:           #e5e7ec;
+    --metin-soluk:           #9fa2ac;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #80848e;
+    --ayrac:                 #3c3f49;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #a4b8f5;
+    --vurgu-guclu:           #bfd0ff;
+    --vurgu-metin:           #111524;
+    --vurgu-yuzey:           #242c47;
+    --vurgu-kenar:           #414e75;
+    --odak-halka:            #b2c3f4;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #0a0c11;
+    --kenar-yuzey-2:         #15171d;
+    --kenar-metin:           #adb1bc;
+    --kenar-metin-guclu:     #e6e8ed;
+    --kenar-ayrac:           #24262c;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #9b9ea7;
+    --menu-aktif-yuzey:      #202949;
+    --menu-aktif-metin:      #c8d6ff;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #9cafe8;
+    --grafik-2:              #daa57a;
+    --grafik-3:              #d39dc7;
+    --grafik-4:              #9fbc83;
+    --grafik-5:              #6ac2c6;
+    color-scheme: dark;
+  }
+  /* Zümrüt — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="zumrut"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #18201e;
+    --yuzey-2:               #1f2826;
+    --yuzey-3:               #293431;
+    --yuzey-govde:           #0c1312;
+    --yuzey-hover:           #242e2b;
+    --yuzey-secili:          #2f3b38;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #d1dfdb;
+    --metin-guclu:           #e2e9e7;
+    --metin-soluk:           #9aa6a3;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #7a8784;
+    --ayrac:                 #374340;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #8dc9ba;
+    --vurgu-guclu:           #abddd1;
+    --vurgu-metin:           #071a16;
+    --vurgu-yuzey:           #18342e;
+    --vurgu-kenar:           #305950;
+    --odak-halka:            #a1d0c4;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #070e0c;
+    --kenar-yuzey-2:         #111917;
+    --kenar-metin:           #a7b5b1;
+    --kenar-metin-guclu:     #e3eae8;
+    --kenar-ayrac:           #202826;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #96a19e;
+    --menu-aktif-yuzey:      #09332b;
+    --menu-aktif-metin:      #afe5d7;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #71c3b1;
+    --grafik-2:              #cf9ecd;
+    --grafik-3:              #81b8e3;
+    --grafik-4:              #e19f8a;
+    --grafik-5:              #b6b675;
+    color-scheme: dark;
+  }
+  /* Grafit — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="grafit"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #1c1e22;
+    --yuzey-2:               #23262b;
+    --yuzey-3:               #2e3237;
+    --yuzey-govde:           #0f1215;
+    --yuzey-hover:           #282c30;
+    --yuzey-secili:          #34383e;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #d7dbe0;
+    --metin-guclu:           #e4e6e9;
+    --metin-soluk:           #9fa2a7;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #7d848d;
+    --ayrac:                 #3c4046;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #b1bbca;
+    --vurgu-guclu:           #c9d2de;
+    --vurgu-metin:           #13161a;
+    --vurgu-yuzey:           #2a2e34;
+    --vurgu-kenar:           #4a505a;
+    --odak-halka:            #bdc5d1;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #0a0c10;
+    --kenar-yuzey-2:         #15171b;
+    --kenar-metin:           #abb2bb;
+    --kenar-metin-guclu:     #e5e8ed;
+    --kenar-ayrac:           #24272a;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #999fa7;
+    --menu-aktif-yuzey:      #262c34;
+    --menu-aktif-metin:      #cfd8e6;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #90b3e7;
+    --grafik-2:              #dea182;
+    --grafik-3:              #cc9fd1;
+    --grafik-4:              #acb97a;
+    --grafik-5:              #6cc3bb;
+    color-scheme: dark;
+  }
+  /* Bordo — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="bordo"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #231c1e;
+    --yuzey-2:               #2c2326;
+    --yuzey-3:               #382e32;
+    --yuzey-govde:           #160f12;
+    --yuzey-hover:           #32282c;
+    --yuzey-secili:          #3f3438;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #e5d7dc;
+    --metin-guclu:           #ece5e7;
+    --metin-soluk:           #a99ea2;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #8c7f84;
+    --ayrac:                 #473c40;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #e6a4bd;
+    --vurgu-guclu:           #f8bed3;
+    --vurgu-metin:           #211017;
+    --vurgu-yuzey:           #40242f;
+    --vurgu-kenar:           #6b4151;
+    --odak-halka:            #e8b3c6;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #100a0c;
+    --kenar-yuzey-2:         #1c1517;
+    --kenar-metin:           #baadb1;
+    --kenar-metin-guclu:     #ede6e8;
+    --kenar-ayrac:           #2b2427;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #a69b9f;
+    --menu-aktif-yuzey:      #421d2d;
+    --menu-aktif-metin:      #ffc5da;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #dd9bb4;
+    --grafik-2:              #8fc090;
+    --grafik-3:              #daa57a;
+    --grafik-4:              #6dbfd3;
+    --grafik-5:              #abaae6;
+    color-scheme: dark;
+  }
+  /* Okyanus — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="okyanus"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #172020;
+    --yuzey-2:               #1e2828;
+    --yuzey-3:               #293434;
+    --yuzey-govde:           #0b1313;
+    --yuzey-hover:           #232e2e;
+    --yuzey-secili:          #2e3b3b;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #d0dfdf;
+    --metin-guclu:           #e1e9e9;
+    --metin-soluk:           #99a6a6;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #798787;
+    --ayrac:                 #364343;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #88c8ca;
+    --vurgu-guclu:           #a7ddde;
+    --vurgu-metin:           #061a1a;
+    --vurgu-yuzey:           #153334;
+    --vurgu-kenar:           #2c5859;
+    --odak-halka:            #9dcfd0;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #060e0e;
+    --kenar-yuzey-2:         #111919;
+    --kenar-metin:           #a6b4b5;
+    --kenar-metin-guclu:     #e2eaea;
+    --kenar-ayrac:           #202828;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #95a1a1;
+    --menu-aktif-yuzey:      #033234;
+    --menu-aktif-metin:      #abe4e5;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #6ac2c4;
+    --grafik-2:              #da9bbb;
+    --grafik-3:              #95b1e8;
+    --grafik-4:              #daa47b;
+    --grafik-5:              #a1bc81;
+    color-scheme: dark;
+  }
+  /* Menekşe — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="menekse"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #1f1d23;
+    --yuzey-2:               #27242c;
+    --yuzey-3:               #333038;
+    --yuzey-govde:           #131016;
+    --yuzey-hover:           #2d2a31;
+    --yuzey-secili:          #3a363f;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #ded9e4;
+    --metin-guclu:           #e8e6eb;
+    --metin-soluk:           #a4a0aa;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #86818c;
+    --ayrac:                 #423e47;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #c8ace9;
+    --vurgu-guclu:           #dcc5fa;
+    --vurgu-metin:           #191221;
+    --vurgu-yuzey:           #342742;
+    --vurgu-kenar:           #58466e;
+    --odak-halka:            #cfb9ea;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #0d0b10;
+    --kenar-yuzey-2:         #18161c;
+    --kenar-metin:           #b3afb9;
+    --kenar-metin-guclu:     #e9e7ec;
+    --kenar-ayrac:           #28252b;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #a09ca6;
+    --menu-aktif-yuzey:      #322343;
+    --menu-aktif-metin:      #e2ccff;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #bda4dd;
+    --grafik-2:              #c2b171;
+    --grafik-3:              #e19ba5;
+    --grafik-4:              #7bc3a4;
+    --grafik-5:              #7abae0;
+    color-scheme: dark;
+  }
+  /* Zeytin — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="zeytin"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #1e1f18;
+    --yuzey-2:               #26271f;
+    --yuzey-3:               #323229;
+    --yuzey-govde:           #12120c;
+    --yuzey-hover:           #2b2c24;
+    --yuzey-secili:          #38392f;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #dbddd1;
+    --metin-guclu:           #e7e7e1;
+    --metin-soluk:           #a3a49a;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #84857a;
+    --ayrac:                 #404137;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #bbbe98;
+    --vurgu-guclu:           #d1d4b3;
+    --vurgu-metin:           #16170c;
+    --vurgu-yuzey:           #2e2f1e;
+    --vurgu-kenar:           #505239;
+    --odak-halka:            #c4c7a8;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #0c0d07;
+    --kenar-yuzey-2:         #171812;
+    --kenar-metin:           #b1b2a7;
+    --kenar-metin-guclu:     #e8e8e2;
+    --kenar-ayrac:           #262720;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #9e9f96;
+    --menu-aktif-yuzey:      #2c2d16;
+    --menu-aktif-metin:      #d8dbb8;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #b2b777;
+    --grafik-2:              #94b2e8;
+    --grafik-3:              #72c3b0;
+    --grafik-4:              #d29dc9;
+    --grafik-5:              #e09f87;
+    color-scheme: dark;
+  }
+  /* Fildişi — karanlık (sistem) */
+  :root:not([data-tema="aydinlik"])[data-sema="fildisi"] {
+    /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+    --yuzey:                 #241c18;
+    --yuzey-2:               #2d241f;
+    --yuzey-3:               #392f29;
+    --yuzey-govde:           #17100c;
+    --yuzey-hover:           #332924;
+    --yuzey-secili:          #41352f;
+    /* Metin (K-2: karanlıkta saf beyaz yok) */
+    --metin:                 #e4d8d2;
+    --metin-guclu:           #ebe5e1;
+    --metin-soluk:           #aaa09a;
+    /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+    --kenarlik:              #8c817b;
+    --ayrac:                 #493d37;
+    /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+    --vurgu:                 #c6b7af;
+    --vurgu-guclu:           #dbcec7;
+    --vurgu-metin:           #191513;
+    --vurgu-yuzey:           #332c29;
+    --vurgu-kenar:           #574e48;
+    --odak-halka:            #cdc1bb;
+    /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+    --basari:                #9acd9b;
+    --basari-vurgu:          #97ca98;
+    --basari-yuzey:          #1e361f;
+    --basari-kenar:          #365a37;
+    --uyari:                 #ddb590;
+    --uyari-vurgu:           #dab28d;
+    --uyari-yuzey:           #3f2a15;
+    --uyari-kenar:           #67492b;
+    --tehlike:               #fca298;
+    --tehlike-vurgu:         #f99f95;
+    --tehlike-dolgu:         #fca298;
+    --tehlike-dolgu-metin:   #1e1311;
+    --tehlike-yuzey:         #452521;
+    --tehlike-kenar:         #71403b;
+    --bilgi:                 #81c7f4;
+    --bilgi-vurgu:           #7ec4f1;
+    --bilgi-yuzey:           #133245;
+    --bilgi-kenar:           #265572;
+    /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+    --kenar-yuzey:           #110b07;
+    --kenar-yuzey-2:         #1d1511;
+    --kenar-metin:           #baaea8;
+    --kenar-metin-guclu:     #ede6e3;
+    --kenar-ayrac:           #2c2520;
+    --kenar-tehlike:         #f99f95;
+    --menu-baslik:           #a69c97;
+    --menu-aktif-yuzey:      #322925;
+    --menu-aktif-metin:      #e2d4cd;
+    /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+    --grafik-1:              #dea280;
+    --grafik-2:              #6ac2c6;
+    --grafik-3:              #afb879;
+    --grafik-4:              #9cafe8;
+    --grafik-5:              #d69cc2;
+    color-scheme: dark;
+  }
+}
+
+/* ── 4) AÇIK KARANLIK SEÇİMİ — sistem aydınlık olsa bile ─────────────── */
+:root[data-tema="karanlik"], .tema-onizleme[data-tema="karanlik"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #1c1e24;
+  --yuzey-2:               #23262d;
+  --yuzey-3:               #2e313a;
+  --yuzey-govde:           #0f1117;
+  --yuzey-hover:           #282b33;
+  --yuzey-secili:          #343841;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #d7dbe6;
+  --metin-guclu:           #e5e7ec;
+  --metin-soluk:           #9fa2ac;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #80848e;
+  --ayrac:                 #3c3f49;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #a4b8f5;
+  --vurgu-guclu:           #bfd0ff;
+  --vurgu-metin:           #111524;
+  --vurgu-yuzey:           #242c47;
+  --vurgu-kenar:           #414e75;
+  --odak-halka:            #b2c3f4;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #0a0c11;
+  --kenar-yuzey-2:         #15171d;
+  --kenar-metin:           #adb1bc;
+  --kenar-metin-guclu:     #e6e8ed;
+  --kenar-ayrac:           #24262c;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #9b9ea7;
+  --menu-aktif-yuzey:      #202949;
+  --menu-aktif-metin:      #c8d6ff;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #9cafe8;
+  --grafik-2:              #daa57a;
+  --grafik-3:              #d39dc7;
+  --grafik-4:              #9fbc83;
+  --grafik-5:              #6ac2c6;
+  color-scheme: dark;
+}
+
+/* Platin Mavi — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="platin-mavi"], .tema-onizleme[data-tema="karanlik"][data-sema="platin-mavi"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #1c1e24;
+  --yuzey-2:               #23262d;
+  --yuzey-3:               #2e313a;
+  --yuzey-govde:           #0f1117;
+  --yuzey-hover:           #282b33;
+  --yuzey-secili:          #343841;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #d7dbe6;
+  --metin-guclu:           #e5e7ec;
+  --metin-soluk:           #9fa2ac;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #80848e;
+  --ayrac:                 #3c3f49;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #a4b8f5;
+  --vurgu-guclu:           #bfd0ff;
+  --vurgu-metin:           #111524;
+  --vurgu-yuzey:           #242c47;
+  --vurgu-kenar:           #414e75;
+  --odak-halka:            #b2c3f4;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #0a0c11;
+  --kenar-yuzey-2:         #15171d;
+  --kenar-metin:           #adb1bc;
+  --kenar-metin-guclu:     #e6e8ed;
+  --kenar-ayrac:           #24262c;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #9b9ea7;
+  --menu-aktif-yuzey:      #202949;
+  --menu-aktif-metin:      #c8d6ff;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #9cafe8;
+  --grafik-2:              #daa57a;
+  --grafik-3:              #d39dc7;
+  --grafik-4:              #9fbc83;
+  --grafik-5:              #6ac2c6;
+  color-scheme: dark;
+}
+
+/* Zümrüt — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="zumrut"], .tema-onizleme[data-tema="karanlik"][data-sema="zumrut"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #18201e;
+  --yuzey-2:               #1f2826;
+  --yuzey-3:               #293431;
+  --yuzey-govde:           #0c1312;
+  --yuzey-hover:           #242e2b;
+  --yuzey-secili:          #2f3b38;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #d1dfdb;
+  --metin-guclu:           #e2e9e7;
+  --metin-soluk:           #9aa6a3;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #7a8784;
+  --ayrac:                 #374340;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #8dc9ba;
+  --vurgu-guclu:           #abddd1;
+  --vurgu-metin:           #071a16;
+  --vurgu-yuzey:           #18342e;
+  --vurgu-kenar:           #305950;
+  --odak-halka:            #a1d0c4;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #070e0c;
+  --kenar-yuzey-2:         #111917;
+  --kenar-metin:           #a7b5b1;
+  --kenar-metin-guclu:     #e3eae8;
+  --kenar-ayrac:           #202826;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #96a19e;
+  --menu-aktif-yuzey:      #09332b;
+  --menu-aktif-metin:      #afe5d7;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #71c3b1;
+  --grafik-2:              #cf9ecd;
+  --grafik-3:              #81b8e3;
+  --grafik-4:              #e19f8a;
+  --grafik-5:              #b6b675;
+  color-scheme: dark;
+}
+
+/* Grafit — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="grafit"], .tema-onizleme[data-tema="karanlik"][data-sema="grafit"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #1c1e22;
+  --yuzey-2:               #23262b;
+  --yuzey-3:               #2e3237;
+  --yuzey-govde:           #0f1215;
+  --yuzey-hover:           #282c30;
+  --yuzey-secili:          #34383e;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #d7dbe0;
+  --metin-guclu:           #e4e6e9;
+  --metin-soluk:           #9fa2a7;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #7d848d;
+  --ayrac:                 #3c4046;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #b1bbca;
+  --vurgu-guclu:           #c9d2de;
+  --vurgu-metin:           #13161a;
+  --vurgu-yuzey:           #2a2e34;
+  --vurgu-kenar:           #4a505a;
+  --odak-halka:            #bdc5d1;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #0a0c10;
+  --kenar-yuzey-2:         #15171b;
+  --kenar-metin:           #abb2bb;
+  --kenar-metin-guclu:     #e5e8ed;
+  --kenar-ayrac:           #24272a;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #999fa7;
+  --menu-aktif-yuzey:      #262c34;
+  --menu-aktif-metin:      #cfd8e6;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #90b3e7;
+  --grafik-2:              #dea182;
+  --grafik-3:              #cc9fd1;
+  --grafik-4:              #acb97a;
+  --grafik-5:              #6cc3bb;
+  color-scheme: dark;
+}
+
+/* Bordo — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="bordo"], .tema-onizleme[data-tema="karanlik"][data-sema="bordo"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #231c1e;
+  --yuzey-2:               #2c2326;
+  --yuzey-3:               #382e32;
+  --yuzey-govde:           #160f12;
+  --yuzey-hover:           #32282c;
+  --yuzey-secili:          #3f3438;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #e5d7dc;
+  --metin-guclu:           #ece5e7;
+  --metin-soluk:           #a99ea2;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #8c7f84;
+  --ayrac:                 #473c40;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #e6a4bd;
+  --vurgu-guclu:           #f8bed3;
+  --vurgu-metin:           #211017;
+  --vurgu-yuzey:           #40242f;
+  --vurgu-kenar:           #6b4151;
+  --odak-halka:            #e8b3c6;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #100a0c;
+  --kenar-yuzey-2:         #1c1517;
+  --kenar-metin:           #baadb1;
+  --kenar-metin-guclu:     #ede6e8;
+  --kenar-ayrac:           #2b2427;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #a69b9f;
+  --menu-aktif-yuzey:      #421d2d;
+  --menu-aktif-metin:      #ffc5da;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #dd9bb4;
+  --grafik-2:              #8fc090;
+  --grafik-3:              #daa57a;
+  --grafik-4:              #6dbfd3;
+  --grafik-5:              #abaae6;
+  color-scheme: dark;
+}
+
+/* Okyanus — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="okyanus"], .tema-onizleme[data-tema="karanlik"][data-sema="okyanus"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #172020;
+  --yuzey-2:               #1e2828;
+  --yuzey-3:               #293434;
+  --yuzey-govde:           #0b1313;
+  --yuzey-hover:           #232e2e;
+  --yuzey-secili:          #2e3b3b;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #d0dfdf;
+  --metin-guclu:           #e1e9e9;
+  --metin-soluk:           #99a6a6;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #798787;
+  --ayrac:                 #364343;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #88c8ca;
+  --vurgu-guclu:           #a7ddde;
+  --vurgu-metin:           #061a1a;
+  --vurgu-yuzey:           #153334;
+  --vurgu-kenar:           #2c5859;
+  --odak-halka:            #9dcfd0;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #060e0e;
+  --kenar-yuzey-2:         #111919;
+  --kenar-metin:           #a6b4b5;
+  --kenar-metin-guclu:     #e2eaea;
+  --kenar-ayrac:           #202828;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #95a1a1;
+  --menu-aktif-yuzey:      #033234;
+  --menu-aktif-metin:      #abe4e5;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #6ac2c4;
+  --grafik-2:              #da9bbb;
+  --grafik-3:              #95b1e8;
+  --grafik-4:              #daa47b;
+  --grafik-5:              #a1bc81;
+  color-scheme: dark;
+}
+
+/* Menekşe — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="menekse"], .tema-onizleme[data-tema="karanlik"][data-sema="menekse"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #1f1d23;
+  --yuzey-2:               #27242c;
+  --yuzey-3:               #333038;
+  --yuzey-govde:           #131016;
+  --yuzey-hover:           #2d2a31;
+  --yuzey-secili:          #3a363f;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #ded9e4;
+  --metin-guclu:           #e8e6eb;
+  --metin-soluk:           #a4a0aa;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #86818c;
+  --ayrac:                 #423e47;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #c8ace9;
+  --vurgu-guclu:           #dcc5fa;
+  --vurgu-metin:           #191221;
+  --vurgu-yuzey:           #342742;
+  --vurgu-kenar:           #58466e;
+  --odak-halka:            #cfb9ea;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #0d0b10;
+  --kenar-yuzey-2:         #18161c;
+  --kenar-metin:           #b3afb9;
+  --kenar-metin-guclu:     #e9e7ec;
+  --kenar-ayrac:           #28252b;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #a09ca6;
+  --menu-aktif-yuzey:      #322343;
+  --menu-aktif-metin:      #e2ccff;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #bda4dd;
+  --grafik-2:              #c2b171;
+  --grafik-3:              #e19ba5;
+  --grafik-4:              #7bc3a4;
+  --grafik-5:              #7abae0;
+  color-scheme: dark;
+}
+
+/* Zeytin — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="zeytin"], .tema-onizleme[data-tema="karanlik"][data-sema="zeytin"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #1e1f18;
+  --yuzey-2:               #26271f;
+  --yuzey-3:               #323229;
+  --yuzey-govde:           #12120c;
+  --yuzey-hover:           #2b2c24;
+  --yuzey-secili:          #38392f;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #dbddd1;
+  --metin-guclu:           #e7e7e1;
+  --metin-soluk:           #a3a49a;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #84857a;
+  --ayrac:                 #404137;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #bbbe98;
+  --vurgu-guclu:           #d1d4b3;
+  --vurgu-metin:           #16170c;
+  --vurgu-yuzey:           #2e2f1e;
+  --vurgu-kenar:           #505239;
+  --odak-halka:            #c4c7a8;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #0c0d07;
+  --kenar-yuzey-2:         #171812;
+  --kenar-metin:           #b1b2a7;
+  --kenar-metin-guclu:     #e8e8e2;
+  --kenar-ayrac:           #262720;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #9e9f96;
+  --menu-aktif-yuzey:      #2c2d16;
+  --menu-aktif-metin:      #d8dbb8;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #b2b777;
+  --grafik-2:              #94b2e8;
+  --grafik-3:              #72c3b0;
+  --grafik-4:              #d29dc9;
+  --grafik-5:              #e09f87;
+  color-scheme: dark;
+}
+
+/* Fildişi — karanlık (açık seçim) */
+:root[data-tema="karanlik"][data-sema="fildisi"], .tema-onizleme[data-tema="karanlik"][data-sema="fildisi"] {
+  /* Yüzeyler (Carbon katman modeli · K3: aydınlıkta koyulaşır, karanlıkta açılır) */
+  --yuzey:                 #241c18;
+  --yuzey-2:               #2d241f;
+  --yuzey-3:               #392f29;
+  --yuzey-govde:           #17100c;
+  --yuzey-hover:           #332924;
+  --yuzey-secili:          #41352f;
+  /* Metin (K-2: karanlıkta saf beyaz yok) */
+  --metin:                 #e4d8d2;
+  --metin-guclu:           #ebe5e1;
+  --metin-soluk:           #aaa09a;
+  /* Çizgiler (K7: kenarlık ≥3:1 ölçülür, ayraç dekoratif) */
+  --kenarlik:              #8c817b;
+  --ayrac:                 #493d37;
+  /* Vurgu (K-4/K-5: karanlıkta açılır, üstündeki metin ölçülerek seçilir) */
+  --vurgu:                 #c6b7af;
+  --vurgu-guclu:           #dbcec7;
+  --vurgu-metin:           #191513;
+  --vurgu-yuzey:           #332c29;
+  --vurgu-kenar:           #574e48;
+  --odak-halka:            #cdc1bb;
+  /* Durum renkleri — ŞEMADAN BAĞIMSIZ hue (M3 kuralı), yalnız temaya göre */
+  --basari:                #9acd9b;
+  --basari-vurgu:          #97ca98;
+  --basari-yuzey:          #1e361f;
+  --basari-kenar:          #365a37;
+  --uyari:                 #ddb590;
+  --uyari-vurgu:           #dab28d;
+  --uyari-yuzey:           #3f2a15;
+  --uyari-kenar:           #67492b;
+  --tehlike:               #fca298;
+  --tehlike-vurgu:         #f99f95;
+  --tehlike-dolgu:         #fca298;
+  --tehlike-dolgu-metin:   #1e1311;
+  --tehlike-yuzey:         #452521;
+  --tehlike-kenar:         #71403b;
+  --bilgi:                 #81c7f4;
+  --bilgi-vurgu:           #7ec4f1;
+  --bilgi-yuzey:           #133245;
+  --bilgi-kenar:           #265572;
+  /* Kenar çubuğu / menü (§5A menuBaslik + menuAktifMetin) */
+  --kenar-yuzey:           #110b07;
+  --kenar-yuzey-2:         #1d1511;
+  --kenar-metin:           #baaea8;
+  --kenar-metin-guclu:     #ede6e3;
+  --kenar-ayrac:           #2c2520;
+  --kenar-tehlike:         #f99f95;
+  --menu-baslik:           #a69c97;
+  --menu-aktif-yuzey:      #322925;
+  --menu-aktif-metin:      #e2d4cd;
+  /* Grafik serisi — yalnız AYIRT EDER, anlam efsane metnindedir */
+  --grafik-1:              #dea280;
+  --grafik-2:              #6ac2c6;
+  --grafik-3:              #afb879;
+  --grafik-4:              #9cafe8;
+  --grafik-5:              #d69cc2;
+  color-scheme: dark;
+}
+
+/* ── 5) AÇIK AYDINLIK SEÇİMİ — yalnız color-scheme'i geri alır ──────────
+   Üstteki medya bloğu zaten :not([data-tema="aydinlik"]) ile korunuyor. */
+:root[data-tema="aydinlik"] { color-scheme: light; }
+
+/* ═════════════════════════════════════════════════════════════════════════
+   6) YAZI BOYUTU — :root[data-yazi="16" | "18" | "20"]
+   §5A: 3 yazı boyutu. Varsayılan 16 px (Ö2 ölçeği).
+   ⚠ K-11: karanlık temada da 16 px'in ALTINA inilmez; bu blokta renk
+     belirteci TANIMLANAMAZ (yoğunluk/mod bloklarıyla aynı sözleşme).
+   --yazi-rakam: para/gram/has için gövdeden 1 kademe büyük (§5A "Yazı").
+   ═════════════════════════════════════════════════════════════════════════ */
+:root, :root[data-yazi="16"] {
+  --yazi-xs:   .75rem;
+  --yazi-sm:   .8125rem;
+  --yazi-md:   .875rem;
+  --yazi-govde: 16px;
+  --yazi-rakam: 18px;
+  --yazi-lg:   1rem;
+  --yazi-xl:   1.125rem;
+  --yazi-2xl:  1.5rem;
+  --yazi-3xl:  2.25rem;
+  --satir-yuksekligi: 1.55;
+  --satir-yuksekligi-sik: 1.4;
+}
+
+:root[data-yazi="18"] {
+  --yazi-xs:   .8125rem;
+  --yazi-sm:   .875rem;
+  --yazi-md:   1rem;
+  --yazi-govde: 18px;
+  --yazi-rakam: 20px;
+  --yazi-lg:   1.125rem;
+  --yazi-xl:   1.25rem;
+  --yazi-2xl:  1.75rem;
+  --yazi-3xl:  2.5rem;
+  --satir-yuksekligi: 1.55;
+  --satir-yuksekligi-sik: 1.45;
+}
+
+:root[data-yazi="20"] {
+  --yazi-xs:   .875rem;
+  --yazi-sm:   1rem;
+  --yazi-md:   1.125rem;
+  --yazi-govde: 20px;
+  --yazi-rakam: 22px;
+  --yazi-lg:   1.25rem;
+  --yazi-xl:   1.375rem;
+  --yazi-2xl:  2rem;
+  --yazi-3xl:  2.75rem;
+  --satir-yuksekligi: 1.6;
+  --satir-yuksekligi-sik: 1.5;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   7) ODAK HALKASI — WCAG 2.2 SC 2.4.13 + SC 1.4.11
+   İKİ PARÇALI halka zorunludur: içte --yuzey renginde 2 px boşluk, dışta
+   --odak-halka 2 px. Tek parçalı halka birincil düğmenin (vurgu dolgusu)
+   üstünde kaybolur; boşluk parçası onu her zeminde ayırır.
+   Uygulama kuralı (S-1, app.css):
+     :focus-visible {
+       outline: none;
+       box-shadow: 0 0 0 var(--odak-halka-boslugu) var(--yuzey),
+                   0 0 0 calc(var(--odak-halka-boslugu) + var(--odak-halka-kalinlik)) var(--odak-halka);
+     }
+   ═════════════════════════════════════════════════════════════════════════ */
+:root {
+  --odak-halka-kalinlik: 2px;
+  --odak-halka-boslugu:  2px;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   8) KARANLIKTA GÖLGE — K3: derinlik gölgeyle değil YÜZEY KADEMESİYLE.
+   Gölge yalnız yüzen katmanda (modal/çekmece) ve düşük opaklıkta kalır.
+   ═════════════════════════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="aydinlik"]) {
+    --golge-sm: 0 1px 2px rgb(0 0 0 / .35);
+    --golge:    0 1px 3px rgb(0 0 0 / .40), 0 1px 2px rgb(0 0 0 / .30);
+    --golge-lg: 0 10px 25px rgb(0 0 0 / .45);
+    --golge-xl: 0 20px 25px -5px rgb(0 0 0 / .50);
+  }
+}
+:root[data-tema="karanlik"], .tema-onizleme[data-tema="karanlik"] {
+  --golge-sm: 0 1px 2px rgb(0 0 0 / .35);
+  --golge:    0 1px 3px rgb(0 0 0 / .40), 0 1px 2px rgb(0 0 0 / .30);
+  --golge-lg: 0 10px 25px rgb(0 0 0 / .45);
+  --golge-xl: 0 20px 25px -5px rgb(0 0 0 / .50);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   9) KÂĞIT MUAFİYETİ — DEĞİŞMEDİ.
+   .belge*, .urun-etiket* ve @media print bu dosyanın belirteçlerine
+   BAŞVURMAZ. Kâğıt daima beyaz, mürekkep siyahtır; 8 şema kâğıda BASILMAZ.
+   TasarimBelirtecTestleri bu muafiyeti zorlamaya devam eder.
+   ═════════════════════════════════════════════════════════════════════════ */

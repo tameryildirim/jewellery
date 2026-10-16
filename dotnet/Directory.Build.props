@@ -1,0 +1,26 @@
+<Project>
+  <!--
+    ETKİSİZ (bilinçli boş bırakıldı) — 2026-09-20.
+
+    DENENDİ VE GERİ ALINDI: derleme çıktılarını iCloud ağacının dışına
+    (~/Library/Caches/kuyumcu-build/) taşımak. Kazanç gerçekti (tam süit 41 dk →
+    saniyeler, boş bellek 82 → 216 MB), AMA 108 test kırıldı: testler kaynak
+    kökünü `AppContext.BaseDirectory`den YUKARI YÜRÜYEREK buluyor
+    (`Kuyumcu.sln` / `docker-compose.yml` arayarak), çıktı ağacın dışına
+    çıkınca kökü bulamıyorlar (58 + 28 + kalanlar).
+
+    DOĞRU ÇÖZÜM (bir pakete bağlanacak, elden yapılmayacak):
+      1) Bu dosyaya AssemblyMetadata ile kaynak kökü gömülür
+         (`KuyumcuKaynakKoku = $(MSBuildThisFileDirectory)`).
+      2) Kuyumcu.Tests'e tek bir `KaynakKoku` yardımcısı eklenir; önce
+         metadata'ya bakar, yoksa eski yukarı-yürüme davranışına düşer.
+      3) ~15 test sınıfındaki kendi `Kok()` gövdeleri bu yardımcıya bağlanır.
+      4) Ancak ondan sonra BaseOutputPath/BaseIntermediateOutputPath
+         ağaç dışına alınır ve tam süitle kanıtlanır.
+
+    O ana kadar çıktılar proje içinde kalır. iCloud yükünü azaltmanın elde kalan
+    iki yolu: (a) her koşum öncesi `dotnet build-server shutdown`,
+    (b) ağaçtaki eski bin/ (458 MB) ve obj/ (200 MB) klasörlerinin SİLİNMESİ —
+    silme yetkisi kurucudadır.
+  -->
+</Project>

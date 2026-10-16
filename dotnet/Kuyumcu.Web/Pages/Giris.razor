@@ -1,0 +1,638 @@
+@page "/giris"
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject IServiceProvider Hizmetler
+@using System.Reflection
+@using Kuyumcu.Contracts.Kisit
+@using Kuyumcu.Core.Domain.Girdi
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   GİRİŞ — PAKET S1-e "İKİ PANEL" · tek doğruluk kaynağı: kurucunun onayladığı
+   tuval dokumanlar/02-mimari/sadelestirme/tuval/project/Giris.dc.html.
+
+   Sol: tek kart (marka + "… hoş geldin" + e-posta/parola + Giriş yap +
+   "Parolamı unuttum" / "Yeni işletme kur" + sürüm satırı).
+   Sağ: menü zemini panel (büyük cümle + alt cümle + üç rakam).
+   ≤ 768 px tek sütun: kart önce, panel altta (şartname 12: taşma 0).
+
+   ⚠ ÖZELLİK SİLİNMEDİ (plan § 3 md.1): kayıt sekmesi "Yeni işletme kur"
+     bağlantısının arkasında, MFA ikinci adımı ve P-30 kısıt beyanı (katlanır)
+     aynen yaşıyor; dil seçici kartın üstünde.
+   ⚠ Mevcut id'ler DEĞİŞMEDİ (giris-eposta, giris-sifre, giris-mfa-*,
+     kayit-*, giris-kisit*, sayfa-basi-giris-*); yeni id'ler 'giris-<alan>'.
+   ⚠ Satır içi style / sabit renk YOK: ölçüler app.css "S1-e" bloğunda,
+     renkler belirteç. Metinler GirisSozlugu (TR+EN) ve Sozlukler.Auth'tan.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(EkranlarGirisTuvalSozlugu.GirisYap(Dil.Dil))</PageTitle>
+
+@* PAKET YILDIZ-AMBLEM-2 — YALNIZ Yıldız şemasında (YildizKabuk.Mi: kabukla AYNI karar noktası) tuval
+   Giris4(a) düzeni: amblem 96 px ortada, "MİHENK" altında ortalı; form altında, 1,6 sn'de belirir; sağ panel
+   ve başlık çizilmez. Form, MFA (C4_62 kurtarma kodu dahil), kayıt, dil, sürüm, P-30 beyanı AYNEN yaşar.
+   Öteki 8 şemada bu dalların hiçbiri çalışmaz (piksel farkı 0). *@
+<div class="@(YildizMi ? "giris-sayfa giris-iki-panel giris-yildiz" : "giris-sayfa giris-iki-panel")" id="giris-sayfa">
+
+    @* ── Sol: tek kart ── *@
+    <main class="giris-sol" id="giris-sol">
+        <div class="giris-kart" id="giris-kart">
+            <div class="giris-kart-ust">
+                @if (YildizMi)
+                {
+                    @* Tuval Giris4: taş 96 px + 22 px + "MİHENK" (220×32, viewBox 110×16 → 26 px, ortalı). *@
+                    <h1 class="giris-amb" id="giris-amblem" aria-label="@KabukTuvalSozlugu.MarkaYazimi">@Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemTasi(Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.GirisTasi)<svg class="amb-yz" width="220" height="32" viewBox="0 0 110 16" aria-hidden="true" focusable="false"><text x="57" y="13" text-anchor="middle" fill="url(#giris-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg></h1>
+                }
+                else
+                {
+                    <div class="giris-marka" id="giris-marka">
+                        <span class="giris-marka-rozet" aria-hidden="true"><Ikon Ad="@Ikonlar.Marka" /></span>
+                        <h1 class="giris-marka-ad">@KabukTuvalSozlugu.MarkaYazimi</h1>
+                    </div>
+                }
+                <div class="giris-dil" id="giris-dil"><DilSecici /></div>
+            </div>
+
+            @if (!(YildizMi && sekme == "giris"))
+            {
+            <SayfaBasi Anahtar="giris"
+                       Baslik="@(sekme == "giris" ? GirisSozlugu.HosGeldin(Dil.Dil) : GirisSozlugu.YeniDukkanKur(Dil.Dil))"
+                       Aciklama="@(sekme == "giris" ? GirisSozlugu.HesabinlaGir(Dil.Dil) : GirisSozlugu.YeniDukkanAlt(Dil.Dil))" />
+            }
+
+            @if (!string.IsNullOrEmpty(hata))
+            {
+                <HataBandi Mesaj="@hata" />
+            }
+
+            @if (mfaToken is not null)
+            {
+                <form class="form-dikey giris-form-alan" novalidate @onsubmit="MfaGiris" @onsubmit:preventDefault>
+                    <h2 class="metin-kucuk" id="giris-mfa-baslik">@Dil.T.Yonetim.MfaGirisBaslik</h2>
+                    <p class="metin-soluk metin-kucuk">@Dil.T.Yonetim.MfaGirisAciklama</p>
+                    <Metin ElemanId="giris-mfa-kod" Etiket="@Dil.T.Yonetim.MfaKod" Zorunlu="true" EnFazla="@YonetimSinirlari.MfaKodGirisi"
+                           OtoTamamla="one-time-code" YerTutucu="@Dil.T.Yonetim.MfaKodIpucu"
+                           Deger="@mfaKod" DegerChanged="@(v => mfaKod = v ?? "")"
+                           Durum="form" HataAlani="giris-mfa-kod" />
+                    <button type="submit" class="btn btn-birincil btn-buyuk btn-tam giris-gonder" id="giris-mfa-dogrula" disabled="@(yukleniyor || string.IsNullOrWhiteSpace(mfaKod))">
+                        @Dil.T.Yonetim.MfaGirisDogrula
+                    </button>
+                    @if (!yukleniyor && string.IsNullOrWhiteSpace(mfaKod))
+                    {
+                        <span id="giris-mfa-kilit" class="metin-soluk metin-kucuk">
+                            @Dil.T.Yonetim.KilitSebebi: @Dil.T.Yonetim.MfaKodEksik
+                        </span>
+                    }
+                    <button type="button" @onclick="MfaVazgec" class="btn btn-ikincil btn-tam" id="giris-mfa-vazgec">@Dil.T.Yonetim.MfaGirisVazgec</button>
+                </form>
+            }
+            else if (sekme == "giris")
+            {
+                @* ⚠ novalidate: tarayıcının İNGİLİZCE/yerel balonunun yerine uygulamanın
+                   Türkçe alan altı mesajı geçer (QA turu 1 ve 2, /giris ORTA bulgusu).
+                   Kural kalkmadı — aynı kontrol FormDurumu'nda, ekranda GÖRÜNÜR biçimde. *@
+                <form class="form-dikey giris-form-alan" id="giris-form" novalidate @onsubmit="GirisYap" @onsubmit:preventDefault>
+                    <Eposta ElemanId="giris-eposta" Etiket="@Dil.T.Auth.Eposta" Zorunlu="true"
+                            YerTutucu="@(YildizMi ? YildizEpostaYerTutucu : "ornek@isletme.com")"
+                            Deger="@email" DegerChanged="@(v => { email = v ?? ""; hata = null; })"
+                            Durum="form" HataAlani="giris-eposta" />   @* SUNUM 15.10: yazmaya başlayınca önceki denemenin üst hata bandı kalkar (iki hata birden görünmesin) *@
+                    <Sifre ElemanId="giris-sifre" Etiket="@EkranlarGirisTuvalSozlugu.Parola(Dil.Dil)" Zorunlu="true"
+                           OtoTamamla="current-password" YerTutucu="@(YildizMi ? YildizParolaYerTutucu : null)"
+                           GosterEtiketi="@GirisSozlugu.Goster(Dil.Dil)" GizleEtiketi="@GirisSozlugu.Gizle(Dil.Dil)"
+                           Deger="@sifre" DegerChanged="@(v => { sifre = v ?? ""; hata = null; })"
+                           Durum="form" HataAlani="giris-sifre" />
+                    @if (YildizMi)
+                    {
+                        @* YILDIZ-AMBLEM-3 — tuval Giris4: tek satır, solda "Parolamı unuttum" (b2), sağda "Giriş yap" (b1).
+                           "Yeni işletme kur" tuvalin alt bilgi satırına (#giris-alt) taşındı — özellik silinmedi. *@
+                        <div class="giris-yildiz-satir" id="giris-yildiz-satir">
+                            @UnuttumDugmesi
+                            @GonderDugmesi
+                        </div>
+                    }
+                    else
+                    {
+                        @GonderDugmesi
+                        <div class="giris-baglar" id="giris-baglar">
+                            @UnuttumDugmesi
+                            @YeniDukkanDugmesi
+                        </div>
+                    }
+                    @if (parolaYardimAcik)
+                    {
+                        @* AUTH-SIFIRLA: bölme açılınca GET /auth/parola-sifirlama/durum sorulur.
+                           acik=true → e-postayla sıfırlama bağlantısı + yönetici yolu.
+                           acik=false ya da okunamadı → bağlantı ÇİZİLMEZ (çıkmaza yollamaz, tur 2 tasarım
+                           hakemi); kutu yalnız her zaman geçerli olan tek cümlelik yolu yazar. *@
+                        <div class="giris-yardim" id="giris-parola-yardim" role="status">
+                            @if (sifirlamaSoruluyor)
+                            {
+                                <p id="giris-parola-yardim-yukleniyor">@AuthSifirlaSozlugu.Al(Dil.Dil).DurumYukleniyor</p>
+                            }
+                            else if (sifirlamaAcik == true)
+                            {
+                                <a class="giris-bag" id="giris-parola-sifirla-bag" href="/sifre-sifirla">@AuthSifirlaSozlugu.Al(Dil.Dil).GiristekiBaglanti</a>
+                                <p id="giris-parola-yardim-yonetici">@GirisSozlugu.ParolaYardim(Dil.Dil)</p>
+                            }
+                            else
+                            {
+                                <p id="giris-parola-yardim-yonetici">@AuthSifirlaSozlugu.Al(Dil.Dil).GirisKapaliYardim</p>
+                            }
+                        </div>
+                    }
+                </form>
+            }
+            else
+            {
+                <form class="form-dikey giris-form-alan" id="kayit-form" novalidate @onsubmit="KayitOl" @onsubmit:preventDefault>
+                    <Metin ElemanId="kayit-isletme" Etiket="@Dil.T.Auth.IsletmeAdi" Zorunlu="true" EnFazla="@YonetimSinirlari.IsletmeAdi"
+                           OtoTamamla="organization" YerTutucu="Altın Dünyası Kuyumculuk"
+                           Deger="@kayitIsletmeAdi" DegerChanged="@(v => kayitIsletmeAdi = v ?? "")"
+                           Durum="form" HataAlani="kayit-isletme" />
+                    <div class="giris-iki-alan">
+                        <Metin ElemanId="kayit-ad" Etiket="@Dil.T.Auth.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.Ad"
+                               OtoTamamla="given-name"
+                               Deger="@kayitAd" DegerChanged="@(v => kayitAd = v ?? "")"
+                               Durum="form" HataAlani="kayit-ad" />
+                        <Metin ElemanId="kayit-soyad" Etiket="@Dil.T.Auth.Soyad" Zorunlu="true" EnFazla="@AlanSinirlari.Ad"
+                               OtoTamamla="family-name"
+                               Deger="@kayitSoyad" DegerChanged="@(v => kayitSoyad = v ?? "")"
+                               Durum="form" HataAlani="kayit-soyad" />
+                    </div>
+                    <Eposta ElemanId="kayit-eposta" Etiket="@Dil.T.Auth.Eposta" Zorunlu="true"
+                            Deger="@kayitEmail" DegerChanged="@(v => kayitEmail = v ?? "")"
+                            Durum="form" HataAlani="kayit-eposta" />
+                    @* PAKET GOC-D (K31, envanter "dükkân kaydı parolası 'aaaaaaaa' olabiliyor"): kural Core
+                       ParolaKurali (sunucu KayitDto [Parola] ile AYNI); kural ipucu olarak hep görünür,
+                       8 karakter yazıldıktan sonra kurala uymuyorsa alan altında AYNI metin + Kaydet kilidi. *@
+                    <Sifre ElemanId="kayit-sifre" Etiket="@EkranlarGirisTuvalSozlugu.Parola(Dil.Dil)" Zorunlu="true"
+                           OtoTamamla="new-password" YerTutucu="@Dil.T.Auth.SifrePlaceholder" EnFazla="@ParolaKurali.EnCok"
+                           Ipucu="@(form.Mesaj("kayit-sifre") is null ? AuthSifirlaSozlugu.Al(Dil.Dil).ParolaKurali : null)"
+                           GosterEtiketi="@GirisSozlugu.Goster(Dil.Dil)" GizleEtiketi="@GirisSozlugu.Gizle(Dil.Dil)"
+                           Deger="@kayitSifre" DegerChanged="@KayitSifreDegisti"
+                           Durum="form" HataAlani="kayit-sifre" />
+                    @* PAKET F-2-min: kayıt DAVETLE açılır. Alan olmasaydı form
+                       sunucuda sessizce 403 alırdı (DoD EK md.3 — sessiz
+                       etkisizlik yasağı). *@
+                    <Metin ElemanId="kayit-davet" Etiket="@Dil.T.Auth.DavetJetonu" Zorunlu="true" EnFazla="@YonetimSinirlari.DavetJetonu"
+                           YerTutucu="@Dil.T.Auth.DavetPlaceholder"
+                           Deger="@kayitDavet" DegerChanged="@(v => kayitDavet = v ?? "")"
+                           Durum="form" HataAlani="kayit-davet"
+                           Ipucu="@Dil.T.Auth.DavetAciklama" />
+                    <button type="submit" class="btn btn-birincil btn-buyuk btn-tam giris-gonder" id="kayit-gonder" disabled="@(yukleniyor || KayitParolaHatasi is not null)">
+                        @GirisSozlugu.YeniDukkanKur(Dil.Dil)
+                    </button>
+                    @if (!yukleniyor && KayitParolaHatasi is { } kilit)
+                    {
+                        @* UX-S30: kilitli düğme sebebini söyler — alan altı metniyle BİREBİR. *@
+                        <span id="kayit-kilit" class="metin-soluk metin-kucuk">@Dil.T.Yonetim.KilitSebebi: @kilit</span>
+                    }
+                    <div class="giris-baglar">
+                        <button type="button" @onclick='() => SekmeSec("giris")' class="giris-bag" id="giris-girise-don">
+                            @GirisSozlugu.GiriseDon(Dil.Dil)
+                        </button>
+                    </div>
+                </form>
+            }
+
+            @if (YildizMi)
+            {
+                @* YILDIZ-AMBLEM-3 — tuvalde OLMAYAN öğeler (sürüm, "Yeni dükkân kur", P-30 · BK-47 kısıt beyanı)
+                   kartın akışından çıkar ve tuvalin ALT BİLGİ satırına (Giris4: ekranın dibinde, 12 px, büyük harf,
+                   soluk) oturur; böylece amblem + form tuvaldeki gibi dikeyde ortalanır. Özellik silinmedi. *@
+                <div class="giris-alt" id="giris-alt">
+                    @if (sekme == "giris" && mfaToken is null)
+                    {
+                        @YeniDukkanDugmesi
+                    }
+                    @SurumSatiri
+                    @KisitBeyaniBolumu
+                </div>
+            }
+            else
+            {
+                @SurumSatiri
+                @KisitBeyaniBolumu
+            }
+        </div>
+    </main>
+
+    @* ── Sağ: menü zemini panel (tuval) — süs şekilleri aria-hidden. Yıldız'da (tuval Giris4) panel yok. ── *@
+    @if (!YildizMi)
+    {
+    <aside class="giris-sag" id="giris-panel">
+        <div class="giris-sekil giris-sekil-1" aria-hidden="true"></div>
+        <div class="giris-sekil giris-sekil-2" aria-hidden="true"></div>
+        <div class="giris-sekil giris-sekil-3" aria-hidden="true"></div>
+        <div class="giris-sag-icerik">
+            <p class="giris-sag-baslik" id="giris-panel-baslik">@GirisSozlugu.PanelBaslik(Dil.Dil)</p>
+            <p class="giris-sag-alt" id="giris-panel-alt">@GirisSozlugu.PanelAlt(Dil.Dil)</p>
+            <ul class="giris-rakamlar" id="giris-rakamlar">
+                @foreach (var (deger, etiket) in GirisSozlugu.Rakamlar(Dil.Dil))
+                {
+                    <li class="giris-rakam">
+                        <span class="giris-rakam-deger">@deger</span>
+                        <span class="giris-rakam-etiket">@etiket</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </aside>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// YILDIZ-AMBLEM-2/3: giriş Yıldız düzeninde mi?
+    /// <para>(1) Görünüm bu sekmede sunucudan okunduysa (ör. Yıldız oturumundan çıkış) kabukla AYNI karar noktası
+    /// (<see cref="Kuyumcu.Web.Layout.YildizKabuk.Mi"/>) — sunucu değeri esastır.</para>
+    /// <para>(2) Okunmadıysa (soğuk açılış: oturum yokken /gorunum istenmez, kiracı bilinmez) BU CİHAZDA en son
+    /// kullanılan şema (tema.js <c>kuyumcuGorunum.sonSema</c>, cihaz önbelleği 'mihenk-son-sema'). Hiç giriş
+    /// yapılmamış cihazda boştur → varsayılan şema (Platin) düzeni. Yalnız görünüm; veri/yetki taşımaz.</para>
+    /// </summary>
+    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler)
+                             || (!GorunumOkundu && sonSema == YildizSozlugu.SemaKodu);
+
+    /// <summary>Kiracı ya da kullanıcı görünümü bu sekmede sunucudan okundu mu?</summary>
+    private bool GorunumOkundu =>
+        (Hizmetler.GetService(typeof(KullaniciGorunumServisi)) as KullaniciGorunumServisi)?.Yuklendi == true
+        || (Hizmetler.GetService(typeof(GorunumServisi)) as GorunumServisi)?.Yuklendi == true;
+
+    /// <summary>Bu cihazda en son kullanılan şema (tema.js; okunamazsa null → varsayılan düzen).</summary>
+    private string? sonSema;
+
+    /// <summary>Tuval Giris4 yer tutucuları (dil bağımsız örnek değerler).</summary>
+    private const string YildizEpostaYerTutucu = "ad@isletme.com";
+    private const string YildizParolaYerTutucu = "••••••••";
+
+    /// <summary>
+    /// İlk çizimden ÖNCE, eşzamanlı okunur (WASM süreç içi JS): sayfa önce eski düzenle çizilip sonra
+    /// Yıldız'a sıçramaz (FOUC yok). Kök özniteliği (data-sema) tema.js zaten ilk boyamadan önce yazmıştır.
+    /// </summary>
+    private void SonSemaOku()
+    {
+        if (JS is not IJSInProcessRuntime esz) return;   // ön-işleme / süreç dışı çalışma zamanı
+        try { sonSema = esz.Invoke<string?>("kuyumcuGorunum.sonSema"); }
+        catch (Exception ex)
+        {
+            // Betik yüklenmemiş / test ortamı: anahtar bilinmiyor → varsayılan düzen (uydurulmaz).
+            Console.Error.WriteLine($"[giris] son sema: {ex.GetType().Name}");
+            sonSema = null;
+        }
+    }
+
+    // ── YILDIZ-AMBLEM-3: tek tanım, iki yerleşim (Yıldız tuval satırı / öteki şemalar eski düzen — DOM aynen) ──
+    private RenderFragment GonderDugmesi => @<button type="submit" class="btn btn-birincil btn-buyuk btn-tam giris-gonder" id="giris-gonder" disabled="@yukleniyor">
+                        @EkranlarGirisTuvalSozlugu.GirisYap(Dil.Dil)
+                    </button>;
+
+    private RenderFragment UnuttumDugmesi => @<button type="button" @onclick="ParolaYardimDegistir" class="giris-bag" id="giris-parola-unuttum"
+                                aria-expanded="@(parolaYardimAcik ? "true" : "false")" aria-controls="giris-parola-yardim">
+                            @GirisSozlugu.ParolamiUnuttum(Dil.Dil)
+                        </button>;
+
+    private RenderFragment YeniDukkanDugmesi => @<button type="button" @onclick='() => SekmeSec("kayit")' class="giris-bag giris-bag--soluk" id="giris-yeni-dukkan">
+                            @GirisSozlugu.YeniDukkanKur(Dil.Dil)
+                        </button>;
+
+    private RenderFragment SurumSatiri => @<p class="giris-surum" id="giris-surum">@GirisSozlugu.SurumSatiri(Dil.Dil, SurumMetni(IstemciSurumu))</p>;
+
+    // ── P-30 · BK-47 — bu kurulumda HARİÇ olanlar (giriş ekranında okunur).
+    //    Tuvalde yeri yok; özellik silinmez → KATLANIR. Hata varsa AÇIK
+    //    başlar (UX-S28: hata kullanıcının göreceği yerde). ──
+    private RenderFragment KisitBeyaniBolumu => @<details id="giris-kisit" class="giris-kisit" aria-live="polite" open="@(kisitHatasi is not null)">
+                <summary class="giris-kisit-baslik" id="giris-kisit-ozet">@GirisSozlugu.KisitOzet(Dil.T.Auth.KisitBaslik, kisitlar?.Count)</summary>
+                @if (kisitHatasi is not null)
+                {
+                    @* UX-S28: hata 'kayıt yok'a çevrilmez — ayrı bant. *@
+                    <p id="giris-kisit-hata" class="giris-kisit-hata">@kisitHatasi</p>
+                }
+                else if (kisitlar is null)
+                {
+                    <p id="giris-kisit-yukleniyor" class="giris-kisit-alt">@Dil.T.Auth.KisitYukleniyor</p>
+                }
+                else if (kisitlar.Count == 0)
+                {
+                    <p id="giris-kisit-bos" class="giris-kisit-alt">@Dil.T.Auth.KisitBos</p>
+                }
+                else
+                {
+                    <ul id="giris-kisit-liste" class="giris-kisit-liste">
+                        @foreach (var k in kisitlar)
+                        {
+                            <li id="@($"giris-kisit-{k.Kod.ToLowerInvariant()}")" class="giris-kisit-satir">
+                                <span class="giris-kisit-durum">@DurumMetni(k.Durum)</span>
+                                <span>@(Dil.Dil == "en" ? k.BaslikEn : k.Baslik)</span>
+                            </li>
+                        }
+                    </ul>
+                    <p id="giris-kisit-kaynak" class="giris-kisit-alt">@Dil.T.Auth.KisitKaynak @kisitKaynak</p>
+                }
+            </details>;
+
+    /// <summary>YILDIZ-AMBLEM-2: "MİHENK" harfleri — kabukla AYNI kaynak (marka sözlüğü, tr-TR büyük harf).</summary>
+    private static string AmblemHarfleri => Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemHarfleri;
+
+    // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
+    /// <summary>
+    /// /auth/giris iki farklı şekil döndürür: ya jetonlar, ya da MFA meydan
+    /// okuması (45-API). ⚠ Yeni istemci kayıt tipi AÇILMADI (MÜHÜR 5 KOŞUL 3) — mevcut
+    /// tip sunucunun GERÇEK yanıt şekline hizalandı; jeton alanları artık
+    /// nullable, çünkü ikinci adım beklerken gerçekten yoklar.
+    /// </summary>
+    private sealed record AuthYaniti(
+        string? AccessToken = null, string? RefreshToken = null, OturumKullanici? Kullanici = null,
+        bool MfaGerekli = false, string? MfaToken = null, int GecerlilikDakika = 0);
+
+    private string sekme = "giris";
+    private bool yukleniyor;
+    private string? hata;
+
+    // Giriş formu
+    private string email = "";
+    private string sifre = "";
+
+    // ── 45-UI · girişin İKİNCİ ADIMI ────────────────────────────────────────
+    // ⚠ Meydan okuma jetonu YALNIZ bellekte tutulur; oturum deposuna yazılmaz.
+    //   Kod alanı TOTP ya da kurtarma kodu kabul eder (sunucu ayırt eder).
+    private string? mfaToken;
+    private string mfaKod = "";
+
+    // Kayıt formu
+    private string kayitIsletmeAdi = "";
+    private string kayitAd = "";
+    private string kayitSoyad = "";
+    private string kayitEmail = "";
+    private string kayitSifre = "";
+    private string kayitDavet = "";
+
+    // ── S1-e · "Parolamı unuttum" — AUTH-SIFIRLA: yardım bölmesi e-postayla sıfırlama
+    //    bağlantısını (/sifre-sifirla) VE yönetici yolunu (SAHIP/MUDUR → Kullanıcılar →
+    //    Şifre Sıfırla) GÖRÜNÜR yazar.
+    private bool parolaYardimAcik;
+    /// <summary>E-postayla sıfırlama açık mı (null = sorulmadı ya da okunamadı → bağlantı çizilmez).</summary>
+    private bool? sifirlamaAcik;
+    private bool sifirlamaSoruluyor;
+
+    private async Task ParolaYardimDegistir()
+    {
+        parolaYardimAcik = !parolaYardimAcik;
+        if (!parolaYardimAcik || sifirlamaAcik is not null) return;
+        sifirlamaSoruluyor = true;
+        try
+        {
+            var d = await Api.GetAsync("/auth/parola-sifirlama/durum");
+            sifirlamaAcik = d.TryGetProperty("acik", out var a) && a.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+        catch (Exception ex)
+        {
+            // Okunamadı: "kapalı" diye UYDURULMAZ (null kalır, sonraki açılışta yeniden sorulur);
+            // ekranda yalnız her koşulda geçerli yol yazılır, teknik ayrıntı konsola.
+            Console.Error.WriteLine($"[giris] parola-sifirlama/durum: {ex.GetType().Name}: {ex.Message}");
+        }
+        sifirlamaSoruluyor = false;
+    }
+
+    // ── S1-e · sürüm satırı — ELLE YAZILMAZ. İstemci derlemesinin sürümü
+    //    (yayın betiği -p:InformationalVersion ile API ile AYNI değeri verir;
+    //    eşitlik S1eGirisTestleri'nde sınanır). "+<commit>" eki atılır.
+    private static readonly string? IstemciSurumu = typeof(Giris).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+    /// <summary>"1.0.0+abc" → "1.0" (tuval: "Mihenk 1.0"). Okunamazsa ham metin, yoksa "—".</summary>
+    public static string SurumMetni(string? bilgi)
+    {
+        if (string.IsNullOrWhiteSpace(bilgi)) return "—";
+        var cekirdek = bilgi.Split('+')[0].Trim();
+        return Version.TryParse(cekirdek.Split('-')[0], out var v) ? $"{v.Major}.{v.Minor}" : cekirdek;
+    }
+
+    // ── P-30 (R-4 · BK-47) — kısıt beyanı giriş ekranında okunur ────────────
+    // ⚠ Liste SUNUCUDAN gelir (GET /genel/kisitlar); ekrana ikinci kez elle
+    //   yazılmaz. İstek başarısız olursa boş durum DEĞİL, ayrı hata metni
+    //   çizilir (UX-S28 · Anayasa md.1: başarısızlık 'kayıt yok' gibi görünmez).
+    private IReadOnlyList<KisitSatiri>? kisitlar;
+    private string? kisitKaynak;
+    private string? kisitHatasi;
+
+    protected override void OnInitialized()
+    {
+        SonSemaOku();
+        Dil.Degisti += Yenile;
+        // Keşif B006 güvenliği: başka kullanıcı bu tarayıcıda oturum açtığı için düşen
+        // sekme buraya SESSİZ gelmez — nedeni bir kez yazılır.
+        if (Oturum.GirisBildirimi == OturumServisi.BildirimBaskaKullaniciKodu)
+            hata = GirisSozlugu.BaskaKullaniciOturumActi(Dil.Dil);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var yanit = await Api.GetAsync<KisitBeyaniYaniti>("/genel/kisitlar");
+            if (yanit is null) { kisitHatasi = Dil.T.Auth.KisitHatasi; return; }
+            kisitlar = yanit.Kisitlar ?? [];
+            kisitKaynak = yanit.Kaynak;
+        }
+        catch (Exception ex)
+        {
+            // TOPLU-2 (ORTAK-1 kuyruğu): istisna türü ekrana basılmaz; tanı yalnız konsola.
+            Console.Error.WriteLine($"[giris] kisitlar: {ex.GetType().Name}: {ex.Message}");
+            kisitHatasi = Dil.T.Auth.KisitHatasi;
+        }
+    }
+
+    private string DurumMetni(string durum) => durum switch
+    {
+        KisitBeyani.DurumHaric => Dil.T.Auth.KisitDurumHaric,
+        KisitBeyani.DurumKapsamDisi => Dil.T.Auth.KisitDurumKapsamDisi,
+        KisitBeyani.DurumSurum11 => Dil.T.Auth.KisitDurumSurum11,
+        _ => Dil.T.Auth.KisitDurumHaric,
+    };
+
+    private void SekmeSec(string s)
+    {
+        sekme = s;
+        hata = null;
+        parolaYardimAcik = false;
+        form.Temizle();   // diğer sekmenin mesajları taşınmaz
+    }
+
+    /// <summary>C0 ortak form altyapısı — alan altı Türkçe mesaj defteri.</summary>
+    private readonly FormDurumu form = new();
+
+    /// <summary>
+    /// Sunucu alan adı → ekran id eşlemesi. 400 yanıtındaki "Email"/"Sifre"
+    /// anahtarları ekranda #giris-eposta/#giris-sifre altına düşer.
+    /// </summary>
+    private static readonly Dictionary<string, string> GirisEsleme = new(StringComparer.OrdinalIgnoreCase)
+    { ["email"] = "giris-eposta", ["sifre"] = "giris-sifre" };
+
+    private static readonly Dictionary<string, string> KayitEsleme = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["isletmeAdi"] = "kayit-isletme", ["ad"] = "kayit-ad", ["soyad"] = "kayit-soyad",
+        ["email"] = "kayit-eposta", ["sifre"] = "kayit-sifre",
+        ["davetJetonu"] = "kayit-davet",
+    };
+
+    /// <summary>Sessiz etkisizlik yasağı (C0-d): odak İLK hatalı alana taşınır.</summary>
+    private async Task OdakIlkHataya()
+    {
+        if (form.IlkHatali is not { } ilk) return;
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", ilk); }
+        catch { /* JS yoksa mesaj yine görünür — kural ekranda duruyor */ }
+    }
+
+    private async Task GirisYap()
+    {
+        hata = null;
+        form.Temizle();
+        form.Zorunlu("giris-eposta", email, Dil);
+        form.Eposta("giris-eposta", email, Dil);
+        form.Zorunlu("giris-sifre", sifre, Dil);
+        if (!form.Gecerli)
+        {
+            hata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+
+        yukleniyor = true;
+        try
+        {
+            var yanit = await Api.PostAsync<AuthYaniti>("/auth/giris", new { email, sifre });
+            // 45-UI: MFA açıksa sunucu jeton DEĞİL, kısa ömürlü meydan okuma verir.
+            if (yanit.MfaGerekli && yanit.MfaToken is { Length: > 0 })
+            {
+                mfaToken = yanit.MfaToken;
+                mfaKod = "";
+                sifre = "";                       // parola bellekte tutulmaz
+                yukleniyor = false;
+                return;
+            }
+            await Oturum.TokenKaydetAsync(yanit.AccessToken!, yanit.RefreshToken!);
+            if (yanit.Kullanici is not null) Oturum.KullaniciAta(yanit.Kullanici);
+            Nav.NavigateTo("/");
+            return; // yönlendirme sırasında buton kilitli kalsın
+        }
+        catch (ApiHata ex) { form.Sunucudan(ex, GirisEsleme); hata = FormDurumu.SunucuMesaji(ex, Dil); }
+        catch { hata = Dil.T.Auth.GirisBasarisiz; }
+        yukleniyor = false;
+        await OdakIlkHataya();
+    }
+
+    /// <summary>Girişin ikinci adımı — POST /auth/mfa/giris (ayrı audience jetonu).</summary>
+    private async Task MfaGiris()
+    {
+        hata = null;
+        form.Temizle();
+        form.Zorunlu("giris-mfa-kod", mfaKod, Dil);
+        if (!form.Gecerli)
+        {
+            hata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+
+        yukleniyor = true;
+        try
+        {
+            // ⚠ CANLI DOĞRULAMADA YAKALANDI (UX-1-C4): meydan okuma jetonu GÖVDEDE
+            // değil, Authorization: Bearer BAŞLIĞINDA gider (AuthController.GirisMfa).
+            // Gövdeye konulduğunda sunucu 401 "Doğrulama oturumu geçersiz" döner ve
+            // MFA'lı hiçbir kullanıcı giriş yapamaz.
+            var yanit = await Api.PostJetonlaAsync<AuthYaniti>(
+                "/auth/mfa/giris", mfaToken!, new { kod = mfaKod.Trim() });
+            await Oturum.TokenKaydetAsync(yanit.AccessToken!, yanit.RefreshToken!);
+            if (yanit.Kullanici is not null) Oturum.KullaniciAta(yanit.Kullanici);
+            mfaToken = null;
+            mfaKod = "";
+            Nav.NavigateTo("/");
+            return;
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, MfaEsleme);
+            hata = FormDurumu.SunucuMesaji(ex, Dil);
+        }
+        catch { hata = Dil.T.Auth.GirisBasarisiz; }
+        yukleniyor = false;
+        await OdakIlkHataya();
+    }
+
+    /// <summary>İkinci adımdan vazgeçiş: meydan okuma jetonu BELLEKTEN düşer.</summary>
+    private void MfaVazgec()
+    {
+        mfaToken = null;
+        mfaKod = "";
+        hata = null;
+        form.Temizle();
+    }
+
+    private static readonly Dictionary<string, string> MfaEsleme =
+        new(StringComparer.OrdinalIgnoreCase) { ["kod"] = "giris-mfa-kod" };
+
+    private async Task KayitOl()
+    {
+        hata = null;
+        form.Temizle();
+        form.Zorunlu("kayit-isletme", kayitIsletmeAdi, Dil);
+        form.Zorunlu("kayit-ad", kayitAd, Dil);
+        form.Zorunlu("kayit-soyad", kayitSoyad, Dil);
+        form.Zorunlu("kayit-eposta", kayitEmail, Dil);
+        // PAKET GOC-D: e-posta ve parola sunucunun Core kuralıyla AYNI metinle (Kabuk.EpostaGecersiz değil).
+        if (form.Mesaj("kayit-eposta") is null && EpostaDogrulayici.Denetle(kayitEmail) is { } epostaHata)
+            form.Ekle("kayit-eposta", GirdiSozlugu.Mesaj(epostaHata, Dil.Dil));
+        form.Zorunlu("kayit-sifre", kayitSifre, Dil);
+        if (form.Mesaj("kayit-sifre") is null && ParolaKurali.Mesaj(kayitSifre, Dil.Dil) is { } parolaHata)
+            form.Ekle("kayit-sifre", parolaHata);
+        form.Zorunlu("kayit-davet", kayitDavet, Dil);
+        if (!form.Gecerli)
+        {
+            hata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+
+        yukleniyor = true;
+        try
+        {
+            var yanit = await Api.PostAsync<AuthYaniti>("/auth/kayit", new
+            {
+                isletmeAdi = kayitIsletmeAdi,
+                ad = kayitAd,
+                soyad = kayitSoyad,
+                email = kayitEmail,
+                sifre = kayitSifre,
+                davetJetonu = kayitDavet.Trim(),
+            });
+            await Oturum.TokenKaydetAsync(yanit.AccessToken!, yanit.RefreshToken!);
+            if (yanit.Kullanici is not null) Oturum.KullaniciAta(yanit.Kullanici);
+            Nav.NavigateTo("/");
+            return;
+        }
+        catch (ApiHata ex) { form.Sunucudan(ex, KayitEsleme); hata = FormDurumu.SunucuMesaji(ex, Dil); }
+        catch { hata = Dil.T.Auth.KayitBasarisiz; }
+        yukleniyor = false;
+        await OdakIlkHataya();
+    }
+
+    /// <summary>
+    /// PAKET GOC-D — yazarken parola kuralı: en az 8 karakter yazılmadan uyarı basılmaz (ilk harfte
+    /// "kural tutmuyor" demek gürültüdür); 8 ve üstünde kurala uymayan parola alan altında + kilit.
+    /// </summary>
+    private string? KayitParolaHatasi =>
+        kayitSifre.Length >= ParolaKurali.EnAz ? ParolaKurali.Mesaj(kayitSifre, Dil.Dil) : null;
+
+    private void KayitSifreDegisti(string? v)
+    {
+        kayitSifre = v ?? "";
+        form.Sil("kayit-sifre");
+        if (KayitParolaHatasi is { } m) form.Ekle("kayit-sifre", m);
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

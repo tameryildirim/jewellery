@@ -1,0 +1,235 @@
+@page "/gider-pusulalari/{Id}/belge"
+@inject UyumServisi Api
+@inject DilServisi Dil
+@using Kuyumcu.Web.Bilesenler.Yazdirma
+@inject NavigationManager Nav
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   GİDER PUSULASI BELGESİ — VUK md.234 · PLAN-2 Adım 1.
+
+   NEDEN AYRI SAYFA (Bertan): yazdırılabilir resmî belge, uygulama kabuğundan
+   (menü, kenar çubuğu) ayrı bir yerleşim ister. Modal içinde yazdırmak
+   tarayıcıda kabuk artıklarını kâğıda taşır.
+
+   NEDEN SUNUCUDA PDF YOK (ADR-0007): kod tabanında hiçbir PDF kütüphanesi
+   bulunmuyor ve eklenmiyor — yeni bağımlılık, yeni saldırı yüzeyi ve bazı
+   PDF kütüphanelerinde ticari lisans yükü demek. Tarayıcının yazdırma motoru
+   zaten "PDF olarak kaydet" seçeneği sunar.
+
+   Bu sayfa aynı zamanda BELGE YERLEŞİM STANDARDIDIR: sonraki resmî belgeler
+   (MASAK beyan formu, sentetik taş sertifikası) bu deseni izleyecek.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@(belge?.PusulaNo ?? Dil.T.Pusula.Belge) — @Dil.T.Pusula.Baslik</PageTitle>
+
+<div class="belge-sayfa">
+    @* UX-1-C3: sayfa başı YALNIZ ekranda (yazdirma-gizle) — kâğıda çıkmaz. *@
+    <div class="belge-arac yazdirma-gizle">
+        <SayfaBasi Anahtar="gider-pusulasi-belge" Baslik="@(belge?.PusulaNo ?? Dil.T.Pusula.Belge)"
+                   Aciklama="@Dil.T.Pusula.Dayanak">
+            <Filtreler>
+                @* P-55: "Geri" artık listeye değil, GELİNEN PUSULAYA döner (?ac={Id});
+                   id="gpb-geri" DEĞİŞMEDİ. Düzenleme yolu ayrı bağlantıdır. *@
+                <button class="dugme dugme-ikincil" id="gpb-geri" @onclick="Geri">← @P.PusulayaDon</button>
+                <a class="dugme dugme-ikincil" id="gpb-duzenle" href="@DuzenleAdresi">@P.PusulayiDuzenle</a>
+            </Filtreler>
+            <Eylem>
+                @* PAKET P-17 (Y-6): window.print TEK noktada — YazdirDugmesi. *@
+                <YazdirDugmesi Id="gpb-yazdir" Etiket="@Dil.T.Pusula.Yazdir"
+                               Kilit="@(belge is null ? Dil.T.Cikti.YazdirKilidi : null)"
+                               HataOlustu="@(m => hata = m)" />
+            </Eylem>
+        </SayfaBasi>
+    </div>
+
+    <HataBandi Mesaj="@hata" />
+
+    @* P-55: iptal yolunun NEREDE olduğu yazılır (ekranda; kâğıda çıkmaz). *@
+    <p class="metin-kucuk metin-soluk yazdirma-gizle" id="gpb-iptal-yeri">
+        @string.Format(P.IptalYeri, Dil.T.Pusula.IptalEt)
+    </p>
+
+    @if (belge is null && hata is null)
+    {
+        <Yukleniyor />
+    }
+    else if (belge is { } b)
+    {
+        <article class="belge">
+            <header class="belge-ust">
+                @* PAKET Q9-4 (375 px ölçümü): başlık tek satır, numara gerekirse kırılır;
+                   mevcut .hucre-tek-satir / .kir-uzun sınıfları — yeni CSS yok. *@
+                <h1 class="hucre-tek-satir">@b.BelgeTuru</h1>
+                <div class="belge-no">
+                    <span class="etiket">@Dil.T.Pusula.PusulaNo</span>
+                    <strong class="kir-uzun">@b.PusulaNo</strong>
+                </div>
+            </header>
+
+            <p class="belge-dayanak">@Dil.T.Pusula.Dayanak: @b.Dayanak</p>
+
+            <section class="belge-taraflar">
+                <div>
+                    @* UX-1-B devri: VUK md.234 düzenleyen tarafını adres ve vergi
+                       dairesi/no ile ister. Sunucu bunları tenants satırından
+                       verir; BOŞ OLANLAR UYDURULMAZ (Anayasa md.1) — eksikse
+                       ekranda (kâğıtta değil) doldurma yolu gösterilir. *@
+                    <h2>@Dil.T.Pusula.Duzenleyen</h2>
+                    <p><strong>@b.Duzenleyen.Unvan</strong></p>
+                    @if (!string.IsNullOrEmpty(b.Duzenleyen.Sube)) { <p>@b.Duzenleyen.Sube</p> }
+                    @if (!string.IsNullOrEmpty(b.Duzenleyen.Adres))
+                    {
+                        <p id="gpb-duzenleyen-adres">@b.Duzenleyen.Adres</p>
+                    }
+                    @if (!string.IsNullOrEmpty(b.Duzenleyen.VergiDairesi) || !string.IsNullOrEmpty(b.Duzenleyen.VergiNo))
+                    {
+                        <p id="gpb-duzenleyen-vergi">
+                            @if (!string.IsNullOrEmpty(b.Duzenleyen.VergiDairesi))
+                            {
+                                <span>@Dil.T.SayfaDuzeltme.VergiDairesi: @b.Duzenleyen.VergiDairesi</span>
+                            }
+                            @if (!string.IsNullOrEmpty(b.Duzenleyen.VergiNo))
+                            {
+                                <span> · @Dil.T.SayfaDuzeltme.VergiNo: <strong>@b.Duzenleyen.VergiNo</strong></span>
+                            }
+                        </p>
+                    }
+                    @if (!string.IsNullOrEmpty(b.Duzenleyen.Telefon))
+                    {
+                        <p id="gpb-duzenleyen-telefon">@Dil.T.SayfaDuzeltme.IsletmeTelefonu: @b.Duzenleyen.Telefon</p>
+                    }
+                    @if (IsletmeEksik)
+                    {
+                        <div class="yazdirma-gizle">
+                            <DegismezIpucu Varlik="IsletmeKimligi"
+                                           Gerekce="@Dil.T.SayfaDuzeltme.IsletmeBilgisiEksik"
+                                           AlternatifYol="@Dil.T.SayfaDuzeltme.IsletmeKartinaGit" />
+                            <button class="dugme dugme-ikincil dugme-kucuk" id="gpb-isletme-karti"
+                                    @onclick="@(() => Nav.NavigateTo("/isletme"))">
+                                @Dil.T.SayfaDuzeltme.IsletmeKartinaGit
+                            </button>
+                        </div>
+                    }
+                </div>
+                <div>
+                    <h2>@Dil.T.Pusula.Satici</h2>
+                    <p><strong>@b.Satici.AdSoyad</strong></p>
+                    <p>@Dil.T.Pusula.Tckn: <strong>@b.Satici.Tckn</strong></p>
+                    @if (!string.IsNullOrEmpty(b.Satici.Adres)) { <p>@b.Satici.Adres</p> }
+                    <p class="metin-kucuk">@b.Satici.SaticiTipiAciklama</p>
+                </div>
+            </section>
+
+            <section>
+                <h2>@Dil.T.Pusula.Mal</h2>
+                <table class="belge-tablo">
+                    <thead>
+                        <tr>
+                            <th>@Dil.T.Pusula.Cins</th>
+                            <th style="text-align:right">@Dil.T.Pusula.Gram</th>
+                            <th class="hucre-tek-satir" style="text-align:right">@Dil.T.Pusula.HasGram</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>@b.Mal.Cins</td>
+                            <td style="text-align:right">@Bicim.BelgeSayisi(b.Mal.GramAgirlik, Dil.Locale, 3)</td>
+                            <td style="text-align:right">@Bicim.BelgeSayisi(b.Mal.HasGrami, Dil.Locale, 3)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                @if (!string.IsNullOrEmpty(b.Mal.Aciklama))
+                {
+                    <p class="metin-kucuk">@b.Mal.Aciklama</p>
+                }
+            </section>
+
+            <section>
+                <h2>@Dil.T.Pusula.Tutarlar</h2>
+                <table class="belge-tablo">
+                    <tbody>
+                        <tr>
+                            <td>@Dil.T.Pusula.Brut</td>
+                            <td style="text-align:right">@Para(b.Tutarlar.BrutTutar)</td>
+                        </tr>
+                        <tr>
+                            <td>@Dil.T.Pusula.Stopaj (@b.Tutarlar.StopajOranYuzde)</td>
+                            <td style="text-align:right">− @Para(b.Tutarlar.StopajTutar)</td>
+                        </tr>
+                        <tr class="belge-toplam">
+                            <td><strong>@Dil.T.Pusula.Net</strong></td>
+                            <td style="text-align:right"><strong>@Para(b.Tutarlar.NetOdenen)</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="belge-yazi">
+                    <span class="etiket">@Dil.T.Pusula.Yaziyla:</span>
+                    @* Q9-4: bitişik yazılan tutar (tek uzun sözcük) 375 px'te etiketin
+                       üstüne biniyordu (ölçüldü) — kendi satırında başlar ve gerekirse
+                       kırılır (.kir-uzun); yeni CSS yok. *@
+                    <br />
+                    <strong class="kir-uzun">@b.Tutarlar.Yaziyla</strong>
+                </p>
+            </section>
+
+            <section class="belge-tarihler">
+                <p>@Dil.T.Pusula.TeslimTarihi: <strong>@Tarih(b.TeslimTarihi)</strong></p>
+                <p>@Dil.T.Pusula.DuzenlemeTarihi: <strong>@Tarih(b.DuzenlemeTarihi)</strong></p>
+                <p>
+                    @Dil.T.Pusula.SonTarih: <strong>@Tarih(b.DuzenlemeSonTarihi)</strong>
+                    @if (b.Gecikti)
+                    {
+                        <span class="rozet rozet-kirmizi">@Dil.T.Pusula.Gecikti</span>
+                    }
+                </p>
+            </section>
+
+            <p class="belge-not">@b.Not</p>
+
+            <section class="belge-imza">
+                <div>
+                    <div class="imza-cizgi"></div>
+                    <p>@Dil.T.Pusula.DuzenleyenImza</p>
+                </div>
+                <div>
+                    <div class="imza-cizgi"></div>
+                    <p>@Dil.T.Pusula.SaticiImza</p>
+                </div>
+            </section>
+        </article>
+    }
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private PusulaBelge? belge;
+    private string? hata;
+
+    private System.Globalization.CultureInfo Kultur => new(Dil.Locale);
+    // P-36b: biçim TEK yerden — Servisler/Bicim.cs. Çıktı birebir aynı.
+    private string Para(decimal d) => Bicim.BelgeParasi(d, Dil.Locale);
+    private string Tarih(DateTime t) => Bicim.TarihTam(t);
+
+    /// <summary>Belgenin VUK md.234 zorunlu düzenleyen alanları eksik mi?</summary>
+    internal bool IsletmeEksik =>
+        belge is { } b &&
+        (string.IsNullOrWhiteSpace(b.Duzenleyen.Adres)
+         || (string.IsNullOrWhiteSpace(b.Duzenleyen.VergiDairesi)
+             && string.IsNullOrWhiteSpace(b.Duzenleyen.VergiNo)));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        hata = null;
+        belge = null;
+        try { belge = await Api.Belge(Id); }
+        catch (Exception ex) { hata = ex.Message; }
+    }
+
+    // ── P-55: pusulaya dönüş + düzenleme bağlantısı DOĞRU KİMLİĞE gider ──────
+    private GiderPusulasiDuzenMetinleri P => GiderPusulasiSozlugu.Al(Dil.Dil);
+    internal string DonusAdresi => $"/gider-pusulalari?ac={Uri.EscapeDataString(Id)}";
+    internal string DuzenleAdresi => $"/gider-pusulalari?duzenle={Uri.EscapeDataString(Id)}";
+
+    private void Geri() => Nav.NavigateTo(DonusAdresi);
+}

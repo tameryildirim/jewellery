@@ -1,0 +1,121 @@
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-6 — SİPARİŞTEN SATIŞ (P-21 · Y-18) ═══
+   Uçlar: GET /siparisler?durum=HAZIR · GET /siparisler/{id} ·
+          POST /siparisler/{id}/satisa-cevir (onay modalı — tek fiş, geri alınamaz).
+   Kalem fiyatı dönüşüm anında girilir (sunucu sözleşmesi); ödeme tek bacak.
+   Kapora mahsubu AÇIKÇA girilir — sessiz mahsup yok (UX-S27, sunucu notu).
+   ⚠ İstek atmaz — niyet DigerIstek ile sayfaya gider. *@
+<div class="form-dikey" id="siparis-form">
+    @if (Durum.Siparisler is { } liste)
+    {
+        var satirlar = liste.Siparisler ?? [];
+        @if (liste.DahaFazlasiVar)
+        {
+            <p class="bant bant-uyari" id="siparis-sinir" role="status">@string.Format(M.SinirUyari, liste.Limit)</p>
+        }
+        @if (satirlar.Count == 0)
+        {
+            <BosDurum Mesaj="@M.SiparisBos" />
+        }
+        else
+        {
+            <Secici ElemanId="siparis-sec" Etiket="@M.HazirSiparis" Zorunlu="true"
+                    Secenekler="@(satirlar.Select(s => new SecenekOgesi(s.Id, $"{s.No} · {s.CariAd ?? "—"}")).ToList())"
+                    Deger="@S.Secili?.Id" DegerChanged="SiparisSecildi" Hata="@Hata("siparis")" />
+        }
+    }
+
+    @if (S.Secili is { } sp)
+    {
+        @* PAKET GOC-C — ORTAK IZGARA (grid:islemler:siparis-kalemler). Siparişin TÜM kalemleri → yerel sıralama; id'ler korunur.
+           Birim fiyat K9 (> 0, 2 ondalık) — sunucu SiparisSatisaCevir aynı. *@
+        <Izgara T="SiparisKalemi" Ekran="islemler" GridId="siparis-kalemler" TabloId="siparis-kalemler" Kolonlar="@KalemKolonlari"
+                Ogeler="@IzgaraYerelSiralama.Uygula(sp.Kalemler ?? [], kalemSira, KalemKolonlari)"
+                SatirId="@(k => $"siparis-kalem-{k.Id}")" Baslik="@M.Urun"
+                SiralamaDegisti="@(x => kalemSira = x)" GecerliSiralama="@kalemSira" />
+        <p id="siparis-toplam" role="status">@M.Toplam: @Bicim.Para(S.Toplam, "TRY")</p>
+        <Secici ElemanId="siparis-odeme" Etiket="@M.OdemeSekli" Zorunlu="true"
+                Secenekler="@OdemeSecenekleri" Deger="@S.Arac" DegerChanged="@(v => S.Arac = v ?? "NAKIT")" />
+        @if (S.Arac != "VERESIYE")
+        {
+            <FisDigerKasa Durum="Durum" Baglam="Baglam" Onek="siparis" Hata="@Hata("kasa")" />
+        }
+        <Para ElemanId="siparis-kapora" Etiket="@M.DusulecekKapora" EnAz="0m" ParaBirimi="TRY"
+              Deger="@S.AvansMahsup" DegerChanged="@(v => S.AvansMahsup = v)" Hata="@Hata("mahsup")" />
+        @* PAKET YASAL-KAPI-2: eşik üstünde (ya da müşterinin bugünkü toplamıyla / sunucu reddiyle) ORTAK MasakFormu;
+           Kaydet kilidinin sebebi eylem şeridinde tek yerde (EkSebep). Toplam inince form ve ret cümlesi kalkar. *@
+        @if (S.Masak is { FormCizilir: true } pm)
+        {
+            <div class="zo-masak-dikey" id="siparis-masak">
+                <MasakFormu Model="pm.Model" Tutar="pm.Tutar" Esik="pm.Esik!" Sade="@Dil.BasitMi" Gereksinim="pm.Gereksinim!"
+                            Degisti="@(() => Istek.InvokeAsync(new DigerIstek(DigerEylemler.Ciz)))" />
+            </div>
+        }
+        <HataBandi Mesaj="@S.Masak?.RedBandi" Id="siparis-masak-ret" />
+        @* t10: ortak eylem şeridi (sağda tek birincil). Fiyat alanları satır başına → eksikler alan altında (tıklayınca). *@
+        <FisDigerEylem Id="siparis-cevir" Metin="@M.SiparisCevir" Mesgul="Durum.Mesgul" KurVar="Baglam.KurVar" Tikla="CevirOnayla"
+                       EkSebep="@S.Masak?.KilitSebebi(Dil.Dil)" />
+    }
+</div>
+
+@code {
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? kalemSira;
+    private IReadOnlyList<IzgaraKolonu<SiparisKalemi>> KalemKolonlari =>
+    [
+        new() { Anahtar = "urun", Baslik = M.Urun, ZorunluGorunur = true, SunucuSiralamaAdi = "urun", Deger = k => k.UrunAd ?? k.Tanim ?? "—" },
+        new() { Anahtar = "adet", Baslik = M.Adet, SunucuSiralamaAdi = "adet", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = k => k.Adet, Hucre = k => @<text>@k.Adet.ToString("0.###", Kultur)</text> },
+        new() { Anahtar = "fiyat", Baslik = M.BirimFiyat, ZorunluGorunur = true,
+                Hucre = k => @<Para ElemanId="@($"siparis-fiyat-{k.Id}")" Etiket="@M.BirimFiyat" Zorunlu="true" Tur="Kuyumcu.Core.Domain.Girdi.TutarTuru.Pozitif" ParaBirimi="TRY"
+                                    Deger="@S.Fiyat.GetValueOrDefault(k.Id)" DegerChanged="@(v => FiyatYaz(k.Id, v))"
+                                    Hata="@Hata($"fiyat-{k.Id}")" /> },
+    ];
+
+    [Parameter, EditorRequired] public DigerIslemDurumu Durum { get; set; } = new();
+    [Parameter, EditorRequired] public DigerBaglam Baglam { get; set; } = new([], [], [], [], false, null);
+    [Parameter] public EventCallback<DigerIstek> Istek { get; set; }
+
+    private FisDigerMetinleri M => FisDigerSozlugu.Al(Dil.Dil);
+    private SiparisGirisi S => Durum.Siparis;
+    private static readonly System.Globalization.CultureInfo Kultur = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    /// <summary>Tek bacak ödeme — satış fişiyle aynı araç kodları (OdemeBacagiDto).</summary>
+    private IReadOnlyList<SecenekOgesi> OdemeSecenekleri =>
+    [
+        new("NAKIT", M.Nakit),
+        new("KART", M.Kart),
+        new("HAVALE", M.Havale),
+        new("VERESIYE", M.AcikHesap),
+    ];
+
+    private string? Hata(string alan) =>
+        Durum.Denenen.Contains(DigerEylemler.SiparisCevir) ? S.Hatalar(M, Durum.EtkinKasa(Baglam)).GetValueOrDefault(alan) : null;
+
+    /// <summary>Birim fiyat değişince toplam (MASAK ölçüsü) değişir → kapı yeniden değerlendirilir.</summary>
+    private async Task FiyatYaz(string kalemId, decimal? v)
+    {
+        S.Fiyat[kalemId] = v;
+        if (S.Masak is { } pm) await pm.Tazele(S.Toplam, S.Secili?.CariId);
+    }
+
+    private async Task SiparisSecildi(string? id)
+    {
+        S.Secili = null;
+        S.Fiyat.Clear();
+        Durum.Denenen.Remove(DigerEylemler.SiparisCevir);
+        if (id is not null) await Istek.InvokeAsync(new DigerIstek(DigerEylemler.SiparisSec, id));
+    }
+
+    private async Task CevirOnayla()
+    {
+        Durum.Denenen.Add(DigerEylemler.SiparisCevir);
+        if (S.Hatalar(M, Durum.EtkinKasa(Baglam)).Count > 0) return;
+        Durum.Onay = DigerEylemler.SiparisCevir;
+        Durum.OnayId = S.Secili?.Id;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.Ciz));
+    }
+}

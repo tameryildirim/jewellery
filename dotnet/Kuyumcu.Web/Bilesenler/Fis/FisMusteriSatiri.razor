@@ -1,0 +1,179 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-3 — FİŞ ÜST SATIRI: MÜŞTERİ + BAKİYE ROZETİ + KİMLİK BANDI ═══════
+   Islemler.razor'daki müşteri bloğu BİREBİR buraya taşındı (id'ler aynı:
+   islem-cari, islem-cari-pasif-notu, islem-pesin-notu, islem-pesin-hata) ve
+   iki parça EKLENDİ:
+   • #islem-cari-bakiye — seçili müşterinin HAS + TL (ve döviz) durumu; veri
+     sayfanın ZATEN çektiği GET /cari listesinden (plan 2.6, Pusula F4). Metin ve
+     renk FisBakiyeRozeti'nde (saf).
+   • #islem-pesin-esik — Peşin Müşteri ile kaydedilen fiş SUNUCUDA kimlik eşiğine
+     takılınca (400 + alanlar.cariId) "gerçek müşteri seçin" bandı (plan 2.4).
+     Eşik SAYISI istemcide YOK: bandı sunucunun alan işaretli reddi açar.
+   Bileşen İSTEK ATMAZ, ApiIstemci bilmez (PLAN § 3 md.5 — tek POST yolu):
+   seçim ve "Müşteri seç" sayfanın geri çağrılarıdır. ═══ *@
+@* ── PAKET T-S1 — tuval (Tezgah.dc.html) üst satırı: Müşteri · Tarih · Para ──
+   Tarih ve para birimi SİSTEMİN BİLDİĞİ değerlerdir (UX-S21): kullanıcıdan
+   istenmez, salt okunur kutu olarak yazılır. Fişin tarihi kayıt anıdır (satış
+   uçları işlem tarihi ALMAZ — sunucu saati), satış fişi TL'dir. Gövdeye
+   hiçbiri konmaz; bileşen istek atmaz. *@
+@* ═══ KURUCU TEMEL KURALI (25.09 11:35) — "zorunlu olanlar hariç ilk etapta kullanıcı görmesin" ═══
+   • BASİT: Tarih (bugün) ve Para (TL) HİÇ görünmez — sistemin bildiği değerlerdir (UX-S21),
+     gövdeye zaten konmaz. Üst satırda yalnız Müşteri kalır.
+   • PRO satış (Ozet ≠ null): Tarih · Para · Satıcı · Fiyat listesi TEK SATIR özettir
+     ("Bugün · TL · Ayşe Y. · Vitrin"); tıklanınca kutular (id'ler AYNEN) açılır. Satıcı ya da
+     fiyat listesi hatası varsa açık gelir — hata gizlenmez (UX-S28).
+   Bileşen istek atmaz; gövdeye hiçbiri konmaz. *@
+@if (TarihPara && Basit)
+{
+    <div class="fis-ust-satir" id="islem-ust-satir">
+        @MusteriAlani
+    </div>
+}
+else if (TarihPara && Ozet is not null)
+{
+    <div class="fis-ust-satir fis-ust-ozetli@(OzetGorunur ? " fis-ust-ozet-acik" : null)" id="islem-ust-satir">
+        @MusteriAlani
+        <div class="alan fis-ust-ozet-sar">
+            <span class="alan-etiket" aria-hidden="true">&nbsp;</span>
+            <button type="button" class="fis-ust-ozet" id="islem-ust-ozet" title="@S.UstOzetIpucu"
+                    aria-expanded="@(OzetGorunur ? "true" : "false")" aria-controls="islem-ust-ayrinti" @onclick="OzetDegistir">
+                <span class="fis-ust-ozet-metin">@Ozet</span>
+                <Ikon Ad="@(OzetGorunur ? Ikonlar.KatlamaAcik : Ikonlar.KatlamaKapali)" Sinif="fis-ust-ozet-ok" />
+            </button>
+        </div>
+        <div class="fis-ust-ayrinti" id="islem-ust-ayrinti" hidden="@(!OzetGorunur)">
+            @TarihParaKutulari
+            @Ek
+        </div>
+    </div>
+}
+else if (TarihPara)
+{
+    <div class="fis-ust-satir" id="islem-ust-satir">
+        @MusteriAlani
+        @TarihParaKutulari
+        @Ek   @* T-S2 (tuval Profesyonel): Satıcı · Fiyat listesi — sayfanın parçası, bileşen istek atmaz *@
+    </div>
+}
+else
+{
+    @MusteriAlani
+}
+
+@code {
+    /// <summary>Seçilebilir müşteriler (sayfanın GET /cari listesi; bakiye alanları dahil).</summary>
+    [Parameter] public List<CariVeri> Cariler { get; set; } = [];
+    [Parameter] public string CariId { get; set; } = "";
+    [Parameter] public EventCallback<string> CariIdChanged { get; set; }
+    /// <summary>Seçim değiştikten SONRA (sayfa: tevsik önizlemesi).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+    [Parameter] public string? PesinCariId { get; set; }
+    [Parameter] public string? PesinHata { get; set; }
+    /// <summary>Son kayıt denemesi sunucuda müşteri alanına işaretli reddedildi (400 + alanlar.cariId).</summary>
+    [Parameter] public bool KimlikGerekli { get; set; }
+    /// <summary>"Müşteri seç": sayfa Peşin ön seçimini kaldırır, tezgâhtar listeden gerçek müşteriyi seçer.</summary>
+    [Parameter] public EventCallback GercekMusteriSec { get; set; }
+
+    private FisMusteriMetinleri M => FisMusteriSozlugu.Al(Dil.Dil);
+    private SatisEkraniMetinleri SE => SatisEkraniSozlugu.Al(Dil.Dil);
+
+    /// <summary>PAKET S1-i (D10): basit yüzde "Müşteri" ve kısa notlar; pro yüzde "Cari" dili.</summary>
+    [Parameter] public bool Basit { get; set; }
+    private PesinMusteriMetinleri P => PesinMusteriSozlugu.Al(Dil.Dil);
+    private bool PesinSecili => !string.IsNullOrEmpty(PesinCariId) && CariId == PesinCariId;
+
+    private (string Metin, string Sinif)? Rozet =>
+        string.IsNullOrEmpty(CariId) ? null
+            : FisBakiyeRozeti.Olustur(Cariler.FirstOrDefault(c => c.Id == CariId), M);
+
+    private async Task Sec(string? deger)
+    {
+        await CariIdChanged.InvokeAsync(deger ?? "");
+        await Degisti.InvokeAsync();
+    }
+
+    /// <summary>PAKET T-S1 — tuval üst satırı: müşterinin yanında salt okunur Tarih ve Para kutuları.</summary>
+    [Parameter] public bool TarihPara { get; set; }
+    /// <summary>PAKET T-S2 — alan satırının sonuna eklenen kutular (PRO satış: Satıcı · Fiyat listesi); null = yok.</summary>
+    [Parameter] public RenderFragment? Ek { get; set; }
+    /// <summary>PAKET T-S2 — tuval Profesyonel alan satırı: etiket "Müşteri" (tuvalin sözcüğü); notlar PRO metniyle kalır.</summary>
+    [Parameter] public bool ProTuval { get; set; }
+    /// <summary>PAKET SATIS-2 — fiş tutarı kimlik eşiğine geldi (sayfanın MasakGerekli'si; eşik SUNUCUDAN) → Peşin notu bant olur.</summary>
+    [Parameter] public bool EsikYakin { get; set; }
+    /// <summary>Tuval yüzü (basit ya da PRO satış): açıklama satırları gizli, ipucunda.</summary>
+    private bool Sade => Basit || ProTuval;
+    private SatisTuvalMetinleri T => SatisTuvalSozlugu.Al(Dil.Dil);
+
+    /// <summary>PAKET SATIS-2 — PRO satış üst satırının tek satır özeti ("Bugün · TL · satıcı · liste"); null = kutular açık (eski yüz).</summary>
+    [Parameter] public string? Ozet { get; set; }
+    /// <summary>PAKET SATIS-2 — özetin altındaki kutular açık başlasın mı (satıcı/fiyat listesi hatası varken sayfa true verir).</summary>
+    [Parameter] public bool OzetAcikZorunlu { get; set; }
+    private bool ozetAcik;
+    private bool OzetGorunur => ozetAcik || OzetAcikZorunlu;
+    private void OzetDegistir() => ozetAcik = !OzetGorunur;
+    private SatisSadeMetinleri S => SatisSadeSozlugu.Al(Dil.Dil);
+
+    /// <summary>Tarih + Para salt okunur kutuları (T-S1, id'ler aynı).</summary>
+    private RenderFragment TarihParaKutulari => @<text>
+        <div class="alan fis-salt-alan" id="islem-tarih-sar" title="@T.TarihIpucu">
+            <span class="alan-etiket" id="islem-tarih-etiket">@T.Tarih</span>
+            <output class="fis-salt-kutu sayi" id="islem-tarih" aria-labelledby="islem-tarih-etiket">@Bicim.Tarih(DateTime.UtcNow, "tr-TR")</output>
+        </div>
+        <div class="alan fis-salt-alan" id="islem-para-sar" title="@T.ParaIpucu">
+            <span class="alan-etiket" id="islem-para-etiket">@T.Para</span>
+            <output class="fis-salt-kutu" id="islem-para" aria-labelledby="islem-para-etiket">@T.ParaTl</output>
+        </div>
+</text>;
+
+    /// <summary>Müşteri seçicisi + rozet + notlar (S2-3 bloğu, id'ler aynı).</summary>
+    private RenderFragment MusteriAlani => @<text>
+<div class="alan">
+    <Secici ElemanId="islem-cari"
+            Etiket="@(Basit || ProTuval ? SE.MusteriEtiketi : Dil.T.Cari.Baslik)"
+            Zorunlu="true"
+            Secenekler="@(Cariler.Select(c => new SecenekOgesi(c.Id, c.Ad)).ToList())"
+            Deger="@CariId"
+            DegerChanged="Sec"
+            BosSecenekMetni="@(Basit || ProTuval ? Kuyumcu.Core.I18n.BasitDilSozlugu.Al(Dil.Dil).Cari_CariSecin : Dil.T.Cari.CariSecin)" />   @* P-TEZGAH-TUR-KIMLIK (hakem Y4): etiket "Müşteri" iken yer tutucu da "Müşteri seçin" — iki ad yok (UX-S31) *@
+    @if (Rozet is { } r)
+    {
+        <span class="rozet-satir">
+            <span class="@r.Sinif" id="islem-cari-bakiye" title="@($"{M.RozetBaslik}: {r.Metin}")">@r.Metin</span>
+        </span>
+    }
+    @* UX-S29/S30 — liste neden eksik olabilir, EKRANDA yazar; sessiz kırpma yok. *@
+    @* PAKET S1-i (D10): basit yüzde uzun not TEK KISA satıra iner; tam metin
+       title'da yaşar (özellik silinmez, id aynı). Profesyonel yüz değişmedi. *@
+    @* SATIS-2 (c): tuval/Pusula yüzünde (basit + PRO satış) bu not ekranı doldurmaz — ekran okuyucuda ve ipucunda (title) kalır. *@
+    <span class="metin-soluk metin-kucuk@(Sade ? " fis-not-gizli" : "")" id="islem-cari-pasif-notu" title="@(Sade ? Dil.T.Islem.PasifCariGizlendi : null)">
+        @(Basit ? SE.PasifKisa : Dil.T.Islem.PasifCariGizlendi)
+    </span>
+    @* PAKET B-3 (D2) — "Peşin Müşteri" satışta ön seçilidir (taslak:
+       Müşteri [Peşin Müşteri ▾]). Eşik SAYISI burada YOK. *@
+    @if (PesinSecili && !EsikYakin)   @* t24 (orkestratör 02:30): "müşteri adı gerekmez" genel ipucudur — eşik aşılınca HİÇ çizilmez (engel tek cümleyle başka yerde) *@
+    {
+        @* SATIS-2 (KAYNAK 2): yasal bilgi SİLİNMEZ — sürekli durmaz, tutar kimlik eşiğine gelince (EsikYakin, eşik SUNUCUDAN) bant olur. *@
+        <p class="@(Sade ? "metin-kucuk metin-soluk fis-not-gizli" : "metin-kucuk metin-soluk")" id="islem-pesin-notu" role="note" title="@(Sade ? P.SeciliNot : null)">@(Basit ? SE.PesinKisa : P.SeciliNot)</p>
+    }
+    @if (PesinHata is not null)
+    {
+        <p class="metin-kucuk metin-amber" id="islem-pesin-hata" role="alert">@PesinHata</p>
+    }
+    @* Bayrağı sayfa kurar: yalnız Peşin seçiliyken gelen alan işaretli red; müşteri/tür değişince ya da yeni kayıt denemesinde iner. *@
+    @if (KimlikGerekli)
+    {
+        <div class="bant bant-uyari satir-arasi" id="islem-pesin-esik" role="alert">
+            <span>@M.KimlikBandi</span>
+            <span class="rozet-satir">
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-pesin-esik-sec"
+                        @onclick="() => GercekMusteriSec.InvokeAsync()">@M.GercekMusteriSec</button>
+                <a class="btn btn-ikincil btn-kucuk" id="islem-pesin-esik-yeni" href="/cariler">@M.YeniMusteri</a>
+            </span>
+        </div>
+    }
+</div>
+</text>;
+}

@@ -1,0 +1,477 @@
+@page "/banka/ekstre/{IthalatId}"
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Gezgin
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET 32 FAZ A — BANKA EKSTRESİ EŞLEŞTİRME EKRANI.
+
+   ⚠ Bu ekran menüden değil /banka ekranından değişkenle çağrılır; menüye YENİ
+     SATIR EKLENMEZ (KenarCubugu 'banka' satırı değişmez).
+
+   ⚠ Yanıt tipleri Kuyumcu.Core.Sozlesmeler'den gelir; burada YENİ istemci
+     tipi TANIMLANMAZ (denetim.sh Pages istemci tip sayacı tavanı).
+
+   ⚠ ham_satir YALNIZ METİN olarak basılır — MarkupString KULLANILMAZ.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Banka.EkstreBaslik)</PageTitle>
+
+<div class="dikey-bosluk">
+    <SayfaBasi Anahtar="banka" AciklamaKatli="true" Baslik="@Dil.T.Banka.EkstreBaslik" Aciklama="@(Dil.BasitMi ? Q.EkstreAciklamaBasit : Dil.T.Banka.EkstreAciklama)">
+        <Eylem>
+            <button @onclick="BankayaDon" class="btn btn-ikincil btn-kucuk" id="ekstre-geri">
+                ← @Dil.T.Banka.Baslik
+            </button>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" Id="hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="4000" Id="basari-bandi" />
+
+    @if (yukleniyor && detay is null)
+    {
+        <Yukleniyor />
+    }
+    else if (detay is not null)
+    {
+        <div class="stat-izgara">
+            @* UX-S32 — sayaçlar adet sayar; tutar kartı para birimini etiketinde söyler. *@
+            <StatKart Renk="mavi" Etiket="@Dil.T.Banka.ToplamSatir" Deger="@detay.SatirSayisi.ToString()" />
+            <StatKart Renk="yesil" Etiket="@Dil.T.Banka.YeniSatir" Deger="@detay.YeniSayisi.ToString()" />
+            <StatKart Renk="amber" Etiket="@Dil.T.Banka.Mukerrer" Deger="@detay.MukerrerSayisi.ToString()" />
+            <StatKart Renk="kirmizi" Etiket="@Dil.T.Banka.HataliSatir" Deger="@detay.HataliSayisi.ToString()" />
+            <StatKart Renk="mor" Etiket="@Dil.T.Banka.OnaylananSatir" Deger="@detay.OnaylananSayisi.ToString()" />
+        </div>
+
+        <div class="kart">
+            <div class="kart-baslik">
+                <div>
+                    <h2 id="ekstre-dosya">@detay.DosyaAdi</h2>
+                    <p class="metin-soluk metin-kucuk" id="ekstre-hesap">
+                        @* Q10-5 (UX-S31): ithalat durumu ham kod ("PROVA") basılmaz, sözlükten okunur. *@
+                        @detay.HesapAdi · @detay.Format · @IthalatDurumMetni(detay.Durum)
+                    </p>
+                </div>
+            </div>
+
+            @* UX-S27 / iddia SUNUCUDAN: yükleme deftere hiçbir şey yazmadı. *@
+            <p class="metin-kucuk metin-soluk" id="ekstre-yazmaz-not">@Dil.T.Banka.YuklemeYazmaz</p>
+            @* Mükerrer korumasının GEÇMİŞE işlemediği dürüstçe yazılır. *@
+            <p class="metin-kucuk metin-soluk" id="ekstre-mukerrer-sinir">@Dil.T.Banka.MukerrerGecmisUyari</p>
+
+            @if (detay.AcilisBakiye is not null || detay.KapanisBakiye is not null)
+            {
+                <div class="ozet-kutu" id="ekstre-bakiyeler">
+                    <div class="satir-arasi">
+                        <span class="metin-soluk">@Dil.T.Banka.AcilisBakiye</span>
+                        <span class="sayi">@Bicim.Para(detay.AcilisBakiye ?? 0m, detay.ParaBirimi)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span class="metin-soluk">@Dil.T.Banka.KapanisBakiye</span>
+                        <span class="sayi">@Bicim.Para(detay.KapanisBakiye ?? 0m, detay.ParaBirimi)</span>
+                    </div>
+                </div>
+            }
+
+            <div class="satir-eylemler">
+                <div class="alan">
+                    <Secici ElemanId="ekstre-durum"
+                            Etiket="@Dil.T.Fatura.Durum"
+                            Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("YENI", Dil.T.Banka.YeniSatir), new SecenekOgesi("MUKERRER", Dil.T.Banka.Mukerrer), new SecenekOgesi("ONAYLANDI", Dil.T.Banka.OnaylananSatir), new SecenekOgesi("ATLANDI", Q.EkstreAtlandi), new SecenekOgesi("HATALI", Dil.T.Banka.HataliSatir) })"
+                            Deger="@durumSuzgec"
+                            DegerChanged="@(v => DurumDegisti(new ChangeEventArgs { Value = v }))"
+                            BosSecenekMetni="@(Dil.T.Ortak.Tumu)" />
+                </div>
+            </div>
+
+            @* UX-S29 — sunucu sınırı EKRANDA yazar. *@
+            <p class="metin-kucuk metin-soluk" id="ekstre-sayfa-not">
+                @Dil.T.Banka.SinirUyari (@(offset + 1)–@(offset + detay.SatirListesi.Count) / @detay.Toplam)
+            </p>
+
+            @if (yukleniyor)
+            {
+                <Yukleniyor />
+            }
+            else if (detay.SatirListesi.Count == 0)
+            {
+                @* UX-S28 — boş durum YALNIZ istek başarılıyken ve sonuç gerçekten boşken. *@
+                <BosDurum Mesaj="@Dil.T.Banka.SatirBulunamadi" />
+            }
+            else
+            {
+                @* Q10-5 (QA 10 DUZENLENEMEYEN, UX-S25): 'Yeni' durumdaki sahne
+                   satırının tarih/tutar/yön/açıklama/karşı taraf bilgisi BANKANIN
+                   DOSYASINDAN gelir; burada değiştirilirse ekran ile banka ekstresi
+                   birbirini tutmaz (mutabakatın dayanağı bozulur). Düzenleme yerine
+                   gerekçe + doğru yol: satırı atla, doğrusunu Banka ekranından elle gir
+                   ya da düzeltilmiş dosyayı yeniden yükle. *@
+                <DegismezIpucu Varlik="EkstreSahneSatiri"
+                               Gerekce="@Q.EkstreSahneDegismez"
+                               AlternatifYol="@Q.EkstreSahneYolu" />
+                @* PAKET GOC-A — ORTAK IZGARA (grid:banka-ekstre:ekstre-satir). "Tümünü seç" başlık hücresinden ızgaranın
+                   ÜSTÜNE alındı (ortak ızgara başlığı yalnız metin taşır); kimlik AYNI (ekstre-tumunu-sec). Ham satır ayrı
+                   colspan satırı yerine karşı taraf hücresinin altında (kimlik AYNI: ekstre-ham-{id}). Liste SUNUCUDA
+                   sayfalı → sıralama düğmesi YOK (sayfa içi sıralama yanıltır). q10-yigin kart sınıfları korunur. *@
+                <div class="satir ekstre-tumunu-sec-satir">
+                    <Onay ElemanId="ekstre-tumunu-sec" Etiket="@Dil.T.Banka.TumunuSec"
+                          Deger="@TumuSecili" DegerChanged="@((bool _v) => TumunuSec(_v))" />
+                </div>
+                <Izgara T="EkstreSatirVeri" Ekran="banka-ekstre" GridId="ekstre-satir" Kolonlar="@SatirKolonlari"
+                        Ogeler="@detay.SatirListesi" TabloSinif="q10-th-tek q10-yigin q10-yigin-secim"
+                        Baslik="@Dil.T.Banka.EkstreBaslik" YapiskanIlkSutun="false" />
+
+                <div class="satir-arasi">
+                    <div class="satir-eylemler">
+                        <button disabled="@(offset == 0 || yukleniyor)" @onclick="Onceki"
+                                class="btn btn-ikincil btn-kucuk" id="ekstre-onceki">←</button>
+                        <button disabled="@(offset + Limit >= detay.Toplam || yukleniyor)" @onclick="Sonraki"
+                                class="btn btn-ikincil btn-kucuk" id="ekstre-sonraki">→</button>
+                    </div>
+                    <div class="satir-eylemler">
+                        @* UX-S30 — kilitli düğme SEBEBİNİ söyler. *@
+                        @if (OnayKilitSebebi is { } sebep)
+                        {
+                            <p class="metin-kucuk metin-soluk" id="ekstre-onay-sebep">@sebep</p>
+                        }
+                        <button disabled="@(kaydediliyor || OnayKilitSebebi is not null)"
+                                class="btn btn-birincil" id="ekstre-onayla"
+                                @onclick="() => onayModalAcik = true">
+                            @Dil.T.Banka.SeciliOnayla (@secililer.Count)
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* ── Onay modalı (geri alınamaz işlem → önce onay ister, UX-S27) ── *@
+<ModalPencere Acik="onayModalAcik" Baslik="@Dil.T.Banka.SeciliOnayla" Kapat="() => onayModalAcik = false">
+    <div class="form-dikey">
+        <p id="ekstre-onay-metin">@Dil.T.Banka.YuklemeYazmaz</p>
+        <p class="hucre-vurgu" id="ekstre-onay-adet">@secililer.Count</p>
+        @* ── P-38 · B-18 (QA turu 7 bulgu 229) — CARİSİZ SATIR ───────────────────
+           Cari seçilmemiş satır SESSİZCE carisiz banka hareketi üretiyordu.
+           Sunucu artık böyle bir satırı varsayılan olarak ONAYLAMIYOR; satır
+           BEKLİYOR'da kalıp düzeltilebiliyor. Kuyumcu gerçekten carisiz
+           yazmak istiyorsa RIZASINI burada verir (UX-S30). *@
+        @if (CarisizSecili > 0)
+        {
+            <p class="metin-kucuk metin-uyari" id="ekstre-onay-carisiz">
+                @string.Format(Dil.T.Banka.CarisizSatirUyari, CarisizSecili)
+            </p>
+            <Onay ElemanId="ekstre-carisiz-onay" Etiket="@Dil.T.Banka.CarisizOnayla"
+                  Ipucu="@Dil.T.Banka.CarisizOnaylaIpucu"
+                  Deger="@carisizOnay" DegerChanged="@(v => carisizOnay = v)" />
+        }
+        <HataBandi Mesaj="@modalHata" />
+        <div class="satir">
+            <button @onclick="() => onayModalAcik = false"
+                    class="btn btn-ikincil esnek" id="ekstre-onay-vazgec"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button disabled="@kaydediliyor" @onclick="Onayla"
+                    class="btn btn-birincil esnek" id="ekstre-onay-onayla">@Dil.T.Kabuk.Onayla</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@code {
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> CariSecenekleri =>
+        [.. cariler.Select(c => new SecenekOgesi(c.Id, c.Ad))];
+
+    private Task CariDegistiDeger(EkstreSatirVeri s, string? deger) =>
+        CariDegisti(s, new ChangeEventArgs { Value = deger });
+
+    /// <summary>Sunucu tavanı 100'dür (TB-19); istemci onu AŞMAZ.</summary>
+    private const int Limit = 100;
+
+    [Parameter] public string IthalatId { get; set; } = "";
+
+    private EkstreDetayYaniti? detay;
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:banka-ekstre:ekstre-satir) ─────────────
+    private IReadOnlyList<IzgaraKolonu<EkstreSatirVeri>> SatirKolonlari =>
+    [
+        new() { Anahtar = "sec", Baslik = Dil.T.Banka.TumunuSec, BaslikGizli = true, ZorunluGorunur = true, KartEtiketsiz = true,
+                Hucre = s => @<Onay ElemanId="@($"ekstre-sec-{s.Id}")" EtiketGizli="true" Etiket="@($"{s.SatirNo}")"
+                                   Deger="@secililer.Contains(s.Id)"
+                                   DegerChanged="@((bool _v) => SecimDegisti(s.Id, _v))"
+                                   Devredisi="@(!Onaylanabilir(s))"
+                                   DevredisiSebebi="@KilitSebebi(s)" SebepIpucunda="true" /> },
+        new() { Anahtar = "no", Baslik = "#", HucreSinif = _ => "sayi", Deger = s => s.SatirNo },
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, HucreSinif = _ => "metin-soluk",
+                Deger = s => s.Tarih, Hucre = s => @<text>@Bicim.Tarih(s.Tarih, Dil.Locale)</text> },
+        new() { Anahtar = "yon", Baslik = Dil.T.Banka.Yon, HucreSinif = _ => "hucre-tek-satir", Deger = s => s.Yon,   // GOC-A Chrome: "Yön: Gelen" kırılıyordu
+                Hucre = s => @<text>@Dil.T.Banka.Yon: @(s.Yon == "GELEN" ? Dil.T.Banka.Gelen : Dil.T.Banka.Giden)</text> },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Ortak.Tutar, ZorunluGorunur = true, Tur = IzgaraHucreTuru.Para,
+                ParaBirimi = s => s.ParaBirimi ?? detay?.ParaBirimi, HucreSinif = _ => "sayi hucre-vurgu", Deger = s => s.Tutar },
+        // Q10-5 (QA 10 K9): ad ve IBAN iki ayrı satır; ham satır YALNIZ METİN (MarkupString yok).
+        new() { Anahtar = "karsi", Baslik = Dil.T.Banka.KarsiTaraf, Deger = s => s.KarsiTarafAd,
+                Hucre = s => @<text><div class="q10-karsi">
+                        <span class="q10-karsi-ad">@s.KarsiTarafAd</span>
+                        @if (!string.IsNullOrEmpty(s.KarsiIban))
+                        {
+                            <span class="metin-soluk metin-kucuk sayi q10-karsi-iban">@s.KarsiIban</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(s.HamSatir))
+                    {
+                        <div class="metin-kucuk metin-soluk kir-uzun" id="@($"ekstre-ham-{s.Id}")">@Dil.T.Banka.HamSatir: @s.HamSatir</div>
+                    }</text> },
+        new() { Anahtar = "cari", Baslik = Dil.T.Cari.Baslik, HucreSinif = _ => "q10-ekstre-cari", Deger = s => s.EslesenCariAd,
+                Hucre = s => @<text>@if (s.Durum == "ONAYLANDI")
+                {
+                    <span class="hucre-vurgu">@s.EslesenCariAd</span>
+                }
+                else
+                {
+                    <Secici ElemanId="@($"ekstre-cari-{s.Id}")"
+                            Etiket="@Dil.T.Banka.CariBagla"
+                            Secenekler="@CariSecenekleri"
+                            Deger="@(s.EslesenCariId ?? "")"
+                            DegerChanged="@((string? _v) => CariDegistiDeger(s, _v))"
+                            BosSecenekMetni="@Dil.T.Cari.CariSecin" />
+                    @if (s.EslesmeKaynagi == "IBAN")
+                    {
+                        <Rozet Renk="yesil">IBAN</Rozet>
+                    }
+                }</text> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Fatura.Durum, Tur = IzgaraHucreTuru.Rozet, Deger = s => DurumMetni(s.Durum),
+                Hucre = s => @<text><Rozet Renk="@DurumRengi(s.Durum)">@DurumMetni(s.Durum)</Rozet>
+                    @if (!string.IsNullOrEmpty(s.HataMesaji))
+                    {
+                        @* UX-S28 — hata SESSİZCE GİZLENMEZ. *@
+                        <span class="hata-metni" role="alert" id="@($"ekstre-hata-{s.Id}")">@s.HataMesaji</span>
+                    }</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-ekstre-eylem q10-yigin-eylem",
+                Hucre = s => @<text>@if (s.Durum == "ONAYLANDI")
+                {
+                    @* UX-S25 — sessiz disabled düğme YOK: gerekçe + doğru yol yazılı. *@
+                    <DegismezIpucu Varlik="EkstreSatiri"
+                                   Gerekce="@Dil.T.Banka.OnaylananSatirDegismez"
+                                   AlternatifYol="@(Dil.BasitMi ? Q.EkstreOnaylananYoluBasit : Dil.T.Banka.OnaylananSatirYolu)" />
+                }
+                else if (s.Durum == "ATLANDI")
+                {
+                    <button @onclick='() => DurumDegistir(s, "YENI")' disabled="@kaydediliyor"
+                            class="btn btn-ikincil btn-kucuk" id="@($"ekstre-geri-al-{s.Id}")">@Dil.T.Banka.AtlamayiGeriAl</button>
+                }
+                else
+                {
+                    <button @onclick='() => DurumDegistir(s, "ATLANDI")' disabled="@kaydediliyor"
+                            class="btn btn-ikincil btn-kucuk" id="@($"ekstre-atla-{s.Id}")">@Dil.T.Banka.Atla</button>
+                }</text> },
+    ];
+    private List<EkstreCariSecenek> cariler = [];
+    private readonly HashSet<string> secililer = [];
+
+    private string durumSuzgec = "";
+    private int offset;
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private bool onayModalAcik;
+
+    /// <summary>P-38 · B-18 — carisiz satırı bilerek onaylama rızası.</summary>
+    private bool carisizOnay;
+
+    /// <summary>P-38 · B-18 — seçili satırların cari eşleşmesi olmayanları.</summary>
+    private int CarisizSecili => detay is null ? 0
+        : detay.SatirListesi.Count(s => secililer.Contains(s.Id) && string.IsNullOrEmpty(s.EslesenCariId));
+    private string? hata;
+    private string? modalHata;
+    private string? basari;
+    private int basariJeton;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CarileriYukle();
+        await Yenile();
+    }
+
+    private async Task Yenile()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            var yol = $"/bankalar/ekstre/{IthalatId}?limit={Limit}&offset={offset}"
+                + (string.IsNullOrEmpty(durumSuzgec) ? "" : $"&durum={durumSuzgec}");
+            detay = await Api.GetAsync<EkstreDetayYaniti>(yol);
+
+            // MUKERRER satırlar VARSAYILAN OLARAK SEÇİLMEZ: mükerrer olduğu
+            // söylenen bir satırı kullanıcı görmeden onaylatmak, mükerrer
+            // korumasını anlamsız kılardı.
+            secililer.RemoveWhere(id => detay.SatirListesi.All(s => s.Id != id));
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28 — hata "kayıt yok"a ÇEVRİLMEZ; liste boşaltılmaz.
+            hata = ex.Message;
+        }
+        finally { yukleniyor = false; }
+    }
+
+    private async Task CarileriYukle()
+    {
+        if (cariler.Count > 0) return;
+        try { cariler = await Api.GetAsync<List<EkstreCariSecenek>>("/cari?aktif=true&limit=200"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            cariler = [];
+            hata = ex.Message;
+        }
+    }
+
+    private static bool Onaylanabilir(EkstreSatirVeri s) => s.Durum is "YENI" or "MUKERRER";
+
+    private bool TumuSecili =>
+        detay is not null && detay.SatirListesi.Any(Onaylanabilir)
+        && detay.SatirListesi.Where(Onaylanabilir).All(s => secililer.Contains(s.Id));
+
+    private string? OnayKilitSebebi =>
+        secililer.Count == 0 ? Dil.T.Banka.SecimYokSebep
+        : detay is not null && secililer.Count > detay.MaksOnaySatir
+            ? $"{Dil.T.Banka.OnaySiniriSebep} ({detay.MaksOnaySatir})"
+            : null;
+
+    // P-36c/3: değer ortak Onay bileşeninden ÇÖZÜLMÜŞ bool olarak gelir.
+    private void SecimDegisti(string id, bool secili)
+    {
+        if (secili) secililer.Add(id); else secililer.Remove(id);
+    }
+
+    private void TumunuSec(bool sec)
+    {
+        if (detay is null) return;
+        foreach (var s in detay.SatirListesi.Where(Onaylanabilir))
+        {
+            if (sec) secililer.Add(s.Id); else secililer.Remove(s.Id);
+        }
+    }
+
+    private async Task DurumDegisti(ChangeEventArgs e)
+    {
+        durumSuzgec = e.Value?.ToString() ?? "";
+        offset = 0;
+        await Yenile();
+    }
+
+    private async Task Onceki() { offset = Math.Max(0, offset - Limit); await Yenile(); }
+    private async Task Sonraki() { offset += Limit; await Yenile(); }
+
+    private async Task CariDegisti(EkstreSatirVeri s, ChangeEventArgs e)
+    {
+        // ⚠ PATCH SÖZLEŞMESİ: yalnız DEĞİŞEN alan gönderilir. Tam gövde
+        //   gönderilseydi durum alanı da her düzenlemede üzerine yazılırdı.
+        var yeni = e.Value?.ToString() ?? "";
+        await Patch(s, new { cariId = yeni },
+            string.Format(yeni.Length == 0 ? Q.EkstreCariKaldirildi : Q.EkstreCariBaglandi, s.SatirNo));
+    }
+
+    private Task DurumDegistir(EkstreSatirVeri s, string durum) =>
+        Patch(s, new { durum }, string.Format(durum == "ATLANDI" ? Q.EkstreSatirAtlandi : Q.EkstreSatirGeriAlindi, s.SatirNo));
+
+    private async Task Patch(EkstreSatirVeri s, object govde, string? sonucMetni = null)
+    {
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            await Api.PatchAsync<EkstreSatirYaniti>($"/bankalar/ekstre/satir/{s.Id}", govde);
+            // UX-S27 — sonuç EKRANDA görünür. Q10-5 (QA 10): genel "İşlem başarılı"
+            // yerine NE yapıldığı ve HANGİ satır olduğu yazılır.
+            basari = sonucMetni ?? Dil.T.Ortak.Basarili;
+            basariJeton++;
+            await Yenile();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            hata = ex.Message;
+        }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task Onayla()
+    {
+        kaydediliyor = true;
+        modalHata = null;
+        try
+        {
+            var sonuc = await Api.PostAsync<EkstreOnayYaniti>(
+                $"/bankalar/ekstre/{IthalatId}/onayla",
+                new { satirIdler = secililer.ToList(), carisizOnay });
+
+            // UX-S27 — POST yanıtı OKUNUR ve banda YAZILIR.
+            basari = $"{Dil.T.Banka.EkstreOnaylandi}: {sonuc.Basarili} / {sonuc.Secilen} · " +
+                     $"{Dil.T.Banka.Hareketler}: {sonuc.UretilenHareketSayisi}";
+            // P-38 · B-18: carisiz sonuç GİZLENMEZ (Anayasa md.1).
+            if (sonuc.CarisizUretilen > 0)
+                basari += $" · {string.Format(Dil.T.Banka.CarisizUretilen, sonuc.CarisizUretilen)}";
+            if (sonuc.CarisizAtlanan > 0)
+                basari += $" · {string.Format(Dil.T.Banka.CarisizAtlanan, sonuc.CarisizAtlanan)}";
+            if (sonuc.Basarisiz > 0)
+                hata = string.Join(" · ", sonuc.HataListesi.Select(h => $"#{h.SatirNo}: {h.Hata}"));
+            basariJeton++;
+            secililer.Clear();
+            carisizOnay = false;
+            onayModalAcik = false;
+            await Yenile();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            modalHata = ex.Message;
+        }
+        finally { kaydediliyor = false; }
+    }
+
+    private void BankayaDon() => Gezgin.NavigateTo("/banka");
+
+    private string DurumRengi(string durum) => durum switch
+    {
+        "YENI" => "yesil",
+        "MUKERRER" => "amber",
+        "ONAYLANDI" => "mor",
+        "ATLANDI" => "gri",
+        _ => "kirmizi",
+    };
+
+    // UX-S31 — ham veritabanı kodu ekrana basılmaz, sözlükten çevrilir.
+    private string DurumMetni(string durum) => durum switch
+    {
+        "YENI" => Dil.T.Banka.YeniSatir,
+        "MUKERRER" => Dil.T.Banka.Mukerrer,
+        "ONAYLANDI" => Dil.T.Banka.OnaylananSatir,
+        "ATLANDI" => Q.EkstreAtlandi,
+        _ => Dil.T.Banka.HataliSatir,
+    };
+
+    // ── PAKET Q10-5 ─────────────────────────────────────────────────────────
+    private Q105Metinleri Q => Q105Sozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// QA 10 (YÜKSEK): seçim kutusunun kilit sebebi HER kilitli satırda
+    /// "Eşleşti" yazıyordu — atlanmış satır da "Eşleşti" görünüyordu. Sebep
+    /// artık satırın GERÇEK durumundan üretilir (UX-S30).
+    /// </summary>
+    private string KilitSebebi(EkstreSatirVeri s) => s.Durum switch
+    {
+        "ONAYLANDI" => Q.EkstreKilitOnaylandi,
+        "ATLANDI" => Q.EkstreKilitAtlandi,
+        "YENI" or "MUKERRER" => "",
+        _ => Q.EkstreKilitHatali,
+    };
+
+    /// <summary>UX-S31 — ithalat durumu (PROVA/ONAYLANDI/IPTAL) sözlükten.</summary>
+    private string IthalatDurumMetni(string? durum) => durum switch
+    {
+        "PROVA" => Q.IthalatProva,
+        "ONAYLANDI" => Q.IthalatOnaylandi,
+        "IPTAL" => Q.IthalatIptal,
+        _ => durum ?? "—",
+    };
+}

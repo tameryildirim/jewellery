@@ -1,0 +1,58 @@
+node_modules/
+dist/
+.turbo/
+*.env
+*.env.local
+.DS_Store
+
+# ── .NET derleme çıktısı ─────────────────────────────────────────────────────
+# ⚠ ŞU AN 1.408 dosya sürüm kontrolünde (TB-02). Aşağıdaki satırlar YENİ
+# eklemeleri engeller. Mevcutları indeksten çıkarmak ayrı bir işlemdir,
+# commit gerektirir → Kurucu kararı (bkz. runbook §7).
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+TestResults/
+KapsamRaporu/
+*.user
+
+# ── SIRLAR ──────────────────────────────────────────────────────────────────
+# ⚠ appsettings.Development.json ŞU AN sürüm kontrolünde ve İÇİNDE SIR VAR
+# (TB-01): JWT sırrı, MySQL parolası, alan şifreleme anahtarı.
+# Bu satırlar yeni ortamlarda tekrarlanmasını engeller. Mevcut dosyanın
+# GEÇMİŞTEN temizlenmesi ayrı ve bilinçli bir işlemdir (Kurucu kalemi K9).
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.Local.json
+*.pfx
+*.p12
+
+# ── MUTASYON TESTİ YEDEKLERİ (T-5) ────────────────────────────────────────
+# mut.sh kaynağı geçici dizine kopyalayıp `perl -0777 -pi -e` ile mutasyona
+# uğratır; `.mutorj` o turun yedeğidir ve tur bitince geri konur. Ağaçta kalanı
+# denetim.sh § 12 yakalar — bu satır YENİLERİNİN depoya girmesini engeller.
+# Bugünkü 16 artık izlenmiyor; silinmeleri Kurucu kalemidir (md.4).
+*.mutorj
+
+# ── PAKET T-1: yayın çıktısı ────────────────────────────────────────────────
+# `dotnet/yayin-al.sh` self-contained çıktı üretir (RID başına ~165 MB) ve
+# içinde migration bundle bulunur. Bu bir DERLEME ÜRÜNÜDÜR, kaynak değildir.
+dotnet/yayin/
+
+# ── KURUCU 16.10: GitHub (gizli) deposu — kod ve belge girer; kayıt/medya/profil GİRMEZ ──
+# Demo video/ses kayıtları (kişisel ses dahil), ham ekran çıktıları, tarayıcı profilleri
+# (çerez/oturum taşır), Claude çalışma kopyaları, günlükler.
+dokumanlar/09-uygulama-kayitlari/demo-kayit-*/
+dokumanlar/09-uygulama-kayitlari/ham/
+**/betikler/tur/profil*/
+**/profil-*/
+.claude/worktrees/
+*.wav
+*.mp3
+*.mp4
+*.mov
+*.webm
+*.m4a
+*.log
+*.sql.gz

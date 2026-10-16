@@ -1,0 +1,49 @@
+@using Kuyumcu.Web.Servisler
+@inherits FormAlani
+
+@* ANAHTAR — açık/kapalı düğmesi (paket P-36b).
+   ⚠ DoD EK md.1: tıklanınca HİÇBİR ŞEY OLMAYAN düğme yasak. Bu düğme ya
+     DegerChanged'i tetikler ya disabled'dır ve sebebi yanında yazar.
+   ⚠ Renk tek başına anlam taşımaz (UX-S7): durum hem role="switch"
+     aria-checked ile hem AÇIK/KAPALI metniyle söylenir. *@
+
+<div class="alan alan-anahtar @(Hatali ? "alan-hatali" : null)" id="@($"{ElemanId}-sar")">
+    <div class="anahtar-satir">
+        <span class="alan-etiket-metin" id="@($"{ElemanId}-etiket")">@Etiket</span>
+        <button type="button" class="anahtar @(Deger ? "acik" : null)" id="@ElemanId"
+                role="switch" aria-checked="@(Deger ? "true" : "false")"
+                aria-labelledby="@($"{ElemanId}-etiket")"
+                aria-describedby="@AciklayanId"
+                title="@(Kilitli ? DevredisiSebebi : null)"
+                disabled="@Kilitli" @onclick="Degistir">
+            <span class="anahtar-topuz" aria-hidden="true"></span>
+            <span class="anahtar-metin">@(Deger ? Dil.T.Form.AnahtarAcik : Dil.T.Form.AnahtarKapali)</span>
+        </button>
+    </div>
+    @if (Ipucu is { Length: > 0 } ip)
+    {
+        <span class="alan-ipucu" id="@($"{ElemanId}-ipucu")">@ip</span>
+    }
+    @if (Kilitli && DevredisiSebebi is { Length: > 0 } sebep)
+    {
+        <span class="alan-kilit-sebep" id="@($"{ElemanId}-durum")">@sebep</span>
+    }
+    @if (Hatali)
+    {
+        <span class="hata-metni alan-hata" id="@HataElemanId" role="alert">@GorunenHata</span>
+    }
+</div>
+
+@code {
+    [Inject] private DilServisi Dil { get; set; } = default!;
+
+    [Parameter] public bool Deger { get; set; }
+    [Parameter] public EventCallback<bool> DegerChanged { get; set; }
+
+    private Task Degistir()
+    {
+        DefterdenSil();
+        Deger = !Deger;
+        return DegerChanged.InvokeAsync(Deger);
+    }
+}

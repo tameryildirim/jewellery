@@ -1,0 +1,169 @@
+{
+ "SATIS-3": {
+  "uyg_durum": "YARIM",
+  "rapor": "/Users/ramazanakkocan/Desktop/ByGatech/projeler/jewellery/dokumanlar/09-uygulama-kayitlari/PAKET-SATIS-3-uygulama-raporu.md",
+  "acik": [
+   "Docker/MySQL kabı (~01:50) durdu: 3306 kapalı, Docker VM süreci yok. Görev sınırı gereği müdahale edilmedi → kurucu/orkestratör.",
+   "Test kiracısı PAKETSATIS-3-TEST (01M3J7APJHQFKCQYNNBBJ90KSE) silinemedi; DB açılınca: zsh betikler/kiraci-temizle.sh 01M3J7APJHQFKCQYNNBBJ90KSE --uygula (tenants 20 → 19).",
+   "Son düzeltmelerin tarayıcı ölçümü eksik: K7 ±4 px (BASİT karma, <1400 px), K10 (375 px uzun seçili değer), kapora açılış boyu 1,17. Ayrıca tur.mjs ve tutarlilik.mjs koşulamadı. Yeniden ölçüm: /private/tmp/kuyumcu-serit/SATIS-3/matris4.sh (senaryo.mjs SONRA4).",
+   "Tahsilat/Ödeme formları Müşteriler sayfasında; bu şeridin alanı dışında, ayrı paket gerekir.",
+   "KATMAN: öneri listesi kutuya bağlı position:absolute; ortak katman açıcısına bağlanması KATMAN şeridinin işi.",
+   "EMANET-1: UX4cEkranTestleri.M10_Liste_sunucu_sinirina_degince_DARALTIN_uyarisi_basilir tek başına da kırmızı.",
+   "Pages/Islemler.Sade.cs.tmp ve Pages/Islemler.razor.mutorj (0 bayt, önceki koşulardan kaldı); hook silmeyi engelliyor, kurucu silmeli."
+  ],
+  "son_dogrulama": {
+   "karar": "KALDI",
+   "bulgular": [
+    "[KRITIK] KAYNAK 5 'ürün adı tek satır' BASİT 1280 tek ödemeli satışta tutmuyor — ad 3 satıra kırılıyor; rapor 'ad tek satır' diyor: Kendi sekmemde taze /islemler, BASİT, 1280×800 açık tema, 'burma' araması → öneri seçildi: JS ölçümü td.fis-tuval-ad (tablo #islem-kalem-tablo) {mod:'basit', w:85, satir:3}; ekran görüntüsünde '22 Ayar / Burma / Bilezik'. Aynı durum koyu temada da görüldü. tuval-satis.css:996-1004 düzeltmesi yalnız .tuval-pro ve .fis-tuval-karma (≥2 ödeme) için; va",
+    "[ORTA] Test kiracısı PAKETSATIS-3-TEST silinmemiş — DB ayakta olduğu hâlde duruyor: SELECT id,ad FROM tenants WHERE ad LIKE 'PAKETSATIS-3%' → 01M3J7APJHQFKCQYNNBBJ90KSE 'PAKETSATIS-3-TEST Kuyumculuk'. Uygulayıcı raporu § 0/§ 13 bunu açıkça YARIM diye yazmış (Docker 01:5x'te durmuş); kapı maddesi (6) sağlanmamış.",
+    "[ORTA] K7 ±4 px hizasızlık BASİT karma ödemede hâlâ var (uygulayıcının 'düzeltildi, ölçülemedi' dediği kalem): sikisma-olc __olc(): BASİT 1280 açık 'K7:2 div.bacak-satiri \"Ödeme aracı * Nakit Tutar\" kutuAlt±4 etiketUst±3' (×2); BASİT 375 koyu 'kutuAlt±4 etiketUst±0' (×2). tuval-satis.css:1009 'align-items:flex-end' kuralı etkisiz.",
+    "[ORTA] 'Son eklenen ürünler' başlığı yanlış; spesifikasyondaki 'odakta en çok satılan 8' uygulanmamış: Islemler.Arama.cs: BosOdakUrunleri => urunler.AsEnumerable().Reverse().Take(8) ve yorumda 'liste sunucuda koda göre sıralı gelir'; UrunModulu.cs:581 OrderBy(u => u.Kod). Canlıda odak listesi: Yarım, Tam, Çeyrek, Ata Lira… = kod sırasının tersi (ZYN-YRM, ZYN-TAM, ZYN-CYR, ZYN-ATA), tohumlama sırası değil. Sozlukler.Satis3.cs BosOdakBaslik 'Son eklen",
+    "[ORTA] PRO→BASİT geçişinde karma ödeme sessizce tek Nakit'e dönüyor: PRO 1280'de Kart 42.592,04 + Eski altın 54.960 (toplam 97.552,04) dolduruldu; 'Basit' tıklanınca ALDIM sütunu 'Nakit · Ana Kasa · 97.552,04 ₺', Fark '0 ₺ ✓' — eski altın bacağı ve satıcı kimliği girdileri kayboldu, kullanıcıya uyarı yok. Sahibi (SATIS-2 tuval mi SATIS-3 mü) kesin değil."
+   ]
+  }
+ },
+ "ORTAK-1": {
+  "uyg_durum": "BITTI",
+  "rapor": "/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/PAKET-ORTAK-1-uygulama-raporu.md",
+  "acik": [
+   "Tam süit kırmızıları: ZOBELGESinirTestleri ZOBS05/12/13 (Raporlar.razor:1313 NRE) -> ZO-BELGE; S24EskiAltinEkranTestleri x2 + SATIS3EkranTestleri.Fare_ile_secim_de_ayni_kapidan_ekler -> SATIS-3",
+   "Genel arama katmanı 375 ve PRO 768'de SERBEST-YÜZEN ('Müşteri, ürün ya da fi…') -> KATMAN (GlobalArama; 25.09 SONRA turunda yoktu)",
+   "K10 span.secici-metin kesik ('Altınkaynak (varsayılan)' PRO 768, 'Tüm kategoriler' PRO 768-1440) -> KATMAN (Secici*)",
+   "/raporlar ve /raporlar?sekme=stok 375'te K4 sekme treni 2.2-2.3x -> ZO-BELGE / CUMA-J (Raporlar*)",
+   "Derleme uyarısı EtiketEkranTestleri.cs(145,47) xUnit1031 (24.09 tarihli dosya; bu paket yazmadı)",
+   "P-36c pencere sayacı ModalPencere'de de sızabilir; ModalPencere'ye Dispose önerilir -> KATMAN/Bileşen sahibi",
+   "Cariler BASİT çekmecesi Escape ve arka plan tıklamasıyla kapanmıyordu (25.09 prob) -> CUMA-M",
+   "Eşzamanlı derlemeler bin/ içeriğini koşum ortasında siliyor (bir tam süitte 959 sahte kırmızı) -> orkestratör tam süiti şeritler durunca ölçmeli"
+  ],
+  "son_dogrulama": {
+   "karar": "GECTI",
+   "bulgular": [
+    "[ORTA] (G) /vezne BASİT modda 'Vezne' türevleri kaldı; raporun '(G) ✓ /vezne dahil' iddiası eksik: Canlı (BASİT, 960): /vezne süzgecinin VARSAYILAN seçili değeri span.secici-metin 'Veznede'. Kod: Kuyumcu.Web/Pages/Vezne.razor:41 ve :1055 Dil.T.Vezne.DurumVeznede, :234 Dil.T.Vezne.VezneyeGonder ('Vezneye gönder' düğmesi), :811 Dil.T.Vezne.Veznelendi — hiçbirinde BasitMi dalı yok; Sozlukler.Katalog.cs yalnız Vezne_Baslik ve Vezne_AyrimZorunlu'yu e",
+    "[ORTA] 'PAKETORTAK-1-TEST Dogrulama' test kiracısı veritabanında duruyor: SELECT id,ad,olusturuldu FROM tenants → 01M3CDAZVMHGYSJ9F28VBA3JBG 'PAKETORTAK-1-TEST Dogrulama' 2026-09-25 13:51:05. Rapor § 10 yalnız ad LIKE 'PAKET-ORTAK-1%' (tireli) ile doğruladı; bu kiracı tiresiz ad taşıdığından kaçtı. Adındaki 'Dogrulama' 25.09 ORTAK-1 doğrulama turuna ait olduğunu düşündürüyor (kota durdurmasıyla yarım kalmış); uygulayıcın"
+   ]
+  },
+  "son_hakem_kritik": [
+   "Test kiracısı temizliği: Uygulayıcı 'test kiracılarının ikisi de silindi' diyor ve kiracı_sayisi_son=17 veriyor (BITTI kararının dayanağı). Doğrulayıcı ise kendi kontrolünde tenants sayısının 17→18 çıktığını VE 'PAKETORTAK-1-TEST Dogrulama' (01M3CDAZVMHGYSJ9F28VBA3JBG, 25.09 13:51) adlı bu paketin doğrulama turuna ait kirac",
+   "(G) BASİT mod jargon koşulu / vezne: Uygulayıcı 'kosul_karsilama' tablosunda (G) BASİT jargon koşulunu (uyum risk, şubeler, vezne) 'KARŞILANDI' olarak işaretlemiş ve ürün metninde jargon 0 dediğini belirtmiş. Doğrulayıcı ise /vezne ekranında BASİT modda 'Veznede', 'Vezneye gönder', 'Veznelendi' ifadelerinin hâlâ göründüğünü, Vezne.razo"
+  ]
+ },
+ "OLCEK-1": {
+  "uyg_durum": "BITTI",
+  "rapor": "/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/PAKET-OLCEK-1-uygulama-raporu.md",
+  "acik": [
+   "Kurucu kararı: Profesyonel modda kenar menüsünün ayrı yüzü (KATMAN/T-K2) — beyaz listede duruyor",
+   "DUGME-2: sayfa başı şeridindeki btn-kucuk düğmelerin sınıfı razor'da btn yapılmalı (8 görünüm)",
+   "SATIS-3: tuval-satis.css'teki sabit px değerleri belirteçe çevrilirse olcek.css § 4 ve § 5b sadeleşir",
+   "ORTAK-1: /kasalar .stat-deger kutuya sığdırma kuralı 960'ta mod farkı gibi görünüyor (bilgi)",
+   "Tam süitte başkasına ait 8 kırmızı: ZO-BELGE ×3, KATMAN ×1, SATIS-3 ×3, altyapı YayinAcilis ×1",
+   "Kurucuya: BASİT'te müşteri listesi 18'den 15 px'e indi (16 px'te PRO tabloları taştı); tablo dolgusu artık sık/rahat tercihinden bağımsız 8 px",
+   "Kiracı sayısı 17'den 18'e çıktı; artış başka şeritlerin kiracıları, PAKET-OLCEK% kiracısı 0"
+  ],
+  "son_dogrulama": {
+   "karar": "GECTI",
+   "bulgular": [
+    "[ORTA] 375 px'te /cariler listesi moda göre farklı yazı boyuyla çiziliyor; olcek.css yorumu gerçeği yansıtmıyor: 375 px'te iki modu karşılaştırdım: /cariler td BASİT 18px, dolgu 0, boy 25 (kart yığını); PRO 14px, dolgu 8px 8px, boy 61. PRO'da tablo 'veri-tablosu tablo-sik', tr display:table-row, yatay kaydırmalı sarmalayıcı içinde (dog-cariler-375-P.png). olcek.css §5 yorumu '≤ 768 px'te tablolar kart yığınıdır (q10.css, musteri-sade) ve o düzen korunur' diyo",
+    "[TASARIM HAKEMI KRITIK] Müşteri düzenleme çekmecesi BASİT'te 50 px, PRO'da 44 px: kurucunun 'boyut değişiyor' şikâyeti aynen sürüyor: sen3.mjs, /cariler → Düzenle, aynı id'ler. BASİT: #duz-ad 50/17px, #duz-telefon 50/17px, #cekmece-cari-iptal 50/17px, #cekmece-cari-kaydet 50/17px, #cekmece-kapat 38/18px. PRO: #duz-ad 44/18px, #cekmece-cari-kaydet 44/18px, #cekmece-kapat 44/18px. Çekmece genişliği ve karartma da farklı. Görüntü: /private/tmp/kuyumcu-serit/OLCEK-1-hakem/h2/sen/yy-c",
+    "[TASARIM HAKEMI KRITIK] Satış ekranında ödeme satırı sil düğmesi aynı id ile BASİT 30 px, PRO 44 px: sen2.mjs, /islemler, ürün eklendi ve ödeme açıldı. BASİT JSON: 'islem-bacak-sil-0:30/14px'. PRO JSON: 'islem-bacak-sil-0:44/14px'. Demo senaryosunun ana ekranı, kurucunun şikâyet ettiği türün ta kendisi.",
+    "[TASARIM HAKEMI KRITIK] Paketin 14→16 px yazı büyütmesi BASİT satış ekranında tutarı kesiyor ('97.552,04' → '97.552,0'): #islem-bacak-0-tutar: görünür 97 px < içerik 103 px, yazı 16 px, 1440 BASİT. A/B (kesik.mjs): olcek.css kapatılınca yazı 14 px, 97<97, sığıyor. Görüntü: sen/Basit-1440-aydinlik-3-odeme-ekle.png (tutar kutusu kesik). 7 haneli tutarda (1.234.567,89) kesik büyür. Paket kabulündeki 'büyüyen kutular taşma/kırılma yaratmasın' şartı ihlal.",
+    "[TASARIM HAKEMI YUKSEK] Düğme ailesi 3 boya inmedi: dolu fişte 6 farklı boy, 375'te 44 px altı dokunma hedefi: /islemler BASİT 1440 dolu fiş: islem-bacak-sil 30, islem-kalem-sil 32, bacak-ekle/odeme-birlestir/odeme-altin 34, kontroller 44, islem-son-satislar-ac 48, islem-kaydet 52. 375 BASİT'te islem-kalem-sil-0 28 px (kural: 375'te ≥44 KALIR). Uygulama genelinde ayrıca çekmece kapat 38/44, cari-suzgec-daha 20 px, /pos/tahsilatlar 960'ta 68 px sınıfsız düğm",
+    "[TASARIM HAKEMI YUKSEK] KAPSAM DIŞI: PRO satır eylemlerinde emoji ikonlar (💵 Tahsilat, ✏️ Düzenle, 📦 Stok), BASİT /cariler'de yok, /urunler'de iki modda da var: tutarlilik JSON: '#c-tahsilat-… \"💵 Tahsilat\"' yalnız PRO. /urunler 'td:📦 Stok ✏️ Düzenle ⋯'. Kural: ikon ince çizgi (Ikon bileşeni), emoji YOK. Sahip: KATMAN (SatirEylemleri). Paketi düşürmez."
+   ]
+  },
+  "son_hakem_kritik": []
+ },
+ "EMANET-1": {
+  "uyg_durum": "BITTI",
+  "rapor": "/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/PAKET-EMANET-1-uygulama-raporu.md",
+  "acik": [
+   "Orkestratör / T-K1-BICIM: has binlik gruplama kararı (P-57, Bicim.cs).",
+   "Orkestratör: başka şeritlerin .mutorj/.bak/.tmp/.mutbak artıkları ağaçta duruyor (EMANET-1'e ait değil). Arka plan işi silinmiş kiracıya satır yazıyor.",
+   "KATMAN: 375 px'te global arama paleti ekranda serbest yüzüyor; Secici'de sunucu araması yok.",
+   "Ölçüm aracı: sikisma.js K9/K9b, çekmecenin perdesi altındaki sayfa öğelerini ve kapalı details içindeki görünmez etiketleri sayıyor; çekmece içi binen 0 ayrıca ölçüldü. checkVisibility süzgeci eklenmesi önerilir.",
+   "Tasarım: Emanet için tuval ekranı (Emanet.dc.html) yok.",
+   "Tam süit anlık kopya ağaçta 6470/6470 geçti; gerçek ağaçta eşzamanlı şeritler build aldığı için orada koşulmadı."
+  ],
+  "son_dogrulama": {
+   "karar": "KALDI",
+   "bulgular": [
+    "[KRITIK] BASİT modda geri alınmış kaydı olan müşteride 'Eski kayıtlar' jargon ve büyük harf gösteriyor (K8=2); raporun 'K8=0, büyük harf 0' iddiası bu gerçekçi durumda tutmuyor: Canlı ortam: kiracı PAKETEMANET-1-TEST Dogrulayici. K14 5,5 g girişi POST /islemler/{id}/storno ile geri alındı (200). Ardından /emanet, BASİT, geçmiş açık ölçüldü.\nsikisma-olc.js sonucu: 1280 aydınlık, 1280 koyu ve 375 aydınlıkta K8_jargon=2, örnek [\"STORNO\",\"storno\"].\nMetin düğümleri:\n- 'TD.metin-soluk tt=none :: STORNO: Yanlis ayar girildi…' (48",
+    "[ORTA] E5 büyük harf ve jargon testi geri alma durumunu kapsamıyor (test açığı): EmanetSadeTestleri.cs:43-55: c1 hareketlerinin ikisinde de stornoKaynakId null. E5 (satır 206-235) yalnız bu veriyle #emanet-sayfa TextContent'ini tarıyor. Bu yüzden KRITIK bulgudaki metinler hiçbir testte çizilmiyor; mutasyonla da yakalanamaz.",
+    "[TASARIM HAKEMI KRITIK] Eski kayıtlar tablosu BASIT modda masaüstünde taşıyor: 'Geri al (düzeltme fişi)' düğmesi her satırda kesik, 1280'de eylem düğmelerinin ikisi de ekran dışında: 06-gecmis-acik__BASIT_aydinlik_1440.png: 12 satırın hepsinde düğme 'Geri al (düze' diye kesik. DOM ölçümü: BASIT 1440'ta .tablo-sar scrollWidth 1175 > clientWidth 1090, BASIT 1280'de 1175 > 930 ve 'Ayrıntı' sağ kenarı 1377 > kap 1239. PRO 1440'ta etiket 'Storno' olduğu için taşma yok (1090 = 1090), yani kusur kurucunun varsayılan BASIT modunda. Sat",
+    "[TASARIM HAKEMI YUKSEK] Has miktarları binlik ayırıcısız; aynı ekranda TL tutarları gruplu: Özet kutusunda '1127787,6456 has' (05-uzun-dolu, BASIT/PRO, açık/koyu). Tabloda '1130852,7382 has' ve '-5000,1230 has'. İade çekmecesinde 'Gümüş: 1388,1938 has' (1,5 kg gümüş gerçekçi bir değer). Üst barda '6.737 ₺'. Katalog K20 'gruplanmamış tutar 0' istiyor. Kaynak ortak Bicim.Has, dosyası EMANET-1 alanı dışında; ama bu paketin özet kutusu ve tab"
+   ]
+  },
+  "son_hakem_kritik": []
+ },
+ "ZO-ISLEM-A": {
+  "uyg_durum": "BITTI",
+  "rapor": "/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/PAKET-ZO-ISLEM-A-uygulama-raporu.md",
+  "acik": [
+   "Tam süit, başkasına ait: OLCEK-1 — OL14 (olcek.css koşum sırasında değişti)",
+   "Tam süit, başkasına ait: SATIS-3 — S24EskiAltin x2; kararsızlar PosBarkod x2 ve SATIS3 ARANIRKEN",
+   "Tam süit, başkasına ait: KATMAN — S1jMenuArama (kararsız); ORTAK-1 — Bildirim Her_dugme (kararsız)",
+   "Genel satış/alış/iade/takasta SubeBelirle 'fallback yok' kuralı (şubesiz tüm-şube rolü): karar Bertan/Taşkın'da. Hurdanın iki ucu bu pakette tek kurala bağlandı",
+   "SatisModulu.cs'nin 27.09 21:59 değişikliği bu paketin değil; sahibini orkestratör kapı kaydına yazacak",
+   "GlobalArama 375'te serbest yüzüyor, KenarCubugu BASİT 1440'ta belgeyi 933 px'e uzatıyor, POS menüsünde iki satır birlikte seçili görünüyor → KATMAN",
+   "ModalPencere 375'te dekont alt düğmeleri gövde içinde kayıyor (ortak bileşen)",
+   "/hurda'nın menü grubu çelişkisi (PARA VE BANKA mı GÜNLÜK İŞ mi) → kurucu/mimar kararı"
+  ],
+  "son_dogrulama": {
+   "karar": "GECTI",
+   "bulgular": [
+    "[ORTA] Banka Yeni Hesap / Düzenle: isteğe bağlı 'Daha fazla (hesap sahibi)' düğmesi zorunlu IBAN alanının ÜSTÜNDE: Banka.razor:300-315 (yeni hesap) ve 343-354 (düzenleme çekmecesi): sıra Banka Adı* → Hesap Adı* → [Daha fazla (hesap sahibi)] → IBAN* → Döviz. Görüntü: /private/tmp/kuyumcu-serit/dogrulama-pZO-ISLEM-A/senaryo/banka-yeni-hesap_PRO_karanlik_375.png. Kurucunun 'zorunlu önce' kuralında isteğe bağlı açıcı zorunlu alanların arasına girmemeli.",
+    "[TASARIM HAKEMI KRITIK] Banka hareket listesinde TUTAR görünmüyor (1440 masaüstü, BASİT ve PRO): sen/B04-ziraat-hareketler__BASIT_aydinlik_1440.png: sütunlar TARİH, YÖN, KARŞI TARAF ve AÇIKLAMA'da bitiyor. DOM ölçümünde TUTAR x=1446, DURUM 1580, EYLEMLER 1657; .tablo-sar scrollWidth 1535 / clientWidth 1088. '+2.456.789,45 ₺', 'Bekliyor' ve 'Müşteriyle eşleştir' ekranda yok. Altta 'Satırdaki Müşteriyle eşleştir düğmesiyle eşleştirin' yazısı gör",
+    "[TASARIM HAKEMI KRITIK] Kullanıcıya geliştirici notu gösteriliyor (Hurda): hurda__BASIT_aydinlik_1440__acici2.png 'Fire / ramat farkı' açılınca şu metin çıkıyor: 'Bu sürümde eritme firesi kaydedilmez; imalat kapsam dışıdır (K-13 kararı)… bir kayıt türü DEĞİLDİR… TAHLİL FARKIDIR ve hurda satışında ayrı bacak olarak gerekçesiyle yazılır.' Başlık altında 'Bakiye ayrı bir kolondan değil, HURDA ALIŞ ve HURDA SATIŞ satırlarında",
+    "[TASARIM HAKEMI KRITIK] POS kilit notunda API jargonu ve tekrar var: pos_tahsilatlar__BASIT_aydinlik_1440.png: 'Düzeltme şöyle yapılır: Düzeltme yolu: banka itirazı için iptal ucu (gerekçe ≥ 20 karakter) ya da ilgili satışın iadesi.' 'uç' bir API terimi, 'Düzeltme' iki kez yazılmış. 'POS alacak defteri satırı satıştan türetilir, elle değiştirilemez.' cümlesi hem başlık altında hem kilit kutusunda var. Aynı metin 375",
+    "[TASARIM HAKEMI YUKSEK] POS eşleştirmesi tezgâhtardan 'Banka hareketi kimliği' istiyor; 'Öneri getir' sessiz: P02 ve P03 (1440): 'Banka hareketi kimliği' alanında ayrı 'Ara' düğmesi ve 'Aramak için en az 2 karakter yazın' ipucu var. Boşken 'Öneri getir' tıklanınca ekranda hiçbir mesaj çıkmıyor (P03 metin dökümünde yeni satır yok). Birincil 'Banka yatmasıyla eşleştir' düğmesi soluk mavi, pasif ve gerekçesi yok. 960 px'te bu düğmenin yazısı 3 satıra kırılıyo",
+    "[TASARIM HAKEMI YUKSEK] Yıkıcı eylemler kırmızı dolu birincil görünümde (tek birincil düğme ihlali): P02: her tahsilat satırında kırmızı dolu 'Tahsilatı iptal et' var (×3), ekrandaki en baskın öğe bunlar. Banka hesap kartında kırmızı dolu 'Kullanımdan kaldır' var, bakiyeli hesapta soluk pembe ve gerekçesi yalnız title tooltip'inde ('para nereye gitti sorusu cevapsız kalır'). Aynı ekranda mavi '+ Yeni Hesap' de birincil.",
+    "[TASARIM HAKEMI YUKSEK] Açıklama/teknik metin satırı üç sayfada da var (K17), banka metni tasarım notu kopyası: Banka başlığı altında 'Banka hesapları ve dekontlar; hesap bilgileri düzenlenebilir, pasife alınan hesap geri açılabilir.' (BASİT modda 'pasife' jargonu da var). Hurda ve POS için yukarıdaki bulgulara bakın. Tuval Tezgah.png'de başlık altı açıklama satırı yok.",
+    "[TASARIM HAKEMI YUKSEK] Native select'ler (K22): Hurda 'Tahsil aracı' (H04), POS 'Durum', Dekont 'Yön', 'Müşteri', 'Belge Türü: TC KIMLIK', Yeni Hesap 'Döviz' ▾ tarayıcı select'i olarak görünüyor. 'TC KIMLIK' İ harfi olmadan ham kod gibi yazılmış. 'Uyruk (TUR)' ham kod."
+   ]
+  },
+  "son_hakem_kritik": []
+ },
+ "ZO-BELGE": {
+  "uyg_durum": "BITTI",
+  "rapor": "/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/PAKET-ZO-BELGE-uygulama-raporu.md",
+  "acik": [
+   "Açılış ≤1,0 (1440) iki rotada aşılıyor: /raporlar/islem-defteri 1,12/1,14 ve /denetim-izi 1,05/1,07. Sebep OLCEK-1'in olcek.css tek tablo ölçeği v5 (28.09 00:26, satır en az 52 px). Sahibi OLCEK-1; sayfa boyu ya da ölçek için orkestratör kararı gerekli.",
+   "/raporlar BASİT 'Altın pozisyonum' kartı hâlâ '+159,3 g has' yazıyor (AltinPozisyonuKarti.razor:254, N1). Aynı ekrandaki diğer has değerleri 4 hane olduğu için tutarsız. Bileşen ORTAK-1/T-P1'in; Bicim.Has önerilir.",
+   "Rapor merkezi katalog düğmeleri hub sözlüğünde hâlâ 'Hareket Dökümü' ve 'Kasa Hareketleri' diyor (Sozlukler.cs RaporSeti.AdIslemDefteri/AdKasaDefteri, R10/R11). Hub'a dokunma yasağı nedeniyle değiştirilmedi; hub sahibine not.",
+   "Başkasına ait kırmızılar: SATIS-3 → SATIS3EkranTestleri.Hurda_BASIT_…, TS2TuvalProTestleri.Genis_tablo_…, S24EskiAltinEkranTestleri ×2. EMANET-1 → UX4cEkranTestleri.M10_Liste_sunucu_sinirina_… (Emanet sayfası).",
+   "Build uyarısı xUnit1031 EtiketEkranTestleri.cs(145) ara derlemede görüldü (ORTAK-1 şeridi).",
+   "27.09'dan devreden açıklar (§ D-9): katman.js flip boşluğu (KATMAN), dugme-olc silik (Katlanir/Sekme; bu devamda yeniden koşulmadı), genel arama 375 (KATMAN), stok sekmesi 375, gün kapanışında sayilanNakit gönderilmezse sunucunun 0 sayması (backend paketi)."
+  ],
+  "son_dogrulama": {
+   "karar": "KALDI",
+   "bulgular": [
+    "[KRITIK] Has miktarı 3 haneyle gösteriliyor, 0,0001 has kayboluyor (sınır testi HATA): Kuyumcu.Web/Pages/Raporlar.razor:1054-1058: BugunHas, Bicim.Gram (F3) kullanıp sonuna 'g has' ekliyor. Paket bu satırı N1'den F3'e çevirdi. Kuyumcu.Web/Pages/IslemDefteri.razor:135: ZO-BELGE'nin eklediği özet satırı net has'ı da Bicim.Gram ile yazıyor. Proje kuralı has için 4 hane (Bicim.Has F4, P-57; bicim-olc.js HAS_HANE). Birimin 'g has' yazılma",
+    "[ORTA] Sayfa başlığı ile üst çubuk ve menü adı çelişiyor (paketin kendi iki ekranında): Kendi görüntülerim: /raporlar/islem-defteri'de üst çubuk ve menü 'İşlem defteri', sayfa başlığı 'Hareket Dökümü'. /raporlar/kasa'da üst çubuk 'Kasa raporu', sayfa başlığı 'Kasa Hareketleri'. Göz incelemesi aynı deseni /vezne için KRİTİK saymıştı. Uygulayıcı işlem defterini D-9 #7'de 'hub sahibine not' diye devretti, kasa raporunu hiç yazmadı.",
+    "[ORTA] ZB14 'Yedi ekranda satır içi stil YOK' kilidi Raporlar.razor'u denetlemiyor: ZoBelgeTestleri.cs:512-513 listesinde 6 sayfa var, Raporlar yok. Raporlar.razor'da 14 satır içi style var (satır 279, 282, 293, 678-755). HEAD'de 7 tane vardı. Test adı yedi ekranı kapsadığını söylüyor ama bir sayfayı atlıyor."
+   ]
+  }
+ },
+ "KATMAN-1b": {
+  "uyg_durum": "BITTI",
+  "rapor": "/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/PAKET-KATMAN-1b-uygulama-raporu.md",
+  "acik": [
+   "dotnet/denetim.sh.mutbak (P37c kırmızısı) ve Pages/Islemler.Sade.cs.tmp ağaçta duruyor; dosya silme yasak olduğu için dokunulmadı → orkestratör/kurucu",
+   "UX4cEkranTestleri.M10_Liste_sunucu_sinirina_degince_DARALTIN_uyarisi_basilir (Pages/Emanet) → EMANET-1",
+   "MadenDefteriTestleri.GeriDoldurmaMigrationiUrunAyarindanTuretir yalıtık --artifacts-path düzeninde Migrations klasörünü bulamıyor (ağaç içinde yeşil); kapi.sh şerit başına artifacts-path'e geçerse testin kök bulma yolu değişmeli → orkestratör",
+   "#cekmece-cari BASİT 15/16/17 px (tuval ölçüsü, CUMA-M) ile 'tek yazı boyu' kuralı çelişiyor → orkestratör/kurucu kararı",
+   "#islem-pro-odeme ekran dışında (PRO 1024/375); #islem-aciklama-sar ve #islem-pro-odeme 14/16 px → SATIS-3/CUMA-S",
+   "/urunler K10 'Tüm kategoriler' (PRO 1440/1024) ve /vitrin K3 #vitrin-kur-kaynagi (1024) → sayfa sahipleri",
+   "OLCEK-1 sınırı: olcek.css (0b) kontrol ölçeği katman içinde artık katman.css'e yenilir (bilinçli). Katmanlar için de kontrol ölçeği istenirse --katman-oge-boyu ile --yazi-kontrol uzlaştırılmalı → orkestratör",
+   "Ürün çekmecesinde uzun seçici değeri kesilmek yerine iki satıra iniyor; daha geniş sütun istenirse Ürünler/ORTAK-1 (Cekmece genişliği) kararı"
+  ],
+  "son_dogrulama": {
+   "karar": "GECTI",
+   "bulgular": [
+    "[ORTA] Doğrulamanın DB'ye bağlı adımları ortam çöküşü yüzünden koşulamadı (tam süit, denetim.sh canlı şema adımı, tenants sayımı, gerçek uygulamada canlı ölçüm): 02:04–02:12 arası 'nc -z localhost 3306' sürekli kapalı döndü. 'docker ps' asılı kalıyor (birden çok askıda süreç var). API günlüğünde 'MySqlConnector.MySqlException: Unable to connect to any of the specified MySQL hosts'. denetim.sh 'P-05 CANLI ŞEMA' adımında takıldı."
+   ]
+  },
+  "son_hakem_kritik": [
+   "denetim.sh: Uygulayıcı 'DENETİM TEMİZ rc=0, ✗ sayısı 0' diyor (00:42 ve 01:48 koşumları). Doğrulayıcı denetim.sh'ı hiç bitiremediğini, P-05 CANLI ŞEMA (MySQL) adımında Docker çöktüğü için takıldığını söylüyor. İki rapor da aynı komutun sonucunu iddia ediyor ama biri 'tamamlandı ve temiz', diğeri 'tamamlanamadı'",
+   "görsel/tarayıcı ölçümü — GERÇEK TARAYICI KURALI: Uygulayıcı gerçek uygulamada (API+oturum, 5166/5167 portları) canlı ölçüm yaptığını iddia ediyor (84+48 ekran görüntüsü, canlı tohum verisiyle). Doğrulayıcı gerçek uygulamayı hiç açamadığını (DB çöktü), bunun yerine yalnızca statik dosyaları yükleyen kendi 'kabuk düzeneğinde' (gerçek uygulama değil)"
+  ]
+ }
+}

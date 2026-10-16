@@ -1,0 +1,264 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-1 — SON SATIŞLAR KARTI ══════════════════════════════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Bileşen istek ATMAZ:
+   liste (GET /islemler/iade-adaylari?tur=SATIS), yenileme, iadeye geçiş ve
+   ödeme kırılımı (GET /islemler/fis/{id}) sayfanın geri çağrılarıdır.
+   Mevcut element id'leri DEĞİŞMEDİ.
+
+   QA turu 1 ve 2 KRİTİK bulgusu: "Kaydedilen satış fişi bu rotada
+   listelenmiyor, düzenlenemiyor, storno/iptal düğmesi yok."
+   ⚠ STORNO: sunucunun beyaz listesi ISCILIK · VERESIYE · TAHSILAT ·
+     EMANET_GIRIS · EMANET_CIKIS'tir; SATIS ve ALIS stok + maliyet
+     partisi geri alması gerektirdiği için KAPSAM DIŞIDIR. Düğme bu
+     yüzden GÖRÜNÜR ama devre dışıdır ve gerçek gerekçesini yazar
+     (UX-S25/S30) — sessizce gizlenmez, 409 ham hata olarak da
+     gösterilmez. Doğru yol "Satış İadesi" sekmesidir. ═══ *@
+@* ═══ PAKET T-S1 — tuval (Tezgah.dc.html) "Son 3 satış" kartı (basit mod) ═══
+   Sağ sütunda küçük kart: saat · müşteri (Peşin / "Hasan K.") · tutar. Veri
+   AYNI liste (sayfanın iade-adayları yüklemesi; yeni uç yok). İade kısayolu,
+   ödeme kırılımı ve storno gerekçesi PROFESYONEL moddaki tam listededir
+   (özellik silinmedi); basitte iade karosu ("İade") kaynak seçtirir. Tüm
+   geçmiş için İşlem defteri bağlantısı (UX-S29: kırpma söylenir). Hata "kayıt
+   yok"a çevrilmez (UX-S28). *@
+@* ═══ PAKET SATIS-2 — SON SATIŞLAR = KATLANIR (kurucu 25.09: "eski kayıtlar direkt açık
+   gelmesin, piyano gibi açılır kapanır olsun") ═══════════════════════════════════
+   • Kart Katlanir'dır, varsayılan KAPALI; liste İLK AÇILIŞTA yüklenir (Yenile = sayfanın
+     SonSatislariYukle'si) — kapalı kart için istek ATILMAZ. Kök id AYNI: #islem-son-satislar.
+   • PRO: tablo; "Ödeme kırılımını göster" ayrı satır DEĞİL — eylem hücresinde küçük ikon
+     düğme (#islem-kirilim-{id}, aria-expanded); kırılım satırın ALTINDA açılır.
+     "Düzelt (ters kayıt)" PRO'da kalır (kilitli + sebebi title'da — UX-S30).
+   • BASİT: kısa liste (saat · müşteri · tutar); Düzelt YOK; değişmezlik TEK KISA satır
+     (jargonsuz), ayrıntı "Neden değiştirilemez?" altında katlı. *@
+<Katlanir Id="islem-son-satislar" Baslik="@(Basit ? T.SonUcSatis : Dil.T.Islem.SonSatislar)" Sayi="@(Yuklendi && !Basit ? Satislar.Count : null)"
+          Sinif="@(Basit ? "islem-son-katlanir islem-son-basit" : "islem-son-katlanir")" IlkAcilis="() => Yenile.InvokeAsync()" Hatali="@(Hata is not null)">
+    <HataBandi Mesaj="@Hata" Id="islem-son-hata" />
+    @if (Basit)
+    {
+        @* Hata çıkmaz sokak olmaz (doğrulayıcı 25.09): BASİT dalında da yeniden deneme yolu — PRO'daki #islem-son-yenile eşi. *@
+        @if (Hata is not null)
+        {
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-son-tekrar" @onclick="() => Yenile.InvokeAsync()">@S.TekrarDene</button>
+        }
+        @if (Yuklendi && Satislar.Count == 0)
+        {
+            <p class="metin-soluk tuval-son-bos" id="islem-son-bos">@Dil.T.Islem.SonSatisYok</p>
+        }
+        else if (Satislar.Count > 0)
+        {
+            <ul class="tuval-son-liste" id="islem-son-liste">
+                @foreach (var h in Satislar.Take(TuvalSayisi))
+                {
+                    <li id="@($"islem-son-{h.Id}")"><span>@Zaman(h.Tarih) · @MusteriKisa(h.CariId)</span><span class="sayi">@Bicim.Tl(Math.Abs(h.TlTutari))</span></li>
+                }
+            </ul>
+            <p class="metin-kucuk metin-soluk islem-son-ipucu" id="islem-son-basit-ipucu">@S.BasitDegismez</p>
+        }
+        <a class="metin-kucuk tuval-son-tumu" href="/raporlar/islem-defteri" id="islem-son-defter">@T.SonSatisTumu</a>
+        @if (ChildContent is not null)
+        {
+            <details class="islem-son-neden" id="islem-son-neden">
+                <summary class="metin-kucuk">@S.DegismezNeden</summary>
+                @ChildContent
+            </details>
+        }
+    }
+    else
+    {
+        <div class="satir-arasi islem-son-arac">
+            <span></span>
+            <button class="btn btn-ikincil btn-kucuk" id="islem-son-yenile" @onclick="() => Yenile.InvokeAsync()">@Dil.T.Ortak.Yenile</button>
+        </div>
+        @if (Yuklendi && Satislar.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.Islem.SonSatisYok" />
+        }
+        else if (Satislar.Count > 0)
+        {
+            @* PAKET GOC-C-2 (tasarım hakemi YÜKSEK "ham tablo kaldı"): liste ORTAK IZGARADA (grid:islemler:son-satislar).
+               KartListe kimliği (islem-defter-liste), eylem kimlikleri (islem-kirilim-*, islem-iade-et-*, islem-storno-*,
+               islem-iade-kilit-*) AYNEN. GOC-C'nin istisna gerekçesi (satır altı kırılım, colspan) şöyle kapandı: kırılım
+               artık ızgaranın ALTINDA, açan düğmeye aria-controls ile bağlı tek panel (.islem-kirilim-satir; içerik ve
+               kimlikler aynı) — tek fişin kırılımı açıktır, satır içi colspan gerekmez. Liste sınırlı (ilk 5 + hepsi)
+               olduğundan sıralama kapalı (UX-S29). *@
+            <Izgara T="IadeAdayi" Ekran="islemler" GridId="son-satislar" KartListeId="islem-defter-liste" TabloSinif="islem-son-tablo"
+                    Kolonlar="@SonKolonlari" Ogeler="@Gorunen.ToList()" SatirId="@(h => $"islem-son-satir-{h.Id}")" Baslik="@Dil.T.Islem.SonSatislar" />
+            @if (Gorunen.FirstOrDefault(h => h.Id == Kirilim.AcikId) is { } acik)
+            {
+                <div class="islem-kirilim-satir" id="@($"islem-kirilim-govde-{acik.Id}")" role="region"
+                     aria-label="@($"{Dil.T.Islem.OdemeKirilimiGoster} — {acik.UrunAdi ?? Bicim.Tarih(acik.Tarih, Dil.Locale)}")">
+                    <p class="metin-kucuk metin-soluk islem-kirilim-fis">@Bicim.Tarih(acik.Tarih, Dil.Locale) · @(acik.UrunAdi ?? "—") · @Bicim.Tl(Math.Abs(acik.TlTutari))</p>
+                    <HataBandi Mesaj="@Kirilim.Hata" Id="islem-kirilim-hata" />
+                    @if (Kirilim.Yukleniyor)
+                    {
+                        <span class="metin-kucuk metin-soluk">@Dil.T.Ortak.Yukleniyor</span>
+                    }
+                    else if (Kirilim.Hata is null)
+                    {
+                        <p class="metin-kucuk" id="islem-kirilim-kapsam">@KapsamMetni</p>
+                        @if (Kirilim.Kalemler.Count == 0)
+                        {
+                            <BosDurum Mesaj="@Dil.T.Islem.KirilimYok" />
+                        }
+                        else
+                        {
+                            <ul id="islem-kirilim-liste">
+                                @foreach (var kk in Kirilim.Kalemler)
+                                {
+                                    <li>
+                                        <span>@AracAdi(kk.Arac)</span>
+                                        <span class="sayi">@Bicim.Para(kk.Tutar, kk.ParaBirimi)</span>
+                                        @if (kk.GeriDolduruldu)
+                                        {
+                                            <span class="rozet rozet-mavi">@Dil.T.Islem.KirilimGeriDolduruldu</span>
+                                        }
+                                        @if (kk.Bilinmiyor)
+                                        {
+                                            <span class="rozet rozet-amber">@Dil.T.Islem.KirilimKismen</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    }
+                </div>
+            }
+            @* KAT-1 (UX-S29): sınır ve kalan adet YAZAR, tek tıkla hepsi açılır. *@
+            @if (Satislar.Count > IlkGosterim)
+            {
+                <div class="satir-arasi" id="islem-son-sinir">
+                    <span class="metin-kucuk metin-soluk" id="islem-son-sinir-metin">
+                        @string.Format(KT.SonSatisSinir, Gorunen.Count(), Satislar.Count)
+                    </span>
+                    <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="islem-son-hepsi"
+                            aria-expanded="@(hepsi ? "true" : "false")" @onclick="HepsiDegistir">
+                        @(hepsi ? string.Format(KT.SonSatisIlkleri, IlkGosterim) : string.Format(KT.SonSatisHepsi, Satislar.Count))
+                    </button>
+                </div>
+            }
+            <a class="metin-kucuk" href="/raporlar/islem-defteri" id="islem-son-defter">@KT.SonSatisDefter</a>
+            @* Storno düğmesinin GERÇEK gerekçesi (DegismezIpucu) SAYFADAN gelir (P-06); uzun kutu
+               ekranı doldurmasın diye "Neden değiştirilemez?" altında katlı (SATIS-2 madde 5). *@
+            @if (ChildContent is not null)
+            {
+                <details class="islem-son-neden" id="islem-son-neden">
+                    <summary class="metin-kucuk">@S.DegismezNeden</summary>
+                    @ChildContent
+                </details>
+            }
+        }
+    }
+</Katlanir>
+
+@code {
+    // ── PAKET T-S1 — basit moddaki "Son 3 satış" kartı ──────────────────────
+    /// <summary>Tuval kartındaki satır sayısı ("Son 3 satış").</summary>
+    public const int TuvalSayisi = 3;
+    /// <summary>Basit mod: tuvalin küçük kartı; profesyonel: tam liste (değişmedi).</summary>
+    [Parameter] public bool Basit { get; set; }
+    /// <summary>Müşteri adları — sayfanın ZATEN çektiği GET /cari listesi (yeni istek yok).</summary>
+    [Parameter] public IReadOnlyList<CariVeri> Cariler { get; set; } = [];
+    [Parameter] public string? PesinCariId { get; set; }
+    private SatisTuvalMetinleri T => SatisTuvalSozlugu.Al(Dil.Dil);
+    private SatisSadeMetinleri S => SatisSadeSozlugu.Al(Dil.Dil);
+    private static readonly System.Globalization.CultureInfo TrKultur = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    /// <summary>Bugünse "14:10", değilse "23.09 14:10" (dünün satışı "bugün" sanılmaz).</summary>
+    public static string Zaman(DateTime t)
+    {
+        var y = Bicim.IsletmeZamani(t);   // TOPLU-1 TARIH-TEK: işletme saati (tarayıcı dilimi değil)
+        // SATIS-3 (tur.mjs 28.09, BASİT 1280): "27.09 23:02 · Anadolu A." dar sütunda kesiliyordu — eski günde saat yazılmaz.
+        return y.Date == Bicim.IsletmeBugun ? Bicim.Saat(y) : Bicim.GunBicim(y, "dd.MM", TrKultur);
+    }
+
+    /// <summary>Peşin Müşteri / carisiz → "Peşin"; gerçek müşteri → "Hasan K." (tuval kısaltması).</summary>
+    internal string MusteriKisa(string? cariId)
+    {
+        if (string.IsNullOrEmpty(cariId) || cariId == PesinCariId) return T.Pesin;
+        var ad = Cariler.FirstOrDefault(c => c.Id == cariId)?.Ad;
+        return KisaAd(ad) ?? "—";   // listede olmayan müşteri "Peşin" SANILMAZ
+    }
+
+    /// <summary>"Hasan Kaya" → "Hasan K."; tek sözcük olduğu gibi; boş → null.</summary>
+    public static string? KisaAd(string? ad)
+    {
+        var p = (ad ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return p.Length switch { 0 => null, 1 => p[0], _ => $"{p[0]} {char.ToUpper(p[^1][0], TrKultur)}." };
+    }
+
+    // ── PAKET KAT-1 — tren sayfa: ilk 5 fiş + "hepsini göster" ──────────────
+    /// <summary>İlk açılışta gösterilen fiş sayısı (ölçüm: 13 fiş = 1.747 px kart, /islemler 4 ekran).</summary>
+    public const int IlkGosterim = 5;
+    private bool hepsi;
+    private KatalogMetinleri KT => KatalogSozlugu.Al(Dil.Dil);
+    private IEnumerable<IadeAdayi> Gorunen => hepsi ? Satislar : Satislar.Take(IlkGosterim);
+
+    /// <summary>GOC-C-2 — son satışlar ızgarasının kolonları (eski ham tablonun sütunları ve hücre içerikleri AYNEN).</summary>
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.Grid.IzgaraKolonu<IadeAdayi>> SonKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, HucreSinif = _ => "metin-kucuk metin-soluk", Deger = h => h.Tarih,
+                Hucre = h => @<text>@Bicim.Tarih(h.Tarih, Dil.Locale)</text> },
+        new() { Anahtar = "urun", Baslik = Dil.T.Islem.Urun, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu", Deger = h => h.UrunAdi ?? "—" },
+        new() { Anahtar = "adet", Baslik = Dil.T.Ortak.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = h => h.ToplamAdet,
+                Hucre = h => @<text>@Bicim.Miktar(h.ToplamAdet, null)</text> },   @* PAKET GOC-C: tr-TR *@
+        new() { Anahtar = "toplam", Baslik = Dil.T.Ortak.Toplam, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi hucre-vurgu",
+                Deger = h => Math.Abs(h.TlTutari), Hucre = h => @<text>@Bicim.Tl(Math.Abs(h.TlTutari))</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = Kuyumcu.Web.Bilesenler.Grid.IzgaraHucreTuru.Eylem,
+                Hucre = h => @<text><div class="rozet-satir islem-son-eylem">
+                        @* P-23 FAZ 2 (R-17) kırılım: eylem hücresinde küçük ikon düğme; her tıklama GERÇEK istek (GET /islemler/fis/{id}).
+                           GOC-C-2: kırılım ızgaranın altındaki panelde — düğme aria-controls ile ona bağlı. *@
+                        <button type="button" class="btn btn-ikincil btn-kucuk islem-son-kirilim-dugme" @onclick="() => KirilimiDegistir.InvokeAsync(h.Id)"
+                                id="@($"islem-kirilim-{h.Id}")" aria-expanded="@(Kirilim.AcikId == h.Id ? "true" : "false")"
+                                aria-controls="@($"islem-kirilim-govde-{h.Id}")"
+                                aria-label="@(Kirilim.AcikId == h.Id ? Dil.T.Islem.OdemeKirilimiGizle : Dil.T.Islem.OdemeKirilimiGoster)"
+                                title="@(Kirilim.AcikId == h.Id ? Dil.T.Islem.OdemeKirilimiGizle : Dil.T.Islem.OdemeKirilimiGoster)"><Ikon Ad="@Ikonlar.Faturalar" /></button>
+                        <button class="btn btn-ikincil btn-kucuk" disabled="@(h.KalanAdet <= 0m)"
+                                id="@($"islem-iade-et-{h.Id}")" title="@(h.KalanAdet <= 0m ? Dil.T.Islem.IadeHakkiBitti : null)"
+                                @onclick="() => IadeyeGec.InvokeAsync(h)">↩ @Dil.T.Islem.IadeEt</button>
+                        <button class="btn btn-ikincil btn-kucuk" disabled title="@Dil.T.Duzeltme.StornoYokGerekce"
+                                id="@($"islem-storno-{h.Id}")">⟲ @Dil.T.Duzeltme.StornoDugme</button>
+                    </div>
+                    @if (h.KalanAdet <= 0m)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="@($"islem-iade-kilit-{h.Id}")">@Dil.T.Islem.IadeHakkiBitti</span>
+                    }</text> },
+    ];
+    private void HepsiDegistir() => hepsi = !hepsi;
+
+    /// <summary>Son satışlar — sayfa iade-adayları ucundan yükler (yeni uç yok).</summary>
+    [Parameter, EditorRequired] public List<IadeAdayi> Satislar { get; set; } = [];
+    /// <summary>İstek BAŞARILI oldu mu — boş durum yalnız o zaman çizilir (UX-S28).</summary>
+    [Parameter] public bool Yuklendi { get; set; }
+    [Parameter] public string? Hata { get; set; }
+    /// <summary>Açık fişin ödeme kırılımı — SAHİBİ Islemler.razor.</summary>
+    [Parameter, EditorRequired] public OdemeKirilimi Kirilim { get; set; } = new();
+    [Parameter] public EventCallback Yenile { get; set; }
+    /// <summary>Satırdan "İade et" → sayfa iade sekmesini kaynak SEÇİLİ açar (UX-S24).</summary>
+    [Parameter] public EventCallback<IadeAdayi> IadeyeGec { get; set; }
+    /// <summary>Kırılımı aç/kapat — sayfa GET /islemler/fis/{id} atar.</summary>
+    [Parameter] public EventCallback<string> KirilimiDegistir { get; set; }
+    /// <summary>Liste altındaki değişmezlik açıklaması (sayfa verir: DegismezIpucu).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Kapsam bayrağının Türkçe karşılığı — ham kod EKRANA BASILMAZ (UX-S31).</summary>
+    private string KapsamMetni => Kirilim.Kapsam switch
+    {
+        "KAYITLI"           => Dil.T.Islem.KirilimKayitli,
+        "KISMEN_BILINMIYOR" => Dil.T.Islem.KirilimKismen,
+        _                   => Dil.T.Islem.KirilimBilinmiyor,
+    };
+
+    /// <summary>Araç kodunun ekran adı — sözlükten, çıplak kod yazılmaz (UX-S31).</summary>
+    private string AracAdi(string arac) => arac switch
+    {
+        "NAKIT"    => Dil.T.Islem.OdemeNakit,
+        "KART"     => Dil.T.Islem.OdemeKart,
+        "HAVALE"   => Dil.T.Islem.OdemeHavale,
+        "VERESIYE" => Dil.T.Islem.OdemeVeresiye,
+        "DOVIZ"    => Dil.T.Islem.OdemeDoviz,
+        _          => Dil.T.Islem.KirilimKismen,   // 'BILINMIYOR' damgası
+    };
+}

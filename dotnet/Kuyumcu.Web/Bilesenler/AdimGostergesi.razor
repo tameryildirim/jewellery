@@ -1,0 +1,40 @@
+@* ═══════════════════════════════════════════════════════════════════════════
+   AdimGostergesi — adım adım akışın nerede olduğunu gösteren şerit.
+
+   UX-3 Faz B için gerekiyordu; UX-2 Faz A1'de ÜRETİLMEMİŞTİ (kod taraması:
+   ağaçta hiçbir dosyada geçmiyordu) — bu yüzden burada, hiçbir mevcut dosyaya
+   dokunmadan YENİ bileşen olarak açıldı. Yalnız ÇİZİM yapar; iş kuralı yoktur.
+
+   • Sabit renk yok: yalnız var() belirteçleri (app.css .adim-serit).
+   • Satır içi style yok.
+   • id sözleşmesi: <önek>-adim-<sıra> (yeni id; mevcut id'lere dokunulmaz).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<ol class="adim-serit" id="@SeritId" aria-label="@Etiket">
+    @for (var i = 0; i < Adimlar.Length; i++)
+    {
+        var sira = i;
+        <li class="adim @(sira == Aktif ? "adim-aktif" : sira < Aktif ? "adim-bitti" : null)"
+            id="@($"{Onek}-adim-{sira}")"
+            aria-current="@(sira == Aktif ? "step" : null)">
+            <span class="adim-no" aria-hidden="true">@(sira + 1)</span>
+            <span class="adim-ad">@Adimlar[sira]</span>
+        </li>
+    }
+</ol>
+
+@code {
+    /// <summary>Adım etiketleri (sözlükten gelir; çıplak metin yazılmaz).</summary>
+    [Parameter, EditorRequired] public string[] Adimlar { get; set; } = [];
+
+    /// <summary>Sıfır tabanlı aktif adım.</summary>
+    [Parameter] public int Aktif { get; set; }
+
+    /// <summary>Element id öneki (varsayılan "akis").</summary>
+    [Parameter] public string Onek { get; set; } = "akis";
+
+    /// <summary>Şeridin erişilebilir adı.</summary>
+    [Parameter] public string? Etiket { get; set; }
+
+    private string SeritId => $"{Onek}-adim-serit";
+}

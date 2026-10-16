@@ -1,0 +1,23 @@
+<div class="kart stat-kart @Renk">
+    <div class="kart-govde">
+        <p class="stat-etiket">@Etiket</p>
+        <p class="stat-deger" data-deger-boy="@DegerBoyu.Kademe(Deger)">@Deger</p>
+        @if (!string.IsNullOrEmpty(Alt))
+        {
+            <p class="stat-alt">@Alt</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Etiket { get; set; } = "";
+    [Parameter] public string Deger { get; set; } = "";
+    [Parameter] public string? Alt { get; set; }
+    /// <summary>"" (amber) | yesil | kirmizi | mavi</summary>
+    [Parameter] public string Renk { get; set; } = "";
+
+    // PAKET ORTAK-1 (B): değer kırılamaz bir dizgedir (tutar + para birimi).
+    // Kart daralınca yazı boyu kabın genişliğine göre küçülür (css/ortak.css,
+    // kap sorgusu); oran değerin uzunluk kademesinden gelir (DegerBoyu):
+    // kısa değer büyük kalır, uzun değer tek satıra sığar. Değer/id DEĞİŞMEZ.
+}

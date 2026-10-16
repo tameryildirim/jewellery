@@ -1,0 +1,40 @@
+@using Kuyumcu.Web.Servisler
+@inherits FormAlani
+
+@* SALT OKUNUR — sistemin TÜRETTİĞİ değerin alan görünümü (paket P-36c/3).
+
+   NEDEN YENİ BİLEŞEN: ekranlarda "türetilen değer" `<input readonly disabled>`
+   ile çiziliyordu. Bu üç şeyi birden bozuyordu:
+     • UX-S21 — değerin NEREDEN geldiği ayrı bir <Rozet> ile, her ekranda
+       başka türlü yazılıyordu;
+     • erişilebilirlik — devre dışı bir kutu klavye sırasından düşer ama
+       ekran okuyucuya hâlâ "düzenlenebilir alan" diye görünür;
+     • ham girdi sayacı — yazılamayan bir kutu "girdi" sayılıyordu.
+   Artık değer METİNDİR; kaynağı kabuğun rozet alanında (UX-S21) söylenir.
+
+   ⚠ Bu bileşen HİÇBİR ŞEY HESAPLAMAZ. Değeri çağıran verir; boşsa
+     "—" değil, çağıranın verdiği BosMetin yazılır (Anayasa md.1: ekran
+     bilmediğini uydurmaz).
+
+   id sözleşmesi: <ElemanId> (değer satırı) · kabuktan -sar · -ipucu · -hata
+*@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="false" IstegeGizle="true" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@GorunenHata" HataId="@HataElemanId"
+            Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <p class="alan-tek-secenek" id="@ElemanId" data-deger="@MakineDeger">@(Deger is { Length: > 0 } d ? d : BosMetin)</p>
+</AlanKabugu>
+
+@code {
+    /// <summary>Gösterilecek, BİÇİMLENMİŞ metin. Biçim çağıranın (Bicim.cs).</summary>
+    [Parameter] public string? Deger { get; set; }
+
+    /// <summary>Değer yokken yazılan metin — sözlükten gelir, uydurulmaz.</summary>
+    [Parameter] public string BosMetin { get; set; } = "";
+
+    /// <summary>
+    /// MAKİNE biçimi (Bicim.Makine) — testler ve ölçüm betikleri için.
+    /// Ekranda görünmez; `data-deger` olarak durur, tıpkı Secici'de olduğu gibi.
+    /// </summary>
+    [Parameter] public string? MakineDeger { get; set; }
+}

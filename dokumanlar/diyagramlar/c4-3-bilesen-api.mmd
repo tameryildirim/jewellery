@@ -1,0 +1,59 @@
+%% C4 Seviye 3 — Component (ASP.NET Core Web API)
+%% Uc sayilari 2026-09-13'te olculdu (grep [HttpX]). Toplam 100 uc, 17 modul.
+flowchart TB
+    web["Blazor SPA"]
+
+    subgraph api["ASP.NET Core Web API — 17 modul"]
+        direction TB
+
+        subgraph cekirdek["Cekirdek is modulleri"]
+            satis["<b>Satis</b> · 6 uc<br/>satis/alis/hurda/iscilik/takas/transfer"]
+            cari["<b>Cari</b> · 9 uc<br/>musteri, veresiye, tahsilat, ekstre"]
+            urun["<b>Urun</b> · 8 uc · <b>Kasa</b> · 7 uc<br/><b>Banka</b> · 7 uc · <b>Fatura</b> · 4 uc"]
+            emanet["<b>Emanet</b> · 3 uc · <b>Sube</b> · 5 uc<br/><b>Rapor</b> · 5 uc · <b>Kur</b> · 7 uc"]
+        end
+
+        subgraph uyum["Yasal uyum modulleri"]
+            masak["<b>Masak</b> · 12 uc<br/>kimlik tespiti · beyan · SIB<br/>saklama suresi"]
+            hurda["<b>Hurda</b> · 4 uc<br/>gider pusulasi (VUK 234)<br/>stopaj · sure takibi"]
+            denetim["<b>Denetim</b> · 2 uc<br/>denetim izi okuma<br/>YALNIZ SAHIP"]
+        end
+
+        subgraph guvenlik["Kimlik ve yetki"]
+            auth["<b>Auth</b> · 5 uc<br/>JWT · refresh rotasyonu"]
+            kullanici["<b>Kullanici</b> · 10 uc<br/><b>Yetki</b> · 3 uc · <b>Admin</b> · 3 uc"]
+        end
+
+        subgraph kesisen["Kesisen ilgiler (cross-cutting)"]
+            filtre["<b>KiraciBaglami</b> + global query filter<br/><b>KiraciYazmaDenetcisi</b> (yazma)"]
+            izi["<b>DenetimYazmaDinleyicisi</b><br/>append-only zorlar"]
+            sifre["<b>AlanSifreleme</b><br/>AES-256-GCM + HMAC"]
+            oran["<b>OranSiniri</b><br/>giris 5/dk · kayit 3/sa · genel 100/dk"]
+        end
+    end
+
+    db[("MySQL 8.4")]
+
+    web --> auth
+    web --> cekirdek
+    web --> uyum
+    web --> guvenlik
+
+    cekirdek --> filtre
+    uyum --> filtre
+    guvenlik --> filtre
+    filtre --> db
+    izi --> db
+    uyum --> sifre
+    auth --> oran
+
+    classDef m fill:#85bbf0,stroke:#5d82a8,color:#000
+    classDef u fill:#f0c785,stroke:#a8935d,color:#000
+    classDef g fill:#b0d4a8,stroke:#7a9673,color:#000
+    classDef k fill:#e8a8a8,stroke:#a87373,color:#000
+    classDef d fill:#438dd5,stroke:#2e6295,color:#fff
+    class satis,cari,urun,emanet m
+    class masak,hurda,denetim u
+    class auth,kullanici g
+    class filtre,izi,sifre,oran k
+    class db d

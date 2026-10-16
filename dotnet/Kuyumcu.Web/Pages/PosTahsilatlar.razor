@@ -1,0 +1,774 @@
+@page "/pos/tahsilatlar"
+@using System.Globalization
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject Kuyumcu.Web.Servisler.PosServisi PosApi
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   POS ALACAK DEFTERİ + VALÖR TAKVİMİ — paket 31 Faz A/B
+
+   ⚠ pos_tahsilatlari satırı DÜZENLENEMEZ (defter). Bu yüzden ekranda
+     DegismezIpucu ile gerekçe VE doğru düzeltme yolu yazılıdır; ayrıca
+     iptal (chargeback) yolu gerekçeli olarak AÇIKTIR — "sunucuda uç var,
+     ekranda düğme yok" kabul edilmez (UX-S25).
+   ⚠ Sayılar/tarihler InvariantCulture ile biçimlenir (§6 kültür tuzağı).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(MenuAdlari.Icin(Dil.T).PosAlacaklari.Ad)</PageTitle>
+
+<ErrorBoundary>
+    <ChildContent>
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_POSalacaklari (BİREBİR); özgün ekran (süzgeç, valör
+   takvimi, eşleştirme, defter) yalnız "Tüm ayrıntılar" görünümünde (data-yz-ozgun). İptal/geri al onayları ORTAK. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* ZO-ISLEM-A 28.09 (tasarım hakemi): başlık altı açıklama YOK — aynı cümle alttaki
+       kilit kutusunda tekrarlanıyordu. Durum süzgeci 5 seçenek → ortak Form/Secim
+       (radyo; açılır liste bir tıklama fazla ister ve seçenekleri gizler — K22). *@
+    @* ZO-ISLEM-A 28.09 (2. hakem turu, UX-S31): başlık menü / üst bar adıyla AYNI
+       (tek ad, tek kaynak — Hurda ile aynı desen); BASİT'te "hakediş" jargonu yok. *@
+    <SayfaBasi Anahtar="pos-tahsilatlar" Baslik="@MenuAdlari.Icin(Dil.T).PosAlacaklari.Ad">
+        <Filtreler>
+            <Secim ElemanId="pos-t-durum"
+                   Etiket="@Dil.T.Ortak.Durum"
+                   Secenekler="@DurumSecenekleri"
+                   Deger="@durum" DegerChanged="DurumDegisti" />
+            @* PAKET GOC-A (envanter C · pos-t-bas/bit "ters aralık boş liste, hata söylenmez"): iki ayrı Tarih →
+               iki ortak Tarih (Tur=Rapor penceresi) + K8e aralık kuralı bitişin altında (gerçek Chrome: TarihAralik süzgeç satırında iki satıra kırılıyordu). id'ler korunur: pos-t-bas · pos-t-bit.
+               Sunucu da aynı kuralla 400 verir (PosServisi.TahsilatListele). Geçersiz aralıkta istek ATILMAZ. *@
+<Tarih ElemanId="pos-t-bas" Etiket="@Dil.T.Ortak.Baslangic" Tur="TarihTuru.Rapor"
+                   Deger="@AralikBas" DegerChanged="@AralikBasDegisti" />
+            <Tarih ElemanId="pos-t-bit" Etiket="@Dil.T.Ortak.Bitis" Tur="TarihTuru.Rapor" Hata="@AralikHatasi"
+                   Deger="@AralikBit" DegerChanged="@AralikBitDegisti" />
+        </Filtreler>
+        <Eylem>
+            <a class="dugme dugme-ikincil" id="pos-cihazlara-git" href="/pos">@Dil.T.Pos.Baslik</a>
+        </Eylem>
+    </SayfaBasi>
+    @* ŞUBE-KAPSAM-B: valör takvimi ve tahsilat defteri seçili şubeye göre. *@
+    <GorunumRozeti Degisti="Yukle" />
+
+    <HataBandi Mesaj="@hata" Id="pos-t-hata" />
+    <BasariBandi Mesaj="@basari" Id="pos-t-basari" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (veriGeldi)
+    {
+        @* 29.09 (tasarım hakemi YÜKSEK, UX-S28/UX-S30): veri okunamadıysa takvim "ödeme yok"
+           demez, eşleştirme kartı ve arama kutusu çizilmez — sebep yalnız üstteki bantta,
+           TEK kez yazılır (şubesiz oturumda sade cümle, bkz. Yukle). *@
+        @* ── Valör takvimi (sunucuda toplanmış; satır listesi ÇEKİLMEZ) ────── *@
+        <div class="kart">
+            <div class="kart-baslik"><h3>@Dil.T.Pos.ValorTakvimi</h3></div>
+            @if (takvim.Count == 0)
+            {
+                @* SADE-1 (göz #26): takvimin boş durumu defterinkiyle BİREBİR aynı metni
+                   taşıyordu (iki kopya kutu). Takvim kendi sorusunu cevaplar. *@
+                <div class="kart-govde" id="pos-t-takvim-bos"><BosDurum Mesaj="@SadeSozlugu.Al(Dil.Dil).PosTakvimBos" /></div>
+            }
+            else
+            {
+                @* ZO-ISLEM-A 28.09 (2. hakem turu): 1100 px altında satır KART olur (tarih ·
+                   cihaz, altında büyük KALAN, sonra diğer tutarlar etiketiyle) — bankaya ne
+                   kalacağı hiçbir genişlikte kesilmez. Hücre etiketi data-etiket'ten gelir. *@
+                @* PAKET GOC-A — ORTAK IZGARA (grid:pos-tahsilatlar:pos-t-valor). Tablo id'si "pos-t-valor" korunur
+                   (TabloId); zo-* kart sınıfları hücrelerde aynen (ZO-ISLEM-A kart düzeni). Takvim TAMDIR → yerel sıralama. *@
+                <Izgara T="Kuyumcu.Web.Servisler.PosValorSatir" Ekran="pos-tahsilatlar" GridId="pos-t-valor-liste" TabloId="pos-t-valor"
+                        Kolonlar="@ValorKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(takvim, valorSira, ValorKolonlari)"
+                        TabloSinif="zo-baslik-tek-satir zo-valor-tablo" Baslik="@Dil.T.Pos.ValorTakvimi" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@ValorSiralandi" GecerliSiralama="@valorSira" TercihIstemcisi="@PtTercih" />
+            }
+        </div>
+
+        @* ── Defter ─────────────────────────────────────────────────────────── *@
+        @* SADE-1 (göz #26): defter kendi başlıklı kartında durur; boş durumu da kartın
+           içindedir. UX-S28: istek düştüyse (sayfa null) boş durum ÇİZİLMEZ — bant yukarıda. *@
+        @* ZO-ISLEM-A (kurucu 25.09 "geçmiş kayıtlar kapalı"): defter ortak Katlanir
+           akordeonunda, KAPALI gelir. Kök kimlik (pos-t-defter-kart) korundu; başlık
+           kimliği akordeon sözleşmesinden gelir (pos-t-defter-kart-ac). Açık/kapalı
+           durumu filtre değişince (Yukle → yeniden çizim) KAYBOLMAZ. Rozet sayısı
+           yalnız istek başarılıyken yazılır (UX-S28). *@
+        <Katlanir Id="pos-t-defter-kart" Baslik="@SadeSozlugu.Al(Dil.Dil).PosDefterBaslik"
+                  Sayi="@(sayfa?.ToplamSatir)" Sinif="zo-gecmis"
+                  BaslangictaAcik="@defterAcik" Degisti="@(v => defterAcik = v)">
+        @if (sayfa is { Kayitlar.Count: 0 })
+        {
+            <div class="kart-govde" id="pos-t-defter-bos"><BosDurum Mesaj="@Dil.T.Pos.KayitYok" /></div>
+        }
+        else if (sayfa is not null)
+        {
+                @* ZO-ISLEM-A 28.09 (4. doğrulama, tasarım hakemi KRİTİK): 1100 px altında her
+                   tahsilat bir KART (tarih · cihaz, büyük KALAN, diğer tutarlar etiketiyle,
+                   durum ve eylem en altta) — 375'te yalnız tarih + kesik cihaz görünüyordu. *@
+                @* PAKET GOC-A — ORTAK IZGARA (grid:pos-tahsilatlar:pos-t-defter). Defter SUNUCUDA sayfalı → sıralama
+                   düğmesi YOK (sayfa içi sıralama yanıltır; envanter § G1). Tablo id'si ve zo-k-* kart sınıfları korunur. *@
+                <Izgara T="Kuyumcu.Web.Servisler.PosTahsilatSatir" Ekran="pos-tahsilatlar" GridId="pos-t-defter"
+                        Kolonlar="@DefterKolonlari" Ogeler="@sayfa.Kayitlar"
+                        TabloSinif="zo-baslik-tek-satir zo-kart-tablo" Baslik="@SadeSozlugu.Al(Dil.Dil).PosDefterBaslik"
+                        YapiskanIlkSutun="false" TercihIstemcisi="@PtTercih" />
+                @if (sayfa.SinirDegdi)
+                {
+                    @* UX-S29: sunucu sınırı SÖYLENİR, sessiz kırpma yok. *@
+                    <div class="kart-govde">
+                        <p class="metin-kucuk" id="pos-t-sinir">@Dil.T.Pos.SinirUyarisi</p>
+                    </div>
+                }
+        }
+        </Katlanir>
+
+        @* ── Faz B: banka yatması eşleştirme ────────────────────────────────── *@
+        @* 29.09 (tasarım hakemi YÜKSEK, aynı sınıf): eşleştirme uçları [RolGerekli("SAHIP","MUDUR",
+           "MUHASEBE")] — yetkisiz rolde (TEZGAHTAR) kart çizilirse arama kutusu ham "gerekli rol"
+           metniyle düşüyordu (canlıda 403 ölçüldü). Yetkisiz rol kartı hiç görmez. *@
+        @if (EslestirmeYetkisi)
+        {
+        <div class="kart">
+            <div class="kart-baslik"><h3>@Dil.T.Pos.Eslestir</h3></div>
+            <div class="kart-govde form-grid-3 zo-pos-eslestir-izgara">
+                @* ── PAKET P-15 (B-25) — ULID ELLE YAZMA KALKTI ──────────────
+                   Banka dekontu artık karşı taraf adı / referans / açıklama
+                   ile SUNUCUDA aranır; kullanıcı ULID değil ad + tarih + tutar
+                   görür. Girdi kimliği `pos-eslestir-hareket` DEĞİŞMEDİ. *@
+                @* 28.09 (tasarım hakemi): "Banka hareketi kimliği" teknik adı yerine
+                   kullanıcının bildiği ad. Seçici yazdıkça arar (2 karakterden sonra). *@
+                @* 29.09 (tasarım hakemi KRİTİK): seçici YALNIZ POS cihazlarının hesaplarına gelen,
+                   müşteriye bağlanmamış ve kalanı olan hareketleri listeler; her sonuç hesap adını
+                   ve kalan tutarı yazar (sunucu aynı kuralla eşleştirmeyi de reddeder). *@
+                @* KESIF-P1 · TOPLU ZO-ISLEM-A [YÜKSEK]: "Eşleşmeyi geri al" sonrası serbest kalan
+                   yatma listede görünmüyordu (seçici son listeyi önbellekte tutuyordu). Geri alma
+                   başarılı olunca anahtar değişir → seçici yeniden kurulur, aday listesi TAZE çekilir.
+                   Boş liste metni sorgudan bağımsız: "Eşleşmemiş banka yatması bulunamadı". *@
+                <KayitSecici @key="adayAnahtari" Tur="@Kuyumcu.Contracts.Arama.AramaTurleri.BankaHareket"
+                             AramaYolu="@AdayYolu"
+                             Gozat="true"
+                             ElemanId="pos-eslestir-hareket"
+                             Etiket="@ZO.PosBankaYatan"
+                             Deger="@bankaHareketId"
+                             AraDugmesiYok="true"
+                             BosMesaj="@KesifP1Sozlugu.Al(Dil.Dil).PosBankaYatmasiYok"
+                             DegerChanged="BankaHareketSecildi" />
+                <div class="alan">
+                    <button @onclick="OneriGetir" class="dugme dugme-ikincil" id="pos-oto-oneri"
+                            disabled="@(!HareketVerildi)"
+                            aria-disabled="@(HareketVerildi ? "false" : "true")"
+                            title="@(HareketVerildi ? Dil.T.Pos.OtoOneri : ZO.PosOnceHareketSec)"
+                            >@Dil.T.Pos.OtoOneri</button>
+                </div>
+                @* 28.09 (7. doğrulama, DÜŞÜK): elle seçim listesi açıkken birincil düğme listenin
+                   ve "Seçilen … · bankaya yatan …" özetinin ALTINDA durur (375'te işaretledikten
+                   sonra yukarı kaydırmak gerekmesin). Kimlik tek yerde çizilir, DEĞİŞMEDİ. *@
+                @if (oneri is null)
+                {
+                    <div class="alan">@EslestirDugmesi</div>
+                }
+            </div>
+            @* 28.09 (tasarım hakemi, UX-S30): kilitli düğmelerin SEBEBİ görünür yazılır —
+               "Öneri getir" boşken sessiz kalmaz. *@
+            @if (EslestirKilit is { } ek && !ElleBekliyor && oneri is null)
+            {
+                <div class="kart-govde zo-kilit-sebep">
+                    <p class="metin-kucuk metin-soluk" id="pos-eslestir-kilit">@ek</p>
+                </div>
+            }
+            @if (oneri is { } o)
+            {
+                @* ZO-ISLEM-A 28.09 (tasarım hakemi KRİTİK): öneri bulunamayınca mesaj TEK kez
+                   yazılır ve GERÇEK yolu söyler; aynı kartta bekleyen tahsilatlar işaretlenerek
+                   ELLE eşleştirilir (sunucu /pos/eslestir "satirlar"ı zaten alıyordu). Öneri
+                   bulunduysa önerilen satırlar işaretli gelir; kullanıcı düzeltebilir. *@
+                <div class="kart-govde zo-pos-elle">
+                    @if (!o.Bulundu)
+                    {
+                        <p class="metin-kucuk" id="pos-oneri-yok">@ZO.PosOneriYokElle</p>
+                    }
+                    else
+                    {
+                        <p class="metin-kucuk" id="pos-oneri-toplam">
+                            @Dil.T.Pos.Net: @Bicim.Para(o.Toplam, "TRY") · @o.Kayitlar.Count
+                        </p>
+                    }
+                    <fieldset class="zo-pos-elle-liste" id="pos-elle">
+                        <legend class="metin-kucuk">@ZO.PosElleBaslik</legend>
+                        @if (acikHata is { Length: > 0 } ah)
+                        {
+                            <HataBandi Mesaj="@ah" Id="pos-elle-hata" />
+                        }
+                        else if (acikSatirlar.Count == 0)
+                        {
+                            <p class="metin-kucuk metin-soluk" id="pos-elle-bos">@ZO.PosElleAcikYok</p>
+                        }
+                        else
+                        {
+                            @foreach (var t in acikSatirlar)
+                            {
+                                <Onay ElemanId="@($"pos-elle-{t.Id}")"
+                                      Etiket="@($"{Gun(t.ValorTarihi)} · {t.CihazAd} · {Bicim.Para(t.KalanTutar, t.ParaBirimi)}")"
+                                      Deger="@secilenler.ContainsKey(t.Id)"
+                                      DegerChanged="@((bool v) => ElleSec(t, v))" />
+                                @if (secilenler.TryGetValue(t.Id, out var st) && st < t.KalanTutar)
+                                {
+                                    <p class="metin-kucuk metin-soluk" id="@($"pos-elle-kismi-{t.Id}")">@string.Format(ZO.PosElleKismi, Bicim.Para(st, t.ParaBirimi))</p>
+                                }
+                            }
+                            @if (acikSinirDegdi)
+                            {
+                                <p class="metin-kucuk" id="pos-elle-sinir">@Dil.T.Pos.SinirUyarisi</p>
+                            }
+                        }
+                    </fieldset>
+                    <p class="metin-kucuk" id="pos-elle-toplam">
+                        @string.Format(ZO.PosElleSecilen, Bicim.Para(SecilenToplam, "TRY"),
+                            o.HareketKalan is { } hk ? Bicim.Para(hk, "TRY") : "—")
+                    </p>
+                    @if (EslestirKilit is { } ek2 && !ElleBekliyor)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="pos-eslestir-kilit">@ek2</p>
+                    }
+                    <div class="zo-pos-elle-eylem">@EslestirDugmesi</div>
+                </div>
+            }
+        </div>
+        }
+
+        @* UX-S25: defter satırı neden düzenlenemez + doğru düzeltme yolu. *@
+        @* 28.09 (tasarım hakemi): kutu TEK sade cümle ("uç", "≥ 20 karakter" ve
+           "Düzeltme" tekrarı kalktı). *@
+        <DegismezIpucu Varlik="PosTahsilat" Gerekce="@ZO.PosKilitNotu" />
+    }
+</div>
+}
+
+@* ── İptal (chargeback) onayı — geri alınamaz, önce onay ─────────────────── *@
+<ModalPencere Acik="@(iptalAdayi is not null)" Baslik="@Dil.T.Pos.Iptal"
+              Kapat="IptalKapat">
+    <p id="pos-iptal-onay-metin">@Dil.T.Pos.IptalOnay</p>
+    @* 29.09 (doğrulayıcı ORTA): sunucu reddi pencerenin İÇİNDE görünür — sayfa bandı perdenin
+       arkasında kalıyordu (sessiz tıklama). Geri alma penceresiyle aynı kalıp. *@
+    <HataBandi Mesaj="@iptalHata" Id="pos-iptal-hata" />
+    <div class="alan">
+        @* PAKET GOC-A: kural doğru (envanter TAM — K30 20–1000); ZO-ISLEM-A'nın alan altı cümlesi korunur, üst sınır
+           sunucuyla AYNI sabitten (AlanSinirlari.GerekceEnCok). GerekceAlani'na taşınmadı: onaylı alan altı metni ve
+           kilit satırı (tasarım hakemi 28.09) sayaçlı kalıpta kaybolurdu — sapma raporda. *@
+        <CokSatir ElemanId="pos-iptal-gerekce" Etiket="@Dil.T.Pos.IptalGerekcesi" Zorunlu="true"
+                  Satir="3" EnFazla="@AlanSinirlari.GerekceEnCok"
+                  Deger="@iptalGerekce" DegerChanged="@(v => iptalGerekce = v ?? "")"
+                  Hata="@(iptalGerekce.Trim().Length is > 0 and < AlanSinirlari.GerekceEnAz ? Dil.T.Pos.IptalGerekcesi : null)" />
+    </div>
+    @* ZO-ISLEM-A 28.09 (2. hakem turu): ortak onay düzeni (OnayKipi ile aynı) —
+       solda "Vazgeç", sağda kırmızı eylem; vazgeç düğmesi "İptal" ADINI TAŞIMAZ
+       (başlık ve eylem "Tahsilatı iptal et"). Kimlikler DEĞİŞMEDİ. *@
+    <div class="satir">
+        <button type="button" @onclick="IptalKapat" class="btn btn-ikincil esit-pay" id="pos-iptal-vazgec"
+                >@ZO.Vazgec</button>
+        <button type="button" @onclick="IptalUygula" class="btn btn-tehlike esit-pay" id="pos-iptal-onayla"
+                disabled="@(!IptalEdilebilir)"
+                aria-disabled="@(IptalEdilebilir ? "false" : "true")"
+                title="@(IptalEdilebilir ? Dil.T.Pos.Iptal : Dil.T.Pos.IptalGerekcesi)"
+                >@Dil.T.Pos.Iptal</button>
+    </div>
+</ModalPencere>
+
+@* ── 28.09 (7. doğrulama, KRİTİK): eşleşmeyi geri alma onayı ────────────────
+   Yanlış eşleştirme ekrandan düzeltilir (UX-S25; DoD EK 4 "yıkıcı eylem + geri
+   dönüş yolu"): etkin eşleşmeler GET /pos/tahsilatlar/{id}/eslesmeler ile gelir,
+   tek eşleşme varsa seçici çizilmez (UX-S22, Secim tek seçenek), gerekçe ≥ 20
+   karakter, POST /pos/eslesmeler/{id}/geri-al. Kayıt SİLİNMEZ (append-only);
+   geri dönüş yolu aynı ekranda yeniden eşleştirmedir. *@
+<ModalPencere Acik="@(geriAlAdayi is not null)" Baslik="@ZO.PosGeriAl"
+              Kapat="GeriAlKapat">
+    <p id="pos-geri-al-metin">@ZO.PosGeriAlOnay</p>
+    <HataBandi Mesaj="@geriAlHata" Id="pos-geri-al-hata" />
+    @if (geriAlYukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (geriAlHata is null && etkinEslesmeler.Count == 0)
+    {
+        <p class="metin-kucuk metin-soluk" id="pos-geri-al-bos">@ZO.PosGeriAlYok</p>
+    }
+    else if (etkinEslesmeler.Count > 0)
+    {
+        <div class="alan">
+            <Secim ElemanId="pos-geri-al-secim" Etiket="@ZO.PosGeriAlSecim" Zorunlu="true"
+                   Secenekler="@EslesmeSecenekleri"
+                   Deger="@geriAlEslesmeId" DegerChanged="@(v => geriAlEslesmeId = v)" />
+        </div>
+        <div class="alan">
+            <CokSatir ElemanId="pos-geri-al-gerekce" Etiket="@ZO.PosGeriAlGerekce" Zorunlu="true"
+                      Satir="3" EnFazla="@AlanSinirlari.GerekceEnCok"
+                      Deger="@geriAlGerekce" DegerChanged="@(v => geriAlGerekce = v ?? "")"
+                      Hata="@(geriAlGerekce.Trim().Length is > 0 and < AlanSinirlari.GerekceEnAz ? string.Format(ZO.PosGeriAlGerekceKisa, geriAlGerekce.Trim().Length) : null)" />
+        </div>
+    }
+    @* Kısa gerekçe alan altında zaten yazılı → sebep satırı aynı cümleyi TEKRARLAMAZ (10. tur gerçek tarayıcı). *@
+    @if (GeriAlKilit is { } gk && !geriAlYukleniyor && etkinEslesmeler.Count > 0 && geriAlGerekce.Trim().Length is not (> 0 and < 20))
+    {
+        <p class="metin-kucuk metin-soluk" id="pos-geri-al-kilit">@gk</p>
+    }
+    <div class="satir zo-onay-dugmeler">
+        <button type="button" @onclick="GeriAlKapat" class="btn btn-ikincil esit-pay" id="pos-geri-al-vazgec"
+                >@ZO.Vazgec</button>
+        <button type="button" @onclick="GeriAlUygula" class="btn btn-tehlike esit-pay" id="pos-geri-al-onayla"
+                disabled="@(GeriAlKilit is not null)"
+                aria-disabled="@(GeriAlKilit is null ? "false" : "true")"
+                title="@(GeriAlKilit ?? ZO.PosGeriAl)"
+                >@ZO.PosGeriAl</button>
+    </div>
+</ModalPencere>
+    </ChildContent>
+    <ErrorContent>
+        <KabukHatasi />
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    // ── P-36c GÖÇ YARDIMCISI ────────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> DurumSecenekleri =>
+    [
+        new SecenekOgesi("", Dil.T.Pos.TumDurumlar),
+        new SecenekOgesi("BEKLIYOR", Dil.T.Pos.DurumBekliyor),
+        new SecenekOgesi("KISMI", Dil.T.Pos.DurumKismi),
+        new SecenekOgesi("YATTI", Dil.T.Pos.DurumYatti),
+        new SecenekOgesi("IPTAL", Dil.T.Pos.DurumIptal),
+    ];
+
+    [Parameter, SupplyParameterFromQuery(Name = "cihazId")] public string? CihazId { get; set; }
+
+    private List<Kuyumcu.Web.Servisler.PosValorSatir> takvim = [];
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:pos-tahsilatlar:*) ───────────────────
+    private IzgaraTercihIstemcisi? ptTercih;
+    private IzgaraTercihIstemcisi PtTercih => ptTercih ??= new IzgaraTercihIstemcisi(Api);
+    private IzgaraSiralama? valorSira;
+    private void ValorSiralandi(IzgaraSiralama? s) => valorSira = s;
+
+    private IReadOnlyList<IzgaraKolonu<Kuyumcu.Web.Servisler.PosValorSatir>> ValorKolonlari =>
+    [
+        new() { Anahtar = "valor", Baslik = Dil.T.Pos.ValorTarihi, ZorunluGorunur = true, KartEtiketsiz = true, SunucuSiralamaAdi = "valor",
+                HucreSinif = _ => "zo-valor-tarih", Deger = v => v.ValorTarihi, Hucre = v => @<text>@Gun(v.ValorTarihi)</text> },
+        new() { Anahtar = "cihaz", Baslik = Dil.T.Pos.CihazAdi, KartEtiketsiz = true, SunucuSiralamaAdi = "cihaz",
+                HucreSinif = _ => "hucre-vurgu zo-valor-cihaz", Deger = v => v.CihazAd },
+        new() { Anahtar = "banka", Baslik = Dil.T.Pos.BankaAdi, SunucuSiralamaAdi = "banka", HucreSinif = _ => "zo-valor-banka", Deger = v => v.BankaAdi },
+        new() { Anahtar = "brut", Baslik = Dil.T.Pos.Brut, SunucuSiralamaAdi = "brut", Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = v => v.Brut },
+        new() { Anahtar = "komisyon", Baslik = Dil.T.Pos.Komisyon, SunucuSiralamaAdi = "komisyon", Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = v => v.Komisyon },
+        new() { Anahtar = "net", Baslik = Dil.T.Pos.Net, SunucuSiralamaAdi = "net", Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = v => v.Net },
+        new() { Anahtar = "yatan", Baslik = Dil.T.Pos.Yatan, SunucuSiralamaAdi = "yatan", Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = v => v.Yatan },
+        new() { Anahtar = "kalan", Baslik = Dil.T.Pos.Kalan, ZorunluGorunur = true, SunucuSiralamaAdi = "kalan", Tur = IzgaraHucreTuru.Para,
+                ParaBirimi = _ => "TRY", BaslikSinif = "sayi", HucreSinif = _ => "sayi zo-valor-kalan", Deger = v => v.Kalan },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<Kuyumcu.Web.Servisler.PosTahsilatSatir>> DefterKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Pos.IslemTarihi, ZorunluGorunur = true, KartEtiketsiz = true,
+                HucreSinif = _ => "zo-k-bas", Deger = t => t.IslemTarihi, Hucre = t => @<text>@Gun(t.IslemTarihi)</text> },
+        new() { Anahtar = "cihaz", Baslik = Dil.T.Pos.CihazAdi, KartEtiketsiz = true, HucreSinif = _ => "hucre-vurgu zo-k-ad", Deger = t => t.CihazAd },
+        new() { Anahtar = "brut", Baslik = Dil.T.Pos.Brut, Tur = IzgaraHucreTuru.Para, ParaBirimi = t => t.ParaBirimi,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = t => t.BrutTutar },
+        new() { Anahtar = "komisyon", Baslik = Dil.T.Pos.Komisyon, Tur = IzgaraHucreTuru.Para, ParaBirimi = t => t.ParaBirimi,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = t => t.KomisyonTutar },
+        new() { Anahtar = "net", Baslik = Dil.T.Pos.Net, Tur = IzgaraHucreTuru.Para, ParaBirimi = t => t.ParaBirimi,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = t => t.NetTutar },
+        new() { Anahtar = "kalan", Baslik = Dil.T.Pos.Kalan, ZorunluGorunur = true, Tur = IzgaraHucreTuru.Para, ParaBirimi = t => t.ParaBirimi,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi zo-k-tutar", Deger = t => t.KalanTutar },
+        new() { Anahtar = "valor", Baslik = Dil.T.Pos.ValorTarihi, Deger = t => t.ValorTarihi, Hucre = t => @<text>@Gun(t.ValorTarihi)</text> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Pos.Durum, KartEtiketsiz = true, Tur = IzgaraHucreTuru.Rozet, HucreSinif = _ => "zo-k-durum",
+                Deger = t => DurumMetni(t.Durum), Hucre = t => @<Rozet Renk="@DurumRenk(t.Durum)">@DurumMetni(t.Durum)</Rozet> },
+        // Defter satırı düzenlenemez → tek meşru eylem gerekçeli iptal (SatirEylemleri "⋯" menüsü; kilit sebebi menüde, UX-S30).
+        new() { Anahtar = "eylem", Baslik = Dil.T.Pos.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "zo-k-eylem",
+                Hucre = t => @<SatirEylemleri Onek="pos-t" SatirId="@t.Id" SatirAdi="@($"{Gun(t.IslemTarihi)} · {t.CihazAd}")"
+                                              DarSutun="true" Birincil="0" Eylemler="@IptalEylemi(t)">
+                                <MenuEk>
+                                    @if (GeriAlinabilirMi(t) && !GeriAlmaYetkisi)
+                                    {
+                                        <p class="metin-kucuk metin-soluk" id="@($"pos-t-geri-al-kilit-{t.Id}")">@ZO.PosGeriAlYetki</p>
+                                    }
+                                    @if (t.Durum != "BEKLIYOR")
+                                    {
+                                        <p class="metin-kucuk metin-soluk" id="@($"pos-t-iptal-kilit-{t.Id}")">@IptalKilitNedeni(t)</p>
+                                    }
+                                </MenuEk>
+                            </SatirEylemleri> },
+    ];
+
+    // PAKET GOC-A — tarih aralığı (TarihAralik geçersizse null bildirir; aralık bozuksa istek ATILMAZ).
+    private DateOnly? AralikBas => bas is { } b ? DateOnly.FromDateTime(b) : null;
+    private DateOnly? AralikBit => bit is { } b ? DateOnly.FromDateTime(b) : null;
+    private string? AralikHatasi => TarihPenceresi.AralikDenetle(AralikBas, AralikBit) is { } h ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+    private async Task AralikBasDegisti(DateOnly? v)
+    {
+        bas = v?.ToDateTime(TimeOnly.MinValue);
+        if (TarihPenceresi.AralikDenetle(AralikBas, AralikBit) is null) await Yukle();
+    }
+    private async Task AralikBitDegisti(DateOnly? v)
+    {
+        bit = v?.ToDateTime(TimeOnly.MinValue);
+        if (TarihPenceresi.AralikDenetle(AralikBas, AralikBit) is null) await Yukle();
+    }
+    private Kuyumcu.Web.Servisler.PosTahsilatSayfasi? sayfa;
+    private Kuyumcu.Web.Servisler.PosOneri? oneri;
+    private Kuyumcu.Web.Servisler.PosTahsilatSatir? iptalAdayi;
+
+    private string durum = "";
+    private DateTime? bas;
+    private DateTime? bit;
+    private string bankaHareketId = "";
+    private string iptalGerekce = "";
+
+    private bool yukleniyor = true;
+    /// <summary>Takvim + defter okundu mu? Okunamadıysa kartlar çizilmez (boş durum yalan söylemez).</summary>
+    private bool veriGeldi;
+    private bool kaydediliyor;
+    private string? hata;
+    private string? basari;
+
+    private ZoIslemMetinleri ZO => ZoIslemSozlugu.Al(Dil.Dil);
+
+    /// <summary>Oturumda şube yok (Hurda.razor ile aynı ölçü).</summary>
+    private bool SubeYok => string.IsNullOrWhiteSpace(Oturum.Kullanici?.SubeId);
+    /// <summary>Hurda ile aynı metin: SAHİP kendine atar, diğer roller sahibe başvurur.</summary>
+    private string SubeYokMetni => Oturum.Kullanici?.Rol == "SAHIP"
+        ? ZO.HurdaSubeYokSahip : SadeSozlugu.Al(Dil.Dil).HurdaSubeYok;
+
+    private bool HareketVerildi => !kaydediliyor && bankaHareketId.Trim().Length > 0;
+
+    /// <summary>Eşleştirme seçicisinin kaynağı: yalnız POS hesaplarındaki yatma adayları.</summary>
+    private string AdayYolu => $"/pos/yatma-adaylari?dil={Dil.Dil}";
+
+    /// <summary>UX-S30 — birincil eşleştir düğmesi neden kapalı? (null = açık)</summary>
+    private string? EslestirKilit =>
+        kaydediliyor ? null
+        : bankaHareketId.Trim().Length == 0 ? ZO.PosOnceHareketSec
+        : oneri is null ? ZO.PosOnceOneriGetir
+        : secilenler.Count == 0 ? ZO.PosElleSecin
+        : Fazla > 0m ? string.Format(ZO.PosElleFazla, Bicim.Para(Fazla, "TRY"))
+        : null;
+
+    /// <summary>Öneri yok ve henüz seçim yok: yol "pos-oneri-yok"ta TEK kez yazılı; kilit satırı tekrar etmez.</summary>
+    private bool ElleBekliyor => oneri is { Bulundu: false } && secilenler.Count == 0;
+
+    // ── ZO-ISLEM-A 28.09: elle eşleştirme ─────────────────────────────────
+    /// <summary>Bekleyen / kısmi yatmış tahsilatlar (seçim listesi) — sunucudan.</summary>
+    private List<Kuyumcu.Web.Servisler.PosTahsilatSatir> acikSatirlar = [];
+    private bool acikSinirDegdi;
+    private string? acikHata;
+    /// <summary>İşaretli satırlar → eşleşecek tutar (satırın kalan tutarı ya da önerinin tutarı).</summary>
+    private readonly Dictionary<string, decimal> secilenler = [];
+
+    private decimal SecilenToplam => secilenler.Values.Sum();
+
+    /// <summary>Seçilen toplam hareketin kalanını ne kadar aşıyor (bilinmiyorsa 0 — sunucu karar verir).</summary>
+    private decimal Fazla =>
+        oneri?.HareketKalan is { } hk && SecilenToplam > hk ? SecilenToplam - hk : 0m;
+
+    private void ElleSec(Kuyumcu.Web.Servisler.PosTahsilatSatir t, bool secili)
+    {
+        // ZO-ISLEM-A 28.09 (doğrulayıcı DÜŞÜK): hareketin kalanı tahsilatın kalanından
+        // küçükse satır KISMEN eşleşir (sunucu kısmi eşleştirmeyi destekler); eskiden yalnız
+        // tam kalanla seçildiği için bu durumda ekrandan eşleştirme yapılamıyordu.
+        if (secili)
+        {
+            decimal? bosta = oneri?.HareketKalan is { } hk ? hk - SecilenToplam : null;
+            secilenler[t.Id] = bosta is { } b && b > 0m && b < t.KalanTutar ? b : t.KalanTutar;
+        }
+        else secilenler.Remove(t.Id);
+    }
+
+    private async Task AcikSatirlariYukle()
+    {
+        acikHata = null;
+        try
+        {
+            var b = await PosApi.TahsilatlariGetir("BEKLIYOR", limit: 200);
+            var k = await PosApi.TahsilatlariGetir("KISMI", limit: 200);
+            // 29.09 (tasarım hakemi KRİTİK): yalnız parası seçilen hareketin hesabına yatan
+            // cihazların tahsilatları (sunucu öneride döndürür; yoksa sunucu kapısı karar verir).
+            var uygun = oneri?.UygunCihazlar;
+            acikSatirlar = b.Kayitlar.Concat(k.Kayitlar)
+                .Where(x => x.KalanTutar > 0m)
+                .Where(x => uygun is null || uygun.Contains(x.PosCihazId))
+                .DistinctBy(x => x.Id)
+                .OrderBy(x => x.ValorTarihi).ThenBy(x => x.CihazAd, StringComparer.Ordinal)
+                .ToList();
+            acikSinirDegdi = b.SinirDegdi || k.SinirDegdi;
+        }
+        // UX-S28: hata "bekleyen yok"a çevrilmez.
+        catch (ApiHata ex) { acikHata = ex.Message; acikSatirlar = []; }
+    }
+
+    /// <summary>ZO-ISLEM-A 28.09 — satırın tek eylemi (iptal) ortak menüye.</summary>
+    /// 28.09 (7. doğrulama): eşleşmiş/kısmi satırda "Eşleşmeyi geri al" da menüdedir.
+    private IReadOnlyList<SatirEylemleri.Eylem> IptalEylemi(Kuyumcu.Web.Servisler.PosTahsilatSatir t)
+    {
+        var liste = new List<SatirEylemleri.Eylem>();
+        if (GeriAlinabilirMi(t))
+            liste.Add(new SatirEylemleri.Eylem($"pos-t-geri-al-{t.Id}", ZO.PosGeriAl,
+                EventCallback.Factory.Create(this, () => GeriAlAc(t)),
+                kilitli: !GeriAlmaYetkisi, kilitNedeni: ZO.PosGeriAlYetki));
+        liste.Add(new SatirEylemleri.Eylem($"pos-t-iptal-{t.Id}", Dil.T.Pos.Iptal,
+            EventCallback.Factory.Create(this, () => IptalAc(t)),
+            kilitli: t.Durum != "BEKLIYOR", kilitNedeni: IptalKilitNedeni(t)));
+        return liste;
+    }
+
+    /// <summary>Bankaya (kısmen ya da tamamen) eşleşmiş, iptal edilmemiş satır.</summary>
+    private static bool GeriAlinabilirMi(Kuyumcu.Web.Servisler.PosTahsilatSatir t) =>
+        t.Durum != "IPTAL" && t.YatanTutar > 0m;
+
+    /// <summary>Sunucu: POST /pos/eslesmeler/{id}/geri-al [RolGerekli("SAHIP","MUDUR")].</summary>
+    private bool GeriAlmaYetkisi => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+
+    /// <summary>Sunucu: /pos/yatma-adaylari · /pos/oto-eslestir-onerisi · /pos/eslestir [RolGerekli("SAHIP","MUDUR","MUHASEBE")].</summary>
+    // Rol bilinmiyorsa (oturum henüz yüklenmedi) kart gizlenmez: yetki kapısı SUNUCUDADIR (fail-closed);
+    // ekran yalnız bilinen yetkisiz rolde ölü kartı göstermez.
+    private bool EslestirmeYetkisi => Oturum.Kullanici?.Rol is null or "SAHIP" or "MUDUR" or "MUHASEBE";
+
+    private string IptalKilitNedeni(Kuyumcu.Web.Servisler.PosTahsilatSatir t) =>
+        GeriAlinabilirMi(t) ? ZO.PosIptalKilitEslesmis : ZO.PosIptalKilit;
+
+    // ── 28.09 (7. doğrulama): eşleşmeyi geri alma ─────────────────────────
+    private Kuyumcu.Web.Servisler.PosTahsilatSatir? geriAlAdayi;
+    private List<Kuyumcu.Web.Servisler.PosEslesmeSatir> etkinEslesmeler = [];
+    private bool geriAlYukleniyor;
+    private string? geriAlHata;
+    private string? geriAlEslesmeId;
+    private string geriAlGerekce = "";
+
+    private IReadOnlyList<SecenekOgesi> EslesmeSecenekleri =>
+        etkinEslesmeler.Select(x => new SecenekOgesi(x.Id,
+            $"{Gun(x.Olusturuldu)} · {Bicim.Para(x.EslesenTutar, geriAlAdayi?.ParaBirimi ?? "TRY")}",
+            AltBilgi: x.Otomatik ? ZO.PosEslesmeOneriyle : ZO.PosEslesmeElle)).ToList();
+
+    /// <summary>UX-S30 — geri alma düğmesi neden kapalı? (null = açık)</summary>
+    private string? GeriAlKilit =>
+        kaydediliyor || geriAlYukleniyor ? ZO.PosGeriAl
+        : etkinEslesmeler.Count == 0 ? ZO.PosGeriAlYok
+        : string.IsNullOrEmpty(geriAlEslesmeId) || etkinEslesmeler.All(x => x.Id != geriAlEslesmeId) ? ZO.PosGeriAlSecinKilit
+        : geriAlGerekce.Trim().Length < 20 ? string.Format(ZO.PosGeriAlGerekceKisa, geriAlGerekce.Trim().Length)
+        : null;
+
+    private async Task GeriAlAc(Kuyumcu.Web.Servisler.PosTahsilatSatir t)
+    {
+        if (!GeriAlmaYetkisi) return;
+        geriAlAdayi = t;
+        geriAlGerekce = "";
+        geriAlEslesmeId = null;
+        geriAlHata = null;
+        etkinEslesmeler = [];
+        hata = null; basari = null;
+        geriAlYukleniyor = true;
+        try
+        {
+            var l = await PosApi.EslesmeleriGetir(t.Id);
+            etkinEslesmeler = l.Kayitlar.Where(x => !x.GeriAlindi).ToList();
+        }
+        // UX-S28: hata "geri alınacak eşleşme yok"a çevrilmez.
+        catch (ApiHata ex) { geriAlHata = ex.Message; }   // liste try öncesi boşaltıldı (P-11 sayacı)
+        geriAlYukleniyor = false;
+    }
+
+    private void GeriAlKapat()
+    {
+        geriAlAdayi = null;
+        etkinEslesmeler = [];
+        geriAlHata = null;
+    }
+
+    private async Task GeriAlUygula()
+    {
+        if (geriAlAdayi is null || GeriAlKilit is not null) return;
+        var secilen = etkinEslesmeler.First(x => x.Id == geriAlEslesmeId);
+        kaydediliyor = true;
+        geriAlHata = null;
+        try
+        {
+            var s = await PosApi.EslesmeGeriAl(secilen.Id, geriAlGerekce.Trim());
+            // UX-S27: sunucunun sonucu + geri alınan tutar banda yazılır.
+            basari = string.Format(ZO.PosGeriAlSonuc, s.Mesaj ?? ZO.PosGeriAl,
+                Bicim.Para(secilen.EslesenTutar, geriAlAdayi.ParaBirimi));
+            GeriAlKapat();
+            adayAnahtari++;          // KESIF-P1: aday listesi taze çekilsin (serbest kalan yatma görünür)
+            await Yukle();
+        }
+        catch (ApiHata ex) { geriAlHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>KESIF-P1: eşleştirme seçicisinin kimliği — değişince seçici yeniden kurulur.</summary>
+    private int adayAnahtari;
+
+    private async Task DurumDegisti(string? v)
+    {
+        durum = v ?? "";
+        await Yukle();
+    }
+    /// <summary>Birincil eşleştir düğmesi — tek tanım, tek yerde çizilir (öneri yokken üstte, varken listenin altında).</summary>
+    private RenderFragment EslestirDugmesi => @<button @onclick="EslestirUygula" class="dugme dugme-birincil" id="pos-eslestir-uygula"
+                            disabled="@(!EslestirilebilirMi)"
+                            aria-disabled="@(EslestirilebilirMi ? "false" : "true")"
+                            title="@(EslestirKilit ?? Dil.T.Pos.Eslestir)"
+                            >@Dil.T.Pos.Eslestir</button>;
+
+    private bool EslestirilebilirMi => HareketVerildi && oneri is not null && secilenler.Count > 0 && Fazla == 0m;
+    private bool IptalEdilebilir => !kaydediliyor && iptalGerekce.Trim().Length >= 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    /// <summary>ZO-ISLEM-A — defter akordeonunun son durumu (filtre değişince korunur).</summary>
+    private bool defterAcik;
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            // ŞUBE-KAPSAM-B: valör takvimi ve defter seçili şubeye göre.
+            await SubeliSorgu.HazirAsync(Oturum);
+            var gorunen = SubeliSorgu.Sube(Oturum);
+            takvim = await PosApi.ValorTakvimi(Gunluk(bas), Gunluk(bit), gorunen);
+            sayfa = await PosApi.TahsilatlariGetir(
+                string.IsNullOrEmpty(durum) ? null : durum, Gunluk(bas), Gunluk(bit), CihazId, subeId: gorunen);
+            veriGeldi = true;
+        }
+        // UX-S28: hata "kayıt yok"a çevrilmez. 29.09 (tasarım hakemi YÜKSEK): şubesi atanmamış
+        // oturumda küresel şube çözümleyicisinin 403'ü (iç terimli "şube bağlamı çözülemedi")
+        // yerine Hurda ile AYNI sade cümle: tek kısa sebep + ne yapılacağı (UX-S30).
+        catch (ApiHata ex)
+        {
+            veriGeldi = false;
+            hata = SubeYok && ex.StatusCode == 403 ? SubeYokMetni : ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private void IptalAc(Kuyumcu.Web.Servisler.PosTahsilatSatir t)
+    {
+        iptalAdayi = t;
+        iptalGerekce = "";
+        iptalHata = null;
+        hata = null; basari = null;
+    }
+
+    /// <summary>İptal penceresindeki sunucu reddi (pencere içinde gösterilir).</summary>
+    private string? iptalHata;
+
+    private async Task IptalUygula()
+    {
+        if (iptalAdayi is null || !IptalEdilebilir) return;
+        kaydediliyor = true;
+        hata = null;
+        iptalHata = null;
+        try
+        {
+            var s = await PosApi.TahsilatIptal(iptalAdayi.Id, iptalGerekce.Trim());
+            basari = s.Mesaj ?? Dil.T.Pos.Kaydedildi;
+            iptalAdayi = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { iptalHata = ex.Message; }   // pencere açık kalır, sebep pencerede
+        kaydediliyor = false;
+    }
+
+    private void IptalKapat() { iptalAdayi = null; iptalHata = null; }
+
+    /// <summary>
+    /// PAKET P-15 (B-25): dekont seçici bir kayıt seçti/temizledi. Seçim
+    /// değişince ESKİ ÖNERİ DÜŞER — başka dekontun önerisiyle eşleştirme
+    /// yapılamamalıdır (UX-S24).
+    /// </summary>
+    private async Task BankaHareketSecildi(string? hareketId)
+    {
+        bankaHareketId = hareketId ?? "";
+        oneri = null;
+        secilenler.Clear();
+        hata = null;
+        // 29.09 (tasarım hakemi YÜKSEK): "Öneri getir" ara adımı seçimle birlikte OTOMATİK
+        // çalışır; düğme yenilemek için durur (kimlik pos-oto-oneri DEĞİŞMEDİ).
+        if (bankaHareketId.Trim().Length > 0) await OneriGetir();
+    }
+
+    private async Task OneriGetir()
+    {
+        if (!HareketVerildi) return;
+        kaydediliyor = true;
+        hata = null;
+        secilenler.Clear();
+        try
+        {
+            oneri = await PosApi.OtoOneri(bankaHareketId.Trim());
+            foreach (var r in oneri.Kayitlar) secilenler[r.PosTahsilatId] = r.Tutar;
+            await AcikSatirlariYukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; oneri = null; }
+        kaydediliyor = false;
+    }
+
+    private async Task EslestirUygula()
+    {
+        if (!EslestirilebilirMi) return;
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var s = await PosApi.Eslestir(bankaHareketId.Trim(),
+                secilenler.Select(x => (object)new { posTahsilatId = x.Key, tutar = x.Value }).ToList());
+            // UX-S27: sunucunun döndürdüğü sonuç banda YAZILIR.
+            // 28.09 (7. doğrulama, DÜŞÜK): satır sayısı etiketli ("· 1 tahsilat").
+            basari = string.Format(ZO.PosEslestiSonuc, s.Mesaj, Bicim.Para(s.EslesenToplam, "TRY"), s.SatirSayisi);
+            // 29.09 (tasarım hakemi YÜKSEK): seçili yatma BAYAT "kalan"ıyla ekranda kalıp yeniden
+            // eşleştirmeye çağırıyordu. Seçim temizlenir; yatmanın yeni kalanı banda yazılır
+            // (kalan 0 → "tamamı eşleşti"; kalan varsa yeniden seçilince sunucudan TAZE gelir).
+            decimal? yeniKalan = oneri?.HareketKalan is { } hk ? hk - s.EslesenToplam : null;
+            if (yeniKalan is { } yk)
+                basari += " · " + (yk <= 0m ? ZO.PosTamamiEslesti : string.Format(ZO.PosKalanVar, Bicim.Para(yk, "TRY")));
+            oneri = null;
+            secilenler.Clear();
+            bankaHareketId = "";
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>UX-S31: ham veritabanı kodu ekrana basılmaz, sözlükten çevrilir.</summary>
+    private string DurumMetni(string d) => d switch
+    {
+        "BEKLIYOR" => Dil.T.Pos.DurumBekliyor,
+        "KISMI"    => Dil.T.Pos.DurumKismi,
+        "YATTI"    => Dil.T.Pos.DurumYatti,
+        "IPTAL"    => Dil.T.Pos.DurumIptal,
+        _          => d,
+    };
+
+    private static string DurumRenk(string d) => d switch
+    {
+        "YATTI" => "yesil", "KISMI" => "amber", "IPTAL" => "gri", _ => "mavi",
+    };
+
+    /// <summary>Tarih süzgeci sunucuya YEREL GÜN olarak gider (K5); InvariantCulture.</summary>
+    private static string? Gunluk(DateTime? t) =>
+        Bicim.Makine(t);
+
+    private static string Gun(DateTime t) =>
+        Bicim.Gun(t);
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

@@ -1,0 +1,79 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-5B — "YILDIZ" FORM KALIBI (tuval Y_Gidervevirman · BİREBİR).
+
+   Solda üst satır + 64 px başlık, .k satırları ("Ne yapıyorsun" seçimi + sayfanın MEVCUT alan
+   bileşenleri .yz-duzen içinde tuval .k kalıbına giydirilir — kimlikler, kapılar ve hata metinleri
+   AYNEN), ".ekle" bağlantısı, en altta tek beyaz hap + altı çizili "Vazgeç"; sağda 420 px not.
+   ⚠ YALNIZ data-sema="yildiz". İSTEK ATMAZ: kayıt sayfanın MEVCUT geri çağrısıdır.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="@(B.AyrintiAcik ? "yz yz-form yz-liste--ayrinti" : "yz yz-form")" id="@B.Kok">
+    @if (B.AyrintiAcik)
+    {
+        <div class="yz-liste-ana">
+            <div class="yz-bas">
+                <div class="yz-bas-sol">
+                    <p class="yz-ust" id="@($"{B.Kok}-ust")">@B.Ust</p>
+                    <h1 class="yz-ince yz-h1" id="@($"{B.Kok}-baslik")">@B.Baslik</h1>
+                </div>
+                <button type="button" class="yz-b2" id="@($"{B.Kok}-don")" @onclick="B.AyrintiKapat">@B.DonEtiketi</button>
+            </div>
+        </div>
+    }
+    else
+    {
+    <div class="yz-form-ana">
+        <section class="yz-form-sol">
+            <div class="yz-bas">
+                <div class="yz-bas-sol">
+                    <p class="yz-ust" id="@($"{B.Kok}-ust")">@B.Ust</p>
+                    <h1 class="yz-ince yz-h1" id="@($"{B.Kok}-baslik")">@B.Baslik</h1>
+                </div>
+            </div>
+            @B.Bantlar
+            <div class="yz-form-satirlar yz-duzen" id="@($"{B.Kok}-satirlar")">
+                @if (B.SecimEtiketi is { } se && B.Secimler.Count > 0)
+                {
+                    <div class="yz-k" id="@($"{B.Kok}-secim")">
+                        <p class="yz-k-etiket">@YildizListeBicim.Buyuk(se, Dil.Dil)</p>
+                        <div class="yz-k-deger" role="group" aria-label="@se">
+                            @foreach (var (kod, ad, secili, tikla) in B.Secimler)
+                            {
+                                <button type="button" class="@(secili ? "yz-form-secim yz-form-secim--secili" : "yz-form-secim yz-s")"
+                                        id="@($"{B.Kok}-secim-{kod}")" aria-pressed="@(secili ? "true" : "false")" @onclick="tikla">@ad</button>
+                            }
+                        </div>
+                    </div>
+                }
+                @ChildContent
+            </div>
+            @if (B.EkleEtiketi is { } ekle)
+            {
+                <button type="button" class="yz-ekle" id="@($"{B.Kok}-ekle")" @onclick="B.EkleTikla">
+                    <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@ekle
+                </button>
+            }
+            <div class="yz-form-bosluk"></div>
+            <div class="yz-form-eylem">
+                <button type="button" class="yz-b1" id="@B.B1Id" disabled="@B.B1Kilitli" title="@B.B1Kilit" @onclick="B.B1Tikla">@B.B1Etiket</button>
+                @if (B.B2Etiket is { } b2)
+                {
+                    <button type="button" class="yz-b2" id="@B.B2Id" @onclick="B.B2Tikla">@b2</button>
+                }
+            </div>
+        </section>
+        <aside class="yz-form-sag">
+            <p class="yz-ust" id="@($"{B.Kok}-not-baslik")">@B.NotBaslik</p>
+            <p class="yz-s yz-form-not" id="@($"{B.Kok}-not")">@B.Not</p>
+        </aside>
+    </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizFormBaglami B { get; set; } = new();
+    /// <summary>Sayfanın MEVCUT alan bileşenleri (aynı kimliklerle) — tuval .k satırları.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

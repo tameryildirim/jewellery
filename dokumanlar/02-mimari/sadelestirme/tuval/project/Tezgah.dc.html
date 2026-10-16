@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Satış fişi — basit mod · tema seçilebilir</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:#e9edf3;color:#172033}
+a{color:#2457d6}a:hover{color:#1a45ad}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; background: {{t.zemin}}; font-size: 18px; line-height: 1.4; overflow: hidden;">
+
+  <!-- KENAR ÇUBUĞU — tüm gruplar burada; Günlük açık, diğerleri kapalı ama görünür -->
+  <nav style="width: 268px; flex-shrink: 0; box-sizing: border-box; padding: 20px 14px; background: {{t.menu}}; color: {{t.menuMetin}}; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 2px 8px;">
+      <div style="width: 34px; height: 34px; border-radius: 9px; background: {{t.vurgu}}; display: flex; align-items: center; justify-content: center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9z"></path><path d="M2 9h20"></path></svg>
+      </div>
+      <div style="font-family: Sora, sans-serif; font-weight: 700; font-size: 21px; letter-spacing: -0.01em; color: {{t.menuBaslik}};">Mihenk</div>
+    </div>
+    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid {{t.menuKenar}}; border-radius: 9px; background: {{t.menu2}}; color: {{t.menuSoluk2}}; font-size: 16px;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input type="search" placeholder="Ekran ara" aria-label="Ekran ara" style="border: 0; outline: 0; background: transparent; font: inherit; color: {{t.menuBaslik}}; width: 160px;">
+    </label>
+    <a href="Ekranlar.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: {{t.menuSoluk2}}; text-decoration: none; font-size: 16px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>Tüm ekranlar (38)</a>
+
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <button type="button" aria-expanded="true" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 12px 4px; border: 0; background: transparent; font: inherit; font-size: 15px; font-weight: 600; color: {{t.menuSoluk}}; text-align: left; text-transform: uppercase; letter-spacing: .04em;"><span>Günlük iş</span><span>▾</span></button>
+      <a href="Panel.dc.html" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: {{t.menuMetin}}; text-decoration: none; font-size: 17px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg>Panel</a>
+      <a href="Tezgah.dc.html" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; background: {{t.menuAktif}}; color: {{t.menuAktifMetin}}; text-decoration: none; font-size: 17px; font-weight: 600;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18"></path></svg>Satış</a>
+      <a href="#emanet" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: {{t.menuMetin}}; text-decoration: none; font-size: 17px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M8 8V6a4 4 0 0 1 8 0v2"></path></svg>Emanet</a>
+      <a href="#siparis" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: {{t.menuMetin}}; text-decoration: none; font-size: 17px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h6l1 2h4v13H4V7h4z"></path><path d="M9 13l2 2 4-4"></path></svg>Sipariş ve tamir</a>
+      <a href="#bildirim" style="display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; color: {{t.menuMetin}}; text-decoration: none; font-size: 17px;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0v5l2 3H4l2-3z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>Bildirimler <span style="margin-left: auto; padding: 1px 8px; border-radius: 999px; background: #c0262d; color: #ffffff; font-size: 13px; font-weight: 600;">3</span></a>
+
+      <button type="button" aria-expanded="false" style="margin-top: 6px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: {{t.menuMetin2}}; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Müşteri ve stok</span><span style="color: {{t.menuSoluk}};">6 ▸</span></span><span style="font-size: 14px; color: {{t.menuSoluk}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Müşteriler · Ürünler · Ürün ağacı · Etiketler · Fiyat listeleri · Sayım</span></button>
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: {{t.menuMetin2}}; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Para ve banka</span><span style="color: {{t.menuSoluk}};">10 ▸</span></span><span style="font-size: 14px; color: {{t.menuSoluk}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kasalar · Vezne · POS · Banka · Çek-senet · Kur · Gider · Hurda…</span></button>
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: {{t.menuMetin2}}; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Belge ve uyum</span><span style="color: {{t.menuSoluk}};">3 ▸</span></span><span style="font-size: 14px; color: {{t.menuSoluk}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Faturalar · Gider pusulaları · Uyum (MASAK)</span></button>
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: {{t.menuMetin2}}; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Raporlar</span><span style="color: {{t.menuSoluk}};">6 ▸</span></span><span style="font-size: 14px; color: {{t.menuSoluk}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Rapor merkezi · Kâr-zarar · Vade · İşlem defteri · Satış · Kasa</span></button>
+      <button type="button" aria-expanded="false" style="display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: {{t.menuMetin2}}; text-align: left;"><span style="display: flex; justify-content: space-between; font-size: 17px; font-weight: 600;"><span>Yönetim</span><span style="color: {{t.menuSoluk}};">8 ▸</span></span><span style="font-size: 14px; color: {{t.menuSoluk}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Kullanıcılar · İşletme · Yetkiler · Kim ne yaptı · Kurulum · Yedek…</span></button>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: {{t.menu2}};">
+      <div style="width: 36px; height: 36px; border-radius: 999px; background: {{t.menuAktif}}; color: {{t.menuAktifMetin}}; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">AY</div>
+      <div style="display: flex; flex-direction: column; flex-grow: 1;"><div style="font-weight: 500; font-size: 16px; color: {{t.menuBaslik}};">Ayşe Yılmaz</div><div style="font-size: 14px; color: {{t.menuSoluk}};">Tezgâhtar</div></div>
+      <a href="#ayarlar" aria-label="Ayarlar" style="color: {{t.menuSoluk2}};"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.3 2.6h5l.3-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1z"></path></svg></a>
+    </div>
+  </nav>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column;">
+    <header style="height: 68px; box-sizing: border-box; padding: 0 28px; display: flex; align-items: center; gap: 26px; background: #ffffff; border-bottom: 1px solid #d7dce4;">
+      <div style="font-family: Sora, sans-serif; font-size: 22px; font-weight: 600;">Satış</div>
+      <div style="display: flex; align-items: center; gap: 24px; margin-left: 8px; font-variant-numeric: tabular-nums;">
+        <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-size: 14px; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Has</span><span style="font-weight: 600; font-size: 19px;">6.877 ₺</span></div>
+        <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-size: 14px; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Gram 22</span><span style="font-weight: 600; font-size: 19px;">6.301 ₺</span></div>
+        <div style="display: flex; align-items: baseline; gap: 7px;"><span style="font-size: 14px; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">USD</span><span style="font-weight: 600; font-size: 19px;">41,95 ₺</span></div>
+        <span style="font-size: 14px; color: #8a94a6;">14:32</span>
+      </div>
+      <div style="flex-grow: 1;"></div>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border: 1px solid #d7dce4; border-radius: 999px; font-size: 14px; color: #5a6577;" aria-label="Tema">
+        <span>Tema</span>
+        <button type="button" aria-label="Platin Mavi" title="Platin Mavi" onClick="{{ sec_platin }}" style="width: 26px; height: 26px; border-radius: 999px; background: #14213d; border: 3px solid {{ring_platin}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <button type="button" aria-label="Zümrüt" title="Zümrüt" onClick="{{ sec_zumrut }}" style="width: 26px; height: 26px; border-radius: 999px; background: #0f3d2e; border: 3px solid {{ring_zumrut}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <button type="button" aria-label="Grafit" title="Grafit" onClick="{{ sec_grafit }}" style="width: 26px; height: 26px; border-radius: 999px; background: #1c1f26; border: 3px solid {{ring_grafit}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <button type="button" aria-label="Bordo" title="Bordo" onClick="{{ sec_bordo }}" style="width: 26px; height: 26px; border-radius: 999px; background: #3b0f1e; border: 3px solid {{ring_bordo}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <button type="button" aria-label="Okyanus" title="Okyanus" onClick="{{ sec_okyanus }}" style="width: 26px; height: 26px; border-radius: 999px; background: #0e3b45; border: 3px solid {{ring_okyanus}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <button type="button" aria-label="Menekşe" title="Menekşe" onClick="{{ sec_menekse }}" style="width: 26px; height: 26px; border-radius: 999px; background: #2a1f5e; border: 3px solid {{ring_menekse}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <button type="button" aria-label="Zeytin" title="Zeytin" onClick="{{ sec_zeytin }}" style="width: 26px; height: 26px; border-radius: 999px; background: #33401c; border: 3px solid {{ring_zeytin}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <button type="button" aria-label="Fildişi" title="Fildişi" onClick="{{ sec_fildisi }}" style="width: 26px; height: 26px; border-radius: 999px; background: #f1ebe0; border: 3px solid {{ring_fildisi}}; padding: 0; box-shadow: 0 0 0 1px #c9d0db;"></button>
+        <span style="font-weight: 500; color: #172033; min-width: 84px;">{{temaAdi}}</span>
+      </div>
+      <a href="#kilavuz" style="font-size: 16px; text-decoration: none; color: {{t.vurgu}};">Yardım</a>
+      <div style="display: flex; align-items: center; gap: 4px; padding: 3px; border: 1px solid #d7dce4; border-radius: 999px; font-size: 15px;">
+        <span style="padding: 6px 14px; border-radius: 999px; background: {{t.menu}}; color: #ffffff; font-weight: 500;">Basit</span>
+        <a href="Profesyonel.dc.html" style="padding: 6px 14px; border-radius: 999px; color: #5a6577; text-decoration: none;">Profesyonel</a>
+      </div>
+    </header>
+
+    <main style="flex-grow: 1; box-sizing: border-box; padding: 20px 28px; display: flex; gap: 20px; min-height: 0;">
+      <section style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; gap: 12px; align-items: flex-end;">
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;">
+            <label for="musteri" style="font-size: 15px; color: #5a6577;">Müşteri</label>
+            <div style="display: flex; align-items: center; gap: 10px; height: 52px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff;">
+              <input id="musteri" type="text" value="Peşin Müşteri" style="flex-grow: 1; border: 0; outline: 0; font: inherit; font-size: 18px; font-weight: 500; color: #172033; background: transparent;">
+              <span style="padding: 4px 12px; border-radius: 999px; background: {{t.basariZemin}}; color: {{t.basari}}; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums;">Borcu yok</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5a6577" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg>
+            </div>
+          </div>
+          <div style="width: 170px; display: flex; flex-direction: column; gap: 6px;">
+            <label for="tarih" style="font-size: 15px; color: #5a6577;">Tarih</label>
+            <input id="tarih" type="text" value="23.09.2026" style="height: 52px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff; font: inherit; font-size: 18px; font-variant-numeric: tabular-nums; color: #172033;">
+          </div>
+          <div style="width: 110px; display: flex; flex-direction: column; gap: 6px;">
+            <label for="para" style="font-size: 15px; color: #5a6577;">Para</label>
+            <input id="para" type="text" value="TL" style="height: 52px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff; font: inherit; font-size: 18px; color: #172033;">
+          </div>
+        </div>
+
+        <label style="display: flex; align-items: center; gap: 12px; height: 56px; box-sizing: border-box; padding: 0 16px; border: 2px solid {{t.vurgu}}; border-radius: 10px; background: #ffffff;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{t.vurgu}}" stroke-width="2" stroke-linecap="round"><path d="M4 6v12M8 6v12M11 6v12M15 6v12M18 6v12M21 6v12"></path></svg>
+          <input type="text" placeholder="Barkodu okut ya da ürün adı yaz" aria-label="Barkod" style="flex-grow: 1; border: 0; outline: 0; font: inherit; font-size: 19px; color: #172033; background: transparent;">
+        </label>
+
+        <div style="flex-grow: 1; min-height: 0; border: 1px solid #d7dce4; border-radius: 12px; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 1px 2px rgba(20,33,61,.06);">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid #d7dce4;">
+            <div style="padding: 12px 18px; font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em; border-right: 1px solid #d7dce4;">Verdim · ürünler</div>
+            <div style="padding: 12px 18px; font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Aldım · ödeme</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex-grow: 1; font-variant-numeric: tabular-nums;">
+            <div style="border-right: 1px solid #d7dce4; display: flex; flex-direction: column;">
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 60px 72px 120px; gap: 10px; padding: 8px 18px; font-size: 14px; color: #8a94a6; border-bottom: 1px solid #edf0f4;"><span>Ürün</span><span>Ayar</span><span style="text-align: right;">Gram</span><span style="text-align: right;">Tutar</span></div>
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 60px 72px 120px; gap: 10px; padding: 14px 18px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Burma bilezik</span><span>22</span><span style="text-align: right;">4,30</span><span style="text-align: right; font-weight: 600;">28.750 ₺</span></div>
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 60px 72px 120px; gap: 10px; padding: 14px 18px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Alyans (çift)</span><span>14</span><span style="text-align: right;">6,10</span><span style="text-align: right; font-weight: 600;">21.900 ₺</span></div>
+              <div style="flex-grow: 1;"></div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: {{t.zemin}}; border-top: 1px solid #d7dce4;"><span style="color: #5a6577;">Toplam · 10,40 g</span><span style="font-weight: 600; font-size: 22px;">50.650 ₺</span></div>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 130px 120px; gap: 10px; padding: 8px 18px; font-size: 14px; color: #8a94a6; border-bottom: 1px solid #edf0f4;"><span>Ödeme</span><span></span><span style="text-align: right;">Tutar</span></div>
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 130px 120px; gap: 10px; padding: 14px 18px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Nakit</span><span style="color: #5a6577; font-size: 15px;">Ana kasa</span><span style="text-align: right; font-weight: 600;">20.000 ₺</span></div>
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 130px 120px; gap: 10px; padding: 14px 18px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Eski altın</span><span style="color: #5a6577; font-size: 15px;">2,55 g · 22 ayar</span><span style="text-align: right; font-weight: 600;">15.650 ₺</span></div>
+              <div style="display: grid; grid-template-columns: minmax(0, 1fr) 130px 120px; gap: 10px; padding: 14px 18px; align-items: center; border-bottom: 1px solid #edf0f4;"><span style="font-weight: 500;">Kart</span><span style="color: #5a6577; font-size: 15px;">Akbank POS</span><span style="text-align: right; font-weight: 600;">15.000 ₺</span></div>
+              <div style="flex-grow: 1;"></div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: {{t.basariZemin}}; border-top: 1px solid {{t.basariKenar}};"><span style="color: {{t.basari}}; font-weight: 500;">Fark</span><span style="font-weight: 600; font-size: 22px; color: {{t.basari}};">0 ₺ ✓</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="text" placeholder="Açıklama (istersen)" aria-label="Açıklama" style="flex-grow: 1; height: 50px; box-sizing: border-box; padding: 0 14px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff; font: inherit; font-size: 17px; color: #172033;">
+          <button type="button" style="height: 50px; padding: 0 20px; border: 1px solid #c9d0db; border-radius: 9px; background: #ffffff; font: inherit; font-size: 17px; color: #172033;">Vazgeç</button>
+          <button type="button" style="height: 50px; padding: 0 24px; border: 0; border-radius: 9px; background: {{t.vurgu}}; color: #ffffff; font: inherit; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 21h12v-7H6z"></path><rect x="3" y="9" width="18" height="8" rx="1"></rect></svg>Kaydet ve yazdır
+          </button>
+        </div>
+      </section>
+
+      <aside style="width: 272px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-size: 15px; color: #5a6577; padding: 0 2px;">Ne yapıyorsun?</div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+          <button type="button" style="height: 70px; border: 0; border-radius: 10px; background: {{t.vurgu}}; color: #ffffff; font: inherit; font-size: 16px; font-weight: 600;">Satış</button>
+          <button type="button" style="height: 70px; border: 1px solid #c9d0db; border-radius: 10px; background: #ffffff; color: #172033; font: inherit; font-size: 16px; font-weight: 500;">Alış · eski altın</button>
+          <button type="button" style="height: 70px; border: 1px solid #c9d0db; border-radius: 10px; background: #ffffff; color: #172033; font: inherit; font-size: 16px; font-weight: 500;">Tahsilat</button>
+          <button type="button" style="height: 70px; border: 1px solid #c9d0db; border-radius: 10px; background: #ffffff; color: #172033; font: inherit; font-size: 16px; font-weight: 500;">Ödeme</button>
+          <button type="button" style="height: 70px; border: 1px solid #c9d0db; border-radius: 10px; background: #ffffff; color: #172033; font: inherit; font-size: 16px; font-weight: 500;">İade</button>
+          <button type="button" style="height: 70px; border: 1px solid #c9d0db; border-radius: 10px; background: #ffffff; color: #172033; font: inherit; font-size: 16px; font-weight: 500;">Değişim</button>
+          <button type="button" style="height: 70px; border: 1px solid #c9d0db; border-radius: 10px; background: #ffffff; color: #172033; font: inherit; font-size: 16px; font-weight: 500;">Emanet</button>
+          <button type="button" style="height: 70px; border: 1px solid #c9d0db; border-radius: 10px; background: #ffffff; color: #172033; font: inherit; font-size: 16px; font-weight: 500;">İndirim</button>
+        </div>
+        <div style="margin-top: 6px; padding: 14px 16px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; display: flex; flex-direction: column; gap: 8px; font-size: 15px;">
+          <div style="font-weight: 600; font-size: 16px;">Son 3 satış</div>
+          <div style="display: flex; justify-content: space-between; color: #5a6577; font-variant-numeric: tabular-nums;"><span>14:10 · Peşin</span><span>12.400 ₺</span></div>
+          <div style="display: flex; justify-content: space-between; color: #5a6577; font-variant-numeric: tabular-nums;"><span>13:42 · Hasan K.</span><span>38.900 ₺</span></div>
+          <div style="display: flex; justify-content: space-between; color: #5a6577; font-variant-numeric: tabular-nums;"><span>12:05 · Peşin</span><span>6.300 ₺</span></div>
+        </div>
+        <div style="padding: 12px 16px; border-radius: 10px; background: #fff5e0; border: 1px solid #f0d9a6; font-size: 15px; color: #7a4a00; line-height: 1.4;">Nakit 30.000 ₺'yi geçerse program uyarır; kalanı kartla alırsın.</div>
+      </aside>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["platin","zumrut","grafit","bordo","okyanus","menekse","zeytin","fildisi"],"default":"platin","section":"Görünüm"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  paletler() {
+    const koyu = (ad, menu, menu2, aktif, kenar, vurgu, metin, soluk, soluk2, metin2, zemin) => ({
+      ad, menu, menu2, menuAktif: aktif, menuKenar: kenar, vurgu, menuMetin: metin, menuSoluk: soluk, menuSoluk2: soluk2, menuMetin2: metin2, zemin,
+      menuBaslik: '#ffffff', menuAktifMetin: '#ffffff', basari: '#15803d', basariZemin: '#e8f5ec', basariKenar: '#bfe3cb'
+    });
+    return {
+      platin:  koyu('Platin Mavi', '#14213d', '#1f2f52', '#2b3f6b', '#2c3d63', '#2457d6', '#d6deeb', '#8ea2c4', '#aab7cf', '#e6ecf5', '#f2f4f7'),
+      zumrut:  Object.assign(koyu('Zümrüt', '#0f3d2e', '#174a39', '#1f5e48', '#255a46', '#1b7f5c', '#dcebe3', '#9dc2b2', '#b9d3c7', '#eaf3ee', '#f2f5f3'), { basari: '#1d4ed8', basariZemin: '#e7eefc', basariKenar: '#c3d3f5' }),
+      grafit:  koyu('Grafit', '#1c1f26', '#272b34', '#363b47', '#343945', '#0b7f73', '#d8dbe1', '#8f95a3', '#a9aeba', '#e8eaee', '#f3f4f6'),
+      bordo:   koyu('Bordo', '#3b0f1e', '#4d1a2c', '#64243b', '#5a2033', '#9f1239', '#ecd9df', '#b98c9b', '#cfa9b5', '#f3e6ea', '#f6f3f4'),
+      okyanus: koyu('Okyanus', '#0e3b45', '#154a56', '#1d5c6a', '#1c5462', '#0e7490', '#d5e7ec', '#8fb6c1', '#a9c9d2', '#e6f0f3', '#f1f5f6'),
+      menekse: koyu('Menekşe', '#2a1f5e', '#372b74', '#473a8c', '#3f3282', '#5b3fd6', '#ddd8f0', '#a196cf', '#b6adda', '#ebe8f6', '#f4f3f8'),
+      zeytin:  koyu('Zeytin', '#33401c', '#41512a', '#546838', '#4b5e32', '#4d6b12', '#e2e7d3', '#a9b58c', '#bcc7a2', '#eef1e4', '#f4f5f0'),
+      fildisi: {
+        ad: 'Fildişi (açık menü)', menu: '#f1ebe0', menu2: '#ffffff', menuAktif: '#3b2f1e', menuKenar: '#d9cfbf', vurgu: '#8a5a1e',
+        menuMetin: '#3b2f1e', menuSoluk: '#8a7b66', menuSoluk2: '#6f6250', menuMetin2: '#2a2117', zemin: '#faf8f4',
+        menuBaslik: '#2a2117', menuAktifMetin: '#ffffff', basari: '#15803d', basariZemin: '#e8f5ec', basariKenar: '#bfe3cb'
+      }
+    };
+  }
+  renderVals() {
+    const secili = (this.state && this.state.tema) || this.props.tema || 'platin';
+    const p = this.paletler();
+    const t = p[secili] || p.platin;
+    const out = { t: t, temaAdi: t.ad };
+    Object.keys(p).forEach((k) => {
+      out['ring_' + k] = secili === k ? '#f0b429' : '#ffffff';
+      out['sec_' + k] = () => this.setState({ tema: k });
+    });
+    return out;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+@using Kuyumcu.Web.Servisler
+@inject DilServisi Dil
+
+@* ORTAK-1 (KEŞİF #4, 30.09) — fiş DIŞI formlarda Kaydet'in "sayı anlaşılamadı" kilit sebebi (UX-S30).
+   Formun ön ekiyle (ör. "th-") başlayan bir Sayi/Para/Gram kutusunda "1.500" gibi anlaşılamayan metin
+   varken düğmenin yanında kutunun ETİKETİYLE yazar; yoksa hiçbir şey çizmez.
+   ⚠ Kapı AÇIKÇA verilir (Kapi="sayiKapisi"): karmaşık türde parametre olduğu için sayfa yeniden
+   çizilince bu bileşen de tazelenir (yalnız dizge parametreli bileşeni Blazor atlar). *@
+
+@if (Kapi?.Sebep(Dil.Dil, Onek) is { } sebep)
+{
+    @* GIRDI-AILESI-2 tur 2 (tasarım hakemi KRİTİK): 'metin-amber' = var(--vurgu); Platin şemada
+       vurgu mavisi → kilit sebebi tıklanabilir bağlantı gibi duruyordu. Kilit sebebi her formda TEK
+       görünüm: dekont-kaydet-sebep ile aynı soluk ton (metin-soluk). Düzeltme bileşenin kendisinde
+       → 16 kullanım ve gelecekteki GOC göçleri aynı görünümü alır. *@
+    <p class="metin-kucuk metin-soluk kilit-sebebi" id="@ElemanId" role="status">@sebep</p>
+}
+
+@code {
+    /// <summary>Sebep satırının kimliği (ör. "th-sayi-kilit").</summary>
+    [Parameter, EditorRequired] public string ElemanId { get; set; } = "";
+
+    /// <summary>Formun alan ön eki (ör. "th-").</summary>
+    [Parameter, EditorRequired] public string Onek { get; set; } = "";
+
+    /// <summary>Sayfanın geçersiz sayı kapısı.</summary>
+    [Parameter, EditorRequired] public GecersizAlanKapisi? Kapi { get; set; }
+}

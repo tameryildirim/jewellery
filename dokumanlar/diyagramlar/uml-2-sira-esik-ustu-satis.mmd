@@ -1,0 +1,61 @@
+%% UML Sira (Sequence) Diyagrami — Esik ustu satis
+%% Kaynak: SatisModulu.Satis + MasakKapisi. Iki fazli kapi BILINCLIDIR:
+%% dogrulama transaction'dan ONCE yapilir ki eksik kimlikle hicbir yazma baslamasin.
+sequenceDiagram
+    autonumber
+    actor T as Tezgahtar
+    participant W as Blazor SPA
+    participant M as Middleware<br/>(vekil, baslik, auth, oran siniri)
+    participant C as SatisController
+    participant S as SatisServisi
+    participant K as MasakKapisi
+    participant D as DbContext<br/>(+ interceptor'lar)
+    participant DB as MySQL
+
+    T->>W: Satis bilgilerini girer
+    W->>W: /masak/esikler ile esik kontrolu
+    Note over W: Tutar >= 185.000 TL ise<br/>MasakFormu ACILIR
+    T->>W: Kimlik bilgilerini girer
+    W->>M: POST /api/v1/islemler/satis
+    M->>M: ForwardedHeaders -> gercek IP
+    M->>M: Guvenlik basliklari
+    M->>M: JWT dogrula -> tenantId, rol
+    M->>M: Oran siniri (100/dk)
+    M->>C: yonlendir
+    C->>C: RolGerekli + ModulYetkisi
+    C->>S: Satis(dto, islem)
+
+    rect rgb(253, 240, 213)
+        Note over S,K: FAZ 1 — DOGRULAMA (transaction'dan ONCE)
+        S->>K: Dogrula(tutar, masakBilgi)
+        alt Kimlik eksik
+            K-->>S: BadRequestException
+            S-->>W: HTTP 400 — ISLEM TAMAMLANMAZ
+            Note over W: Uyarip GECMEZ.<br/>MASAK Yonetmeligi md.5/2:<br/>"kimlik tespiti islem yapilmadan<br/>ONCE tamamlanir"
+        else Kimlik tam
+            K-->>S: MasakGereksinim (kademe)
+        end
+    end
+
+    S->>D: BeginTransaction
+    S->>D: Hareket ekle
+    D->>D: KiraciYazmaDenetcisi (kiraci sinirini dogrular)
+    D->>D: DenetimYazmaDinleyicisi (iz otomatik)
+    S->>D: Stok dus
+    S->>D: Kasa guncelle (ISARETLI: + giris / - cikis)
+
+    rect rgb(253, 240, 213)
+        Note over S,K: FAZ 2 — KAYIT
+        S->>K: Kaydet(gereksinim, hareketId, ...)
+        K->>D: MasakKimlikTespiti ekle
+        D->>D: MasakHashDinleyicisi (TCKN -> HMAC)
+        D->>D: AlanSifreleme (TCKN -> AES-256-GCM)
+        K->>D: MasakBeyani ekle (kademe gerektiriyorsa)
+    end
+
+    S->>D: SaveChanges
+    D->>DB: INSERT ... (sifreli alanlar + denetim izi)
+    S->>D: Commit
+    S-->>C: sonuc
+    C-->>W: HTTP 200
+    W-->>T: Islem tamam

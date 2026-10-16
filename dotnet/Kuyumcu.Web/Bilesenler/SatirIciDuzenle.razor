@@ -1,0 +1,226 @@
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   SATIR İÇİ DÜZENLEME — paket UX-2 Faz A2 (UX-1 ortak deseni)
+
+   id sözleşmesi: girdi #si-{varlik}-{alan}-{id}; tetikleyici hücre
+   data-duzenlenebilir="true". Enter KAYDET, Esc İPTAL (eski değere döner).
+   TEK ALANLI düzeltmeler içindir; çok alanlı/parasal kayıt Cekmece'ye gider.
+
+   ⚠ İYİMSER KAYDETME YOK: Kaydet olayı ebeveyne verilir, sunucu onayı
+     gelene dek "bekliyor" rozeti durur ve girdi kilitlenir.
+   ⚠ Boş/geçersiz gönderimde SESSİZ ETKİSİZLİK yasak: alan altı Türkçe mesaj.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* KESIF-P7 (K7 satır içi, keşif #49/#58/#68/#73/#77): düzenleme AÇIKKEN kök `si-acik` sınıfını
+   taşır; girdi + Kaydet + İptal TEK parça (`si-kutu`, ortak.css: sarmaz, düğmeler girdi boyunda)
+   → açılan kutu aynı satırdaki hücrelerle hizalı kalır, düğmeler alt satıra düşüp satırı
+   uzatmaz. Hata/bekliyor notu kutunun ALTINDA kendi satırındadır. id'ler DEĞİŞMEDİ. *@
+<span class="satir-ici @(duzenleniyor ? "si-acik" : null)">
+    @if (!duzenleniyor)
+    {
+        <button type="button" class="si-tetik" data-duzenlenebilir="true"
+                id="@($"si-{Varlik}-{Alan}-{Id}-ac")"
+                title="@Dil.T.Kabuk.DuzenlemekIcinTikla"
+                aria-label="@($"{Etiket}: {Deger} — {Dil.T.Ortak.Duzenle}")"
+                @onclick="Baslat">@(string.IsNullOrWhiteSpace(Deger) ? "—" : Deger)</button>
+    }
+    else
+    {
+        <span class="si-kutu">
+        <input class="girdi si-girdi" id="@($"si-{Varlik}-{Alan}-{Id}")"
+               @ref="girdiRef"
+               aria-label="@Etiket" value="@taslak" disabled="@Kaydediliyor" maxlength="@EnFazla"
+               aria-invalid="@(hata is null ? null : "true")"
+               aria-describedby="@(hata is null ? null : $"si-{Varlik}-{Alan}-{Id}-hata")"
+               @oninput="Yazildi" @onkeydown="Tus" @onblur="Odaktan" />
+        <button type="button" class="dugme dugme-kucuk dugme-birincil"
+                id="@($"si-{Varlik}-{Alan}-{Id}-kaydet")" @onmousedown="DugmeyeBasildi"
+                disabled="@Kaydediliyor" aria-label="@Dil.T.Ortak.Kaydet" title="@Dil.T.Ortak.Kaydet"
+                @onclick="Kaydet"><Ikon Ad="@Ikonlar.Onay" /></button>
+        <button type="button" class="dugme dugme-kucuk dugme-ikincil"
+                id="@($"si-{Varlik}-{Alan}-{Id}-iptal")" @onmousedown="DugmeyeBasildi"
+                disabled="@Kaydediliyor" aria-label="@Dil.T.Ortak.Iptal" title="@Dil.T.Ortak.Iptal"
+                @onclick="Iptal"><Ikon Ad="@Ikonlar.Carpi" /></button>
+        </span>
+        @if (Kaydediliyor)
+        {
+            <span class="si-bekliyor" id="@($"si-{Varlik}-{Alan}-{Id}-bekliyor")"
+                  role="status">@Dil.T.Kabuk.Kaydediliyor</span>
+        }
+        @if (hata is not null)
+        {
+            <span class="si-hata" id="@($"si-{Varlik}-{Alan}-{Id}-hata")" role="alert">@hata</span>
+        }
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Varlik { get; set; } = "";
+    [Parameter, EditorRequired] public string Alan { get; set; } = "";
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public string Etiket { get; set; } = "";
+    [Parameter] public string? Deger { get; set; }
+    /// <summary>Boş değer kabul edilir mi? false ise boş gönderim alan altı mesaj verir.</summary>
+    [Parameter] public bool BosOlabilir { get; set; }
+    /// <summary>Sunucu yanıtı beklenirken true (ebeveyn ayarlar).</summary>
+    [Parameter] public bool Kaydediliyor { get; set; }
+    [Parameter] public EventCallback<string> Kaydedildi { get; set; }
+
+    // ── PAKET P-06 (B-18) — İŞ KURALI SINIRI ────────────────────────────────
+    // "Boş olamaz" tek doğrulama değildir: sayısal alanların iş kuralı aralığı
+    // da ALAN ALTINDA söylenmelidir. Kural ÇAĞIRANDAN gelir (sunucudaki kuralın
+    // aynısı), mesaj sözlükten çözülür — çıplak metin yazılmaz.
+    /// <summary>Alt sınır (dâhil). Verilirse değer sayı olarak ayrıştırılır.</summary>
+    [Parameter] public decimal? AsgariDeger { get; set; }
+    /// <summary>Üst sınır (dâhil).</summary>
+    [Parameter] public decimal? AzamiDeger { get; set; }
+
+    /// <summary>
+    /// PAKET GOC-A (en küçük geriye uyumlu ekleme · envanter C "satır içi açıklamada ekranda uzunluk sınırı yok"):
+    /// metnin en çok uzunluğu — ekran maxlength = sunucu sınırı (AlanSinirlari). Fazlası Kaydet'te alan altında
+    /// söylenir (sunucuya gitmez). null (varsayılan) = eski davranış birebir.
+    /// </summary>
+    [Parameter] public int? EnFazla { get; set; }
+
+    /// <summary>
+    /// PAKET GOC-A (envanter C "fazla ondalık sessizce yuvarlanıyor"): sayısal alanın en çok ondalık hanesi
+    /// (K9 tutar 2 · K10 gram 3). Fazlası Core kuralının sözlük metniyle alan altında söylenir — sunucu AYNI
+    /// kuralla 400 verir. null (varsayılan) = eski davranış birebir.
+    /// </summary>
+    [Parameter] public int? EnCokOndalik { get; set; }
+
+    /// <summary>
+    /// PAKET P-06 (B-13) — düzenleme açıldığında ilk alana odaklanılsın mı?
+    /// Varsayılan AÇIK: kullanıcı tıkladığı hücreye hemen yazmaya başlar.
+    /// </summary>
+    [Parameter] public bool AcilistaOdaklan { get; set; } = true;
+
+    private bool duzenleniyor;
+    private string taslak = "";
+    private string? hata;
+
+    // ── PAKET P-06 (B-13) — açılışta odak ───────────────────────────────────
+    // Blazor'da girdi ancak çizildikten SONRA odaklanabilir; bu yüzden bayrak
+    // kaldırılır ve OnAfterRenderAsync'te FocusAsync çağrılır. document.activeElement
+    // kanıtı gerçek tarayıcıda QA turunda çapraz doğrulanır (plan DoD md.7).
+    private ElementReference girdiRef;
+    private bool odaklanilacak;
+
+    private void Baslat()
+    {
+        taslak = Deger ?? "";
+        hata = null;
+        duzenleniyor = true;
+        odaklanilacak = AcilistaOdaklan;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool ilkCizim)
+    {
+        if (!odaklanilacak) return;
+        odaklanilacak = false;
+        // JS ortamı yoksa (önceden çizim / test koşucusu) sessizce geçilir —
+        // odak bir KOLAYLIKTIR, veri yolu değildir; burada patlamak kullanıcının
+        // düzenlemesini engellerdi.
+        try { await girdiRef.FocusAsync(); }
+        catch (InvalidOperationException) { }
+        catch (JSException) { }
+    }
+
+    private void Yazildi(ChangeEventArgs e)
+    {
+        taslak = e.Value?.ToString() ?? "";
+        hata = null;
+    }
+
+    private void Iptal()
+    {
+        duzenleniyor = false;
+        taslak = Deger ?? "";      // eski değere döner
+        hata = null;
+    }
+
+    private async Task Kaydet()
+    {
+        if (Kaydediliyor) return;
+        if (!BosOlabilir && string.IsNullOrWhiteSpace(taslak))
+        {
+            hata = Dil.T.Kabuk.BosBirakilamaz;   // sessiz etkisizlik YASAK
+            return;
+        }
+        // PAKET P-06 (B-18) — iş kuralı aralığı da ALAN ALTINDA söylenir.
+        if (AralikHatasi() is { } aralikMesaji)
+        {
+            hata = aralikMesaji;
+            return;
+        }
+        hata = null;
+        await Kaydedildi.InvokeAsync(taslak);
+        // Kapanışı EBEVEYN yapar (sunucu onayı gelince Deger güncellenir).
+        duzenleniyor = false;
+    }
+
+    /// <summary>
+    /// PAKET P-06 (B-18) — aralık kuralı. Sınır verilmemişse null döner.
+    /// Sayıya çevrilemeyen değer de ALAN ALTINDA söylenir (sessiz etkisizlik yok).
+    /// Ayrıştırma InvariantCulture DEĞİL, kullanıcı kültürüdür: kullanıcı
+    /// "12,5" yazar; sunucuya gönderim ayrı katmandır.
+    /// </summary>
+    private string? AralikHatasi()
+    {
+        // PAKET GOC-A — uzunluk ve ondalık sınırı (parametre verildiyse; sözlük metni ekran = sunucu).
+        if (EnFazla is { } enFazla && taslak.Trim().Length > enFazla)
+            return Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(new Kuyumcu.Core.Domain.Girdi.GirdiHatasi(
+                Kuyumcu.Core.Domain.Girdi.GirdiKodu.AdUzun, enFazla), Dil.Dil);
+        if (EnCokOndalik is { } n && !string.IsNullOrWhiteSpace(taslak)
+            && Kuyumcu.Web.Bilesenler.Form.FormAlani.SayiCoz(taslak).Deger is { } ondalikli
+            && Kuyumcu.Core.Domain.Girdi.SayiKurali.Ondalik(ondalikli, n) is { } ondalikHatasi)
+            return Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(ondalikHatasi, Dil.Dil);
+        if (AsgariDeger is null && AzamiDeger is null) return null;
+        if (string.IsNullOrWhiteSpace(taslak)) return null;   // boş kuralı yukarıda
+
+        // P-78: kültür denemesi yerine TEK MERKEZ (FormAlani.SayiCoz, tr-TR kuralları).
+        // Eski iki aşamalı deneme "1.500"ü sessizce 1500 (tr) ya da 1,5 (inv) okuyordu.
+        var cozum = Kuyumcu.Web.Bilesenler.Form.FormAlani.SayiCoz(taslak);
+        if (cozum.Deger is not { } sayi)
+        {
+            return cozum.Mesaj(Dil.Dil) ?? Dil.T.Kabuk.SayiGecersiz;
+        }
+
+        if (AsgariDeger is { } alt && sayi < alt)
+            return string.Format(Dil.T.Duzeltme.AralikDisi, alt, AzamiDeger?.ToString() ?? "∞");
+        if (AzamiDeger is { } ust && sayi > ust)
+            return string.Format(Dil.T.Duzeltme.AralikDisi, AsgariDeger?.ToString() ?? "-∞", ust);
+        return null;
+    }
+
+    // Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot.
+    private Task Tus(KeyboardEventArgs e) => e.Key switch
+    {
+        "Enter" => Kaydet(),
+        "Escape" => IptalTask(),
+        _ => Task.CompletedTask,
+    };
+
+    private Task IptalTask() { Iptal(); return Task.CompletedTask; }
+
+    // ── Odak kaybı = KAYDET (paket S-3c · kurul tur 3 engel 20) ──────────────
+    // QA turu 3: kullanıcı değeri yazıp başka yere tıklayınca değişiklik SESSİZCE
+    // kayboluyordu. Sözleşme: blur kaydeder; değer değişmediyse düzenleme sessizce
+    // kapanır; geçersizse alan altı mesajla AÇIK kalır (sessiz etkisizlik yasak).
+    //
+    // ⚠ Kaydet/İptal düğmelerine tıklarken de blur olur ve ÇİFT gönderim doğardı.
+    // Blazor'da FocusEventArgs relatedTarget taşımaz; bu yüzden düğmelerin
+    // @onmousedown olayı (blur'dan ÖNCE gelir) bir bayrak kaldırır ve blur çekilir.
+    private bool dugmeyeBasildi;
+
+    private void DugmeyeBasildi() => dugmeyeBasildi = true;
+
+    private Task Odaktan()
+    {
+        if (dugmeyeBasildi) { dugmeyeBasildi = false; return Task.CompletedTask; }
+        if (!duzenleniyor || Kaydediliyor) return Task.CompletedTask;
+        if (taslak == (Deger ?? "")) { Iptal(); return Task.CompletedTask; }   // değişiklik yok
+        return Kaydet();
+    }
+}

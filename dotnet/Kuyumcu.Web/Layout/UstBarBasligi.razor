@@ -1,0 +1,18 @@
+@implements IDisposable
+@inject NavigationManager Nav
+@* PAKET DEGISIM-GUNSONU — sayfanın üst bar başlığı (hakem ORTA: /islemler'de Değişim seçiliyken
+   başlık "Satış" kalıyordu). Kendisi yerinde HİÇBİR ŞEY çizmez; başlığı AnaYerlesim'in yuvasına
+   (UstBarSekmeYuvasi.BaslikAta) yazar, UstBar okur. Yuva yoksa (bUnit, kabuk dışı) etkisizdir.
+   Sekme yuvasından ayrıdır: kur şeridi ve Basit/Profesyonel anahtarı GİZLENMEZ. *@
+
+@code {
+    [CascadingParameter] public UstBarSekmeYuvasi? Yuva { get; set; }
+
+    /// <summary>Üst barda görünecek ad (null/boş = rota adı).</summary>
+    [Parameter] public string? Baslik { get; set; }
+
+    protected override void OnParametersSet() =>
+        Yuva?.BaslikAta(this, Baslik, new Uri(Nav.Uri).AbsolutePath);
+
+    public void Dispose() => Yuva?.BaslikBirak(this);
+}

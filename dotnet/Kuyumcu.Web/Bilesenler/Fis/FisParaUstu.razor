@@ -1,0 +1,57 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-5 — PARA ÜSTÜ (PLAN § S-2 madde 2.8 · KARARLAR D7 "EVET") ═══════
+   Nakit ödenecek tutar varken "Alınan" alanı açılır; altında para üstü (ya da
+   eksik) satırı yazar.
+   ⚠ İSTEMCİ HESABIDIR, DEFTERE GİRMEZ (D7 gerekçesi): kasaya yazılan yine fişin
+     nakit tutarıdır; "alınan" hiçbir gövdeye KONMAZ ve bileşen istek atmaz.
+     Bu yüzden Kaydet'i kilitlemez — kullanıcıya yalnız bilgi verir.
+   ⚠ Nakit 0'a düşünce (kayıt sonrası kalemler temizlenir) alınan SIFIRLANIR:
+     bir müşterinin verdiği para bir sonraki fişe taşınmaz.
+   ⚠ UX-S32: tutar para birimiyle basılır (Bicim.Para). *@
+@if (Nakit > 0m && Katli && !acik)
+{
+    @* SATIS-3 t6 (hakem ORTA): karma ödemede "Alınan / Para üstü" isteğe bağlıdır → kapalı "+ Para üstü hesapla" (kurucu 11:35). *@
+    <button type="button" class="btn btn-ikincil btn-kucuk" id="islem-para-ustu-ac" title="@M.AlinanIpucu" @onclick="() => acik = true">@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).ParaUstuHesapla</button>
+}
+else if (Nakit > 0m)
+{
+    <div class="form-grid-2" id="islem-para-ustu-sar">
+        <Para ElemanId="islem-alinan" Etiket="@M.Alinan" ParaBirimi="@ParaBirimi" EnAz="0"
+              Deger="@alinan" DegerChanged="AlinanDegisti" />   @* t22: açıklama satırı yok — metin "+ Para üstü hesapla" düğmesinin ipucunda (title) *@
+        <div class="alan">
+            <label for="islem-para-ustu">@(Sonuc is < 0m ? M.Eksik : M.ParaUstu)</label>
+            <p class="@(Sonuc is null ? "metin-kucuk metin-soluk" : Sonuc < 0m ? "hucre-vurgu metin-kirmizi" : "hucre-vurgu")" id="islem-para-ustu" role="status">   @* t22: "Alınanı yazın" değer gibi büyük basılmaz *@
+                @(Sonuc is { } s ? Bicim.Para(Math.Abs(s), ParaBirimi) : M.AlinanBekleniyor)
+            </p>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Nakit olarak ödenecek tutar (tek ödemede fiş toplamı, karmada NAKİT bacakların toplamı).</summary>
+    [Parameter] public decimal Nakit { get; set; }
+
+    /// <summary>Nakdin para birimi — kasadan gelir (UX-S32); fiş TL'dir.</summary>
+    [Parameter] public string ParaBirimi { get; set; } = "TRY";
+
+    private decimal? alinan;
+
+    /// <summary>t6/t22: true → alan kapalı "+ Para üstü hesapla" arkasında gelir (karma ve t22'den beri tek ödeme — iki çağıran da true verir).</summary>
+    [Parameter] public bool Katli { get; set; }
+
+    private bool acik;
+
+    private FisYazdirMetinleri M => FisYazdirSozlugu.Al(Dil.Dil);
+
+    /// <summary>Para üstü (pozitif) ya da eksik (negatif); alınan yazılmadıysa null.</summary>
+    private decimal? Sonuc => FisYazdir.ParaUstu(alinan, Nakit);
+
+    private void AlinanDegisti(decimal? v) => alinan = v;
+
+    protected override void OnParametersSet()
+    {
+        if (Nakit <= 0m) { alinan = null; acik = false; }
+    }
+}

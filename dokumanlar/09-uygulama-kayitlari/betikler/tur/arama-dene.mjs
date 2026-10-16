@@ -1,0 +1,24 @@
+import { baslat } from './cdp.mjs';
+const b = await baslat(9381, process.cwd() + '/profil-arama');
+await b.cmd('Network.enable');
+await b.boyut(1440, 900);
+await b.git('http://localhost:5182/__giris', 7000);
+await b.ev(`(async()=>{const x=[...document.querySelectorAll('button')].find(b=>b.innerText.trim()==='Basit'); x&&x.click(); await new Promise(r=>setTimeout(r,1500)); Blazor.navigateTo('/islemler'); await new Promise(r=>setTimeout(r,4000)); return 1})()`);
+const kutu = await b.ev(`(()=>{const i=[...document.querySelectorAll('input')].find(e=>/Barkod|ürün adı/i.test(e.placeholder||'')); if(!i) return 'yok'; i.id||(i.id='tur-arama'); return i.id+' | '+i.placeholder})()`);
+console.log('kutu', kutu);
+const id = kutu.split(' | ')[0];
+await b.ev(`document.getElementById(${JSON.stringify(id)}).focus(); 1`);
+await new Promise(r => setTimeout(r, 800));
+const odakta = await b.ev(`[...document.querySelectorAll('[role=listbox],[role=option],.oneri,.arama-sonuc,ul')].filter(e=>e.getBoundingClientRect().height>0 && e.closest('main')).map(e=>e.className+':'+e.children.length).slice(0,5)`);
+console.log('odakta liste', JSON.stringify(odakta));
+for (const ch of 'bilezik') { await b.cmd('Input.dispatchKeyEvent', { type: 'keyDown', text: ch, key: ch }); await b.cmd('Input.dispatchKeyEvent', { type: 'keyUp', key: ch }); await new Promise(r => setTimeout(r, 120)); }
+await new Promise(r => setTimeout(r, 2000));
+const sonra = await b.ev(`({deger: document.getElementById(${JSON.stringify(id)}).value, liste: [...document.querySelectorAll('[role=listbox],[role=option]')].filter(e=>e.getBoundingClientRect().height>0).length, metin: (document.querySelector('main').innerText.match(/bilezik[^\\n]{0,40}/gi)||[]).slice(0,5)})`);
+console.log('yazinca', JSON.stringify(sonra));
+const istek = b.olay.filter(o => o.method === 'Network.requestWillBeSent' && /\/api\/v1\//.test(o.params.request.url)).map(o => o.params.request.url.replace(/^.*\/api\/v1/, '')).slice(-8);
+console.log('son istekler', istek.join(' '));
+await b.cmd('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 }); await b.cmd('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+await new Promise(r => setTimeout(r, 1500));
+console.log('enter sonrasi', JSON.stringify(await b.ev(`({bant: [...document.querySelectorAll('.bant, [role=alert]')].filter(e=>e.getBoundingClientRect().height>0).map(e=>e.innerText.slice(0,80)), kalem: document.querySelectorAll('main table tbody tr').length})`)));
+await b.foto('arama-sonrasi.png');
+b.kapat();

@@ -1,0 +1,79 @@
+@inject DilServisi Dil
+@inject IJSRuntime Js
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   HATA BANDI — UX-S28 ("hata 'kayıt yok'a çevrilmez", Anayasa md.1).
+
+   UX-4c madde 13: sayfa düzeyindeki hata bantlarına `Id="hata-bandi"` verilir
+   ki hem bUnit testleri hem tarayıcı turu "sunucu hatası kullanıcıya GÖRÜNDÜ
+   mü" sorusunu tek seçiciyle sorabilsin. Id boşsa öznitelik hiç basılmaz.
+
+   PAKET T-4a: `Kimlik` verilirse "destek kodu" rozeti çizilir. Kod HER ZAMAN
+   salt-okunur, SEÇİLEBİLİR bir alanda da durur: panoya kopyalama JS interop
+   ister ve CSP script-src 'self' olduğu için kod ayrı dosyadadır
+   (wwwroot/js/indir.js → window.kuyumcuPanoyaKopyala). Interop çalışmazsa
+   düğme SESSİZCE ÖLMEZ — "kopyalanamadı, kodu seçip kopyalayın" yazar.
+   Mesaj olduğu gibi gösterilmeye devam eder (UX-S9).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@if (!string.IsNullOrEmpty(Mesaj))
+{
+    <div class="bant bant-hata" role="alert" id="@Id">
+        <span>@Mesaj</span>
+        @if (!string.IsNullOrWhiteSpace(Kimlik))
+        {
+            <span class="rozet-satir" id="hata-kimlik-rozet">
+                <span class="rozet rozet-gri">@Dil.T.Kunye.DestekKodu</span>
+                @* P-36c/3: yazılamayan kutu yerine SALT OKUNUR metin (kimlik aynı).
+                   P-31 (R-5): ekranda KISA kod (8 karakter) okunur — telefonda
+                   söylenebilir; tam kimlik makine değeri olarak durur. Kısa kod
+                   sunucu günlüğüne de ayrı alan olarak yazılır (eşleşme sunucuda). *@
+                <Kuyumcu.Web.Bilesenler.Form.SaltOkunur
+                    ElemanId="hata-kimlik-deger" Etiket="@Dil.T.Kunye.DestekKodu"
+                    Deger="@KisaKod" MakineDeger="@Kimlik" BosMetin="@Dil.T.Ortak.DegerYok" />
+                <button type="button" class="btn btn-kucuk" id="hata-kimlik-kopyala"
+                        @onclick="Kopyala">@Dil.T.Kunye.Kopyala</button>
+                @if (kopyalandi == true)
+                {
+                    <span class="metin-kucuk" id="hata-kimlik-kopyalandi">@Dil.T.Kunye.Kopyalandi</span>
+                }
+                else if (kopyalandi == false)
+                {
+                    <span class="metin-kucuk" id="hata-kimlik-elle">@Dil.T.Kunye.KopyalanamadiElle</span>
+                }
+            </span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? Mesaj { get; set; }
+
+    /// <summary>İsteğe bağlı DOM kimliği (bUnit seçicileri için).</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>
+    /// Sunucunun korelasyon kimliği (ApiHata.IstekKimligi). Boşsa rozet HİÇ
+    /// çizilmez — uydurma destek kodu gösterilmez.
+    /// </summary>
+    [Parameter] public string? Kimlik { get; set; }
+
+    private bool? kopyalandi;
+
+    /// <summary>P-31: ekranda gösterilen kısa kod — tek kaynak Core'daki HataKodu.</summary>
+    private string? KisaKod => Kuyumcu.Core.Sozlesmeler.HataKodu.Kisa(Kimlik);
+
+    private async Task Kopyala()
+    {
+        try
+        {
+            // P-31: kullanıcının GÖRDÜĞÜ kısa kod kopyalanır (söylenen = yapıştırılan).
+            kopyalandi = await Js.InvokeAsync<bool>("kuyumcuPanoyaKopyala", KisaKod);
+        }
+        catch
+        {
+            // Interop yok / izin reddedildi: kullanıcı kodu elle seçebilsin.
+            kopyalandi = false;
+        }
+    }
+}

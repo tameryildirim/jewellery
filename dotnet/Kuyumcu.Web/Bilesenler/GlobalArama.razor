@@ -1,0 +1,416 @@
+@using Kuyumcu.Contracts.Arama
+@inject DilServisi Dil
+@inject ApiIstemci Api
+@inject OturumServisi Oturum
+@inject YetkiServisi Yetki
+@inject ArayuzModuServisi Modu
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-15 — GENEL ARAMA + KOMUT PALETİ (kimlikler Y-29 · B-29)
+   PAKET P-37 — KUTU MENÜNÜN EN ÜSTÜNE TAŞINDI (kurucu talimatı 20)
+
+   ÖNCE (21 Eylül, canlı ölçüm): arama üst barda "🔍 Ara" DÜĞMESİ idi; kullanıcı
+   bir arama ALANI görmüyordu. Ctrl/Cmd+K hiç bağlı değildi, panel açılınca odak
+   kutuya gitmiyordu ve kayıt aramasının hatası ("Arama yapılamadı") sayfanın
+   üstünde, ekran araması çalışırken bile kırmızı bant olarak duruyordu.
+
+   ŞİMDİ:
+     • Girdi HER ZAMAN görünür ve menünün en üstündedir (KenarCubugu çizer).
+     • Ctrl/Cmd+K odağı kutuya getirir (js/siralistesi.js · kuyumcuKisayol).
+     • ↑/↓ sonuçlar arasında gezer, Enter gider, Esc temizler.
+     • Kayıt aramasının hatası KAYITLAR başlığının ALTINDA ve kendi adıyla
+       ("Kayıt araması yapılamadı") çizilir — ekran araması suçlanmaz (UX-S28).
+
+   İKİ İŞ, TEK KUTU:
+     1) EKRANLAR (komut paleti) — kaynak `MenuTanimi.Ogeler`; menüyle AYNI
+        yetki + mod koşulu uygulanır (KenarCubugu ile tek kaynak, UX-S31).
+     2) KAYITLAR — sunucuda `/arama` (GENEL). Kapsam P-04 global filtresidir.
+
+   ⚠ Her düğme ya gerçek istek/gezinme yapar ya disabled + sebep (DoD EK md.1).
+   ═══════════════════════════════════════════════════════════════════════ *@
+
+@* ── PAKET S1-j — MENÜDEN AYRILDI: Ctrl+K KAYIT PALETİ (kurucu 24.09 14:40) ──
+   ÖNCE (P-37): bu bileşen menünün en üstündeki kutuydu; "sat" yazınca menünün
+   DIŞINDA, içeriğin üstüne binen beyaz bir pencere açılıyor ve ilk tuşta
+   Sadelestir("") çöküp Blazor hata bandını gösteriyordu.
+   ŞİMDİ: menü kutusu YALNIZ menüyü süzer (KenarCubugu, #menu-arama-girdi).
+   Kayıt (müşteri/ürün/fiş) araması SİLİNMEDİ — üst bardaki GÖRÜNÜR YAZILI
+   "Müşteri, ürün ara" düğmesi (#ust-kayit-ara) ve Ctrl/Cmd+K bu paleti açar;
+   açılınca odak kutuya gider, Esc ya da "Kapat" paleti kapatır.
+   Kimlikler (Y-29) KORUNDU: #kabuk-arama-girdi, #kabuk-arama-paneli,
+   #kabuk-arama-kapat, #kabuk-arama-ekranlar, #kabuk-arama-kayitlar …
+   ⚠ ModalPencere KULLANILMAZ (DoD EK md.2: ModalPencere yalnız yıkıcı onay);
+     palet bir düzenleme formu değil, bir gezinme penceresidir. *@
+<div class="kabuk-arama kayit-arama" id="kayit-arama">
+    <button type="button" class="kayit-arama-dugme" id="ust-kayit-ara"
+            aria-haspopup="dialog" aria-expanded="@(acik ? "true" : "false")"
+            aria-controls="kabuk-arama-palet"
+            aria-label="@MenuAramaSozlugu.KayitAraIpucu(Dil.Dil)"
+            title="@MenuAramaSozlugu.KayitAraIpucu(Dil.Dil)"
+            @onclick="Ac">
+        <Ikon Ad="@Ikonlar.Arama" />
+        <span class="kayit-arama-yazi">@MenuAramaSozlugu.KayitAra(Dil.Dil)</span>
+        <kbd class="menu-arama-kisayol kayit-arama-kisayol" aria-hidden="true">@Dil.T.Kabuk.MenuAramaKisayol</kbd>
+    </button>
+
+    @if (acik)
+    {
+        @* KATMAN-1b: palet açıcıya BAĞLI DEĞİLDİR — perdeli KOMUT PALETİdir (masaüstünde ekranın üst
+           ortasında, 375'te tam genişlik; css/katman.css § 4). Masaüstünde açıcı #ust-kayit-ara gizlidir
+           (tuval-kabuk.css, Ctrl/⌘+K açar) → 0×0 kutuya bağlanan palet sol üst köşeye yapışıyordu. *@
+        @* Perde: dışarı tıklamak paleti kapatır (düğme değil; klavye yolu Esc + Kapat). *@
+        <div class="kayit-arama-perde" id="kabuk-arama-perde" aria-hidden="true" @onclick="Kapat"></div>
+        <div class="kayit-arama-palet" id="kabuk-arama-palet" role="dialog" aria-modal="true"
+             aria-labelledby="kabuk-arama-palet-baslik">
+            <div class="kabuk-arama-ust">
+                <h2 class="kayit-arama-baslik" id="kabuk-arama-palet-baslik">@MenuAramaSozlugu.PaletBaslik(Dil.Dil)</h2>
+                <button type="button" class="dugme dugme-kucuk dugme-ikincil"
+                        id="kabuk-arama-kapat"
+                        title="@Dil.T.Kabuk.AramaKapat"
+                        @onclick="Kapat">@Dil.T.Ortak.Kapat</button>
+            </div>
+            <label class="gorsel-gizli" for="kabuk-arama-girdi">@Dil.T.Kabuk.AramaBaslik</label>
+            <div class="menu-arama-satir kayit-arama-satir @(metin.Length > 0 ? "dolu" : null)">
+                <span class="menu-arama-ikon" aria-hidden="true"><Ikon Ad="@Ikonlar.Arama" /></span>
+                <input id="kabuk-arama-girdi" class="menu-arama-girdi" type="search"
+                       placeholder="@Dil.T.Kabuk.MenuAramaYerTutucu"
+                       aria-label="@Dil.T.Kabuk.AramaBaslik"
+                       aria-describedby="kabuk-arama-durum"
+                       autocomplete="off"
+                       @bind="metin" @bind:event="oninput" @onkeydown="TusaBasildi" />
+                @if (Yazildi)
+                {
+                    <button type="button" class="menu-arama-temizle" id="kabuk-arama-temizle"
+                            title="@Dil.T.Kabuk.AramaTemizle" aria-label="@Dil.T.Kabuk.AramaTemizle"
+                            @onclick="Temizle">×</button>
+                }
+            </div>
+            <span class="metin-kucuk metin-soluk" id="kabuk-arama-durum">
+                @if (!Yazildi)
+                {
+                    @Dil.T.Kabuk.AramaIpucu
+                }
+                else if (!Aranabilir)
+                {
+                    @string.Format(Dil.T.Kabuk.AramaEnAz, KayitSecici.AramaServisiAsgari)
+                }
+                else if (yanit is { DahaVar: true } && hata is null)
+                {
+                    @* KATMAN-1b (tasarım hakemi 29.09 KRİTİK): sınır satırı YALNIZ sunucu "daha var"
+                       dediğinde çıkar ve TEK yerde durur (eskiden her aramada "En çok 10 kayıt …
+                       süzgeçleri kullanın" + altta ikinci "daha var" satırı çıkıyordu; palette süzgeç yok). *@
+                    <span class="metin-uyari" id="kabuk-arama-daha-var">@MenuAramaSozlugu.PaletDahaVar(Dil.Dil)</span>
+                }
+            </span>
+
+            @if (Yazildi)
+            {
+                <div class="kabuk-arama-paneli" id="kabuk-arama-paneli" role="region"
+                     aria-label="@Dil.T.Kabuk.AramaBaslik">
+                    @* Durum satırı ve Kapat düğmesi paletin başına taşındı (S1-j). *@
+
+                    @* ── EKRANLAR: en az 1 karakterde çalışır; sunucu istemez ───────── *@
+                    @* KATMAN-1b (tasarım hakemi 29.09 KRİTİK): BOŞ BÖLÜM ÇİZİLMEZ. Eskiden EKRANLAR boşken
+                       büyük "Eşleşen kayıt ya da ekran yok." kutusu gerçek kayıt sonucunu aşağı itiyor,
+                       iki bölüm boşken aynı mesaj simgesiyle İKİ KEZ çıkıyordu. Şimdi: başlık yalnız içeriği
+                       olan bölümde; "yok" yalnız İKİ bölüm de gerçekten boşsa, TEK kez, simgesiz ve kısa. *@
+                    @{ var ekranlar = EslesenEkranlar(); }
+                    @{ var kayitBolumuVar = hata is not null || (Aranabilir && araniyor) || SecilebilirSonuclar.Count > 0; }
+                    @{ var ikisiDeBos = ekranlar.Count == 0 && Aranabilir && !araniyor && hata is null
+                                        && yanit is not null && SecilebilirSonuclar.Count == 0; }
+                    @if (ekranlar.Count > 0)
+                    {
+                        <h3 class="kabuk-arama-baslik">@Dil.T.Kabuk.AramaEkranlar</h3>
+                        <ul class="secici-sonuclar" id="kabuk-arama-ekranlar">
+                            @for (var i = 0; i < ekranlar.Count; i++)
+                            {
+                                var oge = ekranlar[i];
+                                var sira = i;
+                                <li>
+                                    <button type="button"
+                                            class="@("secici-sonuc" + (secili == sira ? " secili" : ""))"
+                                            id="@($"kabuk-arama-ekran-{sira}")"
+                                            @onclick="() => Git(oge.Yol)">
+                                        <Ikon Ad="@oge.Ikon" />
+                                        <span class="secici-ad">@oge.Etiket(Dil.T)</span>
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (kayitBolumuVar)
+                    {
+                        <h3 class="kabuk-arama-baslik">@Dil.T.Kabuk.AramaKayitlar</h3>
+                    }
+                    @* Kayıt aramasının hatası BURADA durur: ekran araması çalışırken
+                       sayfanın üstünde kırmızı bant göstermek yanlış teşhistir. *@
+                    <HataBandi Mesaj="@hata" Id="kabuk-arama-hata" />
+                    @if (Aranabilir && araniyor)
+                    {
+                        <Yukleniyor />
+                    }
+                    else if (ikisiDeBos)
+                    {
+                        @* TEK, simgesiz, kısa "yok" (BosDurum bileşeni simge çizdiği için sınıfı aynı, simgesiz). *@
+                        <div class="bos-durum kabuk-arama-yok" id="kabuk-arama-yok" role="status">
+                            <p>@MenuAramaSozlugu.PaletSonucYok(Dil.Dil)</p>
+                        </div>
+                    }
+                    else if (!araniyor && SecilebilirSonuclar.Count > 0)
+                    {
+                        <ul class="secici-sonuclar" id="kabuk-arama-kayitlar">
+                            @for (var i = 0; i < SecilebilirSonuclar.Count; i++)
+                            {
+                                var s = SecilebilirSonuclar[i];
+                                var sira = ekranlar.Count + i;
+                                <li>
+                                    <button type="button"
+                                            class="@("secici-sonuc" + (secili == sira ? " secili" : ""))"
+                                            id="@($"kabuk-arama-kayit-{i}")"
+                                            @onclick="() => Git(s.Rota!)">
+                                        <Rozet Renk="gri">@TurEtiketi(s.Tur)</Rozet>
+                                        <span class="secici-ad">@s.Ad</span>
+                                        @if (!string.IsNullOrWhiteSpace(s.AltBilgi))
+                                        {
+                                            <span class="metin-kucuk metin-soluk">@s.AltBilgi</span>
+                                        }
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private static KabukServisi Kabuk => KabukServisi.Ortak;
+
+    private string metin = "";
+    private string? sonAranan;
+    private bool araniyor;
+    private string? hata;
+    private AramaYaniti? yanit;
+    private int istekSirasi;
+    private int secili = -1;
+    private bool kisayolKuruldu;
+    /// <summary>S1-j: palet açık mı (üst bar düğmesi ya da Ctrl/Cmd+K açar).</summary>
+    private bool acik;
+    /// <summary>Palet bu çizimde açıldıysa odak kutuya taşınır (bir kez).</summary>
+    private bool odaklanacak;
+
+    /// <summary>Kutuya bir şey yazıldı mı — panel yalnız o zaman açılır.</summary>
+    private bool Yazildi => metin.Trim().Length > 0;
+
+    private bool Aranabilir => metin.Trim().Length >= KayitSecici.AramaServisiAsgari;
+
+    /// <summary>
+    /// Yalnız DERİN BAĞLANTISI OLAN sonuçlar tıklanabilir listeye girer.
+    /// Rotası olmayan tür (fiş, fatura, dekont) burada gösterilse "tıklanınca
+    /// hiçbir şey olmayan düğme" olurdu — DoD EK md.1 bunu yasaklar.
+    /// </summary>
+    private IReadOnlyList<AramaSonucu> SecilebilirSonuclar =>
+        yanit?.Sonuclar.Where(s => !string.IsNullOrWhiteSpace(s.Rota)).ToList() ?? [];
+
+    private string TurEtiketi(string tur) => tur switch
+    {
+        AramaTurleri.Cari => Dil.T.Kabuk.TurCari,
+        AramaTurleri.Urun => Dil.T.Kabuk.TurUrun,
+        AramaTurleri.Fis => Dil.T.Kabuk.TurFis,
+        AramaTurleri.Fatura => Dil.T.Kabuk.TurFatura,
+        AramaTurleri.BankaHareket => Dil.T.Kabuk.TurBankaHareket,
+        AramaTurleri.Hareket => Dil.T.Kabuk.TurHareket,
+        _ => tur,
+    };
+
+    /// <summary>
+    /// Komut paleti kaynağı = menünün TEK kaynağı. Yetki koşulu (S1-g: mod
+    /// süzgeci yok) KenarCubugu ile birebir aynıdır; palet yetkiyi GEVŞETMEZ.
+    /// Türkçe harf duyarlılığı AramaMetni.Katla üzerinden gelir (ısparta→Isparta).
+    /// </summary>
+    private List<MenuOgesi> EslesenEkranlar()
+    {
+        // PAKET S1-j: boş/boşluklu metinde eşleşme ARANMAZ (ilk tuş çökmesi,
+        // K11). Eşleşme kuralı menü kutusuyla TEK kaynaktır (MenuTanimi.AramaEslesir).
+        if (!MenuTanimi.AramaVar(metin)) return [];
+        return MenuTanimi.Ogeler
+            .Concat(MenuTanimi.AltBlok)
+            .Where(Gorunur)
+            .Where(o => MenuTanimi.AramaEslesir(o, Dil.T, metin))
+            .Take(6)
+            .ToList();
+    }
+
+    private bool Gorunur(MenuOgesi oge) =>
+        MenuTanimi.YetkiliMi(oge, Yetki.Erisebilir, Oturum.Kullanici?.Rol);
+    // PAKET S1-g: mod süzgeci KALKTI — menü basit modda da yetkili her ekranı
+    // gösterir (tuval); menünün tepesindeki arama menüden DAR olamaz (UX-S22).
+
+    /// <summary>Klavye gezinmesi için tek düzleştirilmiş hedef listesi.</summary>
+    private List<string> Hedefler()
+    {
+        var liste = EslesenEkranlar().Select(o => o.Yol).ToList();
+        liste.AddRange(SecilebilirSonuclar.Select(s => s.Rota!));
+        return liste;
+    }
+
+    // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
+    /// <summary>Paleti açar; odak bir sonraki çizimde kutuya taşınır.</summary>
+    private void Ac()
+    {
+        // Dar ekranda açık menü çekmecesi paletin perdesinin ÜSTÜNDE kalıyordu
+        // (375 px ölçümü): palet açılırken çekmece kapanır — tek katman.
+        Kabuk.Kapat();
+        if (acik) { odaklanacak = true; return; }
+        acik = true;
+        odaklanacak = true;
+    }
+
+    /// <summary>Paleti kapatır ve metni siler (Kapat düğmesi, perde, Esc).</summary>
+    private void Kapat()
+    {
+        acik = false;
+        metin = "";
+        Sifirla();
+    }
+
+    /// <summary>× — yalnız metni siler, palet açık kalır.</summary>
+    private void Temizle()
+    {
+        metin = "";
+        Sifirla();
+        odaklanacak = true;
+    }
+
+    /// <summary>JS kısayolu (Ctrl/Cmd+K) paleti açar — kutu kapalıyken DOM'da yoktur.</summary>
+    [JSInvokable]
+    public Task KisayolAc()
+    {
+        Ac();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void Sifirla()
+    {
+        sonAranan = null;
+        yanit = null;
+        hata = null;
+        secili = -1;
+    }
+
+    private void TusaBasildi(KeyboardEventArgs e)
+    {
+        var hedefler = Hedefler();
+        switch (e.Key)
+        {
+            case "Escape":
+                Kapat();
+                break;
+            case "ArrowDown":
+                if (hedefler.Count > 0) secili = (secili + 1) % hedefler.Count;
+                break;
+            case "ArrowUp":
+                if (hedefler.Count > 0) secili = secili <= 0 ? hedefler.Count - 1 : secili - 1;
+                break;
+            case "Enter":
+                if (secili >= 0 && secili < hedefler.Count) Git(hedefler[secili]);
+                else if (hedefler.Count > 0) Git(hedefler[0]);
+                break;
+        }
+    }
+
+    private void Git(string rota)
+    {
+        acik = false;
+        metin = "";
+        Sifirla();
+        Kabuk.Kapat();      // dar ekranda çekmece kapanır
+        Nav.NavigateTo(rota);
+    }
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += Yenile;
+        Yetki.Degisti += Yenile;
+        Modu.Degisti += Yenile;
+        Kabuk.Degisti += Yenile;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (ilk && !kisayolKuruldu)
+        {
+            kisayolKuruldu = true;
+            benlik = DotNetObjectReference.Create(this);
+            // Kısayol kurulumu sessizce başarısız olabilir (ön-render / test
+            // ortamında JS yok); palet JS'siz de üst bar düğmesiyle açılır.
+            try { await JS.InvokeVoidAsync("kuyumcuKisayol.aramaKur", "kabuk-arama-girdi", benlik); }
+            catch (Exception) { /* JS yoksa kısayol yok; "Müşteri, ürün ara" düğmesi yine çalışır */ }
+        }
+
+        if (acik && odaklanacak)
+        {
+            odaklanacak = false;
+            try { await JS.InvokeVoidAsync("kuyumcuKisayol.odakla", "kabuk-arama-girdi"); }
+            catch (Exception) { /* JS yoksa odak taşınmaz; kutu yine tıklanabilir */ }
+        }
+
+        var q = metin.Trim();
+        if (q.Length < KayitSecici.AramaServisiAsgari || q == sonAranan) return;
+        sonAranan = q;
+        var sira = ++istekSirasi;
+        if (KayitSecici.BeklemeMs > 0) await Task.Delay(KayitSecici.BeklemeMs);
+        if (sira != istekSirasi) return;
+        await Ara(q, sira);
+    }
+
+    private async Task Ara(string q, int sira)
+    {
+        araniyor = true;
+        hata = null;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var yol = $"/arama?q={Uri.EscapeDataString(q)}&limit=10";
+            if (Kabuk.GorunumSubesiIcin(Oturum) is { Length: > 0 } s)   // ŞUBE-KAPSAM-B: bu oturumun görünüm şubesi
+                yol += $"&sube={Uri.EscapeDataString(s)}";
+            var gelen = await Api.GetAsync<AramaYaniti>(yol);
+            if (sira != istekSirasi) return;
+            yanit = gelen;
+        }
+        catch (ApiHata ex)
+        {
+            hata = $"{Dil.T.Kabuk.AramaKayitHatasi}: {ex.Message}";
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            hata = $"{Dil.T.Kabuk.AramaKayitHatasi}: {ex.Message}";
+        }
+        finally
+        {
+            araniyor = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private DotNetObjectReference<GlobalArama>? benlik;
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        benlik?.Dispose();
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= Yenile;
+        Yetki.Degisti -= Yenile;
+        Modu.Degisti -= Yenile;
+        Kabuk.Degisti -= Yenile;
+    }
+}

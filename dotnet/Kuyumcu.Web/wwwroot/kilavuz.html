@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MİHENK — Kullanım Kılavuzu</title>
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 8f1f0fc92abb0d12ab3ca90641915d1962ce6e696955c0e40e7a53625891da0d · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ════════════════════════════════════════════════════════════════════════
+     KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
+     DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
+     (dotnet/kilavuz-uret.sh) içindekiler / kapak / içerik yer tutucularını
+     o dosyadan doldurur. Palet burada DEĞİL: tek kaynak css/belirtecler.css
+     (UX-2 Faz A1, Bertan KOŞUL 1) — kılavuz aydınlık/karanlık temayı izler.
+     OTURUMSUZ ERİŞİM KARARI (P-33, yazılı): kılavuz statik bir dosyadır, hiçbir
+     işletme verisi taşımaz ve giriş ekranında takılan kullanıcı da okuyabilsin
+     diye oturum İSTEMEZ. Bu yüzden içine betik, veri çağrısı ya da çerçeve
+     (iframe) KONMAZ; /kilavuz ekranı da onu çerçevelemez, yeni sekmede açar
+     (Mehmet kararı: CSP frame-ancestors 'none' gevşetilmez).
+     ════════════════════════════════════════════════════════════════════════ -->
+<link rel="stylesheet" href="css/belirtecler.css" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:1rem}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--metin); background:var(--yuzey-govde); line-height:1.65; font-size:16px;
+  }
+  .duzen{display:grid; grid-template-columns:290px 1fr; max-width:1280px; margin:0 auto; min-height:100vh}
+
+  /* ── İçindekiler (sabit sol) ── */
+  .toc{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    background:var(--kenar-yuzey); color:var(--kenar-metin); padding:1.25rem 0;
+  }
+  .toc .marka{display:flex;flex-direction:column;font-weight:700;color:var(--kenar-metin-guclu);font-size:1.15rem;padding:0 1.25rem 1rem}
+  .toc .marka .altbaslik{display:block;font-size:.72rem;font-weight:400;color:var(--kenar-metin);letter-spacing:.04em}
+  .toc nav{display:flex;flex-direction:column}
+  .toc a{color:var(--kenar-metin);text-decoration:none;padding:.38rem 1.25rem;font-size:.86rem;border-left:3px solid transparent}
+  .toc a:hover{color:var(--kenar-metin-guclu);border-left-color:var(--vurgu)}
+  .toc .bolum{margin-top:.9rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--kenar-metin-guclu);font-weight:700;padding:.2rem 1.25rem}
+  .toc a.alt{padding-left:2rem;font-size:.8rem}
+
+  /* ── İçerik ── */
+  main{padding:0 2.5rem 5rem; background:var(--yuzey); min-width:0}
+  .kapak{background:var(--vurgu-yuzey);color:var(--vurgu-guclu);border-bottom:1px solid var(--vurgu-kenar);
+    margin:0 -2.5rem 2rem; padding:2.5rem 2.5rem 2rem}
+  .kapak h1{font-size:2rem;font-weight:800;letter-spacing:-.02em;color:var(--metin-guclu)}
+  .kapak p{margin-top:.5rem;max-width:62ch;color:var(--metin)}
+
+  section{scroll-margin-top:1rem; padding-top:2.25rem; border-top:1px solid var(--ayrac); margin-top:2.25rem}
+  section:first-of-type{border-top:0;margin-top:0;padding-top:1rem}
+  h2{font-size:1.45rem;color:var(--metin-guclu);font-weight:800;display:flex;align-items:center;gap:.55rem}
+  h2 .no{background:var(--vurgu-yuzey);color:var(--vurgu-guclu);font-size:.9rem;min-width:1.9rem;height:1.9rem;padding:0 .3rem;
+    display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:800;flex-shrink:0}
+  h3{font-size:1.1rem;color:var(--metin-guclu);font-weight:700;margin:1.5rem 0 .5rem;scroll-margin-top:1rem}
+  p{margin:.6rem 0}
+  ul,ol{margin:.5rem 0 .5rem 1.3rem}
+  li{margin:.3rem 0}
+  code{background:var(--ayrac);padding:.1rem .38rem;border-radius:5px;font-size:.88em;
+    font-family:"SF Mono",Consolas,Menlo,monospace;color:var(--metin)}
+  strong{color:var(--metin-guclu)}
+  a.ic{color:var(--vurgu);font-weight:600;text-decoration:none;border-bottom:1px dotted var(--vurgu)}
+  a.ic:hover{border-bottom-style:solid}
+  .ekran-capa{display:block;position:relative;top:-1rem;visibility:hidden}
+
+  /* Adım listesi */
+  ol.adimlar{counter-reset:s;list-style:none;margin-left:0}
+  ol.adimlar>li{counter-increment:s;position:relative;padding:.35rem 0 .35rem 2.4rem;margin:.35rem 0}
+  ol.adimlar>li::before{content:counter(s);position:absolute;left:0;top:.3rem;background:var(--vurgu);color:var(--vurgu-metin);
+    width:1.7rem;height:1.7rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:.82rem;font-weight:700}
+
+  /* Bilgi kutuları */
+  .kutu{border-radius:var(--yaricap);padding:.9rem 1.1rem;margin:1rem 0;font-size:.95rem;border:1px solid}
+  .kutu p{margin:.2rem 0}
+  .kutu.ipucu{background:var(--vurgu-yuzey);border-color:var(--vurgu-kenar);color:var(--vurgu-guclu)}
+  .kutu.bilgi{background:var(--bilgi-yuzey);border-color:var(--bilgi-kenar);color:var(--bilgi)}
+  .kutu.uyari{background:var(--tehlike-yuzey);border-color:var(--tehlike-kenar);color:var(--tehlike)}
+
+  /* Tablolar */
+  .tablo-sar{overflow-x:auto;margin:1rem 0}
+  table.tablo{width:100%;border-collapse:collapse;background:var(--yuzey);border:1px solid var(--ayrac);font-size:.92rem}
+  table.tablo th{background:var(--yuzey-2);text-align:left;padding:.45rem .6rem;color:var(--metin-soluk);font-weight:600}
+  table.tablo td{padding:.45rem .6rem;border-top:1px solid var(--ayrac);vertical-align:top}
+
+  footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--ayrac);color:var(--metin-soluk);font-size:.85rem}
+  .ust-link{position:fixed;right:1.2rem;bottom:1.2rem;background:var(--vurgu);color:var(--vurgu-metin);width:2.6rem;height:2.6rem;
+    border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:1.1rem}
+  .ipucu{background:var(--vurgu-yuzey);color:var(--vurgu-guclu);border:1px solid var(--vurgu-kenar);border-radius:8px;padding:.5rem .8rem;font-size:.85rem;margin:1rem 0}
+
+  @media (max-width:860px){
+    .duzen{grid-template-columns:1fr}
+    .toc{position:static;height:auto}
+    main{padding:0 1rem 3rem}
+    .kapak{margin:0 -1rem 1.5rem;padding:1.75rem 1rem}
+  }
+
+  /* ── 4 TEMEL DURUM GALERİSİ (UX-2 Faz A2 · K14) ───────────────────────────
+     Sabit renk YOKTUR; her değer belirtecler.css'ten var() ile okunur.
+     Her kart kendi data-tema/data-mod özniteliğini taşır → aynı sayfada
+     aydınlık/karanlık × basit/profesyonel dördü birden görülür. */
+  .galeri{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:var(--bosluk-4);margin-top:var(--bosluk-4)}
+  .tema-onizleme{background:var(--yuzey-govde);color:var(--metin);border:1px solid var(--kenarlik);border-radius:var(--yaricap-lg);padding:var(--bosluk-4);display:flex;flex-direction:column;gap:var(--bosluk-3)}
+  .tema-onizleme .durum-etiketi{font-size:var(--yazi-xs);letter-spacing:.04em;text-transform:uppercase;color:var(--metin-soluk)}
+  .tema-onizleme .o-basi-metin{flex:1;min-width:0}
+  .tema-onizleme .o-sayfa-basi{display:flex;align-items:flex-end;gap:var(--bosluk-3);flex-wrap:wrap}
+  .tema-onizleme .o-baslik{font-size:var(--yazi-xl);font-weight:600;color:var(--metin-guclu)}
+  .tema-onizleme .o-aciklama{font-size:var(--yazi-sm);color:var(--metin-soluk)}
+  .tema-onizleme .o-dugme{padding:var(--bosluk-2) var(--bosluk-3);border-radius:var(--yaricap-sm);border:1px solid var(--vurgu);background:var(--vurgu);color:var(--vurgu-metin);min-height:var(--dokunma-hedefi)}
+  .tema-onizleme .o-dugme.ikincil{background:var(--yuzey);border-color:var(--kenarlik);color:var(--metin)}
+  .tema-onizleme .o-dugme:focus-visible{outline:var(--odak-halka-kalinlik) solid var(--odak-halka);outline-offset:var(--odak-halka-boslugu)}
+  .tema-onizleme table{width:100%;border-collapse:collapse;background:var(--yuzey);border-radius:var(--yaricap);overflow:hidden}
+  .tema-onizleme th,.tema-onizleme td{padding:var(--bosluk-hucre);line-height:var(--satir-yuksekligi);border-top:1px solid var(--ayrac);font-size:var(--yazi-sm);text-align:left}
+  .tema-onizleme thead th{background:var(--yuzey-2);border-top:none;color:var(--metin-soluk)}
+  .tema-onizleme td.sayi{font-variant-numeric:tabular-nums;text-align:right;color:var(--metin-guclu)}
+  .tema-onizleme .o-rozet{display:inline-block;padding:var(--bosluk-1) var(--bosluk-2);border-radius:var(--yaricap-tam);font-size:var(--yazi-xs);background:var(--basari-yuzey);color:var(--basari);border:1px solid var(--basari-kenar)}
+  .tema-onizleme .o-rozet.bekleyen{background:var(--uyari-yuzey);color:var(--uyari);border-color:var(--uyari-kenar)}
+  .tema-onizleme .o-si{border:1px dashed var(--kenarlik);border-radius:var(--yaricap-sm);padding:var(--bosluk-1) var(--bosluk-2);background:var(--yuzey-2);font-size:var(--yazi-sm)}
+  .tema-onizleme .o-grafik{display:flex;gap:var(--bosluk-1);align-items:flex-end;height:3rem}
+  .tema-onizleme .o-grafik i{flex:1;border-radius:2px 2px 0 0}
+  .tema-onizleme .o-g1{background:var(--grafik-1);height:100%}
+  .tema-onizleme .o-g2{background:var(--grafik-2);height:70%}
+  .tema-onizleme .o-g3{background:var(--grafik-3);height:85%}
+  .tema-onizleme .o-g4{background:var(--grafik-4);height:45%}
+  .tema-onizleme .o-g5{background:var(--grafik-5);height:60%}
+</style>
+</head>
+<body>
+<div class="duzen">
+
+  <!-- ═══════════ İÇİNDEKİLER (üretilir) ═══════════ -->
+  <aside class="toc">
+    <div class="marka">MİHENK<span class="altbaslik">Kullanım Kılavuzu</span></div>
+    <nav>
+      <div class="bolum">Başlangıç</div>
+      <a href="#tanitim">Tanıtım ve temel kavramlar</a>
+      <a href="#baslat">Programı açma</a>
+      <a href="#giris">Giriş</a>
+      <a href="#sifre-sifirla">Parolamı unuttum</a>
+      <a href="#arayuz">Arayüz turu</a>
+      <a href="#gunluk-akis">Bir iş günü</a>
+      <a href="#kur">Kur</a>
+      <div class="bolum">Günlük İş</div>
+      <a href="#panel">Panel</a>
+      <a href="#islemler">Satış</a>
+      <a class="alt" href="#satis">— Satış ve otomatik fiyat</a>
+      <a class="alt" href="#alis">— Alış, hurda alışı ve işçilik</a>
+      <a class="alt" href="#takas">— Takas</a>
+      <a class="alt" href="#transfer">— Transfer</a>
+      <a href="#emanet">Emanet</a>
+      <a href="#siparisler">Sipariş ve tamir</a>
+      <a class="alt" href="#siparis-ayrinti">— Sipariş ve tamir — sipariş ayrıntısı</a>
+      <a href="#bildirimler">Bildirimler</a>
+      <div class="bolum">Müşteri ve Stok</div>
+      <a href="#cariler">Müşteriler</a>
+      <a href="#urunler">Ürünler</a>
+      <a class="alt" href="#urun-agaci">— Ürün Ağacı</a>
+      <a class="alt" href="#etiketler">— Ürün Etiketleri</a>
+      <a href="#fiyatlandirma">Fiyat Listeleri</a>
+      <a href="#sayim">Sayım</a>
+      <a href="#satinalma">Satın alma</a>
+      <div class="bolum">Para ve Banka</div>
+      <a href="#kasalar">Kasalar</a>
+      <a href="#vezne">Kasa kuyruğu (vezne)</a>
+      <a href="#pos">POS Cihazları</a>
+      <a class="alt" href="#pos-hakedis">— POS alacakları</a>
+      <a href="#banka">Banka</a>
+      <a class="alt" href="#banka-ekstre">— Banka ekstresi eşleştirme</a>
+      <a href="#evraklar">Çek ve senet</a>
+      <a class="alt" href="#vade-takvimi">— Vade Takvimi</a>
+      <a href="#gider">Gider ve Para Aktarımı</a>
+      <a href="#hurda">Hurda ve Ramat</a>
+      <div class="bolum">Belge ve Uyum</div>
+      <a href="#faturalar">Faturalar</a>
+      <a href="#irsaliyeler">İrsaliyeler</a>
+      <a href="#giderpusulasi">Gider Pusulaları</a>
+      <a class="alt" href="#pusula-belgesi">— Gider Pusulası Belgesi</a>
+      <a href="#uyum">Uyum (MASAK)</a>
+      <div class="bolum">Dökümler</div>
+      <a href="#yasal-sinirlar">Yasal sınırlar</a>
+      <a href="#raporlar">Rapor merkezi</a>
+      <a href="#kar-zarar">Kâr-Zarar</a>
+      <a href="#vade-takibi">Vade takibi</a>
+      <a href="#islem-defteri">İşlem defteri</a>
+      <a href="#satis-analizi">Satış Analizi</a>
+      <a href="#kasa-raporu">Kasa raporu</a>
+      <a href="#cikti">Belge çıktısı</a>
+      <a href="#vitrin">Vitrin Panosu</a>
+      <a href="#vitrin-ekran">İşletme ekranı</a>
+      <div class="bolum">Yönetim</div>
+      <a href="#kullanicilar">Kullanıcılar</a>
+      <a href="#yetkiler">Yetkiler</a>
+      <a href="#isletme">İşletme</a>
+      <a href="#kurulum">Kurulum</a>
+      <a href="#denetim-izi">Kim ne yaptı</a>
+      <a href="#veriaktarim">Veri aktarımı</a>
+      <a class="alt" href="#veri-ice-aktarim">— Veri içe aktar</a>
+      <a class="alt" href="#veri-disa-aktarim">— Veri dışa aktar</a>
+      <a href="#yedekler">Yedekler</a>
+      <a href="#ayarlar">Ayarlar</a>
+      <a href="#kilavuz">Kılavuz</a>
+      <div class="bolum">Ek</div>
+      <a href="#haric">Bu sürümde olmayanlar</a>
+      <a href="#sozluk">Kavramlar sözlüğü</a>
+      <a href="#sss">Sık sorulanlar</a>
+      <div class="bolum">Tasarım</div>
+      <a href="#galeri">Tasarım galerisi</a>
+    </nav>
+  </aside>
+
+  <!-- ═══════════ İÇERİK (üretilir) ═══════════ -->
+  <main>
+    <div class="kapak">
+      <h1>MİHENK — Kullanım Kılavuzu</h1>
+      <p>Kuyumcu işletmenizin satışını, alışını, müşteri hesaplarını, stoğunu, kasasını, bankasını ve faturasını tek programda tutan MİHENK'in adım adım rehberi. Programdaki her ekranın bu kılavuzda kendi bölümü vardır; ekrandayken üst çubuktaki <strong>Yardım</strong> bağlantısı sizi doğrudan o bölüme getirir.</p>
+    </div>
+    <section id="tanitim">
+      <h2><span class="no">1</span> Tanıtım ve temel kavramlar</h2>
+      <p>MİHENK her işlemi <strong>hem Türk Lirası hem de has (saf altın) gram</strong> cinsinden kaydeder. Buna <em>paralel defter</em> denir: bir müşterinin hem TL bakiyesini hem de size olan gram altın borcunu ya da alacağını aynı anda görürsünüz.</p>
+      <ul>
+        <li><strong>Has gram:</strong> ürünün içindeki saf altın miktarıdır. Program gram, taş ağırlığı ve ayardan kendisi hesaplar; siz yalnız ürünün gramını ve ayarını girersiniz.</li>
+        <li><strong>Kur anlık görüntüsü:</strong> her işlem, yapıldığı andaki kura bağlanır. Kur sonradan değişse de eski işlemin değeri değişmez.</li>
+        <li><strong>Cari:</strong> para ya da altın alıp verdiğiniz her kişi veya firma (müşteri, tedarikçi, atölye).</li>
+        <li><strong>Basit ve profesyonel mod:</strong> basit mod günlük işte gereken ekranları gösterir; profesyonel mod bütün ekranları açar. Yeni açılan işletme basit modda başlar. Mod, üst çubuktaki anahtarla değiştirilir.</li>
+      </ul>
+      <p>Tam tanımlar için <a class="ic" href="#sozluk">Kavramlar sözlüğü</a> bölümüne bakın.</p>
+    </section>
+
+    <section id="baslat">
+      <h2><span class="no">2</span> Programı açma</h2>
+      <p>MİHENK işletmedeki bilgisayarın tarayıcısında açılır. Kurulumu yapan kişi masaüstünüze <strong>MİHENK</strong> adlı bir kısayol bırakır; gün başında yalnız o kısayola çift tıklarsınız.</p>
+      <ol class="adimlar">
+        <li>Masaüstündeki <strong>MİHENK</strong> kısayoluna çift tıklayın.</li>
+        <li>Tarayıcı açılır ve <strong>Giriş</strong> ekranı gelir.</li>
+        <li>Size verilen e-posta ve şifreyle giriş yapın (bkz. <a class="ic" href="#giris">Giriş</a>).</li>
+      </ol>
+      <div class="kutu bilgi"><p><strong>Adres nereden geliyor?</strong> Programın adresi kurulumda bir kez sorulur ve kurulumda sorulan adres kısayola yazılır. Tek bilgisayarlık kurulumda bu adres o bilgisayarı, işletme ağındaki kurulumda ağdaki sunucuyu gösterir. Bu yüzden kılavuzda sabit bir adres yazmıyoruz; yazsaydık sizinkiyle uyuşmayabilirdi. Adres değişirse kurulumu yapan kişi kısayolu yeni adresle yeniden üretir.</p></div>
+      <div class="kutu uyari"><p>Program açılmıyorsa kapatıp yeniden denemeden önce tarayıcıda görünen hata metnini ve hata kodunu not edin, destek hattına iletin. Tarayıcıyı kapatmak hiçbir kaydı silmez: bütün kayıtlar sunucuda tutulur.</p></div>
+    </section>
+
+    <section id="giris">
+      <h2><span class="no">3</span> Giriş</h2>
+      <span class="ekran-capa" id="e-giris"></span>
+      <ol class="adimlar">
+        <li>E-posta ve şifrenizi girin, <strong>Giriş Yap</strong>'a basın.</li>
+        <li>İki aşamalı giriş açıksa telefonunuzdaki doğrulama uygulamasının ürettiği kodu girin.</li>
+        <li>Sağ üstteki <strong>TR / EN</strong> seçimiyle giriş öncesinde de dili değiştirebilirsiniz.</li>
+      </ol>
+      <p>İşletme kaydı yalnız davet koduyla açılır. İlk kurulumda davet kodunu size satış ekibi verir; <strong>İşletme Kur</strong> sekmesinde işletme adını ve ilk kullanıcıyı (Sahip) oluşturursunuz.</p>
+      <div class="kutu ipucu"><p>Şifrenizi unuttuysanız giriş ekranında <strong>Parolamı unuttum</strong>'a basın: e-postayla yeni parola alabilirsiniz (aşağıda). İşletmenizin Sahip ya da Müdür rolündeki kullanıcısı da <strong>Kullanıcılar</strong> ekranından şifrenizi sıfırlayabilir.</p></div>
+    </section>
+
+    <section id="sifre-sifirla">
+      <h2><span class="no">4</span> Parolamı unuttum</h2>
+      <span class="ekran-capa" id="e-sifre-sifirla"></span>
+      <ol class="adimlar">
+        <li>Giriş ekranında <strong>Parolamı unuttum</strong>'a, ardından <strong>E-postayla yeni parola al</strong>'a basın.</li>
+        <li>Kayıtlı e-posta adresinizi yazıp <strong>Bağlantı gönder</strong>'e basın. Adres kayıtlı olsun ya da olmasın ekran aynı cevabı verir; bu, hesabınızın varlığının başkalarınca öğrenilmesini engeller.</li>
+        <li>E-postanızdaki bağlantıyı açın, yeni parolayı iki kez yazıp <strong>Parolayı kaydet</strong>'e basın. Parola en az 8 karakter olmalı, içinde en az bir harf ve bir rakam bulunmalıdır.</li>
+        <li><strong>Girişe dön</strong> ile yeni parolanızla giriş yapın. İki aşamalı giriş açıksa doğrulama kodu yine sorulur.</li>
+      </ol>
+      <p>Bağlantı 30 dakika geçerlidir ve yalnız bir kez kullanılır. Yeni bağlantı isterseniz eskisi geçersiz olur. Aynı adres için 15 dakikada en çok 3 bağlantı istenebilir. Parola değişince diğer cihazlardaki oturumlar yenilenemez ve kısa süre içinde kapanır.</p>
+      <div class="kutu bilgi"><p>E-postayla sıfırlama her kurulumda açık değildir. Ekran &quot;E-postayla sıfırlama kapalı&quot; diyorsa işletme sahibine ya da destek hattına başvurun; Sahip ya da Müdür <strong>Kullanıcılar</strong> ekranından size yeni parola verebilir.</p></div>
+    </section>
+
+    <section id="arayuz">
+      <h2><span class="no">5</span> Arayüz turu</h2>
+      <p>Program üç bölümden oluşur: solda <strong>menü</strong>, üstte <strong>başlık ve kur çubuğu</strong>, ortada <strong>çalışma alanı</strong>.</p>
+      <ul>
+        <li><strong>Sol menü:</strong> ekranlar gruplar hâlinde durur: Günlük İş, Müşteri ve Stok, Para ve Banka, Belge ve Uyum, Dökümler, Yönetim. Yetkinizin yetmediği ekran menüde görünmez.</li>
+        <li><strong>Üst çubuk:</strong> bulunduğunuz ekranın adı, canlı kur, basit/profesyonel mod anahtarı ve <strong>Yardım</strong> bağlantısı.</li>
+        <li><strong>Her ekranın başı:</strong> ekranın ne işe yaradığını anlatan kısa açıklama ve ekrandaki tek ana düğme.</li>
+        <li><strong>Bantlar:</strong> kaydettiğiniz işin sonucu yeşil başarı bandında (fiş no, fatura no, yeni bakiye), bir sorun kırmızı hata bandında yazar. Hata olduğunda liste &quot;kayıt yok&quot; demez; hata bandı çıkar.</li>
+        <li><strong>Kilitli düğme:</strong> bir düğme basılamıyorsa yanında neyin eksik olduğu yazar (kur yok, kasa seçilmedi, gerekçe çok kısa gibi).</li>
+      </ul>
+      <h3>Tüm ekranlar</h3>
+      <span class="ekran-capa" id="e-ekranlar"></span>
+      <p>Menünün en altındaki <strong>Tüm ekranlar</strong> bağlantısı, yetkili olduğunuz bütün ekranları kutucuklar hâlinde gösterir. Üstteki arama kutusuna &quot;fatura&quot;, &quot;kasa&quot;, &quot;sayım&quot; gibi bir sözcük yazarak ekranı bulabilir, sık kullandığınız ekranı yıldızlayarak favorilerinize ekleyebilirsiniz.</p>
+    </section>
+
+    <section id="gunluk-akis">
+      <h2><span class="no">6</span> Bir iş günü</h2>
+      <p>Programı ilk kez kullanıyorsanız bir iş gününü şu sırayla yürütün; her adımın ayrıntısı ilgili ekranın bölümündedir.</p>
+      <ol class="adimlar">
+        <li><strong>Güne başlarken:</strong> kısayoldan programı açıp giriş yapın. Üst çubuktaki kurun güncel olduğunu kontrol edin (bkz. <a class="ic" href="#kur">Kur</a>).</li>
+        <li><strong>Panele bakın:</strong> gecikmiş alacak, bekleyen sipariş ve kasa bakiyeleri panelde görünür (bkz. <a class="ic" href="#panel">Panel</a>).</li>
+        <li><strong>Satış ve alışları girin:</strong> müşteriyle yaptığınız her alışverişi <strong>İşlemler</strong> ekranından kaydedin; başarı bandındaki fiş numarasını müşteriye verin (bkz. <a class="ic" href="#islemler">İşlemler</a>).</li>
+        <li><strong>Emanet ve siparişleri işleyin:</strong> size bırakılan altını <strong>Emanet</strong>, sipariş ve tamirleri <strong>Siparişler</strong> ekranında tutun.</li>
+        <li><strong>Gün sonunda:</strong> <strong>Kasa Hareketleri</strong> dökümünü açıp kasadaki parayı sayın ve karşılaştırın. Fark varsa hareketleri tek tek kontrol edin; yanlış kaydı silmeyin, storno ile düzeltin.</li>
+        <li><strong>Haftada bir:</strong> Sahip rolündeki kullanıcı <strong>Yedekler</strong> ekranında son yedeğin doğrulandığını ve son geri yükleme tatbikatının tarihini kontrol eder.</li>
+      </ol>
+      <div class="kutu ipucu"><p>Basit modda yalnız günlük işte gereken ekranlar görünür. Bir ekranı bulamıyorsanız menünün altındaki <strong>Tüm ekranlar</strong> bağlantısından arayın.</p></div>
+    </section>
+
+    <section id="kur">
+      <h2><span class="no">7</span> Kur</h2>
+      <span class="ekran-capa" id="e-kur"></span>
+      <p>Üst çubuktaki kur alanı gram altın, has altın ve döviz değerlerini gösterir ve her ekranda görünür. Değerler değiştiğinde açık olan bütün ekranlara aynı anda düşer; sayfayı yenilemeniz gerekmez.</p>
+      <p><strong>Kur</strong> ekranında güncel kurları, kurun hangi kaynaktan ve ne zaman geldiğini görürsünüz.</p>
+      <ul>
+        <li><strong>Otomatik güncelleme:</strong> kurlar yapılandırılmış kaynaktan düzenli aralıklarla çekilir.</li>
+        <li><strong>Elle yenileme:</strong> Sahip ve Müdür rolleri o anki kuru hemen çektirebilir.</li>
+        <li><strong>Elle kur girişi:</strong> kaynağa ulaşılamıyorsa yetkili kullanıcı kuru elle girebilir; elle girilen kur ekranda öyle işaretlenir.</li>
+      </ul>
+      <div class="kutu uyari"><p>Her işlem o andaki kura bağlanır. Kur yanlışsa has hesabı da yanlış olur. Kur çubuğu &quot;kur yok&quot; ya da &quot;eski&quot; diyorsa satış yapmadan önce kuru yenileyin.</p></div>
+    </section>
+
+    <section id="panel">
+      <h2><span class="no">8</span> Panel</h2>
+      <span class="ekran-capa" id="e-panel"></span>
+      <p>Girişten sonra açılan ana ekrandır. Günün satış ve alış toplamları, has gram durumu, kasa bakiyeleri ve son yedi günün satış grafiği burada görünür.</p>
+      <ul>
+        <li>Kartlardaki her sayı ilgili ekrana götüren bir bağlantıdır; örneğin gecikmiş alacak sayısına basınca gecikmiş alacaklar listesi açılır.</li>
+        <li>Seçtiğiniz tarih aralığından etkilenmeyen kartlar bunu alt metinlerinde yazar (&quot;bugün itibarıyla&quot;).</li>
+        <li>Tutarlar para birimiyle birlikte gösterilir; farklı para birimleri toplanmaz.</li>
+      </ul>
+    </section>
+
+    <section id="islemler">
+      <h2><span class="no">9</span> Satış</h2>
+      <span class="ekran-capa" id="e-islemler"></span>
+      <p>İşletmedeki alışverişin tamamı bu ekrandan yapılır: satış, alış, hurda alışı, takas, işçilik, iade ve şubeler arası transfer. Her işlem o anki kura bağlanarak kaydedilir.</p>
+      <h3 id="satis">Satış ve otomatik fiyat</h3>
+      <ol class="adimlar">
+        <li><strong>Satış</strong> sekmesini seçin.</li>
+        <li>Müşteriyi (cariyi) seçin. Kayıtlı olmayan, peşin ödeyen müşteri için &quot;Peşin Müşteri&quot; kullanılabilir.</li>
+        <li>Ürünü barkodu, kodu ya da adıyla bulun. Birim fiyat kendiliğinden dolar: ürünün sabit satış fiyatı varsa o, yoksa has gram güncel kurla çarpılır ve işçilik eklenir.</li>
+        <li>Adedi girip kalemi ekleyin; birden çok kalem ekleyebilirsiniz. Toplam altta görünür.</li>
+        <li>Ödeme türünü ve kasayı seçin. Ödemeyi birden çok parçaya bölebilirsiniz (bir kısmı nakit, bir kısmı kart gibi).</li>
+        <li><strong>Kaydet</strong>'e basın. Başarı bandında fiş numarası yazar; stok düşer, kasa ve cari bakiyeleri güncellenir.</li>
+      </ol>
+      <div class="kutu ipucu"><p>Tek kasanız varsa kasa seçici hiç görünmez; kasa kendiliğinden kullanılır. Kart ile ödemede POS cihazı ve komisyon alanı açılır.</p></div>
+      <h3 id="alis">Alış, hurda alışı ve işçilik</h3>
+      <ul>
+        <li><strong>Alış:</strong> tedarikçiden ürün girişi. Stok artar, kasa ya da cari azalır.</li>
+        <li><strong>Hurda alışı:</strong> müşteriden hurda altın alımı. Ayar ve gram girilir; hurda has gram olarak deftere ve hurda stoğuna işlenir. Vergi mükellefi olmayan kişiden alımda gider pusulası kendiliğinden düzenlenir (bkz. <a class="ic" href="#giderpusulasi">Gider Pusulaları</a>).</li>
+        <li><strong>İşçilik:</strong> yalnız işçilik bedeli tahsil edilir, stok hareketi olmaz.</li>
+      </ul>
+      <h3 id="takas">Takas</h3>
+      <p>Müşteriden eski ürünü alıp yeni ürün verdiğiniz işlemdir. Eski ürünün ayarı ve gramı ile yeni ürün girilir; program farkı hesaplar. Fark müşterinin aleyhineyse müşteri öder, lehineyse fark müşteriye ödenir ya da carisine yazılır.</p>
+      <h3 id="transfer">Transfer</h3>
+      <p>Şubeler arası stok aktarımıdır. Kaynak şube, hedef şube, ürün ve adet seçilir. Kasa ve cari gerekmez; Müdür ve üstü roller yapabilir.</p>
+      <h3>Yanlış işlemi düzeltme</h3>
+      <p>Kaydedilmiş bir işlem silinmez ve üzerine yazılmaz. Yanlış işlemi <strong>Storno</strong> ile ters kayıtla geri alır, doğrusunu yeniden girersiniz. Böylece hem hata hem düzeltmesi kayıtta görünür kalır. İade için işlemler listesinde ilgili satışı açıp <strong>İade</strong> yolunu kullanın.</p>
+    </section>
+
+    <section id="emanet">
+      <h2><span class="no">10</span> Emanet</h2>
+      <span class="ekran-capa" id="e-emanet"></span>
+      <p>Müşterinin tamir, ölçü ya da saklama için size bıraktığı altın burada izlenir. Emanet mal sizin malınız değildir: stok değerine katılmaz, yalnız has gram olarak ayrı izlenir.</p>
+      <ol class="adimlar">
+        <li><strong>Emanet girişi:</strong> müşteriyi seçin, gramı ve ayarı girin. Kayıt has grama çevrilerek tutulur.</li>
+        <li><strong>Emanet çıkışı:</strong> mal müşteriye geri verildiğinde çıkış kaydı girilir; teslim belgesi basılabilir.</li>
+      </ol>
+      <div class="kutu bilgi"><p>Yanlış girilen emanet hareketi silinmez; Storno ile ters kaydı atılır ve doğru kayıt yeniden girilir.</p></div>
+    </section>
+
+    <section id="siparisler">
+      <h2><span class="no">11</span> Sipariş ve tamir</h2>
+      <span class="ekran-capa" id="e-siparisler"></span>
+      <p>Müşteri siparişi, dış atölye siparişi ve tamir kayıtları buradan izlenir. Sipariş deftere yazmaz; satış ya da ödeme ayrıca girilir.</p>
+      <ul>
+        <li><strong>Durumlar:</strong> Taslak, Onaylandı, Atölyede, Hazır, Teslim edildi. Her geçiş onay penceresinden geçer.</li>
+        <li><strong>Geri alma:</strong> onaylanmış bir siparişi gerekçe yazarak taslağa geri alabilirsiniz; taslakta sipariş yeniden düzenlenir.</li>
+        <li><strong>İptal:</strong> yalnız Sahip ve Müdür iptal edebilir, gerekçe zorunludur.</li>
+        <li><strong>Geciken sipariş:</strong> söz verilen gün geçtiyse ve sipariş hâlâ açıksa listede işaretlenir.</li>
+      </ul>
+      <h3 id="siparis-ayrinti">Sipariş ve tamir — sipariş ayrıntısı</h3>
+      <span class="ekran-capa" id="e-siparisler-kayit"></span>
+      <p>Listeden bir siparişe basınca ayrıntı ekranı açılır. Siparişin kalemleri, durumu, söz verilen günü ve notları bu ekrandan düzenlenir. Durum değişiklikleri ve kimin ne zaman değiştirdiği aynı ekranda listelenir.</p>
+    </section>
+
+    <section id="bildirimler">
+      <h2><span class="no">12</span> Bildirimler</h2>
+      <span class="ekran-capa" id="e-bildirimler"></span>
+      <p>Programın ürettiği uyarı ve hatırlatmalar burada toplanır. Bildirimi okuduktan sonra kapatabilirsiniz; kapatılan bildirim silinmez, kayıtta kalır.</p>
+      <div class="kutu bilgi"><p>Program e-posta, SMS ya da WhatsApp göndermez; bildirimler yalnız bu ekranda görünür (bkz. <a class="ic" href="#haric">Bu sürümde olmayanlar</a>).</p></div>
+    </section>
+
+    <section id="cariler">
+      <h2><span class="no">13</span> Müşteriler</h2>
+      <span class="ekran-capa" id="e-cariler"></span>
+      <p>Müşteri, tedarikçi ve atölye hesaplarının tutulduğu ekrandır. Her cari için TL bakiyesi ve has gram bakiyesi ayrı görünür.</p>
+      <h3>Yeni cari ekleme</h3>
+      <ol class="adimlar">
+        <li><strong>Yeni cari</strong> düğmesine basın.</li>
+        <li>Adı, türü (müşteri, tedarikçi ya da ikisi), telefonu ve adresi girin. Vergi numarası ya da kimlik bilgisi gereken işlemlerde program sizden ayrıca ister.</li>
+        <li><strong>Kaydet</strong>'e basın; cari listeye eklenir.</li>
+      </ol>
+      <h3>Cari ayrıntısı, ekstre ve tahsilat</h3>
+      <p>Listedeki bir cariye basınca bütün hareketleri TL ve has gram olarak listelenir. Buradan tahsilat alabilir, cari ekstresini yazdırabilirsiniz. Cari bilgileri satırdaki <strong>Düzenle</strong> ile değiştirilir; kullanılmayan cari silinmez, <strong>Pasife al</strong> ile kapatılır ve istenirse geri açılır.</p>
+    </section>
+
+    <section id="urunler">
+      <h2><span class="no">14</span> Ürünler</h2>
+      <span class="ekran-capa" id="e-urunler"></span>
+      <p>Stoktaki ürün kartları. Her ürünün ayarı, gramı, taş ağırlığı, has gramı ve reyonu görünür. Has gram program tarafından hesaplanır.</p>
+      <ol class="adimlar">
+        <li><strong>Yeni ürün</strong> ile formu açın; ad, kod, ayar, gram ve taş ağırlığını girin.</li>
+        <li>İsterseniz sabit satış fiyatı girin; boş bırakırsanız satışta has gram, güncel kur ve işçilik üzerinden hesaplanır.</li>
+        <li><strong>Kaydet</strong>'e basın. Ürün kartı satırdaki <strong>Düzenle</strong> ile değiştirilir, satılmayacak ürün <strong>Pasife al</strong> ile kapatılır.</li>
+      </ol>
+      <div class="kutu ipucu"><p>Liste ekranda bir sınırla gösterilir; sınıra ulaşıldığında ekran &quot;daha fazlası var&quot; yazar. Aramayı ya da kategori süzgecini kullanarak listeyi daraltın.</p></div>
+      <h3 id="urun-agaci">Ürün Ağacı</h3>
+      <span class="ekran-capa" id="e-urunler-agac"></span>
+      <p>Kategori ağacı ürün listesini kırılımlı süzmenizi sağlar (örneğin Bilezik altında Burma, Hasır). <strong>Reyon</strong> ise malın işletmede fiziken nerede durduğunu söyler (vitrin, kasa altı, kasa). Kategori ve reyonlar bu ekrandan eklenir, adları değiştirilir, kullanılmayanlar pasife alınır; her satırın yanında kaç ürünün o kategoride olduğu yazar.</p>
+      <h3 id="etiketler">Ürün Etiketleri</h3>
+      <span class="ekran-capa" id="e-urunler-etiketler"></span>
+      <p>Ürünler için barkodlu etiket basılır. Basılacak ürünleri seçin, etiket sayısını girin ve yazdırın. Laboratuvar üretimi (sentetik) taş taşıyan ürünlerde bu ibare etikete kendiliğinden gelir.</p>
+    </section>
+
+    <section id="fiyatlandirma">
+      <h2><span class="no">15</span> Fiyat Listeleri</h2>
+      <span class="ekran-capa" id="e-fiyatlandirma"></span>
+      <p>Fiyat listeleri ve kampanyalar burada tanımlanır. Bir listeyi kaydetmeden önce hangi ürünlerin etkileneceğini ve hesaplanan fiyatı önizlersiniz; kaydettikten sonra etkilenen ürün sayısı aynı ekranda görünür.</p>
+      <ul>
+        <li>Her liste ve kampanya satırı düzenlenebilir, pasife alınabilir ve geri açılabilir.</li>
+        <li>Carinin bağlı olduğu liste satış ekranında fiyatı belirler. Sepette ürün varken müşteriyi değiştirirseniz ve yeni müşterinin listesine göre fiyat farklıysa satış ekranı kaç kalemin fiyatının değiştiğini yazar ve sorar: <strong>Fiyatları güncelle</strong> derseniz sepetteki fiyatlar yeni listeye göre değişir; <strong>Eski fiyatlar kalsın</strong> derseniz ya da hiçbir şeye basmazsanız eski fiyatlar aynen kalır. Fiyat hiçbir zaman sessizce değişmez. Elle yazdığınız fiyatlar ve hediye kalemler bu soruya girmez.</li>
+      </ul>
+    </section>
+
+    <section id="sayim">
+      <h2><span class="no">16</span> Sayım</h2>
+      <span class="ekran-capa" id="e-sayim"></span>
+      <p>Stok sayımı, kayıttaki adet ile rafta duran adedi karşılaştırır ve farkı sayım düzeltmesi olarak deftere yazar.</p>
+      <ol class="adimlar">
+        <li><strong>Oturum açma:</strong> sayıma bir ad verin, şube ve kapsam seçin.</li>
+        <li><strong>Sayma:</strong> ürünü barkodu, kodu ya da adıyla arayın, sayılan adedi satırın üzerinde girin ya da düzeltin. Fark sütunu kendiliğinden hesaplanır.</li>
+        <li><strong>Kapanış:</strong> oturum kapanınca farklar deftere işlenir. Kapanış geri alınamaz; bu yüzden önce onay istenir.</li>
+      </ol>
+      <div class="kutu bilgi"><p>Oturumun adı, kapsamı ve şubesi açıldıktan sonra değiştirilemez, çünkü sayılacak satırları belirler. Yanlış açtıysanız oturumu gerekçeyle iptal edip yenisini açın.</p></div>
+    </section>
+
+    <section id="satinalma">
+      <h2><span class="no">17</span> Satın alma</h2>
+      <span class="ekran-capa" id="e-satin-alma"></span>
+      <p>Tedarikçiye verdiğiniz siparişi ve gelen malın stoğa alınmasını buradan yürütürsünüz. Ekranı işletme sahibi, müdür ve muhasebe görür; sipariş açıp mal teslim almayı yalnız sahip ve müdür yapar.</p>
+      <ol class="adimlar">
+        <li><strong>Sipariş:</strong> <strong>+ Yeni sipariş</strong> ile tedarikçiyi ve satırları (ürün, adet, birim fiyat) girin. Sipariş taslak olarak açılır ve düzenlenebilir.</li>
+        <li><strong>Onay:</strong> tedarikçiye verdiğiniz siparişi <strong>Onayla</strong> ile onaylayın. Onaylı siparişin satırları artık değişmez.</li>
+        <li><strong>Malı teslim alma:</strong> mal geldiğinde siparişi açıp her satıra gelen adedi yazın ve <strong>Malı teslim al</strong> deyin. Mal stoğa girer, tedarikçiye borç yazılır ve irsaliye kendiliğinden açılır. Mal parça parça gelebilir; hepsi gelince sipariş kapanır.</li>
+      </ol>
+      <div class="kutu bilgi"><p>Teslim alınmış mal deftere yazıldığı için sipariş artık iptal edilemez; yanlış gelen mal için alış iadesi yapın. Kapanan ve iptal edilen siparişler ekranın altında kapalı listede durur.</p></div>
+    </section>
+
+    <section id="kasalar">
+      <h2><span class="no">18</span> Kasalar</h2>
+      <span class="ekran-capa" id="e-kasalar"></span>
+      <p>Nakit ve döviz kasalarınız. Her kasanın para birimi ve bakiyesi ayrı tutulur; farklı para birimleri tek toplamda birleştirilmez.</p>
+      <ul>
+        <li><strong>Yeni kasa:</strong> kasa adı ve para birimi girilerek açılır.</li>
+        <li><strong>Hareket girme:</strong> kasaya elle gelir, gider, tahsilat ya da ödeme kaydı eklenir.</li>
+        <li><strong>Düzenleme:</strong> kasa adı ve bilgileri satırdaki <strong>Düzenle</strong> ile değiştirilir. Kullanılmayan kasa pasife alınır, gerekirse geri açılır.</li>
+      </ul>
+      <div class="kutu bilgi"><p>Kaydedilmiş kasa hareketi silinmez; yanlış hareket ters kayıtla düzeltilir.</p></div>
+    </section>
+
+    <section id="vezne">
+      <h2><span class="no">19</span> Kasa kuyruğu (vezne)</h2>
+      <span class="ekran-capa" id="e-vezne"></span>
+      <p>Vezne, tezgâh ile kasanın ayrıldığı işletmeler içindir. Tezgâhtar müşteriyle fişi hazırlar, parayı kasadaki kişi tahsil eder.</p>
+      <ul>
+        <li><strong>Hazırlanıyor:</strong> fiş açıktır; kalemler ve cari serbestçe değiştirilebilir.</li>
+        <li><strong>Veznede:</strong> fiş kasaya gönderilmiş ve tutarı damgalanmıştır; kalemler artık yerinde değiştirilmez.</li>
+        <li><strong>Yanlış fiş:</strong> fişi gerekçe yazarak iptal edin ve doğru kalemlerle yeni fiş açın. İptal izi kayıtta kalır.</li>
+      </ul>
+    </section>
+
+    <section id="pos">
+      <h2><span class="no">20</span> POS Cihazları</h2>
+      <span class="ekran-capa" id="e-pos"></span>
+      <p>Kredi kartıyla tahsil edilen para hemen kasaya girmez: banka komisyonunu keser ve belirli bir gün sonra hesabınıza yatırır. Bu ekran POS cihazlarınızı tanımlar.</p>
+      <ol class="adimlar">
+        <li><strong>Cihaz kurma:</strong> cihaz adı, banka, komisyon oranı, kaç gün sonra yatırılacağı (valör günü) ve bağlı kasa girilir. Şube, seçtiğiniz kasadan kendiliğinden gelir.</li>
+        <li><strong>Bağlı kasayı değiştirme:</strong> cihazda henüz tahsilat yoksa doğrudan değiştirilir. Tahsilat yazıldıysa değiştirilemez; cihazı pasife alıp doğru kasaya bağlı yeni bir cihaz kurun.</li>
+      </ol>
+      <div class="kutu uyari"><p>Programda resmî tatil takvimi yoktur: valör günü takvim günü olarak sayılır. Bayramda banka parayı geç yatırabilir.</p></div>
+      <h3 id="pos-hakedis">POS alacakları</h3>
+      <span class="ekran-capa" id="e-pos-tahsilatlar"></span>
+      <p>Kartla yapılan her satıştan doğan ve bankanın size yatıracağı alacaklar burada izlenir. Satırlar satıştan türetilir ve elle değiştirilmez. Banka bir işleme itiraz ederse satır gerekçeyle iptal edilir ya da ilgili satışın iadesi girilir.</p>
+    </section>
+
+    <section id="banka">
+      <h2><span class="no">21</span> Banka</h2>
+      <span class="ekran-capa" id="e-banka"></span>
+      <p>Banka hesaplarınızı ve dekont hareketlerini izlediğiniz ekrandır.</p>
+      <ul>
+        <li><strong>Hesap ekleme:</strong> banka adı, hesap adı, hesap sahibi, IBAN ve para birimi girilir. Hesap bilgileri <strong>Düzenle</strong> ile değiştirilir; kapanan hesap pasife alınır ve geri açılabilir.</li>
+        <li><strong>Dekont girme:</strong> gelen ya da giden hareket elle girilir.</li>
+        <li><strong>Ekstre yükleme:</strong> bankadan aldığınız ekstre dosyası yüklenir ve satırlar eşleştirme ekranına gelir.</li>
+        <li><strong>Gelen parayı faturaya dönüştürme:</strong> gelen bir hareketin satırındaki düğmeyle, faturanın kesileceği cari seçilerek fatura oluşturulur.</li>
+      </ul>
+      <h3 id="banka-ekstre">Banka ekstresi eşleştirme</h3>
+      <span class="ekran-capa" id="e-banka-ekstre-kayit"></span>
+      <p>Yüklenen ekstrenin satırlarını gözden geçirir, her satırı ilgili cariye bağlar ve seçtiklerinizi banka hareketine çevirirsiniz. Çevrilen satır sayısı ve atlanan satırlar sonuç bandında yazar; aynı satır iki kez harekete çevrilmez.</p>
+    </section>
+
+    <section id="evraklar">
+      <h2><span class="no">22</span> Çek ve senet</h2>
+      <span class="ekran-capa" id="e-evraklar"></span>
+      <p>Müşteriden alınan çek ve senetler burada tutulur. Evrak girişi müşterinin borcunu kapatır; evrak karşılıksız çıkarsa borç geri doğar. Evrakın durumu (portföyde, tahsil edildi, ciro edildi, karşılıksız) onay penceresiyle değiştirilir.</p>
+      <h3 id="vade-takvimi">Vade Takvimi</h3>
+      <span class="ekran-capa" id="e-evraklar-takvim"></span>
+      <p>Hangi gün ne kadar evrak vadesi olduğunu takvim üzerinde gösterir. Bir güne basınca o günün evrakları listelenir.</p>
+    </section>
+
+    <section id="gider">
+      <h2><span class="no">23</span> Gider ve Para Aktarımı</h2>
+      <span class="ekran-capa" id="e-gider"></span>
+      <p>İşletmenin masrafları (kira, elektrik, maaş gibi) ve kasa ile banka arasındaki para aktarımları buradan girilir. (Eski adı: virman.)</p>
+      <ul>
+        <li><strong>Gider:</strong> tutar, gider türü ve ödendiği kasa ya da banka seçilir.</li>
+        <li><strong>Virman:</strong> para bir kasadan ya da bankadan ötekine aktarılır. Virman ciroya girmez: para işletmeden çıkmaz, yer değiştirir. İki taraf aynı anda kaydedilir; biri yazılıp öteki eksik kalmaz.</li>
+      </ul>
+    </section>
+
+    <section id="hurda">
+      <h2><span class="no">24</span> Hurda ve Ramat</h2>
+      <span class="ekran-capa" id="e-hurda"></span>
+      <p>İşletmede biriken hurdanın has bakiyesi ve rafineriye (ramatçıya) çıkışı burada izlenir. Bakiye ayrı bir sayıdan değil, hurda alış ve hurda satış kayıtlarından hesaplanır; bu yüzden elle değiştirilmez. Rafineriden gelen tahlil sonucu beklenenden farklıysa fark ayrıca kaydedilir.</p>
+    </section>
+
+    <section id="faturalar">
+      <h2><span class="no">25</span> Faturalar</h2>
+      <span class="ekran-capa" id="e-faturalar"></span>
+      <p>Kesilen ve taslak faturalar burada listelenir.</p>
+      <ul>
+        <li><strong>Durum akışı:</strong> taslak fatura düzenlenebilir; kesilen fatura yerinde değiştirilmez. Durum geçişleri (kes, ödendi işaretle, iptal et) onay ister.</li>
+        <li><strong>Kuyum faturalarında KDV:</strong> kuyum ürünlerinde KDV'nin hangi tutar üzerinden hesaplanacağı programın ayarlarında tanımlıdır. Bu kuralın işletmenize uygunluğunu mali müşavirinize teyit ettirin; kılavuz oran ya da kural yazmaz.</li>
+        <li><strong>Yanlış fatura:</strong> kesilmiş fatura silinmez; iptal edilip doğrusu kesilir.</li>
+      </ul>
+      <div class="kutu bilgi"><p>Program faturayı kendi içinde üretir ve yazdırır; Gelir İdaresi'ne elektronik iletim bu sürümde yoktur (bkz. <a class="ic" href="#haric">Bu sürümde olmayanlar</a>).</p></div>
+    </section>
+
+    <section id="irsaliyeler">
+      <h2><span class="no">26</span> İrsaliyeler</h2>
+      <span class="ekran-capa" id="e-irsaliyeler"></span>
+      <p>Gönderdiğiniz malın sevk irsaliyesi ve satın almada teslim aldığınız malın irsaliyesi burada listelenir. Teslim alınan malın irsaliyesi Satın alma ekranından kendiliğinden açılır; sevk irsaliyesini <strong>+ Sevk irsaliyesi</strong> ile siz açarsınız.</p>
+      <ul>
+        <li><strong>Fatura bağı:</strong> faturası kesilen irsaliyeyi <strong>Faturaya bağla</strong> ile bağlayın; faturası bekleyenlerin sayısı ekranın üstünde yazar.</li>
+        <li><strong>Yazdırma:</strong> <strong>Yazdır</strong> irsaliyenin kâğıt dökümünü açar. İrsaliyede fiyat yazmaz; yalnız mal ve miktar yazar.</li>
+        <li><strong>Düzeltme:</strong> irsaliye silinmez; gerekçeyle iptal edilir. Malı stoğa girmiş irsaliye iptal edilmez, yanlış mal için alış iadesi yapılır.</li>
+      </ul>
+      <div class="kutu bilgi"><p>Kâğıt döküm bilgi amaçlıdır; yasal sevk irsaliyesi ya da e-İrsaliye yerine geçmez. Hangi durumda hangi belgeyi düzenlemeniz gerektiğini mali müşavirinize sorun.</p></div>
+    </section>
+
+    <section id="giderpusulasi">
+      <h2><span class="no">27</span> Gider Pusulaları</h2>
+      <span class="ekran-capa" id="e-gider-pusulalari"></span>
+      <p>Vergi mükellefi olmayan kişiden (vatandaştan) hurda altın aldığınızda düzenlenen belgeler burada listelenir. Program pusulayı hurda alışıyla birlikte kendiliğinden üretir.</p>
+      <ul>
+        <li><strong>Düzeltilebilen alanlar:</strong> satıcının adresi ve malın açıklaması. İkisi de boş bırakılamaz.</li>
+        <li><strong>Değişmeyen alanlar:</strong> pusula numarası, satıcının adı ve kimlik numarası, ayar, gram, has, tutarlar ve tarih. Bunlar belgenin mali kimliğidir.</li>
+        <li><strong>Hatalı belge:</strong> gerekçeyle iptal edin ve doğru bilgilerle yeni bir hurda alışı girin; yeni pusula kendiliğinden düzenlenir.</li>
+      </ul>
+      <div class="kutu uyari"><p>Pusuladaki kesinti oranı ve düzenleme süresi gibi kurallar mevzuata bağlıdır ve programın ayarından gelir. Kural sorusu için mali müşavirinize danışın.</p></div>
+      <h3 id="pusula-belgesi">Gider Pusulası Belgesi</h3>
+      <span class="ekran-capa" id="e-gider-pusulalari-kayit-belge"></span>
+      <p>Listeden bir pusulanın <strong>Belge</strong> bağlantısına basınca yazdırılabilir belge açılır. Tarayıcının yazdır komutuyla basılır; belgede işletmenizin kimlik bilgileri <strong>İşletme</strong> ekranından gelir.</p>
+    </section>
+
+    <section id="uyum">
+      <h2><span class="no">28</span> Uyum (MASAK)</h2>
+      <span class="ekran-capa" id="e-uyum"></span>
+      <p>Yasal yükümlülüklerin izlendiği ekrandır: kimlik tespitleri, şüpheli işlem bildirimleri ve kayıtların saklama süresi.</p>
+      <ul>
+        <li><strong>Kimlik tespiti:</strong> yapılandırmadaki eşiği aşan işlemlerde program müşterinin kimlik bilgisini ister ve kaydeder.</li>
+        <li><strong>Belgelendirme uyarısı:</strong> eşiği aşan tahsilat ve ödemelerde program uyarır ve ödemenin banka ya da kart gibi belgeli bir yolla yapılmasını ister.</li>
+        <li><strong>Şüpheli işlem bildirimi:</strong> kaydedildikten sonra tutarı ve gerekçesi değiştirilemez; gönderilmemiş bildirim kapatılabilir.</li>
+      </ul>
+      <div class="kutu uyari"><p>Eşik tutarları ve süreler mevzuata bağlıdır ve programın yapılandırmasından okunur; bu kılavuz rakam yazmaz. Kesin kural için mali müşavirinize danışın.</p></div>
+    </section>
+
+    <section id="yasal-sinirlar">
+      <h2><span class="no">29</span> Yasal sınırlar</h2>
+      <span class="ekran-capa" id="e-yasal-sinirlar"></span>
+      <p>Devletin belirlediği tutar sınırlarını ve süreleri (nakitte günlük sınır, kimlik alma tutarı, bildirim ve saklama süreleri) bugünkü değerleriyle gösterir. Ekran salt okunurdur ve yalnız Sahip, Müdür ve Muhasebe rolleri görür. Menüde &quot;Belge ve uyum&quot; grubundadır, &quot;Tüm ekranlar&quot;dan ve Panel'deki yasal bilgi bandından da açılır.</p>
+      <ul>
+        <li><strong>Bugünkü değer ve başlangıç:</strong> her sınırın bugün geçerli rakamı ve ne zamandan beri geçerli olduğu. Başlangıç tarihi resmî kaynaktan doğrulanmamışsa tarih yazılmaz, &quot;doğrulanmadı&quot; yazar.</li>
+        <li><strong>Doğrulandı / Mali müşavir teyidi bekliyor / Henüz kullanılmıyor:</strong> rakamın resmî kaynağı okunmuşsa &quot;Doğrulandı&quot; yazar. Kaynağı bulunamayan rakam bugünkü davranış korunarak tutulur ve teyit bekler; programın henüz denetlemediği rakamlar (ör. fatura sınırı) &quot;Henüz kullanılmayan sınırlar&quot; bölümünde bilgi için durur.</li>
+        <li><strong>Dayanak:</strong> kapalı bölümdedir; açınca resmî metnin adı (ör. 459 sıra no'lu VUK Genel Tebliği tevsik haddi, MASAK Tedbirler Yönetmeliği) ve kaynağa bağlantı çıkar.</li>
+        <li><strong>Geçmiş değerler:</strong> bir sınırın önceki rakamları ve geçerli olduğu tarihler (her aralığın son günü dahil yazılır: &quot;1 Ocak 2016 – 29 Kasım 2024&quot;). Geçmiş bir işlem her zaman kendi günündeki rakamla değerlendirilir; rakam sonradan değişse de eski işlemin sonucu değişmez.</li>
+      </ul>
+      <div class="kutu bilgi"><p>Rakamlar bu ekrandan değiştirilemez: yanlış giriş cezaya yol açabilir. Yeni bir rakamı program sağlayıcısı resmî kaynağıyla ileri bir tarihten başlayacak şekilde girer; günü gelince kendiliğinden uygulanır, yeniden başlatma gerekmez. Değişiklikten yedi gün önce Panel'de mavi bir bilgi bandı çıkar. Bayram günlerini de program sağlayıcısı girer; girilmemişse &quot;Bu yılın bayram tatilleri&quot; bölümünde yazar (bildirim süreleri bir iki gün erken hesaplanabilir).</p></div>
+    </section>
+
+    <section id="raporlar">
+      <h2><span class="no">30</span> Rapor merkezi</h2>
+      <span class="ekran-capa" id="e-raporlar"></span>
+      <p>İşletmenin durumunu özetleyen rapor merkezidir: aylık özet, gün sonu mutabakatı, cari yaşlandırma ve stok değeri. Dönem seçicisi üsttedir; seçilen dönemden etkilenmeyen kartlar bunu alt metinlerinde yazar. Her raporun kartına basınca ilgili ayrıntılı döküm açılır.</p>
+    </section>
+
+    <section id="kar-zarar">
+      <h2><span class="no">31</span> Kâr-Zarar</h2>
+      <span class="ekran-capa" id="e-raporlar-kar-zarar"></span>
+      <p>TL kârını ve has kârını ayrı ayrı gösterir. Altın yükselirken TL'de kâr yazıp gramda zarar etmek mümkündür; bu ekran ikisini birden gösterdiği için bunu görürsünüz. Maliyeti bilinmeyen ürün varsa sayısı yazar ve o ürünlere giden bağlantı olur.</p>
+    </section>
+
+    <section id="vade-takibi">
+      <h2><span class="no">32</span> Vade takibi</h2>
+      <span class="ekran-capa" id="e-raporlar-vade-takibi"></span>
+      <p>Vadesi geçen ve yaklaşan müşteri borçlarını listeler. Her satırdan müşterinin cari hesabına gidilir; tahsilat oradan alınır.</p>
+    </section>
+
+    <section id="islem-defteri">
+      <h2><span class="no">33</span> İşlem defteri</h2>
+      <span class="ekran-capa" id="e-raporlar-islem-defteri"></span>
+      <p>Seçilen dönemdeki bütün işlemleri satır satır döker: tarih, işlem türü, cari, TL ve has tutarlar. Süzgeçlerle daraltılır. İptal edilen ya da storno ile düzeltilen işlemler dökümde işaretli görünür.</p>
+    </section>
+
+    <section id="satis-analizi">
+      <h2><span class="no">34</span> Satış Analizi</h2>
+      <span class="ekran-capa" id="e-raporlar-satis-analizi"></span>
+      <p>Seçilen dönemdeki satışları özetler ve karşılaştırır; hangi ürünlerin ve hangi günlerin öne çıktığını grafik ve tabloyla gösterir.</p>
+    </section>
+
+    <section id="kasa-raporu">
+      <h2><span class="no">35</span> Kasa raporu</h2>
+      <span class="ekran-capa" id="e-raporlar-kasa"></span>
+      <p>Seçilen kasanın seçilen dönemdeki bütün giriş ve çıkışlarını, açılış ve kapanış bakiyesiyle birlikte gösterir. Gün sonu kasa sayımında elinizdeki parayla karşılaştırmak için kullanılır.</p>
+    </section>
+
+    <section id="cikti">
+      <h2><span class="no">36</span> Belge çıktısı</h2>
+      <span class="ekran-capa" id="e-cikti-kayit-kayit"></span>
+      <p>Satış fişi, tahsilat makbuzu, emanet teslim belgesi ve cari ekstresi tek bir A4 şablonundan basılır. İlgili ekrandaki <strong>Yazdır</strong> düğmesi bu belge sayfasını açar; tarayıcının yazdır komutuyla basarsınız. Belgedeki işletme bilgileri <strong>İşletme</strong> ekranından gelir.</p>
+    </section>
+
+    <section id="vitrin">
+      <h2><span class="no">37</span> Vitrin Panosu</h2>
+      <span class="ekran-capa" id="e-vitrin"></span>
+      <p>Müşteriye dönük alış ve satış fiyatlarını gösteren panodur. Kâr payı yalnız bu ekranın yönetim bölümünde görünür, müşterinin gördüğü panoya inmez.</p>
+      <ul>
+        <li><strong>İşçilik ibaresi:</strong> yasa (Fiyat Etiketi Yönetmeliği), altın ve gümüş fiyatlarına işçilik bedelinin dahil olup olmadığının ayrıca yazılmasını ister. Sahip ya da müdür, panonun altındaki <strong>İşçilik dahil</strong> / <strong>İşçilik hariç</strong> düğmelerinden birini seçer; seçilen cümle fiyatların altına yazılır ve sonradan değiştirilebilir. Seçilmemişse tezgâhtar bunu ekranda okur; seçimi müdür yapar.</li>
+      </ul>
+    </section>
+
+    <section id="vitrin-ekran">
+      <h2><span class="no">38</span> İşletme ekranı</h2>
+      <span class="ekran-capa" id="e-vitrin-ekran"></span>
+      <p>Vitrin panosundaki <strong>İşletme ekranını aç</strong> düğmesi panoyu menüsüz, büyük yazılı tam ekran olarak açar; işletmedeki bir ekrana ya da televizyona açık bırakılır. Fiyatlar dakikada bir kendiliğinden yenilenir ve seçilen işçilik ibaresi fiyatların altında yazar; sayfa yazdırılırsa ibare kâğıtta da çıkar. <strong>Tam ekran</strong> düğmesi tarayıcı çubuklarını da gizler, <strong>Panoya dön</strong> geri getirir. İşçilik ibaresi seçilmeden işletme ekranı fiyat göstermez; düğme kilitli kalır ve sebebi panoda yazar.</p>
+    </section>
+
+    <section id="kullanicilar">
+      <h2><span class="no">39</span> Kullanıcılar</h2>
+      <span class="ekran-capa" id="e-kullanicilar"></span>
+      <p>Çalışan hesapları, rolleri ve erişim durumları. Roller yetki sırasıyla: Sahip, Müdür, Muhasebe, Tezgâhtar.</p>
+      <ul>
+        <li><strong>Yeni kullanıcı:</strong> ad, e-posta ve rol girilir. Yalnız kendi rolünüzden düşük roller atanabilir.</li>
+        <li><strong>Düzenleme:</strong> rol değiştirme ve şifre sıfırlama her satırdadır.</li>
+        <li><strong>Ayrılan çalışan:</strong> hesabı silinmez, erişimi kapatılır; gerekirse yeniden açılır. Kendi hesabınız üzerinde bu işlemler yapılamaz.</li>
+      </ul>
+    </section>
+
+    <section id="yetkiler">
+      <h2><span class="no">40</span> Yetkiler</h2>
+      <span class="ekran-capa" id="e-yetkiler"></span>
+      <p>Hangi rolün hangi ekranı görebileceğini belirleyen matristir. Son sözü her zaman sunucu söyler: yetkisi olmayan kullanıcı adresi elle yazsa bile ekranı açamaz.</p>
+    </section>
+
+    <section id="isletme">
+      <h2><span class="no">41</span> İşletme</h2>
+      <span class="ekran-capa" id="e-isletme"></span>
+      <p>İşletmenizin kimliği (ünvan, vergi bilgileri, adres), abonelik planı ve şubeleri. Kimlik alanları fiş, fatura ve pusulalarda satıcı bilgisi olarak basılır. Şubeler buradan eklenir, adları değiştirilir, kapanan şube pasife alınır.</p>
+    </section>
+
+    <section id="kurulum">
+      <h2><span class="no">42</span> Kurulum</h2>
+      <span class="ekran-capa" id="e-kurulum"></span>
+      <p>İşletmenin ilk gününü buradan kurarsınız: işletme ve şube, kullanıcılar, güncel kur, kasa ve banka açılış bakiyeleri ve müşteri açılış bakiyeleri.</p>
+      <ol class="adimlar">
+        <li>Her adımı sırayla doldurun; tamamlanan adım işaretlenir.</li>
+        <li>Açılış bakiyelerini önce <strong>prova</strong> ile deneyin; prova hiçbir şey yazmaz, hatalı satırları gösterir.</li>
+        <li><strong>Uygula</strong> ile açılış kayıtları deftere &quot;Açılış devri&quot; olarak düşer; para el değiştirmez.</li>
+        <li>Yanlış uygulanan açılış, sihirbazdaki geri alma yoluyla geri alınır.</li>
+      </ol>
+    </section>
+
+    <section id="denetim-izi">
+      <h2><span class="no">43</span> Kim ne yaptı</h2>
+      <span class="ekran-capa" id="e-denetim-izi"></span>
+      <p>Kim, ne zaman, hangi kaydı gördü ya da değiştirdi — burada listelenir. Bu kayıt silinemez ve değiştirilemez. Kişi, tarih ve kayıt türüne göre süzülür. Yalnız Sahip rolü görür.</p>
+    </section>
+
+    <section id="veriaktarim">
+      <h2><span class="no">44</span> Veri aktarımı</h2>
+      <p>Eski programınızdaki kayıtları içeri almak ve kendi verinizi dışarı almak için iki ekran vardır.</p>
+      <h3 id="veri-ice-aktarim">Veri içe aktar</h3>
+      <span class="ekran-capa" id="e-veri-ice-aktarim"></span>
+      <p>Eski programınızdaki müşteri ve ürün kartlarını şablona yapıştırıp içeri alırsınız.</p>
+      <ol class="adimlar">
+        <li>Şablonu indirip doldurun ya da satırları kutuya yapıştırın.</li>
+        <li><strong>Kuru prova</strong> yapın: hiçbir şey yazılmadan hatalı satırlar tek tek listelenir. Prova temiz değilse uygulamayın.</li>
+        <li><strong>Uygula</strong> ile kayıtlar oluşur; uygulanan ve atlanan satır sayısı sonuç bandında yazar.</li>
+        <li>Uygulanan aktarımın tamamı tek düğmeyle geri alınabilir.</li>
+      </ol>
+      <div class="kutu bilgi"><p>Aktarım mevcut bir kartın üzerine yazmaz; mevcut kartı kendi ekranından düzenleyin. Geçmiş satış ve kasa hareketleri aktarılmaz.</p></div>
+      <h3 id="veri-disa-aktarim">Veri dışa aktar</h3>
+      <span class="ekran-capa" id="e-veri-disa-aktarim"></span>
+      <p>Verinizin tamamını şifreli bir arşiv olarak indirirsiniz. Her aktarım için gerekçe yazılır ve gerekçe geçmişe işlenir; geçmiş satırı sonradan değiştirilemez, çünkü bir kanıt kaydıdır.</p>
+    </section>
+
+    <section id="yedekler">
+      <h2><span class="no">45</span> Yedekler</h2>
+      <span class="ekran-capa" id="e-yedekler"></span>
+      <p>Verinizin düzenli kopyası (yedek) alınır ve kopyanın gerçekten geri yüklenebildiği bir tatbikatla denenir. Bu ekran ikisini de gösterir. Ekran yalnız Sahip rolüne ve profesyonel modda görünür.</p>
+      <ul>
+        <li><strong>Son yedek:</strong> zamanı, boyutu ve şifreli olup olmadığı.</li>
+        <li><strong>Doğrulama:</strong> son yedeğin geri yüklenip karşılaştırılarak doğrulanıp doğrulanmadığı. Doğrulanmamış yedek kırmızı görünür.</li>
+        <li><strong>Dış kopya:</strong> yedeğin sunucu dışında ikinci bir kopyasının alınıp alınmadığı. Tek kopya yedek, yedek sayılmaz.</li>
+        <li><strong>Son geri yükleme tatbikatı:</strong> yedeğin ayrı bir veritabanına geri yüklenip her tablonun sağlama toplamıyla karşılaştırıldığı son başarılı denemenin tarihi. Tatbikat en geç otuz günde bir tekrarlanır; son başarılı tatbikat bundan eskiyse ya da hiç yapılmadıysa ekran kırmızı uyarı verir.</li>
+        <li><strong>Elle yedek talebi:</strong> gerekçe yazarak ek bir yedek isteyebilirsiniz. Talep silinmez; vazgeçerseniz gerekçeyle iptal olarak işaretlenir.</li>
+      </ul>
+      <div class="kutu uyari"><p>Yedek anahtarı kaybolursa yedek açılamaz. Anahtar kurulumda üretilir ve sunucu dışında güvenli bir yerde saklanmalıdır; bu iş kurulumu yapan kişinin sorumluluğundadır.</p></div>
+    </section>
+
+    <section id="ayarlar">
+      <h2><span class="no">46</span> Ayarlar</h2>
+      <span class="ekran-capa" id="e-ayarlar"></span>
+      <p>Kendi hesabınızın dili, teması (aydınlık ya da karanlık), arayüz modu (basit ya da profesyonel), şifresi ve iki aşamalı girişi.</p>
+      <ul>
+        <li><strong>Dil:</strong> Türkçe ya da İngilizce; seçim kaydedilir.</li>
+        <li><strong>Şifre değiştirme:</strong> mevcut ve yeni şifreyle.</li>
+        <li><strong>İki aşamalı giriş:</strong> telefonunuzdaki doğrulama uygulamasıyla açılır. Telefonunuzu kaybederseniz Sahip rolündeki kullanıcı kurtarma yolunu başlatır.</li>
+      </ul>
+      <p>İşletme yöneticisi için ayrıca işletme ayarları bölümü vardır: bu ayarlar yalnız bu işletme için geçerlidir; boş bırakılan alan kurulum varsayılanına döner.</p>
+    </section>
+
+    <section id="kilavuz">
+      <h2><span class="no">47</span> Kılavuz</h2>
+      <span class="ekran-capa" id="e-kilavuz"></span>
+      <p>Menüdeki <strong>Kılavuz</strong> ekranı bu kılavuzu yeni sekmede açar ve programdaki her ekranın bölümüne doğrudan bağlantı verir. Kılavuz ayrı bir sekmede açılır; böylece tezgâhta yarım kalmış bir işlem kılavuza baktınız diye kaybolmaz.</p>
+    </section>
+
+    <section id="haric">
+      <h2><span class="no">48</span> Bu sürümde olmayanlar</h2>
+      <p>Aşağıdaki liste ürünün kısıt beyanının tek kaynağından (HARİÇ listesi) alınır; kılavuz kendi cümlesini yazmaz.</p>
+      <div class="tablo-sar"><table class="tablo">
+        <thead><tr><th>Kalem</th><th>Bu sürümde</th></tr></thead>
+        <tbody>
+          <tr><td><strong>e-Fatura / e-Arşiv / e-İrsaliye gönderimi</strong> (GİB'e iletim)</td><td><strong>HARİÇ</strong></td></tr>
+          <tr><td><strong>ÖKC / yazarkasa / Z raporu</strong></td><td><strong>HARİÇ</strong></td></tr>
+          <tr><td><strong>SMS / WhatsApp gönderimi</strong></td><td><strong>HARİÇ</strong></td></tr>
+          <tr><td><strong>Banka canlı API'si (açık bankacılık)</strong></td><td><strong>HARİÇ</strong></td></tr>
+          <tr><td><strong>İmalat / atölye (Katman 1)</strong></td><td><strong>KAPSAM DIŞI</strong></td></tr>
+          <tr><td><strong>RFID sayım donanımı</strong></td><td><strong>HARİÇ</strong></td></tr>
+          <tr><td><strong>Emanet parça kimliği (kalıcı emanet envanteri)</strong></td><td><strong>1.1</strong></td></tr>
+          <tr><td><strong>Seri no / bandrol (KMTS)</strong></td><td><strong>1.1</strong></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="sozluk">
+      <h2><span class="no">49</span> Kavramlar sözlüğü</h2>
+      <div class="tablo-sar"><table class="tablo">
+        <thead><tr><th>Kavram</th><th>Anlamı</th></tr></thead>
+        <tbody>
+          <tr><td>Paralel defter</td><td>Her hareketin TL ve has gram olarak iki ayrı bakiyede tutulması.</td></tr>
+          <tr><td>Has gram</td><td>Ürünün içindeki saf altın miktarı: (gram − taş) × milyem / 1000.</td></tr>
+          <tr><td>Milyem</td><td>Binde saflık. 22 ayar yaklaşık 916, 14 ayar yaklaşık 585, 24 ayar 1000'dir.</td></tr>
+          <tr><td>Gerçek milyem</td><td>Ürünün fiili saflığı; ayarın standart değerinden farklı olabilir.</td></tr>
+          <tr><td>Kur anlık görüntüsü</td><td>İşlem anındaki kurun kaydı; her işleme kalıcı bağlanır.</td></tr>
+          <tr><td>Cari</td><td>Para ya da altın alıp verdiğiniz kişi veya firma.</td></tr>
+          <tr><td>Storno</td><td>Yanlış kaydı silmeden, ters kayıtla geri almak.</td></tr>
+          <tr><td>Pasife alma</td><td>Kaydı silmeden kullanımdan kaldırmak; istenince geri açılır.</td></tr>
+          <tr><td>Tatbikat</td><td>Yedeğin gerçekten geri yüklenebildiğinin denenmesi.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="sss">
+      <h2><span class="no">50</span> Sık sorulanlar</h2>
+      <h3>Kur çubuğundaki rakamlar eski görünüyor, ne yapmalıyım?</h3>
+      <p>Sahip ya da Müdür rolündeyseniz kur çubuğundaki yenileme düğmesiyle kuru hemen çektirin. Kaynağa ulaşılamıyorsa yetkili kullanıcı kuru elle girebilir.</p>
+      <h3>Satışta birim fiyat neden kendiliğinden doldu?</h3>
+      <p>Ürünün sabit satış fiyatı varsa o kullanılır; yoksa fiyat has gram, güncel kur ve işçilikten hesaplanır. İsterseniz alanı elle değiştirebilirsiniz.</p>
+      <h3>Bir menüyü göremiyorum.</h3>
+      <p>Menü yalnız rolünüzün yetkili olduğu ekranları gösterir; basit modda bazı ekranlar gizlidir. Profesyonel moda geçin ya da Sahip rolündeki kullanıcıdan yetki isteyin.</p>
+      <h3>Kaydettiğim bir işlemi nasıl silerim?</h3>
+      <p>Kaydedilmiş işlem ve para hareketi silinmez. Storno ile ters kaydını atın ve doğrusunu girin; kartlar (cari, ürün, kasa) ise pasife alınır. Böylece hiçbir düzeltme iz bırakmadan kaybolmaz.</p>
+      <h3>Verilerim nerede saklanıyor?</h3>
+      <p>Kurulumda seçilen sunucudaki veritabanında. Yedekleri ve tatbikat sonuçlarını <strong>Yedekler</strong> ekranında görürsünüz.</p>
+    </section>
+
+    <!-- ── TASARIM GALERİSİ (UX-2 Faz A2 · mühür K14) ── -->
+    <section id="galeri">
+      <h2><span class="no">🎨</span> Tasarım galerisi — 4 temel durum</h2>
+      <p>Aynı DOM, dört görünüm: <strong>aydınlık/karanlık</strong> × <strong>basit/profesyonel</strong>.
+         Tema renkleri, yoğunluk (satır yüksekliği ve hücre boşluğu) ve dokunma hedefi
+         yalnız <code>data-tema</code> / <code>data-mod</code> özniteliğinden gelir;
+         hiçbir sabit renk ya da satır içi stil kullanılmaz. Görsel regresyon bu
+         galeriden kontrol edilir.</p>
+      <div class="galeri">
+      <div class="tema-onizleme" data-tema="aydinlik" data-mod="basit">
+        <div class="durum-etiketi">Aydınlık · Basit</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      <div class="tema-onizleme" data-tema="aydinlik" data-mod="profesyonel">
+        <div class="durum-etiketi">Aydınlık · Profesyonel</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      <div class="tema-onizleme" data-tema="karanlik" data-mod="basit">
+        <div class="durum-etiketi">Karanlık · Basit</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      <div class="tema-onizleme" data-tema="karanlik" data-mod="profesyonel">
+        <div class="durum-etiketi">Karanlık · Profesyonel</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      </div>
+      <div class="ipucu"><b>Not:</b> altın (amber) vurgusu yalnız <em>birincil eylem</em> ve
+        <em>aktif durum</em> içindir; metin rengi olarak kullanılmaz (kontrast).
+        Sayısal sütunlar <code>.sayi</code> ile tabular-nums ve sağa hizalıdır.</div>
+    </section>
+
+    <footer>
+      <p>Bu kılavuz docs/KULLANIM_KILAVUZU.md dosyasından üretilmiştir; programdaki her ekranın kendi bölümü vardır.</p>
+    </footer>
+  </main>
+</div>
+<a class="ust-link" href="#" title="Başa dön">↑</a>
+</body>
+</html>

@@ -1,0 +1,254 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AÇILIR KATMAN — TEK KALIP (paket KATMAN-1, 2026-09-25)
+
+   Ölçüm (betikler/tur, başsız Chrome, 9 rota × {BASİT,PRO} × {açık,koyu} ×
+   {1440,1024,960,375}): `.satir-menu` popover'ları ekranın ORTASINDA serbest
+   yüzüyordu (UA varsayılanı inset:0; margin:auto), öğeleri 13 px'ti (.btn-kucuk);
+   uygulamanın seçici listesi öğeleri gövde boyunda (18 px, Manrope).
+
+   TEK KALIP: her bağlı açılır katman (satır menüsü, "Diğer", seçici listesi,
+   kayıt arama paleti)
+     · öğe yazısı TEK belirteçten: --katman-oge-boyu (= gövde boyu; ölçek
+       kademesiyle birlikte büyür/küçülür — 16/18/20 px);
+     · zemin/kenarlık/köşe/gölge seçici listesiyle AYNI belirteçler
+       (--yuzey, --kenarlik, --yaricap, --golge-lg) → 8 tema çalışır;
+     · konum js/katman.js'ten BELİRTEÇLE gelir (--katman-ust/--katman-sol/
+       --katman-azami-boy); betik çalışmazsa `data-katman` yazılmaz ve bu
+       kurallar devreye girmez (eski davranış — sessiz "oldu" yok).
+   ⚠ app.css'e YAZILMAZ; ezilen kural burada daha özgül seçiciyle ezilir.
+   ⚠ Sabit renk yok; yalnız var(--…) belirteçleri.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --katman-oge-boyu: var(--yazi-govde, 18px);
+  --katman-pay: 8px;
+}
+
+/* ── (1) Bağlı popover: satır menüsü "⋯", Kasalar "⋯", Satış "Diğer ▾" ───── */
+.satir-menu[popover] {
+  padding: var(--bosluk-3);
+  border: 1px solid var(--kenarlik);
+  border-radius: var(--yaricap);
+  background: var(--yuzey);
+  color: var(--metin);
+  box-shadow: var(--golge-lg);
+  font-family: var(--yazi-ailesi);
+}
+.satir-menu[popover][data-katman="bagli"]:popover-open {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  top: var(--katman-ust);
+  left: var(--katman-sol);
+  min-width: min(20rem, calc(100vw - 2 * var(--katman-pay)));
+  /* KESIF-P7 (TOPLU KATMAN-1b [YÜKSEK]): uzun açıklama cümlesi menüyü 632 px'e genişletiyor,
+     1024'te kenar çubuğunun üstüne taşıyordu → en çok 22rem (dar ekranda ekran payı). */
+  max-width: min(22rem, calc(100vw - 2 * var(--katman-pay)));
+  max-height: var(--katman-azami-boy, calc(100vh - 2 * var(--katman-pay)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Öğeler: seçici listesinin seçeneğiyle aynı yazı boyu/ailesi/satır yüksekliği. */
+.satir-menu[popover] .satir-menu-ogeler > .btn,
+.satir-menu[popover] .satir-menu-ogeler > .dugme {
+  font-family: var(--yazi-ailesi);
+  font-size: var(--katman-oge-boyu);
+  line-height: 1.3;
+  min-height: var(--dokunma-hedefi);
+  padding-top: var(--bosluk-2);
+  padding-bottom: var(--bosluk-2);
+}
+.satir-menu[popover] .satir-menu-ogeler { gap: var(--bosluk-1); margin-top: var(--bosluk-2); }
+.satir-menu[popover] .satir-menu-baslik { font-size: var(--katman-oge-boyu); }
+.satir-menu[popover] .metin-kucuk { font-size: var(--yazi-md); }
+
+/* ── (2) 375 px: bağlı menü ekran genişliğine sığar (8 px pay), açıcıya bağlı kalır ── */
+@media (max-width: 480px) {
+  .satir-menu[popover][data-katman="bagli"]:popover-open {
+    width: calc(100vw - 2 * var(--katman-pay));
+    min-width: 0;
+  }
+}
+
+/* ── (3) Seçici listesi: öğeler aynı belirteç; yükseklik kalan alanla sınırlı ── */
+.secici-liste-kap .secici-secenek,
+.secici-liste-kap .secici-bos,
+.secici-liste-kap .secici-hata,
+.secici-liste-kap .secici-sinir,
+/* 28.09: arama girdisi .girdi taşır → olcek.css (0b) `html[data-mod] :where(.ana-icerik) .girdi`
+   (0,2,1) onu 16 px yapıyordu (tur: /urunler, /cariler, /islemler, / liste kapları 16+18 px).
+   html[data-mod] ile 0,3,1: listenin içinde TEK boy. */
+html[data-mod] .secici-liste-kap .secici-ara {
+  font-family: var(--yazi-ailesi);
+  font-size: var(--katman-oge-boyu);
+}
+.secici-kap > .secici-liste-kap[data-katman-azami] {
+  max-height: min(24rem, var(--secici-azami-boy));
+}
+/* Kırpan ata (overflow ≠ visible) paneli kesecekse js/secici-yerlesim.js `.sabit`
+   koyar: panel position:fixed ile atadan kurtulur; konum/genişlik tetiğe göre
+   belirteçten gelir (--secici-ust | --secici-alt, --secici-sol, --secici-gen).
+   Ölçüldü (doğrulayıcı): Satış PRO #islem-urun listesi .islem-pro-kalem-kart
+   (overflow:hidden) içinde yalnız alt ~100 px görünüyordu. */
+.secici-kap > .secici-liste-kap.sabit {
+  position: fixed;
+  top: var(--secici-ust, auto);
+  bottom: var(--secici-alt, auto);
+  left: var(--secici-sol, var(--katman-pay));
+  right: auto;
+  translate: none;
+  width: var(--secici-gen, auto);
+  min-width: 0;
+  max-width: calc(100vw - 2 * var(--katman-pay));
+}
+
+/* ── (4) Kayıt arama paleti (GlobalArama, Ctrl/⌘+K): PERDELİ KOMUT PALETİ ──────
+   KATMAN-1b: palet açıcıya BAĞLANMAZ. Masaüstünde açıcı (#ust-kayit-ara) gizlidir
+   (tuval-kabuk.css) → kutusu 0×0; ona bağlanan palet sol üst köşeye yapışıyordu
+   (tur 3 doğrulaması, KRİTİK). TEK KALIP: perdenin üstünde, ekranın ÜST ORTASINDA
+   sabit (app.css: top 10vh, yatay orta); 480 px altında tam genişlik (8 px pay),
+   üstte. Boy görüş alanını aşmaz; aşarsa palet kendi içinde kayar. */
+.kayit-arama-palet .secici-sonuc,
+.kayit-arama-palet .menu-arama-girdi,
+.kayit-arama-palet button,
+.kayit-arama-palet a,
+.kayit-arama-palet li,
+.kayit-arama-palet label {
+  font-family: var(--yazi-ailesi);
+  font-size: var(--katman-oge-boyu);
+}
+.kayit-arama-palet .metin-kucuk { font-size: var(--yazi-md); }
+.kayit-arama .kayit-arama-palet {
+  max-height: calc(100vh - 10vh - var(--katman-pay));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 480px) {
+  .kayit-arama .kayit-arama-palet {
+    top: var(--katman-pay);
+    width: calc(100vw - 2 * var(--katman-pay));
+    max-height: calc(100vh - 2 * var(--katman-pay));
+  }
+}
+
+/* Perde karanlıkta da KARARTIR: app.css perdesi --metin karışımıdır; karanlık temada
+   metin açık renk olduğundan sayfa ağarıyordu (ölçüm 1440 karanlık). Karanlıkta perde
+   sayfa zemininden (--govde) karışır → koyulaşır. */
+:root[data-tema="karanlik"] .kayit-arama-perde {
+  background: color-mix(in srgb, var(--govde) 70%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="aydinlik"]) .kayit-arama-perde {
+    background: color-mix(in srgb, var(--govde) 70%, transparent);
+  }
+}
+
+/* ── (5) Çekmeceler (ortak Cekmece: "Düzenle", Vitrin pano kalemi …): öğe yazısı TEK ──
+   KATMAN-1b: çekmece öğeleri 28 px (× kapat, --yazi-2xl) / 14 px (.dugme .875rem,
+   Vitrin pano .dugme-kucuk) / 16 px (form girdisi) karışıktı. Bütün katmanlar gibi
+   öğe yazısı TEK belirteçten: --katman-oge-boyu. Başlık (h2) ve ipucu metni öğe
+   değildir, kendi kademesinde kalır. Çekmecenin konumu/kaydırma kilidi ORTAK-1'indir
+   (Cekmece.razor, cekmece.js) — burada yalnız yazı boyu.
+   28.09: olcek.css (0b) kontrol ölçeği `html[data-mod] :where(.ana-icerik) .girdi|.dugme|
+   .secici-tetik|.dugme-kucuk` (özgüllük 0,2,1; bu dosyadan SONRA yüklenir) .ana-icerik
+   içindeki çekmecede (/urunler #cekmece-urun) girdileri 16 px, "Daha fazla"yı 14 px
+   yapıyordu → çekmece öğe yazısı yine karışıktı (ölçüm 28.09). Seçici `html[data-mod]`
+   ile 0,3,1'e çıkarıldı: katman içinde TEK boy kazanır; sayfa gövdesindeki kontroller
+   olcek.css ölçeğinde kalır. Sayfa sahibinin kimlikli tuval kuralları (#cekmece-cari)
+   daha özgüldür, dokunulmaz. */
+html[data-mod] .cekmece :is(button, a, li, label, input, select, textarea, .dugme, .btn) {
+  font-size: var(--katman-oge-boyu);
+}
+/* Öğe yazısı 18 px'e çıkınca yarım sütundaki seçici değeri kesiliyordu (/urunler
+   #cekmece-urun #d-ayar "K22 — 22 Ayar (916‰)": 184 > 176 px, "…"). Çekmecede seçici
+   değeri KESİLMEZ, gerekirse ikinci satıra iner (tetik min-height ile büyür). */
+html[data-mod] .cekmece .secici-tetik > .secici-metin {
+  white-space: normal;
+  text-overflow: clip;
+}
+/* × kapat: 28 px'lik çıplak glif yerine öğe boyunda × + görünür çerçeveli kutu —
+   tuvaldeki müşteri çekmecesinin kapat kalıbı (tuval-panel-musteri.css #cekmece-cari:
+   çerçeve --ayrac, zemin --yuzey, yazı = gövde). Dokunma hedefi (--dokunma-hedefi) korunur. */
+.cekmece .cekmece-bas .cekmece-kapat {
+  border: 1px solid var(--ayrac);
+  border-radius: var(--yaricap);
+  background: var(--yuzey);
+  color: var(--metin);
+  flex-shrink: 0;
+}
+
+/* ── (6) Görünüm ayrıntı gövdesi: kartın İÇİNDE kalır, uzarsa kendi içinde kayar ── */
+.gk-ayrinti[open] > .gk-ayrinti-govde {
+  max-height: calc(100vh - 2 * var(--katman-pay));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── (7) 375 px Kasalar kartı: "⋯" (Diğer işlemler açıcısı) tek başına alt satıra düşüyordu
+   (+ Hareket · Geçmiş · Günü Kapat birinci satırda, "⋯" altta yalnız — 29.09 doğrulama). Dar
+   ekranda kart eylemleri 2×2 eşit ızgara: açıcı kümenin parçası kalır, yatay kaydırma olmaz. ── */
+@media (max-width: 480px) {
+  #kasa-liste .satir-eylemler {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #kasa-liste .satir-eylemler > .btn { justify-content: center; }
+}
+
+/* ── (8) /vitrin "Pano ayarları" tablosu (#vitrin-ayarlar): kalem adı KIRILMAZ, her genişlikte.
+   29.09 ölçümü: 1440 (tuval), 768 ve 375'te ilk sütun "Yeni Tam (Teklik)", "Gram Altın" … iki
+   satıra bölünüyordu (K3 kırık 6/22); 769–1439 ızgarasında dugme.css (4a) bunu zaten yapıyor.
+   ORTAK-1 (A) kuralı ("kısa ad hücresi kırılmaz; tablo kendi kabında kayar, sayfa kaymaz")
+   bu tablonun tablo düzenine de uygulanır. Müşteriye dönük #vitrin-pano tablosu kırılmıyor. ── */
+.ana-icerik #vitrin-ayarlar > tbody > tr > td:first-child:not([colspan]) { white-space: nowrap; }
+/* Sütun başlığındaki "değiştirilebilir" rozeti kendi satırına iner (etiket metni tek satır kalır —
+   ORTAK-1 (A)): 1440'ta ilk sütun nowrap olunca tablo kabı 23 px taşıyor, "Varsayılan" başlığı
+   kesiliyordu (1097 > 1074); rozet alta inince 1440 ve 1280'de tablo kabına sığar (ölçüm § 17). */
+.ana-icerik #vitrin-ayarlar > thead > tr > th > .rozet {
+  display: block;
+  width: fit-content;
+  margin-inline-start: auto;
+}
+/* "Kur kaynağı ayarları →" bağlantısı 1024'te "→" ile ikiye bölünüyordu (K3 kırık; § 15.12-5):
+   kısa bağlantı etiketi tek parça kalır, gerekirse bütünüyle alt satıra iner. */
+.ana-icerik #vitrin-kur-kaynagi { white-space: nowrap; }
+
+/* ── (9) Kayıt paletinde "yok" (#kabuk-arama-yok): TEK, simgesiz, KISA satır ──────────
+   KATMAN-1b (tasarım hakemi 29.09 KRİTİK): app.css .bos-durum 12rem yükseklikli, simgeli
+   ortalanmış kutudur; palette gerçek sonucu aşağı itiyordu. Palette "yok" yalnız iki bölüm
+   de boşken çıkar ve tek satırdır; boyu öğe yazısıyla aynı (tek yazı boyu). */
+.kayit-arama-palet .kabuk-arama-yok {
+  height: auto;
+  align-items: flex-start;
+  padding: var(--bosluk-2) var(--bosluk-3);
+}
+.kayit-arama-palet .kabuk-arama-yok p {
+  margin: 0;
+  font-size: var(--katman-oge-boyu);
+}
+
+/* ── (10) Palet bölüm başlığı ve sonuç rozeti: küçük yazı YOK ─────────────────────────
+   30.09 canlı ölçüm (arama yazılmış palet): EKRANLAR/KAYITLAR başlığı 13 px, tür rozeti
+   ("Müşteri", "Ürün") 12 px — kabul "küçük yazı 0" (<14 px). Palette ikisi de başlık ve
+   durum satırıyla aynı ikinci boydadır (başlık --yazi-md); rozet sonuç satırının parçasıdır → öğe boyu (K1_04 tek belirteç). */
+.kayit-arama-palet .kabuk-arama-baslik { font-size: var(--yazi-md); }
+.kayit-arama-palet .secici-sonuc .rozet { font-size: var(--katman-oge-boyu); }
+
+/* ── (11) KESIF-P7 · SATIR MENÜSÜ ÖĞELERİ TEK GÖRÜNÜM (TOPLU KATMAN-1b [YÜKSEK]) ───────────
+   Ölçüm (/kasalar 1440, prob4): etkin "Düzenle" soluk (app.css .kasa-duzenle-btn opacity .65
+   menüye sızıyor), devre dışı "Pasife Al" dolu kırmızı blok, menü uzun açıklama cümlesiyle
+   632 px genişliyor (1024'te kenar çubuğunun üstüne taşıyor). Etkin öğe tam opak ve kenarlı;
+   devre dışı öğe dolgusuz ve soluk (sebebi title + menüdeki not); menü en çok 22rem ((1)'deki
+   bağlı konum kuralında da). */
+.satir-menu[popover] { max-width: min(22rem, calc(100vw - 2 * var(--katman-pay))); }
+.satir-menu[popover] .satir-menu-ogeler > :is(.btn, .dugme):not(:disabled) { opacity: 1; }
+/* app.css .kasa-duzenle-btn (kart köşesi ikon düğmesi) menüde kenarlığı da siliyordu (border: 0) →
+   menüdeki etkin ikincil öğe diğerleriyle aynı etkileşimli kenarı taşır (son tur görüntüsü). */
+.satir-menu[popover] .satir-menu-ogeler > .btn-ikincil:not(:disabled) { border: 1px solid var(--dugme-kenar); }
+.satir-menu[popover] .satir-menu-ogeler > :is(.btn, .dugme):disabled {
+  background: transparent;
+  border-color: var(--ayrac);
+  color: var(--metin-soluk);
+  opacity: 1;
+  cursor: not-allowed;
+}

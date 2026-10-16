@@ -1,0 +1,48 @@
+@inject ArayuzModuServisi Modu
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ProAlan — "profesyonel alan" sarmalayıcısı (paket UX-3 Faz A, UX-S5).
+
+   ⚠ BU BİR YETKİ KAPISI DEĞİLDİR. Yalnız ÇİZİM kararı verir; sunucudaki
+     hiçbir kapı arayüz moduna bakmaz (K-UX-6, denetim.sh sayacı).
+
+   ⚠ ZorunluGorunur SUNUCU KAYNAKLI bayraklara bağlanır (Mehmet K2):
+     tevsik önizlemesi (/tevsik/gunluk), MASAK eşikleri (/masak/esikler),
+     taş kökeni 400'ü. Eşik SAYISI ekrana gömülmez.
+
+   ⚠ Çocuklarının id'lerine DOKUNMAZ: profesyonel modda DOM birebir bugünküdür.
+
+   ⚠ Basit modda çizilmeyen alan, PATCH/POST gövdesine de KONMAZ (UX-S5) —
+     null gönderip veri silmez. Gövdeyi kuran sayfanın sorumluluğudur; bu
+     bileşen gövdeye hiç karışmaz.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@if (Gorunur)
+{
+    @ChildContent
+}
+else if (BasitAlternatif is not null)
+{
+    @BasitAlternatif
+}
+
+@code {
+    /// <summary>Profesyonel modda (ya da yasal kapı açıldığında) çizilecek içerik.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Basit modda gizlenen içeriğin yerine çizilecek sade karşılık (isteğe bağlı).</summary>
+    [Parameter] public RenderFragment? BasitAlternatif { get; set; }
+
+    /// <summary>
+    /// Yasal bir kapı tetiklendi: alan basit modda da AÇILIR. Sessiz red yasaktır —
+    /// tezgâhtar ne yapacağını görmelidir.
+    /// </summary>
+    [Parameter] public bool ZorunluGorunur { get; set; }
+
+    private bool Gorunur => Modu.ProfesyonelMi || ZorunluGorunur;
+
+    protected override void OnInitialized() => Modu.Degisti += Yenile;
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Modu.Degisti -= Yenile;
+}

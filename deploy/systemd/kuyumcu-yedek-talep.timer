@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Elle yedek talep kuyruğu — zamanlayıcı (Paket T-3 Faz A)
+# Saat dilimi Europe/Istanbul; zamanlama TEK YERDEDİR (uygulamada ikinci
+# zamanlayıcı açılmaz). Persistent=true: sunucu kapalıyken kaçan koşu
+# açılışta telafi edilir.
+# ═══════════════════════════════════════════════════════════════════════════
+[Unit]
+Description=Kuyumcu ERP elle yedek kuyruğu (60 saniyede bir)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60s
+AccuracySec=5s
+Persistent=true
+Unit=kuyumcu-yedek-talep.service
+
+[Install]
+WantedBy=timers.target

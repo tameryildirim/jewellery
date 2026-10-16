@@ -1,0 +1,574 @@
+@typeparam T
+@implements IDisposable
+@inject DilServisi Dil
+@inject ApiIstemci Api
+@inject IJSRuntime JS
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET GRID-1 — ORTAK IZGARA (kurucu 08.10: "sık kullanılan grid için TEK
+   kendi bileşenimiz, her yerde o çağrılır")
+
+   NE YAPAR
+   • Kolon sırası: başlığı SÜRÜKLE (js/siralistesi.js — mevcut köprü; fare +
+     dokunmatik, 5 px eşik) ya da KLAVYE: başlıkta Alt+←/→, "Sütunlar"
+     panelinde "Sola taşı / Sağa taşı" düğmeleri. Taşınamaz kolon (eylemler) hep sonda.
+   • Göster/gizle: panelde; ZORUNLU kolonun "Gizle"si kilitli ve sebebi yazılı (UX-S30).
+   • Sıralama: SUNUCUDA. Yalnız SunucuSiralamaAdi olan kolonda başlık düğmesi
+     çıkar; tıklama artan → azalan → varsayılan; th'de aria-sort. Izgara
+     listeyi KENDİ sıralamaz — SiralamaDegisti ile sayfaya haber verir, sayfa
+     ucu sirala=&yon= ile yeniden çağırır (sınırlı listede istemci sıralaması yanıltır).
+   • Kalıcı tercih: grid:<ekran>:<grid-id> (IzgaraTercihKurali — sunucuyla tek
+     kural). Kullanıcıya + ekrana özel; diğer kullanıcılar varsayılanı görür.
+     Bozuk/eski sürüm tercih → varsayılan düzen, hata YOK, tercih silinmez.
+   • "Varsayılana dön": DELETE /tercihler/benim/{anahtar}.
+   • Dar ekran (≤ 560 px): tek kart kalıbı (css/izgara.css) — her hücre data-etiket taşır.
+
+   ⚠ Mevcut element id'leri DEĞİŞMEZ: tablo KartListe içinde (Id → <id>-sar),
+     satır/hücre id ve sınıfları çağırandan gelir. Yeni id'ler '<GridId>-<alan>'.
+   ⚠ Boş durum ve liste hata bandı ÇAĞIRANIN işidir (KartListe sözleşmesi);
+     ızgara yalnız kendi tercih yazma hatasını bantla söyler (UX-S28).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="izgara" id="@($"{Onek}-izgara")">
+    @* GRID-1 tur 3 (doğrulayıcı ORTA): araç satırı SABİT yüksekliktedir — kayıt onayı ve gizli
+       sütun sayısı aynı satırda, tek satırlık küçük metin; düzen değişikliğinde tablo KAYMAZ.
+       Panel araç satırına bağlı AÇILIR KUTUDUR (tabloyu itmez). *@
+    <div class="izgara-arac" id="@($"{Onek}-arac")">
+        @if (GizliSayisi > 0)
+        {
+            <span class="metin-kucuk metin-soluk izgara-gizli-sayi" id="@($"{Onek}-gizli-sayi")">@string.Format(M.GizliSutunSayisi, GizliSayisi)</span>
+        }
+        <span class="metin-kucuk izgara-onay" id="@($"{Onek}-basari")" role="status" aria-live="polite">
+            @if (basari is not null)
+            {
+                <span class="izgara-onay-isaret" aria-hidden="true"><Ikon Ad="@Ikonlar.Onay" /></span>
+                @basari
+            }
+        </span>
+        <button type="button" class="btn btn-ikincil btn-kucuk izgara-sutunlar-ac" id="@($"{Onek}-sutunlar-ac")"
+                aria-expanded="@(panelAcik ? "true" : "false")" aria-controls="@($"{Onek}-sutunlar")"
+                @onclick="PanelDegistir">
+            @M.SutunlarDugmesi
+        </button>
+
+        @if (panelAcik)
+        {
+            <section class="izgara-panel" id="@($"{Onek}-sutunlar")" aria-labelledby="@($"{Onek}-sutunlar-baslik")"
+                     @onkeydown="PanelTus">
+                <h3 class="izgara-panel-baslik" id="@($"{Onek}-sutunlar-baslik")">@M.SutunlarBaslik</h3>
+                <ol class="izgara-panel-liste" id="@($"{Onek}-sutunlar-liste")">
+                    @foreach (var a in duzen.Sira)
+                    {
+                        var k = Kolon(a);
+                        // Taşınamaz sütun (satır eylemleri) panelde YOK: üç kilitli düğmeli ölü satır olurdu.
+                        if (k is null || k.Tasinamaz) continue;
+                        var gizli = duzen.Gizli.Contains(a);
+                        var solYok = duzen.Hedef(a, -1, false) < 0;
+                        var sagYok = duzen.Hedef(a, 1, false) < 0;
+                        <li @key="a" class="izgara-panel-oge @(gizli ? "izgara-panel-oge--gizli" : null)" id="@($"{Onek}-sutun-{a}")"
+                            data-sira-anahtar="@a">
+                            <span class="izgara-panel-ad">@k.Baslik</span>
+                            <span class="izgara-panel-eylem">
+                                <button type="button" class="btn btn-ikincil btn-kucuk izgara-tasi" id="@($"{Onek}-sola-{a}")"
+                                        @ref="panelRef['<' + a]"
+                                        disabled="@(yaziliyor || solYok)" title="@(solYok ? M.EnBasta : null)"
+                                        @onclick="() => PanelTasi(a, -1)">
+                                    <span class="izgara-yon-yatay"><span aria-hidden="true">←</span><span class="gorunmez">@($"{M.SolaTasi}: {k.Baslik}")</span></span>
+                                    <span class="izgara-yon-dikey"><span aria-hidden="true">↑</span><span class="gorunmez">@($"{M.YukariTasi}: {k.Baslik}")</span></span>
+                                </button>
+                                <button type="button" class="btn btn-ikincil btn-kucuk izgara-tasi" id="@($"{Onek}-saga-{a}")"
+                                        @ref="panelRef['>' + a]"
+                                        disabled="@(yaziliyor || sagYok)" title="@(sagYok ? M.EnSonda : null)"
+                                        @onclick="() => PanelTasi(a, 1)">
+                                    <span class="izgara-yon-yatay"><span aria-hidden="true">→</span><span class="gorunmez">@($"{M.SagaTasi}: {k.Baslik}")</span></span>
+                                    <span class="izgara-yon-dikey"><span aria-hidden="true">↓</span><span class="gorunmez">@($"{M.AsagiTasi}: {k.Baslik}")</span></span>
+                                </button>
+                                <button type="button" class="btn btn-ikincil btn-kucuk izgara-gizle" id="@($"{Onek}-gizle-{a}")"
+                                        disabled="@(yaziliyor || k.ZorunluGorunur)"
+                                        aria-describedby="@(k.ZorunluGorunur ? $"{Onek}-kilit-{a}" : null)"
+                                        aria-label="@($"{(gizli ? M.Goster : M.Gizle)}: {k.Baslik}")" @onclick="() => GizleDegistir(a)">
+                                    @(gizli ? M.Goster : M.Gizle)
+                                </button>
+                                @if (k.ZorunluGorunur)
+                                {
+                                    @* UX-S30 — kilit sebebi düğmenin YANINDA simge + title + erişilebilir ad. *@
+                                    <span class="izgara-kilit" id="@($"{Onek}-kilit-{a}")" title="@M.HepGorunur" role="img" aria-label="@M.HepGorunur">
+                                        <Ikon Ad="@Ikonlar.Kilit" />
+                                    </span>
+                                }
+                            </span>
+                        </li>
+                    }
+                </ol>
+                <div class="izgara-panel-alt">
+                    <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"{Onek}-varsayilan")"
+                            disabled="@(yaziliyor || !kayitVar)" @onclick="VarsayilanaDon">
+                        @M.VarsayilanaDon
+                    </button>
+                    @if (!kayitVar)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="@($"{Onek}-varsayilan-kilit")">@M.ZatenVarsayilan</span>
+                    }
+                </div>
+            </section>
+        }
+    </div>
+
+    @if (okunamadi)
+    {
+        <p class="metin-kucuk metin-soluk izgara-not" id="@($"{Onek}-okunamadi")" role="status">@M.OkunamadiNotu</p>
+    }
+    <HataBandi Mesaj="@hata" Id="@($"{Onek}-hata")" />
+
+    <KartListe Id="@(KartListeId ?? Onek)" Baslik="@Baslik" YapiskanIlkSutun="@YapiskanIlkSutun" Zo="@Zo" Sinif="@(KartListeSinif is { Length: > 0 } ks ? $"izgara-kap {ks}" : "izgara-kap")">
+        <table class="veri-tablosu izgara-tablo @TabloSinif" id="@(TabloId ?? $"{Onek}-tablo")">
+            <thead>
+                <tr id="@($"{Onek}-baslik-satiri")">
+                    @foreach (var k in GorunenKolonlar)
+                    {
+                        var a = k.Anahtar;
+                        var sirali = duzen.Siralama?.A == a ? duzen.Siralama : null;
+                        <th @key="a" scope="col" class="@BaslikSinifi(k)" data-kolon="@a" id="@k.BaslikId"
+                            data-sira-anahtar="@(k.Tasinamaz ? null : a)"
+                            aria-sort="@AriaSort(k, sirali)"
+                            tabindex="@(k.SunucuSiralamaAdi is null && !k.Tasinamaz ? "0" : null)"
+                            title="@(k.BaslikIpucu ?? (k.Tasinamaz ? null : M.KlavyeIpucu))"
+                            @ref="baslikRef[a]"
+                            @onkeydown="e => BaslikTus(e, a)" @onkeydown:preventDefault="altBasili"
+                            @onkeyup="BaslikTusBirak">
+                            @if (k.SunucuSiralamaAdi is not null)
+                            {
+                                <button type="button" class="izgara-sirala" id="@($"{Onek}-sirala-{a}")"
+                                        @ref="siralaRef[a]"
+                                        aria-disabled="@(yaziliyor ? "true" : null)" aria-label="@SiralaEtiketi(k, sirali)" @onclick="() => Sirala(a)">
+                                    <span>@k.Baslik</span>
+                                    @* Yön oku METİN değil CSS'tir (th[aria-sort] → ::after): başlığın metni
+                                       yalnız başlıktır; ekran okuyucu yönü aria-sort'tan okur. *@
+                                    <span class="izgara-sirala-ok" aria-hidden="true"></span>
+                                </button>
+                            }
+                            else if (k.BaslikGizli)
+                            {
+                                <span class="gorunmez">@k.Baslik</span>
+                            }
+                            else
+                            {
+                                @k.Baslik
+                            }
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var o in Ogeler)
+                {
+                    <tr id="@SatirId?.Invoke(o)" class="@SatirSinif?.Invoke(o)">
+                        @foreach (var k in GorunenKolonlar)
+                        {
+                            var etiket = k.KartEtiketsiz ? null : k.Baslik;
+                            if (k.HucreTikla.HasDelegate)
+                            {
+                                var tikla = k.HucreTikla;
+                                @* GRID-1 tur 3 (canlı bulundu): iki dal AYNI @key ile farklı çerçeve sırası taşıyınca
+                                   (BASİT↔PRO geçişinde telefon tıklanabilir ↔ satır içi düzenleme) Blazor td'yi
+                                   yeniden kullanıp class/data-kolon/data-etiket özniteliklerini SİLİYORDU → anahtar dala göre ayrışır. *@
+                                <td @key="(k.Anahtar, true)" class="@HucreSinifi(k, o)" data-kolon="@k.Anahtar" data-izgara-rol="@KartRolu(k)" data-etiket="@etiket"
+                                    @attributes="k.HucreOznitelikleri" @onclick="() => tikla.InvokeAsync(o)">
+                                    @Icerik(k, o)
+                                </td>
+                            }
+                            else
+                            {
+                                <td @key="(k.Anahtar, false)" class="@HucreSinifi(k, o)" data-kolon="@k.Anahtar" data-izgara-rol="@KartRolu(k)" data-etiket="@etiket"
+                                    @attributes="k.HucreOznitelikleri">
+                                    @Icerik(k, o)
+                                </td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </KartListe>
+</div>
+
+@code {
+    /// <summary>Ekran adı (tercih anahtarının &lt;ekran&gt; parçası; IzgaraTercihKurali.BilinenEkranlar'da olmalı).</summary>
+    [Parameter, EditorRequired] public string Ekran { get; set; } = "";
+
+    /// <summary>Izgara kimliği (tercih anahtarının &lt;grid-id&gt; parçası ve yeni id'lerin öneki).</summary>
+    [Parameter, EditorRequired] public string GridId { get; set; } = "";
+
+    /// <summary>
+    /// PAKET GOC-A (en küçük geriye uyumlu ekleme): aynı ızgara (aynı tercih anahtarı) bir sayfada
+    /// BİRDEN ÇOK KEZ çizildiğinde (ör. kasa raporunda kasa başına tablo) element id'lerinin öneki.
+    /// Verilmezse GridId (eski davranış birebir). Tercih anahtarı her zaman GridId'den kurulur.
+    /// </summary>
+    [Parameter] public string? KimlikOneki { get; set; }
+
+    /// <summary>PAKET GOC-A: mevcut tablo id'si korunsun diye (ör. "kr-tablo-{KasaId}"). Verilmezse "&lt;önek&gt;-tablo".</summary>
+    [Parameter] public string? TabloId { get; set; }
+
+    /// <summary>PAKET GOC-A: KartListe kabına eklenecek sınıf (ör. "zo-kart-liste" — sayfanın mevcut kap kuralları korunsun). Verilmezse eski davranış.</summary>
+    [Parameter] public string? KartListeSinif { get; set; }
+
+    /// <summary>PAKET GOC-A: kaydırma kabının data-zo şerit işareti (KartListe.Zo) — zo-belge.css kuralları için.</summary>
+    [Parameter] public string? Zo { get; set; }
+
+    private string Onek => KimlikOneki ?? GridId;
+
+    [Parameter, EditorRequired] public IReadOnlyList<IzgaraKolonu<T>> Kolonlar { get; set; } = [];
+
+    [Parameter, EditorRequired] public IReadOnlyList<T> Ogeler { get; set; } = [];
+
+    /// <summary>Satır id'si (mevcut id sözleşmesi korunur).</summary>
+    [Parameter] public Func<T, string?>? SatirId { get; set; }
+
+    /// <summary>Satır sınıfı.</summary>
+    [Parameter] public Func<T, string?>? SatirSinif { get; set; }
+
+    /// <summary>Tabloya eklenecek sınıflar (veri-tablosu ve izgara-tablo hep vardır).</summary>
+    [Parameter] public string? TabloSinif { get; set; }
+
+    /// <summary>Kaydırma bölgesinin erişilebilir adı (KartListe).</summary>
+    [Parameter] public string? Baslik { get; set; }
+
+    /// <summary>KartListe kimlik öneki — mevcut "&lt;id&gt;-sar" id'si korunsun diye. Boşsa GridId.</summary>
+    [Parameter] public string? KartListeId { get; set; }
+
+    /// <summary>Kolon kümesi sürümü: kolonlar kökten değişince artırılır → eski tercihler varsayılana düşer.</summary>
+    [Parameter] public int Surum { get; set; } = 1;
+
+    /// <summary>İlk kolon yatay kaydırmada donuk kalır (envanter § G1).</summary>
+    [Parameter] public bool YapiskanIlkSutun { get; set; } = true;
+
+    /// <summary>Sıralama değişti (tercihten yüklendiğinde de) — sayfa listeyi sunucudan sıralı ister.</summary>
+    [Parameter] public EventCallback<IzgaraSiralama?> SiralamaDegisti { get; set; }
+
+    /// <summary>
+    /// Sayfanın listeyi o an istediği sıralama (IzgaraTercihIstemcisi.KayitliSiralamaAsync ile
+    /// önceden okunur). Kayıtlı sıralama buna eşitse ızgara açılışta SiralamaDegisti ÇAĞIRMAZ.
+    /// </summary>
+    [Parameter] public IzgaraSiralama? GecerliSiralama { get; set; }
+
+    /// <summary>
+    /// GRID-1 tur 3: sayfanın tercih istemcisi (KayitliSiralamaAsync ile önceden okudu).
+    /// Verilirse ızgara tercihi ONUN önbelleğinden okur → açılışta TEK GET; liste boşalıp
+    /// dolunca yeniden kurulan ızgara da yeniden okumaz. Verilmezse ızgara kendi örneğini kurar.
+    /// </summary>
+    [Parameter] public IzgaraTercihIstemcisi? TercihIstemcisi { get; set; }
+
+    private IzgaraMetinleri M => IzgaraSozlugu.Al(Dil.Dil);
+
+    private IzgaraTercihIstemcisi? istemci;
+    private IzgaraTercihIstemcisi Istemci => TercihIstemcisi ?? (istemci ??= new IzgaraTercihIstemcisi(Api));
+
+    private string Anahtar => IzgaraTercihKurali.Anahtar(Ekran, GridId);
+
+    private IReadOnlyList<IzgaraKolonTanimi> tanim = [];
+    private IzgaraDuzeni duzen = IzgaraDuzeni.Varsayilan([]);
+    /// <summary>Son okunan/yazılan tercih — kolon kümesi değişince düzen bundan YENİDEN kurulur.</summary>
+    private IzgaraTercihi? sonTercih;
+    private bool kayitVar;
+    private bool okunamadi;
+    private bool panelAcik;
+    private bool panelBaglanacak;
+    private bool yaziliyor;
+    private bool altBasili;
+    private string? hata;
+    private string? basari;
+    private int basariJeton;
+    private DotNetObjectReference<Izgara<T>>? benlik;
+
+    // GRID-1 tur 3 (doğrulayıcı ORTA): taşıma sonrası ODAK aynı sütunda kalır. Taşımada @key'li
+    // öğe DOM'da yer değiştirir ve yazma süresince düğmeler kilitlenir → tarayıcı odağı BODY'ye
+    // düşürüyordu; ikinci Alt+→ basılamıyordu. Çizimden sonra odak açıkça geri verilir.
+    private readonly Dictionary<string, ElementReference> baslikRef = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ElementReference> siralaRef = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ElementReference> panelRef = new(StringComparer.Ordinal);
+    private (bool Panel, string Anahtar, int Yon)? odakIstegi;
+    private CancellationTokenSource? onayZamanlayici;
+
+    private IzgaraKolonu<T>? Kolon(string a) => Kolonlar.FirstOrDefault(k => k.Anahtar == a);
+
+    private IReadOnlyList<IzgaraKolonu<T>> GorunenKolonlar =>
+        [.. duzen.Gorunen.Select(Kolon).Where(k => k is not null).Select(k => k!)];
+
+    private int GizliSayisi => duzen.Gizli.Count;
+
+    protected override void OnParametersSet() => TanimGuncelle();
+
+    /// <summary>Kolon kümesi değiştiyse (koşullu döviz/durum sütunu) düzen kayıtlı tercihten yeniden kurulur.</summary>
+    private void TanimGuncelle()
+    {
+        var yeni = IzgaraKolonu<T>.Tanimlar(Kolonlar);
+        if (!yeni.SequenceEqual(tanim))
+        {
+            tanim = yeni;
+            duzen = IzgaraDuzeni.Kur(tanim, sonTercih, Surum);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        TanimGuncelle();   // tercih yüklenirken de varsayılan düzen çizilir (boş tablo yok)
+        var sonuc = await Istemci.OkuAsync(Anahtar);
+        okunamadi = sonuc.OkunamadiMi;
+        kayitVar = sonuc.KayitVar;
+        sonTercih = sonuc.Tercih;
+        duzen = IzgaraDuzeni.Kur(tanim, sonTercih, Surum);
+        // GRID-1 tur 2 (doğrulayıcı ORTA): sayfa kayıtlı sıralamayı ilk istekte zaten
+        // gönderdiyse (GecerliSiralama) liste YENİDEN istenmez; yalnız fark varsa bildirilir.
+        // Liste boşalıp dolunca ızgara yeniden kurulsa da ek GET atılmaz.
+        var kayitli = SiralamaKarsiligi(duzen.Siralama);
+        if (!Equals(kayitli, GecerliSiralama))
+            await SiralamaDegisti.InvokeAsync(kayitli);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await OdakVer();
+        if (!firstRender && !panelBaglanacak) return;
+        benlik ??= DotNetObjectReference.Create(this);
+        try
+        {
+            if (firstRender)
+                await JS.InvokeVoidAsync("kuyumcuSira.baslat", $"{Onek}-baslik-satiri", benlik);
+            if (panelBaglanacak && panelAcik)
+                await JS.InvokeVoidAsync("kuyumcuSira.baslat", $"{Onek}-sutunlar-liste", benlik);
+        }
+        catch (JSException) { /* sürükleme köprüsü yoksa klavye/panel yolu çalışmaya devam eder */ }
+        catch (InvalidOperationException) { }
+        panelBaglanacak = false;
+    }
+
+    /// <summary>
+    /// js/siralistesi.js geri çağrısı: kaynak kolonu hedefin yerine bırak.
+    /// ⚠ JS'ten gelen çağrı Blazor olayı DEĞİLDİR → otomatik yeniden çizim yok;
+    ///   çizim açıkça istenir (canlı ölçüm 08.10: sürükleme tercihe yazılıyor ama
+    ///   başlıklar bir sonraki olaya dek eski sırada kalıyordu).
+    /// </summary>
+    [JSInvokable]
+    public Task Birak(string kaynak, string hedef) => InvokeAsync(async () =>
+    {
+        var yeni = duzen.Birak(kaynak, hedef);
+        if (yeni is null) return;
+        var yazma = Uygula(yeni, siralamaDegisti: false);
+        StateHasChanged();          // yerel düzen hemen görünür
+        await yazma;
+        StateHasChanged();          // yazma sonucu (bant / geri alma) görünür
+    });
+
+    private void PanelDegistir()
+    {
+        panelAcik = !panelAcik;
+        panelBaglanacak = panelAcik;
+    }
+
+    private void PanelTus(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") panelAcik = false;
+    }
+
+    private Task Tasi(string a, int yon, bool yalnizGorunen) =>
+        Uygula(duzen.Tasi(a, yon, yalnizGorunen), siralamaDegisti: false);
+
+    private async Task PanelTasi(string a, int yon)
+    {
+        await Tasi(a, yon, false);
+        odakIstegi = (true, a, yon);
+    }
+
+    /// <summary>Bekleyen odak isteğini uygular: başlıkta sıralama düğmesi (yoksa th); panelde aynı yön düğmesi (kilitliyse karşı yön).</summary>
+    private async Task OdakVer()
+    {
+        if (odakIstegi is not { } o) return;
+        odakIstegi = null;
+        ElementReference? hedef = null;
+        if (o.Panel)
+        {
+            // Anahtar: '<' + sütun = sola/yukarı düğmesi, '>' + sütun = sağa/aşağı düğmesi.
+            var ayni = (o.Yon < 0 ? "<" : ">") + o.Anahtar;
+            var karsi = (o.Yon < 0 ? ">" : "<") + o.Anahtar;
+            var kilitli = duzen.Hedef(o.Anahtar, o.Yon, false) < 0;
+            if (panelRef.TryGetValue(kilitli ? karsi : ayni, out var p)) hedef = p;
+        }
+        else if (siralaRef.TryGetValue(o.Anahtar, out var b) && Kolon(o.Anahtar)?.SunucuSiralamaAdi is not null) hedef = b;
+        else if (baslikRef.TryGetValue(o.Anahtar, out var t)) hedef = t;
+        if (hedef is not { } h) return;
+        try { await h.FocusAsync(); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private Task GizleDegistir(string a)
+    {
+        var yeni = duzen.GizleDegistir(a);
+        var siralamaKalkti = yeni is not null && duzen.Siralama is not null && yeni.Siralama is null;
+        return Uygula(yeni, siralamaKalkti);
+    }
+
+    private Task Sirala(string a) => Uygula(duzen.SiralamaDongusu(a), siralamaDegisti: true);
+
+    private async Task BaslikTus(KeyboardEventArgs e, string a)
+    {
+        if (e.Key == "Alt") { altBasili = true; return; }
+        if (!e.AltKey) return;
+        if (e.Key is not ("ArrowLeft" or "ArrowRight")) return;
+        await Tasi(a, e.Key == "ArrowLeft" ? -1 : 1, true);
+        odakIstegi = (false, a, 0);
+    }
+
+    private void BaslikTusBirak(KeyboardEventArgs e)
+    {
+        if (e.Key == "Alt" || !e.AltKey) altBasili = false;
+    }
+
+    /// <summary>
+    /// Yeni düzeni uygular ve SUNUCUYA yazar. Yazma başarısızsa yerel değişiklik
+    /// GERİ ALINIR ve bant sebebi söyler (md.1 — "oldu" ancak kanıtla).
+    /// </summary>
+    private async Task Uygula(IzgaraDuzeni? yeni, bool siralamaDegisti)
+    {
+        if (yeni is null || yaziliyor) return;
+        var onceki = duzen;
+        var oncekiTercih = sonTercih;
+        var tercih = Birlestir(yeni.Tercih(Surum), sonTercih);
+        duzen = yeni;
+        sonTercih = tercih;
+        yaziliyor = true;
+        hata = null;
+        try
+        {
+            await Istemci.YazAsync(Anahtar, tercih);
+            kayitVar = true;
+            okunamadi = false;
+            OnayGoster(M.Kaydedildi);
+        }
+        catch (Exception ex)
+        {
+            duzen = onceki;
+            sonTercih = oncekiTercih;
+            hata = HataMetni(ex);
+            siralamaDegisti = false;
+        }
+        finally
+        {
+            yaziliyor = false;
+        }
+        if (siralamaDegisti)
+            await SiralamaDegisti.InvokeAsync(SiralamaKarsiligi(duzen.Siralama));
+    }
+
+    /// <summary>
+    /// Ekranda o an OLMAYAN (koşullu) kolonların kayıtlı yeri ve gizliliği korunur:
+    /// döviz sütunu bu listede yokken yapılan bir taşıma, kullanıcının onu
+    /// gizlemiş olduğunu silmez.
+    /// </summary>
+    private IzgaraTercihi Birlestir(IzgaraTercihi yeni, IzgaraTercihi? onceki)
+    {
+        if (onceki is null || onceki.S != yeni.S) return yeni;
+        var bilinen = tanim.Select(t => t.Anahtar).ToHashSet(StringComparer.Ordinal);
+        var k = yeni.K.Concat(onceki.K.Where(a => !bilinen.Contains(a))).Distinct().ToList();
+        var g = yeni.G.Concat(onceki.G.Where(a => !bilinen.Contains(a))).Distinct().ToList();
+        return yeni with { K = k, G = g };
+    }
+
+    private async Task VarsayilanaDon()
+    {
+        if (yaziliyor || !kayitVar) return;
+        var onceki = duzen;
+        var oncekiTercih = sonTercih;
+        var siralamaVardi = duzen.Siralama is not null;
+        yaziliyor = true;
+        hata = null;
+        try
+        {
+            await Istemci.SilAsync(Anahtar);
+            sonTercih = null;
+            kayitVar = false;
+            duzen = IzgaraDuzeni.Varsayilan(tanim);
+            OnayGoster(M.VarsayilanaDonuldu);
+        }
+        catch (Exception ex)
+        {
+            duzen = onceki;
+            sonTercih = oncekiTercih;
+            hata = HataMetni(ex);
+            siralamaVardi = false;
+        }
+        finally
+        {
+            yaziliyor = false;
+        }
+        if (siralamaVardi)
+            await SiralamaDegisti.InvokeAsync(null);
+    }
+
+    /// <summary>
+    /// GRID-1 tur 3 (doğrulayıcı DÜŞÜK): bantta yalnız SUNUCUNUN Türkçe mesajı (ApiHata);
+    /// ağ/tarayıcı istisnasının ham (İngilizce/teknik) metni basılmaz → sözlükten genel mesaj.
+    /// </summary>
+    private string HataMetni(Exception ex) =>
+        $"{M.KaydedilemediOnek}: {(ex is ApiHata ah && !string.IsNullOrWhiteSpace(ah.Message) ? ah.Message : M.GenelYazmaHatasi)}";
+
+    /// <summary>Satır içi kısa onay (✓ Kaydedildi) — yerleşimi itmez; 2,5 sn sonra kendiliğinden söner.</summary>
+    private void OnayGoster(string metin)
+    {
+        basari = metin;
+        basariJeton++;
+        onayZamanlayici?.Cancel();
+        onayZamanlayici?.Dispose();
+        onayZamanlayici = new CancellationTokenSource();
+        var jeton = basariJeton;
+        var iptal = onayZamanlayici.Token;
+        _ = Task.Delay(2500, iptal).ContinueWith(t =>
+        {
+            if (t.IsCanceled || jeton != basariJeton) return;
+            _ = InvokeAsync(() => { basari = null; StateHasChanged(); });
+        }, TaskScheduler.Default);
+    }
+
+    /// <summary>Sayısal sütun (tutar, has, gram, adet): başlık ve değer AYNI hizada (sağa) — izgara-sayi.</summary>
+    private static bool SayiMi(IzgaraKolonu<T> k) =>
+        k.Tur is IzgaraHucreTuru.Tl or IzgaraHucreTuru.Para or IzgaraHucreTuru.Has or IzgaraHucreTuru.Gram or IzgaraHucreTuru.Adet;
+
+    private static string? BaslikSinifi(IzgaraKolonu<T> k) =>
+        SayiMi(k) ? $"{k.BaslikSinif} izgara-sayi".TrimStart() : k.BaslikSinif;
+
+    private static string? HucreSinifi(IzgaraKolonu<T> k, T o)
+    {
+        var s = k.HucreSinif?.Invoke(o);
+        return SayiMi(k) ? $"{s} izgara-sayi".TrimStart() : s;
+    }
+
+    private IzgaraSiralama? SiralamaKarsiligi(IzgaraSiralamaTercihi? s) => IzgaraKolonu<T>.SiralamaKarsiligi(Kolonlar, s);
+
+    private RenderFragment Icerik(IzgaraKolonu<T> k, T o) => k.Hucre is not null ? k.Hucre(o) : b => b.AddContent(0, k.BicimliDeger(o));
+
+    /// <summary>
+    /// GRID-1 tur 2 (doğrulayıcı KRİTİK): kart kipinde hücre yeri SIRAYA değil ROLE bağlıdır.
+    /// Kullanıcı sütun sırasını değiştirince ":first-child" artık ad değildir; kart kalıbı
+    /// birincil (zorunlu) hücreyi en üste, sabit (eylem) hücreyi en alta CSS order ile koyar.
+    /// </summary>
+    /// Birincil = TANIMDAKİ ilk zorunlu (taşınabilir) kolon — tek hücre; görüntü sırasından bağımsız.
+    private string? KartRolu(IzgaraKolonu<T> k) =>
+        k.Tasinamaz ? "sabit"
+        : ReferenceEquals(k, Kolonlar.FirstOrDefault(x => x.ZorunluGorunur && !x.Tasinamaz)) ? "birincil"
+        : null;
+
+    private static string? AriaSort(IzgaraKolonu<T> k, IzgaraSiralamaTercihi? s) =>
+        k.SunucuSiralamaAdi is null ? null
+        : s is null ? "none"
+        : s.Y == IzgaraTercihKurali.YonAzalan ? "descending" : "ascending";
+
+    private string SiralaEtiketi(IzgaraKolonu<T> k, IzgaraSiralamaTercihi? s) =>
+        string.Format(s is null ? M.SiralaArtan : s.Y == IzgaraTercihKurali.YonArtan ? M.SiralaAzalan : M.SiralaKaldir, k.Baslik);
+
+    public void Dispose()
+    {
+        benlik?.Dispose();
+        onayZamanlayici?.Cancel();
+        onayZamanlayici?.Dispose();
+    }
+}

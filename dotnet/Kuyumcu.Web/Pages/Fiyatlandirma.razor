@@ -1,0 +1,696 @@
+@page "/fiyatlandirma"
+@using Kuyumcu.Contracts.Bilesenler.FiyatListesiUrunPaneli
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Fiyatlandirma
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Fiyat listeleri + kampanyalar (paket 17; düzenleme yolu ve ürün paneli paket UX-4a).
+   • GET/POST/PATCH /fiyat/listeler     • GET/POST/PATCH /fiyat/kampanyalar
+   Hesap SUNUCUDA (marj ticari sırdır); burada yalnız ayarlar düzenlenir.
+
+   UX-4a maddeleri:
+   2 — her liste/kampanya satırının Düzenle + Pasife al/Aktifleştir yolu vardır
+       (UX-S25); form duzenlenenId ile çift amaçlıdır (id doluysa PATCH).
+   3 — liste satırından "Bu listeyle ürün fiyatları" paneli açılır (UX-S23);
+       paket 49 ile bu panel TAM ürün görünümüdür (tekil/toplu geçersiz kılma).
+   4 — sessiz etkisizlik uyarıları: ISCILIK_YUZDE + sabit fiyat, gümüş hedef.
+   5 — Yukleniyor / BasariBandi / BosDurum; ilk listede Varsayılan kilitli.
+   ⚠ Hata YUTULMAZ (UX-S28): boş durum yalnız istek BAŞARILI ve sonuç boşken. *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Fiyat.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) liste = tuval Y_Fiyatlisteleri (BİREBİR); özgün ekran yalnız "ayrıntı" görünümünde
+   çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@* YILDIZ-5A tur 2 (tasarım hakemi KRİTİK): "Yeni liste"/"Düzenle" Yıldız form kalıbında açılır (eski ekrana geçmez);
+   alanlar özgün formun bileşenleri, aynı kimlik ve aynı kapılarla. *@
+@if (YildizMi)
+{
+    if (YildizListeFormu && yeniListe is { } yf)
+    {
+        <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizListeFormBaglami">
+            <Metin ElemanId="fl-ad" Etiket="@YildizFiyatSozlugu.Liste(Dil.Dil)" Zorunlu="true" EnFazla="@AlanSinirlari.FiyatListesiAdi"
+                   Deger="@yf.Ad" DegerChanged="@(v => yf.Ad = v ?? "")" Durum="listeForm" HataAlani="fl-ad" />
+            <Sayi ElemanId="fl-marj" Etiket="@YildizFiyatSozlugu.Kar(Dil.Dil)" Birim="%"
+                  Deger="@yf.HasMarjYuzde" DegerChanged="@(v => yf.HasMarjYuzde = v ?? 0m)"
+                  Durum="listeForm" HataAlani="fl-marj" />
+            <Sayi ElemanId="fl-carpan" Etiket="@YildizFiyatSozlugu.Iscilik(Dil.Dil)" EnAz="0" Birim="%"
+                  Deger="@yf.IscilikCarpanYuzde" DegerChanged="@(v => yf.IscilikCarpanYuzde = v ?? 0m)"
+                  Durum="listeForm" HataAlani="fl-carpan" />
+            @if (RiskMetni is { } rm)
+            {
+                <div class="alan" id="fl-risk">
+                    <p class="metin-amber" id="fl-risk-uyari" role="alert">@rm</p>
+                    <Onay ElemanId="fl-risk-onay" Etiket="@Dil.T.Fiyat.RiskOnayiEtiket"
+                          Deger="@yf.RiskOnayi" DegerChanged="@((bool v) => yf.RiskOnayi = v)" />
+                </div>
+            }
+            @if (yildizFiyatEk)
+            {
+                <div class="alan">
+                    <Onay ElemanId="fl-varsayilan" Etiket="@Dil.T.Fiyat.Varsayilan"
+                          Deger="@yf.Varsayilan" DegerChanged="@((bool v) => yf.Varsayilan = v)"
+                          Devredisi="@IlkListe" DevredisiSebebi="@Dil.T.Fiyat.IlkListeVarsayilan" />
+                    @if (IlkListe)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="fl-varsayilan-not">@Dil.T.Fiyat.IlkListeVarsayilan</p>
+                    }
+                    else if (yf.Varsayilan && !yf.BaslangictaVarsayilan)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="fl-varsayilan-not">@Dil.T.Fiyat.VarsayilanDegisir</p>
+                    }
+                </div>
+                <div class="alan"><Onay ElemanId="fl-aktif" Etiket="@Dil.T.Fiyat.Aktif"
+                          Deger="@yf.Aktif" DegerChanged="@((bool v) => yf.Aktif = v)"
+                          Devredisi="@yf.BaslangictaVarsayilan" DevredisiSebebi="@Dil.T.Fiyat.VarsayilanKorunur" />
+                    @if (yf.BaslangictaVarsayilan)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="fl-aktif-not">@Dil.T.Fiyat.VarsayilanKorunur</p>
+                    }
+                </div>
+            }
+            <SayiKapisiSebebi Kapi="sayiKapisi" Onek="fl-" ElemanId="fl-sayi-kilit" />
+        </Kuyumcu.Web.Bilesenler.Yildiz.YildizForm>
+    }
+    else
+    {
+        <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" />
+    }
+}
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* UX-1-C2: sayfanın TEK başlığı ve TEK birincil eylemi. Mevcut kart
+       başlıkları (h2) kaldırılmadı, sarıldı. *@
+    <SayfaBasi Anahtar="fiyatlandirma" Baslik="@Dil.T.Fiyat.Baslik" Aciklama="@Dil.T.Fiyat.SayfaAciklama">
+        <Eylem>
+            <button class="btn btn-birincil btn-kucuk" id="fl-yeni" @onclick="ListeFormuAc">+ @Dil.T.Fiyat.YeniListe</button>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" Id="hata-bandi" />
+
+    @* ── Fiyat listeleri ── *@
+    <div class="kart">
+        <div class="kart-baslik satir-arasi">
+            <h2>@Dil.T.Fiyat.Listeler</h2>
+        </div>
+        <div id="fl-basari"><BasariBandi Mesaj="@listeBasari" Jeton="@listeJeton" SureliMs="3000" /></div>
+        @if (yeniListe is { } yl)
+        {
+            <div class="kart-govde form-grid-3" id="fl-form">
+                <Metin ElemanId="fl-ad" Etiket="@Dil.T.Fiyat.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.FiyatListesiAdi"
+                       Deger="@yl.Ad" DegerChanged="@(v => yl.Ad = v ?? "")"
+                       Durum="listeForm" HataAlani="fl-ad" />
+                <div class="alan"><Secici ElemanId="fl-tur"
+                            Etiket="@Dil.T.Fiyat.Tur"
+                            Secenekler="@ListeTurSecenekleri"
+                            @bind-Deger="yl.Tur" /></div>
+                <Sayi ElemanId="fl-marj" Etiket="@Dil.T.Fiyat.HasMarj" Birim="%"
+                      Deger="@yl.HasMarjYuzde" DegerChanged="@(v => yl.HasMarjYuzde = v ?? 0m)"
+                      Durum="listeForm" HataAlani="fl-marj" />
+                <Sayi ElemanId="fl-carpan" Etiket="@Dil.T.Fiyat.IscilikCarpan" EnAz="0" Birim="%"
+                      Deger="@yl.IscilikCarpanYuzde" DegerChanged="@(v => yl.IscilikCarpanYuzde = v ?? 0m)"
+                      Durum="listeForm" HataAlani="fl-carpan" />
+                @* ── Makul aralık kapısı (S-3c · kurul tur 3 engel 20) ──
+                   Eşikler TEK kaynaktan: Kuyumcu.Core.Sozlesmeler.FiyatAraliklari.
+                   Kilitli Kaydet SEBEBİNİ söyler (UX-S30); sessiz kabul YASAK. *@
+                @if (RiskMetni is { } rm)
+                {
+                    <div class="alan" id="fl-risk">
+                        <p class="uyari-metni" id="fl-risk-uyari" role="alert">@rm</p>
+                        <Onay ElemanId="fl-risk-onay" Etiket="@Dil.T.Fiyat.RiskOnayiEtiket"
+                              Deger="@yl.RiskOnayi" DegerChanged="@((bool v) => yl.RiskOnayi = v)" />
+                        @if (!yl.RiskOnayi)
+                        {
+                            <p class="metin-kucuk metin-soluk" id="fl-risk-not">@Dil.T.Fiyat.RiskOnayiSart</p>
+                        }
+                    </div>
+                }
+                @* ⚠ Razor tuzağı: disabled="false" DİZGEDİR ve düğmeyi yine kapatır.
+                   Boole ifadesi @( ) içinde verilir; Blazor yanlışta özniteliği hiç yazmaz. *@
+                <div class="alan">
+                    <Onay ElemanId="fl-varsayilan" Etiket="@Dil.T.Fiyat.Varsayilan"
+                          Deger="@yl.Varsayilan" DegerChanged="@((bool v) => yl.Varsayilan = v)"
+                          Devredisi="@IlkListe" DevredisiSebebi="@Dil.T.Fiyat.IlkListeVarsayilan" />
+                    @if (IlkListe)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="fl-varsayilan-not">@Dil.T.Fiyat.IlkListeVarsayilan</p>
+                    }
+                    else if (yl.Varsayilan && !yl.BaslangictaVarsayilan)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="fl-varsayilan-not">@Dil.T.Fiyat.VarsayilanDegisir</p>
+                    }
+                </div>
+                <div class="alan"><Onay ElemanId="fl-aktif" Etiket="@Dil.T.Fiyat.Aktif"
+                          Deger="@yl.Aktif" DegerChanged="@((bool v) => yl.Aktif = v)"
+                          Devredisi="@yl.BaslangictaVarsayilan"
+                          DevredisiSebebi="@Dil.T.Fiyat.VarsayilanKorunur" />
+                    @if (yl.BaslangictaVarsayilan)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="fl-aktif-not">@Dil.T.Fiyat.VarsayilanKorunur</p>
+                    }
+                </div>
+                <HataBandi Mesaj="@listeHata" />
+                <SayiKapisiSebebi Kapi="sayiKapisi" Onek="fl-" ElemanId="fl-sayi-kilit" />
+                <div class="satir">
+                    <button class="btn btn-ikincil" id="fl-vazgec" @onclick="ListeFormuKapat">@Dil.T.Ortak.Iptal</button>
+                    <button class="btn btn-birincil" id="fl-kaydet" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("fl-") || RiskOnayiBekliyor)" @onclick="ListeKaydet">@Dil.T.Ortak.Kaydet</button>
+                </div>
+            </div>
+        }
+        @if (yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (yuklendi && hata is null && listeler.Count == 0)
+        {
+            <div id="fl-bos"><BosDurum Mesaj="@Dil.T.Fiyat.BosListe" /></div>
+        }
+        else
+        {
+            @* PAKET GOC-C — ORTAK IZGARA (grid:fiyatlandirma:fl-tablo). Liste TAM → yerel sıralama; id'ler korunur.
+               UX-S31: ✓/— yerine sözlük metni. *@
+            <Izgara T="Liste" Ekran="fiyatlandirma" GridId="fl-tablo" TabloId="fl-tablo" TabloSinif="q10-th-tek" Kolonlar="@ListeKolonlari"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(listeler, listeSira, ListeKolonlari)"
+                    SatirId="@(l => $"fl-satir-{l.Id}")" SatirSinif="@(l => l.Varsayilan ? "satir-vurgu" : null)"
+                    Baslik="@Dil.T.Fiyat.Listeler"
+                    SiralamaDegisti="@(x => listeSira = x)" GecerliSiralama="@listeSira" />
+        }
+    </div>
+
+    @* ── Seçili listenin ürünlere etkisi (UX-4a madde 3) ── *@
+    @if (seciliListe is { } sl)
+    {
+        <FiyatListesiUrunPaneli ListeId="@sl.Id" ListeAdi="@sl.Ad" KurId="@kurId"
+                                Kategoriler="@PanelKategorileri" Kapandi="PaneliKapat" />
+    }
+
+    @* ── Kampanyalar ── *@
+    <div class="kart">
+        <div class="kart-baslik satir-arasi">
+            <h2>@Dil.T.Fiyat.Kampanyalar</h2>
+            <button class="btn btn-ikincil btn-kucuk" id="km-yeni" @onclick="KampanyaFormuAc">+ @Dil.T.Fiyat.YeniKampanya</button>
+        </div>
+        <div id="km-basari"><BasariBandi Mesaj="@kampanyaBasari" Jeton="@kampanyaJeton" SureliMs="3000" /></div>
+        @if (yeniKampanya is { } yk)
+        {
+            <div class="kart-govde form-grid-3" id="km-form">
+                <Metin ElemanId="km-ad" Etiket="@Dil.T.Fiyat.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.KampanyaAdi"
+                       Deger="@yk.Ad" DegerChanged="@(v => yk.Ad = v ?? "")"
+                       Durum="kampanyaForm" HataAlani="km-ad" />
+                <Tarih ElemanId="km-bas" Etiket="@Dil.T.Fiyat.Baslangic"
+                       Deger="@DateOnly.FromDateTime(yk.Baslangic)"
+                       DegerChanged="@((DateOnly? v) => { if (v is { } g) yk.Baslangic = g.ToDateTime(TimeOnly.MinValue); })" />
+                @* PAKET GOC-C: bitiş başlangıçtan önce olamaz (EnErken) — ortak pencere 1900–2100 (sunucu aynı). *@
+                <Tarih ElemanId="km-bit" Etiket="@Dil.T.Fiyat.Bitis" EnErken="@DateOnly.FromDateTime(yk.Baslangic)"
+                       Deger="@DateOnly.FromDateTime(yk.Bitis)"
+                       DegerChanged="@((DateOnly? v) => { if (v is { } g) yk.Bitis = g.ToDateTime(TimeOnly.MinValue); })"
+                       Durum="kampanyaForm" HataAlani="km-bit" />
+                <div class="alan"><Secici ElemanId="km-hedef"
+                            Etiket="@Dil.T.Fiyat.Hedef"
+                            Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("TUMU", Dil.T.Fiyat.HedefTumu), new SecenekOgesi("KATEGORI", Dil.T.Fiyat.HedefKategori), new SecenekOgesi("URUN", Dil.T.Fiyat.HedefUrun) })"
+                            @bind-Deger="yk.HedefTur" /></div>
+                @if (yk.HedefTur != "TUMU")
+                {
+                    <div class="alan"><Secici ElemanId="km-hedefid"
+                                Etiket="@(yk.HedefTur == "URUN" ? Dil.T.Fiyat.HedefUrun : Dil.T.Fiyat.HedefKategori)"
+                                Secenekler="@((yk.HedefTur == "URUN" ? UrunSecenekleri : Kategoriler).Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                                @bind-Deger="yk.HedefId" @bind-Deger:after="HedefIdDegisti"
+                                BosSecenekMetni="—" /><AlanHatasi Alan="km-hedefid" Durum="kampanyaForm" /></div>
+                }
+                <div class="alan"><Secici ElemanId="km-tur"
+                            Etiket="@Dil.T.Fiyat.IndirimTuru"
+                            Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("ISCILIK_YUZDE", Dil.T.Fiyat.IscilikYuzde), new SecenekOgesi("TUTAR_YUZDE", Dil.T.Fiyat.TutarYuzde), new SecenekOgesi("TUTAR_TL", Dil.T.Fiyat.TutarTl) })"
+                            @bind-Deger="yk.IndirimTuru" /></div>
+                @* PAKET GOC-C (envanter C km-deger): yüzde türünde ortak Yuzde (0–100, 2 ondalık); TUTAR_TL'de ortak
+                   Para (> 0, 2 ondalık, TRY). Kimlik AYNI (km-deger); sunucu Range + servis kuralı aynı sınırlar. *@
+                @if (yk.IndirimTuru == "TUTAR_TL")
+                {
+                    <Para ElemanId="km-deger" Etiket="@Dil.T.Fiyat.Deger" Tur="TutarTuru.Pozitif" ParaBirimi="TRY"
+                          Deger="@yk.Deger" DegerChanged="@(v => yk.Deger = v ?? 0m)"
+                          Durum="kampanyaForm" HataAlani="km-deger" />
+                }
+                else
+                {
+                    <Yuzde ElemanId="km-deger" Etiket="@Dil.T.Fiyat.Deger" Birim="%"
+                           Deger="@yk.Deger" DegerChanged="@(v => yk.Deger = v ?? 0m)"
+                           Durum="kampanyaForm" HataAlani="km-deger" />
+                }
+                <Onay ElemanId="km-aktif" Etiket="@Dil.T.Fiyat.Aktif"
+                      Deger="@yk.Aktif" DegerChanged="@((bool v) => yk.Aktif = v)" />
+                @* UX-4a madde 4 — sessiz etkisizlik: motor sabit fiyatlı üründe
+                   ISCILIK_YUZDE indirimini 0 TL üretir (FiyatMotoru kural 1). *@
+                @if (yk.IndirimTuru == "ISCILIK_YUZDE") { <div class="uyari-kutu" id="km-iscilik-uyari"><p>ℹ @Dil.T.Fiyat.IscilikUyari</p></div> }
+                @* Gümüş (ayar G*) ürün altın has kuruyla fiyatlanmaz (kural 2) →
+                   kampanya kurulur, vitrinde hiçbir şey değişmez. Kaydet KİLİTLENİR. *@
+                @if (GumusHedef) { <div class="uyari-kutu uyari-kirmizi" id="km-gumus-uyari"><p>⚠ @Dil.T.Fiyat.GumusUyari</p></div> }
+                @if (SureAsildi(yk)) { <div class="uyari-kutu" id="km-sure-uyari"><p>⚠ @Dil.T.Fiyat.SureUyari</p></div> }
+                <HataBandi Mesaj="@kampanyaHata" />
+                <SayiKapisiSebebi Kapi="sayiKapisi" Onek="km-" ElemanId="km-sayi-kilit" />
+                <div class="satir">
+                    <button class="btn btn-ikincil" id="km-vazgec" @onclick="KampanyaFormuKapat">@Dil.T.Ortak.Iptal</button>
+                    @* Süre aşımı ekranda da kilitlenir: sunucu zaten reddeder, ama kasiyer 400 görmeden anlasın. *@
+                    <button class="btn btn-birincil" id="km-kaydet" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("km-") || SureAsildi(yk) || GumusHedef || (yk.HedefTur != "TUMU" && string.IsNullOrEmpty(yk.HedefId)))" @onclick="KampanyaKaydet">@Dil.T.Ortak.Kaydet</button>
+                    @* UX-S30 — kilitli düğme SEBEBİNİ söyler. *@
+                    @if (SureAsildi(yk) || GumusHedef || (yk.HedefTur != "TUMU" && string.IsNullOrEmpty(yk.HedefId)))
+                    {
+                        <span class="metin-kucuk metin-soluk" id="km-kaydet-kilit">@(GumusHedef ? Dil.T.Fiyat.GumusUyari : SureAsildi(yk) ? Dil.T.Fiyat.SureUyari : Dil.T.Kabuk.ZorunluAlan)</span>
+                    }
+                </div>
+            </div>
+        }
+        @if (yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (yuklendi && hata is null && kampanyalar.Count == 0)
+        {
+            <div id="km-bos"><BosDurum Mesaj="@Dil.T.Fiyat.BosKampanya" /></div>
+        }
+        else
+        {
+            @* PAKET GOC-C — ORTAK IZGARA (grid:fiyatlandirma:km-tablo). Liste TAM → yerel sıralama; id'ler korunur. *@
+            <Izgara T="Kamp" Ekran="fiyatlandirma" GridId="km-tablo" TabloId="km-tablo" TabloSinif="q10-th-tek" Kolonlar="@KampanyaKolonlari"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(kampanyalar, kampanyaSira, KampanyaKolonlari)"
+                    SatirId="@(k => $"km-satir-{k.Id}")" Baslik="@Dil.T.Fiyat.Kampanyalar"
+                    SiralamaDegisti="@(x => kampanyaSira = x)" GecerliSiralama="@kampanyaSira" />
+        }
+    </div>
+</div>
+}
+
+@* ── PAKET P-65 (E49): ORTAK ONAY KİPİ — pasife alma (liste ve kampanya) ──────
+   Pasife alma YIKICI eylemdir (yeni satışta kullanılmaz); onaysız çalışmaz.
+   Aktifleştirme yıkıcı DEĞİLDİR, doğrudan çalışır (geri dönüş yolu). *@
+<OnayKipi Acik="@(pasifListe is not null)" Kimlik="fl-pasif"
+          Eylem="@OnayM.ListePasifBaslik"
+          Aciklama="@(pasifListe is null ? null : string.Format(OnayM.ListePasifAciklama, pasifListe.Ad))"
+          GeriDonusYolu="@string.Format(OnayM.GeriDonusYolu, Dil.T.Fiyat.Aktiflestir)"
+          OnayMetni="@Dil.T.Fiyat.PasifeAl" Calisiyor="@kaydediliyor" Hata="@listeHata"
+          Onayla="ListePasifOnayla" Vazgec="() => pasifListe = null" />
+<OnayKipi Acik="@(pasifKampanya is not null)" Kimlik="km-pasif"
+          Eylem="@OnayM.KampanyaPasifBaslik"
+          Aciklama="@(pasifKampanya is null ? null : string.Format(OnayM.KampanyaPasifAciklama, pasifKampanya.Ad))"
+          GeriDonusYolu="@string.Format(OnayM.GeriDonusYolu, Dil.T.Fiyat.Aktiflestir)"
+          OnayMetni="@Dil.T.Fiyat.PasifeAl" Calisiyor="@kaydediliyor" Hata="@kampanyaHata"
+          Onayla="KampanyaPasifOnayla" Vazgec="() => pasifKampanya = null" />
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? listeSira, kampanyaSira;
+    private IReadOnlyList<IzgaraKolonu<Liste>> ListeKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Fiyat.Ad, ZorunluGorunur = true, SunucuSiralamaAdi = "ad", HucreSinif = _ => "hucre-vurgu", Deger = l => l.Ad,
+                Hucre = l => @<button class="btn btn-ikincil btn-kucuk" id="@($"fl-goster-{l.Id}")" @onclick="() => PaneliAc(l)">@l.Ad</button> },
+        new() { Anahtar = "tur", Baslik = Dil.T.Fiyat.Tur, SunucuSiralamaAdi = "tur", HucreSinif = _ => "metin-kucuk", Deger = l => TurEtiketi(l.Tur) },
+        new() { Anahtar = "marj", Baslik = Dil.T.Fiyat.HasMarj, SunucuSiralamaAdi = "marj", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = l => l.HasMarjYuzde, Hucre = l => @<text>@Bicim.Girdi(l.HasMarjYuzde, "0.###")</text> },
+        new() { Anahtar = "carpan", Baslik = Dil.T.Fiyat.IscilikCarpan, SunucuSiralamaAdi = "carpan", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = l => l.IscilikCarpanYuzde, Hucre = l => @<text>@Bicim.Girdi(l.IscilikCarpanYuzde, "0.##")</text> },
+        new() { Anahtar = "varsayilan", Baslik = Dil.T.Fiyat.Varsayilan, SunucuSiralamaAdi = "varsayilan",
+                Deger = l => l.Varsayilan ? Dil.T.Fiyat.Varsayilan : "", Hucre = l => @<text>@(l.Varsayilan ? "✓" : "")</text> },
+        new() { Anahtar = "aktif", Baslik = Dil.T.Fiyat.Aktif, SunucuSiralamaAdi = "aktif",
+                Deger = l => l.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif, Hucre = l => @<text>@(l.Aktif ? "✓" : "—")</text> },
+        // UX-S30: varsayılan liste pasife alınamaz — düğme kilitli, yanında devretme yolu yazar.
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = l => @<div class="satir-eylemler">
+                    <button class="btn btn-ikincil btn-kucuk" id="@($"fl-duzenle-{l.Id}")" @onclick="() => ListeDuzenle(l)">@Dil.T.Ortak.Duzenle</button>
+                    <button class="btn btn-ikincil btn-kucuk" id="@($"fl-durum-{l.Id}")"
+                            disabled="@(l.Varsayilan || kaydediliyor)" @onclick="() => ListeDurumIste(l)"
+                            title="@(l.Varsayilan ? Dil.T.Fiyat.VarsayilanDevret : null)">@(l.Aktif ? Dil.T.Fiyat.PasifeAl : Dil.T.Fiyat.Aktiflestir)</button>
+                    @if (l.Varsayilan)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="@($"fl-kilit-{l.Id}")">@Dil.T.Fiyat.VarsayilanDevret</span>
+                    }
+                </div> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<Kamp>> KampanyaKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Fiyat.Ad, ZorunluGorunur = true, SunucuSiralamaAdi = "ad", HucreSinif = _ => "hucre-vurgu", Deger = k => k.Ad },
+        new() { Anahtar = "bas", Baslik = Dil.T.Fiyat.Baslangic, SunucuSiralamaAdi = "bas", Deger = k => k.Baslangic, Hucre = k => @<text>@Bicim.Gun(k.Baslangic)</text> },
+        new() { Anahtar = "bit", Baslik = Dil.T.Fiyat.Bitis, SunucuSiralamaAdi = "bit", Deger = k => k.Bitis, Hucre = k => @<text>@Bicim.Gun(k.Bitis)</text> },
+        new() { Anahtar = "hedef", Baslik = Dil.T.Fiyat.Hedef, SunucuSiralamaAdi = "hedef", HucreSinif = _ => "metin-kucuk", Deger = k => HedefEtiketi(k.HedefTur) },
+        new() { Anahtar = "tur", Baslik = Dil.T.Fiyat.IndirimTuru, SunucuSiralamaAdi = "tur", HucreSinif = _ => "metin-kucuk", Deger = k => IndirimEtiketi(k.IndirimTuru) },
+        new() { Anahtar = "deger", Baslik = Dil.T.Fiyat.Deger, ZorunluGorunur = true, SunucuSiralamaAdi = "deger", BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                Deger = k => k.Deger, Hucre = k => @<text>@Bicim.Girdi(k.Deger, "0.##")</text> },
+        new() { Anahtar = "aktif", Baslik = Dil.T.Fiyat.Aktif, SunucuSiralamaAdi = "aktif",
+                Deger = k => k.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif, Hucre = k => @<text>@(k.Aktif ? "✓" : "—")</text> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = k => @<div class="satir-eylemler">
+                    <button class="btn btn-ikincil btn-kucuk" id="@($"km-duzenle-{k.Id}")" @onclick="() => KampanyaDuzenle(k)">@Dil.T.Ortak.Duzenle</button>
+                    <button class="btn btn-ikincil btn-kucuk" id="@($"km-durum-{k.Id}")" disabled="@kaydediliyor" @onclick="() => KampanyaDurumIste(k)">@(k.Aktif ? Dil.T.Fiyat.PasifeAl : Dil.T.Fiyat.Aktiflestir)</button>
+                </div> },
+    ];
+    // ── PAKET P-65: onay kipi durumu ─────────────────────────────────────
+    private OnayKilitMetinleri OnayM => OnayKilitSozlugu.Al(Dil.Dil);
+    private Liste? pasifListe;
+    private Kamp? pasifKampanya;
+
+    /// <summary>Pasife alma onaya gider; aktifleştirme doğrudan çalışır.</summary>
+    private Task ListeDurumIste(Liste l)
+    {
+        if (!l.Aktif) return ListeDurumDegistir(l);
+        listeHata = null;
+        pasifListe = l;
+        return Task.CompletedTask;
+    }
+
+    private Task KampanyaDurumIste(Kamp k)
+    {
+        if (!k.Aktif) return KampanyaDurumDegistir(k);
+        kampanyaHata = null;
+        pasifKampanya = k;
+        return Task.CompletedTask;
+    }
+
+    private async Task ListePasifOnayla()
+    {
+        if (pasifListe is not { } l) return;
+        await ListeDurumDegistir(l);
+        if (listeHata is null) pasifListe = null;
+    }
+
+    private async Task KampanyaPasifOnayla()
+    {
+        if (pasifKampanya is not { } k) return;
+        await KampanyaDurumDegistir(k);
+        if (kampanyaHata is null) pasifKampanya = null;
+    }
+
+    /// <summary>
+    /// Form hem OLUŞTURMA hem DÜZENLEME için kullanılır (UX-S25/S26): <see cref="Id"/>
+    /// doluysa PATCH, boşsa POST. Alan kümesi iki yolda birebir aynıdır.
+    /// </summary>
+    private sealed class ListeForm
+    {
+        public string? Id;
+        public string Ad = ""; public string Tur = "PERAKENDE";
+        public decimal HasMarjYuzde; public decimal IscilikCarpanYuzde = 100m;
+        public bool Varsayilan; public bool Aktif = true;
+        /// <summary>Rahat aralık dışı değerin bilinçli onayı (S-3c). Form her açılışta SIFIRLANIR.</summary>
+        public bool RiskOnayi;
+        /// <summary>Düzenlemeye BAŞLARKEN varsayılan mıydı — uyarı/kilit metinleri buna bakar.</summary>
+        public bool BaslangictaVarsayilan;
+    }
+
+    private sealed class KampanyaForm
+    {
+        public string? Id;
+        public string Ad = ""; public DateTime Baslangic = DateTime.Today; public DateTime Bitis = DateTime.Today.AddDays(6);
+        public string HedefTur = "TUMU"; public string? HedefId; public string IndirimTuru = "ISCILIK_YUZDE";
+        public decimal Deger; public bool Aktif = true;
+    }
+
+    private List<Liste> listeler = [];
+    private List<Kamp> kampanyalar = [];
+    private List<UrunOzet> urunler = [];
+    private List<(string, string)> Kategoriler = [];
+    private List<(string, string)> UrunSecenekleri => urunler.Select(u => (u.Id, u.Ad)).ToList();
+    /// <summary>Panel ürünleri SUNUCUDAN (önizleme ucu) çeker; buradan yalnız süzgeç kaynağı olan kategoriler geçer.</summary>
+    private IReadOnlyList<PanelKategori> PanelKategorileri =>
+        Kategoriler.Select(k => new PanelKategori(k.Item1, k.Item2)).ToList();
+
+    private ListeForm? yeniListe;
+    private KampanyaForm? yeniKampanya;
+    private Liste? seciliListe;
+    private string? kurId;
+    private string? hata, listeHata, kampanyaHata, listeBasari, kampanyaBasari;
+    private bool kaydediliyor, yukleniyor, yuklendi;
+
+    // ── UX-1-C2: sessiz etkisizlik YASAK — alan altı Türkçe mesaj defteri ────
+    private readonly FormDurumu listeForm = new();
+    private readonly FormDurumu kampanyaForm = new();
+    private int listeJeton, kampanyaJeton;
+
+    // ── UX-S31: ham veritabanı kodu ekrana basılmaz, sözlükten çevrilir ──────
+    // PAKET Q10-5 (UX-S31 · UX-S26): liste türü seçicisi ham kodu ("PERAKENDE")
+    // etiket olarak basıyordu; seçenekler artık tablo hücresiyle AYNI eşlemeden
+    // (TurEtiketi) üretilir — tek dizi, tek ad.
+    private static readonly string[] ListeTurleri = ["PERAKENDE", "TOPTAN", "OZEL"];
+    private IReadOnlyList<SecenekOgesi> ListeTurSecenekleri =>
+        [.. ListeTurleri.Select(t => new SecenekOgesi(t, TurEtiketi(t)))];
+
+    // PAKET Q10-5 (QA 10): Secici girdi ailesinden değil; hedef seçilince o
+    // alanın eski hata mesajı FormDurumu'ndan düşer (ortak kural, tek yer).
+    private void HedefIdDegisti() => kampanyaForm.Sil("km-hedefid");
+
+    private string TurEtiketi(string tur) => tur switch
+    {
+        "PERAKENDE" => Dil.T.Fiyat.TurPerakende,
+        "TOPTAN" => Dil.T.Fiyat.TurToptan,
+        "OZEL" => Dil.T.Fiyat.TurOzel,
+        _ => tur,
+    };
+
+    private string HedefEtiketi(string hedef) => hedef switch
+    {
+        "TUMU" => Dil.T.Fiyat.HedefTumu,
+        "KATEGORI" => Dil.T.Fiyat.HedefKategori,
+        "URUN" => Dil.T.Fiyat.HedefUrun,
+        _ => hedef,
+    };
+
+    private string IndirimEtiketi(string tur) => tur switch
+    {
+        "ISCILIK_YUZDE" => Dil.T.Fiyat.IscilikYuzde,
+        "TUTAR_YUZDE" => Dil.T.Fiyat.TutarYuzde,
+        "TUTAR_TL" => Dil.T.Fiyat.TutarTl,
+        _ => tur,
+    };
+
+    private bool IlkListe => listeler.Count == 0;
+
+    /// <summary>FEY md.11/3 — üç ay; sunucudaki Kampanya.EnFazlaGun (92) ile aynı.</summary>
+    private static bool SureAsildi(KampanyaForm k) => (k.Bitis.Date - k.Baslangic.Date).TotalDays + 1 > 92;
+
+    /// <summary>Kampanya hedefi gümüş (ayar G*) ürün mü — motor bu ürüne teklif üretmez.</summary>
+    private bool GumusHedef =>
+        yeniKampanya is { HedefTur: "URUN" } k && !string.IsNullOrEmpty(k.HedefId) &&
+        urunler.FirstOrDefault(u => u.Id == k.HedefId) is { } u && u.AyarId.StartsWith("G", StringComparison.Ordinal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        hata = null; yukleniyor = true;
+        try
+        {
+            listeler = await Api.GetAsync<List<Liste>>("/fiyat/listeler");
+            kampanyalar = await Api.GetAsync<List<Kamp>>("/fiyat/kampanyalar");
+            urunler = await Api.GetAsync<List<UrunOzet>>("/urunler");
+            Kategoriler = (await Api.GetAsync<List<KategoriOzet>>("/urun-kategorileri/duz")).Select(k => (k.Id, k.Ad)).ToList();
+            yuklendi = true;
+        }
+        // ⚠ UX-S28 / Anayasa md.1: eski kod burada listeyi BOŞALTIYORDU; sunucu
+        // hatası kullanıcıya "kayıt yok" gibi görünüyordu. Artık boş durum yalnız
+        // yuklendi && hata yok iken çizilir; hata bandı ayrı durur.
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        // Kur kaydı fiyat panelinin ön koşuludur; yokluğu sayfayı düşürmez,
+        // panel "kur yok" der (UX-S30 — kilidin sebebi yazılır).
+        try { kurId = (await Api.GetAsync<KurOzet>("/kur/guncel")).Id; }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { kurId = null; }
+        yukleniyor = false;
+    }
+
+    // ── Liste formu ──────────────────────────────────────────────────────────
+
+    private void ListeFormuAc()
+    {
+        // İlk liste zorunlu olarak varsayılandır (sunucu da böyle yazar) —
+        // kullanıcıya sorulmaz, işaretli ve kilitli gösterilir (UX-S21).
+        yeniListe = new ListeForm { Varsayilan = IlkListe };
+        listeHata = null; listeBasari = null;
+    }
+
+    private void ListeFormuKapat() => yeniListe = null;
+
+    private void ListeDuzenle(Liste l)
+    {
+        yeniListe = new ListeForm
+        {
+            Id = l.Id, Ad = l.Ad, Tur = l.Tur, HasMarjYuzde = l.HasMarjYuzde,
+            IscilikCarpanYuzde = l.IscilikCarpanYuzde, Varsayilan = l.Varsayilan,
+            Aktif = l.Aktif, BaslangictaVarsayilan = l.Varsayilan, RiskOnayi = false,
+        };
+        listeHata = null; listeBasari = null;
+    }
+
+    private object ListeGovde(ListeForm f) => new
+    {
+        ad = f.Ad.Trim(), tur = f.Tur, hasMarjYuzde = f.HasMarjYuzde,
+        iscilikCarpanYuzde = f.IscilikCarpanYuzde, varsayilan = f.Varsayilan, aktif = f.Aktif,
+        riskOnayi = f.RiskOnayi,
+    };
+
+    /// <summary>Formdaki değerler rahat aralık dışındaysa ekrana yazılacak Türkçe uyarı.</summary>
+    private string? RiskMetni => yeniListe is not { } f ? null
+        : Kuyumcu.Core.Sozlesmeler.FiyatAraliklari.RiskKodu(f.HasMarjYuzde, f.IscilikCarpanYuzde) switch
+        {
+            "MARJ_EKSI" => Dil.T.Fiyat.MarjEksiUyari,
+            "MARJ_YUKSEK" => Dil.T.Fiyat.MarjYuksekUyari,
+            "CARPAN_YUKSEK" => Dil.T.Fiyat.CarpanYuksekUyari,
+            _ => null,
+        };
+
+    /// <summary>Riskli değer var ama onay kutusu işaretli değil — Kaydet kilitli kalır.</summary>
+    private bool RiskOnayiBekliyor => RiskMetni is not null && yeniListe?.RiskOnayi != true;
+
+    private async Task ListeKaydet()
+    {
+        if (yeniListe is not { } f || sayiKapisi.OnekleVar("fl-")) return;   // ORTAK-1: POST YOK
+        // UX-1-C0/C2: "Kaydet'e bastım, hiçbir şey olmadı" YASAK.
+        listeForm.Temizle();
+        listeForm.Zorunlu("fl-ad", f.Ad, Dil);
+        // ⚠ NEGATİF MARJ KURALI KONMADI: has marjı bilinçli olarak eksi olabilir
+        // (indirimli/maliyetine liste) ve sunucu bunu kabul eder; istemcide
+        // yasaklamak mevcut sözleşmeyi kırardı. İşçilik çarpanı ise ≥ 0'dır.
+        listeForm.NegatifDegil("fl-carpan", f.IscilikCarpanYuzde, Dil);
+        // Sert sınır: sunucuyla AYNI eşik (FiyatAraliklari) — kullanıcı 400'ü ekranda görür.
+        switch (Kuyumcu.Core.Sozlesmeler.FiyatAraliklari.SertSinirDisi(f.HasMarjYuzde, f.IscilikCarpanYuzde))
+        {
+            case "MARJ": listeForm.Ekle("fl-marj", Dil.T.Fiyat.MarjAralikDisi); break;
+            case "CARPAN": listeForm.Ekle("fl-carpan", Dil.T.Fiyat.CarpanAralikDisi); break;
+        }
+        // Rahat aralık dışı + onaysız: SESSİZ ETKİSİZLİK yasak, gerekçe alan altında.
+        if (RiskOnayiBekliyor) listeForm.Ekle("fl-marj", Dil.T.Fiyat.RiskOnayiSart);
+        if (!listeForm.Gecerli) { listeHata = Dil.T.Kabuk.FormEksik; return; }
+        kaydediliyor = true; listeHata = null;
+        try
+        {
+            if (string.IsNullOrEmpty(f.Id)) await Api.PostAsync("/fiyat/listeler", ListeGovde(f));
+            else await Api.PatchAsync($"/fiyat/listeler/{f.Id}", ListeGovde(f));
+            yeniListe = null;
+            BasariListe(Dil.T.Fiyat.ListeKaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { listeHata = FormDurumu.SunucuMesaji(ex, Dil); listeForm.Sunucudan(ex, SunucuAlanListe); }
+        kaydediliyor = false;
+    }
+
+    private async Task ListeDurumDegistir(Liste l)
+    {
+        kaydediliyor = true; listeHata = null;
+        try
+        {
+            await Api.PatchAsync($"/fiyat/listeler/{l.Id}", new
+            {
+                ad = l.Ad, tur = l.Tur, hasMarjYuzde = l.HasMarjYuzde,
+                iscilikCarpanYuzde = l.IscilikCarpanYuzde, varsayilan = l.Varsayilan, aktif = !l.Aktif,
+            });
+            // UX-S27 — her eylem KENDİ sonucunu yazar ("kaydedildi" yapıştırılmaz).
+            BasariListe(l.Aktif ? Dil.T.Fiyat.ListePasifeAlindi : Dil.T.Fiyat.ListeAktiflestirildi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { listeHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    // ── Ürün paneli (madde 3) ────────────────────────────────────────────────
+
+    private void PaneliAc(Liste l) => seciliListe = seciliListe?.Id == l.Id ? null : l;
+    private void PaneliKapat() => seciliListe = null;
+
+    // ── Kampanya formu ───────────────────────────────────────────────────────
+
+    private void KampanyaFormuAc() { yeniKampanya = new KampanyaForm(); kampanyaHata = null; kampanyaBasari = null; }
+    private void KampanyaFormuKapat() => yeniKampanya = null;
+
+    private void KampanyaDuzenle(Kamp k)
+    {
+        yeniKampanya = new KampanyaForm
+        {
+            Id = k.Id, Ad = k.Ad,
+            Baslangic = k.Baslangic.ToDateTime(TimeOnly.MinValue),
+            Bitis = k.Bitis.ToDateTime(TimeOnly.MinValue),
+            HedefTur = k.HedefTur, HedefId = k.HedefId, IndirimTuru = k.IndirimTuru,
+            Deger = k.Deger, Aktif = k.Aktif,
+        };
+        kampanyaHata = null; kampanyaBasari = null;
+    }
+
+    private static object KampanyaGovde(KampanyaForm f) => new
+    {
+        ad = f.Ad.Trim(),
+        baslangic = Bicim.Makine(f.Baslangic),
+        bitis = Bicim.Makine(f.Bitis),
+        hedefTur = f.HedefTur, hedefId = f.HedefTur == "TUMU" ? null : f.HedefId,
+        indirimTuru = f.IndirimTuru, deger = f.Deger, aktif = f.Aktif,
+    };
+
+    private async Task KampanyaKaydet()
+    {
+        if (yeniKampanya is not { } f || sayiKapisi.OnekleVar("km-")) return;   // ORTAK-1: POST YOK
+        kampanyaForm.Temizle();
+        kampanyaForm.Zorunlu("km-ad", f.Ad, Dil);
+        kampanyaForm.Pozitif("km-deger", f.Deger, Dil);
+        if (f.Bitis.Date < f.Baslangic.Date) kampanyaForm.Ekle("km-bit", Dil.T.Kabuk.TarihAraligi);
+        if (f.HedefTur != "TUMU" && string.IsNullOrEmpty(f.HedefId))
+            kampanyaForm.Ekle("km-hedefid", Dil.T.Kabuk.ZorunluAlan);
+        if (!kampanyaForm.Gecerli) { kampanyaHata = Dil.T.Kabuk.FormEksik; return; }
+        kaydediliyor = true; kampanyaHata = null;
+        try
+        {
+            if (string.IsNullOrEmpty(f.Id)) await Api.PostAsync("/fiyat/kampanyalar", KampanyaGovde(f));
+            else await Api.PatchAsync($"/fiyat/kampanyalar/{f.Id}", KampanyaGovde(f));
+            yeniKampanya = null;
+            BasariKampanya(Dil.T.Fiyat.KampanyaKaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { kampanyaHata = FormDurumu.SunucuMesaji(ex, Dil); kampanyaForm.Sunucudan(ex, SunucuAlanKampanya); }
+        kaydediliyor = false;
+    }
+
+    private async Task KampanyaDurumDegistir(Kamp k)
+    {
+        kaydediliyor = true; kampanyaHata = null;
+        try
+        {
+            await Api.PatchAsync($"/fiyat/kampanyalar/{k.Id}", new
+            {
+                ad = k.Ad,
+                baslangic = Bicim.Makine(k.Baslangic),
+                bitis = Bicim.Makine(k.Bitis),
+                hedefTur = k.HedefTur, hedefId = k.HedefTur == "TUMU" ? null : k.HedefId,
+                indirimTuru = k.IndirimTuru, deger = k.Deger, aktif = !k.Aktif,
+            });
+            BasariKampanya(k.Aktif ? Dil.T.Fiyat.KampanyaPasifeAlindi : Dil.T.Fiyat.KampanyaAktiflestirildi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { kampanyaHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private void BasariListe(string m) { listeBasari = m; listeJeton++; }
+    private void BasariKampanya(string m) { kampanyaBasari = m; kampanyaJeton++; }
+
+    /// <summary>Sunucunun PascalCase alan adı → ekran id'si (UX-4d alan sözlüğü).</summary>
+    private static readonly Dictionary<string, string> SunucuAlanListe = new()
+    {
+        ["Ad"] = "fl-ad", ["HasMarjYuzde"] = "fl-marj", ["IscilikCarpanYuzde"] = "fl-carpan",
+    };
+
+    private static readonly Dictionary<string, string> SunucuAlanKampanya = new()
+    {
+        ["Ad"] = "km-ad", ["Deger"] = "km-deger", ["Bitis"] = "km-bit", ["HedefId"] = "km-hedefid",
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

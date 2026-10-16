@@ -1,0 +1,328 @@
+@page "/raporlar/vade-takibi"
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.VadeTakibi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* Vadesi geçen ve yaklaşan müşteri borçları.
+   GET /raporlar/vade-takibi?ufukGun=7
+     → { ufukGun, gecikenToplam, yaklasanToplam, vadesizToplam,
+         cariler:[{ cariAd, telefon, gecikenTutar, yaklasanTutar, vadesizTutar,
+                    enEskiGecikmeGun, enYakinVade, borclar:[{vade,acikTutar,gecikmeGun,durum}] }] }
+
+   ⚠ Yaşlandırma raporundan (Raporlar sayfası) FARKLIDIR: orası borcun kaç
+   gündür durduğuna, burası SÖZ VERİLEN GÜNE bakar. *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Vade.Baslik)</PageTitle>
+
+<div class="dikey-bosluk">
+    @* UX-1-C3: sayfa başı + araç çubuğu. Ufuk girdisinin id'si DEĞİŞMEDİ. *@
+    <SayfaBasi Anahtar="vade-takibi" Baslik="@Dil.T.Vade.Baslik" UstBardaGizle="true"
+               Aciklama="@Dil.T.SayfaDuzeltme.VadeAciklamasi">
+        <Filtreler>
+            @* QA turu 2: 7 günlük varsayılan gizliydi, hızlı seçim yoktu.
+               P-75: basılı durum ekran okuyucuya aria-pressed ile söylenir; hem
+               sınıf hem aria-pressed TEK kaynaktan (Basili → ufukGun) türetilir. *@
+            @foreach (var gun in HizliUfuklar)
+            {
+                var g = gun;
+                <button type="button" class="dugme dugme-kucuk @(Basili(g) ? "secili" : "dugme-ikincil")"
+                        id="@($"vade-ufuk-{g}")" aria-pressed="@(Basili(g) ? "true" : "false")"
+                        @onclick="() => UfukSec(g)">@g @Dil.T.Vade.Gun</button>
+            }
+            @* TOPLU-4 tur 2 (tasarım hakemi 02.10 KRİTİK): ⓘ yetim satırda değil, gün seçiminin YANINDA.
+               Kimlikler korundu: #vade-ufuk-ipucu · #vade-ufuk-aciklama. Sarmalayıcı yok: tek çocuklu
+               sarmalayıcı, kapalı ⓘ'nin gizli metniyle ölçerde "kırık etiket" sayılıyordu (gerçek tarayıcı 02.10). *@
+            <details class="zo-ipucu" id="vade-ufuk-ipucu">
+                <summary aria-label="@Toplu4Sozlugu.Al(Dil.Dil).VadeUfukBilgi">i</summary>
+                <p id="vade-ufuk-aciklama">@Dil.T.SayfaDuzeltme.UfukAciklama</p>
+            </details>
+        </Filtreler>
+    </SayfaBasi>
+
+    @* Rapor HİÇ yüklenemediyse (ekranda gösterilecek son geçerli rapor yok) hata bandı. *@
+    <HataBandi Mesaj="@hata" />
+
+    @* ═══ P-75 (QA turu 8) ═══
+       Geçersiz ufukta (-1, boş, 366, 7,5) ya da sunucu reddinde TÜM kartlar
+       kayboluyordu; kullanıcı verisini kaybettiğini sanıyordu. Artık son geçerli
+       rapor ekranda KALIR ve üstte TEK bir role=alert uyarı bandı neden
+       yenilenmediğini + ekrandaki rakamların hangi ufka ait olduğunu söyler. *@
+    @if (uyari is { Length: > 0 })
+    {
+        <div class="bant bant-uyari" role="alert" id="vade-uyari">
+            <span>@uyari</span>
+            @if (yanit is { } sg)
+            {
+                <span id="vade-uyari-son-gecerli"> @string.Format(M.SonGecerliRapor, sg.UfukGun)</span>
+            }
+        </div>
+    }
+
+    @* TOPLU-4 tur 2 (tasarım hakemi 02.10 KRİTİK): 7/30/60 segmenti aynı seçimi yaptığından serbest gün
+       kutusu "+ Başka gün" arkasında KAPALI gelir (kurucu: zorunlu önce). Seçim hızlı düğmelerden biri
+       değilse ya da kullanıcı kutuya yazdıysa açık kalır. Kutunun id'si (#vade-ufuk) DEĞİŞMEDİ. *@
+    <details class="t4-baska-gun" id="vade-baska-gun" open="@BaskaGunAcik">
+        <summary id="vade-baska-gun-ac">@Toplu4Sozlugu.Al(Dil.Dil).VadeBaskaGun</summary>
+        <div class="form-grid-3">
+            @* PAKET GOC-B (C satır 83): ortak Sayi KORUNDU — sayfanın "son geçerli rapor" uyarısı kesirli değeri kendisi
+               söyler (GunSayisi kesri boş sayıp "boş bırakıldı" derdi — iki çelişkili metin). EnAz/EnCok ekranda uygulanır;
+               sunucu üst sınırı Rapor modülünde (paket alanı dışı → açık kalan). *@
+            <Sayi ElemanId="vade-ufuk" Etiket="@Dil.T.Vade.UfukGun" EnAz="@((decimal)UfukEnAz)" EnCok="@((decimal)UfukEnCok)"
+                  Deger="@girdi" DegerChanged="GirdiDegisti" />
+        </div>
+    </details>
+
+    @* İlk yüklemede (henüz rapor yokken) bekleme göstergesi; yenilemede son rapor
+       ekranda KALIR (kartlar yanıp sönmez). *@
+    @if (yukleniyor && yanit is null)
+    {
+        <Yukleniyor />
+    }
+    else if (yanit is { } r)
+    {
+        <div class="stat-izgara">
+            <StatKart Renk="@(r.GecikenToplam > 0 ? "kirmizi" : "yesil")"
+                      Etiket="@Dil.T.Vade.GecikenToplam" Deger="@Bicim.Tl(r.GecikenToplam)" />
+            <StatKart Renk="@(r.YaklasanToplam > 0 ? "amber" : null)"
+                      Etiket="@Dil.T.Vade.YaklasanToplam" Deger="@Bicim.Tl(r.YaklasanToplam)" />
+            @* Vadesi bilinmeyen bakiye AYRI gösterilir; "bugün vadesi doldu" sayılmaz. *@
+            @* TOPLU-4 tur 2 (tasarım hakemi 02.10 KRİTİK): 6 satırlık geliştirici açıklaması kartı 200 px'e
+               uzatıyordu. Alt metin tek kısa ifade, açıklama ⓘ içinde. StatKart'ın (ortak bileşen) aynı
+               işaretlemesi burada yazılır — ortak bileşene yeni parametre AÇILMADI (paket alanı dışı). *@
+            <div class="kart stat-kart" id="vade-vadesiz-kart">
+                <div class="kart-govde">
+                    <p class="stat-etiket">@Dil.T.Vade.VadesizToplam</p>
+                    <p class="stat-deger" data-deger-boy="@DegerBoyu.Kademe(Bicim.Tl(r.VadesizToplam))">@Bicim.Tl(r.VadesizToplam)</p>
+                    @if (r.VadesizToplam > 0)
+                    {
+                        <div class="stat-alt t4-ipucu-satir" id="vade-vadesiz-alt">
+                            <span>@T4.VadeVadesizKisa</span>
+                            <details class="zo-ipucu" id="vade-vadesiz-ipucu">
+                                <summary aria-label="@T4.VadeVadesizBilgi">i</summary>
+                                <p id="vade-vadesiz-aciklama">@T4.VadeVadesizAciklama</p>
+                            </details>
+                        </div>
+                    }
+                </div>
+            </div>
+            @* ═══ UX-4d madde 16 ═══
+               Üç kart 7 günlük varsayılan ufukta ₺0,00 gösterirken 76.000 TL açık
+               alacak vardı: vadesi ufkun ÖTESİNDE olan borç hiçbir kovaya
+               düşmüyordu. Toplam açık alacak ufuk seçicisinden BAĞIMSIZDIR (UX-S33). *@
+            @* ORTAK-1 hakem turu 29.09: BASİT'te "ufuk" sözcüğü (UFUK DIŞI, ufuk seçiminden bağımsız) sadeleşti; PRO aynen. id'ler yok/aynı. *@
+            <StatKart Etiket="@(Dil.BasitMi ? OrtakGorunumSozlugu.Al(Dil.Dil).VadeUfukOtesiBasit : Dil.T.Vade.UfukOtesiToplam)" Deger="@Bicim.Tl(r.UfukOtesiToplam)"
+                      Alt="@(Dil.BasitMi ? OrtakGorunumSozlugu.Al(Dil.Dil).VadeUfukOtesiAciklamaBasit : Dil.T.Vade.UfukOtesiAciklama)" />
+            <StatKart Renk="mavi" Etiket="@Dil.T.Vade.AcikToplam" Deger="@Bicim.Tl(r.AcikToplam)"
+                      Alt="@(Dil.BasitMi ? OrtakGorunumSozlugu.Al(Dil.Dil).VadeDonemdenBagimsizBasit : Dil.T.Vade.DonemdenBagimsiz)" />
+        </div>
+
+        @if (Satirlar.Count == 0)
+        {
+            <div class="kart"><div class="kart-govde"><p class="metin-soluk">@Dil.T.Vade.KayitYok</p></div></div>
+        }
+        else
+        {
+            @* PAKET GOC-B — ORTAK IZGARA (grid:vade-takibi:vade-cari). Liste TAM (sunucu sınırı yok) → yerel sıralama;
+               varsayılan sıra gecikene göre (arayacağı müşteri en üstte). BASİT'te iki tarih sütunu çizilmez (TOPLU-6). *@
+            <div class="kart">
+                <Izgara T="CariSatir" Ekran="vade-takibi" GridId="vade-cari" Kolonlar="@CariKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(Satirlar, cariSira, CariKolonlari)"
+                        SatirId="@(c => $"vade-satir-{c.CariId}")"
+                        SatirSinif="@(c => c.GecikenTutar > 0 ? "satir-kirmizi" : c.YaklasanTutar > 0 ? "satir-amber" : null)"
+                        Baslik="@Dil.T.Vade.Musteri"
+                        SiralamaDegisti="@(x => cariSira = x)" GecerliSiralama="@cariSira" />
+            </div>
+
+            @* Cari başına açık kalemler — AYNI ızgara (tek tercih anahtarı), kimlikler cari başına önekli (GOC-A kalıbı). *@
+            @foreach (var c in Satirlar.Where(x => x.Kalemler.Count > 0))
+            {
+                <div class="kart">
+                    <div class="kart-baslik"><h3>@c.CariAd</h3></div>
+                    <Izgara T="Borc" Ekran="vade-takibi" GridId="vade-kalem" KimlikOneki="@($"vade-kalem-{c.CariId}")"
+                            Kolonlar="@KalemKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(c.Kalemler, kalemSira, KalemKolonlari)"
+                            Baslik="@c.CariAd" YapiskanIlkSutun="false"
+                            SiralamaDegisti="@(x => kalemSira = x)" GecerliSiralama="@kalemSira" />
+                </div>
+            }
+        }
+    }
+
+    @* UX-S25: vade takibi türetilmiş bir rapordur; satırı burada düzeltilmez. *@
+    @* TOPLU-4 tur 2 (tasarım hakemi 02.10 KRİTİK): 3 satırlık not → tek satır + ⓘ. Düzeltme yolu
+       (ters kayıt) silinmedi, ⓘ içinde aynen duruyor. *@
+    <div class="t4-degismez-satir" id="vade-degismez-satir">
+        <DegismezIpucu Varlik="VadeTakibi" Gerekce="@T4.VadeDegismezKisa" />
+        <details class="zo-ipucu" id="vade-degismez-ipucu">
+            <summary aria-label="@T4.VadeDegismezBilgi">i</summary>
+            <p id="vade-degismez-aciklama">@Dil.T.Duzeltme.TuretilmisGerekce @Dil.T.SayfaDuzeltme.RaporDuzeltmeYolu</p>
+        </details>
+    </div>
+</div>
+
+@code {
+
+
+
+    // Girdinin sınırı TEK yerde: hem Sayi'nin EnAz/EnCok'u hem sayfa denetimi
+    // hem uyarı metnindeki {0}/{1} buradan okur.
+    private const int UfukEnAz = 0;
+    private const int UfukEnCok = 365;
+    private static readonly int[] HizliUfuklar = [7, 30, 60];
+
+    // ── PAKET GOC-B — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? cariSira, kalemSira;
+
+    private IReadOnlyList<IzgaraKolonu<CariSatir>> CariKolonlari
+    {
+        get
+        {
+            var k = new List<IzgaraKolonu<CariSatir>>
+            {
+                new() { Anahtar = "musteri", Baslik = Dil.T.Vade.Musteri, ZorunluGorunur = true, SunucuSiralamaAdi = "musteri",
+                        HucreSinif = _ => "hucre-vurgu", Deger = c => c.CariAd,
+                        // UX-S23: sayı gösteren yer kayda götürür.
+                        Hucre = c => @<a id="@($"vade-cari-{c.CariId}")" href="@($"/cariler?cariId={c.CariId}")"
+                                         title="@Dil.T.SayfaDuzeltme.CariKartinaGit">@c.CariAd</a> },
+                new() { Anahtar = "telefon", Baslik = Dil.T.Vade.Telefon, HucreSinif = _ => "metin-kucuk", Deger = c => c.Telefon,
+                        Hucre = c => @<text>@if (string.IsNullOrEmpty(c.Telefon))
+                            {
+                                <span>—</span>
+                            }
+                            else
+                            {
+                                <a id="@($"vade-tel-{c.CariId}")" href="@($"tel:{c.Telefon}")"
+                                   title="@Dil.T.SayfaDuzeltme.TelefonuAra">@TelefonBicimi.Goster(c.Telefon)</a>
+                            }</text> },
+                new() { Anahtar = "geciken", Baslik = Dil.T.Vade.Geciken, ZorunluGorunur = true, SunucuSiralamaAdi = "geciken",
+                        Tur = IzgaraHucreTuru.Tl, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = c => c.GecikenTutar },
+                new() { Anahtar = "yaklasan", Baslik = Dil.T.Vade.Yaklasan, SunucuSiralamaAdi = "yaklasan",
+                        Tur = IzgaraHucreTuru.Tl, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = c => c.YaklasanTutar },
+                new() { Anahtar = "vadesiz", Baslik = Dil.T.Vade.Vadesiz, SunucuSiralamaAdi = "vadesiz",
+                        Tur = IzgaraHucreTuru.Tl, BaslikSinif = "sayi", HucreSinif = _ => "sayi metin-soluk", Deger = c => c.VadesizTutar },
+            };
+            if (!Dil.BasitMi)
+            {
+                k.Add(new() { Anahtar = "en-eski", Baslik = Dil.T.Vade.EnEskiGecikme, SunucuSiralamaAdi = "en-eski",
+                              Deger = c => c.EnEskiGecikmeGun,
+                              Hucre = c => @<text>@(c.EnEskiGecikmeGun is { } g ? $"{g} {Dil.T.Vade.Gun}" : "—")</text> });
+                k.Add(new() { Anahtar = "en-yakin", Baslik = Dil.T.Vade.EnYakinVade, SunucuSiralamaAdi = "en-yakin",
+                              Tur = IzgaraHucreTuru.Tarih, Deger = c => c.EnYakinVade });
+            }
+            return k;
+        }
+    }
+
+    private IReadOnlyList<IzgaraKolonu<Borc>> KalemKolonlari =>
+    [
+        new() { Anahtar = "vade", Baslik = Dil.T.Vade.Vade, ZorunluGorunur = true, SunucuSiralamaAdi = "vade",
+                Tur = IzgaraHucreTuru.Tarih, Deger = b => b.Vade },
+        new() { Anahtar = "acik", Baslik = Dil.T.Vade.AcikTutar, ZorunluGorunur = true, SunucuSiralamaAdi = "acik",
+                Tur = IzgaraHucreTuru.Tl, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = b => b.AcikTutar },
+        new() { Anahtar = "durum", Baslik = Dil.T.Vade.Durum, HucreSinif = _ => "metin-kucuk", Deger = DurumMetni },
+    ];
+
+    private Yanit? yanit;
+    /// <summary>
+    /// Son GEÇERLİ ufuk — sunucuya sorulan ve hızlı düğmelerin basılı durumunun
+    /// TEK kaynağı. Geçersiz girdi bunu DEĞİŞTİRMEZ.
+    /// </summary>
+    private int ufukGun = 7;
+    /// <summary>Kutuda yazan değer (geçersiz olabilir). Geçerliyse ufukGun ile aynıdır.</summary>
+    private decimal? girdi = 7;
+    private bool yukleniyor = true;
+    private string? hata;
+    /// <summary>Son geçerli rapor ekranda KALIRKEN basılan uyarı (P-75).</summary>
+    private string? uyari;
+
+    private VadeUfukMetinleri M => VadeUfukSozlugu.Al(Dil.Dil);
+    private Toplu4Metinleri T4 => Toplu4Sozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// TOPLU-4 tur 2: "+ Başka gün" katı. Hızlı düğmelerden biri seçiliyken KAPALI gelir; kullanıcı
+    /// kutuya yazdıysa (ya da seçim 7/30/60 dışındaysa) açık kalır. Kendiliğinden KAPANMAZ — yazarken
+    /// 30 girilince kat kapanıp kutu kaybolmasın diye bayrak yapışkandır.
+    /// </summary>
+    private bool baskaGunAcildi;
+    private bool BaskaGunAcik => baskaGunAcildi || !HizliUfuklar.Contains(ufukGun);
+
+    private bool Basili(int gun) => ufukGun == gun;
+
+    // Önce gecikeni, sonra yaklaşanı göster — arayacağı müşteri en üstte olsun.
+    private List<CariSatir> Satirlar =>
+        (yanit?.Cariler ?? [])
+            .OrderByDescending(c => c.GecikenTutar)
+            .ThenByDescending(c => c.YaklasanTutar)
+            .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    /// <summary>Hızlı ufuk seçimi — girdiyle AYNI durumu değiştirir (tek kaynak).</summary>
+    private async Task UfukSec(int gun)
+    {
+        ufukGun = gun;
+        girdi = gun;
+        await Yukle();
+    }
+
+    /// <summary>
+    /// Kutudaki değer değişti. Geçersizse (boş, aralık dışı, kesirli) sunucuya
+    /// GİDİLMEZ, ufukGun ve son rapor KORUNUR, uyarı bandı neden yenilenmediğini söyler.
+    /// </summary>
+    private async Task GirdiDegisti(decimal? v)
+    {
+        baskaGunAcildi = true;
+        girdi = v;
+        var sorun = v switch
+        {
+            null => string.Format(M.UfukBos, UfukEnAz, UfukEnCok),
+            { } d when d < UfukEnAz || d > UfukEnCok => string.Format(M.UfukAralikDisi, UfukEnAz, UfukEnCok),
+            { } d when d != decimal.Truncate(d) => M.UfukTamSayiDegil,
+            _ => null,
+        };
+        if (sorun is not null)
+        {
+            uyari = sorun;
+            return;
+        }
+        ufukGun = (int)v!.Value;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        uyari = null;
+        try { yanit = await Api.GetAsync<Yanit>($"/raporlar/vade-takibi?ufukGun={ufukGun}"); }
+        catch (ApiHata ex)
+        {
+            // P-75 / UX-S28: hata "kayıt yok"a da "boş ekran"a da çevrilmez.
+            // Ekranda son geçerli rapor varsa KALIR; yoksa hata bandı çıkar.
+            if (yanit is null) hata = ex.Message;
+            else
+            {
+                uyari = string.Format(M.YuklemeBasarisiz, ex.Message);
+                // Basılı düğme EKRANDAKİ rakamların ufkunu söylesin (tek kaynak).
+                ufukGun = yanit.UfukGun;
+            }
+        }
+        yukleniyor = false;
+    }
+
+    private string DurumMetni(Borc b) => b.Durum switch
+    {
+        "GECIKTI"    => $"{Dil.T.Vade.Gecikti} ({b.GecikmeGun} {Dil.T.Vade.Gun})",
+        "YAKLASIYOR" => $"{Dil.T.Vade.Yaklasiyor} ({-b.GecikmeGun} {Dil.T.Vade.Gun})",
+        _            => Dil.T.Vade.Vadesinde,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

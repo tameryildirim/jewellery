@@ -1,0 +1,7 @@
+<span class="rozet rozet-@Renk">@ChildContent</span>
+
+@code {
+    /// <summary>yesil | kirmizi | mavi | sari | gri | amber</summary>
+    [Parameter] public string Renk { get; set; } = "gri";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

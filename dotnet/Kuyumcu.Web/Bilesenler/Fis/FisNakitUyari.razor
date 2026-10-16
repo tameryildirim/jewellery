@@ -1,0 +1,44 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+@* ═══ PAKET T-S1 — tuval (Tezgah.dc.html) sağ sütun: nakit uyarı kutusu ═══════
+   "<sunucunun eşiği> üstündeki fişte nakit alınamaz — tamamını kart ya da havaleyle alın." (t11: kuralla AYNI cümle;
+   eski "program uyarır; kalanı kartla alırsın" sunucunun işlem-tutarı kuralıyla çelişiyordu — program kilitler, kısmi nakit olmaz)
+   ⚠ EŞİK SAYISI İSTEMCİYE GÖMÜLMEZ (B-3 / Mehmet kuralı · MEVZUAT KURALI): tutar
+     SUNUCUNUN /tevsik/gunluk önizlemesinin döndürdüğü `had` alanıdır (sayfanın
+     tevsikHaddi alanı; sayfa bu isteği ZATEN atar). Sunucu henüz yanıt
+     vermediyse (null) SAYISIZ metin basılır — varsayılan rakam UYDURULMAZ.
+   ⚠ Bileşen İSTEK ATMAZ, ApiIstemci bilmez; kural uygulamaz (kapı sunucudadır). *@
+@* SATIS-2 (kurucu 11:35 "zorunlu olanlar hariç ilk etapta görünmesin" · doğrulayıcı 25.09): kutu SÜREKLİ durmaz —
+   fiş toplamı eşiğin YaklasmaOrani'nı (FisProYanSutun, yalnız EKRAN oranı) geçince ya da eşik henüz bilinmiyorken
+   görünür; aksi hâlde DOM'da [hidden] kalır (metin silinmez, yer kaplamaz — görsel-gizli 1 px kutu ölçümde başlıkla
+   BİNİYORDU, 25.09 ölçümü). *@
+@* PAKET GOC-C-2 (tasarım hakemi YÜKSEK "açıklama satırları — nakit sınırı cümlesi 5 satır"): dar sağ sütunda
+   (272 px) tam cümle 4–5 satırdı (ölçüldü 89 px). Görünen: TEK kısa satır ("Nakit sınırı: <sunucunun haddi>") + ⓘ; TAM cümle
+   (kuralla AYNI söz, t11/t12) ⓘ'nin içinde, id'si (#islem-nakit-uyari), [hidden] ve data-yakin sözleşmesi AYNEN. *@
+<div class="tuval-nakit-uyari" id="islem-nakit-uyari-kutu" hidden="@(!Gorunur)">
+    <span class="tuval-nakit-uyari-kisa" id="islem-nakit-uyari-kisa">@(Had is > 0m ? string.Format(K.NakitSiniriKisa, Bicim.Tl(Had.Value)) : K.NakitSiniriKisaSayisiz)</span>
+    <details class="zo-ipucu" id="islem-nakit-uyari-ipucu">
+        <summary aria-label="@K.NakitSiniriBilgi">i</summary>
+        <div class="t4-ipucu-govde">
+            <p id="islem-nakit-uyari" role="note" hidden="@(!Gorunur)" data-yakin="@(Yakin ? "1" : "0")">@(Had is > 0m ? string.Format(M.NakitUyari, Bicim.Tl(Had.Value)) : M.NakitUyariSayisiz)</p>
+        </div>
+    </details>
+</div>
+
+@code {
+    /// <summary>Sunucunun bildirdiği nakit (tevsik) haddi; null = henüz bilinmiyor.</summary>
+    [Parameter] public decimal? Had { get; set; }
+    /// <summary>Fiş toplamı (TL) — kutunun ne zaman görüneceğini belirler, kural uygulamaz.</summary>
+    [Parameter] public decimal Toplam { get; set; }
+    /// <summary>Eşik bilinmiyor (tutucu: göster) ya da toplam eşiğe yaklaştı.</summary>
+    public bool Yakin => Had is not > 0m || Toplam >= Had.Value * FisProYanSutun.YaklasmaOrani;
+    /// <summary>t11 (tasarım hakemi YÜKSEK "çelişkili yönlendirme"): nakit kuralı bu fişte tetiklendi ve kırmızı bant
+    /// aynı cümleyi zaten söylüyor → not gizlenir (ekranda TEK bant). Kural uygulamaz; sayfa bildirir.</summary>
+    [Parameter] public bool BantVar { get; set; }
+    /// <summary>Not görünür mü: eşiğe yaklaşıldı (ya da eşik bilinmiyor) VE aynı kural bantta söylenmiyor.</summary>
+    public bool Gorunur => Yakin && !BantVar && NakitVar;
+    /// <summary>t15 (tasarım hakemi YÜKSEK): ödemede nakit var mı — kartla/altınla ödenen fişte nakit notu çıkmaz. Sayfa bildirir.</summary>
+    [Parameter] public bool NakitVar { get; set; } = true;
+    private SatisTuvalMetinleri M => SatisTuvalSozlugu.Al(Dil.Dil);
+    private GocC2Metinleri K => GocC2Sozlugu.Al(Dil.Dil);
+}

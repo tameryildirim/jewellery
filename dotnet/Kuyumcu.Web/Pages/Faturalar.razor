@@ -1,0 +1,2244 @@
+@page "/faturalar"
+@using System.Globalization
+@using System.Text.Json
+@using Kuyumcu.Contracts.Sayfalar.Faturalar
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/FaturaPage.tsx — Kasalar.razor desenini izler. *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Fatura.Baslik)</PageTitle>
+
+<div class="dikey-bosluk zo-belge" id="fk-sayfa">
+    @* ═══ PAKET ZO-BELGE — "ZORUNLU ÖNCE" (kurucu 25.09) ══════════════════════
+       Açılış: başlık + açıklama · İKİ eylem (Fişten kes ikincil, Yeni fatura TEK
+       birincil) · KAPALI "Süzgeç" · fatura tablosu. Kurucu görüntüsü (12:20):
+       "Tümü" yerel <select> ve "Fişten Fatura Kes" dipte · "+ Yeni Fatura" dar
+       pencerede kesik · özel matrah satırı ve "değiştirilemez" kutusu açılışta.
+       • Durum süzgeci: yerel <select> → ortak Form/Secim, KAPALI katlanırın içinde
+         (seçiliyse başlıkta adı + sayı rozeti). id AYNI: fk-durum-filtre.
+       • Özel matrah beyanı: sayfa SONUNDA kapalı katlanır (hata varsa ÜSTTE açık —
+         UX-S28). İçerik ve id'ler AYNI; beyan SİLİNMEDİ (P-26 sayacı).
+       • "Bu kayıt değiştirilemez": açılışta değil, kesilmiş fatura AÇILINCA
+         (Goster penceresi) — kayıt açılınca / değiştirme denenince. *@
+    @* ZO-BELGE 29.09 devam 9 (tasarım hakemi k3 KRİTİK · K17 "açıklama metni satırı 0"): başlık altındaki
+       açıklama satırı kaldırıldı — tuvalde (Profesyonel.png) başlık tek başına durur. *@
+    <SayfaBasi Anahtar="faturalar" Baslik="@Dil.T.Fatura.Baslik">
+        <Eylem>
+            @* PAKET CUMA-J (K7): "Fişten fatura kes" bir EYLEMDİR, filtre değil; id aynı. *@
+            <button class="btn btn-ikincil btn-kucuk" id="ff-ac" @onclick="FistenModalAc">@Dil.T.Fatura.FistenKes</button>
+            <button class="btn btn-birincil btn-kucuk" id="fk-yeni" @onclick="YeniModalAc">+ @Dil.T.Fatura.YeniFatura</button>
+        </Eylem>
+    </SayfaBasi>
+
+    @* PAKET P-26 (Y-40) — özel matrah beyanı OKUNAMADIYSA hata ÜSTTE ve açık
+       (UX-S28: hata görünür yerde; katlanmaz). *@
+    @if (ozelMatrahHata is not null)
+    {
+        <div class="kart" id="fk-ozel-matrah-beyani">
+            <strong>@Dil.T.Fatura.OzelMatrahBaslik</strong>
+            @OzelMatrahIcerik
+        </div>
+    }
+    else if (ozelMatrahKod is null && kuyumFaturaVar)
+    {
+        @* PAKET YASAL-4 / Y4-C: sayfa sonundaki kapalı katlanır KALKTI. Kod KAPALI ve
+           kiracıda KUYUM fatura varken başlık altında TEK satır rozet; uzun açıklama
+           "Yasal sınırlar" sayfasındaki satırın "Neden?" ipucunda. Jargon yok (K-12). *@
+        <a class="rozet rozet-amber" id="fk-ozel-matrah-rozet" href="/yasal-sinirlar#ys-satir-kdv-ozel-matrah-kodu"
+           aria-label="@Y4F.FaturaKodRozetEtiket">@Y4F.FaturaKodRozet</a>
+    }
+    else if (ozelMatrahKod is not null)
+    {
+        @* Kod AÇIKKEN (mali müşavir imzasıyla) kod KAYNAĞIYLA birlikte yazılır (P-26 kuralı). *@
+        @OzelMatrahIcerik
+    }
+
+    <Katlanir Id="fk-suzgec" Baslik="@SuzgecBasligi" Sayi="@(string.IsNullOrEmpty(durumFiltre) ? null : 1)"
+              Sinif="zo-suzgec">
+        <Secim ElemanId="fk-durum-filtre" Etiket="@Dil.T.Fatura.Durum"
+               Secenekler="@DurumSecenekleri" Deger="@durumFiltre" DegerChanged="DurumFiltreDegisti" />
+    </Katlanir>
+
+    <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="4000" Id="basari-bandi" />
+
+    @* ── Liste ── *@
+    <div class="kart">
+        @if (yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (listeHata is null && faturalar.Count == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.Fatura.FaturaBulunamadi" />
+        }
+        else
+        {
+            <p class="metin-kucuk metin-soluk zo-yana-kaydir zo-yigin-var" aria-hidden="true">@ZB.YanaKaydir</p>
+            @* PAKET GOC-A — ORTAK IZGARA (grid:faturalar:fk). Tablo kimliği "fk-tablo" korunur; ZO-BELGE kart kalıbı
+               (q10-yigin zo-yigin-dar) ve hücre içerikleri AYNEN. BASİT'te KDV sütunu yok (kolon kümesi moda göre).
+               Liste sunucu sınırlı → sınıra değdiyse sıralama kapalı (UX-S29). *@
+            <Izgara T="FaturaVeri" Ekran="faturalar" GridId="fk" Zo="golge" Kolonlar="@FaturaKolonlari"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(faturalar, FaturaListeTam ? faturaSira : null, FaturaKolonlari)"
+                    TabloSinif="tablo-sik q10-th-tek q10-yigin zo-yigin-dar" Baslik="@Dil.T.Fatura.Baslik" YapiskanIlkSutun="false"
+                    SiralamaDegisti="@FaturaSiralandi" GecerliSiralama="@faturaSira" TercihIstemcisi="@FkTercih" />
+        }
+    </div>
+
+    @* ── PAKET P-26 (Y-40) — ÖZEL MATRAH BEYANI ─────────────────────────────
+         UX-S21 / UX-S31: kod ("805") EKRANA TEK BAŞINA BASILMAZ; nereden geldiği
+         ve mali müşavir imzası olmadığı AYNI YERDE yazılır. Metin SUNUCUDAN gelir
+         (KdvAyarlari.KaynakBeyani). Sayaç: denetim.sh OZEL_MATRAH_BEYANSIZ_EKRAN.
+         ZO-BELGE (göz #2, kurucu 12:20): uzun mevzuat metni açılışta tezgâhtarın
+         önündeydi. Artık sayfa SONUNDA kapalı katlanır; açılınca içerik ve id'ler
+         AYNEN (fk-ozel-matrah-haric/-kaynak/-kod/-aralik). Beyan SİLİNMEDİ.
+         Hata varsa bu katlanır çizilmez, üstteki açık kart görünür (UX-S28). *@
+    @* PAKET YASAL-4 / Y4-C: buradaki kapalı katlanır (#fk-ozel-matrah-beyani) KALDIRILDI —
+       bilgi faturanın kendisinde ("Has altın bedeli — KDV'ye tabi değil") ve başlık
+       altındaki rozette. Hata kartı (UX-S28) üstte aynen durur. *@
+</div>
+
+@* ── P-22 / B-3: TASLAK fatura başlığı — TEK DÜZENLEME KALIBI: Cekmece ──── *@
+<Cekmece Acik="@(duzenlenen is not null)" Varlik="fatura"
+         Baslik="@Dil.T.Fatura.TaslakDuzenle" Kapat="() => duzenlenen = null"
+         Kaydet="DuzenleKaydet" Kaydediliyor="@duzenleKaydediliyor"
+         KaydetAktif="@(cariYuklemeHatasi is null && !dTarihGecersiz)"
+         KilitSebebi="@(cariYuklemeHatasi is not null ? FT.CariYuklenemedi : dTarihGecersiz ? Dil.T.Ortak.Tarih : null)">
+    @if (duzenlenen is not null)
+    {
+        <div class="form-dikey">
+            @* P-53: hata bandı ÜSTTE — cari listesi yüklenemezse kullanıcı ilk
+               bunu görür (UX-S28: hata 'kayıt yok'a çevrilmez). *@
+            <HataBandi Mesaj="@duzenleHata" />
+            @* ZO-BELGE (tasarım hakemi t3, K22): yerel <select> → ortak Secici (id aynı). *@
+            <div class="alan">
+                <Secici ElemanId="fd-duzenle-cari" Etiket="@Dil.T.Cari.CariSecin" Zorunlu="true"
+                        Secenekler="@CariSecenekleri" Deger="@dCariId"
+                        DegerChanged="@(v => dCariId = v ?? "")" />
+                <AlanHatasi Alan="fd-duzenle-cari" Durum="duzenleForm" />
+            </div>
+            @* PAKET GOC-A (envanter açık #9 · fd-duzenle-tarih "ham type=date; fatura tarihi ileri ya da çok eski"): ortak
+               Tarih Tur=Islem (K8a: ileri gün yok, en çok 1 yıl geri; pencere dışı yıl YAZILAMAZ) — sunucu AYNI kuralla 400.
+               Açıklama ham <input> → ortak Metin, sınır sunucuyla AYNI sabit. id'ler AYNI. *@
+            <Tarih ElemanId="fd-duzenle-tarih" Etiket="@Dil.T.Ortak.Tarih" Zorunlu="true" Tur="TarihTuru.Islem"
+                   Ipucu="@GocASozlugu.Al(Dil.Dil).FaturaTarihIpucu"
+                   Deger="@(dTarihGecersiz ? null : DateOnly.FromDateTime(dTarih))" DegerChanged="FaturaTarihDegisti"
+                   Durum="duzenleForm" HataAlani="fd-duzenle-tarih" />
+            <Metin ElemanId="fd-duzenle-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.FaturaAciklama"
+                   Deger="@dAciklama" DegerChanged="@(v => dAciklama = v ?? "")"
+                   Durum="duzenleForm" HataAlani="fd-duzenle-aciklama" />
+            <div class="alan">
+                @* BICIM-2 / ZO-BELGE: ham type=number → girdi ailesi (Para). id ve
+                   hata kimliği AYNI (fd-duzenle-toplam · alan-hata-fd-duzenle-toplam). *@
+                @* TOPLU-1 (BELGE-KALAN 01.10, YÜKSEK · md.1): kilitli toplam DÜZENLENEBİLİR GÖRÜNMEZ. Eskiden devre dışı
+                   Para kutusu beyaz zeminde "(isteğe bağlı)" etiketiyle duruyor, Kaydet toplamı göndermeden başarı bandı
+                   basıyordu (değer değişmiyordu → sahte başarı). Kilitliyken SALT OKUNUR satır (id aynı); düzenlenebilirken
+                   zorunlu Para kutusu (sunucu boş toplamı reddeder → "isteğe bağlı" değil). *@
+                @if (ToplamDuzenlenebilir)
+                {
+                    <Para ElemanId="fd-duzenle-toplam" Etiket="@Dil.T.Ortak.Toplam" ParaBirimi="TRY" Tur="TutarTuru.Pozitif" Zorunlu="true"
+                          Deger="@dToplam" DegerChanged="@(v => dToplam = v)"
+                          Durum="duzenleForm" HataAlani="fd-duzenle-toplam" />
+                }
+                else
+                {
+                    <SaltOkunur ElemanId="fd-duzenle-toplam" Etiket="@Dil.T.Ortak.Toplam"
+                                Deger="@(dToplam is { } dtp ? Bicim.TlKurus(dtp) : null)" BosMetin="—"
+                                MakineDeger="@(dToplam is { } dtm ? Bicim.Makine(dtm) : null)" />
+                }
+                @if (ToplamKuyum)
+                {
+                    @* P-53 / UX-S25 + UX-S30: kuyum (özel matrah) taslağında toplam
+                       DAİMA kilitli (sunucu kuralının aynası) — gerekçe + düzeltme yolu.
+                       TOPLU-1 tur 2 (doğrulayıcı ORTA): düzenlenebilir taslakta KAYIT düzeyindeki amber
+                       "Bu kayıt değiştirilemez" bandı (DegismezIpucu) yanlış söylüyordu — kayıt düzenleniyor,
+                       yalnız ALAN kilitli. Alan düzeyinde nötr not: satırlı taslakta "Toplam satırlardan
+                       hesaplanır" (satırlar aşağıda düzeltilir), satırsız kuyum taslağında gerekçe + yol. *@
+                    <span class="metin-kucuk metin-soluk" id="fd-duzenle-toplam-sebep">
+                        @(duzenlenen.KalemKaynagi == "KALEM" ? T1.ToplamSatirlardan : $"{FT.KuyumToplamGerekce} {FT.KuyumToplamYol}")
+                    </span>
+                }
+                else if (!ToplamDuzenlenebilir)
+                {
+                    @* UX-S30: kilitli alan SEBEBİNİ söyler. *@
+                    <span class="metin-kucuk metin-soluk" id="fd-duzenle-toplam-sebep">
+                        @Dil.T.Fatura.ToplamKalemden
+                    </span>
+                }
+            </div>
+        </div>
+
+        @* ── PAKET Q9-2 (QA turu 9, KRİTİK): Düzenle kipinde SATIRLAR ─────────
+           Satırlar bu çekmecede düzeltilir (tek alanlı → SatirIciDuzenle, P-54
+           ile aynı uç) ve yeni satır eklenir (POST /faturalar/{id}/kalemler).
+           Toplam EKRANDA HESAPLANMAZ: sunucunun KalemYaniti'ndan okunur.
+           Kalemsiz taslakta satır eklenmez — gerekçe + gerçek yol (UX-S25). *@
+        <section class="kart kart-govde form-dikey" id="fd-kalem-bolumu" aria-labelledby="fd-kalem-bolumu-baslik">
+            <strong id="fd-kalem-bolumu-baslik">@FT.SatirlarBaslik</strong>
+            @if (duzenlenen.KalemKaynagi != "KALEM")
+            {
+                @* TOPLU-1 tur 3 (orkestratör 12:45): satırsız TASLAK düzenlenebilir bir kayıttır (Toplam yukarıda
+                   düzeltilir) → amber "Bu kayıt değiştirilemez" bandı (DegismezIpucu) yanlış söylüyordu. O bant
+                   yalnız KESİLDİ/İPTAL faturada çıkar; burada aynı id ile nötr alan notu (gerekçe + yol). *@
+                <p class="metin-kucuk metin-soluk fatura-satirsiz-notu" id="degismez-ipucu-FaturaSatirsizTaslak" role="note">@FT.SatirsizGerekce @FT.SatirsizYol</p>
+            }
+            else
+            {
+                <HataBandi Mesaj="@kalemHata" />
+                <BasariBandi Mesaj="@cekmeceKalemBasari" Id="fd-kalem-basari" Jeton="@cekmeceKalemJeton" />
+                @if (kalemYanit is null)
+                {
+                    @if (kalemHata is null)
+                    {
+                        <Yukleniyor />
+                    }
+                }
+                else
+                {
+                    <span class="metin-kucuk metin-soluk" id="fd-kalem-duzelt-ipucu">@T1.SatirDuzeltIpucu</span>
+                    @foreach (var k in kalemYanit.Kalemler)
+                    {
+                        <div class="ozet-kutu form-dikey fd-cekmece-kalem" id="@($"fd-cekmece-kalem-{k.Id}")">
+                            <div class="satir-arasi">
+                                <strong class="sayi">@(k.Sira).</strong>
+                                <span class="hucre-vurgu sayi" id="@($"fd-cekmece-kalem-toplam-{k.Id}")">@Bicim.Tl(k.SatirToplam)</span>
+                            </div>
+                            @if (GumusKuyumKalemi(k))
+                            {
+                                <span class="metin-kucuk metin-soluk" id="@($"fd-cekmece-kalem-gumus-{k.Id}")">@FT.GumusOzelMatrahYok</span>
+                            }
+                            else if (MadeniBilinmeyenKuyumKalemi(k))
+                            {
+                                <span class="metin-kucuk metin-soluk" id="@($"fd-cekmece-kalem-madenyok-{k.Id}")">@FT.MadenBilinmiyorOzelMatrahYok</span>
+                            }
+                            <div class="alan">
+                                <span class="metin-kucuk metin-soluk">@Dil.T.Ortak.Aciklama</span>
+                                <SatirIciDuzenle Varlik="fatura-kalem" Alan="aciklama" Id="@k.Id"
+                                                 Etiket="@Dil.T.Ortak.Aciklama" Deger="@k.Aciklama"
+                                                 Kaydediliyor="@kalemKaydediliyor"
+                                                 Kaydedildi="@(v => KalemKaydet(k.Id, "aciklama", v))" />
+                                <AlanHatasi Alan="@KalemAlanAnahtari("aciklama", k.Id)" Durum="kalemForm" />
+                            </div>
+                            <div class="alan">
+                                <span class="metin-kucuk metin-soluk">@Dil.T.Fatura.Miktar</span>
+                                @* BELGE-KALAN (hakem tur 2 YÜKSEK): Kalemler penceresindeki kural Düzenle
+                                   çekmecesinde de geçerli — defter (satış fişi) bağlı kalemin ADEDİ sunucuda
+                                   değişmez (400). Salt okunur + sebep + "Fişten değiştir" (UX-S25/S30). *@
+                                @if (!string.IsNullOrEmpty(k.HareketId))
+                                {
+                                    @* TOPLU-1 tur 2 (tasarım hakemi KRİTİK): fişsiz satıştan gelen kalemde fiş YOK —
+                                       metin ve bağlantı gerçek kaynağa göre (AdetKilit*). *@
+                                    <span class="hucre-tek-satir" id="@($"fd-cekmece-kalem-adet-kilit-{k.Id}")" title="@AdetKilitMetni(k)">@Bicim.Miktar(k.Miktar, k.Birim)</span>
+                                    <span class="metin-kucuk metin-soluk" id="@($"fd-cekmece-kalem-adet-sebep-{k.Id}")">
+                                        @AdetKilitMetni(k)
+                                        <a href="@AdetKilitBagi(k)" class="hucre-tek-satir" id="@($"fd-cekmece-kalem-adet-fis-{k.Id}")">@AdetKilitBagMetni(k)</a>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <SatirIciDuzenle Varlik="fatura-kalem" Alan="miktar" Id="@k.Id"
+                                                     Etiket="@Dil.T.Fatura.Miktar" AsgariDeger="0.001m"
+                                                     Deger="@Bicim.Girdi(k.Miktar, "0.###")"
+                                                     Kaydediliyor="@kalemKaydediliyor"
+                                                     Kaydedildi="@(v => KalemKaydet(k.Id, "miktar", v))" />
+                                    <AlanHatasi Alan="@KalemAlanAnahtari("miktar", k.Id)" Durum="kalemForm" />
+                                }
+                            </div>
+                            <div class="alan">
+                                <span class="metin-kucuk metin-soluk">@Dil.T.Fatura.BirimFiyat</span>
+                                <SatirIciDuzenle Varlik="fatura-kalem" Alan="birimFiyat" Id="@k.Id"
+                                                 Etiket="@Dil.T.Fatura.BirimFiyat" AsgariDeger="0m"
+                                                 Deger="@Bicim.Girdi(k.BirimFiyat, ParaKutuKalibi)"
+                                                 Kaydediliyor="@kalemKaydediliyor"
+                                                 Kaydedildi="@(v => KalemKaydet(k.Id, "birimFiyat", v))" />
+                                <AlanHatasi Alan="@KalemAlanAnahtari("birimFiyat", k.Id)" Durum="kalemForm" />
+                            </div>
+                            <div class="alan">
+                                <span class="metin-kucuk metin-soluk">@Dil.T.Fatura.Iscilik</span>
+                                <SatirIciDuzenle Varlik="fatura-kalem" Alan="iscilikTl" Id="@k.Id"
+                                                 Etiket="@Dil.T.Fatura.Iscilik" AsgariDeger="0m" BosOlabilir="true"
+                                                 Deger="@(k.IscilikTl is { } isc ? Bicim.Girdi(isc, ParaKutuKalibi) : null)"
+                                                 Kaydediliyor="@kalemKaydediliyor"
+                                                 Kaydedildi="@(v => KalemKaydet(k.Id, "iscilikTl", v))" />
+                                <AlanHatasi Alan="@KalemAlanAnahtari("iscilikTl", k.Id)" Durum="kalemForm" />
+                            </div>
+                            <div class="alan">
+                                <span class="metin-kucuk metin-soluk">@Dil.T.Fatura.Indirim</span>
+                                <SatirIciDuzenle Varlik="fatura-kalem" Alan="indirimTutari" Id="@k.Id"
+                                                 Etiket="@Dil.T.Fatura.Indirim" AsgariDeger="0m" BosOlabilir="true"
+                                                 Deger="@(k.IndirimTutari is { } ind ? Bicim.Girdi(ind, ParaKutuKalibi) : null)"
+                                                 Kaydediliyor="@kalemKaydediliyor"
+                                                 Kaydedildi="@(v => KalemKaydet(k.Id, "indirimTutari", v))" />
+                                <AlanHatasi Alan="@KalemAlanAnahtari("indirimTutari", k.Id)" Durum="kalemForm" />
+                            </div>
+                        </div>
+                    }
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Ortak.Toplam</span>
+                        <span class="hucre-vurgu sayi" id="fd-cekmece-kalem-genel-toplam">@Bicim.Tl(kalemYanit.Toplam)</span>
+                    </div>
+                    @* P-54 kuralı değişmedi: tek satır SİLİNMEZ — sebep ve gerçek yol. TOPLU-1: düzenlenebilir taslakta
+                       amber "değiştirilemez" bandı değil, nötr bilgi notu (id aynı). *@
+                    <p class="metin-kucuk metin-soluk fatura-kalem-silme-notu" id="degismez-ipucu-FaturaKalemSilme" role="note">@FT.KalemSilmeGerekce @FT.KalemSilmeYol</p>
+
+                    @* ── Yeni satır — oluşturma formuyla AYNI alan kümesi (UX-S26) ── *@
+                    <div class="ozet-kutu form-dikey" id="fd-kalem-yeni">
+                        <strong>@FT.YeniSatirBaslik</strong>
+                        <HataBandi Mesaj="@urunYuklemeHatasi" />
+                        @* P-36: ORTAK girdi ailesi (Secici/Metin/Sayi/Para) — ham girdi etiketi yok. *@
+                        <div class="alan">
+                            <Secici ElemanId="fd-kalem-yeni-urun" Etiket="@Dil.T.Fatura.Urun"
+                                    Secenekler="@UrunSecenekleri" Deger="@ykUrunId" BosSecenekMetni="—"
+                                    DegerChanged="@(v => ykUrunId = v ?? "")" />
+                            <span class="metin-kucuk metin-soluk">@FT.UrunAdindanGelir</span>
+                            @if (urunler.Count >= UrunListeSiniri)
+                            {
+                                <span class="metin-kucuk metin-soluk" id="fd-kalem-yeni-urun-sinir">@string.Format(FT.UrunSiniri, UrunListeSiniri)</span>
+                            }
+                            <AlanHatasi Alan="fd-kalem-yeni-urun" Durum="yeniKalemForm" />
+                        </div>
+                        <Metin ElemanId="fd-kalem-yeni-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.FaturaKalemAciklama"
+                               Deger="@ykAciklama" DegerChanged="@(v => ykAciklama = v ?? "")"
+                               Durum="yeniKalemForm" HataAlani="fd-kalem-yeni-aciklama" />
+                        <Gram ElemanId="fd-kalem-yeni-miktar" Etiket="@Dil.T.Fatura.Miktar" Zorunlu="true" Tur="AgirlikTuru.Gram"
+                              Deger="@ykMiktar" DegerChanged="@(v => ykMiktar = v)"
+                              Durum="yeniKalemForm" HataAlani="fd-kalem-yeni-miktar" />
+                        <Para ElemanId="fd-kalem-yeni-fiyat" Etiket="@Dil.T.Fatura.BirimFiyat" Zorunlu="true" Tur="TutarTuru.SifirOlabilir"
+                              ParaBirimi="@duzenlenen.ParaBirimi"
+                              Deger="@ykFiyat" DegerChanged="@(v => ykFiyat = v)"
+                              Durum="yeniKalemForm" HataAlani="fd-kalem-yeni-fiyat" />
+                        <Para ElemanId="fd-kalem-yeni-iscilik" Etiket="@Dil.T.Fatura.Iscilik" Tur="TutarTuru.SifirOlabilir"
+                              ParaBirimi="@duzenlenen.ParaBirimi"
+                              Deger="@ykIscilik" DegerChanged="@(v => ykIscilik = v)"
+                              Durum="yeniKalemForm" HataAlani="fd-kalem-yeni-iscilik" />
+                        <Para ElemanId="fd-kalem-yeni-indirim" Etiket="@Dil.T.Fatura.Indirim" Tur="TutarTuru.SifirOlabilir"
+                              ParaBirimi="@duzenlenen.ParaBirimi"
+                              Deger="@ykIndirim" DegerChanged="@(v => ykIndirim = v)"
+                              Durum="yeniKalemForm" HataAlani="fd-kalem-yeni-indirim" />
+                        <div class="satir-arasi">
+                            <span>@Dil.T.Fatura.SatirToplam</span>
+                            <span class="hucre-vurgu sayi" id="fd-kalem-yeni-satir">@(YeniSatirOnizleme is { } on ? Bicim.Para(on, duzenlenen.ParaBirimi) : "—")</span>
+                        </div>
+                        <button type="button" class="btn btn-ikincil" id="fd-kalem-yeni-ekle"
+                                disabled="@kalemEkleniyor" @onclick="YeniKalemEkle">
+                            @(kalemEkleniyor ? Dil.T.Kabuk.Kaydediliyor : FT.SatirEkleDugme)
+                        </button>
+                        @if (kalemEkleniyor)
+                        {
+                            <span class="metin-kucuk metin-soluk" id="fd-kalem-yeni-ekle-kilit">@Dil.T.Kabuk.SunucuOnayiBekleniyor</span>
+                        }
+                    </div>
+                }
+            }
+        </section>
+    }
+</Cekmece>
+
+@* ── Durum geçişi onayı (Kes · Ödendi · İptal) ── *@
+<ModalPencere Acik="durumFatura is not null" Baslik="@DurumOnayBaslik" Kapat="DurumOnayKapat">
+    <div class="form-dikey">
+        <p id="fk-durum-onay">@DurumOnayMetni</p>
+        <p class="hucre-vurgu" id="fk-durum-fatura">@durumFatura?.FaturaNo — @durumFatura?.CariAd</p>
+        <HataBandi Mesaj="@durumHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esnek" id="fk-durum-vazgec" @onclick="DurumOnayKapat"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-tehlike esnek" id="fk-durum-onayla" disabled="@guncelleniyor"
+                    @onclick="DurumOnayla">@Dil.T.Kabuk.Onayla</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Yeni fatura — TEK DÜZENLEME KALIBI: Çekmece (29.09 devam 6, tasarım hakemi YÜKSEK:
+      çok alanlı oluşturma formu ModalPencere'deydi; Evrak gir ve taslak düzenleme Çekmece).
+      ModalPencere yalnız yıkıcı onayda kalır (DoD EK 2). Kaydet düğmesi formun sonunda,
+      kimliği fk-kaydet AYNI (kilit sebebi fk-kaydet-kilit AYNI); Vazgeç çekmecenin altında. ── *@
+<Cekmece Acik="yeniModalAcik" Varlik="fatura-yeni" Baslik="@Dil.T.Fatura.YeniFatura"
+         Kapat="() => yeniModalAcik = false" KaydetGoster="false">
+    <div class="form-dikey zo-yeni-fatura">
+        @* ZO-BELGE (tasarım hakemi t3, K22): yerel <select>'ler ortak aileye geçti, id'ler
+           AYNI. Uzun liste (cari, işlem, ürün) → Secici; 2-4 seçenek → Form/Secim (radyo). *@
+        <div class="alan">
+            <Secici ElemanId="fatura-cari" Etiket="@Dil.T.Rapor.CariBasligi" Zorunlu="true"
+                    YerTutucu="@Dil.T.Cari.CariSecin"
+                    Secenekler="@CariSecenekleri" Deger="@formCariId"
+                    DegerChanged="@(v => formCariId = v ?? "")" />
+            <AlanHatasi Alan="fatura-cari" Durum="yeniForm" />
+        </div>
+        @* Radyo grupları TAM satır: seçenekler tek satıra sığar (yarım sütunda 2×2 kırılıyordu).
+           Üçü de sunucuda zorunludur ve hep bir değer taşır → "*" (isteğe bağlı değil). *@
+        @* TOPLU-7B (GOC-A devri "açılışta ağır zorunlu blok"): üç grup da hazır seçili gelir (Satış · Standart · %20) —
+           kullanıcının YAZACAĞI yalnız müşteri ve tutardır. Gruplar KAPALI "Fatura ayrıntıları" satırında (<details>: içerik DOM'da kalır, testler/ekran okuyucu); özet seçili
+           değerleri söyler, değiştirmek isteyen açar. Durum değişkenleri, kimlikler ve gövde AYNEN. *@
+        <details class="ayrinti-katli" id="fatura-ayrinti">
+            <summary class="ayrinti-katli-ac" id="fatura-ayrinti-ac">
+                <span class="ayrinti-katli-baslik" id="fatura-ayrinti-ozet">@Toplu7BSozlugu.Al(Dil.Dil).FaturaAyrintiBaslik: @AyrintiOzeti</span>
+                <Ikon Ad="@Ikonlar.KatlamaKapali" Sinif="ayrinti-katli-ok" />
+            </summary>
+            <div class="form-dikey ayrinti-katli-govde">
+                <Secim ElemanId="fatura-tur" Etiket="@Dil.T.Fatura.Tur" Zorunlu="true"
+                       Secenekler="@TurSecenekleri" Deger="@formTur"
+                       DegerChanged="@(v => formTur = v ?? "SATIS")" />
+                <Secim ElemanId="fatura-kdvturu" Etiket="@Dil.T.Fatura.KdvTuru" Zorunlu="true"
+                       Secenekler="@KdvTuruSecenekleri" Deger="@formKdvTuru"
+                       DegerChanged="KdvTuruDegisti" />
+                <Secim ElemanId="fatura-kdv" Etiket="@Dil.T.Fatura.KdvOran" Zorunlu="true"
+                       Secenekler="@KdvSecenekleri" Deger="@formKdv"
+                       DegerChanged="@(v => formKdv = v ?? "0.20")" />
+            </div>
+        </details>
+        <div>
+            @if (Kuyum)
+            {
+                @* ── UX-S21: has bedeli KULLANICIDAN İSTENMEZ, defterden türetilir ──
+                   Girdi SALT OKUNUR; yerine "hangi işlem faturalanacak" sorulur. *@
+                <div class="alan">
+                    <Secici ElemanId="fatura-islem" Etiket="@Dil.T.Fatura.FaturalanacakIslem"
+                            YerTutucu="@Dil.T.Fatura.IslemSecin"
+                            Secenekler="@IslemSecenekleri" Deger="@formHareketId"
+                            DegerChanged="IslemSec" />
+                    <span class="metin-kucuk metin-soluk">@Dil.T.Fatura.HasDegerIpucu</span>
+                    @* Y4-D: özel matrah yalnız ALTIN bacağına uygulanır. Not ZORUNLU-ÖNCE: yalnız seçilen
+                       işlemde altın dışı (gümüş/platin/paladyum) has bacağı VARSA görünür (sunucu söyler). *@
+                    @if (onizleme?.AltinDisiMadenVar == true)
+                    {
+                        <span class="metin-kucuk metin-soluk" id="fom-gumus-not">@FT.GumusOzelMatrahYok</span>
+                    }
+                </div>
+            }
+        </div>
+        @if (Kuyum)
+        {
+            @* KESIF-P3 tasarım hakemi tur 2 (#57): kutunun iç boşluğu yoktu (metin ve düğme çerçeveye
+               yapışık) → zo-onizleme-kutu belirteçli iç boşluk + aralık (zo-belge.css). *@
+            <div class="kart zo-onizleme-kutu" id="fom-kutu">
+                @if (islemlerYukleniyor)
+                {
+                    <Yukleniyor />
+                }
+                else if (!string.IsNullOrEmpty(islemHata))
+                {
+                    @* UX-S28: hata "kayıt yok"a çevrilmez; sebebi görünür. *@
+                    <HataBandi Mesaj="@islemHata" />
+                }
+                else if (faturalanabilir.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Fatura.FaturalanabilirYok" />
+                }
+                @if (faturalanabilirDahaVar)
+                {
+                    @* UX-S29: sessiz kırpma yok — sınır ve daraltma yolu yazılır. *@
+                    <span class="metin-kucuk metin-soluk" id="fom-sinir">@Dil.T.Fatura.FaturalanabilirSinir</span>
+                }
+                @if (onizleme is not null)
+                {
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.HasDeger</span>
+                        <span class="hucre-vurgu sayi" id="fom-hasdeger">@Bicim.Tl(onizleme.HasDeger)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Urun.HasGram</span>
+                        <span class="sayi" id="fom-hasgram">@Bicim.Has(onizleme.HasGram)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.HasDegerKaynagi</span>
+                        <Rozet Renk="mavi">@Dil.T.Fatura.KaynakHareket</Rozet>
+                    </div>
+                    <ProAlan>
+                        <div class="satir-arasi">
+                            <span>@Dil.T.Fatura.HasKuru</span>
+                            <span class="sayi" id="fom-haskur">@Bicim.Tl(onizleme.HasBirimFiyat ?? 0m)</span>
+                        </div>
+                        <div class="satir-arasi">
+                            <span>@Dil.T.Fatura.KapsananIslem</span>
+                            <span class="sayi" id="fom-kapsam">@onizleme.KapsananHareketSayisi</span>
+                        </div>
+                        <div class="satir-arasi">
+                            <span>@Dil.T.Fatura.DefterToplami</span>
+                            <span class="sayi" id="fom-defter">@Bicim.Tl(onizleme.DefterToplami)</span>
+                        </div>
+                    </ProAlan>
+                    @if (!string.IsNullOrEmpty(onizleme.FaturaNo))
+                    {
+                        <HataBandi Mesaj="@onizleme.FaturaNo" />
+                    }
+                    @if (!string.IsNullOrEmpty(onizleme.Uyari))
+                    {
+                        <HataBandi Mesaj="@onizleme.Uyari" />
+                    }
+                }
+                @* UX-S24: bağımlı alanın bağını ekran kurar — toplam/oran değişince
+                   sessizce yenilenmez, kullanıcı "güncelle" der. *@
+                @* KESIF-P3 (#57): kilit sebebi düğmenin YANINDA satır kutusu olarak başlayıp altına
+                   kırılıyordu (K9) — artık düğmenin ÜSTÜNDE kendi satırında (blok). Aynı cümle
+                   alt çubukta TEKRAR basılmaz (fk-kaydet-kilit kısa gösterme metni). *@
+                @if (string.IsNullOrEmpty(formHareketId))
+                {
+                    @* UX-S30: kilitli düğme sebebini söyler. *@
+                    <p class="metin-soluk zo-onizleme-kilit" id="fom-kilit"><Ikon Ad="@Ikonlar.Kilit" /> @Dil.T.Fatura.IslemSecilmedi</p>
+                }
+                <button class="btn btn-ikincil" id="fom-yenile"
+                        disabled="@(string.IsNullOrEmpty(formHareketId) || onizleniyorMatrah)"
+                        @onclick="OzelMatrahOnizle">@Dil.T.Fatura.OnizlemeyiGuncelle</button>
+            </div>
+        }
+        <div class="alan">
+            @* ZO-BELGE (tasarım hakemi t3, K18): toplam HER ZAMAN doğrulanır (Pozitif; kalem
+               varsa kalem toplamına eşit olmalı) → etiket "(isteğe bağlı)" değil, "*". *@
+            @* BICIM-2 / ZO-BELGE: ham type=number → Para (id + hata kimliği AYNI). *@
+            <Para ElemanId="fatura-toplam" Etiket="@Dil.T.Fatura.Toplam" Zorunlu="true" ParaBirimi="TRY" Tur="TutarTuru.Pozitif"
+                  Deger="@(formToplam == 0m ? null : formToplam)" DegerChanged="@(v => formToplam = v ?? 0m)"
+                  Durum="yeniForm" HataAlani="fatura-toplam" />
+        </div>
+        @if (formToplam > 0)
+        {
+            @* KDV önizleme: girilen toplam KDV dahildir *@
+            <div class="metin-kucuk metin-soluk ozet-kutu">
+                @if (Kuyum)
+                {
+                    @* KUYUM kırılımı SUNUCUDAN gelir. İstemcideki ikiz KDV formülü
+                       SİLİNDİ (TB-11 "ikizlenmiş kural" büyütülmez): matrahı ekran
+                       hesaplasaydı sunucuyla saptığında hangisinin doğru olduğunun
+                       cevabı olmazdı. *@
+                    @if (onizleme?.Matrah is null)
+                    {
+                        <BosDurum Mesaj="@Dil.T.Fatura.OnizlemeYok" />
+                    }
+                    else
+                    {
+                        <div class="satir-arasi">
+                            <span>@Dil.T.Fatura.Matrah</span>
+                            <span class="sayi" id="fom-matrah">@Bicim.Tl(onizleme.Matrah.Value)</span>
+                        </div>
+                        <div class="satir-arasi">
+                            <span>@Dil.T.Fatura.KdvTutar</span>
+                            <span class="sayi" id="fom-kdv">@Bicim.Tl(onizleme.KdvTutar ?? 0m)</span>
+                        </div>
+                        <div class="satir-arasi">
+                            <span>@Dil.T.Fatura.AraToplam</span>
+                            <span class="sayi" id="fom-aratoplam">@Bicim.Tl(onizleme.AraToplam ?? 0m)</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.AraToplam</span>
+                        <span class="sayi">@Bicim.Tl(OnizlemeAraToplam)</span>
+                    </div>
+                    <div class="satir-arasi">
+                        <span>@Dil.T.Fatura.KdvTutar</span>
+                        <span class="sayi">@Bicim.Tl(OnizlemeKdvTutar)</span>
+                    </div>
+                }
+            </div>
+        }
+        @* PAKET GOC-A: ham <input> → ortak Metin (sınır sunucuyla AYNI sabit; iki tarafta da sınır yoktu). id AYNI. *@
+        <Metin ElemanId="fatura-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.FaturaAciklama"
+               Deger="@formAciklama" DegerChanged="@(v => formAciklama = v ?? "")" />
+
+        @* ── Satır kalemleri (opsiyonel) — boşsa sunucu bugünkü başlık yolunu kullanır ──
+              29.09 devam 6 (tasarım hakemi YÜKSEK): açılışta ~230 px'lik boş kutu yoktu gereği;
+              kalem yokken yalnız "+ Kalem ekle" düğmesi ve tek satır ipucu. İlk kalem
+              eklenince iç boşluklu kart açılır. Kimlik fk-ekle AYNI. *@
+        <div class="zo-kalem-bolum @(formKalemler.Count > 0 ? "kart zo-kalem-kart" : null)" id="fk-kalem-bolum">
+            <div class="satir-arasi">
+                <strong>@ZB.FaturaKalemlerIstegeBagli</strong>
+                <button class="btn btn-ikincil btn-kucuk" id="fk-ekle" @onclick="KalemEkle">+ @Dil.T.Fatura.KalemEkle</button>
+            </div>
+            @if (formKalemler.Count == 0)
+            {
+                <p class="metin-kucuk metin-soluk" id="fk-kalem-yok">@ZB.FaturaKalemYokIpucu</p>
+            }
+            else
+            {
+                @* PAKET GOC-A — ORTAK IZGARA (grid:faturalar:fk-kalem): düzenlenebilir form satırları; id'ler AYNI (fk-*-{sıra}).
+                   Sıra elle düzenlenen form olduğu için sıralanmaz (satır sırası = belge sırası). *@
+                <Izgara T="KalemSatiri" Ekran="faturalar" GridId="fk-kalem" Zo="kalem" Kolonlar="@FormKalemKolonlari" Ogeler="@formKalemler"
+                        Baslik="@Dil.T.Fatura.Kalemler" YapiskanIlkSutun="false" TercihIstemcisi="@FkTercih" />
+                <div class="satir-arasi">
+                    <span>@Dil.T.Fatura.KalemToplami</span>
+                    <span class="hucre-vurgu sayi" id="fk-toplam">@Bicim.Tl(KalemToplami)</span>
+                </div>
+                @if (!ToplamUyusuyor)
+                {
+                    @* Sunucudaki "tolerans yok" kuralının ekran karşılığı — Kaydet kapalıdır. *@
+                    <HataBandi Mesaj="@Dil.T.Fatura.ToplamUyusmuyor" />
+                }
+            }
+        </div>
+
+        <HataBandi Mesaj="@modalHata" />
+        <BasariBandi Mesaj="@modalBasari" />
+    </div>
+    @* 29.09 DEVAM 12 (tasarım hakemi YÜKSEK): Kaydet gövdenin ortasında, İptal altlıkta tek
+       başınaydı; Evrak gir'de ikisi altlıkta yan yana. Artık AYNI altlık: "İptal | Kaydet"
+       (ikincil önce, birincil sonda — Cekmece P-36c sırası), aynı sınıflar (cekmece-alt,
+       dugme). Ortak Cekmece'nin Kaydet'i fk-kaydet kimliğini taşıyamadığı için altlık burada
+       çizilir, çekmecenin kendi altlığı yalnız bu çekmecede gizlenir (zo-belge.css; EMANET-1
+       deseni). Kimlikler fk-kaydet / fk-kaydet-kilit AYNI. *@
+    <div class="cekmece-alt zo-cekmece-alt" id="fk-eylem">
+        <button type="button" class="dugme dugme-ikincil" id="fk-vazgec"
+                @onclick="() => yeniModalAcik = false"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+        <button type="button" class="dugme dugme-birincil" disabled="@(kaydediliyor || !ToplamUyusuyor || KuyumEngeli)"
+                id="fk-kaydet"
+                @onclick="FaturaOlustur">@Dil.T.Ortak.Kaydet</button>
+        @* UX-S30 / 38-A devri: kilidin SEBEBİ yazılır. Kuyum KDV'sinde has
+           bedeli defterden türetilir; işlem seçilmeden fatura kesilemez —
+           sunucu da artık bunu 400 ile reddeder (sessiz 0 yazmaz). *@
+        @if (KuyumEngeli || !ToplamUyusuyor)
+        {
+            <span class="cekmece-kilit-sebep" id="fk-kaydet-kilit">
+                @(KuyumEngeli ? P3.KuyumKaydetKilitKisa : Dil.T.Fatura.ToplamUyusmuyor)
+            </span>
+        }
+    </div>
+</Cekmece>
+
+@* ── Fişten fatura kes: fiş kimliği → ÖNİZLEME → Kaydet ──
+      29.09 DEVAM 12 (tasarım hakemi YÜKSEK): çok alanlı oluşturma formu ModalPencere'deydi —
+      Yeni Fatura ile aynı gerekçe: TEK DÜZENLEME KALIBI Çekmece (DoD EK 2: ModalPencere
+      yalnız yıkıcı onay). Kimlikler (ff-*) AYNI; altlık Yeni Fatura / Evrak gir ile aynı. ── *@
+<Cekmece Acik="fistenModalAcik" Varlik="fatura-fisten" Baslik="@Dil.T.Fatura.FistenKes"
+         Kapat="() => fistenModalAcik = false" KaydetGoster="false">
+    <div class="form-dikey zo-fisten-fatura">
+        @* ZO-BELGE 29.09 (tasarım hakemi k3): ipucu pencerede İKİ kez basılıyordu (üstte ve boş
+           durumda) ve "sunucuda" diyordu — tek kez, sade metinle (ZB.FistenIpucu) boş durumda. *@
+        @* ── PAKET P-15 (B-25) — 26 HANELİ ULID YERİNE KAYIT SEÇİCİ ──────────
+           ÖNCE: kullanıcı fiş kimliğini (26 haneli ULID) ELLE yazıyordu; ne
+           kopyalanacak bir yer vardı ne de yanlış yazdığını anlamanın yolu.
+           ŞİMDİ: sunucuda arar (cari adı ya da fiş kimliği), sonuçta AD + TÜR
+           + tarih/kalem/tutar görür; ULID yalnız gövdeye gider.
+           ⚠ Girdi kimliği `ff-fis` DEĞİŞMEDİ (mevcut id sözleşmesi). *@
+        @* TOPLU-1 (BELGE-KALAN 01.10, YÜKSEK): fiş araması (/arama Fis) yalnız fiş numarası olan kayıtları
+           bulur (FisId != null) — tek satırlık FİŞSİZ satışlar hiç bulunamıyordu. Faturası kesilmemiş son
+           işlemler sunucunun faturalanabilir listesinden gelir: fişli kayıt FİŞ olarak (tüm kalemleri),
+           fişsiz kayıt tek işlem olarak (hareketId) seçilir. Arama kutusu daha eski fişler için kalır. *@
+        <div class="alan">
+            <Secici ElemanId="ff-islem" Etiket="@T1.FistenSonIslemler" YerTutucu="@T1.FistenSonIslemlerYerTutucu"
+                    Secenekler="@FistenIslemSecenekleri" Deger="@FistenIslemDegeri"
+                    DegerChanged="FistenIslemSecildi" />
+            @if (islemHata is { } fih)
+            {
+                <HataBandi Mesaj="@fih" Id="ff-islem-hata" />
+            }
+            else if (!islemlerYukleniyor && faturalanabilir.Count == 0)
+            {
+                <span class="metin-kucuk metin-soluk" id="ff-islem-bos">@string.Format(T1.FistenListeBos, FistenGun)</span>
+            }
+            else if (faturalanabilirDahaVar)
+            {
+                <span class="metin-kucuk metin-soluk" id="ff-islem-sinir">@string.Format(T1.FistenListeSinir, FistenGun, FistenLimit)</span>
+            }
+        </div>
+        @* TOPLU-1 tur 2: listeden FİŞSİZ işlem seçilince önizleme hazırdır — eski fiş araması ve Önizle
+           düğmesi gizlenir (boş "fiş yok" durumu ve sebepsiz kilitli düğme kafa karıştırıyordu, UX-S30). *@
+        @if (fistenHareketId.Length == 0)
+        {
+        <div class="zo-fk-fis">
+        @* Etiket "Fiş Kimliği" değil "Fiş" (hakem k3); sonuç satırının alt bilgisi HER satırda
+           adın altında (zo-belge.css .zo-fk-fis) — satır düzeni tutarlı. id ff-fis AYNI. *@
+        <KayitSecici Tur="@Kuyumcu.Contracts.Arama.AramaTurleri.Fis"
+                     ElemanId="ff-fis"
+                     Etiket="@ZB.FistenFisEtiket"
+                     Deger="@fistenFisId"
+                     BosMesaj="@ZB.FistenAramaYok"
+                     DegerChanged="FisSecildi" />
+        </div>
+        }
+        <div class="form-dikey">
+            <Secim ElemanId="ff-kdvturu" Etiket="@Dil.T.Fatura.KdvTuru" Zorunlu="true"
+                   Secenekler="@KdvTuruSecenekleri" Deger="@fistenKdvTuru"
+                   DegerChanged="@(v => fistenKdvTuru = v ?? "STANDART")" />
+            <Secim ElemanId="ff-kdv" Etiket="@Dil.T.Fatura.KdvOran" Zorunlu="true"
+                   Secenekler="@KdvSecenekleri" Deger="@fistenKdv"
+                   DegerChanged="@(v => fistenKdv = v ?? "0.20")" />
+        </div>
+        @if (fistenHareketId.Length == 0)
+        {
+        <button class="btn btn-ikincil" id="ff-onizle"
+                disabled="@(string.IsNullOrWhiteSpace(fistenFisId) || onizleniyor)"
+                @onclick="FisOnizle">@Dil.T.Fatura.Onizle</button>
+        }
+
+        @if (fisYanit is null)
+        {
+            @* Boş tablo yerine SEBEP: henüz önizlenmedi (bilinmeyen sıfır sayılmaz). *@
+            <BosDurum Mesaj="@ZB.FistenIpucu" />
+        }
+        else
+        {
+            <div class="satir-arasi">
+                <span>@Dil.T.Rapor.CariBasligi</span>
+                <span class="hucre-vurgu" id="ff-cari">@(fisYanit.CariAd ?? ZB.FistenCariYok)</span>
+            </div>
+            <div class="satir-arasi">
+                <span>@Dil.T.Fatura.FisKalemSayisi</span>
+                <span class="sayi" id="ff-kalem-sayisi">@fisYanit.KalemSayisi</span>
+            </div>
+            @* Doğrulayıcı 29.09 (ORTA): faturanın türü FİŞTEN türetilir (UX-S21) ve gösterilir — alış fişi
+               eskiden gövdede tür gönderilmediği için sunucu varsayılanıyla SATIŞ faturası oluyordu. *@
+            <div class="satir-arasi">
+                <span>@Dil.T.Fatura.Tur</span>
+                <span id="ff-tur">
+                    <Rozet Renk="@(FistenTur(fisYanit) == "SATIS" ? "yesil" : "amber")">@(FistenTur(fisYanit) == "SATIS" ? Dil.T.Fatura.Satis : Dil.T.Fatura.Alis)</Rozet>
+                </span>
+            </div>
+            @* PAKET GOC-A — ORTAK IZGARA (grid:faturalar:ff-kalem; tablo kimliği "ff-kalem-tablosu" korunur). *@
+            <Izgara T="FisKalemVeri" Ekran="faturalar" GridId="ff-kalem" TabloId="ff-kalem-tablosu" Kolonlar="@FisKalemKolonlari"
+                    Ogeler="@fisYanit.Kalemler" SatirSinif="@(_ => "ff-kalem-satir")" Baslik="@Dil.T.Fatura.Kalemler"
+                    YapiskanIlkSutun="false" TercihIstemcisi="@FkTercih" />
+            <div class="satir-arasi">
+                <span>@Dil.T.Ortak.Toplam</span>
+                <span class="hucre-vurgu sayi" id="ff-toplam">@Bicim.Tl(FistenToplam(fisYanit))</span>
+            </div>
+            @if (!string.IsNullOrEmpty(fisYanit.FaturaNo))
+            {
+                @* Bir fiş yalnız bir faturaya bağlanır: sunucudaki kapının ekran karşılığı. *@
+                @* Ham damga (TASLAK:<ULID>) ya da çıplak numara değil, cümle (orkestratör 18:05). *@
+                <HataBandi Mesaj="@FistenFaturaliMesaj(fisYanit.FaturaNo)" />
+            }
+        }
+
+        <HataBandi Mesaj="@fistenHata" />
+        <BasariBandi Mesaj="@fistenBasari" />
+    </div>
+    <div class="cekmece-alt zo-cekmece-alt" id="ff-eylem">
+        <button type="button" class="dugme dugme-ikincil" id="ff-vazgec"
+                @onclick="() => fistenModalAcik = false"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+        <button type="button" class="dugme dugme-birincil" id="ff-kaydet"
+                disabled="@FistenKaydetKapali"
+                @onclick="FistenFaturaKes">@Dil.T.Ortak.Kaydet</button>
+        @* UX-S30: kilitli Kaydet sebebini söyler (önizlenmedi / kalem yok / zaten faturalı). *@
+        @if (FistenKilitSebebi is { } fks)
+        {
+            <span class="cekmece-kilit-sebep" id="ff-kaydet-kilit">@fks</span>
+        }
+    </div>
+</Cekmece>
+
+@* ── Kalem detayı ── *@
+<ModalPencere Acik="kalemModalAcik" Baslik="@Dil.T.Fatura.Kalemler" Kapat="() => kalemModalAcik = false">
+    <div class="dikey-bosluk">
+        <HataBandi Mesaj="@kalemHata" />
+        @* UX-S25 — P-22 / B-3: TASLAK belge düzenlenebilir; KESİLMİŞ belge değişmez.
+           ZO-BELGE: bu ipucu artık liste açılışında değil, KAYIT AÇILINCA (kurucu:
+           "değiştirilemez" kutusu açılışta yok). id AYNI: degismez-ipucu-Fatura. *@
+        @if (kalemFaturaDurumu is { } kd && kd != "TASLAK")
+        {
+            <DegismezIpucu Varlik="Fatura" Gerekce="@Dil.T.Fatura.KesilmisDegismez"
+                           AlternatifYol="@Dil.T.Fatura.FaturaDegismezYolu" />
+        }
+        @if (kalemYanit is null)
+        {
+            <Yukleniyor />
+        }
+        else if (kalemYanit.KalemKaynagi != "KALEM")
+        {
+            @* Boş tablo yerine SEBEP yazılır: bilinmeyen sıfır sayılmaz. *@
+            <BosDurum Mesaj="@Dil.T.Fatura.KalemsizFatura" />
+        }
+        else
+        {
+            @* KESIF-P3 (#23): PRO'da 10 sütun pencereye sığmıyor, KDV/Tutar kırpılıyordu (960 ölçümü
+               tablo 1024 / kap 920). Pencere gövdesi dar (≤ 900 px) ise satır KART olur (zo-belge.css
+               "zokalem" kabı); genişte tablo. *@
+            @* PAKET GOC-A — ORTAK IZGARA (grid:faturalar:fd-kalem-liste — "fd-kalem-basari" sayfa bandıyla çakışmasın; tablo kimliği "fd-kalem-tablosu" korunur). BELGE-KALAN /
+               KESIF-P3 kart sınıfları (q10-yigin zo-kalem-genis zo-kalem-duzenlenir) AYNEN; satır içi düzenleme ve
+               defter bağlı adet kilidi hücrelerde aynen. GOC-A: satır içi sınırlar sunucuyla AYNI (açıklama 300 ·
+               miktar 3 ondalık · tutar 2 ondalık — fazlası sessizce yuvarlanmaz, alan altında söylenir). *@
+            <Izgara T="KalemVeri" Ekran="faturalar" GridId="fd-kalem-liste" Zo="kalem" TabloId="fd-kalem-tablosu" Kolonlar="@DetayKalemKolonlari"
+                    Ogeler="@kalemYanit.Kalemler" SatirSinif="@(_ => "fd-kalem-satir")"
+                    TabloSinif="@($"q10-yigin {(Dil.BasitMi ? null : "zo-kalem-genis")} {(!Dil.BasitMi && KalemDuzenlenebilir ? "zo-kalem-duzenlenir" : null)}")"
+                    Baslik="@Dil.T.Fatura.Kalemler" YapiskanIlkSutun="false" TercihIstemcisi="@FkTercih" />
+            <div class="satir-arasi">
+                <span>@Dil.T.Ortak.Toplam</span>
+                <span class="hucre-vurgu sayi" id="fd-toplam">@Bicim.TlKurus(kalemYanit.Toplam)</span>
+            </div>
+            @* PAKET YASAL-4 / Y4-C (K-10): KUYUM faturada has bedelinin KDV DIŞI olduğu
+               faturanın KENDİSİNDE yazar. Değerler sunucunun kalem satırlarından
+               (OzelMatrahMotoru'nun yazdığı has_deger / kdv_matrah) — yeni formül yok. *@
+            @* Hasım bulgusu 01.10: "Has altın bedeli" gümüş kalemleri TOPLAMAZ — madene göre
+               ayrı satır (Y4-D: gümüş has bedeli gümüş fiyatıyla; § 3.1 M-12). *@
+            @if (kalemYanit.Kalemler.Any(k => k.KdvTuru == "KUYUM"))
+            {
+                if (kalemYanit.Kalemler.Any(k => k.KdvTuru == "KUYUM" && k.Maden != Kuyumcu.Core.Domain.Maden.Gumus))
+                {
+                <div class="satir-arasi" id="fd-has-kdv-disi">
+                    <span>@Y4F.FaturaHasSatiri</span>
+                    <span class="sayi" id="fd-has-kdv-disi-tutar">@Bicim.TlKurus(kalemYanit.Kalemler.Where(k => k.KdvTuru == "KUYUM" && k.Maden != Kuyumcu.Core.Domain.Maden.Gumus).Sum(k => k.HasDeger))</span>
+                </div>
+                }
+                @* Gümüş has bedeli 0 ise (gümüş fiyatı yok → özel matrah uygulanmadı, fail-closed) satır
+                   çizilmez: "KDV'ye tabi değil" iddiası yalnız gerçekten düşülen tutar için yazılır. *@
+                if (kalemYanit.Kalemler.Where(k => k.KdvTuru == "KUYUM" && k.Maden == Kuyumcu.Core.Domain.Maden.Gumus).Sum(k => k.HasDeger) > 0m)
+                {
+                <div class="satir-arasi" id="fd-gumus-kdv-disi">
+                    <span>@Y4F.FaturaGumusSatiri</span>
+                    <span class="sayi" id="fd-gumus-kdv-disi-tutar">@Bicim.TlKurus(kalemYanit.Kalemler.Where(k => k.KdvTuru == "KUYUM" && k.Maden == Kuyumcu.Core.Domain.Maden.Gumus).Sum(k => k.HasDeger))</span>
+                </div>
+                }
+                <div class="satir-arasi" id="fd-kdv-matrahi">
+                    <span>@Y4F.FaturaKdvMatrahi</span>
+                    <span class="sayi" id="fd-kdv-matrahi-tutar">@Bicim.TlKurus(kalemYanit.Kalemler.Sum(k => k.KdvMatrah))</span>
+                </div>
+            }
+            @* P-22 / B-3: TASLAK kalemi DÜZENLENEBİLİR (tek alanlı → SatirIciDuzenle).
+               Kesilmiş belgenin kalemi değişmez; ipucu yalnız o durumda çizilir. *@
+            @if (!KalemDuzenlenebilir)
+            {
+                <DegismezIpucu Varlik="FaturaKalemi" Gerekce="@Dil.T.Fatura.KalemDegismez"
+                               AlternatifYol="@Dil.T.Fatura.FaturaDegismezYolu" />
+            }
+            else
+            {
+                @* P-54: taslak kalemi için SİLME ucu YOK (ölçüldü: FaturaModulu'nda
+                   HttpDelete yok; sunucu kuralı "kalem silinmez, taslak iptal edilir").
+                   Düğme uydurulmaz — sebep ve doğru yol yazılır (UX-S25). *@
+                @* TOPLU-1 (BELGE-KALAN 01.10, YÜKSEK): düzenlenebilir taslakta amber "Bu kayıt değiştirilemez" bandı
+                   YANLIŞTI — kayıt düzenlenebilir, yalnız tek satır silinemez. Nötr bilgi notu (id aynı). *@
+                <p class="metin-kucuk metin-soluk fatura-kalem-silme-notu" id="degismez-ipucu-FaturaKalemSilme" role="note">@FT.KalemSilmeGerekce @FT.KalemSilmeYol</p>
+            }
+        }
+    </div>
+</ModalPencere>
+
+@code {
+    // PAKET Q10-5 — özel matrah beyanının içeriği TEK yerde; basit modda katlanır
+    // özetin içinde, profesyonel modda başlığın altında çizilir (ikinci kopya yok).
+    private RenderFragment OzelMatrahIcerik => @<div class="q10-om-icerik">
+        @if (ozelMatrahHata is not null)
+        {
+            @* UX-S28: hata "kayıt yok"a çevrilmez, ayrı bandda görünür. *@
+            <HataBandi Mesaj="@ozelMatrahHata" Id="fk-ozel-matrah-hata" />
+        }
+        else if (ozelMatrahKod is null)
+        {
+            @* Y-40: KAPALI beyanı sade cümle — Basit ve Pro'da AYNI (Y4-C § 4.3). Sunucunun
+               teknik kaynak beyanı (yapılandırma anahtarı) artık EKRANA basılmaz (K-12). *@
+            <p class="ikincil-metin" id="fk-ozel-matrah-haric">@Q105Sozlugu.Al(Dil.Dil).OzelMatrahKapaliBasit</p>
+        }
+        else
+        {
+            <p><span class="rozet" id="fk-ozel-matrah-kod">@ozelMatrahKod</span></p>
+            <p class="ikincil-metin" id="fk-ozel-matrah-kaynak">@ozelMatrahKaynak</p>
+            @if (!ozelMatrahAralikta)
+            {
+                <p class="ikincil-metin" id="fk-ozel-matrah-aralik">@Dil.T.Fatura.OzelMatrahAralikDisi</p>
+            }
+        }
+    </div>;
+
+
+
+
+    /// <summary>Yeni fatura formundaki kalem satırı (ekran tarafı).</summary>
+    private sealed class KalemSatiri
+    {
+        public string UrunId { get; set; } = "";
+        public decimal Miktar { get; set; } = 1m;
+        public decimal BirimFiyat { get; set; }
+        public decimal Iscilik { get; set; }
+        public decimal Indirim { get; set; }
+    }
+
+
+
+
+    private List<FaturaVeri> faturalar = [];
+
+    // ── PAKET GOC-A — fatura tarihi (Tarih Tur=Islem; geçersiz yazımda Kaydet kilitli) ───────────
+    private bool dTarihGecersiz;
+    private void FaturaTarihDegisti(DateOnly? v)
+    {
+        dTarihGecersiz = v is null;
+        if (v is { } g) dTarih = g.ToDateTime(TimeOnly.MinValue);
+    }
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:faturalar:*) ─────────────────────────────
+    private IzgaraTercihIstemcisi? fkTercih;
+    private IzgaraTercihIstemcisi FkTercih => fkTercih ??= new IzgaraTercihIstemcisi(Api);
+    private IzgaraSiralama? faturaSira;
+    private void FaturaSiralandi(IzgaraSiralama? s) => faturaSira = s;
+    /// <summary>Liste sunucu sınırına (100) değmediyse tam liste → yerel sıralama yanıltmaz.</summary>
+    private bool FaturaListeTam => faturalar.Count < 100;
+    private string? FaturaSiraAdi(string ad) => FaturaListeTam ? ad : null;
+
+    private IReadOnlyList<IzgaraKolonu<FaturaVeri>> FaturaKolonlari
+    {
+        get
+        {
+            var l = new List<IzgaraKolonu<FaturaVeri>>
+            {
+                // P-22 / B-3: TASLAK belgenin numarası YOKTUR; SEBEBİ yazılır. PRO: kaynak numaranın ALT satırında.
+                new() { Anahtar = "no", Baslik = Dil.T.Fatura.FaturaNo, ZorunluGorunur = true, SunucuSiralamaAdi = FaturaSiraAdi("no"),
+                        HucreSinif = _ => "hucre-vurgu sayi metin-kucuk", Deger = f => f.FaturaNo, Hucre = f => @<text>@FaturaNoHucresi(f)</text> },
+                new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, SunucuSiralamaAdi = FaturaSiraAdi("tarih"),
+                        HucreSinif = _ => "metin-soluk hucre-tek-satir", Deger = f => f.Tarih, Hucre = f => @<text>@Bicim.Tarih(f.Tarih, Dil.Locale)</text> },
+                new() { Anahtar = "cari", Baslik = Dil.T.Rapor.CariBasligi, ZorunluGorunur = true, SunucuSiralamaAdi = FaturaSiraAdi("cari"),
+                        HucreSinif = _ => "hucre-vurgu zo-metin-sutun", Deger = f => f.CariAd,
+                        Hucre = f => @<span class="zo-iki-satir" title="@f.CariAd">@f.CariAd</span> },
+                new() { Anahtar = "tur", Baslik = Dil.T.Fatura.Tur, Tur = IzgaraHucreTuru.Rozet, Deger = f => f.Tur,
+                        Hucre = f => @<Rozet Renk="@(f.Tur == "SATIS" ? "yesil" : "amber")">@(f.Tur == "SATIS" ? Dil.T.Fatura.Satis : Dil.T.Fatura.Alis)</Rozet> },
+            };
+            // ZO-BELGE: BASİT'te KDV sütunu yok (Toplam kalır; ayrıntı faturanın kendisinde).
+            if (!Dil.BasitMi)
+                l.Add(new() { Anahtar = "kdv", Baslik = Dil.T.Fatura.KdvTutar, SunucuSiralamaAdi = FaturaSiraAdi("kdv"),
+                              HucreSinif = _ => "sayi hucre-tek-satir", Deger = f => f.KdvTutar,
+                              Hucre = f => @<text>@Bicim.Tl(f.KdvTutar) <span class="metin-soluk">(%@KdvYuzde(f.KdvOran))</span></text> });
+            l.Add(new() { Anahtar = "toplam", Baslik = Dil.T.Ortak.Toplam, ZorunluGorunur = true, SunucuSiralamaAdi = FaturaSiraAdi("toplam"),
+                          HucreSinif = _ => "hucre-vurgu sayi", Deger = f => f.Toplam,
+                          Hucre = f => @<span title="@(Dil.BasitMi ? null : $"{Dil.T.Fatura.AraToplam}: {Bicim.Tl(f.AraToplam)}")">@Bicim.Tl(f.Toplam)</span> });
+            l.Add(new() { Anahtar = "durum", Baslik = Dil.T.Fatura.Durum, Tur = IzgaraHucreTuru.Rozet, Deger = f => DurumMetin(f.Durum),
+                          Hucre = f => @<text><Rozet Renk="@DurumRenk(f.Durum)">@DurumMetin(f.Durum)</Rozet>@if (f.KalemKaynagi == "KALEM") {<Rozet Renk="mavi">@Dil.T.Fatura.Kalemler</Rozet>}</text> });
+            // DoD EK 4 / P-61: DAR SÜTUN — durumun TEK birincil eylemi + "⋯"; id'ler FaturaEylemleri(f) içinde AYNEN.
+            l.Add(new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                          KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-yigin-eylem",
+                          Hucre = f => @<SatirEylemleri Onek="fk" SatirId="@f.Id" Birincil="1" DarSutun="true"
+                                                        SatirAdi="@(string.IsNullOrEmpty(f.FaturaNo) ? f.CariAd : f.FaturaNo)"
+                                                        Eylemler="@FaturaEylemleri(f)" /> });
+            return l;
+        }
+    }
+
+    private RenderFragment FaturaNoHucresi(FaturaVeri f) => @<text>@if (string.IsNullOrEmpty(f.FaturaNo))
+        {
+            <span class="metin-soluk hucre-tek-satir" id="@($"fk-no-yok-{f.Id}")" title="@Dil.T.Fatura.NoKesimde">—</span>
+        }
+        else
+        {
+            <span class="hucre-tek-satir" id="@($"fk-no-{f.Id}")">@f.FaturaNo</span>
+        }
+        @if (!Dil.BasitMi)
+        {
+            @if (!string.IsNullOrEmpty(f.BankaHareketId))
+            {
+                <span class="zo-alt-satir metin-mavi" id="@($"fk-kaynak-{f.Id}")" title="@Dil.T.Fatura.Kaynak"><Ikon Ad="@Ikonlar.Banka" /> @Dil.T.Fatura.KaynakBanka</span>
+            }
+            else if (f.IslemdenGeldi)
+            {
+                <span class="zo-alt-satir metin-mavi" id="@($"fk-kaynak-{f.Id}")" title="@Dil.T.Fatura.Kaynak"><Ikon Ad="@Ikonlar.Islemler" /> @(f.Tur == "ALIS" ? T1.KaynakAlistan : T1.KaynakSatistan)</span>
+            }
+            else
+            {
+                <span class="zo-alt-satir metin-soluk" id="@($"fk-kaynak-{f.Id}")" title="@Dil.T.Fatura.Kaynak"><Ikon Ad="@Ikonlar.GiderPusulalari" /> @Dil.T.Fatura.Manuel</span>
+            }
+        }</text>;
+
+    private IReadOnlyList<IzgaraKolonu<KalemSatiri>> FormKalemKolonlari =>
+    [
+        new() { Anahtar = "sira", Baslik = Dil.T.Fatura.Sira, HucreSinif = _ => "sayi", Hucre = k => @<text>@(formKalemler.IndexOf(k) + 1)</text> },
+        new() { Anahtar = "urun", Baslik = Dil.T.Fatura.Urun, ZorunluGorunur = true,
+                Hucre = k => @<Secici ElemanId="@($"fk-urun-{formKalemler.IndexOf(k)}")" Etiket="@Dil.T.Fatura.Urun"
+                                      YerTutucu="@Dil.T.Fatura.Urun" Secenekler="@UrunSecenekleri" Deger="@k.UrunId"
+                                      DegerChanged="@(v => UrunSec(formKalemler.IndexOf(k), v))" /> },
+        // GOC-A: miktar ortak Gram (K10 — > 0, 3 ondalık, eksi/harf yazılamaz); tutarlar K9a (≥ 0, 2 ondalık).
+        new() { Anahtar = "miktar", Baslik = Dil.T.Fatura.Miktar, ZorunluGorunur = true,
+                Hucre = k => @<Gram ElemanId="@($"fk-miktar-{formKalemler.IndexOf(k)}")" Etiket="@Dil.T.Fatura.Miktar" Zorunlu="true" Tur="AgirlikTuru.Gram"
+                                    Deger="@k.Miktar" DegerChanged="@(v => k.Miktar = v ?? 0m)" /> },
+        new() { Anahtar = "fiyat", Baslik = Dil.T.Fatura.BirimFiyat, ZorunluGorunur = true,
+                Hucre = k => @<Para ElemanId="@($"fk-fiyat-{formKalemler.IndexOf(k)}")" Etiket="@Dil.T.Fatura.BirimFiyat" Zorunlu="true" ParaBirimi="TRY" Tur="TutarTuru.SifirOlabilir"
+                                    Deger="@k.BirimFiyat" DegerChanged="@(v => k.BirimFiyat = v ?? 0m)" /> },
+        new() { Anahtar = "iscilik", Baslik = Dil.T.Fatura.Iscilik,
+                Hucre = k => @<Para ElemanId="@($"fk-iscilik-{formKalemler.IndexOf(k)}")" Etiket="@Dil.T.Fatura.Iscilik" ParaBirimi="TRY" Tur="TutarTuru.SifirOlabilir"
+                                    Deger="@k.Iscilik" DegerChanged="@(v => k.Iscilik = v ?? 0m)" /> },
+        new() { Anahtar = "indirim", Baslik = Dil.T.Fatura.Indirim,
+                Hucre = k => @<Para ElemanId="@($"fk-indirim-{formKalemler.IndexOf(k)}")" Etiket="@Dil.T.Fatura.Indirim" ParaBirimi="TRY" Tur="TutarTuru.SifirOlabilir"
+                                    Deger="@k.Indirim" DegerChanged="@(v => k.Indirim = v ?? 0m)" /> },
+        new() { Anahtar = "satir", Baslik = Dil.T.Fatura.SatirToplam, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu sayi",
+                Hucre = k => @<span id="@($"fk-satir-{formKalemler.IndexOf(k)}")">@Bicim.Tl(SatirToplam(k))</span> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = k => @<button class="btn btn-ikincil btn-kucuk metin-kirmizi" id="@($"fk-sil-{formKalemler.IndexOf(k)}")"
+                                      @onclick="() => KalemSil(formKalemler.IndexOf(k))">@Dil.T.Fatura.KalemSil</button> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<FisKalemVeri>> FisKalemKolonlari =>
+    [
+        new() { Anahtar = "sira", Baslik = Dil.T.Fatura.Sira, KartEtiketsiz = true, HucreSinif = _ => "sayi ff-sira",
+                Hucre = fk => @<text>@(fisYanit!.Kalemler.FindIndex(x => x.Id == fk.Id) + 1)</text> },
+        // Ürünsüz kalemde (eski altın bacağı HURDA_ALIS) ham tür kodu değil sözlükteki ad (UX-S31).
+        new() { Anahtar = "urun", Baslik = Dil.T.Fatura.Urun, ZorunluGorunur = true, KartEtiketsiz = true, HucreSinif = _ => "hucre-vurgu ff-ad",
+                Hucre = fk => @<text>@FisKalemAdi(fk)@if (fk.Hediye) {<Rozet Renk="amber">@Dil.T.Fiyat.Hediye</Rozet>}</text> },
+        new() { Anahtar = "toplam", Baslik = Dil.T.Ortak.Toplam, ZorunluGorunur = true, HucreSinif = _ => "sayi",
+                Hucre = fk => @<text>@Bicim.Tl(Math.Abs(fk.TlTutari))</text> },
+        new() { Anahtar = "has", Baslik = Dil.T.Urun.HasGram, HucreSinif = _ => "sayi", Hucre = fk => @<text>@Bicim.Has(Math.Abs(fk.HasGrami))</text> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<KalemVeri>> DetayKalemKolonlari
+    {
+        get
+        {
+            var l = new List<IzgaraKolonu<KalemVeri>>
+            {
+                new() { Anahtar = "sira", Baslik = Dil.T.Fatura.Sira, HucreSinif = _ => "sayi", Deger = k => k.Sira },
+                new() { Anahtar = "aciklama", Baslik = Dil.T.Ortak.Aciklama, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu",
+                        HucreOznitelikleri = KalemDuzenlenebilir ? DuzenlenebilirOznitelik : null,
+                        Hucre = k => @<text>@if (KalemDuzenlenebilir)
+                        {
+                            <SatirIciDuzenle Varlik="fatura-kalem" Alan="aciklama" Id="@k.Id"
+                                             Etiket="@Dil.T.Ortak.Aciklama" Deger="@k.Aciklama" EnFazla="@AlanSinirlari.FaturaKalemAciklama"
+                                             Kaydediliyor="@kalemKaydediliyor"
+                                             Kaydedildi="@(v => KalemKaydet(k.Id, "aciklama", v))" />
+                            <AlanHatasi Alan="@KalemAlanAnahtari("aciklama", k.Id)" Durum="kalemForm" />
+                        }
+                        else
+                        {
+                            @k.Aciklama
+                        }
+                        @if (!string.IsNullOrEmpty(k.TasIbaresi))
+                        {
+                            <span class="metin-kucuk metin-soluk">@k.TasIbaresi</span>
+                        }</text> },
+                // KESIF-P3 (#23/#59): ham ayar kodu görünmez — tek kaynak KurKaynakAdi.AyarAdi; kod title'da.
+                new() { Anahtar = "ayar", Baslik = Dil.T.Urun.Ayar, HucreSinif = _ => "hucre-tek-satir",
+                        Hucre = k => @<span title="@k.AyarId" id="@($"fd-kalem-ayar-{k.Id}")">@(k.AyarId is null ? "—" : KurKaynakAdi.AyarAdi(k.AyarId))</span> },
+                // KESIF-P3: defter bağlı kalemin ADEDİ salt okunur + sebep + "Fişten değiştir" bağlantısı (UX-S25/S30).
+                new() { Anahtar = "miktar", Baslik = Dil.T.Fatura.Miktar, ZorunluGorunur = true, HucreSinif = _ => "sayi", HucreOznitelikleri = KalemDuzenlenebilir ? DuzenlenebilirOznitelik : null,
+                        Hucre = k => @<text>@if (KalemDuzenlenebilir && !string.IsNullOrEmpty(k.HareketId))
+                        {
+                            <span class="hucre-tek-satir" id="@($"fd-kalem-adet-kilit-{k.Id}")" title="@AdetKilitMetni(k)">@Bicim.Miktar(k.Miktar, k.Birim)</span>
+                            <span class="zo-kalem-fis metin-soluk">
+                                <a href="@AdetKilitBagi(k)" id="@($"fd-kalem-adet-fis-{k.Id}")" title="@AdetKilitMetni(k)">@AdetKilitBagMetni(k)</a>
+                            </span>
+                        }
+                        else if (KalemDuzenlenebilir)
+                        {
+                            <SatirIciDuzenle Varlik="fatura-kalem" Alan="miktar" Id="@k.Id"
+                                             Etiket="@Dil.T.Fatura.Miktar" AsgariDeger="0.001m" EnCokOndalik="@AgirlikKurali.GramOndalik"
+                                             Deger="@Bicim.Girdi(k.Miktar, "0.###")"
+                                             Kaydediliyor="@kalemKaydediliyor"
+                                             Kaydedildi="@(v => KalemKaydet(k.Id, "miktar", v))" />
+                            <AlanHatasi Alan="@KalemAlanAnahtari("miktar", k.Id)" Durum="kalemForm" />
+                        }
+                        else
+                        {
+                            @Bicim.Miktar(k.Miktar, k.Birim)
+                        }</text> },
+                new() { Anahtar = "fiyat", Baslik = Dil.T.Fatura.BirimFiyat, ZorunluGorunur = true, HucreSinif = _ => "sayi", HucreOznitelikleri = KalemDuzenlenebilir ? DuzenlenebilirOznitelik : null,
+                        Hucre = k => @<text>@if (KalemDuzenlenebilir)
+                        {
+                            <SatirIciDuzenle Varlik="fatura-kalem" Alan="birimFiyat" Id="@k.Id"
+                                             Etiket="@Dil.T.Fatura.BirimFiyat" AsgariDeger="0m" EnCokOndalik="@TutarKurali.OndalikHane"
+                                             Deger="@Bicim.Girdi(k.BirimFiyat, ParaKutuKalibi)"
+                                             Kaydediliyor="@kalemKaydediliyor"
+                                             Kaydedildi="@(v => KalemKaydet(k.Id, "birimFiyat", v))" />
+                            <AlanHatasi Alan="@KalemAlanAnahtari("birimFiyat", k.Id)" Durum="kalemForm" />
+                        }
+                        else
+                        {
+                            @Bicim.TlKurus(k.BirimFiyat)
+                        }</text> },
+                // P-54: işçilik ve indirim de TASLAKTA düzeltilir; boş = null (PATCH sözleşmesi).
+                new() { Anahtar = "iscilik", Baslik = Dil.T.Fatura.Iscilik, HucreSinif = _ => "sayi", HucreOznitelikleri = KalemDuzenlenebilir ? DuzenlenebilirOznitelik : null,
+                        Hucre = k => @<text>@if (KalemDuzenlenebilir)
+                        {
+                            <SatirIciDuzenle Varlik="fatura-kalem" Alan="iscilikTl" Id="@k.Id"
+                                             Etiket="@Dil.T.Fatura.Iscilik" AsgariDeger="0m" BosOlabilir="true" EnCokOndalik="@TutarKurali.OndalikHane"
+                                             Deger="@(k.IscilikTl is { } isc ? Bicim.Girdi(isc, ParaKutuKalibi) : null)"
+                                             Kaydediliyor="@kalemKaydediliyor"
+                                             Kaydedildi="@(v => KalemKaydet(k.Id, "iscilikTl", v))" />
+                            <AlanHatasi Alan="@KalemAlanAnahtari("iscilikTl", k.Id)" Durum="kalemForm" />
+                        }
+                        else
+                        {
+                            @(k.IscilikTl is { } isc ? Bicim.TlKurus(isc) : "—")
+                        }</text> },
+                new() { Anahtar = "indirim", Baslik = Dil.T.Fatura.Indirim, HucreSinif = _ => "sayi", HucreOznitelikleri = KalemDuzenlenebilir ? DuzenlenebilirOznitelik : null,
+                        Hucre = k => @<text>@if (KalemDuzenlenebilir)
+                        {
+                            <SatirIciDuzenle Varlik="fatura-kalem" Alan="indirimTutari" Id="@k.Id"
+                                             Etiket="@Dil.T.Fatura.Indirim" AsgariDeger="0m" BosOlabilir="true" EnCokOndalik="@TutarKurali.OndalikHane"
+                                             Deger="@(k.IndirimTutari is { } ind ? Bicim.Girdi(ind, ParaKutuKalibi) : null)"
+                                             Kaydediliyor="@kalemKaydediliyor"
+                                             Kaydedildi="@(v => KalemKaydet(k.Id, "indirimTutari", v))" />
+                            <AlanHatasi Alan="@KalemAlanAnahtari("indirimTutari", k.Id)" Durum="kalemForm" />
+                        }
+                        else
+                        {
+                            @(k.IndirimTutari is { } ind ? Bicim.TlKurus(ind) : "—")
+                        }</text> },
+            };
+            // K01 (30.09): BASİT'te hesaplanan teknik sütunlar gizli; PRO'da aynen (silinmedi).
+            if (!Dil.BasitMi)
+            {
+                l.Add(new() { Anahtar = "has-deger", Baslik = Dil.T.Fatura.HasDeger, HucreSinif = _ => "sayi",
+                              Hucre = k => @<span title="@(GumusKuyumKalemi(k) ? FT.GumusOzelMatrahYok : MadeniBilinmeyenKuyumKalemi(k) ? FT.MadenBilinmiyorOzelMatrahYok : null)">@Bicim.TlKurus(k.HasDeger)</span> });
+                l.Add(new() { Anahtar = "kdv-matrah", Baslik = Dil.T.Fatura.KdvMatrah, HucreSinif = _ => "sayi", Hucre = k => @<text>@Bicim.TlKurus(k.KdvMatrah)</text> });
+                l.Add(new() { Anahtar = "kdv-tutar", Baslik = Dil.T.Fatura.KdvTutar, HucreSinif = _ => "sayi", Hucre = k => @<text>@Bicim.TlKurus(k.KdvTutar)</text> });
+            }
+            // BELGE-KALAN tur 2: kalem penceresinin bütün para hücreleri kuruş İKİ HANE (Bicim.TlKurus).
+            l.Add(new() { Anahtar = "satir", Baslik = Dil.T.Fatura.SatirToplam, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu sayi",
+                          Hucre = k => @<text>@Bicim.TlKurus(k.SatirToplam)</text> });
+            return l;
+        }
+    }
+
+    private static readonly IReadOnlyDictionary<string, object> DuzenlenebilirOznitelik =
+        new Dictionary<string, object> { ["data-duzenlenebilir"] = "true" };
+    private List<CariVeri> cariler = [];
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private bool guncelleniyor;
+    private string? modalHata;
+    private string? modalBasari;
+    private string? listeHata;
+
+    private string durumFiltre = "";
+
+    // ── PAKET ZO-BELGE — süzgeç katlanırı + özel matrah katlanır başlığı ──
+    private ZoBelgeMetinleri ZB => ZoBelgeSozlugu.Al(Dil.Dil);
+
+    /// <summary>Durum seçenekleri — TEK dizi (UX-S26); "Tümü" boş değerdir.</summary>
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> DurumSecenekleri =>
+    [
+        new("", Dil.T.Ortak.Tumu),
+        new("TASLAK", Dil.T.Fatura.Taslak),
+        new("KESILDI", Dil.T.Fatura.Kesildi),
+        new("ODENDI", Dil.T.Fatura.Odendi),
+        new("IPTAL", Dil.T.Fatura.Iptal),
+    ];
+
+    /// <summary>Başlık: süzgeç seçiliyse adı yazılır (gizli süzgeç sessiz kalmaz).</summary>
+    private string SuzgecBasligi => string.IsNullOrEmpty(durumFiltre)
+        ? ZB.Suzgec
+        : $"{ZB.Suzgec}: {DurumMetin(durumFiltre)}";
+
+    private async Task DurumFiltreDegisti(string? deger)
+    {
+        durumFiltre = deger ?? "";
+        await Yukle();
+    }
+
+    /// <summary>Katlanır başlığı: sade tek satır (jargonsuz). Uzun mevzuat metni
+    /// ve kaynak beyanı yalnız açılınca görünür (göz #2).</summary>
+
+    // ── yeni fatura formu ──
+    private bool yeniModalAcik;
+    private string formCariId = "";
+    private string formTur = "SATIS";
+    private string formKdv = "0.20";
+    private string formKdvTuru = "STANDART";
+    private decimal formHasDeger;
+    private decimal formToplam;
+    private string formAciklama = "";
+
+    private decimal FormKdvOran => decimal.Parse(formKdv, CultureInfo.InvariantCulture);
+
+    // ── ZO-BELGE (K22): seçici seçenekleri — TEK dizi, iki form aynı listeyi kullanır (UX-S26) ──
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> CariSecenekleri =>
+        cariler.Select(c => new Kuyumcu.Web.Bilesenler.SecenekOgesi(c.Id, c.Ad)).ToList();
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> TurSecenekleri =>
+    [
+        new("SATIS", Dil.T.Fatura.Satis),
+        new("ALIS", Dil.T.Fatura.Alis),
+    ];
+    private static readonly IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> KdvSecenekleri =
+    [
+        new("0", "%0"), new("0.01", "%1"), new("0.10", "%10"), new("0.20", "%20"),
+    ];
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> KdvTuruSecenekleri =>
+    [
+        new("STANDART", Dil.T.Fatura.KdvStandart),
+        new("KUYUM", Dil.T.Fatura.KdvKuyum),
+    ];
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> IslemSecenekleri =>
+        faturalanabilir.Select(i => new Kuyumcu.Web.Bilesenler.SecenekOgesi(i.Id, IslemEtiketi(i))).ToList();
+    private bool Kuyum => formKdvTuru == "KUYUM";
+
+    /// <summary>TOPLU-7B: kapalı "Fatura ayrıntıları" başlığında seçili üç değer ("Satış · Standart · %20").</summary>
+    private string AyrintiOzeti =>
+        string.Join(" · ", new[]
+        {
+            TurSecenekleri.FirstOrDefault(o => o.Deger == formTur)?.Ad ?? formTur,
+            KdvTuruSecenekleri.FirstOrDefault(o => o.Deger == formKdvTuru)?.Ad ?? formKdvTuru,
+            KdvSecenekleri.FirstOrDefault(o => o.Deger == formKdv)?.Ad ?? formKdv,
+        });
+
+    // ── KDV önizleme ──
+    // STANDART → KDV tüm tutara (bugünkü formül, dokunulmadı).
+    // KUYUM    → kırılım SUNUCUDAN (`onizleme`) gelir; ekran hesaplamaz.
+    private decimal OnizlemeKdvTutar => formToplam - formToplam / (1m + FormKdvOran);
+    private decimal OnizlemeAraToplam => formToplam - OnizlemeKdvTutar;
+
+    // ── Paket 38: özel matrah (faturalandırılacak işlem + sunucu önizlemesi) ──
+
+
+
+
+    private List<FaturalanabilirIslem> faturalanabilir = [];
+    private bool faturalanabilirDahaVar;
+    private bool islemlerYukleniyor;
+    private string? islemHata;
+    private string formHareketId = "";
+    private OzelMatrahOnizleme? onizleme;
+    private bool onizleniyorMatrah;
+
+    // TOPLU-1 (TARIH-TEK, BELGE-KALAN 01.10): tarih ham UTC basılıyordu (00:00–03:00 TSİ işlemleri bir gün
+    // geri) → işletme saatiyle tarih + saat (Bicim.TarihSaat).
+    private string IslemEtiketi(FaturalanabilirIslem i) =>
+        $"{Bicim.TarihSaat(i.Tarih)} · {(i.Tur == "SATIS" ? Dil.T.Fatura.Satis : Dil.T.Fatura.Alis)} · " +
+        $"{i.UrunAd ?? "—"} · {Bicim.Tl(i.TlTutari)}";
+
+    /// <summary>
+    /// KUYUM seçilince faturalanabilir işlemler YÜKLENİR. Tembel yükleme
+    /// bilinçlidir: standart faturada bu uç hiç çağrılmaz.
+    /// </summary>
+    private async Task KdvTuruDegisti(string? deger)
+    {
+        formKdvTuru = deger ?? "STANDART";
+        onizleme = null;
+        formHareketId = "";
+        formHasDeger = 0;
+        if (!Kuyum) return;
+        await FaturalanabilirYukle();
+    }
+
+    private async Task FaturalanabilirYukle()
+    {
+        islemHata = null;
+        islemlerYukleniyor = true;
+        try
+        {
+            var y = await Api.GetAsync<FaturalanabilirYanit>("/faturalar/faturalanabilir-islemler?gun=30&limit=50");
+            // Sunucu alanı hiç göndermezse liste NULL gelir; boş liste ≠ null.
+            faturalanabilir = y.Islemler ?? [];
+            faturalanabilirDahaVar = y.DahaVar;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28: boş listeye çevrilmez — liste boşaltılır AMA hata bandı çıkar.
+            faturalanabilir = [];
+            faturalanabilirDahaVar = false;
+            islemHata = ex.Message;
+        }
+        islemlerYukleniyor = false;
+    }
+
+    private async Task IslemSec(string? hareketId)
+    {
+        formHareketId = hareketId ?? "";
+        onizleme = null;
+        formHasDeger = 0;
+        if (string.IsNullOrEmpty(formHareketId)) return;
+        await OzelMatrahOnizle();
+    }
+
+    /// <summary>
+    /// Has bedeli ve matrah SUNUCUDA türetilir; ekran yalnız gösterir (UX-S21).
+    /// </summary>
+    private async Task OzelMatrahOnizle()
+    {
+        if (string.IsNullOrEmpty(formHareketId)) return;
+        islemHata = null;
+        onizleniyorMatrah = true;
+        try
+        {
+            var toplamParam = formToplam > 0
+                ? $"&toplam={formToplam.ToString(CultureInfo.InvariantCulture)}"
+                : "";
+            onizleme = await Api.GetAsync<OzelMatrahOnizleme>(
+                $"/faturalar/ozel-matrah-onizleme?hareketId={Uri.EscapeDataString(formHareketId)}" +
+                $"&kdvOran={FormKdvOran.ToString(CultureInfo.InvariantCulture)}{toplamParam}");
+            formHasDeger = onizleme.HasDeger;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            onizleme = null;
+            islemHata = ex.Message;
+        }
+        onizleniyorMatrah = false;
+    }
+
+    /// <summary>
+    /// KUYUM'da işlem seçilmeden Kaydet KAPALIDIR: has bedeli defterden türetilir,
+    /// elle beyan edilemez. Sebebi ekranda yazılıdır (UX-S30).
+    /// </summary>
+    private bool KuyumEngeli => Kuyum && string.IsNullOrEmpty(formHareketId);
+
+    // ── UX-1-C0/C2 ──────────────────────────────────────────────────────────
+    private readonly FormDurumu yeniForm = new();
+    private string? basari;
+    private int basariJeton;
+    private void BasariGoster(string m) { basari = m; basariJeton++; }
+
+    /// <summary>Onay bekleyen durum geçişi (Kes · Ödendi · İptal).</summary>
+    private FaturaVeri? durumFatura;
+    private string durumHedef = "";
+    private string? durumHata;
+
+    private string DurumOnayBaslik => durumHedef switch
+    {
+        "KESILDI" => Dil.T.Fatura.Kes,
+        "ODENDI" => Dil.T.Fatura.OdendiIsaretle,
+        _ => Dil.T.Fatura.IptalEt,
+    };
+
+    private string DurumOnayMetni => durumHedef switch
+    {
+        "KESILDI" => Dil.T.Fatura.KesOnay,
+        "ODENDI" => Dil.T.Fatura.OdendiOnay,
+        _ => Dil.T.Fatura.IptalOnay,
+    };
+
+    private void DurumIste(FaturaVeri f, string hedef)
+    {
+        durumHata = null;
+        durumHedef = hedef;
+        durumFatura = f;
+    }
+
+    private void DurumOnayKapat() { durumFatura = null; durumHata = null; }
+
+    private async Task DurumOnayla()
+    {
+        if (durumFatura is not { } f) return;
+        durumHata = null;
+        await DurumGuncelle(f.Id, durumHedef);
+        if (durumHata is null) durumFatura = null;
+    }
+
+    // ── Satır kalemleri ──────────────────────────────────────────────────────
+    private readonly List<KalemSatiri> formKalemler = [];
+    private List<UrunVeri> urunler = [];
+    private bool kalemModalAcik;
+    private KalemYaniti? kalemYanit;
+    private string? kalemHata;
+
+    private static decimal Yuvarla2(decimal d) => Math.Round(d, 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>Sunucudaki değişmezin aynısı: miktar × birim fiyat + işçilik − indirim.</summary>
+    private static decimal SatirToplam(KalemSatiri k) =>
+        Yuvarla2(k.Miktar * k.BirimFiyat + k.Iscilik - k.Indirim);
+
+    private decimal KalemToplami => formKalemler.Sum(SatirToplam);
+
+    /// <summary>
+    /// Kalem yoksa kural yoktur (başlık yolu). Kalem varsa TOLERANS YOKTUR:
+    /// kalem toplamı fatura toplamına kuruşu kuruşuna eşit olmalıdır.
+    /// </summary>
+    private bool ToplamUyusuyor =>
+        formKalemler.Count == 0 || KalemToplami == Yuvarla2(formToplam);
+
+    private void KalemEkle() => formKalemler.Add(new KalemSatiri());
+
+    private void KalemSil(int ix)
+    {
+        if (ix >= 0 && ix < formKalemler.Count) formKalemler.RemoveAt(ix);
+    }
+
+    private void UrunSec(int ix, string? urunId)
+    {
+        if (ix >= 0 && ix < formKalemler.Count) formKalemler[ix].UrunId = urunId ?? "";
+    }
+
+    // ── Fişten fatura kes (paket 1 Faz A) ────────────────────────────────────
+    private bool fistenModalAcik;
+    private string fistenFisId = "";
+    private string fistenKdvTuru = "STANDART";
+    private string fistenKdv = "0.20";
+    private FisYaniti? fisYanit;
+    private string? fistenHata;
+    private string? fistenBasari;
+    private bool onizleniyor;
+
+    /// <summary>
+    /// PAKET P-15 (B-25): kayıt seçici bir fiş seçti/temizledi. Seçim
+    /// DEĞİŞİNCE önizleme DÜŞER — eski fişin kalemleriyle yeni fişe fatura
+    /// kesilmesi mümkün olmamalıdır (UX-S24: bağımlı alanın bağını ekran kurar).
+    /// </summary>
+    private void FisSecildi(string? fisId)
+    {
+        fistenFisId = fisId ?? "";
+        fistenHareketId = "";
+        fisYanit = null;
+        fistenHata = null;
+        fistenBasari = null;
+    }
+
+    private async Task FistenModalAc()
+    {
+        fistenFisId = "";
+        fistenHareketId = "";
+        fistenKdvTuru = "STANDART";
+        fistenKdv = "0.20";
+        fisYanit = null;
+        fistenHata = null;
+        fistenBasari = null;
+        fistenModalAcik = true;
+        // TOPLU-1: seçenek alt bilgisi ve fişsiz önizlemenin müşteri adı cari listesinden gelir.
+        var cariHata = cariler.Count == 0 ? await CarileriGetir() : null;
+        await FaturalanabilirYukle();
+        islemHata ??= cariHata;   // UX-S28: cari listesi gelmediyse bu da söylenir
+    }
+
+    // ── TOPLU-1: fişsiz satışlar da fişten fatura kesilir (BELGE-KALAN 01.10) ──────────────
+    private const int FistenGun = 30, FistenLimit = 50;
+    private string fistenHareketId = "";
+    private Kuyumcu.Core.I18n.Toplu1Metinleri T1 => Kuyumcu.Core.I18n.Toplu1Sozlugu.Al(Dil.Dil);
+
+    /// <summary>Seçicideki değer: fişli kayıt "fis:{FisId}", fişsiz kayıt "har:{HareketId}".</summary>
+    private string FistenIslemDegeri =>
+        fistenHareketId.Length > 0 ? "har:" + fistenHareketId
+        : fistenFisId.Length > 0 && faturalanabilir.Any(i => i.FisId == fistenFisId) ? "fis:" + fistenFisId : "";
+
+    /// <summary>
+    /// Fişli işlemler FİŞ başına bir seçenek (fatura fişin TÜM kalemlerini damgalar — sunucu kuralı),
+    /// fişsiz işlem kendi seçeneği. Sıra sunucunun sırası (yeni → eski).
+    /// </summary>
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> FistenIslemSecenekleri
+    {
+        get
+        {
+            var l = new List<Kuyumcu.Web.Bilesenler.SecenekOgesi>();
+            var gorulen = new HashSet<string>();
+            foreach (var i in faturalanabilir)
+            {
+                if (!string.IsNullOrEmpty(i.FisId))
+                {
+                    if (!gorulen.Add(i.FisId)) continue;
+                    var grup = faturalanabilir.Where(x => x.FisId == i.FisId).ToList();
+                    l.Add(new($"fis:{i.FisId}", FistenSecenekMetni(i, grup.Count, grup.Sum(x => x.TlTutari)),
+                              CariAdi(i.CariId)));
+                }
+                else
+                {
+                    // TOPLU-1 tur 2 (tasarım hakemi KRİTİK): rozet işlem TÜRÜNDEN — alışa "Tek satış" denmez.
+                    l.Add(new($"har:{i.Id}", FistenSecenekMetni(i, 1, i.TlTutari), CariAdi(i.CariId),
+                              RozetMetni: FistenTekRozet(i.Tur)));
+                }
+            }
+            return l;
+        }
+    }
+
+    /// <summary>Fişsiz tek işlemin rozeti: alış türleri (ALIS, HURDA_ALIS) "Tek alış", diğerleri "Tek satış".</summary>
+    private string FistenTekRozet(string tur) => tur is "ALIS" or "HURDA_ALIS" ? T1.FistenTekAlisRozet : T1.FistenFissizRozet;
+
+    private string FistenSecenekMetni(FaturalanabilirIslem i, int kalem, decimal toplam) =>
+        string.Join(" · ", new[]
+        {
+            Bicim.TarihSaat(i.Tarih),
+            i.Tur == "SATIS" ? Dil.T.Fatura.Satis : Dil.T.Fatura.Alis,
+            kalem > 1 ? string.Format(T1.FistenKalemSayisi, kalem) : (i.UrunAd ?? ZB.FistenKalemGenel),
+            Bicim.Tl(toplam),
+        });
+
+    private string? CariAdi(string? cariId) =>
+        string.IsNullOrEmpty(cariId) ? null : cariler.FirstOrDefault(c => c.Id == cariId)?.Ad;
+
+    /// <summary>
+    /// Listeden seçim: fişli → mevcut fiş önizlemesi (sunucunun fiş okuma ucu); fişsiz → önizleme
+    /// sunucunun faturalanabilir satırından kurulur (ekran HESAPLAMAZ, yalnız gösterir) ve Kaydet
+    /// gövdeye hareketId koyar. Seçim değişince eski önizleme düşer (UX-S24).
+    /// </summary>
+    private async Task FistenIslemSecildi(string? deger)
+    {
+        fisYanit = null;
+        fistenHata = null;
+        fistenBasari = null;
+        fistenHareketId = "";
+        fistenFisId = "";
+        if (deger is null) return;
+        if (deger.StartsWith("fis:", StringComparison.Ordinal))
+        {
+            fistenFisId = deger[4..];
+            await FisOnizle();
+            return;
+        }
+        if (!deger.StartsWith("har:", StringComparison.Ordinal)) return;
+        var h = faturalanabilir.FirstOrDefault(x => x.Id == deger[4..]);
+        if (h is null) return;
+        fistenHareketId = h.Id;
+        fisYanit = new FisYaniti("", h.CariId, CariAdi(h.CariId), null, 1, h.TlTutari, h.HasGrami,
+            [new FisKalemVeri(h.Id, h.Tur, h.TlTutari, h.HasGrami, false, h.UrunAd, null)]);
+    }
+
+    /// <summary>
+    /// ÖNİZLEME: fişin kalemleri okuma ucundan gelir (ikinci bir belge ucu
+    /// AÇILMAZ). Fatura kesilmeden önce kullanıcı ne faturalanacağını görür.
+    /// </summary>
+    private async Task FisOnizle()
+    {
+        fistenHata = null;
+        fistenBasari = null;
+        fisYanit = null;
+        onizleniyor = true;
+        try { fisYanit = await Api.GetAsync<FisYaniti>($"/islemler/fis/{fistenFisId}"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // Hata "kayıt yok"a çevrilmez (UX-S28): sebebi kullanıcı görür.
+            fistenHata = ex.Message;
+        }
+        onizleniyor = false;
+    }
+
+    /// <summary>Fişten kesilecek faturanın türü: fişin BÜTÜN kalemleri alış hareketiyse (ALIS,
+    /// HURDA_ALIS) alış faturası, aksi hâlde satış faturası (karışık fişte eski varsayılan korunur).
+    /// Önizleme yoksa null — sunucu kendi varsayılanını uygular (düğme zaten kilitli).</summary>
+    public static string? FistenTur(FisYaniti? fis) =>
+        fis is null ? null
+        : fis.Kalemler.Count > 0 && fis.Kalemler.All(k => k.Tur is "ALIS" or "HURDA_ALIS") ? "ALIS"
+        : "SATIS";
+
+    // ── Orkestratör 18:05: Fişten Fatura Kes penceresinin TAMAMI sözlükten geçer ──
+    // Önizleme FATURAYI önizler: sunucu kalem fiyatını ve has gramını mutlak değerle yazar
+    // (FaturaModulu.FistenOlustur, Math.Abs). Defterin yön işareti (alışta TL eksi, satışta
+    // has eksi) burada basılmaz — yönü "Tür" rozeti söyler; fatura listesi de işaretsizdir.
+
+    /// <summary>Kalem adı: ürün adı; ürünsüz kalemde (ör. eski altın bacağı HURDA_ALIS) hareket
+    /// türünün sözlükteki adı. Sözlükte olmayan bir kod da ekrana çıkmaz (genel "Fiş kalemi").</summary>
+    private string FisKalemAdi(FisKalemVeri fk)
+    {
+        if (!string.IsNullOrWhiteSpace(fk.UrunAd)) return fk.UrunAd;
+        var ad = Kuyumcu.Core.I18n.KatalogSozlugu.HareketTuru(fk.Tur, Dil.Dil, Dil.BasitMi);
+        return ad == fk.Tur || ad == "—" ? ZB.FistenKalemGenel : ad;
+    }
+
+    /// <summary>Fişin toplamı fatura yönünden (işaretsiz) — bkz. yukarıdaki not.</summary>
+    public static decimal FistenToplam(FisYaniti fis) => Math.Abs(fis.ToplamTl);
+
+    // 29.09 DEVAM 12: Fişten çekmecesinin Kaydet kilidi ve SEBEBİ (UX-S30) tek yerden.
+    private bool FistenKaydetKapali => FistenKilitSebebi is not null;
+    private string? FistenKilitSebebi =>
+        kaydediliyor ? Dil.T.Kabuk.SunucuOnayiBekleniyor
+        : fisYanit is null ? ZB.FistenKilitOnizle
+        : fisYanit.KalemSayisi == 0 ? ZB.FistenKilitKalemYok
+        : !string.IsNullOrEmpty(fisYanit.FaturaNo) ? ZB.FistenKilitFaturali
+        : null;
+
+    /// <summary>Fiş zaten faturalıysa bant cümlesi: taslak damgası (TASLAK:&lt;ULID&gt;) ekrana
+    /// basılmaz — "taslak faturaya bağlı, numara kesimde verilir" (işlem defteriyle aynı kural);
+    /// kesilmiş faturada numara cümlenin içinde.</summary>
+    /// <summary>TOPLU-1 tur 2 (doğrulayıcı DÜŞÜK): aynı işlem iki sekmede/yarışta faturalanınca sunucunun
+    /// "zaten … ile faturalandırılmış" reddi ham basılmaz — bant cümlesi FistenFaturaliMesaj kalıbıyla
+    /// (taslak → "taslak faturaya bağlı", kesilmiş → numara cümlede). Diğer retler olduğu gibi.</summary>
+    internal string FistenRetMetni(string mesaj)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(mesaj, @"zaten\s+(\S*)\s*ile faturalandırılmış");
+        var islem = fistenHareketId.Length > 0;
+        if (m.Success)
+        {
+            var no = m.Groups[1].Value;
+            return string.IsNullOrEmpty(no) || IslemDefteri.TaslakIsaretiMi(no)
+                ? (islem ? T1.FistenIslemTaslakBagli : ZB.FistenTaslakFaturali)
+                : string.Format(islem ? T1.FistenIslemFaturali : ZB.FistenZatenFaturali, no);
+        }
+        if (mesaj.Contains("taslak bir faturayla faturalandırılmış", StringComparison.Ordinal))
+            return islem ? T1.FistenIslemTaslakBagli : ZB.FistenTaslakFaturali;
+        return mesaj;
+    }
+
+    private string FistenFaturaliMesaj(string? no) =>
+        IslemDefteri.TaslakIsaretiMi(no) ? ZB.FistenTaslakFaturali : string.Format(ZB.FistenZatenFaturali, no);
+
+    private async Task FistenFaturaKes()
+    {
+        fistenHata = null;
+        fistenBasari = null;
+        kaydediliyor = true;
+        try
+        {
+            // TOPLU-1: fişsiz işlemde fisId yerine hareketId gider (sunucu ikisinden birini ister).
+            var fistenYanit = await Api.PostAsync<JsonElement>("/faturalar/fisten", new
+            {
+                fisId = fistenHareketId.Length > 0 ? null : fistenFisId,
+                hareketId = fistenHareketId.Length > 0 ? fistenHareketId : null,
+                // Tür fişten (önizlemedeki kalemlerin hareket türü); ekranda ff-tur ile görünen değer.
+                tur = FistenTur(fisYanit),
+                kdvTuru = fistenKdvTuru,
+                kdvOran = decimal.Parse(fistenKdv, CultureInfo.InvariantCulture),
+            });
+            fistenBasari = Dil.T.Ortak.Basarili;
+            fistenModalAcik = false;
+            // UX-S27: çekmece kapanınca içindeki bant görünmez — sonuç SAYFANIN bandına, sunucunun
+            // döndürdüğü toplamla yazılır (POST yanıtı okunur).
+            var olusanToplam = fistenYanit.ValueKind == JsonValueKind.Object
+                && fistenYanit.TryGetProperty("toplam", out var ot) && ot.ValueKind == JsonValueKind.Number
+                ? ot.GetDecimal() : FistenToplam(fisYanit!);
+            BasariGoster(string.Format(T1.FistenOlustu, fisYanit?.CariAd ?? ZB.FistenCariYok, Bicim.Tl(olusanToplam)));
+            await Yukle();
+        }
+        catch (ApiHata ex) { fistenHata = FistenRetMetni(ex.Message); }
+        kaydediliyor = false;
+    }
+
+    private async Task KalemleriAc(FaturaVeri f)
+    {
+        kalemHata = null;
+        kalemForm.Temizle();
+        kalemYanit = null;
+        kalemFaturaDurumu = f.Durum;
+        kalemFaturaTuru = f.Tur;
+        kalemModalAcik = true;
+        try { kalemYanit = await Api.GetAsync<KalemYaniti>($"/faturalar/{f.Id}/kalemler"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // Hata "kayıt yok"a çevrilmez (UX-S28): sebebi kullanıcı görür.
+            kalemHata = ex.Message;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PAKET P-22 / B-3 — TASLAK FATURA VE KALEMLERİ DÜZENLENEBİLİR
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private string? kalemFaturaDurumu;
+    private string? kalemFaturaTuru;
+    private bool kalemKaydediliyor;
+
+    // TOPLU-1 tur 2 (tasarım hakemi KRİTİK): defter bağlı kalemin adet kilidi GERÇEK kaynağı söyler.
+    // Fişli hareket → "satış fişinden gelir · Fişten değiştir" (/islemler); fişsiz tek işlem → "satış
+    // (alış) kaydından gelir · İşlem kaydını gör" (işlem defteri). Kilidin kendisi sunucu kuralıdır (400).
+    private string AdetKilitMetni(KalemVeri k) =>
+        !k.HareketFissiz ? P3.AdetFistenGelir
+        : kalemFaturaTuru == "ALIS" ? T1.AdetAlistanGelir : T1.AdetSatistanGelir;
+    private static string AdetKilitBagi(KalemVeri k) => k.HareketFissiz ? "/raporlar/islem-defteri" : "/islemler";
+    private string AdetKilitBagMetni(KalemVeri k) => k.HareketFissiz ? T1.IslemKaydiniGor : P3.AdetFistenDegistir;
+
+    /// <summary>Kalem yalnız TASLAK belgede düzenlenir (sunucu kuralının aynası).</summary>
+    private bool KalemDuzenlenebilir => kalemFaturaDurumu == "TASLAK";
+    private KesifP3Metinleri P3 => KesifP3Sozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// K01 (30.09): satır içi düzenlenen PARA değeri tablo ile aynı dili konuşur —
+    /// binlikli ve iki kuruş haneli ("1.095.125,00"; eskiden "1095125,00", kutuda
+    /// kesik). Virgül her zaman bulunduğu için P-78 belirsizliği ("1.500") doğmaz;
+    /// kaydette FormAlani.SayiCoz aynı metni çözer.
+    /// </summary>
+    private const string ParaKutuKalibi = "#,##0.00";
+
+    // P-54: kalem hücrelerinin alan→mesaj defteri. Sunucu 400'ü (ör. "Miktar
+    // sıfırdan büyük olmalıdır") DÜZELTİLEN HÜCRENİN ALTINA yazılır: satır içi
+    // düzenleme tek alan gönderir, bu yüzden hata o alana aittir.
+    private readonly FormDurumu kalemForm = new();
+
+    private static string KalemAlanAnahtari(string alan, string kalemId) => $"fd-kalem-{alan}-{kalemId}";
+
+    private async Task KalemKaydet(string kalemId, string alan, string deger)
+    {
+        if (kalemYanit is null) return;
+        kalemHata = null;
+        kalemForm.Temizle();
+        // P-78: sayı alanı tr-TR TEK MERKEZDE çözülür. Eski yol virgülü noktaya
+        // çevirip Invariant okuyordu: "45.000" = 45, "1.250,50" = FormatException.
+        decimal? sayi = null;
+        if (alan != "aciklama" && !string.IsNullOrWhiteSpace(deger))
+        {
+            var cozum = FormAlani.SayiCoz(deger);
+            if (cozum.Deger is not { } d)
+            {
+                kalemForm.Ekle(KalemAlanAnahtari(alan, kalemId),
+                    cozum.Mesaj(Dil.Dil) ?? Dil.T.Fatura.SayiGecersiz);
+                kalemHata = FT.KalemHatali;
+                return;
+            }
+            sayi = d;
+        }
+        kalemKaydediliyor = true;
+        try
+        {
+            // İşçilik/indirim boş bırakılırsa null gider = alan silinir (PATCH
+            // sözleşmesi: gövdede yoksa koru, null ise sil).
+            object govde = alan == "aciklama"
+                ? new Dictionary<string, object?> { ["aciklama"] = deger }
+                : new Dictionary<string, object?>
+                  {
+                      [alan] = sayi,
+                  };
+            // UX-S27: PATCH yanıtı OKUNUR; toplam sunucudan gelir, ekran hesaplamaz.
+            kalemYanit = await Api.PatchAsync<KalemYaniti>(
+                $"/faturalar/{kalemYanit.FaturaId}/kalemler/{kalemId}", govde);
+            BasariGoster(Dil.T.Fatura.KalemGuncellendi);
+            // Q9-2: çekmecede de sonuç GÖRÜNÜR (sayfa bandı çekmecenin arkasında kalır).
+            if (duzenlenen is not null) CekmeceKalemSonucu(Dil.T.Fatura.KalemGuncellendi);
+            await Yukle();
+        }
+        catch (FormatException)
+        {
+            kalemForm.Ekle(KalemAlanAnahtari(alan, kalemId), Dil.T.Fatura.SayiGecersiz);
+            kalemHata = FT.KalemHatali;
+        }
+        catch (ApiHata ex)
+        {
+            // Hata ALAN DÜZEYİNDE; bant yalnız "işaretli alana bakın" der.
+            kalemForm.Ekle(KalemAlanAnahtari(alan, kalemId), ex.Message);
+            kalemHata = FT.KalemHatali;
+        }
+        catch (JsonException ex) { kalemHata = ex.Message; }
+        finally { kalemKaydediliyor = false; }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PAKET Q9-2 — DÜZENLE ÇEKMECESİNDE SATIRLAR (düzelt + EKLE)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>Ürün seçicisinin sunucu sınırı (UX-S29: sınıra değince söylenir).</summary>
+    private const int UrunListeSiniri = 200;
+
+    private string? cekmeceKalemBasari;
+    private int cekmeceKalemJeton;
+    private string? urunYuklemeHatasi;
+    private bool kalemEkleniyor;
+    private readonly FormDurumu yeniKalemForm = new();
+    private string ykUrunId = "", ykAciklama = "";
+    private decimal? ykMiktar = 1m, ykFiyat, ykIscilik, ykIndirim;
+
+    /// <summary>Ürün seçicisinin seçenekleri — oluşturma formuyla aynı liste (UX-S26).</summary>
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi> UrunSecenekleri =>
+        urunler.Select(u => new Kuyumcu.Web.Bilesenler.SecenekOgesi(u.Id, u.Ad)).ToList();
+
+    /// <summary>Başarı çekmecenin İÇİNDE yazılır; başlık toplamı sunucu yanıtından tazelenir.</summary>
+    private void CekmeceKalemSonucu(string mesaj)
+    {
+        cekmeceKalemBasari = mesaj;
+        cekmeceKalemJeton++;
+        if (kalemYanit is not null)
+            dToplam = kalemYanit.Toplam;
+    }
+
+    private void YeniKalemFormunuSifirla()
+    {
+        yeniKalemForm.Temizle();
+        ykUrunId = ""; ykAciklama = ""; ykMiktar = 1m; ykFiyat = null; ykIscilik = null; ykIndirim = null;
+    }
+
+    /// <summary>
+    /// Önizleme (UX-S23): kaydetmeden ÖNCE satır toplamı görünür. Yalnız bilgi —
+    /// kaydedilen toplam SUNUCUNUN yanıtıdır.
+    /// </summary>
+    private decimal? YeniSatirOnizleme
+    {
+        get
+        {
+            if (ykMiktar is not { } miktarD || ykFiyat is not { } fiyatD) return null;
+            return Yuvarla2(miktarD * fiyatD + (ykIscilik ?? 0m) - (ykIndirim ?? 0m));
+        }
+    }
+
+    /// <summary>Çekmece açılınca KALEMLİ taslağın satırları ve ürün listesi okunur.</summary>
+    private async Task CekmeceSatirlariniYukle(FaturaVeri f)
+    {
+        kalemYanit = null;
+        kalemHata = null;
+        kalemForm.Temizle();
+        cekmeceKalemBasari = null;
+        urunYuklemeHatasi = null;
+        YeniKalemFormunuSifirla();
+        if (f.KalemKaynagi != "KALEM") return;
+        kalemFaturaDurumu = f.Durum;
+        kalemFaturaTuru = f.Tur;
+        try { kalemYanit = await Api.GetAsync<KalemYaniti>($"/faturalar/{f.Id}/kalemler"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28: hata "satır yok"a çevrilmez.
+            kalemHata = ex.Message;
+        }
+        try { urunler = await Api.GetAsync<List<UrunVeri>>($"/urunler?aktif=true&limit={UrunListeSiniri}"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            urunler = [];
+            urunYuklemeHatasi = string.Format(FT.UrunYuklenemedi, ex.Message);
+        }
+    }
+
+    private static readonly Dictionary<string, string> YeniKalemAlanEslemesi = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["UrunId"] = "fd-kalem-yeni-urun", ["Aciklama"] = "fd-kalem-yeni-aciklama",
+        ["Miktar"] = "fd-kalem-yeni-miktar", ["BirimFiyat"] = "fd-kalem-yeni-fiyat",
+        ["IscilikTl"] = "fd-kalem-yeni-iscilik", ["IndirimTutari"] = "fd-kalem-yeni-indirim",
+    };
+
+    /// <summary>Sunucu 400 metni hangi alanı anıyorsa o alanın altına yazılır.</summary>
+    private static readonly (string Anahtar, string Alan)[] YeniKalemMesajEslemesi =
+    [
+        ("ürün", "fd-kalem-yeni-urun"),
+        ("miktar", "fd-kalem-yeni-miktar"),
+        ("birim fiyat", "fd-kalem-yeni-fiyat"),
+        ("satır toplamı", "fd-kalem-yeni-fiyat"),
+        ("işçilik", "fd-kalem-yeni-iscilik"),
+        ("indirim", "fd-kalem-yeni-indirim"),
+        ("açıklama", "fd-kalem-yeni-aciklama"),
+    ];
+
+    private async Task YeniKalemEkle()
+    {
+        if (duzenlenen is not { } f || kalemYanit is null) return;
+        yeniKalemForm.Temizle();
+        kalemHata = null;
+        cekmeceKalemBasari = null;
+
+        // Boş/geçersiz gönderimde SESSİZ etkisizlik yok (DoD EK md.3) — alan altı mesaj.
+        // Sayı ayrıştırması (tr-TR, "1.250,50") ortak girdi ailesindedir (SayisalAlan).
+        var miktar = ykMiktar;
+        var fiyat = ykFiyat;
+        var iscilik = ykIscilik;
+        var indirim = ykIndirim;
+        if (miktar is null) yeniKalemForm.Ekle("fd-kalem-yeni-miktar", Dil.T.Kabuk.ZorunluAlan);
+        else yeniKalemForm.Pozitif("fd-kalem-yeni-miktar", miktar, Dil);
+        if (fiyat is null) yeniKalemForm.Ekle("fd-kalem-yeni-fiyat", Dil.T.Kabuk.ZorunluAlan);
+        else yeniKalemForm.NegatifDegil("fd-kalem-yeni-fiyat", fiyat, Dil);
+        yeniKalemForm.NegatifDegil("fd-kalem-yeni-iscilik", iscilik, Dil);
+        yeniKalemForm.NegatifDegil("fd-kalem-yeni-indirim", indirim, Dil);
+        var urunId = string.IsNullOrWhiteSpace(ykUrunId) ? null : ykUrunId;
+        if (f.KdvTuru == "KUYUM" && urunId is null)
+            yeniKalemForm.Ekle("fd-kalem-yeni-urun", FT.KuyumUrunZorunlu);
+        else if (urunId is null && string.IsNullOrWhiteSpace(ykAciklama))
+            yeniKalemForm.Ekle("fd-kalem-yeni-aciklama", FT.AciklamaYaDaUrun);
+        if (yeniKalemForm.Gecerli && YeniSatirOnizleme is <= 0m)
+            yeniKalemForm.Ekle("fd-kalem-yeni-fiyat", FT.SatirToplamiSifir);
+        if (!yeniKalemForm.Gecerli) { kalemHata = Dil.T.Kabuk.FormEksik; return; }
+
+        kalemEkleniyor = true;
+        try
+        {
+            var govde = new Dictionary<string, object?>
+            {
+                ["urunId"] = urunId,
+                ["aciklama"] = string.IsNullOrWhiteSpace(ykAciklama) ? null : ykAciklama.Trim(),
+                ["miktar"] = miktar,
+                ["birimFiyat"] = fiyat,
+                ["iscilikTl"] = iscilik,
+                ["indirimTutari"] = indirim,
+            };
+            // UX-S27: POST yanıtı OKUNUR — yeni satır ve toplam sunucudan gelir.
+            var yanit = await Api.PostAsync<KalemYaniti>($"/faturalar/{f.Id}/kalemler", govde);
+            kalemYanit = yanit;
+            var sira = yanit.Kalemler.Count == 0 ? 0 : yanit.Kalemler.Max(k => k.Sira);
+            var mesaj = string.Format(FT.SatirEklendi, sira, Bicim.Tl(yanit.Toplam));
+            CekmeceKalemSonucu(mesaj);
+            BasariGoster(mesaj);
+            YeniKalemFormunuSifirla();
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            yeniKalemForm.Sunucudan(ex, YeniKalemAlanEslemesi);
+            if (yeniKalemForm.Gecerli)
+            {
+                foreach (var (anahtar, alan) in YeniKalemMesajEslemesi)
+                {
+                    if (ex.Message.Contains(anahtar, StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        yeniKalemForm.Ekle(alan, ex.Message);
+                        break;
+                    }
+                }
+            }
+            kalemHata = yeniKalemForm.Gecerli ? FormDurumu.SunucuMesaji(ex, Dil) : FT.KalemHatali;
+        }
+        catch (JsonException ex) { kalemHata = ex.Message; }
+        finally { kalemEkleniyor = false; }
+    }
+
+    // ── Başlık düzenleme — TEK KALIP: Cekmece (çok alanlı) ──────────────────
+    private FaturaVeri? duzenlenen;
+    private string dCariId = "", dAciklama = "";
+    private decimal? dToplam;
+    private DateTime dTarih = DateTime.Today;
+    // BELGE-KALAN: çekmece açılırken gösterilen gün — değişmediyse PATCH gövdesine girmez
+    // (sözleşme: gövdede yoksa KORU → kaydın saati de korunur).
+    private DateTime dTarihIlk = DateTime.Today;
+
+    /// <summary>BELGE-KALAN — belgenin GÜNÜ: listeyle (Bicim.Tarih) aynı kural. Tur 2: tarayıcı yereli
+    /// değil İŞLETME günü (Europe/Istanbul, Bicim.IsletmeZamani) — sunucunun PATCH gün kararıyla aynı.</summary>
+    internal static DateTime BelgeGunu(DateTime t) => Bicim.IsletmeZamani(t).Date;
+    private string? duzenleHata;
+    private bool duzenleKaydediliyor;
+    // P-53: çekmecenin alan→mesaj defteri (sunucu 400'ü ALANIN ALTINA yazılır).
+    private readonly FormDurumu duzenleForm = new();
+    // P-53: cari listesi yüklenemediyse dolu — Kaydet kilitlenir, sebebi yazılır.
+    private string? cariYuklemeHatasi;
+    private FaturaTaslakMetinleri FT => FaturaTaslakSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// Y4-D: ALTIN DIŞI kıymetli maden (gümüş/platin/paladyum) kuyum satırı — sunucu has
+    /// bedelini düşmez (KDV tam). TEK KAYNAK: sunucunun kaleme yazdığı <c>Maden</c>
+    /// (ayardan türetilmez; ürünsüz hurda gümüş satırında da dolu).
+    /// </summary>
+    private static bool GumusKuyumKalemi(KalemVeri k) =>
+        k.KdvTuru == "KUYUM" && k.Maden is Kuyumcu.Core.Domain.Maden.Gumus
+            or Kuyumcu.Core.Domain.Maden.Platin or Kuyumcu.Core.Domain.Maden.Paladyum;
+
+    /// <summary>Madeni bilinmeyen kuyum satırı: sunucu özel matrah uygulamaz (fail-closed) — sebep yazılır.</summary>
+    private static bool MadeniBilinmeyenKuyumKalemi(KalemVeri k) =>
+        k.KdvTuru == "KUYUM" && string.IsNullOrEmpty(k.Maden);
+
+    // ── P-61 — satır eylemleri TEK kaynaktan (SatirEylemleri bileşeni) ──
+    private EventCallback Cb(Func<Task> f) => EventCallback.Factory.Create(this, f);
+    private EventCallback Cb(Action f) => EventCallback.Factory.Create(this, f);
+
+    private IReadOnlyList<SatirEylemleri.Eylem> FaturaEylemleri(FaturaVeri f)
+    {
+        // Sıra = ekran sırası. DAR SÜTUN (Birincil=1): ilk eylem satırda, gerisi "⋯"
+        // penceresinde. İlk eylem durumun BİRİNCİL işidir: TASLAK → Düzenle,
+        // KESİLDİ → Ödendi işaretle, diğerleri → Kalemleri göster.
+        var goster = new SatirEylemleri.Eylem($"fk-goster-{faturalar.IndexOf(f)}", Dil.T.Fatura.KalemGoster,
+                                              Cb(() => KalemleriAc(f)));
+        var l = new List<SatirEylemleri.Eylem>();
+        if (f.Durum == "TASLAK")
+        {
+            // P-22 / B-3: TASLAK belge DÜZENLENEBİLİR — tek kalıp Cekmece (DoD EK md.2).
+            l.Add(new($"fk-duzenle-{f.Id}", Dil.T.Ortak.Duzenle, Cb(() => DuzenleAc(f)),
+                      kilitli: guncelleniyor, kilitNedeni: Dil.T.Kabuk.Kaydediliyor));
+            l.Add(goster);
+            l.Add(new($"fk-kes-{f.Id}", Dil.T.Fatura.Kes, Cb(() => DurumIste(f, "KESILDI")),
+                      kilitli: guncelleniyor, kilitNedeni: Dil.T.Kabuk.Kaydediliyor));
+        }
+        else if (f.Durum == "KESILDI")
+        {
+            l.Add(new($"fk-odendi-{f.Id}", Dil.T.Fatura.OdendiIsaretle, Cb(() => DurumIste(f, "ODENDI")),
+                      kilitli: guncelleniyor, kilitNedeni: Dil.T.Kabuk.Kaydediliyor, ekSinif: "metin-yesil"));
+            l.Add(goster);
+        }
+        else
+        {
+            l.Add(goster);
+        }
+        // ODENDI → IPTAL sunucuda İZİNLİDİR (GecerliGecisler) — QA turu 2 YÜKSEK: geri dönüş yolu.
+        // Yıkıcı eylem pencerede; önce onay modalı (DoD EK 4).
+        if (f.Durum is "TASLAK" or "KESILDI" or "ODENDI")
+            l.Add(new($"fk-iptal-{f.Id}", Dil.T.Fatura.IptalEt, Cb(() => DurumIste(f, "IPTAL")),
+                      kilitli: guncelleniyor, kilitNedeni: Dil.T.Kabuk.Kaydediliyor, ekSinif: "metin-kirmizi"));
+        return l;
+    }
+
+    /// <summary>
+    /// P-53: yeni-fatura modalı ile düzenleme çekmecesinin ORTAK cari yükleyicisi.
+    /// Başarısızsa liste boşaltılır ve hata metni DÖNER — çağıran onu bandına
+    /// yazar (UX-S28: hata 'kayıt yok'a çevrilmez, sessiz yutulmaz).
+    /// </summary>
+    private async Task<string?> CarileriGetir()
+    {
+        try
+        {
+            cariler = await Api.GetAsync<List<CariVeri>>("/cari?aktif=true&limit=200");
+            return null;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            cariler = [];
+            return ex.Message;
+        }
+    }
+
+    private async Task DuzenleAc(FaturaVeri f)
+    {
+        duzenleHata = null;
+        cariYuklemeHatasi = null;
+        duzenleForm.Temizle();
+        duzenlenen = f;
+        dCariId = f.CariId ?? "";
+        dAciklama = f.Aciklama ?? "";
+        // BELGE-KALAN (VERİ/YASAL): kayıt UTC anıdır; liste Bicim.Tarih ile YEREL günü basar.
+        // Çekmece ham UTC tarihini alıyordu → 00:00–03:00 TSI kaydı listede 1.10, çekmecede
+        // 30.09 görünüyor ve dokunmadan Kaydet belgeyi bir gün GERİ yazıyordu.
+        dTarih = BelgeGunu(f.Tarih);
+        dTarihIlk = dTarih;
+        dToplam = f.Toplam;
+
+        // QA tur 8 (P-53): cari listesi yalnız yeni-fatura modalında yükleniyordu;
+        // sayfa açılıp doğrudan Düzenle'ye basılınca seçici BOŞ geliyordu.
+        if (await CarileriGetir() is { } hata)
+        {
+            cariYuklemeHatasi = hata;
+            duzenleHata = $"{FT.CariYuklenemedi} ({hata})";
+        }
+        // Belgenin mevcut carisi (ör. sonradan pasife alınmış) aktif listede yoksa
+        // seçici yine ONU gösterir — sessizce ilk cariye kaymaz.
+        if (!string.IsNullOrEmpty(f.CariId) && cariler.All(c => c.Id != f.CariId))
+            cariler = [new CariVeri(f.CariId, f.CariAd), .. cariler];
+
+        // Q9-2 (QA turu 9, KRİTİK): Düzenle kipinde satırlar da düzeltilir/eklenir.
+        await CekmeceSatirlariniYukle(f);
+    }
+
+    /// <summary>Kalemli ya da kuyum belgede toplam BAŞLIKTAN değişmez (sunucu kuralının aynası).</summary>
+    private bool ToplamDuzenlenebilir =>
+        duzenlenen is { KalemKaynagi: not "KALEM" } && !ToplamKuyum;
+
+    /// <summary>
+    /// P-53: SUNUCU KURALININ AYNASI (FaturaModulu.TaslakGuncelle) — KdvTuru KUYUM
+    /// ise toplam başlıktan DAİMA değişmez; has bedelinin kaynağı (ELLE/HAREKET/
+    /// KALEM) belirleyici DEĞİLDİR. Eski koşul HasDegerKaynagi'na bakıyordu ve
+    /// ELLE kuyum taslağında alanı açık bırakıp 400 yedirtiyordu.
+    /// </summary>
+    private bool ToplamKuyum => duzenlenen is { KdvTuru: "KUYUM" };
+
+    /// <summary>
+    /// P-53: PATCH 400 mesajını ilgili ALANA yerleştirir. Sunucu bu uçta alan
+    /// sözlüğü (alanlar) dönmüyor; mesajın andığı alan eşlenir. Eşlenemeyen
+    /// mesaj (ör. "Yalnız TASLAK fatura düzenlenebilir") çekmecenin bandına yazılır.
+    /// </summary>
+    private static readonly (string Anahtar, string Alan)[] DuzenleAlanEslemesi =
+    [
+        ("toplam", "fd-duzenle-toplam"),
+        ("cari", "fd-duzenle-cari"),
+        ("tarih", "fd-duzenle-tarih"),
+        ("açıklama", "fd-duzenle-aciklama"),
+    ];
+
+    private void DuzenleSunucuHatasi(ApiHata ex)
+    {
+        duzenleForm.Sunucudan(ex, new Dictionary<string, string>
+        {
+            ["CariId"] = "fd-duzenle-cari", ["Tarih"] = "fd-duzenle-tarih",
+            ["Aciklama"] = "fd-duzenle-aciklama", ["Toplam"] = "fd-duzenle-toplam",
+        });
+        var mesaj = FormDurumu.SunucuMesaji(ex, Dil);
+        if (duzenleForm.Gecerli)
+        {
+            foreach (var (anahtar, alan) in DuzenleAlanEslemesi)
+            {
+                if (ex.Message.Contains(anahtar, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    duzenleForm.Ekle(alan, mesaj);
+                    break;
+                }
+            }
+        }
+        // Alana yerleştiyse bant yalnız "formda hata var" der; yerleşmediyse metnin kendisi.
+        duzenleHata = duzenleForm.Gecerli ? mesaj : Dil.T.Kabuk.FormEksik;
+    }
+
+    private async Task DuzenleKaydet()
+    {
+        if (duzenlenen is not { } f) return;
+        duzenleHata = null;
+        duzenleForm.Temizle();
+        // Boş/geçersiz gönderimde SESSİZ etkisizlik yok (DoD EK md.3).
+        duzenleForm.Zorunlu("fd-duzenle-cari", dCariId, Dil);
+        if (!duzenleForm.Gecerli) { duzenleHata = Dil.T.Kabuk.FormEksik; return; }
+        duzenleKaydediliyor = true;
+        try
+        {
+            var govde = new Dictionary<string, object?>
+            {
+                ["cariId"] = dCariId,
+                ["aciklama"] = string.IsNullOrWhiteSpace(dAciklama) ? null : dAciklama.Trim(),
+            };
+            if (dTarih.Date != dTarihIlk.Date)
+                govde["tarih"] = Bicim.Makine(dTarih);
+            if (ToplamDuzenlenebilir)
+            {
+                // ZO-BELGE: girdi ailesi değeri decimal taşır; boş toplam SESSİZ
+                // gönderilmez (eski FormatException yolunun karşılığı).
+                if (dToplam is not { } dt) throw new FormatException();
+                govde["toplam"] = dt;
+            }
+
+            await Api.PatchAsync($"/faturalar/{f.Id}", govde);
+            BasariGoster(Dil.T.Fatura.TaslakGuncellendi);
+            duzenlenen = null;
+            await Yukle();
+        }
+        catch (FormatException)
+        {
+            duzenleForm.Ekle("fd-duzenle-toplam", Dil.T.Fatura.SayiGecersiz);
+            duzenleHata = Dil.T.Kabuk.FormEksik;
+        }
+        // P-53: sunucu 400'ü ÇEKMECEDE, alan düzeyinde — çekmece KAPANMAZ.
+        catch (ApiHata ex) { DuzenleSunucuHatasi(ex); }
+        catch (JsonException ex) { duzenleHata = ex.Message; }
+        finally { duzenleKaydediliyor = false; }
+    }
+
+    // ── PAKET P-26 (Y-40) — özel matrah beyanı alanları ────────────────────
+    private string? ozelMatrahKod;
+    private string? ozelMatrahKaynak;
+    private bool ozelMatrahAralikta = true;
+    private string? ozelMatrahHata;
+    // PAKET YASAL-4 / Y4-C: rozet yalnız kiracıda KUYUM fatura varken (sunucu söyler).
+    private bool kuyumFaturaVar;
+    private Kuyumcu.Core.I18n.Yasal4Metinleri Y4F => Kuyumcu.Core.I18n.Yasal4Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await OzelMatrahAyariYukle();
+        await Yukle();
+    }
+
+    /// <summary>
+    /// Y-40: kodu VE kaynağını sunucudan okur. Hata hâlinde beyan "yok"a
+    /// çevrilmez — ayrı hata bandı basılır (UX-S28 · Anayasa md.1).
+    /// </summary>
+    private async Task OzelMatrahAyariYukle()
+    {
+        try
+        {
+            ozelMatrahHata = null;
+            var a = await Api.GetAsync<JsonElement>("/faturalar/ozel-matrah-ayari");
+            ozelMatrahKod = a.TryGetProperty("kod", out var k) && k.ValueKind == JsonValueKind.String
+                ? k.GetString() : null;
+            ozelMatrahKaynak = a.TryGetProperty("kaynakBeyani", out var kb) ? kb.GetString() : null;
+            ozelMatrahAralikta = !a.TryGetProperty("aralikta", out var ar)
+                || ar.ValueKind != JsonValueKind.False;
+            kuyumFaturaVar = a.TryGetProperty("kuyumFaturaVar", out var kf) && kf.ValueKind == JsonValueKind.True;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            // UX-S28 / P-11: hata "veri yok"a ÇEVRİLMEZ. Elde ne varsa durur,
+            // yalnız hata bandı yazılır; kullanıcı beyanın okunamadığını görür.
+            ozelMatrahHata = $"{Dil.T.Fatura.OzelMatrahOkunamadi} {ex.Message}";
+        }
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try
+        {
+            listeHata = null;
+            var yol = string.IsNullOrEmpty(durumFiltre) ? "/faturalar" : $"/faturalar?durum={durumFiltre}";
+            faturalar = (await Api.GetAsync<FaturaYaniti>(yol)).Faturalar;
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            faturalar = [];
+            listeHata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private async Task YeniModalAc()
+    {
+        modalHata = null;
+        modalBasari = null;
+        formCariId = "";
+        formTur = "SATIS";
+        formKdv = "0.20";
+        formKdvTuru = "STANDART";
+        formHasDeger = 0;
+        formHareketId = "";
+        onizleme = null;
+        islemHata = null;
+        faturalanabilir = [];
+        faturalanabilirDahaVar = false;
+        formToplam = 0;
+        formAciklama = "";
+        formKalemler.Clear();
+        yeniModalAcik = true;
+        // P-53: düzenleme çekmecesiyle ORTAK yükleyici.
+        if (await CarileriGetir() is { } cariHata) modalHata = cariHata;
+        try { urunler = await Api.GetAsync<List<UrunVeri>>("/urunler?aktif=true&limit=200"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { urunler = []; }
+    }
+
+    private async Task OdakIlkHataya()
+    {
+        if (yeniForm.IlkHatali is not { } ilk) return;
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", ilk); }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException)
+        {
+            /* JS yoksa alan altı mesaj ve üstteki hata bandı yine görünür */
+        }
+    }
+
+    private async Task FaturaOlustur()
+    {
+        // QA turu 2: "cari boş → Kaydet: istek yok, mesaj yok" (sessiz etkisizlik).
+        yeniForm.Temizle();
+        yeniForm.Zorunlu("fatura-cari", formCariId, Dil);
+        yeniForm.Pozitif("fatura-toplam", formToplam, Dil);
+        if (!yeniForm.Gecerli)
+        {
+            modalHata = Dil.T.Kabuk.FormEksik;
+            // 29.09 devam 6 (tasarım hakemi): hata mesajı görünür alanın dışında kalmasın —
+            // odak İLK hatalı alana taşınır (ortak kuyumcuOdak.alana; Cariler ile aynı yol).
+            await OdakIlkHataya();
+            return;
+        }
+
+        modalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            var yanit = await Api.PostAsync("/faturalar", new
+            {
+                cariId = formCariId,
+                tur = formTur,
+                toplam = formToplam,
+                kdvOran = FormKdvOran,
+                kdvTuru = formKdvTuru,
+                // KUYUM'da sunucu has bedelini DEFTERDEN türetir; ekran türetilen
+                // değeri geri gönderir ve sunucu kuruşu kuruşuna doğrular
+                // (tutarlılık kapısı — kasiyer matrahı seçemez).
+                hasDeger = Kuyum ? onizleme?.HasDeger : null,
+                // Fatura ↔ defter bağı: bu alan olmadan gün sonu mutabakatı her
+                // satışı "faturasız" sayıyordu.
+                hareketId = string.IsNullOrEmpty(formHareketId) ? null : formHareketId,
+                aciklama = string.IsNullOrWhiteSpace(formAciklama) ? null : formAciklama,
+                // Kalem YOKSA alan gönderilmez: sunucu bugünkü başlık yolunu kullanır.
+                kalemler = formKalemler.Count == 0 ? null : formKalemler.Select(k => new
+                {
+                    urunId = string.IsNullOrEmpty(k.UrunId) ? null : k.UrunId,
+                    miktar = k.Miktar,
+                    birimFiyat = k.BirimFiyat,
+                    iscilikTl = k.Iscilik,
+                    indirimTutari = k.Indirim,
+                }).ToList(),
+            });
+            // UX-S27: POST yanıtı OKUNUR; sunucunun verdiği fatura no banda yazılır.
+            modalBasari = yanit.TryGetProperty("faturaNo", out var fn)
+                ? $"{Dil.T.Ortak.Basarili} — {fn.GetString()}"
+                : Dil.T.Ortak.Basarili;
+            yeniModalAcik = false;
+            BasariGoster(modalBasari);
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            // TOPLU-7B: aynı ret alan altında TAM, bantta kısa genel cümle (tek yazım).
+            modalHata = yeniForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string>
+            {
+                ["CariId"] = "fatura-cari", ["Toplam"] = "fatura-toplam", ["HasDeger"] = "fatura-islem",
+            });
+        }
+        kaydediliyor = false;
+    }
+
+    private async Task DurumGuncelle(string id, string durum)
+    {
+        listeHata = null;
+        guncelleniyor = true;
+        try
+        {
+            await Api.PatchAsync<JsonElement>($"/faturalar/{id}/durum", new { durum });
+            // UX-S27 — sonuç banda yazılır; hangi faturanın hangi duruma geçtiği okunur.
+            BasariGoster(string.Format(Dil.T.Fatura.DurumDegisti,
+                durumFatura?.FaturaNo ?? id, DurumMetin(durum)));
+            await Yukle();
+        }
+        catch (ApiHata ex) { durumHata = FormDurumu.SunucuMesaji(ex, Dil); listeHata = durumHata; }
+        guncelleniyor = false;
+    }
+
+    // ── durum rozeti: TASLAK gri, KESILDI mavi, ODENDI yesil, IPTAL kirmizi ──
+    private static string DurumRenk(string durum) => durum switch
+    {
+        "KESILDI" => "mavi",
+        "ODENDI" => "yesil",
+        "IPTAL" => "kirmizi",
+        _ => "gri",
+    };
+
+    private string DurumMetin(string durum) => durum switch
+    {
+        "TASLAK" => Dil.T.Fatura.Taslak,
+        "KESILDI" => Dil.T.Fatura.Kesildi,
+        "ODENDI" => Dil.T.Fatura.Odendi,
+        "IPTAL" => Dil.T.Fatura.Iptal,
+        _ => durum,
+    };
+
+    private static string KdvYuzde(decimal oran) =>
+        (oran * 100).ToString("0", CultureInfo.InvariantCulture);
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

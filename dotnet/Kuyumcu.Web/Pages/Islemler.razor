@@ -1,0 +1,1399 @@
+@page "/islemler"
+@using Kuyumcu.Contracts.Bilesenler.MasakFormu
+@using System.Globalization
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Web.Bilesenler.Fis
+@using Kuyumcu.Contracts.Sayfalar.SaticiPersonel
+@inject ApiIstemci Api
+@inject UyumServisi Uyum
+@inject DilServisi Dil
+@inject CanliKurServisi Canli
+@inject OturumServisi Oturum
+@inject ArayuzModuServisi Modu
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   İşlemler (Satış / Alış / Hurda Alış / İşçilik / Takas / Transfer)
+   • Kur: /kur/guncel → id = kurSnapshotId; 60 sn'de bir tazelenir, her POST'ta
+     zorunlu gönderilir.
+   • SATIS/ALIS: API kalem başına tek işlem kaydeder — kalemler sırayla POST'lanır.
+   • VERESIYE'de kasa seçimi devre dışıdır ve kasaId null gönderilir.
+   • TAKAS: fark = yeni değer − eski değer; pozitif → müşteri öder (kasa
+     kullanılır), negatif → müşteriye iade (cariye yazılır). Önizleme istemcide
+     Kuyumcu.Core HasHesap ile hesaplanır, sunucu aynı formülü uygular.
+   • TRANSFER: şubeler arası stok — cari/kasa gerekmez, MUDUR+ yetki ister.
+   Kaynak: apps/web/src/pages/SatisPage.tsx + SatisModulu.cs sözleşmesi
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(SayfaAdi)</PageTitle>
+
+<CascadingValue Value="gecersizAlanlar" IsFixed="true"><div class="dikey-bosluk islem-sayfa@((Modu.BasitMi ? " tuval-tezgah" : " tuval-pro") + YildizSinif)" @onkeydown="ProKisayol">   @* S1-i .islem-sayfa · T-S1: basit = Tezgah.dc.html · T-S2: pro = Profesyonel.dc.html (css/tuval-satis.css) + F-tuşları *@
+
+    <SayfaBasi Anahtar="islemler" Baslik="@SayfaAdi" Aciklama="@SayfaAciklamasi" UstBardaGizle="true" /><Kuyumcu.Web.Layout.UstBarBasligi Baslik="@SayfaAdi" />   @* S1-i: üst bar ve menüyle AYNI ad (UX-S31) · DEGISIM-GUNSONU: üst bar seçili türün adını yazar (Değişim) — şerit tekrarı görsel gizli *@
+
+    @* ── İşlem türü: pro modda sekmeler, basit modda düğme ızgarası (S2-2) · pro modda "Diğer ▾" (S2-6, Islemler.Diger.cs) ── *@
+    @if (YildizTurYuzu) { @YildizTurUstParcasi }<FisIslemIzgarasi Turler="TurListesi" Secili="@(DigerAcik ? "" : tur)" Basit="Modu.BasitMi" TurSec="TurSecDiger"
+                      CariId="@cariId" PesinCariId="@pesinCariId" IndirimAcik="indirimAcik" IndirimKullanilir="@(tur == "SATIS" && kalemler.Count > 0)" IndirimDegistir="IndirimDegistir" />
+    <FisDigerIslemler Durum="diger" Baglam="DigerBaglami" Basit="Modu.BasitMi" Istek="DigerIstekIsle" EkTurler="ProEkTurler" SeciliTur="@tur" TurSec="TurSecDiger" />
+    @if (DigerAcik) { @* S2-6: Diğer paneli fişin YERİNDE çizilir (FisDigerIslemler) — fiş gizli *@ } else if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        <div class="@(YildizTezgahMi ? "islem-fis-kart" : "kart islem-fis-kart")">   @* YILDIZ-4C tur 3: Yıldız'da eski .kart sınıfı yok (görünüm zaten şeffaftı) *@
+            <div class="kart-baslik">
+                <h2>@SeciliTurAdi @Dil.T.Islem.Formu</h2>
+            </div>
+            <div class="kart-govde form-dikey">
+                @if (Modu.BasitMi) { <BasitSatisAkisi KapiAcik="@BasitBantKapiAcik" Mesaj="@BasitBantMesaji" /> }   @* t3: tetiklenen kural adıyla TEK bant; tezgâh satışında ALDIM durum satırı söyler *@   @* UX-3 Faz B yasal kapı bandı (T-S1: adım şeridi tuvalde yok) *@
+
+                @* ── Cari seçimi (transferde gerekmez) — fiş üst satırı: müşteri + bakiye
+                   rozeti + "gerçek müşteri seçin" bandı (PAKET S2-3, Bilesenler/Fis) ── *@
+                @if (tur != "TRANSFER" && !(IadeKipi && iadeSecili?.CariId is { Length: > 0 }) && !YildizTezgahMi) { @MusteriSatiriParcasi }   @* t11: iadede müşteri kaynak fişten (FisIade, kilitli) · YILDIZ-4B tur 2: Yıldız'da "Değiştir" katmanında (aynı parça) *@
+
+                @* ── Ödeme (FisOdemeKasa + bacaklar) — tezgâh fişinde ALDIM sütununda (S2-2) ── *@
+                @if (!TezgahFisi && !ProSatis && !TakasTuvali)   @* T-S2: PRO satışta ödeme tablonun ALTINDA (#islem-pro-odeme) · DEGISIM-GUNSONU: BASİT Değişim'de fişin Aldım sütununda *@
+                {
+                    @OdemeParcasi
+                }
+
+                @* ── Kalem ekleme (SATIS / ALIS) — Bilesenler/Fis (PAKET S2-1): giriş satırı
+                   + kalem tablosu. Barkod/teklif/ekle istekleri SAYFADA kalır. ── *@
+                @if (tur is "SATIS" or "ALIS")
+                {
+                    @if (!ProSatis && !YildizTezgahMi) { @KalemGirisParcasi }   @* SATIS-2 (d+e): PRO satışta tek giriş kalem kartının İÇİNDE *@
+
+                    @* PAKET S2-2 — tezgâh fişi (basit SATIŞ): VERDİM / ALDIM tek kartta + FARK *@
+                    @if (YildizTezgahMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizTezgah B="@YildizBaglami" /> } else if (TezgahFisi)   @* YILDIZ-4B: tuval Tezgah4/4a (Islemler.Yildiz.cs) *@
+                    {
+                        <FisVerdimAldim Verdim="KalemParcasi" Aldim="OdemeParcasi" KalemVar="@(kalemler.Count > 0)"
+                                        Toplam="ToplamTl" Karma="karmaOdeme" Bacaklar="bacaklar" CariId="@cariId"
+                                        PesinCariId="@pesinCariId" Kaydediliyor="kaydediliyor" OdemeyiBol="OdemeyiBol"
+                                        TekOdemeyeDon="TekOdemeyeDonAracla" AcikHesap="AcikHesapKaydet" OdemeTuru="@odemeTuru" OdemeSecenekleri="@BasitOdemeSecenekleri" OdemeTuruSec="BasitOdemeSec"
+                                        KasaAdi="@kasalar.FirstOrDefault(k => k.Id == kasaId)?.Ad" ToplamGram="@FisHesap.ToplamGram(kalemler, urunler)" KaydetKilitli="@(!Gonderilebilir)" />
+                    }
+                    else
+                    {
+                        <FisProKalemKarti Kalemler="kalemler" Urunler="urunler" Toplam="ToplamTl" FisIskontoYuzde="fisIskontoYuzde" Giris="@(ProSatis ? KalemGirisParcasi : null)">@if (kalemler.Count > 0) { @KalemParcasi }</FisProKalemKarti>   @* T-S2 *@
+                    }
+                }
+                @if (ProSatis && ProOdemeSatirIci && !YildizTezgahMi) { <div class="fis-pro-odeme" id="islem-pro-odeme">@OdemeParcasi</div> }   @* SATIS-2 (f): tek ödemede alt çubuk özetinden açılan katmanda *@
+
+                @* ── İade alanları — Bilesenler/Fis/FisIade (PAKET S2-1) ── *@
+                @if (tur is "SATIS_IADE" or "ALIS_IADE")
+                {
+                    <FisIade Adaylar="iadeAdaylari" KaynakId="@iadeKaynakId" KaynakSecildi="IadeKaynakDegisti"
+                             Secili="iadeSecili" @bind-Adet="iadeAdet" MusteriAdi="@cariler.FirstOrDefault(c => c.Id == iadeSecili?.CariId)?.Ad" />
+                }
+
+                @* ── Hurda alış alanları + satıcı kimliği (DP4-03) — Bilesenler/Fis/FisHurdaAlis (PAKET S2-1) ── *@
+                @if (tur == "HURDA_ALIS")
+                {
+                    <FisHurdaAlis Hurda="hurda" Ayarlar="AyarSecenekleri" CariAdi="@SeciliCariAdi" Degisti="Cizim" Basit="Modu.BasitMi" KimlikMasakta="KimlikBirlesik" TcknMasakta="@(KimlikBirlesik && MasakBelgesiTckn)" />
+                }
+
+                @* ── İşçilik alanı ── *@
+                @if (tur == "ISCILIK")
+                {
+                    <Para ElemanId="iscilik-tutar" Zorunlu="true" Etiket="@Dil.T.Islem.IscilikTutari"
+                          Tur="Kuyumcu.Core.Domain.Girdi.TutarTuru.Pozitif" @bind-Deger="iscilikTutar" />
+                }
+
+                @* ── Takas alanları — Bilesenler/Fis/FisTakas (PAKET S2-1) ── *@
+                @if (tur == "TAKAS")
+                {
+                    @if (TakasTuvali) { <FisTakasTuval Takas="takas" Verdim="TakasYeniParcasi" Aldim="TakasEskiParcasi" Odeme="OdemeParcasi" /> } else { @TakasTamParcasi }   @* DEGISIM-GUNSONU: BASİT Verdim/Aldım fişi (Islemler.Degisim.cs) · PRO aynen *@
+                    @* S2-1: FisTakas alanları (tek arama kutusu t3) — parça Islemler.Degisim.cs'te; id/bağlama/gövde AYNEN *@
+                    <FisTakasSatici Satici="takas.Satici" Basit="Modu.BasitMi" CariAdi="@SaticiOnDolumAdi" Degisti="Cizim" KimlikMasakta="KimlikBirlesik" TcknMasakta="@(KimlikBirlesik && MasakBelgesiTckn)" />   @* PARA-DEMO md.3: eski altının satıcı kimliği (VUK md.234) *@
+                }
+
+                @* ── Transfer alanları — Bilesenler/Fis/FisTransfer (PAKET S2-1) ── *@
+                @if (tur == "TRANSFER")
+                {
+                    <FisTransfer Transfer="transfer" Subeler="subeler" UrunSecenekleri="UrunSecenekleri" Degisti="Cizim" />
+                }
+
+                @if (!YildizTezgahMi) { @MasakParcasi }   @* ── MASAK: tutar yasal eşiği aşınca kimlik/beyan formu (sunucu son sözü söyler) · YILDIZ-4B tur 2: Yıldız'da "+ Kimlik bilgisi" çekmecesinde (aynı parça, aynı kapı) ── *@
+
+                @* ── REYON (PAKET 25 · DP4-01) — İSTEĞE BAĞLI; tek reyonda da seçici + "—" (UX-S25 > UX-S22;
+                   eski otomatik atama boş reyonda satışı kilitliyordu), tek reyon rozetle korunur. ── *@
+                @if (reyonHata is not null && tur is "SATIS" or "ALIS" or "TAKAS" or "TRANSFER")
+                {
+                    <div class="bant bant-uyari" id="islem-reyon-hata" role="status">@reyonHata</div>
+                }
+                @if (tur == "TRANSFER")
+                {
+                    <div class="form-grid-2">
+                        <div class="alan">
+                            <Secici ElemanId="transfer-kaynak-reyon"
+                                    Etiket="@Dil.T.Yerlesim.KaynakReyon"
+                                    Secenekler="@(reyonlar.Where(x => x.Aktif && x.SubeId == transfer.KaynakSubeId).Select(r => new SecenekOgesi(r.Id, r.Ad)).ToList())"
+                                    @bind-Deger="reyonId"
+                                    BosSecenekMetni="—" />
+                        </div>
+                        <div class="alan">
+                            <Secici ElemanId="transfer-hedef-reyon"
+                                    Etiket="@Dil.T.Yerlesim.HedefReyon"
+                                    Secenekler="@(reyonlar.Where(x => x.Aktif && x.SubeId == transfer.HedefSubeId).Select(r => new SecenekOgesi(r.Id, r.Ad)).ToList())"
+                                    @bind-Deger="hedefReyonId"
+                                    BosSecenekMetni="—" />
+                        </div>
+                    </div>
+                }
+
+                @if (!YildizTezgahMi) { <PesinArtArdaSoru Goster="pesinSoruAcik" Calisiyor="kaydediliyor" Evet="PesinSoruEvet" Hayir="PesinSoruHayir" /> }<HataBandi Mesaj="@hata" Id="hata-bandi" />@if (SunucuAyrinti is { } hamRed) { <details class="fis-bilgi" id="hata-ayrinti"><summary class="metin-kucuk">@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).BilgiIpucu</summary><span class="metin-kucuk metin-soluk">@hamRed</span></details> }   @* t10: dayanak (i) içinde *@
+                @* UX-4c md.13: 3 sn gizleme BasariBandi'nde. UX-S27: sunucunun FİŞ/HAREKET NO'su banda yazılır —
+                   POST yanıtı okunmadan atılmaz (QA turu 2 KRİTİK). *@
+                <BasariBandi Mesaj="@(basarili ? BasariMetni : null)"
+                             Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+                <FisYazdirBaglantisi Idler="yazdirIdler" Hata="@yazdirHata" FisNo="@SonFisNoGorunen" OtomatikAcildi="otoYazdirAcildi" />   @* PAKET S2-5 (PLAN 2.7): Kaydet → Yazdır *@@if (fisTaksitUyari is { } ftu) { <div class="bant bant-uyari" id="islem-taksit-uyari" role="status">@ftu</div> }<HataBandi Mesaj="@fisTaksitHata" Id="islem-taksit-hata" />@* YASAL-2 t3: kalan borç yalnız kart/havale (Islemler.Taksit.cs) *@
+                @* PAKET 25 · UX-S28: sunucunun döndürdüğü yerleşim uyarısı
+                   YUTULMAZ — süreli değildir, kullanıcı okuyana kadar durur. *@
+                @if (yerlesimUyarisi is not null)
+                {
+                    <div class="bant bant-uyari" id="islem-yerlesim-uyari" role="status">
+                        @yerlesimUyarisi
+                    </div>
+                }
+
+                @if (!YildizTezgahMi) { <div class="islem-alt-satir" id="islem-alt-satir">   @* T-S1 tuval alt satırı: Açıklama · Vazgeç · Kaydet ve yazdır *@
+                    <details class="fis-diger-ayrinti" id="islem-diger-ayrinti" open="@DigerAyrintiAcik">   @* SATIS-2 (g+h) + kurucu 11:35 · SATIS-3: TÜM türlerde reyon · açıklama (· PRO fiş iskontosu) "+ Ayrıntı ekle" altında KATLI, özellik silinmedi *@
+                        <summary id="islem-diger-ayrinti-ac">@SS.DigerAyrintilar</summary>
+                        @if (ProSatis && kalemler.Count > 0) { <FisIskontoSatiri @bind-Yuzde="fisIskontoYuzde" Onizleme="IskontoOnizleme" Net="ToplamTl" Form="form" /> }
+                        @ReyonParcasi
+                        @AciklamaParcasi
+                    </details>
+                @if (ProSatis) { <FisProOdemeHapi Karma="karmaOdeme" KarmaSec="ProKarmaSec" Bacaklar="bacaklar" Toplam="ToplamTl" OdemeTuru="@odemeTuru" KasaAdi="@kasalar.FirstOrDefault(k => k.Id == kasaId)?.Ad" Kaydediliyor="kaydediliyor" Katman="@(ProOdemeSatirIci ? null : OdemeParcasi)" KatmanAcik="proOdemeAcik" SeciciGorunur="ProOdemeSatirIci" KatmanDegistir="ProOdemeDegistir" /> }
+                @if ((TezgahFisi || ProSatis) && FisDolu) { <button type="button" class="btn btn-ikincil" id="islem-vazgec" title="@ST.VazgecIpucu" disabled="@kaydediliyor" @onclick="Vazgec">@ST.Vazgec</button> } else if (TakasTuvali && TakasDolu) { <button type="button" class="btn btn-ikincil" id="islem-vazgec" title="@ST.VazgecIpucu" disabled="@kaydediliyor" @onclick="TakasVazgec">@ST.Vazgec</button> }   @* DEGISIM-GUNSONU: BASİT Değişim'de de Vazgeç *@
+                @* UX-S30 — kilitli Kaydet SEBEBİNİ söyler (title + durum); SATIS-2 (i): boş fişte ayrı satır DEĞİL (ekran okuyucuda), dolu fişte Kaydet'in yanında. *@
+                @if (!Gonderilebilir && KaydetKilitSebebi is { } kilit) { <span class="metin-kucuk metin-amber islem-kaydet-kilit@(KilitGorunur && !KilitMetniBantta(kilit) ? "" : " gorunmez")" id="islem-kaydet-kilit" role="status">@(KilitMetniBantta(kilit) ? null : kilit)</span> }
+                <button class="btn btn-birincil btn-buyuk btn-tam" id="islem-kaydet" disabled="@(kaydediliyor || !Gonderilebilir)" title="@(Gonderilebilir ? null : KaydetKilitSebebi)"
+                        @onclick="Kaydet">
+                    @if (TezgahFisi && !kaydediliyor) { <Ikon Ad="@Ikonlar.Faturalar" /> }@(kaydediliyor ? Dil.T.Ortak.Yukleniyor : KaydetEtiketi)
+                </button>
+                </div> }   @* YILDIZ-4B: Yıldız tezgâhında Vazgeç/Kaydet tuvalin sağ sütununda *@
+                @* PAKET S2-4 (B4-35): altın bacağı varken kaç belge doğacağı Kaydet'in yanında, KAYITTAN ÖNCE. *@
+                @if (KarmaAcik && FisAltinBacagi.BelgeNotu(bacaklar, altinAyarlari, Dil.Dil) is { } belge)
+                {
+                    <span class="metin-kucuk metin-soluk gorsel-gizli" id="islem-kaydet-belgeler" role="status">@belge</span>   @* t6 (hakem KRİTİK md.7): iki modda da görünmez — aynı bilgi eski altın panelinin (i) Bilgi ipucunda; ekran okuyucuda kalır *@
+                }
+            </div>
+        </div>
+
+        @if (Modu.ProfesyonelMi && !YildizTezgahMi) { <FisProYanSutun YasalGoster="@(tur == "SATIS" || MasakGerekli)" NakitHad="ProNakitHad" NakitAsildi="ProNakitAsildi" NakitNot="@OdemeOtomatikPanelNotu" FisteSoylendi="@YasalMesajVar" KimlikEsigi="@(masakEsik?.KimlikIstenenTutar())" MasakKimlikEsigi="@(masakEsik?.KimlikEsigi)" AmacEsigi="@ProAmacEsigi" MasakOlcu="@ProMasakOlcu" KimlikAsildi="MasakGerekli" Toplam="ToplamTl" YasalHata="@proTevsikHata" Cari="ProCari" PesinSecili="@(!string.IsNullOrEmpty(pesinCariId) && cariId == pesinCariId)" SonIslem="kartSonIslem" KartHata="@kartHata" /> }   @* T-S2 sağ sütun *@
+        @* ═══ SON SATIŞLAR — Bilesenler/Fis/FisSonSatislar (PAKET S2-1) ═══════════
+           QA turu 1 ve 2 KRİTİK bulgusu. İstekler (liste, kırılım) SAYFADA kalır;
+           bileşen yalnız çizer. ⚠ YENİ UÇ AÇILMADI (TB-09). ═══ *@
+        <FisSonSatislar Satislar="sonSatislar" Yuklendi="sonSatisYuklendi" Hata="@sonSatisHata"
+                        Kirilim="kirilim" Yenile="SonSatislariYukle" IadeyeGec="IadeyeGec"
+                        KirilimiDegistir="KirilimiDegistir" Basit="Modu.BasitMi" Cariler="cariler" PesinCariId="@pesinCariId">
+            @* Storno düğmesinin GERÇEK gerekçesi ve doğru düzeltme yolu (UX-S25/S31):
+               düzeltme kalıbı SAYFADA beyan edilir (P-06 sayacı), kartın içinde çizilir. *@
+            <DegismezIpucu Varlik="SatisFisi" Gerekce="@Dil.T.Duzeltme.StornoYokGerekce"
+                           AlternatifYol="@Dil.T.Islem.SatisDuzeltmeYolu" />
+        </FisSonSatislar>
+        @if (TezgahFisi) { <FisNakitUyari Had="tevsikHaddi" Toplam="@TevsikTutar" BantVar="@NakitBandiVar" NakitVar="@NakitOdemede" /> }   @* T-S1: eşik SAYISI sunucudan (/tevsik/gunluk) — istemciye gömülmez *@
+    }
+</div></CascadingValue>   @* SATIS-3 t17: geçersiz sayı kapısı (Islemler.Gecerlilik.cs) *@
+
+@code {
+
+    // PAKET S2-1 — fiş modelleri (FisKalemi, KalemGirisi, FisBacagi, HurdaGirisi,
+    // TakasGirisi, OdemeKirilimi) ve önizleme hesapları (FisHesap) Bilesenler/Fis/
+    // FisModelleri.cs'e TAŞINDI. Durumun sahibi hâlâ bu sayfadır; bileşenler
+    // POST etmez, tek POST yolu aşağıdaki Kaydet()'tir.
+    private readonly KalemGirisi giris = new();
+
+    /// <summary>
+    /// TEK fiyat kaynağı sunucudur: GET /fiyat/teklif. Liste yoksa ya da ürün otomatik
+    /// fiyatlanamıyorsa (gümüş, kur yok) alan BOŞ kalır ve sebep gösterilir; ekran
+    /// kendi formülüyle rakam UYDURMAZ (Faz 0 §11: ham kotasyon deftere yazılmasın).
+    /// Sahte/eski sunucu boş gövde döndürürse de "teklif yok" sayılır.
+    /// </summary>
+    private async Task<decimal?> TeklifAl(string urunId)
+    {
+        giris.SonTeklif = null;
+        if (string.IsNullOrEmpty(kurId)) return null;
+        try
+        {
+            var cariParam = string.IsNullOrEmpty(cariId) ? "" : $"&cariId={cariId}";
+            giris.SonTeklif = await Api.GetAsync<Teklif>($"/fiyat/teklif?urunId={urunId}{cariParam}&kurSnapshotId={kurId}"); sonTeklifKurId = kurId;   // EKSIK-KUCUK B2-12: kalem izi (Islemler.ListeGuncelle.cs)
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { giris.SonTeklif = new(false, "HATA", null, null, null, null, null, null, null, false, null); }
+        return giris.SonTeklif is { TeklifVar: true } t ? t.SatisFiyati : null;
+    }
+
+    private bool HediyeVar => kalemler.Any(k => k.Hediye);
+
+    // B-4 (B4-3): HediyeAltinCakismasi kalktı — tek ödemede ALTIN yok (G-1), fiş ALTIN bacağını tanır.
+    /// <summary>Hediye işareti değişti (fiyatı FisKalemi.HediyeUygula ayarlar) — önizleme ateşle-unut.</summary>
+    private void HediyeDegisti() => _ = TevsikOnizle();
+
+    // UX-4c madde 10 / UX-S31 — ayar listesi TEK KAYNAKTAN gelir.
+    // Eskiden bu dizi üç ekranda elle yazılıyordu ve içerikleri farklıydı
+    // (emanette K995/G999 vardı, burada yoktu). Artık Kuyumcu.Core sabiti.
+    private static readonly string[] AyarSecenekleri = Kuyumcu.Core.Domain.Ayarlar.EkranSecenekleri;
+
+    // ── durum ──
+    private List<CariVeri> cariler = [];
+    private List<UrunVeri> urunler = [];
+    private List<KasaVeri> kasalar = [];
+    private List<SubeVeri> subeler = [];
+    private string? kurId;                     // kurSnapshotId — her istekte zorunlu
+    private decimal hasFiyati;                 // güncel 24k has TL/gram — otomatik fiyat için
+
+    private string tur = "SATIS";
+    private string cariId = "";
+    // ── PAKET B-3 (D2) — "Peşin Müşteri" sistem kartı ─────────────────────
+    // Kimliği SUNUCUDAN gelir (GET /cari/sistem-carisi); istemci kart üretmez.
+    private string? pesinCariId;
+    private string? pesinHata;
+    private SaticiPersonelListesi? saticilar; private string? saticiHata, saticiId;   // S2-5b satan (null = oturum)
+    private string? SaticiGovde => Modu.BasitMi ? null : saticiId;   // basit modda gövdeye konmaz
+    // PAKET S2-3 — sunucu Peşin Müşteri'yi MÜŞTERİ ALANINDA reddetti (400 + alanlar.cariId):
+    // fiş üst satırında "gerçek müşteri seçin" bandı. Eşik sayısı istemcide YOK.
+    // pesinKimlikGerekli: YASAL-KAPI-GERI — reddin izi (Islemler.YasalKapiGeri.cs)
+    private async Task MusteriDegisti() { pesinKimlikGerekli = false; hata = null; masakSunucudanGerekli = false; Yasal3Sifirla(); await TevsikOnizle(); await ListeFarkiniDenetle(); }   // EKSIK-KUCUK B2-12: liste farkı SORULUR (sessiz değil)   // t10: önceki müşterinin reddi yeni müşteride kalmaz
+    private void GercekMusteriSec() { cariId = ""; pesinKimlikGerekli = false; }
+    /// <summary>PAKET S2-3: kayıttan sonra bakiye rozeti TAZE veriden okunur (açık hesap bakiyeyi değiştirir).</summary>
+    private async Task CarileriTazele()
+    {
+        var yeni = await Api.GetAsync<List<CariVeri>>("/cari?limit=200&aktif=true");
+        if (cariler.FirstOrDefault(c => c.Id == pesinCariId) is { } p && !yeni.Any(c => c.Id == p.Id)) yeni.Insert(0, p);
+        cariler = yeni;
+    }
+    private PesinMusteriMetinleri PesinMetin => PesinMusteriSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// Satışta müşteri boşsa Peşin Müşteri ön seçilir; satış dışı türde (alış,
+    /// hurda, takas…) ön seçim TAŞINMAZ — orada satıcının kimliği sorulur.
+    /// </summary>
+    private void PesinOnSec()
+    {
+        if (string.IsNullOrEmpty(pesinCariId)) return;
+        if (tur == "SATIS" && string.IsNullOrEmpty(cariId)) cariId = pesinCariId;
+        else if (tur != "SATIS" && cariId == pesinCariId) cariId = "";
+    }
+    private string kasaId = "";
+    private string odemeTuru = "NAKIT";
+    private readonly List<FisKalemi> kalemler = [];
+    private bool SecilenGramli => urunler.FirstOrDefault(u => u.Id == giris.UrunId)?.Birim == "GRAM";
+    private string aciklama = "";
+
+    private readonly HurdaGirisi hurda = new();   // PAKET S2-1 — Bilesenler/Fis/FisHurdaAlis
+    private decimal? iscilikTutar;
+
+    /// <summary>Boş/yalnız boşluk metni null'a çevirir — sunucuya "" gönderilmez.</summary>
+    private static string? Bos(string? m) => string.IsNullOrWhiteSpace(m) ? null : m.Trim();
+
+    /// <summary>UX-S24 — hurda satıcı adı seçili cariden ön dolar (FisHurdaAlis).</summary>
+    private string? SeciliCariAdi => cariler.FirstOrDefault(c => c.Id == cariId)?.Ad;
+
+    // MASAK — SIRADAKI-ADIM-KARAR §2/A. Eşikler sunucudan; form eşik aşılınca açılır.
+    private MasakFormu.MasakBilgi masak = new();
+    private Esikler? masakEsik;
+    // Kademe kararı SUNUCUDAN gelir (TB-11): istemci kuralı yeniden yazmaz.
+    private MasakGereksinim? masakGereksinim;
+    private string? gereksinimAnahtari;   // t19: tutar|müşteri|red
+
+    private readonly TakasGirisi takas = new();   // PAKET S2-1 — Bilesenler/Fis/FisTakas
+
+    // transfer
+    private readonly TransferGirisi transfer = new();   // PAKET S2-1 — Bilesenler/Fis/FisTransfer
+
+    // ── PAKET 25 — isteğe bağlı reyon bacağı ────────────────────────────────
+    // Yanıt şekli: Kuyumcu.Core/Sozlesmeler/YerlesimSozlesmeleri.cs → ReyonSatiri
+    private List<ReyonSatiri> reyonlar = [];
+    private string reyonId = "", hedefReyonId = "";
+    private string? yerlesimUyarisi;
+    private string? reyonHata;
+
+    /// <summary>
+    /// UX-S21/UX-S22: satış/alışın şubesi OTURUMDAN gelir, kullanıcıya sorulmaz;
+    /// bu yüzden seçenekler o şubenin aktif reyonlarıdır. Şube claim'i yoksa
+    /// (çok şubeli yönetici oturumu) liste boş kalır ve seçici HİÇ çıkmaz —
+    /// yanlış şubenin reyonu gösterilmez.
+    /// </summary>
+    private List<ReyonSatiri> ReyonSecenekleri =>
+        Oturum.Kullanici?.SubeId is { Length: > 0 } sb
+            ? reyonlar.Where(r => r.Aktif && r.SubeId == sb).ToList()
+            : [];
+
+    private bool yukleniyor = true;
+    private bool kaydediliyor;
+    private bool basarili;
+    private int basariJeton;                   // yeni kayıt eski 3 sn sayacını geçersiz kılar
+    private string? hata;
+
+    // ── türetilmiş durum ──
+    /// <summary>
+    /// Ekranda çizilen işlem türü sekmeleri.
+    /// UX-3 Faz B: basit modda liste <see cref="BasitPos.Turler"/> ile daraltılır
+    /// (SATIS · ALIS · SATIS_IADE). ⚠ Bu bir YETKİ DEĞİLDİR — sunucudaki uçlar
+    /// açık kalır ve mod'dan habersizdir (K-UX-6, denetim.sh sayacı).
+    /// Karar TEK YERDEDİR: burada @if zinciri yazılmaz, BasitPos dizisi süzer.
+    /// </summary>
+    private (string Deger, string Etiket)[] TurListesi =>
+        TumTurler.Where(x => Modu.ProfesyonelMi || BasitPos.TurGorunur(x.Deger)).ToArray();
+
+    // PAKET S2-2: tür listesi ve adları Bilesenler/Fis/FisTurleri.cs'e taşındı (tek kaynak).
+    private (string Deger, string Etiket)[] TumTurler => FisTurleri.Tumu(Dil.T.Islem);
+    private string TurEtiket(string t) => FisTurleri.Etiket(Dil.T.Islem, t);
+
+    // ── Karma ödeme (çok bacaklı fiş) ──
+    // PAKET S2-1: bacak modeli, döviz/kasa/POS yardımcıları ve bacak ekranı
+    // Bilesenler/Fis/ altındadır (FisBacagi · FisHesap · FisOdemeBacaklari).
+    private bool karmaOdeme;
+    private readonly List<FisBacagi> bacaklar = [];
+
+    // PAKET P-10 (Y-3): aktif POS cihazları. Sunucu OdemeSepeti'nde TEK cihazı
+    // kendi seçer, ÇOK cihazda fail-closed reddeder — ekran bu yüzden sormak
+    // ZORUNDADIR (UX-S22 + UX-S30).
+    private List<PosCihazSatir> posCihazlari = [];
+
+    private IReadOnlyList<SecenekOgesi> UrunSecenekleri =>
+        [.. urunler.Select(u => new SecenekOgesi(u.Id, FisHesap.UrunEtiketi(u.Ad, u.AyarId ?? u.Ayar)))];   // SATIS-3 · UX-S31: ham "K22" yok
+
+    private decimal? tevsikKalan;
+    private bool tevsikNakitKapali;
+
+    private decimal BacakKalan => FisFark.Hesapla(ToplamTl, bacaklar);   // PAKET S2-2: FARK tek kaynak
+
+    /// <summary>459 s. VUK GT §4.1.2 nakit kilidi — eşik SUNUCUDAN (FisHesap.NakitKapali).</summary>
+    private bool NakitKapali => FisHesap.NakitKapali(tevsikNakitKapali, bacaklar);
+
+    /// <summary>Fiş bileşenlerinin Degisti geri çağrısı: EventCallback alıcısı olarak sayfayı yeniden çizer.</summary>
+    private void Cizim() { }
+    /// <summary>t10 (hakem KRİTİK): ödeme değişince önceki denemenin sunucu reddi ekranda kalmaz.</summary>
+    private void OdemeDegisti() => OdemeElleDegisti();   // SATIS-4 (a): elle seçim otomatik varsayılanı durdurur (Islemler.Satis4.cs)
+
+    /// <summary>B-4: GET /islemler/altin-bacagi/ayarlar (oranlar yapılandırmadan); null = yüklenmedi → panel kilitli.</summary>
+    private AltinBacagiAyarlari? altinAyarlari;
+    private async Task AltinAyarlariYukle() => altinAyarlari ??= await AltinBacagiAyarKaynagi.Yukle(Api);
+
+    // ═══ PAKET S2-2 — TEZGÂH FİŞİ (basit SATIŞ): VERDİM / ALDIM + FARK ═══════
+    // Bölümler iki yerde çizilir (pro: eski yer · basit satış: FisVerdimAldim
+    // sütunları) ama TEK tanımdır: işaretleme kopyalanmaz, id'ler aynı kalır.
+    private bool TezgahFisi => Modu.BasitMi && tur == "SATIS";
+    // YILDIZ-4B tur 2 — müşteri satırı ve MASAK bloğu TEK tanım: özgün fişte yerinde, Yıldız'da "Değiştir" katmanında / kimlik çekmecesinde (id'ler aynı).
+    private RenderFragment MusteriSatiriParcasi => @<FisMusteriSatiri Cariler="cariler" @bind-CariId="cariId" Degisti="MusteriDegisti" PesinCariId="@pesinCariId" PesinHata="@pesinHata"
+                                      KimlikGerekli="pesinKimlikGerekli" GercekMusteriSec="GercekMusteriSec" Basit="Modu.BasitMi" TarihPara="@(TezgahFisi || ProSatis)" Ek="@(ProSatis ? ProUstAlanlar : null)" ProTuval="Modu.ProfesyonelMi" EsikYakin="@(MasakGerekli || PesinEsikUstu)" Ozet="@(ProSatis ? ProUstOzet : null)" OzetAcikZorunlu="ProUstOzetAcikZorunlu" />;
+    private RenderFragment MasakParcasi => @<text>
+                @if (MasakGerekli && !PesinEsikUstu && !NakitOnce)   @* YK3: nakit kuralı tetikliyken önce ödeme türü · t24: Peşin Müşteri bu tutarda zaten kullanılamaz (sunucu K2) — önce müşteri seçilir; kimlik kutusu gerçek müşteriyle açılır *@
+                {
+                    @* UX-3 Faz B — YASAL KAPI: MASAK formu basit modda da AÇILIR (ZorunluGorunur); eşik SAYISI
+                       ekranda yok — MasakGerekli /masak/esikler'in sunucu eşiğiyle hesaplanır (Mehmet K2). *@
+                    @* ⚠ gereksinim SUNUCUDAN sonra gelir: ilk çizimde null → YÜKLENİYOR; Kaydet MasakTamam=false ile kilitli (fail-closed). *@
+                    <ProAlan ZorunluGorunur="true">
+                        @if (masakGereksinim is not null)
+                        {
+                            <MasakFormu Model="masak" Tutar="MasakTutar" Esik="masakEsik!" Gereksinim="masakGereksinim" Degisti="MasakDegisti" EksikGoster="masakEksikGoster" KuralGizli="@YildizTezgahMi" AdresZorunlu="@(KimlikBirlesik && BirlesikSatici.AdresZorunlu)" Sade="@Modu.BasitMi" EsikPanelde="@MasakEsikPanelde" />   @* TOPLU-5: BASİT başlık/etiket dili (Banka/Hurda ile aynı); kapı kuralı AYNEN *@
+                        }
+                        else if (masakHata)
+                        {
+                            @* t20: uç düştü → kart açık, Türkçe bant + tek elle yeniden deneme; Kaydet KİLİTLİ (fail-closed), döngü YOK. *@
+                            <div class="kart kart--masak" id="islem-masak-hata-kart">
+                                <HataBandi Mesaj="@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).MasakGereksinimHata" Id="islem-masak-hata" />
+                                <button type="button" class="btn btn-ikincil" id="islem-masak-tekrar" @onclick="MasakYenidenDene">@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).MasakTekrarDene</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <Yukleniyor />
+                        }
+                    </ProAlan>
+                }
+                else if (masakHata && MasakSorulur)
+                {
+                    @* t20: eşik altında (yalnız kümülatif sorusu) uç düştü → hata sessiz kalmaz; sunucu kayıtta yine son sözü söyler. *@
+                    <div id="islem-masak-hata-bilgi">
+                        <HataBandi Mesaj="@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).MasakGereksinimHata" Id="islem-masak-hata" />
+                        <button type="button" class="btn btn-ikincil" id="islem-masak-tekrar" @onclick="MasakYenidenDene">@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).MasakTekrarDene</button>
+                    </div>
+                }
+</text>;
+    private RenderFragment OdemeParcasi => @<text>
+                @* Ödeme türü + kasa + vade + karma — FisOdemeKasa (S2-1); ALIŞ/HURDA ALIŞ'ta da sorulur (tevsik eşiği sunucuda). *@
+                @if (tur == "SATIS" && Modu.BasitMi && !YildizTezgahMi) { <FisSatici Liste="saticilar" Hata="@saticiHata" Basit="Modu.BasitMi" OturumAdi="@(Oturum.Kullanici?.Ad + " " + Oturum.Kullanici?.Soyad)" @bind-Secili="saticiId" /> }   @* S2-5b · YILDIZ-4C tur 3: Yıldız tezgâhında BASİT "Satan" salt okunur satırı çizilmez (tuvalde yok; gövdeye girmez, sunucu oturum kullanıcısını yazar) *@
+                <FisOdemeKasa Tur="@tur" Karma="karmaOdeme" KarmaDegisti="KarmaAnahtari"
+                              @bind-OdemeTuru="odemeTuru" @bind-OdemeTuru:after="OdemeDegisti" @bind-KasaId="kasaId" @bind-VadeGun="vadeGun"
+                              AnaKasalar="AnaKasalar" KasaKilitli="KasaKilitli" VadeGorunur="VadeGorunur"
+                              OdemeKapisiAcik="OdemeKapisiAcik" TevsikOnerisiGerekli="TevsikOnerisiGerekli" Basit="Modu.BasitMi"
+                              TevsikHaddi="TevsikHaddi" Toplam="ToplamTl" OtomatikNot="@OdemeOtomatikAlanNotu" YasalBaskaYerde="@YasalMesajVar"
+                              Sade="@(TezgahFisi || ProSatis)" OdemeSatirda="@(BasitOdemeSecenekleri is not null)" KarmaAnahtariGizli="ProSatis" KasaOzette="ProSatis" PesinSecili="@(!string.IsNullOrEmpty(pesinCariId) && cariId == pesinCariId)" PosCihazlari="posCihazlari" DurumGizli="@OdemeDurumuGizli" @bind-PosCihazId="takasPosId" />   @* CUMA-S: basit ALDIM sade durum · SATIS-2: PRO satışta da kısa durum *@
+
+                @* ── Ödeme bacakları (karma) — Bilesenler/Fis/FisOdemeBacaklari (PAKET S2-1) ── *@
+                @if (tur == "SATIS" && karmaOdeme)
+                {
+                    <FisOdemeBacaklari Bacaklar="bacaklar" Kasalar="kasalar" PosCihazlari="posCihazlari"
+                                       FisToplami="ToplamTl" PosCihazHata="@posCihazHata"
+                                       TevsikNakitKapali="tevsikNakitKapali" Nakitsiz="YeniOdemeNakitsiz" Musteri="GercekMusteri" TevsikKalan="tevsikKalan" AltinAyarlari="altinAyarlari" AltinSecildi="AltinAyarlariYukle"
+                                       Degisti="OdemeDegisti" VarsayilanKasaId="@kasaId" Basit="Modu.BasitMi" Yildiz="YildizTezgahMi" />
+                }
+</text>;
+    private RenderFragment ReyonParcasi => @<text>
+                @if (tur is "SATIS" or "ALIS" or "TAKAS" && ReyonSecenekleri.Count > 0)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="islem-reyon"
+                                Etiket="@Dil.T.Yerlesim.ReyonSecimi"
+                                Secenekler="@(ReyonSecenekleri.Select(r => new SecenekOgesi(r.Id, r.Ad)).ToList())"
+                                @bind-Deger="reyonId"
+                                BosSecenekMetni="—" />
+                        @if (ReyonSecenekleri.Count == 1)
+                        {
+                            <span class="rozet rozet-mavi" id="islem-reyon-tek">@ReyonSecenekleri[0].Ad</span>
+                        }
+                        <span class="metin-kucuk metin-soluk" id="islem-reyon-ipucu">@Dil.T.Yerlesim.ReyonSecimiIpucu</span>
+                    </div>
+                }
+</text>;
+    private RenderFragment AciklamaParcasi => @<Metin ElemanId="islem-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IslemAciklama" YerTutucu="@(TezgahFisi ? ST.AciklamaYerTutucu : null)"
+                       Deger="@aciklama" DegerChanged="@(v => aciklama = v ?? "")" />;
+    private RenderFragment KalemGirisParcasi => @<FisKalemGirisi Giris="giris" UrunSecenekleri="UrunSecenekleri" Gramli="SecilenGramli"
+        Form="form" BarkodOkut="PosBarkodOkut" UrunSecildi="UrunSecildi" Ekle="KalemEkleYaDaTakas" Degisti="Cizim" Basit="Modu.BasitMi" OdakJeton="basariJeton" AcJeton="aramaAcJeton"
+        Katli="ProSatis" YerTutucu="@(YildizTezgahMi ? ST.BarkodYerTutucu : Modu.ProfesyonelMi ? SS.UrunAraYerTutucu : null)" Oneriler="oneriler" BosOdakListesi="BosOdakUrunleri" BosOdakIste="EnCokSatanlariYukle" Araniyor="oneriAraniyor" OneriSinirda="oneriSinirda" OneriHata="@oneriHata" Ara="UrunAra" OneriSecildi="OneriSec" SatirFiyatlari="satirFiyatlari" SatirStoklari="satirStoklari" />;
+    private RenderFragment KalemParcasi => @<text>
+                        @* GOC-C-2: KartListe (islem-kalem-liste) artık ortak ızgaranın içinde (FisKalemTablosu) — çift sarmalayıcı yok. *@
+                        <FisListeDegisti Sayi="@BekleyenOneri.Count" Guncelle="ListeFiyatlariniUygula" EskiKalsin="ListeOnerisiniReddet" Hata="@listeHata" Basari="@listeBasari" Jeton="listeBasariJeton" />   @* EKSIK-KUCUK B2-12 (UX-S24): müşteri değişti → SORULUR; basılmazsa eski fiyat kalır *@
+                        <FisKalemTablosu Kalemler="kalemler" Urunler="urunler" Satis="@(tur == "SATIS")" Basit="TezgahFisi"
+                                         Toplam="ToplamTl" Form="form" Degisti="KalemDegisti"
+                                         HediyeDegisti="HediyeDegisti" Sil="KalemSil" />
+
+                        @* PAKET P-16 (Y-4) fiş iskontosu — Bilesenler/Fis/FisIskontoSatiri (S2-2) *@
+                        @if (tur == "SATIS" && (!ProSatis || YildizTezgahMi) && (!TezgahFisi || indirimAcik || fisIskontoYuzde is > 0))   @* T-S1: basitte İndirim karosu açar · SATIS-2: PRO satışta "+ Ayrıntı ekle" içinde *@
+                        {
+                            <FisIskontoSatiri @bind-Yuzde="fisIskontoYuzde" Onizleme="IskontoOnizleme" Net="ToplamTl" Form="form" />
+                        }
+</text>;
+
+    // OdemeyiBol / OdemeyiBolIlk → Islemler.Odeme.cs (SATIS-3; 1400 satır tavanı).
+
+    /// <summary>"Tek ödemeye dön": karma kapanır (son bacağın kasası ön değer olur), bacaklar silinir.</summary>
+    private async Task TekOdemeyeDon() { await KarmaAnahtari(false); bacaklar.Clear(); }
+
+    /// <summary>"Açık hesap olarak kaydet": FARK'ı VERESİYE bacağıyla kapatır, TEK POST yolu Kaydet()'i çağırır; kilitliyse sebep hata bandına.</summary>
+    private async Task AcikHesapKaydet()
+    {
+        if (FisFark.AcikHesapKilidi(BacakKalan, cariId, pesinCariId, bacaklar,
+                Kuyumcu.Core.I18n.TezgahFisiSozlugu.Al(Dil.Dil)) is { } kilit) { hata = kilit; return; }
+        bacaklar.Add(FisFark.AcikHesapBacagi(BacakKalan));
+        await Kaydet();
+    }
+
+    /// <summary>
+    /// UX-4b madde 7(d) — karma anahtarı değişince: açılırken üst kasa seçicisi
+    /// DOM'dan kalkar (tek gerçek bacak kasalarıdır); kapanırken üst seçici geri
+    /// gelir ve SON bacağın kasası ön değer olur (kullanıcı aynı kasayı ikinci
+    /// kez aramasın). Ön değer yalnız ana seçicide gerçekten bulunan bir TL
+    /// kasasıysa uygulanır; aksi hâlde alan boş kalır (fail-closed).
+    /// </summary>
+    /// <summary>FisOdemeKasa karma anahtarı (Onay) — değer yazılır, sonra eski akış.</summary>
+    private async Task KarmaAnahtari(bool acik) { karmaOdeme = acik; await KarmaDegisti(); }
+
+    private async Task KarmaDegisti()
+    {
+        if (!karmaOdeme)
+        {
+            var sonKasa = bacaklar.LastOrDefault(b => !string.IsNullOrEmpty(b.KasaId))?.KasaId;
+            if (!string.IsNullOrEmpty(sonKasa) && AnaKasalar.Any(k => k.Id == sonKasa))
+                kasaId = sonKasa;
+            else kasaId = VarsayilanKasaId ?? "";   // SATIS-3 t6: oturumun şubesindeki ilk TL kasası
+        }
+        await TevsikOnizle();
+    }
+
+    // TevsikOnizle → Islemler.Pro.cs (T-S2: PRO Yasal kapılar kartı ayrı durumla; 1400 satır tavanı).
+    // İsteğin kendisi BURADA kalır: SozlesmeKapsamTestleri istemci tiplerini .razor'dan tarar (TevsikOnizleme görünür kalsın).
+    private Task<TevsikOnizleme> TevsikGetir() => Api.GetAsync<TevsikOnizleme>(TevsikSorgusu());
+
+    /// <summary>
+    /// UX-4d madde 5 — tevsik haddi. Sunucunun TevsikKurali.Had varsayılanıyla
+    /// aynı; önizleme ucu cevap verirse oradan tazelenir (tek kaynak sunucudur).
+    /// </summary>
+    private decimal TevsikHaddi => tevsikHaddi ?? 30_000m;
+    private decimal? tevsikHaddi;
+
+    /// <summary>Nakit seçiliyken tutar haddi aşıyorsa banka yolu önerilir.</summary>
+    internal bool TevsikOnerisiGerekli =>
+        TevsikOneri.Gerekli(odemeTuru, IadeKipi ? "ALIS" : tur == "TAKAS" ? "SATIS" : tur, TevsikTutar, TevsikHaddi);   // t15: takasın nakit farkı satış gibi denetlenir (sunucu tevsik.Dogrula)   // t10: işlemin kendi tutarı (hurda/iade kalemsiz)
+
+    // ═══ UX-3 Faz B — BASİT MOD ════════════════════════════════════════════
+    // ⚠ Buradaki hiçbir şey bir YETKİ DEĞİLDİR: sunucudaki kapıların hepsi
+    //   arayüz modundan habersizdir (K-UX-6). Basit mod yalnız GÖRÜNÜRLÜK ve
+    //   VARSAYILAN belirler; gizlenen alan gövdeye de KONMAZ (Mehmet K7).
+
+    /// <summary>
+    /// Sunucu son POST'u bir yasal kapıdan çevirdi (400) → basit modda gizlenen
+    /// alanlar O AN açılır. Sessiz red YASAKTIR: tezgâhtar ne yapacağını görmeli.
+    /// Taş kökeni (ADR-0013) için istemcide ön-kontrol YOKTUR; kapı yalnız
+    /// buradan (catch dalından) öğrenilir — Aşkın K1.
+    /// </summary>
+    // kapiSunucudanAcildi: YASAL-KAPI-GERI — reddin izi (Islemler.YasalKapiGeri.cs); tutar reddin altına inince bant iner
+
+    /// <summary>Basit moddaki adım şeridinde "yasal kapı açıldı" bandı çıkar mı?</summary>
+    internal bool YasalKapiAcik => OdemeKapisiAcik || MasakGerekli;
+
+    /// <summary>
+    /// Ödeme türü seçicisi basit modda da açılır mı? Bayrakların HEPSİ SUNUCU
+    /// KAYNAKLIDIR (tevsik önizlemesi /tevsik/gunluk ve POST'un 400'ü);
+    /// eşik SAYISI ekrana gömülmez (Mehmet K2 · ADR-0005).
+    /// </summary>
+    internal bool OdemeKapisiAcik =>
+        tevsikNakitKapali || TevsikOnerisiGerekli || kapiSunucudanAcildi;
+
+    // ═══ PAKET T-S1 — tuval (Tezgah.dc.html): İndirim karosu · Vazgeç ═══
+    private Kuyumcu.Core.I18n.SatisTuvalMetinleri ST => Kuyumcu.Core.I18n.SatisTuvalSozlugu.Al(Dil.Dil);
+    private bool indirimAcik;
+    private void IndirimDegistir() => indirimAcik = !indirimAcik;
+    /// <summary>Fişte vazgeçilecek bir şey var mı (yoksa Vazgeç çizilmez — boşa tıklanan düğme doğmaz).</summary>
+    internal bool FisDolu => kalemler.Count > 0 || karmaOdeme || !string.IsNullOrEmpty(aciklama);
+    /// <summary>Vazgeç: kaydedilmemiş fişi boşaltır (istek ATMAZ; son fiş no/yazdır bağlantısı KALIR — QA-10).</summary>
+    private async Task Vazgec()
+    {
+        kalemler.Clear(); fisIskontoYuzde = null; indirimAcik = false; aciklama = ""; hata = null; masakSunucudanGerekli = false;
+        cariId = ""; PesinOnSec(); giris.Sifirla(); form.Temizle();
+        if (karmaOdeme) await TekOdemeyeDon();
+        await TevsikOnizle();
+    }
+
+    /// <summary>
+    /// Basit modda EKRANDA ÇİZİLMEYEN alanı gövdeden ÇIKARIR (Bertan KOŞUL 3,
+    /// Mehmet K7, Aşkın K3). Anonim tip alanı koşullu atlayamaz; bu yüzden gövde
+    /// sözlüğe çevrilir ve gizli anahtar SİLİNİR — null olarak GÖNDERİLMEZ.
+    /// "Gövdede olmayan alan korunur" sözleşmesi bu sayede çalışır; bu projede
+    /// null gönderme iki kez veri sildi (cari vergi no/adres, §A11).
+    /// Profesyonel modda sözlük anonim tipin birebir kopyasıdır — davranış aynı.
+    /// </summary>
+    private Dictionary<string, object?> Govde(object temel)
+    {
+        var d = new Dictionary<string, object?>();
+        foreach (var p in temel.GetType().GetProperties())
+            d[p.Name] = p.GetValue(temel);
+
+        if (Modu.BasitMi)
+            foreach (var alan in BasitPos.GovdedenCikan)
+                d.Remove(alan);
+        if (tur == "SATIS" && SaticiGovde is { } sp) d["personelId"] = sp;   // S2-5b
+
+        return d;
+    }
+
+    /// <summary>
+    /// Mod değişince (ya da basit modda açılışta) ekranın durumu daraltılmış
+    /// yüze uyarlanır: görünmeyen sekmede kalınmaz, gizli alanların değerleri
+    /// ekranda düzeltilemeyecekleri için temizlenir.
+    /// </summary>
+    private void BasitModuUygula()
+    {
+        if (Modu.ProfesyonelMi) return;
+        if (!BasitPos.TurGorunur(tur)) { tur = "SATIS"; kalemler.Clear(); }
+        TekOdemeyiBasitteKoru();   // SATIS-3 (Islemler.Odeme.cs): mod değişimi girilen ödemeyi silmez
+        if (!karmaOdeme && !OdemeKapisiAcik && odemeTuru is not ("NAKIT" or "KART" or "HAVALE")) odemeTuru = "NAKIT";   // PARA-DEMO-2: BASİT tek satırda kart/havale seçilebilir
+        vadeGun = null;
+    }
+
+    private void ModDegisti()
+    {
+        BasitModuUygula();   // T-S1: profil sayfadan SONRA yüklenirse (mod PRO→BASİT) nakit uyarısının eşiği o an sunucudan
+        InvokeAsync(async () => { if ((TezgahFisi && tevsikHaddi is null) || ProSatis) await TevsikOnizle(yalnizHad: true); await FiyatListeleriYukle(); StateHasChanged(); });   // T-S2: PRO kartı + fiyat listesi
+    }
+
+    private List<IadeAdayi> iadeAdaylari = [];
+
+    // ── UX-1-C0 ortak form altyapısı + "Son satışlar" listesi ─────────────
+    private readonly FormDurumu form = new();
+    /// <summary>Sunucunun POST yanıtından okunan fiş/hareket numarası (UX-S27).</summary>
+    private string? sonFisNo, yazdirHata; private readonly List<string> yazdirIdler = [];   // S2-5: yazdırılacak HAREKETLER + hata (UX-S28)
+    /// <summary>Son satışlar — AYNI record, AYNI uç (yeni Api.* çağrısı yok).</summary>
+    private List<IadeAdayi> sonSatislar = [];
+    private bool sonSatisYuklendi;
+    private string? sonSatisHata;
+
+    // ═══ PAKET P-23 FAZ 2 (R-17) — ÖDEME KIRILIMI ═══════════════════════════
+    // Durum + ayrıştırma FisModelleri.OdemeKirilimi'dedir; istek burada kalır.
+    // Hata "kayıt yok"a ÇEVRİLMEZ (UX-S28 / Anayasa md.1).
+    private readonly OdemeKirilimi kirilim = new();
+
+    private async Task KirilimiDegistir(string hareketId)
+    {
+        if (kirilim.AcikId == hareketId) { kirilim.AcikId = null; return; }   // ikinci tıklama kapatır
+        kirilim.Ac(hareketId);
+        try
+        {
+            // Uç hem fiş hem HAREKET kimliğini kabul eder (geçmiş satırların
+            // fis_id'si yoktur — ölçüldü, varsayılmadı).
+            kirilim.Oku(await Api.GetAsync<JsonElement>($"/islemler/fis/{hareketId}"));
+        }
+        catch (ApiHata ex) { kirilim.Hata = ex.Message; }   // "kayıt yok"a ÇEVRİLMEZ (UX-S28)
+        finally { kirilim.Yukleniyor = false; }
+    }
+
+    // PAKET P-16 (UX-S27): banda fiş no'nun yanına SUNUCUNUN uyguladığı iskonto da yazılır.
+    private string BasariMetni
+    {
+        get
+        {
+            var m = Dil.T.Islem.Basarili;
+            if (FisYazdir.OkunurNo(sonFisNo) is { } no) m += $" · {Dil.T.Islem.FisNo}: {no}";   // S2-5: ham ULID basılmaz
+            if (!string.IsNullOrEmpty(sonIskontoNotu)) m += $" · {sonIskontoNotu}";
+            return m;
+        }
+    }
+
+    /// <summary>
+    /// UX-S30 — Kaydet neden kilitli? Görünmez kural olmaz. Sıra, Gonderilebilir
+    /// koşullarının SIRASIYLA aynısıdır; ikinci bir kural yazılmaz.
+    /// </summary>
+    private string? KaydetKilitSebebi =>
+        string.IsNullOrEmpty(kurId) ? Dil.T.Islem.BilgiKontrol : GecersizAlanSebebi is { } gas ? gas : IslemBant2Kilidi is { } ib2 ? ib2   // ISLEM-BANT-2: yetki/bant (Islemler.IslemBant2.cs) · t17: anlaşılamayan sayı kutusu ÖNCE söylenir (UX-S30)
+        : IadeKipi && iadeSecili is null ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).IadeKaynakSecin   // t11: müşteri kaynaktan gelir — önce kaynak
+        : CariGerekli && string.IsNullOrEmpty(cariId) ? CariSecinKilit : PesinVeresiyeVar ? PdKilit.PesinVeresiyeKilit   // PARA-DEMO md.4
+        : tur == "TAKAS" && TakasBirlesikKilit is { } tskOnce ? tskOnce : YasalKilitSebebi is { } yasalKilit ? yasalKilit   // PARA-DEMO-2 t5 + PARA-DEMO-3: değişimde satıcı + kimlik tespiti eksikleri TEK cümlede, alan adıyla
+        : KarmaAcik && !KarmaGonderilebilir ? KarmaKilitSebebi()   // S2-4: altının İLK eksiği; SATIS-3: tutarı boş ödeme satırı
+        : !KarmaAcik && KasaGerekli && string.IsNullOrEmpty(kasaId) ? Dil.T.Islem.KasaSecin
+        // DP4 YÜKSEK #2 (UX-S30) — kilit metni TAM CÜMLE: eski "Kimlik Tespitleri" başlığı kullanıcıya ne yapacağını söylemiyordu.
+        : !MasakTamam ? (masakHata ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).MasakGereksinimHata : MasakFormu.TcknKilitMetni(masak, Dil.Dil) ?? MasakEksikMetniTekYer)   // t21 · YASAL-KAPI-2: BASİT'te eşik form başlığında TEK kez: kural alınamadıysa GERÇEK engel söylenir
+        : (tur == "HURDA_ALIS" && hurda.Fiyat is not > 0) || (tur == "TAKAS" && takas.EskiFiyat is not > 0) ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).FiyatAlaniDuzeltin   // t16 (doğrulayıcı KRİTİK): boş/anlaşılamayan fiyat ("1.500")
+        // DP4-03 — hurda alışta satıcı kimliği eksikse sebebi yazılır.
+        : tur == "HURDA_ALIS" && !hurda.SaticiTamam(Dil.T.Islem) ? (hurda.TcknAlgoritmaHatasi ? KimlikNoSozlugu.Al(Dil.Dil).TcknGecersiz : Modu.BasitMi ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).SaticiKimligiSade : Dil.T.Islem.SaticiKimligiEksik)
+        : tur == "TAKAS" && TakasPosEksik ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).PosCihaziSecin : TakasSaticiKilidi is { } tsk ? tsk   // PARA-DEMO md.3
+        : tur is "SATIS" or "ALIS" && kalemler.Count == 0 ? Dil.T.Islem.UrunSecinUyari
+        : IadeKipi && !IadeGonderilebilir ? Dil.T.Islem.IadeHakkiBitti
+        : null;
+
+    /// <summary>
+    /// Son satışlar — bu ekranın ZATEN kullandığı iade-adayları ucundan.
+    /// ⚠ UX-S28: hata "kayıt yok"a çevrilmez; liste boşaltılır AMA boş durum
+    ///   yalnız istek BAŞARILI ve sonuç gerçekten boşken çizilir.
+    /// </summary>
+    private async Task SonSatislariYukle()
+    {
+        sonSatisHata = null; sonSatisIstendi = true;   // SATIS-2: yalnız Katlanir ilk açılınca (ya da Diğer paneli isteyince)
+        try
+        {
+            sonSatislar = await Api.GetAsync<List<IadeAdayi>>("/islemler/iade-adaylari?tur=SATIS&limit=20");
+            sonSatisYuklendi = true;
+        }
+        catch (ApiHata ex)
+        {
+            sonSatisHata = FormDurumu.SunucuMesaji(ex, Dil);
+            sonSatisYuklendi = false;
+        }
+        catch (JsonException ex)
+        {
+            // Beklenmeyen yanıt ŞEKLİ de bir hatadır ve kullanıcıya SÖYLENİR
+            // (UX-S28); listeyi sessizce boşaltıp "kayıt yok" demek YASAK.
+            // Ayrıca bu yakalama, POS formunun geri kalanının açılmasını sağlar:
+            // yardımcı bir liste bozuksa satış ekranı tümden kapanmaz.
+            sonSatisHata = ex.Message;
+            sonSatisYuklendi = false;
+        }
+    }
+
+    /// <summary>Satırdan "İade et" → iade sekmesi açılır ve kaynak SEÇİLİ gelir (UX-S24).</summary>
+    private async Task IadeyeGec(IadeAdayi h)
+    {
+        tur = "SATIS_IADE";
+        kalemler.Clear();
+        hata = null;
+        form.Temizle();
+        await IadeAdaylariYukle();
+        iadeKaynakId = h.Id;
+        IadeKaynakSecildi();
+    }
+
+    private async Task OdakIlkHataya()
+    {
+        if (form.IlkHatali is not { } ilk) return;
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", ilk); }
+        catch { /* JS yoksa alan altı mesaj yine görünür */ }
+    }
+
+    /// <summary>FisKalemTablosu satır içi düzeltmesi: fiş toplamı değiştiyse nakit kilidi yeniden hesaplanır.</summary>
+    private async Task KalemDegisti(bool toplamDegisti)
+    {
+        if (toplamDegisti) { hata = null; await TevsikOnizle(); }   // t10: fiş değişti → eski sunucu reddi kalkar
+    }
+
+    private string iadeKaynakId = "";
+    private decimal iadeAdet;
+    private IadeAdayi? iadeSecili;
+
+    private bool IadeKipi => tur is "SATIS_IADE" or "ALIS_IADE";
+
+    private async Task IadeAdaylariYukle()
+    {
+        iadeAdaylari = [];
+        iadeKaynakId = "";
+        iadeSecili = null;
+        iadeAdet = 0m;
+        if (!IadeKipi) return;
+
+        var kaynakTur = tur == "SATIS_IADE" ? "SATIS" : "ALIS";
+        try { iadeAdaylari = await Api.GetAsync<List<IadeAdayi>>($"/islemler/iade-adaylari?tur={kaynakTur}"); }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    /// <summary>FisIade kaynak seçicisi — değer yazılır, sonra eski akış.</summary>
+    private void IadeKaynakDegisti(string? id) { iadeKaynakId = id ?? ""; IadeKaynakSecildi(); }
+
+    private void IadeKaynakSecildi()
+    {
+        iadeSecili = iadeAdaylari.FirstOrDefault(x => x.Id == iadeKaynakId);
+        // Varsayılan: kalanın TAMAMI. Kısmi iade isteyen aşağı çeker.
+        iadeAdet = iadeSecili?.KalanAdet ?? 0m;
+        if (iadeSecili?.CariId is { Length: > 0 } kc) cariId = kc;   // SATIS-3 · UX-S21/S24: müşteri KAYNAK fişten dolar, ikinci kez sorulmaz
+    }
+
+    private bool KarmaAcik => tur == "SATIS" && karmaOdeme;
+    private bool KasaKilitli => tur == "SATIS" && odemeTuru == "VERESIYE";
+
+    /// <summary>
+    /// Vade girdisi YALNIZ borç doğuran işlemde görünür. Peşin satışta
+    /// gösterilseydi kasiyer vade girer, hiçbir yere yazılmaz ve "girdim ama
+    /// listede yok" derdi.
+    /// </summary>
+    private bool VadeGorunur =>
+        (tur == "SATIS" && odemeTuru == "VERESIYE" && !string.IsNullOrEmpty(cariId))
+        || (tur == "SATIS" && karmaOdeme && bacaklar.Any(b => b.Arac == "VERESIYE") && !string.IsNullOrEmpty(cariId))
+        || (tur == "ALIS" && !string.IsNullOrEmpty(cariId));
+
+    private int? vadeGun;
+    private bool KasaGerekli => tur is "ALIS" or "HURDA_ALIS" || (tur == "SATIS" && !KasaKilitli);
+    private bool CariGerekli => tur != "TRANSFER";
+
+    // ═══ PAKET P-16 (Y-4) — SATIR / FİŞ İSKONTOSU: EKRAN YALNIZ ÖNİZLER ═══
+    // ⚠ Buradaki hesap SUNUCUNUN hesabının AYNISI olmak zorundadır ama SON SÖZ
+    //   SUNUCUNUNDUR: Kaydet sonrası banda sunucunun döndürdüğü rakam yazılır
+    //   (UX-S27). Yuvarlama kuralı sunucuyla aynı: 2 hane, AwayFromZero.
+    // Hesap FisHesap'tadır (Bilesenler/Fis/FisModelleri.cs — PAKET S2-1).
+    private decimal IskontoOnizleme => FisHesap.IskontoOnizleme(kalemler, fisIskontoYuzde);
+
+    // ⚠ TOPLAM ARTIK NET: ödeme bacakları, tevsik önizlemesi ve nakit kilidi
+    //   hepsi bu değeri okur. İskonto düşülmemiş toplam gönderilirse bacak
+    //   toplamı sunucunun hesapladığı fiş toplamını tutmaz ve fiş 400 döner.
+    private decimal ToplamTl => FisHesap.Toplam(kalemler, fisIskontoYuzde);
+
+    /// <summary>Fiş (genel) iskonto yüzdesi — boş = carinin kartındaki oran (UX-S21).</summary>
+    private decimal? fisIskontoYuzde;
+
+    /// <summary>
+    /// MASAK'a verilen tutar — sunucunun kapıya verdiğiyle AYNI mantık:
+    /// SATIS fiş toplamı (t19: satis-fisi ve tek kalemli uç fiş TOPLAMINA bakar); ALIS fiş toplamı (L-1b); HURDA has×fiyat;
+    /// TAKAS Max(eski, yeni) — FARK DEĞİL (Bertan tuzağı); ISCILIK tutar; TRANSFER 0.
+    /// </summary>
+    private decimal MasakTutar => tur switch
+    {
+        "SATIS" => ToplamTl,   // t19 (hakem KRİTİK): en büyük kalem DEĞİL — 2×173 bin fiş "Altında" görünüp sunucuda reddediliyordu
+        "ALIS" => kalemler.Sum(k => k.Adet * k.BirimFiyat),   // L-1b: alış fişi TEK işlem → sunucu fiş toplamına bakar
+        "HURDA_ALIS" => hurda.Gram is > 0 && hurda.Fiyat is > 0 && Kuyumcu.Core.Domain.Ayarlar.Bul(hurda.Ayar) is { } ha
+            ? HasHesap.ToHasGram(hurda.Gram.Value, ha) * hurda.Fiyat.Value : 0m,
+        "TAKAS" => Math.Max(takas.EskiDeger, takas.YeniDeger),
+        "ISCILIK" => iscilikTutar ?? 0m, "SATIS_IADE" or "ALIS_IADE" => IadeTutar,   // t10: sunucu iadede de MASAK'a iade tutarını verir
+        _ => 0m,
+    };
+    // Formun AÇILIP açılmayacağı eşik karşılaştırması istemcide kalır (tek
+    // sayı, sunucudan gelir). Hangi ALANLARIN gerektiği ise sunucuya sorulur.
+    private bool MasakGerekli => masakEsik is not null && (MasakTutar >= masakEsik.KimlikIstenenTutar() || masakSunucudanGerekli || masakGereksinim is { KimlikGerekli: true });   // t19: kümülatifi sunucu söyler
+    private bool MasakTamam =>
+        !MasakGerekli || (masakGereksinim is not null && MasakFormu.Eksiksiz(masak, masakGereksinim));
+
+    /// <summary>
+    /// Karma fişin gönderilebilmesi için: en az bir bacak, bacak toplamı fiş
+    /// toplamına TAM eşit, veresiye dışındaki her bacakta kasa seçili, ve
+    /// §4.1.2 nakit kilidi devredeyse nakit bacak YOK.
+    /// Sunucu hepsini yeniden doğrular; buradaki kapı kullanıcıyı 400'e
+    /// sürüklememek içindir.
+    /// </summary>
+    private bool KarmaGonderilebilir =>
+        bacaklar.Count > 0
+        && FisFark.KaydetAcik(BacakKalan)
+        && FisFark.Gonderilecek(bacaklar) is { Count: > 0 } gb && gb.All(b => b.TutarTl > 0m)   // k2: boş (0) satır kilitlemez, gönderilmez
+        && gb.Count(b => b.Arac == "VERESIYE") <= 1   // t21: veresiye koşulları da GÖNDERİLEN satırlara bakar (boş satır kilitlemez)
+        && gb.All(b => !FisAltinBacagi.KasaAlir(b) || !string.IsNullOrEmpty(b.KasaId))
+        && !(gb.Any(b => b.Arac == "VERESIYE") && string.IsNullOrEmpty(cariId))
+        && FisAltinBacagi.Tamam(bacaklar)   // B-4: tek ALTIN bacağı, satıcı kimliği, FARK 0 (B4-6/32/33)
+        && !NakitKapali;
+
+    /// <summary>
+    /// İade gönderilebilir mi: kaynak işlem seçili, adet sıfırdan büyük ve
+    /// kalan iade hakkını aşmıyor. Sunucu hepsini yeniden doğrular.
+    /// </summary>
+    private bool IadeGonderilebilir =>
+        iadeSecili is not null && iadeAdet > 0m && iadeAdet <= iadeSecili.KalanAdet;
+
+    private bool Gonderilebilir =>
+        !gecersizAlanlar.Var && IslemBant2Kilidi is null && MasakTamam && YasalKilitSebebi is null && !PesinVeresiyeVar   // ISLEM-BANT-2 · PARA-DEMO md.4 · t17: anlaşılamayan sayı kutusu varken HİÇBİR gövde gitmez · t10: istemcinin (sunucu eşiğiyle) bildiği yasal engel
+        && (!CariGerekli || !string.IsNullOrEmpty(cariId))
+        && !string.IsNullOrEmpty(kurId)
+        && (KarmaAcik ? KarmaGonderilebilir : !KasaGerekli || !string.IsNullOrEmpty(kasaId))
+        && tur switch
+        {
+            "SATIS_IADE" or "ALIS_IADE" => IadeGonderilebilir,
+            "SATIS" or "ALIS" => kalemler.Count > 0,
+            // DP4-03 — satıcı kimliği sunucuda FAIL-CLOSED; ekran da kilitler.
+            "HURDA_ALIS" => hurda.Gram is > 0 && hurda.Fiyat is > 0 && hurda.SaticiTamam(Dil.T.Islem),
+            "TAKAS" => takas.Tamam && !TakasPosEksik && TakasSaticiKilidi is null,   // PARA-DEMO md.3: satıcı kimliği (sunucu fail-closed)   // t16: çok POS'ta kartlı farkın cihazı seçilmeli (sunucu fail-closed)
+            "TRANSFER" => transfer.Tamam,
+            _ => iscilikTutar is > 0,
+        };
+
+    // ── yaşam döngüsü ──
+    /// <summary>
+    /// Tutar her değiştiğinde sunucudan gereksinim çekilir. Her girdiye tek tek
+    /// `@bind:after` koymak yerine burada toplanır: işlem türüne göre tutarı
+    /// besleyen alan değişiyor (gram, fiyat, adet…), hepsini tek yerden yakalar.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool ilkRender)
+    {
+        await KimlikFormunaKaydir(); await DigerIcinSonSatislar(); if (Satis4Uygula() | YasalIzleriTazele() | await TevsikToplamTazele()) StateHasChanged();   // SATIS-2: Diğer paneli listeyi ister · SATIS-4 (a)(b): ödeme varsayılanı + tek kimlik (Islemler.Satis4.cs)
+        if (MasakSorulur ? MasakSorguAnahtari == gereksinimAnahtari : masakGereksinim is null) return;   // t19: soru kalkınca eski cevap da düşer (kayıttan sonra boş form kilitliyordu)
+        await GereksinimTazele();
+        StateHasChanged();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile; YildizAboneOl();   // YILDIZ-4B: şema değişince tezgâh yüzü yeniden çizilir
+        Canli.Degisti += KurYansit;      // canlı kur push geldiğinde kurId/has tazele
+        Modu.Degisti += ModDegisti;      // UX-3 Faz B: mod değişince ekran daralır/açılır
+        SorgudanSuzgecOku(); BasitModuUygula();   // S1-i: ?tur= derin bağlantısı (Hurda alımı gir)
+        try
+        {
+            // P-16 (B-31): YALNIZ aktif cariler (pasif cari POS'ta seçilebiliyordu — QA tur 5).
+            await CarileriTazele();   // aktif cari listesi — tek istek yeri (S2-3: kayıttan sonra da)
+            urunler = await Api.GetAsync<List<UrunVeri>>("/urunler?aktif=true&limit=200");
+            subeler = (await Api.GetAsync<List<SubeVeri>>("/subeler")).Where(s => s.Aktif).ToList();
+            masakEsik = await Api.GetAsync<Esikler>("/masak/esikler");   // kişisel veri yok, tüm roller
+            await KasalariYukle();
+            await Canli.BaslatAsync();   // SignalR push + ilk kur değeri
+            KurYansit();
+            if (TezgahFisi || ProSatis) await TevsikOnizle(yalnizHad: true); await FiyatListeleriYukle();   // T-S1: nakit uyarısının eşiği İLK AÇILIŞTA sunucudan (istemcide rakam yok)
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+
+        // ── PAKET B-3 (D2) — PEŞİN MÜŞTERİ YARDIMCI VERİDİR ─────────────────
+        // Kart okunamazsa POS KAPANMAZ (müşteri listeden seçilir) ama hata da
+        // YUTULMAZ (UX-S28): seçicinin altında kendi bandı çıkar.
+        try
+        {
+            var pesin = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.PesinMusteri.PesinMusteriKarti>("/cari/sistem-carisi");
+            if (!string.IsNullOrEmpty(pesin?.Id))
+            {
+                pesinCariId = pesin.Id;
+                if (!cariler.Any(c => c.Id == pesin.Id)) cariler.Insert(0, new CariVeri(pesin.Id, pesin.Ad, true));
+                PesinOnSec();
+            }
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            pesinHata = PesinMetin.YuklemeHatasi + " (" + ex.Message + ")";
+        }
+
+        // PAKET 25 + S2-5b — REYON ve SATICI LİSTESİ YARDIMCI VERİDİR: alınamazsa POS KAPANMAZ,
+        // hata YUTULMAZ (UX-S28) — kendi bandı çıkar. Satıcı yoksa sunucu oturum kullanıcısını yazar.
+        try { reyonlar = await Api.GetAsync<List<ReyonSatiri>>("/reyonlar"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            reyonlar = [];
+            reyonHata = ex.Message;
+        }
+        try { saticilar = await Api.GetAsync<SaticiPersonelListesi>("/islemler/personeller"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { saticiHata = ex.Message; }
+
+        yukleniyor = false;
+    }
+
+    private async Task KasalariYukle()
+    {
+        kasalar = (await Api.GetAsync<List<KasaVeri>>("/kasalar")).Where(k => k.Aktif).ToList();
+        // UX-S22 — tek TL kasası varsa sorulmaz, atanır. SATIS-3 t3 (KAYNAK 5 "kasa otomatik"): birden çok TL
+        // kasasında OTURUMUN ŞUBESİNDEKİ ilk aktif TL kasası (sunucu OrderBy Id = açılış sırası) varsayılan olur; şubede kasa
+        // yoksa boş kalır ve seçici BASİT'te de görünür (fail-closed, t6). PRO'da değiştirilebilir.
+        if (string.IsNullOrEmpty(kasaId)) kasaId = VarsayilanKasaId ?? "";
+        await PosCihazlariniYukle();
+    }
+
+    /// <summary>
+    /// PAKET P-10 (Y-3) — aktif POS cihazları. İSTEĞE BAĞLI kaynaktır: uç
+    /// erişilemezse satış ekranı ÇÖKMEZ, yalnız kart bacağında "cihaz yok"
+    /// yazar ve gövde cihazsız gider (sunucudaki mevcut davranış korunur).
+    /// UX-S28: hata sessizce "kayıt yok"a çevrilmez, sebebi banda yazılır.
+    /// </summary>
+    private async Task PosCihazlariniYukle()
+    {
+        try { posCihazlari = await Api.GetAsync<List<PosCihazSatir>>("/pos/cihazlar?aktif=true"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException)
+        {
+            posCihazlari = [];
+            posCihazHata = ex.Message;
+        }
+        foreach (var b in bacaklar) FisHesap.BacakPosSabitle(b, posCihazlari);
+    }
+
+    /// <summary>POS cihaz listesi alınamadıysa sebebi (UX-S28).</summary>
+    private string? posCihazHata;
+
+    /// <summary>
+    /// UX-4b madde 7(c) — ANA kasa seçicisinin kaynağı: yalnız TRY kasaları.
+    /// Bacak kasaları zaten para birimiyle süzülüyordu (BacakKasalari); ana seçici
+    /// tüm kasaları listeliyor ve TL satış USD kasasına yazılabiliyordu. Sunucudaki
+    /// K6 kapısı (IslemDogrulayici.KasaDogrula(..., "TRY", ...)) tek kapıdır;
+    /// bu süzme onu TEKRARLAMAZ, yalnız imkânsız seçeneği ekrandan kaldırır.
+    /// </summary>
+    private List<KasaVeri> AnaKasalar => kasalar.Where(k => k.ParaBirimi == "TRY").ToList();
+
+    private bool AnaKasaTek => AnaKasalar.Count == 1;
+
+    /// <summary>SATIS-3 t6 — oturumun şubesine göre varsayılan TL kasası (FisHesap.VarsayilanKasa).</summary>
+    private string? VarsayilanKasaId => FisHesap.VarsayilanKasa(AnaKasalar, Oturum.Kullanici?.SubeId);
+
+    // Canlı kur servisinden kurSnapshotId + has fiyatını yansıt (push geldiğinde de çağrılır)
+    private void KurYansit()
+    {
+        kurId = Canli.Son?.Id;
+        hasFiyati = Canli.Son?.AltinHasFiyati ?? 0m;
+        // UX-S21 — sistemin bildiği has gram fiyatı boş bırakılmaz. Elle girilmiş
+        // değerin ÜZERİNE YAZILMAZ: rozet hangi kaynağın geçerli olduğunu söyler.
+        if (!hurda.FiyatElle && hasFiyati > 0m) hurda.Fiyat = hasFiyati;
+        if (!takas.FiyatElle && hasFiyati > 0m) takas.EskiFiyat = hasFiyati;
+        InvokeAsync(StateHasChanged);
+    }
+
+    // ── POS barkod okutma ────────────────────────────────────────────────────
+
+    // Barkod metni ve hatası KalemGirisi'ndedir (Bilesenler/Fis/FisKalemGirisi — PAKET S2-1).
+
+    /// <summary>
+    /// Barkodu okur, ürünü bulur, fiyatını CANLI kurdan hesaplar ve kalemlere
+    /// ekler. Ürün açılır listede olmasa bile (liste sayfalı) çalışır —
+    /// bulunan ürün listeye de eklenir ki kullanıcı onu tekrar seçebilsin.
+    /// </summary>
+    private async Task PosBarkodOkut()
+    {
+        giris.BarkodHata = null;
+        var kod = giris.Barkod.Trim();
+        if (kod.Length == 0) return;
+        var adla = BasitPos.AdlaBul(urunler.Select(x => (x.Id, x.Ad)), kod);   // T-S1 tuval "ya da ürün adı yaz": barkod 404 ise YÜKLÜ listede adla (istek yok)
+        try
+        {
+            UrunVeri u;
+            try { u = await Api.GetAsync<UrunVeri>($"/urunler/barkod/{Uri.EscapeDataString(kod)}"); }
+            catch (ApiHata ex) when (ex.StatusCode == 404 && adla.Id is not null) { u = urunler.First(x => x.Id == adla.Id); }
+            if (urunler.All(x => x.Id != u.Id)) urunler = [.. urunler, u];
+
+            giris.UrunId = u.Id;
+            giris.Adet = 1m;
+            giris.BirimFiyat = await TeklifAl(u.Id);
+            giris.Barkod = "";
+            if (TakasUrunAta()) return;   // t3: Takas'ta okutulan ürün "Yeni ürün" olur
+
+            // ⚠ Gümüşte fiyat BİLEREK hesaplanmaz (gram kotasyonu modelde yok).
+            // Sessizce hiçbir şey olmaması, okutucuyu bozuk sandırırdı: ürün
+            // seçili bırakılır ve fiyatın elle girilmesi gerektiği söylenir.
+            if (giris.BirimFiyat is null or <= 0)
+            {
+                giris.BarkodHata = FiyatHesaplanamadiMetni(giris.SonTeklif);
+                return;
+            }
+            await KalemEkle();
+        }
+        catch (ApiHata ex)
+        {
+            giris.BarkodHata = ex.StatusCode != 404 ? ex.Message : adla.Sayi > 1 ? string.Format(ST.AdlaCokEslesme, adla.Sayi) : Dil.T.Urun.BarkodBulunamadi;
+        }
+    }
+
+    private async Task UrunSecildi()
+    {
+        var u = urunler.FirstOrDefault(x => x.Id == giris.UrunId);
+        if (u is not null) giris.BirimFiyat = await TeklifAl(u.Id);
+    }
+
+    private async Task TakasYeniUrunSecildi()
+    {
+        var u = urunler.FirstOrDefault(x => x.Id == takas.YeniUrunId);
+        if (u is not null) takas.YeniFiyat = await TeklifAl(u.Id);
+    }
+
+    // ── etkileşim ──
+    private void TurSec(string yeni)
+    {
+        tur = yeni;
+        kalemler.Clear();
+        // PAKET P-16: iskonto SATIŞA aittir; tür değişince taşınmaz.
+        fisIskontoYuzde = null;
+        hata = null; masakSunucudanGerekli = false;
+        pesinKimlikGerekli = false;   // PAKET S2-3
+
+        // ALTIN/VERESIYE yalnız satışta geçerlidir. Satıştan alışa geçerken
+        // seçili kalırsa gövdede sunucunun reddedeceği bir değer gider (400).
+        if (tur != "SATIS" && odemeTuru is not ("NAKIT" or "KART" or "HAVALE"))
+            odemeTuru = "NAKIT";
+
+        // Karma yalnız satışta geçerlidir; tür değişince bacaklar taşınmaz.
+        if (tur != "SATIS") { karmaOdeme = false; bacaklar.Clear(); }
+        tevsikKalan = null;
+        tevsikNakitKapali = false; proTevsik = null; if (tur == "SATIS" && Modu.ProfesyonelMi) _ = InvokeAsync(async () => { await TevsikOnizle(yalnizHad: true); StateHasChanged(); });   // t13: sekme dönüşünde önceki fişin "Aşıldı"sı kalmaz
+        PesinOnSec();   // PAKET B-3
+        _ = IadeAdaylariYukleCiz();   // SATIS-3: yükleme bitince çizilir (aday listesi boş görünmesin)
+    }
+
+    private async Task KalemEkle()
+    {
+        // QA turu 1+2 YÜKSEK: "adet=0 / fiyat=-5 ile Ekle sessizce hiçbir şey
+        // yapmıyor". Artık her eksik alan KENDİ ALTINDA sebebini söyler.
+        form.Temizle(); hata = null;   // t10: fiş değişiyor → eski sunucu reddi kalkar
+        if (string.IsNullOrEmpty(giris.UrunId)) form.Ekle("islem-adet", Dil.T.Islem.UrunSecinUyari);
+        if (giris.Adet <= 0m) form.Ekle("islem-adet", Dil.T.Kabuk.SifirdanBuyuk);
+        if (giris.BirimFiyat is null or <= 0m) form.Ekle("islem-birimfiyat", Dil.T.Kabuk.SifirdanBuyuk);
+        if (!form.Gecerli)
+        {
+            await OdakIlkHataya();
+            return;
+        }
+
+        var mevcut = kalemler.FirstOrDefault(k => k.UrunId == giris.UrunId);
+        if (mevcut is not null)
+        {
+            mevcut.Adet += giris.Adet;
+        }
+        else
+        {
+            kalemler.Add(new FisKalemi
+            {
+                UrunId = giris.UrunId,
+                UrunAdi = urunler.FirstOrDefault(u => u.Id == giris.UrunId)?.Ad ?? "",
+                Adet = giris.Adet,
+                BirimFiyat = giris.BirimFiyat!.Value,
+                ListeFiyati = giris.SonTeklif is { TeklifVar: true } t ? t.ListeFiyati : null,
+                IndirimOncesi = giris.SonTeklif is { TeklifVar: true } t2 ? t2.IndirimOncesiFiyat : null,
+                IscilikTl = FisProKalemKarti.TeklifIscilik(giris.SonTeklif, giris.BirimFiyat),   // T-S2: yalnız teklif fiyatıyla eklenen kalemde
+            });
+            TeklifIziKaydet(kalemler[^1], giris.SonTeklif);   // EKSIK-KUCUK B2-12: teklif fiyatlı kalemin izi
+        }
+        giris.Sifirla();
+        giris.BarkodHata = null;   // t7: kalem eklendi — "fiyat hesaplanamadı" bandı ekranda kalmaz
+        // Fiş toplamı değişti: §4.1.2 nakit kilidi devreye girmiş olabilir.
+        await TevsikOnizle();
+    }
+
+    private async Task KalemSil(FisKalemi k)
+    {
+        kalemler.Remove(k); hata = null;   // t10
+        await TevsikOnizle();   // fiş toplamı düştü; nakit kilidi kalkmış olabilir
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        pesinKimlikGerekli = false;   // PAKET S2-3: bant yalnız SON denemenin reddini gösterir
+        // Kapı bayrağı her denemede SIFIRLANIR: bir önceki reddin açtığı alan,
+        // sorun çözüldükten sonra kalıcı olarak açık kalmaz.
+        kapiSunucudanAcildi = false;
+        basarili = false;
+        sonFisNo = null; yazdirHata = null; yazdirIdler.Clear(); otoYazdir = SatisTuvali && TekBelge; otoYazdirAcildi = false;   // T-S1: etiket "ve yazdır" diyorsa yazdırma KAYITTAN SONRA açılır
+        sonIskontoNotu = null;
+        yerlesimUyarisi = null; fisTaksitUyari = null; fisTaksitHata = null;   // YASAL-2 t3
+        form.Temizle();
+        if (string.IsNullOrEmpty(kurId)) { hata = Dil.T.Islem.BilgiKontrol; return; }
+
+        // DP4-03 — SUNUCUYA GİTMEDEN ÖNCE son kapı. Düğme zaten kilitli ve sebebi
+        // ekranda yazılı; burada sessizce dönmek yerine aynı sebep HATA BANDINA
+        // da yazılır (DoD EK md.3: sessiz etkisizlik yasak).
+        if (!Gonderilebilir) { hata = KaydetKilitSebebi ?? Dil.T.Islem.BilgiKontrol; return; }
+
+        kaydediliyor = true;
+        var kaydedildi = false;
+        try
+        {
+            var kasa = string.IsNullOrEmpty(kasaId) ? null : kasaId;
+            var acikl = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama;
+
+            if (IadeKipi)
+            {
+                var uc = tur == "SATIS_IADE" ? "satis-iade" : "alis-iade";
+                YazdirEkle(await Api.PostAsync<JsonElement>($"/islemler/{uc}", new
+                {
+                    kaynakHareketId = iadeKaynakId,
+                    adet = iadeAdet,
+                    odemeTuru,
+                    kasaId = odemeTuru == "VERESIYE" ? null : kasa,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                    masak = MasakGovdesi,
+                }));
+            }
+            else if (tur == "SATIS" && karmaOdeme)
+            {
+                // ⚠ TEK POST. Çok bacaklı fiş bölünemez: kalemler ayrı ayrı
+                // gönderilseydi ödeme bacakları hangi kaleme ait olurdu
+                // belirsiz kalır, kısmi başarısızlıkta fişin yarısı yazılırdı.
+                var fy = await Api.PostAsync<JsonElement>("/islemler/satis-fisi", Govde(new
+                {
+                    cariId = string.IsNullOrEmpty(cariId) ? null : cariId, bantOnay = FisAltinBacagi.Bant(bacaklar)?.GovdeOnay, bantGerekce = FisAltinBacagi.Bant(bacaklar)?.GovdeGerekce,   // ISLEM-BANT
+                    kalemler = kalemler.Select(k => new
+                    {
+                        urunId = k.UrunId,
+                        adet = k.Adet,
+                        birimFiyatTl = k.BirimFiyat,
+                        hediye = k.Hediye,
+                        // PAKET P-16 (Y-4): YÜZDE gider, TUTAR gitmez.
+                        satirIskontoYuzde = k.SatirIskontoYuzde,
+                    }),
+                    odemeler = FisFark.Gonderilecek(bacaklar).Select(b => FisAltinBacagi.Govde(b, altinAyarlari) ?? new   // B-4: ALTIN kendi sözleşmesiyle
+                    {
+                        arac = b.Arac,
+                        tutarTl = b.TutarTl,
+                        kasaId = b.Arac == "VERESIYE" || string.IsNullOrEmpty(b.KasaId) ? null : b.KasaId,
+                        paraBirimi = b.Arac == "DOVIZ" ? b.ParaBirimi : null,
+                        dovizTutar = b.Arac == "DOVIZ" ? (decimal?)b.DovizTutar : null,
+                        // P-10 (Y-3): yalnız KART bacağında gönderilir; boş bırakılırsa
+                        // sunucu TEK cihazı kendi seçer (OdemeSepeti sözleşmesi).
+                        posCihazId = b.Arac == "KART" && !string.IsNullOrEmpty(b.PosCihazId) ? b.PosCihazId : null,
+                        posTaksitAdedi = b.Arac == "KART" ? (int?)b.PosTaksitAdedi : null,
+                    }),
+                    vadeGun,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                    masak = MasakGovdesi,
+                    // PAKET P-16 (Y-4 / UX-S21): boş gönderilirse sunucu carinin
+                    // kartındaki oranı uygular; ekran onun yerine tahmin yapmaz.
+                    fisIskontoYuzde,
+                }));
+                sonFisNo = FisYaniti.FisNo(fy);
+                sonIskontoNotu = FisAltinBacagi.NotBirlestir(FisYaniti.IskontoNotu(fy, Dil.T.Islem), FisAltinBacagi.PusulaNotu(fy, Dil.Dil));   // UX-S27 (B-4): pusula no
+            }
+            else if (tur == "SATIS" && FisUcunaGider)
+            {
+                // HEDİYE/İSKONTO yalnız FİŞ ucunda tanımlıdır (P-16: /islemler/satis iskonto TANIMAZ, oran sessizce
+                // yok sayılırdı). ⚠ PAKET L-1 (tevsik, KRİTİK): çok kalemli düz satış da TEK fiştir — kalem başına
+                // POST fişi tevsik haddinin altına bölüyordu, kapı fiş toplamını görmüyordu (Islemler.Yazdir.cs).
+                var hy = await Api.PostAsync<JsonElement>("/islemler/satis-fisi", Govde(new
+                {
+                    cariId = string.IsNullOrEmpty(cariId) ? null : cariId,
+                    kalemler = kalemler.Select(k => new { urunId = k.UrunId, adet = k.Adet, birimFiyatTl = k.BirimFiyat, hediye = k.Hediye, satirIskontoYuzde = k.SatirIskontoYuzde }),
+                    odemeler = new[] { new { arac = odemeTuru, tutarTl = ToplamTl, kasaId = odemeTuru == "VERESIYE" ? null : kasa } },
+                    vadeGun,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                    masak = MasakGovdesi,
+                    personelId = SaticiGovde,   // S2-5b (null = oturum kullanıcısı)
+                    fisIskontoYuzde = HediyeVar || IskontoVar ? fisIskontoYuzde : 0m,   // L-1: düz fişe carinin oranı sessizce girmez (bacak = ToplamTl)
+                    reyonId = SecilenReyon,   // L-1: tek kalemli uçla aynı reyon sözleşmesi
+                }));
+                // UX-S27: POST yanıtı OKUNUR — fiş no, uygulanan iskonto ve reyon uyarısı banda yazılır.
+                sonFisNo = FisYaniti.FisNo(hy);
+                sonIskontoNotu = FisYaniti.IskontoNotu(hy, Dil.T.Islem);
+                yerlesimUyarisi = FisYaniti.YerlesimUyarisi(hy);
+            }
+            else if (AlisFisUcunaGider)
+            {
+                // ⚠ PAKET L-1b (tevsik, KRİTİK): ≥2 kalemli ALIS TEK POST — kalem başına POST fişi haddin altına bölüyordu.
+                var af = await Api.PostAsync<JsonElement>("/islemler/alis-fisi", Govde(new
+                {
+                    cariId,
+                    kalemler = kalemler.Select(k => new { urunId = k.UrunId, adet = k.Adet, birimFiyatTl = k.BirimFiyat }),
+                    odemeTuru, kasaId = kasa, vadeGun, kurSnapshotId = kurId, aciklama = acikl,
+                    masak = MasakGovdesi, reyonId = SecilenReyon,
+                }));
+                sonFisNo = FisYaniti.FisNo(af); yerlesimUyarisi = FisYaniti.YerlesimUyarisi(af); YazdirEkle(af);   // UX-S27
+            }
+            else if (tur is "SATIS" or "ALIS")
+            {
+                // SATIS ve ALIS buraya yalnız TEK kalemle düşer (L-1 / L-1b).
+                foreach (var k in kalemler)
+                {
+                    if (tur == "SATIS")
+                    {
+                        // UX-S27: POST yanıtı ARTIK OKUNUYOR — sunucunun ürettiği
+                        // hareket/fiş numarası başarı bandına yazılır.
+                        var y = await Api.PostAsync<JsonElement>("/islemler/satis", Govde(new
+                        {
+                            cariId,
+                            urunId = k.UrunId,
+                            adet = k.Adet,
+                            birimFiyatTl = k.BirimFiyat,
+                            odemeTuru,
+                            kasaId = odemeTuru == "VERESIYE" ? null : kasa,
+                            vadeGun,
+                            kurSnapshotId = kurId,
+                            aciklama = acikl,
+                            masak = MasakGovdesi,
+                            reyonId = SecilenReyon,
+                        }));
+                        sonFisNo ??= FisYaniti.FisNo(y); YazdirEkle(y);
+                        yerlesimUyarisi ??= FisYaniti.YerlesimUyarisi(y);
+                    }
+                    else
+                    {
+                        var ay = await Api.PostAsync<JsonElement>("/islemler/alis", Govde(new
+                        {
+                            cariId,
+                            urunId = k.UrunId,
+                            adet = k.Adet,
+                            birimFiyatTl = k.BirimFiyat,
+                            odemeTuru,
+                            kasaId = kasa,
+                            vadeGun,
+                            kurSnapshotId = kurId,
+                            aciklama = acikl,
+                            masak = MasakGovdesi,
+                            reyonId = SecilenReyon,
+                        }));
+                        yerlesimUyarisi ??= FisYaniti.YerlesimUyarisi(ay); YazdirEkle(ay);
+                    }
+                }
+            }
+            else if (tur == "HURDA_ALIS")
+            {
+                await Api.PostAsync("/islemler/hurda-alis", new
+                {
+                    cariId,
+                    ayarId = hurda.Ayar,
+                    gramAgirlik = hurda.Gram!.Value,
+                    birimFiyatTlHasGram = hurda.Fiyat!.Value, bantOnay = hurda.Bant.GovdeOnay, bantGerekce = hurda.Bant.GovdeGerekce,   // ISLEM-BANT
+                    odemeTuru,
+                    kasaId = kasa,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                    masak = MasakGovdesi,
+                    // DP4-03 — VUK md.234 satıcı kimliği. Sunucu bu blok olmadan
+                    // 400 döner; eskiden gövdeye hiç konmuyordu.
+                    satici = new
+                    {
+                        saticiTipi = hurda.SaticiTipi,
+                        adSoyad = Bos(hurda.SaticiAd),
+                        tckn = hurda.TcknRakam.Length == 0 ? null : hurda.TcknRakam,
+                        adres = Bos(hurda.SaticiAdres),
+                        tedarikciFaturaNo = Bos(hurda.TedarikciFaturaNo),
+                    },
+                });
+            }
+            else if (tur == "TAKAS")
+            {
+                var tky = await Api.PostAsync<JsonElement>("/islemler/takas", new {
+                    cariId,
+                    eskiUrunAyarId = takas.EskiAyar,
+                    eskiUrunGram = takas.EskiGram!.Value,
+                    eskiUrunBirimFiyatTlHasGram = takas.EskiFiyat!.Value, bantOnay = takas.Bant.GovdeOnay, bantGerekce = takas.Bant.GovdeGerekce,   // ISLEM-BANT
+                    yeniUrunId = takas.YeniUrunId,
+                    yeniUrunAdet = takas.YeniAdet,
+                    yeniUrunBirimFiyatTl = takas.YeniFiyat!.Value, odemeTuru, posCihazId = TakasPosId,   // t15: farkın ödeme türü (TakasDto.OdemeTuru; varsayılan NAKIT sunucuyla aynı) · t16: TakasDto.PosCihazId
+                    reyonId = SecilenReyon,
+                    kasaId = kasa,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                    masak = MasakGovdesi, satici = TakasSaticiGovdesi(),   // PARA-DEMO md.3 — VUK md.234; sunucu bu blok olmadan 400
+                }); sonIskontoNotu = TakasPusulaNotu(tky);   // UX-S27: düzenlenen gider pusulasının no'su bantta
+            }
+            else if (tur == "TRANSFER")
+            {
+                var ty = await Api.PostAsync<JsonElement>("/islemler/transfer", new
+                {
+                    kaynakSubeId = transfer.KaynakSubeId,
+                    hedefSubeId = transfer.HedefSubeId,
+                    urunId = transfer.UrunId,
+                    adet = transfer.Adet,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                    reyonId = string.IsNullOrEmpty(reyonId) ? null : reyonId,
+                    hedefReyonId = string.IsNullOrEmpty(hedefReyonId) ? null : hedefReyonId,
+                });
+                yerlesimUyarisi ??= FisYaniti.YerlesimUyarisi(ty);
+            }
+            else // ISCILIK
+            {
+                await Api.PostAsync("/islemler/iscilik", new
+                {
+                    cariId,
+                    iscilikTl = iscilikTutar!.Value,
+                    kasaId = kasa,
+                    kurSnapshotId = kurId,
+                    aciklama = acikl,
+                    masak = MasakGovdesi,
+                });
+            }
+            kaydedildi = true;
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28 / Aşkın K1 · K10 — HATA YUTULMAZ, "kayıt yok"a çevrilmez:
+            // sunucunun mesajı OLDUĞU GİBİ banda yazılır. Basit modda ayrıca
+            // gizlenen alanlar AÇILIR (ProAlan.ZorunluGorunur): taş kökeni
+            // (ADR-0013) gibi yalnız sunucuda bilinen kapılarda tezgâhtar aksi
+            // hâlde neyi düzelteceğini göremezdi.
+            hata = SunucuMesaji(ex); masakSunucudanGerekli |= MasakReddi(ex);   // t10: BASİT'te kısa cümle · MASAK alanları açılır
+            kapiSunucudanAcildi = true;
+            pesinKimlikGerekli = ex.StatusCode == 400 && ex.Alanlar.ContainsKey("cariId") && cariId == pesinCariId; Yasal3Yakala(ex);   // YASAL-3: soru / yaptırım kodu
+        }
+        kaydediliyor = false;
+        if (!kaydedildi) return;
+        masak = new(); masakSunucudanGerekli = false; Yasal3Sifirla();   // kişisel veri formda kalmaz · YASAL-3: beyan fişe özgü
+
+        // başarı: formu sıfırla, kasa bakiyelerini tazele, bandı 3 sn göster
+        var taksitSorgu = FisTaksitSorgusu(); SonKaydiTut(); kalemler.Clear();   // T-S1 (QA-10): kaydedilenin özeti bir sonraki Kaydet'e kadar görünür
+        fisIskontoYuzde = null; indirimAcik = false;   // PAKET P-16: bir sonraki fişe iskonto sızmaz
+        cariId = "";
+        PesinOnSec();             // PAKET B-3: yeni fiş yine Peşin Müşteri ile açılır
+        aciklama = "";
+        // DP4-03 — satıcı kimliği FİŞE ÖZGÜDÜR, sonraki alışa taşınmaz.
+        // UX-4b madde 7(a): yeni fişte fiyat yeniden KURDAN gelir — elle giriş fişe özgüdür.
+        hurda.Sifirla(hasFiyati);
+        iscilikTutar = null;
+        takas.Sifirla(hasFiyati);
+        transfer.Sifirla();
+        // t10 (tasarım hakemi KRİTİK): ödeme durumu da fişe özgüdür — karma satırlar, eski altın
+        // satıcısının kimliği ve para üstü sıradaki müşterinin fişine TAŞINMAZ (Vazgeç ile aynı).
+        odemeTuru = "NAKIT"; proOdemeAcik = false; if (karmaOdeme) await TekOdemeyeDon(); ProYasalBosFis();   /* PARA-DEMO-2 md.11: açık ödeme katmanı başarı bandını örtmez */   // KESIF-P5 t2 (hakem KRİTİK): boş fişte önceki fişin "Aşıldı"sı kalmaz
+        try { await KasalariYukle(); } catch (ApiHata) { /* bakiye tazelenemedi, kritik değil */ }
+        try { await CarileriTazele(); } catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }
+
+        await YazdirKalemiBul(); await OtomatikYazdir();   // S2-5: satis-fisi yalnız fisId döndürür · T-S1: tek belge → kendiliğinden yazdır
+        basarili = true;
+        basariJeton++; await FisTaksitUyariYukle(taksitSorgu);   // YASAL-2 t3: sunucu söylerse tek satır
+        // Kaydedilen fiş AYNI EKRANDA görünür olmalı (QA turu 1+2 KRİTİK).
+        await SonSatislariTazele();   // SATIS-2: liste açılmışsa tazelenir
+    }
+
+    /// <summary>
+    /// PAKET 25 · DP4-01 — gövdeye konacak reyon. ARTIK OTOMATİK ATAMA YOK:
+    /// kullanıcı ne seçtiyse o gider, boş bırakırsa sunucu sırası (önce atanmamış)
+    /// işler. Tek reyon varken otomatik atama, reyon boşken satışı kilitliyordu
+    /// (QA turu 4 KRİTİK — çıkmaz); bu yüzden kaldırıldı.
+    /// </summary>
+    private void YazdirEkle(JsonElement y) { if (FisYazdir.HareketId(y) is { } h) yazdirIdler.Add(h); }   // PAKET S2-5 (PLAN 2.7)
+    private async Task YazdirKalemiBul()
+    {
+        if (yazdirIdler.Count > 0 || tur != "SATIS" || string.IsNullOrEmpty(sonFisNo)) return;
+        try { if (FisYazdir.IlkKalem(await Api.GetAsync<JsonElement>($"/islemler/fis/{Uri.EscapeDataString(sonFisNo)}")) is { } h) yazdirIdler.Add(h); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { yazdirHata = ex.Message; }   // UX-S28: yutulmaz
+    }
+
+    private string? SecilenReyon =>
+        string.IsNullOrEmpty(reyonId) ? null : reyonId;
+
+    // ═══ PAKET P-16 (Y-4 / UX-S27) — UYGULANAN İSKONTO BANDA YAZILIR ═══════
+    // ⚠ Ekranın önizlemesi DEĞİL, SUNUCUNUN döndürdüğü rakam gösterilir.
+    //   İkisi ayrışırsa kullanıcı sunucunun yazdığını görür; ekran kendi
+    //   tahminini "olmuş" diye sunmaz (Anayasa md.1).
+    private string? sonIskontoNotu;
+
+    /// <summary>Satırlarda ya da fişte iskonto var mı — uç seçimini belirler.</summary>
+    private bool IskontoVar => fisIskontoYuzde is > 0m || kalemler.Any(k => k.SatirIskontoYuzde > 0m);
+
+    // Yanıt okuyucuları (fiş no, yerleşim uyarısı, uygulanan iskonto) → FisYaniti (PAKET S2-1).
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile; YildizAboneliktenCik();
+        Canli.Degisti -= KurYansit;
+        Modu.Degisti -= ModDegisti;
+    }
+}

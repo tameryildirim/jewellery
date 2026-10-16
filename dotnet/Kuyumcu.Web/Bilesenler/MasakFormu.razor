@@ -1,0 +1,378 @@
+@using Kuyumcu.Contracts.Bilesenler.MasakFormu
+@using Kuyumcu.Core.Domain.Girdi
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   MASAK kimlik/beyan formu — SIRADAKI-ADIM-KARAR §2/A.
+   Islemler.razor, işlem tutarı yasal eşiği aştığında bu bileşeni gösterir ve
+   Model'i POST gövdesinde `masak` alanı olarak gönderir. Alanlar kademeye
+   göre açılır (eşikler /masak/esikler'den gelir; sunucu SON SÖZÜ söyler —
+   burası yalnız kullanıcıyı doğru alanlara yönlendirir).
+   Kişisel veri burada TUTULMAZ: sayfa kapanınca model gider.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="kart kart--masak">
+    <div class="kart-baslik">
+        @* ZO-ISLEM-A 28.09 (2. hakem turu): Sade=true (BASİT mod çağıranı) başlığı
+           jargonsuz söyler ve rozet + açıklama TEKRARINI çizmez — aynı uyarı tek yerde. *@
+        @* PAKET YASAL-PARAM-EKRAN (MASAK-370 tasarım hakemi ORTA): karar bugünkü bağlantılı işlem
+           toplamından geldiyse başlık GERÇEK gerekçeyi söyler ("bu müşterinin bugünkü toplamı X");
+           yeni açıklama satırı eklenmez, başlık metni değişir. *@
+        @* YASAL-PARAM-EKRAN tur 2 (tasarım hakemi KRİTİK): BASİT ve PRO AYNI başlık — tetikleyen kademeyi
+           söyler (MasakKademe: toplam / kimlik eşiği / amaç kademesi; sayı sunucudan). PRO'nun ayrı rozeti
+           kaldırıldı (başlıkla aynı bilgiyi ikinci kez söylüyordu). *@
+        <h3 class="zo-masak-baslik" id="masak-baslik">@BaslikMetni</h3>
+    </div>
+    <div class="kart-govde form-dikey">
+        @if (!Sade && !KuralGizli)
+        {
+            @* YASAL-PARAM-EKRAN: kimlik kuralı bütün ekranlarda TEK cümle kalıbı (eşikler sunucudan). *@
+            <p class="metin-kucuk" id="masak-kural">@KuralMetni</p>
+        }
+
+        <div class="form-grid-3">
+            <div class="alan">
+                <Secici ElemanId="masak-belge-turu"
+                        Etiket="@Dil.T.Islem.MasakBelgeTuru"
+                        Zorunlu="true"
+                        Secenekler="@(BelgeTurleri.Select(t => new SecenekOgesi(t, Dil.T.SayfaDuzeltme.BelgeTuruAdi(t))).ToList())"
+                        @bind-Deger="Model.BelgeTuru"
+                        @bind-Deger:after="BelgeTuruDegisti" />
+            </div>
+            @* PAKET GOC-B (envanter #3, C satır 49): belge no BELGE TÜRÜNE göre ortak anlamsal bileşen — T.C. Kimlik →
+               TcKimlikNo (rakam dışı yazılamaz, 11 hane dolunca algoritma), Pasaport → Pasaport (K7 büyük harf, boşluk
+               yazılamaz), diğer belgeler → Metin. Sınır sunucuyla TEK sabit (ekran 60 / sunucu 50 idi). id AYNI. *@
+            @if (Model.BelgeTuru == KimlikBelgesi.TcKimlik)
+            {
+                <TcKimlikNo ElemanId="masak-belge-no" Etiket="@BelgeNoEtiketi" Zorunlu="true"
+                            Deger="@Model.BelgeNo" DegerChanged="@(v => { Model.BelgeNo = v; Bildir(); })"
+                            Hata="@(TcknAlanHatasi(Model, Dil.Dil) ?? BosHata(Model.BelgeNo))" HataKimligi="masak-belge-no-hata" />
+            }
+            else if (Model.BelgeTuru == KimlikBelgesi.Pasaport)
+            {
+                <Pasaport ElemanId="masak-belge-no" Etiket="@BelgeNoEtiketi" Zorunlu="true"
+                          Deger="@Model.BelgeNo" DegerChanged="@(v => { Model.BelgeNo = v; Bildir(); })" Hata="@BosHata(Model.BelgeNo)" HataKimligi="masak-belge-no-hata" />
+            }
+            else
+            {
+                <Metin ElemanId="masak-belge-no" Etiket="@BelgeNoEtiketi" Zorunlu="true" EnFazla="@AlanSinirlari.MasakBelgeNo"
+                       Deger="@Model.BelgeNo" DegerChanged="@(v => { Model.BelgeNo = v; Bildir(); })" Hata="@BosHata(Model.BelgeNo)" HataKimligi="masak-belge-no-hata" />
+            }
+            @* PAKET GOC-B (C satır 50, K19): "1" ad soyad olarak MASAK kaydına geçiyordu → AdSoyad (en az 2, harf). *@
+            <AdSoyad ElemanId="masak-ad-soyad" Etiket="@Dil.T.Islem.MasakAdSoyad" Zorunlu="true" EnFazla="@AlanSinirlari.MasakAdSoyad"
+                     Deger="@Model.AdSoyad" DegerChanged="@(v => { Model.AdSoyad = v; Bildir(); })" Hata="@BosHata(Model.AdSoyad)" />
+        </div>
+
+        @if (AdresZorunlu)
+        {
+            @* Gider pusulası adres ister: zorunlu alan katlanırda saklanmaz. *@
+            <Metin ElemanId="masak-adres" Etiket="@Dil.T.Islem.MasakAdres" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.Adres" Zorunlu="true"
+                   Deger="@Model.Adres" DegerChanged="@(v => { Model.Adres = v; Bildir(); })" />
+        }
+
+
+        @if (AmacGerekli)
+        {
+            <Metin ElemanId="masak-amac" Etiket="@Dil.T.Islem.MasakIslemAmaci" Zorunlu="true" EnFazla="@AlanSinirlari.MasakIslemAmaci"
+                   Deger="@Model.IslemAmaci" DegerChanged="@(v => { Model.IslemAmaci = v; Bildir(); })" Hata="@BosHata(Model.IslemAmaci)" />
+            <CokSatir ElemanId="masak-aciklama" Etiket="@Dil.T.Islem.MasakBeyanAciklama" Zorunlu="true"
+                      Satir="2" EnFazla="@AlanSinirlari.MasakAciklama"
+                      Deger="@Model.Aciklama" DegerChanged="@(v => { Model.Aciklama = v; Bildir(); })"
+                      Ipucu="@string.Format(Dil.T.Islem.MasakEnAzKarakter, AsgariAciklama)"
+                      Hata="@AciklamaHatasi" />
+        }
+
+        @if (FormGerekli)
+        {
+            <Metin ElemanId="masak-fon" Etiket="@(FonEtiketi ?? Dil.T.Islem.MasakFonKaynagi)" Zorunlu="true" EnFazla="@AlanSinirlari.MasakFonKaynagi"
+                   Deger="@Model.FonKaynagi" DegerChanged="@(v => { Model.FonKaynagi = v; Bildir(); })" Hata="@BosHata(Model.FonKaynagi)" />
+        }
+
+        @if (EkBelgeGerekli)
+        {
+            <Metin ElemanId="masak-ekbelge" Etiket="@(EkBelgeEtiketi ?? Dil.T.Islem.MasakEkBelge)" Zorunlu="true" EnFazla="@AlanSinirlari.MasakFonKaynagi"
+                   Deger="@Model.EkBelgeReferansi" DegerChanged="@(v => { Model.EkBelgeReferansi = v; Bildir(); })" Hata="@BosHata(Model.EkBelgeReferansi)" />
+        }
+
+        @* YASAL-KAPI-3 (tasarım hakemi: "eşik üstü form ağır, iki zorunlu ilk ekranda görünmüyor"): isteğe bağlı
+           "Diğer bilgiler" katlanırı ZORUNLULARIN SONUNA alındı (zorunlu önce kuralı) — açıkken bile amaç/açıklama
+           ondan önce gelir. İçerik ve kimlikler AYNEN. *@
+        @* YASAL-PARAM-EKRAN tur 2 (tasarım hakemi KRİTİK, kurucu "zorunlu önce"): doğum tarihi, uyruk ve
+           (zorunlu değilse) adres isteğe bağlıdır → kapalı "Diğer bilgiler" katlanırında. Ön doldurulan
+           değerler (müşteri kartından) gövdeye yine gider; alanlar açılınca görünür. *@
+        @* P-TEZGAH-TUR-KIMLIK tur 2: "Tamam"dan sonra uyruk geçersizse katlanır AÇIK çizilir (eksik alan gizli kalmaz; bir kez açılınca açık kalır). *@
+        <Katlanir @key="@(uyrukZorlaAcik ? "masak-diger-acik" : "masak-diger")" Id="masak-diger" Baslik="@YP.DigerBilgiler" Sinif="masak-diger" BaslangictaAcik="uyrukZorlaAcik">
+        <div class="form-grid-3">
+            @* PAKET GOC-B (envanter #2): K8f (tur 2): gelecek / 120 yıldan eski yazılamaz; 18 yaş altı ENGEL DEĞİL, yalnız uyarı — sunucu aynı kural. *@
+            <Tarih ElemanId="masak-dogum" Etiket="@Dil.T.Islem.MasakDogumTarihi" Tur="TarihTuru.KisiDogum"
+                   Ipucu="@(TarihPenceresi.ResitDegil(Model.DogumTarihi, DateOnly.FromDateTime(Bicim.IsletmeBugun)) ? GocBSozlugu.Al(Dil.Dil).DogumResitDegilUyari : null)"
+                   Deger="@Model.DogumTarihi" DegerChanged="@((DateOnly? v) => { Model.DogumTarihi = v; Bildir(); })" />
+            @* ZO-ISLEM-A 28.09 (2. hakem turu): uyruk ham ISO kodu yazdırılmaz — Türkiye
+               varsayılanlı ülke seçici (ad görünür, gövdeye KOD gider). Listede olmayan
+               uyruk için "Diğer ülke" 3 harfli kod kutusunu açar; ISO alpha-3 dışı kod alan altında hata verir. *@
+            <div class="alan" id="masak-uyruk-alan">
+                <Secici ElemanId="masak-uyruk"
+                        Etiket="@ZO.MasakUyruk"
+                        Secenekler="@UlkeSecenekleri"
+                        YerTutucu="@ZO.MasakUyrukYerTutucu"
+                        Deger="@UyrukSecimi" DegerChanged="UyrukSecildi" />
+                <span class="metin-kucuk metin-soluk" id="masak-uyruk-ipucu">@(string.IsNullOrWhiteSpace(Model.Uyruk) && !uyrukDiger ? ZO.MasakUyrukSecin : ZO.MasakUyrukIpucu)</span>
+                @if (UyrukDigerMi)
+                {
+                    <Metin ElemanId="masak-uyruk-kod" Etiket="@ZO.MasakUyrukKod" Ipucu="@ZO.MasakUyrukKodIpucu" EnFazla="@AlanSinirlari.UyrukKod"
+                           Hata="@(UlkeListesi.KodGecerli(Model.Uyruk) ? null : ZO.MasakUyrukKodGecersiz)"
+                           Deger="@Model.Uyruk" DegerChanged="@(v => { Model.Uyruk = v?.Trim().ToUpperInvariant(); uyrukElle = true; Bildir(); })" />
+                }
+            </div>
+            @if (!AdresZorunlu)
+            {
+                <Metin ElemanId="masak-adres" Etiket="@Dil.T.Islem.MasakAdres" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.Adres"
+                       Deger="@Model.Adres" DegerChanged="@(v => { Model.Adres = v; Bildir(); })" />
+            }
+        </div>
+        </Katlanir>
+    </div>
+</div>
+
+@code {
+    /// <summary>POST gövdesinde `masak` olarak gönderilen model (camelCase JSON, API DTO ile birebir).</summary>
+    public sealed class MasakBilgi
+    {
+        public string BelgeTuru { get; set; } = "TC_KIMLIK";
+        public string? BelgeNo { get; set; }
+        public string? AdSoyad { get; set; }
+        public DateOnly? DogumTarihi { get; set; }
+        public string? Uyruk { get; set; } = "TUR";
+        public string? Adres { get; set; }
+        public string? IslemAmaci { get; set; }
+        public string? Aciklama { get; set; }
+        public string? FonKaynagi { get; set; }
+        public string? EkBelgeReferansi { get; set; }
+    }
+
+
+    /// <summary>
+    /// ⚠ PAKET 41 — BULUNAN HATA: alanlar BU bileşende bağlanıyor, "kaydedilebilir
+    /// mi" kararı ise ÜST bileşende veriliyordu. Blazor yalnız olayın sahibi
+    /// bileşeni yeniden çizdiği için üstteki Kaydet düğmesi, tüm alanlar
+    /// doldurulduğu hâlde KİLİTLİ kalıyordu (BankaEkranTestleri kanıtladı).
+    /// Bu geri çağrı üst bileşene "değiştim" der; bağlanmadığında hiçbir şey
+    /// yapmaz, yani mevcut kullanım (Islemler.razor) DEĞİŞMEZ.
+    /// </summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private Task Bildir() => Degisti.InvokeAsync();
+
+    /// <summary>ZO-ISLEM-A 28.09 — BASİT mod çağıranı: jargonsuz başlık, tekrar yok.</summary>
+    [Parameter] public bool Sade { get; set; }
+    /// <summary>PARA-DEMO-2 tur 5: satıcı kimliği bu kutudan alınıyorsa (hurda alışı / değişim, VUK md.234 gider pusulası
+    /// adres ister) Adres zorunlu görünür — tek kural, tek etiket. Varsayılan false: diğer ekranlarda davranış AYNEN.</summary>
+    [Parameter] public bool AdresZorunlu { get; set; }
+    /// <summary>YASAL-KAPI-2 tur 2 (doğrulayıcı KRİTİK "aynı uyarı 4 yerde"): PRO /islemler'de eşik kademeleri (kimlik — MASAK,
+    /// amaç beyanı — teyit bekleniyor) "Yasal kapılar" panelinde ZATEN yazıyor; true iken #masak-kural eşik cümlesini
+    /// TEKRARLAMAZ, yalnız saklama notunu taşır. Varsayılan false: panel olmayan ekranlarda (Cariler, Banka, Hurda) AYNEN.</summary>
+    [Parameter] public bool EsikPanelde { get; set; }
+    /// <summary>YASAL-KAPI-3 (tasarım hakemi: "PRO teknik not + çift uyarı", "panel olmayan PRO çekmecelerde eşik iki blokta"):
+    /// true iken #masak-kural satırı HİÇ çizilmez — eşik ve gereken alanlar başlıkta TEK kez söylenir, iç not
+    /// ("mali müşavir teyidi bekleniyor") tezgâhtara gösterilmez. Varsayılan false: diğer ekranlarda AYNEN.</summary>
+    [Parameter] public bool KuralGizli { get; set; }
+
+    /// <summary>
+    /// P-TEZGAH-TUR-KIMLIK (denetim K4: "beyan açıklaması gizli zorunlu", "Tamam" hiçbir şey söylemiyordu): true iken boş zorunlu
+    /// alanın ALTINDA "Bu alan zorunludur.", kısa beyan açıklamasında "En az N karakter yazın (n / N)." yazar (N sunucudan —
+    /// Gereksinim.AsgariAciklamaUzunlugu). Kimlik çekmecesinin "Tamam"ı eksik formla basılınca çağıran açar. Varsayılan false:
+    /// form açılır açılmaz kırmızı yazı yok, diğer ekranlarda davranış AYNEN. Kural (Eksiksiz) DEĞİŞMEZ.
+    /// </summary>
+    [Parameter] public bool EksikGoster { get; set; }
+
+    /// <summary>Tur 2: EksikGoster açıkken uyruk geçersizse "Diğer bilgiler" bir kez açılır ve açık kalır.</summary>
+    private bool uyrukZorlaAcik;
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (EksikGoster && !UlkeListesi.KodGecerli(Model.Uyruk)) uyrukZorlaAcik = true;
+    }
+
+    private string? BosHata(string? deger) =>
+        EksikGoster && string.IsNullOrWhiteSpace(deger) ? Kuyumcu.Core.I18n.TurKimlikSozlugu.Al(Dil.Dil).AlanZorunlu : null;
+
+    /// <summary>Beyan açıklaması: kısa yazıldıysa "n / N" (eskisi AYNEN); "Tamam"dan sonra boşsa zorunlu, kısaysa tam cümle.</summary>
+    private string? AciklamaHatasi
+    {
+        get
+        {
+            var n = Model.Aciklama?.Trim().Length ?? 0;
+            if (!EksikGoster)   // eskisi AYNEN
+                return !string.IsNullOrEmpty(Model.Aciklama) && n < AsgariAciklama ? $"{n} / {AsgariAciklama}" : null;
+            if (n == 0) return Kuyumcu.Core.I18n.TurKimlikSozlugu.Al(Dil.Dil).AlanZorunlu;
+            return n >= AsgariAciklama ? null : string.Format(Kuyumcu.Core.I18n.TurKimlikSozlugu.Al(Dil.Dil).AciklamaKisa, n, AsgariAciklama);
+        }
+    }
+
+    /// <summary>SATINALMA-EKRAN: karşı taraf müşteri değilse (mal kabulde tedarikçi) bağlantılı-toplam başlığı kendi
+    /// sözlüğünden gelir ({0} = tutar). Varsayılan null: diğer ekranlarda "bu müşterinin ..." AYNEN.</summary>
+    /// <summary>SATINALMA-EKRAN-2: mal kabulde tezgâhtar dili etiketler (null = diğer ekranlarda AYNEN). Zorunluluk sunucu kuralıyla aynı.</summary>
+    [Parameter] public string? FonEtiketi { get; set; }
+    [Parameter] public string? EkBelgeEtiketi { get; set; }
+    [Parameter] public string? ToplamBaslikSablonu { get; set; }
+    [Parameter] public string? ToplamAmacBaslikSablonu { get; set; }
+
+    private ZoIslemMetinleri ZO => ZoIslemSozlugu.Al(Dil.Dil);
+
+    private YasalParamMetinleri YP => YasalParamSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// PAKET YASAL-PARAM-EKRAN: başlık — iki modda AYNI (tur 2). Bağlantılı toplamda gerçek gerekçe
+    /// (sunucunun ölçüsü); aksi hâlde tetikleyen kademe (kilit metniyle aynı seçici, MasakKademe).
+    /// Kademe bilinmiyorsa (eski sunucu, eşik yok) sayı uydurulmaz: eski sade başlık.
+    /// </summary>
+    private string BaslikMetni => MasakKademe.Sec(Esik, Gereksinim, Tutar) switch
+    {
+        // Tur 3 (hasım ORTA): toplam dalında da form amaç istiyorsa başlık bunu söyler.
+        MasakTetik.Toplam => string.Format(Gereksinim.AmacGerekli ? (ToplamAmacBaslikSablonu ?? YP.BaslikToplamAmac) : (ToplamBaslikSablonu ?? YP.BaslikToplam), Bicim.Tl(Gereksinim.OlcuTutarTl)),
+        MasakTetik.Amac => string.Format(YP.BaslikAmac, Bicim.Tl(Esik.AmacBeyaniEsigi)),
+        MasakTetik.Kimlik => string.Format(YP.BaslikKimlik, Bicim.Tl(Esik.KimlikEsigi)),
+        _ => ZO.MasakBaslikBasit,
+    };
+
+    /// <summary>PAKET YASAL-PARAM-EKRAN: PRO açıklaması — kimlik kuralının tek cümlesi + saklama notu.</summary>
+    private string KuralMetni =>
+        EsikPanelde ? YasalParamSozlugu.Al(Dil.Dil).Saklama :
+        YasalParamSozlugu.KimlikKuraliMetni(Dil.Dil, Esik.KimlikEsigi, Esik.AmacBeyaniEsigi, t => Bicim.Tl(t))
+        + " " + YasalParamSozlugu.Al(Dil.Dil).Saklama;
+
+    /// <summary>
+    /// PAKET TCKN-DOGRULAMA — Kaydet kilidinin sebebi: belge türü T.C. Kimlik ve yazılan numara TC kimlik no
+    /// doğrulama kuralından geçmiyorsa "TC kimlik numarası geçerli değil." (tek kaynak Core KimlikNoDogrulayici).
+    /// Pasaport ve diğer belge türleri bu kurala tabi değildir. Boş numara = "eksik" (bu metin değil).
+    /// </summary>
+    public static string? TcknKilitMetni(MasakBilgi m, string dil) =>
+        m.BelgeTuru == KimlikBelgesi.TcKimlik && !string.IsNullOrWhiteSpace(m.BelgeNo)
+        && !KimlikNoDogrulayici.TcknGecerli(m.BelgeNo.Trim())
+            ? KimlikNoSozlugu.Al(dil).TcknGecersiz : null;
+
+    /// <summary>
+    /// PAKET TCKN-DOGRULAMA — alan altı ANINDA hata: numara "bitmiş" görünür görünmez (11+ hane ya da rakam dışı
+    /// karakter) söylenir; ilk 10 haneyi yazarken kırmızı duvar çıkmaz (kilit yine kapalıdır, sebebi yazılıdır).
+    /// </summary>
+    public static string? TcknAlanHatasi(MasakBilgi m, string dil)
+    {
+        if (TcknKilitMetni(m, dil) is not { } metin) return null;
+        var n = m.BelgeNo!.Trim();
+        return n.Length >= 11 || !KimlikNoDogrulayici.YalnizRakam(n) ? metin : null;
+    }
+
+    // 28.09 (3. doğrulama DÜŞÜK): "Belge No (TCKN / Pasaport)" kısaltması yerine seçili belge türüne
+    // göre düz ad. YASAL-PARAM-EKRAN tur 2 (tasarım hakemi KRİTİK): PRO da aynı etiketi kullanır.
+    public static string BelgeNoEtiketiFor(string? belgeTuru, ZoIslemMetinleri zo) =>
+        belgeTuru == KimlikBelgesi.TcKimlik ? zo.MasakBelgeNoTc
+        : belgeTuru == KimlikBelgesi.Pasaport ? zo.MasakBelgeNoPasaport
+        : zo.MasakBelgeNoDiger;
+
+    private string BelgeNoEtiketi => BelgeNoEtiketiFor(Model.BelgeTuru, ZO);
+
+    private bool uyrukDiger;
+
+    private bool UyrukDigerMi =>
+        uyrukDiger || (!string.IsNullOrWhiteSpace(Model.Uyruk) && !UlkeListesi.Listede(Model.Uyruk));
+
+    private string? UyrukSecimi => UyrukDigerMi ? UlkeListesi.Diger : Model.Uyruk;
+
+    private IReadOnlyList<SecenekOgesi> UlkeSecenekleri =>
+        UlkeListesi.Tumu.Select(u => new SecenekOgesi(u.Kod, Dil.Dil == "en" ? u.En : u.Tr))
+            .Append(new SecenekOgesi(UlkeListesi.Diger, ZO.MasakUyrukDiger))
+            .ToList();
+
+    // ZO-ISLEM-A 28.09 (doğrulayıcı DÜŞÜK — fail-closed varsayılan): uyruk "TUR" YALNIZ
+    // T.C. kimlik kartından çıkarılır. Pasaport, mavi kart, sürücü belgesi, vergi
+    // levhasında kullanıcı elle seçmediyse uyruk BOŞ gelir — yabancı müşteri sessizce
+    // Türk olarak kaydedilmez. Elle seçilen uyruk belge türü değişince EZİLMEZ.
+    // (Uyruğun yasal zorunluluğu burada hükme bağlanmadı — Mehmet / mali müşavir.)
+    private bool uyrukElle;
+
+    public static string? VarsayilanUyruk(string? belgeTuru) =>
+        belgeTuru == KimlikBelgesi.TcKimlik ? "TUR" : null;
+
+    private Task BelgeTuruDegisti()
+    {
+        if (!uyrukElle && !uyrukDiger) Model.Uyruk = VarsayilanUyruk(Model.BelgeTuru);
+        return Bildir();
+    }
+
+    private Task UyrukSecildi(string? v)
+    {
+        uyrukElle = true;
+        if (v == UlkeListesi.Diger)
+        {
+            uyrukDiger = true;
+            // Listedeki bir ülkeden "Diğer"e geçilince eski kod gövdede KALMAZ.
+            if (UlkeListesi.Listede(Model.Uyruk)) Model.Uyruk = null;
+        }
+        else
+        {
+            uyrukDiger = false;
+            Model.Uyruk = v;
+        }
+        return Bildir();
+    }
+
+    [Parameter, EditorRequired] public MasakBilgi Model { get; set; } = new();
+    [Parameter, EditorRequired] public decimal Tutar { get; set; }
+    [Parameter, EditorRequired] public Esikler Esik { get; set; } = null!;
+
+    /// <summary>
+    /// Hangi alanın gerekli olduğunu SUNUCU söyler (<c>GET /masak/gereksinim</c>).
+    /// <para>
+    /// ⚠ Eskiden bu bileşen kademeyi kendisi hesaplıyordu — yani mevzuat kuralı
+    /// iki yerde yaşıyordu ve sunucu kuralı değişince istemci sessizce saparak
+    /// kullanıcıya eksik form gösteriyordu (TB-11). Artık kademe mantığı yalnız
+    /// sunucudadır; bu bileşen onu gösterir.
+    /// </para>
+    /// </summary>
+    [Parameter, EditorRequired] public MasakGereksinim Gereksinim { get; set; } = null!;
+
+    private bool AmacGerekli => Gereksinim.AmacGerekli;
+    private bool FormGerekli => Gereksinim.BeyanFormuGerekli;
+    private bool EkBelgeGerekli => Gereksinim.EkBelgeGerekli;
+    private int AsgariAciklama => Gereksinim.AsgariAciklamaUzunlugu;
+    private IEnumerable<string> BelgeTurleri => Esik.BelgeTurleri;
+
+    /// <summary>
+    /// Alanların DOLU olup olmadığını kontrol eder — hangi alanın gerekli
+    /// olduğunu değil. O kararı sunucu verir ve <paramref name="g"/> ile gelir.
+    /// Sunucu her hâlükârda son sözü söyler; bu yalnız kullanıcıyı erken uyarır.
+    /// </summary>
+    public static Kuyumcu.Core.Domain.Girdi.GirdiHatasi? KimlikKuralHatasi(MasakBilgi m) =>
+        AdKurali.Denetle(m.AdSoyad, AlanSinirlari.MasakAdSoyad)
+        ?? TarihPenceresi.Denetle(m.DogumTarihi, TarihTuru.KisiDogum, DateOnly.FromDateTime(Bicim.IsletmeBugun))
+        ?? (m.BelgeTuru == KimlikBelgesi.Pasaport ? PasaportKurali.Denetle(m.BelgeNo) : null)
+        ?? ((m.BelgeNo?.Trim().Length ?? 0) > AlanSinirlari.MasakBelgeNo ? new GirdiHatasi(GirdiKodu.AdUzun, AlanSinirlari.MasakBelgeNo) : (GirdiHatasi?)null)
+        ?? ((m.IslemAmaci?.Trim().Length ?? 0) > AlanSinirlari.MasakIslemAmaci ? new GirdiHatasi(GirdiKodu.AdUzun, AlanSinirlari.MasakIslemAmaci) : (GirdiHatasi?)null);
+
+    public static bool Eksiksiz(MasakBilgi m, MasakGereksinim g)
+    {
+        if (!g.KimlikGerekli) return true;
+
+        if (string.IsNullOrWhiteSpace(m.BelgeTuru)
+            || string.IsNullOrWhiteSpace(m.BelgeNo)
+            || string.IsNullOrWhiteSpace(m.AdSoyad)) return false;
+
+        // PAKET TCKN-DOGRULAMA: belge T.C. Kimlik ise numara doğrulama kuralından geçmeli (sunucu kapısının aynası).
+        if (TcknKilitMetni(m, "tr") is not null) return false;
+        // PAKET GOC-B: ortak bileşenlerin kuralı üst bileşenin Kaydet kilidine de yansır (kapı zinciri olmayan
+        // çağıranlarda — sunucu kapısının aynası: K19 ad soyad, K8f doğum, K7 pasaport, uzunluk sınırları).
+        if (KimlikKuralHatasi(m) is not null) return false;
+
+        // 28.09 (3. doğrulama): "Diğer ülke" kutusuna ISO alpha-3 olmayan kod yazıldıysa kayıt kilitli
+        // (sebep alanın altında: MasakUyrukKodGecersiz — UX-S30).
+        if (!UlkeListesi.KodGecerli(m.Uyruk)) return false;
+
+        if (g.AmacGerekli && (string.IsNullOrWhiteSpace(m.IslemAmaci)
+            || (m.Aciklama?.Trim().Length ?? 0) < g.AsgariAciklamaUzunlugu)) return false;
+
+        if (g.BeyanFormuGerekli && string.IsNullOrWhiteSpace(m.FonKaynagi)) return false;
+        if (g.EkBelgeGerekli && string.IsNullOrWhiteSpace(m.EkBelgeReferansi)) return false;
+
+        return true;
+    }
+}

@@ -1,0 +1,387 @@
+/* tuval-panel-musteri — şerit stil dosyası (orkestratör 24.09 17:30). app.css'ten SONRA yüklenir; yalnız bu şerit yazar. Sabit renk YOK, yalnız belirteç (var(--…)). */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET T-P1 — PANEL TUVALE (tuval/project/Panel.dc.html, 1440×900 BİREBİR)
+   Kapsam: yalnız BASİT yüz (.karsilama-bas--sade + .panel-sade). Profesyonel
+   yüz (.karsilama-izgara, P-37b) bu blokta YOKTUR ve değişmez.
+   Ölçüler tuvalin satır içi px değerleridir; yazı boyları gövdeye (--yazi-govde,
+   tuvalde 18 px) ORANLANIR → yazı ölçeği (16/18/20) ayarı çalışmaya devam eder.
+   Renkler YALNIZ belirteç: tuvalin Platin Mavi renkleri belirteçlerin kendi
+   değerleridir (kart kenarı → --ayrac, soluk yazı → --metin-soluk, bağlantı →
+   --vurgu, gecikme/eksi → --tehlike, dikkat noktası → --uyari-vurgu, kâr →
+   --basari); öteki 7 şemada aynı belirteçler kendi değerini verir.
+   app.css'e DOKUNULMADI: kurallar app.css'ten SONRA yüklenir ve eşit/üstün
+   özgüllükle ezer.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Başlık: selam (Sora 32/700) · tarih·şehir derece (17) · "Yeni satış" ── */
+.karsilama-bas.karsilama-bas--sade {
+  flex-wrap: nowrap; align-items: flex-end; justify-content: space-between;
+  gap: 18px; margin: 0 0 22px;
+}
+.karsilama-bas--sade > div { min-width: 0; }
+.karsilama-bas--sade .karsilama-selam {
+  margin: 0; font-family: var(--yazi-marka); font-weight: var(--kalin-cok);
+  font-size: calc(var(--yazi-govde) * 1.7778); line-height: 1.2; letter-spacing: -0.01em;
+  color: var(--metin);
+}
+.karsilama-bas--sade .karsilama-tarih {
+  margin: 6px 0 0; font-size: calc(var(--yazi-govde) * .9444); color: var(--metin-soluk);
+}
+.karsilama-bas--sade .karsilama-hava-sade { color: inherit; }
+/* app.css .karsilama-hava-sade inline-block'tur → baştaki boşluk yutulur ("2026· İstanbul").
+   Ayraç kendi kutusunda, iki yanı tuvaldeki gibi birer boşluk genişliğinde. */
+.karsilama-bas--sade .panel-hava-ayrac { margin: 0 .3em; }
+.karsilama-bas--sade .panel-yeni-satis {
+  flex-shrink: 0; min-height: 54px; height: 54px; padding: 0 26px; border-radius: 9px;
+  font-size: var(--yazi-govde); font-weight: var(--kalin); gap: 10px;
+  display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+  text-decoration: none;
+}
+/* Tuvaldeki ince çizgili "+" (18×18, çizgi 2 px) — currentColor ile, sabit renk yok. */
+.karsilama-bas--sade .panel-yeni-satis::before {
+  content: ""; flex-shrink: 0; width: 18px; height: 18px;
+  background:
+    linear-gradient(currentColor, currentColor) center / 2px 14px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 14px 2px no-repeat;
+  border-radius: 1px;
+}
+
+/* ── Gövde: 3 eşit kısa kart + alt iki kart (1,4 fr / 1 fr) ─────────────── */
+.panel-sade.panel-sade { gap: 22px; }
+.panel-sade .panel-sade-kartlar { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.panel-sade .panel-sade-alt { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; }
+/* Tuvalde alt kartlar ekranın dibine kadar uzar (flex-grow: 1). Kabuğun üst
+   çubuğu + başlık + üç kart ≈ 402 px (1440×900 ölçümü); kalan yükseklik alt
+   kartlarındır, alt kenarda tuvaldeki 26 px boşluk kalır. */
+.panel-sade .panel-sade-alt { min-height: calc(100vh - 402px); }
+
+.panel-sade .panel-soru,
+.panel-sade .panel-sade-kartlar > .kart {
+  padding: 20px 22px; border: 1px solid var(--ayrac); border-radius: 12px;
+  background: var(--yuzey); box-shadow: var(--golge-sm); gap: 10px; margin: 0;
+}
+.panel-sade .panel-soru--liste { gap: 12px; }
+
+/* Kart etiketi (15 px, soluk, normal ağırlık) */
+.panel-sade .panel-soru-baslik,
+.panel-sade .panel-sade-kartlar > .kart .kart-baslik h2 {
+  margin: 0; font-family: var(--yazi-ailesi); font-size: calc(var(--yazi-govde) * .8333);
+  font-weight: 400; line-height: 1.4; color: var(--metin-soluk);
+}
+/* Büyük sayı (36 / 600 / 1.1, tabular) */
+.panel-sade .panel-soru-sayi,
+.panel-sade .panel-sade-kartlar > .kart .stat-deger {
+  margin: 0; font-size: calc(var(--yazi-govde) * 2); font-weight: var(--kalin); line-height: 1.1;
+  font-variant-numeric: tabular-nums; color: var(--metin); text-decoration: none;
+  white-space: nowrap; overflow-wrap: normal; word-break: normal;
+}
+.panel-sade a.panel-soru-sayi:hover { color: var(--vurgu); }
+/* Tek satır kırılım (15 px, 16 px ara) */
+.panel-sade .panel-soru-alt,
+.panel-sade .pozisyon-kart--sade .pozisyon-kirilim {
+  margin: 0; display: flex; flex-wrap: wrap; column-gap: 16px; row-gap: 2px;
+  font-size: calc(var(--yazi-govde) * .8333); color: var(--metin-soluk);
+  font-variant-numeric: tabular-nums;
+}
+.panel-sade .panel-soru-alt > * { white-space: nowrap; }
+.panel-sade .panel-soru-alt-oge,
+.panel-sade .pozisyon-kart--sade .pozisyon-kirilim-oge {
+  font-size: inherit; color: inherit; text-decoration: none;
+}
+.panel-sade .panel-soru-alt-oge:hover,
+.panel-sade .pozisyon-kart--sade .pozisyon-kirilim-oge:hover { color: var(--metin); text-decoration: underline; }
+.panel-sade .panel-soru-kar { color: var(--basari); text-decoration: none; }
+.panel-sade .panel-soru-kar--eksi { color: var(--tehlike); }
+.panel-sade .panel-soru-kar--eksik { color: var(--uyari); }
+.panel-sade .panel-soru-kar:hover { text-decoration: underline; }
+
+/* Altın pozisyonu kartı (B-2 bileşeni) — sade kabuk */
+.panel-sade .pozisyon-kart--sade > .kart-baslik {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 0; border: 0; background: transparent; min-height: 0;
+}
+.panel-sade .pozisyon-kart--sade > .kart-govde {
+  padding: 0; display: flex; flex-direction: column; gap: 10px;
+}
+.pozisyon-kart--sade .pozisyon-ayrinti {
+  padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer;
+  font-size: calc(var(--yazi-govde) * .8333); color: var(--vurgu); white-space: nowrap;
+}
+.pozisyon-kart--sade .pozisyon-ayrinti:hover { color: var(--vurgu-guclu); text-decoration: underline; }
+
+/* ── Alt kartlar: başlık 19/600 · "Tümü" 16 ─────────────────────────────── */
+.panel-sade .panel-soru-bas { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panel-sade .panel-soru-baslik--liste {
+  font-size: calc(var(--yazi-govde) * 1.0556); font-weight: var(--kalin); color: var(--metin);
+}
+.panel-sade .panel-soru-bas > a {
+  font-size: calc(var(--yazi-govde) * .8889); color: var(--vurgu); text-decoration: none; white-space: nowrap;
+}
+.panel-sade .panel-soru-bas > a:hover { color: var(--vurgu-guclu); }
+
+/* "Kim borçlu?" satırı: ad · durum 130 · tutar 130 · eylem 110 */
+.panel-sade #panel-soru-borclu .panel-liste-satir {
+  display: grid; grid-template-columns: minmax(0, 1fr) 130px 130px 110px; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--yuzey-2); align-items: center;
+  font-size: var(--yazi-govde); font-variant-numeric: tabular-nums;
+}
+.panel-sade #panel-soru-borclu .panel-liste-satir:last-child { border-bottom: 0; }
+.panel-sade #panel-soru-borclu .panel-liste-ad {
+  font-weight: var(--kalin-orta); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.panel-sade #panel-soru-borclu .panel-liste-durum {
+  font-size: calc(var(--yazi-govde) * .8333); color: var(--metin-soluk); white-space: nowrap;
+}
+.panel-sade #panel-soru-borclu .panel-liste-durum--gecti { color: var(--tehlike); }
+.panel-sade #panel-soru-borclu .panel-liste-tutar {
+  text-align: right; font-weight: var(--kalin); white-space: nowrap; color: var(--metin);
+}
+.panel-sade #panel-soru-borclu .panel-liste-tutar--eksi { color: var(--tehlike); }
+.panel-sade #panel-soru-borclu .panel-liste-satir > .dugme {
+  min-height: 0; height: auto; padding: 8px 0; border: 1px solid var(--ayrac); border-radius: 8px;
+  background: var(--yuzey); color: var(--metin); text-align: center; justify-content: center;
+  font-size: calc(var(--yazi-govde) * .8333); font-weight: 400; text-decoration: none; white-space: nowrap;
+}
+.panel-sade #panel-soru-borclu .panel-liste-satir > .dugme:hover { border-color: var(--kenarlik); background: var(--yuzey-hover); }
+
+/* "Bekleyen iş": renkli nokta 9 · metin (16) · sağda kaynak (14) */
+.panel-sade #panel-soru-bekleyen .panel-liste { gap: 12px; }
+.panel-sade #panel-soru-bekleyen .panel-liste + .panel-liste { margin-top: 12px; }
+.panel-sade #panel-soru-bekleyen .panel-liste-satir--is {
+  display: flex; align-items: center; gap: 10px; padding: 0; border: 0;
+  font-size: calc(var(--yazi-govde) * .8889);
+}
+.panel-sade #panel-soru-bekleyen .panel-nokta { flex-shrink: 0; width: 9px; height: 9px; border-radius: 999px; }
+.panel-sade #panel-soru-bekleyen .panel-liste-ad {
+  flex-grow: 1; min-width: 0; font-weight: 400; color: var(--metin); text-decoration: none;
+  overflow-wrap: break-word; word-break: normal;
+}
+.panel-sade #panel-soru-bekleyen a.panel-liste-ad:hover { color: var(--vurgu); text-decoration: underline; }
+.panel-sade #panel-soru-bekleyen .panel-is-kaynak {
+  flex-shrink: 0; font-size: calc(var(--yazi-govde) * .7778); color: var(--metin-soluk); white-space: nowrap;
+}
+
+/* ── Dar ekranlar (tuval yalnız 1440; burada makul yığın, yatay kaydırma 0) ── */
+@media (max-width: 1100px) {
+  .panel-sade .panel-sade-kartlar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .panel-sade .panel-sade-alt { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+}
+@media (max-width: 900px) {
+  .panel-sade .panel-sade-kartlar { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .karsilama-bas.karsilama-bas--sade { flex-wrap: wrap; }
+  .karsilama-bas--sade > div { flex: 1 1 100%; }
+  .karsilama-bas--sade .panel-yeni-satis { width: 100%; }
+  /* Dar ekran: iki satır — "ad · eylem" / "durum · tutar". Ad tek satırda
+     kalır; sığmayan uzun ad üç noktayla biter, TAMAMI title'da okunur. */
+  .panel-sade .panel-soru,
+  .panel-sade .panel-sade-kartlar > .kart { padding: 16px; }
+  .panel-sade #panel-soru-borclu .panel-liste-satir {
+    grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "ad eylem" "durum tutar";
+    row-gap: 6px; column-gap: 10px;
+  }
+  .panel-sade #panel-soru-borclu .panel-liste-ad { grid-area: ad; }
+  .panel-sade #panel-soru-borclu .panel-liste-durum { grid-area: durum; }
+  .panel-sade #panel-soru-borclu .panel-liste-tutar { grid-area: tutar; }
+  .panel-sade #panel-soru-borclu .panel-liste-satir > .dugme { grid-area: eylem; min-width: 88px; padding: 8px 12px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET T-M1 — MÜŞTERİLER TUVALE (tuval/project/Musteriler.dc.html, 1440×900)
+   Kapsam: yalnız BASİT yüz (.musteri-sade sarmalayıcısı ve
+   .musteri-panel-kap--sade içindeki #cekmece-cari). PROFESYONEL yüzde bu
+   sınıflar YOKTUR → tablo, süzgeç şeridi ve çekmece bugünkü gibi kalır.
+   Ölçüler tuvalin satır içi px değerleridir; yazı boyları gövdeye (tuvalde
+   18 px = --yazi-govde) ORANLANIR: 17 → ×.9444 · 16 → ×.8889 · 15 → ×.8333 ·
+   14 → ×.7778 · 13 → ×.7222 · 21 → ×1.1667.
+   Renkler YALNIZ belirteç (Platin Mavi değerleri): kart/ayraç #d7dce4 → --ayrac ·
+   soluk yazı #5a6577/#8a94a6 → --metin-soluk · seçili segment #14213d →
+   --kenar-yuzey · tablo başı #f2f4f7 → --yuzey-govde · seçili satır #eef3ff →
+   --vurgu-yuzey · "Vade geçti"/uyarı #fdecec+#c0262d → --tehlike-yuzey +
+   --tehlike · "Toptancı" #e9edf3 → --yuzey-2 · birincil #2457d6 → --vurgu.
+   app.css'e DOKUNULMADI: kurallar ondan SONRA yüklenir, üstün özgüllükle ezer.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Sayfa başlığı: tuvalde üst çubukta → burada GÖRSEL gizli (DOM'da, h2 sırası korunur) */
+.musteri-sade .sayfa-basi .sayfa-basi-metin {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.musteri-sade .sayfa-basi .sayfa-basi-metin > * { overflow: hidden; margin: 0; }
+
+/* ── Araç satırı: [büyüteç "Ad ya da telefon" 460] [Hepsi|Borçlu|Toptancı] ··· [+ Yeni müşteri] */
+.musteri-sade .sayfa-basi { align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: nowrap; }
+.musteri-sade .sayfa-basi .sayfa-basi-filtre { align-items: center; gap: 12px; flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; }
+.musteri-sade .sayfa-basi .sayfa-basi-eylem { padding-top: 0; align-items: center; }
+.musteri-sade .sayfa-basi-filtre > .musteri-ara {
+  flex: 1 1 460px; max-width: 460px; min-width: 0;
+  flex-direction: row; align-items: center; gap: 10px;
+  height: 50px; box-sizing: border-box; padding: 0 14px;
+  border: 1px solid var(--ayrac); border-radius: 9px; background: var(--yuzey); color: var(--metin-soluk);
+}
+.musteri-sade .musteri-ara:focus-within { outline: var(--odak-halka-kalinlik) solid var(--odak-halka); outline-offset: var(--odak-halka-boslugu); }
+.musteri-sade .musteri-ara .musteri-ara-ikon { flex-shrink: 0; width: 18px; height: 18px; }
+.musteri-sade .musteri-ara > .arama-kutu { flex: 1 1 auto; min-width: 0; padding: 0; margin: 0; position: relative; }
+.musteri-sade .musteri-ara > .arama-kutu > .gorsel-gizli { top: 0; left: 0; margin: 0; }
+.musteri-sade .musteri-ara .girdi.girdi-arama {
+  height: 46px; min-height: 0; width: 100%; padding: 0; border: 0; outline: 0; box-shadow: none;
+  background: transparent; font: inherit; font-size: calc(var(--yazi-govde) * .9444); color: var(--metin);
+}
+.musteri-sade .sayfa-basi-filtre > .musteri-segment {
+  flex: 0 0 auto; min-width: 0; flex-direction: row; align-items: center; gap: 4px; padding: 3px;
+  border: 1px solid var(--ayrac); border-radius: 999px; background: var(--yuzey);
+  font-size: calc(var(--yazi-govde) * .8333);
+}
+.musteri-segment-oge {
+  padding: 7px 14px; border: 0; border-radius: 999px; background: transparent;
+  font: inherit; color: var(--metin-soluk); cursor: pointer; white-space: nowrap; line-height: 1.3;
+}
+.musteri-segment-oge:hover { color: var(--metin); }
+.musteri-segment-oge--secili, .musteri-segment-oge--secili:hover { background: var(--kenar-yuzey); color: var(--kenar-metin-guclu); }
+.musteri-segment-oge:focus-visible { outline: var(--odak-halka-kalinlik) solid var(--odak-halka); outline-offset: var(--odak-halka-boslugu); }
+.musteri-sade .btn.musteri-yeni {
+  height: 50px; min-height: 50px; padding: 0 20px; border-radius: 9px;
+  font-size: calc(var(--yazi-govde) * .9444); font-weight: var(--kalin);
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.musteri-sade .btn.musteri-yeni::before {
+  content: ""; flex-shrink: 0; width: 17px; height: 17px;
+  background:
+    linear-gradient(currentColor, currentColor) center / 2px 14px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 14px 2px no-repeat;
+  border-radius: 1px;
+}
+
+/* ── Tablo kartı: kenar --ayrac, köşe 12, başlık satırı 14 px büyük harf, satır 62 px */
+.musteri-sade .kart.musteri-tablo-kart { border: 1px solid var(--ayrac); border-radius: 12px; overflow: hidden; box-shadow: var(--golge-sm); }
+.musteri-sade .musteri-tablo { width: 100%; font-size: var(--yazi-govde); font-variant-numeric: tabular-nums; border-collapse: collapse; }
+.musteri-sade .musteri-tablo > thead { background: var(--yuzey-govde); border-bottom: 1px solid var(--ayrac); }
+/* GRID-1 tur 3: ortak ızgaranın başlık zemini belirteci BASİT tuvalde başlığın kendi rengidir (eylem başlığı dahil). */
+.musteri-sade .musteri-tablo.izgara-tablo { --izgara-baslik-zemin: var(--yuzey-govde); }
+.musteri-sade .musteri-tablo > thead > tr > th {
+  padding: 12px 20px; font-size: calc(var(--yazi-govde) * .7778); font-weight: 400;
+  color: var(--metin-soluk); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+}
+.musteri-sade .musteri-tablo > thead > tr > th.musteri-sutun-borc { text-align: right; }
+.musteri-sade .musteri-tablo > tbody > tr > td {
+  height: 62px; box-sizing: border-box; padding-block: 0; padding-inline: 20px;
+  border-top: 0; border-bottom: 1px solid var(--ayrac); vertical-align: middle;
+}
+.musteri-sade .musteri-tablo > tbody > tr:last-child > td { border-bottom: 0; }
+.musteri-sade .musteri-tablo > tbody > tr > td:first-child { font-weight: 500; min-width: 0; }
+.musteri-sade .musteri-tablo > tbody > tr > td.musteri-sutun-borc { font-weight: var(--kalin); text-align: right; white-space: nowrap; }
+.musteri-sade .musteri-tablo > tbody > tr > td.hucre-vurgu.musteri-sutun-ek { font-weight: 400; }
+.musteri-sade .musteri-satir { cursor: pointer; }
+.musteri-sade .musteri-tablo > tbody > tr.musteri-satir--secili,
+.musteri-sade .musteri-tablo > tbody > tr.musteri-satir--secili:hover { background: var(--vurgu-yuzey); }
+.musteri-sade .cari-telefon-metin { color: var(--metin-soluk); white-space: nowrap; }
+.cari-rozet {
+  display: inline-block; margin-left: 8px; padding: 3px 10px; border-radius: 999px;
+  font-size: calc(var(--yazi-govde) * .7222); font-weight: 500; line-height: 1.3; white-space: nowrap; vertical-align: middle;
+}
+.cari-rozet--vade { background: var(--tehlike-yuzey); color: var(--tehlike); }
+.cari-rozet--toptan { background: var(--yuzey-2); color: var(--metin-soluk); }
+/* Satır eylemleri tuvaldeki gibi yazılı küçük düğmeler: 15 px, köşe 8, ⋯ 38×38 */
+.musteri-sade .musteri-tablo .satir-eylem { justify-content: flex-end; gap: 6px; }
+.musteri-sade .musteri-tablo .satir-eylem > .btn,
+.musteri-sade .musteri-tablo .satir-eylem > button {
+  min-height: 38px; padding: 8px 12px; border-radius: 8px; font-size: calc(var(--yazi-govde) * .8333); font-weight: 400;
+}
+
+/* ── Alt satır: "N müşteri · M gösteriliyor · Diğer süzgeçler" (15 px soluk) */
+.musteri-sayac { margin: 16px 0 0; font-size: calc(var(--yazi-govde) * .8333); color: var(--metin-soluk); }
+.musteri-baglanti {
+  padding: 0; border: 0; background: none; font: inherit; color: var(--vurgu); cursor: pointer; text-decoration: none;
+}
+.musteri-baglanti:hover { text-decoration: underline; }
+.musteri-baglanti:focus-visible { outline: var(--odak-halka-kalinlik) solid var(--odak-halka); outline-offset: 2px; }
+.musteri-baglanti--tehlike { color: inherit; font-weight: var(--kalin); text-decoration: underline; }
+
+/* ── Panel açıkken (≥ 1024 px): liste panelin SOLUNDA; tuvalde panelin altında
+   kalan sütunlar (Has, döviz, eylemler) ve "Yeni müşteri" gizlenir. Hiçbir yazı
+   panelin altına girmez (K9 binen = 0). Panel kapanınca hepsi geri gelir. */
+@media (min-width: 1024px) {
+  .musteri-sade--panel-acik { padding-inline-end: calc(min(440px, 100vw) - 4px); }
+  .musteri-sade--panel-acik .musteri-sutun-ek,
+  .musteri-sade--panel-acik .sayfa-basi-eylem { display: none; }
+}
+@media (max-width: 1023px) {
+  /* Dar ekranda panel TAM ekrandır; arkadaki liste çizilmez (üst üste yazı yok). */
+  .musteri-sade--panel-acik > .dikey-bosluk { display: none; }
+}
+
+/* ── Sağdan açılan panel (tuval <aside> 440 px, dolgu 24/26, aralık 18) ─────── */
+.musteri-panel-kap--sade .cekmece-arka { background: transparent; }
+.musteri-panel-kap--sade .cekmece#cekmece-cari { width: min(440px, 100vw); box-shadow: var(--golge-lg); }
+@media (max-width: 1023px) {
+  .musteri-panel-kap--sade .cekmece#cekmece-cari { width: 100vw; }
+  .musteri-panel-kap--sade .cekmece-arka { background: var(--yuzey-govde); }
+}
+.musteri-panel-kap--sade #cekmece-cari .cekmece-bas { padding: 24px 26px 0; border-bottom: 0; }
+.musteri-panel-kap--sade #cekmece-cari .cekmece-bas h2 {
+  font-size: calc(var(--yazi-govde) * 1.1667); font-weight: var(--kalin); color: var(--metin); min-width: 0; overflow-wrap: anywhere;
+}
+.musteri-panel-kap--sade #cekmece-cari .cekmece-kapat {
+  flex-shrink: 0; width: 38px; height: 38px; min-width: 38px; min-height: 38px;
+  border: 1px solid var(--ayrac); border-radius: 8px; background: var(--yuzey);
+  font-size: calc(var(--yazi-govde) * 1); color: var(--metin);
+}
+.musteri-panel-kap--sade #cekmece-cari .cekmece-govde { padding: 18px 26px 0; display: flex; flex-direction: column; }
+.musteri-panel-kap--sade #cekmece-cari .musteri-panel-form { flex: 1 1 auto; gap: 14px; }
+.musteri-panel-kap--sade #cekmece-cari .musteri-panel-uyari {
+  padding: 12px 14px; border-radius: 10px; background: var(--tehlike-yuzey); color: var(--tehlike);
+  font-size: calc(var(--yazi-govde) * .8333); line-height: 1.4; margin-bottom: 4px;
+}
+.musteri-panel-kap--sade #cekmece-cari .alan-etiket { font-size: calc(var(--yazi-govde) * .8333); color: var(--metin-soluk); font-weight: 400; }
+.musteri-panel-kap--sade #cekmece-cari .alan-istege { display: none; }
+.musteri-panel-kap--sade #cekmece-cari .zorunlu-isaret { color: var(--tehlike); }
+.musteri-panel-kap--sade #cekmece-cari .alan { gap: 6px; }
+.musteri-panel-kap--sade #cekmece-cari .girdi {
+  height: 50px; min-height: 50px; box-sizing: border-box; padding: 0 14px; border-radius: 9px;
+  font-family: inherit; font-size: calc(var(--yazi-govde) * .9444); color: var(--metin);
+}
+.musteri-panel-kap--sade #cekmece-cari textarea.girdi { height: 50px; padding-block: 12px; resize: vertical; }
+.musteri-panel-kap--sade #cekmece-cari #duz-telefon { font-variant-numeric: tabular-nums; }
+.musteri-panel-kap--sade #cekmece-cari .alan-sayac { display: none; }
+.musteri-panel-kap--sade #cekmece-cari .form-tek { display: flex; flex-direction: column; }
+.musteri-panel-kap--sade #cekmece-cari .form-daha-fazla {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+  min-height: 50px; padding: 14px 16px; border: 1px solid var(--ayrac); border-radius: 9px;
+  background: var(--yuzey-govde); color: var(--metin); font: inherit; font-size: calc(var(--yazi-govde) * .8889);
+  text-align: left; white-space: normal;
+}
+.form-daha-fazla .katla-ok { flex-shrink: 0; width: 16px; height: 16px; color: var(--metin-soluk); transition: transform var(--gecis); }
+.form-daha-fazla .katla-ok--acik { transform: rotate(180deg); }
+.musteri-panel-kap--sade #cekmece-cari .musteri-son-degisiklik {
+  margin: auto 0 0; padding-top: 18px; font-size: calc(var(--yazi-govde) * .7778); color: var(--metin-soluk);
+}
+.musteri-panel-kap--sade #cekmece-cari .musteri-son-degisiklik a { color: var(--vurgu); text-decoration: none; }
+.musteri-panel-kap--sade #cekmece-cari .cekmece-alt {
+  padding: 18px 26px 24px; border-top: 0; background: var(--yuzey); gap: 10px; flex-wrap: nowrap;
+}
+.musteri-panel-kap--sade #cekmece-cari .cekmece-alt > .dugme {
+  height: 50px; min-height: 50px; padding: 0 18px; border-radius: 9px; font-size: calc(var(--yazi-govde) * .9444);
+}
+.musteri-panel-kap--sade #cekmece-cari .cekmece-alt > #cekmece-cari-kaydet { flex: 1 1 auto; font-weight: var(--kalin); }
+.musteri-panel-kap--sade #cekmece-cari .cekmece-alt > .cekmece-kilit-sebep { flex: 1 1 100%; }
+.musteri-panel-kap--sade #cekmece-cari .cekmece-alt:has(.cekmece-kilit-sebep) { flex-wrap: wrap; }
+
+/* ── 375 px: tuval yok → makul yığın, yatay kaydırma 0 (QA-10: tablo 975 px taşıyordu).
+   Satır KART olur: [ad + rozetler] üstte, [telefon · borç] altta, eylemler en altta. */
+@media (max-width: 768px) {
+  .musteri-sade .sayfa-basi { flex-wrap: wrap; }
+  .musteri-sade .sayfa-basi .sayfa-basi-filtre { flex: 1 1 100%; flex-wrap: wrap; }
+  .musteri-sade .sayfa-basi-filtre > .musteri-ara { flex: 1 1 100%; max-width: none; }
+  .musteri-sade .sayfa-basi .sayfa-basi-eylem { flex: 1 1 100%; }
+  .musteri-sade .btn.musteri-yeni { width: 100%; justify-content: center; }
+  .musteri-sade .kart-liste-ipucu { display: none; }
+  /* GRID-1 tur 3: liste kartı ORTAK IZGARANIN tek kart kalıbındadır (css/izgara.css, ≤ 560 px):
+     ad üstte, her değer kendi satırında "etiket solda · değer sağda", eylemler en altta.
+     Sayfaya özgü musteri-tablo kart kuralları kaldırıldı (iki kalıp çakışıyordu). */
+  .musteri-sade .musteri-tablo .satir-eylem { justify-content: flex-start; flex-wrap: wrap; }
+  .musteri-panel-kap--sade #cekmece-cari .cekmece-bas { padding: 16px 16px 0; }
+  .musteri-panel-kap--sade #cekmece-cari .cekmece-govde { padding: 14px 16px 0; }
+  .musteri-panel-kap--sade #cekmece-cari .cekmece-alt { padding: 14px 16px 16px; }
+}

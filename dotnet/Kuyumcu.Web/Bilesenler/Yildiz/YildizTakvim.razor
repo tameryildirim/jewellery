@@ -1,0 +1,106 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-5B — "YILDIZ" TAKVİM KALIBI (tuval Y_Vadetakvimi · BİREBİR).
+
+   Solda üst satır + 64 px başlık, ay adı (28 px ince) + gün adları (14 px, 0,1em), 7 sütunlu kare
+   gün ızgarası (kıl çizgi; vadeli gün metin rengi + --p kenar + nokta). Sağda 460 px "Bu ay" listesi.
+   ⚠ YALNIZ data-sema="yildiz". İSTEK ATMAZ: veri sayfadan gelir; vadeli gün o günün evrak listesine gider.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="@(B.AyrintiAcik ? "yz yz-takvim yz-liste--ayrinti" : "yz yz-takvim")" id="@B.Kok">
+    @if (B.AyrintiAcik)
+    {
+        <div class="yz-liste-ana">
+            <div class="yz-bas">
+                <div class="yz-bas-sol">
+                    <p class="yz-ust" id="@($"{B.Kok}-ust")">@B.Ust</p>
+                    <h1 class="yz-ince yz-h1" id="@($"{B.Kok}-baslik")">@B.Baslik</h1>
+                </div>
+                <button type="button" class="yz-b2" id="@($"{B.Kok}-don")" @onclick="B.AyrintiKapat">@B.DonEtiketi</button>
+            </div>
+        </div>
+    }
+    else
+    {
+    <div class="yz-takvim-ana">
+        <section class="yz-takvim-sol">
+            <div class="yz-bas">
+                <div class="yz-bas-sol">
+                    <p class="yz-ust" id="@($"{B.Kok}-ust")">@B.Ust</p>
+                    <h1 class="yz-ince yz-h1" id="@($"{B.Kok}-baslik")">@B.Baslik</h1>
+                </div>
+            </div>
+            @B.Bantlar
+            <div class="yz-takvim-ay">
+                <span class="yz-ince yz-takvim-ay-adi" id="@($"{B.Kok}-ay")">@B.AyAdi</span>
+                <span class="yz-s yz-takvim-gunler" aria-hidden="true">@B.GunAdlari</span>
+            </div>
+            <div class="yz-takvim-izgara" id="@($"{B.Kok}-izgara")" role="list" aria-label="@B.AyAdi">
+                @for (var i = 0; i < B.Bosluk; i++)
+                {
+                    <span aria-hidden="true"></span>
+                }
+                @for (var g = 1; g <= B.GunSayisi; g++)
+                {
+                    var gun = g;
+                    @if (B.VadeliGunler.TryGetValue(gun, out var href))
+                    {
+                        <a class="yz-gun yz-gun--v" role="listitem" id="@($"{B.Kok}-gun-{gun}")" href="@href">@gun</a>
+                    }
+                    else
+                    {
+                        <span class="yz-gun" role="listitem" id="@($"{B.Kok}-gun-{gun}")">@gun</span>
+                    }
+                }
+            </div>
+            @if (B.AyrintiAc.HasDelegate)
+            {
+                <button type="button" class="yz-ekle" id="@($"{B.Kok}-ayrinti")" @onclick="B.AyrintiAc">
+                    <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@YildizListeSozlugu.TumAyrintilar(Dil.Dil)
+                </button>
+            }
+        </section>
+        <aside class="yz-takvim-sag">
+            <p class="yz-ust" id="@($"{B.Kok}-liste-baslik")">@B.ListeBaslik</p>
+            @if (B.Yukleniyor && B.Satirlar.Count == 0)
+            {
+                <Yukleniyor />
+            }
+            else if (B.Satirlar.Count > 0)
+            {
+                <div class="yz-sayi yz-liste-tablo" id="@($"{B.Kok}-liste")">
+                    <div class="yz-sat yz-liste-sat yz-liste-sat--bas" aria-hidden="true">
+                        @foreach (var c in B.Sutunlar)
+                        {
+                            <span class="@(c.Sag ? "yz-ust yz-liste-bas yz-sag" : "yz-ust yz-liste-bas")">@YildizListeBicim.Buyuk(c.Baslik, Dil.Dil)</span>
+                        }
+                    </div>
+                    @foreach (var r in B.Satirlar)
+                    {
+                        <div class="yz-sat yz-liste-sat" id="@($"{B.Kok}-{r.Id}")">
+                            @for (var i = 0; i < r.Hucreler.Count; i++)
+                            {
+                                var h = r.Hucreler[i];
+                                <span class="@YildizListe.HucreSinifi(h.Tur, i < B.Sutunlar.Count && B.Sutunlar[i].Sag)" id="@h.Id">@h.Metin</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else if (B.BosMetni is { Length: > 0 } bos)
+            {
+                <p class="yz-s yz-bos" id="@($"{B.Kok}-bos")">@bos</p>
+            }
+            @if (B.SinirNotu is { } sinir)
+            {
+                <p class="yz-s yz-not" id="@($"{B.Kok}-sinir")" role="status">@sinir</p>
+            }
+        </aside>
+    </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizTakvimBaglami B { get; set; } = new();
+}

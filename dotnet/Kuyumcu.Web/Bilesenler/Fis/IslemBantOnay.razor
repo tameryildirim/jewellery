@@ -1,0 +1,67 @@
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+@inject IServiceProvider Hizmetler
+
+@* ═══ PAKET ISLEM-BANT — işlem içi has fiyatı bandı: İKİNCİ ONAY YOLU ═══════════════
+   Kur ekranıyla (Kur.razor #m-bant-*) AYNI kalıp ve AYNI metinler (KurBantSozlugu):
+   yalnız ORAN bandı aşımında (mutlak sınır onaylanamaz — FiyatBandi.OnaylanabilirMi) çizilir.
+   SAHİP/MÜDÜR: "Fiyat doğru, yine de kaydet" + gerekçe (≥ 20, denetim izine yazılır).
+   Diğer roller: tek, küçük soluk yetki cümlesi. Bant içindeyken HİÇBİR ŞEY çizilmez (zorunlu önce).
+   Bileşen istek ATMAZ; durum çağıranın modelindedir, gövdeye çağıran koyar. *@
+@if (Onaylanabilir)
+{
+    @if (Yetkili)
+    {
+        <div class="form-dikey" id="@($"{Onek}-bant-onay-blok")">
+            <Onay ElemanId="@($"{Onek}-bant-onay")" Etiket="@KB.OnayEtiket" Deger="@Durum.Onay" DegerChanged="OnayDegisti" />
+            @if (Durum.Onay)
+            {
+                <CokSatir ElemanId="@($"{Onek}-bant-gerekce")" Etiket="@KB.GerekceEtiket" Zorunlu="true"
+                          Satir="2" EnFazla="@AlanSinirlari.GerekceEnCok" Ipucu="@KB.GerekceIpucu"
+                          Deger="@Durum.Gerekce" DegerChanged="GerekceDegisti" Hata="@GerekceHata" />
+            }
+        </div>
+    }
+    else
+    {
+        <p class="metin-soluk metin-kucuk" id="@($"{Onek}-bant-yetki")">@KB.YetkiYok</p>
+    }
+}
+
+@code {
+    /// <summary>Kimlik öneki: hurda → "hurda-bant-onay", takas → "takas-bant-onay" …</summary>
+    [Parameter, EditorRequired] public string Onek { get; set; } = "";
+    /// <summary>Alanın bant sonucu (FiyatBandi.IslemDenetle); null = bant içinde.</summary>
+    [Parameter] public GirdiHatasi? Hata { get; set; }
+    [Parameter, EditorRequired] public IslemBantOnayDurumu Durum { get; set; } = new();
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private KurBantMetinleri KB => KurBantSozlugu.Al(Dil.Dil);
+    private bool Onaylanabilir => Hata is { } h && FiyatBandi.OnaylanabilirMi(h);
+    private bool Yetkili => IslemBantGosterim.OnayYetkili(IslemBantGosterim.Rol(Hizmetler));   // ISLEM-BANT-2: Kaydet kilidiyle TEK kural
+
+    /// <summary>Yazılmaya başlanmış ama 20 karakteri bulmamış gerekçe: sunucuyla aynı cümle (K30).</summary>
+    private string? GerekceHata
+    {
+        get
+        {
+            var n = Durum.Gerekce.Trim().Length;
+            return n is > 0 and < AlanSinirlari.GerekceEnAz
+                ? GirdiSozlugu.Mesaj(new GirdiHatasi(GirdiKodu.GerekceKisa, AlanSinirlari.GerekceEnAz, n), Dil.Dil)
+                : null;
+        }
+    }
+
+    private Task OnayDegisti(bool v)
+    {
+        Durum.Onay = v;
+        return Degisti.InvokeAsync();
+    }
+
+    private Task GerekceDegisti(string? v)
+    {
+        Durum.Gerekce = v ?? "";
+        return Degisti.InvokeAsync();
+    }
+}

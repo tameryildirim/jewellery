@@ -1,0 +1,1489 @@
+/* tuval-satis — şerit stil dosyası (orkestratör 24.09 17:30). app.css'ten SONRA yüklenir; yalnız bu şerit yazar. Sabit renk YOK, yalnız belirteç (var(--…)). */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET T-S1 — SATIŞ BASİT MOD = tuval Tezgah.dc.html (1440×900, Platin Mavi)
+   Kapsam: .islem-sayfa.tuval-tezgah (Islemler.razor, yalnız BASİT modda).
+   Ölçüler tuvalin satır içi stillerinden (px, 18 px gövdeye göre); yazı
+   boyutları kullanıcının yazı ölçeğiyle (16/18/20) ORANTILI büyür:
+   --ts-N = N/18 × var(--yazi-govde). Renkler YALNIZ belirteç (8 tema çalışır).
+   Yerleşim: sol sütun (üst satır · barkod · fiş kartı · alt satır) + sağ
+   sütun 272 px (Ne yapıyorsun? 2×4 · Son 3 satış · nakit uyarısı).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.islem-sayfa.tuval-tezgah {
+  --ts-14: calc(var(--yazi-govde) * 14 / 18);
+  --ts-15: calc(var(--yazi-govde) * 15 / 18);
+  --ts-16: calc(var(--yazi-govde) * 16 / 18);
+  --ts-17: calc(var(--yazi-govde) * 17 / 18);
+  --ts-18: var(--yazi-govde);
+  --ts-19: calc(var(--yazi-govde) * 19 / 18);
+  --ts-22: calc(var(--yazi-govde) * 22 / 18);
+  --ts-bosluk: 14px;
+  --ts-elle-gen: 7rem;
+  max-width: none;
+  margin: 0;
+}
+
+/* Sayfa başlığı üst barda zaten yazıyor (tuvalde ana alanda başlık yok) —
+   ekran okuyucu için DOM'da kalır. */
+.islem-sayfa.tuval-tezgah > .sayfa-basi,
+.tuval-tezgah .islem-fis-kart > .kart-baslik {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.islem-sayfa.tuval-tezgah > .sayfa-basi *,
+.tuval-tezgah .islem-fis-kart > .kart-baslik * { overflow: hidden; width: 1px; height: 1px; margin: 0; padding: 0; }
+
+/* ── İki sütun: ≥ 1100 px (altında makul yığın: karolar → fiş → son satışlar) ── */
+@media (min-width: 1100px) {
+  .islem-sayfa.tuval-tezgah {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 272px;
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 20px; row-gap: 10px;
+    align-items: start;
+  }
+  .islem-sayfa.tuval-tezgah > * { grid-column: 1; grid-row: 1 / -1; min-width: 0; }
+  .islem-sayfa.tuval-tezgah > #islem-izgara { grid-column: 2; grid-row: 1; }
+  .islem-sayfa.tuval-tezgah > #islem-son-satislar { grid-column: 2; grid-row: 2; margin-top: 6px; }
+  .islem-sayfa.tuval-tezgah > #islem-nakit-uyari { grid-column: 2; grid-row: 3; }
+}
+@media (max-width: 1099.98px) {
+  .islem-sayfa.tuval-tezgah { display: flex; flex-direction: column; gap: 14px; }
+}
+
+/* ── Fiş formu: kart çerçevesi yok, öğeler doğrudan zeminde (tuval) ── */
+.tuval-tezgah .islem-fis-kart { background: transparent; border: 0; box-shadow: none; border-radius: 0; }
+.tuval-tezgah .islem-fis-kart > .kart-govde { padding: 0; gap: var(--ts-bosluk); }
+
+/* ── Üst satır: Müşteri · Tarih (170) · Para (110) ── */
+.tuval-tezgah .fis-ust-satir { display: flex; gap: 12px; align-items: flex-start; }
+.tuval-tezgah .fis-ust-satir > .alan { margin: 0; min-width: 0; gap: 0; }
+.tuval-tezgah .fis-ust-satir > .alan:first-child { flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; position: relative; }
+.tuval-tezgah .fis-ust-satir > #islem-tarih-sar { flex: 0 0 170px; }
+.tuval-tezgah .fis-ust-satir > #islem-para-sar { flex: 0 0 110px; }
+.tuval-tezgah .fis-ust-satir .alan-etiket,
+.tuval-tezgah .fis-ust-satir .secici-alan > label {
+  font-size: var(--ts-15); font-weight: 400; color: var(--metin-soluk); margin: 0 0 6px;
+}
+.tuval-tezgah .fis-ust-satir .zorunlu-isaret { display: none; }
+.tuval-tezgah .fis-ust-satir > .alan:first-child > .secici-alan { display: flex; flex-direction: column; gap: 0; grid-row: 1; grid-column: 1; }
+.tuval-tezgah .fis-ust-satir .secici-tetik,
+.tuval-tezgah .fis-salt-kutu {
+  height: 52px; min-height: 52px; box-sizing: border-box; padding: 0 14px;
+  border: 1px solid var(--kenarlik); border-radius: 9px; background: var(--yuzey);
+  font-size: var(--ts-18); color: var(--metin);
+}
+.tuval-tezgah .fis-ust-satir .secici-tetik { font-weight: 500; padding-right: 44px; position: relative; }
+/* Açılır ok tuvaldeki gibi kutunun SAĞ kenarında; bakiye rozeti onun solunda (rozet 40 px içeride). */
+.tuval-tezgah .fis-ust-satir .secici-tetik > .secici-ok { position: absolute; right: 16px; top: calc(50% - 2px); }
+.tuval-tezgah .fis-salt-kutu { display: flex; align-items: center; font-variant-numeric: tabular-nums; }
+/* Bakiye rozeti müşteri kutusunun ALTINDA, sola yaslı (DOM yeri aynı, id aynı).
+   TOPLU-1 tur 2 (tasarım hakemi KRİTİK, BASİT 1440): rozet eskiden kutunun İÇİNE bindiriliyordu (grid-row 1,
+   okun solunda). Uzun ad ("Abdurrahman Hüsnügüzel Karaosmanoğlu Mücevherat … Limited Şirketi") rozetin ALTINDA
+   kalıp kesiliyordu (ölçer K9=1, span.secici-metin ⟂ #islem-cari-bakiye). Rozetin genişliği tutara/para birimine
+   göre değişir — kutuya sabit sağ boşluk ayırmak bir sonraki uzun tutarda yine bindirir. Çözüm PRO 375 ile aynı:
+   rozet kendi satırında, ad kutunun tamamını kullanır ve gerekirse sarar (P7 kuralı, ortak.css). */
+.tuval-tezgah .fis-ust-satir > .alan:first-child > .rozet-satir {
+  grid-row: 2; grid-column: 1; align-self: start; justify-self: start;
+  margin: 6px 0 0; max-width: 100%; pointer-events: none;
+}
+.tuval-tezgah .fis-ust-satir #islem-cari-bakiye {
+  height: 28px; display: inline-flex; align-items: center; padding: 0 12px;
+  border-radius: 999px; font-size: var(--ts-14); font-weight: 500; white-space: nowrap;
+}
+.tuval-tezgah .fis-ust-satir > .alan:first-child > :not(.secici-alan):not(.rozet-satir) { grid-column: 1; }
+/* Tuvalde olmayan iki bilgi satırı: ekran okuyucuda ve ipucunda (title) kalır. */
+.tuval-tezgah #islem-cari-pasif-notu,
+.tuval-tezgah #islem-pesin-notu {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ── Barkod kutusu: 56 px, 2 px vurgu çerçeve, ikon solda (ikon = "Barkod okut" düğmesi) ── */
+.tuval-tezgah .barkod-satiri { position: relative; margin-right: calc(var(--ts-elle-gen) + 12px); gap: 0; }
+.tuval-tezgah .barkod-satiri .girdi-arama {
+  height: 56px; min-height: 56px; box-sizing: border-box; padding: 0 16px 0 52px;
+  border: 2px solid var(--vurgu); border-radius: 10px; background: var(--yuzey);
+  font-size: var(--ts-19); color: var(--metin);
+}
+.tuval-tezgah .barkod-satiri > .btn {
+  position: absolute; left: 4px; top: 0; bottom: 0;
+  width: 46px; height: 56px; min-height: 56px; padding: 0; justify-content: center;
+  border: 0; background: transparent; color: var(--metin-soluk); box-shadow: none;
+}
+.tuval-tezgah .barkod-satiri > .btn:not(:disabled):hover { color: var(--vurgu); }
+.tuval-tezgah .barkod-satiri > .btn .ikon { width: 22px; height: 22px; }
+.tuval-tezgah .barkod-satiri .barkod-dugme-metin {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap;
+}
+/* "Elle ekle": barkod kutusunun YANINDA (DOM'da <details> altta; özet yukarı taşınır). */
+.tuval-tezgah #islem-elle { position: relative; }
+.tuval-tezgah #islem-elle:not([open]) { margin-top: calc(-1 * var(--ts-bosluk)); }
+.tuval-tezgah #islem-elle > summary {
+  position: absolute; right: 0; bottom: calc(100% + var(--ts-bosluk));
+  width: var(--ts-elle-gen); height: 56px; min-height: 56px; box-sizing: border-box; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; font-size: var(--ts-17);
+}
+.tuval-tezgah #islem-elle:not([open]) > summary { bottom: 100%; }
+/* Tuvalde barkod kutusu tam genişliktir → "Elle ekle" KÜÇÜK bağlantı biçiminde (çerçevesiz, vurgu rengi). */
+.tuval-tezgah #islem-elle > summary.btn {
+  border-color: transparent; background: transparent; box-shadow: none;
+  color: var(--vurgu); font-size: var(--ts-16); font-weight: 500; padding: 0 4px;
+}
+.tuval-tezgah #islem-elle > summary.btn:hover { text-decoration: underline; background: transparent; }
+.tuval-tezgah #islem-elle[open] > summary { margin-bottom: 0; }
+
+/* ── Fiş kartı: VERDİM | ALDIM (tuval: kenar 1px, köşe 12, gölge ince) ── */
+.tuval-tezgah .fis-tuval {
+  border: 1px solid var(--ayrac); border-radius: 12px; background: var(--yuzey);
+  box-shadow: var(--golge-sm); overflow: hidden; display: flex; flex-direction: column;
+}
+@media (min-width: 1100px) {
+  /* Tuvalde kart alt satıra kadar uzar (900 px ekranda 563 px). */
+  .tuval-tezgah .fis-tuval { min-height: max(320px, calc(100vh - 420px)); }
+}
+.tuval-tezgah .fis-tuval-izgara { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); flex: 1 1 auto; font-variant-numeric: tabular-nums; }
+.tuval-tezgah .fis-tuval-sutun { display: flex; flex-direction: column; min-width: 0; }
+.tuval-tezgah .fis-tuval-sutun + .fis-tuval-sutun { border-left: 1px solid var(--ayrac); }
+.tuval-tezgah .fis-tuval-baslik {
+  margin: 0; padding: 12px 18px; border-bottom: 1px solid var(--ayrac);
+  font-size: var(--ts-15); font-weight: 600; color: var(--metin-soluk);
+  text-transform: uppercase; letter-spacing: .04em; line-height: 1.35;
+}
+.tuval-tezgah .fis-tuval-icerik { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tuval-tezgah .fis-tuval-icerik > .kart-liste,
+.tuval-tezgah .fis-tuval-icerik .tablo-sar { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.tuval-tezgah .fis-tuval-icerik .kart-liste-ipucu { display: none; }
+.tuval-tezgah .fis-tuval-bos { margin: 0; padding: 14px 18px; font-size: var(--ts-16); }
+.tuval-tezgah .fis-tuval-tablo { width: 100%; border-collapse: collapse; }
+.tuval-tezgah .fis-tuval-tablo th {
+  padding: 8px 10px; font-size: var(--ts-14); font-weight: 400; color: var(--metin-soluk);
+  text-align: left; border-bottom: 1px solid var(--yuzey-2); white-space: nowrap;
+}
+.tuval-tezgah .fis-tuval-tablo td {
+  padding: 14px 10px; font-size: var(--ts-18); color: var(--metin);
+  border-bottom: 1px solid var(--yuzey-2); vertical-align: middle;
+}
+.tuval-tezgah .fis-tuval-tablo :is(th, td):first-child { padding-left: 18px; }
+.tuval-tezgah .fis-tuval-tablo :is(th, td):last-child { padding-right: 18px; }
+.tuval-tezgah .fis-tuval-tablo .sayi { text-align: right; white-space: nowrap; }
+.tuval-tezgah .fis-tuval-ad { font-weight: 500; }
+.tuval-tezgah .fis-tuval-ayrinti { font-size: var(--ts-15); color: var(--metin-soluk); }
+.tuval-tezgah .fis-tuval-hucre-tutar { font-weight: 600; }
+.tuval-tezgah .fis-tuval-eylem { width: 1%; }
+.tuval-tezgah .fis-tuval-sil { width: 32px; height: 32px; min-height: 32px; padding: 0; justify-content: center; }
+.tuval-tezgah .fis-tuval-sil .ikon { width: 16px; height: 16px; }
+.tuval-tezgah .fis-tuval-eylemler { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px; }
+.tuval-tezgah .fis-tuval-icerik > #islem-odeme-bol-kilit { padding: 0 18px; }
+/* ALDIM: sayfanın ödeme parçası (satıcı, ödeme türü/kasa, para üstü, bacaklar) tablonun altında. */
+.tuval-tezgah #islem-aldim .fis-tuval-icerik > :is(.alan, .form-grid-2, .kart, .bant, span, p):not(.gorsel-gizli) { margin-left: 18px; margin-right: 18px; }
+/* Doğrulayıcı bulgusu (DÜŞÜK, 24.09): ALDIM sütunu 1280 px'te ~296 px; app.css'in
+   `flex-wrap: wrap` + `flex: 1 1 8rem` kuralı "Alınan" kutusunun ₺ ekini ALT SATIRA
+   düşürüyordu. Birim eki girdiyle aynı satırda kalır, girdi daralır. */
+.tuval-tezgah #islem-aldim .alan-girdi-satir { flex-wrap: nowrap; }
+.tuval-tezgah #islem-aldim .alan-girdi-satir > .girdi { flex: 1 1 0; min-width: 0; }
+.tuval-tezgah #islem-aldim .alan-girdi-satir > .alan-son-ek { flex: 0 0 auto; }
+.tuval-tezgah #islem-aldim .fis-tuval-icerik > .kart { border: 0; box-shadow: none; margin: 0; }
+.tuval-tezgah #islem-aldim .fis-tuval-icerik > .kart > .kart-baslik { padding: 8px 18px; }
+.tuval-tezgah #islem-aldim .fis-tuval-icerik > .kart > .kart-govde { padding: 8px 18px; }
+/* Tek ödeme satırı tabloda yazılı (Ödeme · kasa · tutar): basit moddaki salt okunur
+   "Ödeme / Kasa — sistem belirledi" ve oturumdaki "Satan" satırları AYNI bilgiyi ikinci
+   kez yazar (UX-S22) → çizilmez. Satan = oturum kullanıcısı, kenar çubuğunun altında
+   yazılı. Yasal kapı açılınca seçiciler (ProAlan ZorunluGorunur) GÖRÜNÜR — bu kural
+   yalnız salt okunur (p) biçimleri seçer. */
+.tuval-tezgah #islem-aldim .form-grid-2:has(> .alan > #islem-odeme-sade):has(> .alan > p#islem-kasa-tek),
+.tuval-tezgah #islem-aldim .alan:has(> #islem-odeme-sade),
+.tuval-tezgah #islem-aldim .alan:has(> p#islem-kasa-tek),
+.tuval-tezgah #islem-aldim #islem-satan-sar:has(> #islem-satan) { display: none; }
+/* ── Bölünmüş ödeme (karma): bacaklar tuvalin ALDIM tablosu gibi satır satır —
+   Ödeme aracı · ayrıntı (kasa) · Tutar · sil. Alanların etiketleri başlık satırında
+   (#islem-aldim-bacak-baslik) yazılı → satırda ekran okuyucuya kalır. Tek kasa
+   otomatik seçildiyse kilitli kasa kutusu değeri gösterir; aynı bilgiyi tekrarlayan
+   "tek kasa — otomatik" satırları ipucunda (title) kalır (UX-S22). Eski altın, döviz,
+   POS alanları satırın altında TAM genişlikte (özellik silinmez). Fiş toplamı ·
+   bacak toplamı · kalan satırları VERDİM "Toplam" ve "Fark" çubuklarında yazılı
+   olduğundan tuvalde gizli; "Kalanı ata" ve uyuşmazlık uyarısı GÖRÜNÜR kalır. ── */
+/* Yalnız ≥ 1400 px (ALDIM sütunu ≥ 380 px): dar ekranda (1280 · 375) bacaklar eski dikey
+   form düzeninde, etiketler görünür kalır (sütun ~296 px'e dört sütun sığmaz — ölçüldü). */
+.tuval-tezgah .fis-tuval-bacak-baslik { display: none; }
+@media (min-width: 1400px) {
+  .tuval-tezgah .fis-tuval-bacak-baslik,
+  .tuval-tezgah #islem-aldim .bacak-satiri {
+    display: grid; grid-template-columns: minmax(84px, 1fr) minmax(0, 1.2fr) 112px 30px; gap: 8px; align-items: center;
+  }
+  .tuval-tezgah .fis-tuval-bacak-baslik {
+    padding: 8px 18px; font-size: var(--ts-14); color: var(--metin-soluk); border-bottom: 1px solid var(--yuzey-2);
+  }
+  .tuval-tezgah .fis-tuval-bacak-baslik > .sayi { text-align: right; }
+  .tuval-tezgah #islem-aldim .fis-tuval-icerik > .kart:has(.bacak-satiri) { margin: 0; }
+  .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-baslik { justify-content: flex-end; padding: 8px 18px 0; border: 0; }
+  .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-baslik > h3,
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] > .alan-etiket,
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] > .alan-etiket,
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] > .alan-etiket,
+  .tuval-tezgah #islem-aldim .bacak-satiri .secici-kilit-sebep,
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-tek"],
+  .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-govde > .satir-arasi {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  /* Gizli kabın çocukları da 1 px'e iner (taşma/binme ölçüsüne düşmesin — sayfa başlığındaki kalıp). */
+  .tuval-tezgah #islem-aldim .bacak-satiri > :is([id$="-arac-sar"], [id$="-kasa-sar"], [id$="-tutar-sar"]) > .alan-etiket *,
+  .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-govde > .satir-arasi * { overflow: hidden; width: 1px; height: 1px; margin: 0; padding: 0; }
+  .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-govde { padding: 0 18px 8px; gap: 0; }
+  .tuval-tezgah #islem-aldim .bacak-satiri { padding: 10px 0; border-bottom: 1px solid var(--yuzey-2); }
+  .tuval-tezgah #islem-aldim .bacak-satiri > * { grid-column: 1 / -1; min-width: 0; margin: 0; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] { grid-column: 1; grid-row: 1; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] { grid-column: 2; grid-row: 1; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] { grid-column: 3; grid-row: 1; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id^="islem-bacak-sil-"] { grid-column: 4; grid-row: 1; width: 30px; height: 30px; min-height: 30px; padding: 0; justify-content: center; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .girdi { text-align: right; font-weight: 600; min-width: 0; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .alan-girdi-satir { flex-wrap: nowrap; gap: 4px; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .alan-alt:empty { display: none; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] .secici-tetik { font-weight: 500; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik { font-size: var(--ts-15); color: var(--metin-soluk); padding-left: 10px; }
+  /* Tek kasa otomatik seçildiyse kutu salt okunur bir yazıdır (tuval "Ana kasa"): çerçeve ve ok yok, ad kesilmez. */
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik:disabled {
+    border-color: transparent; background: transparent; padding: 0 2px; opacity: 1; cursor: default;
+  }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik:disabled > .secici-ok { display: none; }
+  .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik:disabled > .secici-metin { white-space: nowrap; overflow: visible; text-overflow: clip; }
+}
+
+/* Alt çubuklar: Toplam (zemin) · Fark (başarı / tehlike) — 22 px tutar. */
+.tuval-tezgah .fis-tuval-alt {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 14px 18px; margin-top: auto;
+  background: var(--yuzey-2); border-top: 1px solid var(--ayrac);
+}
+.tuval-tezgah .fis-tuval-alt > :first-child { color: var(--metin-soluk); font-size: var(--ts-18); }
+.tuval-tezgah .fis-tuval-tutar { font-weight: 600; font-size: var(--ts-22); color: var(--metin); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tuval-tezgah .fis-tuval-alt.fis-fark-tamam { background: var(--basari-yuzey); border-top-color: var(--basari-kenar); }
+.tuval-tezgah .fis-tuval-alt.fis-fark-tamam > :first-child,
+.tuval-tezgah .fis-fark-tamam .fis-tuval-tutar { color: var(--basari); font-weight: 500; }
+.tuval-tezgah .fis-fark-tamam .fis-tuval-tutar { font-weight: 600; }
+.tuval-tezgah .fis-tuval-alt.fis-fark-acik { background: var(--tehlike-yuzey); border-top-color: var(--tehlike-kenar); }
+.tuval-tezgah .fis-tuval-alt.fis-fark-acik > :first-child,
+.tuval-tezgah .fis-fark-acik .fis-tuval-tutar { color: var(--tehlike); }
+.tuval-tezgah .fis-fark-onay { width: 22px; height: 22px; }
+.tuval-tezgah .fis-tuval-not { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 0 18px; }
+.tuval-tezgah .fis-tuval-not:has(> :not(.gorsel-gizli)) { padding: 10px 18px; border-top: 1px solid var(--ayrac); }
+
+/* ── Alt satır: Açıklama (istersen) · Vazgeç · Kaydet ve yazdır ── */
+.tuval-tezgah .islem-alt-satir { display: flex; align-items: flex-start; gap: 12px; }
+.tuval-tezgah .islem-alt-satir > .alan { flex: 1 1 auto; min-width: 0; margin: 0; }
+.tuval-tezgah .islem-alt-satir > .alan > .alan-etiket,
+.tuval-tezgah .islem-alt-satir > .alan > .alan-alt:empty {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.tuval-tezgah .islem-alt-satir > .alan > .alan-etiket * { overflow: hidden; width: 1px; height: 1px; margin: 0; padding: 0; }
+.tuval-tezgah .islem-alt-satir .girdi {
+  height: 50px; min-height: 50px; box-sizing: border-box; padding: 0 14px;
+  border: 1px solid var(--kenarlik); border-radius: 9px; background: var(--yuzey);
+  font-size: var(--ts-17); color: var(--metin);
+}
+.tuval-tezgah .islem-alt-satir > .btn {
+  flex: 0 0 auto; width: auto; height: 50px; min-height: 50px; box-sizing: border-box;
+  border-radius: 9px; white-space: nowrap; display: inline-flex; align-items: center; gap: 10px;
+}
+.tuval-tezgah #islem-vazgec { padding: 0 20px; font-size: var(--ts-17); font-weight: 400; border: 1px solid var(--kenarlik); background: var(--yuzey); color: var(--metin); }
+.tuval-tezgah #islem-kaydet { padding: 0 24px; font-size: var(--ts-18); font-weight: 600; }
+.tuval-tezgah #islem-kaydet .ikon { width: 18px; height: 18px; }
+
+/* ── Sağ sütun: "Ne yapıyorsun?" 2×4 (70 px, köşe 10, 16 px) ── */
+.tuval-tezgah .tuval-karolar { gap: 10px; }
+.tuval-tezgah .tuval-karo-baslik {
+  margin: 0; padding: 0 2px; font-size: var(--ts-15); font-weight: 400;
+  color: var(--metin-soluk); text-transform: none; letter-spacing: normal;
+}
+.tuval-tezgah .tuval-karo-izgara { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tuval-tezgah .tuval-karo-izgara > .ekran-karo {
+  height: 70px; padding: 0 8px; justify-content: center; text-align: center;
+  border: 1px solid var(--kenarlik); border-radius: 10px; background: var(--yuzey);
+  color: var(--metin); font-size: var(--ts-16); font-weight: 500; line-height: 1.2;
+}
+.tuval-tezgah .tuval-karo-izgara > .ekran-karo-birincil {
+  border-color: transparent; background: var(--vurgu); color: var(--vurgu-metin); font-weight: 600;
+}
+.tuval-tezgah .tuval-karo-izgara > .ekran-karo:disabled { opacity: .55; cursor: not-allowed; }
+.tuval-tezgah .tuval-karo-izgara .ekran-karo-ad { word-break: normal; overflow-wrap: normal; }
+.tuval-tezgah .tuval-karo-not { margin: 0; padding: 0 2px; font-size: var(--ts-14); line-height: 1.35; }
+/* SATIS-3 t11: ucu olmayan "Ödeme" karosu kaldırıldı → 7 karo; tek kalan son karo iki sütunu kaplar (ızgarada delik yok). */
+.tuval-tezgah .tuval-karo-izgara > .ekran-karo:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* ── Son 3 satış (köşe 10, iç boşluk 14/16, 15 px satırlar) ── */
+.tuval-tezgah .tuval-son-satis {
+  padding: 14px 16px; border: 1px solid var(--ayrac); border-radius: 10px;
+  background: var(--yuzey); box-shadow: none; display: flex; flex-direction: column; gap: 8px;
+  font-size: var(--ts-15);
+}
+.tuval-tezgah .tuval-son-baslik { margin: 0; font-size: var(--ts-16); font-weight: 600; color: var(--metin); }
+.tuval-tezgah .tuval-son-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tuval-tezgah .tuval-son-liste > li { display: flex; justify-content: space-between; gap: 8px; color: var(--metin-soluk); font-variant-numeric: tabular-nums; }
+.tuval-tezgah .tuval-son-liste > li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tuval-tezgah .tuval-son-liste > li > span:last-child { white-space: nowrap; }
+.tuval-tezgah .tuval-son-bos { margin: 0; }
+.tuval-tezgah .tuval-son-tumu { align-self: flex-start; }
+
+/* ── Nakit uyarı kutusu (uyarı belirteçleri) ── */
+.tuval-tezgah .tuval-nakit-uyari {
+  padding: 12px 16px; border-radius: 10px; background: var(--uyari-yuzey);
+  border: 1px solid var(--uyari-kenar); color: var(--uyari-vurgu); font-size: var(--ts-15); line-height: 1.4;
+}
+
+/* ── ≤ 1399 px (1280: fiş sütunu ~336 px · 375: ~343 px) — tablo sıkılaşır ──
+   (ölçüldü 1280×800: 27.369,53 ₺ + sil düğmesi sütuna sığmıyordu; sağ sütun 272 px kalır —
+   248 px'te "Alış · eski altın" karosu ikiye bölünüyordu) */
+@media (max-width: 1399.98px) {
+  .tuval-tezgah .fis-tuval-tablo :is(th, td) { padding-left: 6px; padding-right: 6px; }
+  .tuval-tezgah .fis-tuval-tablo :is(th, td):first-child { padding-left: 14px; }
+  .tuval-tezgah .fis-tuval-tablo :is(th, td):last-child { padding-right: 10px; }
+  .tuval-tezgah .fis-tuval-tablo td { font-size: var(--ts-16); }
+  .tuval-tezgah .fis-tuval-sil { width: 28px; height: 28px; min-height: 28px; }
+}
+
+/* ── PROFESYONEL mod satış: kalem tablosu başlıkları tek satır (ölçüldü 1280: "HAS (G)",
+   "SATIR İSKONTOSU (%)" ikiye bölünüyordu — K3). Tablo kendi kabında kayar. ── */
+.islem-sayfa:not(.tuval-tezgah) #islem-kalem-liste-sar th { white-space: nowrap; }
+
+/* ── Dar ekran (≤ 640 px): üst satır ve alt satır yığılır, sütunlar alt alta ── */
+@media (max-width: 640px) {
+  .tuval-tezgah .fis-ust-satir { flex-wrap: wrap; }
+  .tuval-tezgah .fis-ust-satir > .alan:first-child { flex: 1 1 100%; }
+  .tuval-tezgah .fis-ust-satir > #islem-tarih-sar { flex: 1 1 0; }
+  .tuval-tezgah .fis-ust-satir > #islem-para-sar { flex: 0 0 96px; }
+  .tuval-tezgah .fis-tuval-izgara { grid-template-columns: minmax(0, 1fr); }
+  .tuval-tezgah .fis-tuval-sutun + .fis-tuval-sutun { border-left: 0; border-top: 1px solid var(--ayrac); }
+  .tuval-tezgah .islem-alt-satir { flex-wrap: wrap; }
+  .tuval-tezgah .islem-alt-satir > .alan { flex: 1 1 100%; }
+  .tuval-tezgah .islem-alt-satir > .btn { flex: 1 1 auto; justify-content: center; }
+  /* Barkod kutusu tam genişlik, "Elle ekle" altında (375 px'te yer tutucu kesiliyordu). */
+  .tuval-tezgah .barkod-satiri { margin-right: 0; }
+  .tuval-tezgah #islem-elle:not([open]) { margin-top: 0; }
+  .tuval-tezgah #islem-elle > summary,
+  .tuval-tezgah #islem-elle:not([open]) > summary { position: static; width: auto; height: 48px; min-height: 48px; display: inline-flex; padding: 0 16px; }
+  .tuval-tezgah .barkod-satiri .girdi-arama { font-size: var(--ts-17); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET T-S2 — SATIŞ PROFESYONEL MOD = tuval Profesyonel.dc.html (1440×900)
+   Kapsam: .islem-sayfa.tuval-pro (Islemler.razor, yalnız PROFESYONEL modda).
+   Ölçüler tuvalin satır içi stillerinden (px). Tuvalin kökü 16 px'tir; yazılar
+   kullanıcının yazı ölçeğiyle ORANTILI: --tp-N = N/18 × var(--yazi-govde).
+   Renkler YALNIZ belirteç (8 tema): seçili sekme/hap zemini --kenar-yuzey
+   (#14213d), kenar --kenarlik (#c9d0db) / --ayrac (#d7dce4), başlık zemini
+   --yuzey-2 (#f2f4f7), birincil --vurgu (#2457d6).
+   Yerleşim: sekmeler · Diğer ▾ · [ana sütun | sağ sütun 320 px, boşluk 18].
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.islem-sayfa.tuval-pro {
+  --tp-13: calc(var(--yazi-govde) * 13 / 18);
+  --tp-14: calc(var(--yazi-govde) * 14 / 18);
+  --tp-15: calc(var(--yazi-govde) * 15 / 18);
+  --tp-16: calc(var(--yazi-govde) * 16 / 18);
+  --tp-17: calc(var(--yazi-govde) * 17 / 18);
+  --tp-22: calc(var(--yazi-govde) * 22 / 18);
+  max-width: none;
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 14px;
+  align-items: start;
+  font-size: var(--tp-16);
+}
+.islem-sayfa.tuval-pro > * { grid-column: 1 / -1; min-width: 0; order: 2; margin: 0; }
+.islem-sayfa.tuval-pro > .sayfa-basi,
+.islem-sayfa.tuval-pro > .tuval-pro-sekmeler,
+.islem-sayfa.tuval-pro > #islem-diger { order: 0; }
+.islem-sayfa.tuval-pro > .tuval-pro-sekme-not { order: 1; margin-top: -8px; }
+/* İki sütun ≥ 1400 px (tuval 1440). Daha darda geniş kalem tablosu 320 px'lik sağ sütunla SIĞMAZ
+   (1280'de ana sütun ~618 px, sabit kolonlar ~636 px) → sağ sütun formun ALTINA iner, kartları yan yana. */
+@media (min-width: 1400px) {
+  .islem-sayfa.tuval-pro { grid-template-columns: minmax(0, 1fr) 320px; column-gap: 18px; }
+  .islem-sayfa.tuval-pro > .islem-fis-kart { grid-column: 1; }
+  .islem-sayfa.tuval-pro > #islem-pro-yan { grid-column: 2; }
+}
+
+/* Sayfa başlığı üst barda (tuvalde ana alanda başlık yok) — ekran okuyucu için DOM'da kalır. */
+.islem-sayfa.tuval-pro > .sayfa-basi,
+.tuval-pro .islem-fis-kart > .kart-baslik {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.islem-sayfa.tuval-pro > .sayfa-basi *,
+.tuval-pro .islem-fis-kart > .kart-baslik * { overflow: hidden; width: 1px; height: 1px; margin: 0; padding: 0; }
+
+/* ── Sekmeler: 9/16 dolgu, köşe 8, kenar 1 px; seçili koyu zemin. Dar ekranda SARAR (yatay kaydırma yok) ── */
+.tuval-pro .tuval-pro-sekmeler { display: flex; flex-wrap: wrap; gap: 6px; overflow: visible; padding: 0; border: 0; background: transparent; }
+.tuval-pro .tuval-pro-sekmeler > .sekme {
+  padding: 9px 16px; min-height: 0; height: auto; border-radius: 8px; border: 1px solid var(--kenarlik);
+  background: var(--yuzey); color: var(--metin); font-size: var(--tp-16); font-weight: 400; line-height: 1.4;
+  text-decoration: none; white-space: nowrap; box-shadow: none;
+}
+.tuval-pro .tuval-pro-sekmeler > .sekme.secili {
+  background: var(--kenar-yuzey); border-color: var(--kenar-yuzey); color: var(--kenar-metin-guclu); font-weight: 500;
+}
+.tuval-pro .tuval-pro-sekmeler > .sekme:disabled { opacity: .55; cursor: not-allowed; }
+.tuval-pro .tuval-pro-sekme-not { font-size: var(--tp-13); }
+
+/* ── Diğer ▾: kesik kenar, saydam zemin, soluk metin + küçük özet ── */
+.tuval-pro #islem-diger { display: flex; }
+.tuval-pro #islem-diger-ac.islem-diger-dugme {
+  padding: 9px 16px; min-height: 0; height: auto; border-radius: 8px; border: 1px dashed var(--metin-soluk);
+  background: transparent; color: var(--metin-soluk); font-size: var(--tp-16); font-weight: 400; box-shadow: none;
+  white-space: normal; text-align: left; max-width: 100%;
+}
+.tuval-pro #islem-diger-ac.islem-diger-dugme.secili { border-style: solid; border-color: var(--kenar-yuzey); color: var(--metin); }
+.tuval-pro .islem-diger-ozet { font-size: var(--tp-13); }
+/* T-S2 doğrulayıcı bulgusu: 375 px'te "Diğer" ile "▾" iki satıra bölünüyordu — etiket tek parça. */
+.tuval-pro #islem-diger-ac .islem-diger-etiket { white-space: nowrap; }
+
+/* ── Fiş formu: kart çerçevesi yok (tuval) ── */
+.tuval-pro .islem-fis-kart { background: transparent; border: 0; box-shadow: none; border-radius: 0; }
+.tuval-pro .islem-fis-kart > .kart-govde { padding: 0; gap: 12px; }
+
+/* ── Alan satırı: Müşteri 1.4fr · Tarih 140 · Para 100 · Satıcı 160 · Fiyat listesi 170, boşluk 10 ── */
+.tuval-pro #islem-ust-satir {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) 140px 100px 160px 170px; column-gap: 10px; row-gap: 6px; align-items: start;
+}
+.tuval-pro #islem-ust-satir > .alan:first-child { display: contents; }
+.tuval-pro #islem-ust-satir > .alan:first-child > .secici-alan { grid-row: 1; grid-column: 1; display: flex; flex-direction: column; gap: 0; min-width: 0; margin: 0; }
+/* Bakiye rozeti Müşteri kutusunun ALTINDA, tam metin (tuvalde kutunun içinde; bizim rozet has + TL + döviz
+   taşıyabilir ve 1440'ta ~170 px'lik kutuya sığmaz → kesilmesin diye alt satıra — GEREKÇELİ FARK). */
+.tuval-pro #islem-ust-satir > .alan:first-child > .rozet-satir { grid-row: 2; grid-column: 1 / -1; justify-self: start; margin: 0; }
+.tuval-pro #islem-ust-satir > .alan:first-child > :not(.secici-alan):not(.rozet-satir) { grid-column: 1 / -1; margin: 0; }
+.tuval-pro #islem-cari-pasif-notu, .tuval-pro #islem-pesin-notu { font-size: var(--tp-13); line-height: 1.35; }
+.tuval-pro #islem-ust-satir > #islem-tarih-sar { grid-row: 1; grid-column: 2; }
+.tuval-pro #islem-ust-satir > #islem-para-sar { grid-row: 1; grid-column: 3; }
+.tuval-pro #islem-ust-satir > #islem-satan-sar { grid-row: 1; grid-column: 4; }
+.tuval-pro #islem-ust-satir > #islem-fiyat-listesi-sar { grid-row: 1; grid-column: 5; }
+.tuval-pro #islem-ust-satir > .alan { margin: 0; min-width: 0; gap: 0; }
+.tuval-pro #islem-ust-satir .alan-etiket,
+.tuval-pro #islem-ust-satir .secici-alan > label,
+.tuval-pro #islem-ust-satir #islem-satan-sar label {
+  font-size: var(--tp-14); font-weight: 400; color: var(--metin-soluk); margin: 0 0 5px; line-height: 1.4;
+}
+.tuval-pro #islem-ust-satir .zorunlu-isaret { display: none; }
+.tuval-pro #islem-ust-satir .secici-tetik,
+.tuval-pro #islem-ust-satir .fis-salt-kutu {
+  height: 46px; min-height: 46px; box-sizing: border-box; padding: 0 12px; margin: 0;
+  border: 1px solid var(--kenarlik); border-radius: 8px; background: var(--yuzey);
+  font-size: var(--tp-16); font-weight: 400; color: var(--metin);
+  display: flex; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.tuval-pro #islem-ust-satir .secici-tetik { font-weight: 500; padding-right: 36px; position: relative; }
+.tuval-pro #islem-ust-satir .secici-tetik > .secici-ok { position: absolute; right: 12px; top: calc(50% - 2px); }
+.tuval-pro #islem-ust-satir .fis-salt-kutu { font-variant-numeric: tabular-nums; gap: 6px; }
+.tuval-pro #islem-cari-bakiye {
+  height: 26px; display: inline-flex; align-items: center; padding: 0 10px;
+  border-radius: 999px; font-size: var(--tp-13); font-weight: 400; white-space: nowrap;
+}
+/* Satıcı ipuçları dar kutuda satır kırmasın: ekran okuyucuda kalır (seçici varsayılanı oturum kullanıcısıdır). */
+.tuval-pro #islem-satan-sar > .metin-kucuk {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.tuval-pro .fis-pro-liste-ad { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tuval-pro .fis-pro-liste-kaynak { font-size: var(--tp-13); flex: 0 0 auto; }
+.tuval-pro #islem-fiyat-listesi-hata { display: block; margin-top: 4px; }
+
+/* ── Kalem kartı: kenar 1 px, köşe 12, gölge; tablo · esnek boşluk · alt toplam şeridi ── */
+.tuval-pro .fis-pro-kart {
+  border: 1px solid var(--ayrac); border-radius: 12px; background: var(--yuzey); overflow: hidden;
+  display: flex; flex-direction: column; min-height: 280px; box-shadow: var(--golge-sm); font-variant-numeric: tabular-nums; margin: 0;
+}
+.tuval-pro .fis-pro-kart .kart-liste-ipucu { display: none; }
+.tuval-pro .fis-pro-kart .tablo-sar { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.tuval-pro .fis-pro-esnek { flex: 1 1 auto; }
+.tuval-pro .fis-pro-bos { margin: 0; padding: 16px; font-size: var(--tp-16); border-bottom: 1px solid var(--ayrac); }
+.tuval-pro .fis-pro-tablo { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: var(--tp-16); }
+.tuval-pro .fis-pro-tablo th {
+  padding: 10px 4px; font-size: var(--tp-13); font-weight: 400; color: var(--metin-soluk);
+  text-transform: uppercase; letter-spacing: .04em; background: var(--yuzey-2); border-bottom: 1px solid var(--ayrac);
+  white-space: nowrap; text-align: left;
+}
+.tuval-pro .fis-pro-tablo td { padding: 12px 4px; border-bottom: 1px solid var(--ayrac); vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tuval-pro .fis-pro-tablo :is(th, td):first-child { padding-left: 16px; }
+.tuval-pro .fis-pro-tablo :is(th, td):last-child { padding-right: 16px; }
+.tuval-pro .fis-pro-tablo .sayi { text-align: right; }
+/* Tuvalin kolonları (120 · 1fr · 56 · 66 · 66 · 66 · 60 · 90 · 110 · 44) 1440'ta ana sütuna SIĞMAZ (tuvalde
+   "Burma/22" üst üste biner — tuval hatası). Ürün adı TEK SATIR okunsun diye sabit kolonlar ölçülerek daraltıldı. */
+.tuval-pro .fis-pro-tablo th:nth-child(1) { width: 118px; }
+.tuval-pro .fis-pro-tablo th:nth-child(3) { width: 44px; }
+.tuval-pro .fis-pro-tablo th:nth-child(4) { width: 58px; }
+.tuval-pro .fis-pro-tablo th:nth-child(5) { width: 62px; }
+/* T-S2 düzeltme (doğrulayıcı bulgusu): has 4 hane taşır ("3,9388") — 56 px'de "3,93…" diye kesiliyordu (1440 ölçümü).
+   Has 72 / gram 62 (tuvalde 66); fark ayardan (48 → 44) ve ürün adının 1fr payından alındı (ad kesilirse title taşır); barkod ve işçilik aynen kalır (104'te "BLZ-004…" kesildi, ölçüldü). */
+.tuval-pro .fis-pro-tablo th:nth-child(6) { width: 72px; }
+.tuval-pro .fis-pro-tablo th:nth-child(7) { width: 52px; }
+.tuval-pro .fis-pro-tablo th:nth-child(8) { width: 80px; }
+.tuval-pro .fis-pro-tablo th:nth-child(9) { width: 118px; }
+.tuval-pro .fis-pro-tablo th:nth-child(10) { width: 52px; }
+.tuval-pro .fis-pro-ad { font-weight: 500; }
+.tuval-pro .fis-pro-tutar { font-weight: 600; }
+.tuval-pro .fis-pro-tablo td.fis-pro-eylem { text-align: right; text-overflow: clip; }
+.tuval-pro .fis-pro-duzenle { width: 34px; height: 34px; min-height: 34px; padding: 0; justify-content: center; border-radius: 6px; }
+.tuval-pro .fis-pro-duzenle .ikon { width: 16px; height: 16px; }
+.tuval-pro .fis-pro-tablo .satir-ici-duzenle,
+.tuval-pro .fis-pro-tablo [data-duzenlenebilir] { overflow: visible; }
+.tuval-pro .fis-pro-ayrinti > td { background: var(--yuzey-2); white-space: normal; padding-top: 10px; padding-bottom: 10px; }
+.tuval-pro .fis-pro-ayrinti-govde { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+.tuval-pro .fis-pro-ayrinti-alan { display: flex; align-items: center; gap: 8px; }
+.tuval-pro .fis-pro-ayrinti-alan > .alan-etiket { font-size: var(--tp-14); color: var(--metin-soluk); }
+.tuval-pro .fis-pro-ayrinti-govde > .onay-alan,
+.tuval-pro .fis-pro-ayrinti-govde > .alan { margin: 0; }
+.tuval-pro .fis-pro-kart #islem-fis-iskonto,
+.tuval-pro .fis-pro-kart > :not(.kart-liste):not(.fis-pro-toplam):not(.fis-pro-esnek):not(.fis-pro-bos) { margin: 10px 16px 0; }
+.tuval-pro .fis-pro-toplam {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 14px 16px;
+  background: var(--yuzey-2); border-top: 1px solid var(--ayrac);
+}
+.tuval-pro .fis-pro-toplam-etiket { font-size: var(--tp-13); color: var(--metin-soluk); }
+.tuval-pro .fis-pro-toplam-deger { font-weight: 600; font-size: var(--tp-17); color: var(--metin); white-space: nowrap; text-align: inherit; }
+.tuval-pro .fis-pro-toplam-genel { text-align: right; }
+.tuval-pro .fis-pro-genel { font-size: var(--tp-22); }
+/* PAKET PATCH-4 (hasım ORTA): çok büyük toplam kartın sağ kenarını aşıyordu (nowrap).
+   Sığmayan değer hücre içinde kırılır; olağan tutarlar tek satırda kalır. */
+.tuval-pro .fis-pro-toplam > div { min-width: 0; }
+.tuval-pro .fis-pro-toplam-deger { white-space: normal; overflow-wrap: anywhere; }
+/* PATCH-4 t2: adet hücresinin alan altı iletisi dar hücreden taşıyordu (Chrome K3/K9) → ileti satırın
+   altındaki tam genişlik satırda (FisKalemTablosu .fis-pro-satir-hata), adet sütununun altında biter. */
+.tuval-pro .fis-pro-satir-hata > td { background: none; text-align: right; padding-top: 0; }
+
+/* ── Ödeme ayrıntısı (tür · kasa · bacaklar) tablonun altında; karma kutusu hap ile aynı soru → gizli ── */
+.tuval-pro #islem-pro-odeme { display: flex; flex-direction: column; gap: 12px; }
+.tuval-pro #islem-pro-odeme > #islem-karma-sar { display: none; }
+
+/* ── En alt satır: [Karma | Tek] hapı · özet · boşluk · Vazgeç · Kaydet ve yazdır (46 px) ── */
+.tuval-pro .islem-alt-satir { display: flex; flex-wrap: wrap; align-items: center; gap: 28px 10px; }   /* satır arası 28: Açıklama ayrı satırda kalır (K7 ölçümü: kutu üstleri arası ≥ 60 px) */
+/* Ödeme bacağı satırı: alanlar ÜSTTEN hizalı (app.css ortada hizalıyordu; kasa ipucu etiketi 11 px kaydırıyordu — K7). */
+.tuval-pro .bacak-satiri { align-items: flex-start; }
+/* T-S2 doğrulayıcı bulgusu (K7, karma kip): etiketsiz sil düğmesi üstten hizalanınca kutu altları ±29 px
+   ayrılıyordu; "Tutar (isteğe bağlı)" etiketi 3 px kısaydı; "Tek kasa var" notu düğmeyi alt satıra itiyordu.
+   Çözüm (gerçek Chrome'da ölçüldü, kutu altları ±0): etiket yüksekliği tek belirteç, sil düğmesi etiket
+   payı kadar aşağıda ve kutu boyunda, not satırın altına tam genişlikte iner. */
+.tuval-pro .bacak-satiri { --bacak-etiket: calc(var(--tp-16) * 1.4); }
+.tuval-pro .bacak-satiri > * > .alan-etiket { font-size: var(--tp-16); line-height: 1.4; height: var(--bacak-etiket); overflow: visible; white-space: nowrap; }
+.tuval-pro .bacak-satiri > [id^="islem-bacak-sil-"] { order: 1; align-self: flex-start; margin-top: calc(var(--bacak-etiket) + 4px); height: var(--kontrol-yuksekligi); min-height: var(--kontrol-yuksekligi); }
+.tuval-pro .bacak-satiri > [id$="-kasa-tek"] { order: 2; flex: 1 1 100%; }
+.tuval-pro .islem-alt-satir > .alan { flex: 1 1 100%; order: -1; margin: 0; }
+.tuval-pro .fis-pro-odeme-hap {
+  display: inline-flex; gap: 6px; padding: 3px; border: 1px solid var(--ayrac); border-radius: 999px; background: var(--yuzey);
+}
+.tuval-pro .fis-pro-odeme-hap > button {
+  padding: 6px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--metin-soluk);
+  font: inherit; font-size: var(--tp-14); line-height: 1.4; cursor: pointer; white-space: nowrap; min-height: 0;
+}
+.tuval-pro .fis-pro-odeme-hap > button.secili { background: var(--kenar-yuzey); color: var(--kenar-metin-guclu); }
+.tuval-pro .fis-pro-odeme-hap > button:disabled { cursor: not-allowed; opacity: .6; }
+.tuval-pro .fis-pro-odeme-ozet { flex: 1 1 200px; min-width: 0; font-size: var(--tp-14); color: var(--metin-soluk); }
+.tuval-pro .islem-alt-satir > .btn { height: 46px; min-height: 46px; width: auto; flex: 0 0 auto; }
+.tuval-pro #islem-vazgec { padding: 0 18px; font-size: var(--tp-16); font-weight: 400; border: 1px solid var(--kenarlik); background: var(--yuzey); color: var(--metin); }
+.tuval-pro #islem-kaydet { padding: 0 22px; font-size: var(--tp-16); font-weight: 600; }
+
+/* ── Sağ sütun (320 px): kartlar 14/16 dolgu, köşe 10, arası 10; satırlar iki uca ── */
+.tuval-pro .fis-pro-yan { display: flex; flex-direction: column; gap: 10px; font-size: var(--tp-15); }
+@media (min-width: 700px) and (max-width: 1399.98px) {
+  .tuval-pro .fis-pro-yan { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+  .tuval-pro .fis-pro-yan-bilgi { grid-column: 1 / -1; }
+}
+/* T-S2 doğrulayıcı bulgusu (1100–1399 px, ör. 1280 dizüstü): sağ sütun formun altına iniyor, Yasal kapılar
+   ilk ekranda görünmüyordu. Bu aralıkta Yasal kapılar kartı sekmelerin ALTINA, formun ÜSTÜNE tek satırlık
+   özet şerit olarak çıkar; Müşteri kartı · Kısayollar · not formun altında üç sütun kalır. DOM sırası
+   (ekran okuyucu) değişmez — yalnız görsel sıra (order). */
+@media (min-width: 1100px) and (max-width: 1399.98px) {
+  .islem-sayfa.tuval-pro { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 10px; }
+  .islem-sayfa.tuval-pro > #islem-pro-yan { display: contents; }
+  .islem-sayfa.tuval-pro > #islem-pro-yan > * { order: 3; grid-column: auto; min-width: 0; }
+  .islem-sayfa.tuval-pro > #islem-pro-yan > #islem-pro-yasal {
+    order: 1; grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 28px; row-gap: 6px; padding: 10px 16px;
+  }
+  .islem-sayfa.tuval-pro > #islem-pro-yan > #islem-pro-yasal > .fis-pro-yan-satir { justify-content: flex-start; }
+  .islem-sayfa.tuval-pro > #islem-pro-yan > #islem-pro-yasal > .fis-pro-yan-not { flex: 1 1 100%; }
+}
+.tuval-pro .fis-pro-yan-kart {
+  padding: 14px 16px; border: 1px solid var(--ayrac); border-radius: 10px; background: var(--yuzey);
+  display: flex; flex-direction: column; gap: 8px; margin: 0;
+}
+.tuval-pro .fis-pro-yan-baslik { margin: 0; font-family: inherit; font-size: var(--tp-16); font-weight: 600; color: var(--metin); line-height: 1.4; }
+.tuval-pro .fis-pro-yan-satir { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.tuval-pro .fis-pro-yan-satir > :last-child { text-align: right; white-space: nowrap; }
+.tuval-pro .fis-pro-yan-not { margin: 0; font-size: var(--tp-14); line-height: 1.4; }
+.tuval-pro .fis-pro-yan-bag { text-decoration: none; color: var(--vurgu); }
+.tuval-pro .fis-pro-tus { font: inherit; background: transparent; border: 0; padding: 0; color: var(--metin-soluk); }
+.tuval-pro .fis-pro-yan-bilgi {
+  margin: 0; padding: 12px 16px; border-radius: 10px; background: var(--yuzey-3); border: 1px solid var(--ayrac);
+  color: var(--metin); line-height: 1.4; font-size: var(--tp-15);
+}
+
+/* ── Dar ekran: alan satırı ve alt satır yığılır (375: yatay kaydırma 0) ── */
+@media (max-width: 900px) {
+  .tuval-pro #islem-ust-satir { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tuval-pro #islem-ust-satir > .alan:first-child > .secici-alan { grid-column: 1 / -1; }
+  .tuval-pro #islem-ust-satir > .alan:first-child > .rozet-satir { grid-row: 4; }
+  .tuval-pro #islem-ust-satir > #islem-tarih-sar { grid-row: 2; grid-column: 1; }
+  .tuval-pro #islem-ust-satir > #islem-para-sar { grid-row: 2; grid-column: 2; }
+  .tuval-pro #islem-ust-satir > #islem-satan-sar { grid-row: 3; grid-column: 1; }
+  .tuval-pro #islem-ust-satir > #islem-fiyat-listesi-sar { grid-row: 3; grid-column: 2; }
+  .tuval-pro .fis-pro-kart { min-height: 0; }
+  .tuval-pro .fis-pro-kart .tablo-sar { overflow-x: auto; }
+  .tuval-pro .fis-pro-tablo { width: 860px; }
+  .tuval-pro .fis-pro-toplam { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tuval-pro .islem-alt-satir > .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+/* Koyu temada --kenar-yuzey sayfa zeminine çok yakın: seçili sekme/hap menünün seçili satır rengini alır (ölçüldü 1440 koyu). */
+:root[data-tema="karanlik"] .tuval-pro .tuval-pro-sekmeler > .sekme.secili,
+:root[data-tema="karanlik"] .tuval-pro .fis-pro-odeme-hap > button.secili { background: var(--menu-aktif-yuzey); border-color: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin); }
+
+/* ═══ PAKET CUMA-S — basit tezgâh fişi ALDIM sütunu: yasal kapı açılınca SADE ═══════════
+   Tek satır kısa durum ("Kimlik gerekli" / "Nakit alınmaz") + katlanır "Neden?" ayrıntısı.
+   Ayrıntı açılınca sütunun ÜSTÜNE katman olarak düşer (akışa girmez) → sütun ve alt eylem
+   satırı yer değiştirmez. PRO (tuval-pro) ve diğer türler ETKİLENMEZ (sınıf yalnız Sade'de). */
+.tuval-tezgah #islem-aldim .form-grid-2 > .alan:has(> #islem-tevsik-durum) { grid-column: 1 / -1; }
+.tuval-tezgah #islem-aldim .fis-aldim-durum {
+  position: relative; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px;
+}
+.tuval-tezgah #islem-aldim .fis-aldim-durum > .metin-kirmizi { font-weight: 600; font-size: var(--ts-15); }
+.tuval-tezgah #islem-aldim .fis-aldim-ayrinti > summary.metin-kucuk { font-size: var(--ts-15); }
+.tuval-tezgah #islem-aldim .fis-aldim-ayrinti > summary {
+  cursor: pointer; list-style: none; color: var(--vurgu); text-decoration: underline; text-underline-offset: 3px;
+}
+.tuval-tezgah #islem-aldim .fis-aldim-ayrinti > summary::-webkit-details-marker { display: none; }
+.tuval-tezgah #islem-aldim .fis-aldim-ayrinti[open] > #islem-tevsik-ipucu {
+  position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 5;
+  padding: 10px 12px; border: 1px solid var(--ayrac); border-radius: 10px;
+  background: var(--yuzey); box-shadow: var(--golge-sm); color: var(--metin); line-height: 1.4;
+}
+
+/* ═══ PAKET CUMA-S — alt eylem satırı ekranda kalır ═════════════════════════════════════
+   Eski kural (.fis-tuval min-height: 100vh − 420px) kartın ÜSTÜNDEKİ her şeyi sabit sayıyordu;
+   yasal kapı bandı (#islem-yasal-kapi) ya da hata bandı (#hata-bandi) açılınca kart kısalmıyor,
+   "Kaydet ve yazdır" satırı 1440×900'de ekranın altına itiliyordu (ölçüldü: 941 > 900).
+   Artık tezgâh ızgarası görünür yüksekliği doldurur (üst bar 68 px + .ana-icerik dolgusu 2×1.5rem),
+   fiş kartı KALAN yeri esnek doldurur: band açılınca kart kısalır (en az 320 px), alt satır yerinde
+   kalır. Bandsız durumda kart tuvaldeki gibi alt satıra kadar uzar. */
+@media (min-width: 1100px) {
+  .tuval-tezgah { min-height: calc(100vh - 68px - 3rem); }
+  .tuval-tezgah .islem-fis-kart { display: flex; flex-direction: column; align-self: stretch; }
+  .tuval-tezgah .islem-fis-kart > .kart-govde { flex: 1 1 auto; }
+  .tuval-tezgah .fis-tuval { flex: 1 1 auto; min-height: 320px; }
+  /* Sunucu reddi (L-1: kapı bandı + "Müşteri altında" kimlik bandı + hata bandı) aynı anda açıkken
+     3 kalemli fiş 13 px taşıyordu (ölçüldü 913 > 900): bu durumda dikey aralık 14 → 10 px. Tuvalde
+     ret bandı yok; bandsız yüz (tuval ölçüsü 14 px) DEĞİŞMEZ. */
+  .tuval-tezgah .islem-fis-kart > .form-dikey:has(> #hata-bandi) { gap: 10px; }
+}
+
+/* ═══ PAKET SATIS-2 — SATIŞ EKRANI = TUVAL + PUSULA SADELİĞİ ════════════════════════════
+   Kurucu 25.09: "daha basit olamaz mı, Pusula'da böyle mi" · "eski kayıtlar piyano gibi
+   açılır kapanır olsun". Ekranı dolduran açıklama satırları ipucuna (title) ve ekran
+   okuyucuya iner; yasal bilgi yalnız gerektiği an bant olur. Renk yalnız belirteç. */
+.fis-not-gizli {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.tuval-tezgah #islem-pesin-notu.fis-esik-bant,
+.tuval-pro #islem-pesin-notu.fis-esik-bant {
+  position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto;
+  white-space: normal; grid-column: 1 / -1; font-size: var(--tp-14, var(--ts-15));
+}
+
+/* ── (b) PRO: kutu ≥ 220 px (KAYNAK 3); borç/alacak rozeti TOPLU-1 tur 3 ile kutunun ALTINDA ── */
+@media (min-width: 901px) {
+  .tuval-pro #islem-ust-satir { grid-template-columns: minmax(220px, 1.6fr) 124px 76px 150px minmax(170px, 1fr); }
+}
+/* TOPLU-1 tur 3 (orkestratör 12:45 — "rozet kutunun içine binmez"): rozet eskiden kutunun İÇİNE bindiriliyor
+   (grid-row 1, sağa yaslı) ve ad için kutunun %46'sı + 36 px boş bırakılıyordu → 86 karakterlik ad 1440'ta
+   489 px kutuda 4 satıra sarıp kutuyu 83 px'e çıkarıyordu (tasarım hakemi 3 ölçümü). BASİT'teki (tur 2) ve
+   PRO ≤900'deki kural: rozet KUTUNUN ALTINDA kendi satırında (grid-row üstteki kuraldan: 2; ≤900: 4), ad kutunun
+   tamamını kullanır ve bileşen kuralıyla (ortak.css) en çok iki satır. */
+.tuval-pro #islem-ust-satir > .alan:first-child > .rozet-satir {
+  align-self: start; justify-self: start; margin: 0; max-width: 100%; pointer-events: none;
+}
+.tuval-pro #islem-cari-bakiye {
+  height: auto; min-height: 24px; max-width: 100%; padding: 3px 10px; border-radius: 12px;
+  white-space: normal; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* Fiyat listesi adı KESİLMEZ (KAYNAK 3): ad ve kaynağı iki satır, kutu 46 px. */
+.tuval-pro #islem-fiyat-listesi { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; line-height: 1.15; }
+.tuval-pro .fis-pro-liste-ad { overflow: visible; text-overflow: clip; white-space: nowrap; max-width: 100%; }
+.tuval-pro .fis-pro-liste-kaynak { background: transparent; border: 0; padding: 0; height: auto; min-height: 0; color: var(--metin-soluk); font-size: var(--tp-13); line-height: 1.15; }
+
+/* ── (d+e) PRO: tek giriş kalem kartının üst satırında; "Elle ekle" küçük bağlantı ── */
+.tuval-pro .fis-pro-giris { padding: 12px 16px; border-bottom: 1px solid var(--ayrac); display: flex; flex-direction: column; gap: 8px; }
+.tuval-pro .fis-pro-giris .barkod-satiri { position: relative; margin: 0 calc(7rem + 12px) 0 0; gap: 0; }
+.tuval-pro .fis-pro-giris .barkod-satiri .alan-etiket,
+.tuval-pro .fis-pro-giris .barkod-satiri label:not(.gorunmez) {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.tuval-pro .fis-pro-giris .barkod-satiri .girdi-arama {
+  height: 46px; min-height: 46px; box-sizing: border-box; padding: 0 14px 0 46px;
+  border: 1px solid var(--kenarlik); border-radius: 8px; background: var(--yuzey); font-size: var(--tp-16); color: var(--metin);
+}
+.tuval-pro .fis-pro-giris .barkod-satiri > .btn {
+  position: absolute; left: 2px; top: 0; bottom: 0; width: 42px; height: 46px; min-height: 46px; padding: 0;
+  justify-content: center; border: 0; background: transparent; color: var(--metin-soluk); box-shadow: none;
+}
+.tuval-pro .fis-pro-giris .barkod-satiri > .btn .ikon { width: 18px; height: 18px; }
+.tuval-pro .fis-pro-giris .barkod-dugme-metin {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap;
+}
+.tuval-pro .fis-pro-giris #islem-elle { position: relative; }
+.tuval-pro .fis-pro-giris #islem-elle > summary {
+  position: absolute; right: 0; bottom: calc(100% + 8px); width: 7rem; height: 46px; min-height: 46px; margin: 0;
+  display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  border-color: transparent; background: transparent; box-shadow: none; color: var(--vurgu); font-weight: 500; padding: 0 4px;
+}
+.tuval-pro .fis-pro-giris #islem-elle:not([open]) { margin-top: -8px; }
+.tuval-pro .fis-pro-giris #islem-elle:not([open]) > summary { bottom: 100%; }
+.tuval-pro .fis-pro-giris #islem-elle > summary:hover { text-decoration: underline; background: transparent; }
+
+/* ── (f) PRO: ödeme özeti tıklanabilir → BAĞLI AÇILIR katman (ödeme türü + kasa) ── */
+.tuval-pro .fis-pro-odeme-ozet-sar { position: relative; flex: 1 1 200px; min-width: 0; display: flex; }
+.tuval-pro .fis-pro-odeme-ozet-sar > .fis-pro-odeme-ozet { flex: 1 1 auto; }
+.tuval-pro .fis-pro-odeme-degistir {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 40px; padding: 6px 12px;
+  border: 1px dashed var(--kenarlik); border-radius: 8px; background: transparent; color: var(--metin-soluk);
+  font: inherit; cursor: pointer; text-align: left;
+}
+.tuval-pro .fis-pro-odeme-degistir:hover:not(:disabled) { border-style: solid; color: var(--metin); }
+.tuval-pro .fis-pro-odeme-degistir > .fis-pro-odeme-ozet { flex: 0 1 auto; color: inherit; }
+.tuval-pro .fis-pro-odeme-degistir .fis-pro-odeme-ok { flex: 0 0 auto; }
+.tuval-pro .fis-pro-odeme-katman {
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 20; width: min(640px, calc(100vw - 32px));
+  padding: 14px 16px; border: 1px solid var(--ayrac); border-radius: 10px; background: var(--yuzey);
+  box-shadow: var(--golge-md, var(--golge-sm)); display: flex; flex-direction: column; gap: 10px;
+}
+.tuval-pro .fis-pro-odeme-katman-alt { display: flex; justify-content: flex-end; }
+
+/* ── (g+h) PRO: Reyon + Açıklama "Diğer ayrıntılar" altında katlı ── */
+.islem-sayfa .fis-diger-ayrinti > summary {
+  cursor: pointer; width: fit-content; color: var(--vurgu); font-size: var(--tp-14); padding: 2px 0;
+}
+.islem-sayfa .fis-diger-ayrinti[open] { display: flex; flex-direction: column; gap: 10px; }
+.islem-sayfa .fis-diger-ayrinti[open] > summary { margin-bottom: 2px; }
+
+/* ── (i) Kaydet kilit sebebi: ayrı satır değil, Kaydet'in solunda kısa metin (dolu fişte) ── */
+.islem-alt-satir > .islem-kaydet-kilit:not(.gorunmez) { flex: 0 1 auto; max-width: 16rem; line-height: 1.3; }
+
+/* ── Son satışlar = Katlanir (PRO tam genişlik tablo; BASİT sağ sütun kısa liste) ── */
+.islem-son-katlanir .islem-son-arac { margin: -4px 0 0; }
+.islem-son-katlanir .islem-son-eylem { flex-wrap: nowrap; gap: 6px; }
+.islem-son-katlanir .islem-son-kirilim-dugme { width: 34px; padding: 0; justify-content: center; }
+.islem-son-katlanir .islem-kirilim-satir > td { background: var(--yuzey-2); }
+.islem-son-katlanir .islem-son-neden > summary { cursor: pointer; width: fit-content; color: var(--vurgu); }
+.islem-son-katlanir .islem-son-neden[open] > summary { margin-bottom: 8px; }
+.islem-son-katlanir .islem-son-ipucu { margin: 0; }
+.tuval-tezgah .islem-son-basit .katlanir-govde { padding: 10px 16px 14px; font-size: var(--ts-15); }
+
+/* ── (KAYNAK 3) sağ sütun < 1400 px: kartlar ≥ 280 px (eşik etiketleri TEK satır) ── */
+@media (min-width: 700px) and (max-width: 1399.98px) {
+  .tuval-pro .fis-pro-yan { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+.tuval-pro #islem-pro-yasal .fis-pro-yan-satir > :first-child { white-space: nowrap; }
+
+/* ═══ KURUCU TEMEL KURALI (25.09 11:35) — "zorunlu olanlar hariç ilk etapta görünmesin" ════════
+   PRO satış üst satırı: Müşteri + TEK SATIR özet ("Bugün · TL · Ertuğ U. · Perakende Varsayılan");
+   Tarih/Para/Satıcı/Fiyat listesi kutuları özetin altında katlı ([hidden]). Müşteri kutusu geniş
+   (KAYNAK 3: 960'ta ezilmez), fiyat listesi adı özet içinde tam okunur. */
+.tuval-pro #islem-ust-satir.fis-ust-ozetli { grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); }
+.tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ozet-sar { grid-row: 1; grid-column: 2; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.tuval-pro .fis-ust-ozet {
+  height: 46px; min-height: 46px; box-sizing: border-box; max-width: 100%; align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 8px; padding: 0 12px; margin: 0;
+  border: 1px dashed var(--kenarlik); border-radius: 8px; background: transparent;
+  font: inherit; font-size: var(--tp-15, var(--ts-15)); color: var(--metin-soluk); cursor: pointer; text-align: left;
+}
+.tuval-pro .fis-ust-ozet:hover { border-style: solid; color: var(--metin); }
+.tuval-pro .fis-ust-ozet:focus-visible { outline: var(--odak-halka-kalinlik, 2px) solid var(--odak-halka); outline-offset: 2px; }
+.tuval-pro .fis-ust-ozet-metin { min-width: 0; white-space: normal; line-height: 1.25; }
+.tuval-pro .fis-ust-ozet-ok { flex: 0 0 auto; }
+.tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ayrinti {
+  grid-column: 1 / -1; display: grid; grid-template-columns: 140px 100px minmax(160px, 1fr) minmax(200px, 1.2fr);
+  column-gap: 10px; row-gap: 6px; align-items: start; min-width: 0;
+}
+.tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ayrinti[hidden] { display: none; }
+.tuval-pro .fis-ust-ayrinti > .alan { margin: 0; min-width: 0; gap: 0; }
+@media (max-width: 900px) {
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli { grid-template-columns: minmax(0, 1fr); }
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ozet-sar { grid-row: auto; grid-column: 1; }
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ozet-sar > .alan-etiket { display: none; }
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ayrinti { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* Alt çubuk: "Karma | Tek" anahtarı yerine tek bağlantı "+ Başka ödeme ekle" / "Tek ödemeye dön". */
+.tuval-pro .fis-pro-odeme-hap:has(> .fis-pro-odeme-bag) { border: 0; background: transparent; padding: 0; box-shadow: none; }
+.tuval-pro .fis-pro-odeme-hap > .fis-pro-odeme-bag {
+  min-height: 40px; padding: 6px 4px; border: 0; background: transparent; color: var(--vurgu);
+  font: inherit; font-size: var(--tp-15, var(--ts-15)); font-weight: 500; white-space: nowrap; cursor: pointer; border-radius: 6px;
+}
+.tuval-pro .fis-pro-odeme-hap > .fis-pro-odeme-bag:hover:not(:disabled) { text-decoration: underline; }
+.tuval-pro .fis-pro-odeme-hap > .fis-pro-odeme-bag:disabled { color: var(--metin-soluk); cursor: not-allowed; }
+.tuval-pro .fis-pro-odeme-katman[hidden] { display: none; }
+
+/* Sağ sütun: yasal kapılar uygunken TEK yeşil satır (ayrıntı katlı); kısayollar tek satır ipucu. */
+.tuval-pro .fis-pro-yasal-ozet { padding: 10px 16px; }
+.tuval-pro .fis-pro-yasal-ayrinti > summary {
+  cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; list-style: none; line-height: 1.4;
+}
+.tuval-pro .fis-pro-yasal-ayrinti > summary::-webkit-details-marker { display: none; }
+.tuval-pro .fis-pro-yasal-ayrinti[open] { display: flex; flex-direction: column; gap: 8px; }
+.tuval-pro .fis-pro-yasal-ikon { width: 18px; height: 18px; flex: 0 0 auto; }
+.tuval-pro .fis-pro-yan-kisayol {
+  margin: 0; padding: 2px 4px; display: flex; flex-wrap: wrap; gap: 4px 12px; line-height: 1.4; font-size: var(--tp-14);
+}
+/* "+ Ayrıntı ekle": "+" zaten açılır olduğunu söyler — tarayıcının üçgen imi ikinci kez çizilmez. */
+.islem-sayfa .fis-diger-ayrinti > summary { list-style: none; }
+.islem-sayfa .fis-diger-ayrinti > summary::-webkit-details-marker { display: none; }
+.tuval-pro .fis-pro-kisayol { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+@media (min-width: 1100px) and (max-width: 1399.98px) {
+  .islem-sayfa.tuval-pro > #islem-pro-yan > #islem-pro-yasal.fis-pro-yasal-ozet { padding: 8px 16px; }
+  .islem-sayfa.tuval-pro > #islem-pro-yan > #islem-pro-kisayollar { order: 2; grid-column: 1 / -1; }
+}
+
+/* BASİT tezgâh: Açıklama "+ Ayrıntı ekle" altında katlı → alt satırda yalnız Vazgeç + Kaydet, sağa yaslı (tuval). */
+.tuval-tezgah .islem-alt-satir { justify-content: flex-end; }
+.tuval-tezgah .fis-diger-ayrinti > summary { font-size: var(--ts-15, var(--tp-15)); }
+
+/* SATIS-2 ölçüm düzeltmeleri (tur SONRA 1. koşum):
+   • ödeme katmanında 13 px yazı (kasa kilit sebebi, ipucu) → en az 14 px (tuval taban yazı ölçüsü);
+   • 375–900 px: özet açılınca Satıcı ve Fiyat listesi kutuları TAM satır — liste adı taşmaz/kesilmez;
+   • bakiye rozeti Müşteri kutusunda dikeyde ortalı (44–46 px kutu). */
+.tuval-pro .fis-pro-odeme-katman .metin-kucuk,
+.tuval-pro .fis-pro-odeme-katman .alan-alt,
+.tuval-pro .fis-pro-odeme-katman small { font-size: var(--tp-14); }
+@media (max-width: 900px) {
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ayrinti > #islem-satan-sar,
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ayrinti > #islem-fiyat-listesi-sar { grid-column: 1 / -1; }
+  .tuval-pro .fis-pro-liste-ad { white-space: normal; overflow-wrap: anywhere; }
+}
+.tuval-pro #islem-ust-satir > .alan:first-child > .rozet-satir { margin-bottom: 9px; }
+.tuval-pro .fis-pro-odeme-katman .btn,
+.tuval-pro .fis-pro-odeme-katman #islem-karma-sar * { font-size: var(--tp-14); }
+
+/* PRO satış ödeme (satır içi ya da katman): tek kasanın kilit sebebi seçicinin ipucunda (title) ve ekran
+   okuyucuda kalır, ayrı satır olmaz; tevsik kısa durumu ile "Neden?" TEK satır (1440'ta 2 kalemli fiş
+   kaydırmasız — kabul). */
+.tuval-pro .fis-pro-odeme #islem-kasa-durum,
+.tuval-pro .fis-pro-odeme-katman #islem-kasa-durum {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.tuval-pro #islem-tevsik-durum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.tuval-pro #islem-tevsik-durum .metin-kucuk { font-size: var(--tp-14); }
+
+/* "+ Ayrıntı ekle" alt çubukta (tuvalin "⋯"su): kapalıyken solda tek bağlantı; açılınca TAM satır olur ve
+   düğmeleri alt satıra iter (içerik alt çubuğun üstünde okunur). */
+.islem-sayfa .islem-alt-satir { flex-wrap: wrap; }
+.islem-sayfa .islem-alt-satir > .fis-diger-ayrinti { order: -1; flex: 0 0 auto; align-self: center; margin-right: auto; }
+.islem-sayfa .islem-alt-satir > .fis-diger-ayrinti[open] { flex: 1 1 100%; margin-right: 0; }
+.tuval-pro .islem-alt-satir > .fis-diger-ayrinti:not([open]) { margin-right: 4px; }
+/* Kapalı <details> içeriği (Chrome ::details-content) yerleşim kutusu taşımasın — alanlar yalnız açılınca var. */
+.islem-sayfa .fis-diger-ayrinti:not([open]) > :not(summary) { display: none; }
+
+/* ═══ SATIS-2 r2 — doğrulayıcı bulgusu (25.09): DOLU fişte ürün kolonu 960'ta 0 px, 1024'te 35–50 px, 1440'ta
+   ad ve barkod kesik (sabit kolonların toplamı 656 px; kart 960'ta 656 px). Ölçülen içerik genişlikleri (1440,
+   2 kalem, Range ölçüsü + dolgu): barkod 13 hane 149 px (16 px yazıyla) · ürün 149 · ayar 41 · milyem 56 ·
+   gram 47 · has 62 · adet 43 (375'te 52 — dar ekranda hücre dolgusu) · işçilik 65 · tutar 101. Kararlar:
+   • barkod 14 px tabular (13 hane ≈ 113 px) → kolon 134; gram/has/adet/işçilik ölçüye göre daraltıldı,
+     adet 52 kalır, tutar büyük tutar payıyla 112 → sabit toplam 642, 1440'ta (kart 786) ürüne ≈ 142 px;
+   • ürün adı KESİLMEZ: satır kırılır (tam adı title da taşır);
+   • kart 780 px'ten dar olunca (≈ ≤ 1100 px pencere) tablo en az 780 px — ürün ≥ 144 px — ve kalem kartı
+     KENDİ İÇİNDE yatay kaydırılır (sayfa yatay kaydırması 0 kalır). */
+.tuval-pro .fis-pro-tablo th:nth-child(1) { width: 134px; }
+.tuval-pro .fis-pro-tablo th:nth-child(5) { width: 56px; }
+.tuval-pro .fis-pro-tablo th:nth-child(6) { width: 64px; }
+.tuval-pro .fis-pro-tablo th:nth-child(8) { width: 70px; }
+.tuval-pro .fis-pro-tablo th:nth-child(9) { width: 112px; }
+.tuval-pro .fis-pro-tablo tbody td:nth-child(1) { font-size: var(--tp-14); font-variant-numeric: tabular-nums; }
+.tuval-pro .fis-pro-tablo tbody tr:not(.fis-pro-ayrinti) > td:nth-child(2) {
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.25; text-overflow: clip;
+}
+.tuval-pro .fis-pro-kart .tablo-sar { overflow-x: auto; }
+.tuval-pro .fis-pro-tablo { min-width: 780px; }
+@media (max-width: 1100px) { .tuval-pro .fis-pro-tablo { min-width: 800px; } }
+
+/* SATIS-2 r2 — doğrulayıcı bulgusu (960 PRO, özet AÇIK): Fiyat listesi kutusu iki satır (ad + "varsayılan") taşır;
+   ölçek şeridinin kontrol yüksekliği (sık yoğunlukta 2rem = 32 px) kutuyu sabit boya indirince rozet alttan, ad
+   üstten kırpılıyordu (scrollHeight 36 > clientHeight 30). Kutu içeriğe göre uzar; en az kontrol yüksekliği. */
+html[data-mod] .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu,
+.tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu {
+  height: auto; min-height: var(--kontrol-yuksekligi, 46px); overflow: visible; padding-top: 4px; padding-bottom: 4px;
+}
+
+/* SATIS-2 r2 — doğrulayıcı bulgusu (375 PRO): "Ürün ara ya da barkod okut (F2)" yer tutucusu 229 px, kutunun iç
+   genişliği 99 px ("Ürü…"). Dar ekranda arama kutusu TAM genişlik, "Elle ekle" bağlantısı kutunun ALTINA iner. */
+@media (max-width: 600px) {
+  .tuval-pro .fis-pro-giris .barkod-satiri { margin-right: 0; }
+  .tuval-pro .fis-pro-kart > #islem-pro-giris { margin: 0; padding: 12px; }
+  html[data-mod] .tuval-pro .fis-pro-giris .barkod-satiri #islem-barkod.girdi-arama { padding-left: 40px; padding-right: 8px; }
+  .tuval-pro .fis-pro-giris .barkod-satiri > .btn { width: 38px; }
+  .tuval-pro .fis-pro-giris #islem-elle:not([open]) { margin-top: 0; }
+  .tuval-pro .fis-pro-giris #islem-elle > summary,
+  .tuval-pro .fis-pro-giris #islem-elle:not([open]) > summary {
+    position: static; width: auto; height: auto; min-height: 36px; justify-content: flex-start; padding: 0 2px;
+  }
+}
+
+/* SATIS-2 r2 — BASİT nakit eşiği kutusu yalnız eşiğe yaklaşınca (FisNakitUyari [hidden] değilken) yer kaplar. */
+.tuval-tezgah .tuval-nakit-uyari[hidden], .tuval-nakit-uyari[hidden] { display: none; }
+
+/* SATIS-2 r2 — tur SONRA (25.09 15:37): kapalı "Elle ekle" <details> içeriği Chrome'da (::details-content) yerleşim
+   kutusu taşıyordu; içindeki Ürün seçicisi görünmezken açılabiliyor ve listesi SERBEST-YÜZEN/ekran dışı ölçülüyordu.
+   Kapalıyken içerik yerleşimden çıkar ("+ Ayrıntı ekle" ile aynı kural); açılınca aynen döner. */
+.islem-sayfa #islem-elle:not([open]) > :not(summary) { display: none; }
+/* Fiyat listesi kutusu: ad ve kaynağı sola yaslı iki satır (ölçek şeridinin ortalamasını ezer). */
+html[data-mod] .tuval-pro #islem-ust-satir #islem-fiyat-listesi.fis-salt-kutu {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left;
+}
+
+/* ═══ PAKET SATIS-3 — TÜM İŞLEM TÜRLERİ AYNI SADELİKTE ═══════════════════════
+   Kurucu 25.09 ~12:05 (KAYNAK 0): tek arama kutusu, yazdıkça liste; ayrı "Elle ekle"
+   düğmesi YOK (satır listenin sonundan açılır). ~12:00 (KAYNAK 2): kaynak rozeti
+   içerik boyunda, fiyat kutusu Ayar/Gram ile aynı hizada, büyük harf vurgu yok.
+   Renkler YALNIZ belirteç; app.css'e dokunulmaz; mod ölçüsü OLCEK-1'de. */
+.islem-sayfa .fis-arama { position: relative; min-width: 0; }
+.islem-sayfa .fis-arama-liste {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
+  margin: 0; padding: 4px; list-style: none;
+  max-height: min(60vh, 26rem); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--yuzey); border: 1px solid var(--ayrac); border-radius: 10px; box-shadow: var(--golge-sm);
+}
+.islem-sayfa .fis-arama-oneri,
+.islem-sayfa .fis-arama-elle {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px;
+  min-height: 44px; padding: 8px 12px; border-radius: 8px; cursor: pointer; color: var(--metin);
+}
+.islem-sayfa .fis-arama-oneri.aktif,
+.islem-sayfa .fis-arama-oneri:hover,
+.islem-sayfa .fis-arama-elle.aktif,
+.islem-sayfa .fis-arama-elle:hover { background: var(--yuzey-hover); }
+.islem-sayfa .fis-arama-ad { min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.islem-sayfa .fis-arama-meta { color: var(--metin-soluk); white-space: nowrap; }
+.islem-sayfa .fis-arama-fiyat { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.islem-sayfa .fis-arama-elle { display: block; color: var(--vurgu); font-weight: 600; border-top: 1px solid var(--ayrac); border-radius: 0 0 8px 8px; }
+.islem-sayfa .fis-arama-durum,
+.islem-sayfa .fis-arama-baslik { padding: 8px 12px; color: var(--metin-soluk); }
+@media (max-width: 600px) {
+  .islem-sayfa .fis-arama-oneri { grid-template-columns: minmax(0, 1fr) auto; }
+  .islem-sayfa .fis-arama-meta { grid-column: 1; grid-row: 2; }
+  .islem-sayfa .fis-arama-fiyat { grid-column: 2; grid-row: 1 / span 2; }
+}
+/* Elle satırı: özetsiz katman — gizli summary hiçbir kuralla görünmez, kapalıyken yer tutmaz. */
+.islem-sayfa #islem-elle > summary[hidden] { display: none !important; }
+.islem-sayfa #islem-elle:not([open]) { display: none; margin: 0; }
+.islem-sayfa #islem-elle[open] { margin-top: 0; }
+/* Kaynak rozeti içerik boyunda (hücre yüksekliğine gerilmez). */
+.islem-sayfa .fis-kaynak-rozet { align-self: flex-start; justify-self: start; width: auto; max-width: 100%; }
+.islem-sayfa .fis-fiyat-alan { gap: 4px; }
+.islem-sayfa .fis-takas-baslik { margin: 0; font-weight: 600; color: var(--metin-soluk); }
+.islem-sayfa .fis-odeme-baslik { margin: 0; }
+/* Diğer formlarında geçmiş / ikincil bölüm: Katlanir ile AYNI görünüm (details/summary). */
+.islem-sayfa details.fis-gecmis { margin-top: 12px; }
+.islem-sayfa details.fis-gecmis > summary { list-style: none; }
+.islem-sayfa details.fis-gecmis > summary::-webkit-details-marker { display: none; }
+.islem-sayfa details.fis-gecmis > summary > h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.islem-sayfa details.fis-gecmis[open] > summary { border-bottom: 1px solid var(--ayrac); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.islem-sayfa details.fis-gecmis[open] > :not(summary) { margin: 12px 16px; }
+/* SATIS-3 (KAYNAK 2 md.1/2): kaynak rozeti ("Kurdan geldi", "Elle girildi", "Cariden geldi") etiket
+   SATIRININ sağında durur — hücre yüksekliğini büyütmez, komşu kutularla hiza bozulmaz. */
+.islem-sayfa .fis-fiyat-alan { position: relative; }
+.islem-sayfa .fis-fiyat-alan > .fis-kaynak-rozet { position: absolute; top: 0; right: 0; line-height: 1.2; padding: 2px 8px; }
+.islem-sayfa .fis-kasa-tek { gap: 4px; }
+.islem-sayfa .fis-kasa-tek-deger { min-height: var(--kontrol-yuksekligi, 44px); display: flex; align-items: center; gap: 6px; font-weight: 600; }
+/* SATIS-3 (KAYNAK 2 md.10): karma ödemede (≥ 2 ödeme) VERDİM üstte, ALDIM altta TAM GENİŞLİK —
+   sol yarı boş kalıp tüm form sağ sütunda sıkışmaz; ürün adı tek satır, araç seçicisi kesilmez. */
+.tuval-tezgah .fis-tuval-karma .fis-tuval-izgara { grid-template-columns: minmax(0, 1fr); }
+.tuval-tezgah .fis-tuval-karma .fis-tuval-sutun + .fis-tuval-sutun { border-left: 0; border-top: 1px solid var(--ayrac); }
+.islem-sayfa .fis-odeme-kart .bacak-satiri [id$="-arac"] { min-width: 150px; }
+/* SATIS-3 (KAYNAK 2 md.3 — ölçülen kök neden): app.css `.bacak-satiri .girdi { flex: 1 1 7rem }`
+   eski altın panelinin İÇ İÇE alanlarına da iniyordu; dikey .alan-kontrol'de 7rem = 112 px
+   yükseklik oluyordu (Satıcı ad / TCKN / adres kutuları "çok satırlı gibi"). Panel içi tek
+   satır kontrol yüksekliğine döner. */
+.islem-sayfa .bacak-satiri .alan-kontrol > .girdi { flex: 0 0 auto; }
+/* SATIS-3 (ölçüm: K3 kırık etiket): "Alış · eski altın" karosu SEÇİLİYKEN 600 kalınlıkta 131 px
+   karoya sığmayıp iki satıra kırılıyordu. Seçili hâl zemin rengiyle zaten belli; bu karoda
+   kalınlık 500 kalır (ölçü OLCEK-1'in, burada yalnız kalınlık). */
+html[data-mod] .tuval-tezgah .tuval-karo-izgara > #islem-tur-HURDA_ALIS.ekran-karo-birincil { font-weight: 500; }
+/* SATIS-3 (KAYNAK 5, kurucu 25.09 + ölçüm: 1440'ta ad 2–3 satır, GRAM "15,…" / HAS "13,9…" kesik):
+   barkod ayrı sütun yerine ürün adının ALTINDA ikinci satır (değer aynı, sütun başlığı ekran
+   okuyucuda kalır); kazanılan genişlik ada ve sayı sütunlarına — ad TEK satır, sayılar kesilmez. */
+.tuval-pro .fis-pro-tablo :is(th, td):nth-child(1) { display: none; }
+.tuval-pro .fis-pro-tablo :is(th, td):nth-child(2) { padding-left: 16px; }
+.tuval-pro .fis-pro-tablo th:nth-child(5) { width: 76px; }
+.tuval-pro .fis-pro-tablo th:nth-child(6) { width: 88px; }
+/* Doğrulama 4. tur (28.09): PRO 1024/960 ad "22 Ayar Burma Bil…" kesiliyordu — ad EN ÇOK İKİ satır (sözcük bölünmez), üç nokta yok. */
+.tuval-pro .fis-pro-tablo tbody tr:not(.fis-pro-ayrinti) > td.fis-pro-ad { white-space: normal; overflow: hidden; text-overflow: clip; line-height: 1.3; }
+.tuval-pro .fis-pro-tablo td.fis-pro-ad > .fis-pro-ad-metin { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: normal; }
+.tuval-pro .fis-pro-tablo td.fis-pro-ad > .fis-pro-ad-barkod { display: block; white-space: nowrap; font-size: var(--tp-13); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.tuval-pro .fis-pro-tablo { min-width: 700px; }
+/* PRO üst satır: müşteri kutusu uzun adı kesmesin (ölçüm: "Anadolu Holding …"). */
+.tuval-pro #islem-ust-satir.fis-ust-ozetli { grid-template-columns: minmax(260px, 1fr) minmax(0, auto); }
+/* SATIS-3 (ölçüm K7 ±16 px, BASİT 1280): ödeme satırında araç seçicisi ve tutar kutusu ALT çizgide hizalı. */
+.islem-sayfa .fis-odeme-kart .bacak-satiri { align-items: flex-end; }
+/* SATIS-3 (ölçüm K10, 375 px): uzun seçili değer ("Nihai tüketici (vatandaş — stopaj yok)",
+   "Anadolu Holding A.Ş.", iade kaynağı) üç noktayla kesilmez — dar ekranda seçici büyür, metin sarar. */
+@media (max-width: 600px) {
+  .islem-sayfa .secici-tetik { height: auto; min-height: var(--kontrol-yuksekligi, 44px); }
+  .islem-sayfa .secici-tetik .secici-metin { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+}
+/* SATIS-3: kapalı katlanır içerik (Diğer formlarının "+ Ayrıntı ekle" ve geçmiş bölümleri) yerleşimde
+   yer tutmaz, odaklanamaz (Chrome ::details-content kutusu — SATIS-2 r2'deki #islem-elle kalıbı). */
+.islem-sayfa details.fis-gecmis:not([open]) > :not(summary),
+.islem-sayfa details.fis-diger-ayrinti:not([open]) > :not(summary) { display: none; }
+/* SATIS-3 doğrulama (KRİTİK, 28.09 — BASİT 1280 tek ödemeli iki sütunlu tuval): fiş sütunu ~336 px'te
+   ürün adı 85 px'e düşüp "22 Ayar / Burma / Bilezik" diye 3 satıra kırılıyordu (önceki düzeltme yalnız
+   PRO ve karma içindi). Ayar ve Gram sütunları kalkar; değerleri adın ALTINDA ikinci satırdır
+   (data-ayrinti) — ad kalan genişliğin tamamını alır, TEK satır, sığmazsa üç nokta (tam ad title'da).
+   Doğrulama 2. tur (28.09, ölçüm): 1440×900'de de iki sütunlu tuvalde fiş sütunu 415 px, ad 112 px'e düşüp
+   3 satıra kırılıyordu → kural genişlikten BAĞIMSIZ (tüm genişliklerde, karma dahil aynı tablo düzeni).
+   Doğrulama 3. tur (28.09): kural YALNIZ kalem tablosuna (#islem-kalem-tablo) — ALDIM tablosunda
+   (#islem-aldim-tablo) Kasa ve Tutar gizleniyordu (tuvalde "Nakit · Ana kasa · tutar"). */
+.tuval-tezgah #islem-kalem-tablo :is(th, td):nth-child(2),
+.tuval-tezgah #islem-kalem-tablo :is(th, td):nth-child(3) { display: none; }
+/* Doğrulama 4. tur (28.09, KRİTİK — "14 Ayar Zirkon Taşlı Kolye" 169 px ad hücresine OLCEK-1 dolgusu olmadan da sığmıyordu):
+   üç nokta KALKTI; ad kendi span'ında EN ÇOK İKİ satır (sözcük bölünmez), ayar · gram yine altta. */
+.tuval-tezgah #islem-kalem-tablo td.fis-tuval-ad {
+  width: 100%; max-width: 0; white-space: normal; overflow: hidden; text-overflow: clip; line-height: 1.3;
+}
+.tuval-tezgah #islem-kalem-tablo td.fis-tuval-ad > .fis-tuval-ad-metin {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: normal;
+}
+.tuval-tezgah #islem-kalem-tablo td.fis-tuval-ad::after {
+  content: attr(data-ayrinti); display: block; overflow: hidden; text-overflow: ellipsis;
+  font-size: var(--ts-14); font-weight: 400; color: var(--metin-soluk); font-variant-numeric: tabular-nums;
+}
+/* SATIS-3 doğrulama (K7 ±4 / etiket ±3, BASİT karma 1280 + 375 — ölçülen kök neden): ödeme satırında
+   (1) Secici etiketi 16 px, Para etiketi 14 px çiziliyordu → etiket boyları farklı, üst kenarlar ±3;
+   (2) Para'nın boş .alan-alt satırı ızgaraya 4 px'lik son boşluk ekliyordu → Sil düğmesi kutulardan 4 px aşağıda.
+   Etiketler tek ölçüde; boş alt satır yer tutmaz (içinde hata/ipucu varsa yine görünür). */
+html[data-mod] .islem-sayfa .fis-odeme-kart .bacak-satiri :is(.alan-etiket, .secici-alan > label) { font-size: var(--yazi-md); line-height: 1.35; }
+.islem-sayfa .fis-odeme-kart .bacak-satiri .alan-alt:not(:has(*)) { display: none; }
+/* SATIS-3 doğrulama 2. tur (K7 kutuAlt±4 — canlı ölçülen kök neden): app.css `.alan` ve `.secici-alan`
+   `grid-template-rows: auto auto auto` AÇIK üç satır tanımlar; alt satır boşken (display:none) bile satır ve
+   önündeki 4 px row-gap kalır → sarmalayıcı kutudan 4 px uzun, `align-items:flex-end` ile Sil düğmesi kutulardan
+   4 px aşağıda. Ödeme satırında şablon iki satır; hata/ipucu gelirse örtük üçüncü satıra düşer (kaybolmaz). */
+.islem-sayfa .fis-odeme-kart .bacak-satiri > :is(.alan, .secici-alan) { grid-template-rows: auto auto; }
+/* SATIS-3 doğrulama 3. tur (28.09, canlı ölçüm SONRA4):
+   (a) K10b 960 px — BASİT tuvalde fiş kartı ~644 px'e düşünce iki sütunda ad "22 Ayar Burma Bil…" diye
+       kesiliyordu. Kart KENDİ genişliğine göre (kap sorgusu; ekran genişliğinden bağımsız) 660 px'in altında
+       VERDİM üstte, ALDIM altta tek sütun olur — ad tek satırda sığar. 1280'de kart 672 px: iki sütun kalır.
+   (b) K7 375 px karma — ödeme satırında Sil düğmesi tutar kutusunun altındaki satıra düşüyordu (kutuAlt±52).
+       Dar ekranda araç seçici kendi satırında tam genişlik; tutar + ₺ + Sil aynı satırda, not en sonda.
+   (c) K10b 375 px — öneri listesinde uzun ürün adı üç noktayla kesiliyordu; dar ekranda ad sarar. */
+.tuval-tezgah #islem-verdim-aldim { container-type: inline-size; container-name: fis-tuval; }
+@container fis-tuval (max-width: 660px) {
+  .tuval-tezgah .fis-tuval .fis-tuval-izgara { grid-template-columns: minmax(0, 1fr); }
+  .tuval-tezgah .fis-tuval .fis-tuval-sutun + .fis-tuval-sutun { border-left: 0; border-top: 1px solid var(--ayrac); }
+}
+@media (max-width: 600px) {
+  .islem-sayfa .fis-odeme-kart .bacak-satiri > .secici-alan:first-child { flex: 1 1 100%; }
+  .islem-sayfa .fis-odeme-kart .bacak-satiri > .alan { flex: 1 1 0; min-width: 0; }
+  .islem-sayfa .fis-odeme-kart .bacak-satiri > :is(.btn, button) { flex: 0 0 auto; }
+  .islem-sayfa .fis-odeme-kart .bacak-satiri > :not(.alan):not(.secici-alan):not(.btn):not(button) { order: 9; }
+  .islem-sayfa .fis-arama-ad { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+}
+/* (d) K10b 960/1024 px PRO — kalem tablosu kartı dar olunca (kap sorgusu, ekran genişliğinden bağımsız) Milyem
+       sütunu gizlenir: milyem ayarın sabit karşılığıdır (Ayar sütunu yerinde), geniş kartta yine görünür.
+       Kazanılan genişlik ürün adına. (4. tur ölçümü: 1024/960'ta ad yine kesiliyordu — iddia yanlıştı; ad artık en çok iki satır, bkz. td.fis-pro-ad kuralı.) Özellik silinmedi (ürün kartında da milyem var). */
+.tuval-pro :has(> #islem-kalem-pro) { container-type: inline-size; container-name: fis-pro-kalem; }
+@container fis-pro-kalem (max-width: 720px) {
+  .tuval-pro .fis-pro-tablo :is(th, td):nth-child(4) { display: none; }
+  /* 4. tur (28.09, ölçüm: kart 642–706 px'de ad 150–156 px, "22 Ayar Burma Bilezik" (159 px) iki satır — K3): dar kartta
+     Tutar sütunu 136 → 120 px (8 haneli "109.793,19 ₺" + dolgu sığar; OLCEK-1'in geniş karttaki ölçüsü DEĞİŞMEZ). */
+  html[data-mod] .ana-icerik .tuval-pro .fis-pro-tablo > thead > tr > th:nth-child(9) { width: 120px; }
+}
+/* (e) Diğer formları (Kapora, Ürün değişimi) — `form-izgara` sınıfının hiçbir kuralı yoktu; alanlar tek tek alt alta
+       diziliyor, PRO 1440'ta açılış 1,16 / 1,21 ekran oluyordu. Yan yana ızgara (sığmazsa kendiliğinden alt alta):
+       Tutar · Ödeme şekli · Kasa ve Geri gelen · Yeni ürün · Fark satırları. Ölçü belirteçleri OLCEK-1'in. */
+.islem-sayfa .form-izgara { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 12px 16px; align-items: start; }
+.islem-sayfa .form-izgara > * { min-width: 0; margin: 0; }
+/* (f) tur.mjs /islemler (28.09): BASİT 1280 "Son 3 satış" satırı "27.09 23:02 · Anadol…" diye kesiliyordu (K10) —
+       eski günlerde saat yazılmaz (FisSonSatislar.Zaman: "27.09"); PRO 960 "Son satışlar" tablosunda kısa ürün adı iki satıra
+       kırılıyordu (K3) — ad tek satır, tablo kendi kabında kayar; PRO ≤ 1100 px'te müşteri seçici ile özet
+       ("Bugün · TL · …") aynı satıra sığmayıp "Peşin Müşt…" kesiliyordu — özet alt satıra iner. */
+.islem-sayfa .islem-son-tablo td.hucre-vurgu { white-space: nowrap; }
+@media (max-width: 1100px) {
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli { grid-template-columns: minmax(0, 1fr); }
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ozet-sar { grid-row: auto; grid-column: 1; }
+  .tuval-pro #islem-ust-satir.fis-ust-ozetli > .fis-ust-ozet-sar > .alan-etiket { display: none; }
+}
+/* (g) Doğrulama 4. tur (28.09, UX-S21/S27): hurda alışta hesaplanan has karşılığı ve tutar — salt okunur tek satır. */
+.islem-sayfa .fis-hurda-hesap { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 20px; margin: 10px 0 4px; font-variant-numeric: tabular-nums; }
+.islem-sayfa .fis-hurda-hesap strong { font-weight: 600; color: var(--metin); }
+/* (h) Doğrulama 4. tur (28.09, KRİTİK KAYNAK 5 — "sütunlar yeniden dengelenir"): BASİT tuvalde VERDİM (kalem) sütunu
+       ALDIM'dan geniş (1,25 : 1; yukarıdaki .fis-tuval-izgara) — ALDIM satırı "Nakit · Ana Kasa · tutar" yine sığar, ad
+       1280'de 145 → 182 px. 375 px'te (tek sütun) ad 149 px'te "22 Ayar Burma Bilezik" (16 px'te 159 px) iki satıra
+       kırılıyordu: Tutar ↔ Sil ↔ ad arasındaki iç dolgu 8 → 4 px (yalnız bu tabloda, yalnız dar ekranda; OLCEK-1'in
+       satır boyu/yazı ölçüsü ve ilk/son hücre 1rem dolgusu DEĞİŞMEZ) → ad 161 px, tek satır. 24+ karakterli ad en çok
+       iki satır (bkz. (Doğrulama 4. tur) td.fis-tuval-ad kuralı). */
+@media (max-width: 600px) {
+  html[data-mod] .ana-icerik .tuval-tezgah #islem-kalem-tablo > tbody > tr > td.fis-tuval-ad { padding-right: 4px; }
+  html[data-mod] .ana-icerik .tuval-tezgah #islem-kalem-tablo > tbody > tr > td.fis-tuval-hucre-tutar { padding-right: 4px; }
+  html[data-mod] .ana-icerik .tuval-tezgah #islem-kalem-tablo > tbody > tr > td.fis-tuval-eylem { padding-left: 4px; }
+}
+/* (i) t3 tasarım hakemi (28.09 KRİTİK "teknik metinler hâlâ ekranda"): PRO'da açıklamalar TEK katlı "Bilgi" ipucunda
+       (BASİT'te hidden). Özet bağlantı görünümünde küçük, açılınca içerik alanın genişliğinde; renkler belirteçle. */
+.islem-sayfa details.fis-bilgi { margin: 2px 0 6px; }
+.islem-sayfa details.fis-bilgi > summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; list-style: none; color: var(--vurgu); }
+.islem-sayfa details.fis-bilgi > summary::-webkit-details-marker { display: none; }
+.islem-sayfa details.fis-bilgi > summary::before { content: "i"; display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; border: 1px solid currentColor; border-radius: 50%; font-size: .8em; font-weight: 700; line-height: 1; }
+.islem-sayfa details.fis-bilgi > p { margin: 4px 0 0; }
+/* Eski altın has fiyatı: "Güncel fiyatı kullan: 6.574 ₺" — kullanıcı dokunuşuyla doldurur (K-KUR-4 korunur). */
+.islem-sayfa .fis-fiyat-kullan { padding: 0; min-height: 0; }
+/* (j) t3 hakemi (YÜKSEK — KAYNAK 0 "aynı kutu tüm türlerde"): PRO Alış/Takas'ta arama kutusu kalem kartının dışında
+       (.fis-pro-giris yok) ayrı "Barkod ara" düğmesi + etiketle çiziliyordu. Satış'taki kalıbın aynısı: ikon kutunun
+       içinde, etiket ekran okuyucuda; Takas'ta seçilen ürün tek satır. */
+.tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri { position: relative; margin: 0; gap: 0; }
+.tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri .alan-etiket,
+.tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri label:not(.gorunmez) {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri .girdi-arama { height: var(--kontrol-yuksekligi); min-height: var(--kontrol-yuksekligi); box-sizing: border-box; padding-left: 46px; }
+.tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-satiri > .btn {
+  position: absolute; left: 2px; top: 0; bottom: 0; width: 42px; height: auto; min-height: 0; padding: 0;
+  justify-content: center; border: 0; background: transparent; color: var(--metin-soluk); box-shadow: none;
+}
+.tuval-pro :not(.fis-pro-giris) > .fis-arama .barkod-dugme-metin { display: none; }   /* düğmenin aria-label'ı var; görünmez metin K12 ölçümünü bozuyordu */
+.islem-sayfa .fis-takas-secili { margin: 8px 0 0; }
+/* (k) t3 hakemi (ORTA — Diğer formları): menü açıklama satırı açılışta yer kaplamaz (ekran okuyucuda kalır; kurucu
+       kuralı "açıklama satırı yok"); form başlığı (Kapora …) gövde metninden küçük değil — bölüm başlığı ölçüsü. */
+.islem-sayfa #islem-diger-aciklama { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.islem-sayfa #islem-diger-baslik { font-size: var(--yazi-lg); font-weight: 600; }
+/* (l) t3 hakemi (KRİTİK — PRO "Kaydet ve yazdır" alt satıra/sola düşüyor, gerekçe kesik ve minik): kilit sebebi Kaydet'in
+       ÖNÜNDE sıkışmaz; eylem satırının ALTINDA tam genişlikte, sağa yaslı, okunur boyda (gövde küçük ölçüsü) durur →
+       birincil düğme her zaman satırın sağında kalır. Metin kesilmez (sarar). */
+html[data-mod] .islem-sayfa .islem-alt-satir > .islem-kaydet-kilit:not(.gorunmez) {
+  order: 99; flex: 1 1 100%; max-width: none; margin: -4px 0 0; text-align: right; white-space: normal;
+  font-size: var(--yazi-sm); line-height: 1.35; overflow: visible; text-overflow: clip;
+}
+/* (m) t3 hakemi (YÜKSEK K7 — PRO Ödeme Türü y604 / Kasa y612): Ödeme Türü hücresi (ipucu + durum satırı taşıdığı için)
+       sütun-flex 4 px aralıkla, Kasa hücresi ızgara alt-ızgarasıyla 12 px aralıkla diziliyordu → etiket-kutu aralığı ikisinde
+       de 4 px (aynı üst kenar). */
+.islem-sayfa .form-grid-2 > .alan > :is(#islem-kasa-sar, #islem-odeme-sar) { row-gap: 4px; }
+/* (n) t3 hakemi (YÜKSEK K7 — "Elle girildi" rozeti etiketi iki satıra bölüyor, 'Has Gram Fiyatı' etiketi 13 px yukarıda):
+       fiyat alanlarının kaynak rozeti etiket satırından çıkar, kutunun ALTINA (alt satır) iner → üç etiket tek satır,
+       aynı y; rozet içerik boyunda. "Güncel fiyatı kullan" fiyat sütununun altında, sağa yaslı ve arka plansız. */
+.islem-sayfa :is(#altin-fiyat-sar, #hurda-fiyat-sar, #takas-eski-fiyat-sar) { position: relative; }
+.islem-sayfa :is(#altin-fiyat-sar, #hurda-fiyat-sar, #takas-eski-fiyat-sar) > .alan-etiket > .alan-kaynak { position: absolute; left: 0; bottom: 0; margin: 0; }
+.islem-sayfa :is(#altin-fiyat-sar, #hurda-fiyat-sar, #takas-eski-fiyat-sar) > .alan-alt { min-height: 1.9em; }
+.islem-sayfa .fis-fiyat-kullan { display: block; margin: 0 0 6px auto; background: transparent; border: 0; box-shadow: none; color: var(--vurgu); }
+/* (o) t3 hakemi (YÜKSEK — PRO karanlıkta seçili sekme zeminden ayırt edilmiyor, kontrast 1,37; "+ Başka ödeme ekle" silik 1,00):
+       karanlık temada seçili sekme vurgu dolgusu + vurgu-metin (tema belirteci; 8 temada çalışır); ikincil ödeme bağlantıları
+       kenarlıklı düğme görünümünde. */
+:root[data-tema="karanlik"] .islem-sayfa.tuval-pro .tuval-pro-sekmeler > .sekme.secili { background: var(--vurgu); border-color: var(--vurgu); color: var(--vurgu-metin); font-weight: 600; }
+.islem-sayfa.tuval-pro .fis-pro-odeme-hap > .fis-pro-odeme-bag { border: 1px solid var(--kenarlik); border-radius: 8px; padding: 8px 14px; background: var(--yuzey); }
+.islem-sayfa.tuval-pro .fis-pro-odeme-hap > .fis-pro-odeme-bag:hover:not(:disabled) { text-decoration: none; border-color: var(--vurgu); }
+/* (p) t3 hakemi (KRİTİK — birincil düğme sağda): PRO'da satış dışı türlerde "Takas Kaydet" sola yaslanıyordu. */
+.islem-sayfa.tuval-pro .islem-alt-satir > .fis-diger-ayrinti:not([open]) { margin-right: auto; }
+/* (q) t3 ölçümü (PRO 375 karma, K7 ±27): dar ekranda ödeme satırı Araç | Tutar+Kasa | Sil diye kırılıp Tutar'ın ₺ eki alt
+       satıra düşüyordu. ≤ 600 px: araç, tutar ve kasa tam genişlik alt alta, sil düğmesi aracın yanında. */
+@media (max-width: 600px) {
+  .islem-sayfa.tuval-pro #islem-bacaklar .bacak-satiri { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+  .islem-sayfa.tuval-pro #islem-bacaklar .bacak-satiri > * { grid-column: 1; min-width: 0; margin: 0; }
+  html[data-mod] .ana-icerik .islem-sayfa.tuval-pro #islem-bacaklar .bacak-satiri > [id^="islem-bacak-sil-"] { grid-column: 2; grid-row: 1; align-self: end; margin: 0; }
+}
+
+/* (r) SATIS-3 t6 (doğrulama ORTA — PRO karma eski altın satırı): "Ödeme aracı" seçicisi fieldset'in üstünde kalırken
+       satırın sil düğmesi fieldset'in ALTINA, sol alta düşüyordu (1440: y≈1454). Eski altın paneli satırın son öğesi
+       olur ve tam genişlik iner → sil düğmesi aracın yanında, diğer ödeme satırlarıyla aynı yerde. */
+.tuval-pro .bacak-satiri > #altin-bacagi { order: 3; flex: 1 1 100%; }
+@media (max-width: 600px) {
+  .islem-sayfa.tuval-pro #islem-bacaklar .bacak-satiri > #altin-bacagi { grid-column: 1 / -1; }
+}
+/* (s) t6 ölçümü: (o) kuralı yalnız ZORLANMIŞ karanlıkta ([data-tema=karanlik]) çalışıyordu; sistem karanlığında
+       (varsayılan — belirtecler.css sırası 3) seçili sekme yine zeminle aynı (rgb 9,13,22 ≈ sayfa zemini). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="aydinlik"]) .islem-sayfa.tuval-pro .tuval-pro-sekmeler > .sekme.secili { background: var(--vurgu); border-color: var(--vurgu); color: var(--vurgu-metin); font-weight: 600; }
+}
+/* (t) t6 (hakem KRİTİK — "gerekçe bağlantı gibi görünüyor"): .metin-amber Platin şemada vurgu MAVİSİ (app.css .metin-amber
+       → var(--vurgu)) → kilit sebebi tıklanabilir bağlantı sanılıyordu. Kilit sebebi uyarı tonunda (tema belirteci). */
+html[data-mod] .islem-sayfa .islem-alt-satir > .islem-kaydet-kilit:not(.gorunmez) { color: var(--uyari); }
+
+/* t7 (doğrulayıcı DÜŞÜK): FisTakas fark önizlemesindeki satır içi style kuralları sınıfa taşındı (değerler aynı) */
+.kart .kart-govde.takas-fark-govde { padding: .75rem 1rem; }
+.takas-fark-govde .takas-fark-toplam { margin-top: .25rem; }
+
+/* t7 (canlı ölçüm: BASİT 1280 elle satırında ürün adı "22 Ayar Burma …" kesiliyordu — K10): app.css sütunları
+   "1fr auto auto auto" idi; Adet ve Birim fiyat kutuları kendi doğal genişliğinde (204 px) kalıp ürün seçicisini
+   163 px'e sıkıştırıyordu. Ürün sütunu en geniş olur; Adet dar, fiyat orta; kutular sütuna sığar. */
+@media (min-width: 769px) {
+  html[data-mod] .islem-sayfa .satir.fis-kalem-satiri { grid-template-columns: minmax(12rem, 2fr) minmax(5rem, .8fr) minmax(8rem, 1.2fr) auto; }
+  html[data-mod] .islem-sayfa .satir.fis-kalem-satiri > .alan { min-width: 0; }
+  html[data-mod] .islem-sayfa .satir.fis-kalem-satiri > .alan :is(input, .secici-tetik) { width: 100%; min-width: 0; }
+}
+
+/* t10 (tasarım hakemi KRİTİK — karma ödeme): "+ Taksit", "+ Para üstü hesapla" ve "Kalanı ata" tam genişlik çubuk
+   değil, öbür "+ … ekle"ler gibi küçük bağlantı (içerik genişliğinde, sola yaslı). PRO karmada "+ Taksit" satırın
+   ALTINA iner (sil düğmesi alanların yanında kalır — ±46 kök nedeni: bağlantı alanlarla sil arasında yer kaplıyordu). */
+.islem-sayfa #islem-bacaklar :is(#islem-bacak-kalan-ata, #islem-para-ustu-ac) { align-self: flex-start; justify-self: start; width: auto; }
+/* t11 (tasarım hakemi YÜKSEK "+ Taksit kırık görünüyor", K7 ±36/±42): "+ Taksit" satırın içinden çıktı, satırın ALTINDA
+   kendi satırında (.bacak-ek-satiri) — ödeme aracı kutusuyla aynı sol hiza, içerik genişliğinde kenarlıklı ikincil düğme.
+   Satır çizgisi ek satırın altına iner (bağlantı ait olduğu ödemenin içinde kalır). */
+.islem-sayfa #islem-bacaklar .bacak-ek-satiri { display: flex; justify-content: flex-start; margin: 0; padding: 0 0 10px; }
+.islem-sayfa #islem-bacaklar .bacak-ek-satiri > [id$="-taksit-ac"] { flex: 0 0 auto; width: auto; }
+.tuval-tezgah #islem-aldim #islem-bacaklar .bacak-satiri:has(+ .bacak-ek-satiri) { border-bottom: 0; }
+.tuval-tezgah #islem-aldim #islem-bacaklar .bacak-ek-satiri { border-bottom: 1px solid var(--yuzey-2); }
+/* t10 (hakem: BASİT ≥1400 "Ayrıntı" sütun başlığı altı boş): kasa otomatik atanıp seçici çizilmeyince araç iki sütunu
+   kaplar, "Ayrıntı" başlığı gizlenir (hücre ızgarada kalır — Tutar başlığı yerinde). */
+@media (min-width: 1400px) {
+  .tuval-tezgah #islem-aldim .bacak-satiri:not(:has(> [id$="-kasa-sar"])) > [id$="-arac-sar"] { grid-column: 1 / 3; }
+  .tuval-tezgah #islem-aldim:not(:has(.bacak-satiri > [id$="-kasa-sar"])) .fis-tuval-bacak-baslik > span:nth-child(2) { visibility: hidden; }
+}
+/* t10 (tasarım hakemi KRİTİK — Diğer formları): ortak alt eylem şeridi (FisDigerEylem) ana türlerdeki Kaydet kalıbında —
+   sağda TEK büyük birincil düğme, eksik alan sebebi solunda; form içi etiket ölçüsü tek (Secici ile Sayı/Para aynı). */
+.islem-sayfa .fis-diger-eylem { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; margin-top: 4px; }
+.islem-sayfa .fis-diger-eylem > .islem-kaydet-kilit { color: var(--uyari); flex: 1 1 12rem; text-align: right; }
+html[data-mod] .islem-sayfa :is(#rezerv-form, #konsinye-form, #avans-form, #degisim-form, #evrak-form, #siparis-form) :is(.alan-etiket, .secici-alan > label, .alan > label) { font-size: var(--yazi-md); }
+/* SATIS-3 t11 (canlı ölçüm, 375 K9: uzun müşteri adı bakiye rozetinin altında kalıyordu): dar ekranda rozet kutunun
+   İÇİNDEN çıkar, kutunun altına sola yaslı iner — ad tam genişliği kullanır, üst üste binme yok. */
+@media (max-width: 600px) {
+  .tuval-tezgah .fis-ust-satir > .alan:first-child > .rozet-satir {
+    grid-row: 2; justify-self: start; align-self: start; margin: 6px 0 0;
+  }
+}
+/* SATIS-3 t14 (doğrulayıcı KRİTİK — PRO arama listesi kırpılıyordu): kalem kartının overflow:hidden kuralı kartın içindeki
+   bağlı ürün listesini (8 öneriden 4'ü, "elle" satırı erişilemez) kesiyordu. Kart taşmaya izin verir; köşe yuvarlatması
+   iç öğelerde tutulur (üstte giriş alanı yüzey rengiyle, altta toplam şeridi kendi alt köşeleriyle). */
+.tuval-pro .fis-pro-kart { overflow: visible; }
+.tuval-pro .fis-pro-kart > .fis-pro-giris:first-child { border-radius: 11px 11px 0 0; }
+.tuval-pro .fis-pro-kart > .fis-pro-toplam:last-child { border-radius: 0 0 11px 11px; }
+.tuval-pro .fis-pro-kart .fis-arama-liste { z-index: 60; }
+/* SATIS-3 k2 (tasarım hakemi, 29.09 "eski altın 2 ekran boyu, iç içe çerçeve"): satıcı kimliği DÜZ bölüm — çerçeve yok,
+   ince üst ayraç + küçük başlık; BASİT'te müşteriden dolan alanlar tek özet satırında (Değiştir ile açılır). Eski altın
+   kümesinin kendisi BASİT'te çerçevesiz (ödeme satırının içinde; ikinci kutu olmaz). */
+.islem-sayfa #altin-bacagi .altin-satici-duz { display: grid; gap: var(--bosluk-2); margin-top: var(--bosluk-2); padding-top: var(--bosluk-2); border-top: 1px solid var(--ayrac); }
+.islem-sayfa #altin-bacagi .altin-satici-baslik { margin: 0; font-weight: 600; font-size: var(--yazi-sm); color: var(--metin-soluk); }
+.islem-sayfa #altin-bacagi .altin-satici-ozet { display: flex; flex-wrap: wrap; align-items: center; gap: var(--bosluk-1) var(--bosluk-3); }
+.islem-sayfa #altin-bacagi .altin-satici-ozet > .alan-kaynak { flex: 0 0 auto; }
+.islem-sayfa #altin-bacagi .altin-satici-ozet > .btn { flex: 0 0 auto; width: auto; }
+.islem-sayfa #islem-aldim #altin-bacagi.alan-kume { border: 0; padding: 0; margin: 0; background: none; }   /* #islem-aldim yalnız BASİT tezgâh fişinde (yüz sınıfı değil — OLCEK-1 OL26) */
+.islem-sayfa #islem-aldim #altin-bacagi.alan-kume > legend { padding: 0; font-size: var(--yazi-sm); color: var(--metin-soluk); font-weight: 600; }
+.islem-sayfa #altin-bacagi .altin-hesap-ozet { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--bosluk-1) var(--bosluk-4); margin: 0; padding: var(--bosluk-2) var(--bosluk-3); border-radius: 10px; background: var(--yuzey-2); }
+.islem-sayfa #altin-bacagi .altin-hesap-ozet strong { font-weight: 600; }
+/* SATIS-3 k2 (canlı ölçüm, PRO 375 K3: "Anadolu Holding A.Ş." bakiye rozeti yüzünden iki satıra kırılıyordu): BASİT t11 ile
+   aynı çözüm — dar ekranda rozet kutunun altına iner, ad tam genişliği kullanır. */
+@media (max-width: 600px) {
+  .tuval-pro #islem-ust-satir > .alan:first-child > .rozet-satir {
+    grid-row: 2; grid-column: 1 / -1; justify-self: start; align-self: start; margin: 6px 0 0; max-width: 100%;
+  }
+  /* .fis-ust-ozetli yalnız PRO üst satırıdır; yüz sınıfıyla kontrol ölçüsü yazılmaz (OLCEK-1 OL26 envanteri). */
+  .islem-sayfa #islem-ust-satir.fis-ust-ozetli > .alan:first-child:has(> .rozet-satir) .secici-tetik { padding-right: 40px; white-space: nowrap; }
+}
+/* SATIS-3 k2 (canlı görüntü, BASİT <1400 koyu 1280): eski altın satırının ✕ düğmesi panelin ALTINA düşüyordu — PRO kuralıyla
+   aynı: panel satırın son öğesi olarak tam genişlik alır, ✕ ödeme türü kutusunun yanında kalır. */
+.tuval-tezgah .bacak-satiri > #altin-bacagi { order: 3; flex: 1 1 100%; }
+
+/* ── SATIS-3 t15 (tasarım hakemi YÜKSEK, 29.09) ──────────────────────────────────────────────────────────────
+   (a) K7 — MASAK kimlik kutusu: Uyruk hücresi (seçici + ipucu saran .alan) esnek kutu olarak çiziliyordu; komşu hücreler
+       ızgara raylarına (subgrid) otururken Uyruk'un kutusu 8 px yukarıda kalıyordu (Doğum Tarihi/Adres y913 ↔ Uyruk y905).
+       Hücre de rayları devralır; ipucu alt raya iner → üç kutu aynı y. Bileşene (MasakFormu) dokunulmadı; yalnız bu ekranda.
+   (b) Fiyat kutusunun kaynak rozeti ("Kurdan geldi" / "Elle girildi") kutunun alt kenarına 8 px biniyordu (rozet hücrenin
+       dibine yaslı, alt ray boş). Hücrenin altında rozet boyu kadar yer ayrılır → rozet kutunun ALTINDA, bindirme yok. */
+.islem-sayfa #masak-uyruk-alan { display: grid; row-gap: inherit; }
+.islem-sayfa #masak-uyruk-alan > .secici-alan { grid-row: 1 / span 3; grid-column: 1; display: grid; grid-template-rows: subgrid; row-gap: inherit; }
+.islem-sayfa #masak-uyruk-alan > #masak-uyruk-ipucu { grid-row: 3; grid-column: 1; }
+.islem-sayfa :is(#altin-fiyat-sar, #hurda-fiyat-sar, #takas-eski-fiyat-sar) { padding-bottom: 24px; }
+/* (c) PRO ≤1100 px (hakem YÜKSEK — PRO 1024: 1 kalem + "+ Başka ödeme ekle"): alt eylem şeridi sığmayınca birincil
+       "Kaydet ve yazdır" alt satırın SOLUNA düşüyordu (x292, Vazgeç x908). Şerit sona yaslı: "+ Ayrıntı ekle" solda kalır
+       (margin-right:auto), sarmalanan birincil düğme satırın SAĞINDA, kilit sebebi hemen altında sağda. */
+.islem-sayfa.tuval-pro .islem-alt-satir { justify-content: flex-end; }
+/* SATIS-3 t16 (doğrulayıcı DÜŞÜK, ölçüm K10 PRO 1440: "Anadolu Döküm Toptan Kuyum" 227 px metin 214 px kutuda üç noktayla
+   kesiliyordu): PRO üst satırda MÜŞTERİ adı sığmazsa kutunun İÇİNDE ikinci satıra sarar. Kontrol ölçüsü (46 px, OLCEK-1
+   envanteri) DEĞİŞMEZ — yalnız metin sıkı satır aralığıyla iki satıra iner (2 × 16 px × 1,15 ≈ 37 px < 44 px iç yükseklik). */
+.tuval-pro #islem-ust-satir > .alan:first-child .secici-metin { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; line-height: 1.15; }
+/* SATIS-3 t16: takas KART farkında açılan POS cihazı seçicisi (#islem-pos) Ödeme Türü ile aynı satırda — aynı etiket-kutu
+   aralığı (K7, kural (m) ile aynı). */
+.islem-sayfa .form-grid-2 > .alan > #islem-pos-sar { row-gap: 4px; }
+
+/* SATIS-3 t17 (canlı ölçüm K7 ±25): ödeme satırında bir tutar kutusu anlaşılamayan sayı uyarısı taşıyınca satır
+   uyarının boyu kadar uzar; kutular ÜSTTEN hizalanır, uyarı yalnız aşağı doğru büyür (align end/center kutuyu kaydırıyordu). */
+.islem-sayfa :is(#islem-aldim, #islem-bacaklar) .bacak-satiri:has(.girdi[aria-invalid="true"]),
+.islem-sayfa .fis-odeme-kart .bacak-satiri:has(.girdi[aria-invalid="true"]) { align-items: start; }
+/* t17: BASİT <1400 px (etiketler görünür, flex satır): uyarılı satırda sil düğmesi kutu hizasına iner — etiket yüksekliği
+   tek belirteç (PRO kuralı --bacak-etiket ile aynı yöntem; ölçüm: etiket 22 px + aralık 4 px). */
+@media (max-width: 1399.98px) {
+  .islem-sayfa.tuval-tezgah .fis-odeme-kart .bacak-satiri:has(.girdi[aria-invalid="true"]) { --bacak-etiket-b: calc(var(--yazi-md) * 1.4); }
+  .islem-sayfa.tuval-tezgah .fis-odeme-kart .bacak-satiri:has(.girdi[aria-invalid="true"]) > * > .alan-etiket { line-height: 1.4; min-height: var(--bacak-etiket-b); }
+  .islem-sayfa.tuval-tezgah .fis-odeme-kart .bacak-satiri:has(.girdi[aria-invalid="true"]) > [id^="islem-bacak-sil-"] { align-self: flex-start; margin-top: calc(var(--bacak-etiket-b) + .25rem); }
+}
+
+/* SATIS-3 t18 (doğrulayıcı YÜKSEK — PRO 1024/960 karma: "Kaydet ve yazdır" ayrı satıra düşüyor, üç eylem yarışıyor).
+   Ölçüm (başsız Chrome, PRO 1024 açık): şerit 708 px; karmada BOŞ özet sarmalayıcısı (içi [hidden]) flex 1 1 200px ile
+   344 px yer kaplıyordu → Kaydet alta sarıyordu; "Tek ödemeye dön" vurgu renginde birincil gibi duruyordu.
+   (a) içi boş özet sarmalayıcısı yer kaplamaz; (b) ikinciller solda, nötr (Vazgeç ile aynı dil); (c) birincil her satırda
+   en sağda (margin-left:auto) — sığmazsa ikinciller sola sarar, birincil sağda kalır; (d) kilit gerekçesi Kaydet'in hemen
+   altında (satır arası 28 → ~10 px). */
+html[data-mod] .islem-sayfa.tuval-pro .islem-alt-satir { justify-content: flex-start; }
+html[data-mod] .islem-sayfa.tuval-pro .islem-alt-satir > .fis-pro-odeme-ozet-sar:not(:has(> :not([hidden]))) { display: none; }
+html[data-mod] .islem-sayfa.tuval-pro .islem-alt-satir > .fis-diger-ayrinti:not([open]) { margin-right: 4px; }
+html[data-mod] .islem-sayfa.tuval-pro .islem-alt-satir > #islem-kaydet { margin-left: auto; }
+html[data-mod] .islem-sayfa.tuval-pro .fis-pro-odeme-hap > #islem-pro-tek { color: var(--metin); border-color: var(--kenarlik); background: var(--yuzey); }
+html[data-mod] .islem-sayfa.tuval-pro .fis-pro-odeme-hap > #islem-pro-tek:hover:not(:disabled) { background: var(--yuzey-2); }
+html[data-mod] .islem-sayfa.tuval-pro .islem-alt-satir > .islem-kaydet-kilit:not(.gorunmez) { margin-top: -18px; }
+/* t18 (ölçüm, tek ödeme PRO 1024/960/768: özet düğmesi flex-basis 200 px ile Kaydet'i alt satıra itiyordu): özet kalan yeri
+   alır ama en az 7,5rem'e kadar daralır; metni sözcük sınırından iki satıra sarar (kesilmez) → Kaydet aynı satırda sağda. */
+html[data-mod] .islem-sayfa.tuval-pro .islem-alt-satir > .fis-pro-odeme-ozet-sar { flex: 1 1 0; min-width: 7.5rem; }
+
+/* ═══ SATIS-3 t19 (tasarım hakemi KRİTİK, 29.09): PRO 960 px ve 375 px'te kalem satırının TUTAR'ı okunmuyordu —
+       tablo en az 700 px (≤ 900 px ekranda 860 px) genişlikte kalıyor, 642 px'lik kartta kayıyor, Tutar Düzenle
+       sütununun altında kalıyordu; 375'te yalnız Ürün sütunu görünüyordu. Kural: Tutar HİÇBİR genişlikte kesilmez,
+       tablo kartına sığar (yatay kaydırma yok). Dar kartta (kap sorgusu, ekran genişliğinden bağımsız) ikincil
+       sütunlar düşer — Milyem, Has ve İşçilik ≤ 760 px (768 ekranda kart 742 px — ölçüldü); Ayar ve Gram ≤ 480 px'te ad hücresinin ikinci
+       satırına iner (BASİT'teki "ad + alt satır ayar·gram" düzeni). Özellik silinmedi: satırın "Düzenle"sinde ve
+       geniş kartta hepsi görünür. */
+.tuval-pro .fis-pro-tablo td.fis-pro-ad > .fis-pro-ad-ozet { display: none; }
+/* t19 (canlı ölçümde bulundu): barkod sütununu gizleyen ":nth-child(1) { display: none }" kuralı "Düzenle" satırının TEK
+   hücresini de gizliyordu — PRO'da "Düzenle" tıklanınca (aria-expanded=true) hiçbir şey görünmüyordu (birim fiyat,
+   satır iskontosu, hediye erişilemez). Ayrıntı satırının hücresi her genişlikte görünür. */
+.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-ayrinti > td { display: table-cell; }
+@container fis-pro-kalem (max-width: 760px) {
+  html[data-mod] .ana-icerik .tuval-pro .fis-pro-tablo,
+  .islem-sayfa.tuval-pro .fis-pro-tablo { min-width: 0; width: 100%; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo :is(th, td):nth-child(4),
+  .islem-sayfa.tuval-pro .fis-pro-tablo :is(th, td):nth-child(6),
+  .islem-sayfa.tuval-pro .fis-pro-tablo :is(th, td):nth-child(8) { display: none; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-ayrinti > td.fis-pro-ayrinti-dolgu { display: none; }   /* 6 görünür sütun = içerik colspan 6 */
+}
+@container fis-pro-kalem (max-width: 480px) {
+  .islem-sayfa.tuval-pro .fis-pro-tablo :is(th, td):nth-child(3),
+  .islem-sayfa.tuval-pro .fis-pro-tablo :is(th, td):nth-child(5) { display: none; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo td.fis-pro-ad > .fis-pro-ad-ozet {
+    display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--tp-13);
+  }
+  /* 375 ölçümü (t19): dört sütunlu satırda ad ~95 px kalıyor, "22 Ayar Burma Bilezik" üç satıra kırılıyordu (K3/K10b).
+     Satır iki kata dizilir: üstte ad (tam genişlik, tek satır) ve altında ayar·gram; altta adet · tutar · düzenle.
+     Sütun başlıkları bu dizilişte gösterilmez (adet kutusu kendi etiketini taşır, tutar ₺ ile). Barkod geniş kartta. */
+  .islem-sayfa.tuval-pro .fis-pro-tablo,
+  .islem-sayfa.tuval-pro .fis-pro-tablo > tbody { display: block; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo > thead { display: none; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-satir {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: 8px;
+    padding: 10px 16px; border-bottom: 1px solid var(--ayrac);
+  }
+  html[data-mod] .ana-icerik .islem-sayfa.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-satir > td { padding: 0; border: 0; height: auto; }
+  html[data-mod] .ana-icerik .islem-sayfa.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-satir > td.fis-pro-ad { grid-column: 1 / -1; padding: 0 0 6px; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-satir > td[data-duzenlenebilir] { text-align: left; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-ayrinti,
+  .islem-sayfa.tuval-pro .fis-pro-tablo > tbody > tr.fis-pro-ayrinti > td { display: block; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo td.fis-pro-ad > .fis-pro-ad-barkod { display: none; }
+  .islem-sayfa.tuval-pro .fis-pro-tablo td.fis-pro-ad > .fis-pro-ad-metin { -webkit-line-clamp: 2; line-clamp: 2; }
+}
+
+/* t20 (doğrulayıcı KRİTİK): MASAK gereksinim ucu düştü → hata bandı + "Yeniden dene" tek sütun, düğme bandın altında
+   hizalı (kart kenarına yapışmaz). Belirteçle; sabit renk yok. */
+#islem-masak-hata-kart, #islem-masak-hata-bilgi { display: flex; flex-direction: column; align-items: flex-start; gap: var(--bosluk-2); }
+#islem-masak-hata-kart > #islem-masak-hata, #islem-masak-hata-bilgi > #islem-masak-hata { align-self: stretch; margin: 0; }
+#islem-masak-hata-kart { padding: var(--bosluk-2) var(--bosluk-3, var(--bosluk-2)); }
+
+/* t21 (hasım doğrulayıcı KRİTİK) — döviz satırında kur alınamadı: bant + "Kuru yeniden al"; satırın tam genişliği */
+.bacak-kur-yok { flex-basis: 100%; order: 2; display: flex; flex-direction: column; align-items: flex-start; gap: var(--bosluk-2); }
+.bacak-kur-yok > .bant-hata { align-self: stretch; margin: 0; }
+/* t21 — döviz satırında para birimi seçicisi ezilmesin (ölçüm: GBP kutusu 73 px, K12) */
+.bacak-satiri > [id$="-birim-sar"] { min-width: 6.5rem; flex-shrink: 0; }
+.bacak-satiri > [id$="-birim-sar"] .secici-tetik { min-width: 6.5rem; }
+/* t21 (ölçüm 375): döviz satırında Döviz · Döviz miktarı · TL karşılığı dar ekranda yan yana sığmıyordu (miktar kutusu 26 px,
+   etiketler kırılıyordu — K3/K7/K12) → her biri kendi satırında, tam genişlik. PRO'da TL karşılığının "Kurdan geldi" rozeti
+   dar etikette alt satıra kayıp kutunun üstüne biniyordu (K9) → bu etiketin yüksekliği içeriğe göre. */
+@media (max-width: 560px) {
+  .islem-sayfa .bacak-satiri:has(> [id$="-birim-sar"]) > :is([id$="-birim-sar"], [id$="-doviz-sar"], [id$="-tutar-sar"]) { flex: 1 1 100%; min-width: 0; }
+  .bacak-satiri > [id$="-birim-sar"] .secici-tetik { min-width: 0; }
+}
+.tuval-pro .bacak-satiri > [id$="-tutar-sar"]:has(.alan-kaynak) > .alan-etiket { height: auto; min-height: var(--bacak-etiket); white-space: normal; flex-wrap: wrap; row-gap: 2px; }
+/* SATIS-3 t22 (tasarım hakemi YÜKSEK): tek ödemede de "Alınan / Para üstü" kapalı gelir — "+ Para üstü hesapla"
+   "+ Başka ödeme ekle" ile aynı kalıpta (ikincil küçük düğme, içerik genişliği, sütun iç boşluğuyla hizalı). */
+.islem-sayfa #islem-para-ustu-ac { align-self: flex-start; justify-self: start; width: auto; }
+.tuval-tezgah #islem-aldim .fis-tuval-icerik > #islem-para-ustu-ac { margin-left: 18px; margin-right: 18px; }
+
+/* ═══ PAKET KESIF-P5 · SATIŞ-VEZNE (01.10) — yalnız bu paketin sayfaları; sabit renk yok, belirteç var() ═══ */
+/* #17 (/vezne Yeni fiş kalem satırı): .rozet-satir'in "ortaya hizala + içerik boyu" kuralı ürün seçicisini
+   54 px'e eziyor (K12), "Kalemi sil" kutulardan 10 px yukarıda kalıyordu (K7). Satır kendi düzenini taşır:
+   ürün en az 12rem ve satırın en geniş alanı; kutular ve düğme ALT kenardan hizalı; dar ekranda sarar. */
+#vz-form .vz-kalem-satir { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--bosluk-2) var(--bosluk-3); }
+#vz-form .vz-kalem-satir > .alan { margin: 0; }
+#vz-form .vz-kalem-satir > .alan:first-child { flex: 2 1 16rem; min-width: 12rem; }
+#vz-form .vz-kalem-satir > .alan:first-child :is(.secici-alan, .secici-kap, .secici-tetik) { width: 100%; }
+#vz-form .vz-kalem-satir > :not(.alan:first-child):not(button) { flex: 1 1 8rem; min-width: 7rem; margin: 0; }
+#vz-form .vz-kalem-satir > button { flex: 0 0 auto; }
+/* alanın üç satırlı ızgarası (etiket · kutu · alt satır) boş alt satırda da 4 px aralık bırakıyor, düğme kutudan
+   4 px aşağıda kalıyordu (K7 ±4) → satır aralığı etiketin alt boşluğuna taşındı (aynı 4 px, yalnız etiketle kutu arası). */
+#vz-form .vz-kalem-satir :is(.alan, .secici-alan) { row-gap: 0; }
+#vz-form .vz-kalem-satir .alan-etiket { margin-bottom: var(--bosluk-1); }
+/* ≤ 1399 px (PRO 1280'de dört alanın etiketleri iki satıra kırılıyor, etiket üstleri ±26 px): tek satıra sığmayan kalem satırı iki sıraya bölünür — 1. sıra ürün + "Kalemi sil" (alt kenarları hizalı),
+   2. sıra adet · birim fiyat (· işçilik). Düğme artık kutuların altına tek başına düşmez (K7 ±56 idi). */
+@media (max-width: 1399px) {
+  #vz-form .vz-kalem-satir > .alan:first-child { flex: 1 1 calc(100% - 7.5rem); min-width: 12rem; }
+  #vz-form .vz-kalem-satir > button { order: 1; }
+  #vz-form .vz-kalem-satir > :not(.alan:first-child):not(button) { order: 2; flex: 1 1 9rem; }
+}
+/* ORTAK-1 [YÜKSEK] /vezne 960: 7 sütunlu kuyrukta satır eylemleri ('Seç', 'Fişi iptal et') kabın sağında
+   kalıyor, iç yatay kaydırma gerekiyordu. OLCEK-1 (13e) deseni: 769–1099 px'te tablo ızgaraya döner, eylem
+   hücresi veri satırının ALTINDA kendi satırındadır (üstüne binme yok, eylem hep görünür). id'ler aynı. */
+@media (min-width: 641px) and (max-width: 1099px) {
+  #vz-liste { display: grid; grid-template-columns: repeat(6, auto); width: 100%; min-width: 0; }
+  #vz-liste > thead, #vz-liste > tbody, #vz-liste > thead > tr, #vz-liste > tbody > tr { display: contents; }
+  #vz-liste > thead > tr > th:last-child { display: none; }
+  #vz-liste > tbody > tr > td:last-child { grid-column: 1 / -1; padding-top: 0; }
+  #vz-liste > tbody > tr > td:not(:last-child) { border-bottom: 0; }
+  /* tablo satır boyu (olcek.css td yüksekliği) ızgarada satırı sabitliyor, Toplam rozeti eylem satırına biniyordu */
+  #vz-liste > tbody > tr > td { height: auto; align-self: start; }
+  #vz-liste .vz-eylem-hucre { min-width: 0; }
+}
+/* #67 (/islemler alt satır): 'Vazgeç' 44 px, 'Kaydet ve yazdır' 52 px — alt kenar ±8 px. Aynı satırdaki iki
+   eylem aynı boyu taşır (Kaydet'in büyük düğme belirteci); özgüllük olcek.css'in #islem-vazgec kuralını aşar. */
+html[data-mod] .islem-sayfa #islem-alt-satir > #islem-vazgec {
+  height: var(--dugme-yuksekligi-buyuk); min-height: var(--dugme-yuksekligi-buyuk);
+}
+/* #67 dar ekran (≤1099): satır sarınca 'Vazgeç' ile 'Kaydet ve yazdır' AYRI satırlara düşüyordu (960: alt ±80 px).
+   İkisi yarım genişlik taban alır → birlikte sarar, aynı satırda aynı boy; kilit sebebi (varsa) onların ALTINDA. */
+@media (max-width: 1099px) {
+  html[data-mod] .islem-sayfa #islem-alt-satir > :is(#islem-vazgec, #islem-kaydet) { flex: 1 1 calc(50% - 6px); min-width: 0; }
+  html[data-mod] .islem-sayfa #islem-alt-satir > .islem-kaydet-kilit { order: 1; flex-basis: 100%; max-width: none; }
+  /* BASİT tezgâh: "+ Ayrıntı ekle" aynı satırda kalınca yarım genişlikli Kaydet alta düşüyordu (960: alt ±64) → kendi satırı. */
+  html[data-mod] .tuval-tezgah #islem-alt-satir > #islem-diger-ayrinti { flex-basis: 100%; }
+  /* TOPLU-1 (keşif P5 01.10, YÜKSEK — PRO 960 "+ Ayrıntı ekle" açık): ödeme özeti taban genişliği 0 olduğu için
+     özet + "+ Başka ödeme ekle" + Vazgeç bir satıra sığıyor, "Kaydet ve yazdır" alta düşüyordu (ölçüm: Vazgeç y912,
+     Kaydet y1002) ve özet ~120 px'e daralıp 3 satıra kırılıyordu. Dar şeritte özet İÇERİĞİ kadar taban alır →
+     özet + hap bir satırda (özet tek satır), Vazgeç + Kaydet birlikte bir sonraki satırda yan yana. */
+  html[data-mod] .islem-sayfa.tuval-pro #islem-alt-satir > .fis-pro-odeme-ozet-sar { flex: 1 1 auto; }
+}
+/* telefon: yarım genişlikte "Kaydet ve yazdır" iki satıra kırılıyordu (K3) → Vazgeç içerik boyu, Kaydet kalan genişlik. */
+@media (max-width: 560px) {
+  html[data-mod] .islem-sayfa #islem-alt-satir > #islem-vazgec { flex: 0 1 auto; }
+  html[data-mod] .islem-sayfa #islem-alt-satir > #islem-kaydet { flex: 1 1 auto; white-space: nowrap; }
+  /* PRO telefon: "+ Başka ödeme ekle" grubu Vazgeç'i kendi satırına çekiyor, Kaydet alta düşüyordu → grup kendi satırında. */
+  html[data-mod] .islem-sayfa #islem-alt-satir > #islem-pro-odeme-hap { flex-basis: 100%; }
+}
+/* SATIS-4 (c): ürün arama satırında stok (fiyatın yanında, soluk ikinci bilgi). */
+.fis-arama-oneri > .fis-arama-stok { color: var(--metin-soluk); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fis-arama-oneri > .fis-arama-stok.stok-yok { color: var(--tehlike); }
+/* SATIS-4 (a)/(b): otomatik seçilen ödeme ve tek kimlik notu — kutunun altında tek satır. */
+#islem-odeme-otomatik, #hurda-kimlik-not { margin: var(--bosluk-1) 0 0; }
+.islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+@media (max-width: 600px) {
+  .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) { grid-template-columns: minmax(0, 1fr) auto; }
+  .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) > .fis-arama-fiyat { grid-column: 2; grid-row: 1; justify-self: end; }
+  .islem-sayfa .fis-arama-oneri > .fis-arama-stok { grid-column: 2; grid-row: 2; justify-self: end; }
+}
+/* KESIF-P5 t2 (doğrulayıcı DÜŞÜK): kasası olmayan kiracıda ALDIM sütunundaki kasa seçicisi yarım sütunda (124 px)
+   "Kasa seçin..." yer tutucusunu iki satıra kırıyordu → seçim bekleyen seçici satırın tamamını alır. */
+.tuval-tezgah .fis-tuval-icerik > .form-grid-2 > .alan:has(> .secici-alan .secici-metin.yer-tutucu) { grid-column: 1 / -1; }
+/* PARA-DEMO-2 (madde 12, tasarım hakemi t2): PRO ödeme katmanı 375 px'te ekrandan taşıyordu (x=49, w=343 → sağ kenar 392 > 375;
+   katman özet düğmesinin solundan açılıyor, genişlik görüntü alanına göre). Dar ekranda TAM GENİŞLİK ALT ÇEKMECE olur:
+   görüntü alanının altına sabitlenir, iki yanda boşluk yok, uzun içerik kendi içinde kayar. Renkler belirteçle. */
+@media (max-width: 640px) {
+  .tuval-pro .fis-pro-odeme-katman {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; max-height: 80vh; overflow-y: auto;
+    border-radius: 12px 12px 0 0; border-bottom: 0; z-index: 60;
+  }
+}
+/* PARA-DEMO-2 (madde 1): BASİT tek ödeme satırındaki Nakit/Kart/Havale seçicisi hücreden taşmaz. */
+.tuval-tezgah .fis-aldim-odeme-sar { display: block; min-width: 7.5rem; }   /* "Kart" / "Havale" seçicide tek satır */
+.tuval-tezgah .fis-aldim-odeme-sar .alan-etiket { position: absolute; clip-path: inset(50%); transform: scale(0); overflow: hidden; white-space: nowrap; }   /* etiket yalnız ekran okuyucuda */
+.tuval-tezgah #islem-aldim-satir .fis-tuval-ayrinti { white-space: nowrap; }   /* kasa adı ("Ana Kasa") iki satıra kırılmaz */
+/* Tur 2 (gerçek tarayıcı 1280): seçicili satırda kasa adı seçicinin altında küçük satır — tutar sütunu kırpılmaz. */
+.tuval-tezgah #islem-aldim-satir .fis-aldim-kasa { display: block; margin-top: 4px; }
+.tuval-tezgah #islem-aldim-satir .fis-aldim-odeme-sar { max-width: 10rem; }

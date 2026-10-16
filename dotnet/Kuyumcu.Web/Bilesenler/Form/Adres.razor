@@ -1,0 +1,21 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — ADRES (K21 · eşik İŞ KURALI, TEYİTSİZ): en az 10 karakter, en az bir harf, en çok 500. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="text" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@YerTutucu" maxlength="@AlanSinirlari.Adres" autocomplete="off"
+           data-maske="ad"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    protected override string Temizle(string? g) => AdSoyad.Maskele(g);
+    protected override string CikisBicimi(string t) => GirdiYardim.BoslukSadelestir(t);
+    protected override GirdiHatasi? TamDenetle(string t) => AdresKurali.Denetle(t);
+}

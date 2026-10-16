@@ -1,0 +1,996 @@
+@page "/kurulum"
+@using System.Text.Json
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Web.Servisler
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+<PageTitle>@Marka.SayfaBasligi(MenuAdlari.Icin(Dil.T).Kurulum.Ad)</PageTitle>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   KURULUŞ SİHİRBAZI — paket T-2 Faz A
+
+   Altı adım, tek ekran. Adımların "bitti" bilgisi EKRANDA TUTULMAZ: sunucu
+   onu GERÇEK VERİDEN türetir (UX-S21) — şube var mı, kullanıcı var mı, kur
+   kaydı var mı, kasa/banka var mı, açılış kalemi yazıldı mı.
+
+   UX sözleşmesi karşılıkları:
+     • UX-S21 — sistemin bildiği alan sorulmaz: hedef listeleri ve tutar
+       birimleri sunucudan gelir, kullanıcıya "hangi para birimi" sorulmaz.
+     • UX-S22 — tek kasa/tek hesap varsa seçici çizilmez, salt okunur yazılır.
+     • UX-S25 — açılış kaydı değişmezdir; DegismezIpucu düzeltme yolunu yazar.
+     • UX-S27 — her yazma başarı bandıyla biter, sunucunun döndürdüğü sayı yazılır.
+     • UX-S28 — hata "kayıt yok"a çevrilmez; boş durum yalnız istek başarılıyken çıkar.
+     • UX-S29 — sunucu satır tavanı ekranda yazar.
+     • UX-S30 — kilitli düğmenin yanında eksik koşul yazar.
+     • UX-S31 — ham kod (KASA, HEDEF_YOK, ACILIS) ekrana basılmaz, çevrilir.
+     • UX-S20 — cari açılışı toplu kişisel veri gösterir; "bu görüntüleme kayda
+       geçer" uyarısı ekranda yazar ve sunucu okuma izini düşer.
+
+   ⚠ İKİNCİ UÇ YÜZEYİ YOK: işletme/şube, kullanıcı ve kur adımları KENDİ
+     ekranlarına yönlendirir; sihirbaz onlar için ayrı bir uç çağırmaz.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+<div class="sayfa">
+    <SayfaBasi Anahtar="kurulum" Baslik="@Dil.T.Kurulum.Baslik" Aciklama="@Dil.T.Kurulum.Aciklama" />
+
+    <HataBandi Mesaj="@hata" Id="kur-hata" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="6000" Id="kur-basari" />
+
+    @if (durum is null)
+    {
+        @* PAKET SADE-1 (göz #14): düz "Yükleniyor…" metni istek düşse de ekranda
+           SONSUZA dek kalıyordu. Artık: istek sürerken dönen halka (aria-busy),
+           istek bittiyse ya veri ya da hata bandı + gerçek istek atan "Yeniden dene".
+           #kur-yukleniyor id'si korunur (yalnız istek sürerken çizilir). *@
+        @if (hata is null)
+        {
+            <div id="kur-yukleniyor" aria-busy="true"><Yukleniyor /></div>
+        }
+        else
+        {
+            <p class="sade-yeniden" id="kur-yeniden-kap">
+                <button type="button" class="dugme dugme-ikincil" id="kur-yeniden"
+                        disabled="@yukleniyor" @onclick="YenidenYukle">@SD.YenidenDene</button>
+            </p>
+        }
+    }
+    else
+    {
+        @* ── Mühür rozeti ──────────────────────────────────────────────── *@
+        @if (durum.Muhurlendi)
+        {
+            <div class="kart" id="kur-muhur-rozeti">
+                <p><Rozet Renk="yesil">@Dil.T.Kurulum.MuhurlendiMesaji</Rozet></p>
+                <p class="metin-soluk">
+                    @Dil.T.Kurulum.MuhurBilgisi: @(durum.MuhurTarihi is { } mtar ? Bicim.TarihSaat(mtar) : null)
+                </p>
+                <DegismezIpucu Varlik="AcilisKalemi" Gerekce="@Dil.T.Kurulum.AcilisDegismez"
+                               AlternatifYol="@Dil.T.Kurulum.AdimCariAcilis" />
+            </div>
+        }
+        else if (!durum.AcilisPenceresiAcik)
+        {
+            <p class="uyari-metni" role="note" id="kur-pencere-kapandi">@Dil.T.Kurulum.PencereKapandi</p>
+        }
+        else
+        {
+            <ProAlan>
+                @* UX-S5: açılış penceresi tarihi bir İLERİ bilgidir; basit modda
+                   ekranı kalabalıklaştırmaz, profesyonel modda görünür. *@
+                <p class="metin-soluk metin-kucuk" id="kur-pencere">
+                    @Dil.T.Kurulum.PencereBitis: @Bicim.TarihTam(durum.AcilisPenceresiBitis)
+                </p>
+            </ProAlan>
+        }
+
+        @* ── Adım listesi ──────────────────────────────────────────────── *@
+        <div class="kart" id="kur-adimlar">
+            @* PAKET SADE-1: kart başlığı sayfa başlığını ("Kuruluş Sihirbazı") İKİNCİ
+               kez yazıyordu → kartın kendi adı. 375 px'te satır ızgarası (#15). *@
+            <h2 class="kart-baslik" id="kur-adimlar-baslik">@SD.KurulumAdimlarBaslik</h2>
+            <ul class="liste-sade sade-adim-listesi">
+                @foreach (var a in durum.AdimListesi)
+                {
+                    <li id="@($"kur-adim-{a.Anahtar}")">
+                        @* TOPLU-3 (hakem KRİTİK): bu sürümde olmayan adım "(bu sürümde yok)" ekiyle
+                           "Eksik" yazmaz — "Yakında" rozeti taşır, sayı basılmaz (zorunlu DEĞİL;
+                           sunucunun bitti/zorunlu bilgisi aynen okunur, durum uydurulmaz). *@
+                        <Rozet Renk="@(a.Bitti ? "yesil" : a.Atlandi ? "sari" : "gri")">
+                            @(a.Bitti ? Dil.T.Kurulum.AdimBitti
+                              : a.Atlandi ? Dil.T.Kurulum.AdimAtlandi
+                              : YakindaMi(a) ? T3.KurulumYakinda
+                              : Dil.T.Kurulum.AdimEksik)
+                        </Rozet>
+                        <span>@AdimAdi(a.Anahtar)</span>
+                        @* PAKET GOC-C (hasım ORTA, K9): "Bu adıma git" bağlantısı ile "Bu adımı atla" düğmesi
+                           AYNI eylem hücresinde (tek sarmalayıcı, esnek sıra) — önceden ikisi aynı grid-area'ya
+                           konup üst üste biniyordu (kasa/banka adımı eksikken bağlantı düğmenin altında kalıyordu). *@
+                        <div class="kur-adim-eylemler" id="@($"kur-adim-{a.Anahtar}-eylemler")">
+                        @if (YonlendirmeYolu(a.Anahtar) is { } yol)
+                        {
+                            @* Yönlendirme DÜĞME DEĞİL BAĞLANTIDIR: "tıklanınca
+                               istek atmayan düğme" kuralına (DoD/1) takılmasın
+                               diye ve ekran okuyucuda da doğru rol taşısın diye. *@
+                            <a class="btn btn-ikincil btn-kucuk" href="@yol"
+                               id="@($"kur-adim-{a.Anahtar}-git")">@Dil.T.Kurulum.AdimaGit</a>
+                        }
+                        else if (!a.Bitti && !a.Atlandi && !YakindaMi(a))
+                        {
+                            @* TOPLU-6 (TOPLU-4 hakemi ORTA "eksik adımın düğmesi yok"): ekranı BU sayfada olan eksik
+                               adım (müşteri açılışı) "Şimdi gir" bağlantısı taşır — açılış bölümünü açar ve oraya gider
+                               (mühür kilidindeki eksik adım bağlantısıyla aynı yol: EksikAdimYolu). İkincil görünüm:
+                               ekranın tek birincili mühür/kontrol düğmesidir. *@
+                            <a class="btn btn-ikincil btn-kucuk" href="@EksikAdimYolu(a.Anahtar)"
+                               id="@($"kur-adim-{a.Anahtar}-git")" @onclick="AcilisiAc">@T6.KurulumSimdiGir</a>
+                        }
+                        @if (!YakindaMi(a) && a.Zorunlu && !a.Bitti)
+                        {
+                            @* Zorunlu ve eksik adım ATLANABİLİR — ama atlandığı
+                               yazılı kalır ve geri alınabilir (UX-S25). *@
+                            <button type="button" disabled="@(durum.Muhurlendi || kaydediliyor)"
+                                    title="@(durum.Muhurlendi ? Dil.T.Kurulum.MuhurlendiMesaji : null)"
+                                    class="btn btn-ikincil btn-kucuk"
+                                    id="@($"kur-adim-{a.Anahtar}-atla")"
+                                    @onclick="() => AtlamaDegistir(a.Anahtar, !a.Atlandi)">
+                                @(a.Atlandi ? Dil.T.Kurulum.AdimGeriAl : Dil.T.Kurulum.AdimAtla)
+                            </button>
+                        }
+                        </div>
+                        @if (!YakindaMi(a) && (!a.Zorunlu || a.Bitti))
+                        {
+                            <span class="metin-soluk metin-kucuk">@SayiMetni(a.Anahtar)</span>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+
+        @* ── Açılış bakiyesi ───────────────────────────────────────────── *@
+        @* TOPLU-3 (tasarım hakemi KRİTİK — TOPLU-2 YARIM "/kurulum 375 uzun sayfa"): kurucu temel
+           kuralı "zorunlu olanlar hariç ilk etapta kullanıcı görmesin" → açılış bakiyesi formu
+           KAPALI akordeon (yerel <details>: içerik DOM'da kalır, mevcut id'ler ve davranış AYNI;
+           ortak Katlanir kapalıyken içeriği çizmediği için burada kullanılmadı). Kullanıcı satır
+           eklediyse ya da kontrol sonucu varsa açık gelir. Açıklama paragrafı (i) içinde, jargon yok. *@
+        <div class="kart" id="kur-acilis">
+          <details class="kur-bolum kart-govde" id="kur-acilis-bolum" open="@AcilisBolumuAcik">
+            <summary class="kur-bolum-baslik" id="kur-acilis-ac">
+                <h2 class="kart-baslik">@Dil.T.Kurulum.AcilisBasligi</h2>
+                <span class="metin-soluk kur-bolum-ozet" id="kur-acilis-ozet">@T3.KurulumAcilisOzet</span>
+            </summary>
+            <div class="kur-bolum-govde" id="kur-acilis-govde">
+            @* TOPLU-6 (TOPLU-4 hakemi ORTA "alanı olmayan 'Açıklama ⓘ'"): form etiketi gibi duran "Açıklama"
+               yerine ⓘ'nin ne anlattığını söyleyen soru; içerik ve id'ler AYNI. *@
+            <div class="metin-soluk kur-bolum-ipucu-satir">
+                <span>@T6.KurulumAcilisNasil</span>
+                <details class="zo-ipucu" id="kur-acilis-ipucu">
+                    <summary aria-label="@($"{T3.YasIpucuAc}: {Dil.T.Kurulum.AcilisBasligi}")">i</summary>
+                    <p id="kur-acilis-aciklama">@T3.KurulumAcilisIpucu</p>
+                </details>
+            </div>
+            <ProAlan>
+                @* UX-S29 + UX-S5: sunucu sınırı YAZILIDIR, ama ileri alandır. *@
+                <p class="metin-soluk metin-kucuk" id="kur-acilis-sinir">
+                    @string.Format(Dil.T.Kurulum.SinirNotu, durum.MaksSatir)
+                </p>
+            </ProAlan>
+
+            <div class="alan">
+                <Secici ElemanId="kur-acilis-tur"
+                        Etiket="@Dil.T.Kurulum.HedefSec"
+                        Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("KASA", Dil.T.Kurulum.TurKasa), new SecenekOgesi("BANKA", Dil.T.Kurulum.TurBanka), new SecenekOgesi("CARI", Dil.T.Kurulum.TurCari) })"
+                        Deger="@tur"
+                        DegerChanged="@(v => TurDegisti(new ChangeEventArgs { Value = v }))" />
+            </div>
+
+            @if (tur == "CARI")
+            {
+                @* UX-S20 / KVKK: toplu kişisel veri görüntülemesi kayda geçer. *@
+                <p class="uyari-metni" role="note" id="kur-kvkk">@Dil.T.Kurulum.KisiselVeriUyarisi</p>
+            }
+
+            @if (DisaridaKalanlar.Count > 0)
+            {
+                @* P-68 / UX-S29: açılışın kabul etmediği para birimindeki kayıt seçiciye
+                   girmez — ama SESSİZCE kırpılmaz, neden listede olmadığı yazılır. *@
+                <div class="uyari-metni" role="note" id="kur-acilis-doviz-disarida">
+                    <p>@KilitMetin.DovizDisaridaBaslik</p>
+                    <ul class="liste-sade">
+                        @foreach (var d in DisaridaKalanlar)
+                        {
+                            <li id="@($"kur-acilis-doviz-{d.Id}")">
+                                @string.Format(KilitMetin.DovizDisaridaSatir, d.Ad, Bicim.ParaIsareti(d.ParaBirimi), KabulEdilenler)
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (durum.SayiKutusu.Kur == 0)
+            {
+                @* UX-S30: eksik koşul yazılı, üstelik çözüm yolu düğmeli. *@
+                <p class="uyari-metni" role="note" id="kur-kur-yok">@Dil.T.Kurulum.KurYok</p>
+                <a class="btn btn-ikincil" href="/kur" id="kur-kur-ekle">@Dil.T.Kurulum.KurEkle</a>
+            }
+
+            @if (satirlar.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.Kurulum.BosDurum" />
+            }
+            else
+            {
+                @* PAKET GOC-C — ORTAK IZGARA (grid:kurulum:kur-acilis-tablo). Satırlar KULLANICININ girdiği sıradır (satır
+                   no = prova/hata eşleşmesi) → sıralama YOK (hiçbir kolon SunucuSiralamaAdi taşımaz). Mevcut id'ler
+                   (kur-satir-{n}, -hedef, -hedef-tek, -tl, -tl-hata, -has, -sil) korunur. *@
+                <Izgara T="AcilisSatirGirdisi" Ekran="kurulum" GridId="kur-acilis-tablo" TabloId="kur-acilis-tablo"
+                        Kolonlar="@AcilisKolonlari" Ogeler="@satirlar"
+                        SatirId="@(x => $"kur-satir-{satirlar.IndexOf(x)}")" Baslik="@Dil.T.Kurulum.HedefSec" />
+            }
+
+            @* ── PAKET P-13 · B-17 — GEREKÇE EKRANDA ────────────────────────────
+               Kural (kasa/banka açılışı negatif olamaz) KORUNDU; plan tek taraflı
+               karar koymaz, K-24 (KMH) gelene dek TUTUCU davranış sürer. Kuralın
+               NEDENİ artık ekranda yazılı ve alanın aria-describedby'si buraya
+               işaret ediyor (önceden hedefi olmayan bir kimliğe işaret ediyordu). *@
+            @if (tur != "CARI")
+            {
+                <p id="kur-tl-kural" class="metin-soluk metin-kucuk">@(Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).KurulumNegatifAcilisBasit : Toplu2Sozlugu.Al(Dil.Dil).KurulumNegatifAcilisPro)</p>
+            }
+
+            <button type="button" @onclick="SatirEkle" class="btn btn-ikincil" id="kur-satir-ekle"
+                    disabled="@(Kilitli || Hedefler.Count == 0 || satirlar.Count >= durum.MaksSatir)">@Dil.T.Kurulum.SatirEkle</button>
+            @if (Hedefler.Count == 0 && hedefYuklendi)
+            {
+                <p class="metin-soluk metin-kucuk" id="kur-hedef-yok">@Dil.T.Kurulum.AdimEksik</p>
+            }
+
+            <GerekceAlani Id="kur-gerekce" AsgariUzunluk="@durum.GerekceAsgari" AzamiUzunluk="500"
+                          @bind-Deger="gerekce" />
+
+            @* TOPLU-3: sayfada (DOM'da) TEK birincil düğme — sunucu "mühürlenebilir" diyor ve açılışta
+               yarım iş yoksa birincil "Kurulumu mühürle"dir; kontrol sonucu geldikten sonra "Açılışı uygula"; yoksa "Kontrol et". *@
+            <button type="button" @onclick="Prova" class="btn @(ProvaBirincil ? "btn-birincil" : "btn-ikincil")" id="kur-prova"
+                    disabled="@(!ProvaAcik)">@T3.KurulumKontrolEt</button>
+            @if (!ProvaAcik)
+            {
+                <p id="kur-prova-kilit" class="metin-soluk metin-kucuk">
+                    @Dil.T.Yonetim.KilitSebebi: @string.Join(" · ", ProvaEksikleri)
+                </p>
+            }
+            </div>
+          </details>
+        </div>
+
+        @* ── Kuru prova sonucu ─────────────────────────────────────────── *@
+        @if (prova is not null)
+        {
+            <div class="kart" id="kur-prova-sonuc">
+                <h2 class="kart-baslik">@T3.KurulumKontrolSonucu</h2>
+                <p class="metin-soluk">@Dil.T.Kurulum.ProvaAciklama</p>
+
+                @if (prova.HataListesi.Count == 0)
+                {
+                    <p id="kur-prova-temiz">@Dil.T.Kurulum.ProvaTemiz</p>
+                }
+                else
+                {
+                    @* PAKET GOC-C — ORTAK IZGARA (grid:kurulum:kur-prova-hatalar). Hata listesi TAM → yerel sıralama.
+                       PAKET P-13: ham iç kod basılmaz; kısa kimlik + Türkçe mesaj. *@
+                    <Izgara T="AcilisSatirSonucu" Ekran="kurulum" GridId="kur-prova-hatalar" TabloId="kur-prova-hatalar"
+                            Kolonlar="@HataKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(prova.HataListesi, hataSira, HataKolonlari)"
+                            Baslik="@T3.KurulumKontrolSonucu"
+                            SiralamaDegisti="@(x => hataSira = x)" GecerliSiralama="@hataSira" />
+                }
+
+                @if (prova.UyariListesi.Count > 0)
+                {
+                    <h3 id="kur-prova-uyari-basligi">@Dil.T.Kurulum.UyariBasligi</h3>
+                    <ul id="kur-prova-uyarilar">
+                        @foreach (var u in prova.UyariListesi)
+                        {
+                            <li>@u.SatirNo — @u.HataMesaji</li>
+                        }
+                    </ul>
+                }
+
+                @if (prova.LimitAsimiOnayiGerekli)
+                {
+                    <div class="alan">
+                        <Onay ElemanId="kur-limit-onay" Etiket="@Dil.T.Kurulum.LimitAsimiOnayi"
+                              @bind-Deger="limitOnayi" />
+                    </div>
+                }
+
+                <button type="button" @onclick="Uygula" class="btn btn-birincil" id="kur-uygula"
+                        disabled="@(!UygulaAcik)">@Dil.T.Kurulum.Uygula</button>
+                @if (!UygulaAcik)
+                {
+                    <p id="kur-uygula-kilit" class="metin-soluk metin-kucuk">
+                        @Dil.T.Yonetim.KilitSebebi: @string.Join(" · ", UygulaEksikleri)
+                    </p>
+                }
+            </div>
+        }
+
+        @* ── Son uygulama + geri alma ──────────────────────────────────── *@
+        @if (sonOturumId is not null)
+        {
+            <div class="kart" id="kur-son-oturum">
+                <DegismezIpucu Varlik="AcilisKalemi" Gerekce="@Dil.T.Kurulum.AcilisDegismez" />
+                <button type="button" @onclick="@(() => onayTuru = "geri-al")"
+                        class="btn btn-ikincil" id="kur-geri-al"
+                        disabled="@(Kilitli || GerekceKisa)">
+                    @Dil.T.Kurulum.GeriAl
+                </button>
+                @if (GerekceKisa)
+                {
+                    <p id="kur-geri-al-kilit" class="metin-soluk metin-kucuk">
+                        @Dil.T.Yonetim.KilitSebebi:
+                        @string.Format(GerekceKisaMetni, durum.GerekceAsgari)
+                    </p>
+                }
+            </div>
+        }
+
+        @* ── Mühürleme ─────────────────────────────────────────────────── *@
+        @if (!durum.Muhurlendi)
+        {
+            @* TOPLU-3: mühür formu açılışta HER ZAMAN KAPALI akordeon (geri alınamaz son adım,
+               isteğe bağlı görünüm — kurucu temel kuralı). Geri alınamazlık metni
+               (i) içinde ve onay penceresinde TAM haliyle durur (kur-onay-metni değişmedi). *@
+            <div class="kart" id="kur-muhur">
+              <details class="kur-bolum kart-govde" id="kur-muhur-bolum">
+                <summary class="kur-bolum-baslik" id="kur-muhur-ac">
+                    <h2 class="kart-baslik">@Dil.T.Kurulum.Muhurle</h2>
+                    <span class="metin-soluk kur-bolum-ozet" id="kur-muhur-ozet">@T3.KurulumMuhurOzet</span>
+                </summary>
+                <div class="kur-bolum-govde" id="kur-muhur-govde">
+                <div class="metin-soluk kur-bolum-ipucu-satir">
+                    <span>@T6.KurulumMuhurNe</span>
+                    <details class="zo-ipucu" id="kur-muhur-ipucu">
+                        <summary aria-label="@($"{T3.YasIpucuAc}: {Dil.T.Kurulum.Muhurle}")">i</summary>
+                        <p id="kur-muhur-aciklama">@MuhurOnayMetni</p>
+                    </details>
+                </div>
+                @* P-49: mühür gerekçesi AÇILIŞ gerekçesinden BAĞIMSIZDIR — açılış
+                   için yazılan metin mühür düğmesini açmaz (ayrı karar, ayrı iz). *@
+                <GerekceAlani Id="kur-muhur-gerekce" Etiket="@Dil.T.Kurulum.MuhurGerekce"
+                              AsgariUzunluk="@durum.GerekceAsgari" AzamiUzunluk="500"
+                              @bind-Deger="muhurGerekcesi" />
+                <button type="button" @onclick="MuhurOnayiAc"
+                        class="btn @(MuhurBirincil ? "btn-birincil" : "btn-ikincil")" id="kur-muhurle"
+                        disabled="@(!MuhurAcik)">
+                    @Dil.T.Kurulum.Muhurle
+                </button>
+                @if (!MuhurAcik)
+                {
+                    @* P-68: kilit gerekçesi SUNUCUNUN eksikAdimlar dizisiyle BİREBİR
+                       eşleşir (+ yalnız mühür gerekçesi kısaysa bir madde). Kaydetme
+                       sürüyorsa bu AYRI bir satırdır, "eksik adım" gibi listelenmez.
+                       Her eksik adım ilgili ekrana giden BAĞLANTIDIR (UX-S23/S30). *@
+                    <div id="kur-muhur-kilit" role="status" class="metin-soluk metin-kucuk">
+                        <p>@Dil.T.Yonetim.KilitSebebi:</p>
+                        @if (kaydediliyor)
+                        {
+                            <p id="kur-muhur-kaydediliyor">@KilitMetin.Kaydediliyor</p>
+                        }
+                        @if (MuhurEksikleri.Any())
+                        {
+                            if (durum.EksikListe.Count > 0)
+                            {
+                                <p id="kur-muhur-eksik-baslik">@KilitMetin.EksikAdimlarBaslik</p>
+                            }
+                            <ul class="liste-sade" id="kur-muhur-eksikler">
+                                @foreach (var m in MuhurEksikleri)
+                                {
+                                    if (m.Adim is { } adim)
+                                    {
+                                        <li id="@($"kur-muhur-eksik-{adim}")">
+                                            <a href="@EksikAdimYolu(adim)" id="@($"kur-muhur-eksik-{adim}-git")"
+                                               title="@string.Format(KilitMetin.AdimiTamamla, m.Metin)">@m.Metin</a>
+                                        </li>
+                                    }
+                                    else
+                                    {
+                                        <li id="kur-muhur-eksik-gerekce">@m.Metin</li>
+                                    }
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+                </div>
+              </details>
+            </div>
+        }
+    }
+
+    @if (onayTuru is not null)
+    {
+        @* DoD EK madde 4: yıkıcı eylem ORTAK onay modalı + geri dönüş yolu. *@
+        <ModalPencere Acik="true"
+                      Baslik="@(onayTuru == "muhur" ? Dil.T.Kurulum.Muhurle : Dil.T.Kurulum.GeriAl)"
+                      Kapat="@(() => onayTuru = null)">
+            <p id="kur-onay-metni">
+                @(onayTuru == "muhur" ? MuhurOnayMetni : Dil.T.Kurulum.GeriAlOnay)
+            </p>
+            @if (onayTuru == "muhur")
+            {
+                @* P-49 İKİNCİ KAPI (type-to-confirm): işletme adı BİREBİR yazılmadan
+                   "Evet" açılmaz. Sunucu aynı kuralı IsletmeAdiOnayi ile yeniden denetler. *@
+                <Kuyumcu.Web.Bilesenler.Form.Metin
+                    ElemanId="kur-onay-isletme-adi"
+                    Etiket="@string.Format(Dil.T.Kurulum.MuhurIsletmeAdiYaz, durum?.IsletmeAdi ?? "")"
+                    Zorunlu="true" EnFazla="@AlanSinirlari.Unvan"
+                    Hata="@(IsletmeAdiYanlis ? Dil.T.Kurulum.MuhurIsletmeAdiUyusmuyor : null)"
+                    Deger="@isletmeAdiOnayi"
+                    DegerChanged="@((string? v) => isletmeAdiOnayi = v ?? "")" />
+                @if (!IsletmeAdiDogru)
+                {
+                    <p id="kur-onay-kilit" class="metin-soluk metin-kucuk">
+                        @Dil.T.Yonetim.KilitSebebi:
+                        @string.Format(Dil.T.Kurulum.MuhurIsletmeAdiYaz, durum?.IsletmeAdi ?? "")
+                    </p>
+                }
+            }
+            <button type="button" @onclick="OnayEvet"
+                    disabled="@(onayTuru == "muhur" && !IsletmeAdiDogru)"
+                    aria-describedby="@(onayTuru == "muhur" && !IsletmeAdiDogru ? "kur-onay-kilit" : null)"
+                    class="btn btn-birincil" id="kur-onay-evet">@Dil.T.Ortak.Evet</button>
+            <button type="button" @onclick="@(() => onayTuru = null)"
+                    class="btn btn-ikincil" id="kur-onay-hayir">@Dil.T.Ortak.Hayir</button>
+        </ModalPencere>
+    }
+</div>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    // PAKET Q10-5 (QA 10 · K8): basit modda mühür onayı "storno / cari" demeden aynı kuralı söyler.
+    private string MuhurOnayMetni => Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).KurulumMuhurOnayBasit : Dil.T.Kurulum.MuhurOnay;
+
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> HedefSecenekleri =>
+        [.. Hedefler.Select(h => new SecenekOgesi(h.Id, h.Ad))];
+
+    private void HedefDegistiDeger(int sira, string? deger) =>
+        HedefDegisti(sira, new ChangeEventArgs { Value = deger });
+
+    private KurulumDurumYaniti? durum;
+    private AcilisProvaYaniti? prova;
+
+    private string tur = "KASA";
+    private string gerekce = "";
+    // P-49: mühür gerekçesi ve işletme adı onayı açılış gerekçesinden BAĞIMSIZ.
+    private string muhurGerekcesi = "";
+    private string isletmeAdiOnayi = "";
+    private bool limitOnayi;
+    private string? sonOturumId;
+    private string? onayTuru;
+    private string? hata;
+    private string? basari;
+    private int basariJeton;
+    private bool kaydediliyor;
+    private bool hedefYuklendi;
+
+    private readonly List<AcilisSatirGirdisi> satirlar = [];
+    private readonly List<Hedef> kasalar = [];
+    private readonly List<Hedef> hesaplar = [];
+    private readonly List<Hedef> cariler = [];
+    // P-68: açılışın kabul etmediği para birimindeki kasa/hesaplar (gerekçeyle yazılır).
+    private readonly List<Hedef> disaridaKasalar = [];
+    private readonly List<Hedef> disaridaHesaplar = [];
+
+    private List<Hedef> DisaridaKalanlar => tur switch
+    {
+        "KASA" => disaridaKasalar,
+        "BANKA" => disaridaHesaplar,
+        _ => [],
+    };
+
+    private string KabulEdilenler => string.Join(", ", (durum?.AcilisParaBirimleri ?? []).Select(Bicim.ParaIsareti));
+
+    /// <summary>Ekran içi satır tamponu — sunucuya AcilisSatirDto olarak gider.</summary>
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? hataSira;
+    private IReadOnlyList<IzgaraKolonu<AcilisSatirGirdisi>> AcilisKolonlari
+    {
+        get
+        {
+            var k = new List<IzgaraKolonu<AcilisSatirGirdisi>>
+            {
+                new() { Anahtar = "no", Baslik = Dil.T.Kurulum.SatirNo, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                        Hucre = x => @<text>@(satirlar.IndexOf(x) + 1)</text> },
+                // UX-S22: tek seçenek varsa seçici çizilmez.
+                new() { Anahtar = "hedef", Baslik = Dil.T.Kurulum.HedefSec, ZorunluGorunur = true,
+                        Hucre = x => SatirHedefHucresi(satirlar.IndexOf(x), x) },
+                // QA turu 5: kasa/bankada eksi bakiye fiziken olmaz; CARİ'de anlamlıdır (yön).
+                new() { Anahtar = "tl", Baslik = Dil.T.Kurulum.TlTutar, ZorunluGorunur = true,
+                        Hucre = x => SatirTlHucresi(satirlar.IndexOf(x), x) },
+            };
+            if (tur == "CARI")
+                // PAKET GOC-C (K11): has işaretli (yön) ama en çok 6 ondalık — sunucu IsaretliHas ile aynı kural.
+                k.Add(new() { Anahtar = "has", Baslik = Dil.T.Kurulum.HasGram,
+                              Hucre = x => @<Gram ElemanId="@($"kur-satir-{satirlar.IndexOf(x)}-has")" Etiket="@Dil.T.Kurulum.HasGram" EnCokOndalik="6"
+                                                Deger="@x.HasGram"
+                                                DegerChanged="@((decimal? _v) => HasDegisti(satirlar.IndexOf(x), _v))" /> });
+            k.Add(new() { Anahtar = "sil", Baslik = Dil.T.Kurulum.SatirSil, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                          KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                          Hucre = x => @<button type="button" disabled="@Kilitli" class="btn btn-ikincil btn-kucuk"
+                                                id="@($"kur-satir-{satirlar.IndexOf(x)}-sil")"
+                                                @onclick="() => SatirSil(satirlar.IndexOf(x))">@Dil.T.Kurulum.SatirSil</button> });
+            return k;
+        }
+    }
+
+    private RenderFragment SatirHedefHucresi(int sira, AcilisSatirGirdisi s) => @<text>@if (Hedefler.Count == 1)
+        {
+            <span id="@($"kur-satir-{sira}-hedef-tek")">@Hedefler[0].Ad</span>
+        }
+        else
+        {
+            <Secici ElemanId="@($"kur-satir-{sira}-hedef")" Etiket="@Dil.T.Kurulum.HedefSec"
+                    Secenekler="@HedefSecenekleri" Deger="@s.HedefId"
+                    DegerChanged="@((string? _v) => HedefDegistiDeger(sira, _v))" BosSecenekMetni="—" />
+        }</text>;
+
+    private RenderFragment SatirTlHucresi(int sira, AcilisSatirGirdisi s) => @<text>
+        <Para ElemanId="@($"kur-satir-{sira}-tl")" Etiket="@Dil.T.Ortak.Tutar"
+              EnAz="@(tur == "CARI" ? null : 0m)" Deger="@s.TlTutar"
+              DegerChanged="@((decimal? _v) => TlDegisti(sira, _v))" />
+        @if (tur != "CARI" && s.TlTutar < 0m)
+        {
+            <span class="hata-metni" role="alert" id="@($"kur-satir-{sira}-tl-hata")">@Dil.T.Kurulum.NegatifAcilisYok</span>
+        }</text>;
+
+    private IReadOnlyList<IzgaraKolonu<AcilisSatirSonucu>> HataKolonlari =>
+    [
+        new() { Anahtar = "no", Baslik = Dil.T.Kurulum.SatirNo, ZorunluGorunur = true, SunucuSiralamaAdi = "no", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = h => h.SatirNo },
+        new() { Anahtar = "kimlik", Baslik = Dil.T.Kurulum.HataKimligi, SunucuSiralamaAdi = "kimlik", Deger = h => h.Kimlik,
+                Hucre = h => @<code id="@($"kur-hata-kimlik-{h.SatirNo}")">@h.Kimlik</code> },
+        new() { Anahtar = "mesaj", Baslik = Dil.T.Kurulum.HataMesaji, ZorunluGorunur = true, Deger = h => h.HataMesaji },
+    ];
+
+    private sealed class AcilisSatirGirdisi
+    {
+        public string HedefId { get; set; } = "";
+        public decimal TlTutar { get; set; }
+        public decimal HasGram { get; set; }
+    }
+
+    private sealed class Hedef
+    {
+        public string Id { get; init; } = "";
+        public string Ad { get; init; } = "";
+        public string ParaBirimi { get; init; } = "";
+    }
+
+    private List<Hedef> Hedefler => tur switch
+    {
+        "KASA" => kasalar,
+        "BANKA" => hesaplar,
+        _ => cariler,
+    };
+
+    private bool Kilitli => kaydediliyor || (durum?.Muhurlendi ?? false)
+                            || !(durum?.AcilisPenceresiAcik ?? false);
+
+    private string GerekceKisaMetni => Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).GerekceKisaBasit : Dil.T.Yonetim.GerekceKisa;
+    private bool GerekceKisa => gerekce.Trim().Length < (durum?.GerekceAsgari ?? 20);
+
+    private bool ProvaAcik => !Kilitli && !sayiKapisi.OnekleVar("kur-satir-") && satirlar.Count > 0
+                              && satirlar.All(s => s.HedefId.Length > 0)
+                              && (durum?.SayiKutusu.Kur ?? 0) > 0;
+
+    private IEnumerable<string> ProvaEksikleri
+    {
+        get
+        {
+            if (durum?.Muhurlendi == true) yield return Dil.T.Kurulum.MuhurlendiMesaji;
+            else if (durum?.AcilisPenceresiAcik == false) yield return Dil.T.Kurulum.PencereKapandi;
+            if (sayiKapisi.Sebep(Dil.Dil, "kur-satir-") is { } ss) yield return ss;   // ORTAK-1
+            if (satirlar.Count == 0) yield return Dil.T.Kurulum.BosDurum;
+            if (satirlar.Any(s => s.HedefId.Length == 0)) yield return Dil.T.Kurulum.HedefSec;
+            if ((durum?.SayiKutusu.Kur ?? 0) == 0) yield return Dil.T.Kurulum.KurYok;
+        }
+    }
+
+    private bool UygulaAcik => !Kilitli && !sayiKapisi.OnekleVar("kur-satir-") && prova is { Temiz: true, ProvaJetonu: not null }
+                               && !GerekceKisa
+                               && (!prova.LimitAsimiOnayiGerekli || limitOnayi);
+
+    private IEnumerable<string> UygulaEksikleri
+    {
+        get
+        {
+            if (prova is null || !prova.Temiz) yield return T3.KurulumKontrolEt; // TOPLU-4 (2): "Kuru prova" jargonu kilit sebebine de sızmasın — düğmenin kendi adı
+            if (GerekceKisa) yield return string.Format(GerekceKisaMetni, durum?.GerekceAsgari ?? 20);
+            if (prova?.LimitAsimiOnayiGerekli == true && !limitOnayi)
+                yield return Dil.T.Kurulum.LimitAsimiOnayi;
+        }
+    }
+
+    private bool MuhurGerekceKisa => muhurGerekcesi.Trim().Length < (durum?.GerekceAsgari ?? 20);
+
+    private bool MuhurAcik => !kaydediliyor && (durum?.Muhurlenebilir ?? false) && !MuhurGerekceKisa;
+
+    /// <summary>
+    /// P-49 type-to-confirm — sunucudaki KurulumServisi.IsletmeAdiEslesir ile
+    /// AYNI kural: baş/son boşluk dışında birebir (büyük/küçük harf duyarlı).
+    /// Kayıtlı ad boşsa fail-closed.
+    /// </summary>
+    private bool IsletmeAdiDogru => IsletmeAdiEslesir(isletmeAdiOnayi, durum?.IsletmeAdi);
+
+    private bool IsletmeAdiYanlis => isletmeAdiOnayi.Trim().Length > 0 && !IsletmeAdiDogru;
+
+    private static bool IsletmeAdiEslesir(string? girilen, string? kayitli)
+    {
+        var k = kayitli?.Trim() ?? "";
+        if (k.Length == 0) return false;
+        return string.Equals((girilen ?? "").Trim(), k, StringComparison.Ordinal);
+    }
+
+    private void MuhurOnayiAc()
+    {
+        isletmeAdiOnayi = "";
+        onayTuru = "muhur";
+    }
+
+    /// <summary>
+    /// P-68: mühür kilidinin maddeleri — sunucunun <c>eksikAdimlar</c> dizisiyle
+    /// BİREBİR (her biri bir adım anahtarı taşır → bağlantı), yalnız mühür
+    /// gerekçesi kısaysa +1 (anahtarsız madde). "Kaydediliyor" durumu buraya
+    /// KATILMAZ: o bir eksik adım değildir, kilit kutusunda ayrı satırdır.
+    /// </summary>
+    private IEnumerable<(string? Adim, string Metin)> MuhurEksikleri
+    {
+        get
+        {
+            foreach (var a in durum?.EksikListe ?? []) yield return (a, AdimAdi(a));
+            if (MuhurGerekceKisa)
+                yield return (null, string.Format(GerekceKisaMetni, durum?.GerekceAsgari ?? 20));
+        }
+    }
+
+    private KurulumKilitMetinleri KilitMetin => KurulumKilitSozlugu.Al(Dil.Dil);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try
+        {
+            durum = await Api.GetAsync<KurulumDurumYaniti>("/kurulum/durum");
+            await HedefleriYukle();
+        }
+        // ⚠ UX-S28: hata "kayıt yok"a çevrilmez — liste boşaltılmaz, bant ayrıdır.
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch (JsonException) { hata = Dil.T.Ortak.Hata; }
+        // PAKET SADE-1 (göz #14): ağ kopması / zaman aşımı ApiHata DEĞİLDİR; önceden
+        // bileşen bu istisnayı yutamayıp "Yükleniyor"da kalıyordu. Artık bant çıkar.
+        catch (HttpRequestException) { hata = SD.KurulumOkunamadi; }
+        catch (TaskCanceledException) { hata = SD.KurulumOkunamadi; }
+        finally { yukleniyor = false; }
+    }
+
+    private bool yukleniyor;
+    private SadeMetinleri SD => SadeSozlugu.Al(Dil.Dil);
+
+    /// <summary>SADE-1: hata sonrası "Yeniden dene" — GET /kurulum/durum yeniden atılır.</summary>
+    private async Task YenidenYukle()
+    {
+        hata = null; yukleniyor = true;
+        await Yukle();
+    }
+
+    private async Task HedefleriYukle()
+    {
+        kasalar.Clear(); hesaplar.Clear(); cariler.Clear();
+        disaridaKasalar.Clear(); disaridaHesaplar.Clear();
+
+        // P-68: açılışın KABUL ETMEDİĞİ para birimindeki kasa/hesap hedef
+        // seçicisine GİRMEZ (sunucu provada DOVIZ_HESAP_FAZ_B ile reddederdi).
+        // Kabul listesi sunucudan (durum.acilisParaBirimleri) okunur; ekran sabit
+        // liste yazmaz. Dışarıda kalanlar sessizce kırpılmaz, gerekçesiyle yazılır.
+        foreach (var k in await Api.GetAsync<List<JsonElement>>("/kasalar"))
+            if (Bayrak(k, "aktif"))
+            {
+                var h = new Hedef { Id = Metin(k, "id"), Ad = Metin(k, "ad"), ParaBirimi = Metin(k, "paraBirimi") };
+                (durum?.ParaBirimiKabul(h.ParaBirimi) ?? true ? kasalar : disaridaKasalar).Add(h);
+            }
+
+        var banka = await Api.GetAsync<JsonElement>("/bankalar");
+        if (banka.TryGetProperty("hesaplar", out var liste))
+            foreach (var h in liste.EnumerateArray())
+                if (Bayrak(h, "aktif"))
+                {
+                    var hd = new Hedef
+                    {
+                        Id = Metin(h, "id"),
+                        Ad = $"{Metin(h, "bankaAdi")} — {Metin(h, "hesapAdi")}",
+                        ParaBirimi = Metin(h, "paraBirimi"),
+                    };
+                    (durum?.ParaBirimiKabul(hd.ParaBirimi) ?? true ? hesaplar : disaridaHesaplar).Add(hd);
+                }
+
+        foreach (var c in await Api.GetAsync<List<JsonElement>>("/cari?aktif=true&limit=200"))
+            cariler.Add(new Hedef { Id = Metin(c, "id"), Ad = Metin(c, "ad") });
+
+        hedefYuklendi = true;
+    }
+
+    private static string Metin(JsonElement e, string ad) =>
+        e.TryGetProperty(ad, out var d) && d.ValueKind == JsonValueKind.String ? d.GetString()! : "";
+
+    private static bool Bayrak(JsonElement e, string ad) =>
+        !e.TryGetProperty(ad, out var d) || d.ValueKind != JsonValueKind.False;
+
+    private void TurDegisti(ChangeEventArgs e)
+    {
+        tur = e.Value?.ToString() ?? tur;
+        // UX-S24: bağımlı alanın bağını EKRAN kurar — tür değişince eski prova
+        // sonucu ARTIK GEÇERSİZDİR ve satırlar başka kayıt kümesine aittir.
+        satirlar.Clear();
+        prova = null;
+        sonOturumId = null;
+        limitOnayi = false;
+    }
+
+    private void SatirEkle() => satirlar.Add(new AcilisSatirGirdisi
+    {
+        // UX-S22: tek seçenek varsa gövdeye OTOMATİK konur.
+        HedefId = Hedefler.Count == 1 ? Hedefler[0].Id : "",
+    });
+
+    private void SatirSil(int sira)
+    {
+        satirlar.RemoveAt(sira);
+        prova = null;
+    }
+
+    private void HedefDegisti(int sira, ChangeEventArgs e)
+    {
+        satirlar[sira].HedefId = e.Value?.ToString() ?? "";
+        prova = null;
+    }
+
+    // P-36c/3: ayrıştırma ortak girdi ailesinde — ekranın kendi çözücüsü kalktı.
+    private void TlDegisti(int sira, decimal? deger)
+    {
+        satirlar[sira].TlTutar = deger ?? 0m;
+        prova = null;
+    }
+
+    private void HasDegisti(int sira, decimal? deger)
+    {
+        satirlar[sira].HasGram = deger ?? 0m;
+        prova = null;
+    }
+
+    private static decimal Sayi(string? ham) =>
+        decimal.TryParse(ham, System.Globalization.NumberStyles.Number,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0m;
+
+    private object Govde() => new
+    {
+        tur,
+        satirlar = satirlar.Select(s => new { hedefId = s.HedefId, tlTutar = s.TlTutar, hasGram = s.HasGram }),
+    };
+
+    private async Task Prova()
+    {
+        if (sayiKapisi.OnekleVar("kur-satir-")) return;   // ORTAK-1
+        hata = null; basari = null;
+        kaydediliyor = true;
+        try
+        {
+            prova = await Api.PostAsync<AcilisProvaYaniti>("/kurulum/acilis/prova", Govde());
+            sonOturumId = null;
+            limitOnayi = false;
+        }
+        catch (ApiHata ex) { hata = ex.Message; prova = null; }
+        kaydediliyor = false;
+    }
+
+    private async Task Uygula()
+    {
+        if (sayiKapisi.OnekleVar("kur-satir-")) return;   // ORTAK-1
+        if (prova?.ProvaJetonu is not { } jeton) return;
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            var y = await Api.PostAsync<AcilisUygulaYaniti>("/kurulum/acilis/uygula", new
+            {
+                tur,
+                satirlar = satirlar.Select(s => new { hedefId = s.HedefId, tlTutar = s.TlTutar, hasGram = s.HasGram }),
+                provaJetonu = jeton,
+                gerekce = gerekce.Trim(),
+                kurSnapshotId = kurId ?? "",
+                limitAsimiOnayi = limitOnayi,
+            });
+
+            // UX-S27: sunucunun döndürdüğü sonuç banda yazılır.
+            sonOturumId = y.OturumId;
+            basari = $"{Dil.T.Kurulum.UygulandiMesaji} — {y.UygulananSatir}";
+            basariJeton++;
+            satirlar.Clear();
+            prova = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task OnayEvet()
+    {
+        var t = onayTuru;
+        // P-49: mühür kipinde ad birebir değilse hiçbir şey gönderilmez (düğme zaten kilitli).
+        if (t == "muhur" && !IsletmeAdiDogru) return;
+        onayTuru = null;
+        if (t is null) return;
+
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            if (t == "muhur")
+            {
+                durum = await Api.PostAsync<KurulumDurumYaniti>("/kurulum/muhurle", new
+                {
+                    gerekce = muhurGerekcesi.Trim(),
+                    // P-49: sabit "onay = true" kaldırıldı — onay, adın birebir
+                    // yazılmasından türetilir; ad ayrıca sunucuya gider ve orada denetlenir.
+                    onay = IsletmeAdiDogru,
+                    isletmeAdiOnayi = isletmeAdiOnayi.Trim(),
+                });
+                basari = Dil.T.Kurulum.MuhurlendiMesaji;
+            }
+            else
+            {
+                var y = await Api.PostAsync<AcilisGeriAlYaniti>("/kurulum/acilis/geri-al", new
+                {
+                    oturumId = sonOturumId,
+                    gerekce = gerekce.Trim(),
+                    kurSnapshotId = kurId ?? "",
+                });
+                basari = $"{Dil.T.Kurulum.GeriAlindiMesaji} — {y.GeriAlinan}";
+                sonOturumId = null;
+                await Yukle();
+            }
+            basariJeton++;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task AtlamaDegistir(string anahtar, bool atla)
+    {
+        hata = null;
+        kaydediliyor = true;
+        try
+        {
+            var yeni = (durum?.AtlananListe ?? []).ToList();
+            if (atla) { if (!yeni.Contains(anahtar)) yeni.Add(anahtar); }
+            else yeni.Remove(anahtar);
+
+            durum = await Api.PatchAsync<KurulumDurumYaniti>("/kurulum/durum",
+                new { atlananAdimlar = yeni });
+            basari = Dil.T.Yonetim.Kaydedildi;
+            basariJeton++;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// Güncel kur kaydının kimliği — UX-S21: kullanıcıdan İSTENMEZ, sunucudan
+    /// alınır. Yoksa açılış düğmeleri zaten kilitlidir ve sebebi yazılıdır.
+    /// </summary>
+    private string? kurId;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk || kurId is not null) return;
+        try
+        {
+            var k = await Api.GetAsync<JsonElement>("/kur/guncel");
+            if (k.TryGetProperty("id", out var d) && d.ValueKind == JsonValueKind.String)
+            {
+                kurId = d.GetString();
+                StateHasChanged();
+            }
+        }
+        catch (ApiHata) { /* kur yoksa ekranda zaten "kur yok" uyarısı var */ }
+        catch (JsonException) { }
+    }
+
+    // UX-S31: ham anahtar ekrana basılmaz.
+    private Toplu3Metinleri T3 => Toplu3Sozlugu.Al(Dil.Dil);
+    private Toplu4Metinleri T4 => Toplu4Sozlugu.Al(Dil.Dil);
+
+    /// <summary>TOPLU-3: bu sürümde ekranı olmayan, zorunlu olmayan ve bitmemiş adım "Yakında" yazar.</summary>
+    private static bool YakindaMi(KurulumAdimBilgisi a) =>
+        a.Anahtar == StokAdimAnahtari && !a.Zorunlu && !a.Bitti && !a.Atlandi;
+
+    /// <summary>Sunucunun adım anahtarı (ekrana basılmaz; P-13 denetimi "=>" sonrası kodu çıktı sanmasın diye ayrı sabit).</summary>
+    private const string StokAdimAnahtari = "STOK_ACILIS";
+
+    /// <summary>TOPLU-3: açılış bölümü kapalı gelir; yarım iş (satır, kontrol sonucu, son oturum) varsa açık.</summary>
+    private bool AcilisBolumuAcik => acilisIstendi || satirlar.Count > 0 || prova is not null || sonOturumId is not null;
+
+    /// <summary>TOPLU-6: adım listesindeki "Şimdi gir" açılış bölümünü açık getirir (bağlantı oraya da gider).</summary>
+    private bool acilisIstendi;
+    private void AcilisiAc() => acilisIstendi = true;
+    private Toplu6Metinleri T6 => Toplu6Sozlugu.Al(Dil.Dil);
+
+    /// <summary>TOPLU-3: "Kurulumu mühürle" yalnız sunucu "mühürlenebilir" derken ve açılışta yarım iş yokken birincildir.</summary>
+    private bool MuhurBirincil => (durum?.Muhurlenebilir ?? false) && !AcilisBolumuAcik;
+
+    /// <summary>TOPLU-3: "Kontrol et" yalnız mühür birincil değilken ve kontrol sonucu yokken birincildir (DOM'da tek birincil).</summary>
+    private bool ProvaBirincil => prova is null && !MuhurBirincil;
+
+    private string AdimAdi(string anahtar) => anahtar switch
+    {
+        "ISLETME" => Dil.T.Kurulum.AdimIsletme,
+        "KULLANICILAR" => Dil.T.Kurulum.AdimKullanicilar,
+        "KUR" => Dil.T.Kurulum.AdimKur,
+        "KASA_BANKA" => Dil.T.Kurulum.AdimKasaBanka,
+        "CARI_ACILIS" => Dil.T.Kurulum.AdimCariAcilis,
+        "STOK_ACILIS" => T3.KurulumStokAdi,
+        _ => anahtar,
+    };
+
+    private static string? YonlendirmeYolu(string anahtar) => anahtar switch
+    {
+        "ISLETME" => "/isletme",
+        "KULLANICILAR" => "/kullanicilar",
+        "KUR" => "/kur",
+        "KASA_BANKA" => "/kasalar",
+        _ => null,
+    };
+
+    /// <summary>
+    /// P-68: mühür kilidindeki eksik adımın bağlantısı — HİÇBİR adım için boş
+    /// dönmez. Ayrı ekranı olan adım o ekrana (YonlendirmeYolu: şube/işletme,
+    /// kullanıcı, kur, kasa); ekranı bu sayfada olan adım (cari/stok açılışı)
+    /// bu sayfanın açılış kartına; bilinmeyen anahtar adım listesindeki kendi
+    /// satırına gider.
+    /// </summary>
+    private static string EksikAdimYolu(string anahtar) =>
+        YonlendirmeYolu(anahtar) ?? anahtar switch
+        {
+            "CARI_ACILIS" or "STOK_ACILIS" => "/kurulum#kur-acilis",
+            _ => $"/kurulum#kur-adim-{anahtar}",
+        };
+
+    /// <summary>UX-S23: sayı gösteren yer o kayıtların sayısını söyler.</summary>
+    private string SayiMetni(string anahtar) => anahtar switch
+    {
+        // TOPLU-4 (DÜŞÜK, "açıklamasız sayılar"): sayı neyin sayısı olduğunu söyler; değerler AYNI.
+        "ISLETME" => string.Format(T4.KurulumSayiSube, durum?.SayiKutusu.Sube ?? 0),
+        "KULLANICILAR" => string.Format(T4.KurulumSayiKullanici, durum?.SayiKutusu.Kullanici ?? 0),
+        "KUR" => string.Format(T4.KurulumSayiKur, durum?.SayiKutusu.Kur ?? 0),
+        "KASA_BANKA" => string.Format(T4.KurulumSayiKasaBanka, (durum?.SayiKutusu.Kasa ?? 0) + (durum?.SayiKutusu.Banka ?? 0)),
+        "CARI_ACILIS" => string.Format(T4.KurulumSayiCariAcilis, durum?.SayiKutusu.AcilisCari ?? 0),
+        "STOK_ACILIS" => "",
+        _ => "",
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

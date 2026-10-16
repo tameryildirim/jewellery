@@ -1,0 +1,132 @@
+@inject DilServisi Dil
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceProvider Hizmetler
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   KABUK HATASI — PAKET S-3a (kurul tur 3, engel 11).
+
+   SORUN: istemci–sunucu sözleşmesi elle yazılmış record'larla ikizlenmiş
+   durumda. TEK bir deserialize hatası (sunucu decimal döndürürken istemcide
+   int alan, zarf {adet,kayitlar} yerine düz liste beklenmesi vb.) Blazor'un
+   render ağacını komple öldürüyordu: kullanıcı BOŞ EKRAN görüyor, formda
+   yazdığı veri yanıyor ve hiçbir yerde hata yazmıyordu — Anayasa md.1'in
+   tam tersi (sessiz veri kaybı).
+
+   ÇÖZÜM: her sayfa kökü bir hata sınırıyla sarılır. Bileşen ağacı çökse bile
+   kabuk (menü, üst bar) AYAKTA KALIR, kullanıcı GÖRÜNÜR bir hata bandı ve
+   "yeniden dene" yolu görür; sunucunun verdiği korelasyon kimliği varsa
+   destek kodu olarak basılır (HataBandi · X-Istek-Kimligi).
+
+   ⚠ Hata YUTULMAZ: bant her zaman görünür ve mesaj gösterilir. "Hatayı
+     kayıt yok'a çevirme" yasağı (UX-S28) burada da geçerlidir.
+
+   PAKET P-31 (R-5) — HER beklenmeyen hata KISA KOD gösterir:
+   • Sunucu hatası (ApiHata) → sunucunun korelasyon kimliği (T-4a).
+   • EKRANDA doğan hata (deserialize, NRE …) sunucuya hiç ulaşmıyordu → kod
+     yoktu. Artık /api/v1/destek/istemci-hatasi'na YALNIZ hata TÜRÜ adı
+     bildirilir; kodu SUNUCU üretir ve kendi günlüğüne yazar (eşleşme yalnız
+     sunucuda). İstemci kod UYDURMAZ: bildirim başarısızsa "kod alınamadı"
+     yazar.
+   • İÇ KOD SIZINTISI kapandı (IC_KOD_SIZINTISI): ekran hatasının ham
+     mesajı ("The JSON value could not be converted to System.Int32 …")
+     artık kullanıcıya BASILMAZ ve sunucuya da GÖNDERİLMEZ (kişisel veri
+     taşıyabilir). Sunucu hatasının Türkçe mesajı gösterilmeye devam eder.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<ErrorBoundary @ref="sinir">
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+    <ErrorContent Context="istisna">
+        <div id="kabuk-hatasi">
+            <HataBandi Id="kabuk-hata-bandi"
+                       Mesaj="@Dil.T.Kabuk.SayfaHatasi"
+                       Kimlik="@Kimlik(istisna)" />
+            <p class="metin-kucuk" id="kabuk-hata-ayrinti">@Ayrinti(istisna)</p>
+            @if (Kimlik(istisna) is null)
+            {
+                <p class="metin-kucuk metin-soluk" id="kabuk-hata-kod-durum">
+                    @(kodAliniyor ? M.KodAliniyor : M.KodAlinamadi)
+                </p>
+            }
+            <button type="button" class="ikincil" id="kabuk-hata-yeniden" @onclick="Yeniden">
+                @Dil.T.Kabuk.SayfaHatasiYeniden
+            </button>
+        </div>
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private ErrorBoundary? sinir;
+
+    private DestekMetinleri M => DestekSozlugu.Al(Dil.Dil);
+
+    /// <summary>Bildirimi yapılan (ya da yapılmakta olan) son ekran hatası.</summary>
+    private Exception? bildirilen;
+    private string? istemciKimligi;
+    private bool kodAliniyor;
+
+    /// <summary>
+    /// Sunucu hatasıysa sunucunun korelasyon kimliği; değilse ekran hatası
+    /// için SUNUCUDAN alınan kimlik. İkisi de yoksa null — rozet HİÇ çizilmez
+    /// (uydurma kod gösterilmez).
+    /// </summary>
+    private string? Kimlik(Exception istisna)
+    {
+        if (istisna is ApiHata a && !string.IsNullOrWhiteSpace(a.IstekKimligi))
+            return a.IstekKimligi;
+        Bildir(istisna);
+        return ReferenceEquals(bildirilen, istisna) ? istemciKimligi : null;
+    }
+
+    /// <summary>
+    /// Kullanıcıya gösterilen açıklama: sunucunun Türkçe mesajı ya da genel
+    /// cümle. Ekran hatasının HAM mesajı basılmaz (iç kod sızıntısı).
+    /// </summary>
+    private string Ayrinti(Exception istisna) =>
+        istisna is ApiHata a && !string.IsNullOrWhiteSpace(a.Message) ? a.Message : M.EkranHatasi;
+
+    /// <summary>Aynı hata için TEK bildirim; ateşle-unut, sonucu ekrana yazar.</summary>
+    private void Bildir(Exception istisna)
+    {
+        if (ReferenceEquals(bildirilen, istisna)) return;
+        bildirilen = istisna;
+        istemciKimligi = null;
+        var api = Hizmetler.GetService<ApiIstemci>();
+        if (api is null) { kodAliniyor = false; return; }
+        kodAliniyor = true;
+        _ = BildirAsync(api, istisna);
+    }
+
+    private async Task BildirAsync(ApiIstemci api, Exception istisna)
+    {
+        try
+        {
+            // YALNIZ tür adı gider — mesaj, sayfa verisi, kullanıcı girdisi GİTMEZ.
+            var y = await api.PostAsync<Kuyumcu.Core.Sozlesmeler.IstemciHatasiYaniti>(
+                "/destek/istemci-hatasi",
+                new Kuyumcu.Core.Sozlesmeler.IstemciHatasiBildirimi(istisna.GetType().Name));
+            if (ReferenceEquals(bildirilen, istisna)) istemciKimligi = y.IstekKimligi;
+        }
+        catch (Exception)
+        {
+            // Bildirim başarısız: kod UYDURULMAZ — istemciKimligi Bildir()'de
+            // zaten boşaltıldı; ekran "kod alınamadı" yazar (finally).
+        }
+        finally
+        {
+            if (ReferenceEquals(bildirilen, istisna)) kodAliniyor = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Yeniden()
+    {
+        bildirilen = null;
+        istemciKimligi = null;
+        kodAliniyor = false;
+        sinir?.Recover();
+    }
+}

@@ -1,0 +1,46 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET YASAL-3 (§ 4.2) — PEŞİN MÜŞTERİ ART ARDA: TEK SORU ═══════════════════
+   Sunucu (kod PESIN_ART_ARDA_SORU) sorduğunda fişin hata bandı yerine çizilir.
+   • "Evet — müşteriyi seç": müşteri seçimine döner (istek ATILMAZ; gerçek müşteri
+     seçilince kimlik kutusu mevcut yoldan açılır).
+   • "Hayır, başka biri": aynı fiş masak.ayniKisiBeyani=false ile yeniden gönderilir;
+     cevap sunucuda denetim izine yazılır.
+   • Jargon yok; dayanak yalnız "Neden?" ipucunun title'ında (UX-S31).
+   • Sabit renk / satır içi stil yok — mevcut .uyari-kutu ve düğme sınıfları.
+   ════════════════════════════════════════════════════════════════════════════ *@
+@if (Goster)
+{
+    <div class="uyari-kutu pesin-soru" id="pesin-soru" role="alertdialog" aria-labelledby="pesin-soru-baslik" aria-describedby="pesin-soru-metin">
+        <p id="pesin-soru-baslik"><strong>@M.SoruBaslik</strong></p>
+        <p id="pesin-soru-metin">@M.SoruMetin</p>
+        <div class="dugme-satir">
+            <button type="button" class="@DugmeSinifi" id="pesin-soru-evet" @onclick="Evet">@M.SoruEvet</button>
+            <button type="button" class="@DugmeSinifi" id="pesin-soru-hayir" disabled="@Calisiyor" @onclick="Hayir">@M.SoruHayir</button>
+        </div>
+        <details class="fis-bilgi" id="pesin-soru-neden">
+            <summary class="metin-kucuk" title="@Yasal3Sozlugu.PesinDayanak">@M.SoruNeden</summary>
+            <span class="metin-kucuk metin-soluk">@M.SoruNedenMetin</span>
+        </details>
+    </div>
+}
+
+@code {
+    /// <summary>Sunucu soruyu sordu mu (ekran bu bayrakla çizer).</summary>
+    [Parameter] public bool Goster { get; set; }
+
+    /// <summary>
+    /// PAKET YILDIZ-4C-2: Yıldız tezgâhında eylemler tuvalin küçük .b2 kalıbında çizilir (eski .btn
+    /// Yıldız'da görünmez — gerçek Chrome ESKI sayacı). Yalnız sınıf değişir; id, geri çağrı ve kural AYNI.
+    /// </summary>
+    [Parameter] public bool Yildiz { get; set; }
+
+    private string DugmeSinifi => Yildiz ? "yz-b2 hucre-tek-satir" : "btn btn-ikincil hucre-tek-satir";
+    /// <summary>Yeniden gönderim sürerken "Hayır" kilitli (iki kez gönderim yok).</summary>
+    [Parameter] public bool Calisiyor { get; set; }
+    [Parameter] public EventCallback Evet { get; set; }
+    [Parameter] public EventCallback Hayir { get; set; }
+
+    private Yasal3Metinleri M => Yasal3Sozlugu.Al(Dil.Dil);
+}

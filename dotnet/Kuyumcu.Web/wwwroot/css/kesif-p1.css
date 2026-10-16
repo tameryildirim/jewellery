@@ -1,0 +1,51 @@
+/* KESIF-P1 — şerit stil dosyası (tur 3, orkestratör 30.09 18:10). Yalnız bu şerit yazar.
+   Seçiciler kimlik/bileşen kapsamlıdır (#pos-cihaz-tablo, #flp-tablo, .gk); sabit renk YOK,
+   yalnız belirteç (var(--…)); moda özel seçici YOK (OLCEK-1 OL2). olcek.css'ten ÖNCE yüklenir. */
+
+/* ═══ (1) Görünüm kartı — seçili işareti TEK KALIP ═══
+   Kök neden (ölçüldü, /ayarlar 960): app.css `.gk-sema-alt { flex-wrap: wrap }` başlık satırını
+   sarıyordu → şema kartında "Seçili" rozeti, ekran modu kartında ✓ adın ALTINA düşüyordu; yazı
+   boyutu kartında ✓ "18 px" metnine BİTİŞİKTİ (0 px). Kalıp: işaret başlık satırının SAĞINDA ayrı
+   öğe, satır SARMAZ, ad ile işaret arası ≥ 4 px (belirteç --bosluk-1). */
+.gk .gk-sema-alt:has(> .gk-isaret) { flex-wrap: nowrap; column-gap: var(--bosluk-1); }
+.gk .gk-isaret { flex: 0 0 auto; margin-inline-start: auto; display: inline-flex; align-items: center; }
+/* Şema kartındaki işaret de yalnız ✓'dir (rozet zemini yok — diğer kartlarla aynı görünüm);
+   "Seçili" sözcüğü ekran okuyucu için DOM'da kalır (gorsel-gizli). */
+.gk .gk-isaret.gk-secili-rozet { padding: 0; background: none; }
+/* 960 px'te üç sütun ~150 px: "Profesyonel" + ✓ 16 px iç payla sığmıyordu (ölçüm K3 taşan 1). Orta
+   genişlikte seçenek düğmesinin yatay iç payı 16 → 12 px (boy ve yazı aynı). */
+@media (min-width: 769px) and (max-width: 1099px) {
+  .gk .gk-uclu .gk-secenek { padding-inline: var(--bosluk-3); }
+}
+
+/* ═══ (2) POS cihaz tablosu ═══
+   Ad ve banka tek hücrede SARAR (tek satır zorlaması yok) ve en çok genişliği vardır: uzun cihaz
+   adı tabloyu kabın dışına itmez; eylem sütunu her genişlikte görünür (1440/1280/960 iç taşma 0,
+   375'te q10-yigin kart yığını). Çok uzun tek sözcük (seri no) da kırılır. */
+#pos-cihaz-tablo td[id^="pos-ad-"] { min-width: 9rem; max-width: 16rem; overflow-wrap: anywhere; }
+#pos-cihaz-tablo > tbody > tr > td.q10-yigin-eylem > .satir-eylem { flex-wrap: wrap; white-space: nowrap; }
+@media (max-width: 40rem) {
+  #pos-cihaz-tablo td[id^="pos-ad-"] { max-width: none; min-width: 0; }
+  #pos-cihaz-tablo > tbody > tr > td[data-etiket] > div { text-align: end; min-width: 0; }
+}
+
+/* ═══ (3) Fiyat listesi → ürün paneli ═══
+   İlk sütun (seçim kutusu + ad + kod + "Ürüne özel") sola YAPIŞIK: PRO'da tablo kendi kabında sağa
+   kayarken eylem ekrandan çıkmaz. Sola yapışık sütun kaydırma 0 iken doğal yerindedir — hiçbir
+   hücrenin üstüne binmez (sağa yapışık sütun K9 "binen" üretiyordu). Opak zemin belirteçten. */
+#flp-tablo td.flp-urun,
+#flp-tablo th.flp-urun-baslik {
+  position: sticky; left: 0; z-index: 1;
+  box-shadow: inset 0 0 0 100vmax var(--yuzey), 1px 0 0 0 var(--ayrac);
+}
+#flp-tablo th.flp-urun-baslik { box-shadow: inset 0 0 0 100vmax var(--yuzey-2), 1px 0 0 0 var(--ayrac); }
+#flp-tablo td.flp-urun { min-width: 13rem; max-width: 16rem; }
+#flp-tablo .flp-urun-ic { display: flex; align-items: flex-start; gap: var(--bosluk-2); }
+#flp-tablo .flp-urun-metin { display: flex; flex-direction: column; align-items: flex-start; gap: var(--bosluk-1); min-width: 0; }
+#flp-tablo .flp-urun-metin > .btn { margin-top: var(--bosluk-1); white-space: nowrap; }
+/* İkon ile "Bu ürüne özel" aynı satırda (satir-ici varsayılanı sarardı: ikon üstte, metin altta). */
+#flp-tablo .flp-urun-metin > .btn > .satir-ici { flex-wrap: nowrap; }
+@media (max-width: 40rem) {
+  /* Dar ekranda tablo kendi kabında kayar; yapışık sütun ekranın yarısını geçmesin. */
+  #flp-tablo td.flp-urun { min-width: 9rem; max-width: 11rem; }
+}

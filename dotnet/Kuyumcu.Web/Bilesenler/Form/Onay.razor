@@ -1,0 +1,56 @@
+@using Kuyumcu.Web.Servisler
+@inherits FormAlani
+
+@* ONAY — tek kutucuk (paket P-36b). Etiket kutucuğun SAĞINDA ve tıklanabilir;
+   dokunma hedefi ≥44px (belirtecler.css --dokunma-hedefi). *@
+
+<div class="alan alan-onay @(Hatali ? "alan-hatali" : null)" id="@($"{ElemanId}-sar")">
+    <label class="onay-etiket" for="@ElemanId" title="@SebepIpucu">
+        <input type="checkbox" class="onay-kutu" id="@ElemanId"
+               checked="@Deger" aria-label="@Etiket"
+               aria-invalid="@(Hatali ? "true" : "false")"
+               aria-describedby="@AciklayanId"
+               disabled="@Kilitli" @onchange="Degisti" />
+        @* P-36c/3: tablo hücresinde (yetki matrisi, satır seçimi) etiket SÜTUN
+           BAŞLIĞINDA zaten yazılıdır; metni hücreye de basmak tabloyu şişirir.
+           Metin DOM'da KALIR (aria-label + görsel gizli) — ad kaybolmaz. *@
+        <span class="alan-etiket-metin @(EtiketGizli ? "gorsel-gizli" : null)">@Etiket</span>
+    </label>
+    @if (Ipucu is { Length: > 0 } ip)
+    {
+        <span class="alan-ipucu" id="@($"{ElemanId}-ipucu")">@ip</span>
+    }
+    @if (Kilitli && DevredisiSebebi is { Length: > 0 } sebep)
+    {
+        @* Q10-5 (doğrulama bulgusu, /banka/ekstre 1280): dar tablo hücresinde
+           sebep düz metin olarak 5 satıra sarıyordu. SebepIpucunda=true iken
+           sebep GÖRSEL gizli kalır (DOM + aria-describedby'da durur, ekran
+           okuyucu okur) ve kutucuğun üzerine gelince ipucu (title) olur. *@
+        <span class="alan-kilit-sebep @(SebepIpucunda ? "gorsel-gizli" : null)" id="@($"{ElemanId}-durum")">@sebep</span>
+    }
+    @if (Hatali)
+    {
+        <span class="hata-metni alan-hata" id="@HataElemanId" role="alert">@GorunenHata</span>
+    }
+</div>
+
+@code {
+    [Parameter] public bool Deger { get; set; }
+    [Parameter] public EventCallback<bool> DegerChanged { get; set; }
+
+    /// <summary>Etiket metnini GÖRSEL olarak gizler (DOM'da ve aria'da kalır).</summary>
+    [Parameter] public bool EtiketGizli { get; set; }
+
+    /// <summary>Kilit sebebini görünür metin yerine ipucu (title) + görsel gizli metin olarak verir (tablo hücreleri).</summary>
+    [Parameter] public bool SebepIpucunda { get; set; }
+
+    private string? SebepIpucu =>
+        SebepIpucunda && Kilitli && !string.IsNullOrEmpty(DevredisiSebebi) ? DevredisiSebebi : null;
+
+    private Task Degisti(ChangeEventArgs e)
+    {
+        DefterdenSil();
+        Deger = e.Value is bool b && b;
+        return DegerChanged.InvokeAsync(Deger);
+    }
+}

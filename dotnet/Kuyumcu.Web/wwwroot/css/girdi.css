@@ -1,0 +1,41 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET GIRDI-AILESI-2 — anlamsal girdi bileşenleri (Kuyumcu.Web/Bilesenler/Form).
+   Yalnız belirteç (var(--…)); sabit renk ve satır içi stil YOK.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tarih: metin kutusu + takvim simgesi tek satırda. Simgenin ÜSTÜNDE saydam yerli seçici
+   (type=date) durur: tıklanınca tarayıcının takvimi açılır, seçilen gün metin kutusuna yazılır. */
+.tarih-satir { flex-wrap: nowrap; }
+.tarih-satir > .tarih-girdi { flex: 1 1 8rem; min-width: 0; font-variant-numeric: tabular-nums; }
+/* Tur 3 (doğrulayıcı KRİTİK): yan yana iki tarihte (İşlem defteri süzgeci) kutu 98 px'e daralıp yılı kesiyordu
+   ("08.10.202"). En küçük genişlik = 10 karakter (gg.aa.yyyy) + iki yan dolgu + kenarlık; tarih ASLA kesilmez.
+   Seçici .alan-girdi-satir > .girdi { min-width: 0 } kuralını (app.css) ezecek özgüllükte. */
+.alan-girdi-satir > .girdi.tarih-girdi { min-width: calc(10ch + 1.5rem + 2px); }
+/* Tur 4 (gerçek Chrome 1440): kutu artık daralmıyor ama SARMALAYICI (.alan, süzgeç yuvasında
+   flex: 0 1 var(--arac-alan-genislik) = 9.5rem) kutu + takvim simgesinden dar kalıyordu; satır
+   taşıp yandaki Bitiş kutusu Başlangıç'ın takvim simgesinin ALTINA giriyordu (üst üste binme).
+   Tarih taşıyan alan en az içeriği kadar geniştir (min-content: etiket sözcükten kırılabilir,
+   kutu + simge kırılmaz) — form ızgarasında da süzgeçte de aynı kural. */
+.alan:has(> .alan-kontrol .tarih-girdi) { min-width: min-content; }
+.tarih-takvim {
+  position: relative; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px;
+  padding: 0 var(--bosluk-2);
+  background: var(--yuzey-2); color: var(--metin);
+  border: 1px solid var(--ayrac); border-radius: var(--yaricap-sm);
+}
+.tarih-takvim:hover { border-color: var(--vurgu-kenar); color: var(--vurgu); }
+.tarih-takvim:focus-within { outline: 2px solid var(--vurgu); outline-offset: 2px; }
+.tarih-takvim-yerli {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; padding: 0; border: 0;
+  opacity: 0; cursor: pointer;
+}
+.tarih-takvim-yerli::-webkit-calendar-picker-indicator {
+  position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; cursor: pointer;
+}
+.tarih-takvim-yerli:disabled { cursor: not-allowed; }
+
+/* IBAN: sola yaslı (hesap numarası tutar değildir), eşit genişlikli rakam. */
+.iban-girdi { font-variant-numeric: tabular-nums; }

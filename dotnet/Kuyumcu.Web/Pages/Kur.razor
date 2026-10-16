@@ -1,0 +1,891 @@
+@page "/kur"
+@using Kuyumcu.Contracts.Sayfalar.Kur
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject ArayuzModuServisi Mod
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   KUR YÖNETİMİ
+
+   TESPİT (2026-09-14): manuel kur girişi, kur geçmişi ve sarrafiye pariteleri
+   sunucuda vardı, ekranı YOKTU. İnterneti kesilen bir kuyumcu ürüne kur
+   giremiyor, yanlış giren bir kuru geçmişten doğrulayamıyordu.
+
+   Her işlem o andaki kur anlık görüntüsüne bağlanır; kur yanlışsa has hesabı
+   da yanlış olur. Bu yüzden manuel giriş MANUAL kaynağıyla işaretlenir.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Kur.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Kur (BİREBİR); özgün ekran yalnız "Tüm ayrıntılar"
+   görünümünde (data-yz-ozgun). Elle giriş çekmecesi ve iptal onayı aşağıda ORTAK. Öteki 8 şemada özgün ekran AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizOzet B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    <div class="sayfa-baslik">
+        <SayfaBasi Anahtar="kur" AciklamaKatli="true" Baslik="@Dil.T.Kur.Baslik" Aciklama="@Dil.T.Kur.Aciklama">
+            <Eylem>
+                @* Ekran başına TEK birincil eylem: kuru kaynaktan çekmek.
+                   PAKET S-3e (QA turu 5): dış kaynaklar kapalıyken düğme ETKİNDİ ve
+                   her tıklama garanti 503 dönüyordu. UX-S30: kilitli düğme sebebini
+                   söyler — başlıkta (title) ve düğmenin altındaki sebep metninde. *@
+                <button id="kur-simdi-cek" class="btn btn-birincil btn-kucuk" disabled="@(kaydediliyor || CekmeKapali)"
+                        title="@(CekmeKapali ? Dil.T.Kur.CekmeKapaliSebep : null)"
+                        @onclick="SimdiCek">
+                    @* S1-i: "⟳" çıplak sembolü kaldırıldı (emoji/sembol ikon YOK) *@
+                    @(kaydediliyor ? Dil.T.Kur.Cekiliyor : Dil.T.Kur.SimdiCek)
+                </button>
+                @* PAKET P-17 (Y-7): vitrin panosu kur kotasyonunun türevidir ve
+                   menüde DEĞİLDİR (P-14 bilgi mimarisi mühürlü) — erişim yolu
+                   burasıdır. UX-S25: "sunucuda uç var, ekranda düğme yok" yasağı. *@
+                <NavLink id="kur-vitrin-ac" class="btn btn-ikincil btn-kucuk" href="/vitrin">
+                    @Dil.T.Pano.VitrinAc
+                </NavLink>
+            </Eylem>
+        </SayfaBasi>
+    </div>
+
+    @* ═══ UX-4d madde 24 (MÜHÜR 4 eki, K13) ═══
+       Truncgil · Altınkaynak · Ankara Altın Borsası adaptörleri SÖZLEŞMESİZ
+       ücretsiz uçlardan okur. Yapılandırma anahtarı Kur:SozlesmesizKaynaklarAcik
+       ile kapatılabilir; üretim varsayılanı KAPALI. Ekran durumu SÖYLER. *@
+    @if (kaynakDurumu is { } kd)
+    {
+        @if (!kd.SozlesmesizKaynaklarAcik)
+        {
+            <div id="kur-dis-kapali" class="uyari-kutu" role="status">
+                @Dil.T.Ortak.DisKaynakKapali
+            </div>
+        }
+        else if (kd.SeciliSozlesmesiz)
+        {
+            @if (guncel is null)
+            {
+            @* TOPLU-4: güncel kur YOKKEN rozet burada (yetim kalmasın diye tek başına); kur varken
+               kaynak satırının yanında 14 px + ⓘ (#kur-kaynak-satir). Koşul ve metin AYNI. *@
+            @* PAKET SADE-1 (göz #25): hukuki "sözleşmesiz, yalnız pilot" paragrafı günlük
+               kur ekranında müşterinin gözü önündeydi. Burada TEK SATIR rozet kalır;
+               tam metin SİLİNMEDİ — "Kaynak" sekmesinde (profesyonel yüz, kaynağı
+               seçen kişinin ekranı) #kur-sozlesmesiz-ayrinti olarak durur ve rozetin
+               ipucunda (title) okunur. *@
+            <p id="kur-sozlesmesiz" class="sade-kaynak-satir" role="status"
+               title="@(SahipMi ? Dil.T.Ortak.SozlesmesizKaynakUyari : Toplu3Sozlugu.Al(Dil.Dil).KurUcretsizIpucu)">
+                @* TOPLU-3 (demo bulgusu): "Deneme" sözcüğü kaldırıldı — rozet yalnız sözleşmesiz kaynak seçiliyken çıkar (üretimde Kur:SozlesmesizKaynaklarAcik KAPALI); koşul DEĞİŞMEDİ. *@
+                <Rozet Renk="amber">@Toplu3Sozlugu.Al(Dil.Dil).KurUcretsizRozet</Rozet>
+            </p>
+            }
+        }
+    }
+
+    @* ── PAKET S1-i — SEKMELER (kurucu 24.09: "tren gibi aşağıya doğru gidiyor").
+       Güncel kur · pariteler · (profesyonel) kaynak · geçmiş ayrı sekmelerdir;
+       hiçbir bölüm silinmedi, id'ler aynı. HAS ÖNDE (S3-5): ilk sekme güncel kurdur.
+       Basit modda kaynak/geçmiş sekmesi AÇILMAZ (içi ProAlan'la zaten boştu);
+       yerine eski tek cümlelik not güncel kur sekmesinde durur. Mod YETKİ DEĞİLDİR. *@
+    <Sekmeler Onek="kur" Liste="@KurSekmeleri" Etiket="@GS.KurSerit">
+        <Panel Context="kurKod">
+            @if (kurKod == GorselSigmaSozlugu.KurGuncel)
+            {
+            @* ── Güncel kur ── *@
+            <div class="kart">
+                <div class="kart-baslik satir-arasi">
+                    <h2>@Dil.T.Kur.GuncelKur</h2>
+                    <div class="satir-eylemler">
+                        @* UX-S27/S30: uzun süren dış çağrı sessiz kalmaz — düğme hem kilitlenir
+                           hem "çekiliyor" der, sonuç başarı bandına yazılır (başlıkta). *@
+                        <button class="btn btn-ikincil btn-kucuk" id="kur-manuel-ac" @onclick="ManuelModalAc">
+                            <Ikon Ad="@Ikonlar.Kalem" /> @Dil.T.Kur.ManuelGiris
+                        </button>
+                    </div>
+                </div>
+                <div class="kart-govde">
+                    <BasariBandi Mesaj="@basariMesaji" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+                    @* PAKET S-3e (QA turu 5): hata bandı ile kur kartı ARTIK BİRBİRİNİ
+                       DIŞLAMIYOR. Eskiden `@if (guncelHata) … else if (guncel is null) …`
+                       zinciri yüzünden başarısız bir "Şimdi çek" ekrandaki SON BİLİNEN
+                       kuru ve ayar tablosunu siliyordu (UX-S28: hata "kayıt yok"a
+                       çevrilmez). Artık hata bandı ayrı basılır, anlık görüntü yerinde
+                       kalır ve yanına "güncellenemedi" rozeti konur. *@
+                    @if (guncelHata is not null)
+                    {
+                        <HataBandi Mesaj="@guncelHata" />
+                    }
+                    @if (guncel is null)
+                    {
+                        @if (guncelHata is null)
+                        {
+                            <Yukleniyor />
+                        }
+                    }
+                    else
+                    {
+                        @if (guncelHata is not null)
+                        {
+                            <span id="kur-guncellenemedi"><Rozet Renk="kirmizi">@Dil.T.Kur.GuncellenemediRozet</Rozet></span>
+                        }
+                        @* PAKET S3-5 — HAS ÖNDE (demo adım 7): has fiyatı sayfanın EN BÜYÜK
+                           sayısıdır; gram altın ve döviz yanında küçük satırda durur. Sınıflar
+                           S3-1 Panel'in belirteçli .panel-soru ailesidir (yeni CSS YOK).
+                           Değeri olmayan döviz satırı YAZILMAZ (sıfır uydurulmaz).
+                           UX-S31: kaynak ham kodla (ALTINKAYNAK) değil okunur adla yazar. *@
+                        <div class="panel-soru" id="kur-has-onde">
+                            <h3 class="panel-soru-baslik" id="kur-has-baslik">@M.HasBaslik</h3>
+                            <span class="panel-soru-sayi" id="kur-has-deger">@Bicim.Tl(guncel.AltinHasFiyati)</span>
+                            <p class="panel-soru-alt" id="kur-has-alt">
+                                <span>@M.HasIpucu</span>
+                                @if (guncel.GramAltinFiyati is { } ga && ga > 0)
+                                {
+                                    <span id="kur-has-gram">@M.GramAltin: @Bicim.Tl(ga)</span>
+                                }
+                                @if (guncel.UsdTry is { } usd && usd > 0)
+                                {
+                                    <span id="kur-has-usd">@M.Dolar: @Bicim.Tl(usd)</span>
+                                }
+                                @if (guncel.EurTry is { } eur && eur > 0)
+                                {
+                                    <span id="kur-has-eur">@M.Euro: @Bicim.Tl(eur)</span>
+                                }
+                                @if (guncel.GbpTry is { } gbp && gbp > 0)
+                                {
+                                    <span id="kur-has-gbp">@M.Sterlin: @Bicim.Tl(gbp)</span>
+                                }
+                            </p>
+                            @* TOPLU-4 (TOPLU-3 hakem ORTA): "Ücretsiz kur kaynağı" rozeti 12 px yetim satırda ve açıklaması
+                               yalnız title'daydı → kaynak satırının yanında, 14 px, açıklama ⓘ içinde (dokunmatikte de okunur). *@
+                            <div class="t4-ipucu-satir" id="kur-kaynak-satir">
+                            <p class="panel-soru-alt" id="kur-has-kaynak">
+                                @string.Format(M.KaynakVeSaat, KaynakAdi(guncel.Kaynak), $"{Dil.T.Kur.SonGuncelleme}: {Bicim.IsletmeBicim(guncel.Olusturuldu, "g", System.Globalization.CultureInfo.CurrentCulture)}")
+                            </p>
+                            @if (kaynakDurumu is { SozlesmesizKaynaklarAcik: true, SeciliSozlesmesiz: true })
+                            {
+                                <p id="kur-sozlesmesiz" class="sade-kaynak-satir" role="status"
+                                   title="@(SahipMi ? Dil.T.Ortak.SozlesmesizKaynakUyari : Toplu3Sozlugu.Al(Dil.Dil).KurUcretsizIpucu)"><Rozet Renk="amber">@Toplu3Sozlugu.Al(Dil.Dil).KurUcretsizRozet</Rozet></p>
+                                <details class="zo-ipucu" id="kur-ucretsiz-ipucu">
+                                    <summary aria-label="@Toplu4Sozlugu.Al(Dil.Dil).KurUcretsizBilgi">i</summary>
+                                    <p>@(SahipMi ? Dil.T.Ortak.SozlesmesizKaynakUyari : Toplu3Sozlugu.Al(Dil.Dil).KurUcretsizIpucu)</p>
+                                </details>
+                            }
+                            </div>
+                        </div>
+
+                        @if (guncel.AyarFiyatlari is { Count: > 0 })
+                        {
+                            @* TOPLU-6 (TOPLU-4 hakemi YÜKSEK "başlıklar değerlerin üstünde değil"): sayısal sütunların
+                               başlığı da sağa hizalı (td.sayi ile aynı); başlık üstteki kur kutusuna yapışmaz (toplu6.css). *@
+                            <h3 id="kur-ayar-fiyat-baslik">@Dil.T.Kur.AyarFiyatlari</h3>
+                            @* PAKET GOC-A — ORTAK IZGARA (grid:kur:kur-ayar-fiyat): sütun sırası, göster/gizle,
+                               sıralama (tam liste → yerel), kullanıcıya özel kalıcı düzen. Tablo id'si korunur. *@
+                            <Izgara T="AyarFiyatVeri" Ekran="kur" GridId="kur-ayar-fiyat" Kolonlar="@AyarFiyatKolonlari"
+                                    Ogeler="@IzgaraYerelSiralama.Uygula(guncel.AyarFiyatlari, ayarFiyatSira, AyarFiyatKolonlari)"
+                                    Baslik="@Dil.T.Kur.AyarFiyatlari" YapiskanIlkSutun="false"
+                                    SiralamaDegisti="@AyarFiyatSiralandi" GecerliSiralama="@ayarFiyatSira" TercihIstemcisi="@KurTercih" />
+                        }
+                    }
+                </div>
+            </div>
+            @* ═══ PAKET S3-5 — İKİ YÜZ, TEK GÖVDE (PLAN § 5, demo adım 7) ═══════════
+               HAS ÖNDE: güncel kur kartı sayfanın İLK kartıdır (her iki modda).
+               Kaynak seçici ve kur geçmişi profesyonel yüzdedir; basit modda yerine
+               tek cümlelik not + Görünüm bağlantısı çizilir (özellik silinmez).
+               Mod YETKİ DEĞİLDİR: sunucu kapıları ([RolGerekli]) aynen geçerlidir. *@
+                <ProAlan>
+                    <BasitAlternatif>
+                @* TOPLU-6 (TOPLU-4 hakemi ORTA "açıklama satırları — Kur"): 12 px alt not satır değil ⓘ içinde
+                   (metin, bağlantı ve id'ler AYNI; özellik silinmedi — Görünüm bağlantısı ⓘ'de). *@
+                <div class="t4-ipucu-satir" id="kur-pro-notu-satir">
+                    <details class="zo-ipucu" id="kur-pro-notu-ipucu">
+                        <summary aria-label="@Toplu6Sozlugu.Al(Dil.Dil).KurProBilgi">i</summary>
+                        <p id="kur-pro-notu">
+                            @M.ProNotu <a href="/ayarlar" id="kur-pro-notu-bag" class="bag-tek-satir">@M.GorunumuDegistir</a>
+                        </p>
+                    </details>
+                    <span class="metin-soluk">@Toplu6Sozlugu.Al(Dil.Dil).KurProBilgi</span>
+                </div>
+                    </BasitAlternatif>
+                </ProAlan>
+            }
+            else if (kurKod == GorselSigmaSozlugu.KurPariteler)
+            {
+            @* ── Sarrafiye pariteleri ── *@
+            <div class="kart">
+                <div class="kart-baslik"><h2>@Dil.T.Kur.Pariteler</h2></div>
+                <div class="kart-govde">
+                    <p class="metin-soluk metin-kucuk">@Dil.T.Kur.ParitelerAciklama</p>
+                    <HataBandi Mesaj="@pariteHata" Id="parite-hata" />
+                    @if (pariteler.Count == 0)
+                    {
+                        @if (pariteHata is null)
+                        {
+                            <BosDurum Mesaj="@Dil.T.Kur.PariteYok" />
+                        }
+                    }
+                    else
+                    {
+                        @* PAKET GOC-A — ORTAK IZGARA (grid:kur:kur-parite). S1-i sık satır sınıfı korunur; ham parite
+                           kodu yalnız PRO'da ad hücresinin title'ında (KESIF-P6 #75). Tablo id'si korunur. *@
+                        <Izgara T="PariteVeri" Ekran="kur" GridId="kur-parite" Kolonlar="@PariteKolonlari"
+                                Ogeler="@IzgaraYerelSiralama.Uygula(pariteler, pariteSira, PariteKolonlari)"
+                                TabloSinif="tablo-sik" Baslik="@Dil.T.Kur.Pariteler"
+                                SiralamaDegisti="@PariteSiralandi" GecerliSiralama="@pariteSira" TercihIstemcisi="@KurTercih" />
+                    }
+                </div>
+            </div>
+            }
+            else if (kurKod == GorselSigmaSozlugu.KurKaynak)
+            {
+                <ProAlan>
+                @* ═══ PAKET S-3e — KUR KAYNAĞI SEÇİCİ ═══════════════════════════════════
+                   KURUCU BULGUSU (2026-09-18): "kur çekme kaynakları görünmüyor — Altınkaynak,
+                   Ankara Altın Borsası gibi daha önce var olanlar". ÖLÇÜM: adaptörler kodda
+                   (KurModulu.cs AltinkaynakAdaptoru · AnkaraAltinBorsasiAdaptoru ·
+                   TruncgilAdaptoru) ve uç da (PATCH /api/v1/kur/kaynak) vardı; EKRANDA SEÇİCİ
+                   YOKTU — kiracı kaynağını arayüzden göremiyor, değiştiremiyordu.
+                   Liste SABİT DEĞİLDİR: GET /kur/kaynaklar → KurKaynakDefteri.Kodlar'dan gelir
+                   (adaptör eklenince seçenek kendiliğinden çıkar, kod değişmez).
+                   UX-S22: tek seçenek varsa seçici yerine salt okunur satır.
+                   UX-S30: liste boşsa seçici KİLİTLİ ve sebebi yazılı. *@
+                <div class="kart" id="kur-kaynak-kart">
+                    <div class="kart-baslik"><h2>@Dil.T.Kur.KaynakSecimi</h2></div>
+                    <div class="kart-govde">
+                        <p class="metin-soluk metin-kucuk">@Dil.T.Kur.KaynakAciklama</p>
+                        @if (kaynakDurumu is { SozlesmesizKaynaklarAcik: true, SeciliSozlesmesiz: true })
+                        {
+                            @* SADE-1 (göz #25, doğrulama bulgusu): hukuki tam metin MOD'a değil
+                               ROL'e bağlıdır — yalnız SAHİP görür (profesyonel moda geçen tezgâhtar
+                               görmez). Diğer roller neden görmediğini tek cümleyle okur (UX-S30). *@
+                            @if (SahipMi)
+                            {
+                                <div id="kur-sozlesmesiz-ayrinti" class="uyari-kutu" role="note">
+                                    <strong>@SadeSozlugu.Al(Dil.Dil).KurKaynakHukukBaslik:</strong>
+                                    @Dil.T.Ortak.SozlesmesizKaynakUyari
+                                </div>
+                            }
+                            else
+                            {
+                                <p id="kur-sozlesmesiz-sahipte" class="metin-soluk metin-kucuk">@Toplu3Sozlugu.Al(Dil.Dil).KurUcretsizIpucu</p>
+                            }
+                        }
+                        <HataBandi Mesaj="@kaynakHata" Id="kur-kaynak-hata" />
+                        @if (kaynakDurumu is null)
+                        {
+                            @* B-14: hata varken sonsuz "yükleniyor" gösterilmez; bant yukarıda. *@
+                            @if (kaynakHata is null)
+                            {
+                                <Yukleniyor />
+                            }
+                        }
+                        else if (kaynakDurumu.Kaynaklar is not { Count: > 0 })
+                        {
+                            <div class="alan">
+                                <Secici ElemanId="kur-kaynak-sec"
+                                        Etiket="@Dil.T.Kur.Kaynak"
+                                        Secenekler="@KaynakYokSecenegi"
+                                        Devredisi="@(true)"
+                                        DevredisiSebebi="@Dil.T.Kur.KaynakYok" />
+                                <span class="metin-kucuk metin-soluk" id="kur-kaynak-kilit">@Dil.T.Kur.KaynakYokSebep</span>
+                            </div>
+                        }
+                        else if (kaynakDurumu.Kaynaklar.Count == 1)
+                        {
+                            <div class="alan">
+                                <span class="metin-kucuk metin-soluk">@Dil.T.Kur.Kaynak</span>
+                                <p id="kur-kaynak-tek" class="hucre-vurgu">@KaynakAdi(kaynakDurumu.Kaynaklar[0])</p>
+                                <span class="metin-kucuk metin-soluk" id="kur-kaynak-tek-sebep">@Dil.T.Kur.KaynakTekSebep</span>
+                            </div>
+                        }
+                        else
+                        {
+                            @* KESIF-P6 (YETKİ, ekip oyu Mehmet+Taşkın 30.09 18:10): ikinci kur kaynağı
+                               seçicisi MÜDÜR'e ONAYSIZ kaynak değiştirtiyordu. Kaynak YALNIZ SAHİP'tir ve
+                               TEK yerde, onay kalıbıyla değişir: İşletme (#i-kur-kaynagi → onay penceresi).
+                               Burada salt okunur satır + İşletme'ye bağlantı (SAHİP) ya da sebep (diğer
+                               roller). Sunucu ucu da [RolGerekli("SAHIP")] — ekran kapı değildir. *@
+                            <div class="alan">
+                                <span class="metin-kucuk metin-soluk">@Dil.T.Kur.Kaynak</span>
+                                <p id="kur-kaynak-secili" class="hucre-vurgu">@KaynakAdi(kaynakDurumu.Secili ?? kaynakDurumu.Varsayilan)</p>
+                                @if (SahipMi)
+                                {
+                                    <span class="metin-kucuk metin-soluk" id="kur-kaynak-isletmede">@P6.KaynakSahipteDegisir</span>
+                                    <a class="btn btn-ikincil btn-kucuk" id="kur-kaynak-isletme-bag" href="/isletme">@P6.KaynakIsletmeBaglanti</a>
+                                }
+                                else
+                                {
+                                    <span class="metin-kucuk metin-soluk" id="kur-kaynak-yalniz-sahip">@P6.KaynakYalnizSahip</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+                </ProAlan>
+            }
+            else if (kurKod == GorselSigmaSozlugu.KurGecmis)
+            {
+                <ProAlan>
+                @* ── Kur geçmişi ── *@
+                <div class="kart">
+                    <div class="kart-baslik satir-arasi">
+                        <h2>@Dil.T.Kur.Gecmis</h2>
+                        <div class="satir">
+                            @* PAKET GOC-A (envanter C · kur-gecmis-bas/bit "ters aralık sessizce boş liste"): iki ayrı
+                               Tarih → ortak TarihAralik (K8e: başlangıç ≤ bitiş, ≤ 5 yıl; alan altı hata, sunucu AYNI
+                               kuralla 400). id sözleşmesi korunur: kur-gecmis-bas · kur-gecmis-bit. *@
+<Tarih ElemanId="kur-gecmis-bas" Etiket="@Dil.T.Ortak.Baslangic" Tur="TarihTuru.Rapor"
+                   Deger="@GecmisBas" DegerChanged="@GecmisBasDegisti" />
+            <Tarih ElemanId="kur-gecmis-bit" Etiket="@Dil.T.Ortak.Bitis" Tur="TarihTuru.Rapor" Hata="@AralikHatasi"
+                   Deger="@GecmisBit" DegerChanged="@GecmisBitDegisti" />
+                        </div>
+                    </div>
+                    <div class="kart-govde">
+                        @* B-14: hata bandı listeyi DIŞLAMAZ — son bilinen geçmiş yerinde kalır. *@
+                        @if (gecmisHata is not null)
+                        {
+                            <HataBandi Mesaj="@gecmisHata" />
+                        }
+                        @if (gecmis.Count == 0)
+                        {
+                            @if (gecmisHata is null)
+                            {
+                                <BosDurum Mesaj="@Dil.T.Kur.GecmisYok" />
+                            }
+                        }
+                        else
+                        {
+                            @* PAKET GOC-A — ORTAK IZGARA (grid:kur:kur-gecmis-liste). Liste 100 kayıtla sınırlı:
+                               sınıra DEĞDİYSE sıralama düğmesi çıkmaz (kırpılmış listeyi sıralamak yanıltır — UX-S29). *@
+                            <Izgara T="KurVeri" Ekran="kur" GridId="kur-gecmis-liste" Kolonlar="@GecmisKolonlari"
+                                    Ogeler="@GecmisGorunenListe" Baslik="@Dil.T.Kur.Gecmis" YapiskanIlkSutun="false"
+                                    SiralamaDegisti="@GecmisSiralandi" GecerliSiralama="@gecmisSira" TercihIstemcisi="@KurTercih" />
+                            @* PAKET S1-i — UZUN LİSTE (ölçüldü: Geçmiş sekmesi 1280 px'te 7,4 ekran boyu):
+                               ilk bakışta @GorselSigmaSozlugu.KurGecmisIlk satır; toplam HER ZAMAN yazılı
+                               (UX-S29), kalanlar "N kayıt daha göster" ile AYNI listeden açılır. *@
+                            <div class="satir-arasi kr-gun-sayfa" id="kur-gecmis-sayfa">
+                                <span class="metin-kucuk metin-soluk" id="kur-gecmis-aralik">@string.Format(GS.KayitAraligi, 1, Math.Min(gecmisGorunen, gecmis.Count), gecmis.Count)</span>
+                                @if (gecmis.Count > gecmisGorunen)
+                                {
+                                    <button type="button" @onclick="() => gecmisGorunen += GorselSigmaSozlugu.KurGecmisIlk"
+                                            class="btn btn-ikincil btn-kucuk" id="kur-gecmis-daha">@string.Format(GS.DahaFazlaKayit, Math.Min(gecmis.Count - gecmisGorunen, GorselSigmaSozlugu.KurGecmisIlk))</button>
+                                }
+                            </div>
+                            @* PAKET S-3b — bu ipucu ARTIK YALNIZ DIŞ KAYNAK satırları için geçerli:
+                               elle girilen (MANUAL) kur gerekçeli olarak iptal edilebilir (UX-S25),
+                               dış kaynaktan gelen satır düzeltilmez, yenisi çekilir (UX-S30). *@
+                            @if (gecmis.Any(x => x.Kaynak != "MANUAL"))
+                            {
+                                <DegismezIpucu Varlik="KurKaydi" Gerekce="@Dil.T.Kur.IptalYok"
+                                               AlternatifYol="@Dil.T.Kur.KayitDegismezYolu" />
+                            }
+                            @* PAKET P-65 (B48): elle girilen kur DÜZENLENMEZ, yalnız gerekçeli iptal edilir;
+                               doğru değerin yolu (iptal → yeni elle giriş) düğme adlarıyla yazılır. *@
+                            @if (gecmis.Any(x => x.Kaynak == "MANUAL" && !x.IptalEdildi))
+                            {
+                                <DegismezIpucu Varlik="ManuelKurKaydi" Gerekce="@OnayM.ManuelKurGerekce"
+                                               AlternatifYol="@string.Format(OnayM.ManuelKurYolu, Dil.T.Kur.IptalEt, Dil.T.Kur.ManuelGiris)" />
+                            }
+                        }
+                    </div>
+                </div>
+                </ProAlan>
+            }
+        </Panel>
+    </Sekmeler>
+</div>
+}
+
+@* ── Manuel kur girişi ── *@
+@* PAKET S3-5 — TEK DÜZENLEME KALIBI (DoD EK md.2): çok alanlı manuel kur
+   girişi ModalPencere'den Cekmece'ye taşındı (liste + çekmece şablonu).
+   Alan kimlikleri (m-has … m-gbp, m-kaydet) DEĞİŞMEDİ. Çekmecenin kendi
+   Kaydet'i ÇİZİLMEZ (KaydetGoster=false): tek kaydet düğmesi #m-kaydet'tir,
+   iki birincil düğme olmaz; Vazgeç çekmece altbilgisindedir. *@
+<Cekmece Acik="manuelAcik" Varlik="kur-manuel" Baslik="@Dil.T.Kur.ManuelGiris"
+         Kapat="() => manuelAcik = false" KaydetGoster="false">
+    <ChildContent>
+    <div class="form-dikey">
+        @* GOC-A tur 2 (tasarım hakemi KRİTİK 08.10): BASİT'te tek sade cümle; ham kod (MANUAL) hiçbir modda yok,
+           ayrıntılı kullanım koşulu yalnız PRO'da. *@
+        <p class="metin-soluk metin-kucuk" id="m-uyari">@(Mod.ProfesyonelMi ? Dil.T.Kur.ManuelUyari : GocASozlugu.Al(Dil.Dil).KurManuelSade)</p>
+        @* PAKET GOC-A (envanter açık #8): kur alanları ortak KurAlani (K16: > 0, harf/eksi yazılamaz) +
+           kolon decimal(15,4) → en çok 4 ondalık (sunucu KurServisi.KurKolonOndalik ile AYNI sayı).
+           Eski hâl: eksi gram fiyatı SESSİZCE "girilmedi" sayılıyordu; USD "zorunlu" yıldızı taşıyıp
+           boş/0 kabul ediyordu (sunucu zorunlu tutmuyor) → yıldız kalktı, 0 artık alan altında hata. *@
+        <KurAlani ElemanId="m-has" Etiket="@Dil.T.Kur.AltinHasFiyati" Zorunlu="true" EnCokOndalik="@KurOndalik"
+                  Deger="@mHas" DegerChanged="@(v => mHas = v)"
+                  Durum="manuelForm" HataAlani="m-has" />
+        <KurAlani ElemanId="m-gram" Etiket="@Dil.T.Kur.GramAltinFiyati" EnCokOndalik="@KurOndalik"
+                  Deger="@mGram" DegerChanged="@(v => mGram = v)"
+                  Durum="manuelForm" HataAlani="m-gram" />
+        <div class="form-grid-2">
+            <KurAlani ElemanId="m-usd" Etiket="@Dil.T.Kur.Usd" EnCokOndalik="@KurOndalik"
+                      Deger="@mUsd" DegerChanged="@(v => mUsd = v)"
+                      Durum="manuelForm" HataAlani="m-usd" />
+            <KurAlani ElemanId="m-eur" Etiket="@Dil.T.Kur.Eur" EnCokOndalik="@KurOndalik"
+                      Deger="@mEur" DegerChanged="@(v => mEur = v)"
+                      Durum="manuelForm" HataAlani="m-eur" />
+        </div>
+        @* UX-4b madde 8 — GBP alanı EKRANDA YOKTU; sunucu (ManuelKurDto.GbpTry) ve
+           POS ("GBP" => Canli.Son?.GbpTry) bunu başından beri okuyordu. İnternet
+           kesikken sterlin bacağı 0 TL'ye düşüyor ve fiş kapanmıyordu. *@
+        <KurAlani ElemanId="m-gbp" Etiket="@Dil.T.Kur.Gbp" EnCokOndalik="@KurOndalik"
+                  Deger="@mGbp" DegerChanged="@(v => mGbp = v)"
+                  Durum="manuelForm" HataAlani="m-gbp" />
+        @* PAKET KUR-BANT (09.10): makul bant dışı fiyat (Core FiyatBandi — sunucu ile AYNI kural, AYNI cümle)
+           kaydedilmez. İkinci onay yolu YALNIZ SAHİP/MÜDÜR'e çizilir (gerekçe ≥ 20, denetim izi);
+           diğer rollerde yalnız "sahibine/müdüre söyleyin" cümlesi. Bant aşımı yokken hiçbiri görünmez. *@
+        @if (bantAsimVar)
+        {
+            @if (BantOnayYetkili)
+            {
+                <div class="form-dikey" id="m-bant-onay-blok">
+                    <Onay ElemanId="m-bant-onay" Etiket="@KB.OnayEtiket" Deger="@bantOnay" DegerChanged="@(v => bantOnay = v)" />
+                    @if (bantOnay)
+                    {
+                        <CokSatir ElemanId="m-bant-gerekce" Etiket="@KB.GerekceEtiket" Zorunlu="true"
+                                  Satir="2" EnFazla="@AlanSinirlari.GerekceEnCok" Ipucu="@KB.GerekceIpucu"
+                                  Deger="@bantGerekce" DegerChanged="@(v => bantGerekce = v ?? "")"
+                                  Hata="@manuelForm.Mesaj("m-bant-gerekce")" />
+                    }
+                </div>
+            }
+            else
+            {
+                @* KUR-BANT tur 2 (tasarım hakemi KRİTİK): yetki cümlesi TEK yerde, küçük soluk yazı —
+                   eskiden aynı cümle hemen altında kırmızı hata bandında ikinci kez, başka boyda çıkıyordu. *@
+                <p class="metin-soluk metin-kucuk" id="m-bant-yetki">@KB.YetkiYok</p>
+            }
+        }
+        <HataBandi Mesaj="@manuelHata" />
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="m-" ElemanId="m-sayi-kilit" />
+    </div>
+    </ChildContent>
+    <Alt>
+        @* TOPLU-7B: Kaydet altbilgide, İptal'in yanında (sıra: ikincil önce, birincil sonda); kimlik/olay AYNEN. *@
+        <button class="btn btn-birincil" id="m-kaydet" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("m-"))"
+                @onclick="ManuelKaydet">@Dil.T.Ortak.Kaydet</button>
+    </Alt>
+</Cekmece>
+
+@* ── MANUEL KUR İPTALİ (PAKET S-3b) ───────────────────────────────────────
+   DoD EK madde 4: yıkıcı eylem ORTAK ONAY MODALI ister. Kayıt silinmez,
+   'geçersiz' damgalanır — geri dönüş yolu doğru bilgiyle yeni manuel giriştir. *@
+<ModalPencere Acik="iptalKur is not null" Baslik="@Dil.T.Kur.IptalBaslik" Kapat="IptalKapat">
+    <div class="form-dikey">
+        <p id="kur-iptal-onay">@Dil.T.Kur.IptalOnay</p>
+        <GerekceAlani Id="kur-iptal-gerekce" Etiket="@Dil.T.Kabuk.StornoGerekce" @bind-Deger="iptalGerekce">
+            <div class="satir">
+                <button class="btn btn-ikincil esnek" id="kur-iptal-vazgec" @onclick="IptalKapat">@OnayM.Vazgec</button>
+                <button class="btn btn-tehlike esnek" disabled="@(kaydediliyor || !context)"
+                        id="kur-iptal-onayla" @onclick="IptalUygula">@Dil.T.Kabuk.Onayla</button>
+            </div>
+            @if (!context)
+            {
+                <span class="metin-kucuk metin-soluk" id="kur-iptal-kilit">@string.Format(Dil.T.Duzeltme.EnAzKarakter, 20)</span>
+            }
+        </GerekceAlani>
+        <HataBandi Mesaj="@iptalHata" />
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> KaynakYokSecenegi =>
+        [new SecenekOgesi("", Dil.T.Kur.KaynakYok)];
+
+    /// <summary>KESIF-P6 metinleri (ayrı sözlük dosyası; TR+EN).</summary>
+    private KesifP6Metinleri P6 => KesifP6Sozlugu.Al(Dil.Dil);
+
+
+    // ── PAKET S1-i — sekmeler (kaynak/geçmiş yalnız profesyonel yüzde) ──
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<SekmeTanimi> KurSekmeleri =>
+        Mod.ProfesyonelMi
+            ?
+            [
+                new(GorselSigmaSozlugu.KurGuncel, GS.KurGuncel),
+                new(GorselSigmaSozlugu.KurPariteler, GS.KurPariteler),
+                new(GorselSigmaSozlugu.KurKaynak, GS.KurKaynak),
+                new(GorselSigmaSozlugu.KurGecmis, GS.KurGecmis),
+            ]
+            :
+            [
+                new(GorselSigmaSozlugu.KurGuncel, GS.KurGuncel),
+                new(GorselSigmaSozlugu.KurPariteler, GS.KurPariteler),
+            ];
+
+    private KurVeri? guncel;
+    private List<KurVeri> gecmis = [];
+    /// <summary>PAKET S1-i: geçmiş listesinde görünen satır sayısı (yeni sorguda sıfırlanır).</summary>
+    private int gecmisGorunen = GorselSigmaSozlugu.KurGecmisIlk;
+    private List<PariteVeri> pariteler = [];
+
+    private bool kaydediliyor, manuelAcik;
+    private string? guncelHata, gecmisHata, manuelHata, pariteHata;
+
+    private DateTime? baslangic = DateTime.Today.AddDays(-30);
+    private DateTime? bitis = DateTime.Today;
+
+    // PAKET GOC-A: boş = null (gövdede null gider); 0/eksi artık bileşende hata (sessiz "girilmedi" yok).
+    private decimal? mHas, mGram, mUsd, mEur, mGbp;
+    // PAKET KUR-BANT — makul bant aşımı ve SAHİP/MÜDÜR'ün "fiyat doğru" onayı.
+    private bool bantAsimVar, bantOnay;
+    private string bantGerekce = "";
+    private KurBantMetinleri KB => KurBantSozlugu.Al(Dil.Dil);
+    private bool BantOnayYetkili => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+    /// <summary>kur_snapshots decimal(15,4) — sunucu KurKolonOndalik ile aynı sayı (iki tarafta tek sabit değil, sözleşme testi kilitler).</summary>
+    private const int KurOndalik = 4;
+    /// <summary>UX-1-C0/C2 — sessiz etkisizlik yasağı (QA: "Has 0 → istek yok, mesaj yok").</summary>
+    private readonly FormDurumu manuelForm = new();
+
+    /// <summary>UX-S27 — yazma işleminin sonucu ekranda görünür (3 sn).</summary>
+    private string? basariMesaji;
+    private int basariJeton;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += Yenile;
+        // PAKET S1-i: sekme listesi moda bağlıdır (kaynak/geçmiş yalnız profesyonel yüzde).
+        Mod.Degisti += Yenile;
+        await Task.WhenAll(GuncelYukle(), GecmisYukle(), PariteYukle(), KaynakDurumuYukle());
+    }
+
+
+    private KaynakDurumu? kaynakDurumu;
+
+    // ── PAKET S-3e — kur kaynağı (KESIF-P6: bu ekranda SALT OKUNUR; yazma yolu İşletme'de) ──
+    private string? kaynakHata;
+
+    /// <summary>
+    /// UX-S30 — "Şimdi çek" kilitli mi? Dış kaynaklar kapalıyken çekilecek kaynak
+    /// YOKTUR: düğme etkin kalsaydı her tıklama garanti 503 dönerdi (QA turu 5).
+    /// Durum bilinmiyorsa (uç okunamadı) düğme KİLİTLENMEZ — kapı sunucudadır.
+    /// </summary>
+    private bool CekmeKapali => kaynakDurumu is { SozlesmesizKaynaklarAcik: false };
+
+    /// <summary>
+    /// UX-S31 — ham kaynak kodu ekrana basılmaz, sözlükten çevrilir.
+    /// Bilinmeyen kod (yeni adaptör) kodun kendisiyle görünür: uydurma ad yok.
+    /// </summary>
+    private string KaynakAdi(string? kod) => KurKaynakAdi.Ad(kod, Dil.T);
+
+    /// <summary>PAKET S3-5 metinleri (ayrı sözlük dosyası; TR+EN).</summary>
+    private KurVitrinEmanetMetinleri M => KurVitrinEmanetSozlugu.Al(Dil.Dil);
+    /// <summary>PAKET P-65 onay/kilit metinleri (ayrı sözlük; TR+EN).</summary>
+    private OnayKilitMetinleri OnayM => OnayKilitSozlugu.Al(Dil.Dil);
+
+    private async Task KaynakDurumuYukle()
+    {
+        try
+        {
+            kaynakDurumu = await Api.GetAsync<KaynakDurumu>("/kur/kaynaklar");
+            kaynakHata = null;
+        }
+        // Uyarı şeridi bir KAPI değildir: uç erişilemezse ekran çalışmaya devam
+        // eder. Kapı sunucudadır (adaptör hiç kurulmaz).
+        // ⚠ P-11 (B-14): eskiden burada `kaynakDurumu = null` vardı — geçici bir
+        //   503 kaynak seçicisini EKRANDAN SİLİYOR ve "Şimdi çek" kilidini
+        //   açıyordu. Son bilinen durum KORUNUR, hata bandı AYRI basılır (UX-S28).
+        catch (ApiHata ex) { kaynakHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        catch (System.Text.Json.JsonException ex) { kaynakHata = ex.Message; }
+    }
+
+    // ═══ PAKET P-11 (B-14) — DIŞ HATADA VERİ DÜŞÜREN YOL = 0 ═══════════════
+    // S-3e "Şimdi çek" yolunu düzeltmişti; OKUMA yolları hâlâ hatada ekrandaki
+    // veriyi SİLİYORDU (guncel = null · gecmis = [] · pariteler = []). İnterneti
+    // kesilen kuyumcu sayfayı yenileyince son bilinen kuru da kaybediyordu.
+    // UX-S28: hata "kayıt yok"a çevrilmez — anlık görüntü DOM'da kalır, hata
+    // bandı AYRI basılır. Boş durum yalnız istek BAŞARILI ve sonuç boşken çıkar.
+
+    private async Task GuncelYukle()
+    {
+        guncelHata = null;
+        try { guncel = await Api.GetAsync<KurVeri>("/kur/guncel"); }
+        catch (ApiHata ex) { guncelHata = FormDurumu.SunucuMesaji(ex, Dil); }
+    }
+
+    // ── PAKET GOC-A — ORTAK IZGARA kolonları (grid:kur:*) ─────────────────────
+    // TEK tercih istemcisi: üç ızgara aynı /tercihler/benim önbelleğini kullanır (açılışta TEK GET).
+    private IzgaraTercihIstemcisi? kurTercih;
+    private IzgaraTercihIstemcisi KurTercih => kurTercih ??= new IzgaraTercihIstemcisi(Api);
+
+    private IzgaraSiralama? ayarFiyatSira, pariteSira, gecmisSira;
+    private void AyarFiyatSiralandi(IzgaraSiralama? s) => ayarFiyatSira = s;
+    private void PariteSiralandi(IzgaraSiralama? s) => pariteSira = s;
+    private void GecmisSiralandi(IzgaraSiralama? s) => gecmisSira = s;
+
+    private IReadOnlyList<IzgaraKolonu<AyarFiyatVeri>> AyarFiyatKolonlari =>
+    [
+        new() { Anahtar = "ayar", Baslik = Dil.T.Urun.Ayar, ZorunluGorunur = true, SunucuSiralamaAdi = "ayar",
+                HucreSinif = _ => "hucre-vurgu", Deger = a => KurKaynakAdi.AyarAdi(a.AyarId) },
+        new() { Anahtar = "milyem", Baslik = Dil.T.Urun.Milyem, SunucuSiralamaAdi = "milyem",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = a => a.Milyem },
+        new() { Anahtar = "gram-fiyati", Baslik = Dil.T.Kur.GramFiyati, ZorunluGorunur = true, SunucuSiralamaAdi = "gram-fiyati",
+                Tur = IzgaraHucreTuru.Tl, BaslikSinif = "sayi", HucreSinif = _ => "sayi hucre-vurgu", Deger = a => a.GramFiyati },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<PariteVeri>> PariteKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Kur.Ad, ZorunluGorunur = true, SunucuSiralamaAdi = "ad", Deger = p => DilEkranSozlugu.KurAdi(Dil.Dil, p.Kod, p.Ad),
+                Hucre = p => @<span class="hucre-vurgu" title="@(Mod.ProfesyonelMi ? p.Kod : null)">@DilEkranSozlugu.KurAdi(Dil.Dil, p.Kod, p.Ad)</span> },
+        new() { Anahtar = "alis", Baslik = Dil.T.Kur.Alis, SunucuSiralamaAdi = "alis", Tur = IzgaraHucreTuru.Tl,
+                HucreSinif = _ => "sayi", Deger = p => p.Alis },
+        new() { Anahtar = "satis", Baslik = Dil.T.Kur.Satis, SunucuSiralamaAdi = "satis", Tur = IzgaraHucreTuru.Tl,
+                HucreSinif = _ => "sayi", Deger = p => p.Satis },
+        // KESIF-P6 (#29): birim sözlükten ("Has gram / Gram / Adet"), ham kod basılmaz.
+        new() { Anahtar = "birim", Baslik = Dil.T.Kur.Birim, HucreSinif = _ => "metin-soluk",
+                Deger = p => KesifP6Sozlugu.Birim(p.Birim, Dil.Dil) },
+    ];
+
+    /// <summary>Geçmiş 100 kayıtla sınırlı (limit=100): sınıra değdiyse sıralama kapalı (UX-S29).</summary>
+    private const int GecmisSiniri = 100;
+    private bool GecmisTam => gecmis.Count < GecmisSiniri;
+
+    private IReadOnlyList<KurVeri> GecmisGorunenListe =>
+        [.. IzgaraYerelSiralama.Uygula(gecmis, GecmisTam ? gecmisSira : null, GecmisKolonlari).Take(gecmisGorunen)];
+
+    private IReadOnlyList<IzgaraKolonu<KurVeri>> GecmisKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true,
+                SunucuSiralamaAdi = GecmisTam ? "tarih" : null, HucreSinif = _ => "metin-soluk metin-kucuk",
+                Deger = k => k.Olusturuldu,
+                Hucre = k => @<text>@Bicim.IsletmeBicim(k.Olusturuldu, "g", System.Globalization.CultureInfo.CurrentCulture)</text> },
+        new() { Anahtar = "has-fiyati", Baslik = Dil.T.Kur.AltinHasFiyati, ZorunluGorunur = true,
+                SunucuSiralamaAdi = GecmisTam ? "has-fiyati" : null, Tur = IzgaraHucreTuru.Tl,
+                HucreSinif = _ => "sayi hucre-vurgu", Deger = k => k.AltinHasFiyati },
+        // Manuel giriş ayırt edilebilir olmalı (fiyat tartışmasında "bunu biz elle girmişiz").
+        // PAKET S3-5 · UX-S31: ham kaynak kodu (MANUAL) ekrana basılmaz.
+        new() { Anahtar = "kaynak", Baslik = Dil.T.Kur.Kaynak, Tur = IzgaraHucreTuru.Rozet, Deger = k => KaynakAdi(k.Kaynak),
+                Hucre = k => @<text><Rozet Renk="@(k.Kaynak == "MANUAL" ? "amber" : "gri")">@KaynakAdi(k.Kaynak)</Rozet>@if (k.IptalEdildi) {<Rozet Renk="kirmizi">@Dil.T.Kur.GecersizRozet</Rozet>}</text> },
+        // UX-S25 — yanlış girilen MANUEL kur gerekçeli iptal edilir; dış kaynak satırında düğme
+        // KİLİTLİ ve sebebi yazılı (P-65 E49 · UX-S30: title + aria-describedby).
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "hucre-tek-satir",
+                Hucre = k => @<text>@if (!k.IptalEdildi)
+                {
+                    <button type="button" disabled="@(k.Kaynak != "MANUAL")" class="btn btn-ikincil btn-kucuk"
+                            title="@(k.Kaynak != "MANUAL" ? Dil.T.Kur.IptalYok : null)"
+                            aria-describedby="@(k.Kaynak != "MANUAL" ? "degismez-ipucu-KurKaydi" : null)"
+                            id="@($"kur-iptal-{k.Id}")"
+                            @onclick="() => IptalIste(k)">@Dil.T.Kur.IptalEt</button>
+                }
+                else
+                {
+                    <span class="metin-kucuk metin-soluk" id="@($"kur-iptal-gerekce-{k.Id}")">@k.IptalGerekce</span>
+                }</text> },
+    ];
+
+    // PAKET GOC-A — geçmiş tarih aralığı (TarihAralik: geçersiz aralıkta bileşen null bildirir → istek YOK).
+    private DateOnly? GecmisBas => baslangic is { } b ? DateOnly.FromDateTime(b) : null;
+    private DateOnly? GecmisBit => bitis is { } b ? DateOnly.FromDateTime(b) : null;
+    private string? AralikHatasi => TarihPenceresi.AralikDenetle(GecmisBas, GecmisBit) is { } h ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+    private async Task GecmisBasDegisti(DateOnly? v)
+    {
+        baslangic = v?.ToDateTime(TimeOnly.MinValue);
+        if (TarihPenceresi.AralikDenetle(GecmisBas, GecmisBit) is null) await GecmisYukle();
+    }
+    private async Task GecmisBitDegisti(DateOnly? v)
+    {
+        bitis = v?.ToDateTime(TimeOnly.MinValue);
+        if (TarihPenceresi.AralikDenetle(GecmisBas, GecmisBit) is null) await GecmisYukle();
+    }
+
+    private async Task GecmisYukle()
+    {
+        gecmisHata = null;
+        gecmisGorunen = GorselSigmaSozlugu.KurGecmisIlk;
+        try
+        {
+            var sorgu = new List<string> { "limit=100" };
+            if (baslangic is not null) sorgu.Add($"baslangic={Bicim.Makine(baslangic)}");
+            if (bitis is not null) sorgu.Add($"bitis={Bicim.Makine(bitis)}");
+            gecmis = await Api.GetAsync<List<KurVeri>>($"/kur/gecmis?{string.Join("&", sorgu)}");
+        }
+        catch (ApiHata ex) { gecmisHata = FormDurumu.SunucuMesaji(ex, Dil); }
+    }
+
+    private async Task PariteYukle()
+    {
+        try
+        {
+            pariteHata = null;
+            var y = await Api.GetAsync<PariteYaniti>("/kur/pariteler");
+            pariteler = y.Pariteler ?? [];
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { pariteHata = ex.Message; }
+    }
+
+    private async Task SimdiCek()
+    {
+        guncelHata = null;
+        kaydediliyor = true;
+        try
+        {
+            guncel = await Api.PostAsync<KurVeri>("/kur/guncelle");
+            await GecmisYukle();
+            BasariGoster(Dil.T.Kur.KurGuncellendi);
+        }
+        catch (ApiHata ex) { guncelHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// UX-S27 — sonuç görünür. UX-4c madde 13: 3 saniyelik gizleme mantığı
+    /// BasariBandi bileşenine taşındı; burada yalnız mesaj ve jeton set edilir.
+    /// </summary>
+    private void BasariGoster(string mesaj)
+    {
+        basariMesaji = mesaj;
+        basariJeton++;
+    }
+
+    private void ManuelModalAc()
+    {
+        manuelHata = null;
+        // Mevcut değerlerle başlar: kuyumcu genelde tek kalemi düzeltir.
+        mHas = guncel?.AltinHasFiyati;
+        mGram = guncel?.GramAltinFiyati;
+        mUsd = guncel?.UsdTry;
+        mEur = guncel?.EurTry;
+        mGbp = guncel?.GbpTry;
+        bantAsimVar = false; bantOnay = false; bantGerekce = "";
+        manuelForm.Temizle();
+        manuelAcik = true;
+    }
+
+    private async Task ManuelKaydet()
+    {
+        if (sayiKapisi.OnekleVar("m-")) return;   // ORTAK-1: POST YOK (düğme pasif, sebep yazılı)
+        manuelForm.Temizle();
+        manuelForm.Pozitif("m-has", mHas ?? 0m, Dil);
+        if (!manuelForm.Gecerli) { manuelHata = Dil.T.Kabuk.FormEksik; return; }
+
+        // PAKET KUR-BANT — sunucuyla AYNI Core kuralı; referans = ekrandaki güncel (geçerli) kur.
+        var asimlar = BantAsimlari();
+        // Neden alanın altında KALIR (onay işaretlense de): kullanıcı neyi onayladığını görür.
+        foreach (var (alan, hata) in asimlar) manuelForm.Ekle(alan, GirdiSozlugu.Mesaj(hata, Dil.Dil));
+        // KUR-BANT tur 2: mutlak sınır dışı SERT kapı (sunucuyla aynı Core kararı) — onay yolu HİÇ çizilmez.
+        var sertVar = asimlar.Any(a => !FiyatBandi.OnaylanabilirMi(a.Hata));
+        bantAsimVar = asimlar.Count > 0 && !sertVar;
+        if (sertVar)
+        {
+            manuelHata = Dil.T.Kabuk.FormEksik;
+            return;
+        }
+        if (bantAsimVar && !bantOnay)
+        {
+            // Yetkisiz rolde neden alan altında + tek #m-bant-yetki cümlesi; bant İKİNCİ KEZ aynı cümleyi basmaz.
+            manuelHata = BantOnayYetkili ? KB.OnayGerekli : null;
+            return;
+        }
+        if (bantAsimVar && bantGerekce.Trim().Length < AlanSinirlari.GerekceEnAz)
+        {
+            manuelForm.Ekle("m-bant-gerekce", GirdiSozlugu.Mesaj(
+                new GirdiHatasi(GirdiKodu.GerekceKisa, AlanSinirlari.GerekceEnAz, bantGerekce.Trim().Length), Dil.Dil));
+            manuelHata = Dil.T.Kabuk.FormEksik;
+            return;
+        }
+
+        manuelHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/kur/manuel", new
+            {
+                altinHasFiyati = mHas,
+                gramAltinFiyati = mGram,
+                usdTry = mUsd,
+                eurTry = mEur,
+                gbpTry = mGbp,
+                bantOnay = bantAsimVar && bantOnay ? true : (bool?)null,
+                bantGerekce = bantAsimVar && bantOnay ? bantGerekce.Trim() : null,
+            });
+            manuelAcik = false;
+            var onayliMi = bantAsimVar && bantOnay;
+            await Task.WhenAll(GuncelYukle(), GecmisYukle());
+            BasariGoster(onayliMi ? KB.OnayliKaydedildi : Dil.T.Kur.ManuelKaydedildi);
+        }
+        catch (ApiHata ex)
+        {
+            // TOPLU-7B: aynı ret alan altında TAM, bantta kısa genel cümle (tek yazım).
+            manuelHata = manuelForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string>
+            {
+                ["AltinHasFiyati"] = "m-has", ["UsdTry"] = "m-usd", ["EurTry"] = "m-eur", ["GbpTry"] = "m-gbp",
+                ["altinHasFiyati"] = "m-has", ["gramAltinFiyati"] = "m-gram", ["usdTry"] = "m-usd", ["eurTry"] = "m-eur", ["gbpTry"] = "m-gbp",
+                ["bantGerekce"] = "m-bant-gerekce",
+            });
+        }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// PAKET KUR-BANT — ekrandaki alanların bant aşımları (Core FiyatBandi). Referans: güncel GEÇERLİ kur
+    /// (sunucu da son geçerli kaydı kullanır); güncel kurda o alan boşsa yalnız mutlak sınır.
+    /// </summary>
+    private List<(string Alan, GirdiHatasi Hata)> BantAsimlari()
+    {
+        var liste = new List<(string, GirdiHatasi)>();
+        void Bak(string alan, decimal? deger, FiyatTuru tur, decimal? onceki)
+        {
+            if (FiyatBandi.Denetle(deger, tur, onceki) is { } h) liste.Add((alan, h));
+        }
+        Bak("m-has", mHas, FiyatTuru.Has, guncel?.AltinHasFiyati);
+        Bak("m-gram", mGram, FiyatTuru.GramAltin, guncel?.GramAltinFiyati);
+        Bak("m-usd", mUsd, FiyatTuru.Doviz, guncel?.UsdTry);
+        Bak("m-eur", mEur, FiyatTuru.Doviz, guncel?.EurTry);
+        Bak("m-gbp", mGbp, FiyatTuru.Doviz, guncel?.GbpTry);
+        return liste;
+    }
+
+    // ── MANUEL KUR İPTALİ (PAKET S-3b) ──────────────────────────────────────
+    private KurVeri? iptalKur;
+    private string iptalGerekce = "";
+    private string? iptalHata;
+
+    private void IptalIste(KurVeri k)
+    {
+        // Kilitli düğme SESSİZCE iş yapmaz (DoD EK madde 1).
+        if (k.IptalEdildi || k.Kaynak != "MANUAL") return;
+        iptalHata = null;
+        iptalGerekce = "";
+        iptalKur = k;
+    }
+
+    private void IptalKapat() { iptalKur = null; iptalGerekce = ""; }
+
+    private async Task IptalUygula()
+    {
+        if (iptalKur is not { } k) return;
+        iptalHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync<KurVeri>($"/kur/manuel/{k.Id}/iptal", new { gerekce = iptalGerekce.Trim() });
+            iptalKur = null;
+            await Task.WhenAll(GuncelYukle(), GecmisYukle());
+            BasariGoster(Dil.T.Kur.IptalYapildi);
+        }
+        catch (ApiHata ex) { iptalHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    /// <summary>SADE-1: kur kaynağının hukuki kullanım şartını yalnız SAHİP görür.</summary>
+    private bool SahipMi => Oturum.Kullanici?.Rol == "SAHIP";
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= Yenile;
+        Mod.Degisti -= Yenile;
+    }
+}

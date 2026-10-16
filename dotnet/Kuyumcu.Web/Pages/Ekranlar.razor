@@ -1,0 +1,297 @@
+@page "/ekranlar"
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject YetkiServisi Yetki
+@inject MenuTercihServisi Tercih
+@inject NavigationManager Nav
+@inject IServiceProvider Hizmetler
+@implements IDisposable
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET S1-d — TÜM EKRANLAR (KARO MENÜ)
+
+   TEK DOĞRULUK KAYNAĞI: kurucunun tuvali
+   dokumanlar/02-mimari/sadelestirme/tuval/project/Ekranlar.dc.html
+   (koyu başlık şeridi: marka → panel · "Tüm ekranlar" · geniş arama · ipucu;
+   altında 6 grup başlığı, her grupta 68 px'lik karolar, 8 sütunlu ızgara;
+   en altta Kılavuz / Ayarlar / Vitrin panosu). Pusula'nın karo ana menüsünün
+   karşılığıdır (tuval notu n2: "menüde HİÇBİR ekran kaybolmadı").
+
+   ⚠ KARO SAYISI ELLE YAZILMAZ: karolar MenuTanimi.Ogeler'den ÜRETİLİR; yeni
+     ekran menü tanımına eklenince karosu kendiliğinden çıkar. Karo adları da
+     kenar çubuğuyla AYNI kaynaktandır (Sozluk.Nav) — aynı ekran iki yerde iki
+     ad taşımaz (UX-S31).
+   ⚠ YETKİ ≠ MOD (M-UX3-06): yetkisiz ekranın karosu ÇİZİLMEZ (sunucu kapısının
+     ekran yansıması, MenuTanimi.YetkiliMi). Mod ise burada SÜZGEÇ DEĞİLDİR:
+     basit moddaki kullanıcı da yetkili olduğu her ekranı burada bulur — mod
+     yalnız kenar çubuğunu daraltır.
+   ⚠ SAYFA_BASI_MUAFIYETI: ortak şerit (SayfaBasi) KULLANILMAZ. Sayfa tam
+     ekrandır (AnaYerlesim.TamEkranRotasi) ve tuvalin koyu başlık şeridini
+     (#ekranlar-ust: marka → panel, h1, arama, ipucu) taşır; SayfaBasi'nin
+     beyaz başlık kutusu bu şeridin altına İKİNCİ bir başlık koyardı ve
+     tuvaldeki tek satırlık 68 px düzen bozulurdu.
+   ⚠ Sayfa VERİ OKUMAZ, POST ETMEZ. Tek yazma yolu yıldızdır ve o da mevcut
+     MenuTercihServisi'nin PATCH /tercihler/benim yoludur (kenar çubuğundaki
+     yıldızla aynı kayıt).
+   ⚠ PAKET T-K4 (tuval birebir, 25.09): marka "Mihenk" (KabukTuvalSozlugu.MarkaYazimi —
+     kenar çubuğuyla aynı yazım), "Vitrin panosu" tuval yazımı; ölçüler
+     css/tuval-kabuk.css T-K4 bloğunda (≥1400 px 8 sütun = tuval). Günlük iş
+     satırı (.ekranlar-izgara-ikonlu) karoyu yazıya göre genişletir: ikonlu
+     "Sipariş ve tamir" 163 px karoya tek satır sığmaz (K3 kısa etiket kuralı).
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(EkranlarSozlugu.Baslik(Dil.Dil))</PageTitle>
+
+@* PAKET YILDIZ-4B: Yıldız şemasında sayfa = tuval Tum4/Tum4a (YildizEkranlar); öteki 8 şemada aşağıdaki özgün karo sayfası AYNEN. *@
+@if (YildizMi)
+{
+    <Kuyumcu.Web.Bilesenler.Yildiz.YildizEkranlar Ogeler="@suzulmus" Sorgu="@sorgu" AramaDegisti="AramaDegisti" Enter="IlkKaroyuAc" Temizle="AramayiTemizle"
+        Ozet="@YildizSozlugu.Ozet(Dil.Dil, yetkililer.Count, BolumSayisi, yetkililer.Count == MenuTanimi.Ogeler.Count)"
+        Yukleniyor="@(!Yetki.Yuklendi && Yetki.Hata is null)" Bantlar="@YildizBantlar" />
+}
+else
+{
+<div class="ekranlar-sayfa" id="ekranlar">
+    <header class="ekranlar-ust" id="ekranlar-ust">
+        <a href="/" class="ekranlar-marka" id="ekranlar-panele-don"
+           aria-label="@EkranlarSozlugu.PaneleDon(Dil.Dil)">
+            <span class="ekranlar-marka-rozet"><Ikon Ad="@Ikonlar.Marka" /></span>
+            <span class="ekranlar-marka-ad">@KabukTuvalSozlugu.MarkaYazimi</span>
+        </a>
+        @if (YildizMi)
+        {
+            @* PAKET YILDIZ-2 (tuval Tum4): "39 ekran · 6 bölüm · hiçbiri gizli değil".
+               Sayılar türetilir (elle yazılmaz); yetkiye göre süzülmüşse "hiçbiri
+               gizli değil" DENMEZ. Yalnız Yıldız şemasında çizilir. *@
+            <div class="ekranlar-yildiz-ozet" id="ekranlar-yildiz-ozet">@YildizSozlugu.Ozet(Dil.Dil, yetkililer.Count, BolumSayisi, yetkililer.Count == MenuTanimi.Ogeler.Count)</div>
+        }
+        <h1 class="ekranlar-baslik" id="ekranlar-baslik">@EkranlarSozlugu.Baslik(Dil.Dil)</h1>
+        @* Arama kutusu ORTAK girdi ailesindendir (P-36: ham girdi etiketi yok);
+           tuvalin koyu kabı .ekranlar-arama'dır. Yazarken süzer, Enter ilk
+           eşleşen karoyu açar. *@
+        <div class="ekranlar-arama" id="ekranlar-arama">
+            <Ikon Ad="@Ikonlar.Arama" />
+            <Kuyumcu.Web.Bilesenler.Form.Arama ElemanId="ekranlar-ara"
+                Etiket="@EkranlarSozlugu.AramaEtiketi(Dil.Dil)"
+                YerTutucu="@EkranlarSozlugu.AramaYerTutucu(Dil.Dil)"
+                Deger="@sorgu" DegerChanged="AramaDegisti" Enter="IlkKaroyuAc" />
+        </div>
+        <div class="ekranlar-bosluk"></div>
+        <div class="ekranlar-ipucu" id="ekranlar-ipucu">@EkranlarSozlugu.Ipucu(Dil.Dil, yetkililer.Count)</div>
+    </header>
+
+    <main class="ekranlar-govde" id="ekranlar-govde">
+        @* UX-S28: hata "kayıt yok"a çevrilmez — yetki okunamazsa karolar SON
+           BİLİNEN hâlde kalır ve bant + gerçek istek atan düğme çizilir. *@
+        @if (Yetki.Hata is { Length: > 0 })
+        {
+            <div class="bant bant-hata ekranlar-bant" role="alert" id="ekranlar-yetki-hatasi">
+                <span>@EkranlarSozlugu.YetkiYuklenemedi(Dil.Dil, Yetki.Hata)</span>
+                <button type="button" @onclick="YetkiYenidenDene" class="dugme dugme-kucuk dugme-ikincil"
+                        id="ekranlar-yetki-yeniden">@Dil.T.Kabuk.YetkiYenidenDene</button>
+            </div>
+        }
+        @if (Tercih.Hata is { Length: > 0 })
+        {
+            <div class="bant bant-hata ekranlar-bant" role="alert" id="ekranlar-tercih-hatasi">
+                <span>@(Tercih.HataAnahtari == MenuTercihServisi.AnahtarFavoriler
+                            ? EkranlarSozlugu.FavoriKaydedilemedi(Dil.Dil, Tercih.Hata)
+                            : EkranlarSozlugu.TercihlerYuklenemedi(Dil.Dil, Tercih.Hata))</span>
+            </div>
+        }
+
+        @if (!Yetki.Yuklendi && Yetki.Hata is null)
+        {
+            <Yukleniyor />
+        }
+        else
+        {
+            <span class="gorsel-gizli" id="ekranlar-sonuc-sayisi" role="status" aria-live="polite">@EkranlarSozlugu.SonucSayisi(Dil.Dil, suzulmus.Count)</span>
+
+            @foreach (var grup in MenuTanimi.GrupSirasi)
+            {
+                var ogeler = suzulmus.Where(o => o.Grup == grup).ToList();
+                if (ogeler.Count == 0)
+                {
+                    continue;
+                }
+                var gslug = MenuTanimi.GrupSlug(grup);
+                <section class="ekranlar-grup" id="@($"ekranlar-grup-{gslug}")"
+                         aria-labelledby="@($"ekranlar-grup-baslik-{gslug}")">
+                    <h2 class="ekranlar-grup-baslik" id="@($"ekranlar-grup-baslik-{gslug}")">@MenuTanimi.GrupEtiketi(grup)(Dil.T)@if (YildizMi) {<span class="ekranlar-grup-sayi" aria-hidden="true"> · @ogeler.Count</span>}</h2>
+                    <div class="@(grup == MenuGrubu.Gunluk ? "ekranlar-izgara ekranlar-izgara-ikonlu" : "ekranlar-izgara")">
+                        @foreach (var oge in ogeler)
+                        {
+                            var slug = MenuTanimi.Slug(oge.Yol);
+                            var ad = oge.Etiket(Dil.T);
+                            var favori = Tercih.Favori(oge.Yol);
+                            <div class="ekran-karo-kap" id="@($"ekran-karo-kap-{slug}")">
+                                <a class="@(oge.Yol == BirincilKaroYolu ? "ekran-karo ekran-karo-birincil" : "ekran-karo")"
+                                   id="@($"ekran-karo-{slug}")" href="@oge.Yol">
+                                    @* Tuval: yalnız "Günlük iş" karoları ikon taşır. *@
+                                    @* YILDIZ-2 (tuval Tum4): Yıldız'da HER karo ikon taşır ve üstüne
+                                       gelince tek cümlelik açıklama gösterir. *@
+                                    @if (grup == MenuGrubu.Gunluk || YildizMi)
+                                    {
+                                        <Ikon Ad="@oge.Ikon" />
+                                    }
+                                    <span class="ekran-karo-ad">@ad</span>
+                                    @if (YildizMi)
+                                    {
+                                        <span class="ekran-karo-aciklama" id="@($"ekran-aciklama-{slug}")">@YildizSozlugu.Aciklama(oge.Yol, Dil.Dil)</span>
+                                    }
+                                </a>
+                                <button type="button" @onclick="() => FavoriDegistir(oge.Yol)"
+                                        class="@(favori ? "ekran-yildiz dolu" : "ekran-yildiz")"
+                                        id="@($"ekran-favori-{slug}")"
+                                        aria-pressed="@(favori ? "true" : "false")"
+                                        title="@(favori ? EkranlarSozlugu.FavoridenCikar(Dil.Dil, ad) : EkranlarSozlugu.FavoriyeEkle(Dil.Dil, ad))"
+                                        aria-label="@(favori ? EkranlarSozlugu.FavoridenCikar(Dil.Dil, ad) : EkranlarSozlugu.FavoriyeEkle(Dil.Dil, ad))"><Ikon Ad="@Ikonlar.Favori" /></button>
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @* Boş durum YALNIZ arama gerçekten hiçbir karoyla eşleşmediğinde. *@
+            @if (suzulmus.Count == 0 && AramaVar)
+            {
+                <div class="ekranlar-bos" id="ekranlar-bos">
+                    <BosDurum Mesaj="@EkranlarSozlugu.SonucYok(Dil.Dil, sorgu.Trim())" />
+                    <button type="button" @onclick="AramayiTemizle" class="dugme dugme-ikincil"
+                            id="ekranlar-aramayi-temizle">@EkranlarSozlugu.AramayiTemizle(Dil.Dil)</button>
+                </div>
+            }
+        }
+
+        <nav class="ekranlar-alt" id="ekranlar-alt" aria-label="@EkranlarSozlugu.AltBaglantilar(Dil.Dil)">
+            @foreach (var oge in MenuTanimi.AltBlok)
+            {
+                <a class="ekranlar-alt-bag" id="@($"ekranlar-alt-{MenuTanimi.Slug(oge.Yol)}")" href="@oge.Yol">@oge.Etiket(Dil.T)</a>
+            }
+            @* Vitrin panosu menüde değildir (MenusuzRotalar); kapısı rota
+               haritasından okunur — kuru göremeyen panoyu da göremez. *@
+            @if (VitrinAcik)
+            {
+                <a class="ekranlar-alt-bag" id="ekranlar-alt-vitrin" href="/vitrin">@EkranlarGirisTuvalSozlugu.VitrinPanosu(Dil.Dil)</a>
+            }
+        </nav>
+    </main>
+</div>
+
+}
+@code {
+    /// <summary>
+    /// Tuvalde vurgu rengiyle dolu TEK karo: Satış (POS). Ekran başına tek
+    /// birincil eylem kuralının bu sayfadaki karşılığıdır.
+    /// </summary>
+    public const string BirincilKaroYolu = "/islemler";
+
+    private string sorgu = "";
+    private List<MenuOgesi> yetkililer = [];
+    private List<MenuOgesi> suzulmus = [];
+
+    /// <summary>PAKET YILDIZ-2: etkin şema Yıldız mı (kare görünümü + açıklamalar)?</summary>
+    private bool YildizMi => YildizKabuk.Mi(Hizmetler);
+
+    /// <summary>Yetkiye göre dolu bölüm (grup) sayısı.</summary>
+    private int BolumSayisi => MenuTanimi.GrupSirasi.Count(g => yetkililer.Any(o => o.Grup == g));
+
+    private bool AramaVar => !string.IsNullOrWhiteSpace(sorgu);
+
+    /// <summary>PAKET YILDIZ-4B: Yıldız sayfasının hata bantları (özgün sayfadakiyle AYNI kaynak ve gerçek istek atan düğme; UX-S28).</summary>
+    private RenderFragment YildizBantlar => @<text>
+        @if (Yetki.Hata is { Length: > 0 })
+        {
+            <div class="bant bant-hata ekranlar-bant" role="alert" id="ekranlar-yetki-hatasi">
+                <span>@EkranlarSozlugu.YetkiYuklenemedi(Dil.Dil, Yetki.Hata)</span>
+                <button type="button" @onclick="YetkiYenidenDene" class="yz-b2" id="ekranlar-yetki-yeniden">@Dil.T.Kabuk.YetkiYenidenDene</button>
+            </div>
+        }
+        @if (Tercih.Hata is { Length: > 0 })
+        {
+            <div class="bant bant-hata ekranlar-bant" role="alert" id="ekranlar-tercih-hatasi">
+                <span>@EkranlarSozlugu.TercihlerYuklenemedi(Dil.Dil, Tercih.Hata)</span>
+            </div>
+        }
+    </text>;
+
+    private bool VitrinAcik =>
+        Kuyumcu.Core.Erisim.RotaModulleri.Harita.TryGetValue("/vitrin", out var modul)
+        && (modul is null || Yetki.Erisebilir(modul));
+
+    protected override void OnInitialized()
+    {
+        Dil.Degisti += Yenile;
+        Oturum.Degisti += OturumDegisti;
+        Yetki.Degisti += Yenile;
+        Tercih.Degisti += Yenile;
+        // Sayfa TAM EKRANDIR (kenar çubuğu yok): yetki ve tercih yüklemesini
+        // kenar çubuğuna bırakamaz, kendisi ister (ikisi de idempotent).
+        _ = Yetki.HazirlaAsync();
+        _ = Tercih.HazirlaAsync();
+    }
+
+    protected override void OnParametersSet() => Hesapla();
+
+    /// <summary>
+    /// Yetkili karolar (sayı buradan) ve aramaya göre süzülmüş karolar.
+    /// Arama Türkçe katlamalıdır (AramaMetni.Katla — Secici ile TEK harf
+    /// haritası): "sayim" → "Sayım", "IŞLEM" → "İşlemler".
+    /// </summary>
+    private void Hesapla()
+    {
+        yetkililer = MenuTanimi.Yetkililer(Yetki.Erisebilir, Oturum.Kullanici?.Rol);
+        var q = AramaMetni.Katla(sorgu.Trim());
+        suzulmus = q.Length == 0
+            ? yetkililer
+            : [.. yetkililer.Where(o => AramaMetni.Katla(o.AramaMetni(Dil.T)).Contains(q, StringComparison.Ordinal))];
+    }
+
+    protected override bool ShouldRender()
+    {
+        Hesapla();
+        return true;
+    }
+
+    private void AramaDegisti(string? deger)
+    {
+        sorgu = deger ?? "";
+        Hesapla();
+    }
+
+    /// <summary>Enter: süzülmüş listenin İLK karosunu açar (klavyeyle tek dokunuş).</summary>
+    private void IlkKaroyuAc()
+    {
+        Hesapla();
+        if (AramaVar && suzulmus.Count > 0)
+            Nav.NavigateTo(suzulmus[0].Yol);
+    }
+
+    private void AramayiTemizle()
+    {
+        sorgu = "";
+        Hesapla();
+    }
+
+    private Task FavoriDegistir(string yol) => Tercih.FavoriDegistirAsync(yol);
+
+    private Task YetkiYenidenDene() => Yetki.YenidenDeneAsync();
+
+    private async void OturumDegisti()
+    {
+        await Yetki.HazirlaAsync();
+        await Tercih.HazirlaAsync();
+        Yenile();
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Oturum.Degisti -= OturumDegisti;
+        Yetki.Degisti -= Yenile;
+        Tercih.Degisti -= Yenile;
+    }
+}

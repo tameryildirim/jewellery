@@ -1,0 +1,366 @@
+%% Kuyumcu ERP — Tam Veri Modeli (kiracı bağları dahil)
+%% ŞEMADAN ÜRETİLMİŞTİR — elle çizilmemiştir (er-uret.py).
+%% Kaynak: MySQL information_schema / kuyumcu_net
+%% Veritabanında enforce edilen FK kısıtı: 0 (ölçüldü).
+%% FK işaretleri MANTIKSAL yabancı anahtardır; bütünlük uygulama katmanında korunur.
+erDiagram
+    banka_hareketleri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string banka_hesap_id FK "mantiksal"
+        string yon
+        decimal tutar
+        string para_birimi
+        string karsi_taraf_ad
+        string karsi_iban
+        text aciklama
+        string cari_id FK "mantiksal"
+        string fatura_id FK "mantiksal"
+        string durum
+        datetime tarih
+        datetime olusturuldu
+    }
+    banka_hesaplari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string banka_adi
+        string hesap_adi
+        string hesap_sahibi
+        string iban
+        string para_birimi
+        decimal bakiye
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    cari_bakiyeler {
+        string cari_id PK
+        string tenant_id FK "kiraci"
+        decimal tl_bakiye
+        decimal has_gram_bakiye
+        datetime son_islem_tarihi
+        datetime guncellendi
+    }
+    cariler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string tur
+        string ad
+        string telefon
+        string email
+        string vergi_no
+        string adres
+        string notlar
+        decimal kredi_limiti_tl
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    denetim_kayitlari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string kullanici_id FK "mantiksal"
+        string eylem
+        string varlik_turu
+        string varlik_id FK "mantiksal"
+        bool hassas
+        string detay
+        string ip_adresi
+        string user_agent
+        datetime tarih
+    }
+    faturalar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string fatura_no
+        string cari_id FK "mantiksal"
+        string tur
+        string kdv_turu
+        decimal has_deger
+        decimal ara_toplam
+        decimal kdv_oran
+        decimal kdv_tutar
+        decimal toplam
+        string para_birimi
+        string durum
+        string banka_hareket_id FK "mantiksal"
+        text aciklama
+        datetime tarih
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    gider_pusulalari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string pusula_no
+        string hareket_id FK "mantiksal"
+        string sube_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string satici_tipi
+        string satici_ad_soyad
+        string satici_tckn
+        string satici_tckn_hash
+        byte sifre_surumu
+        string satici_adres
+        string ayar_id FK "mantiksal"
+        decimal gram_agirlik
+        decimal has_grami
+        string mal_aciklamasi
+        decimal brut_tutar
+        decimal stopaj_oran
+        decimal stopaj_tutar
+        decimal net_odenen
+        datetime teslim_tarihi
+        datetime duzenleme_son_tarihi
+        string duzeltilen_id FK "mantiksal"
+        datetime olusturuldu
+    }
+    hareketler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string tur
+        datetime tarih
+        text aciklama
+        decimal tl_tutari
+        string para_birimi
+        decimal has_grami
+        string kur_snapshot_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string urun_id FK "mantiksal"
+        string karsi_sube_id FK "mantiksal"
+        string kullanici_id FK "mantiksal"
+        string fatura_no
+        datetime olusturuldu
+        string odeme_turu
+        string kmts_kodu
+    }
+    kasa_hareketleri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string kasa_id FK "mantiksal"
+        string hareket_id FK "mantiksal"
+        decimal tutar
+        string para_birimi
+        string odeme_turu
+        decimal komisyon_oran
+        datetime blokaj_bitis
+        datetime tarih
+        datetime olusturuldu
+    }
+    kasalar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string ad
+        string para_birimi
+        decimal bakiye
+        bool aktif
+        datetime guncellendi
+    }
+    kullanicilar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string ad
+        string soyad
+        string email
+        string sifre_hash
+        string rol
+        bool aktif
+        datetime son_giris
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    kur_snapshots {
+        string id PK
+        string tenant_id FK "kiraci"
+        decimal altin_has_fiyati
+        decimal gram_altin_fiyati
+        decimal usd_try
+        decimal eur_try
+        decimal gbp_try
+        string kaynak
+        datetime olusturuldu
+    }
+    masak_beyanlari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string kimlik_tespiti_id FK "mantiksal"
+        string hareket_id FK "mantiksal"
+        decimal islem_tutari_tl
+        string kademe
+        string islem_amaci
+        string aciklama
+        string fon_kaynagi
+        string ek_belge_referansi
+        string alan_kullanici_id FK "mantiksal"
+        datetime tarih
+        datetime saklama_bitis
+        string duzeltilen_id FK "mantiksal"
+        datetime olusturuldu
+    }
+    masak_kimlik_tespitleri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string hareket_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        decimal islem_tutari_tl
+        string belge_turu
+        string belge_no
+        string ad_soyad
+        date dogum_tarihi
+        string uyruk
+        string adres
+        string tespit_eden_kullanici_id FK "mantiksal"
+        datetime tarih
+        datetime saklama_bitis
+        string duzeltilen_id FK "mantiksal"
+        datetime olusturuldu
+        string belge_no_hash
+        byte sifre_surumu
+    }
+    masak_supheli_bildirimler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string hareket_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string kimlik_tespiti_id FK "mantiksal"
+        decimal islem_tutari_tl
+        text gerekce
+        datetime tespit_tarihi
+        datetime son_bildirim_tarihi
+        string durum
+        datetime gonderim_tarihi
+        string gonderim_referansi
+        string kapatma_gerekcesi
+        string bildiren_kullanici_id FK "mantiksal"
+        datetime saklama_bitis
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    refresh_tokenler {
+        string id PK
+        string kullanici_id FK "mantiksal"
+        string tenant_id FK "kiraci"
+        string token_hash
+        string ip_adresi
+        string user_agent
+        datetime gecerlilik
+        bool iptal_edildi
+        datetime olusturuldu
+    }
+    rol_yetkileri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string rol
+        string modul
+    }
+    stoklar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string urun_id FK "mantiksal"
+        decimal adet
+        decimal toplam_has_gram
+        datetime guncellendi
+    }
+    subeler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string ad
+        string adres
+        string telefon
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    tenants {
+        string id PK
+        string ad
+        string plan
+        bool ai_etkin
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+        string kur_kaynagi
+    }
+    urunler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string tip
+        string kod
+        string ad
+        string aciklama
+        string ayar_id FK "mantiksal"
+        decimal milyem
+        decimal gram_agirlik
+        decimal tas_agirlik
+        decimal has_grami
+        decimal iscilik_tl
+        decimal satis_fiyati
+        string barkod
+        string rfid
+        string gorsel_url
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+        string parite_kodu
+        string kmts_kodu
+    }
+
+    banka_hareketleri ||--o{ faturalar : "banka_hareket"
+    banka_hesaplari ||--|{ banka_hareketleri : "banka_hesap"
+    cariler ||--o{ banka_hareketleri : "cari"
+    cariler ||--|{ faturalar : "cari"
+    cariler ||--o{ gider_pusulalari : "cari"
+    cariler ||--o{ hareketler : "cari"
+    cariler ||--o{ masak_kimlik_tespitleri : "cari"
+    cariler ||--o{ masak_supheli_bildirimler : "cari"
+    faturalar ||--o{ banka_hareketleri : "fatura"
+    gider_pusulalari ||--o{ gider_pusulalari : "düzeltir"
+    hareketler ||--|{ gider_pusulalari : "hareket"
+    hareketler ||--o{ kasa_hareketleri : "hareket"
+    hareketler ||--o{ masak_beyanlari : "hareket"
+    hareketler ||--o{ masak_kimlik_tespitleri : "hareket"
+    hareketler ||--o{ masak_supheli_bildirimler : "hareket"
+    kasalar ||--|{ kasa_hareketleri : "kasa"
+    kullanicilar ||--o{ denetim_kayitlari : "kullanici"
+    kullanicilar ||--|{ hareketler : "kullanici"
+    kullanicilar ||--|{ masak_beyanlari : "alan_kullanici"
+    kullanicilar ||--|{ masak_kimlik_tespitleri : "tespit_eden_kullanici"
+    kullanicilar ||--|{ masak_supheli_bildirimler : "bildiren_kullanici"
+    kullanicilar ||--|{ refresh_tokenler : "kullanici"
+    kur_snapshots ||--|{ hareketler : "kur_snapshot"
+    masak_beyanlari ||--o{ masak_beyanlari : "düzeltir"
+    masak_kimlik_tespitleri ||--|{ masak_beyanlari : "kimlik_tespiti"
+    masak_kimlik_tespitleri ||--o{ masak_kimlik_tespitleri : "düzeltir"
+    masak_kimlik_tespitleri ||--o{ masak_supheli_bildirimler : "kimlik_tespiti"
+    subeler ||--|{ gider_pusulalari : "sube"
+    subeler ||--o{ hareketler : "karsi_sube"
+    subeler ||--|{ hareketler : "sube"
+    subeler ||--|{ kasalar : "sube"
+    subeler ||--o{ kullanicilar : "sube"
+    subeler ||--|{ stoklar : "sube"
+    tenants ||--|{ banka_hareketleri : "tenant"
+    tenants ||--|{ banka_hesaplari : "tenant"
+    tenants ||--|{ cari_bakiyeler : "tenant"
+    tenants ||--|{ cariler : "tenant"
+    tenants ||--|{ denetim_kayitlari : "tenant"
+    tenants ||--|{ faturalar : "tenant"
+    tenants ||--|{ gider_pusulalari : "tenant"
+    tenants ||--|{ hareketler : "tenant"
+    tenants ||--|{ kasa_hareketleri : "tenant"
+    tenants ||--|{ kasalar : "tenant"
+    tenants ||--|{ kullanicilar : "tenant"
+    tenants ||--|{ kur_snapshots : "tenant"
+    tenants ||--|{ masak_beyanlari : "tenant"
+    tenants ||--|{ masak_kimlik_tespitleri : "tenant"
+    tenants ||--|{ masak_supheli_bildirimler : "tenant"
+    tenants ||--|{ refresh_tokenler : "tenant"
+    tenants ||--|{ rol_yetkileri : "tenant"
+    tenants ||--|{ stoklar : "tenant"
+    tenants ||--|{ subeler : "tenant"
+    tenants ||--|{ urunler : "tenant"
+    urunler ||--o{ hareketler : "urun"
+    urunler ||--|{ stoklar : "urun"

@@ -1,0 +1,50 @@
+@* ═══════════════════════════════════════════════════════════════════════════
+   İKON — paket UX-5 (brif mührü S6-i · çelişki çözümü Ç7).
+
+   NEDEN EMOJİ DEĞİL: emoji her platformda BAŞKA çizilir (Windows/macOS/Android
+   aynı 🛡️'yi farklı renk ve biçimde basar), rengi CSS ile kontrol edilemez —
+   karanlık temada okunurluğu şansa kalır — ve kâğıda basıldığında çoğu yazıcıda
+   gri bir kutu ya da hiç çıkmaz. Yerine tek dosya inline SVG sprite geldi.
+
+   MİMARİ: wwwroot/img/ikon.svg (tek kaynak, <symbol id="ikon-…">) + burada
+   <use href="/img/ikon.svg#ikon-…">. CDN, web font, npm paketi ve JS YOKTUR
+   (Mehmet K3): dosya kendi kökümüzden gelir, CSP'de `img-src 'self'` zaten
+   vardır, YENİ İSTİSNA GEREKMEZ.
+
+   ⚠ RENK: sembol stroke="currentColor" taşır → ikon, içinde bulunduğu metnin
+     rengini alır. Aydınlık/karanlık tema için ikinci bir dosya yoktur.
+     Dış dosyadan <use> ile currentColor'ın geçtiği tarayıcıda GÖRÜLEREK
+     doğrulandı (UX-5 canlı turu); bu, kalıbın ön koşuludur.
+
+   ⚠ BOYUT: .ikon sınıfı em tabanlıdır (1.25em) → ikon, yanındaki yazının
+     boyutuna uyar. Satır içi style YAZILMAZ; özel boyut gerekirse çağıran
+     `Sinif` ile sınıf geçer (.ikon-buyuk gibi).
+
+   ⚠ ERİŞİLEBİLİRLİK: varsayılan aria-hidden="true"dur, çünkü ikonların
+     ÇOĞUNUN yanında zaten metin vardır (menüde etiket, düğmede ad) ve ekran
+     okuyucuya aynı şeyi iki kez söylemek gürültüdür. Metni OLMAYAN bir
+     düğmede (satır içi ✓/✕ gibi) ikon değil DÜĞME etiketlenir; bu bileşene
+     `Etiket` verildiğinde ise role="img" + aria-label basılır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<svg class="ikon @Sinif" viewBox="0 0 24 24" focusable="false"
+     aria-hidden="@(Etiket is null ? "true" : null)"
+     role="@(Etiket is null ? null : "img")"
+     aria-label="@Etiket"><use href="@($"/img/ikon.svg#ikon-{Ad}")"></use></svg>
+
+@code {
+    /// <summary>
+    /// Sembol adı — DAİMA <see cref="Ikonlar"/> sabitlerinden verilir
+    /// (çıplak dizge yazılırsa yazım hatası derleyiciden kaçar).
+    /// </summary>
+    [Parameter, EditorRequired] public string Ad { get; set; } = "";
+
+    /// <summary>Ek CSS sınıfı (boyut/renk varyantı). Satır içi style'ın yerine geçer.</summary>
+    [Parameter] public string? Sinif { get; set; }
+
+    /// <summary>
+    /// Doldurulursa ikon ekran okuyucuya <c>role="img"</c> + <c>aria-label</c>
+    /// ile duyurulur. Yanında metin varsa BOŞ BIRAKILIR (çift okuma olmasın).
+    /// </summary>
+    [Parameter] public string? Etiket { get; set; }
+}

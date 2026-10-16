@@ -1,0 +1,68 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-4C — kalem satırına dokununca açılan düzenleme, TUVAL DİLİNDE.
+   Eski kalem tablosu ("Sütunlar", ✕, ızgara) Yıldız'da ÇİZİLMEZ (hakem 4B tur 2 KRİTİK).
+   Kalıp: tuvalin form satırı .k (Y_Isletme / Y_Emanet: 12 px büyük harfli soluk etiket + 22 px / 300
+   değer, altı kıl çizgi) — değer burada yazılabilir girdi; eylemler .b2 (altı çizili).
+   Alanlar FisKalemTablosu'nun PRO satır düzenlemesiyle AYNI (adet · birim fiyat · satır indirimi ·
+   hediye); BASİT'te özgün fişte olduğu gibi yalnız "Çıkar". Alan altı ileti id'leri AYNI
+   (alan-hata-si-kalem-{alan}-{urunId}) — doğrulama sayfada (Islemler.Yildiz.cs), bileşen istek atmaz.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yz-tezgah-kalem-duzen yz-duzen" id="@($"yildiz-kalem-duzen-{V.Sira}")" role="group" aria-label="@YildizTezgahSozlugu.KalemDuzenle(Ad, Dil.Dil)">
+    @if (Pro)
+    {
+        <div class="yz-k">
+            <label class="yz-k-etiket" for="@($"yildiz-kalem-{V.Sira}-adet")">@Dil.T.Ortak.Adet</label>
+            <span class="yz-k-deger"><input type="text" inputmode="decimal" class="yz-k-girdi" id="@($"yildiz-kalem-{V.Sira}-adet")" value="@V.AdetMetni"
+                   @onchange="@(e => Yaz(AlanAdet, e.Value))" />@if (V.Birim == "GRAM") {<span class="yz-s yz-k-ek">g</span>}</span>
+            <AlanHatasi Alan="@($"si-kalem-adet-{V.UrunId}")" Durum="Form" />
+        </div>
+        <div class="yz-k">
+            <label class="yz-k-etiket" for="@($"yildiz-kalem-{V.Sira}-fiyat")">@Dil.T.Islem.BirimFiyat</label>
+            <span class="yz-k-deger"><input type="text" inputmode="decimal" class="yz-k-girdi" id="@($"yildiz-kalem-{V.Sira}-fiyat")" value="@V.FiyatMetni"
+                   @onchange="@(e => Yaz(AlanFiyat, e.Value))" /></span>
+            <AlanHatasi Alan="@($"si-kalem-fiyat-{V.UrunId}")" Durum="Form" />
+        </div>
+        <div class="yz-k">
+            <label class="yz-k-etiket" for="@($"yildiz-kalem-{V.Sira}-iskonto")">@Dil.T.Islem.SatirIskonto</label>
+            <span class="yz-k-deger"><input type="text" inputmode="decimal" class="yz-k-girdi" id="@($"yildiz-kalem-{V.Sira}-iskonto")" value="@V.IskontoMetni"
+                   @onchange="@(e => Yaz(AlanIskonto, e.Value))" /></span>
+            <AlanHatasi Alan="@($"si-kalem-iskonto-{V.UrunId}")" Durum="Form" />
+        </div>
+        @if (Satis)
+        {
+            <div class="yz-k">
+                <label class="yz-k-etiket" for="@($"yildiz-kalem-{V.Sira}-hediye")">@Dil.T.Fiyat.Hediye</label>
+                <span class="yz-k-deger"><input type="checkbox" class="yz-k-onay" id="@($"yildiz-kalem-{V.Sira}-hediye")" checked="@V.Hediye"
+                       @onchange="e => Hediye.InvokeAsync(new YildizKalemHediye(V.Sira, e.Value is true))" /></span>
+            </div>
+        }
+    }
+    @Ek
+    <div class="yz-tezgah-kalem-eylem">
+        <button type="button" class="yz-b2" id="@($"yildiz-kalem-cikar-{V.Sira}")" aria-label="@YildizTezgahSozlugu.CikarAria(Ad, Dil.Dil)"
+                disabled="@Kaydediliyor" @onclick="() => Cikar.InvokeAsync(V.Sira)">@YildizTezgahSozlugu.Cikar(Dil.Dil)</button>
+        <button type="button" class="yz-b2" id="@($"yildiz-kalem-tamam-{V.Sira}")" @onclick="() => Kapat.InvokeAsync()">@YildizTezgahSozlugu.KalemlerKapat(Dil.Dil)</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizKalemDuzenVerisi V { get; set; } = default!;
+    [Parameter] public string Ad { get; set; } = "";
+    [Parameter] public bool Pro { get; set; }
+    [Parameter] public bool Satis { get; set; } = true;
+    [Parameter] public bool Kaydediliyor { get; set; }
+    [Parameter] public Kuyumcu.Web.Servisler.FormDurumu Form { get; set; } = new();
+    [Parameter] public EventCallback<YildizKalemGirdi> Girdi { get; set; }
+    [Parameter] public EventCallback<YildizKalemHediye> Hediye { get; set; }
+    [Parameter] public EventCallback<int> Cikar { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+    /// <summary>Altta fiş alanları (reyon · açıklama) — sayfanın özgün parçaları.</summary>
+    [Parameter] public RenderFragment? Ek { get; set; }
+
+    private const string AlanAdet = "adet", AlanFiyat = "fiyat", AlanIskonto = "iskonto";
+
+    private Task Yaz(string alan, object? deger) => Girdi.InvokeAsync(new YildizKalemGirdi(V.Sira, alan, deger?.ToString() ?? string.Empty));
+}

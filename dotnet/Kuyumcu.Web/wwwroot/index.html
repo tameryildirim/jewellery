@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>MİHENK</title>
+    <base href="/" />
+    <!-- Yükleme sırası: vendor (yalnız DEĞER, seçici yok) → belirtecler.css
+         → app.css. app.css yalnız var() kullanır. -->
+    <link rel="stylesheet" href="css/vendor/open-props-easing-golge.css" />
+    <link rel="stylesheet" href="css/belirtecler.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/tuval-kabuk.css" />
+    <link rel="stylesheet" href="css/tuval-satis.css" />
+    <link rel="stylesheet" href="css/katlanir.css" />
+    <link rel="stylesheet" href="css/tuval-panel-musteri.css" />
+    <link rel="stylesheet" href="css/q10.css" />
+    <link rel="stylesheet" href="css/katman.css" />
+    <!-- PAKET SADE-1: göz incelemesi artıkları (şerit dosyası). ortak.css EN SONDA kalır
+         (ORTAK-1 testi O1); sade.css seçicileri id/:has kapsamlı, ortak.css ile çakışmaz. -->
+    <link rel="stylesheet" href="css/sade.css" />
+    <!-- PAKET EMANET-1: Emanet ekranı "zorunlu önce" (şerit dosyası, #emanet-sayfa kapsamlı). -->
+    <link rel="stylesheet" href="css/emanet.css" />
+    <!-- PAKET ZO-ISLEM-A: Hurda / POS tahsilat / Banka "zorunlu önce" (şerit dosyası). -->
+    <link rel="stylesheet" href="css/zo-islem.css" />
+    <!-- PAKET ZO-BELGE: Faturalar / Evraklar / Raporlar / İşlem defteri / Kasa raporu /
+         Denetim izi / Veri içe aktarım "zorunlu önce" (şerit dosyası, .zo-belge kapsamlı). -->
+    <link rel="stylesheet" href="css/zo-belge.css" />
+    <!-- PAKET YASAL-1: "Yasal sınırlar" ekranı + Panel yasal bandı (şerit dosyası, .yasal-* kapsamlı). -->
+    <link rel="stylesheet" href="css/yasal.css" />
+    <link rel="stylesheet" href="css/nakit-siniri.css" />
+    <!-- PAKET KESIF-P1 (tur 3): POS cihaz tablosu, fiyat paneli ilk sütunu, Görünüm kartı işareti (şerit dosyası, kimlik kapsamlı). -->
+    <link rel="stylesheet" href="css/kesif-p1.css" />
+    <!-- PAKET ŞUBE-KAPSAM-B tur 3: görünüm rozeti + kapanmış-şube bandı + kenar menüsü şube seçicisi (şerit dosyası;
+         olcek.css'ten ÖNCE — DUGME-2 sırası "olcek → dugme → ortak" bozulmasın; seçiciler sınıf/kimlik kapsamlı). -->
+    <link rel="stylesheet" href="css/sube-kapsam-b.css" />
+    <!-- PAKET TOPLU-3: demo/rapor/TOPLU-2 kalanları (şerit dosyası); seçiciler sayfa kimliğiyle kapsanır.
+         olcek.css → dugme.css → ortak.css zinciri (DUGME-2/O1) bozulmasın diye onlardan ÖNCE. -->
+    <link rel="stylesheet" href="css/toplu3.css" />
+    <!-- PAKET TOPLU-4: toplu tasarım kuyruğu (şerit dosyası); toplu3.css'ten SONRA, olcek.css'ten ÖNCE
+         (DUGME-2/O1 zinciri korunur; ortak.css'i yenmesi gereken kurallar özgüllükle kazanır). -->
+    <link rel="stylesheet" href="css/toplu4.css" />
+    <!-- PAKET TOPLU-5: para ekranları görünüm kuyruğu (şerit dosyası); toplu4.css'ten SONRA, olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/toplu5.css" />
+    <!-- PAKET DEGISIM-GUNSONU: BASİT Değişim fişi + gün sonu farkı (şerit dosyası); toplu5.css'ten SONRA, olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/degisim-gunsonu.css" />
+    <!-- PAKET TOPLU-6: kalan görünüm kuyruğu (şerit dosyası); degisim-gunsonu.css'ten SONRA, olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/toplu6.css" />
+    <!-- PAKET RAPOR-GORUNUM: rapor ekranları kalanları (şerit dosyası); toplu6.css'ten SONRA, olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/rapor-gorunum.css" />
+    <!-- PAKET GRID-1: ortak ızgara (Bilesenler/Grid) araç çubuğu, sütun paneli ve TEK kart kalıbı; olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/izgara.css" />
+    <!-- PAKET GIRDI-AILESI-2: ortak Tarih bileşeninin takvim düğmesi (Bilesenler/Form). olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/girdi.css" />
+    <!-- PAKET EKSIK-KUCUK: vitrin işçilik ibaresi + dükkân ekranı, satışta liste değişti bandı (şerit dosyası). olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/eksik-kucuk.css" />
+    <!-- PAKET SATINALMA-EKRAN: irsaliye satırı iç boşluğu (Yıldız şemasında da). olcek.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/satinalma-ekran.css" />
+    <!-- PAKET YILDIZ-1: "Yıldız" şeması (AYRI tema; yalnız :root[data-sema="yildiz"] altında).
+         Başka şemayı değiştirmez. olcek.css'ten ÖNCE (DUGME-2/O1 zinciri korunur). -->
+    <link rel="stylesheet" href="css/tema-yildiz.css" />
+    <!-- PAKET OLCEK-1: tek ölçek — mod ölçü değiştirmez; düğme ailesi 3 boy.
+         ortak.css'ten HEMEN ÖNCE (O1: ortak.css en sonda kalır). -->
+    <link rel="stylesheet" href="css/olcek.css" />
+    <!-- PAKET DUGME-2: düğme/seçici yazısı dikey ortada, düğme zeminden ayrılır (≥ 3:1),
+         yerleşik select oku yok. olcek.css'ten SONRA, ortak.css'ten ÖNCE. -->
+    <link rel="stylesheet" href="css/dugme.css" />
+    <!-- PAKET ORTAK-1: ortak görünüm artıkları (tablo başlığı, para kartı, filtre
+         yuvası, çekmece kaydırma). EN SONDA yüklenir; app.css'e yazılmaz. -->
+    <link rel="stylesheet" href="css/ortak.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+</head>
+
+<body>
+    <div id="app">
+        <div class="uygulama-yukleniyor">
+            <div class="donen-halka" aria-hidden="true"></div>
+            <p>MİHENK yükleniyor…</p>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Beklenmeyen bir hata oluştu.
+        <a href="." class="reload">Yenile</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <!-- tema.js blazor.webassembly.js'ten ÖNCE: saklı tema tercihi ilk
+         boyamadan önce uygulanır (FOUC yok). Satır içi <script> YASAK —
+         CSP script-src'de 'unsafe-inline' yoktur. -->
+    <script src="js/tema.js"></script>
+    <script src="js/dil.js"></script>
+    <script src="js/cekmece.js"></script>
+    <script src="js/secici-yerlesim.js"></script>
+    <script src="js/katman.js"></script>
+    <script src="js/suruklenebilir.js"></script>
+    <script src="js/siralistesi.js"></script>
+    <script src="js/indir.js"></script>
+    <script src="js/oturum-kilidi.js"></script>
+    <script src="js/girdi-maske.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,36 @@
+@using Kuyumcu.Core.Domain.Girdi
+@inherits KuralliMetinAlani
+
+@* PAKET GIRDI-AILESI-2 — BARKOD (K18 · Code 128-B ASCII 32–126): Türkçe harf ve baştaki boşluk yazılamaz, büyük harf; 13 rakamda EAN-13 kontrol hanesi UYARI (Kaydet kilitlemez). *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@IpucuMetni" KaynakRozeti="@KaynakRozeti">
+    <input type="text" class="girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+           value="@ham" placeholder="@YerTutucu" maxlength="@AlanSinirlari.Barkod" autocomplete="off"
+           data-maske="barkod"
+           aria-required="@(Zorunlu ? "true" : "false")"
+           aria-invalid="@(EtkinHatali ? "true" : "false")"
+           aria-describedby="@EtkinAciklayan"
+           disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+</AlanKabugu>
+
+@code {
+    /// <summary>girdi-maske.js 'barkod' ile AYNI.</summary>
+    public static string Maskele(string? g)
+    {
+        if (string.IsNullOrEmpty(g)) return "";
+        var b = new System.Text.StringBuilder(g.Length);
+        foreach (var ch in g.ToUpperInvariant())
+        {
+            if (ch is < ' ' or > '~') continue;
+            if (ch == ' ') continue;   // yazarken boşluk tuşta engellenir (envanter K18)
+            b.Append(ch);
+        }
+        return b.Length > AlanSinirlari.Barkod ? b.ToString(0, AlanSinirlari.Barkod) : b.ToString();
+    }
+    protected override string Temizle(string? g) => Maskele(g);
+    protected override GirdiHatasi? TamDenetle(string t) => BarkodKurali.Denetle(t);
+    /// <summary>EAN-13 kontrol hanesi tutmuyorsa ipucu satırında UYARI (engel değil).</summary>
+    protected override string? IpucuMetni =>
+        BarkodKurali.Ean13Uyari(ham) is { } u ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(u, Dil.Dil) : Ipucu;
+}

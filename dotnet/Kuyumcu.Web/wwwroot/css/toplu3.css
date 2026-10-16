@@ -1,0 +1,176 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET TOPLU-3 — demo videosu bulguları + RAPOR-YASLANDIRMA tasarım YÜKSEK'leri
+   + TOPLU-2 YARIM kalanları (şerit dosyası, 01.10).
+
+   ⚠ YALNIZ GÖRÜNÜM: hiçbir kural para/veri/yasal davranışa dokunmaz.
+   ⚠ Sabit renk YOK — yalnız belirteç var(). Satır içi stil yok. app.css'e yazılmaz.
+   ⚠ Her blok kendi sayfasının kimliğiyle kapsanır (başka ekrana sızmaz).
+   ⚠ ortak.css'ten ÖNCE yüklenir (O1: ortak.css en sonda).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* (T3-1) Cari yaşlandırma — sıfır hücre "—" (hakem YÜKSEK).
+   Sayı metni ("0 ₺") DOM'da kalır ve ekran okuyucu onu okur; gözle görünen tire
+   CSS içeriğidir (alternatif metni boş → okunmaz). */
+#yas-tablo td.yas-sifir > .yas-deger {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+#yas-tablo td.yas-sifir::before { content: "—" / ""; color: var(--metin-soluk); }
+
+/* (T3-2) Sayı sütunları: komşu tutarlar arası en az 32 px (16 + 16 dolgu), tek satır.
+   1280'de 8 sütun sığar (ölçüldü); sığmazsa KartListe kendi kabında kaydırır. */
+#yas-tablo :is(th, td).sayi { padding-inline: 16px; white-space: nowrap; text-align: right; }
+#yas-tablo th.sayi { text-align: right; }
+#yas-tablo .yas-belirsiz-th { white-space: nowrap; }
+#yas-tablo .yas-belirsiz-th > .zo-ipucu > p { inset-inline-start: auto; inset-inline-end: 0; text-align: left; }
+
+/* (T3-2b) Dar masaüstü (≤ 1365 px): İKİNCİL sütun gizlenir — yalnız HİÇBİR satırda has bakiyesi
+   yokken (tablo .yas-has-bos taşır). Has bakiyesi olan tabloda sütun her genişlikte durur (P-47).
+   Ad hücresi sarabilir (rozetler alt satıra iner, rozetin kendisi kırılmaz). */
+#yas-tablo td.yas-ad { white-space: normal; min-width: 9rem; }
+@media (max-width: 1365px) {
+  #yas-tablo.yas-has-bos :is(#yas-has-baslik, td.yas-has, #yas-toplam-has) { display: none; }
+}
+
+/* (T3-3) Döviz özeti tfoot satırı: rozetler sola, sarabilir. */
+#yas-tablo .yas-doviz-satir > th { white-space: nowrap; }
+#yas-tablo .yas-doviz-ozet-hucre { text-align: left; }
+#yas-tablo .yas-doviz-ozet-hucre > .rozet + .rozet { margin-inline-start: var(--bosluk-2); }
+#yas-tablo .yas-doviz-satir .zo-ipucu > p { text-transform: none; }
+
+/* (T3-4) Tablo altı not: karta yapışık değil, okunur boyda (hakem YÜKSEK "12 px, kenara yapışık"). */
+#yas-kart > .yas-not {
+  margin: 0; padding: var(--bosluk-3) var(--bosluk-4) var(--bosluk-4);
+  font-size: var(--yazi-sm);
+}
+
+/* (T3-5) ≤ 640 px: SATIR KARTI (hakem YÜKSEK "375'te tutarlar ilk görünümde yok").
+   Her satır: ad + rozetler / yalnız DOLU dilim(ler) / toplam. Başlık satırı kartta çizilmez;
+   hücre adını data-etiket yazar. Yatay kaydırma YOK. */
+@media (max-width: 640px) {
+  #yas-tablo { min-width: 0; width: 100%; }
+  /* Başlık satırı kartta çizilmez; hücre adını data-etiket (::before) söyler — ekran okuyucu
+     üretilmiş içeriği okur. */
+  #yas-tablo thead { display: none; }
+  #yas-tablo :is(th, td).sayi { padding-inline: 0; }
+  #yas-tablo, #yas-tablo tbody, #yas-tablo tfoot { display: block; }
+  #yas-tablo tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px var(--bosluk-3);
+    padding: var(--bosluk-3) var(--bosluk-4); border-top: 1px solid var(--ayrac);
+  }
+  #yas-tablo tr > :is(td, th) { display: flex; padding: 0; border: 0; white-space: normal; }
+  #yas-tablo tr > .yas-ad, #yas-tablo tr > th[scope="row"] { grid-column: 1 / -1; flex-wrap: wrap; gap: 4px var(--bosluk-2); align-items: center; }
+  #yas-tablo tr > td.sayi { grid-column: 1 / -1; justify-content: space-between; gap: var(--bosluk-3); }
+  #yas-tablo tr > td.sayi::before { content: attr(data-etiket); color: var(--metin-soluk); font-weight: 400; text-align: left; }
+  #yas-tablo tr > td.yas-sifir { display: none; }
+  #yas-tablo tr > td.yas-doviz-ozet-hucre { grid-column: 1 / -1; flex-wrap: wrap; gap: var(--bosluk-2); }
+  #yas-tablo .yas-doviz-ozet-hucre > .rozet + .rozet { margin-inline-start: 0; }
+  #yas-tablo .rozet { white-space: normal; }
+  .yas-kartliste .kart-liste-ipucu { display: none; }
+  .yas-kartliste > .tablo-sar { overflow-x: visible; }
+}
+
+/* (T3-6) Fiş/belge "işletme bilgisi eksik" kutusu (uzun demo bulgusu 5): kutu bir
+   DEĞİŞMEZLİK uyarısı değil, eksik bilgi hatırlatmasıdır → "Bu kayıt değiştirilemez"
+   başlığı ve aynı cümleyi tekrarlayan "Düzeltme şöyle yapılır" satırı bu kutuda gizlenir;
+   gerekçe tek cümle + düğme kalır. Bileşen (DegismezIpucu) başka yerde DEĞİŞMEZ. */
+#cikti-kimlik-uyari .degismez-baslik,
+#cikti-kimlik-uyari .degismez-alternatif,
+#cikti-kimlik-uyari .degismez-kilit { display: none; }
+
+/* (T3-7) /kurulum 375 (KESIF-P8 "uzun sayfa"): adım satırı ızgarası — ad + eylem ÜST
+   satırda, durum rozeti + sayı ALT satırda. Eylem satır başına alta inmez. */
+@media (max-width: 640px) {
+  #kur-adimlar .sade-adim-listesi > li {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "ad ad eylem" "durum sayi eylem";
+    gap: 2px var(--bosluk-3); align-items: center;
+  }
+  #kur-adimlar .sade-adim-listesi > li > .rozet { grid-area: durum; justify-self: start; }
+  #kur-adimlar .sade-adim-listesi > li > span:not(.rozet):not(.metin-kucuk) { grid-area: ad; }
+  #kur-adimlar .sade-adim-listesi > li > .metin-kucuk { grid-area: sayi; }
+  #kur-adimlar .sade-adim-listesi > li > :is(.btn, button) { grid-area: eylem; align-self: center; }
+}
+
+/* (T3-8) 375 genel arama katmanı (KESIF-P8 "serbest yüzen"): dar ekranda palet TAM EKRAN
+   sayfa olur (üst kenara ve iki yana yapışık); sonuç listesi kendi içinde kayar. */
+@media (max-width: 480px) {
+  #kayit-arama .kayit-arama-palet {
+    top: 0; left: 0; transform: none;
+    width: 100vw; height: 100dvh; max-height: 100dvh;
+    border: 0; border-radius: 0;
+  }
+}
+
+/* (T3-9) Hurda "Daha fazla" (ZO-ISLEM-A ↔ tuval çelişkisi, ekip oyu): tuval ölçüleri
+   (tam genişlik, 48 px, 9 px köşe, 16 px yazı) KORUNUR; seçim kutusu görünümü kalkar —
+   kesik çizgili kenar + vurgu rengi metin: "alan" değil "aç" eylemi olduğu okunur. */
+#hrd-detay-ac, #hrd-detay-gizle { border-style: dashed; color: var(--vurgu); font-weight: var(--kalin-orta, 600); }
+#hrd-detay-ac .zo-detay-ok, #hrd-detay-gizle .zo-detay-ok { color: var(--vurgu); }
+
+/* (T3-10) Vitrin pano çekmecesi yardımcı yazıları (KATMAN-1b, ortak ipucu kademesi —
+   ekip oyu: çekmece içi yardımcı yazı en az 14 px). */
+#cekmece-pano-kalem :is(.alan-ipucu, .alan-istege),
+#pano-varsayilana-don-kilit { font-size: max(14px, var(--yazi-sm)); }
+
+/* (T3-11) Uyum Risk "SİYASİ NÜFUZ SAHİBİ…" etiketi (yasal terim — KISALTILMAZ): kart iki
+   sütun genişliğinde durur, etiket en çok iki satır. Dar ekranda tek sütun. */
+#uy-risk-ozet > .stat-kart--genis { grid-column: span 2; }
+@media (max-width: 640px) { #uy-risk-ozet > .stat-kart--genis { grid-column: auto; } }
+
+/* (T3-2c) Has sütunu gizliyken (T3-2b) sütunu anlatan tablo altı not da gizlenir. */
+@media (max-width: 1365px) {
+  #yas-kart:has(#yas-tablo.yas-has-bos) > #yas-has-notu { display: none; }
+}
+
+/* ── TUR 2 (tasarım hakemi KRİTİK'leri, 01.10) ─────────────────────────────── */
+
+/* (T3-2d) 641–1439 px: has sütunu DOLUYKEN de 8 sütun kabın içine sığar (hakem: 1280 PRO'da
+   has dolu tabloda son sütun 83 px kırpılıyordu; T3-2b yalnız has BOŞKEN çalışıyordu).
+   Sayı dolgusu 16 → 10 px (komşu tutarlar arası yine ≥ 20 px), ad sütunu tabanı 8rem.
+   Sütun başlıkları TEK satır kalır (T3-2 nowrap; ölçer K3 "kırık kısa etiket" = 0) —
+   1280 PRO has dolu fikstürde ölçüldü: kap 962 = içerik 962, kırpılan hücre 0. */
+@media (min-width: 641px) and (max-width: 1439px) {
+  #yas-tablo :is(th, td).sayi { padding-inline: 10px; }
+  #yas-tablo td.yas-ad { min-width: 8rem; }
+}
+
+/* (T3-12) /kurulum: açılış bakiyesi ve mühür bölümleri KAPALI akordeon (yerel details).
+   Başlık satırı: bölüm adı + tek cümle özet + ok; gövde: dikey aralıklı (etiketler üstteki
+   öğeye yapışmaz). Kartlar arası boşluk belirteçten. */
+.sayfa > #kur-adimlar ~ .kart { margin-top: var(--bosluk-4); }
+.sayfa #kur-pencere { margin-bottom: var(--bosluk-3); }
+/* sade.css (1b) kurulum kartının başlık dışı çocuklarına 1,5rem yan pay ve kartın altına 1rem verir;
+   akordeon kendi dolgusunu taşır → kart dolgusuz, details .kart-govde sınıfıyla o kuraldan çıkar. */
+.sayfa > .kart#kur-acilis:has(> .kur-bolum), .sayfa > .kart#kur-muhur:has(> .kur-bolum) { padding: 0; }
+.kur-bolum.kart-govde { padding: 0; }
+.kur-bolum > summary.kur-bolum-baslik {
+  list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center;
+  gap: 4px var(--bosluk-3); min-height: 48px; padding: var(--bosluk-4) 48px var(--bosluk-4) 24px;
+  position: relative; border-radius: inherit;
+}
+.kur-bolum > summary.kur-bolum-baslik::-webkit-details-marker { display: none; }
+.kur-bolum > summary.kur-bolum-baslik::after {
+  content: ""; position: absolute; inset-inline-end: 24px; top: 50%;
+  width: 8px; height: 8px; margin-top: -6px;
+  border-right: 2px solid var(--metin-soluk); border-bottom: 2px solid var(--metin-soluk);
+  transform: rotate(45deg);
+}
+.kur-bolum[open] > summary.kur-bolum-baslik::after { transform: rotate(-135deg); margin-top: -2px; }
+.kur-bolum > summary.kur-bolum-baslik:hover { background: var(--yuzey-hover); }
+.kur-bolum > summary.kur-bolum-baslik:focus-visible { outline: var(--odak-halka-kalinlik, 2px) solid var(--odak-halka); outline-offset: -2px; }
+.kur-bolum > summary > .kart-baslik { padding: 0; margin: 0; border: 0; font-size: 1rem; }
+.kur-bolum > summary > .kur-bolum-ozet { flex: 1 1 14rem; font-size: var(--yazi-sm); }
+.kur-bolum[open] > summary.kur-bolum-baslik { border-bottom: 1px solid var(--ayrac); border-end-start-radius: 0; border-end-end-radius: 0; }
+.kur-bolum-govde {
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--bosluk-3);
+  padding: var(--bosluk-4) 24px 24px;
+}
+.kur-bolum-govde > :is(.btn, button, a.btn) { align-self: flex-start; }
+.kur-bolum-govde > p { margin: 0; }
+.kur-bolum-ipucu-satir { display: flex; align-items: center; font-size: var(--yazi-sm); }
+@media (max-width: 640px) {
+  .kur-bolum > summary.kur-bolum-baslik { padding-inline: 16px 44px; }
+  .kur-bolum > summary.kur-bolum-baslik::after { inset-inline-end: 16px; }
+  .kur-bolum-govde { padding-inline: 16px; }
+}

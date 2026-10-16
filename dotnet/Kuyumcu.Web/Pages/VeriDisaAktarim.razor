@@ -1,0 +1,333 @@
+@page "/veri-disa-aktarim"
+@using System.Text.Json
+@using Kuyumcu.Web.Servisler
+@using Kuyumcu.Contracts.Sayfalar.VeriDisaAktarim
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime Js
+@implements IDisposable
+
+<PageTitle>@Marka.SayfaBasligi(MenuAdlari.Icin(Dil.T).VeriDisaAktar.Ad)</PageTitle>
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   VERİ DIŞA AKTARIMI — PLAN-2 Adım 4
+
+   Bu ekran bir söz veriyor: "verin sende kalır". Rakiplerin en çok şikâyet
+   alan noktası verinin programda rehin kalmasıydı; burası onun cevabı.
+
+   Mehmet'in şartları ekrana da yansır:
+     • Gerekçe alanı boş geçilemez (sunucu da reddeder).
+     • Tam kimlikli mod AYRI bir onay kutusu + birebir yazılan onay metni ister.
+     • Parola bir kez gösterilir; kullanıcı onu ayrı kanala taşımak zorundadır.
+     • Geçmiş tablosu kimin ne zaman ne aktardığını gösterir — gizlenmez.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="sayfa">
+    @* UX-1-C4 · K7 — tek başlık kabuğu. Mevcut başlık DOM'u kaldırılmadı, sarıldı. *@
+    <SayfaBasi Anahtar="veri-disa-aktarim" Baslik="@Dil.T.DisaAktarim.Baslik"
+               Aciklama="@Dil.T.Yonetim.DisaAktarimAciklama" />
+    @* PAKET SADE-1 (göz #11/#13): SayfaBasi'nın altındaki ikinci, büyük puntolu
+       <h1> + açıklama bloğu KALDIRILDI — aynı başlık ekranda iki kez yazıyordu.
+       Sayfanın tek <h1>'i üst bardadır (UstBar), şerit başlığı SayfaBasi'dır. *@
+
+    <div class="kart">
+        <h2 class="kart-baslik">@Dil.T.DisaAktarim.YeniAktarim</h2>
+
+        <div class="alan">
+            @* QA turu 1+2 (ORTA): 20 karakterin altında düğme SESSİZCE pasifti —
+               ne sayaç ne mesaj vardı. Sessiz etkisizlik yasak (DoD/3). *@
+            <CokSatir ElemanId="da-gerekce" SayacGoster="false" Etiket="@Dil.T.DisaAktarim.Gerekce" Zorunlu="true"
+                      Satir="2" EnFazla="@AlanSinirlari.AktarimGerekce" YerTutucu="@Dil.T.DisaAktarim.GerekceOrnek"
+                      Deger="@gerekce" DegerChanged="@(v => gerekce = v ?? "")"
+                      Ipucu="@(Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).GerekceIpucuBasit : Dil.T.DisaAktarim.GerekceIpucu)"
+                      Hata="@(GerekceKisa ? string.Format(GerekceKisaMetni, GerekceEnAz) : null)"
+                      HataKimligi="da-gerekce-hata" />
+            <span id="da-gerekce-sayac" class="metin-soluk metin-kucuk sayi">
+                @string.Format(Dil.T.Yonetim.GerekceSayac, gerekce.Trim().Length, GerekceEnAz)
+            </span>
+        </div>
+
+        <div class="alan">
+            <label>@Dil.T.DisaAktarim.Kapsam</label>
+            @if (kaynaklar is null)
+            {
+                <span class="metin-soluk">@Dil.T.Ortak.Yukleniyor</span>
+            }
+            else
+            {
+                @* QA turu 1+2 (DÜŞÜK): kişisel veri içeren kapsamlar açılışta SEÇİLİ
+                   geliyordu ve bu hiçbir yerde SÖYLENMİYORDU. Bulgunun önerdiği iki
+                   yoldan ikincisi uygulandı ("seçince uyarı"): varsayılan kapsam
+                   DEĞİŞTİRİLMEDİ (mevcut testlerin doğruladığı davranış korunur),
+                   ama kişisel veri seçiliyken uyarı ekranda durur. *@
+                @if (KisiselVeriSecili)
+                {
+                    <p id="da-kisisel-not" class="uyari-metni" role="status">@(Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).KisiselVeriNotuBasit : Dil.T.Yonetim.KisiselVeriVarsayilanNotu)</p>
+                }
+                <div class="rozet-satir">
+                    @foreach (var k in kaynaklar)
+                    {
+                        <span class="secim-etiket">
+                            <Onay ElemanId="@($"da-kapsam-{k.Ad}")" Etiket="@KaynakAdi(k.Ad)"
+                                  Deger="@secili.Contains(k.Ad)"
+                                  DegerChanged="@((bool _v) => KapsamDegistir(k.Ad, _v))" />
+                            @if (k.KisiselVeri)
+                            {
+                                <Rozet Renk="sari">@Dil.T.DisaAktarim.KisiselVeri</Rozet>
+                            }
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Şart 2: maskesiz mod ayrı onay. Varsayılan kapalı. *@
+        @if (KisiselVeriSecili)
+        {
+            <div class="alan uyari-kutu">
+                <Onay ElemanId="da-tam-kimlik" Etiket="@Dil.T.DisaAktarim.TamKimlikIstiyorum"
+                      @bind-Deger="tamKimlikIsteniyor" Ipucu="@Dil.T.DisaAktarim.MaskeAciklama" />
+
+                @if (tamKimlikIsteniyor)
+                {
+                    <div class="alan mt-1">
+                        <code class="metin-kucuk">@OnayMetni</code>
+                        <Metin ElemanId="da-onay" Etiket="@Dil.T.DisaAktarim.OnayMetniniYazin" Zorunlu="true"
+                               EnFazla="@AlanSinirlari.AktarimOnay"
+                               Deger="@onayGirisi" DegerChanged="@(v => onayGirisi = v ?? "")" />
+                    </div>
+                }
+            </div>
+        }
+
+        <HataBandi Mesaj="@hata" Id="hata-bandi" />
+        <BasariBandi Mesaj="@basariMesaj" Jeton="@basariJeton" SureliMs="4000" Id="basari-bandi" />
+
+        <button class="btn btn-birincil" id="da-hazirla" disabled="@(calisiyor || !Gecerli)"
+                @onclick="Talep">
+            @(calisiyor ? Dil.T.Ortak.Yukleniyor : Dil.T.DisaAktarim.HazirlaVeIndir)
+        </button>
+        @* UX-S30: kilitli düğme hangi koşulun eksik olduğunu SÖYLER. *@
+        @if (!calisiyor && !Gecerli)
+        {
+            <p id="da-kilit-sebep" class="metin-soluk metin-kucuk">
+                @Dil.T.Yonetim.KilitSebebi: @string.Join(" · ", EksikKosullar)
+            </p>
+        }
+    </div>
+
+    @* Parola: bir kez gösterilir. Şart 5 — dosyayla aynı kanaldan gitmez. *@
+    @if (sonParola is not null)
+    {
+        <div class="kart kart-vurgu">
+            <h2 class="kart-baslik">@Dil.T.DisaAktarim.ParolaBasligi</h2>
+            <p>@Dil.T.DisaAktarim.ParolaUyari</p>
+            <div class="satir">
+                <code class="girdi esit-pay">@sonParola</code>
+                <button class="btn btn-ikincil" @onclick="ParolayiKopyala">
+                    @(kopyalandi ? Dil.T.DisaAktarim.Kopyalandi : Dil.T.DisaAktarim.Kopyala)
+                </button>
+            </div>
+        </div>
+    }
+
+    <div class="kart">
+        <h2 class="kart-baslik">@Dil.T.DisaAktarim.Gecmis</h2>
+        @* UX-S29: sunucu sınırı ekranda yazar — sessiz kırpma yok. *@
+        <p id="da-gecmis-siniri" class="metin-soluk metin-kucuk">
+            @string.Format(Dil.T.Yonetim.GecmisSiniri, GecmisLimit)
+        </p>
+        @* PAKET P-06 (B-4 · B-54 · UX-S25): dışa aktarım TALEBİ bir kanıt
+           kaydıdır (KVKK md.11) — düzenlenmez, silinmez. Kullanıcı bugüne dek
+           bunu HİÇBİR yerde okumuyordu: ne düzenleme düğmesi ne gerekçe vardı.
+           Gerekçe sözlükten çözülür (çıplak metin yazılmaz). *@
+        <DegismezIpucu Varlik="DisaAktarimTalebi"
+                       Gerekce="@Dil.T.Duzeltme.DisaAktarimGerekce"
+                       AlternatifYol="@Dil.T.DisaAktarim.TalepDuzeltmeYolu" />
+        @if (gecmis.Count == 0)
+        {
+            <p class="metin-soluk">@Dil.T.DisaAktarim.GecmisBos</p>
+        }
+        else
+        {
+            @* PAKET GOC-C — ORTAK IZGARA (grid:veri-disa-aktarim:da-gecmis). Son GecmisLimit talep: sınıra değdiyse
+               sıralama KAPALI + GOC-A sınır notu (UX-S29). *@
+            <Izgara T="GecmisVeri" Ekran="veri-disa-aktarim" GridId="da-gecmis" Kolonlar="@GecmisKolonlari"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(gecmis, gecmisSira, GecmisKolonlari)"
+                    SatirId="@(g => $"da-gecmis-{g.Id}")" Baslik="@Dil.T.DisaAktarim.Gerekce"
+                    SiralamaDegisti="@(x => gecmisSira = x)" GecerliSiralama="@gecmisSira" />
+            @if (!GecmisTam)
+            {
+                <p class="metin-kucuk metin-soluk" id="da-gecmis-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, GecmisLimit)</p>
+            }
+        }
+    </div>
+</div>
+
+@code {
+
+    private const string OnayMetni = "TAM KİMLİK BİLGİSİ DIŞA AKTARILACAKTIR";
+    /// <summary>Sunucunun (DisaAktarimModulu) istediği asgari gerekçe uzunluğu.</summary>
+    private const int GerekceEnAz = 20;
+    /// <summary>Geçmiş sorgusunun sunucuya gönderilen sınırı — ekranda da yazar.</summary>
+    private const int GecmisLimit = 20;
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? gecmisSira;
+    private bool GecmisTam => gecmis.Count < GecmisLimit;
+    private IReadOnlyList<IzgaraKolonu<GecmisVeri>> GecmisKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.Ortak.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = GecmisTam ? "tarih" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = g => g.Olusturuldu, Hucre = g => @<text>@Bicim.TarihSaat(g.Olusturuldu)</text> },
+        new() { Anahtar = "kapsam", Baslik = Dil.T.DisaAktarim.Kapsam, SunucuSiralamaAdi = GecmisTam ? "kapsam" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = g => KapsamMetni(g.Kapsam) },
+        new() { Anahtar = "kisisel", Baslik = Dil.T.DisaAktarim.KisiselVeri, SunucuSiralamaAdi = GecmisTam ? "kisisel" : null,
+                Deger = g => g.Maskeli ? Dil.T.DisaAktarim.Maskeli : Dil.T.DisaAktarim.TamKimlik,
+                Hucre = g => @<Rozet Renk="@(g.Maskeli ? "yesil" : "kirmizi")">@(g.Maskeli ? Dil.T.DisaAktarim.Maskeli : Dil.T.DisaAktarim.TamKimlik)</Rozet> },
+        new() { Anahtar = "satir", Baslik = Dil.T.DisaAktarim.SatirSayisi, SunucuSiralamaAdi = GecmisTam ? "satir" : null,
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = g => g.SatirSayisi,
+                Hucre = g => @<text>@(g.SatirSayisi?.ToString() ?? "—")</text> },
+        new() { Anahtar = "gerekce", Baslik = Dil.T.DisaAktarim.Gerekce, HucreSinif = _ => "metin-kucuk metin-soluk", Deger = g => g.Gerekce },
+    ];
+
+    private List<KaynakVeri>? kaynaklar;
+    private readonly HashSet<string> secili = [];
+    private List<GecmisVeri> gecmis = [];
+
+    private string gerekce = "";
+    private bool tamKimlikIsteniyor;
+    private string onayGirisi = "";
+    private bool calisiyor;
+    private string? hata;
+    private string? sonParola;
+    private bool kopyalandi;
+    private string? basariMesaj;
+    private int basariJeton;
+
+    private string GerekceKisaMetni => Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).GerekceKisaBasit : Dil.T.Yonetim.GerekceKisa;
+    private bool GerekceKisa => gerekce.Trim().Length is > 0 and < GerekceEnAz;
+
+    private bool Gecerli =>
+        gerekce.Trim().Length >= GerekceEnAz && secili.Count > 0
+        && (!tamKimlikIsteniyor || onayGirisi.Trim() == OnayMetni);
+
+    /// <summary>Kilitli düğmenin YANINDA yazılacak eksik koşullar (UX-S30).</summary>
+    private IEnumerable<string> EksikKosullar
+    {
+        get
+        {
+            if (gerekce.Trim().Length < GerekceEnAz)
+                yield return string.Format(Dil.T.Yonetim.GerekceSayac, gerekce.Trim().Length, GerekceEnAz);
+            if (secili.Count == 0) yield return Dil.T.Yonetim.KapsamSecilmedi;
+            if (tamKimlikIsteniyor && onayGirisi.Trim() != OnayMetni)
+                yield return Dil.T.Yonetim.OnayMetniEksik;
+        }
+    }
+
+    private bool KisiselVeriSecili =>
+        kaynaklar is not null && kaynaklar.Any(k => k.KisiselVeri && secili.Contains(k.Ad));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        try
+        {
+            kaynaklar = await Api.GetAsync<List<KaynakVeri>>("/disa-aktarim/kaynaklar");
+            foreach (var k in kaynaklar) secili.Add(k.Ad);   // varsayılan: hepsi
+            gecmis = (await Api.GetAsync<GecmisYanit>($"/disa-aktarim/gecmis?limit={GecmisLimit}")).Kayitlar;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    private void KapsamDegistir(string ad, bool acik)
+    {
+        if (acik) secili.Add(ad); else secili.Remove(ad);
+        // Kişisel veri seçimi kalkarsa tam kimlik isteği de düşer.
+        if (!KisiselVeriSecili) { tamKimlikIsteniyor = false; onayGirisi = ""; }
+    }
+
+    private async Task Talep()
+    {
+        hata = null;
+        sonParola = null;
+        kopyalandi = false;
+        calisiyor = true;
+        try
+        {
+            var talep = await Api.PostAsync("/disa-aktarim", new
+            {
+                gerekce = gerekce.Trim(),
+                kapsam = secili.ToArray(),
+                tamKimlikOnayi = tamKimlikIsteniyor ? onayGirisi.Trim() : null,
+            });
+
+            var jeton = talep.GetProperty("jeton").GetString()!;
+            var parola = talep.GetProperty("parola").GetString()!;
+
+            // İndirme ayrı bir çağrı: bağlantı tek başına dosyayı açmaya yetmez.
+            var (veri, dosyaAdi) = await Api.PostBaytAsync(
+                $"/disa-aktarim/{jeton}/indir", new { parola });
+
+            await Js.InvokeVoidAsync("kuyumcuIndir",
+                dosyaAdi ?? "kuyumcu-disa-aktarim.zip",
+                Convert.ToBase64String(veri), "application/zip");
+
+            sonParola = parola;
+            tamKimlikIsteniyor = false;
+            onayGirisi = "";
+            // UX-S27: yazma işlemi başarı bandıyla biter; sunucunun döndürdüğü
+            // sonuç (satır sayısı) banda yazılır. İyimser yazma YOK — buraya
+            // ancak indirme çağrısı da 200 döndükten sonra gelinir.
+            gecmis = (await Api.GetAsync<GecmisYanit>($"/disa-aktarim/gecmis?limit={GecmisLimit}")).Kayitlar;
+            var sonSatir = gecmis.FirstOrDefault()?.SatirSayisi;
+            basariMesaj = sonSatir is null
+                ? Dil.T.Yonetim.Kaydedildi
+                : $"{Dil.T.Yonetim.Kaydedildi} — {sonSatir} {Dil.T.DisaAktarim.SatirSayisi}";
+            basariJeton++;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        calisiyor = false;
+    }
+
+    private async Task ParolayiKopyala()
+    {
+        if (sonParola is null) return;
+        kopyalandi = await Js.InvokeAsync<bool>("kuyumcuPanoyaKopyala", sonParola);
+    }
+
+    private string KaynakAdi(string ad) => ad switch
+    {
+        "cari" => Dil.T.Nav.Cariler,
+        "urun" => Dil.T.Nav.Urunler,
+        "satis" => Dil.T.Nav.Islemler,
+        "fatura" => Dil.T.Nav.Faturalar,
+        "kasa" => Dil.T.Nav.Kasalar,
+        "gider-pusulasi" => Dil.T.DisaAktarim.GiderPusulasi,
+        // PAKET Q10-5 (QA 10 YÜKSEK · K8): bu altı kapsam ham kod adıyla
+        // ("pos-cihazlari") basılıyordu. POS adları menüyle AYNI kaynaktan
+        // (Nav), diğerleri Q10-5 sözlüğünden (UX-S31: tek ad, tek kaynak).
+        "pos-cihazlari" => Dil.T.Nav.Pos,
+        "pos-tahsilatlari" => Dil.T.Nav.PosTahsilat,
+        "pos-eslesmeleri" => Q105Sozlugu.Al(Dil.Dil).KapsamPosEslesmeleri,
+        "satinalma" => Q105Sozlugu.Al(Dil.Dil).KapsamSatinalma,
+        "irsaliye" => Q105Sozlugu.Al(Dil.Dil).KapsamIrsaliye,
+        "muhasebe-fisi" => Q105Sozlugu.Al(Dil.Dil).KapsamMuhasebeFisi,
+        _ => ad,
+    };
+
+    /// <summary>Q10-5 — geçmiş satırındaki "cari,urun,…" kod listesi de adlarla okunur.</summary>
+    private string KapsamMetni(string? kapsam) =>
+        string.IsNullOrWhiteSpace(kapsam) ? "—"
+        : string.Join(", ", kapsam.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(KaynakAdi));
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

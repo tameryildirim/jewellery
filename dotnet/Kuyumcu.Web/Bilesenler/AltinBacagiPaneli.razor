@@ -1,0 +1,302 @@
+@using Kuyumcu.Core.Domain
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Web.Bilesenler.Form
+@inject DilServisi Dil
+@inject IServiceProvider Hizmetler
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET B-4 — KARMA ÖDEMEDE ALTIN BACAĞI PANELİ (KARAR-HAS-DEFTERI § 4.5)
+
+   • B4-31: alan sırası ayar → gram → has fiyatı → türetilen HAS (salt okunur)
+     → türetilen TL (salt okunur). TL'nin GİRİŞ ALANI YOKTUR.
+   • B4-32: satıcı kimliği bacak açılır açılmaz görünür; eksikse kayıt kilitli.
+   • B4-33: FARK (bacaklar − fiş) 0,00 değilse kayıt kilitli, sebep yazılır.
+   • B4-34: her girdi kayıttan önce değişir; has ve TL her değişiklikte
+     ANINDA yeniden türetilir (tek kaynak: Core.AltinBacagiHesap).
+   • B4-35: iki belge (satış fişi + gider pusulası) kayıttan ÖNCE söylenir.
+   • K-KUR-4: has fiyatı kur kaydından DOLDURULMAZ; güncel has fiyatı yalnız
+     etiketli bilgi olarak yazılır. Ön-dolgu yalnız yapılandırmada oran varsa.
+   • S-2 kuralı: bu bileşen İSTEK ATMAZ ve ApiIstemci enjekte etmez; durumu
+     Degisti ile sayfaya bildirir, POST sayfanın Kaydet()'indedir.
+   • Düğme YOKTUR (DoD EK 1: tıklanınca hiçbir şey olmayan düğme doğmaz).
+   id öneki: altin-  (mevcut hiçbir id değişmedi)
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<fieldset class="alan-kume" id="altin-bacagi">
+    <legend>@M.Baslik</legend>
+    @* SATIS-3 (KAYNAK 2 md.7) + t3 tasarım hakemi: teknik açıklamalar ekranda satır satır DURMAZ —
+       BASİT'te hiç görünmez (DOM'da hidden), PRO'da TEK katlı "Bilgi" ipucunda toplanır (id'ler aynı). *@
+    <details class="fis-bilgi" id="altin-bilgi" hidden="@Basit">
+        <summary class="metin-kucuk" id="altin-bilgi-ac">@S3.BilgiIpucu</summary>
+        <p class="metin-kucuk metin-soluk" id="altin-aciklama" hidden="@Basit">@M.Aciklama</p>
+        @if (HasFiyati is { } hfr)
+        {
+            <p class="metin-kucuk metin-soluk" id="altin-fiyat-referans" hidden="@Basit">@string.Format(M.FiyatReferans, Bicim.Para(hfr, "TRY"))</p>
+        }
+        <p class="metin-kucuk metin-soluk" hidden="@Basit">@M.TlYazilmaz</p>
+        <p class="metin-kucuk metin-soluk" id="altin-satici-not" hidden="@Basit">@Dil.T.Islem.SaticiKimligiNot</p>
+        <p class="metin-kucuk metin-soluk" id="altin-belgeler" hidden="@Basit">@(Giris.PusulaGerekir(Ayarlar) ? M.IkiBelge : M.TekBelgeMukellef)</p>
+    </details>
+
+    @if (Ayarlar is null)
+    {
+        <div class="bant bant-hata" id="altin-ayarlar-yok" role="alert">@M.AyarlarYok</div>
+    }
+
+    <div class="form-grid-3">
+        <div class="alan">
+            <Secici ElemanId="altin-ayar" Etiket="@Dil.T.Urun.Ayar" Zorunlu="true"
+                    Secenekler="@AyarSecenekleri" Deger="@Giris.AyarId"
+                    DegerChanged="@(v => { Giris.AyarId = v; return Bildir(); })"
+                    Hata="@Giris.AyarHata(M)"
+                    BosSecenekMetni="—" />
+        </div>
+        @* SATIS-3 (KAYNAK 2 md.8): has karşılığı BİR kez — aşağıdaki #altin-has kutusunda; gram altında tekrar yok. *@
+        <Gram ElemanId="altin-gram" Etiket="@Dil.T.Urun.GramAgirlik" Zorunlu="true"
+              Deger="@Giris.Gram" Hata="@Giris.GramHata(M)"
+              DegerChanged="@((decimal? v) => { Giris.Gram = v; return Bildir(); })" />
+        @* SATIS-3 (KAYNAK 2 md.1+2): kaynak rozeti etiket satırında, içerik boyunda (AlanKabugu
+           {id}-kaynak = #altin-fiyat-kaynak, id aynı); iç içe .alan sarmalayıcısı kalktı →
+           kutu Ayar/Gram ile AYNI hizada. *@
+        <Para ElemanId="altin-fiyat" Etiket="@Dil.T.Islem.HasGramFiyati" Zorunlu="true" Tur="Kuyumcu.Core.Domain.Girdi.TutarTuru.Pozitif"
+              Deger="@Giris.Fiyat" Hata="@(Giris.FiyatHata(M) ?? BantMetni)" KaynakRozeti="@(Giris.Fiyat is null ? null : Giris.FiyatKurdan ? Dil.T.Islem.KurdanGeldi : Giris.FiyatElle ? M.FiyatElle : M.FiyatOnerildi)"
+              DegerChanged="@((decimal? v) => { Giris.Fiyat = v; Giris.FiyatElle = true; Giris.FiyatKurdan = false; return Bildir(); })" />
+    </div>
+    @* SATIS-3 t3 (hakem ORTA "has fiyatı kurdan gelmiyor"): K-KUR-4 GEREĞİ alan kendiliğinden DOLMAZ (alış fiyatı
+       dükkânın ticari kararıdır); güncel has fiyatı tek dokunuşla KULLANICI tarafından yazılır, rozet "Kurdan geldi". *@
+    @* PAKET ISLEM-BANT: oran bandı aşımında SAHİP/MÜDÜR onayı (fiş gövdesinde bantOnay/bantGerekce). *@
+    <Kuyumcu.Web.Bilesenler.Fis.IslemBantOnay Onek="altin" Hata="@BantHatasi" Durum="Giris.Bant" Degisti="Bildir" />
+    @if (HasFiyati is { } hf && hf > 0m && Giris.Fiyat != hf)
+    {
+        <button type="button" class="btn btn-metin btn-kucuk fis-fiyat-kullan" id="altin-fiyat-kurdan"
+                @onclick="() => KurdanKullan(hf)">@string.Format(S3.FiyatKullan, Bicim.Para(hf, "TRY"))</button>
+    }
+
+    @* k2 (tasarım hakemi "eski altın 2 ekran"): BASİT'te türetilen has ve tutar iki büyük salt okunur kutu değil TEK satır
+       (tuval: "2,55 g · 22 ayar  15.650 ₺"); kutular DOM'da kalır (hidden — id/data-deger aynı), PRO'da görünür. *@
+    @if (Basit && HesapGorunur is { } ho)
+    {
+        <p class="altin-hesap-ozet" id="altin-hesap-ozet">
+            <span>@M.HasKarsiligi <strong class="sayi">@Bicim.Has(ho.HasGrami)</strong></span>
+            <span>@M.FiseSayilan <strong class="sayi">@Bicim.Para(ho.NetTl, "TRY")</strong></span>
+        </p>
+    }
+    <div class="form-grid-2" hidden="@Basit">
+        <SaltOkunur ElemanId="altin-has" Etiket="@M.HasKarsiligi" KaynakRozeti="@M.Hesaplandi"
+                    Deger="@(HesapGorunur is { } h1 ? Bicim.Has(h1.HasGrami) : null)"
+                    MakineDeger="@(HesapGorunur is { } h2 ? Bicim.Makine(h2.HasGrami) : null)" BosMetin="—" />
+        <SaltOkunur ElemanId="altin-tl" Etiket="@M.FiseSayilan" KaynakRozeti="@M.Hesaplandi"
+                    Deger="@(HesapGorunur is { } h3 ? Bicim.Para(h3.NetTl, "TRY") : null)"
+                    MakineDeger="@(HesapGorunur is { } h4 ? Bicim.Makine(h4.NetTl) : null)" BosMetin="—" />
+    </div>
+    @if (Hesap is { StopajTutar: > 0m } hk)
+    {
+        <p class="metin-kucuk metin-soluk" id="altin-brut">
+            @string.Format(M.BrutVeKesinti, Bicim.Para(hk.BrutTl, "TRY"), Bicim.Para(hk.StopajTutar, "TRY"))
+        </p>
+    }
+
+    @* ── SATICI KİMLİĞİ (VUK md.234) — bacak açılır açılmaz görünür (B4-32) ──
+       k2 (tasarım hakemi, 29.09 "eski altın 2 ekran, satıcı boş, iç içe çerçeve"): İÇ İÇE ÇERÇEVE YOK — düz bölüm (id aynı).
+       Seçili müşterinin ad/TCKN/adresi BOŞ alanlara dolar ("Müşteriden geldi", hurda alışındaki gibi). BASİT'te yalnız
+       EKSİK alan kutusu görünür; müşteriden dolanlar ve satıcı türü tek özet satırında, "Değiştir" ile hepsi açılır. *@
+    <div class="altin-satici-duz" id="altin-satici" role="group" aria-labelledby="altin-satici-baslik">
+        <p class="altin-satici-baslik" id="altin-satici-baslik">@Dil.T.Islem.SaticiKimligi</p>
+        @if (Basit && !saticiAcik)
+        {
+            <div class="altin-satici-ozet" id="altin-satici-ozet">
+                <span>@string.Format(S3.SaticiOzet, SaticiOzetMetni)</span>
+                @if (Giris.AdCariden || Giris.TcknCariden || Giris.AdresCariden)
+                {
+                    <span class="alan-kaynak" id="altin-satici-kaynak">@Dil.T.Islem.CaridenGeldi</span>
+                }
+                <button type="button" class="btn btn-metin btn-kucuk" id="altin-satici-degistir"
+                        @onclick="() => saticiAcik = true">@S3.SaticiDegistir</button>
+            </div>
+        }
+        @if (!Basit || saticiAcik)
+        {
+            <Secici ElemanId="altin-satici-tip" Etiket="@Dil.T.Islem.SaticiTipi" Zorunlu="true"
+                    Secenekler="@SaticiTipleri" Deger="@Giris.SaticiTipi"
+                    DegerChanged="@(v => { Giris.SaticiTipi = v ?? ""; return Bildir(); })" />
+        }
+        @if (Giris.SaticiTipi == AltinBacagiGirisi.Mukellef)
+        {
+            <Metin ElemanId="altin-satici-fatura" Etiket="@Dil.T.Islem.TedarikciFaturaNo" Zorunlu="true"
+                   Deger="@Giris.TedarikciFaturaNo" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.TedarikciFaturaNo"
+                   Hata="@Giris.FaturaHata(Ayarlar, Dil.T.Islem)" HataKimligi="altin-satici-fatura-hata"
+                   DegerChanged="@((string? v) => { Giris.TedarikciFaturaNo = v; return Bildir(); })" />
+        }
+        else
+        {
+            @if (Goster(Giris.AdCariden) || Goster(Giris.TcknCariden))
+            {
+            <div class="form-grid-2">
+                @if (Goster(Giris.AdCariden))
+                {
+                <AdSoyad ElemanId="altin-satici-ad" Etiket="@Dil.T.Islem.SaticiAdSoyad" Zorunlu="true"
+                       Deger="@Giris.AdSoyad" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.SaticiAd"
+                       KaynakRozeti="@(Giris.AdCariden ? Dil.T.Islem.CaridenGeldi : null)"
+                       Hata="@Giris.AdHata(Ayarlar, Dil.T.Islem)" HataKimligi="altin-satici-ad-hata"
+                       DegerChanged="@((string? v) => { Giris.AdSoyad = v; Giris.AdCariden = false; return Bildir(); })" />
+                }
+                @if (Goster(Giris.TcknCariden))
+                {
+                <TcKimlikNo ElemanId="altin-satici-tckn" Etiket="@Dil.T.Islem.SaticiTckn" Zorunlu="true"
+                       Deger="@Giris.Tckn"
+                       KaynakRozeti="@(Giris.TcknCariden ? Dil.T.Islem.CaridenGeldi : null)"
+                       Hata="@Giris.TcknHata(Ayarlar, Dil.T.Islem)" HataKimligi="altin-satici-tckn-hata"
+                       DegerChanged="@((string? v) => { Giris.Tckn = v; Giris.TcknCariden = false; return Bildir(); })" />
+                }
+            </div>
+            }
+            @* SATIS-3 (KAYNAK 2 md.4): etiket TEK doğru — zorunluluğu sunucu yapılandırması söyler
+               (VUK md.234 "adlariyle soyadlarını … ve adreslerini"); "(isteğe bağlı)" yalnız zorunlu DEĞİLSE (AlanKabugu). *@
+            @if (Goster(Giris.AdresCariden))
+            {
+            <Metin ElemanId="altin-satici-adres" Etiket="@Satis3Sozlugu.Al(Dil.Dil).SaticiAdres"
+                   Zorunlu="@(Ayarlar?.SaticiAdresiZorunlu ?? true)"
+                   Deger="@Giris.Adres" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.SaticiAdres"
+                   KaynakRozeti="@(Giris.AdresCariden ? Dil.T.Islem.CaridenGeldi : null)"
+                   Hata="@Giris.AdresHata(Ayarlar, M)" HataKimligi="altin-satici-adres-hata"
+                   DegerChanged="@((string? v) => { Giris.Adres = v; Giris.AdresCariden = false; return Bildir(); })" />
+            }
+        }
+    </div>
+
+    @* ── FARK + İKİ BELGE + KİLİT SEBEBİ ── *@
+    @* t3 hakemi: fark ödeme bölümünün "Kalan" satırında TEK kez yazılır; burada ekran okuyucuda kalır. *@
+    <p class="hucre-vurgu sayi gorsel-gizli" id="altin-fark" data-deger="@Bicim.Makine(Fark)">
+        @M.Fark: @Bicim.Para(Fark, "TRY")
+    </p>
+    @if (Eksikler.Count > 0)
+    {
+        @* t10 (hakem KRİTİK "fark üç yerde"): fark eksiği ödeme bölümünün TEK fark satırında yazılır — burada ekran okuyucuya kalır. *@
+        @* k2 (tasarım hakemi, 29.09): "Kaydetmek için" listesi GÖRSEL olarak kalktı — eksik alan kendi kutusunun altında
+           yazar (Hata, role=alert); kilidin ilk sebebi Kaydet'in yanında (#islem-kaydet-kilit). Liste DOM'da hidden kalır
+           (sayfanın kilit sebebi ve testler aynı kaynağı okur); görsel-gizli değil — ölçümde görünmez katman üst üste binmesin. *@
+        <div class="bant bant-uyari" id="altin-eksikler" role="status" hidden>
+            <strong>@M.EksikBaslik</strong>
+            <ul>
+                @foreach (var e in Eksikler)
+                {
+                    <li class="@(e == M.FarkSifirOlmali ? "gorsel-gizli" : null)">@e</li>
+                }
+            </ul>
+        </div>
+    }
+</fieldset>
+
+@code {
+    /// <summary>PAKET SATIS-3 — BASİT yüz: teknik açıklama satırları gizli (DOM'da kalır, PRO'da görünür).</summary>
+    [Parameter] public bool Basit { get; set; }
+
+    /// <summary>GET /islemler/altin-bacagi/ayarlar yanıtı; null = yüklenemedi (kayıt kilitli).</summary>
+    [Parameter] public AltinBacagiAyarlari? Ayarlar { get; set; }
+
+    /// <summary>Kur kaydındaki has fiyatı — YALNIZ bilgi ve (oran varsa) ön-dolgu kaynağı.</summary>
+    [Parameter] public decimal? HasFiyati { get; set; }
+
+    /// <summary>Fiş kalemlerinin TL toplamı (sayfa hesaplar).</summary>
+    [Parameter] public decimal FisToplamTl { get; set; }
+
+    /// <summary>Altın DIŞINDAKİ ödeme bacaklarının TL toplamı (sayfa hesaplar).</summary>
+    [Parameter] public decimal DigerBacaklarTl { get; set; }
+
+    /// <summary>k2: seçili gerçek müşteri (Peşin değil) — satıcı kimliği boş alanlarına dolar. null = müşteri yok.</summary>
+    [Parameter] public Kuyumcu.Contracts.Sayfalar.Islemler.CariVeri? Musteri { get; set; }
+
+    /// <summary>k2: BASİT'te "Değiştir" ile satıcı alanlarının hepsi açıldı mı.</summary>
+    private bool saticiAcik;
+
+    /// <summary>k2: BASİT'te alan kutusu yalnız EKSİKSE (müşteriden dolmadıysa) ya da "Değiştir" açıksa; PRO'da hep.</summary>
+    private bool Goster(bool caridenDoldu) => !Basit || saticiAcik || !caridenDoldu;
+
+    /// <summary>k2: BASİT özet satırı — satıcı türü + müşteriden gelen ad (TCKN ekrana basılmaz).</summary>
+    private string SaticiOzetMetni =>
+        string.Join(" · ", new[] { SaticiTipleri.FirstOrDefault(x => x.Deger == Giris.SaticiTipi)?.Ad, Giris.AdCariden ? Giris.AdSoyad : null }
+            .Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    /// <summary>Girdiler — sahibi çağıran sayfa olabilir; verilmezse bileşen kendi tutar.</summary>
+    [Parameter] public AltinBacagiGirisi Giris { get; set; } = new();
+
+    /// <summary>Her değişiklikten sonra durum (kilit, eksikler, fark, bacak gövdesi).</summary>
+    [Parameter] public EventCallback<AltinBacagiDurumu> Degisti { get; set; }
+
+    private AltinBacagiMetinleri M => AltinBacagiSozlugu.Al(Dil.Dil);
+    private Satis3Metinleri S3 => Satis3Sozlugu.Al(Dil.Dil);
+
+    // t3→t6: "Güncel fiyatı kullan" bayrağı artık Giris.FiyatKurdan'da (bileşen yeniden kurulunca kaybolmaz).
+
+    private Task KurdanKullan(decimal hf)
+    {
+        Giris.Fiyat = hf;
+        Giris.FiyatElle = true;   // K-KUR-4 ön-dolgusu bundan sonra ezmez (kullanıcının seçimi)
+        Giris.FiyatKurdan = true;
+        return Bildir();
+    }
+
+    private AltinBacagiDegeri? Hesap => Giris.Deger(Ayarlar);
+    /// <summary>ISLEM-BANT-2: ekrandaki has/TL satırı — mutlak sınır dışı fiyatta çizilmez (kilit Eksikler'de; hesap/fark AYNEN).</summary>
+    private AltinBacagiDegeri? HesapGorunur => Kuyumcu.Web.Bilesenler.Fis.IslemBantGosterim.TutarGosterilirAyar(Giris.Fiyat, Giris.AyarId) ? Hesap : null;
+    /// <summary>PAKET ISLEM-BANT — eski altın has fiyatı bandı (sunucuyla aynı Core kuralı; referans = kur kaydındaki has).</summary>
+    private Kuyumcu.Core.Domain.Girdi.GirdiHatasi? BantHatasi => Kuyumcu.Core.Domain.Girdi.FiyatBandi.IslemDenetle(
+        Giris.Fiyat, Kuyumcu.Core.Domain.Girdi.IslemFiyatBaglami.EskiAltinOdeme, HasFiyati, Kuyumcu.Core.Domain.Ayarlar.MadenBul(Giris.AyarId));
+    private string? BantMetni => BantHatasi is { } h ? GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+
+    private decimal Fark => DigerBacaklarTl + (Hesap?.NetTl ?? 0m) - FisToplamTl;
+
+    /// <summary>ISLEM-BANT-2: bant kilidi (mutlak dışı · yetkisiz · onaysız · kısa gerekçe) İLK eksik — takas/hurda ile aynı kural.</summary>
+    private List<string> Eksikler =>
+        Kuyumcu.Web.Bilesenler.Fis.IslemBantGosterim.KaydetKilidi(BantHatasi, Giris.Bant, Kuyumcu.Web.Bilesenler.Fis.IslemBantGosterim.Rol(Hizmetler), Dil.Dil) is { } bk
+            ? [bk, .. Giris.Eksikler(Ayarlar, Dil.T.Islem, M, Fark)]
+            : Giris.Eksikler(Ayarlar, Dil.T.Islem, M, Fark);
+
+    /// <summary>TEK KAYNAK: Core.Ayarlar.EkranSecenekleri (hurda alışıyla aynı liste).</summary>
+    private static readonly IReadOnlyList<SecenekOgesi> AyarSecenekleri =
+        Kuyumcu.Core.Domain.Ayarlar.EkranSecenekleri
+            .Select(id => new SecenekOgesi(id, KurKaynakAdi.AyarAdi(id))).ToList();
+
+    private IReadOnlyList<SecenekOgesi> SaticiTipleri =>
+    [
+        new(AltinBacagiGirisi.NihaiTuketici, Basit ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).SaticiTipiVatandas : Dil.T.Islem.SaticiTipiNihai),   // t10: BASİT'te vergi terimi yok
+        new(AltinBacagiGirisi.EsnafMuaf, Basit ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).SaticiTipiEsnafSade : Dil.T.Islem.SaticiTipiEsnaf),   // t10: BASİT'te vergi terimi yok
+        new(AltinBacagiGirisi.Mukellef, Basit ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).SaticiTipiMukellefSade : Dil.T.Islem.SaticiTipiMukellef),   // t10: BASİT'te vergi terimi yok
+    ];
+
+    private decimal? sonHasFiyati;
+    private AltinBacagiAyarlari? sonAyarlar;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // K-KUR-4: ön-dolgu yalnız kur ya da ayar DEĞİŞİNCE ve kullanıcı yazmadıysa.
+        if (HasFiyati != sonHasFiyati || !ReferenceEquals(Ayarlar, sonAyarlar))
+        {
+            sonHasFiyati = HasFiyati;
+            sonAyarlar = Ayarlar;
+            Giris.OnDoldur(HasFiyati, Ayarlar);
+        }
+        // ⚠ Sonsuz döngü koruması: Degisti sayfayı yeniden çizer, sayfa bu
+        // bileşene parametreleri yeniden verir. Durum DEĞİŞMEDİYSE bildirilmez.
+        // k2: seçili müşteri değişince satıcı kimliğinin BOŞ alanları ondan dolar (gövdeye girer → her zaman bildirilir).
+        if (Giris.MusteridenDoldur(Musteri?.Id, Musteri?.Ad, Musteri?.VergiNo, Musteri?.KimlikTuru, Musteri?.Adres)) { await Bildir(); return; }
+        if (Imza() != sonImza) await Bildir();
+    }
+
+    private string? sonImza;
+
+    /// <summary>Bildirilen durumun özeti — yalnız DEĞİŞİNCE yeniden bildirilir.</summary>
+    private string Imza() =>
+        $"{Bicim.Makine(Fark)}|{(Hesap is { } h ? Bicim.Makine(h.NetTl) : "-")}|{string.Join(';', Eksikler)}";
+
+    /// <summary>Kullanıcı girdisinden sonra HER ZAMAN bildirilir (satıcı adı gibi alanlar bacak gövdesine girer).</summary>
+    private Task Bildir()
+    {
+        var hesap = Hesap;
+        var eksikler = Eksikler;
+        sonImza = Imza();
+        return Degisti.InvokeAsync(new AltinBacagiDurumu(
+            eksikler.Count == 0, eksikler, Fark, hesap,
+            eksikler.Count == 0 ? Giris.Bacak(hesap) : null));
+    }
+}

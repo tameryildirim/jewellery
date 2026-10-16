@@ -1,0 +1,173 @@
+using Kuyumcu.Api.Data;
+
+namespace Kuyumcu.Api.Modules.Fiyat;
+
+/// <summary>Bir ürün için hesaplanmış fiyat teklifi — kırılımıyla.</summary>
+/// <param name="ListeFiyati">İndirim ÖNCESİ birim fiyat (liste).</param>
+/// <param name="HasDegeri">has_grami × has kuru (marjsız).</param>
+/// <param name="MarjTl">Has değerine eklenen liste marjı.</param>
+/// <param name="IscilikTl">Listede uygulanan işçilik (çarpan sonrası).</param>
+/// <param name="IndirimTutari">Birim indirim (≥ 0); kampanya yoksa 0.</param>
+/// <param name="SatisFiyati">İndirim SONRASI birim fiyat = Liste − İndirim.</param>
+/// <param name="KampanyaId">Uygulanan kampanya; yoksa null.</param>
+/// <param name="SabitFiyat">Sabit satış fiyatı kullanıldı (marj/işçilik uygulanmadı) — ürün kartından ya da geçersiz kılmadan.</param>
+/// <param name="Kaynak">Fiyatın NEREDEN geldiği: <see cref="FiyatKaynagi"/> (LISTE · URUN_GECERSIZ_KILMA · URUN_SABIT_FIYAT).</param>
+public sealed record FiyatTeklifi(
+    decimal ListeFiyati, decimal HasDegeri, decimal MarjTl, decimal IscilikTl,
+    decimal IndirimTutari, decimal SatisFiyati, string? KampanyaId, bool SabitFiyat,
+    string Kaynak = FiyatKaynagi.Liste);
+
+/// <summary>
+/// Fiyatın kaynağı — ekranda rozet, denetimde cevap ("bu fiyat nereden geldi?").
+/// Uçlarda dizge olarak döner; POS bu alanı GÖRMEZDEN GELEBİLİR (geriye dönük uyum).
+/// </summary>
+public static class FiyatKaynagi
+{
+    /// <summary>Listenin marjı/işçilik çarpanı uygulandı.</summary>
+    public const string Liste = "LISTE";
+    /// <summary>Bu liste × ürün kesişimine tanımlı geçersiz kılma uygulandı.</summary>
+    public const string UrunGecersizKilma = "URUN_GECERSIZ_KILMA";
+    /// <summary>Ürün kartındaki sabit satış fiyatı kullanıldı.</summary>
+    public const string UrunSabitFiyat = "URUN_SABIT_FIYAT";
+}
+
+/// <summary>
+/// FİYAT MOTORU — saf hesap; veritabanı, saat, ağ yok (PanoFiyatServisi ile aynı
+/// ilke). Girdi: ürün + has kuru + liste + (varsa) o an geçerli kampanya.
+///
+/// Kurallar:
+///  1. Ürünün SABİT satış fiyatı varsa liste fiyatı odur; marj ve işçilik çarpanı
+///     UYGULANMAZ (kuyumcu fiyatı elle koymuştur). Kampanya yine uygulanır; ancak
+///     ISCILIK_YUZDE sabit fiyatta işçilik bileşeni bilinmediği için 0 indirim verir
+///     — sessizce "tutar yüzdesi" sayılmaz.
+///  2. ALTIN DIŞI maden (gümüş · platin · paladyum · çelik) ALTIN has kuruyla
+///     fiyatlanmaz (12 g gümüş kolyeyi 76.972 TL, 5 g platin alyansı fahiş
+///     rakam yapan hata — paket 20). Sabit fiyatı yoksa teklif YOK → null
+///     (fail-closed; elle girilir). Maden kotasyonları Faz B'de gelir.
+///     ⚠ Q3 mührü (2026-09-16, paket 49): "sabit fiyat" buraya liste × ürün
+///     GEÇERSİZ KILMASINDAN da gelebilir — sabit fiyat has kuruna bağlı değildir,
+///     bu yüzden gümüş ürün de fiyatlanır. Yalnız marj/işçilik taşıyan geçersiz
+///     kılma gümüşte fail-closed null kalır (has dalına girmek zorunda olurdu).
+///  3. Has kuru ≤ 0 ise teklif yok (kur çekilememiş).
+///  4. İndirim liste fiyatını aşamaz; negatif satış fiyatı yoktur.
+///  5. Yuvarlama 2 hane, AwayFromZero — ekran ve sunucu aynı kuralı paylaşır.
+/// </summary>
+public static class FiyatMotoru
+{
+    /// <param name="gecersizKilma">
+    /// Bu liste × ürün kesişimine tanımlı geçersiz kılma (paket 49). Çağıran DB'den
+    /// okur; motor SAF kalır. Pasif kayıt YOK sayılır — "pasife al" fiyatı listeye
+    /// döndürmenin tek yoludur.
+    /// </param>
+    public static FiyatTeklifi? Hesapla(
+        Data.Urun urun, decimal hasKuru, FiyatListesi liste, Kampanya? kampanya,
+        FiyatListesiUrunFiyati? gecersizKilma = null)
+    {
+        decimal listeFiyati, hasDegeri, marjTl, iscilikTl;
+        bool sabit;
+        string kaynak;
+
+        // Pasif ya da boş geçersiz kılma hiç yokmuş gibidir (fail-open değil:
+        // "yok" hâli listenin kuralıdır, uydurma bir fiyat değil).
+        var gk = gecersizKilma is { Aktif: true, Doldurulmus: true } ? gecersizKilma : null;
+
+        if (gk?.SabitFiyat is > 0m)
+        {
+            // Kural 1a — liste × ürün kesişimindeki sabit fiyat, ürün kartındaki
+            // GENEL sabit fiyattan daha özeldir ve onu EZER (paket 49).
+            sabit = true; kaynak = FiyatKaynagi.UrunGecersizKilma;
+            listeFiyati = Yuvarla(gk.SabitFiyat.Value);
+            hasDegeri = 0m; marjTl = 0m; iscilikTl = 0m;
+        }
+        else if (urun.SatisFiyati is > 0m)
+        {
+            sabit = true; kaynak = FiyatKaynagi.UrunSabitFiyat;
+            listeFiyati = Yuvarla(urun.SatisFiyati.Value);
+            hasDegeri = 0m; marjTl = 0m; iscilikTl = 0m;
+        }
+        else
+        {
+            // Kural 2 (paket 20) — MADEN BAZLI FAIL-CLOSED.
+            // ⚠ Eskiden burada `urun.AyarId.StartsWith('G')` yazıyordu: yalnız
+            // GÜMÜŞ eleniyordu. PT950 platin alyans ve PD999 paladyum yüzük bu
+            // kontrolden GEÇİYOR ve ALTIN has kuruyla çarpılıyordu — 5 g platin
+            // alyans altın kuruyla fiyatlanıp fahiş bir rakam üretiyordu.
+            // Artık ürünün MADENİ sorulur: ALTIN dışı madenin kotasyonu sistemde
+            // YOKTUR (Faz B'de gelecek), o yüzden has dalına hiç girilmez ve
+            // teklif ÜRETİLMEZ. Sabit fiyat yolu yukarıda açıktır — altın dışı
+            // ürün elle girilen fiyatla satılır (K20-4: başka madenin kuru
+            // ASLA ikame edilmez).
+            var maden = Kuyumcu.Core.Domain.Ayarlar.MadenBul(urun.AyarId)
+                        ?? Kuyumcu.Core.Domain.Maden.Altin;
+            if (maden != Kuyumcu.Core.Domain.Maden.Altin) return null;
+            if (hasKuru <= 0m) return null;                         // kur yok — kural 3
+
+            sabit = false;
+            // Geçersiz kılmanın yüzdesi listeninkinin YERİNE geçer — TOPLANMAZ.
+            // Boş bırakılan alan listeden gelir (kısmi geçersiz kılma).
+            var marjYuzde = gk?.HasMarjYuzde ?? liste.HasMarjYuzde;
+            var carpanYuzde = gk?.IscilikCarpanYuzde ?? liste.IscilikCarpanYuzde;
+            kaynak = gk is null ? FiyatKaynagi.Liste : FiyatKaynagi.UrunGecersizKilma;
+            hasDegeri = Yuvarla(urun.HasGrami * hasKuru);
+            marjTl = Yuvarla(hasDegeri * marjYuzde / 100m);
+            iscilikTl = Yuvarla((urun.IscilikTl ?? 0m) * carpanYuzde / 100m);
+            listeFiyati = Yuvarla(hasDegeri + marjTl + iscilikTl);
+        }
+
+        var indirim = kampanya is null ? 0m : Indirim(kampanya, listeFiyati, iscilikTl, sabit);
+        indirim = Math.Min(Math.Max(indirim, 0m), listeFiyati);   // kural 4
+
+        return new FiyatTeklifi(
+            listeFiyati, hasDegeri, marjTl, iscilikTl,
+            indirim, Yuvarla(listeFiyati - indirim),
+            indirim > 0m ? kampanya!.Id : null, sabit, kaynak);
+    }
+
+    /// <summary>Kampanyanın BİRİM indirimi.</summary>
+    private static decimal Indirim(Kampanya k, decimal listeFiyati, decimal iscilikTl, bool sabitFiyat) => k.IndirimTuru switch
+    {
+        // Sabit fiyatlı üründe işçilik bileşeni yok → işçilik indirimi tanımsız → 0.
+        "ISCILIK_YUZDE" => sabitFiyat ? 0m : Yuvarla(iscilikTl * k.Deger / 100m),
+        "TUTAR_YUZDE"   => Yuvarla(listeFiyati * k.Deger / 100m),
+        "TUTAR_TL"      => Yuvarla(k.Deger),
+        _ => throw new InvalidOperationException($"Bilinmeyen indirim türü: {k.IndirimTuru}"),
+    };
+
+    /// <summary>
+    /// Kampanya bu ürüne bu gün uygulanır mı? Kategori hedefi ALT kategorileri de
+    /// kapsar; <paramref name="urunKategoriZinciri"/> ürünün kategorisinden köke
+    /// kadar olan kimliklerdir (çağıran DB'den kurar).
+    /// </summary>
+    public static bool Uygulanir(Kampanya k, DateOnly bugun, Data.Urun urun, IReadOnlySet<string> urunKategoriZinciri)
+    {
+        if (!k.Aktif || bugun < k.Baslangic || bugun > k.Bitis) return false;
+        return k.HedefTur switch
+        {
+            "TUMU"     => true,
+            "URUN"     => k.HedefId == urun.Id,
+            "KATEGORI" => k.HedefId is not null && urunKategoriZinciri.Contains(k.HedefId),
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// Birden fazla kampanya uygulanıyorsa müşteri lehine EN YÜKSEK indirim seçilir;
+    /// kampanyalar toplanmaz (toplansaydı %60+%60 = bedava olurdu).
+    /// </summary>
+    public static Kampanya? EnIyi(
+        IEnumerable<Kampanya> uygunlar, Data.Urun urun, decimal hasKuru, FiyatListesi liste,
+        FiyatListesiUrunFiyati? gecersizKilma = null)
+    {
+        Kampanya? enIyi = null; var enIyiIndirim = 0m;
+        foreach (var k in uygunlar)
+        {
+            // Geçersiz kılma İNDİRİMİ de etkiler (sabit fiyatta ISCILIK_YUZDE = 0);
+            // "en iyi kampanya" seçimi bu yüzden aynı girdiyle yapılır.
+            var t = Hesapla(urun, hasKuru, liste, k, gecersizKilma);
+            if (t is not null && t.IndirimTutari > enIyiIndirim) { enIyi = k; enIyiIndirim = t.IndirimTutari; }
+        }
+        return enIyi;
+    }
+
+    public static decimal Yuvarla(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
+}

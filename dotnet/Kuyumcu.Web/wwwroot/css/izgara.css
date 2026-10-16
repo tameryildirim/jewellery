@@ -1,0 +1,147 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET GRID-1 — ORTAK IZGARA (Bilesenler/Grid/Izgara.razor) · TEK KART KALIBI
+
+   Envanter § G (08.10): kart kuralları en az 8 ayrı CSS dosyasına dağılmıştı
+   (q10, zo-belge, zo-islem, toplu3, toplu6, ortak, tuval-panel-musteri,
+   tuval-satis). Ortak ızgaraya geçen her liste dar ekranda BU dosyadaki tek
+   kalıpla karta döner: her hücre data-etiket taşır. Göç paketleri sayfaya
+   özgü kart kuralını silip bu kalıba bırakır (Cariler bıraktı — tur 3).
+
+   ⚠ Kalıp seçicileri ızgaranın kendi kabına (.izgara-kap > .tablo-sar >
+     .izgara-tablo) bağlıdır: yalnız ortak ızgaraya geçmiş tabloyu etkiler.
+   ⚠ Sabit renk YOK; yalnız belirteç (belirtecler.css). Satır içi stil yok.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Araç satırı: SABİT yükseklik, tek satır (tur 3 · doğrulayıcı ORTA) ──
+   Kayıt onayı ve gizli sütun sayısı burada, küçük tek satır metin → düzen
+   değişikliğinde tablo aşağı itilmez. Panel bu satıra bağlı açılır kutudur. */
+.izgara { position: relative; }
+.izgara-arac {
+  position: relative;
+  display: flex; align-items: center; justify-content: flex-end; flex-wrap: nowrap;
+  gap: var(--bosluk-2); min-height: 2.5rem; padding: var(--bosluk-1) var(--bosluk-3);
+}
+.izgara-gizli-sayi { margin-inline-end: auto; white-space: nowrap; }
+.izgara-onay {
+  display: inline-flex; align-items: center; gap: var(--bosluk-1);
+  min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  color: var(--basari, var(--metin-soluk));
+}
+.izgara-onay:empty { display: none; }
+.izgara-onay-isaret { font-weight: 700; }
+.izgara-not { margin: 0; padding: 0 var(--bosluk-3) var(--bosluk-2); }
+
+/* ── Sütun paneli: açılır kutu (tabloyu itmez), kompakt satırlar ── */
+.izgara-panel {
+  position: absolute; z-index: 30; inset-block-start: 100%; inset-inline-end: var(--bosluk-3);
+  width: min(22rem, calc(100% - 2 * var(--bosluk-3)));
+  padding: var(--bosluk-2) var(--bosluk-3) var(--bosluk-3);
+  border: 1px solid var(--ayrac); border-radius: var(--yaricap);
+  background: var(--yuzey); box-shadow: var(--golge-sm);
+}
+.izgara-panel-baslik { margin: 0 0 var(--bosluk-2); font-size: var(--yazi-sm); font-weight: 600; }
+.izgara-panel-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.izgara-panel-oge {
+  display: flex; align-items: center; gap: var(--bosluk-2);
+  padding: var(--bosluk-1) 0; border-bottom: 1px solid var(--ayrac);
+}
+.izgara-panel-oge:last-child { border-bottom: 0; }
+.izgara-panel-oge[data-sira-anahtar] { cursor: grab; touch-action: none; }
+.izgara-panel-ad { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: var(--yazi-sm); }
+.izgara-panel-oge--gizli .izgara-panel-ad { color: var(--metin-soluk); text-decoration: line-through; }
+.izgara-panel-eylem { display: inline-flex; align-items: center; flex-wrap: nowrap; gap: var(--bosluk-1); }
+.izgara-tasi { min-width: 2.25rem; justify-content: center; }
+.izgara-kilit { display: inline-flex; align-items: center; color: var(--metin-soluk); }
+.izgara-yon-dikey { display: none; }
+.izgara-panel-alt { display: flex; align-items: center; flex-wrap: wrap; gap: var(--bosluk-2); margin-block-start: var(--bosluk-2); }
+.sira-suruklemede .izgara-panel-oge,
+.sira-suruklemede > th[data-sira-anahtar] { cursor: grabbing; }
+
+/* ── Başlık: sıralama düğmesi (başlığın kendisi gibi görünür) + yön oku (CSS) ── */
+.izgara-tablo > thead > tr > th[data-sira-anahtar] { cursor: grab; }
+.izgara-sirala {
+  display: inline-flex; align-items: center; gap: var(--bosluk-1);
+  padding: 0; border: 0; background: none; color: inherit;
+  font: inherit; text-align: inherit; text-transform: inherit; letter-spacing: inherit;
+  cursor: pointer;
+}
+.izgara-sirala:focus-visible { outline: 2px solid var(--vurgu); outline-offset: 2px; border-radius: var(--yaricap-sm); }
+.izgara-sirala-ok::after { content: "↕"; color: var(--metin-soluk); }
+th[aria-sort="ascending"] .izgara-sirala-ok::after { content: "↑"; color: inherit; }
+th[aria-sort="descending"] .izgara-sirala-ok::after { content: "↓"; color: inherit; }
+
+/* ── Sayısal sütun (tur 3 · doğrulayıcı YÜKSEK): başlık ve değer AYNI hizada (sağa).
+   Sıralama düğmesinde ok BAŞLIĞIN SOLUNDA → başlık metni değerlerin sağ kenarıyla hizalı. ── */
+.izgara-tablo > thead > tr > th.izgara-sayi,
+.izgara-tablo > tbody > tr > td.izgara-sayi { text-align: right; }
+.izgara-tablo > thead > tr > th.izgara-sayi > .izgara-sirala { flex-direction: row-reverse; }
+.izgara-tablo > tbody > tr > td.izgara-sayi { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── Tutar hücresi: SABİT düzen (tur 3 · doğrulayıcı YÜKSEK) — tutar hep üstte sağa yaslı
+   (tabular rakam), rozet hep ALTTA. Sütun genişliği değişse de yerleşim değişmez.
+   ⚠ Özgüllük bilinçli yüksek: olcek.css (10g) ".tablo-sik--kimlik … td .cari-bakiye"
+     (0,5,4) genişliğe göre rozeti yana/alta kaydırıyordu (tutarın sağ kenarı satırdan satıra kayıyordu). */
+.izgara-tablo > tbody > tr > td.izgara-sayi .izgara-tutar.izgara-tutar.izgara-tutar.izgara-tutar {
+  display: inline-flex; flex-direction: column; align-items: flex-end; justify-content: flex-start;
+  flex-wrap: nowrap; gap: 2px; row-gap: 2px; vertical-align: middle;
+}
+.izgara-tutar-deger { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── Başlık satırı zemini TEK belirteçten (tur 3 · doğrulayıcı ORTA): thead, yapışkan ilk başlık
+   ve yapışkan eylem başlığı (olcek.css 13b, ≤ 1439 px) AYNI --izgara-baslik-zemin'i boyar.
+   BASİT tuvali bu değişkeni kendi başlık rengine bağlar (tuval-panel-musteri.css). Önce eylem
+   başlığı --yuzey-2, başlığın kalanı --yuzey-govde çiziliyordu (BASİT koyu 1280'de iki ton). ── */
+.izgara-tablo { --izgara-baslik-zemin: var(--yuzey-2); }
+.izgara-kap > .tablo-sar > .izgara-tablo > thead { background: var(--izgara-baslik-zemin); }
+.kart-liste--yapiskan.izgara-kap > .tablo-sar > .izgara-tablo > thead > tr > th:first-child { background: var(--izgara-baslik-zemin); }
+html[data-mod] .ana-icerik .izgara-kap .izgara-tablo.veri-tablosu:has(> tbody > tr > td:last-child > .satir-eylem) > thead > tr > th:last-child {
+  box-shadow: inset 0 0 0 100vmax var(--izgara-baslik-zemin), -1px 0 0 0 var(--ayrac);
+}
+
+/* ── Tablo kartın kenarına yapışmaz (tur 3 · doğrulayıcı ORTA): ilk/son hücrede en az 16 px iç boşluk ── */
+@media (min-width: 561px) {
+  .izgara-kap > .tablo-sar > .izgara-tablo > * > tr > :first-child { padding-inline-start: max(var(--bosluk-4), 1rem); }
+  .izgara-kap > .tablo-sar > .izgara-tablo > * > tr > :last-child { padding-inline-end: max(var(--bosluk-4), 1rem); }
+}
+
+/* ── TEK KART KALIBI (dar ekran) — tur 3 (doğrulayıcı YÜKSEK, 375 px) ──
+   Birincil hücre (ad) kartın tepesinde; birincil OLMAYAN her hücre TAM GENİŞLİKTE kendi
+   satırında: etiket SOLDA, değer SAĞDA. İki değer yan yana gelmez (telefon ile tutar
+   bitişik okunmaz), etiket kendi değeriyle aynı satırdadır. Eylemler en altta. */
+@media (max-width: 560px) {
+  .izgara-panel { inset-inline-end: var(--bosluk-2); width: calc(100% - 2 * var(--bosluk-2)); }
+  .izgara-yon-yatay { display: none; }
+  .izgara-yon-dikey { display: inline; }
+
+  .izgara-kap > .tablo-sar > .izgara-tablo { display: block; min-width: 0; max-width: 100%; }
+  .izgara-kap > .tablo-sar > .izgara-tablo > thead { display: none; }
+  .izgara-kap > .tablo-sar > .izgara-tablo > tbody { display: block; width: 100%; }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--bosluk-2);
+    height: auto; padding: var(--bosluk-3) var(--bosluk-4); border-bottom: 1px solid var(--ayrac);
+  }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr:last-child { border-bottom: 0; }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr > td {
+    display: block; grid-column: 1 / -1; height: auto; min-height: 0; padding: 0; border: 0;
+    min-width: 0; overflow-wrap: anywhere; white-space: normal; text-align: start;
+    position: static; box-shadow: none; background: transparent;
+  }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr > td[data-etiket] {
+    display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    align-items: baseline; column-gap: var(--bosluk-4); text-align: end;
+  }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr > td[data-etiket]::before {
+    content: attr(data-etiket); grid-column: 1; text-align: start;
+    font-size: var(--yazi-sm); font-weight: 400; color: var(--metin-soluk); white-space: nowrap;
+  }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr > td[data-etiket] > * { grid-column: 2; justify-self: end; }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr > td.izgara-sayi { white-space: nowrap; }
+  :where(.izgara-kap) > .kart-liste-ipucu { display: none; }
+  /* GRID-1 tur 2 (doğrulayıcı KRİTİK, 08.10): kart yeri SIRAYA değil ROLE bağlı.
+     Kullanıcı sütunu taşıyınca ilk hücre artık ad değildir; birincil (zorunlu) hücre
+     kartın tepesinde tam satır, sabit (eylem) hücre en altta tam satır kalır. */
+  :where(.izgara-tablo > tbody > tr > td[data-izgara-rol="birincil"]) { order: -1; grid-column: 1 / -1; }
+  :where(.izgara-tablo > tbody > tr > td[data-izgara-rol="sabit"]) { order: 1; grid-column: 1 / -1; }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr > td[data-izgara-rol="birincil"] { order: -1; font-weight: 600; }
+  .izgara-kap.kart-liste > .tablo-sar > .izgara-tablo > tbody > tr > td[data-izgara-rol="sabit"] { order: 1; padding-top: var(--bosluk-1); }
+}

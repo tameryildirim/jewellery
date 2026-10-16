@@ -1,0 +1,614 @@
+@page "/vitrin"
+@using System.Globalization
+@using Kuyumcu.Contracts.Pano
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-17 (Y-7) — VİTRİN / KUR PANOSU.
+
+   DURUM TESPİTİ (2026-09-21): `PanoFiyatServisi` saf hesap olarak VARDI ve 20
+   testi geçiyordu, ama hiçbir uçtan çağrılmıyor, hiçbir ekranda görünmüyordu.
+   Yani kuyumcunun vitrinine asacağı pano YOKTU (UX-S25'in en ağır hâli).
+
+   ⚠ MARJ EKRANDA GÖRÜNÜR AMA PANODA GÖRÜNMEZ: üstteki pano bölümü müşteriye
+     dönüktür ve yalnız alış/satış taşır; marj YALNIZ alttaki yönetim
+     tablosundadır (MUDUR+ ucundan gelir).
+   ⚠ UX-S23: ayar kaydedilince ETKİSİ AYNI EKRANDA görünür — pano yeniden çekilir.
+   ⚠ UX-S28: hata "kayıt yok"a çevrilmez; boş durum yalnız istek başarılıyken.
+   ⚠ DoD EK md.2 — TEK DÜZENLEME KALIBI: çok alanlı düzenleme `Cekmece`.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Pano.Baslik)</PageTitle>
+
+<div class="dikey-bosluk">
+    <SayfaBasi Anahtar="vitrin" Baslik="@Dil.T.Pano.Baslik" Aciklama="@Dil.T.Pano.Aciklama">
+        <Eylem>
+            @* PAKET S3-5: pano menüde değildir (MenuTanimi.MenusuzRotalar) ve
+               Kur ekranından ya da "Tüm ekranlar" karosundan açılır; geri dönüş
+               yolu burada YAZILI (kullanıcı tarayıcının geri tuşuna mahkûm değil). *@
+            <NavLink id="vitrin-kur-don" class="dugme dugme-ikincil" href="/kur">@M.KuraDon</NavLink>
+            @* PAKET EKSIK-KUCUK (B2-10): dükkân ekranı (kabuksuz tam ekran). İşçilik ibaresi
+               seçilmemişse KİLİTLİ ve sebebi ibare kartında yazar (UX-S30 · fail-closed). *@
+            @if (pano?.IscilikIbaresi is not null)
+            {
+                <a id="vitrin-tam-ekran" class="dugme dugme-ikincil" href="/vitrin/ekran">@E.TamEkranAc</a>
+            }
+            else
+            {
+                <button type="button" id="vitrin-tam-ekran" class="dugme dugme-ikincil" disabled="@true"
+                        title="@E.TamEkranKilitli" aria-describedby="vitrin-ibare-yok">@E.TamEkranAc</button>
+            }
+            <button type="button" @onclick="Yukle" disabled="@yukleniyor"
+                    class="dugme dugme-ikincil" id="vitrin-yenile">
+                @Dil.T.Ortak.Yenile
+            </button>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" Id="vitrin-hata" />
+    <BasariBandi Mesaj="@basari" Id="vitrin-basari" Jeton="basariJeton" />
+
+    @if (yukleniyor && pano is null)
+    {
+        <Yukleniyor />
+    }
+    else if (pano is { } p)
+    {
+        @* ── VİTRİN (müşteriye dönük) — marj YOK ───────────────────────── *@
+        <div class="kart">
+            <div class="kart-govde">
+                @* TOPLU-4 (TOPLU-2 hakem YÜKSEK, KATMAN-1b): kaynak satırı 14 px; satır tavanı ayrı 12 px
+                   "Sunucu sınırı:" paragrafı değil, kaynak satırının yanındaki TEK ⓘ içinde (UX-S29: sınır
+                   ekranda yazılı kalır, id AYNI). *@
+                <div class="t4-ipucu-satir" id="vitrin-kaynak-satir">
+                    <p class="metin-soluk" id="vitrin-kaynak">
+                        @* PAKET S3-5 · UX-S31: ham kaynak kodu (ALTINKAYNAK) ekrana basılmaz. *@
+                        @Dil.T.Pano.Kaynak: @KurKaynakAdi.Ad(p.Kaynak, Dil.T) · @Bicim.TarihSaat(p.Zaman)
+                    </p>
+                    <details class="zo-ipucu" id="vitrin-pano-ipucu">
+                        <summary aria-label="@T4.VitrinPanoBilgi">i</summary>
+                        <p id="vitrin-tavan">@string.Format(T4.VitrinTavanNotu, p.TavanSatir)</p>
+                    </details>
+                </div>
+
+                @if (p.Satirlar.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Pano.BosDurum" />
+                }
+                else
+                {
+                    @* P-36c/3: 375px ölçümünde bu tablo ana içeriği 393px'e taşırıyordu;
+                       P-18 deseniyle hapsedildi (kaydırma tabloda, sayfada değil). *@
+                    @* PAKET GOC-C — ORTAK IZGARA (grid:vitrin:vitrin-pano). Pano satırları tavan sınırlı (ⓘ'de yazılı):
+                       sunucunun sırası panodaki sıradır → sıralama yalnız tavanın altında. Mevcut id'ler korunur. *@
+                    <Izgara T="PanoSatirGorunum" Ekran="vitrin" GridId="vitrin-pano" TabloId="vitrin-pano" TabloSinif="pano-tablo"
+                            Kolonlar="@PanoKolonlari(p)" Ogeler="@IzgaraYerelSiralama.Uygula(p.Satirlar, panoSira, PanoKolonlari(p))"
+                            SatirId="@(x => $"vitrin-satir-{x.Kod}")" Baslik="@Dil.T.Pano.Kalem"
+                            SiralamaDegisti="@(x => panoSira = x)" GecerliSiralama="@panoSira" />
+                }
+
+                @if (p.OkunabilirlikUyarisi)
+                {
+                    <p class="metin-kucuk uyari-metni" id="vitrin-okunabilirlik">
+                        @string.Format(Dil.T.Pano.OkunabilirlikUyarisi, p.Satirlar.Count, p.OkunabilirlikEsigi)
+                    </p>
+                }
+
+                @* UX-S29: sunucu sınırı ekranda YAZAR — TOPLU-4: kaynak satırının ⓘ'sinde (#vitrin-tavan). *@
+
+                @* PAKET EKSIK-KUCUK (B2-10) — YASAL İBARE (Fiyat Etiketi Yönetmeliği md.6):
+                   fiyatların altında, panoyla aynı kartta. Zorunlu → katlanmaz. Seçim yalnız
+                   MUDUR+ (ayar ucu okunabildiyse); tezgâhtar seçilmediğini ve kimin seçeceğini okur. *@
+                <div class="vitrin-ibare-blok" id="vitrin-ibare-blok">
+                    @if (VitrinEkrani.IbareMetni(p.IscilikIbaresi, E) is { } ibareMetni)
+                    {
+                        <p class="vitrin-ibare" id="vitrin-ibare">@ibareMetni</p>
+                    }
+                    else
+                    {
+                        <p class="bant bant-uyari" id="vitrin-ibare-yok" role="status">
+                            @(ayarlar is null ? E.IbareSecilmediTezgahtar : E.IbareSecilmedi)
+                        </p>
+                    }
+                    @if (ayarlar is not null)
+                    {
+                        <div class="vitrin-ibare-secim" role="group" aria-label="@E.IbareBaslik" id="vitrin-ibare-secim">
+                            <span class="metin-kucuk metin-soluk">@E.IbareBaslik:</span>
+                            <button type="button" id="vitrin-ibare-dahil" disabled="@ibareKaydediliyor"
+                                    aria-pressed="@(p.IscilikIbaresi == IscilikIbaresiDegerleri.Dahil ? "true" : "false")"
+                                    class="@IbareDugmeSinifi(p, IscilikIbaresiDegerleri.Dahil)"
+                                    @onclick="() => IbareSec(IscilikIbaresiDegerleri.Dahil)">@E.IbareDahilSecenek</button>
+                            <button type="button" id="vitrin-ibare-haric" disabled="@ibareKaydediliyor"
+                                    aria-pressed="@(p.IscilikIbaresi == IscilikIbaresiDegerleri.Haric ? "true" : "false")"
+                                    class="@IbareDugmeSinifi(p, IscilikIbaresiDegerleri.Haric)"
+                                    @onclick="() => IbareSec(IscilikIbaresiDegerleri.Haric)">@E.IbareHaricSecenek</button>
+                        </div>
+                        <p class="metin-kucuk metin-soluk" id="vitrin-ibare-yasal">@E.IbareYasalNot</p>
+                    }
+                    <HataBandi Mesaj="@ibareHata" Id="vitrin-ibare-hata" />
+                </div>
+            </div>
+        </div>
+
+        @* ── ATLANANLAR — sessizce yutulmaz (Anayasa md.1) ──────────────── *@
+        @* PAKET P-67: bölüm artık HER ZAMAN çizilir; atlanan yoksa görünmez bölüm
+           yerine anlamlı metin basar (istek başarılı ve sonuç gerçekten boş —
+           UX-S28'e uygun boş durum). *@
+        @* TOPLU-6 (TOPLU-4 hakemi ORTA "açıklama satırları — Vitrin"): atlanan kalem YOKKEN bu kart BASİT'te
+           yapılacak iş göstermiyor (zorunlu önce) → yalnız PRO'da; atlanan VARSA iki modda da (sessiz yutma yok). *@
+        @if (p.Atlananlar.Count == 0)
+        {
+            <ProAlan>
+            <div class="kart">
+                <div class="kart-govde">
+                    <h3>@Dil.T.Pano.AtlananBaslik</h3>
+                    <p class="metin-kucuk metin-soluk" id="vitrin-atlanan-yok">@K.AtlananYok</p>
+                </div>
+            </div>
+            </ProAlan>
+        }
+        else
+        {
+            <div class="kart">
+                <div class="kart-govde">
+                    <h3>@Dil.T.Pano.AtlananBaslik</h3>
+                    @* P-36c/3: 375px ölçümünde bu tablo ana içeriği 393px'e taşırıyordu;
+                       P-18 deseniyle hapsedildi (kaydırma tabloda, sayfada değil). *@
+                    @* PAKET GOC-C — ORTAK IZGARA (grid:vitrin:vitrin-atlananlar). Liste TAM → yerel sıralama. *@
+                    <Izgara T="PanoAtlananGorunum" Ekran="vitrin" GridId="vitrin-atlananlar" TabloId="vitrin-atlananlar"
+                            Kolonlar="@AtlananKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(p.Atlananlar, atlananSira, AtlananKolonlari)"
+                            SatirId="@(x => $"vitrin-atlanan-{x.Kod}")" Baslik="@Dil.T.Pano.AtlananBaslik"
+                            SiralamaDegisti="@(x => atlananSira = x)" GecerliSiralama="@atlananSira" />
+                </div>
+            </div>
+        }
+    }
+
+    @* ── YÖNETİM: marj / yuvarlama ayarları (MUDUR+) ────────────────────── *@
+    @if (ayarlar is { } ay)
+    {
+        @* TOPLU-6 (TOPLU-4 hakemi YÜKSEK "BASİT'te ayar tablosu açılışta açık"): marj/yuvarlama yönetim işidir,
+           tezgâhın günlük işi değil → ortak Katlanir (zorunlu önce kuralı). BASİT'te KAPALI gelir, PRO'da açık;
+           içerik, id'ler ve düzenleme yolu AYNEN (açınca). Sayı rozeti = kalem sayısı. *@
+        @* GOC-C-2 (tasarım hakemi YÜKSEK "K4 /vitrin PRO 375 = 10 ekran"): PRO'da da KAPALI gelir — ayar tablosu açık
+           375'te 6.790 px'ti (sayfa 9,9 ekran). Yönetim ayarı zorunlu iş değil (kurucu 25.09 temel kuralı); başlık
+           ve sayı rozeti görünür, tek tıkla açılır; içerik/id/düzenleme yolu aynen. *@
+        <Katlanir Id="vitrin-ayar-kat" Baslik="@Dil.T.Pano.AyarBaslik" Sayi="@ay.Ayarlar.Count"
+                  BaslangictaAcik="false" Sinif="t6-vitrin-kat">
+        <div class="kart">
+            <div class="kart-govde">
+                @* TOPLU-4 (TOPLU-2 hakem YÜKSEK): üç açıklama satırı (marj sırrı, kalem kaynağı, düzenlenebilir
+                   alanlar) başlığın yanındaki TEK ⓘ içinde; metinler ve id'ler AYNI, sırası tablodan ÖNCE. *@
+                <div class="t4-ipucu-satir" id="vitrin-ayar-baslik-satir">
+                    <h3>@Dil.T.Pano.AyarBaslik</h3>
+                    <details class="zo-ipucu" id="vitrin-ayar-ipucu">
+                        <summary aria-label="@T4.VitrinAyarBilgi">i</summary>
+                        <div class="t4-ipucu-govde">
+                            <p id="vitrin-ayar-aciklama">@Dil.T.Pano.AyarAciklama</p>
+                            @* PAKET P-67 — KALEM KATALOĞU GEREKÇESİ (UX-1 gerekçeli istisna):
+                               kalem kümesi sunucuda PanoAyarServisi.Kalemler =
+                               PariteKodlari.Adlar.Keys'ten türer. "Yeni kalem" bir veri girişi
+                               değil kur kaynağı değişikliğidir; ekran bunu SÖYLER, devre dışı
+                               bir "yeni kalem ekle" düğmesi koymaz. *@
+                            <div id="vitrin-kalem-kaynak" role="note">
+                                <p>@K.KaynakAciklama</p>
+                                <p id="vitrin-yeni-kalem-yolu">
+                                    @K.YeniKalemYolu
+                                    <a href="/kur#kur-kaynak-kart" id="vitrin-kur-kaynagi">@K.KurKaynagiBaglanti</a>
+                                </p>
+                            </div>
+                            <p id="vitrin-duzenlenebilir">@K.DuzenlenebilirNot</p>
+                        </div>
+                    </details>
+                </div>
+                @* P-36c/3: 375px ölçümünde bu tablo ana içeriği 393px'e taşırıyordu;
+                   P-18 deseniyle hapsedildi (kaydırma tabloda, sayfada değil). *@
+                @* PAKET GOC-C-2 (tasarım hakemi YÜKSEK "paket ekranlarında ham tablo kaldı"): ayar tablosu ORTAK IZGARAYA
+                   taşındı (grid:vitrin:vitrin-ayarlar). Tablo, satır, başlık ve eylem kimlikleri AYNEN (TabloId, SatirId,
+                   BaslikId, vitrin-duzenle-*, vitrin-varsayilan(a-don)-*). GOC-C'nin istisna gerekçesi (başlıktaki
+                   "değiştirilebilir" rozeti ızgara başlığında taşınamıyor) şöyle kapandı: düzenlenebilir sütunlar PRO'da
+                   ızgaranın ÜSTÜNDE tek kısa satırda rozetle söylenir (P-67 "açıkça işaretlenir" korunur, üç kez yerine bir kez).
+                   375 kart düzeni ızgaranın ortak kalıbıdır (data-etiket ızgarada); P-36c/3 taşma hapsi KartListe'de. *@
+                <ProAlan>
+                    <div class="metin-kucuk metin-soluk" id="vitrin-duzenlenebilir-sutunlar">
+                        <Rozet Renk="mavi">@K.DuzenlenebilirRozet</Rozet>
+                        @($"{Dil.T.Pano.AlisMarj} · {Dil.T.Pano.SatisMarj} · {Dil.T.Pano.Yuvarlama}")
+                    </div>
+                </ProAlan>
+                <Izgara T="PanoAyarGorunum" Ekran="vitrin" GridId="vitrin-ayarlar" TabloId="vitrin-ayarlar" TabloSinif="tablo"
+                        Kolonlar="@AyarKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(ay.Ayarlar, ayarSira, AyarKolonlari)"
+                        SatirId="@(a => $"vitrin-ayar-{a.Kod}")" Baslik="@Dil.T.Pano.AyarBaslik"
+                        SiralamaDegisti="@(x => ayarSira = x)" GecerliSiralama="@ayarSira" />
+            </div>
+        </div>
+        </Katlanir>
+    }
+    else if (ayarHatasi is not null)
+    {
+        @* UX-S30: yönetim bölümü neden yok — sessiz boşluk değil, yazılı sebep. *@
+        <div class="kart">
+            <div class="kart-govde">
+                <p class="metin-kucuk metin-soluk" id="vitrin-ayar-kapali">@ayarHatasi</p>
+            </div>
+        </div>
+    }
+</div>
+
+@* ── Düzenleme çekmecesi (TEK DÜZENLEME KALIBI) ─────────────────────────── *@
+<Cekmece Acik="duzenlenen is not null" Varlik="pano-kalem"
+         Baslik="@(duzenlenen is null ? "" : (duzenlenen.Etiket ?? duzenlenen.Ad))"
+         Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor" KaydetAktif="@(!kaydediliyor)">
+    @if (duzenlenen is { } d)
+    {
+        <div class="form-dikey">
+            @* UX-S21: boş bırakılırsa değer sistemden (parite adı) türetilir. *@
+            <Metin ElemanId="pano-etiket" Etiket="@Dil.T.Pano.Etiket" EnFazla="@AlanSinirlari.PanoEtiket"
+                   Deger="@fEtiket" DegerChanged="@(v => fEtiket = v ?? "")"
+                   Durum="form" HataAlani="pano-etiket"
+                   Ipucu="@string.Format(Dil.T.Pano.EtiketIpucu, d.Ad)" />
+            @* PAKET GOC-C: sıra tam sayı (2,7 eskiden SESSİZCE 2'ye kırpılıyordu). *@
+            <Sayi ElemanId="pano-sira" Etiket="@Dil.T.Pano.Sira" EnAz="0" EnCok="99" TamSayi="true"
+                  Deger="@((decimal?)fSira)"
+                  DegerChanged="@(v => fSira = v is { } _s && _s == decimal.Truncate(_s) ? (int)_s : 0)"
+                  Durum="form" HataAlani="pano-sira" />
+            <Sayi ElemanId="pano-alis-marj" Etiket="@Dil.T.Pano.AlisMarj"
+                  Deger="@fAlis" DegerChanged="@(v => fAlis = v ?? 0m)"
+                  Durum="form" HataAlani="pano-alis-marj"
+                  Ipucu="@Dil.T.Pano.AlisMarjIpucu" />
+            <Sayi ElemanId="pano-satis-marj" Etiket="@Dil.T.Pano.SatisMarj"
+                  Deger="@fSatis" DegerChanged="@(v => fSatis = v ?? 0m)"
+                  Durum="form" HataAlani="pano-satis-marj" />
+            <div class="alan">
+                @* UX-S26/UX-S31: seçenek listesi SUNUCUDAN gelir, ekranda yeniden yazılmaz.
+                   KATMAN-1b: etiketi Secici kendisi çizer (label.alan-etiket for=pano-yuvarlama);
+                   ayrıca yazılan <label> çekmecede "Yuvarlama adımı"nı İKİ KEZ gösteriyordu. *@
+                <Secici ElemanId="pano-yuvarlama"
+                        Etiket="@Dil.T.Pano.Yuvarlama"
+                        Secenekler="@YuvarlamaSecenekleri"
+                        @bind-Deger="fYuvarlama" />
+                <AlanHatasi Alan="pano-yuvarlama" Durum="form" />
+            </div>
+            <Onay ElemanId="pano-aktif" Etiket="@Dil.T.Pano.PanodaGoster" @bind-Deger="fAktif" />
+
+            @* UX-S25: geri dönüş yolu — kiracı ayarı varsa varsayılana dönülebilir. *@
+            <div class="alan">
+                @* PAKET P-65 (E49): yıkıcı eylem (kiracı ayarını siler) ONAY KİPİNDEN geçer. *@
+                <button type="button" @onclick="() => OnayIste(d)" disabled="@(!d.Ozel || kaydediliyor)"
+                        title="@(!d.Ozel ? Dil.T.Pano.ZatenVarsayilan : null)"
+                        class="dugme dugme-ikincil dugme-kucuk" id="pano-varsayilana-don">
+                    @Dil.T.Pano.VarsayilanaDon
+                </button>
+                @if (!d.Ozel)
+                {
+                    <span class="metin-kucuk metin-soluk" id="pano-varsayilana-don-kilit">
+                        @Dil.T.Pano.ZatenVarsayilan
+                    </span>
+                }
+            </div>
+
+            <HataBandi Mesaj="@cekmeceHata" Id="pano-cekmece-hata" />
+        </div>
+    }
+</Cekmece>
+
+@* ── PAKET P-65 (E49): ORTAK ONAY KİPİ — varsayılana dönüş (satırdan ve çekmeceden) ──
+   Başlık eylemi adlandırır, onay düğmesi eylemin fiilini ("Evet, dön") taşır,
+   vazgeç "Vazgeç"tir. P-67 kimlikleri (evet · vazgec · soru) korunur. *@
+<OnayKipi Acik="@(onayHedef is not null)" Kimlik="vitrin-varsayilana-don"
+          Eylem="@OnayM.VitrinDonusBaslik"
+          Aciklama="@OnayAciklama"
+          OnayMetni="@K.OnayEvet" VazgecMetni="@K.OnayVazgec"
+          Calisiyor="@kaydediliyor"
+          OnayId="@($"vitrin-varsayilana-don-evet-{onayHedef?.Kod}")"
+          VazgecId="@($"vitrin-varsayilana-don-vazgec-{onayHedef?.Kod}")"
+          AciklamaId="@($"vitrin-varsayilana-don-soru-{onayHedef?.Kod}")"
+          Onayla="OnayUygula" Vazgec="OnayVazgec" />
+
+@code {
+    // ── P-36c GÖÇ YARDIMCISI ────────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> YuvarlamaSecenekleri =>
+        [.. (ayarlar?.YuvarlamaAdimlari ?? []).Select(y => new SecenekOgesi(
+            Bicim.Girdi(y),   // P-78: seçenek anahtarı da tr-TR (tek çözücü)
+            y == 0m ? Dil.T.Pano.YuvarlamaKapali : Bicim.Tl(y)))];
+
+    private PanoGorunum? pano;
+    private PanoAyarlariGorunum? ayarlar;
+    private PanoAyarGorunum? duzenlenen;
+
+    private string? hata, basari, ayarHatasi, cekmeceHata;
+    private int basariJeton;
+    private bool yukleniyor = true, kaydediliyor;
+
+    private readonly FormDurumu form = new();
+    private string fEtiket = "";
+    private int fSira;
+    private decimal fAlis, fSatis;
+    private string fYuvarlama = "10";
+    private bool fAktif = true;
+
+    private CultureInfo Kultur => new(Dil.Locale);
+
+    /// <summary>PAKET S3-5 metinleri (ayrı sözlük dosyası; TR+EN).</summary>
+    private KurVitrinEmanetMetinleri M => KurVitrinEmanetSozlugu.Al(Dil.Dil);
+
+    /// <summary>PAKET P-67 metinleri (ayrı sözlük dosyası; TR+EN).</summary>
+    private VitrinKalemMetinleri K => VitrinKalemSozlugu.Al(Dil.Dil);
+    private Toplu4Metinleri T4 => Toplu4Sozlugu.Al(Dil.Dil);
+
+    // ── PAKET EKSIK-KUCUK (B2-10) — işçilik ibaresi ─────────────────────
+    private EksikKucukMetinleri E => EksikKucukSozlugu.Al(Dil.Dil);
+    private bool ibareKaydediliyor;
+    private string? ibareHata;
+
+    private static string IbareDugmeSinifi(PanoGorunum p, string deger) =>
+        p.IscilikIbaresi == deger ? "dugme dugme-ikincil dugme-kucuk vitrin-ibare-secili" : "dugme dugme-ikincil dugme-kucuk";
+
+    /// <summary>
+    /// PATCH /pano/iscilik-ibaresi — yanıt güncel panodur (UX-S23: etkisi aynı ekranda,
+    /// dükkân ekranı düğmesi anında açılır). Hata alanın altında (UX-S28).
+    /// </summary>
+    private async Task IbareSec(string deger)
+    {
+        ibareKaydediliyor = true;
+        ibareHata = null;
+        try
+        {
+            pano = await Api.PatchAsync<PanoGorunum>("/pano/iscilik-ibaresi", new { iscilikIbaresi = deger });
+            basari = string.Format(E.IbareKaydedildi, VitrinEkrani.IbareMetni(pano.IscilikIbaresi, E));
+            basariJeton++;
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException)
+        {
+            ibareHata = ex.Message;
+        }
+        finally
+        {
+            ibareKaydediliyor = false;
+        }
+    }
+
+    protected override void OnInitialized() => Dil.Degisti += Yenile;
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            pano = await Api.GetAsync<PanoGorunum>("/pano/guncel");
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException)
+        {
+            // UX-S28: hata boş listeye çevrilmez.
+            hata = ex.Message;
+        }
+
+        try
+        {
+            ayarlar = await Api.GetAsync<PanoAyarlariGorunum>("/pano/ayarlar");
+            ayarHatasi = null;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403)
+        {
+            // Marj ticari sırdır: yetkisiz kullanıcı ayar tablosunu GÖRMEZ,
+            // ama neden görmediğini okur (UX-S30).
+            // ⚠ `ayarlar` BOŞALTILMAZ (P-11 DIS_HATADA_VERI_DUSUREN_YOL): dış
+            //   hata elde olanı silmez; hata ayrı alanda taşınır.
+            ayarHatasi = Dil.T.Pano.AyarYetkiYok;
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException)
+        {
+            ayarHatasi = ex.Message;
+        }
+
+        yukleniyor = false;
+    }
+
+    private void Ac(PanoAyarGorunum a)
+    {
+        duzenlenen = a;
+        cekmeceHata = null;
+        form.Temizle();
+        fEtiket = a.Etiket ?? "";
+        fSira = a.Sira;
+        fAlis = a.AlisMarjTl;
+        fSatis = a.SatisMarjTl;
+        fYuvarlama = Bicim.Girdi(a.YuvarlamaAdimi);
+        fAktif = a.Aktif;
+    }
+
+    private void Kapat()
+    {
+        duzenlenen = null;
+        cekmeceHata = null;
+        form.Temizle();
+    }
+
+    private async Task Kaydet()
+    {
+        if (duzenlenen is not { } d) return;
+
+        // UX-S: boş/geçersiz gönderimde ALAN ALTI mesaj; sessiz etkisizlik yasak.
+        form.Temizle();
+        if (fSira is < 0 or > 99) form.Ekle("pano-sira", Dil.T.Pano.SiraAralik);
+        if (Math.Abs(fAlis) > 1_000_000m) form.Ekle("pano-alis-marj", Dil.T.Pano.MarjAralik);
+        if (Math.Abs(fSatis) > 1_000_000m) form.Ekle("pano-satis-marj", Dil.T.Pano.MarjAralik);
+        // P-78: tr-TR tek merkez.
+        var yuvarlamaCozum = FormAlani.SayiCoz(fYuvarlama);
+        var yuvarlama = yuvarlamaCozum.Deger ?? 0m;
+        if (!yuvarlamaCozum.Tamam)
+            form.Ekle("pano-yuvarlama", yuvarlamaCozum.Mesaj(Dil.Dil) ?? Dil.T.Pano.YuvarlamaGecersiz);
+        if (!form.Gecerli) return;
+
+        kaydediliyor = true;
+        cekmeceHata = null;
+        try
+        {
+            // PATCH: yalnız bu ekranın yönettiği alanlar gider; gönderilmeyen
+            // alan sunucuda DEĞİŞMEZ (tam gövdeyle üzerine yazılmaz).
+            ayarlar = await Api.PatchAsync<PanoAyarlariGorunum>($"/pano/ayarlar/{d.Kod}", new
+            {
+                etiket = string.IsNullOrWhiteSpace(fEtiket) ? null : fEtiket.Trim(),
+                sira = fSira,
+                alisMarjTl = fAlis,
+                satisMarjTl = fSatis,
+                yuvarlamaAdimi = yuvarlama,
+                aktif = fAktif,
+            });
+            // UX-S27: sonuç banda yazılır · UX-S23: etkisi AYNI ekranda görünür.
+            basari = string.Format(Dil.T.Pano.Kaydedildi, d.Etiket ?? d.Ad, ayarlar.AktifSayisi);
+            basariJeton++;
+            duzenlenen = null;
+            pano = await Api.GetAsync<PanoGorunum>("/pano/guncel");
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException)
+        {
+            cekmeceHata = ex.Message;
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+
+    // PAKET P-67 → P-65: varsayılana dönüş hedefi. Satırdan da çekmeceden de
+    // AYNI ortak onay kipi açılır; VarsayilanaDon YALNIZ OnayUygula'dan çağrılır.
+    private PanoAyarGorunum? onayHedef;
+
+    private OnayKilitMetinleri OnayM => OnayKilitSozlugu.Al(Dil.Dil);
+
+    private string? OnayAciklama => onayHedef is null
+        ? null
+        : string.Format(K.OnaySoru, onayHedef.Etiket ?? onayHedef.Ad);
+
+    private void OnayIste(PanoAyarGorunum a) => onayHedef = a;
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? panoSira, atlananSira, ayarSira;
+
+    /// <summary>
+    /// GOC-C-2 — ayar ızgarası kolonları (eski ham tablonun sütunları AYNEN; mod kuralı TOPLU-4/6 aynen:
+    /// Sıra ve Varsayılan yalnız PRO). Ayar listesi sınırsızdır (kalem kataloğu) → yerel sıralama serbest.
+    /// </summary>
+    private IReadOnlyList<IzgaraKolonu<PanoAyarGorunum>> AyarKolonlari
+    {
+        get
+        {
+            var pro = !Dil.BasitMi;
+            var k = new List<IzgaraKolonu<PanoAyarGorunum>>
+            {
+                new() { Anahtar = "kalem", Baslik = Dil.T.Pano.Kalem, ZorunluGorunur = true, SunucuSiralamaAdi = "kalem",
+                        HucreSinif = _ => "t6-kalem", Deger = a => a.Etiket ?? a.Ad },
+            };
+            if (pro)
+                k.Add(new() { Anahtar = "sira", Baslik = Dil.T.Pano.Sira, SunucuSiralamaAdi = "sira", BaslikSinif = "sayi",
+                              HucreSinif = _ => "sayi", Deger = a => a.Sira });
+            k.Add(new() { Anahtar = "alis", Baslik = Dil.T.Pano.AlisMarj, BaslikId = "vitrin-baslik-alis-marj", SunucuSiralamaAdi = "alis",
+                          BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = a => a.AlisMarjTl, Hucre = a => @<text>@Bicim.Tl(a.AlisMarjTl)</text> });
+            k.Add(new() { Anahtar = "satis", Baslik = Dil.T.Pano.SatisMarj, BaslikId = "vitrin-baslik-satis-marj", SunucuSiralamaAdi = "satis",
+                          BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = a => a.SatisMarjTl, Hucre = a => @<text>@Bicim.Tl(a.SatisMarjTl)</text> });
+            k.Add(new() { Anahtar = "yuvarlama", Baslik = Dil.T.Pano.Yuvarlama, BaslikId = "vitrin-baslik-yuvarlama", BaslikSinif = "sayi",
+                          HucreSinif = _ => "sayi", Deger = a => a.YuvarlamaAdimi,
+                          Hucre = a => @<text>@(a.YuvarlamaAdimi == 0m ? Dil.T.Pano.YuvarlamaKapali : Bicim.Tl(a.YuvarlamaAdimi))</text> });
+            k.Add(new() { Anahtar = "durum", Baslik = Dil.T.Pano.Durum, Deger = a => a.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif,
+                          Hucre = a => @<Rozet Renk="@(a.Aktif ? "yesil" : "gri")">@(a.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)</Rozet> });
+            k.Add(new() { Anahtar = "duzenle", Baslik = Dil.T.Ortak.Duzenle, ZorunluGorunur = true, KartEtiketsiz = true,
+                          Tur = IzgaraHucreTuru.Eylem,
+                          Hucre = a => @<button type="button" @onclick="() => Ac(a)" class="dugme dugme-ikincil dugme-kucuk" id="@($"vitrin-duzenle-{a.Kod}")">@Dil.T.Ortak.Duzenle</button> });
+            if (pro)
+                // PAKET P-67: "varsayılana dön" SATIRDAN (OnayKipi); varsayılandaki kalemde düğme yerine durum YAZAR.
+                k.Add(new() { Anahtar = "varsayilan", Baslik = K.Varsayilan, KartEtiketsiz = true,
+                              Hucre = a => @<text>@if (!a.Ozel)
+                                  {
+                                      <span class="metin-kucuk metin-soluk" id="@($"vitrin-varsayilan-{a.Kod}")">@K.Varsayilan</span>
+                                  }
+                                  else
+                                  {
+                                      <button type="button" @onclick="() => OnayIste(a)" disabled="@kaydediliyor"
+                                              class="dugme dugme-ikincil dugme-kucuk" id="@($"vitrin-varsayilana-don-{a.Kod}")">@K.SatirVarsayilanaDon</button>
+                                  }</text> });
+            return k;
+        }
+    }
+    private IReadOnlyList<IzgaraKolonu<PanoSatirGorunum>> PanoKolonlari(PanoGorunum p)
+    {
+        var tam = p.Satirlar.Count < p.TavanSatir;
+        return
+        [
+            new() { Anahtar = "kalem", Baslik = Dil.T.Pano.Kalem, ZorunluGorunur = true, SunucuSiralamaAdi = tam ? "kalem" : null, Deger = x => x.Etiket },
+            new() { Anahtar = "alis", Baslik = Dil.T.Pano.Alis, ZorunluGorunur = true, SunucuSiralamaAdi = tam ? "alis" : null, BaslikSinif = "sayi",
+                    HucreSinif = _ => "sayi", Deger = x => x.Alis, Hucre = x => @<text>@Fiyat(x.Alis)</text> },
+            new() { Anahtar = "satis", Baslik = Dil.T.Pano.Satis, ZorunluGorunur = true, SunucuSiralamaAdi = tam ? "satis" : null, BaslikSinif = "sayi",
+                    HucreSinif = _ => "sayi", Deger = x => x.Satis, Hucre = x => @<text>@Fiyat(x.Satis)</text> },
+        ];
+    }
+
+    private IReadOnlyList<IzgaraKolonu<PanoAtlananGorunum>> AtlananKolonlari =>
+    [
+        new() { Anahtar = "kalem", Baslik = Dil.T.Pano.Kalem, ZorunluGorunur = true, SunucuSiralamaAdi = "kalem", Deger = x => x.Ad },
+        // UX-S31: ham kod ("TERS_MAKAS") ekrana basılmaz.
+        new() { Anahtar = "sebep", Baslik = Dil.T.Pano.AtlamaSebebi, ZorunluGorunur = true, SunucuSiralamaAdi = "sebep", Deger = x => SebepMetni(x.Sebep) },
+    ];
+
+
+    private void OnayVazgec() => onayHedef = null;
+
+    private Task OnayUygula() => onayHedef is null ? Task.CompletedTask : VarsayilanaDon(onayHedef);
+
+    /// <summary>
+    /// Yalnız onay kipinden çağrılır (P-65: çekmeceden de onaysız dönüş YOK). Hata çekmece açıksa çekmecede, değilse sayfa
+    /// bandında görünür (UX-S28: sessiz yutma yok).
+    /// </summary>
+    private async Task VarsayilanaDon(PanoAyarGorunum d)
+    {
+        if (!d.Ozel) return;
+
+        var cekmecedenMi = duzenlenen is not null;
+        kaydediliyor = true;
+        cekmeceHata = null;
+        try
+        {
+            ayarlar = await Api.PostAsync<PanoAyarlariGorunum>($"/pano/ayarlar/{d.Kod}/varsayilana-don");
+            basari = string.Format(Dil.T.Pano.VarsayilanaDonuldu, d.Etiket ?? d.Ad);
+            basariJeton++;
+            duzenlenen = null;
+            onayHedef = null;
+            pano = await Api.GetAsync<PanoGorunum>("/pano/guncel");
+        }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException)
+        {
+            if (cekmecedenMi) cekmeceHata = ex.Message;
+            else hata = ex.Message;
+            // P-65: onay penceresi kapanır ki hata bandı (çekmece ya da sayfa) GÖRÜNSÜN;
+            // pencere açık kalsaydı bant pencerenin ARKASINDA kalırdı (UX-S28).
+            onayHedef = null;
+        }
+        finally
+        {
+            kaydediliyor = false;
+        }
+    }
+
+    private string Fiyat(decimal? d) => d is { } v ? Bicim.Tl(v) : "—";
+
+    /// <summary>UX-S31: ham atlama kodu ekrana basılmaz, sözlükten çevrilir.</summary>
+    private string SebepMetni(string sebep) => sebep switch
+    {
+        "KOTASYON_YOK" => Dil.T.Pano.SebepKotasyonYok,
+        "FIYAT_YOK" => Dil.T.Pano.SebepFiyatYok,
+        "TERS_MAKAS" => Dil.T.Pano.SebepTersMakas,
+        "TAVAN_ASILDI" => Dil.T.Pano.SebepTavanAsildi,
+        // P-38 · B-18: sunucu '0,00' basmak yerine satırı atlıyor; sebebi burada yazar.
+        "MARJ_GECERSIZ" => Dil.T.Pano.SebepMarjGecersiz,
+        _ => Dil.T.Pano.SebepBilinmeyen,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

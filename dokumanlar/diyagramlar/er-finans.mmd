@@ -1,0 +1,130 @@
+%% Kuyumcu ERP — Cari, Kasa, Banka ve Fatura
+%% ŞEMADAN ÜRETİLMİŞTİR — elle çizilmemiştir (er-uret.py).
+%% Kaynak: MySQL information_schema / kuyumcu_net
+%% Veritabanında enforce edilen FK kısıtı: 0 (ölçüldü).
+%% FK işaretleri MANTIKSAL yabancı anahtardır; bütünlük uygulama katmanında korunur.
+erDiagram
+    banka_hareketleri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string banka_hesap_id FK "mantiksal"
+        string yon
+        decimal tutar
+        string para_birimi
+        string karsi_taraf_ad
+        string karsi_iban
+        text aciklama
+        string cari_id FK "mantiksal"
+        string fatura_id FK "mantiksal"
+        string durum
+        datetime tarih
+        datetime olusturuldu
+    }
+    banka_hesaplari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string banka_adi
+        string hesap_adi
+        string hesap_sahibi
+        string iban
+        string para_birimi
+        decimal bakiye
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    cari_bakiyeler {
+        string cari_id PK
+        string tenant_id FK "kiraci"
+        decimal tl_bakiye
+        decimal has_gram_bakiye
+        datetime son_islem_tarihi
+        datetime guncellendi
+    }
+    cariler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string tur
+        string ad
+        string telefon
+        string email
+        string vergi_no
+        string adres
+        string notlar
+        decimal kredi_limiti_tl
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    faturalar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string fatura_no
+        string cari_id FK "mantiksal"
+        string tur
+        string kdv_turu
+        decimal has_deger
+        decimal ara_toplam
+        decimal kdv_oran
+        decimal kdv_tutar
+        decimal toplam
+        string para_birimi
+        string durum
+        string banka_hareket_id FK "mantiksal"
+        text aciklama
+        datetime tarih
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    hareketler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string tur
+        datetime tarih
+        text aciklama
+        decimal tl_tutari
+        string para_birimi
+        decimal has_grami
+        string kur_snapshot_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string urun_id FK "mantiksal"
+        string karsi_sube_id FK "mantiksal"
+        string kullanici_id FK "mantiksal"
+        string fatura_no
+        datetime olusturuldu
+        string odeme_turu
+        string kmts_kodu
+    }
+    kasa_hareketleri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string kasa_id FK "mantiksal"
+        string hareket_id FK "mantiksal"
+        decimal tutar
+        string para_birimi
+        string odeme_turu
+        decimal komisyon_oran
+        datetime blokaj_bitis
+        datetime tarih
+        datetime olusturuldu
+    }
+    kasalar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string ad
+        string para_birimi
+        decimal bakiye
+        bool aktif
+        datetime guncellendi
+    }
+
+    banka_hareketleri ||--o{ faturalar : "banka_hareket"
+    banka_hesaplari ||--|{ banka_hareketleri : "banka_hesap"
+    cariler ||--o{ banka_hareketleri : "cari"
+    cariler ||--|{ faturalar : "cari"
+    cariler ||--o{ hareketler : "cari"
+    faturalar ||--o{ banka_hareketleri : "fatura"
+    hareketler ||--o{ kasa_hareketleri : "hareket"
+    kasalar ||--|{ kasa_hareketleri : "kasa"

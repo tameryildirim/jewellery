@@ -1,0 +1,406 @@
+@* ═══════════════════════════════════════════════════════════════════════════
+   SECİCİ — ORTAK SEÇİM BİLEŞENİ (paket P-36 · kurucu talimatı 19, 21 Eylül)
+
+   TEKNİK GERÇEK (kurucu haklı): yerleşik <select>'in AÇILIR LİSTESİ CSS ile
+   biçimlendirilemez — onu işletim sistemi, sayfanın DIŞINDA çizer. Yükseklik,
+   satır aralığı, seçili işareti, kaydırma çubuğu, yazı tipi ve zemin bizim
+   değildir; koyu temada bile sistem grisi görünür. Kurucunun ekran
+   görüntüsündeki kopukluk tam olarak budur. TEK ÇÖZÜM ÖZEL BİLEŞENDİR.
+
+   SÖZLEŞME: FRONTEND-KIMLIK-VE-MENU-2026-09-21.md § 6.4-6.9 (sıfırdan
+   tasarlanmadı, oradaki şartname uygulandı).
+
+   TEK YER KURALI (kurucu: "beğenmediğimiz bir yer olursa tek seferde
+   değiştiririz"): görsel değerlerin TAMAMI belirtecler.css'ten gelir; bu
+   dosyada satır içi renk/px YOKTUR.
+
+   KİPLER (P-36b ile İKİSİ DE ÇALIŞIR):
+     • Yerel — `Secenekler` verilir, istemcide süzülür, gecikme yok.
+     • Uzak  — `UzakTur` verilir; sunucuda aranır (/arama), 250ms gecikme,
+               asgari 2 karakter, istek sırası ile yarış koruması, sınır
+               uyarısı ve hata ≠ boş durum ayrımı. Mekanizma KayitSecici'den
+               (P-15) taşındı, yeniden yazılmadı.
+     • İKİSİ BİRDEN verilirse çalışma zamanı istisnası (sessiz kip seçimi
+       yasak — Anayasa md.1).
+
+   ⚠ ApiIstemci KURUCUDA İSTENMEZ: Yerel kipi çizen onlarca bUnit sınıfı sahte
+     API kurmak zorunda kalmasın diye (ArayuzModuServisi deseni). Uzak kipte
+     kapsamdan O AN çözülür; çözülemezse sessizce boş liste DEĞİL, hata bandı.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@using Kuyumcu.Contracts.Arama
+@inject DilServisi Dil
+@inject IServiceProvider Kapsam
+@inject Microsoft.JSInterop.IJSRuntime Js
+
+<div class="secici-alan" id="@($"{ElemanId}-sar")">
+    <label class="alan-etiket" for="@ElemanId">
+        @Etiket@if (Zorunlu)
+        {<span class="zorunlu-isaret" aria-hidden="true">*</span>}
+    </label>
+
+    <div class="secici-kap">
+        <button type="button" id="@ElemanId" class="secici-tetik @(Acikmi ? "acik" : null) @(Hatali ? "hatali" : null)"
+                data-deger="@Deger"
+                role="combobox" aria-haspopup="listbox"
+                aria-expanded="@(Acikmi ? "true" : "false")"
+                aria-controls="@($"{ElemanId}-liste")"
+                aria-required="@(Zorunlu ? "true" : "false")"
+                aria-invalid="@(Hatali ? "true" : "false")"
+                aria-activedescendant="@(Acikmi && etkin >= 0 ? $"{ElemanId}-secenek-{etkin}" : null)"
+                disabled="@Devredisi" title="@(Devredisi ? DevredisiSebebi : null)"
+                @onclick="Degistir" @onkeydown="TetikTus">
+            @* KESIF-P7 (K10, keşif #19/#26/#32/#36/#46/#62/#63/#89/#90): seçili değer ÜÇ NOKTAYLA
+               KESİLMEZ. `secici-metin--tam` = tam metin sınıfı (ortak.css: gerekirse ikinci satıra
+               sarar, gizleyen taşma yok); tam metin ayrıca `title` ipucunda. Yer tutucu metne
+               title verilmez (değer değildir).
+               TOPLU-1 tur 3: kutu en çok İKİ satır (ortak.css bileşen kuralı); fazlası "…" ile biter,
+               tam ad bu `title`da ve düğmenin erişilebilir adında kalır. *@
+            <span class="secici-metin secici-metin--tam @(SeciliOge is null ? "yer-tutucu" : null)"
+                  title="@(string.IsNullOrEmpty(Deger) ? null : GorunenMetin)">@GorunenMetin</span>
+            <span class="secici-ok" aria-hidden="true"></span>
+        </button>
+
+        @if (Acikmi)
+        {
+            @* Dışarı tıklama: değeri DEĞİŞTİRMEDEN kapat (§ 6.6 son satır). *@
+            <div class="secici-perde" id="@($"{ElemanId}-perde")" @onclick="Kapat"></div>
+
+            <div class="secici-liste-kap" id="@($"{ElemanId}-liste-kap")">
+                @if (AramaGorunur)
+                {
+                    <div class="secici-ara-sar">
+                        <input type="text" class="girdi secici-ara" id="@($"{ElemanId}-ara-girdi")"
+                               placeholder="@Dil.T.Kabuk.SeciciAramaYerTutucu"
+                               aria-label="@Dil.T.Kabuk.SeciciAra"
+                               aria-controls="@($"{ElemanId}-liste")"
+                               value="@sorgu" @oninput="AramaDegisti" @onkeydown="ListeTus" />
+                    </div>
+                }
+                <ul class="secici-liste" id="@($"{ElemanId}-liste")" role="listbox"
+                    aria-label="@Etiket" @onkeydown="ListeTus" tabindex="-1">
+                    @if (BosSecenekMetni is { Length: > 0 } bos && string.IsNullOrWhiteSpace(sorgu))
+                    {
+                        <li class="secici-secenek @(string.IsNullOrEmpty(Deger) ? "secili" : null)"
+                            id="@($"{ElemanId}-secenek-bos")" role="option" data-deger=""
+                            aria-selected="@(string.IsNullOrEmpty(Deger) ? "true" : "false")"
+                            @onclick="() => Sec(null)">
+                            <span class="secici-isaret @(string.IsNullOrEmpty(Deger) ? "secili-isaret" : null)" aria-hidden="true">@if (string.IsNullOrEmpty(Deger)) { <Ikon Ad="@Ikonlar.Onay" /> }</span>
+                            <span class="secici-ad">@bos</span>
+                        </li>
+                    }
+                    @for (var i = 0; i < Suzulmus.Count; i++)
+                    {
+                        var s = i;
+                        var o = Suzulmus[s];
+                        <li class="secici-secenek @(s == etkin ? "etkin" : null) @(o.Deger == Deger ? "secili" : null) @(o.Pasif ? "pasif" : null)"
+                            id="@($"{ElemanId}-secenek-{s}")" role="option" data-deger="@o.Deger"
+                            aria-selected="@(o.Deger == Deger ? "true" : "false")"
+                            aria-disabled="@(o.Pasif ? "true" : "false")"
+                            @onclick="() => Sec(o)">
+                            <span class="secici-isaret @(o.Deger == Deger ? "secili-isaret" : null)" aria-hidden="true">@if (o.Deger == Deger) { <Ikon Ad="@Ikonlar.Onay" /> }</span>
+                            <span class="secici-ad">
+                                @o.Ad
+                                @if (o.AltBilgi is { Length: > 0 } alt)
+                                {
+                                    <span class="secici-alt">@alt</span>
+                                }
+                            </span>
+                            @if (o.RozetMetni is { Length: > 0 } rz)
+                            {
+                                <span class="secici-rozet">@rz</span>
+                            }
+                        </li>
+                    }
+                    @if (UzakMi && araniyor)
+                    {
+                        <li class="secici-bos" id="@($"{ElemanId}-araniyor")" role="presentation">
+                            @Dil.T.Ortak.Yukleniyor
+                        </li>
+                    }
+                    else if (UzakMi && uzakHata is { Length: > 0 } uh)
+                    {
+                        @* UX-S28: hata "kayıt yok"a ÇEVRİLMEZ; ayrı satırda ve kırmızı. *@
+                        <li class="secici-hata" id="@($"{ElemanId}-uzak-hata")" role="alert">@uh</li>
+                    }
+                    else if (UzakMi && !Aranabilir)
+                    {
+                        @* UX-S30: istek atılmamasının sebebi EKRANDA yazılı. *@
+                        <li class="secici-bos" id="@($"{ElemanId}-asgari")" role="presentation">
+                            @string.Format(Dil.T.Kabuk.AramaEnAz, AsgariSorgu)
+                        </li>
+                    }
+                    else if (Suzulmus.Count == 0 && BosSecenekMetni is null)
+                    {
+                        @* UX-S28: bu BOŞ DURUMdur (süzgeç gerçekten boş döndü),
+                           hata değildir. Hata bandı çağıranın işidir. *@
+                        <li class="secici-bos" id="@($"{ElemanId}-eslesme-yok")" role="presentation">
+                            @Dil.T.Kabuk.SeciciEslesmeYok
+                        </li>
+                    }
+                </ul>
+                @if (SinirAsildi)
+                {
+                    @* UX-S29: sessiz kırpma YASAK — sınır ve daraltma yolu yazılır. *@
+                    <p class="secici-sinir" id="@($"{ElemanId}-sinir")">@Dil.T.Kabuk.SeciciSinir</p>
+                }
+            </div>
+        }
+    </div>
+
+    @if (Devredisi && DevredisiSebebi is { Length: > 0 } sebep)
+    {
+        @* DoD EK md.1 + UX-S30: kilitli eylem SEBEBİNİ söyler. *@
+        <span class="secici-kilit-sebep" id="@($"{ElemanId}-durum")">@sebep</span>
+    }
+    @if (Hatali)
+    {
+        <span class="hata-metni alan-hata" id="@($"{ElemanId}-hata")" role="alert">@Hata</span>
+    }
+</div>
+
+@code {
+    /// <summary>Mevcut &lt;select&gt; id'si BİREBİR korunur (170 id değişmez).</summary>
+    [Parameter, EditorRequired] public string ElemanId { get; set; } = "";
+    [Parameter, EditorRequired] public string Etiket { get; set; } = "";
+    [Parameter] public string? Deger { get; set; }
+    [Parameter] public EventCallback<string?> DegerChanged { get; set; }
+    [Parameter] public IReadOnlyList<SecenekOgesi>? Secenekler { get; set; }
+    /// <summary>Uzak kip — <c>AramaTurleri</c> sabiti; verilirse SUNUCUDA aranır (P-36b).</summary>
+    [Parameter] public string? UzakTur { get; set; }
+    /// <summary>Uzak kipte seçili kaydın adı (ULID ekrana basılmaz — B-25).</summary>
+    [Parameter] public string? UzakSeciliAd { get; set; }
+    [Parameter] public string? BosSecenekMetni { get; set; }
+    [Parameter] public string? YerTutucu { get; set; }
+    [Parameter] public bool Zorunlu { get; set; }
+    [Parameter] public bool Devredisi { get; set; }
+    [Parameter] public string? DevredisiSebebi { get; set; }
+    [Parameter] public string? Hata { get; set; }
+    // ⚠ P-37 — ARAMA EŞİĞİ PARAMETRESİ KALDIRILDI (kurucu, 21 Eylül 16:30:
+    //   "dropdownun bazılarında var bazılarında yok arama"). Eşik, aynı
+    //   bileşene İKİ farklı davranış veriyordu; tutarlılık zekâdan önce gelir.
+    //   Arama kutusu ARTIK HER AÇILIŞTA görünür (tek seçenek olsa bile).
+    /// <summary>Yerel kipte yüklenebilecek en çok seçenek (§ 6.9).</summary>
+    public const int YerelTavan = 200;
+
+    /// <summary>Sunucunun asgari sorgu uzunluğu — AramaServisi.AsgariSorgu ile AYNI.</summary>
+    public const int AsgariSorgu = 2;
+    /// <summary>
+    /// Uzak kipte yazma durduktan sonra beklenen süre (ms) — KayitSecici ile AYNI.
+    /// ⚠ STATİK DEĞİL, PARAMETRE: statik olsaydı testler onu koşum boyunca
+    /// paylaşırdı ve paralel koşan iki sınıf birbirinin değerini ezerdi
+    /// (bu tam olarak P-36b'de bir kez başımıza geldi, kararsız test).
+    /// </summary>
+    [Parameter] public int BeklemeMs { get; set; } = VarsayilanBeklemeMs;
+
+    /// <summary>Varsayılan gecikme (ms). KayitSecici.BeklemeMs ile aynı olmak ZORUNDA.</summary>
+    public const int VarsayilanBeklemeMs = 250;
+    /// <summary>Uzak kipte sunucudan istenen en çok kayıt (UX-S29 metninde geçer).</summary>
+    public const int UzakLimit = 10;
+
+    private bool acik;
+    /// <summary>P-39 K6: panel bu boyamada açıldı → yerleşim ölçülecek.</summary>
+    private bool acikYerlesimBekliyor;
+    private string sorgu = "";
+    private int etkin = -1;
+
+    // ── Uzak kip durumu ──────────────────────────────────────────────────────
+    private List<SecenekOgesi> uzakSonuclar = [];
+    private string? uzakHata;
+    private bool araniyor;
+    private bool uzakDahaVar;
+    private string? sonAranan;
+    private int istekSirasi;
+    private SecenekOgesi? uzakSecili;
+
+    /// <summary>Uzak kip mi? Tek karar noktası — ekran ve kod aynı soruya aynı cevabı verir.</summary>
+    private bool UzakMi => UzakTur is { Length: > 0 };
+    private bool Aranabilir => sorgu.Trim().Length >= AsgariSorgu;
+
+    private bool Acikmi => acik && !Devredisi;
+    private bool Hatali => Hata is { Length: > 0 };
+    private IReadOnlyList<SecenekOgesi> Tum => Secenekler ?? [];
+    /// <summary>P-37: ŞARTSIZ. Koşullu dal KODDA YOKTUR (SECICI_SARTLI_ARAMA = 0).</summary>
+    private const bool AramaGorunur = true;
+    private bool SinirAsildi => UzakMi ? uzakDahaVar : Tum.Count > YerelTavan;
+    private SecenekOgesi? SeciliOge => UzakMi
+        ? (uzakSecili?.Deger == Deger ? uzakSecili : null)
+        : Tum.FirstOrDefault(o => o.Deger == Deger);
+
+    private string GorunenMetin =>
+        SeciliOge?.Ad
+        ?? (UzakMi && !string.IsNullOrEmpty(Deger) && UzakSeciliAd is { Length: > 0 } ad ? ad : null)
+        ?? (string.IsNullOrEmpty(Deger)
+                ? (YerTutucu ?? BosSecenekMetni ?? Dil.T.Kabuk.SeciciSecimYok)
+                : Dil.T.Kabuk.SeciciSecili);   // B-25: ULID EKRANA BASILMAZ
+
+    /// <summary>Türkçe harf duyarsız süzme; baştan eşleşenler ÖNCE (§ 6.5).</summary>
+    private List<SecenekOgesi> Suzulmus => UzakMi
+        ? uzakSonuclar
+        : (string.IsNullOrWhiteSpace(sorgu)
+            ? Tum.AsEnumerable()
+            : Tum.Where(o => AramaMetni.Iceriyor(o.Ad, sorgu) || AramaMetni.Iceriyor(o.AltBilgi, sorgu))
+                 .OrderByDescending(o => AramaMetni.BastanEsliyor(o.Ad, sorgu)))
+        .Take(YerelTavan).ToList();
+
+    protected override void OnParametersSet()
+    {
+        // Sessiz kip seçimi YASAK (md.1): iki kaynak birden verilemez.
+        if (UzakMi && Secenekler is { Count: > 0 })
+            throw new InvalidOperationException(
+                "Secici: UzakTur ile Secenekler BİRLİKTE verilemez — kip belirsiz kalır.");
+
+        // Çağıran seçimi dışarıdan temizlediyse bileşen de temizlenir.
+        if (string.IsNullOrEmpty(Deger) && uzakSecili is not null) uzakSecili = null;
+    }
+
+    /// <summary>
+    /// Uzak kipte yazma durunca arar. Sıra numarası ile GEÇ gelen yanıt ERKEN
+    /// yanıtın üstüne yazılmaz ("Ay" yanıtı "Ayşe"den sonra gelirse kullanıcı
+    /// yanlış listeyi görürdü) — mekanizma KayitSecici'den taşındı.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        // ── PAKET P-39 · K6 — PANEL GÖRÜŞ ALANI DENETİMİ ───────────────────
+        // Ölçüldü (TASARIM-DENETIMI § 8.2): panel 5 vakada katlamanın TAMAMEN
+        // altında açılıyordu. Yer yoksa js/secici-yerlesim.js `.yukari`
+        // sınıfını koyar. Tek çağıran BURASIDIR; ekran başına yerleşim YOK.
+        // md.1: JS ulaşılamazsa hata YUTULMAZ, eski yerleşim korunur ve
+        // kullanıcıya yanlış bilgi verilmez (panel yine de açıktır).
+        if (Acikmi && acikYerlesimBekliyor)
+        {
+            acikYerlesimBekliyor = false;
+            try
+            {
+                await Js.InvokeAsync<bool>("kuyumcuSecici.yerlestir",
+                    $"{ElemanId}-liste-kap", ElemanId);
+            }
+            catch (Microsoft.JSInterop.JSException) { /* yerleşim yok — panel aşağı açılır */ }
+            catch (InvalidOperationException) { /* ön işleme: JS henüz yok */ }
+        }
+
+        if (!UzakMi || !acik) return;
+        var q = sorgu.Trim();
+        if (q.Length < AsgariSorgu || q == sonAranan) return;
+        sonAranan = q;
+        var sira = ++istekSirasi;
+        if (BeklemeMs > 0) await Task.Delay(BeklemeMs);
+        if (sira != istekSirasi) return;
+        await UzakAra(q, sira);
+    }
+
+    private async Task UzakAra(string q, int sira)
+    {
+        var api = Kapsam.GetService(typeof(ApiIstemci)) as ApiIstemci;
+        if (api is null)
+        {
+            // md.1: eksik bağımlılık "sonuç yok" diye GİZLENMEZ.
+            uzakHata = Dil.T.Kabuk.AramaHata;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        araniyor = true;
+        uzakHata = null;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var yol = $"/arama?q={Uri.EscapeDataString(q)}&tur={UzakTur}&limit={UzakLimit}";
+            if (KabukServisi.Ortak.GorunumSubesi is { Length: > 0 } s)
+                yol += $"&sube={Uri.EscapeDataString(s)}";
+            var gelen = await api.GetAsync<AramaYaniti>(yol);
+            if (sira != istekSirasi) return;      // geç gelen yanıt YOK SAYILIR
+            uzakSonuclar = gelen.Sonuclar
+                .Select(r => new SecenekOgesi(r.Kimlik, r.Ad, r.AltBilgi))
+                .ToList();
+            uzakDahaVar = gelen.DahaVar;
+            etkin = uzakSonuclar.Count > 0 ? 0 : -1;
+        }
+        catch (ApiHata ex)
+        {
+            uzakHata = $"{Dil.T.Kabuk.AramaHata}: {ex.Message}";
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            uzakHata = $"{Dil.T.Kabuk.AramaHata}: {ex.Message}";
+        }
+        finally
+        {
+            araniyor = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Degistir()
+    {
+        acik = !acik;
+        if (acik) { sorgu = ""; etkin = IlkEtkin(); acikYerlesimBekliyor = true; }
+    }
+
+    private void Kapat()
+    {
+        acik = false; sorgu = ""; etkin = -1;
+        // Uzak kip: bir sonraki açılışta ESKİ sonuç listesi görünmesin
+        // (kullanıcı yeni sorgu yazacak; eski liste "güncel" sanılırdı).
+        if (UzakMi) { uzakSonuclar = []; sonAranan = null; uzakHata = null; uzakDahaVar = false; }
+    }
+
+    private int IlkEtkin()
+    {
+        var l = Suzulmus;
+        var s = l.FindIndex(o => o.Deger == Deger);
+        return s >= 0 ? s : (l.Count > 0 ? 0 : -1);
+    }
+
+    private void AramaDegisti(ChangeEventArgs e)
+    {
+        sorgu = e.Value?.ToString() ?? "";
+        etkin = Suzulmus.Count > 0 ? 0 : -1;
+    }
+
+    private async Task Sec(SecenekOgesi? o)
+    {
+        if (o is { Pasif: true }) return;          // pasif öğe seçilemez
+        if (UzakMi) uzakSecili = o;                // adı sakla — ULID basılmaz (B-25)
+        Deger = o?.Deger;
+        Kapat();
+        await DegerChanged.InvokeAsync(Deger);
+    }
+
+    private void TetikTus(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "Enter" or " " or "ArrowDown" when !acik:
+                acik = true; sorgu = ""; etkin = IlkEtkin(); acikYerlesimBekliyor = true; break;
+            case "Escape" when acik:
+                Kapat(); break;
+        }
+    }
+
+    private async Task ListeTus(KeyboardEventArgs e)
+    {
+        var l = Suzulmus;
+        switch (e.Key)
+        {
+            case "ArrowDown": if (etkin < l.Count - 1) etkin++; break;   // sarmaz
+            case "ArrowUp": if (etkin > 0) etkin--; break;               // sarmaz
+            case "Home": etkin = l.Count > 0 ? 0 : -1; break;
+            case "End": etkin = l.Count - 1; break;
+            case "PageDown": etkin = Math.Min(l.Count - 1, etkin + 10); break;
+            case "PageUp": etkin = Math.Max(0, etkin - 10); break;
+            case "Enter":
+                if (etkin >= 0 && etkin < l.Count) await Sec(l[etkin]);
+                break;
+            case "Tab":
+                // Kapat ve seçimi UYGULA (§ 6.6).
+                if (etkin >= 0 && etkin < l.Count) await Sec(l[etkin]); else Kapat();
+                break;
+            case "Escape":
+                // 1. Esc: kapat, değeri değiştirme. 2. Esc (zorunlu değilse): seçimi temizle.
+                if (acik) Kapat();
+                else if (!Zorunlu && Deger is not null) await Sec(null);
+                break;
+        }
+    }
+}

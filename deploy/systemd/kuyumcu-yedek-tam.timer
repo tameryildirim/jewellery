@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Gecelik + 6 saatlik TAM yedek — zamanlayıcı (Paket T-3 Faz A)
+# Saat dilimi Europe/Istanbul; zamanlama TEK YERDEDİR (uygulamada ikinci
+# zamanlayıcı açılmaz). Persistent=true: sunucu kapalıyken kaçan koşu
+# açılışta telafi edilir.
+# ═══════════════════════════════════════════════════════════════════════════
+[Unit]
+Description=Kuyumcu ERP tam yedek zamanlayıcısı (03:15 ve 6 saatte bir)
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 Europe/Istanbul
+OnCalendar=*-*-* 09,15,21:15:00 Europe/Istanbul
+RandomizedDelaySec=300
+Persistent=true
+Unit=kuyumcu-yedek-tam.service
+
+[Install]
+WantedBy=timers.target

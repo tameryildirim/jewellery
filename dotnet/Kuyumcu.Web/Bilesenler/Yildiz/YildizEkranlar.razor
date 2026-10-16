@@ -1,0 +1,95 @@
+@using Kuyumcu.Web.Layout
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-4B — "YILDIZ" TÜM EKRANLAR (tuval Tum4 koyu / Tum4a açık · BİREBİR)
+
+   Kurucu (09.10): "birebir tasarım neyse aynısını istisnasız olarak istiyorum".
+   Yerleşim tuvalin <main>'idir: solda üst satır ("39 ekran · 6 bölüm · hiçbiri
+   gizli değil") + 64 px ince başlık, sağda 460 px alt çizgili arama; altında altı
+   bölüm (üst satır "Günlük iş · 5"), her bölümde 8 sütunlu kare ızgara (çizgi ikon
+   34 px · ad 15 px · üstüne gelince altında tek cümle); en altta tuvalin notu.
+
+   ⚠ YALNIZ data-sema="yildiz": Ekranlar.razor bu bileşeni şema Yıldız iken çizer;
+     öteki 8 şemada özgün karo sayfası AYNEN çalışır.
+   ⚠ VERİ ÜRETMEZ, İSTEK ATMAZ: kareler Ekranlar.razor'un süzdüğü MenuTanimi
+     öğeleridir (yetki süzgeci TEK yerde); ikonlar tuvalden (YildizIkonlari).
+   ⚠ Mevcut id'ler korunur: #ekranlar-yildiz-ozet, #ekranlar-ara, #ekran-karo-{slug},
+     #ekran-aciklama-{slug}, #ekranlar-grup-{slug}, #ekranlar-bos, #ekranlar-aramayi-temizle.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yz yz-tum" id="yildiz-tum">
+    <div class="yz-tum-ana">
+        <div class="yz-bas">
+            <div class="yz-bas-sol">
+                <p class="yz-ust" id="ekranlar-yildiz-ozet">@Ozet</p>
+                <h1 class="yz-ince yz-h1" id="yildiz-tum-baslik">@EkranlarSozlugu.Baslik(Dil.Dil)</h1>
+            </div>
+            <div class="yz-alan yz-alan-ara" id="yildiz-tum-ara">
+                <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
+                <Kuyumcu.Web.Bilesenler.Form.Arama ElemanId="ekranlar-ara"
+                    Etiket="@YildizEkranSozlugu.Ara(Dil.Dil)" YerTutucu="@YildizEkranSozlugu.Ara(Dil.Dil)"
+                    Deger="@Sorgu" DegerChanged="AramaDegisti" Enter="Enter" />
+            </div>
+        </div>
+
+        @Bantlar
+
+        @if (Yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else
+        {
+            <div class="yz-tum-bolumler">
+                @foreach (var grup in MenuTanimi.GrupSirasi)
+                {
+                    var ogeler = Ogeler.Where(o => o.Grup == grup).ToList();
+                    if (ogeler.Count == 0)
+                    {
+                        continue;
+                    }
+                    var gslug = MenuTanimi.GrupSlug(grup);
+                    <section class="yz-tum-bolum" id="@($"ekranlar-grup-{gslug}")" aria-labelledby="@($"ekranlar-grup-baslik-{gslug}")">
+                        <h2 class="yz-ust" id="@($"ekranlar-grup-baslik-{gslug}")">@MenuTanimi.GrupEtiketi(grup)(Dil.T) <span class="yz-tum-nokta" aria-hidden="true">·</span> @ogeler.Count</h2>
+                        <div class="yz-tum-izgara">
+                            @foreach (var oge in ogeler)
+                            {
+                                var slug = MenuTanimi.Slug(oge.Yol);
+                                <a class="yz-kare" id="@($"ekran-karo-{slug}")" href="@oge.Yol">
+                                    <svg width="34" height="34" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="@(YildizIkonlari.Kare.TryGetValue(oge.Yol, out var d) ? d : "")"></path></svg>
+                                    <span class="yz-kad">@YildizEkranSozlugu.KareAdi(oge.Yol, oge.Etiket(Dil.T), Dil.Dil)</span>
+                                    <span class="yz-kac" id="@($"ekran-aciklama-{slug}")">@YildizSozlugu.Aciklama(oge.Yol, Dil.Dil)</span>
+                                </a>
+                            }
+                        </div>
+                    </section>
+                }
+            </div>
+
+            @* Boş durum YALNIZ arama gerçekten hiçbir kareyle eşleşmediğinde (UX-S28). *@
+            @if (Ogeler.Count == 0 && !string.IsNullOrWhiteSpace(Sorgu))
+            {
+                <div class="yz-tum-bos" id="ekranlar-bos">
+                    <p class="yz-s">@EkranlarSozlugu.SonucYok(Dil.Dil, Sorgu.Trim())</p>
+                    <button type="button" class="yz-b2" id="ekranlar-aramayi-temizle" @onclick="Temizle">@EkranlarSozlugu.AramayiTemizle(Dil.Dil)</button>
+                </div>
+            }
+        }
+        @* YILDIZ-4B tur 2 (tasarım hakemi KRİTİK + paket koşulu "tasarım notu metinleri KALKAR"): tuvalin alt satırı tasarım notudur, ekrana konmaz. *@
+    </div>
+</div>
+
+@code {
+    /// <summary>Aramaya göre süzülmüş, yetkili ekranlar (Ekranlar.razor hesaplar).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<MenuOgesi> Ogeler { get; set; } = [];
+    /// <summary>Üst satır metni (yetki süzgecine göre "hiçbiri gizli değil" ya da yalnız sayılar).</summary>
+    [Parameter, EditorRequired] public string Ozet { get; set; } = "";
+    [Parameter] public string Sorgu { get; set; } = "";
+    [Parameter] public EventCallback<string?> AramaDegisti { get; set; }
+    [Parameter] public EventCallback Enter { get; set; }
+    [Parameter] public EventCallback Temizle { get; set; }
+    [Parameter] public bool Yukleniyor { get; set; }
+    /// <summary>Hata bantları (yetki/tercih okunamadı) — sayfadan, gerçek istek atan "yeniden dene" ile.</summary>
+    [Parameter] public RenderFragment? Bantlar { get; set; }
+}

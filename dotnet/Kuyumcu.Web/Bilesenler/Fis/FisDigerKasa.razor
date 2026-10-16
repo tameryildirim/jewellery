@@ -1,0 +1,40 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-6 — Diğer panellerinin ORTAK kasa satırı ═══
+   UX-S22: tek TL kasası varsa seçici GİZLENİR, değer salt okunur yazılır ve
+   gövdeye otomatik girer; kasa yoksa sebebi yazılır (UX-S30).
+   ⚠ İstek atmaz. *@
+@if (Baglam.Kasalar.Count == 0)
+{
+    <div class="bant bant-uyari" id="@($"{Onek}-kasa-yok")" role="status">@M.KasaYok</div>
+}
+else if (Baglam.TekKasaId is not null)
+{
+    <SaltOkunur ElemanId="@($"{Onek}-kasa-tek")" Etiket="@M.Kasa" Deger="@Baglam.Kasalar[0].Ad" />
+}
+else
+{
+    <Secici ElemanId="@($"{Onek}-kasa")" Etiket="@M.Kasa" Zorunlu="true"
+            Secenekler="@(Baglam.Kasalar.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+            Deger="@Durum.KasaId" DegerChanged="@(v => Durum.KasaId = v)" Hata="@Hata"
+            BosSecenekMetni="@Dil.T.Islem.KasaSecin" />
+}
+
+@code {
+    [Parameter, EditorRequired] public DigerIslemDurumu Durum { get; set; } = new();
+    [Parameter, EditorRequired] public DigerBaglam Baglam { get; set; } = new([], [], [], [], false, null);
+    /// <summary>id öneki (avans, degisim, siparis).</summary>
+    [Parameter, EditorRequired] public string Onek { get; set; } = "";
+    [Parameter] public string? Hata { get; set; }
+
+    private FisDigerMetinleri M => FisDigerSozlugu.Al(Dil.Dil);
+
+    /// <summary>SATIS-3 t3 (KAYNAK 5 "kasa otomatik"): birden çok TL kasasında ilk aktif kasa varsayılan (fişle aynı kural);
+    /// seçici değiştirilebilir kalır. Kullanıcı seçtiyse dokunulmaz.</summary>
+    protected override void OnParametersSet()
+    {
+        if (Baglam.TekKasaId is null && string.IsNullOrEmpty(Durum.KasaId) && Baglam.VarsayilanKasaId is { } v)
+            Durum.KasaId = v;   // t6: oturumun şubesindeki ilk kasa; şubede kasa yoksa boş kalır, seçici zorunlu
+    }
+}

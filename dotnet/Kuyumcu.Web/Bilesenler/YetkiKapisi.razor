@@ -1,0 +1,89 @@
+@using Kuyumcu.Web.Layout
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ═════════════════════════════════════════════════════════════════════════
+   PAKET KESIF-P1 (#72) — SAYFA DÜZEYİNDE ROL KAPISI.
+
+   Bulgu: MÜDÜR /isletme, /yetkiler, /yedekler, /denetim-izi, /veri-ice-aktarim,
+   /veri-disa-aktarim adreslerine doğrudan girince sayfa açılıyor, sunucu 403
+   dönüyor ve ekran sonsuza dek "Yükleniyor…" gösteriyordu; sekmeler ve
+   düzenle düğmeleri görünür kalıyor, bantta ham "SAHIP" yazıyordu.
+
+   ⚠ KAPININ KAYNAĞI TEK: rota → rol haritası MenuTanimi.Ogeler/AltBlok'tan
+     OKUNUR (menüyü gizleyen aynı satır). Yeni harita YAZILMAZ.
+   ⚠ BU BİR GÜVENLİK KAPISI DEĞİLDİR — son sözü sunucu ([RolGerekli]) söyler.
+     Kapı yalnız yetkisiz kullanıcıya sayfayı ÇİZMEZ ve TEK durum gösterir.
+   ⚠ Rol henüz bilinmiyorsa (profil /auth/ben ile yükleniyor) kısa bir
+     yükleniyor durumu çizilir; profil okunamadıysa (RolBilinmiyor) sayfa
+     çizilir ve karar sunucuya kalır (tahmin yok — Anayasa md.1).
+   ═════════════════════════════════════════════════════════════════════════ *@
+
+@if (GerekenRoller is not { Length: > 0 } roller)
+{
+    @ChildContent
+}
+else if (Oturum.Kullanici is null && !ProfilDenendi)
+{
+    <Yukleniyor />
+}
+else if (Oturum.Kullanici is { } k && !roller.Contains(k.Rol))
+{
+    <div class="kart" id="yetki-kapisi" role="alert">
+        <div class="kart-govde dikey-bosluk">
+            <h2 id="yetki-kapisi-baslik">@string.Format(M.YetkiKapisiBaslik, KesifP1Sozlugu.RolListesi(roller, Dil.Dil))</h2>
+            <p class="metin-soluk" id="yetki-kapisi-aciklama">@string.Format(M.YetkiKapisiAciklama, KesifP1Sozlugu.RolAdi(k.Rol, Dil.Dil))</p>
+            <div>
+                <a class="btn btn-ikincil" id="yetki-kapisi-panel" href="/">@M.YetkiKapisiPanel</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Yerleşim profil okumasını denediyse true (başarılı ya da değil).</summary>
+    [Parameter] public bool ProfilDenendi { get; set; }
+
+    private KesifP1Metinleri M => KesifP1Sozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// Geçerli rotanın rol kapısı — MenuTanimi'ndeki satırın Roller alanı.
+    /// Menüde olmayan ya da rol aramayan rota için null (kapı yok).
+    /// </summary>
+    private string[]? GerekenRoller => Rota(new Uri(Nav.Uri).AbsolutePath);
+
+    /// <summary>Saf yardımcı: yol → gereken roller (test edilebilir).</summary>
+    public static string[]? Rota(string mutlakYol)
+    {
+        var yol = mutlakYol.Length > 1 ? mutlakYol.TrimEnd('/') : mutlakYol;
+        var oge = MenuTanimi.Ogeler.Concat(MenuTanimi.AltBlok)
+            .FirstOrDefault(o => string.Equals(o.Yol, yol, StringComparison.OrdinalIgnoreCase));
+        return oge is { Roller.Length: > 0 } ? oge.Roller : null;
+    }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += Konum;
+        Oturum.Degisti += Yenile;
+        Dil.Degisti += Yenile;
+    }
+
+    private void Konum(object? _, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs __) => Yenile();
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= Konum;
+        Oturum.Degisti -= Yenile;
+        Dil.Degisti -= Yenile;
+    }
+}

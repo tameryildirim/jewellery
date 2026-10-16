@@ -1,0 +1,47 @@
+@using Kuyumcu.Web.Servisler
+@inherits SayisalAlan
+
+@* SAYI — birimsiz ondalık/tam sayı (adet, oran, gün). Paket P-36b. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <div class="alan-girdi-satir">
+        <input type="text" inputmode="@(TamSayi ? "numeric" : "decimal")" class="girdi sayi @(EtkinHatali ? "hatali" : null)"
+               id="@ElemanId" value="@KutuDegeri" data-deger="@MakineDeger" placeholder="@YerTutucu"
+               data-maske="sayi" data-eksi="@EksiOzniteligi" data-tam="@TamOzniteligi"
+               aria-required="@(Zorunlu ? "true" : "false")"
+               aria-invalid="@(EtkinHatali ? "true" : "false")"
+               aria-describedby="@SayisalAciklayan"
+               disabled="@Kilitli" @oninput="Degisti" @onfocus="OdakGeldi" @onblur="OdakGitti" />
+        @if (Birim is { Length: > 0 } br)
+        {
+            <span class="alan-son-ek" aria-hidden="true">@br</span>
+        }
+    </div>
+    @if (TamSayi)
+    {
+        @* GOC-C-2 VERI-2: tam sayı alanında ondalık tuşu yazılmaz (girdi-maske.js); engellendiği an bu ipucu görünür
+           — "1,5" yazan kullanıcı kutuda neden "1" kaldığını görür (sessiz kırpma yok). Gizliyken DOM'da kalır. *@
+        <span class="alan-kesir-ipucu metin-kucuk metin-amber" id="@($"{ElemanId}-kesir")" role="status" hidden>@KesirTusuIpucu</span>
+    }
+    @* P-39 · K7: `/fiyatlandirma`da önizleme girdiyle BİREBİR aynıydı
+       ("100" / "100"). Biçim bilgi eklemiyorsa önizleme ÇİZİLMEZ. *@
+    @if (OnizlemeGorunur && Deger is { } d)
+    {
+        @* Biçim TEK yerden: Servisler/Bicim.cs. *@
+        <span class="alan-onizleme" id="@($"{ElemanId}-onizleme")">@Bicim.Miktar(d, BirimKodu)</span>
+    }
+</AlanKabugu>
+
+@code {
+    /// <summary>BICIM-2: odak dışı gösterim (tek kaynak Servisler/Bicim.cs).</summary>
+    protected override string OdakDisiBicim(decimal d) => Bicim.SayiGirdi(d);
+
+    /// <summary>Kutunun sağında görünen birim etiketi (ekran metni).</summary>
+    [Parameter] public string? Birim { get; set; }
+    /// <summary>Bicim.Miktar'a giden birim KODU (GRAM · ADET). Ham kod ekrana basılmaz.</summary>
+    [Parameter] public string? BirimKodu { get; set; }
+
+    /// <summary>P-39 K7 ölçütü bu metin üzerinden işler.</summary>
+    protected override string OnizlemeBicimi => Deger is { } d ? Bicim.Miktar(d, BirimKodu) : "";
+}

@@ -1,0 +1,147 @@
+@inject DilServisi Dil
+@inject IServiceProvider Hizmetler
+
+@* ═══ PAKET S2-1 — HURDA ALIŞ ALANLARI + SATICI KİMLİĞİ ═══════════════════════
+   Islemler.razor'dan BİREBİR taşındı (S-2 madde 2.1). Bileşen istek ATMAZ;
+   durum HurdaGirisi nesnesindedir (sahibi Islemler.razor) ve hurda-alis
+   gövdesi yine Kaydet()'te kurulur. Mevcut element id'leri DEĞİŞMEDİ. *@
+@* PAKET ISLEM-BANT-2 (tasarım hakemi YÜKSEK): hurda alışını kaydedemeyen rol (sunucu [RolGerekli] kümesi — IslemRolleri.HurdaAlis,
+   TEK KAYNAK) bunu Kaydet'e basmadan, formun BAŞINDA öğrenir; Kaydet aynı cümleyle kilitli (Islemler.IslemBant2.cs). *@
+@if (IslemBantGosterim.HurdaAlisKilitli(IslemBantGosterim.Rol(Hizmetler)))
+{
+    <p class="bant bant-uyari" id="hurda-yetki-yok" role="status">@Kuyumcu.Core.I18n.IslemBant2Sozlugu.HurdaAlisYetkiMetni(Dil.Dil)</p>
+}
+<div class="form-grid-3">
+    <Gram ElemanId="hurda-gram" Zorunlu="true" Etiket="@Dil.T.Urun.GramAgirlik"
+          @bind-Deger="Hurda.Gram" @bind-Deger:after="Bildir" />
+    <div class="alan">
+        <Secici ElemanId="hurda-ayar"
+                Etiket="@Dil.T.Urun.Ayar"
+                Secenekler="@FisHesap.AyarSecenekleri(Ayarlar)"
+                @bind-Deger="Hurda.Ayar" @bind-Deger:after="Bildir" />
+    </div>
+    @* UX-S21: sistemin bildiği değer kullanıcıdan istenmez. Canlı has fiyatı alanı doldurur;
+       kullanıcı yazarsa rozet "Elle girildi"ye döner ve kur değişse de üzerine YAZILMAZ.
+       SATIS-3 (KAYNAK 2 md.1+2): ikinci <label> ve iç içe .alan sarmalayıcısı KALKTI — Para doğrudan
+       ızgara hücresi (subgrid: kutu Gram/Ayar ile aynı y'de); rozet etiket satırında içerik boyunda
+       (AlanKabugu → #hurda-fiyat-kaynak, id aynı). *@
+    <Para ElemanId="hurda-fiyat" Zorunlu="true" GecersizdeBosalt="true" Tur="Kuyumcu.Core.Domain.Girdi.TutarTuru.Pozitif" Etiket="@Dil.T.Islem.HasGramFiyati"
+          Deger="@Hurda.Fiyat" Hata="@BantMetni" KaynakRozeti="@(Hurda.FiyatElle ? Dil.T.Islem.ElleGirildi : Dil.T.Islem.KurdanGeldi)"
+          DegerChanged="@((decimal? _v) => { Hurda.FiyatGirildi(_v); return Bildir(); })" />
+</div>
+@* SATIS-3 doğrulama 4. tur (UX-S21/S27): hesaplanan has karşılığı ve tutar salt okunur TEK satır —
+   kullanıcı ne ödeyeceğini kaydetmeden görür. Hesaplanamazsa "—". Kesinti notu yalnız esnaf muaflığında. *@
+@* PAKET ISLEM-BANT: oran bandı aşımında SAHİP/MÜDÜR onayı (Kur ekranıyla aynı kalıp); bant içinde hiçbir şey çizilmez. *@
+<IslemBantOnay Onek="hurda" Hata="@BantHatasi" Durum="Hurda.Bant" Degisti="Bildir" />
+<p class="fis-hurda-hesap" id="hurda-hesap" aria-live="polite">
+    <span>@S3.HurdaHas: <strong id="hurda-hesap-has">@(Hurda.HasKarsiligi is { } h ? Bicim.Has(h) : S3.FiyatYok)</strong></span>
+    <span>@S3.HurdaTutar: <strong id="hurda-hesap-tutar">@(Hurda.HesaplananTutar is { } t && IslemBantGosterim.TutarGosterilirAyar(Hurda.Fiyat, Hurda.Ayar) ? Bicim.Tl(t) : S3.FiyatYok)</strong></span>
+    @if (Hurda.SaticiTipi == "ESNAF_MUAF")
+    {
+        <span class="metin-soluk metin-kucuk" id="hurda-hesap-not">@S3.HurdaKesintiNotu</span>
+    }
+</p>
+
+@* ── SATICI KİMLİĞİ — DP4-03 (QA turu 4 KRİTİK) ──────────────
+   Sunucu (GiderPusulasiKapisi.Dogrula) bu bloğu TUTAR EŞİĞİ
+   OLMADAN zorunlu kılar; ekranda hiç sorulmadığı için her
+   hurda alışı POST /islemler/hurda-alis → 400 ile dönüyordu
+   ve "Hurda alımı gir" düğmesi hiçbir kayıt üretemiyordu.
+   UX-S26: oluşturma formu sunucunun kabul ettiği alan kümesini
+   taşır. UX-S24: cari seçilince ad ön dolar. *@
+<fieldset class="alan-kume" id="hurda-satici">
+    <legend>@Dil.T.Islem.SaticiKimligi</legend>
+    @* SATIS-3: teknik not BASİT'te yok; t3: PRO'da satır olarak değil, katlı "Bilgi" ipucunda (id aynı). *@
+    <details class="fis-bilgi" id="hurda-bilgi" hidden="@Basit">
+        <summary class="metin-kucuk">@S3.BilgiIpucu</summary>
+        <p class="metin-kucuk metin-soluk" id="hurda-satici-not" hidden="@Basit">@Dil.T.Islem.SaticiKimligiNot</p>
+    </details>
+    <Secici ElemanId="hurda-satici-tip"
+            Etiket="@Dil.T.Islem.SaticiTipi" Zorunlu="true"
+            Secenekler="@SaticiTipleri"
+            Deger="@Hurda.SaticiTipi"
+            DegerChanged="@(v => { Hurda.SaticiTipiSec(v, CariAdi); return Bildir(); })"
+            Hata="@Hurda.TipiHataGorunur(Dil.T.Islem)"
+            BosSecenekMetni="—" />
+    @if (Hurda.SaticiTipi == "MUKELLEF")
+    {
+        @* Mükelleften alımda pusula düzenlenmez; belge onun faturasıdır. *@
+        <Metin ElemanId="hurda-satici-fatura" Etiket="@Dil.T.Islem.TedarikciFaturaNo" Zorunlu="true"
+               @bind-Deger="Hurda.TedarikciFaturaNo" @bind-Deger:after="Bildir" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.TedarikciFaturaNo"
+               Hata="@Hurda.FaturaNoHata(Dil.T.Islem)" HataKimligi="hurda-satici-fatura-hata" />
+    }
+    else if (Hurda.SaticiTipi is "NIHAI_TUKETICI" or "ESNAF_MUAF" && KimlikMasakta)
+    {
+        @* SATIS-4 (b) — TEK KİMLİK FORMU: MASAK kimlik kutusu açıkken satıcının adı, TCKN'si ve adresi O kutudan
+           alınır (sayfa eşitler — Islemler.Satis4.cs KimlikEsitle; gövdedeki VUK md.234 alanları AYNEN gider).
+           Belge türü TC kimlik değilse TCKN burada sorulur (değer uydurulmaz). *@
+        <p class="metin-kucuk metin-soluk" id="hurda-kimlik-not">@KesifP5Sozlugu.Al(Dil.Dil).KimlikAsagidaAlinir</p>
+        @if (Hurda.Dokunuldu && Hurda.AdresZorunlu && string.IsNullOrWhiteSpace(Hurda.SaticiAdres))
+        {
+            @* VUK md.234 adresi (sunucu HurdaAyarlari.SaticiAdresiZorunlu): kutu kimlik kartında — eksikse yolu burada söylenir (UX-S30). *@
+            <p class="hata-metni metin-kucuk" id="hurda-satici-adres-hata" role="alert">@KesifP5Sozlugu.Al(Dil.Dil).KimlikAdresGerekli</p>
+        }
+        @if (!TcknMasakta)
+        {
+            <TcKimlikNo ElemanId="hurda-satici-tckn" Etiket="@Dil.T.Islem.SaticiTckn" Zorunlu="true"
+                   @bind-Deger="Hurda.SaticiTckn" @bind-Deger:after="Bildir"
+                   Hata="@Hurda.TcknHata(Dil.T.Islem)" HataKimligi="hurda-satici-tckn-hata" />
+        }
+    }
+    else if (Hurda.SaticiTipi is "NIHAI_TUKETICI" or "ESNAF_MUAF")
+    {
+        <div class="form-grid-2">
+            @* SATIS-3 (KAYNAK 2 md.1+3): rozet ("Cariden geldi") etiket satırında (#hurda-satici-ad-kaynak);
+               hata alan altında (HataKimligi — id'ler aynı); sarmalayıcı yok → iki kutu tek satır, aynı hiza. *@
+            <AdSoyad ElemanId="hurda-satici-ad" Etiket="@Dil.T.Islem.SaticiAdSoyad" Zorunlu="true"
+                   @bind-Deger="Hurda.SaticiAd" @bind-Deger:after="AdElleYazildi" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.SaticiAd"
+                   KaynakRozeti="@(Hurda.SaticiAdCariden ? Dil.T.Islem.CaridenGeldi : null)"
+                   Hata="@Hurda.AdHata(Dil.T.Islem)" HataKimligi="hurda-satici-ad-hata" />
+            <TcKimlikNo ElemanId="hurda-satici-tckn" Etiket="@Dil.T.Islem.SaticiTckn" Zorunlu="true"
+                   @bind-Deger="Hurda.SaticiTckn" @bind-Deger:after="Bildir"
+                   Hata="@Hurda.TcknHata(Dil.T.Islem)" HataKimligi="hurda-satici-tckn-hata" />
+        </div>
+        @* SATIS-3 (KAYNAK 2 md.4): sunucu (GiderPusulasiKapisi, HurdaAyarlari.SaticiAdresiZorunlu, varsayılan AÇIK —
+           VUK md.234 "adlariyle soyadlarını … ve adreslerini") adresi ister: etiket ona uyar, "(isteğe bağlı)" yazmaz. *@
+        <Metin ElemanId="hurda-satici-adres" Etiket="@Satis3Sozlugu.Al(Dil.Dil).SaticiAdres" Zorunlu="Hurda.AdresZorunlu"
+               @bind-Deger="Hurda.SaticiAdres" @bind-Deger:after="Bildir" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.SaticiAdres"
+               Hata="@Hurda.AdresHata(AltinBacagiSozlugu.Al(Dil.Dil).AdresGirin)" HataKimligi="hurda-satici-adres-hata" />
+    }
+</fieldset>
+
+@code {
+    private Satis3Metinleri S3 => Satis3Sozlugu.Al(Dil.Dil);
+    /// <summary>PAKET SATIS-3 — BASİT yüz: teknik açıklama satırları gizli (DOM'da kalır, PRO'da görünür).</summary>
+    [Parameter] public bool Basit { get; set; }
+
+    /// <summary>SATIS-4 (b): MASAK kimlik kutusu açık — satıcı ad/adres (ve TC kimlikse TCKN) o kutudan alınır, burada sorulmaz.</summary>
+    [Parameter] public bool KimlikMasakta { get; set; }
+    /// <summary>SATIS-4 (b): MASAK belgesi TC kimlik — satıcı TCKN'si belge numarasıdır.</summary>
+    [Parameter] public bool TcknMasakta { get; set; }
+
+    /// <summary>Hurda girdileri — SAHİBİ Islemler.razor.</summary>
+    [Parameter, EditorRequired] public HurdaGirisi Hurda { get; set; } = new();
+    /// <summary>Ayar seçenekleri — TEK KAYNAK Kuyumcu.Core.Domain.Ayarlar.EkranSecenekleri (sayfa verir).</summary>
+    [Parameter, EditorRequired] public string[] Ayarlar { get; set; } = [];
+    /// <summary>Seçili carinin adı (UX-S24 ön dolum) — yoksa null.</summary>
+    [Parameter] public string? CariAdi { get; set; }
+    /// <summary>Her girdi değişikliğinden sonra — sayfa yeniden çizilir (Kaydet kilidi, MASAK tutarı).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private List<SecenekOgesi> SaticiTipleri =>
+    [
+        new("NIHAI_TUKETICI", Basit ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).SaticiTipiVatandas : Dil.T.Islem.SaticiTipiNihai),   // t10: BASİT'te vergi terimi yok
+        new("ESNAF_MUAF", Basit ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).SaticiTipiEsnafSade : Dil.T.Islem.SaticiTipiEsnaf),   // t10: BASİT'te vergi terimi yok
+        new("MUKELLEF", Basit ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).SaticiTipiMukellefSade : Dil.T.Islem.SaticiTipiMukellef),   // t10: BASİT'te vergi terimi yok
+    ];
+
+    private Task Bildir() { Hurda.Dokunuldu = true; return Degisti.InvokeAsync(); }
+    /// <summary>PAKET ISLEM-BANT — has fiyatı bandı (sunucuyla aynı Core kuralı; referans canlı kur).</summary>
+    private Kuyumcu.Core.Domain.Girdi.GirdiHatasi? BantHatasi => Kuyumcu.Core.Domain.Girdi.FiyatBandi.IslemDenetle(
+        Hurda.Fiyat, Kuyumcu.Core.Domain.Girdi.IslemFiyatBaglami.HurdaAlis, IslemBantGosterim.Referans(Hizmetler),
+        Kuyumcu.Core.Domain.Ayarlar.MadenBul(Hurda.Ayar));
+    private string? BantMetni => BantHatasi is { } h ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+    /// <summary>SATIS-3 doğrulama (28.09, canlı görüntü): cariden dolan ad elle değiştirilince "Cariden geldi" rozeti
+    /// kalıyordu (UX-S21 — rozet değerin kaynağını söyler). Elle yazılınca rozet düşer.</summary>
+    private Task AdElleYazildi() { Hurda.SaticiAdCariden = false; return Bildir(); }
+}

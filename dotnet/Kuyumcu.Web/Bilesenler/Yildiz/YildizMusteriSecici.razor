@@ -1,0 +1,96 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-4C — Tezgâh "Değiştir" katmanı: müşteri seçimi TUVAL DİLİNDE.
+   Tuvalde seçim hâli çizilmedi → tuvalin mevcut kalıpları (VARSAYIM YOK):
+   • arama   = tuval .alan (büyüteç + 22 px / 300 girdi, altı --p çizgi; yer tutucu Y_Emanet "Müşteri ara");
+   • liste   = tuval Bugun4 "Seni bekleyen" satırı (.sat: ad · soluk ek · soluk durum · .b3 eylem);
+   • notlar  = Fark bloğunun not satırı (15 px, kötü durum --kotu);
+   • PRO ek  = tuval .ekle ("+ Logo ekle" kalıbı) ile açılan satıcı / fiyat listesi alanları.
+   Eski fiş üst özeti, tarih/para kutuları ve kutulu seçici Yıldız'da ÇİZİLMEZ (hakem 4B tur 2).
+
+   ⚠ İSTEK ATMAZ: seçim sayfanın geri çağrısıdır (cariId yazılır → MusteriDegisti — FisMusteriSatiri.Sec
+     ile AYNI sıra). Peşin/kimlik kapısının bayrakları sayfadan gelir; id'ler (#islem-pesin-hata,
+     #islem-pesin-esik, #islem-pesin-esik-sec, #islem-pesin-esik-yeni) AYNI.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yz-tezgah-musteri-sec" id="yildiz-musteri-secici">
+    <label class="yz-alan yz-tezgah-musteri-ara" for="yildiz-musteri-ara">
+        <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
+        <input type="search" id="yildiz-musteri-ara" class="yz-girdi" placeholder="@YildizTezgahSozlugu.MusteriAra(Dil.Dil)"
+               aria-label="@YildizTezgahSozlugu.MusteriAra(Dil.Dil)" autocomplete="off" value="@arama" @oninput="e => arama = e.Value?.ToString() ?? string.Empty" />
+    </label>
+
+    @if (Gorunen.Count == 0)
+    {
+        <p class="yz-s yz-bos" id="yildiz-musteri-yok">@YildizMusteriSozlugu.AramaBos(Dil.Dil)</p>
+    }
+    else
+    {
+        <div class="yz-sayi yz-tezgah-musteri-liste" id="yildiz-musteri-liste">
+            @foreach (var m in Gorunen.Take(EnCok))
+            {
+                var secili = m.Id == B.MusteriSeciliId;
+                <div class="yz-sat yz-tezgah-musteri-sat" id="@($"yildiz-musteri-sat-{m.Id}")" aria-current="@(secili ? "true" : null)">
+                    <span class="yz-tezgah-musteri-ad">@(m.Durum is null ? m.Ad : m.Ad + " ")@if (m.Durum is { } d) {<span class="yz-s">· @d</span>}</span>
+                    <span class="yz-s yz-tezgah-musteri-durum">@(secili ? YildizTezgahSozlugu.Secili(Dil.Dil) : null)</span>
+                    @if (secili)
+                    {
+                        <span></span>
+                    }
+                    else
+                    {
+                        <button type="button" class="yz-b3" id="@($"yildiz-musteri-sec-{m.Id}")" disabled="@B.Kaydediliyor"
+                                aria-label="@YildizTezgahSozlugu.MusteriSecAria(m.Ad, Dil.Dil)" @onclick="() => B.MusteriSec.InvokeAsync(m.Id)">@YildizTezgahSozlugu.Sec(Dil.Dil)</button>
+                    }
+                </div>
+            }
+        </div>
+        @if (Gorunen.Count > EnCok)
+        {
+            @* UX-S29: liste kırpılmaz — kaç kişinin gösterilmediği ve daraltma yolu yazılır. *@
+            <p class="yz-s yz-tezgah-not" id="yildiz-musteri-sinir" role="status">@YildizTezgahSozlugu.MusteriSinir(Gorunen.Count - EnCok, Dil.Dil)</p>
+        }
+    }
+
+    @if (B.PesinHata is { Length: > 0 } ph)
+    {
+        <p class="yz-tezgah-not yz-kotu" id="islem-pesin-hata" role="alert">@ph</p>
+    }
+    @if (B.PesinKimlikGerekli)
+    {
+        <div class="yz-tezgah-musteri-kimlik" id="islem-pesin-esik" role="alert">
+            <span class="yz-tezgah-not yz-kotu">@FisMusteriSozlugu.Al(Dil.Dil).KimlikBandi</span>
+            <span class="yz-tezgah-musteri-kimlik-eylem">
+                <button type="button" class="yz-b3" id="islem-pesin-esik-sec" @onclick="() => B.GercekMusteriSec.InvokeAsync()">@FisMusteriSozlugu.Al(Dil.Dil).GercekMusteriSec</button>
+                <a class="yz-b2" id="islem-pesin-esik-yeni" href="/cariler">@FisMusteriSozlugu.Al(Dil.Dil).YeniMusteri</a>
+            </span>
+        </div>
+    }
+
+    @if (B.ProUstAlanlar is not null)
+    {
+        <button type="button" class="yz-ekle" id="yildiz-musteri-pro-ac" aria-expanded="@(ProAcik ? "true" : "false")" aria-controls="yildiz-musteri-pro"
+                @onclick="() => proAcik = !ProAcik"><svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="@(ProAcik ? YildizIkonlari.Eksi : YildizIkonlari.Arti)"></path></svg>@YildizTezgahSozlugu.SaticiListe(Dil.Dil)</button>
+        @if (ProAcik)
+        {
+            <div class="yz-duzen" id="yildiz-musteri-pro">@B.ProUstAlanlar</div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizTezgahBaglami B { get; set; } = new();
+
+    /// <summary>Katmanda en çok kaç satır (fazlası UX-S29 satırıyla söylenir).</summary>
+    public const int EnCok = 8;
+
+    private string arama = "";
+    private bool proAcik;
+
+    /// <summary>Satıcı/fiyat listesi hatası varsa açık gelir (hata gizlenmez — UX-S28).</summary>
+    private bool ProAcik => proAcik || B.ProUstAcikZorunlu;
+
+    /// <summary>Aranan ad (Türkçe büyük/küçük harf duyarsız); seçili müşteri her zaman ilk sırada.</summary>
+    private IReadOnlyList<YildizMusteriSecenegi> Gorunen => YildizTezgahBicim.MusteriSuz(B.MusteriSecenekleri, arama, B.MusteriSeciliId);
+}

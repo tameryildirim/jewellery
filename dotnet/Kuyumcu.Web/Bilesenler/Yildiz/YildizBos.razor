@@ -1,0 +1,49 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-5B — "YILDIZ" BOŞ DURUM KALIBI (tuval Y_POScihazlari · Y_Banka · BİREBİR).
+
+   Üst satır + 64 px ince başlık; ortada 1×80 px kıl çizgi, 40 px ince cümle, 18 px soluk açıklama
+   (en çok 520 px) ve tek beyaz hap. Yalnız istek BAŞARILI ve kayıt gerçekten yokken çizilir (UX-S28).
+   ⚠ YALNIZ data-sema="yildiz". İSTEK ATMAZ: hap sayfanın mevcut "yeni" geri çağrısıdır.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yz yz-bosekran" id="@B.Kok">
+    <div class="yz-liste-ana">
+        <div class="yz-bas">
+            <div class="yz-bas-sol">
+                <p class="yz-ust" id="@($"{B.Kok}-ust")">@B.Ust</p>
+                <h1 class="yz-ince yz-h1" id="@($"{B.Kok}-baslik")">@B.Baslik</h1>
+            </div>
+        </div>
+        @B.Bantlar
+        <div class="yz-bosekran-orta">
+            <span class="yz-bosekran-cizgi" aria-hidden="true"></span>
+            <p class="yz-ince yz-bosekran-baslik" id="@($"{B.Kok}-bos-cumle")">@B.BosBaslik</p>
+            <p class="yz-s yz-bosekran-metin" id="@($"{B.Kok}-bos-aciklama")">@B.BosMetin</p>
+            @if (B.B1Etiket is { } b1)
+            {
+                <div class="yz-bosekran-eylem">
+                    <button type="button" class="yz-b1" id="@B.B1Id" disabled="@(B.B1Kilit is not null)" title="@B.B1Kilit"
+                            @onclick="B.B1Tikla">@b1</button>
+                </div>
+            }
+            @if (B.B1Kilit is { } kilit)
+            {
+                <p class="yz-s yz-not" id="@($"{B.B1Id}-kilit")">@kilit</p>
+            }
+        </div>
+        @if (B.AyrintiAc.HasDelegate)
+        {
+            <div class="yz-liste-alt">
+                <button type="button" class="yz-ekle" id="@($"{B.Kok}-ayrinti")" @onclick="B.AyrintiAc">
+                    <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@YildizListeSozlugu.TumAyrintilar(Dil.Dil)
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizBosBaglami B { get; set; } = new();
+}

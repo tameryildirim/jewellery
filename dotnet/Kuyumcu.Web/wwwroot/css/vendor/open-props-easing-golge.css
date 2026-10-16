@@ -1,0 +1,48 @@
+/* ═════════════════════════════════════════════════════════════════════════
+   VENDORED — Open Props (seçici kopya: YALNIZ easing + gölge DEĞERLERİ)
+
+   Kaynak  : https://open-props.style/  ·  https://github.com/argyleink/open-props
+   Dosyalar: src/props.easing.css, src/props.shadow.css (değerler)
+   Sürüm   : open-props 1.7.x (npm: open-props)
+   Lisans  : MIT — Copyright (c) 2021 Adam Argyle
+   Lisans metni 2026-09-17'de https://raw.githubusercontent.com/argyleink/
+   open-props/main/LICENSE adresinden alınıp MIT olduğu DOĞRULANDI.
+
+   MIT License
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+   ⚠ KURAL (UX-2 A2): bu dosyada SEÇİCİ YOKTUR — yalnız :root üzerinde
+     DEĞER tanımı. Hiçbir element stillenmez, hiçbir DOM sözleşmesi
+     etkilenmez. Yükleme sırası: vendor → belirtecler.css → app.css.
+     Buradaki --op-* adları belirtecler.css'te KENDİ adlarımıza bağlanır.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* props.easing.css — 4 değer */
+  --op-ease-1: cubic-bezier(.25, 0, .5, 1);
+  --op-ease-3: cubic-bezier(.25, 0, .3, 1);
+  --op-ease-out-3: cubic-bezier(.33, 1, .68, 1);
+  --op-ease-in-out-3: cubic-bezier(.65, 0, .35, 1);
+
+  /* props.shadow.css — 3 değer (alfa siyah; zemin bağımsız) */
+  --op-shadow-2: 0 3px 5px -2px hsl(220 3% 15% / calc(1% + 3%)), 0 7px 14px -5px hsl(220 3% 15% / calc(1% + 5%));
+  --op-shadow-4: 0 -2px 5px 0 hsl(220 3% 15% / 3%), 0 1px 1px -2px hsl(220 3% 15% / 6%), 0 2px 2px -2px hsl(220 3% 15% / 6%), 0 5px 5px -2px hsl(220 3% 15% / 6%), 0 9px 9px -2px hsl(220 3% 15% / 6%), 0 16px 16px -2px hsl(220 3% 15% / 6%);
+  --op-shadow-6: 0 -1px 2px 0 hsl(220 3% 15% / 3%), 0 2px 1px -2px hsl(220 3% 15% / 7%), 0 5px 5px -2px hsl(220 3% 15% / 7%), 0 10px 10px -2px hsl(220 3% 15% / 7%), 0 20px 20px -2px hsl(220 3% 15% / 7%), 0 40px 40px -2px hsl(220 3% 15% / 7%);
+}

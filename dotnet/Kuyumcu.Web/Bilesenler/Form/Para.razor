@@ -1,0 +1,58 @@
+@using Kuyumcu.Web.Servisler
+@inherits SayisalAlan
+
+@* PARA — tutar girdisi (paket P-36b).
+   ⚠ UX-S32: para birimi TUTARLA BİRLİKTE taşınır. "varsayılan TL" yoktur;
+     ParaBirimi verilmezse TRY kabul edilir ve bu ÖNİZLEMEDE görünür. *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <div class="alan-girdi-satir">
+        <input type="text" inputmode="decimal" class="girdi sayi @(EtkinHatali ? "hatali" : null)"
+               id="@ElemanId" value="@KutuDegeri" data-deger="@MakineDeger" placeholder="@YerTutucu"
+               data-maske="sayi" data-eksi="@EksiOzniteligi" data-tam="@TamOzniteligi"
+               aria-required="@(Zorunlu ? "true" : "false")"
+               aria-invalid="@(EtkinHatali ? "true" : "false")"
+               aria-describedby="@SayisalAciklayan"
+               disabled="@Kilitli" @oninput="Degisti" @onfocus="OdakGeldi" @onblur="OdakGitti" />
+        <span class="alan-son-ek" id="@($"{ElemanId}-birim")">@Bicim.ParaIsareti(ParaBirimi)</span>
+    </div>
+    @* P-39 · K7: önizleme yalnız BİLGİ EKLİYORSA çizilir. "750000" kutusunun
+       altına "₺750.000,00" yazmak mükerrer bilgidir (denetim § 5.1); para
+       birimi zaten kutunun sağında (`-birim`) yazıyor. *@
+    @if (OnizlemeGorunur && Deger is { } d)
+    {
+        <span class="alan-onizleme" id="@($"{ElemanId}-onizleme")">@Bicim.Para(d, ParaBirimi)</span>
+    }
+</AlanKabugu>
+
+@code {
+    /// <summary>BICIM-2: odak dışı gösterim (tek kaynak Servisler/Bicim.cs).</summary>
+    protected override string OdakDisiBicim(decimal d) => Bicim.ParaGirdi(d);
+
+    /// <summary>
+    /// GIRDI-AILESI-2 · K9–K9b: tutar türü (Pozitif · SifirOlabilir · Isaretli). Verilirse Core
+    /// TutarKurali uygulanır (eksi/sıfır/2 ondalık/decimal(15,2) tavanı) ve "-" tuşu yalnız
+    /// Isaretli'de yazılır. Verilmezse eski davranış (yalnız EnAz/EnCok) — göç paketleri verir.
+    /// </summary>
+    [Parameter] public Kuyumcu.Core.Domain.Girdi.TutarTuru? Tur { get; set; }
+
+    /// <remarks>
+    /// Tur 3 (doğrulayıcı YÜKSEK): Tur verilmese de VARSAYILAN 2 ondalık (K9) uygulanır — "1234,5678"
+    /// hatasız kabul ediliyor, sunucu 1234,57'ye yuvarlıyordu. Fazlası alan altında Core metniyle hata
+    /// + kapıda Kaydet kilidi (sebep AYNI metin); sunucu (banka hareketi) aynı kuralla 400 verir.
+    /// </remarks>
+    protected override Kuyumcu.Core.Domain.Girdi.GirdiHatasi? KuralDenetle(decimal d) =>
+        (Tur is { } t ? Kuyumcu.Core.Domain.Girdi.TutarKurali.Denetle(d, t)
+            : EnCokOndalik is null ? Kuyumcu.Core.Domain.Girdi.SayiKurali.Ondalik(d, Kuyumcu.Core.Domain.Girdi.TutarKurali.OndalikHane) : null)
+        ?? base.KuralDenetle(d);
+
+    protected override bool EksiYazilabilir =>
+        Tur is { } t ? t == Kuyumcu.Core.Domain.Girdi.TutarTuru.Isaretli : base.EksiYazilabilir;
+
+    /// <summary>TRY · USD · EUR · GBP. Kasadan/cariden gelir — kullanıcıya sorulmaz (UX-S21).</summary>
+    [Parameter] public string? ParaBirimi { get; set; }
+
+    /// <summary>P-39 K7 ölçütü bu metin üzerinden işler.</summary>
+    protected override string OnizlemeBicimi => Deger is { } d ? Bicim.Para(d, ParaBirimi) : "";
+}

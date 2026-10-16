@@ -1,0 +1,1131 @@
+@page "/raporlar/kar-zarar"
+@using Kuyumcu.Web.Servisler
+@using Kuyumcu.Contracts.Sayfalar.KarZarar
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IServiceProvider Sp
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   KÂR-ZARAR EKRANI — iki bacaklı
+
+   ⚠ Bu ekranın tek bir işi var: kuyumcuya TL kârıyla HAS kârını AYNI ANDA
+   göstermek. Yalnız TL gösteren bir rapor, altın yükselirken kâr yazar ama
+   kuyumcu sattığı malın yerine aynı gramı koyamaz — eriyerek büyür ve fark
+   etmez. Bu yüzden has bacağı TL bacağı kadar büyük gösterilir ve negatifse
+   ayrıca uyarı basılır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.KarZarar.Baslik)</PageTitle>
+
+@* ORTAK-1 hakem turu 29.09 (KRİTİK): dönem kartı ile sekme şeridi arasında 0 px vardı (.sayfa aralık
+   kuralı taşımıyor). dikey-bosluk: bloklar arası 1rem, diğer rapor ekranlarıyla aynı. *@
+<div class="sayfa dikey-bosluk kz-sayfa">
+    @* UX-1-C3: mevcut başlık bloğu ortak SayfaBasi bileşenine SARILDI —
+       başlık ve açıklama metinleri aynen korundu, dönem kısayolları araç
+       çubuğu yuvasına taşındı (tek birincil eylem: "Bu ay"). *@
+    <SayfaBasi Anahtar="kar-zarar" Baslik="@Dil.T.KarZarar.Baslik"
+               Aciklama="@Dil.T.KarZarar.Aciklama">
+        @* PAKET RAPOR-2 (tasarım DÜŞÜK): "Bu ay" birincil mavi düğme sağda yalnız duruyordu, öbür ikisi solda;
+           375'te boyları farklıydı. Üç ön ayar bir FİLTRE seçimidir, eylem değildir → tek segment grubu
+           (Cariler segmentiyle aynı kalıp), seçili olan vurgulanır (aria-pressed); birincil renk kullanılmaz.
+           id'ler AYNI (kz-gecen-ay / kz-bugun / kz-bu-ay). *@
+        <Filtreler>
+            <div class="musteri-segment" id="kz-donem-segment" role="group" aria-label="@KR.DonemOnAyarEtiketi">
+                <button type="button" id="kz-gecen-ay" @onclick="() => Donem(-1)"
+                        class="musteri-segment-oge @(SeciliOnAyar == "gecen-ay" ? "musteri-segment-oge--secili" : null)"
+                        aria-pressed="@(SeciliOnAyar == "gecen-ay" ? "true" : "false")">@Dil.T.KarZarar.GecenAy</button>
+                <button type="button" id="kz-bugun" @onclick="Bugun"
+                        class="musteri-segment-oge @(SeciliOnAyar == "bugun" ? "musteri-segment-oge--secili" : null)"
+                        aria-pressed="@(SeciliOnAyar == "bugun" ? "true" : "false")">@Dil.T.KarZarar.Bugun</button>
+                <button type="button" id="kz-bu-ay" @onclick="() => Donem(0)"
+                        class="musteri-segment-oge @(SeciliOnAyar == "bu-ay" ? "musteri-segment-oge--secili" : null)"
+                        aria-pressed="@(SeciliOnAyar == "bu-ay" ? "true" : "false")">@Dil.T.KarZarar.BuAy</button>
+            </div>
+        </Filtreler>
+    </SayfaBasi>
+    @* ŞUBE-KAPSAM-B: kâr-zarar ve stok değerlemesi seçili şubeye göre. *@
+    <GorunumRozeti Degisti="Yukle" />
+
+    @* ── Dönem ── (hakem turu 29.09: kartın iç boşluğu 0 idi — girdiler kart kenarına yapışıktı;
+       içerik kart-govde ile sarıldı.) *@
+    <div class="kart" id="kz-donem-kart">
+        <div class="kart-govde">
+        <div class="form-grid-2">
+            @* PAKET GOC-D (HAM_TARIH_GIRDISI): yerli type=date elle yazımda 6 haneli yıl kabul ediyordu.
+               Ortak Tarih (Tur=Rapor: gg.aa.yyyy maskesi, 2000..gelecek yıl) — id'ler AYNI (#kz-bas, #kz-bit,
+               hata #kz-aralik-hata). Ters aralık / 400 günü aşan dönem sunucuyla AYNI kural ve metinle
+               (Core RaporDonemKurali); hatalı dönemde istek ATILMAZ. *@
+            <Tarih ElemanId="kz-bas" Etiket="@Dil.T.Ortak.Baslangic" Tur="TarihTuru.Rapor"
+                   Deger="@DateOnly.FromDateTime(baslangic)" DegerChanged="@BaslangicDegisti" />
+            <Tarih ElemanId="kz-bit" Etiket="@Dil.T.Ortak.Bitis" Tur="TarihTuru.Rapor"
+                   Deger="@DateOnly.FromDateTime(bitis)" DegerChanged="@BitisDegisti"
+                   Hata="@AralikHatasi" HataKimligi="kz-aralik-hata" />
+            @* Karşılaştırma İSTEĞE BAĞLIDIR: ikinci bir sorgu turu demektir,
+               varsayılan KAPALI. Seçim sunucuya karsilastir= olarak gider.
+               KIYAS DEVRİ 28.09 (ORTAK-1): yerel <select> → ortak Secici (açılır liste
+               tema belirteçleriyle çizilir; Raporlar'daki emsal). id AYNI (kz-karsilastir),
+               değerler ve Yukle() yolu AYNI. *@
+            @* PAKET RAPOR-4 (K16, tasarım DÜŞÜK): isteğe bağlı alan açılışta tam kutu açıktı (375'te tarih +
+               karşılaştır + sekmeler ilk ekranı dolduruyordu) → "+ Karşılaştır" ile katlı; seçim yapılmışsa açık kalır. *@
+            @if (karsilastirAcik || !string.IsNullOrEmpty(karsilastir))
+            {
+                <Secici ElemanId="kz-karsilastir" Etiket="@Dil.T.KarZarar.Karsilastir"
+                        Secenekler="@KarsilastirSecenekleri" Deger="@karsilastir"
+                        DegerChanged="KarsilastirDegisti" />
+            }
+            else
+            {
+                <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="kz-karsilastir-ac"
+                        aria-expanded="false" @onclick="KarsilastirmayiAc">@KR.KarsilastirAc</button>
+            }
+        </div>
+        </div>
+    </div>
+
+    <HataBandi Mesaj="@hata" />
+
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (ozet is { } o)
+    {
+        @* ── PAKET S1-i — SEKMELER (kurucu 24.09: "tren gibi aşağıya doğru gidiyor,
+           birbiriyle alakasız kısımları tab tab ayır"). 8 bölüm beş sekmeye TAŞINDI,
+           hiçbiri silinmedi; id'ler aynı. ⚠ Bu ekranın TEK işi TL kârıyla HAS kârını
+           AYNI ANDA göstermek: iki bacak AYNI sekmededir (Özet), ayrılmaz. *@
+        <Sekmeler Onek="kz" Liste="@KzSekmeleri" Etiket="@GS.KzSerit">
+            <Panel Context="kzKod">
+                @if ((kzKod == GorselSigmaSozlugu.KzOzet || kzKod == GorselSigmaSozlugu.KzGrafik) && DonemBos(o))
+                {
+                    @* PAKET RAPOR-3 (hasım DÜŞÜK): satışsız dönemde kartlar "KÂR 0 ₺ · DÖNEM KÂRI 0 ₺ · 0,0000 has"
+                       gösteriyordu — gerçek sıfır kâr gibi okunuyordu. Satış/iade/takas/işçilik yoksa BOŞ DURUM. *@
+                    <div id="@($"kz-donem-bos-{kzKod}")"><BosDurum Mesaj="@KR.DonemSatisYok" /></div>
+                }
+                else if (kzKod == GorselSigmaSozlugu.KzOzet)
+                {
+                    @* ── TL bacağı ── *@
+                    <h2 class="bolum-baslik">@TlBacagiBaslik</h2>
+                    @* P-64: "Karşılaştır" seçiliyken sunucunun döndürdüğü degisimYuzde
+                       KPI kartlarına ok + yüzde olarak basılır. Karşılaştırma yoksa kartta
+                       delta YOKTUR; önceki dönem 0 ise yüzde null gelir → "—" (0% UYDURULMAZ). *@
+                    <div class="stat-izgara" id="kz-tl-kpi">
+                        @* ═══ KAR-RAPOR-2 (tasarım hakemi KRİTİK): yan yana duran HASILAT · MALİYET · KÂR
+                           kartları AYNI kümeden gelir ve TOPLANABİLİR (hasılat − maliyet = kâr). Kâr
+                           yalnız maliyeti bilinen satışlardan hesaplandığı için KISMI durumda ilk kart
+                           "Maliyeti bilinen satış" gösterir; toplam satış ve maliyeti eksik tutar kartın
+                           sönük alt satırına iner. Maliyeti hiç bilinmiyorsa maliyet "0 ₺" DEĞİL
+                           "Hesaplanamadı" yazar (fail-closed ekrana da uzanır). *@
+                        <StatKart Etiket="@(KismiMi(o) ? KR.BilinenHasilat : Dil.T.KarZarar.Hasilat)"
+                                  Deger="@Bicim.TlKurus(KismiMi(o) ? o.BilinenHasilatTl : o.HasilatTl)"
+                                  Alt="@AltBirlestir(KismiMi(o) ? string.Format(KR.ToplamHasilatAlt, Bicim.TlKurus(o.HasilatTl), Bicim.TlKurus(o.MaliyetiEksikTutarTl)) : null, KpiDelta(o, o.DegisimYuzde?.HasilatTlYuzde))" />
+                        <StatKart Etiket="@Dil.T.KarZarar.Maliyet" Deger="@TlYaDa(o.MaliyetTl)"
+                                  Alt="@(KismiMi(o) ? KR.MaliyetYalnizBilinen : null)" />
+                        @* PAKET KAR-RAPOR: kâr hesaplanamadıysa satış tutarı kâr diye BASILMAZ (fail-closed). *@
+                        <StatKart Renk="@KarRengi(o.KarTl)"
+                                  Etiket="@Dil.T.KarZarar.Kar" Deger="@TlYaDa(o.KarTl)"
+                                  Alt="@(o.KarTl is null ? KR.KarHesaplanamadiAlt : AltBirlestir(o.KarMarjiYuzde is null ? null : $"%{o.KarMarjiYuzde}", KpiDelta(o, o.DegisimYuzde?.KarTlYuzde)))" />
+                        <StatKart Renk="mavi" Etiket="@Dil.T.KarZarar.SatisAdedi" Deger="@o.SatisAdedi.ToString()" />
+                        <StatKart Renk="sari" Etiket="@Dil.T.KarZarar.Iade" Deger="@Bicim.TlKurus(o.IadeTl)"
+                                  Alt="@($"{Dil.T.KarZarar.IadeAdedi}: {o.IadeAdedi}")" />
+                        <StatKart Renk="@KarRengi(o.DonemKariTl)"
+                                  Etiket="@Dil.T.KarZarar.DonemKari" Deger="@TlYaDa(o.DonemKariTl)"
+                                  Alt="@KpiDelta(o, o.DegisimYuzde?.DonemKariTlYuzde)" />
+                    </div>
+                    @* PAKET RAPOR-4 (VERİ 1): parti maliyeti olmayan satışta ürün kartındaki alış maliyeti kullanıldıysa
+                       kaynağı SÖYLENİR (UX-S21 rozet kuralı) — kart maliyeti bir beyandır, parti maliyeti değildir. *@
+                    @if (o.KartMaliyetliAdet > 0m)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="kz-kart-maliyeti">
+                            <Rozet Renk="mavi">@KR.KartMaliyetiRozet</Rozet>
+                            <span id="kz-kart-maliyeti-metin">@string.Format(KR.KartMaliyetiNot, Bicim.Girdi(o.KartMaliyetliAdet, "0.###"))</span>
+                        </p>
+                    }
+                    @* PAKET KAR-RAPOR: maliyeti eksik satışlar kâra girmez; ayrı satırda, adet + tutarla. *@
+                    @* MADEN-AYRIMI (hasım DÜŞÜK): eksik yalnız iadeden geliyorsa da kutu açılır; eksik tutar eksiye
+                       dönerse (iade satıştan büyük) "−Y" yazılmaz — adet metni basılır. *@
+                    @if (o.MaliyetiEksikSatisAdedi > 0 || o.MaliyetiEksikIadeAdedi > 0)
+                    {
+                        <div class="uyari-kutu" id="kz-maliyet-eksik">
+                            @if (o.MaliyetiEksikSatisAdedi > 0)
+                            {
+                                @* RAPOR-GORUNUM (hasım DÜŞÜK): eksik iade varken tutar iadeden NETLENMİŞTİR (9 satış 98.766,52 −
+                                   iade 3.200 = 95.566,52) — bunu söyler, "9 satışın tutarı" sanılmaz. *@
+                                <p class="metin-kucuk" id="kz-maliyet-eksik-satir">@(o.MaliyetiEksikTutarTl < 0m
+                                    ? string.Format(KR.MaliyetiEksikSatisSayi, o.MaliyetiEksikSatisAdedi)
+                                    : o.MaliyetiEksikIadeAdedi > 0
+                                        ? string.Format(KR.MaliyetiEksikSatirIadeli, o.MaliyetiEksikSatisAdedi, Bicim.TlKurus(o.MaliyetiEksikTutarTl))
+                                        : string.Format(KR.MaliyetiEksikSatir, o.MaliyetiEksikSatisAdedi, Bicim.TlKurus(o.MaliyetiEksikTutarTl)))</p>
+                            }
+                            @if (o.MaliyetiEksikIadeAdedi > 0)
+                            {
+                                <p class="metin-kucuk" id="kz-maliyet-eksik-iade">@string.Format(KR.MaliyetiEksikIadeSatir, o.MaliyetiEksikIadeAdedi)</p>
+                            }
+                            @* PAKET RAPOR-3 (K17): bandın 3. satırı açıklamaydı → "Nasıl hesaplanır? ⓘ" arkasında (metin ve id AYNI). *@
+                            <div class="metin-soluk t4-ipucu-satir" id="kz-maliyet-eksik-nasil-satir">
+                                <span>@KR.NasilHesaplanirAc</span>
+                                <details class="zo-ipucu" id="kz-maliyet-eksik-nasil-ipucu">
+                                    <summary aria-label="@KR.NasilHesaplanirAc">i</summary>
+                                    <p id="kz-maliyet-eksik-nasil">@(o.KarTl is null ? KR.MaliyetNasilGirilir : $"{KR.KarKismiNotu} {KR.MaliyetNasilGirilir}")</p>
+                                </details>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── HAS bacağı — kuyumcunun asıl baktığı yer ── *@
+                    @* PAKET RAPOR-2 (tutarlılık, tasarım ORTA): başlık "Altın kârı (has gram)" diyordu; Panel/Rapor merkezi
+                       "Bugün ne sattım … has" DEFTER gramını (satılan malın has'ı) gösterir, bu bölüm ise TL satış tutarının
+                       satış günü altın fiyatıyla karşılığını — iki AYRI büyüklük aynı adla okunuyordu. Başlık artık ne
+                       olduğunu söyler; defter gramı PRO'da ayrı kartta "Defterdeki altın" adıyla durur. *@
+                    <h2 class="bolum-baslik" id="kz-altin-kari-baslik">@KR.AltinKariBaslik</h2>
+                    @* PAKET RAPOR-4 (VERİ 3, tasarım ORTA): BASİT'te altın kârı hesaplanamıyorken "Hasılat 96,69 has" kartı
+                       Panel'in "bugün satılan altın 163,79 has" (defter gramı) ile çelişiyor sanılıyordu; iki AYRI büyüklük.
+                       BASİT'te kâr yoksa üç kart yerine tek cümle; kart etiketi her iki modda ne olduğunu söyler. *@
+                    @if (Dil.BasitMi && o.KarHas is null)
+                    {
+                        <p class="metin-soluk" id="kz-altin-kari-yok">@KR.AltinKariBasitYok</p>
+                    }
+                    else
+                    {
+                    <div class="stat-izgara">
+                        @* KAR-RAPOR-2: has bacağı da AYNI kümeden ve AYNI gösterim hassasiyetiyle toplanabilir. *@
+                        @* MADEN-2 (hasım KRİTİK): has bacağı KENDİ kısmilik durumunu (hasKarDurumu) okur — TL'si
+                           bilinen ama has fiyatı bilinmeyen altın satışı has kârına sıfır maliyetle girmez. *@
+                        <StatKart Etiket="@(HasKismiMi(o) && o.BilinenHasilatHas is not null ? KR.BilinenHasilat : KR.HasilatAltinKarsiligi)"
+                                  Deger="@HasGoster(o, HasKismiMi(o) && o.BilinenHasilatHas is { } bhh ? bhh : o.HasilatHas)"
+                                  Alt="@(HasKismiMi(o) && o.BilinenHasilatHas is not null ? string.Format(KR.ToplamHasilatAlt, HasGoster(o, o.HasilatHas), HasGoster(o, o.MaliyetiEksikHasilatHas ?? 0m)) : null)" />
+                        <StatKart Etiket="@Dil.T.KarZarar.Maliyet"
+                                  Deger="@(o.MaliyetHas is { } mh ? HasGoster(o, mh) : KR.KarHesaplanamadi)"
+                                  Alt="@(HasKismiMi(o) ? KR.MaliyetYalnizBilinen : null)" />
+                        <StatKart Renk="@KarRengi(o.KarHas)"
+                                  Etiket="@Dil.T.KarZarar.Kar" Deger="@(HasKarGoster(o) ?? KR.KarHesaplanamadi)"
+                                  Alt="@KpiDelta(o, o.DegisimYuzde?.KarHasYuzde)" />
+                        @* ⚠ P-45: tek bir "defter has gramı" kartı vardı ve altın + gümüş
+                           gramlarını TOPLUYORDU. Gramlar madene göre AYRI kart olur. *@
+                        @* MADEN-AYRIMI (hasım ORTA): BASİT'te "Defterdeki altın gramı" kartı üç kartlı köprünün
+                           yanında ikinci bir "satılan altın" rakamı gibi okunuyordu → BASİT'te ızgaradan çıkar,
+                           aşağıda ayrı satırda ⓘ ile açıklanır. PRO'da ızgarada; birim madenine göre (altın has, gümüş g). *@
+                        @if (!Dil.BasitMi)
+                        {
+                            @* RAPOR-GORUNUM (tasarım DÜŞÜK): altın kartı ÖNCE (BASİT satırlarıyla aynı sıra). *@
+                            @foreach (var m in DefterMadenleri(o).OrderBy(x => x.Maden == Kuyumcu.Core.Domain.Maden.Altin ? 0 : 1))
+                            {
+                                <StatKart Renk="amber"
+                                          Etiket="@DefterEtiketi(m.Maden, KurKaynakAdi.MadenAdi(m.Maden, m.MadenAdi))"
+                                          Deger="@MadenMiktari(m.Maden, m.ToplamHas, null)" />
+                            }
+                        }
+                    </div>
+                    }
+                    @* MADEN-2: TL'si bilinen ama alış günü altın fiyatı bilinmeyen altın satışı — has kârına
+                       katılmadığı AYRICA söylenir (TL eksiği yukarıdaki kutuda; aynı satış iki kez anlatılmaz). *@
+                    @if (o.YalnizHasMaliyetiEksikAdedi > 0)
+                    {
+                        <div class="uyari-kutu" id="kz-has-maliyet-eksik">
+                            @* RAPOR-GORUNUM: adede göre tekil/çoğul ("1 … bu satış" / "N … bu satışlar"), "(has)" eki yok. *@
+                            <p class="metin-kucuk">@KarRaporSozlugu.HasYalnizEksik(KR, o.YalnizHasMaliyetiEksikAdedi)</p>
+                        </div>
+                    }
+                    @* MADEN-AYRIMI tur 2 (tasarım hakemi KRİTİK): BASİT'te maden kartları yok → bant da yok
+                       (gösterdiği şey ekranda değildi ve "gümüşün has gramı" diye öğretiyordu). PRO'da tek cümle,
+                       ⓘ arkasında; 'has' yalnız altın için. id korunur. *@
+                    @if (!Dil.BasitMi && !string.IsNullOrEmpty(o.MadenUyarisi))
+                    {
+                        <div class="metin-soluk t4-ipucu-satir" id="kz-maden-uyari">
+                            <span>@KR.MadenAyriAc</span>
+                            <details class="zo-ipucu" id="kz-maden-uyari-ipucu">
+                                <summary aria-label="@KR.MadenAyriAc">i</summary>
+                                <p id="kz-maden-uyari-metin">@KR.MadenAyriMetin</p>
+                            </details>
+                        </div>
+                    }
+                    @* QA turu 3: aynı satış için bu ekran ile aylık özet farklı has gramı
+                       gösteriyordu. İki büyüklük de artık burada, tanımıyla birlikte. *@
+                    @* ORTAK-1 30.09 tur görüntüsü: tanım notu BASİT'te "bacak", "HAS KARŞILIĞI" dilini taşıyordu;
+                       iki büyüklük ayrımı muhasebe ayrıntısıdır → yalnız PRO. *@
+                    @* MADEN-AYRIMI (hasım YÜKSEK): kartların altına yapışık küçük punto paragraf → ⓘ arkasında (metin ve id aynı). *@
+                    @if (!Dil.BasitMi)
+                    {
+                        <div class="metin-soluk t4-ipucu-satir" id="kz-has-tanim-satir">
+                            <span>@KR.HasTanimAc</span>
+                            <details class="zo-ipucu" id="kz-has-tanim-ipucu">
+                                <summary aria-label="@KR.HasTanimAc">i</summary>
+                                <p id="kz-has-tanim">@KR.HasTanimMetni</p>
+                            </details>
+                        </div>
+                    }
+
+                    @* ⚠ Asıl uyarı: TL'de kâr, has'ta zarar *@
+                    @if (o.KarTl is { } ktl && ktl > 0 && o.KarHas is { } khs && khs < 0)
+                    {
+                        <div class="uyari-kutu uyari-kirmizi">
+                            <strong>@Dil.T.KarZarar.HasKaybiBasligi</strong>
+                            <p>@string.Format(Dil.T.KarZarar.HasKaybiMetin, Bicim.TlKurus(ktl), GramSayi(Math.Abs(khs)))</p>
+                        </div>
+                    }
+
+                    @* ── Karşılaştırma: dönem EŞİT GÜN SAYISI kadar alınır ── *@
+                    @if (o.Onceki is { } onc)
+                    {
+                        <div class="kart" id="kz-karsilastirma">
+                            <div class="satir">
+                                <Rozet Renk="mavi">@Dil.T.KarZarar.Degisim</Rozet>
+                                <span class="metin-soluk metin-kucuk">
+                                    @onc.Baslangic – @onc.Bitis (@onc.GunSayisi)
+                                    · @Dil.T.KarZarar.Hasilat: <strong class="sayi">@Bicim.TlKurus(onc.HasilatTl)</strong>
+                                    <span id="kz-delta-hasilat">@DegisimMetni(o.DegisimYuzde?.HasilatTlYuzde)</span>
+                                    · @Dil.T.KarZarar.DonemKari: <strong class="sayi">@TlYaDa(onc.DonemKariTl)</strong>
+                                    <span id="kz-delta-donem-kari">@DegisimMetni(o.DegisimYuzde?.DonemKariTlYuzde)</span>
+                                </span>
+                            </div>
+                            @* P-64: önceki dönem sıfırsa yüzde null gelir; neden "—" yazdığı söylenir. *@
+                            @if (YuzdeEksik(o))
+                            {
+                                <p class="metin-soluk metin-kucuk" id="kz-yuzde-yok">@G.YuzdeHesaplanamaz</p>
+                            }
+                        </div>
+                    }
+
+                    @* ── Güvenilirlik — neyin hesaplanamadığı gizlenmez ──
+                       KAR-RAPOR-2 (tasarım hakemi): BASİT'te "Güvenilirlik: DÜŞÜK" rozeti ve "Bu kayıt
+                       değiştirilemez" kutusu açılışta görünmez — "Bu rakamlar nereden geliyor?" KAPALI
+                       katlanırının içindedir (kurucu: zorunlu önce). PRO aynen; bilgi silinmedi. *@
+                    @if (Dil.BasitMi)
+                    {
+                        <Katlanir Id="kz-nereden" Baslik="@KR.NeredenGeliyor">
+                            @* MADEN-AYRIMI (hasım ORTA + 375 canlı görüntü): BASİT'te defterdeki gerçek gram açılışta
+                               görünmez (zorunlu önce) — üç kartlı köprünün yanında ikinci bir "satılan altın" rakamı
+                               olmasın; burada açıklamasıyla, altın önce, her maden kendi satırında ve biriminde. *@
+                            <div class="kart" id="kz-defter-ayri">
+                                <div class="kart-govde">
+                                    <p class="metin-kucuk"><strong>@KR.DefterAyriBaslik</strong></p>
+                                    @foreach (var m in DefterMadenleri(o).OrderBy(x => x.Maden == Kuyumcu.Core.Domain.Maden.Altin ? 0 : 1))
+                                    {
+                                        <p class="metin-kucuk sayi kz-defter-maden">@KurKaynakAdi.MadenAdi(m.Maden, m.MadenAdi): @MadenMiktari(m.Maden, m.ToplamHas, null)</p>
+                                    }
+                                    <p class="metin-kucuk metin-soluk" id="kz-defter-aciklama">@KR.DefterAyriIpucu</p>
+                                </div>
+                            </div>
+                            @GuvenKarti(o)
+                            @* RAPOR-GORUNUM: rapora özgü TEK cümle (iki ayrı düzeltme yolu ve "bakiye" sözcüğü yok). *@
+                            <DegismezIpucu Varlik="KarZarar" Gerekce="@KR.RaporTuretilmisGerekce" />
+                        </Katlanir>
+                    }
+                    else
+                    {
+                        @GuvenKarti(o)
+                    }
+
+                }
+                else if (kzKod == GorselSigmaSozlugu.KzGrafik)
+                {
+                    @* ── P-64: grafikler — tur 8'de /raporlar/kar-zarar'daki 26 KPI TAMAMEN
+                       metindi. Gelir/maliyet/kâr çubuk grafiği (karşılaştırma seçiliyse
+                       ikinci seri önceki dönemdir) + ürün bazlı maliyet dağılımı pastası. *@
+                    <div class="form-grid-2" id="kz-grafikler">
+                        <div class="kart" id="kz-grafik-cubuk">
+                            <div class="kart-baslik"><h2>@G.GelirGiderKar</h2></div>
+                            <div class="kart-govde">
+                                @* RAPOR-GORUNUM (veri d + görünüm): eksen yazıları SVG içinde ~6 px'e küçülüyordu (viewBox 600 →
+                                   kart ~250 px) ve değer yazısı yoktu → etiket + değer SVG ALTINDA gerçek yazı boyunda (EtiketAltta).
+                                   Hasılat çubuğu maliyeti eksik satışları da içeriyordu (veri doğru, ÇİZİM iki kümeyi karıştırıyordu):
+                                   artık kârla AYNI küme — maliyeti bilinen satış − maliyet = kâr. *@
+                                <CubukGrafik Noktalar="@GelirGiderNoktalari(o)" Aciklama="@G.GelirGiderKar"
+                                             Seri1Adi="@G.BuDonem"
+                                             Seri2Adi="@(o.Onceki is null ? null : G.KarsilastirilanDonem)"
+                                             EtiketAltta="true" Yatay="true" DegerBicimi="@Bicim.TlKurus" />
+                                @* PAKET RAPOR-3 (hasım DÜŞÜK): maliyet bilinmeyince tek "Hasılat" çubuğu açıklamasız kalıyordu. *@
+                                @if (o.MaliyetTl is null || o.KarTl is null)
+                                {
+                                    <p class="metin-kucuk metin-soluk" id="kz-grafik-maliyet-yok">@KR.GrafikMaliyetYok</p>
+                                }
+                                @* PAKET RAPOR-2 (K17): grafik altı notlar düz satırdı → tek ⓘ arkasında (metinler ve id'ler AYNI). *@
+                                @if (GrafikHasilatBilinenMi(o) || OncekiHasilatBilinenMi(o.Onceki) || OncekiBilinmeyenler(o) is { Count: > 0 })
+                                {
+                                <div class="metin-soluk t4-ipucu-satir" id="kz-grafik-not-satir">
+                                <span>@KR.GrafikNotlariAc</span>
+                                <details class="zo-ipucu" id="kz-grafik-not-ipucu">
+                                <summary aria-label="@KR.GrafikNotlariAc">i</summary>
+                                @if (GrafikHasilatBilinenMi(o))
+                                {
+                                    <p class="metin-soluk metin-kucuk" id="kz-grafik-hasilat-notu">@string.Format(KR.GrafikHasilatNotu, Bicim.TlKurus(o.HasilatTl))</p>
+                                }
+                                @if (OncekiHasilatBilinenMi(o.Onceki) && o.Onceki is { } kzOn)
+                                {
+                                    @* Tur 2 (hasım DÜŞÜK): iki dönemin satış çubuğu farklı kümeden olabilir — karşılaştırılan
+                                       dönemin kümesi de yazılır (bu dönem HESAPLANAMADI iken etiket "Hasılat", 2. çubuk bilinen küme). *@
+                                    <p class="metin-soluk metin-kucuk" id="kz-grafik-onceki-hasilat-notu">@string.Format(KR.GrafikOncekiHasilatNotu, Bicim.TlKurus(kzOn.HasilatTl))</p>
+                                }
+                                @if (OncekiBilinmeyenler(o) is { Count: > 0 } kzOb)
+                                {
+                                    @* KAR-RAPOR-2 tur 2: önceki dönemde bilinmeyen değer 0 çubuğu sanılmasın. *@
+                                    <p class="metin-soluk metin-kucuk" id="kz-grafik-onceki-bilinmiyor">@string.Format(KR.GrafikOncekiBilinmiyor, string.Join(", ", kzOb))</p>
+                                }
+                                </details>
+                                </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="kart" id="kz-grafik-pasta">
+                            <div class="kart-baslik"><h2>@G.MaliyetKirilimi</h2></div>
+                            <div class="kart-govde">
+                                @if (MaliyetDilimleri.Count == 0)
+                                {
+                                    <BosDurum Mesaj="@G.MaliyetKirilimiBos" />
+                                }
+                                else
+                                {
+                                    <PastaGrafik Noktalar="@MaliyetDilimleri" Aciklama="@G.MaliyetKirilimi" />
+                                    @* PAKET RAPOR-2 (K17): not düz satırdı → ⓘ arkasında. *@
+                                    <div class="metin-soluk t4-ipucu-satir" id="kz-pasta-not-satir">
+                                        <span>@KR.NasilHesaplanirAc</span>
+                                        <details class="zo-ipucu" id="kz-pasta-not-ipucu">
+                                            <summary aria-label="@KR.NasilHesaplanirAc">i</summary>
+                                            <p id="kz-pasta-notu">@G.MaliyetKirilimiNotu</p>
+                                        </details>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (kzKod == GorselSigmaSozlugu.KzKopru)
+                {
+                    @* ── Kâr köprüsü: brüt hasılattan dönem kârına giden yol ── *@
+                    <h2 class="bolum-baslik">@Dil.T.KarZarar.KarKoprusu</h2>
+                    @if (o.KarKoprusu is { Count: > 0 } kopru)
+                    {
+                        @* PAKET GOC-D — ortak ızgara (grid:kar-zarar:kz-kopru); tablo id'si, ara toplam satır sınıfı ve
+                           tutar başlığının id'si (kz-kopru-tutar-baslik) AYNEN. Köprünün SIRASI anlamın kendisidir
+                           (brüt hasılattan dönem kârına) → sıralama düğmesi YOK; sütun göster/gizle/sıra tercihi var. *@
+                        <Izgara T="KarKoprusuSatiri" Ekran="kar-zarar" GridId="kz-kopru" TabloId="kz-kopru"
+                                Kolonlar="@KopruKolonlari" Ogeler="@kopru" Baslik="@Dil.T.KarZarar.KarKoprusu"
+                                SatirSinif="@(k => k.AraToplam ? "hucre-vurgu" : null)" />
+                    }
+                    else
+                    {
+                        <BosDurum Mesaj="@Dil.T.KarZarar.VeriYok" />
+                    }
+
+                    @* ── Takas farkı: hasılata KATILMAZ, ayrı kart + gerekçe (zorunlu) ──
+                       MADEN-AYRIMI (hasım ORTA): kart içinde kart vardı, alt satır birimsiz "0" idi, gerekçe
+                       paragrafı açıktı. Artık: tek kart (dış kart yok), adet "n takas", gerekçe ⓘ arkasında;
+                       BASİT'te takas yoksa (adet 0 ve fark 0) hiç çizilmez. *@
+                    @if (!Dil.BasitMi || o.TakasAdedi > 0 || o.TakasFarkTl != 0m)
+                    {
+                        <div id="kz-takas">
+                            <div class="stat-izgara">
+                                <StatKart Renk="mavi" Etiket="@Dil.T.KarZarar.TakasFarki"
+                                          Deger="@Bicim.TlKurus(o.TakasFarkTl)" Alt="@string.Format(KR.TakasAdet, o.TakasAdedi)" />
+                            </div>
+                            <div class="metin-soluk t4-ipucu-satir" id="kz-takas-not-satir">
+                                <span>@KR.TakasNedenAyri</span>
+                                <details class="zo-ipucu" id="kz-takas-ipucu">
+                                    <summary aria-label="@KR.TakasNedenAyri">i</summary>
+                                    <p id="kz-takas-notu">@Dil.T.KarZarar.TakasFarkiNotu</p>
+                                </details>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── İşçilik geliri: malın maliyeti yoktur, marjı bozmasın diye ayrı ──
+                       MADEN-AYRIMI (hasım ORTA): köprüde zaten "İşçilik geliri" satırı varsa kart TEKRAR etmez. *@
+                    @if (!KopruIscilikVar(o))
+                    {
+                        <div class="kart" id="kz-iscilik">
+                            <div class="stat-izgara">
+                                <StatKart Renk="amber" Etiket="@Dil.T.KarZarar.IscilikGeliri"
+                                          Deger="@Bicim.TlKurus(o.IscilikTl)" />
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Storno: çift toplamlardan dışlandı, ayrı sayılır ── *@
+                    @if (o.Storno is { } st && st.Adet > 0)
+                    {
+                        <div class="kart" id="kz-storno">
+                            <div class="satir">
+                                <Rozet Renk="gri">@Dil.T.KarZarar.Storno</Rozet>
+                                <span class="metin-soluk metin-kucuk">
+                                    <strong class="sayi">@st.Adet</strong> · <strong class="sayi">@Bicim.TlKurus(st.TutarTl)</strong>
+                                </span>
+                            </div>
+                            <p class="metin-soluk metin-kucuk">@Dil.T.KarZarar.StornoNotu</p>
+                        </div>
+                    }
+
+                }
+                else if (kzKod == GorselSigmaSozlugu.KzUrunler)
+                {
+                    @* ── Ürün bazlı kârlılık ── *@
+                    <h2 class="bolum-baslik">@Dil.T.KarZarar.UrunBazli</h2>
+                    @if (urunler.Count == 0)
+                    {
+                        <BosDurum Mesaj="@Dil.T.KarZarar.VeriYok" />
+                    }
+                    else
+                    {
+                        @* RAPOR-GORUNUM (hasım ORTA + YÜKSEK, 375 ölçümü: tablo 1185 px / kapsayıcı 351 px, satış/hasılat/kâr/has
+                           kâr ekran dışında, kaydırma ipucu yok): dar ekranda her ürün bir KART — ad üstte tam, her sayı kendi
+                           başlığıyla (ortak q10-yigin kalıbı, data-etiket). Geniş ekranda tablo AYNEN. *@
+                        @* PAKET RAPOR-3 (K17): satır başına "Altın maliyeti bilinmiyor" / "Bilinmiyor" notları kalktı — hücrede
+                           yalnız "—"; neden BİR KEZ tablonun üstünde ⓘ ile (satır notu ekran okuyucuda kalır). *@
+                        @if (urunler.Any(UrunNedenliMi))
+                        {
+                            <div class="metin-soluk t4-ipucu-satir" id="kz-urun-not-satir">
+                                <span>@KR.NasilHesaplanirAc</span>
+                                <details class="zo-ipucu" id="kz-urun-not-ipucu">
+                                    <summary aria-label="@KR.NasilHesaplanirAc">i</summary>
+                                    <p id="kz-urun-not-maliyet">@KR.UrunMaliyetBilinmiyorNot</p>
+                                    @if (urunler.Any(u => u.KarHas is null && u.HasKarDurumu is not null && u.HasKarDurumu != "KISMI" && u.MaliyetTl is not null))
+                                    {
+                                        <p id="kz-urun-not-fiyat">@KR.HasFiyatYokSatirNot</p>
+                                    }
+                                    @if (urunler.Any(u => u.KarHas is null && AltinDisiMi(u.Maden)))
+                                    {
+                                        <p id="kz-urun-not-maden">@KR.HasYalnizAltinNot</p>
+                                    }
+                                </details>
+                            </div>
+                        }
+                        @* PAKET GOC-D — ortak ızgara (grid:kar-zarar:kz-urun): tablo id'si, sınıfları ve kap id'si (kz-urun-sar)
+                           AYNEN; hücre şablonları eski tablonun AYNISI. Sunucu sınırına (50/sayfa) değdiyse sıralama KAPALI
+                           (yalnız yüklenen kısmı sıralamak yanıltır — UX-S29); tamamı yüklenince açılır. *@
+                        <Izgara T="UrunSatiri" Ekran="kar-zarar" GridId="kz-urun" TabloId="kz-urun-tablo" KartListeId="kz-urun"
+                                TabloSinif="q10-yigin rg-rapor-tablo" Kolonlar="@UrunKolonlari"
+                                Ogeler="@IzgaraYerelSiralama.Uygula(urunler, urunSira, UrunKolonlari)"
+                                Baslik="@Dil.T.KarZarar.UrunBazli"
+                                SiralamaDegisti="@(x => urunSira = x)" GecerliSiralama="@urunSira" />
+                        @* PAKET OLCEK-YUK t2 (tasarım hakemi KRİTİK, UX-S29 "sessiz kırpma yok"): sunucu ilk 50 ürünü döner;
+                           sınıra değdiyse toplam (sunucudan, ekran türetmez) ve "daha fazla göster" (sonraki sayfa, ofset). *@
+                        @if (urunDahaVar)
+                        {
+                            <div class="bant bant-uyari mt-2" id="kz-urun-sinir" role="status">@string.Format(KR.UrunListeSiniri, Bicim.Girdi(urunler.Count, "N0"), Bicim.Girdi(urunToplam, "N0"))</div>
+                            <div class="satir mt-2">
+                                <button type="button" class="dugme dugme-ikincil" id="kz-urun-daha" @onclick="UrunDahaFazla"
+                                        disabled="@urunDahaYukleniyor">@KR.DahaFazlaGoster</button>
+                            </div>
+                        }
+                        else if (urunGenisletildi)
+                        {
+                            <p class="metin-soluk metin-kucuk mt-2" id="kz-urun-tamami" role="status">@string.Format(KR.UrunListeTamami, Bicim.Girdi(urunler.Count, "N0"))</p>
+                        }
+                        <HataBandi Mesaj="@urunDahaHata" Id="kz-urun-daha-hata" />
+                    }
+
+                }
+                else if (kzKod == GorselSigmaSozlugu.KzStok)
+                {
+                    @* ── Stok değerlemesi ── *@
+                    <h2 class="bolum-baslik">@Dil.T.KarZarar.StokDegerlemesi</h2>
+                    @if (stok is { } s)
+                    {
+                        @* MADEN-AYRIMI (hasım YÜKSEK ×2): has kartı YALNIZ ALTIN (sunucu toplamHasGram artık gümüşsüz);
+                           diğer madenler kartın alt satırında kendi biriminde. Hiçbir adedin maliyeti bilinmiyorsa
+                           stok maliyeti "0 ₺" DEĞİL "Bilinmiyor"; kısmen biliniyorsa etiket "Bilinen stok maliyeti". *@
+                        <div class="stat-izgara">
+                            <StatKart Etiket="@Dil.T.KarZarar.StokAdet" Deger="@s.ToplamAdet.ToString("N0")" />
+                            <StatKart Renk="amber" Etiket="@KR.StokAltinHas" Deger="@Bicim.Has(s.ToplamHasGram)"
+                                      Alt="@StokDigerMadenler(s)" />
+                            <StatKart Renk="mavi" Etiket="@(s.StokMaliyetiKismi ? KR.StokMaliyetiBilinen : Dil.T.KarZarar.StokMaliyeti)"
+                                      Deger="@(s.StokMaliyetiTl is { } smt ? Bicim.TlKurus(smt) : KR.MaliyetBilinmiyor)"
+                                      Alt="@(s.StokMaliyetiTl is null ? KR.StokMaliyetiBilinmiyorAlt : null)" />
+                            <StatKart Etiket="@Dil.T.KarZarar.MaliyetiBilinmeyen" Deger="@s.MaliyetsizAdet.ToString("N0")" />
+                        </div>
+                        @* MADEN-AYRIMI (hasım YÜKSEK): BASİT'te güvenilirlik rozeti açılışta görünmez — Özet'teki gibi
+                           kapalı "Bu rakamlar nereden geliyor?" katlanırında (id aynı). PRO aynen. *@
+                        @if (Dil.BasitMi)
+                        {
+                            <Katlanir Id="kz-stok-nereden" Baslik="@KR.NeredenGeliyor" Sinif="mt-2">
+                                <div class="satir" id="kz-stok-guven">
+                                    <Rozet Renk="@GuvenRengi(s.Guvenilirlik ?? "VERI_YOK")">@GuvenMetni(s.Guvenilirlik ?? "VERI_YOK")</Rozet>
+                                </div>
+                            </Katlanir>
+                        }
+                        else
+                        {
+                            @* MADEN-2 (tasarım DÜŞÜK): rozet kart sırasına yapışıktı → üst boşluk (mevcut .mt-2). *@
+                            <div class="satir mt-2" id="kz-stok-guven">
+                                <Rozet Renk="@GuvenRengi(s.Guvenilirlik ?? "VERI_YOK")">@GuvenMetni(s.Guvenilirlik ?? "VERI_YOK")</Rozet>
+                            </div>
+                        }
+                        @* MADEN-AYRIMI (canlı görüntü): sunucunun ham "bir kısım … İÇERMEZ" notu maliyet hiç bilinmezken
+                           kartla çelişiyordu ("bir kısım" değil, hepsi) → maliyet bilinmiyorsa not yok (kart söylüyor);
+                           kısmiyse sözlükten adetli sade metin; yalnız konsinye notu sunucudan aynen. *@
+                        @* PAKET RAPOR-4 tur 2 (hasım DÜŞÜK): stok maliyeti kâr hesabıyla AYNI kuralla — partide maliyeti
+                           olmayan adet ürün kartındaki alış maliyetiyle bilinir; kaynağı rozetle söylenir (Özet ile aynı rozet). *@
+                        @if (s.KartMaliyetliAdet > 0m)
+                        {
+                            <p class="metin-kucuk metin-soluk" id="kz-stok-kart-maliyeti">
+                                <Rozet Renk="mavi">@KR.KartMaliyetiRozet</Rozet>
+                                <span id="kz-stok-kart-maliyeti-metin">@string.Format(KR.StokKartMaliyetiNot, Bicim.Girdi(s.KartMaliyetliAdet, "0.###"))</span>
+                            </p>
+                        }
+                        @if (s.StokMaliyetiKismi)
+                        {
+                            <div class="uyari-kutu" id="kz-stok-kismi"><p class="metin-kucuk">@string.Format(KR.StokMaliyetiKismiNot, s.MaliyetsizAdet.ToString("N0"))</p></div>
+                        }
+                        else if (s.StokMaliyetiTl is not null && s.KonsinyeUrunSayisi > 0)
+                        {
+                            @* MADEN-2 (hasım DÜŞÜK, UX-S31): sunucunun Türkçe "uyari" metni EN arayüzde ham basılıyordu →
+                               konsinye sayısı sunucudan SAYI olarak, metin sözlükten (TR+EN). *@
+                            <div class="uyari-kutu" id="kz-stok-konsinye"><p class="metin-kucuk">@string.Format(KR.StokKonsinyeNot, s.KonsinyeUrunSayisi)</p></div>
+                        }
+                    }
+                }
+            </Panel>
+        </Sekmeler>
+    }
+
+    @* UX-S25: kâr-zarar rakamları türetilir; ekranda düzenlenmez.
+       KAR-RAPOR-2: BASİT'te bu kutu Özet sekmesindeki kapalı "Bu rakamlar nereden geliyor?"
+       katlanırının içindedir (ekran açılışta yalnız zorunluyu gösterir); PRO'da burada. *@
+    @* RAPOR-GORUNUM (hasım/tasarım ORTA): PRO'da her sekmenin altında 4 satırlık açık "Bu kayıt değiştirilemez"
+       kutusu duruyordu → Rapor merkezindeki gibi KAPALI tek katlanır ("Rapordaki bir rakam yanlışsa"; aynı ad,
+       ZoBelge sözlüğü), içinde rapora özgü TEK cümle. id'ler: kutu #degismez-ipucu-KarZarar AYNI. *@
+    @if (!Dil.BasitMi)
+    {
+        <Katlanir Id="kz-duzeltme" Baslik="@ZoBelgeSozlugu.Al(Dil.Dil).RaporDuzeltmeBaslik" Sinif="zo-bilgi">
+            <DegismezIpucu Varlik="KarZarar" Gerekce="@KR.RaporTuretilmisGerekce" />
+        </Katlanir>
+    }
+</div>
+
+@code {
+    // ── ORTAK-1 hakem turu 29.09 (tasarım hakemi): BASİT modda bacak başlıkları muhasebe dili
+    // ("TL Bacağı — muhasebenin gördüğü") ve 4 ondalık gram ("0,0000 g") taşıyordu. BASİT: sade başlık
+    // + 2 ondalık gram (yalnız GÖSTERİM yuvarlaması; hesap ve sunucu değeri değişmez). PRO AYNEN (N4).
+    // Has birimi tek kararı (N4 g ↔ Bicim.Has) BICIM-TEK'e açık kalan olarak duruyor.
+    // MADEN-AYRIMI (hasım YÜKSEK): "TL Bacağı / HAS Bacağı" jargonu PRO'da da kalktı — iki modda aynı sade başlık.
+    private string TlBacagiBaslik => OrtakGorunumSozlugu.Al(Dil.Dil).KarZararParaKariBasit;
+    // MADEN-AYRIMI tur 2: kart etiketi 'has' kelimesini yalnız altına verir; gümüş vb. "saf gram".
+    private string DefterEtiketi(string maden, string madenAdi) =>
+        Kuyumcu.Core.Domain.Maden.Altin == (string.IsNullOrWhiteSpace(maden) ? Kuyumcu.Core.Domain.Maden.Altin : maden)
+            ? KR.DefterAltinEtiketi
+            : string.Format(KR.DefterMadenEtiketi, madenAdi);
+    // ── ORTAK-1 hakem turu 30.09 (KRİTİK ×2 + DÜŞÜK): BASİT N2, sıfırdan farklı küçük has'ı "0,00 g"
+    // gösteriyordu (0,0001 g kâr sıfır gibi; 0,004 g kayıp uyarısı "0,00 gram KAYBETTİNİZ" diye
+    // kendisiyle çelişiyordu) ve biçim tarayıcı kültürüne bağlıydı. Kural: kültür SABİT tr-TR;
+    // PRO N4 aynen; BASİT N2 — ANCAK 2 haneye yuvarlanınca sıfıra düşen sıfırdan farklı değer
+    // 4 haneye kadar yazılır ("0,0001", "-0,004"). Has 4 hane sınırı altındaki değer (sunucu 4 hane
+    // taşır) sıfır sayılır. Biçim TEK MERKEZDE: Bicim.KarHasGram (denetim P-36b: razor ToString yok).
+    // MADEN-AYRIMI (ekip kararı 5): has iki modda AYNI rakam, 4 hane — BASİT yuvarlaması ayrı rakam üretmez.
+    private string GramSayi(decimal g) => Bicim.KarHasGram(g, false);
+    private string MadenMiktari(string? maden, decimal saf, decimal? fiziksel) =>
+        Bicim.MadenMiktari(maden, saf, fiziksel, KR.MadenGramFizikselSaf, KR.MadenGramSaf);
+    /// <summary>Stok kartının alt satırı: altın dışı madenler kendi biriminde ("Gümüş: 150,00 g (saf 138,75 g)").</summary>
+    private string? StokDigerMadenler(StokVeri s)
+    {
+        var diger = (s.MadenKirilimi ?? [])
+            .Where(m => m.Maden != Kuyumcu.Core.Domain.Maden.Altin && m.ToplamGram != 0m)
+            .Select(m => string.Format(KR.KovaDigerMaden, KurKaynakAdi.MadenAdi(m.Maden, m.MadenAdi), MadenMiktari(m.Maden, m.ToplamGram, m.FizikselGram)))
+            .ToList();
+        return diger.Count == 0 ? null : string.Join(" · ", diger);
+    }
+
+    @* ⚠ ŞEKİL SÖZLEŞMESİ: paket 35 alan EKLER; var olan alan adı değişmez,
+       kaldırılmaz (Bertan koşulu). Yeni alanlar eski sunucu yanıtında yoksa
+       varsayılanlarıyla (0 / null) gelir ve ekran çizilmeye devam eder. *@
+    private sealed record OzetVeri(
+        // KAR-RAPOR-2: MaliyetTl/MaliyetHas kâr HESAPLANAMADI iken null (bilinmiyor — 0 değil).
+        decimal HasilatTl, decimal? MaliyetTl, decimal? KarTl, decimal? KarMarjiYuzde,
+        decimal HasilatHas, decimal? MaliyetHas, decimal? KarHas,
+        int SatisAdedi, decimal MaliyetiBilinenAdet, decimal MaliyetiBilinmeyenAdet,
+        string Guvenilirlik, string? Uyari,
+        decimal BrutHasilatTl = 0m, decimal IadeTl = 0m,
+        decimal? BrutMaliyetTl = 0m, decimal? IadeMaliyetTl = 0m,
+        decimal IscilikTl = 0m, decimal TakasFarkTl = 0m, int TakasAdedi = 0,
+        decimal? DonemKariTl = 0m, int IadeAdedi = 0,
+        decimal IadeHas = 0m, decimal HasilatHasDefterGram = 0m,
+        List<KarKoprusuSatiri>? KarKoprusu = null, KarZararStorno? Storno = null,
+        KarZararOnceki? Onceki = null, KarZararDegisim? DegisimYuzde = null,
+        // ── P-45: defter gramı maden bazında; HasilatHasDefterGram YALNIZ ALTIN
+        List<MadenHasGrami>? HasDefterMadenDagilimi = null, string? MadenUyarisi = null,
+        // ── PAKET KAR-RAPOR: fail-closed kâr — durum + maliyeti eksik satışlar (kâra katılmadı)
+        string? KarDurumu = null, decimal BilinenHasilatTl = 0m,
+        int MaliyetiEksikSatisAdedi = 0, decimal MaliyetiEksikTutarTl = 0m,
+        // ── KAR-RAPOR-2: has bacağının bilinen kümesi (bilinenHasilatHas − maliyetHas = karHas)
+        decimal? BilinenHasilatHas = null, decimal? MaliyetiEksikHasilatHas = null,
+        // ── KAR-RAPOR-2 tur 2: BASİT 2 haneli has kârı SUNUCUDAN (istemci kâr hesaplamaz)
+        decimal? KarHasIkiHane = null,
+        // ── MADEN-AYRIMI: maliyeti eksik iade de eksik kutusunu açar
+        int MaliyetiEksikIadeAdedi = 0,
+        // ── MADEN-2: has bacağının kendi kâr durumu + TL'si bilinip has'ı bilinmeyen altın hareketi
+        string? HasKarDurumu = null, int YalnizHasMaliyetiEksikAdedi = 0,
+        // ── RAPOR-4 (VERİ 1): maliyeti ürün kartından alınan adet (kaynak etiketi)
+        decimal KartMaliyetliAdet = 0m);
+
+    // ── PAKET KAR-RAPOR yardımcıları ──
+    private KarRaporMetinleri KR => KarRaporSozlugu.Al(Dil.Dil);
+    /// <summary>Hesaplanamayan tutar "—" değil, nedenini söyleyen kısa metindir; 0 ₺ YAZILMAZ.</summary>
+    private string TlYaDa(decimal? tutar) => tutar is { } t ? Bicim.TlKurus(t) : KR.KarHesaplanamadi;
+    private static string? KarRengi(decimal? tutar) => tutar is null ? null : tutar >= 0 ? "yesil" : "kirmizi";
+
+    // ═══ KAR-RAPOR-2 — ÖZET KARTLARI TOPLANABİLİR ═══════════════════════════
+    // KISMI: kâr yalnız maliyeti bilinen satışlardan → ilk kart bilinen hasılatı gösterir.
+    // Eski şekil yanıt (karDurumu yok) için kâr varken eksik satış varsa da KISMI sayılır.
+    /// <summary>PAKET RAPOR-3: dönemde satış, iade, takas ve işçilik YOK → kartlar "0 ₺" yerine boş durum.</summary>
+    private static bool DonemBos(OzetVeri o) =>
+        o.SatisAdedi == 0 && o.IadeAdedi == 0 && o.TakasAdedi == 0 && o.HasilatTl == 0m && o.IscilikTl == 0m
+        && (o.DonemKariTl ?? 0m) == 0m;
+    /// <summary>RAPOR-3: satırın "—" hücresi gerekçe isteyen bir durumdan mı geliyor (maliyet/has bilinmiyor).</summary>
+    private static bool UrunNedenliMi(UrunSatiri u) =>
+        u.MaliyetTl is null || (u.KarHas is null && (u.HasKarDurumu is not null && u.HasKarDurumu != "KISMI" || AltinDisiMi(u.Maden)));
+
+    private static bool KismiMi(OzetVeri o) =>
+        o.KarTl is not null && (o.KarDurumu == "KISMI" || (o.KarDurumu is null && o.MaliyetiEksikSatisAdedi > 0));
+
+    /// <summary>
+    /// MADEN-2: has bacağı KISMI mı — sunucunun hasKarDurumu'ndan (TL kümesinden bağımsız).
+    /// Eski şekil yanıtta (alan yok) TL kuralına düşer.
+    /// </summary>
+    private static bool HasKismiMi(OzetVeri o) =>
+        o.KarHas is not null && (o.HasKarDurumu == "KISMI" || (o.HasKarDurumu is null && KismiMi(o)));
+
+    /// <summary>MADEN-AYRIMI: köprüde "İşçilik geliri" satırı varsa ayrı kart tekrar çizilmez.</summary>
+    private static bool KopruIscilikVar(OzetVeri o) =>
+        o.KarKoprusu?.Any(k => k.Kod == "ISCILIK") ?? false;
+
+    /// <summary>
+    /// MADEN-AYRIMI (ekip kararı 5 + hasım ORTA ×2): has TEK kuralla — <see cref="Bicim.Has"/>, 4 hane, "has";
+    /// BASİT ve PRO AYNI rakam (BASİT'in 2 hane yuvarlaması 19,16 ↔ 19,1520 gibi ayrı rakam üretiyordu).
+    /// </summary>
+    private static string HasGoster(OzetVeri o, decimal g) => Bicim.Has(g);
+
+    /// <summary>
+    /// Has kârı. PRO: sunucunun 4 haneli karHas'ı. BASİT (2 hane): sunucunun karHasIkiHane alanı
+    /// = R2(bilinen has hasılatı) − R2(maliyet has) — görünen bileşenlerin farkı, SUNUCUDA hesaplanır.
+    /// KAR-RAPOR-2 tur 2: istemci kârı YENİDEN HESAPLAMAZ; alan yoksa (eski şekil yanıt) karHas basılır.
+    /// </summary>
+    private static string? HasKarGoster(OzetVeri o) =>
+        o.KarHas is { } kh ? HasGoster(o, kh) : null;
+
+    // Güvenilirlik kartı (eski satır içi blok AYNEN; yalnız iç boşluk için kart-govde + id).
+    private RenderFragment GuvenKarti(OzetVeri o) =>
+        @<div class="kart" id="kz-guven">
+            <div class="kart-govde">
+                <div class="satir">
+                    <Rozet Renk="@GuvenRengi(o.Guvenilirlik)">@GuvenMetni(o.Guvenilirlik)</Rozet>
+                    <span class="metin-soluk metin-kucuk">
+                        @* QA turu 2: adet, para gibi "5,000" basılıyordu. *@
+                        @Dil.T.KarZarar.MaliyetiBilinen: <strong class="sayi">@o.MaliyetiBilinenAdet.ToString("N0")</strong> ·
+                        @Dil.T.KarZarar.MaliyetiBilinmeyen: <strong class="sayi">@o.MaliyetiBilinmeyenAdet.ToString("N0")</strong>
+                    </span>
+                </div>
+                @* KAR-RAPOR: maliyeti eksik satış varsa uyarı yukarıdaki kutuda (sözlükten) — ikinci kez yazılmaz. *@
+                @if (!string.IsNullOrEmpty(o.Uyari) && o.MaliyetiEksikSatisAdedi == 0)
+                {
+                    <p class="metin-soluk metin-kucuk">@o.Uyari</p>
+                }
+            </div>
+        </div>;
+
+    /// <summary>
+    /// Ekranda çizilecek maden kartları. Sunucu kırılım döndürmediyse (eski
+    /// yanıt ya da hiç satış yok) tek kart çizilir ve o kart da ALTIN etiketi
+    /// taşır — etiketsiz birleşik rakam BASILMAZ (P-45).
+    /// </summary>
+    private static List<MadenHasGrami> DefterMadenleri(OzetVeri o) =>
+        o.HasDefterMadenDagilimi is { Count: > 0 } d
+            ? d
+            : [new MadenHasGrami(
+                Kuyumcu.Core.Domain.Maden.Altin,
+                KurKaynakAdi.MadenAdi(Kuyumcu.Core.Domain.Maden.Altin),
+                o.HasilatHasDefterGram, 0)];
+
+
+
+
+    // ── PAKET S1-i — sekmeler ──
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<SekmeTanimi> KzSekmeleri =>
+    [
+        new(GorselSigmaSozlugu.KzOzet, GS.KzOzet),
+        new(GorselSigmaSozlugu.KzGrafik, GS.KzGrafik),
+        new(GorselSigmaSozlugu.KzKopru, GS.KzKopru),
+        new(GorselSigmaSozlugu.KzUrunler, GS.KzUrunler),
+        new(GorselSigmaSozlugu.KzStok, GS.KzStok),
+    ];
+
+    private OzetVeri? ozet;
+    private List<UrunSatiri> urunler = [];
+
+    // ── PAKET GOC-D — kâr köprüsü ve ürün kırılımı ortak ızgarada (hücre şablonları eski tabloların AYNISI) ──
+    private IzgaraSiralama? urunSira;
+
+    private IReadOnlyList<IzgaraKolonu<KarKoprusuSatiri>> KopruKolonlari =>
+    [
+        new() { Anahtar = "kalem", Baslik = Dil.T.KarZarar.Kalem, ZorunluGorunur = true, Deger = k => KopruAdi(k.Kod) },
+        // KAR-RAPOR-2: başlık değer sütununun üstünde (sağa hizalı) — değerler td.sayi.
+        new() { Anahtar = "tutar", Baslik = Dil.T.KarZarar.Tutar, ZorunluGorunur = true, BaslikId = "kz-kopru-tutar-baslik",
+                BaslikSinif = "sayi", Deger = k => k.TutarTl,
+                HucreSinif = k => $"sayi {(k.TutarTl is null ? null : k.TutarTl >= 0 ? "metin-yesil" : "metin-kirmizi")}",
+                Hucre = k => @<text>@TlYaDa(k.TutarTl)</text> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<UrunSatiri>> UrunKolonlari =>
+    [
+        // RAPOR-2: uzun ad SARAR; rozet adın ALTINDA. Kart yığınında ad başlıktır — etiket taşımaz.
+        new() { Anahtar = "ad", Baslik = Dil.T.Urun.UrunAdi, ZorunluGorunur = true, KartEtiketsiz = true,
+                SunucuSiralamaAdi = urunDahaVar ? null : "ad", HucreSinif = _ => "hucre-vurgu kz-urun-ad", Deger = u => u.Ad,
+                Hucre = u => @<text><span class="kz-urun-ad-metin">@u.Ad</span>
+                    @if (u.KartMaliyetliAdet > 0m)
+                    {
+                        <span class="kz-urun-ad-rozet" id="@($"kz-urun-kart-{u.UrunId}")"><Rozet Renk="mavi">@KR.KartMaliyetiRozet</Rozet></span>
+                    }
+                    @if (u.MaliyetiBilinmeyenAdet > 0)
+                    {
+                        <span class="kz-urun-ad-rozet" aria-label="@Dil.T.SayfaDuzeltme.MaliyetEksikAria"><Rozet Renk="sari">@Dil.T.KarZarar.MaliyetEksik</Rozet></span>
+                    }</text> },
+        new() { Anahtar = "adet", Baslik = Dil.T.KarZarar.SatisAdedi, SunucuSiralamaAdi = urunDahaVar ? null : "adet",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.SatisAdedi },
+        // KAR-RAPOR-2: KISMI satırda bilinen hasılat hücrede ayrıca yazılır.
+        new() { Anahtar = "hasilat", Baslik = Dil.T.KarZarar.Hasilat, ZorunluGorunur = true, SunucuSiralamaAdi = urunDahaVar ? null : "hasilat",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.HasilatTl,
+                Hucre = u => @<text>@Bicim.TlKurus(u.HasilatTl)
+                    @if (u.KarDurumu == "KISMI" && u.BilinenHasilatTl is { } ubh)
+                    {
+                        <div class="metin-soluk metin-kucuk kz-urun-bilinen">@KR.BilinenHasilat: @Bicim.TlKurus(ubh)</div>
+                    }</text> },
+        // Maliyeti hiç bilinmeyen satırda maliyet "0 ₺" DEĞİL "Bilinmiyor".
+        new() { Anahtar = "maliyet", Baslik = Dil.T.KarZarar.Maliyet, SunucuSiralamaAdi = urunDahaVar ? null : "maliyet",
+                BaslikSinif = "sayi", HucreSinif = u => $"sayi {(u.MaliyetTl is null ? "metin-soluk" : null)}", Deger = u => u.MaliyetTl,
+                Hucre = u => @<text>@if (u.MaliyetTl is { } um) {@Bicim.TlKurus(um)} else {<span aria-hidden="true">—</span><span class="gorsel-gizli">@KR.MaliyetBilinmiyor</span>}</text> },
+        new() { Anahtar = "iade", Baslik = Dil.T.KarZarar.Iade, SunucuSiralamaAdi = urunDahaVar ? null : "iade",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.IadeTl, Hucre = u => @<text>@Bicim.TlKurus(u.IadeTl)</text> },
+        new() { Anahtar = "kar", Baslik = Dil.T.KarZarar.Kar, ZorunluGorunur = true, SunucuSiralamaAdi = urunDahaVar ? null : "kar",
+                BaslikSinif = "sayi", HucreSinif = u => $"sayi {(u.KarTl is null ? null : u.KarTl >= 0 ? "metin-yesil" : "metin-kirmizi")}",
+                Deger = u => u.KarTl, Hucre = u => @<text>@TlYaDa(u.KarTl)</text> },
+        // HAS bacağı hiçbir kırılımda gizlenmez (zorunlu görünür).
+        new() { Anahtar = "has-kar", Baslik = KR.HasKarEtiket, ZorunluGorunur = true, SunucuSiralamaAdi = urunDahaVar ? null : "has-kar",
+                BaslikSinif = "sayi", HucreSinif = u => $"sayi kz-urun-has {(u.KarHas is null ? null : u.KarHas >= 0 ? "metin-yesil" : "metin-kirmizi")}",
+                Deger = u => u.KarHas,
+                Hucre = u => @<div class="kz-has-blok">
+                    <span>@(u.KarHas is { } ukh ? Bicim.Has(ukh) : "—")</span>
+                    @if (u.HasKarDurumu == "KISMI")
+                    {
+                        <div class="metin-soluk metin-kucuk kz-urun-has-kismi">
+                            <Rozet Renk="sari">@KR.HasKismiRozet</Rozet>
+                            <span>@string.Format(KR.HasKismiSatirNot, u.HasMaliyetiEksikSatisAdedi)</span>
+                        </div>
+                    }
+                    else if (u.KarHas is null && u.HasKarDurumu is not null)
+                    {
+                        <div class="gorsel-gizli kz-urun-has-hesaplanamadi">@(u.MaliyetTl is not null ? KR.HasFiyatYokSatirNot : KR.HasHesaplanamadiSatirNot)</div>
+                    }
+                    else if (u.KarHas is null && AltinDisiMi(u.Maden))
+                    {
+                        <div class="gorsel-gizli kz-urun-has-altin-degil">@KR.HasYalnizAltinNot</div>
+                    }
+                </div> },
+        new() { Anahtar = "marj", Baslik = Dil.T.KarZarar.Marj, SunucuSiralamaAdi = urunDahaVar ? null : "marj",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.KarMarjiYuzde,
+                Hucre = u => @<text>@(u.KarMarjiYuzde is null ? "—" : $"%{u.KarMarjiYuzde}")</text> },
+    ];
+    // PAKET OLCEK-YUK t2 (UX-S29): sunucunun ürün sınırı ve sonraki sayfa durumu.
+    private bool urunDahaVar;
+    private int urunToplam;
+    private bool urunGenisletildi;
+    private bool urunDahaYukleniyor;
+    private string? urunDahaHata;
+    private StokVeri? stok;
+
+    // P35 ay sınırı (01.10): "bugün" tek kaynaktan — DI'da TimeProvider varsa o
+    // (testler saati sabitler; 1'inde "bu ay" = "bugün" olur), yoksa sistem saati.
+    // Yerel gün (tarayıcı saat dilimi) — UTC DEĞİL; davranış DateTime.Today ile aynı.
+    private DateTime BugunYerel => (Sp.GetService<TimeProvider>() ?? TimeProvider.System).GetLocalNow().Date;
+    private DateTime baslangic;
+    private DateTime bitis;
+    private bool yukleniyor = true;
+    private string? hata;
+
+    protected override async Task OnInitializedAsync()
+    {
+        bitis = BugunYerel;
+        baslangic = new(bitis.Year, bitis.Month, 1);
+        Dil.Degisti += Yenile;
+        await Yukle();
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // UX-4d madde 22 — AYNI İSTEK 2× GİDİYORDU.
+    // `@bind` + `@bind:after` tarih girdilerinde tek kullanıcı eylemi için iki
+    // kez tetiklenebiliyor (değer değişimi + yeniden çizim). Sunucuya aynı
+    // sorgu iki kez gidiyor, geçersiz aralıkta iki kez 400 alınıyordu.
+    // Çözüm: aynı sorgu dizesi ÜST ÜSTE çalıştırılmaz.
+    //
+    // UX-4d madde 23 — GEÇERSİZ ARALIK: bitiş < başlangıç olduğunda istek hiç
+    // atılmaz; alan altına Türkçe mesaj yazılır (sessiz etkisizlik yasağı).
+    // ═════════════════════════════════════════════════════════════════════════
+    private string? sonSorgu;
+    private string karsilastir = "";
+    private bool karsilastirAcik;
+    private void KarsilastirmayiAc() => karsilastirAcik = true;
+
+    /// <summary>Karşılaştırma seçenekleri — boş değer "karşılaştırma yok" (varsayılan KAPALI).</summary>
+    private IReadOnlyList<SecenekOgesi> KarsilastirSecenekleri =>
+    [
+        new("", Dil.T.KarZarar.KarsilastirmaYok),
+        new("ONCEKI_DONEM", Dil.T.KarZarar.OncekiDonem),
+        new("GECEN_YIL", Dil.T.KarZarar.GecenYil),
+    ];
+
+    private async Task KarsilastirDegisti(string? deger)
+    {
+        karsilastir = deger ?? "";
+        await Yukle();
+    }
+    internal string? AralikHatasi { get; private set; }
+
+    // PAKET GOC-D — ortak Tarih alanı DateOnly taşır; sayfa durumu DateTime kalır (hazır dönem düğmeleri aynı yol).
+    // Eksik/hatalı yazımda (null) eski değer korunur ve istek atılmaz; alan altında bileşenin kendi hatası görünür.
+    private async Task BaslangicDegisti(DateOnly? v)
+    {
+        if (v is not { } g) return;
+        baslangic = g.ToDateTime(TimeOnly.MinValue);
+        await Yukle();
+    }
+
+    private async Task BitisDegisti(DateOnly? v)
+    {
+        if (v is not { } g) return;
+        bitis = g.ToDateTime(TimeOnly.MinValue);
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        AralikHatasi = null;
+        // PAKET GOC-D: ters aralık + pencere + 400 gün — sunucunun 400 metniyle AYNI kural (Core RaporDonemKurali).
+        if (RaporDonemKurali.Denetle(DateOnly.FromDateTime(baslangic), DateOnly.FromDateTime(bitis),
+                                     DateOnly.FromDateTime(Bicim.IsletmeBugun), Dil.Dil) is { } donem)
+        {
+            // PAKET RAPOR-3 (hasım DÜŞÜK): hata hem alan altında hem bantta (iki kez) çıkıyor, kartlar eski dönemin
+            // rakamını gösteriyordu. Hata TEK yerde (alanın altında), kartlar gizli (eski özet atılır).
+            AralikHatasi = donem.Mesaj;
+            hata = null;
+            ozet = null;
+            sonSorgu = null;
+            yukleniyor = false;
+            return;
+        }
+
+        // ŞUBE-KAPSAM-B: şube de sorgunun parçasıdır — seçim değişince aynı tarih
+        // aralığı yeniden çekilir (anahtar şubesiz olsaydı yeni şube YOK SAYILIRDI).
+        await SubeliSorgu.HazirAsync(Oturum);
+        var sube = SubeliSorgu.Sube(Oturum);
+        var sorguAnahtari = $"{Bicim.Makine(baslangic)}|{Bicim.Makine(bitis)}|{karsilastir}|{sube}";
+        if (sorguAnahtari == sonSorgu && !yukleniyor) return;
+        sonSorgu = sorguAnahtari;
+
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            var q = $"baslangic={Bicim.Makine(baslangic)}&bitis={Bicim.Makine(bitis)}";
+            var kz = string.IsNullOrEmpty(karsilastir) ? q : $"{q}&karsilastir={karsilastir}";
+            ozet = await Api.GetAsync<OzetVeri>(SubeliSorgu.Ekle($"/raporlar/kar-zarar?{kz}", Oturum));
+            var uy = await Api.GetAsync<UrunYanit>(SubeliSorgu.Ekle($"/raporlar/kar-zarar/urun?{q}", Oturum));
+            urunler = uy.Satirlar;
+            urunDahaVar = uy.DahaFazlasiVar;
+            urunToplam = uy.ToplamUrunSayisi;
+            urunGenisletildi = false;
+            urunDahaHata = null;
+            stok = await Api.GetAsync<StokVeri>(SubeliSorgu.Ekle("/raporlar/stok-degerlemesi", Oturum));
+        }
+        catch (ApiHata ex) { hata = ex.Message; sonSorgu = null; }
+        yukleniyor = false;
+    }
+
+    /// <summary>PAKET OLCEK-YUK t2 (UX-S29): sonraki ürün sayfasını (ofset = gösterilen satır sayısı) aynı
+    /// dönem ve şubeyle ister, listeye ekler. Hata listeyi boşaltmaz (UX-S28) — bant düğmenin altında.</summary>
+    private async Task UrunDahaFazla()
+    {
+        if (urunDahaYukleniyor || !urunDahaVar) return;
+        urunDahaYukleniyor = true;
+        urunDahaHata = null;
+        try
+        {
+            var q = $"baslangic={Bicim.Makine(baslangic)}&bitis={Bicim.Makine(bitis)}&ofset={Bicim.Makine(urunler.Count)}";
+            var uy = await Api.GetAsync<UrunYanit>(SubeliSorgu.Ekle($"/raporlar/kar-zarar/urun?{q}", Oturum));
+            urunler = [.. urunler, .. uy.Satirlar];
+            urunDahaVar = uy.DahaFazlasiVar && uy.Satirlar.Count > 0;
+            urunToplam = uy.ToplamUrunSayisi;
+            urunGenisletildi = true;
+        }
+        catch (ApiHata ex) { urunDahaHata = ex.Message; }
+        urunDahaYukleniyor = false;
+    }
+
+    private async Task Donem(int aySapmasi)
+    {
+        var bugun = BugunYerel;
+        var ilk = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(aySapmasi);
+        baslangic = ilk;
+        bitis = aySapmasi == 0 ? bugun : ilk.AddMonths(1).AddDays(-1);
+        await Yukle();
+    }
+
+    /// <summary>PAKET RAPOR-2: seçili dönem hangi ön ayara denk geliyor (yoksa null — elle tarih).
+    /// Ayın 1'inde "bu ay" = "bugün" olur; o gün "bu ay" vurgulanır.</summary>
+    private string? SeciliOnAyar
+    {
+        get
+        {
+            var bugun = BugunYerel.Date;
+            var ayBasi = new DateTime(bugun.Year, bugun.Month, 1);
+            if (baslangic.Date == ayBasi && bitis.Date == bugun) return "bu-ay";
+            if (baslangic.Date == bugun && bitis.Date == bugun) return "bugun";
+            var gecenBasi = ayBasi.AddMonths(-1);
+            if (baslangic.Date == gecenBasi && bitis.Date == ayBasi.AddDays(-1)) return "gecen-ay";
+            return null;
+        }
+    }
+
+    private async Task Bugun()
+    {
+        baslangic = bitis = BugunYerel;
+        await Yukle();
+    }
+
+    private string GuvenRengi(string g) => g switch
+    {
+        "TAM" => "yesil",
+        "YUKSEK" => "yesil",
+        "ORTA" => "sari",
+        "DUSUK" => "kirmizi",
+        _ => "gri",
+    };
+
+    private string GuvenMetni(string g) => g switch
+    {
+        "TAM" => Dil.T.KarZarar.GuvenTam,
+        "YUKSEK" => Dil.T.KarZarar.GuvenYuksek,
+        "ORTA" => Dil.T.KarZarar.GuvenOrta,
+        "DUSUK" => Dil.T.KarZarar.GuvenDusuk,
+        _ => Dil.T.KarZarar.GuvenVeriYok,
+    };
+
+    /// <summary>Köprü kalemi ham kod olarak BASILMAZ (UX-S31) — sözlükten çevrilir.</summary>
+    private string KopruAdi(string kod) => kod switch
+    {
+        "BRUT_HASILAT" => Dil.T.KarZarar.BrutHasilat,
+        "IADE" => Dil.T.KarZarar.Iade,
+        "NET_HASILAT" => Dil.T.KarZarar.NetHasilat,
+        "MALIYET" => Dil.T.KarZarar.Maliyet,
+        "IADE_MALIYETI" => $"{Dil.T.KarZarar.Iade} — {Dil.T.KarZarar.Maliyet}",
+        "BRUT_KAR" => Dil.T.KarZarar.BrutKar,
+        "MALIYETI_EKSIK_SATIS" => KR.KopruMaliyetiEksik,
+        "ISCILIK" => Dil.T.KarZarar.IscilikGeliri,
+        // KAR-RAPOR-2: ham "GIDER" kodu ekrana basılıyordu (eşleme eksikti).
+        "GIDER" => KR.KopruGider,
+        "DONEM_KARI" => Dil.T.KarZarar.DonemKari,
+        _ => kod,
+    };
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // P-64 — DELTA BİÇİMİ
+    // Eski DegisimMetni yüzde null iken HİÇBİR ŞEY basmıyordu: kullanıcı
+    // "karşılaştırma çalışmadı" mı "önceki dönem sıfır" mı ayırt edemiyordu.
+    // Artık: ▲/▼ + mutlak yüzde; null → "—" (0% UYDURULMAZ, Anayasa md.1).
+    // ═════════════════════════════════════════════════════════════════════════
+    private RaporGrafikMetinleri G => RaporGrafikSozlugu.Al(Dil.Dil);
+
+    internal static string DeltaMetni(decimal? yuzde) => yuzde switch
+    {
+        null => "—",
+        > 0m => $"▲ %{YuzdeSayisi(yuzde.Value)}",
+        < 0m => $"▼ %{YuzdeSayisi(Math.Abs(yuzde.Value))}",
+        _ => "%0",
+    };
+
+    /// <summary>Bicim.Tl ile aynı kültür (tr-TR): tarayıcı kültürüne göre değişmez.</summary>
+    private static string YuzdeSayisi(decimal v)
+        => v.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+
+    private string DegisimMetni(decimal? yuzde) => $"{Dil.T.KarZarar.Degisim}: {DeltaMetni(yuzde)}";
+
+    /// <summary>KPI kartı alt metni — YALNIZ karşılaştırma seçiliyken (önceki dolu) basılır.</summary>
+    private string? KpiDelta(OzetVeri o, decimal? yuzde)
+        => o.Onceki is null ? null : $"{DeltaMetni(yuzde)} {G.OncekiyeGore}";
+
+    private static string? AltBirlestir(string? a, string? b)
+        => string.IsNullOrEmpty(a) ? b : string.IsNullOrEmpty(b) ? a : $"{a} · {b}";
+
+    private static bool YuzdeEksik(OzetVeri o)
+        => o.DegisimYuzde is null
+           || o.DegisimYuzde.HasilatTlYuzde is null
+           || o.DegisimYuzde.DonemKariTlYuzde is null;
+
+    /// <summary>KAR-RAPOR-2 tur 2: karşılaştırılan dönemde bilinmeyen (null) olup bu dönemde çizilen kalemler.
+    /// Onların 2. seri çubuğu yüksekliği 0 olarak çizilmez; ekran altına "bilinmiyor" notu düşer.</summary>
+    private List<string> OncekiBilinmeyenler(OzetVeri o)
+    {
+        var l = new List<string>();
+        if (o.Onceki is not { } onc) return l;
+        if (o.MaliyetTl is not null && onc.MaliyetTl is null) l.Add(Dil.T.KarZarar.Maliyet);
+        if (o.KarTl is not null && onc.KarTl is null) l.Add(Dil.T.KarZarar.Kar);
+        if (o.DonemKariTl is not null && onc.DonemKariTl is null) l.Add(Dil.T.KarZarar.DonemKari);
+        return l;
+    }
+
+    /// <summary>RAPOR-GORUNUM (veri d): kâr bilinen kümeden hesaplanmışsa (KISMI) hasılat çubuğu da o kümedir;
+    /// TAM'da iki küme aynıdır, kâr hesaplanamadıysa yalnız toplam hasılat çizilir (kâr çubuğu yok).</summary>
+    /// <summary>Tur 2: satır altın dışı madende mi (boş/null ALTIN sayılır — sunucu kuralı).</summary>
+    private static bool AltinDisiMi(string? maden) =>
+        !string.IsNullOrEmpty(maden) && maden != Kuyumcu.Core.Domain.Maden.Altin;
+    private static bool GrafikHasilatBilinenMi(OzetVeri o) => KismiMi(o) && o.BilinenHasilatTl != o.HasilatTl;
+    /// <summary>Karşılaştırılan dönem de kendi kümesiyle çizilir (sunucu onceki.bilinenHasilatTl).</summary>
+    private static bool OncekiHasilatBilinenMi(KarZararOnceki? on) =>
+        on is { KarTl: not null, BilinenHasilatTl: { } obh } && obh != on.HasilatTl;
+
+    /// <summary>Çubuk grafik: 1. seri seçilen dönem, 2. seri karşılaştırılan dönem (yoksa 0).</summary>
+    private List<CiftNokta> GelirGiderNoktalari(OzetVeri o) =>
+    [
+        // RAPOR-GORUNUM (veri d): kâr hesaplanabiliyorsa hasılat çubuğu kârla AYNI kümedir (bilinen satış).
+        // Eksen etiketi kısa ("Satış") — dar sütunda kırılmaz (ölçer K3); kümeyi altındaki not söyler.
+        // Tur 2 (hasım DÜŞÜK): etiket 1. serinin DEĞERİYLE aynı koşula bağlı (bu dönem HESAPLANAMADI + önceki KISMI
+        // iken etiket "Satış" ama değer toplam hasılattı). 2. serinin kümesi ayrıysa #kz-grafik-onceki-hasilat-notu söyler.
+        // PAKET RAPOR-4 tur 2 (tasarım KRİTİK): kâr bilinen kümeden hesaplanınca tek "Satış" çubuğu maliyeti BİLİNEN
+        // satışı gösteriyordu (89.900) — Özet/Panel'in toplam satışıyla (635.528) aynı adı taşıyordu. Artık iki çubuk:
+        // önce TOPLAM satış (Özet kartının "Toplam satış" alt satırı / Panel ile aynı sayı), sonra Özet kartıyla AYNI
+        // etiketli "Maliyeti bilinen satış" (satış − maliyet = kâr bu kümedir).
+        .. (GrafikHasilatBilinenMi(o)
+            ? [new CiftNokta(KR.GrafikToplamSatis, o.HasilatTl, o.Onceki?.HasilatTl ?? 0m)]
+            : Array.Empty<CiftNokta>()),
+        new(GrafikHasilatBilinenMi(o) ? KR.BilinenHasilat : Dil.T.KarZarar.Hasilat,
+            GrafikHasilatBilinenMi(o) ? o.BilinenHasilatTl : o.HasilatTl,
+            o.Onceki is { } on ? (on.KarTl is not null && on.BilinenHasilatTl is { } obh ? obh : on.HasilatTl) : 0m),
+        // KAR-RAPOR-2: bilinmeyen maliyet 0 çubuğu olarak ÇİZİLMEZ.
+        .. (o.MaliyetTl is { } mt ? [new CiftNokta(Dil.T.KarZarar.Maliyet, mt, o.Onceki?.MaliyetTl ?? 0m)] : Array.Empty<CiftNokta>()),
+        // PAKET KAR-RAPOR: hesaplanamayan kâr 0 çubuğu olarak ÇİZİLMEZ — çubuk hiç konmaz.
+        .. (o.KarTl is { } k ? [new CiftNokta(Dil.T.KarZarar.Kar, k, o.Onceki?.KarTl ?? 0m)] : Array.Empty<CiftNokta>()),
+        .. (o.DonemKariTl is { } d ? [new CiftNokta(Dil.T.KarZarar.DonemKari, d, o.Onceki?.DonemKariTl ?? 0m)] : Array.Empty<CiftNokta>()),
+    ];
+
+    /// <summary>
+    /// Pasta: ürün bazlı maliyet — en büyük 5 ürün + "Diğer ürünler". Maliyeti
+    /// sıfır/negatif satır dilim OLMAZ (pasta negatif pay çizemez).
+    /// </summary>
+    private List<GrafikNokta> MaliyetDilimleri
+    {
+        get
+        {
+            var pozitif = urunler.Where(u => u.MaliyetTl is > 0m)
+                .OrderByDescending(u => u.MaliyetTl).ToList();
+            var sonuc = pozitif.Take(5).Select(u => new GrafikNokta(u.Ad ?? u.Kod ?? u.UrunId, u.MaliyetTl!.Value)).ToList();
+            var kalan = pozitif.Skip(5).Sum(u => u.MaliyetTl!.Value);
+            if (kalan > 0m) sonuc.Add(new GrafikNokta(G.DigerUrunler, kalan));
+            return sonuc;
+        }
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

@@ -1,0 +1,1218 @@
+@page "/vezne"
+@using System.Globalization
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   VEZNE (paket 19 Faz A) — tezgâhtar satar, vezne tahsil eder.
+
+   GET  /vezne/kuyruk?durum=&limit=
+   GET  /vezne/fisler/{id}
+   POST /vezne/fisler · PATCH /vezne/fisler/{id}
+   POST /vezne/fisler/{id}/veznele · /tahsil · /iptal
+
+   ⚠ YOKLAMA YOK: kuyruk zamanlayıcıyla değil ELLE YENİLE düğmesiyle tazelenir
+     (Aşkın koşulu — zamanlayıcı bUnit'te kararsızlık üretir, A2'deki
+     "Yükleniyor'da kalma" hatasını geri getirir).
+   ⚠ UX-S21: kur ve şube KULLANICIDAN İSTENMEZ — sunucudan gelir, rozetle
+     nereden geldiği yazılır.
+   ⚠ UX-S22: tek kasa varsa seçici ÇİZİLMEZ, değer salt okunur satırdır.
+   ⚠ UX-S27: POST/PATCH yanıtı OKUNUR; defter fişi numarası banda yazılır.
+   ⚠ UX-S28: hata "kayıt yok"a çevrilmez; liste boşaltılmaz, hata bandı ayrıdır.
+   ⚠ UX-S29: sunucu sınırı ve "daha fazlası var" ekranda yazılır.
+   ⚠ UX-S30: kilitli Tahsil düğmesinin yanında eksik koşul yazılır.
+   ⚠ Razor özniteliğinde bloklu lambda YOK — adlandırılmış metotlar.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Vezne.Baslik)</PageTitle>
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Kasakuyrugu (BİREBİR); özgün ekran (yeni fiş, durum
+   süzgeci, tahsil paneli) yalnız "Tahsil et" / "Tüm ayrıntılar" görünümünde (data-yz-ozgun). Çekmece ve iptal onayı ORTAK. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @* P-37c — ORTAK ARAÇ ŞERİDİ: durum seçicisi + yenile şeride taşındı;
+       "Yeni fiş" TEK birincil eylemdir. Görev ayrımı rozeti bilgi öğesidir,
+       süzgeç değildir → kartta kalır. Kimlikler DEĞİŞMEDİ. *@
+    <SayfaBasi Anahtar="vezne" AciklamaKatli="true" Baslik="@Dil.T.Vezne.Baslik" UstBardaGizle="true"
+               Aciklama="@Dil.T.Vezne.EkranAciklama">
+        <Filtreler>
+            <Secici ElemanId="vz-durum-suzgec"
+                    Etiket="@Dil.T.Vezne.Durum"
+                    Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("VEZNEDE", VzDurumVeznede), new SecenekOgesi("ACIK", Dil.T.Vezne.DurumAcik), new SecenekOgesi("TAHSIL", Dil.T.Vezne.DurumTahsil), new SecenekOgesi("IPTAL", Dil.T.Vezne.DurumIptal), new SecenekOgesi("TUMU", Dil.T.Vezne.TumDurumlar) })"
+                    Deger="@durum"
+                    DegerChanged="@(v => DurumSecildi(new ChangeEventArgs { Value = v }))" />
+            <button type="button" id="vz-yenile" class="ikincil" disabled="@yukleniyor" @onclick="Yukle">
+                @Dil.T.Bildirim.Yenile
+            </button>
+        </Filtreler>
+        <Eylem>
+            <button type="button" id="vz-yeni-ac" class="@(formAcik ? "btn btn-ikincil" : "btn btn-birincil")" @onclick="FormuAcKapat">
+                @(formAcik ? Dil.T.Ortak.Iptal : Dil.T.Vezne.Yeni)
+            </button>
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@hata" Id="vz-hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="6000" Id="vz-basari-bandi" />
+
+    <div class="kart">
+        <div class="kart-govde rozet-satir">
+            @* ORTAK-1 hakem turu 29.09: "Kasa kuyruğu ayrımı zorunlu: kapalı" bir AYAR durumudur; BASİT
+               tezgâhtar ekranında gösterilmez (ayar İşletme ekranında). PRO'da aynen. *@
+            @if (liste is not null && !Dil.BasitMi)
+            {
+                <span id="vz-ayrim-rozet">
+                    <Rozet Renk="@(liste.VezneZorunlu ? "yesil" : "gri")">
+                        @Dil.T.Vezne.AyrimZorunlu:
+                        @(liste.VezneZorunlu ? Dil.T.Vezne.AyrimAcik : Dil.T.Vezne.AyrimKapali)
+                    </Rozet>
+                </span>
+            }
+        </div>
+        @* Q10-5 (QA 10 · ORTA): basit modda "tevsik, MASAK, gün kilidi ve stok kapıları" iç terimleri yerine sade cümle; kural değişmez. *@
+        <p class="metin-kucuk metin-soluk" id="vz-defter-notu">@(Dil.BasitMi ? Q105Sozlugu.Al(Dil.Dil).VezneDefterKapilariBasit : Dil.T.Vezne.DefterKapilari)</p>
+        @if (liste is { DahaFazlasiVar: true })
+        {
+            <p class="metin-kucuk" id="vz-sinir-uyarisi">
+                @string.Format(Dil.T.Vezne.SinirUyarisi, liste.AzamiLimit)
+            </p>
+        }
+    </div>
+
+    @* ── Yeni fiş formu ─────────────────────────────────────────────────── *@
+    @if (formAcik)
+    {
+        <div class="kart" id="vz-form">
+            <div class="kart-baslik"><h3>@Dil.T.Vezne.Yeni</h3></div>
+            <div class="kart-govde dikey-bosluk">
+                <p class="metin-kucuk" id="vz-f-kur-rozet">
+                    <Rozet Renk="@(kurId is null ? "kirmizi" : "mavi")">
+                        @* KESIF-P5 #17: BASİT'te "sunucu" sözcüğü yok (sade karşılık Sozlukler.KesifP5.cs; HUB metni PRO'da aynen). *@
+                        @(kurId is null ? Dil.T.Vezne.KurYok : Dil.BasitMi ? KesifP5Sozlugu.Al(Dil.Dil).KurTahsilAnindaBasit : Dil.T.Vezne.KurTahsilAninda)
+                    </Rozet>
+                </p>
+
+                @* ── PAKET P-23c — FİŞ TÜRÜ ───────────────────────────────────
+                   Vezne fişi artık yalnız satışı değil, tahsilat ve işçilik
+                   yollarını da taşır. Tür seçimi formun ŞEKLİNİ belirler:
+                   kalemli türde ürün satırları, kalemsiz türde tek tutar.
+                   UX-S31: seçenek listesi TEK diziden üretilir. *@
+                <div class="alan">
+                    <Secici ElemanId="vz-f-tur"
+                            Etiket="@Dil.T.Vezne.FisTuru"
+                            Secenekler="@TurSecenekleri"
+                            Deger="@fFisTuru"
+                            DegerChanged="@((string? _v) => TurDegisti(_v))" />
+                </div>
+                @* TOPLU-1 (keşif P5 01.10, YÜKSEK · K16/K17): BASİT'te tür notları (iki paragraf) açık duruyordu —
+                   tezgâhtar ekranı yalnız yapılacak işi gösterir (zorunlu önce kuralı). BASİT: (i) ipucunda KAPALI;
+                   PRO: aynen satır. id'ler aynı. *@
+                @if (Dil.BasitMi)
+                {
+                    <details class="zo-ipucu" id="vz-f-tur-ipucu">
+                        <summary aria-label="@($"{ZoBelgeSozlugu.Al(Dil.Dil).Ipucu}: {Dil.T.Vezne.FisTuru}")">i</summary>
+                        <p class="metin-kucuk" id="vz-f-tur-aciklama">@Dil.T.Vezne.TurAciklama</p>
+                        <p class="metin-kucuk" id="vz-f-tur-kapsam">@VzTakasEmanetYok</p>
+                    </details>
+                }
+                else
+                {
+                    <p class="metin-kucuk" id="vz-f-tur-aciklama">@Dil.T.Vezne.TurAciklama</p>
+                    <p class="metin-kucuk" id="vz-f-tur-kapsam">@VzTakasEmanetYok</p>
+                }
+
+                <div class="alan">
+                    <Secici ElemanId="vz-f-cari"
+                            Etiket="@Dil.T.Vezne.Cari"
+                            Secenekler="@(cariler.Select(c => new SecenekOgesi(c.Id, c.Ad)).ToList())"
+                            Deger="@fCariId"
+                            DegerChanged="@(v => CariSecildi(new ChangeEventArgs { Value = v }))"
+                            BosSecenekMetni="—" />
+                </div>
+
+                @* TOPLU-1 (K17): isteğe bağlı açıklama BASİT'te "+ Açıklama ekle" arkasında KAPALI (eklenmese kayıp
+                   yok); değer varsa açık gelir (sessiz gizleme yok). PRO: aynen açık alan. id aynı. *@
+                @if (Dil.BasitMi)
+                {
+                    <details class="emanet-detay" id="vz-f-aciklama-detay" open="@(!string.IsNullOrEmpty(fAciklama))">
+                        <summary class="emanet-detay-ac" id="vz-f-aciklama-ac">@Toplu1Sozlugu.Al(Dil.Dil).VezneAciklamaEkle</summary>
+                        <div class="emanet-detay-govde">
+                            <Metin ElemanId="vz-f-aciklama" Etiket="@Dil.T.Vezne.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+                                   Deger="@fAciklama" DegerChanged="@((string? _v) => AciklamaDegisti(_v))" />
+                        </div>
+                    </details>
+                }
+                else
+                {
+                    <Metin ElemanId="vz-f-aciklama" Etiket="@Dil.T.Vezne.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+                           Deger="@fAciklama" DegerChanged="@((string? _v) => AciklamaDegisti(_v))" />
+                }
+
+                @if (!FormKalemli)
+                {
+                    @* Kalemsiz tür: tek tutar. Ürün satırları HİÇ çizilmez —
+                       "gönderilse de yok sayılan" alan bırakılmaz (UX-S22). *@
+                    @* PAKET GOC-A (envanter C · vz-f-tutar "Para yerine düz Metin"): ortak Para (K9 Pozitif: harf/eksi
+                       yazılamaz, 2 ondalık, tavan) — sunucu oluşturmada da AYNI kuralla 400 (eskiden tavan yalnız PATCH'te). *@
+                    <Para ElemanId="vz-f-tutar" Etiket="@Dil.T.Vezne.Tutar" ParaBirimi="TRY" Zorunlu="true" Tur="TutarTuru.Pozitif"
+                          GecersizdeBosalt="true"
+                          Deger="@Sayi(fTutar)" DegerChanged="@((decimal? _v) => TutarDegisti(ParaMetni(_v)))" />
+                }
+                else
+                {
+                <h4>@Dil.T.Vezne.Kalemler</h4>
+                @for (var i = 0; i < kalemler.Count; i++)
+                {
+                    var sira = i;
+                    var k = kalemler[i];
+                    @* KESIF-P5 #17: kalem satırı kendi düzenini taşır (css/tuval-satis.css .vz-kalem-satir) — ürün seçici
+                       ≥ 12rem (54 px'e eziliyordu), "Kalemi sil" kutuların alt kenarıyla hizalı (±10 px idi). id aynı. *@
+                    <div class="rozet-satir vz-kalem-satir" id="@($"vz-f-kalem-{sira}")">
+                        <div class="alan">
+                            <Secici ElemanId="@($"vz-f-urun-{sira}")"
+                                    Etiket="@Dil.T.Vezne.Urun"
+                                    Secenekler="@UrunSecenekleri"
+                                    Deger="@k.UrunId"
+                                    DegerChanged="@((string? _v) => UrunSecildiDeger(sira, _v))"
+                                    BosSecenekMetni="—" />
+                        </div>
+                        @* PAKET GOC-A (envanter açık #6): adet ortak Adet (K14 tam sayı ≥ 1; kesir/harf/eksi yazılamaz) —
+                           GRAM birimli üründe miktar gramdır → ortak Gram (K10, 3 ondalık). Sunucu birimi üründen okur, AYNI kural. *@
+                        @if (GramliMi(k.UrunId))
+                        {
+                            <Gram ElemanId="@($"vz-f-adet-{sira}")" Etiket="@Dil.T.Vezne.Adet" Zorunlu="true" Tur="AgirlikTuru.Gram"
+                                  GecersizdeBosalt="true"
+                                  Deger="@Sayi(k.Adet)" DegerChanged="@((decimal? _v) => AdetDegisti(sira, ParaMetni(_v)))" />
+                        }
+                        else
+                        {
+                            <Adet ElemanId="@($"vz-f-adet-{sira}")" Etiket="@Dil.T.Vezne.Adet" Zorunlu="true"
+                                  GecersizdeBosalt="true"
+                                  Deger="@Sayi(k.Adet)" DegerChanged="@((decimal? _v) => AdetDegisti(sira, ParaMetni(_v)))" />
+                        }
+                        @* TOPLU-1 (keşif P5, YÜKSEK · K20): birim fiyat binliksiz düz metin kutusuydu ("125000") —
+                           Para girdi ailesi: odak dışında "125.000", odakta ham; ₺ kutunun sağında. id aynı. *@
+                        <Para ElemanId="@($"vz-f-fiyat-{sira}")" Etiket="@Dil.T.Vezne.BirimFiyat" ParaBirimi="TRY" Zorunlu="true"
+                              GecersizdeBosalt="true" Tur="TutarTuru.Pozitif"
+                              Deger="@Sayi(k.BirimFiyat)" DegerChanged="@((decimal? _v) => FiyatDegisti(sira, ParaMetni(_v)))" />
+                        <ProAlan>
+                            @* PAKET GOC-A: işçilik ortak Para (K9a sıfır olabilir; eksi yazılamaz). *@
+                            <Para ElemanId="@($"vz-f-iscilik-{sira}")" Etiket="@Dil.T.Vezne.Iscilik" ParaBirimi="TRY" Tur="TutarTuru.SifirOlabilir"
+                                  GecersizdeBosalt="true"
+                                  Deger="@Sayi(k.Iscilik)" DegerChanged="@((decimal? _v) => IscilikDegisti(sira, ParaMetni(_v)))" />
+                        </ProAlan>
+                        <button type="button" class="ikincil" id="@($"vz-f-kalem-sil-{sira}")"
+                                disabled="@(kalemler.Count <= 1)" @onclick="@(() => KalemSil(sira))">
+                            @Dil.T.Vezne.KalemSil
+                        </button>
+                    </div>
+                }
+                <button type="button" class="ikincil" id="vz-f-kalem-ekle" @onclick="KalemEkle">
+                    @Dil.T.Vezne.KalemEkle
+                </button>
+                }
+
+                @* TOPLU-1 (K20): fiş toplamı 12 px dipnot gibiydi — formun SONUCU olarak gövde boyunda, kalın,
+                   etiket + tutar bir satırda (yeni CSS sınıfı ortak.css .form-toplam-satir). id aynı. *@
+                <p class="form-toplam-satir" id="vz-f-toplam">
+                    <span>@Toplu1Sozlugu.Al(Dil.Dil).VezneFisToplami</span>
+                    <strong class="sayi">@Bicim.Para(FormToplam, "TRY")</strong>
+                </p>
+
+                @if (formKalemHatasi is { } fkh)
+                {
+                    <p class="hata-metni" id="vz-f-kalem-hata">@fkh</p>
+                }
+
+                <button type="button" id="vz-f-kaydet" class="btn btn-birincil" disabled="@(kaydediliyor || kurId is null)"
+                        @onclick="FisAc">
+                    @Dil.T.Vezne.FisiAc
+                </button>
+                @if (kurId is null)
+                {
+                    <span class="metin-kucuk metin-kirmizi" id="vz-f-kilit">@Dil.T.Vezne.KurYok</span>
+                }
+            </div>
+        </div>
+    }
+
+    @* ── Kuyruk ─────────────────────────────────────────────────────────── *@
+    <div class="kart">
+        <div class="kart-baslik"><h3>@Dil.T.Vezne.Kuyruk</h3></div>
+        <div class="kart-govde">
+            @if (liste is null || liste.Satirlar.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.Vezne.BosDurum" />
+            }
+            else
+            {
+                @* PAKET GOC-A — ORTAK IZGARA (grid:vezne:vz-liste-izgara). Tablo kimliği "vz-liste" korunur (TabloId);
+                   KESIF-P5 kart düzeni (q10-yigin) ve hücre/satır id'leri AYNEN. Liste sunucu sınırlı: sınıra değdiyse
+                   (dahaFazlasiVar) sıralama kapalı (UX-S29); değmediyse tam liste → yerel sıralama. *@
+                <Izgara T="VezneKuyrukSatiri" Ekran="vezne" GridId="vz-liste-izgara" TabloId="vz-liste" Kolonlar="@ListeKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(liste.Satirlar, liste.DahaFazlasiVar ? null : listeSira, ListeKolonlari)"
+                        SatirId="@(f => $"vz-satir-{f.Id}")" TabloSinif="tablo q10-yigin" Baslik="@Dil.T.Vezne.Baslik"
+                        YapiskanIlkSutun="false" SiralamaDegisti="@ListeSiralandi" GecerliSiralama="@listeSira" TercihIstemcisi="@VzTercih" />
+            }
+        </div>
+    </div>
+
+    @* ── Seçili fiş + tahsil paneli ─────────────────────────────────────── *@
+    @if (detay is { } d)
+    {
+        <div class="kart" id="vz-detay">
+            <div class="kart-baslik">
+                <h3>@Dil.T.Vezne.Kalemler — @DurumMetni(d.Durum)</h3>
+            </div>
+            <div class="kart-govde dikey-bosluk">
+                <p class="metin-kucuk" id="vz-detay-hazirlayan">
+                    @Dil.T.Vezne.Hazirlayan: @(d.HazirlayanAd ?? "—")
+                    @if (d.TahsilEdenAd is { Length: > 0 })
+                    {
+                        <span> · @Dil.T.Vezne.TahsilEden: @d.TahsilEdenAd</span>
+                    }
+                </p>
+                @* PAKET GOC-A — ORTAK IZGARA (grid:vezne:vz-detay-kalem). Tablo kimliği "vz-detay-kalemler" korunur. *@
+                <Izgara T="VezneDetayKalemi" Ekran="vezne" GridId="vz-detay-kalem" TabloId="vz-detay-kalemler" Kolonlar="@DetayKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(d.KalemListesi, detaySira, DetayKolonlari)" TabloSinif="tablo"
+                        Baslik="@Dil.T.Vezne.Kalemler" YapiskanIlkSutun="false"
+                        SiralamaDegisti="@DetaySiralandi" GecerliSiralama="@detaySira" TercihIstemcisi="@VzTercih" />
+                <p class="hucre-vurgu" id="vz-detay-toplam">
+                    @Dil.T.Vezne.Toplam: @Bicim.Para(d.ToplamTl, "TRY")
+                    @if (d.ToplamTahmini || d.Veznelendi is not null)
+                    {
+                        <span id="vz-detay-toplam-rozet">
+                            <Rozet Renk="@(d.ToplamTahmini ? "sari" : "gri")">@(d.ToplamTahmini ? VzToplamTahmini : VzToplamDamgali)</Rozet>
+                        </span>
+                    }
+                </p>
+
+                @if (d.TahsilEdilebilir)
+                {
+                    <div id="vz-tahsil-panel" class="dikey-bosluk">
+                        <h4>@Dil.T.Vezne.Bacaklar</h4>
+                        @* UX-S22: TEK kasa varsa seçici ÇİZİLMEZ. *@
+                        @if (kasalar.Count == 1)
+                        {
+                            <p class="metin-kucuk" id="vz-kasa-sabit">
+                                <strong>@Dil.T.Vezne.Kasa:</strong> @kasalar[0].Ad
+                                <Rozet Renk="gri">@Dil.T.Vezne.KasaOtomatik</Rozet>
+                            </p>
+                        }
+                        @for (var i = 0; i < bacaklar.Count; i++)
+                        {
+                            var bs = i;
+                            var b = bacaklar[i];
+                            <div class="rozet-satir" id="@($"vz-bacak-{bs}")">
+                                <div class="alan">
+                                    <Secici ElemanId="@($"vz-bacak-arac-{bs}")"
+                                            Etiket="@Dil.T.Vezne.Arac"
+                                            Secenekler="@AracSecenekleri"
+                                            Deger="@b.Arac"
+                                            DegerChanged="@((string? _v) => AracDegistiDeger(bs, _v))" />
+                                </div>
+                                @* PAKET GOC-A (envanter C · vz-bacak-tutar "ekran eksi bacağı kabul eder"): ortak Para K9 Pozitif. *@
+                                <Para ElemanId="@($"vz-bacak-tutar-{bs}")" Etiket="@Dil.T.Vezne.Tutar" ParaBirimi="TRY" Tur="TutarTuru.Pozitif"
+                                      GecersizdeBosalt="true"
+                                      Deger="@Sayi(b.Tutar)" DegerChanged="@((decimal? _v) => TutarDegisti(bs, ParaMetni(_v)))" />
+                                @if (kasalar.Count > 1 && b.Arac != "VERESIYE")
+                                {
+                                    <div class="alan">
+                                        <Secici ElemanId="@($"vz-bacak-kasa-{bs}")"
+                                                Etiket="@Dil.T.Vezne.Kasa"
+                                                Secenekler="@KasaSecenekleri"
+                                                Deger="@b.KasaId"
+                                                DegerChanged="@((string? _v) => KasaDegistiDeger(bs, _v))" />
+                                    </div>
+                                }
+                                <button type="button" class="ikincil" id="@($"vz-bacak-sil-{bs}")"
+                                        disabled="@(bacaklar.Count <= 1)" @onclick="@(() => BacakSil(bs))">
+                                    @Dil.T.Vezne.BacakSil
+                                </button>
+                            </div>
+                        }
+                        <div class="rozet-satir">
+                            <button type="button" class="ikincil" id="vz-bacak-ekle" @onclick="BacakEkle">
+                                @Dil.T.Vezne.BacakEkle
+                            </button>
+                            <button type="button" class="ikincil" id="vz-kalani-ata" @onclick="KalaniAta">
+                                @Dil.T.Vezne.KalaniAta
+                            </button>
+                            <span id="vz-kalan">@Dil.T.Vezne.Kalan: @Bicim.Para(Kalan, "TRY")</span>
+                        </div>
+
+                        <button type="button" id="vz-tahsil" class="btn btn-birincil" disabled="@(!TahsilAktif)" @onclick="TahsilEt">
+                            @Dil.T.Vezne.TahsilEt
+                        </button>
+                        @if (!TahsilAktif)
+                        {
+                            <span class="metin-kucuk metin-kirmizi" id="vz-tahsil-kilit">@TahsilKilitSebebi</span>
+                        }
+                    </div>
+                }
+                else if (d.Terminal)
+                {
+                    <DegismezIpucu Varlik="VezneFisi" Gerekce="@Dil.T.Vezne.DegismezGerekce"
+                                   AlternatifYol="@Dil.T.Vezne.DegismezAlternatif" />
+                }
+            </div>
+        </div>
+    }
+</div>
+}
+
+@* ── Düzenleme çekmecesi (TEK DÜZENLEME KALIBI) ─────────────────────────── *@
+<Cekmece Acik="@cekmeceAcik" Varlik="vezne-fisi" Baslik="@Dil.T.Vezne.Duzenle"
+         Kaydediliyor="@kaydediliyor" KaydetAktif="@DuzenlemeGecerli"
+         KilitSebebi="@Dil.T.Vezne.KalemGerekli" Kapat="CekmeceKapat" Kaydet="DuzenlemeKaydet">
+    <div class="alan">
+        <Secici ElemanId="vz-d-cari"
+                Etiket="@Dil.T.Vezne.Cari"
+                Secenekler="@(cariler.Select(c => new SecenekOgesi(c.Id, c.Ad)).ToList())"
+                Deger="@dCariId"
+                DegerChanged="@(v => DuzenleCariSecildi(new ChangeEventArgs { Value = v }))"
+                BosSecenekMetni="—" />
+    </div>
+    <Metin ElemanId="vz-d-aciklama" Etiket="@Dil.T.Vezne.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+           Deger="@dAciklama" DegerChanged="@((string? _v) => DuzenleAciklamaDegisti(_v))" />
+    @* ── PAKET P-23c ────────────────────────────────────────────────────────
+       Tür DEĞİŞMEZDİR (fişin anlamını değiştirirdi); gerekçesi ve doğru yol
+       DegismezIpucu ile YAZILIR — "düğme yok, sebebi de yok" olmaz (UX-S25/30). *@
+    <p class="metin-kucuk" id="vz-d-tur">@Dil.T.Vezne.FisTuru: @TurMetni(dFisTuru)</p>
+    <DegismezIpucu Varlik="@($"VezneFisiTuru-{cekmeceFisId}")"
+                   Gerekce="@Dil.T.Vezne.TurDegismez"
+                   AlternatifYol="@Dil.T.Vezne.Iptal" />
+    @if (!DuzenlemeKalemli)
+    {
+        <Para ElemanId="vz-d-tutar" Etiket="@Dil.T.Vezne.Tutar" ParaBirimi="TRY" Zorunlu="true" Tur="TutarTuru.Pozitif"
+              GecersizdeBosalt="true"
+              Deger="@Sayi(dTutar)" DegerChanged="@((decimal? _v) => DuzenleTutarDegisti(ParaMetni(_v)))" />
+    }
+    @for (var i = 0; DuzenlemeKalemli && i < dKalemler.Count; i++)
+    {
+        var sira = i;
+        var k = dKalemler[i];
+        <div class="rozet-satir" id="@($"vz-d-kalem-{sira}")">
+            <div class="alan">
+                <Secici ElemanId="@($"vz-d-urun-{sira}")"
+                        Etiket="@Dil.T.Vezne.Urun"
+                        Secenekler="@UrunSecenekleri"
+                        Deger="@k.UrunId"
+                        DegerChanged="@((string? _v) => DuzenleUrunSecildiDeger(sira, _v))"
+                        BosSecenekMetni="—" />
+            </div>
+            @if (GramliMi(k.UrunId))
+            {
+                <Gram ElemanId="@($"vz-d-adet-{sira}")" Etiket="@Dil.T.Vezne.Adet" Zorunlu="true" Tur="AgirlikTuru.Gram"
+                      GecersizdeBosalt="true"
+                      Deger="@Sayi(k.Adet)" DegerChanged="@((decimal? _v) => DuzenleAdetDegisti(sira, ParaMetni(_v)))" />
+            }
+            else
+            {
+                <Adet ElemanId="@($"vz-d-adet-{sira}")" Etiket="@Dil.T.Vezne.Adet" Zorunlu="true"
+                      GecersizdeBosalt="true"
+                      Deger="@Sayi(k.Adet)" DegerChanged="@((decimal? _v) => DuzenleAdetDegisti(sira, ParaMetni(_v)))" />
+            }
+            @* TOPLU-1 (UX-S26): düzenleme çekmecesi oluşturma formuyla AYNI girdi ailesi (binlikli Para). id aynı. *@
+            <Para ElemanId="@($"vz-d-fiyat-{sira}")" Etiket="@Dil.T.Vezne.BirimFiyat" ParaBirimi="TRY" Zorunlu="true"
+                  GecersizdeBosalt="true" Tur="TutarTuru.Pozitif"
+                  Deger="@Sayi(k.BirimFiyat)" DegerChanged="@((decimal? _v) => DuzenleFiyatDegisti(sira, ParaMetni(_v)))" />
+            @* ── PAKET P-12 (B-38) · UX-S26 ────────────────────────────────────
+               Oluşturma formunda İŞÇİLİK alanı vardı (vz-f-iscilik-*), düzenleme
+               çekmecesinde YOKTU: kullanıcı yanlış girdiği işçiliği hiçbir yerden
+               düzeltemiyordu. Değer zaten yükleniyor ve PATCH gövdesinde geri
+               gönderiliyordu — yalnız GİRDİ eksikti (sessiz kilit). *@
+            <Para ElemanId="@($"vz-d-iscilik-{sira}")" Etiket="@Dil.T.Vezne.Iscilik" ParaBirimi="TRY" Tur="TutarTuru.SifirOlabilir"
+                  GecersizdeBosalt="true"
+                  Deger="@Sayi(k.Iscilik)" DegerChanged="@((decimal? _v) => DuzenleIscilikDegisti(sira, ParaMetni(_v)))" />
+        </div>
+    }
+</Cekmece>
+
+@* ── İptal onayı (yıkıcı eylem ortak onay modalı) ───────────────────────── *@
+<ModalPencere Acik="@iptalAcik" Baslik="@Dil.T.Vezne.Iptal" Kapat="IptalKapat">
+    <p>@Dil.T.Vezne.IptalOnay</p>
+    @* PAKET GOC-A (envanter C · vz-iptal-gerekce): alt sınır sunucudan (K30 → 20), üst sınır kolon (500) —
+       ekran 1000'e izin veriyordu, sunucu 500'de UYARISIZ kesiyordu; artık ikisi AYNI sabit. *@
+    <GerekceAlani Id="vz-iptal-gerekce" Etiket="@Dil.T.Vezne.Gerekce"
+                  AsgariUzunluk="@GerekceAsgari" AzamiUzunluk="@AlanSinirlari.VezneIptalGerekce" @bind-Deger="iptalGerekce">
+        <button type="button" id="vz-iptal-onayla" class="btn btn-tehlike" disabled="@(!context || kaydediliyor)"
+                @onclick="IptalOnayla">@Dil.T.Vezne.Iptal</button>
+        @if (!context)
+        {
+            <span class="metin-kucuk metin-kirmizi" id="vz-iptal-kilit">@Dil.T.Vezne.GerekceKisa</span>
+        }
+    </GerekceAlani>
+</ModalPencere>
+
+@code {
+    // ── Sunucu yanıt sözleşmeleri ───────────────────────────────────────────
+    // ⚠ Pages altında YENİ istemci kayıt tipi YAZILMAZ (S-2 / MÜHÜR 5 KOŞUL 3): şekiller
+    //   Kuyumcu.Core/Sozlesmeler/VezneSozlesmeleri.cs dosyasındadır.
+
+    private sealed class FormKalemi
+    {
+        public string? UrunId { get; set; }
+        public string Adet { get; set; } = "1";
+        public string BirimFiyat { get; set; } = "";
+        public string Iscilik { get; set; } = "";
+    }
+
+    private sealed class FormBacagi
+    {
+        public string Arac { get; set; } = "NAKIT";
+        public string Tutar { get; set; } = "";
+        public string? KasaId { get; set; }
+    }
+
+    /// <summary>UX-S26/UX-S31: araç listesi TEK diziden gelir.</summary>
+    private static readonly string[] Araclar = ["NAKIT", "KART", "HAVALE", "VERESIYE"];
+
+    // ── P-36c GÖÇ YARDIMCILARI (ham <select> → ortak <Secici>) ────────────
+    // Secici string? verir; mevcut ChangeEventArgs imzalı iş yolları YENİDEN
+    // YAZILMAZ, yalnız sarmalanır (davranış birebir aynı kalır).
+    /// <summary>
+    /// PAKET GOC-A — kalem satırı bütünlüğü (sessiz silme YOK). Tamamen boş satır (ürün yok, fiyat yok,
+    /// işçilik yok) yok sayılır; ürünü olmayan ama değer taşıyan satır ya da ürünü olup adedi/fiyatı
+    /// eksik/geçersiz satır, ilk bozuk satırın numarasıyla söylenir. Adet kuralı birime göre (K14 / K10).
+    /// </summary>
+    private string? KalemSatirHatasi(IReadOnlyList<FormKalemi> satirlar)
+    {
+        var m = GocASozlugu.Al(Dil.Dil);
+        for (var i = 0; i < satirlar.Count; i++)
+        {
+            var k = satirlar[i];
+            var urunVar = !string.IsNullOrWhiteSpace(k.UrunId);
+            var degerVar = !string.IsNullOrWhiteSpace(k.BirimFiyat) || !string.IsNullOrWhiteSpace(k.Iscilik);
+            if (!urunVar && !degerVar) continue;
+            if (!urunVar) return string.Format(m.VezneKalemUrunsuz, i + 1);
+            var adet = Sayi(k.Adet);
+            var adetHatasi = adet is not { } a ? null
+                : GramliMi(k.UrunId) ? AgirlikKurali.Gram(a) : AdetKurali.Denetle(a);
+            // Q10-5 / Q105: ürünü seçili satırda adet/fiyat sorunu AYNI cümleyle söylenir (tek ad, tek kaynak).
+            if (adet is null || adetHatasi is not null || (Sayi(k.BirimFiyat) ?? 0m) <= 0m)
+                return Q105Sozlugu.Al(Dil.Dil).VezneKalemSayiHatasi;
+        }
+        return null;
+    }
+
+    // ── PAKET GOC-A — ürün birimi: ADET → Adet (K14) · GRAM → Gram (K10) ──────────
+    private bool GramliMi(string? urunId) =>
+        urunId is { Length: > 0 } && urunler.FirstOrDefault(u => u.Id == urunId)?.Birim == "GRAM";
+
+    // ── PAKET GOC-A — ORTAK IZGARA (grid:vezne:*) ────────────────────────────
+    private IzgaraTercihIstemcisi? vzTercih;
+    private IzgaraTercihIstemcisi VzTercih => vzTercih ??= new IzgaraTercihIstemcisi(Api);
+    private IzgaraSiralama? listeSira, detaySira;
+    private void ListeSiralandi(IzgaraSiralama? s) => listeSira = s;
+    private void DetaySiralandi(IzgaraSiralama? s) => detaySira = s;
+    private string? SiraAdi(string ad) => liste?.DahaFazlasiVar == true ? null : ad;
+
+    private IReadOnlyList<IzgaraKolonu<VezneKuyrukSatiri>> ListeKolonlari =>
+    [
+        new() { Anahtar = "durum", Baslik = Dil.T.Vezne.Durum, ZorunluGorunur = true, Tur = IzgaraHucreTuru.Rozet,
+                SunucuSiralamaAdi = SiraAdi("durum"), Deger = f => DurumMetni(f.Durum),
+                Hucre = f => @<Rozet Renk="@DurumRengi(f.Durum)">@DurumMetni(f.Durum)</Rozet> },
+        new() { Anahtar = "tur", Baslik = Dil.T.Vezne.FisTuru, SunucuSiralamaAdi = SiraAdi("tur"), Deger = f => TurMetni(f.FisTuru ?? "SATIS"),
+                HucreOznitelikleri = null, Hucre = f => @<span id="@($"vz-tur-{f.Id}")">@TurMetni(f.FisTuru ?? "SATIS")</span> },
+        new() { Anahtar = "cari", Baslik = Dil.T.Vezne.Cari, SunucuSiralamaAdi = SiraAdi("cari"), HucreSinif = _ => "hucre-ad",
+                Deger = f => f.CariAd ?? "—" },
+        // ORTAK-1 (K3 kırık): kişi adı kırılmaz, tablo kendi kabında kayar.
+        new() { Anahtar = "hazirlayan", Baslik = Dil.T.Vezne.Hazirlayan, SunucuSiralamaAdi = SiraAdi("hazirlayan"),
+                HucreSinif = _ => "hucre-tek-satir", Deger = f => f.HazirlayanAd ?? "—" },
+        new() { Anahtar = "kalem", Baslik = Dil.T.Vezne.KalemSayisi, SunucuSiralamaAdi = SiraAdi("kalem"), Deger = f => f.KalemSayisi },
+        // P-46: ACIK fişte tutar kalemlerden hesaplanır (tahmini rozetle SÖYLENİR); damgalı fişte damga yazılır.
+        new() { Anahtar = "toplam", Baslik = Dil.T.Vezne.Toplam, ZorunluGorunur = true, SunucuSiralamaAdi = SiraAdi("toplam"),
+                Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", Deger = f => f.ToplamTl,
+                Hucre = f => @<span id="@($"vz-toplam-{f.Id}")">@Bicim.Para(f.ToplamTl, "TRY")
+                    @if (f.ToplamTahmini || f.Veznelendi is not null)
+                    {
+                        <span class="vz-toplam-rozet" id="@($"vz-toplam-rozet-{f.Id}")">
+                            <Rozet Renk="@(f.ToplamTahmini ? "sari" : "gri")">@(f.ToplamTahmini ? VzToplamTahmini : VzToplamDamgali)</Rozet>
+                        </span>
+                    }</span> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem, HucreSinif = _ => "q10-yigin-eylem",
+                Hucre = fis => @<div class="rozet-satir vz-eylem-hucre">
+                    <button type="button" class="ikincil" id="@($"vz-sec-{fis.Id}")"
+                            @onclick="@(() => Sec(fis.Id))">@Dil.T.Vezne.Sec</button>
+                    @if (fis.Durum == "ACIK")
+                    {
+                        <button type="button" class="ikincil" id="@($"vz-duzenle-{fis.Id}")"
+                                @onclick="@(() => DuzenlemeyiAc(fis.Id))">@Dil.T.Vezne.Duzenle</button>
+                        <button type="button" class="btn btn-birincil" id="@($"vz-veznele-{fis.Id}")"
+                                @onclick="@(() => Veznele(fis.Id))">@VzVezneyeGonder</button>
+                    }
+                    @if (fis.Durum is "ACIK" or "VEZNEDE")
+                    {
+                        <button type="button" class="ikincil" id="@($"vz-iptal-{fis.Id}")"
+                                @onclick="@(() => IptalSor(fis.Id))">@Dil.T.Vezne.Iptal</button>
+                    }
+                    @* UX-1-D: VEZNEDE fişte düzenleme kilidinin SEBEBİ ve doğru yol yazılır (UX-S25/S30). *@
+                    @if (fis.Durum == "VEZNEDE")
+                    {
+                        <details class="vz-kilit-ayrinti" id="@($"vz-kilit-{fis.Id}")">
+                            <summary>@VzBasit.VezneKilitNeden</summary>
+                            <DegismezIpucu Varlik="@($"VezneFisi-{fis.Id}")"
+                                           Gerekce="@VzVezneleDegismez"
+                                           AlternatifYol="@VzVezneleDegismezYolu" />
+                        </details>
+                    }
+                    @if (fis.MutabakatGerekli)
+                    {
+                        <span id="@($"vz-mutabakat-{fis.Id}")">
+                            <Rozet Renk="kirmizi">@Dil.T.Vezne.MutabakatGerekli</Rozet>
+                        </span>
+                    }
+                </div> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<VezneDetayKalemi>> DetayKolonlari =>
+    [
+        new() { Anahtar = "urun", Baslik = Dil.T.Vezne.Urun, ZorunluGorunur = true, SunucuSiralamaAdi = "urun", Deger = k => k.UrunAd ?? k.UrunId },
+        new() { Anahtar = "adet", Baslik = Dil.T.Vezne.Adet, SunucuSiralamaAdi = "adet", Deger = k => k.Adet,
+                Hucre = k => @<text>@Bicim.Miktar(k.Adet, null)</text> },
+        new() { Anahtar = "fiyat", Baslik = Dil.T.Vezne.BirimFiyat, SunucuSiralamaAdi = "fiyat", Tur = IzgaraHucreTuru.Para,
+                ParaBirimi = _ => "TRY", Deger = k => k.BirimFiyatTl },
+        new() { Anahtar = "iscilik", Baslik = Dil.T.Vezne.Iscilik, SunucuSiralamaAdi = "iscilik", Tur = IzgaraHucreTuru.Para,
+                ParaBirimi = _ => "TRY", Deger = k => k.IscilikTl },
+        new() { Anahtar = "toplam", Baslik = Dil.T.Vezne.Toplam, ZorunluGorunur = true, SunucuSiralamaAdi = "toplam", Tur = IzgaraHucreTuru.Para,
+                ParaBirimi = _ => "TRY", Deger = k => k.TutarTl },
+    ];
+
+    private IReadOnlyList<SecenekOgesi> UrunSecenekleri =>
+        [.. urunler.Select(u => new SecenekOgesi(u.Id, u.Ad))];
+
+    private IReadOnlyList<SecenekOgesi> AracSecenekleri =>
+        [.. Araclar.Select(a => new SecenekOgesi(a, AracMetni(a)))];
+
+    private IReadOnlyList<SecenekOgesi> KasaSecenekleri =>
+        [.. kasalar.Select(ks => new SecenekOgesi(ks.Id, $"{ks.Ad} ({Bicim.ParaIsareti(ks.ParaBirimi)})"))];
+
+    private void UrunSecildiDeger(int sira, string? deger)
+    {
+        formKalemHatasi = null;   // Q10-5: alan değişince eski mesaj düşer
+        UrunSecildi(sira, new ChangeEventArgs { Value = deger });
+    }
+
+    private void DuzenleUrunSecildiDeger(int sira, string? deger) =>
+        DuzenleUrunSecildi(sira, new ChangeEventArgs { Value = deger });
+
+    private void AracDegistiDeger(int sira, string? deger) =>
+        AracDegisti(sira, new ChangeEventArgs { Value = deger });
+
+    private void KasaDegistiDeger(int sira, string? deger) =>
+        KasaDegisti(sira, new ChangeEventArgs { Value = deger });
+
+
+    private VezneKuyrukYaniti? liste;
+    private VezneDetayYaniti? detay;
+    private List<VezneCariSatiri> cariler = [];
+    private List<VezneUrunSatiri> urunler = [];
+    private List<VezneKasaSatiri> kasalar = [];
+    private string? kurId;
+
+    private string durum = "VEZNEDE";
+    private bool yukleniyor = true, kaydediliyor, formAcik, cekmeceAcik, iptalAcik;
+    private string? hata, basari, formKalemHatasi;
+    private int basariJeton;
+
+    private string? fCariId;
+    private string fAciklama = "";
+    private List<FormKalemi> kalemler = [new()];
+
+    // ── PAKET P-23c — fiş türü ───────────────────────────────────────────────
+    /// <summary>UX-S31: tür listesi TEK dizidir; sunucunun kapalı listesiyle aynı.</summary>
+    private static readonly string[] FisTurleri = ["SATIS", "TAHSILAT", "ISCILIK"];
+
+    private IReadOnlyList<SecenekOgesi> TurSecenekleri =>
+        [.. FisTurleri.Select(t => new SecenekOgesi(t, TurMetni(t)))];
+
+    private string TurMetni(string tur) => tur switch
+    {
+        "TAHSILAT" => Dil.T.Vezne.TurTahsilat,
+        "ISCILIK"  => Dil.T.Vezne.TurIscilik,
+        _          => Dil.T.Vezne.TurSatis,
+    };
+
+    private string fFisTuru = "SATIS";
+    private string fTutar = "";
+    private bool FormKalemli => fFisTuru == "SATIS";
+
+    private void TurDegisti(string? deger)
+    {
+        fFisTuru = string.IsNullOrWhiteSpace(deger) ? "SATIS" : deger!;
+        formKalemHatasi = null;
+        // Tür değişince diğer şeklin girdisi TEMİZLENİR: ekranda görünmeyen
+        // bir değerin sessizce gönderilmesi "yok sayılan alan" olurdu.
+        if (FormKalemli) fTutar = "";
+        else kalemler = [new FormKalemi()];
+    }
+
+    private void TutarDegisti(string? deger)
+    {
+        fTutar = deger ?? "";
+        formKalemHatasi = null;
+    }
+
+    private string dTutar = "";
+    private string dFisTuru = "SATIS";
+    private bool DuzenlemeKalemli => dFisTuru == "SATIS";
+
+    private string? cekmeceFisId;
+    private string? dCariId;
+    private string dAciklama = "";
+    private DateTime? dDamga;
+    private List<FormKalemi> dKalemler = [new()];
+
+    private string? iptalEdilecekId;
+    private string iptalGerekce = "";
+
+    private List<FormBacagi> bacaklar = [new()];
+
+    private int GerekceAsgari => liste?.GerekceAsgari ?? AlanSinirlari.GerekceEnAz;
+
+    /// <summary>P-23c: kalemsiz türde toplam TUTARDIR, kalem çarpımı değil.</summary>
+    private decimal FormToplam =>
+        FormKalemli
+            ? kalemler.Sum(k => (Sayi(k.Adet) ?? 0m) * (Sayi(k.BirimFiyat) ?? 0m) + (Sayi(k.Iscilik) ?? 0m))
+            : Sayi(fTutar) ?? 0m;
+
+    private decimal BacakToplam => bacaklar.Sum(b => Sayi(b.Tutar) ?? 0m);
+
+    private decimal Kalan => (detay?.ToplamTl ?? 0m) - BacakToplam;
+
+    /// <summary>P-23c: kalemsiz fişte geçerlilik ölçütü TUTARDIR, kalem değil.</summary>
+    private bool DuzenlemeGecerli =>
+        DuzenlemeKalemli
+            ? dKalemler.Any(k => !string.IsNullOrWhiteSpace(k.UrunId) && (Sayi(k.BirimFiyat) ?? 0m) > 0m)
+            : (Sayi(dTutar) ?? 0m) > 0m;
+
+    /// <summary>
+    /// Tahsil TEK POST ile gider ve ancak bacak toplamı fiş tutarına TAM eşitse
+    /// açılır (OdemeSepeti sunucuda da aynı eşitliği arar).
+    /// </summary>
+    private bool TahsilAktif =>
+        !kaydediliyor && kurId is not null && detay is { TahsilEdilebilir: true }
+        && bacaklar.Count > 0 && Kalan == 0m && !KendiFisim;
+
+    private bool KendiFisim =>
+        (liste?.VezneZorunlu ?? false)
+        && detay?.HazirlayanKullaniciId is { Length: > 0 } h
+        && h == Oturum.Kullanici?.Id;
+
+    // UX-S30: kilitli düğme SEBEBİNİ söyler.
+    private string TahsilKilitSebebi =>
+        kurId is null ? Dil.T.Vezne.KurYok
+        : KendiFisim ? Dil.T.Vezne.KendiFisin
+        : Kalan != 0m ? Dil.T.Vezne.ToplamTutmuyor
+        : Dil.T.Vezne.BacakGerekli;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Yukle();
+        await YardimcilariYukle();
+    }
+
+    private Task DurumSecildi(ChangeEventArgs e)
+    {
+        durum = e.Value?.ToString() ?? "VEZNEDE";
+        detay = null;
+        return Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        hata = null;
+        try
+        {
+            liste = await Api.GetAsync<VezneKuyrukYaniti>($"/vezne/kuyruk?durum={durum}&limit=200");
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            // UX-S28: hata "kayıt yok"a ÇEVRİLMEZ; liste boşaltılmaz.
+            hata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private async Task YardimcilariYukle()
+    {
+        try { cariler = await Api.GetAsync<List<VezneCariSatiri>>("/cari?aktif=true&limit=50"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+
+        try { urunler = await Api.GetAsync<List<VezneUrunSatiri>>("/urunler?aktif=true&limit=100"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+
+        try { kasalar = await Api.GetAsync<List<VezneKasaSatiri>>("/kasalar"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+
+        try
+        {
+            // UX-S21: kur SUNUCUDAN gelir; kullanıcıdan istenmez.
+            var k = await Api.GetAsync<VezneKurSatiri>("/kur/guncel");
+            kurId = string.IsNullOrWhiteSpace(k.Id) ? null : k.Id;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    // ── Yeni fiş ────────────────────────────────────────────────────────────
+
+    private void FormuAcKapat()
+    {
+        formAcik = !formAcik;
+        formKalemHatasi = null;
+    }
+
+    private void CariSecildi(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        fCariId = string.IsNullOrWhiteSpace(v) ? null : v;
+        formKalemHatasi = null;   // Q10-5: alan değişince eski mesaj düşer
+    }
+
+    // P-36c/3: değer ortak girdi ailesinden string? olarak gelir.
+    private void AciklamaDegisti(string? deger) => fAciklama = deger ?? "";
+
+    private void KalemEkle() => kalemler.Add(new FormKalemi());
+
+    private void KalemSil(int sira)
+    {
+        if (kalemler.Count <= 1) return;
+        kalemler.RemoveAt(sira);
+    }
+
+    private void UrunSecildi(int sira, ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        kalemler[sira].UrunId = string.IsNullOrWhiteSpace(v) ? null : v;
+    }
+
+    // PAKET Q10-5 (QA 10 /vezne: "birim fiyat -5 → 1500 yapılınca 'En az bir
+    // kalem gerekli' ekranda kalıyor"): form düzeyindeki mesaj, mesajı doğuran
+    // alanlardan biri DEĞİŞİNCE düşer; yeni değer hâlâ hatalıysa Fişi aç
+    // yeniden söyler (FormDurumu.Sil ile aynı kural).
+    private void AdetDegisti(int sira, string? deger) { kalemler[sira].Adet = deger ?? ""; formKalemHatasi = null; }
+    private void FiyatDegisti(int sira, string? deger) { kalemler[sira].BirimFiyat = deger ?? ""; formKalemHatasi = null; }
+    private void IscilikDegisti(int sira, string? deger) { kalemler[sira].Iscilik = deger ?? ""; formKalemHatasi = null; }
+
+    private async Task FisAc()
+    {
+        if (kaydediliyor) return;
+        formKalemHatasi = null;
+        // P-78: belirsiz/geçersiz sayı SESSİZCE 0/1 sayılıp gönderilmez.
+        if (IlkSayiHatasi(FormKalemli
+                ? kalemler.SelectMany(k => new[] { k.Adet, k.BirimFiyat, k.Iscilik })
+                : [fTutar]) is { } sayiMesaji)
+        {
+            formKalemHatasi = sayiMesaji;
+            return;
+        }
+
+        // PAKET GOC-A (envanter açık #6 — "Vezne'de fiyatı ya da adedi 0 olan kalem UYARISIZ fişten atılıyor"):
+        // ürün seçilmiş ama adedi/fiyatı eksik ya da geçersiz satır, yanında geçerli satır olsa bile ARTIK
+        // ATILMAZ — satır numarasıyla söylenir ve POST yapılmaz. Tamamen boş satır (ürün yok, değer yok) yok sayılır.
+        if (FormKalemli && KalemSatirHatasi(kalemler) is { } satirHatasi)
+        {
+            formKalemHatasi = satirHatasi;
+            return;
+        }
+        var gecerli = kalemler
+            .Where(k => !string.IsNullOrWhiteSpace(k.UrunId)
+                     && (Sayi(k.Adet) ?? 0m) > 0m && (Sayi(k.BirimFiyat) ?? 0m) > 0m)
+            .ToList();
+        if (FormKalemli && gecerli.Count == 0)
+        {
+            // Sessiz etkisizlik YASAK: alan altı Türkçe mesaj.
+            // Q10-5 (QA 10 · ORTA "negatif birim fiyatta yanlış mesaj"): ürünü
+            // seçilmiş ama adedi/fiyatı sıfır ya da eksi olan satır varsa sebep
+            // "kalem yok" DEĞİLDİR — doğru sebep söylenir.
+            formKalemHatasi = kalemler.Any(k => !string.IsNullOrWhiteSpace(k.UrunId))
+                ? Q105Sozlugu.Al(Dil.Dil).VezneKalemSayiHatasi
+                : Dil.T.Vezne.KalemGerekli;
+            return;
+        }
+        // P-23c: kalemsiz türde tutar ve cari ZORUNLU; eksikse alan altı mesaj.
+        if (!FormKalemli && (Sayi(fTutar) ?? 0m) <= 0m)
+        {
+            formKalemHatasi = Dil.T.Vezne.TutarGerekli;
+            return;
+        }
+        if (!FormKalemli && string.IsNullOrWhiteSpace(fCariId))
+        {
+            formKalemHatasi = Dil.T.Vezne.CariGerekli;
+            return;
+        }
+
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var cevap = FormKalemli
+                ? await Api.PostAsync("/vezne/fisler", new
+                {
+                    fisTuru = fFisTuru,
+                    cariId = fCariId,
+                    kurSnapshotId = kurId,
+                    aciklama = string.IsNullOrWhiteSpace(fAciklama) ? null : fAciklama,
+                    kalemler = gecerli.Select(k => new
+                    {
+                        urunId = k.UrunId,
+                        adet = Sayi(k.Adet) ?? 1m,
+                        birimFiyatTl = Sayi(k.BirimFiyat) ?? 0m,
+                        iscilikTl = Sayi(k.Iscilik) ?? 0m,
+                    }),
+                })
+                // Kalemsiz türde 'kalemler' GÖNDERİLMEZ (sunucu reddeder) ve
+                // 'tutarTl' gönderilir — istemci ile sunucu sözleşmesi birebir.
+                : await Api.PostAsync("/vezne/fisler", new
+                {
+                    fisTuru = fFisTuru,
+                    cariId = fCariId,
+                    kurSnapshotId = kurId,
+                    aciklama = string.IsNullOrWhiteSpace(fAciklama) ? null : fAciklama,
+                    tutarTl = Sayi(fTutar) ?? 0m,
+                });
+            // UX-S27: POST yanıtı OKUNUR.
+            BasariGoster(Dil.T.Vezne.Olusturuldu, cevap);
+            formAcik = false;
+            kalemler = [new FormKalemi()];
+            fTutar = "";
+            fAciklama = "";
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Seçim / detay ───────────────────────────────────────────────────────
+
+    private async Task Sec(string id)
+    {
+        hata = null;
+        try
+        {
+            detay = await Api.GetAsync<VezneDetayYaniti>($"/vezne/fisler/{id}");
+            bacaklar = [new FormBacagi
+            {
+                Tutar = Bicim.Girdi(detay.ToplamTl, "0.00"),
+                KasaId = kasalar.Count > 0 ? kasalar[0].Id : null,
+            }];
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    // ── Vezneye gönder ──────────────────────────────────────────────────────
+
+    private async Task Veznele(string id)
+    {
+        if (kaydediliyor) return;
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var cevap = await Api.PostAsync($"/vezne/fisler/{id}/veznele");
+            BasariGoster(VzVeznelendi, cevap);
+            await Yukle();
+            if (detay?.Id == id) await Sec(id);
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Düzenleme (Cekmece) ─────────────────────────────────────────────────
+
+    private async Task DuzenlemeyiAc(string id)
+    {
+        hata = null;
+        try
+        {
+            var d = await Api.GetAsync<VezneDetayYaniti>($"/vezne/fisler/{id}");
+            cekmeceFisId = d.Id;
+            dFisTuru = string.IsNullOrWhiteSpace(d.FisTuru) ? "SATIS" : d.FisTuru!;
+            dTutar = Bicim.Girdi(d.TutarTl ?? 0m, "0.00");
+            dCariId = d.CariId;
+            dAciklama = d.Aciklama ?? "";
+            dDamga = d.Guncellendi;
+            dKalemler = d.KalemListesi.Count == 0
+                ? [new FormKalemi()]
+                : [.. d.KalemListesi.Select(k => new FormKalemi
+                {
+                    UrunId = k.UrunId,
+                    Adet = Bicim.Girdi(k.Adet, "0.###"),
+                    BirimFiyat = Bicim.Girdi(k.BirimFiyatTl, "0.00"),
+                    Iscilik = Bicim.Girdi(k.IscilikTl, "0.00"),
+                })];
+            cekmeceAcik = true;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    private void CekmeceKapat()
+    {
+        cekmeceAcik = false;
+        cekmeceFisId = null;
+    }
+
+    private void DuzenleCariSecildi(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        dCariId = string.IsNullOrWhiteSpace(v) ? null : v;
+    }
+
+    private void DuzenleAciklamaDegisti(string? deger) => dAciklama = deger ?? "";
+
+    private void DuzenleTutarDegisti(string? deger) => dTutar = deger ?? "";
+
+    private void DuzenleUrunSecildi(int sira, ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString();
+        dKalemler[sira].UrunId = string.IsNullOrWhiteSpace(v) ? null : v;
+    }
+
+    private void DuzenleAdetDegisti(int sira, string? deger) => dKalemler[sira].Adet = deger ?? "";
+    private void DuzenleFiyatDegisti(int sira, string? deger) => dKalemler[sira].BirimFiyat = deger ?? "";
+
+    /// PAKET P-12 (B-38): işçilik düzenleme çekmecesinde de değiştirilebilir.
+    private void DuzenleIscilikDegisti(int sira, string? deger) => dKalemler[sira].Iscilik = deger ?? "";
+
+    private async Task DuzenlemeKaydet()
+    {
+        if (kaydediliyor || cekmeceFisId is null) return;
+        hata = null;
+        // P-78: belirsiz/geçersiz sayı SESSİZCE 0/1 sayılıp gönderilmez.
+        if (IlkSayiHatasi(DuzenlemeKalemli
+                ? dKalemler.SelectMany(k => new[] { k.Adet, k.BirimFiyat, k.Iscilik })
+                : [dTutar]) is { } sayiMesaji)
+        {
+            hata = sayiMesaji;
+            return;
+        }
+        // PAKET GOC-A (envanter C · vz-d-fiyat "fiyatı silinen/eksi yazılan kalem UYARISIZ fişten silinir — küme sil+yaz"):
+        // eksik/geçersiz satır artık düşürülmez; satır numarasıyla söylenir, PATCH yapılmaz.
+        if (DuzenlemeKalemli && KalemSatirHatasi(dKalemler) is { } satirHatasi)
+        {
+            hata = satirHatasi;
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            var gecerli = dKalemler
+                .Where(k => !string.IsNullOrWhiteSpace(k.UrunId) && (Sayi(k.BirimFiyat) ?? 0m) > 0m)
+                .ToList();
+            // PATCH sözleşmesi: gövdede YOKSA KORU. Kalemsiz fişte 'kalemler'
+            // hiç gönderilmez (sunucu reddeder), kalemli fişte 'tutarTl'
+            // gönderilmez — iki form aynı uca farklı ama TAM gövdeyle gider.
+            var cevap = DuzenlemeKalemli
+                ? await Api.PatchAsync($"/vezne/fisler/{cekmeceFisId}", new
+                {
+                    cariId = dCariId,
+                    aciklama = string.IsNullOrWhiteSpace(dAciklama) ? null : dAciklama,
+                    guncellendi = dDamga,
+                    kalemler = gecerli.Select(k => new
+                    {
+                        urunId = k.UrunId,
+                        adet = Sayi(k.Adet) ?? 1m,
+                        birimFiyatTl = Sayi(k.BirimFiyat) ?? 0m,
+                        iscilikTl = Sayi(k.Iscilik) ?? 0m,
+                    }),
+                })
+                : await Api.PatchAsync($"/vezne/fisler/{cekmeceFisId}", new
+                {
+                    cariId = dCariId,
+                    aciklama = string.IsNullOrWhiteSpace(dAciklama) ? null : dAciklama,
+                    guncellendi = dDamga,
+                    tutarTl = Sayi(dTutar) ?? 0m,
+                });
+            BasariGoster(Dil.T.Vezne.Guncellendi, cevap);
+            cekmeceAcik = false;
+            cekmeceFisId = null;
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── İptal ───────────────────────────────────────────────────────────────
+
+    private void IptalSor(string id)
+    {
+        iptalEdilecekId = id;
+        iptalGerekce = "";
+        iptalAcik = true;
+    }
+
+    private void IptalKapat()
+    {
+        iptalAcik = false;
+        iptalEdilecekId = null;
+    }
+
+    private async Task IptalOnayla()
+    {
+        if (kaydediliyor || iptalEdilecekId is null) return;
+        kaydediliyor = true;
+        hata = null;
+        try
+        {
+            var cevap = await Api.PostAsync($"/vezne/fisler/{iptalEdilecekId}/iptal",
+                new { gerekce = iptalGerekce });
+            BasariGoster(Dil.T.Vezne.IptalEdildi, cevap);
+            iptalAcik = false;
+            iptalEdilecekId = null;
+            detay = null;
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Tahsil ──────────────────────────────────────────────────────────────
+
+    private void BacakEkle() => bacaklar.Add(new FormBacagi
+    {
+        KasaId = kasalar.Count > 0 ? kasalar[0].Id : null,
+    });
+
+    private void BacakSil(int sira)
+    {
+        if (bacaklar.Count <= 1) return;
+        bacaklar.RemoveAt(sira);
+    }
+
+    private void AracDegisti(int sira, ChangeEventArgs e)
+        => bacaklar[sira].Arac = e.Value?.ToString() ?? "NAKIT";
+
+    private void TutarDegisti(int sira, string? deger)
+        => bacaklar[sira].Tutar = deger ?? "";
+
+    private void KasaDegisti(int sira, ChangeEventArgs e)
+        => bacaklar[sira].KasaId = e.Value?.ToString();
+
+    private void KalaniAta()
+    {
+        if (bacaklar.Count == 0) return;
+        var son = bacaklar[^1];
+        var mevcut = Sayi(son.Tutar) ?? 0m;
+        son.Tutar = Bicim.Girdi(mevcut + Kalan, "0.00");
+    }
+
+    private async Task TahsilEt()
+    {
+        if (!TahsilAktif || detay is null) return;
+        hata = null;
+        // P-78: belirsiz/geçersiz bacak tutarı SESSİZCE 0 sayılıp gönderilmez.
+        if (IlkSayiHatasi(bacaklar.Select(b => b.Tutar)) is { } sayiMesaji)
+        {
+            hata = sayiMesaji;
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            // TEK POST — kalem başına istek YOK.
+            var cevap = await Api.PostAsync($"/vezne/fisler/{detay.Id}/tahsil", new
+            {
+                kurSnapshotId = kurId,
+                guncellendi = detay.Guncellendi,
+                bacaklar = bacaklar.Select(b => new
+                {
+                    arac = b.Arac,
+                    tutarTl = Sayi(b.Tutar) ?? 0m,
+                    kasaId = b.Arac == "VERESIYE"
+                        ? null
+                        : (kasalar.Count == 1 ? kasalar[0].Id : b.KasaId),
+                }),
+            });
+            BasariGoster(Dil.T.Vezne.TahsilEdildi, cevap, "hareketFisId", Dil.T.Vezne.DefterFisi);
+            detay = null;
+            await Yukle();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    // ── Ortak ───────────────────────────────────────────────────────────────
+
+    /// <summary>UX-S27: sunucunun döndürdüğü sonuç başarı bandına YAZILIR.</summary>
+    private void BasariGoster(string mesaj, System.Text.Json.JsonElement cevap,
+        string alan = "id", string? etiket = null)
+    {
+        var ek = cevap.ValueKind == System.Text.Json.JsonValueKind.Object
+                 && cevap.TryGetProperty(alan, out var o)
+                 && o.ValueKind == System.Text.Json.JsonValueKind.String
+            ? $" ({etiket ?? alan}: {o.GetString()})"
+            : "";
+        basari = mesaj + ek;
+        basariJeton++;
+    }
+
+    // P-78: kullanıcı metni tr-TR TEK MERKEZDE çözülür ("1,5" = 1,5 · "45.000" = 45000).
+    // Eski Invariant ayrıştırma "1,5"i 15, "45.000"i 45 okuyordu.
+    private static decimal? Sayi(string? metin) => FormAlani.Ondalik(metin);
+
+    /// <summary>TOPLU-1: Para girdisinin değeri kalem durumuna (metin) geri yazılır — ölçek KORUNUR
+    /// ("1500,50" → 1500.50; Girdi kalıbı sondaki sıfırı atardı). Boş/geçersiz = "" (kalem hatası bunu yakalar).</summary>
+    private static string ParaMetni(decimal? d) =>
+        d is { } x ? x.ToString(System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) : "";
+
+    /// <summary>P-78 — alan altı mesaj: boş/geçerli ise null; belirsiz/geçersiz ise Türkçe sebep.</summary>
+    private string? SayiHatasi(string? metin) => FormAlani.SayiCoz(metin).Mesaj(Dil.Dil);
+
+    /// <summary>P-78 — gönderimden önce: çözülemeyen ilk sayı alanının mesajı (sessiz 0/1 YASAK).</summary>
+    private string? IlkSayiHatasi(IEnumerable<string?> metinler) =>
+        metinler.Select(SayiHatasi).FirstOrDefault(m => m is not null);
+
+    // ── ORTAK-1 (G) · hakem turu 28.09 ──────────────────────────────────────
+    // BASİT modda "vezne" kökü ve çekimleri (Veznede, Vezneye gönder, Vezneye
+    // gönderildi …) ekrana çıkmaz; sayfa başlığıyla (Kasa kuyruğu) aynı ad kullanılır
+    // (UX-S31). PRO mod muhasebe dilini korur. Metinler Sozlukler.OrtakGorunum.cs.
+    private OrtakGorunumMetinleri VzBasit => OrtakGorunumSozlugu.Al(Dil.Dil);
+    private string VzDurumVeznede => Dil.BasitMi ? VzBasit.VezneDurumVeznedeBasit : Dil.T.Vezne.DurumVeznede;
+    private string VzVezneyeGonder => Dil.BasitMi ? VzBasit.VezneyeGonderBasit : Dil.T.Vezne.VezneyeGonder;
+    private string VzVeznelendi => Dil.BasitMi ? VzBasit.VeznelendiBasit : Dil.T.Vezne.Veznelendi;
+    private string VzTakasEmanetYok => Dil.BasitMi ? VzBasit.VezneTakasEmanetYokBasit : Dil.T.Vezne.TakasEmanetYok;
+    private string VzToplamTahmini => Dil.BasitMi ? VzBasit.VezneToplamTahminiBasit : Dil.T.Vezne.ToplamTahmini;
+    private string VzToplamDamgali => Dil.BasitMi ? VzBasit.VezneToplamDamgaliBasit : Dil.T.Vezne.ToplamDamgali;
+    private string VzVezneleDegismez => Dil.BasitMi ? VzBasit.VezneleDegismezBasit : Dil.T.Vezne.VezneleDegismez;
+    private string VzVezneleDegismezYolu => Dil.BasitMi ? VzBasit.VezneleDegismezYoluBasit : Dil.T.Vezne.VezneleDegismezYolu;
+
+    // UX-S31: ham veritabanı kodu ekrana basılmaz — sözlükten çevrilir.
+    private string DurumMetni(string d) => d switch
+    {
+        "ACIK" => Dil.T.Vezne.DurumAcik,
+        "VEZNEDE" => VzDurumVeznede,
+        "TAHSIL" => Dil.T.Vezne.DurumTahsil,
+        "IPTAL" => Dil.T.Vezne.DurumIptal,
+        _ => d,
+    };
+
+    private string AracMetni(string a) => a switch
+    {
+        "NAKIT" => Dil.T.Vezne.AracNakit,
+        "KART" => Dil.T.Vezne.AracKart,
+        "HAVALE" => Dil.T.Vezne.AracHavale,
+        "VERESIYE" => Dil.T.Vezne.AracVeresiye,
+        _ => a,
+    };
+
+    private static string DurumRengi(string d) => d switch
+    {
+        "ACIK" => "gri",
+        "VEZNEDE" => "amber",
+        "TAHSIL" => "yesil",
+        _ => "kirmizi",
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

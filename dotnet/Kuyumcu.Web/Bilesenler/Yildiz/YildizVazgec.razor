@@ -1,0 +1,9 @@
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-KATMAN (tur 2 · tasarım hakemi KRİTİK "ikincil metin İptal/Vazgeç karışık"):
+   katman (ModalPencere/Cekmece) ikincil düğmesinin METNİ. Yıldız'da tuval form kalıbının b2 metni "Vazgeç"
+   (Y_Isletme · Y_Yasalsinirlar · Y_Veridisaaktar; OnayKilit standardı da "vazgeç düğmesi Vazgeç'tir" der).
+   Öteki 8 şemada ÇIKTI AYNEN: Ortak.Iptal ("İptal") — sarmalayıcı öğe yok, yalnız metin düğümü.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+@inject DilServisi Dil
+@inject IServiceProvider Hizmetler
+@(Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler) ? Kuyumcu.Core.I18n.YildizKatmanSozlugu.Vazgec(Dil.Dil) : Dil.T.Ortak.Iptal)

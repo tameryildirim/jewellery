@@ -1,0 +1,165 @@
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Web.Servisler
+@implements IDisposable
+@inherits FormAlani
+@inject DilServisi Dil
+
+@* TARİH — tek gün (paket P-36b → GIRDI-AILESI-2 · K8–K8e).
+   Kurucu 08.10: tarayıcının yerli type=date alanı elle yazımda 6 haneli yıl kabul ediyor,
+   min/max yalnız görsel. Artık:
+     • METİN kutusu + gg.aa.yyyy maskesi: "08102026" yazılınca "08.10.2026" olur
+       (girdi-maske.js 'tarih'; aynı maske burada Maskele() ile de uygulanır).
+     • Pencere dışı yıl HİÇ yazılamaz (1900 altı / 2100 üstü; türe göre daha dar:
+       İşlem = son 1 yıl..bugün · Doğum = 120..18 yıl önce · Vade = bugün..10 yıl).
+     • 31.02 gibi olmayan gün ve pencere dışı tarih alan altında anında hata +
+       Kaydet kilidi (GecersizAlanKapisi; sebep aynı metin).
+     • Takvim simgesi: üstünde saydam yerli seçici (type=date, aynı min/max); seçilen gün
+       metin kutusuyla AYNI yoldan (Bitti) işlenir.
+   Değer DateOnly olarak taşınır; makine biçimi "yyyy-MM-dd" de kabul edilir (yapıştırma). *@
+
+<AlanKabugu ElemanId="@ElemanId" Etiket="@Etiket" Zorunlu="@Zorunlu" Kilitli="@Kilitli"
+            DevredisiSebebi="@DevredisiSebebi" Hata="@EtkinHata" HataId="@HataElemanId" Ipucu="@Ipucu" KaynakRozeti="@KaynakRozeti">
+    <div class="alan-girdi-satir tarih-satir">
+        <input type="text" inputmode="numeric" class="girdi tarih-girdi @(EtkinHatali ? "hatali" : null)" id="@ElemanId"
+               value="@ham" placeholder="@(YerTutucu ?? GirdiSozlugu.Al(Dil.Dil).TarihYerTutucu)"
+               maxlength="10" autocomplete="off"
+               data-maske="tarih" data-yil-en-az="@Pencere.EnErken.Year" data-yil-en-cok="@Pencere.EnGec.Year"
+               aria-required="@(Zorunlu ? "true" : "false")"
+               aria-invalid="@(EtkinHatali ? "true" : "false")"
+               aria-describedby="@EtkinAciklayan"
+               disabled="@Kilitli" @oninput="Yazildi" @onchange="Bitti" />
+        @* Takvim: yerli seçici ikonun ÜSTÜNDE saydam durur (tıklanınca tarayıcının takvimi açılır).
+           <button> DEĞİL: DoD EK md.1 "her düğme istek atar ya da kilitli" — takvim bir girdi
+           yoludur; seçilen gün AYNI Bitti() yolundan (Maskele ISO'yu çevirir) geçer. *@
+        <span class="tarih-takvim" id="@($"{ElemanId}-takvim")" title="@GirdiSozlugu.Al(Dil.Dil).TarihTakvimAc">
+            <Ikon Ad="@Ikonlar.Takvim" />
+            <input type="date" class="tarih-takvim-yerli" id="@($"{ElemanId}-takvim-yerli")" tabindex="-1"
+                   aria-label="@GirdiSozlugu.Al(Dil.Dil).TarihTakvimAc"
+                   min="@Bicim.Makine(Pencere.EnErken)" max="@Bicim.Makine(Pencere.EnGec)"
+                   value="@(Deger is { } g ? Bicim.Makine(g) : "")"
+                   disabled="@Kilitli" @onchange="Bitti" />
+        </span>
+    </div>
+</AlanKabugu>
+
+@code {
+    [Parameter] public DateOnly? Deger { get; set; }
+    [Parameter] public EventCallback<DateOnly?> DegerChanged { get; set; }
+    /// <summary>Ek alt sınır (türün penceresiyle kesişir). Artık YALNIZ görsel değil: uygulanır.</summary>
+    [Parameter] public DateOnly? EnErken { get; set; }
+    /// <summary>Ek üst sınır (türün penceresiyle kesişir). Artık YALNIZ görsel değil: uygulanır.</summary>
+    [Parameter] public DateOnly? EnGec { get; set; }
+    /// <summary>Tarihin anlamı (K8a–K8e). Varsayılan Serbest: 1900–2100.</summary>
+    [Parameter] public TarihTuru Tur { get; set; } = TarihTuru.Serbest;
+
+    [CascadingParameter] public GecersizAlanKapisi? GecersizKapi { get; set; }
+
+    private string ham = "";
+    private string? icHata;
+    private DateOnly? sonGelen;
+    /// <summary>Çağıranın SON verdiği değer (tur 3): çağıran değerini değiştirmediyse kutuya dokunulmaz.</summary>
+    private DateOnly? sonParam;
+    private bool ilk = true;
+
+    private static DateOnly Bugun => DateOnly.FromDateTime(Bicim.IsletmeBugun);
+
+    private (DateOnly EnErken, DateOnly EnGec) Pencere => TarihPenceresi.EtkinPencere(Tur, Bugun, EnErken, EnGec);
+
+    private string? EtkinHata => icHata is { Length: > 0 } ? icHata : GorunenHata;
+    private bool EtkinHatali => EtkinHata is { Length: > 0 };
+
+    private string? EtkinAciklayan
+    {
+        get
+        {
+            var p = new List<string>(3);
+            if (Ipucu is { Length: > 0 }) p.Add($"{ElemanId}-ipucu");
+            if (Kilitli && DevredisiSebebi is { Length: > 0 }) p.Add($"{ElemanId}-durum");
+            if (EtkinHatali) p.Add(HataElemanId);
+            return p.Count == 0 ? null : string.Join(' ', p);
+        }
+    }
+
+    /// <summary>
+    /// girdi-maske.js 'tarih' ile AYNI: makine biçimi (yyyy-MM-dd) çevrilir; yoksa yalnız
+    /// rakamlar alınır (en çok 8) ve 2. ve 4. haneden sonra nokta konur.
+    /// </summary>
+    public static string Maskele(string? girdi)
+    {
+        if (string.IsNullOrWhiteSpace(girdi)) return "";
+        var t = girdi.Trim();
+        if (t.Length == 10 && t[4] == '-' && t[7] == '-') t = t[8..] + t[5..7] + t[..4];
+        var r = Kuyumcu.Core.Domain.KimlikNoDogrulayici.Rakamlar(t);
+        if (r.Length > 8) r = r[..8];
+        return r.Length switch
+        {
+            <= 2 => r,
+            <= 4 => r[..2] + "." + r[2..],
+            _ => r[..2] + "." + r[2..4] + "." + r[4..],
+        };
+    }
+
+    private string? Mesaj(GirdiHatasi? h) => h is { } x ? GirdiSozlugu.Mesaj(x, Dil.Dil) : null;
+
+    private void KapiyaYaz() => GecersizKapi?.Bildir(ElemanId, Etiket, icHata is not null, icHata);
+
+    public void Dispose() => GecersizKapi?.Bildir(ElemanId, Etiket, false, null);
+
+    /// <summary>Metni çözer + pencereyi uygular: (alan altı mesajı, geçerli değer).</summary>
+    private (string? Hata, DateOnly? Deger) Coz(string metin, bool tamam)
+    {
+        if (metin.Length == 0) return (null, null);
+        var (h, d) = TarihPenceresi.Coz(metin);
+        if (h is not null) return (tamam ? Mesaj(h) : null, null);
+        var p = TarihPenceresi.Denetle(d, Tur, Bugun, EnErken, EnGec);
+        return p is not null ? (Mesaj(p), null) : (null, d);
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Tur 3 (doğrulayıcı ORTA): eksik/hatalı yazımda null bildirilir; çağıran null'u YOK SAYIP eski
+        // değerini geri verirse (rapor süzgeçleri) eskiden kutunun iç metni eski tarihe dönüp hata
+        // siliniyordu — ekranda "31.12" kalıyor, alan altında hata görünmüyordu (görünen ≠ iç durum).
+        // Artık çağıranın değeri DEĞİŞMEDİYSE kullanıcının metni ve hatası korunur.
+        if (!ilk && (Deger == sonGelen || Deger == sonParam)) { sonParam = Deger; return; }
+        ilk = false;
+        sonGelen = Deger;
+        sonParam = Deger;
+        if (Deger is { } g)
+        {
+            if (TarihPenceresi.Coz(ham).Deger == g) return;   // kullanıcının yazdığı zaten bu
+            ham = TarihPenceresi.Yaz(g);
+            icHata = Mesaj(TarihPenceresi.Denetle(g, Tur, Bugun, EnErken, EnGec));
+        }
+        else
+        {
+            if (icHata is not null || ham.Length is > 0 and < 10) return;   // yazım sürüyor/hatalı: kullanıcının metni korunur
+            ham = "";
+            icHata = null;
+        }
+        KapiyaYaz();
+    }
+
+    /// <summary>@oninput — yazarken: 10 karakter dolunca kural.</summary>
+    private Task Yazildi(ChangeEventArgs e) => Isle(e.Value?.ToString(), cikis: false);
+
+    /// <summary>@onchange — alandan çıkınca (ya da takvimden seçim / makine biçimi).</summary>
+    private Task Bitti(ChangeEventArgs e) => Isle(e.Value?.ToString(), cikis: true);
+
+    private async Task Isle(string? deger, bool cikis)
+    {
+        DefterdenSil();
+        ham = Maskele(deger);
+        var (hata, d) = Coz(ham, tamam: cikis || ham.Length == 10);
+        icHata = hata;
+        // Eksik yazım (yazarken) kapıyı kilitlemez ama değer de GİTMEZ (null) — "görünen ≠ giden" yok.
+        KapiyaYaz();
+        if (d != Deger)
+        {
+            Deger = d;
+            sonGelen = d;
+            await DegerChanged.InvokeAsync(d);
+        }
+    }
+}

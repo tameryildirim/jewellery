@@ -1,0 +1,34 @@
+@inject DilServisi Dil
+
+@* ── PAKET P-16 (Y-4) — FİŞ (GENEL) İSKONTOSU ──────────
+   PAKET S2-2: Islemler.razor'dan BİREBİR taşındı (sayfa 1.400 satır sınırı);
+   id'ler aynı. Bileşen istek atmaz.
+   UX-S21: boş bırakılırsa carinin kartındaki oran uygulanır ve bunu SUNUCU
+   söyler; ekran tahmin etmez. UX-S30: alan yalnız SATIŞ'ta anlamlıdır. *@
+<div class="satir satir--alt-hizali">
+    @* PAKET GOC-C: ortak Yuzde (K15: 0–100, 2 ondalık, eksi tuşta yazılamaz) — sunucu YuzdeKurali ile aynı. *@
+    <Yuzde ElemanId="islem-fis-iskonto" Etiket="@Dil.T.Islem.FisIskonto"
+          Birim="%"
+          Deger="@Yuzde" DegerChanged="YuzdeYaz"
+          Durum="Form" HataAlani="islem-fis-iskonto"
+          Ipucu="@Dil.T.Islem.IskontoIpucu" />
+    <div class="alan">
+        <span class="metin-soluk metin-kucuk" id="islem-iskonto-onizleme">
+            @Dil.T.Islem.IskontoOnizleme: @Bicim.Tl(Onizleme)
+            · @Dil.T.Islem.NetTutar: @Bicim.Tl(Net)
+        </span>
+    </div>
+</div>
+
+@code {
+    /// <summary>Fiş iskonto yüzdesi — SAHİBİ Islemler.razor (boş = carinin oranı).</summary>
+    [Parameter] public decimal? Yuzde { get; set; }
+    [Parameter] public EventCallback<decimal?> YuzdeChanged { get; set; }
+    /// <summary>FisHesap.IskontoOnizleme — sunucu formülünün aynası.</summary>
+    [Parameter] public decimal Onizleme { get; set; }
+    /// <summary>FisHesap.Toplam — NET tutar.</summary>
+    [Parameter] public decimal Net { get; set; }
+    [Parameter, EditorRequired] public FormDurumu Form { get; set; } = new();
+
+    private Task YuzdeYaz(decimal? v) => YuzdeChanged.InvokeAsync(v);
+}

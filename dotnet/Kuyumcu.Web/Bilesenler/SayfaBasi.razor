@@ -1,0 +1,114 @@
+@* ═══════════════════════════════════════════════════════════════════════════
+   SAYFA BAŞI — paket UX-2 Faz A2 (K7 bileşen bütçesi)
+
+   27 sayfanın tek başlık kabuğu: başlık + açıklama + filtre yuvası + TEK
+   birincil eylem yuvası ("ekran başına tek birincil eylem", brif mührü).
+
+   ⚠ A2'de HİÇBİR Pages/*.razor bu bileşene geçirilmez (K8-a: sıfır sayfa DOM
+     değişikliği). Bileşen, dalga 2c'nin B dilimi için HAZIR ve SINANMIŞ
+     olarak doğar; kullanımı kilavuz.html galerisinde gösterilir.
+   ⚠ Satır içi style YAZILMAZ; tüm ölçüler app.css + belirtecler.css'ten.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@* KIYAS DEVRİ 28.09 (ORTAK-1) — ÇİFT BAŞLIK: üst bar (UstBar.razor) rota adını <h1>
+   olarak zaten yazıyor; aynı ad şeritte <h2> olarak ikinci kez görünüyordu (Ürünler,
+   Kasalar …). Başlık üst barın yazdığıyla AYNIYSA (RotaBasliklari — üst barın tek
+   kaynağı) şerit başlığı GÖRSEL gizlenir (css/ortak.css; emsal tuval-panel-musteri.css
+   .musteri-sade): DOM'da, id'si ve h2 sırası korunur, ekran okuyucu okur. Farklıysa
+   (fiş no, alt yüz adı gibi kayda özgü başlık) görünür kalır. *@
+<div class="sayfa-basi @(UstBardaAyni ? "sayfa-basi--baslik-ustte" : null)" id="@($"sayfa-basi-{Anahtar}")">
+    <div class="sayfa-basi-metin">
+        @if (BaslikOgesiYok)
+        {
+            @* PAKET Q9-4: sayfanın TEK başlığı başka yerde (yazdırılabilir belgenin
+               kendi <h1>'i) — şerit başlığı aynı görünüm ve id ile, başlık öğesi
+               OLMADAN çizilir; başlık sırası (H2 → H1) bozulmaz. *@
+            <p class="sayfa-basi-baslik" id="@($"sayfa-basi-{Anahtar}-baslik")">@Baslik</p>
+        }
+        else
+        {
+            <h2 class="sayfa-basi-baslik" id="@($"sayfa-basi-{Anahtar}-baslik")">@Baslik</h2>
+        }
+        @if (!string.IsNullOrWhiteSpace(Aciklama) && AciklamaKatli)
+        {
+            @* TOPLU-7B (K17): açıklama satırı ekranı doldurmaz — küçük (i) arkasında KAPALI gelir, isteyen açar.
+               Metin DOM'da ve aynı id ile durur (testler/ekran okuyucu); yalnız görsel olarak katlanır. *@
+            <details class="sayfa-basi-bilgi" id="@($"sayfa-basi-{Anahtar}-bilgi")">
+                <summary class="sayfa-basi-bilgi-ac" id="@($"sayfa-basi-{Anahtar}-bilgi-ac")">
+                    <span class="sayfa-basi-bilgi-i" aria-hidden="true">i</span>
+                    <span class="sayfa-basi-bilgi-etiket">@BilgiEtiketi</span>
+                </summary>
+                <p class="sayfa-basi-aciklama" id="@($"sayfa-basi-{Anahtar}-aciklama")">@Aciklama</p>
+            </details>
+        }
+        else if (!string.IsNullOrWhiteSpace(Aciklama))
+        {
+            <p class="sayfa-basi-aciklama" id="@($"sayfa-basi-{Anahtar}-aciklama")">@Aciklama</p>
+        }
+    </div>
+    @if (Filtreler is not null)
+    {
+        @* KESIF-P7 (K7 süzgeç yuvası, keşif #9 + KIYAS #4): yuva HER ZAMAN aynı hiza sınıfını
+           taşır (`filtre-yuvasi`) — içerik etiketli (Tür, Durum) ya da etiketsiz (arama, segment)
+           olsun, kontroller TEK taban çizgisine oturur (ortak.css). Sayfa yüzü (tuval
+           .musteri-sade) ortadan hizalasa da etiketli kutu aşağı kaymaz. *@
+        <div class="sayfa-basi-filtre filtre-yuvasi" id="@($"sayfa-basi-{Anahtar}-filtre")">@Filtreler</div>
+    }
+    @if (Eylem is not null)
+    {
+        <div class="sayfa-basi-eylem" id="@($"sayfa-basi-{Anahtar}-eylem")">@Eylem</div>
+    }
+</div>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    // DilServisi İSTEĞE BAĞLI çözülür: bileşeni tek başına çizen eski testler (Q94 vb.)
+    // bu servisi kaydetmez; yoksa karşılaştırma yapılmaz, başlık eskisi gibi görünür.
+    [Inject] private IServiceProvider Kapsam { get; set; } = default!;
+
+    /// <summary>
+    /// Şerit başlığı üst barın rota adını TEKRARLIYOR mu? Aynıysa ya da biri diğerini
+    /// içeriyorsa ("Uyum" ⊂ "Uyum (MASAK)", "İşletme" ⊂ "İşletme ve Şubeler") tekrar sayılır
+    /// (Türkçe küçük harfle, baş/son boşluk yok sayılır). <see cref="UstBardaGizle"/> true ise
+    /// sayfa tekrarı kendisi bildirir (farklı sözcükle aynı ad: "Etiketler" / "Ürün Etiketleri").
+    /// </summary>
+    private bool UstBardaAyni
+    {
+        get
+        {
+            if (UstBardaGizle) return true;
+            if (Kapsam.GetService(typeof(DilServisi)) is not DilServisi dil) return false;
+            var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+            var a = Baslik.Trim().ToLower(tr);
+            var u = Kuyumcu.Web.Layout.RotaBasliklari.Baslik(new Uri(Nav.Uri).AbsolutePath, dil.T).Trim().ToLower(tr);
+            return a.Length > 0 && u.Length > 0 && (a == u || a.Contains(u, StringComparison.Ordinal) || u.Contains(a, StringComparison.Ordinal));
+        }
+    }
+
+    /// <summary>
+    /// Sayfa, şerit başlığının üst bardaki rota adını (farklı sözcükle) tekrarladığını bildirir;
+    /// başlık görsel gizlenir (DOM'da kalır). Kayda özgü başlıkta (fiş no) VERİLMEZ.
+    /// </summary>
+    [Parameter] public bool UstBardaGizle { get; set; }
+
+    /// <summary>id önekinin gövdesi: <c>#sayfa-basi-{Anahtar}</c>. Rota kısa adı verilir.</summary>
+    [Parameter, EditorRequired] public string Anahtar { get; set; } = "";
+    [Parameter, EditorRequired] public string Baslik { get; set; } = "";
+    /// <summary>
+    /// PAKET Q9-4 — true ise başlık &lt;h2&gt; değil &lt;p&gt; olarak çizilir (aynı sınıf/id).
+    /// Yalnız kendi &lt;h1&gt;'ini taşıyan belge sayfası içindir; varsayılan davranış DEĞİŞMEZ.
+    /// </summary>
+    [Parameter] public bool BaslikOgesiYok { get; set; }
+    /// <summary>Bir cümlelik ekran açıklaması (boşsa hiç çizilmez).</summary>
+    [Parameter] public string? Aciklama { get; set; }
+    /// <summary>
+    /// TOPLU-7B (K17): true ise açıklama KAPALI (i) bilgi satırının içinde çizilir. Varsayılan false —
+    /// parametreyi vermeyen ekranlar BİREBİR eskisi gibi kalır.
+    /// </summary>
+    [Parameter] public bool AciklamaKatli { get; set; }
+    private string BilgiEtiketi => Kapsam.GetService(typeof(DilServisi)) is DilServisi d ? d.T.Ortak.Aciklama : "i";
+    /// <summary>Arama/filtre denetimleri.</summary>
+    [Parameter] public RenderFragment? Filtreler { get; set; }
+    /// <summary>TEK birincil eylem (ikinciler araç çubuğuna gider).</summary>
+    [Parameter] public RenderFragment? Eylem { get; set; }
+}

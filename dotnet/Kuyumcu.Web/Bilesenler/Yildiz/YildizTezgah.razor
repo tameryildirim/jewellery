@@ -1,0 +1,366 @@
+@inject DilServisi Dil
+@inject Microsoft.JSInterop.IJSRuntime Js
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-4B — "YILDIZ" TEZGÂH (tuval Tezgah4 koyu / Tezgah4a açık · BİREBİR)
+
+   Yerleşim tuvalin <main>'idir (iki sütun: esnek | 380 px, 80 px aralık):
+   SOL — üst satır "Satış · müşteri · bakiye durumu" + altı çizili "Değiştir"; barkod
+   alanı (ikon + 22 px / 300 girdi, altı --p çizgi); kalem satırları ([ayar 40 px / 200]
+   [ad 20 px · soluk ayrıntı 15 px] [tutar 22 px / 300]); en altta soluk gram/has +
+   72 px / 200 toplam (kuruş + ₺ soluk, yarı boy).
+   SAĞ — "Ödeme" + ödeme satırları ("Nakit · Ana Kasa" · tutar 20 px / 300); üç ince hap
+   (+ Başka ödeme · + Para üstü · + İndirim); altta --p çizgili "Fark" (56 px / 200, onay
+   işareti --iyi) + soluk yasal satır; "Vazgeç" (altı çizili) + "Kaydet ve yazdır" (beyaz hap).
+
+   ⚠ YALNIZ GÖRÜNÜM: değerler ve eylemler Islemler'in MEVCUT durumu/yöntemleridir
+     (YildizTezgahBaglami). Bileşen İSTEK ATMAZ. Düzenleme alanları (kalem tablosu,
+     ödeme/kasa/karma, müşteri seçimi, tür ızgarası) sayfanın özgün bileşenleridir; tuval
+     kalıbıyla açılır (satıra dokun / "Değiştir" / "Satış").
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yz yz-tezgah" id="yildiz-tezgah">
+    <div class="yz-tezgah-ana">
+        <section class="yz-tezgah-sol" aria-labelledby="yildiz-tezgah-ust">
+            <div class="yz-tezgah-ust-satir">
+                @if (B.TurSecici is not null)
+                {
+                    @* P-TEZGAH-TUR-KIMLIK (denetim Y4): türler GÖRÜNÜR sekmeler (Satış · Alış · İade · Tahsilat); #yildiz-tezgah-tur (id AYNEN,
+                       geri çağrı AYNEN) artık "Diğer" — tüm türler + PRO "Diğer ▾". Müşteri/durum aynı satırda, sekmelerden sonra. *@
+                    <p class="yz-ust yz-tur-ust" id="yildiz-tezgah-ust"><span class="yz-tur-satir">@B.TurSecici<button type="button" class="yz-tur-sekme yz-tur-diger" id="yildiz-tezgah-tur"
+                            aria-expanded="@(B.TurlerAcik ? "true" : "false")" title="@YildizTezgahSozlugu.TurSec(Dil.Dil)"
+                            @onclick="B.TurDegistir">@TurKimlikSozlugu.Al(Dil.Dil).Diger</button></span>@if (UstKalan.StartsWith(" · ") && UstKalan.Length > 3) {<span class="yz-tur-kalan" id="yildiz-tezgah-ust-musteri" title="@UstKalan[3..]">@UstKalan[3..]</span>}</p>
+                }
+                else
+                {
+                <p class="yz-ust" id="yildiz-tezgah-ust"><button type="button" class="yz-tur-dugme" id="yildiz-tezgah-tur"
+                        aria-expanded="@(B.TurlerAcik ? "true" : "false")" title="@YildizTezgahSozlugu.TurSec(Dil.Dil)"
+                        @onclick="B.TurDegistir">@B.TurAdi</button>@UstKalan</p>
+                }
+                <button type="button" class="yz-b2 yz-tezgah-degistir" id="yildiz-tezgah-degistir"
+                        aria-expanded="@(B.MusteriAcik ? "true" : "false")" @onclick="B.MusteriDegistir">@(B.MusteriAcik ? YildizTezgahSozlugu.MusteriKapat(Dil.Dil) : YildizTezgahSozlugu.Degistir(Dil.Dil))</button>
+            </div>
+            @if (B.MusteriAcik)
+            {
+                @* tur 2 (hakem KRİTİK): müşteri seçimi "Değiştir"e bağlı KATMAN — sayfanın üstüne açılıp Kaydet'i itmez.
+                   YILDIZ-4C (hakem 4B tur 2): içerik artık TUVAL DİLİNDE (YildizMusteriSecici: .alan arama + "Seni bekleyen"
+                   satırları + not satırları); eski fiş üst özeti / kutulu seçici Yıldız'da çizilmez. *@
+                <div class="yz-tezgah-musteri" id="yildiz-tezgah-musteri"><YildizMusteriSecici B="B" /></div>
+            }
+
+            <div class="yz-alan yz-tezgah-giris" id="yildiz-tezgah-giris">
+                <svg width="26" height="26" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="@YildizIkonlari.Barkod"></path></svg>
+                @B.Giris
+            </div>
+
+            <div class="yz-sayi yz-tezgah-kalemler" id="yildiz-tezgah-kalemler">
+                @if (B.Kalemler.Count == 0)
+                {
+                    <p class="yz-s yz-bos" id="yildiz-tezgah-bos">@YildizTezgahSozlugu.Bos(Dil.Dil)</p>
+                }
+                @foreach (var k in B.Kalemler)
+                {
+                    var acik = acikKalem == k.Sira;
+                    <button type="button" class="yz-sat yz-tezgah-kalem" id="@($"yildiz-kalem-{k.Sira}")"
+                            aria-expanded="@(acik ? "true" : "false")" aria-controls="@($"yildiz-kalem-duzen-{k.Sira}")"
+                            title="@YildizTezgahSozlugu.KalemDuzenle(k.Ad, Dil.Dil)" @onclick="() => acikKalem = acik ? null : k.Sira">
+                        <span class="yz-ince yz-tezgah-ayar">@k.Ayar</span>
+                        <span class="yz-tezgah-ad-kap"><span class="yz-tezgah-ad">@k.Ad</span><span class="yz-s yz-tezgah-ayrinti">@k.Ayrinti</span></span>
+                        <span class="yz-tezgah-tutar">@k.Tutar</span>
+                    </button>
+                    @if (acik && B.KalemDuzenleri.FirstOrDefault(d => d.Sira == k.Sira) is { } duzen)
+                    {
+                        @* YILDIZ-4C (hakem 4B tur 2 KRİTİK): eski kalem tablosu YOK — satırın altında tuval .k satırları. *@
+                        <YildizKalemDuzen V="duzen" Ad="@k.Ad" Pro="B.Pro" Kaydediliyor="B.Kaydediliyor" Form="@(B.Form ?? new())"
+                                          Girdi="B.KalemYaz" Hediye="B.KalemHediye" Cikar="KalemCikar" Kapat="() => acikKalem = null" Ek="B.KalemEk" />
+                    }
+                }
+            </div>
+
+            <div class="yz-tezgah-bosluk"></div>
+            <div class="yz-sayi yz-tezgah-toplam" id="yildiz-tezgah-toplam">
+                <span class="yz-s yz-tezgah-toplam-ayrinti" id="yildiz-tezgah-toplam-ayrinti">@B.ToplamAyrinti</span>
+                @{ var bol = Kuyumcu.Web.Layout.YildizSayi.Bol(B.ToplamMetni); }
+                <span class="yz-ince yz-tezgah-toplam-rakam" id="yildiz-tezgah-toplam-rakam">@if (bol is { } b) {<span class="yz-tezgah-tam">@b.Tam</span><span class="yz-s yz-tezgah-kurus">@b.Kurus</span>} else {<span class="yz-tezgah-tam">@B.ToplamMetni</span>}</span>
+            </div>
+        </section>
+
+        <aside class="yz-tezgah-sag" aria-labelledby="yildiz-tezgah-odeme-baslik">
+            <p class="yz-ust" id="yildiz-tezgah-odeme-baslik">@YildizTezgahSozlugu.Odeme(Dil.Dil)</p>
+            @* TEZGAH-ODEME (kurucu 10.10 "aşağıda kaldığından nasıl haberi olur"): ödeme satırları + açılan alanlar TEK kaydırma
+               kabında (tur 2: haplar kabın dışında, kırpılmaz); Fark + Kaydet sütunun dibinde sabit (kap kendi içinde kayar, ince kaydırma çubuğu görünür). Aralık tuvalin 28 px'i. *@
+            <div class="yz-tezgah-odeme-govde" id="yildiz-tezgah-odeme-govde">
+            @if (!B.Karma)
+            {
+            <div class="yz-sayi yz-tezgah-odemeler" id="yildiz-tezgah-odemeler">
+                @foreach (var o in B.Odemeler)
+                {
+                    <button type="button" class="yz-sat yz-tezgah-odeme" id="@($"yildiz-odeme-{o.Sira}")"
+                            aria-expanded="@(odemeDuzen ? "true" : "false")" aria-controls="yildiz-tezgah-odeme-duzen"
+                            title="@YildizTezgahSozlugu.OdemeDuzenle(Dil.Dil)" @onclick="() => odemeDuzen = !odemeDuzen">
+                        <span class="yz-tezgah-odeme-ad"><span class="yz-tezgah-arac">@o.Ad</span>@(o.Kasa is { Length: > 0 } ? " " : "")@if (o.Kasa is { Length: > 0 } kasa) {<span class="yz-s yz-tezgah-kasa">· @kasa</span>}</span>
+                        <span class="yz-tezgah-odeme-tutar">@o.Tutar</span>
+                    </button>
+                }
+            </div>
+            }
+            @if (odemeDuzen || B.Karma)
+            {
+                @* YILDIZ-4C (hakem 4B tur 2 KRİTİK "ödemeler iki kez"): karmada özet satırları ÇİZİLMEZ — ödeme satırlarının
+                   kendisi (sayfanın FisOdemeBacaklari'sı) tuvalin .sat kalıbında düzenlenir (tema-yildiz.css .yz-duzen). *@
+                <div class="@(B.Karma ? "yz-tezgah-duzen yz-duzen yz-tezgah-karma" : "yz-tezgah-duzen yz-duzen")" id="yildiz-tezgah-odeme-duzen">
+                    @if (B.OdemeSecenekleri is { Count: > 0 } secenekler)
+                    {
+                        @* Özgün tezgâh fişinin tek ödeme seçicisi (#islem-aldim-odeme — FisVerdimAldim Yıldız'da çizilmez; aynı id, aynı geri çağrı). *@
+                        <Secici ElemanId="islem-aldim-odeme" Etiket="@ParaDemo2Sozlugu.Al(Dil.Dil).AldimOdemeEtiket" Secenekler="secenekler"
+                                Deger="@B.OdemeTuru" Devredisi="B.Kaydediliyor" DegerChanged="@((string? v) => B.OdemeTuruSec.InvokeAsync(v ?? "NAKIT"))" />
+                    }
+                    @B.OdemeDuzen
+                    @if (!B.Karma)
+                    {
+                        <button type="button" class="yz-b2 yz-tezgah-kapat" id="yildiz-tezgah-odeme-tamam" @onclick="() => odemeDuzen = false">@YildizTezgahSozlugu.KalemlerKapat(Dil.Dil)</button>
+                    }
+                </div>
+            }
+            @if (paraUstu && B.ParaUstuKullanilir)
+            {
+                @* YILDIZ-4C: özgün para üstü hesabı (FisParaUstu — istemci hesabı, deftere girmez); tuval .k satırları. *@
+                <div class="yz-tezgah-duzen yz-duzen" id="yildiz-tezgah-para-ustu-alan"><Kuyumcu.Web.Bilesenler.Fis.FisParaUstu Nakit="@B.ParaUstuNakit" Katli="false" /></div>
+            }
+            @if (B.IndirimGorunur && B.KalemVar && B.IndirimAlani is not null)
+            {
+                @* YILDIZ-4C (hakem 4B tur 2 KRİTİK "kalem listesi ikinci kez"): "+ İndirim" YALNIZ fiş indirimi alanını açar
+                   (FisIskontoSatiri — id'ler, oran kuralı AYNI); kalem tablosu açılmaz. *@
+                <div class="yz-tezgah-duzen yz-duzen" id="yildiz-tezgah-indirim-alan">@B.IndirimAlani</div>
+            }
+            </div>
+            @* TEZGAH-ODEME tur 2 (hakem KRİTİK "haplar kabın dibinde yarıdan kesik"): hap sırası kaydırma kabının DIŞINDA — hiçbir
+               yükseklikte kırpılmaz; açılan alanlar kabın içinde hapların hemen üstünde açılır ve görünür bölgeye kaydırılır. *@
+            <div class="yz-tezgah-ekler" id="yildiz-tezgah-ekler">
+                @if (B.Karma)
+                {
+                    @* YILDIZ-4C: karmada "+ Başka ödeme" yeni ödeme satırı ekler (özgün "+ Başka ödeme ekle" ile AYNI kural; o düğme Yıldız'da gizli). *@
+                    <button type="button" class="yz-b3" id="yildiz-tezgah-baska-odeme" disabled="@(B.BacakTavan || B.Kaydediliyor)"
+                            title="@(B.BacakTavan ? YildizTezgahSozlugu.BacakTavan(Dil.Dil) : null)" @onclick="B.BacakEkle">@YildizTezgahSozlugu.BaskaOdeme(Dil.Dil)</button>
+                }
+                else
+                {
+                    <button type="button" class="yz-b3" id="yildiz-tezgah-baska-odeme" disabled="@(!B.KalemVar || B.Kaydediliyor)"
+                            title="@(B.KalemVar ? null : YildizTezgahSozlugu.KalemYok(Dil.Dil))" @onclick="BaskaOdeme">@YildizTezgahSozlugu.BaskaOdeme(Dil.Dil)</button>
+                }
+                <button type="button" class="yz-b3" id="yildiz-tezgah-para-ustu" disabled="@(!B.ParaUstuKullanilir)"
+                        title="@(B.ParaUstuKullanilir ? null : (B.KalemVar ? YildizTezgahSozlugu.ParaUstuKilit(Dil.Dil) : YildizTezgahSozlugu.KalemYok(Dil.Dil)))"
+                        aria-expanded="@(paraUstu ? "true" : "false")" @onclick="() => paraUstu = !paraUstu">@YildizTezgahSozlugu.ParaUstu(Dil.Dil)</button>
+                <button type="button" class="yz-b3" id="yildiz-tezgah-indirim" disabled="@(!B.KalemVar || B.Kaydediliyor)" aria-expanded="@(B.IndirimGorunur ? "true" : "false")"
+                        aria-controls="yildiz-tezgah-indirim-alan" title="@(B.KalemVar ? null : YildizTezgahSozlugu.KalemYok(Dil.Dil))" @onclick="B.Indirim">@YildizTezgahSozlugu.Indirim(Dil.Dil)</button>
+                @if (B.Karma)
+                {
+                    @* Tuvalin üç hapından SONRA (tuval sırası korunur): karmadan tek ödemeye dönüş — tuval .b3 kalıbı (belirsiz eşleşme). *@
+                    <button type="button" class="yz-b3" id="yildiz-tezgah-tek-odeme" disabled="@B.Kaydediliyor" @onclick="TekOdeme">@YildizTezgahSozlugu.TekOdeme(Dil.Dil)</button>
+                }
+            </div>
+
+            <div class="yz-tezgah-bosluk"></div>
+            @* YILDIZ-4C: Fark + eylemler tek blok — geniş ekranda sütunun dibinde, dar ekranda ekranın altına yapışık (Kaydet ve bantlar hep görünür). *@
+            <div class="yz-tezgah-alt" id="yildiz-tezgah-alt">
+            <div class="yz-sayi yz-tezgah-fark" id="yildiz-tezgah-fark" role="status">
+                <span class="yz-ust">@YildizTezgahSozlugu.Fark(Dil.Dil)</span>
+                <span class="yz-ince yz-tezgah-fark-rakam" id="yildiz-tezgah-fark-tutar">@B.FarkMetni@if (B.FarkTamam) {<svg width="28" height="28" viewBox="0 0 24 24" class="yz-ik yz-tezgah-onay" aria-hidden="true" focusable="false"><path d="@YildizIkonlari.Onay"></path></svg>}</span>
+                @* tur 2 (hakem KRİTİK): Kaydet hatası ve satış sonucu bu blokta (tuvalin not satırı kalıbı) — görünür alanda. *@
+                @if (B.Hata is { Length: > 0 } hataMetni)
+                {
+                    <span class="yz-tezgah-not yz-kotu" id="yildiz-tezgah-hata" role="alert" tabindex="-1" title="@B.HataAyrinti">@hataMetni</span>
+                }
+                @if (B.PesinSoru is not null)
+                {
+                    @* YILDIZ-4C: sunucunun "aynı müşteri mi?" sorusu görünür alanda (özgün yerinde ekran dışındaydı). *@
+                    <div class="yz-duzen yz-tezgah-pesin-soru" id="yildiz-tezgah-pesin-soru">@B.PesinSoru</div>
+                }
+                @if (B.Not is { Length: > 0 } not)
+                {
+                    <span class="@(B.NotKotu ? "yz-tezgah-not yz-kotu" : "yz-s yz-tezgah-not")" id="yildiz-tezgah-not">@not</span>
+                }
+                @if (B.AcikHesapGorunur)
+                {
+                    <button type="button" class="yz-b2 yz-tezgah-acik-hesap" id="yildiz-tezgah-acik-hesap" disabled="@(B.AcikHesapKilidi is not null || B.Kaydediliyor)"
+                            title="@B.AcikHesapKilidi" @onclick="B.AcikHesap">@B.AcikHesapEtiketi</button>
+                    @if (B.AcikHesapKilidi is { } ak)
+                    {
+                        <span class="yz-s yz-tezgah-not" id="yildiz-tezgah-acik-hesap-kilit">@ak</span>
+                    }
+                }
+                @if (B.KimlikGorunur && B.Kimlik is not null)
+                {
+                    <button type="button" class="yz-b3 yz-tezgah-acik-hesap" id="yildiz-tezgah-kimlik" aria-expanded="@(kimlikAcik ? "true" : "false")"
+                            aria-controls="cekmece-yildiz-kimlik" @onclick="() => kimlikAcik = true">@YildizTezgahSozlugu.KimlikEkle(Dil.Dil)</button>
+                }
+                @if (B.YazdirHata is { } yazdirHata)
+                {
+                    <span class="yz-tezgah-not yz-kotu" id="yildiz-tezgah-yazdir-hata" role="alert">@yazdirHata</span>
+                }
+                @for (var u = 0; u < B.Uyarilar.Count; u++)
+                {
+                    <span class="yz-s yz-tezgah-not" id="@($"yildiz-tezgah-uyari-{u}")" role="status">@B.Uyarilar[u]</span>
+                }
+                @if (B.SonFis is { } sonFis)
+                {
+                    <span class="yz-s yz-tezgah-not" id="yildiz-tezgah-son-fis" role="status">@sonFis</span>
+                    @for (var i = 0; i < B.YazdirAdresleri.Count; i++)
+                    {
+                        <a class="yz-b2 yz-tezgah-yazdir" id="@(i == 0 ? "yildiz-tezgah-yazdir" : $"yildiz-tezgah-yazdir-{i + 1}")" href="@B.YazdirAdresleri[i]" target="_blank" rel="noopener"
+                           title="@FisYazdirSozlugu.Al(Dil.Dil).FisYazdirIpucu">@(B.YazdirAdresleri.Count == 1 ? FisYazdirSozlugu.Al(Dil.Dil).FisYazdir : string.Format(FisYazdirSozlugu.Al(Dil.Dil).FisYazdirSira, i + 1, B.YazdirAdresleri.Count))</a>
+                    }
+                }
+            </div>
+            <div class="yz-tezgah-eylemler">
+                @if (B.FisDolu)
+                {
+                    <button type="button" class="yz-b2" id="yildiz-tezgah-vazgec" disabled="@B.Kaydediliyor" @onclick="B.Vazgec">@YildizTezgahSozlugu.Vazgec(Dil.Dil)</button>
+                }
+                else
+                {
+                    <a class="yz-b2" id="yildiz-tezgah-vazgec" href="/">@YildizTezgahSozlugu.Vazgec(Dil.Dil)</a>
+                }
+                <button type="button" class="yz-b1 yz-tezgah-kaydet" id="yildiz-tezgah-kaydet" disabled="@B.KaydetKilitli"
+                        title="@B.KaydetKilitSebebi" @onclick="B.Kaydet">@B.KaydetEtiketi</button>
+            </div>
+            </div>
+        </aside>
+    </div>
+    @if (B.KimlikGorunur && B.Kimlik is not null)
+    {
+        @* tur 2 (hakem KRİTİK): kimlik formu fişin altına açılıp Kaydet'i ekran dışına itmez — çekmece (tek çok alanlı düzenleme kalıbı);
+           kapı AYNI (Kaydet kilidi ve sebebi Fark satırında). *@
+        @* P-TEZGAH-TUR-KIMLIK (denetim K4: "Tamam" kodda iptaldi, Kaydet nedensiz kilitli kalıyordu): birincil "Tamam" GERÇEK —
+           form eksiksizse çekmece kapanır; eksikse sayfa eksik alanların ALTINA mesaj yazar, ilk eksiğe odaklanır (çekmece açık kalır).
+           İkincil düğme (id AYNEN #cekmece-yildiz-kimlik-iptal) "Kapat" der. Kapı/kilit AYNI (sayfanın MasakTamam'ı). *@
+        <Cekmece Acik="kimlikAcik" Varlik="yildiz-kimlik" Baslik="@YildizTezgahSozlugu.KimlikBaslik(Dil.Dil)"
+                 KaydetMetni="@TurKimlikSozlugu.Al(Dil.Dil).Tamam" KaydetElemanId="cekmece-yildiz-kimlik-tamam" Kaydet="KimlikTamam"
+                 IptalMetni="@TurKimlikSozlugu.Al(Dil.Dil).Kapat" Kapat="() => kimlikAcik = false"><div class="yz-duzen" id="yildiz-kimlik-govde">@B.Kimlik</div></Cekmece>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizTezgahBaglami B { get; set; } = new();
+
+    private int? acikKalem;
+    private bool odemeDuzen;
+    private bool paraUstu;
+    private bool kimlikAcik;
+    private string? odaklananHata;
+    private bool oncekiKarma;
+
+    /// <summary>
+    /// YILDIZ-4C-2 tur 2 (tasarım hakemi KRİTİK): karma ödemeden çıkılınca (kaydet sonrası fiş sıfırlandı ya da bacaklar
+    /// teke indi) "+ Başka ödeme"nin açtığı düzen paneli kendiliğinden açık KALMAZ — eski "Ödeme şekli / Kasa" formu
+    /// hap satırının altına binmez. Yalnız görünüm durumu; satış/ödeme verisine dokunmaz.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (oncekiKarma && !B.Karma) odemeDuzen = false;
+        oncekiKarma = B.Karma;
+    }
+
+    private int oncekiOdemeSayisi;
+
+    /// <summary>
+    /// TEZGAH-ODEME (kurucu 10.10: "Havale · 0 ₺" tek satır + FARK = toplam, "müşteri ne yapacağını şaşırır"): karmada
+    /// "Çıkar" ile tek satır kalınca sayfanın MEVCUT "− Tek ödeme" yolu (TekOdemeyeDonAracla) çağrılır — kalan satırın aracı
+    /// ve kasası korunur (KarmaDegisti son satırın kasasını ön değer yapar), tek ödeme fiş toplamını alır (FARK 0, tuval).
+    /// Yalnız Nakit/Kart/Havale satırında (sayfanın B.TekeIndirilebilir'i); eski altın/döviz/veresiye satırı karmada kalır.
+    /// Kural/gövde DEĞİŞMEZ: tek ödeme gövdesi kullanıcı "− Tek ödeme"ye bastığındakiyle aynıdır.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        var sayi = B.Karma ? B.Odemeler.Count : 0;
+        var indir = oncekiOdemeSayisi >= 2 && sayi == 1 && B.TekeIndirilebilir && !B.Kaydediliyor;
+        oncekiOdemeSayisi = sayi;
+        if (indir) await TekOdeme();
+    }
+
+    /// <summary>tur 2 (hakem KRİTİK): yeni Kaydet hatası çizilince odak oraya taşınır (görünür alana kayar).</summary>
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        await AcilaniGoster(ilk);
+        if (B.Hata == odaklananHata) return;
+        odaklananHata = B.Hata;
+        if (B.Hata is { Length: > 0 })
+        {
+            try { await Js.InvokeVoidAsync("kuyumcuOdak.alana", "yildiz-tezgah-hata"); }
+            catch (Microsoft.JSInterop.JSException) { }   // odak yardımcısı yoksa metin yine görünür (rol=alert)
+        }
+    }
+
+    private bool oncekiIndirim, oncekiParaUstu;
+    private int oncekiKarmaSatir;
+
+    /// <summary>
+    /// TEZGAH-ODEME tur 2 (tasarım hakemi KRİTİK "+ İndirim'in açtığı alan kabın altında kalıyor"): bir hap yeni bir alan
+    /// açtığında (indirim, para üstü) ya da karmaya yeni ödeme satırı eklendiğinde o öğe kaydırma kabının görünür bölgesine
+    /// alınır (scrollIntoView block:nearest — yalnız gereken kap kayar, Fark/Kaydet yerinde kalır). İlk çizimde kaydırılmaz.
+    /// Yalnız görünüm; veri/istek yok.
+    /// </summary>
+    private async Task AcilaniGoster(bool ilk)
+    {
+        var indirim = B.IndirimGorunur && B.KalemVar && B.IndirimAlani is not null;
+        var pu = paraUstu && B.ParaUstuKullanilir;
+        var karmaSatir = B.Karma ? B.Odemeler.Count : 0;
+        string? hedef = null;
+        if (!ilk)
+        {
+            if (indirim && !oncekiIndirim) hedef = "#yildiz-tezgah-indirim-alan";
+            else if (pu && !oncekiParaUstu) hedef = "#yildiz-tezgah-para-ustu-alan";
+            else if (karmaSatir > oncekiKarmaSatir && karmaSatir >= 2) hedef = $"#islem-bacak-{karmaSatir - 1}-tutar";
+        }
+        oncekiIndirim = indirim;
+        oncekiParaUstu = pu;
+        oncekiKarmaSatir = karmaSatir;
+        if (hedef is null) return;
+        try
+        {
+            await using var e = await Js.InvokeAsync<Microsoft.JSInterop.IJSObjectReference?>("document.querySelector", hedef);
+            if (e is not null) await e.InvokeVoidAsync("scrollIntoView", new { block = "nearest", inline = "nearest" });
+        }
+        catch (Microsoft.JSInterop.JSException) { }   // öğe çizimden düştüyse alan yine kabın içinde, kaydırma çubuğuyla erişilir
+    }
+
+    /// <summary>
+    /// P-TEZGAH-TUR-KIMLIK (denetim K4): kimlik çekmecesinin birincil "Tamam"ı — form eksiksizse kapanır; değilse sayfa
+    /// eksik alanların altına mesaj yazar (çekmece açık kalır, sessiz etkisizlik yok). İstek atmaz; kapı sayfada AYNEN.
+    /// </summary>
+    private async Task KimlikTamam()
+    {
+        if (B.KimlikEksiksiz) { kimlikAcik = false; return; }
+        await B.KimlikEksikGoster.InvokeAsync();
+    }
+
+    /// <summary>Üst satırın "Satış"tan sonraki kısmı (" · müşteri · durum").</summary>
+    private string UstKalan
+    {
+        get
+        {
+            var tam = YildizTezgahBicim.UstSatir(B.TurAdi, B.MusteriAdi, B.MusteriDurumu);
+            return tam.Length > B.TurAdi.Length ? tam[B.TurAdi.Length..] : "";
+        }
+    }
+
+    /// <summary>YILDIZ-4C: tek ödemeye dönünce açık kalan ödeme düzeni kapanır (satırın kendisi yeniden görünür).</summary>
+    private async Task TekOdeme()
+    {
+        odemeDuzen = false;
+        await B.TekOdeme.InvokeAsync();
+    }
+
+    private async Task BaskaOdeme()
+    {
+        odemeDuzen = true;
+        await B.BaskaOdeme.InvokeAsync();
+    }
+
+    /// <summary>YILDIZ-4C: kalem fişten çıktı → açık düzenleme kapanır (sıra numaraları kayar).</summary>
+    private async Task KalemCikar(int sira)
+    {
+        acikKalem = null;
+        await B.KalemCikar.InvokeAsync(sira);
+    }
+}

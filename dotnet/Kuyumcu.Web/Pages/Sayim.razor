@@ -1,0 +1,573 @@
+@page "/sayim"
+@using System.Globalization
+@using Kuyumcu.Contracts.Sayfalar.Sayim
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* Sayım oturumu (paket 23). Uçlar: GET/POST /sayim · GET /sayim/{id} · POST /sayim/{id}/say · /kapat · /iptal
+   Kural: sayılmayan satır SIFIRLANMAZ; hareketli satır yalnız açık onayla uygulanır. *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Sayim.Baslik)</PageTitle>
+
+@* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) liste = tuval Y_Sayim (BİREBİR); özgün ekran yalnız "ayrıntı" görünümünde
+   çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@* YILDIZ-5A tur 2 (tasarım hakemi KRİTİK): "Barkod okut" ve "Sayım başlat" eski ekrana GEÇMEZ — alanlar aşağıda
+   Yıldız kalıbında (aynı kimlik, aynı FormDurumu, aynı Say/Ac/Kapat yolu); özgün ekran yalnız "+ … ürün daha / Tüm ayrıntılar". *@
+@if (YildizMi)
+{
+    if (YildizBaslatFormu && yeni is { } yy)
+    {
+        <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizBaslatBaglami">
+            <Metin ElemanId="sy-ad" Etiket="@Dil.T.Sayim.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.SayimAdi"
+                   Deger="@yy.Ad" DegerChanged="@(v => yy.Ad = v ?? string.Empty)" Durum="acForm" HataAlani="sy-ad" />
+            @if (subeler.Count == 1)
+            {
+                <SaltOkunur ElemanId="sy-sube-tek" Etiket="@Dil.T.Sayim.Sube" Deger="@subeler[0].Ad" MakineDeger="@subeler[0].Id" />
+            }
+            else
+            {
+                <div class="alan"><Secici ElemanId="sy-sube" Etiket="@Dil.T.Sayim.Sube" Zorunlu="true" BosSecenekMetni="—"
+                        Secenekler="@SubeSecenekleri" Deger="@yy.SubeId" DegerChanged="SubeSec" Hata="@acForm.Mesaj("sy-sube")" /></div>
+            }
+            <div class="alan"><Secici ElemanId="sy-kapsam" Etiket="@Dil.T.Sayim.Kapsam" Zorunlu="true"
+                    Secenekler="@KapsamSecenekleri" Deger="@yy.KapsamTur" DegerChanged="KapsamSec" /></div>
+            @if (yy.KapsamTur != "TUMU")
+            {
+                <div class="alan"><Secici ElemanId="sy-kapsamid" Etiket="@(yy.KapsamTur == "REYON" ? Dil.T.Sayim.KapsamReyon : Dil.T.Sayim.KapsamKategori)"
+                        Zorunlu="true" BosSecenekMetni="—"
+                        Secenekler="@KapsamIdSecenekleri(yy.KapsamTur)" Deger="@yy.KapsamId" DegerChanged="KapsamIdSec" Hata="@acForm.Mesaj("sy-kapsamid")" /></div>
+            }
+        </Kuyumcu.Web.Bilesenler.Yildiz.YildizForm>
+    }
+    else
+    {
+        <Kuyumcu.Web.Bilesenler.Yildiz.YildizSayim B="@YildizBaglami">
+            @if (aktif is { Durum: "ACIK" } ya)
+            {
+                @if (yildizOkut)
+                {
+                    <div class="alan"><span class="alan-etiket">@Dil.T.Sayim.BarkodOkut</span>
+                        <Arama ElemanId="sy-barkod" Etiket="@Dil.T.Sayim.BarkodOkut" YerTutucu="869…" EnFazla="@AlanSinirlari.Barkod"
+                               Deger="@sayKod" DegerChanged="KodYazildi" Enter="Say"
+                               list="sy-urunler" Durum="sayForm" HataAlani="sy-barkod" />
+                        <datalist id="sy-urunler">@foreach (var s in ya.Satirlar) { <option value="@(s.Barkod ?? s.Kod ?? s.UrunId)">@($"{s.Ad} — {s.Kod}")</option> }</datalist>
+                        <AlanHatasi Alan="sy-barkod" Durum="sayForm" /></div>
+                    <Sayi ElemanId="sy-adet" Etiket="@Dil.T.Sayim.Adet" EnAz="0" TamSayi="@(!SayilanGramli)" EnCokOndalik="3"
+                          Deger="@sayAdet" DegerChanged="@(v => sayAdet = v)" Durum="sayForm" HataAlani="sy-adet" />
+                }
+                @if (ya.Hareketli > 0)
+                {
+                    <div class="alan" id="sy-hareketli-uyari"><p class="metin-kucuk metin-amber">@Dil.T.Sayim.HareketliUyari</p>
+                        <Onay ElemanId="sy-hareketli-onay" Etiket="@Dil.T.Sayim.HareketliUygula" Deger="@hareketliUygula" DegerChanged="@(v => hareketliUygula = v)" /></div>
+                }
+            }
+        </Kuyumcu.Web.Bilesenler.Yildiz.YildizSayim>
+    }
+}
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    <SayfaBasi Anahtar="sayim" Baslik="@Dil.T.Sayim.Baslik" Aciklama="@Dil.T.Sayim.SayfaAciklama">
+        <Eylem>
+            @if (aktif is null)
+            {
+                <button class="btn btn-birincil btn-kucuk" id="sy-yeni" @onclick="YeniAc">+ @Dil.T.Sayim.YeniOturum</button>
+            }
+            else
+            {
+                <button class="btn btn-birincil btn-kucuk" id="sy-listeye-don" @onclick="ListeyeDon">← @Dil.T.Sayim.Baslik</button>
+            }
+        </Eylem>
+    </SayfaBasi>
+    <HataBandi Mesaj="@hata" Id="hata-bandi" />
+    @* UX-4c madde 11 / UX-S27: kapanışın SONUCU görünür. Sunucu kaç satırın
+       uygulandığını, kaç satırın atlandığını döndürüyordu; ekran iki sayıyı da
+       çöpe atıyordu — geri alınamaz bir işlemde. *@
+    <BasariBandi Mesaj="@basariMesaj" Jeton="@basariJeton" Id="basari-bandi" />
+
+    @if (aktif is null)
+    {
+        <div class="kart">
+            <div class="kart-baslik satir-arasi"><h2>@Dil.T.Sayim.Baslik</h2></div>
+            @if (yeni is { } y)
+            {
+                <div class="kart-govde form-grid-3" id="sy-form">
+                    @* PAKET Q9-5 (QA turu 9, YÜKSEK): zorunlu alanlar İŞARETLİ (Ad ve Şube). Ad her
+                       tuşta da modele yazılır (@oninput): yalnız change'e bağlıyken, alan odaktan
+                       çıkmadan "Oturumu Aç"a basılınca dolu ad "boş" sayılıp hata Ad'a düşüyordu
+                       (QA turu 9 bulgusu; headless ölçümde yeniden üretildi). *@
+                    @* PAKET GOC-C: ortak Metin (her tuşta modele yazar — Q9-5 davranışı AYNI); sınır sunucu/kolon sabiti. *@
+                    <Metin ElemanId="sy-ad" Etiket="@Dil.T.Sayim.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.SayimAdi"
+                           Deger="@y.Ad" DegerChanged="@(v => y.Ad = v ?? string.Empty)" Durum="acForm" HataAlani="sy-ad" />
+                    @* UX-S22 — tek şubeli işletmede seçici GÖSTERİLMEZ; değer salt
+                       okunur satır olarak yazılır ve gövdeye otomatik konur. *@
+                    @if (subeler.Count == 1)
+                    {
+                        <div class="alan"><label>@Dil.T.Sayim.Sube</label>
+                            <p id="sy-sube-tek" class="hucre-vurgu">@subeler[0].Ad</p></div>
+                    }
+                    else
+                    {
+                        @* PAKET Q9-5: şube boşken hata ŞUBENİN altında (eskiden hiçbir yerde
+                           çizilmiyordu; kullanıcı yalnız Ad'ın hatasını görüyordu). *@
+                        <div class="alan"><Secici ElemanId="sy-sube" Etiket="@Dil.T.Sayim.Sube" Zorunlu="true" BosSecenekMetni="—"
+                                Secenekler="@SubeSecenekleri" Deger="@y.SubeId" DegerChanged="SubeSec" Hata="@acForm.Mesaj("sy-sube")" /></div>
+                    }
+                    <div class="alan"><Secici ElemanId="sy-kapsam" Etiket="@Dil.T.Sayim.Kapsam" Zorunlu="true"
+                            Secenekler="@KapsamSecenekleri" Deger="@y.KapsamTur" DegerChanged="KapsamSec" /></div>
+                    @if (y.KapsamTur != "TUMU")
+                    {
+                        <div class="alan"><Secici ElemanId="sy-kapsamid" Etiket="@(y.KapsamTur == "REYON" ? Dil.T.Sayim.KapsamReyon : Dil.T.Sayim.KapsamKategori)"
+                                Zorunlu="true" BosSecenekMetni="—"
+                                Secenekler="@KapsamIdSecenekleri(y.KapsamTur)" Deger="@y.KapsamId" DegerChanged="KapsamIdSec" Hata="@acForm.Mesaj("sy-kapsamid")" /></div>
+                    }
+                    <div class="satir">
+                        <button class="btn btn-ikincil" @onclick="() => yeni = null">@Dil.T.Ortak.Iptal</button>
+                        <button class="btn btn-birincil" id="sy-ac" disabled="@kaydediliyor" @onclick="Ac">@Dil.T.Sayim.Ac</button>
+                    </div>
+                </div>
+            }
+            @* PAKET Q10-5 (QA 10 MOBİL: 375 px'te tablo 513 px, DURUM ve → sütunu
+               ekran dışında): dar ekranda her oturum bir KART olur (q10-yigin,
+               css/q10.css); hücre etiketi data-etiket'ten, sütun başlığıyla AYNI metin. *@
+            @* PAKET GOC-C — ORTAK IZGARA (grid:sayim:sy-tablo). Sunucu son 100 oturumu döndürür: sınıra değdiyse
+               sıralama KAPALI + sınır notu (UX-S29). 375 px'te ortak kart kalıbı (data-etiket). Mevcut id'ler
+               (#sy-tablo, sy-durum-{id}, sy-ac-{id}) korunur. *@
+            @if (oturumlar.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.Ortak.Bulunamadi" />
+            }
+            else
+            {
+                <Izgara T="Oturum" Ekran="sayim" GridId="sy-tablo" TabloId="sy-tablo" Kolonlar="@OturumKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(oturumlar, oturumSira, OturumKolonlari)"
+                        Baslik="@Dil.T.Sayim.Baslik"
+                        SiralamaDegisti="@(x => oturumSira = x)" GecerliSiralama="@oturumSira" />
+                @if (!OturumTam)
+                {
+                    <p class="metin-kucuk metin-soluk" id="sy-tablo-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, OturumSiniri)</p>
+                }
+            }
+            @* UX-S25 — sayım oturumunun adı/kapsamı/şubesi için sunucuda
+               güncelleme ucu YOKTUR; düğme uydurulmaz, gerçek gerekçe yazılır. *@
+            <DegismezIpucu Varlik="SayimOturumu" Gerekce="@Dil.T.Sayim.OturumDegismez"
+                           AlternatifYol="@Dil.T.Sayim.OturumDegismezYolu" />
+        </div>
+    }
+    else
+    {
+        var a = aktif;
+        <div class="kart">
+            <div class="kart-baslik satir-arasi">
+                @* PAKET P-22 / B-44: sayım oturumunun ADI düzeltilebilir.
+                   TEK ALANLI düzeltme → SatirIciDuzenle (DoD EK md.2 tek kalıp).
+                   İPTAL edilmiş oturumda yol kapalıdır ve SEBEBİ yazılıdır. *@
+                <h2>
+                    @if (a.Durum == "IPTAL")
+                    {
+                        <span id="sy-ad-salt">@a.Ad</span>
+                        <DegismezIpucu Varlik="SayimOturumu" Gerekce="@Dil.T.Sayim.AdIptalDegismez"
+                                       AlternatifYol="@Dil.T.Sayim.AdIptalAlternatif" />
+                    }
+                    else
+                    {
+                        <SatirIciDuzenle Varlik="sayim" Alan="ad" Id="@a.Id" Etiket="@Dil.T.Sayim.Ad"
+                                         Deger="@a.Ad" Kaydediliyor="@adKaydediliyor"
+                                         Kaydedildi="AdKaydet" />
+                    }
+                    <span class="metin-kucuk metin-soluk">@KapsamEtiketi(a.KapsamTur) · @DurumEtiketi(a.Durum)</span>
+                </h2>
+            </div>
+            <div class="stat-izgara">
+                <StatKart Etiket="@Dil.T.Sayim.Sayilan" Deger="@($"{a.Sayilan} / {a.ToplamSatir}")" Alt="@($"{Dil.T.Sayim.Sayilmadi}: {a.Sayilmayan}")" />
+                <StatKart Renk="@(a.EksikAdet > 0 ? "kirmizi" : null)" Etiket="@Dil.T.Sayim.Eksik" Deger="@Bicim.Miktar(a.EksikAdet, null)" />
+                <StatKart Renk="@(a.FazlaAdet > 0 ? "amber" : null)" Etiket="@Dil.T.Sayim.Fazla" Deger="@Bicim.Miktar(a.FazlaAdet, null)" />
+                <StatKart Etiket="@Dil.T.Sayim.NetHas" Deger="@Bicim.Has(a.NetFarkHas)" />
+            </div>
+            @if (a.Durum == "ACIK")
+            {
+                <div class="kart-govde form-grid-3">
+                    @* PAKET GOC-C: barkod/kod/ad kutusu ortak Arama (okuyucu Enter basar → Say); ürün listesi datalist'ten. *@
+                    <div class="alan"><span class="alan-etiket">@Dil.T.Sayim.BarkodOkut</span>
+                        <Arama ElemanId="sy-barkod" Etiket="@Dil.T.Sayim.BarkodOkut" YerTutucu="869…" EnFazla="@AlanSinirlari.Barkod"
+                               Deger="@sayKod" DegerChanged="KodYazildi" Enter="Say"
+                               list="sy-urunler" Durum="sayForm" HataAlani="sy-barkod" />
+                        <datalist id="sy-urunler">@foreach (var s in a.Satirlar) { <option value="@(s.Barkod ?? s.Kod ?? s.UrunId)">@($"{s.Ad} — {s.Kod}")</option> }</datalist>
+                        <AlanHatasi Alan="sy-barkod" Durum="sayForm" /></div>
+                    @* PAKET GOC-C (#6 · K14): sayılan miktar ≥ 0; ADET birimli üründe TAM SAYI (kesir tuşta yazılamaz),
+                       GRAM birimli üründe 3 ondalık. Sunucu aynı kuralla 400 verir (UrunAdetKapisi). *@
+                    <Sayi ElemanId="sy-adet" Etiket="@Dil.T.Sayim.Adet" EnAz="0" TamSayi="@(!SayilanGramli)" EnCokOndalik="3"
+                          Deger="@sayAdet" DegerChanged="@(v => sayAdet = v)" Durum="sayForm" HataAlani="sy-adet" />
+                    <div class="alan"><label>&nbsp;</label><button class="btn btn-ikincil" id="sy-say" disabled="@kaydediliyor" @onclick="Say">@Dil.T.Sayim.Say</button></div>
+                </div>
+            }
+            @* PAKET GOC-C — ORTAK IZGARA (grid:sayim:sy-satirlar). Oturumun TÜM satırları gelir → yerel sıralama.
+               Sayılar tr-TR (eskiden Invariant "1000.5"). Satır içi düzeltme (UX-1-C2) hücre şablonunda AYNEN. *@
+            <Izgara T="Satir" Ekran="sayim" GridId="sy-satirlar" TabloId="sy-satirlar" Kolonlar="@SatirKolonlari(a)"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(a.Satirlar, satirSira, SatirKolonlari(a))"
+                    SatirSinif="@(s => s.Fark is < 0 ? "satir-kirmizi" : s.Fark is > 0 ? "satir-amber" : null)"
+                    Baslik="@Dil.T.Sayim.Urun"
+                    SiralamaDegisti="@(x => satirSira = x)" GecerliSiralama="@satirSira" />
+            @* UX-S25 — sayılmış satırı "sayılmadı"ya döndüren uç YOKTUR. *@
+            <DegismezIpucu Varlik="SayimSatiri" Gerekce="@Dil.T.Sayim.SatirDegismez"
+                           AlternatifYol="@Dil.T.Sayim.SatirDegismezYolu" />
+            @if (a.Durum == "ACIK")
+            {
+                <div class="kart-govde form-dikey">
+                    @if (a.Sayilmayan > 0) { <div class="uyari-kutu"><p>@Dil.T.Sayim.SayilmayanUyari</p></div> }
+                    @if (a.Hareketli > 0)
+                    {
+                        <div class="uyari-kutu" id="sy-hareketli-uyari"><p>⚠ @Dil.T.Sayim.HareketliUyari</p>
+                            <Onay ElemanId="sy-hareketli-onay" Etiket="@Dil.T.Sayim.HareketliUygula" Deger="@hareketliUygula" DegerChanged="@(v => hareketliUygula = v)" /></div>
+                    }
+                    <p class="metin-kucuk metin-soluk">@Dil.T.Sayim.KapatOnay</p>
+                    <div class="satir">
+                        @* UX-4c madde 11 / UX-S27: "İptal" onaysız POST atıyordu, hemen
+                           yanındaki "Kapat" ise onay kutucuğuyla korunuyordu. Yanlış
+                           düğmeye basan kullanıcı saatlerce süren sayımı tek tıkla
+                           kaybediyordu. Artık geri alınamaz işlem önce onay ister. *@
+                        <button class="btn btn-tehlike" id="sy-iptal" @onclick="() => iptalOnayAcik = true">@Dil.T.Sayim.Iptal</button>
+                        <button class="btn btn-birincil" id="sy-kapat" disabled="@(kaydediliyor || a.Sayilan == 0)" @onclick="Kapat">@Dil.T.Sayim.Kapat</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+}
+
+@* ── Sayım iptali onayı (UX-S27: geri alınamaz işlem önce onay ister) ── *@
+<ModalPencere Acik="iptalOnayAcik" Baslik="@Dil.T.Sayim.IptalOnayBaslik" Kapat="() => iptalOnayAcik = false">
+    <div class="form-dikey">
+        <p>@Dil.T.Sayim.IptalOnayMetin</p>
+        <p id="sy-iptal-sayilan" class="hucre-vurgu">
+            @string.Format(Dil.T.Sayim.IptalOnaySayilan, aktif?.Sayilan ?? 0, aktif?.ToplamSatir ?? 0)
+        </p>
+        <HataBandi Mesaj="@iptalHata" />
+        <div class="satir">
+            <button class="btn btn-ikincil esnek" id="sy-iptal-vazgec" @onclick="() => iptalOnayAcik = false"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            <button class="btn btn-tehlike esnek" id="sy-iptal-onayla" disabled="@kaydediliyor"
+                    @onclick="Iptal">@Dil.T.Sayim.IptalOnayla</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@code {
+    private sealed class YeniForm { public string Ad = ""; public string SubeId = ""; public string KapsamTur = "TUMU"; public string? KapsamId; }
+
+    private List<Oturum> oturumlar = []; private Detay? aktif; private YeniForm? yeni;
+    private List<Ozet> subeler = []; private List<(string, string)> reyonlar = [], kategoriler = [];
+    private string sayKod = ""; private decimal? sayAdet;
+    private bool SayilanGramli => aktif?.Satirlar.FirstOrDefault(s => s.UrunId == sayKod.Trim() || s.Barkod == sayKod.Trim())?.Birim == "GRAM"; private bool hareketliUygula; private bool kaydediliyor; private string? hata;
+    private string? basariMesaj; private int basariJeton;
+    private bool iptalOnayAcik; private string? iptalHata;
+
+    // ── PAKET GOC-C — ortak seçiciler ve ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IReadOnlyList<SecenekOgesi> SubeSecenekleri => [.. subeler.Select(x => new SecenekOgesi(x.Id, x.Ad))];
+    private IReadOnlyList<SecenekOgesi> KapsamSecenekleri =>
+    [
+        new("TUMU", Dil.T.Sayim.KapsamTumu), new("REYON", Dil.T.Sayim.KapsamReyon), new("KATEGORI", Dil.T.Sayim.KapsamKategori),
+    ];
+    private IReadOnlyList<SecenekOgesi> KapsamIdSecenekleri(string tur) =>
+        [.. (tur == "REYON" ? reyonlar : kategoriler).Select(x => new SecenekOgesi(x.Item1, x.Item2))];
+
+    // Razor özniteliğinde gövdeli lambda yok (ZB60) — seçim işleyicileri yöntem.
+    private void SubeSec(string? v) { if (yeni is null) return; yeni.SubeId = v ?? ""; acForm.Sil("sy-sube"); }
+    private void KapsamSec(string? v) { if (yeni is null) return; yeni.KapsamTur = v ?? "TUMU"; yeni.KapsamId = null; acForm.Sil("sy-kapsamid"); }
+    private void KapsamIdSec(string? v) { if (yeni is null) return; yeni.KapsamId = v; acForm.Sil("sy-kapsamid"); }
+    private void KodYazildi(string? v) { sayKod = v ?? ""; sayForm.Sil("sy-barkod"); }
+
+    private IzgaraSiralama? oturumSira, satirSira;
+    /// <summary>Sunucunun oturum listesi sınırı (SayimServisi.Liste Take(100)).</summary>
+    private const int OturumSiniri = 100;
+    private bool OturumTam => oturumlar.Count < OturumSiniri;
+    private IReadOnlyList<IzgaraKolonu<Oturum>> OturumKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.Sayim.Ad, ZorunluGorunur = true, SunucuSiralamaAdi = OturumTam ? "ad" : null,
+                HucreSinif = _ => "hucre-vurgu", Deger = o => o.Ad },
+        new() { Anahtar = "kapsam", Baslik = Dil.T.Sayim.Kapsam, SunucuSiralamaAdi = OturumTam ? "kapsam" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = o => KapsamEtiketi(o.KapsamTur) },
+        // B-33: DURUM sütunu GERÇEK durumu yazar; eylem ayrı sütunda.
+        new() { Anahtar = "durum", Baslik = Dil.T.Sayim.Durum, ZorunluGorunur = true, SunucuSiralamaAdi = OturumTam ? "durum" : null,
+                Deger = o => DurumEtiketi(o.Durum),
+                Hucre = o => @<span id="@($"sy-durum-{o.Id}")"><Rozet Renk="@DurumRenk(o.Durum)">@DurumEtiketi(o.Durum)</Rozet></span> },
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                Hucre = o => @<button class="btn btn-ikincil btn-kucuk" id="@($"sy-ac-{o.Id}")" aria-label="@($"{o.Ad} — {Dil.T.Sayim.Ac}")" @onclick="() => Yukle(o.Id)">→</button> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<Satir>> SatirKolonlari(Detay a) =>
+    [
+        new() { Anahtar = "urun", Baslik = Dil.T.Sayim.Urun, ZorunluGorunur = true, SunucuSiralamaAdi = "urun",
+                HucreSinif = _ => "hucre-vurgu", Deger = s => s.Ad,
+                Hucre = s => @<text>@s.Ad <span class="metin-kucuk metin-soluk">@s.Kod</span></text> },
+        new() { Anahtar = "sistem", Baslik = Dil.T.Sayim.Sistem, SunucuSiralamaAdi = "sistem", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = s => s.SistemAdet, Hucre = s => @<text>@Bicim.Miktar(s.SistemAdet, null)</text> },
+        // UX-1-C2 — TEK ALANLI düzeltme satır içinde (#si-sayim-sayilan-{urunId}).
+        new() { Anahtar = "sayilan", Baslik = Dil.T.Sayim.Sayilan, ZorunluGorunur = true, SunucuSiralamaAdi = "sayilan", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = s => s.SayilanAdet,
+                HucreOznitelikleri = a.Durum == "ACIK" ? new Dictionary<string, object> { ["data-duzenlenebilir"] = "true" } : null,
+                Hucre = s => @<text>@if (a.Durum == "ACIK")
+                    {
+                        <SatirIciDuzenle Varlik="sayim" Alan="sayilan" Id="@s.UrunId"
+                                         Etiket="@Dil.T.Sayim.Sayilan"
+                                         Deger="@(s.SayilanAdet is { } sy ? Bicim.Girdi(sy, "0.###") : "")"
+                                         Kaydediliyor="@kaydediliyor"
+                                         Kaydedildi="@(v => SatirIciSay(s, v))" />
+                        @if (s.SayilanAdet is null)
+                        {
+                            <span class="metin-soluk metin-kucuk">@Dil.T.Sayim.Sayilmadi</span>
+                        }
+                    }
+                    else
+                    {
+                        @(s.SayilanAdet is { } sy2 ? Bicim.Miktar(sy2, null) : Dil.T.Sayim.Sayilmadi)
+                    }</text> },
+        new() { Anahtar = "guncel", Baslik = Dil.T.Sayim.Guncel, SunucuSiralamaAdi = "guncel", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi metin-soluk", Deger = s => s.GuncelAdet, Hucre = s => @<text>@Bicim.Miktar(s.GuncelAdet, null)</text> },
+        new() { Anahtar = "fark", Baslik = Dil.T.Sayim.Fark, SunucuSiralamaAdi = "fark", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = s => s.Fark,
+                Hucre = s => @<text>@(s.Fark is { } f ? (f > 0 ? "+" : "") + Bicim.Miktar(f, null) : "—")</text> },
+        new() { Anahtar = "hareket", Baslik = Dil.T.Sayim.HareketVar, HucreSinif = _ => "metin-kucuk",
+                Deger = s => s.OturumdaHareketVar ? Dil.T.Sayim.HareketVar : "",
+                Hucre = s => @<text>@(s.OturumdaHareketVar ? "⚠ " + Dil.T.Sayim.HareketVar : "")</text> },
+    ];
+
+    // ── UX-1-C0/C2: sessiz etkisizlik yasağı ────────────────────────────────
+    private readonly FormDurumu acForm = new();
+    private readonly FormDurumu sayForm = new();
+
+    /// <summary>UX-S31 — ham kapsam kodu ekrana basılmaz.</summary>
+    private string KapsamEtiketi(string k) => k switch
+    {
+        "TUMU" => Dil.T.Sayim.KapsamTumu,
+        "REYON" => Dil.T.Sayim.KapsamReyon,
+        "KATEGORI" => Dil.T.Sayim.KapsamKategori,
+        _ => k,
+    };
+
+    /// <summary>UX-S31 — ham durum kodu ekrana basılmaz (B-33).</summary>
+    /// PAKET SADE-1 (göz #73): "IPTAL" durumu düğme metniyle ("İptal Et") basılıyordu —
+    /// durum sütununda EYLEM gibi okunuyordu. Durumlar kendi sade adlarıyla, rozet içinde.
+    private string DurumEtiketi(string d) => d switch
+    {
+        "ACIK" => Dil.T.Sayim.Acik,
+        "KAPANDI" => Dil.T.Sayim.Kapandi,
+        "IPTAL" => SadeSozlugu.Al(Dil.Dil).SayimIptalEdildi,
+        _ => d,
+    };
+
+    private static string DurumRenk(string d) => d switch
+    {
+        "ACIK" => "mavi",
+        "KAPANDI" => "yesil",
+        _ => "gri",
+    };
+
+    // ── B-44: oturum adının satır içi düzeltilmesi ──────────────────────────
+    private bool adKaydediliyor;
+
+    private async Task AdKaydet(string yeniAd)
+    {
+        if (aktif is not { } a) return;
+        adKaydediliyor = true; hata = null;
+        try
+        {
+            aktif = await Api.PatchAsync<Detay>($"/sayim/{a.Id}", new { ad = yeniAd });
+            basariMesaj = Dil.T.Sayim.AdGuncellendi; basariJeton++;
+            await Listele();
+        }
+        catch (ApiHata ex) { hata = FormDurumu.SunucuMesaji(ex, Dil); }
+        finally { adKaydediliyor = false; }
+    }
+
+    private async Task ListeyeDon() { aktif = null; await Listele(); }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Listele();
+        try
+        {
+            subeler = await Api.GetAsync<List<Ozet>>("/subeler");
+            reyonlar = (await Api.GetAsync<List<Ozet>>("/reyonlar")).Select(r => (r.Id, r.Ad)).ToList();
+            kategoriler = (await Api.GetAsync<List<Ozet>>("/urun-kategorileri/duz")).Select(k => (k.Id, k.Ad)).ToList();
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    private async Task Listele() { try { oturumlar = await Api.GetAsync<List<Oturum>>("/sayim"); } catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; } }
+    private async Task Yukle(string id) { try { aktif = await Api.GetAsync<Detay>($"/sayim/{id}"); hata = null; } catch (ApiHata ex) { hata = ex.Message; } }
+
+    /// <summary>
+    /// UX-S22 — tek şubeli işletmede şube seçici çizilmez; SubeId formun
+    /// açılışında doldurulur ki "Aç" düğmesi boş şube yüzünden kilitli kalmasın.
+    /// </summary>
+    private void YeniAc()
+    {
+        // PAKET P-SAYIM (denetim Y10): ad tarih-saatle OTOMATİK dolar ("Sayım 10.10.2026 23:40");
+        // kullanıcı isterse değiştirir — boş ad yüzünden "Oturumu Aç" takılmaz.
+        yeni = new() { Ad = OtomatikAd() };
+        if (subeler.Count == 1) yeni.SubeId = subeler[0].Id;
+    }
+
+    /// <summary>P-SAYIM (Y10): oturumun otomatik adı — işletme saatiyle tarih + saat (tek kalıp, Bicim).</summary>
+    private string OtomatikAd() => string.Format(Dil.T.Sayim.OtomatikAd, Bicim.TarihSaat(DateTime.UtcNow));
+
+    /// <summary>P-SAYIM (K5): okutmadan sonra (ve oturum açılınca) odak barkod kutusuna döner — tabanca sıradaki ürünü okutur.</summary>
+    private async Task BarkodaOdakla()
+    {
+        StateHasChanged();
+        await Task.Yield();
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", "sy-barkod"); } catch (JSException) { }
+    }
+
+    private async Task Ac()
+    {
+        if (yeni is null) return;
+        // UX-S22: tek şubede seçici çizilmez; değeri burada garanti altına alıyoruz.
+        if (subeler.Count == 1) yeni.SubeId = subeler[0].Id;
+        // QA turu 2: "Ad boş → Oturumu Aç: istek yok, mesaj yok".
+        acForm.Temizle();
+        acForm.Zorunlu("sy-ad", yeni.Ad, Dil);
+        if (string.IsNullOrEmpty(yeni.SubeId)) acForm.Ekle("sy-sube", Dil.T.Kabuk.ZorunluAlan);
+        if (yeni.KapsamTur != "TUMU" && string.IsNullOrEmpty(yeni.KapsamId))
+            acForm.Ekle("sy-kapsamid", Dil.T.Kabuk.ZorunluAlan);
+        if (!acForm.Gecerli) { hata = Dil.T.Kabuk.FormEksik; return; }
+
+        kaydediliyor = true; hata = null;
+        try
+        {
+            aktif = await Api.PostAsync<Detay>("/sayim", new { ad = yeni.Ad.Trim(), subeId = yeni.SubeId, kapsamTur = yeni.KapsamTur, kapsamId = yeni.KapsamTur == "TUMU" ? null : yeni.KapsamId });
+            yeni = null;
+            // P-SAYIM (Y10): oturum açılınca doğrudan okutma — Yıldız'da okutma alanı açılır, odak barkod kutusunda.
+            yildizOkut = true;
+            kaydediliyor = false;
+            await BarkodaOdakla();
+        }
+        catch (ApiHata ex) { hata = FormDurumu.SunucuMesaji(ex, Dil); acForm.Sunucudan(ex, new Dictionary<string, string> { ["Ad"] = "sy-ad", ["SubeId"] = "sy-sube", ["KapsamId"] = "sy-kapsamid" }); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// QA turu 2 (YÜKSEK): kutu "Barkod okut / ürün seç" diyordu ama ürün KODU
+    /// ("GMS-925-001") 404 alıyordu — eşleşme yalnız <c>UrunId</c> ve
+    /// <c>Barkod</c> üzerindeydi. Artık KOD ve AD da eşleşir; kod/ad ile
+    /// bulunan satır sunucuya <c>urunId</c> ile gider (barkod uydurulmaz).
+    /// </summary>
+    private Satir? SatirBul(string kod) =>
+        aktif?.Satirlar.FirstOrDefault(s =>
+            string.Equals(s.UrunId, kod, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(s.Barkod, kod, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(s.Kod, kod, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(s.Ad, kod, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>P-SAYIM (K5): okutmalar SIRAYLA gider — tabanca art arda okuttuğunda iki artış aynı satırı ezmez.</summary>
+    private readonly SemaphoreSlim sayKilidi = new(1, 1);
+
+    /// <summary>
+    /// PAKET P-SAYIM (denetim K5): "okut + Enter = 1 adet". Adet BOŞ ise sunucuya <c>artis = 1</c> gider
+    /// (aynı barkod tekrar okutulunca +1); adet YAZILMIŞSA o adet satırın sayılanı olur (eski davranış).
+    /// Etiket "Adet (isteğe bağlı)" ile kural aynı şeyi söyler: boş adet hata DEĞİLDİR. Gramla satılan üründe
+    /// (GRAM) gram tahmin edilmez — alan altında "gramı yazın". Kutu hemen boşalır, odak barkoda döner.
+    /// </summary>
+    private async Task Say()
+    {
+        if (aktif is null) return;
+        var kod = sayKod.Trim();
+        var adetGirdi = sayAdet;
+        sayForm.Temizle();
+        sayForm.Zorunlu("sy-barkod", kod, Dil);
+        var urun = kod.Length > 0 ? SatirBul(kod) : null;
+        if (adetGirdi is { } ag) sayForm.NegatifDegil("sy-adet", ag, Dil);
+        else if (urun?.Birim == "GRAM") sayForm.Ekle("sy-adet", Dil.T.Sayim.GramMiktarYaz);
+        if (!sayForm.Gecerli) { hata = Dil.T.Kabuk.FormEksik; return; }
+
+        // Sıradaki okutma için kutu HEMEN boşalır (yanıt beklenirken okutulan barkod silinmez).
+        sayKod = ""; sayAdet = null;
+        await sayKilidi.WaitAsync();
+        kaydediliyor = true; hata = null;
+        try
+        {
+            if (aktif is null) return;
+            // Barkodla eşleşmediyse KOD/AD ile bulunan satırın urunId'si gider.
+            var barkodla = urun is null || string.Equals(urun.Barkod, kod, StringComparison.OrdinalIgnoreCase);
+            object govde = adetGirdi is { } mutlak
+                ? new { barkod = barkodla ? kod : null, urunId = barkodla ? null : urun!.UrunId, sayilanAdet = mutlak }
+                : new { barkod = barkodla ? kod : null, urunId = barkodla ? null : urun!.UrunId, artis = 1m };
+            aktif = await Api.PostAsync<Detay>($"/sayim/{aktif.Id}/say", govde);
+            // UX-S27 — el terminali akışı: ne sayıldığı ve satırın YENİ toplamı görünür.
+            var sonra = SatirBul(kod);
+            var toplam = sonra?.SayilanAdet ?? adetGirdi ?? 1m;
+            basariMesaj = string.Format(Dil.T.Sayim.SayildiBandi, sonra?.Ad ?? urun?.Ad ?? kod, Bicim.Miktar(toplam, null));
+            basariJeton++;
+        }
+        catch (ApiHata ex)
+        {
+            // Hata "kayıt yok"a çevrilmez (UX-S28): okutulan değer kutuya geri döner, hata alan altında.
+            if (sayKod.Length == 0) { sayKod = kod; sayAdet = adetGirdi; }
+            hata = FormDurumu.SunucuMesaji(ex, Dil);
+            sayForm.Sunucudan(ex, new Dictionary<string, string> { ["SayilanAdet"] = "sy-adet", ["Artis"] = "sy-adet", ["Barkod"] = "sy-barkod" });
+        }
+        finally { kaydediliyor = false; sayKilidi.Release(); }
+        await BarkodaOdakla();
+    }
+
+    /// <summary>Satır içi "Sayılan" düzeltmesi — aynı POST, barkod bilmeye gerek yok.</summary>
+    private async Task SatirIciSay(Satir s, string deger)
+    {
+        if (aktif is null) return;
+        // P-78: tr-TR tek merkez ("1,5" gram = 1,5; eskiden 15 okunuyordu).
+        var cozum = FormAlani.SayiCoz(deger);
+        if (cozum.Deger is not { } adet || adet < 0)
+        {
+            hata = cozum.Mesaj(Dil.Dil) ?? Dil.T.Kabuk.SifirdanBuyuk;
+            return;
+        }
+        kaydediliyor = true; hata = null;
+        try
+        {
+            aktif = await Api.PostAsync<Detay>($"/sayim/{aktif.Id}/say",
+                new { barkod = (string?)null, urunId = s.UrunId, sayilanAdet = adet });
+            basariMesaj = string.Format(Dil.T.Sayim.SayildiBandi, s.Ad, Bicim.Miktar(adet, null));
+            basariJeton++;
+        }
+        catch (ApiHata ex) { hata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private async Task Kapat()
+    {
+        if (aktif is null) return; kaydediliyor = true; hata = null;
+        try
+        {
+            var y = await Api.PostAsync<KapatYaniti>($"/sayim/{aktif.Id}/kapat", new { hareketliSatirlariUygula = hareketliUygula });
+            aktif = y.Detay;
+            // UX-S27 — "sayımı kapattım, stoğuma ne oldu" sorusunun cevabı.
+            basariMesaj = string.Format(Dil.T.Sayim.KapanisSonucu, y.Uygulanan, y.Atlanan);
+            basariJeton++;
+        }
+        catch (ApiHata ex) { hata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private async Task Iptal()
+    {
+        if (aktif is null) return; kaydediliyor = true; iptalHata = null;
+        try
+        {
+            aktif = await Api.PostAsync<Detay>($"/sayim/{aktif.Id}/iptal", new { });
+            iptalOnayAcik = false;
+            basariMesaj = Dil.T.Sayim.IptalEdildi;
+            basariJeton++;
+        }
+        catch (ApiHata ex) { iptalHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

@@ -1,0 +1,634 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAKET ZO-ISLEM-A — Hurda · POS tahsilat · Banka "zorunlu önce" (şerit dosyası)
+
+   Kurucu 25.09: "zorunlu olanlar hariç ilk etapta kullanıcı görmesin … isterse
+   ekler, eklemese kayıp yoksa açılır kapanır bir seçenek olarak kalsın".
+   • "+ … ekle" düğmesi: bağlantı görünümlü, en az 40 px dokunma yüksekliği.
+   • Açılan bölüm: üstte ince ayraç, kutular normal form akışında.
+   ⚠ app.css'e YAZILMAZ; sabit renk yok — yalnız belirteç var(). Satır içi stil yok.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tuval (Musteriler.dc.html "Daha fazla (…)" satırı) ölçüleri: tam genişlik,
+   14px 16px iç boşluk, 1px ayraç kenar, 9px köşe, gövde zemini, 16px yazı,
+   sağda soluk ok. Renkler yalnız belirteç. */
+.zo-detay-ac {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; min-height: 48px; padding: 14px 16px;
+  /* GEREKÇELİ FARK (tuval #d7dce4 = --ayrac): etkileşimli denetimin kenarı --kenarlik
+     (≥3:1, WCAG 1.4.11); dugme-olc "silik" ölçütü ayrac kenarı 1,38 ölçtü (<1,6). */
+  border: 1px solid var(--kenarlik); border-radius: 9px; background: var(--yuzey-govde);
+  color: var(--metin); font: inherit; font-size: 16px; text-align: left; cursor: pointer;
+}
+.zo-detay-ac:hover { border-color: var(--kenarlik); }
+.zo-detay-ac:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+.zo-detay-ac .zo-detay-ok { color: var(--metin-soluk); flex: none; }
+.zo-detay-ac > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+
+.zo-detay {
+  padding-top: 12px;
+  border-top: 1px solid var(--ayrac);
+}
+
+.zo-ozet-satir { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; margin: 0; }
+
+/* Geçmiş kayıtlar (ortak Katlanir) — sayfa akışında kart aralığı. */
+/* katlanir.css "margin: 0" sayfa aralığını (app.css .dikey-bosluk > * + *) eziyordu:
+   akordeon üstteki karta yapışıyordu (ölçüldü 25.09 /hurda, /pos/tahsilatlar). */
+.dikey-bosluk > .katlanir.zo-gecmis { margin-top: 1rem; }
+
+/* /hurda — kart başlığının hemen altındaki ilk satır başlık çizgisine yapışıyordu
+   (ölçüldü 25.09, 960 px): içerik ile başlık arasına tuvaldeki kart iç boşluğu. */
+#hrd-form-alan > .form-dikey { padding-top: 8px; }
+#hrd-bakiye-listesi { margin-top: 8px; }
+/* 27.09 ölçüm (1440, CDP): ortak düğme kuralı .hurda-bakiye-kart'a "padding: 0 16px" veriyordu;
+   üç satırlı bakiye kutusunda "Altın" etiketi kenara 1 px yapışıyordu. Dikey iç boşluk. */
+#hrd-bakiye-listesi .hurda-bakiye-kart { padding: 12px 16px; height: auto; }
+
+/* /banka hesap sekmeleri: ikon · ad · bakiye arasında boşluk yoktu ("Vadesiz10.145,50 ₺",
+   ölçüldü 25.09, 1440 px). */
+.zo-banka-sekmeler > .sekme { display: inline-flex; align-items: center; gap: 8px; }
+
+/* /hurda fire gerekçesi — tek satırlık katlanır ipucu (kart içinde küçük yazı). */
+.zo-ipucu { margin-top: 8px; font-size: 14px; }
+.zo-ipucu > .sade-ayrinti-ozet { color: var(--metin-soluk); }
+
+/* /banka — hesap kartının İÇİNDEKİ hareket akordeonu: kartın kenarlığıyla iç içe
+   ikinci çerçeve çizilmez; yalnız üst ayraç kalır. */
+.kart > .katlanir.zo-gecmis { border-radius: 0 0 10px 10px; }
+
+/* Bu şeridin geçmiş akordeonları (hurda defteri · banka hareketleri · POS defteri):
+   başlık satırı ETKİLEŞİMLİ denetimdir → kenarı --kenarlik (≥3:1). Ortak Katlanir'ın
+   saydam başlığı dugme-olc "silik" (zemin/kenar 1,00) ölçüldü; bileşene dokunulmaz
+   (SATIS-2 şeridi), yalnız bu şeridin kapsamı (.zo-gecmis) güçlendirilir. Kart kenarı
+   başlığa taşınır; açıkken gövde ayraç çerçeveyle altta kapanır (çift çizgi yok). */
+.katlanir.zo-gecmis { border: 0; background: transparent; }
+.katlanir.zo-gecmis > .katlanir-h > .katlanir-baslik {
+  border: 1px solid var(--kenarlik); border-radius: 10px; background: var(--yuzey);
+}
+.katlanir.zo-gecmis.katlanir-acik > .katlanir-h > .katlanir-baslik {
+  border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid var(--kenarlik);
+}
+.katlanir.zo-gecmis > .katlanir-govde {
+  border: 1px solid var(--ayrac); border-top: 0; border-radius: 0 0 10px 10px; background: var(--yuzey);
+}
+
+/* /hurda — sistemin bildiği değerler tek özet satırında (kasa · fiyat · tutar). */
+.zo-ozet-blok { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 24px; }
+.zo-ozet-blok > p { margin: 0; }
+
+/* /hurda tahlil farkı: uzun açıklama satır içi span olarak birden çok satıra
+   kırılınca kutusu fark rakamı ve rozetle ÜST ÜSTE ölçülüyordu (sikisma K9=2,
+   PRO 1440/375, 25.09). Açıklama kendi satırında başlar. */
+#hrd-tahlil-fark > span.metin-soluk:last-child { display: block; margin-top: 2px; }
+
+/* 27.09 tur ölçümü (960, dolu veri): /pos/tahsilatlar sütun başlıkları ("VALÖR TARİHİ",
+   "CİHAZ ADI") iki satıra kırılıyordu (K3). Başlık tek satır kalır; dar ekranda tablo
+   kendi kabında (.tablo-sar overflow-x:auto) kayar, sayfa kaymaz.
+   Sınıf TABLOYA verilir; sarmalayıcı tam "tablo-sar" kalır (denetim P-39 K5). */
+.veri-tablosu.zo-baslik-tek-satir th { white-space: nowrap; }
+
+/* 28.09 tasarım hakemi (KRİTİK) — /banka hareket tablosunda TUTAR 1440'ta görünmüyordu
+   (tablo 1535 px > kap 1088 px; DOM: TUTAR x=1446). Karşı taraf ve açıklama sütunları
+   daralır ve satır içinde kaydırır (uzun ad iki satıra iner, kelime ortasından kırılmaz);
+   tutar ve tarih tek satır; eylem sütunu ortak SatirEylemleri (ilk eylem + "⋯"). */
+.veri-tablosu.zo-banka-hareket td.zo-hucre-dar {
+  max-width: 14rem; min-width: 8rem; white-space: normal; overflow-wrap: break-word;
+}
+.veri-tablosu.zo-banka-hareket td.zo-hucre-tutar,
+.veri-tablosu.zo-banka-hareket td:first-child { white-space: nowrap; }
+.veri-tablosu.zo-banka-hareket th { white-space: nowrap; }
+
+/* 28.09 — kilitli birincil düğmenin görünür sebebi (UX-S30) eşleştirme aracının altında. */
+.zo-kilit-sebep { padding-top: 0; }
+.zo-kilit-sebep > p { margin: 0; }
+
+/* 28.09 — POS durum süzgeci (Form/Secim radyo, 5 seçenek) araç şeridinde dar alan
+   genişliğine sıkışıp her seçeneği ayrı satıra DİZİYORDU (açılış 1440'ta 1,07 ekran).
+   Alan içerik kadar genişler, seçenekler yan yana; dar ekranda doğal kaydırma. */
+.sayfa-basi-filtre > #pos-t-durum-sar { flex: 0 1 auto; min-width: 0; }
+#pos-t-durum .secim-secenek { white-space: nowrap; }
+
+/* 28.09 — gerçek tarayıcı ölçümü: uzun karşı taraf / açıklama metni satır içi düzenleme
+   düğmesinde (si-tetik, nowrap) TEK satırda kalıp komşu hücrenin ÜSTÜNE biniyordu
+   (K9 binen 2, 1440). Dar hücrede düğme metni sarar; hücre dışına taşmaz. */
+.veri-tablosu.zo-banka-hareket td.zo-hucre-dar .satir-ici { display: flex; max-width: 100%; }
+.veri-tablosu.zo-banka-hareket td.zo-hucre-dar .si-tetik {
+  white-space: normal; overflow-wrap: anywhere; text-align: start; max-width: 100%;
+}
+/* 28.09 (3. doğrulama — K3 tek ölçü): karşı taraf + açıklama TEK hücrede alt alta. Asgari
+   genişlik 24 karakterlik bir adı (satır içi düzenleme düğmesinin iç boşluğu dahil) tek satırda
+   taşır; 1280'de tablo kabına kaydırmasız sığar, 960'ta tablo kendi kabında kayar. Daha uzun
+   ad / açıklama kelime arasından sarar. */
+.veri-tablosu.zo-banka-hareket td.zo-hucre-dar.zo-hucre-karsi { min-width: 15rem; max-width: 22rem; }
+/* Tablo otomatik yerleşiminde td min-width kabın darlığında (960) uygulanmıyor — asgari genişlik
+   içerik bloklarına verilir (hücrenin min-content genişliği olur). */
+.veri-tablosu.zo-banka-hareket td.zo-hucre-karsi > div { min-width: 14rem; }
+.zo-hucre-karsi .zo-karsi-aciklama { margin-top: var(--bosluk-1, 0.25rem); }
+/* KESIF-P6 tur 2 (TOPLU § ZO-ISLEM-A ORTA): karşı taraf + açıklama ikisi de boşken iki '—'
+   açıcısı alt alta iki satır tutuyordu → tek satırda yan yana, soluk. Açıcılar duruyor
+   (her veri girişi düzenlenebilir). */
+.veri-tablosu.zo-banka-hareket td.zo-hucre-karsi.zo-karsi-ikisi-bos > div {
+  display: inline-block; min-width: 0; vertical-align: baseline; margin-top: 0;
+}
+.veri-tablosu.zo-banka-hareket td.zo-hucre-karsi.zo-karsi-ikisi-bos > div + div {
+  margin-inline-start: var(--bosluk-3, 0.75rem);
+}
+.zo-karsi-ikisi-bos .si-tetik { color: var(--metin-soluk); }
+
+/* 28.09 — gerçek tarayıcı 960: iki kelimelik kısa hücreler ("Hurda satış", "Ziraat Bankası")
+   dar tabloda iki satıra kırılıyordu (K3). Bu tablolar kendi kaydırma kabında (tablo-sar)
+   durduğu için hücre tek satır kalır; tablo gerekirse kabında kayar. */
+.veri-tablosu.zo-baslik-tek-satir td,
+#hrd-defter td { white-space: nowrap; }
+
+/* 28.09 gerçek tarayıcı (1440 BASİT/PRO): seçili hesap sekmesi dolu vurgu zeminiyle
+   "+ Yeni Hesap" birincil düğmesinin ikizi gibi görünüyordu (ekranda iki mavi dolu öğe —
+   tek birincil düğme kuralı). Seçili sekme YUMUŞAK zemin + TAM vurgu kenarı (dugme-olc:
+   --vurgu-kenar aydınlıkta 1,35 kontrastla 'silik' ölçüldü, eşik 1,6); belirteçler 8
+   temada ve karanlıkta çözülür; seçili olduğu aria-pressed ile de belli. */
+.zo-banka-sekmeler > .sekme.secili {
+  background: var(--vurgu-yuzey); border-color: var(--vurgu); color: var(--vurgu);
+}
+
+/* ── ZO-ISLEM-A 28.09 (2. hakem turu KRİTİK): POS valör takvimi dar ekranda KART ──
+   960 ve 375 px'te 8 sütunlu tablo NET / YATAN / KALAN'ı kabın dışına itiyordu (kaydırma
+   ipucu da yoktu). 1100 px altında her satır bir karttır: üstte tarih · cihaz, altında
+   büyük KALAN (bankaya ne kalacağı — ekranın asıl bilgisi), sonra diğer tutarlar kendi
+   etiketiyle (data-etiket). Hiçbir sütun SİLİNMEZ; yalnız yerleşim değişir. Tablo yine
+   .tablo-sar içindedir (P-39). Renkler belirteç; satır içi stil yok. */
+@media (max-width: 1100px) {
+  /* Kimlik seçici (#pos-t-valor): olcek.css'in html[data-mod] .ana-icerik .veri-tablosu
+     > tbody > tr > td kuralları (yazı, satır boyu, dolgu, min-width) bu kartta EZİLİR. */
+  #pos-t-valor > thead { display: none; }
+  #pos-t-valor, #pos-t-valor > tbody { display: block; width: 100%; }
+  #pos-t-valor > tbody > tr {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px;
+    padding: 14px 16px; border-top: 1px solid var(--ayrac);
+  }
+  #pos-t-valor > tbody > tr:first-child { border-top: 0; }
+  #pos-t-valor > tbody > tr > td {
+    display: block; padding: 0; border: 0; height: auto; min-width: 0;
+    text-align: left; white-space: normal;
+  }
+  #pos-t-valor > tbody > tr > td.zo-valor-tarih { grid-column: 1; font-weight: 600; }
+  #pos-t-valor > tbody > tr > td.zo-valor-cihaz { grid-column: 2; text-align: right; }
+  #pos-t-valor > tbody > tr > td.zo-valor-kalan {
+    grid-column: 1 / -1; grid-row: 2; font-size: 24px; font-weight: 700; margin: 2px 0 6px;
+  }
+  #pos-t-valor > tbody > tr > td.zo-valor-banka { grid-column: 1 / -1; }
+  #pos-t-valor > tbody > tr > td[data-etiket]::before {
+    content: attr(data-etiket); display: block; font-size: 13px; font-weight: 500;
+    color: var(--metin-soluk);
+  }
+  #pos-t-valor > tbody > tr > td.sayi { font-variant-numeric: tabular-nums; white-space: nowrap; }
+}
+
+/* ── ZO-ISLEM-A 28.09 (3. tur gerçek tarayıcı): dekont penceresindeki MASAK formu ──
+   512 px'lik pencerede ortak form-grid-3 üç sütunu etiketleri iki satıra kırıp kutuları
+   farklı yüksekliğe itiyordu (K7 hizasız, "T.C. kimlik kartı" üç noktayla kesik). Yalnız
+   bu pencerede alanlar TEK sütun; ortak MasakFormu'nun başka yerdeki (İşlemler) düzeni
+   değişmez. */
+.zo-masak-dikey .kart--masak .form-grid-3 { grid-template-columns: minmax(0, 1fr); }
+
+.zo-masak-baslik { margin: 0; }
+
+/* ── ZO-ISLEM-A 28.09 (4. doğrulama — tasarım hakemi KRİTİK + ORTA): banka hareketleri ve
+   POS "kartlı tahsilatlar" defteri dar ekranda KART ──────────────────────────────────────
+   960'ta TUTAR/DURUM/eylem kabın dışına itiliyor, 375'te tutar hiç görünmüyordu (tablo 979 px,
+   kap 315 px). Valör takvimiyle AYNI kalıp (#pos-t-valor): 1100 px altında başlık satırı
+   gizlenir, her satır iki sütunlu bir ızgara kart olur; hiçbir hücre SİLİNMEZ (etiketi
+   data-etiket'ten gelir). Kimlik seçici: olcek.css'in html[data-mod] .ana-icerik .veri-tablosu
+   > tbody > tr > td kuralları (dolgu, satır boyu, min-width) kartta ezilir. Renk yalnız belirteç. */
+@media (max-width: 1100px) {
+  #bh-hareket-tablo > thead, #pos-t-defter-tablo > thead { display: none; }
+  #bh-hareket-tablo, #bh-hareket-tablo > tbody,
+  #pos-t-defter-tablo, #pos-t-defter-tablo > tbody { display: block; width: 100%; }
+  #bh-hareket-tablo > tbody > tr, #pos-t-defter-tablo > tbody > tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px;
+    padding: 14px 16px; border-top: 1px solid var(--ayrac);
+  }
+  #pos-t-defter-tablo > tbody > tr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #bh-hareket-tablo > tbody > tr:first-child, #pos-t-defter-tablo > tbody > tr:first-child { border-top: 0; }
+  #bh-hareket-tablo > tbody > tr > td, #pos-t-defter-tablo > tbody > tr > td {
+    display: block; padding: 0; border: 0; height: auto; min-width: 0; max-width: none;
+    text-align: left; white-space: normal; overflow: visible;
+  }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-bas, #pos-t-defter-tablo > tbody > tr > td.zo-k-bas {
+    grid-column: 1; grid-row: 1; font-weight: 600; white-space: nowrap;
+  }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-yon,
+  #pos-t-defter-tablo > tbody > tr > td.zo-k-durum { grid-column: 2; grid-row: 1; justify-self: end; }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-ad, #pos-t-defter-tablo > tbody > tr > td.zo-k-ad {
+    grid-column: 1 / -1; grid-row: 2; overflow-wrap: break-word;
+  }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-ad > div { min-width: 0; }
+  /* KESIF-P6 tur 2 (TOPLU § ZO-ISLEM-A YÜKSEK, 375 ölçümü): app.css (≤768) '.veri-tablosu
+     { min-width: max-content }' kart düzenindeki tabloyu en uzun karşı taraf kadar (452 px)
+     genişletiyordu → Gelen/Giden ve durum rozetleri görünüm dışında (sağ 466 > 375), uzun ad
+     ve açıklama kesik. Kartta tablo kabı kadar. */
+  #bh-hareket-tablo { min-width: 0; }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-tutar { grid-column: 1; grid-row: 3; }
+  #pos-t-defter-tablo > tbody > tr > td.zo-k-tutar { grid-column: 1 / -1; grid-row: 3; }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-tutar, #pos-t-defter-tablo > tbody > tr > td.zo-k-tutar {
+    font-size: 24px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-durum { grid-column: 2; grid-row: 3; justify-self: end; align-self: center; }
+  #bh-hareket-tablo > tbody > tr > td.zo-k-eylem, #pos-t-defter-tablo > tbody > tr > td.zo-k-eylem {
+    grid-column: 1 / -1; padding-top: 4px;
+  }
+  #pos-t-defter-tablo > tbody > tr > td[data-etiket]::before {
+    content: attr(data-etiket); display: block; font-size: 13px; font-weight: 500; color: var(--metin-soluk);
+  }
+  #pos-t-defter-tablo > tbody > tr > td.sayi { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  /* Kart düzeninde yatay kaydırma yok → "tabloyu kaydırın" ipucu gösterilmez. */
+  .zo-kart-liste > .kart-liste-ipucu { display: none; }
+}
+
+/* Valör kartı: cihaz adı 375'te kesiliyordu ("Garanti Tezgâh P") — dar ekranda kendi satırında. */
+@media (max-width: 600px) {
+  #pos-t-valor > tbody > tr > td.zo-valor-cihaz {
+    grid-column: 1 / -1; grid-row: 2; text-align: left; overflow: visible; text-overflow: clip;
+    overflow-wrap: break-word;
+  }
+  #pos-t-valor > tbody > tr > td.zo-valor-kalan { grid-row: 3; }
+  /* Hesap sekmesi: ad ve bakiye alt alta (ad 24+ karakterde kelime arasından iki satıra inmesin). */
+  .zo-banka-sekmeler > .sekme { flex-wrap: wrap; row-gap: 2px; }
+  .zo-banka-sekmeler > .sekme > .zo-sekme-ad { flex: 1 1 auto; }
+  .zo-banka-sekmeler > .sekme > .sayi { flex-basis: 100%; }
+}
+
+/* Hurda — nakit alınamayan tutarda kaydetmeden önceki tek sade cümle (UX-S30). */
+.zo-nakit-uyari { margin: 4px 0 0; font-size: 16px; font-weight: 600; color: var(--uyari); }
+
+/* POS elle eşleştirme listesi: kart içinde, uzun listede kendi kabında kayar. */
+.zo-pos-elle-liste { border: 0; padding: 0; margin: 8px 0 0; max-height: 22rem; overflow-y: auto; }
+.zo-pos-elle-liste > legend { padding: 0; margin-bottom: 4px; font-weight: 600; }
+/* 28.09 (7. doğrulama): elle seçim açıkken birincil eşleştir düğmesi listenin ve özetin ALTINDA. */
+.zo-pos-elle-eylem { display: flex; justify-content: flex-end; margin-top: 12px; }
+@media (max-width: 640px) { .zo-pos-elle-eylem > .dugme { width: 100%; } }
+/* 10. tur gerçek tarayıcı (375, K3_kirik): "Eşleşmeyi geri al" yan yana eşit payda iki satıra
+   kırılıyordu → dar ekranda düğmeler alt alta, tam genişlik; eylem üstte, Vazgeç altta (DOM sırası aynı). */
+.satir.zo-onay-dugmeler > .btn { white-space: nowrap; }
+@media (max-width: 480px) {
+  .satir.zo-onay-dugmeler { flex-direction: column-reverse; align-items: stretch; }
+  .satir.zo-onay-dugmeler > .btn { width: 100%; }
+}
+#pos-elle-toplam { margin: 8px 0 0; }
+
+/* ── 29.09 (tasarım hakemi KRİTİK): tezgâhtarın baktığı ana tutarlar 12 px değil ────────────
+   Tuval (Tezgah.png): bilgi yazısı gövde boyu, toplam 20 px kalın. .metin-kucuk (app.css,
+   .75rem) kimlik seçicisiyle ezilir; kimlikler DEĞİŞMEDİ. 12 px yalnız gerçekten ikincil
+   ipuçlarında kalır. Sabit renk yok. */
+#hrd-ozet, #hrd-ozet > p,
+#hrd-has-sinir, #hrd-tahlil-fark,
+#hrd-bakiye-listesi .hurda-bakiye-kart > span { font-size: var(--yazi-govde); }
+#hrd-tutar { font-size: var(--yazi-govde); }
+#pos-elle-toplam { font-size: var(--yazi-rakam); font-weight: 700; font-variant-numeric: tabular-nums; }
+#hrd-tutar > strong { font-size: var(--yazi-rakam); font-weight: 700; font-variant-numeric: tabular-nums; }
+#hrd-fiyat-ozet > strong { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Nakit kapalıyken alanın TEK hatası (alan-hata ile aynı görünüm, K18). */
+#hrd-nakit-uyari { margin: 4px 0 0; }
+
+/* 29.09 (tasarım hakemi YÜKSEK) — dekont penceresinin SABİT altlığı (ModalPencere.Altlik,
+   P-36): kilit sebebi üstte tam satır, Vazgeç/Kaydet altında tam satır. */
+.modal-alt .zo-alt-sebep { flex: 1 1 100%; margin: 0; }
+.modal-alt .zo-alt-dugmeler { flex: 1 1 100%; }
+
+/* ── 29.09 (tasarım hakemi k3 KRİTİK, K13): Hurda defteri dar ekranda KART ────────────────
+   Akordeon açıkken tablo 1024'te 709/674, 960'ta 623/610, 375'te 823/317 px idi: 375'te HAS
+   GRAM ve TUTAR ekran dışında, 960'ta "Tahlil farkını düzelt" sağ kenarda kesik. Banka
+   hareketleri / POS defteriyle AYNI kalıp: 1100 px altında başlık satırı gizlenir, her satır
+   iki sütunlu ızgara kart olur; üstte tarih · tür, altında maden, has gram ve tutar etiketiyle
+   (data-etiket), tahlil farkı, düzelt düğmesi en altta tam satır ve SARABİLİR. Hiçbir hücre
+   silinmez. Kimlik seçicisi olcek.css'in veri-tablosu hücre kurallarını ve yukarıdaki
+   "#hrd-defter td { white-space: nowrap }" kuralını kartta ezer. Renk yalnız belirteç. */
+@media (max-width: 1100px) {
+  #hrd-defter > thead { display: none; }
+  #hrd-defter, #hrd-defter > tbody { display: block; width: 100%; }
+  #hrd-defter > tbody > tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 16px;
+    padding: 14px 16px; border-top: 1px solid var(--ayrac);
+  }
+  #hrd-defter > tbody > tr:first-child { border-top: 0; }
+  #hrd-defter > tbody > tr > td {
+    display: block; padding: 0; border: 0; height: auto; min-width: 0; max-width: none;
+    text-align: left; white-space: normal; overflow: visible;
+  }
+  #hrd-defter > tbody > tr > td.zo-k-bas { grid-column: 1; grid-row: 1; font-weight: 600; white-space: nowrap; }
+  #hrd-defter > tbody > tr > td.zo-k-durum { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; }
+  #hrd-defter > tbody > tr > td.zo-k-ad { grid-column: 1 / -1; grid-row: 2; overflow-wrap: break-word; }
+  #hrd-defter > tbody > tr > td.zo-k-gram { grid-column: 1; grid-row: 3; }
+  #hrd-defter > tbody > tr > td.zo-k-tutar { grid-column: 2; grid-row: 3; font-weight: 700; }
+  #hrd-defter > tbody > tr > td.zo-k-gram, #hrd-defter > tbody > tr > td.zo-k-tutar {
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  #hrd-defter > tbody > tr > td.zo-k-fark { grid-column: 1 / -1; }
+  #hrd-defter > tbody > tr > td.zo-k-eylem { grid-column: 1 / -1; padding-top: 4px; }
+  #hrd-defter > tbody > tr > td.zo-k-eylem > .dugme { white-space: normal; max-width: 100%; }
+  #hrd-defter > tbody > tr > td[data-etiket]::before {
+    content: attr(data-etiket); display: block; font-size: 13px; font-weight: 500; color: var(--metin-soluk);
+  }
+}
+@media (max-width: 480px) {
+  #hrd-defter > tbody > tr > td.zo-k-eylem > .dugme { width: 100%; }
+}
+
+/* ── 29.09 (tasarım hakemi YÜKSEK): POS "Bankaya yatan tutar" seçeneği satır-DÜĞME ──
+   dugme-olc: sonuç düğmeleri zemin 1,00 · kenar 1,00 ölçülüyordu (düz metin gibi).
+   Her seçenek kenarlı, köşeli bir satır-düğme; TUTAR birincil (sonucun adı, büyük),
+   hesap · tarih ikincil. Ortak KayitSecici'ye dokunulmaz — yalnız bu ekranın sarmalı.
+   "Banka hareketi" türü çipi bu seçicide tek tür olduğu için bilgi taşımaz → gizli. */
+#pos-eslestir-hareket-sarmal .secici-sonuclar { display: flex; flex-direction: column; gap: 8px; }
+#pos-eslestir-hareket-sarmal .secici-sonuc {
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; row-gap: 2px;
+  padding: 8px 14px; border: 1px solid var(--kenarlik); border-radius: 10px;
+  background: var(--yuzey); color: var(--metin);
+}
+#pos-eslestir-hareket-sarmal .secici-sonuc:hover,
+#pos-eslestir-hareket-sarmal .secici-sonuc:focus-visible { border-color: var(--vurgu); background: var(--vurgu-yuzey); }
+#pos-eslestir-hareket-sarmal .secici-sonuc > .rozet,
+#pos-eslestir-hareket-sarmal .secici-secili > .rozet { display: none; }
+#pos-eslestir-hareket-sarmal .secici-sonuc > .secici-ad,
+#pos-eslestir-hareket-sarmal .secici-secili > .secici-ad {
+  font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+#pos-eslestir-hareket-sarmal .secici-sonuc > .metin-kucuk,
+#pos-eslestir-hareket-sarmal .secici-secili > .metin-kucuk { font-size: 15px; }
+
+/* Açılış ≤ 1 ekran (1440): geniş ekranda seçici iki sütun (tutar satırları tek satıra sığar),
+   "Öneri getir" ve birincil düğme sağ sütunda alt alta; dar ekranda ortak tek sütun kalır. */
+@media (min-width: 1101px) {
+  .kart-govde.zo-pos-eslestir-izgara {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: auto;
+  }
+  .kart-govde.zo-pos-eslestir-izgara > .kayit-secici { grid-column: 1; grid-row: 1 / span 2; align-self: start; }
+  .kart-govde.zo-pos-eslestir-izgara > .alan {
+    grid-column: 2; grid-row: auto; grid-template-rows: none; display: flex; align-self: start;
+  }
+  .kart-govde.zo-pos-eslestir-izgara > .kayit-secici + .alan { margin-top: 33px; }
+  .kart-govde.zo-pos-eslestir-izgara > .alan > .dugme { width: 100%; }
+}
+
+/* 29.09 (doğrulayıcı DÜŞÜK): KayitSecici etiketinde "(isteğe bağlı)" eki bitişik yazılıyordu
+   ("carisi(isteğe bağlı)"); Form/AlanKabugu ile AYNI aralık (.alan-etiket gap) verilir.
+   Ortak bileşene dokunulmaz; yalnız bu paketin sayfalarındaki seçiciler. */
+#hrd-cari-sarmal > label > .metin-soluk,
+#pos-eslestir-hareket-sarmal > label > .metin-soluk { margin-left: var(--bosluk-2); }
+
+/* ═══ PAKET KESIF-P6 (#34) — Yeni sipariş KALEM KARTLARI ════════════════════════════════
+   Keşif ölçümü (BASİT 1440): kalem TABLOSU 1269 px, kabı 1074 px → ADET sütunu kesik,
+   sonraki sütunlar yatay kaydırmada gizli. Her kalem artık bir karttır; alanlar kabın
+   genişliğine göre sarar (auto-fit ızgara), 375'te tek sütun. Hiçbir alan silinmedi.
+   Renkler yalnız belirteç; satır içi stil yok. */
+.sip-kalemler { display: flex; flex-direction: column; gap: var(--bosluk-2, 0.5rem); min-width: 0; }
+.sip-kalem {
+  border: 1px solid var(--ayrac); border-radius: var(--yaricap, 8px);
+  padding: var(--bosluk-2, 0.5rem) var(--bosluk-3, 0.75rem); min-width: 0;
+}
+.sip-kalem-bas {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--bosluk-2, 0.5rem);
+  margin-bottom: var(--bosluk-1, 0.25rem);
+}
+.sip-kalem-izgara {
+  display: grid; gap: var(--bosluk-2, 0.5rem) var(--bosluk-3, 0.75rem);
+  /* PAKET GOC-C: kalem alanları ortak girdi kabuğuna geçti ("(isteğe bağlı)" eki etikette) — 9rem sütunda
+     "Serbest tanım (isteğe bağlı)" iki satıra kırılıp etiketleri 26 px kaydırıyordu (ölçüm K7) → 11rem. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  align-items: end; min-width: 0;
+}
+.sip-kalem-izgara > .alan { min-width: 0; margin: 0; }
+.sip-kalem-izgara > .alan.sip-kalem-genis { grid-column: span 2; }
+.sip-kalem-izgara > .alan > .girdi { width: 100%; max-width: 100%; }
+@media (max-width: 600px) {
+  .sip-kalem-izgara { grid-template-columns: minmax(0, 1fr); }
+  .sip-kalem-izgara > .alan.sip-kalem-genis { grid-column: auto; }
+}
+
+/* KESIF-P6 (TOPLU ORTAK-1 DÜŞÜK): Uyum risk sekmesindeki bilgi satırı alttaki karta
+   yapışıktı; kart ile arasına olağan boşluk. */
+#uy-risk-kapali { margin-bottom: var(--bosluk-3, 0.75rem); }
+
+/* ═══ KESIF-P6 tur 2 (tasarım hakemi 01.10) ═══════════════════════════════════
+   (1) Sipariş detayı: "Düzenle" başlık satırında, sağa yaslı (tek düğmelik kart kaldırıldı). */
+#sipd-kart > .kart-baslik {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--bosluk-2, 0.5rem);
+}
+#sipd-kart > .kart-baslik > .sipd-baslik-eylem { margin-inline-start: auto; }
+
+/* (2) Uyum tanım listeleri (Görüntüle çekmecesi, Saklama, risk özeti): soluk etiket /
+   koyu değer, iki sütun; dar ekranda etiket üstte. 'tanim-listesi' tanımsızdı → aralıksız döküm. */
+.uy-tanim {
+  display: grid; grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
+  gap: var(--bosluk-2, 0.5rem) var(--bosluk-4, 1rem); align-items: baseline; margin: 0;
+}
+.uy-tanim > dt { color: var(--metin-soluk); font-size: .875rem; font-weight: 600; }
+.uy-tanim > dd { margin: 0; color: var(--metin); overflow-wrap: anywhere; }
+@media (max-width: 40rem) {
+  .uy-tanim { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+  .uy-tanim > dd { margin-bottom: var(--bosluk-2, 0.5rem); }
+}
+
+/* (3) Kullanıcılar: ayrı e-posta sütunu tabloyu kabın dışına itiyordu (1440: 1339 / 1122) —
+   e-posta adın altında soluk ikinci satır, uzunsa kesilir (tamamı title ipucunda).
+   64rem (1024 px) ve altında tablo kart yığınıdır (q10-yigin kalıbı; 960'ta kap 642 px):
+   her satır bir kart, hücre etiketi data-etiket'ten — yatay kaydırma ve gizli sütun 0. */
+#k-tablo td > .k-ad > #k-siz { font-size: inherit; } /* ortak.css "td > #k-siz" kuralı ad kabına taşındı */
+#k-tablo td .k-satir-eposta {
+  display: block; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@media (max-width: 64rem) {
+  #k-tablo, #k-tablo > tbody, #k-tablo > tbody > tr, #k-tablo > tbody > tr > td { display: block; width: 100%; }
+  #k-tablo { min-width: 0; }
+  #k-tablo > thead { display: none; }
+  #k-tablo > tbody > tr {
+    border: 1px solid var(--ayrac); border-radius: var(--yaricap);
+    margin-block-end: var(--bosluk-2); padding: var(--bosluk-2);
+  }
+  #k-tablo > tbody > tr > td {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    gap: var(--bosluk-2); border: 0; padding: var(--bosluk-1) 0; min-width: 0; white-space: normal;
+    height: auto; box-shadow: none; position: static;
+  }
+  #k-tablo td > .k-ad { text-align: end; }
+  #k-tablo > tbody > tr > td[data-etiket]::before {
+    content: attr(data-etiket); color: var(--metin-soluk); font-size: .75rem; font-weight: 600;
+  }
+  #k-tablo > tbody > tr > td.q10-yigin-eylem { justify-content: flex-end; }
+  #k-tablo td .k-satir-eposta { max-width: 100%; flex-basis: 100%; text-align: end; }
+}
+
+/* ═══ PAKET GOC-C-2 (tasarım hakemi YÜKSEK "iki bacaklı ödeme paneli BASİT 1280 dikey yığılı / büyük punto") ═══
+   Satır düzeni (Ödeme aracı · ayrıntı · Tutar · ✕, etiketler başlık satırında) yalnız ≥ 1400 px VIEWPORT'ta
+   açılıyordu (tuval-satis.css); gerekçe "ALDIM sütunu 296 px" idi. Bugün 1280'de VERDİM/ALDIM alt alta ve ALDIM
+   ~670 px: panel her satırda "Ödeme aracı * / Tutar *" etiketleri, 21 px "Ödeme" başlığıyla tek bacak
+   görünümünün (tek satırlık ALDIM tablosu) iki katı yükseklikteydi. Ölçüt artık SÜTUNUN KENDİ genişliği
+   (container query): ALDIM içeriği ≥ 380 px ise aynı satır düzeni — 1280'de de; 375'te (dar) eski dikey form.
+   Kurallar tuval-satis.css + olcek.css ≥1400 bloklarının AYNISIDIR (yeni değer yok; belirteçler var()). */
+html[data-mod] .tuval-tezgah #islem-aldim > .fis-tuval-icerik { container: gc2-aldim / inline-size; }
+@container gc2-aldim (min-width: 380px) {
+  html[data-mod] .tuval-tezgah #islem-aldim .fis-tuval-bacak-baslik,
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri {
+    display: grid; gap: var(--bosluk-2); align-items: center;
+    grid-template-columns: minmax(84px, 1fr) minmax(0, 1.2fr) calc(var(--yazi-kontrol) * 9.5) var(--kontrol-yuksekligi);
+  }
+  html[data-mod] .tuval-tezgah #islem-aldim .fis-tuval-bacak-baslik {
+    padding: var(--bosluk-2) 18px; font-size: var(--ts-14); color: var(--metin-soluk); border-bottom: 1px solid var(--yuzey-2);
+  }
+  html[data-mod] .tuval-tezgah #islem-aldim .fis-tuval-bacak-baslik > .sayi { text-align: right; }
+  html[data-mod] .tuval-tezgah #islem-aldim .fis-tuval-icerik > .kart:has(.bacak-satiri) { margin: 0; }
+  html[data-mod] .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-baslik { justify-content: flex-end; padding: var(--bosluk-2) 18px 0; border: 0; }
+  html[data-mod] .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-baslik > h3,
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] > .alan-etiket,
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] > .alan-etiket,
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] > .alan-etiket,
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri .secici-kilit-sebep,
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-tek"],
+  html[data-mod] .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-govde > .satir-arasi {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > :is([id$="-arac-sar"], [id$="-kasa-sar"], [id$="-tutar-sar"]) > .alan-etiket *,
+  html[data-mod] .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-govde > .satir-arasi * { overflow: hidden; width: 1px; height: 1px; margin: 0; padding: 0; }
+  html[data-mod] .tuval-tezgah #islem-aldim .kart:has(.bacak-satiri) > .kart-govde { padding: 0 18px var(--bosluk-2); gap: 0; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri { padding: 10px 0; border-bottom: 1px solid var(--yuzey-2); }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > * { grid-column: 1 / -1; min-width: 0; margin: 0; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] { grid-column: 1; grid-row: 1; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] { grid-column: 2; grid-row: 1; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] { grid-column: 3; grid-row: 1; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id^="islem-bacak-sil-"] { grid-column: 4; grid-row: 1; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .girdi { text-align: right; font-weight: 600; min-width: 0; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .alan-girdi-satir { flex-wrap: nowrap; gap: 4px; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-tutar-sar"] .alan-alt:empty { display: none; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-arac-sar"] .secici-tetik { font-weight: 500; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik { font-size: var(--ts-15); color: var(--metin-soluk); padding-left: 10px; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik:disabled {
+    border-color: transparent; background: transparent; padding: 0 2px; opacity: 1; cursor: default;
+  }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri > [id$="-kasa-sar"] .secici-tetik:disabled > .secici-ok { display: none; }
+  html[data-mod] .tuval-tezgah #islem-aldim .bacak-satiri [id^="islem-bacak-"][id$="-arac"]:not(#olcek-kimlik-agirligi) { min-width: 0; }
+}
+/* VERI-1 aşım iletisi (#islem-bacak-N-asim) satırın ALTINDA tam genişlik: dar tutar sütununa sıkışıp 5 satıra kırılmaz.
+   Izgara düzeninde ".bacak-satiri > *" kuralı zaten tam satır verir; esnek (dar) düzende satırı kendisi açar. */
+html[data-mod] .bacak-satiri > .bacak-asim { flex-basis: 100%; margin: 0; order: 9; }
+/* TOPLU-7A: PRO'da ✕ düğmesi "order: 1" taşır (tuval-satis.css .tuval-pro .bacak-satiri > sil); ileti order'sızken ✕'den ÖNCE
+   dizilip tam genişlikle satır açıyor ve ✕'yi (ölçüldü: PRO 1280, üst 130 px, tutar kutusu 26 px) satırdan koparıyordu.
+   order: 9 → ileti her zaman EN SON: ✕ tutar kutusunun yanında kalır, ileti satırın altına iner. */
+
+/* ═══ PAKET GOC-C-2 (tasarım hakemi KRİTİK "/urunler PRO 1280 K9 binen 6 · K12 ezik 1") ═══
+   Ölçüldü (09.10, başsız Chrome, 8 ürün, biri 50 karakter barkodlu): tablo 1283 px > kap 962 px — barkod hücresi
+   tek satırda 433 px; yapışkan eylem sütunu kaydırılan "Durum"/"Stok" hücrelerinin üstüne biniyordu ve DURUM başlığı
+   kesiliyordu. Barkod sütunu en çok ~11 karakter genişliğinde, uzun barkod KARAKTER sınırında sarar (barkodda sözcük
+   yok; tam değer hücrede kalır, kesilmez — 13 haneli EAN tek satır, ölçüldü). PRO'da durum süzgeci 84 px'e eziliyordu (K12 < 90): PRO'ya asgari genişlik
+   (BASİT'teki 7.5rem satırı ikiye bölüyordu — ortak.css T2-6; PRO için 6rem ölçülerek seçildi). */
+@media (min-width: 561px) {
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td[data-kolon="barkod"] {
+    /* TOPLU-7A: "width" yalnız TERCİH edilen genişliktir; otomatik tablo düzeni dar kapta sütunu içeriğinin en küçük
+       genişliğine (anywhere → 1 karakter) kadar ezip 13 haneli EAN'ı ikiye bölüyordu (ölçüldü: PRO 1280, 5 üründe K3_kirik 5,
+       hücre 70 px). min-width içerik kutusunda 12.5ch (≈ 107 px; EAN-13 yazısı ≈ 101 px): EAN-13 HER ZAMAN tek satır,
+       50 karakterlik barkod hâlâ karakter sınırında sarar (kesilmez), diğer sütunlar (ad, grup) sarılarak yer verir. */
+    box-sizing: content-box; width: 16ch; min-width: 12.5ch; overflow-wrap: anywhere;
+  }
+}
+@media (min-width: 641px) {
+  html[data-mod="profesyonel"] #urun-durum-filtre-sar { min-width: 6rem; }
+}
+/* TOPLU-7A: barkod sütunu artık EAN-13'ü tek satırda tutar (≈ +40 px); PRO 1280'de tablo kabı (962 px) aşıp yapışkan eylem
+   sütununun Durum/Stok hücrelerine binmemesi için yer üç yerden alınır (ölçüldü, 1.000.000 adetlik stokla bile K9 = 0):
+   ürün adı 13 → 11 × tablo yazısı (≈ 154 px; "Burma bilezik 22 ayar" 139 px yazı → tek satır, uzun adlar sarar), stok düğmesi yatay
+   dolgusu 12 → 6 px, eylem hücresi sağ dolgusu 16 → 8 px. */
+@media (min-width: 769px) and (max-width: 1399px) {
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td.hucre-vurgu[data-kolon="ad"]:nth-child(2) { min-width: calc(var(--tablo-yazi) * 11); }   /* özgüllük: olcek.css (sonra yüklenir) 13× kuralını geçer */
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td > [id^="u-stok-adet-"] { padding-inline: 6px; }
+  html[data-mod] .ana-icerik #urun-liste-sar > .veri-tablosu > tbody > tr > td:last-child:has(> .satir-eylem) { padding-right: 8px; }
+}
+/* GOC-C-2 (hakem YÜKSEK "K4 sayfa boyu /urunler 375"): 375'te ürün kartı her alanı ayrı satırda yazıyordu (~385 px/ürün,
+   9 üründe 3.461 px = 5,3 ekran). Kart iki sütunlu: ad (birincil) ve eylemler (sabit) tam satır, etiket–değer çiftleri
+   yan yana; görseli olmayan ürünün "görsel yok" simgesi kartta yer kaplamaz (listede/PRO masaüstünde aynen). */
+@media (max-width: 560px) {
+  html[data-mod] .ana-icerik #urun-liste-sar > .izgara-tablo > tbody > tr { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--bosluk-4); }
+  html[data-mod] .ana-icerik #urun-liste-sar > .izgara-tablo > tbody > tr > td[data-etiket]:not([data-izgara-rol="birincil"]):not([data-izgara-rol="sabit"]):not([data-kolon="has"]):not([data-kolon="barkod"]) { grid-column: auto; }
+  html[data-mod] .ana-icerik #urun-liste-sar > .izgara-tablo > tbody > tr > td:has(> [id^="u-gorsel-yok-"]) { display: none; }
+  /* Uzun değerli çiftler (has "0,9160 has", barkod) yarım sütuna sığmıyordu (K3 kırık, ölçüldü) → yukarıdaki kuraldan
+     hariç: ızgaranın tam satır kalıbında kalır. */
+}
+
+/* ═══ PAKET GOC-C-2 — satış tuvalinin tabloları ORTAK IZGARADA (FisKalemTablosu ×2, FisVerdimAldim, FisSonSatislar) ═══
+   Izgara tabloyu kendi KartListe'sine (.izgara-kap) alır ve araç çubuğu (Sütunlar) ekler. Tuvalin ölçülmüş
+   düzeni KORUNUR: (1) tuvalin "çerçevesiz kap" kuralı ızgaranın kabına da uygulanır; (2) BASİT tuvalde tek
+   satırlık ödeme ve kalem listesi için sütun çubuğu gösterilmez (zorunlu önce — kurucu 25.09; PRO'da görünür);
+   (3) ≤ 560 px'te ızgaranın ortak kart kalıbı tuvalin satır düzenini bozmasın diye satır yine tek sıra
+   (ad · tutar · sil) — kimlik seçicisiyle (ızgara kalıbından özgül); (4) BASİT adın altındaki "ayar · gram"
+   artık hücredeki span (eskiden td data-ayrinti ::after) — aynı biçim. Belirteçler var(); sabit renk yok. */
+html[data-mod] .tuval-tezgah .fis-tuval-icerik .izgara > .kart-liste { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+html[data-mod] .tuval-tezgah .fis-tuval-icerik .izgara > .kart-liste > .tablo-sar { border: 0; }
+html[data-mod="basit"] .tuval-tezgah .fis-tuval-icerik .izgara > .izgara-arac { display: none; }
+html[data-mod] .tuval-tezgah #islem-kalem-tablo > thead,
+html[data-mod] .tuval-tezgah #islem-aldim-tablo > thead { background: transparent; }
+/* Ölçüldü (görüntü, 1280 BASİT): ızgaranın veri tablosu başlık biçimi (büyük harf, harf aralığı) tuval başlığını
+   değiştiriyordu ("ÜRÜN · TUTAR"); tuvalin kendi başlık biçimi (tuval-satis.css .fis-tuval-tablo th) geri gelir. */
+html[data-mod] .tuval-tezgah #islem-kalem-tablo > thead > tr > th,
+html[data-mod] .tuval-tezgah #islem-aldim-tablo > thead > tr > th {
+  text-transform: none; letter-spacing: normal; font-size: var(--ts-14); font-weight: 400; color: var(--metin-soluk);
+}
+.tuval-tezgah #islem-kalem-tablo td.fis-tuval-ad::after { content: none; }
+.tuval-tezgah #islem-kalem-tablo td.fis-tuval-ad > .fis-tuval-ad-ayrinti {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--ts-14); font-weight: 400; color: var(--metin-soluk); font-variant-numeric: tabular-nums;
+}
+html:root[data-sema="yildiz"] .tuval-tezgah #islem-kalem-tablo td.fis-tuval-ad > .fis-tuval-ad-ayrinti { display: none; }
+@media (max-width: 560px) {
+  html[data-mod] .tuval-tezgah #islem-kalem-tablo > tbody > tr,
+  html[data-mod] .tuval-tezgah #islem-aldim-tablo > tbody > tr {
+    grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: var(--bosluk-2);
+    padding: 12px 18px; border-bottom: 1px solid var(--yuzey-2);
+  }
+  html[data-mod] .tuval-tezgah #islem-kalem-tablo > tbody > tr > td,
+  html[data-mod] .tuval-tezgah #islem-aldim-tablo > tbody > tr > td { grid-column: auto; order: 0; padding: 0; border: 0; }
+  html[data-mod] .tuval-tezgah #islem-kalem-tablo > tbody > tr > td.sayi,
+  html[data-mod] .tuval-tezgah #islem-aldim-tablo > tbody > tr > td.sayi { text-align: right; white-space: nowrap; }
+  html[data-mod] .tuval-tezgah #islem-kalem-tablo > tbody > tr > td.fis-tuval-ad { max-width: none; width: auto; }
+}
+/* PRO kalem tablosu: tuvalin kap sorgusu (fis-pro-kalem ≤ 480) iki katlı satırı kurar; ızgaranın kart kalıbı
+   (tek sütun, eylem en altta tam satır) onu ezmesin. Ölçüldü (görüntü, PRO 375): ızgaranın ≤ 560 kart kuralı
+   (td { display: block }) tuvalin "dar kartta ikincil sütun düşer" kurallarından (nth-child display: none) özgüldü →
+   barkod/milyem/has/işçilik/ayar/gram hücreleri 375'te geri gelmişti. Aynı düşürme kimlik seçicisiyle (t19 kuralı birebir). */
+@media (max-width: 560px) {
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > :is(thead, tbody) > tr > :is(th, td):nth-child(1) { display: none; }
+}
+@container fis-pro-kalem (max-width: 760px) {
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > :is(thead, tbody) > tr > :is(th, td):nth-child(4),
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > :is(thead, tbody) > tr > :is(th, td):nth-child(6),
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > :is(thead, tbody) > tr > :is(th, td):nth-child(8) { display: none; }
+}
+@container fis-pro-kalem (max-width: 480px) {
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > :is(thead, tbody) > tr > :is(th, td):nth-child(3),
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > :is(thead, tbody) > tr > :is(th, td):nth-child(5) { display: none; }
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > tbody > tr.fis-pro-satir {
+    grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; row-gap: 0; padding: 10px 16px;
+  }
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > tbody > tr.fis-pro-satir > td { grid-column: auto; order: 0; }
+  html[data-mod] .islem-sayfa.tuval-pro #islem-kalem-pro > tbody > tr.fis-pro-satir > td.fis-pro-ad { grid-column: 1 / -1; }
+}
+/* ✎ satır düzenlemesi ve satır altı adet iletisi ızgaranın ALTINDA (eskiden tr.fis-pro-ayrinti / .fis-pro-satir-hata). */
+.tuval-pro div.fis-pro-ayrinti { background: var(--yuzey-2); padding: 10px 16px; border-bottom: 1px solid var(--ayrac); }
+.tuval-pro div.fis-pro-ayrinti > .fis-pro-ayrinti-baslik { margin: 0 0 var(--bosluk-2); font-weight: 600; }
+.tuval-pro div.fis-pro-satir-hata { padding: 0 16px; text-align: right; }
+/* Son satışlar: kırılım ızgaranın altında tek panel (eskiden satır altı colspan). */
+.islem-son-katlanir div.islem-kirilim-satir { background: var(--yuzey-2); padding: var(--bosluk-2) var(--bosluk-3); border-radius: var(--yaricap); }
+.islem-son-katlanir div.islem-kirilim-satir > .islem-kirilim-fis { margin: 0 0 var(--bosluk-1); }
+/* GOC-C-2 — nakit sınırı notu: tek kısa satır + ⓘ (tam cümle ⓘ'de). Sağ sütunda olduğu için ipucu kutusu SAĞA yaslı
+   açılır (ekran dışına taşmaz). */
+html[data-mod] .tuval-nakit-uyari:not([hidden]) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--bosluk-1); }
+html[data-mod] .tuval-nakit-uyari > .tuval-nakit-uyari-kisa { white-space: nowrap; }
+html[data-mod] #islem-nakit-uyari-ipucu > .t4-ipucu-govde { inset-inline-start: auto; inset-inline-end: 0; }
+/* Ölçüldü (görüntü, BASİT 1280): tuvalin iki sütunlu yerleşimi notu KİMLİĞİYLE sağ sütuna koyuyordu (tuval-satis.css
+   "> #islem-nakit-uyari"); dış kutunun kimliği değişince not sol sütunun tepesine düşüp "Müşteri"nin altında kaldı → aynı yer. */
+@media (min-width: 1100px) {
+  .islem-sayfa.tuval-tezgah > #islem-nakit-uyari-kutu { grid-column: 2; grid-row: 3; }
+}
+
+/* KAPORA-EKRAN — sipariş kapora kartı: geçmiş listesi madde işaretsiz, eylemler tek satırda. */
+.kapora-gecmis-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.kapora-gecmis-liste > li { margin: 0; padding: 0; }
+.kapora-eylemler { flex-wrap: wrap; gap: 8px; }
+.kapora-eylemler > .btn { white-space: nowrap; }

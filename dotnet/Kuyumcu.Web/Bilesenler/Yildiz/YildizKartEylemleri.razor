@@ -1,0 +1,30 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-4B — Müşteri kartının eylem satırı (yalnız Yıldız şeması).
+   Tuval Musteri4: "Satıra dokununca kart açılır: tahsilat, ekstre, düzenleme."
+   Yıldız listesinde satır eylemi yoktur; özgün satır eylemlerinin (Cariler.CariEylemleri —
+   TEK kaynak) tamamı kartın başında tuvalin altı çizili yazı kalıbıyla (b2) durur.
+   Özellik silinmez; kilitli eylem sebebini yazar (UX-S30). İstek ATMAZ: her düğme
+   sayfanın mevcut geri çağrısıdır.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+@if (Eylemler.Count > 0)
+{
+    <div class="yz-kart-eylemler" id="yildiz-kart-eylemler" role="group" aria-label="@YildizMusteriSozlugu.KartEylemleri(Dil.Dil)">
+        @foreach (var e in Eylemler)
+        {
+            <button type="button" id="@e.Id" class="@(e.Tehlike ? "yz-kart-eylem yz-kotu" : "yz-kart-eylem")"
+                    disabled="@e.Kilitli" title="@(e.Kilitli ? e.KilitNedeni : null)" aria-label="@e.AriaEtiket"
+                    @onclick="e.Tikla">@e.Etiket</button>
+            @if (e.Kilitli && e.KilitNedeni is { Length: > 0 } neden)
+            {
+                <span class="yz-kart-eylem-kilit" id="@($"{e.Id}-kilit")">@neden</span>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<SatirEylemleri.Eylem> Eylemler { get; set; } = [];
+}

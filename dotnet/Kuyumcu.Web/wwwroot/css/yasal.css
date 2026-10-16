@@ -1,0 +1,170 @@
+/* ═══ PAKET YASAL-1 — "Yasal sınırlar" ekranı + Panel yasal bandı (şerit dosyası) ═══
+   Kapsam: yalnız .yasal-* sınıfları. Sabit renk YOK — tüm renkler belirteçtir
+   (açık/koyu tema kendiliğinden). Satır içi stil yok. 375 px'te tek sütun,
+   geniş ekranda kart ızgarası (tablo değil: yatay kaydırma doğmaz). */
+
+.yasal-liste {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: var(--bosluk-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+.yasal-kart {
+  display: flex; flex-direction: column; gap: var(--bosluk-2); min-width: 0;
+  padding: var(--bosluk-4); border: 1px solid var(--ayrac); border-radius: var(--radius-md);
+  background: var(--yuzey);
+}
+.yasal-kart-ust { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--bosluk-2); }
+.yasal-ad { margin: 0; font-weight: 600; color: var(--metin); overflow-wrap: anywhere; flex: 1 1 12rem; min-width: 0; }
+.yasal-deger { margin: 0; font-size: 1.375rem; font-weight: 700; color: var(--metin); text-align: start; font-variant-numeric: tabular-nums; }
+.yasal-alt-baslik { margin: var(--bosluk-2) 0 var(--bosluk-1); font-weight: 600; color: var(--metin); }
+.yasal-alt-baslik:first-child { margin-top: 0; }
+.yasal-sayfa .katlanir .yasal-liste { margin-top: var(--bosluk-2); }
+.yasal-tarih { margin: 0; color: var(--metin); }
+/* Tur 3: ileri tarihli değer — kartta tek satır, mavi bilgi tonu (geçmişte değil). */
+.yasal-yaklasan { margin: 0; padding: var(--bosluk-1) var(--bosluk-2); border-inline-start: 3px solid var(--bilgi); background: var(--bilgi-yuzey); color: var(--metin); overflow-wrap: anywhere; border-radius: 4px; }
+.yasal-katlanir .katlanir-baslik { min-height: 44px; padding: var(--bosluk-2) var(--bosluk-3); }
+.yasal-katlanir .katlanir-govde { padding: 0 var(--bosluk-3) var(--bosluk-3); }
+.yasal-dayanak { margin: 0 0 var(--bosluk-2); color: var(--metin-soluk); overflow-wrap: anywhere; }
+.yasal-kaynak { color: var(--vurgu); overflow-wrap: anywhere; }
+.yasal-gecmis { margin: 0; padding-inline-start: 1.1rem; color: var(--metin); }
+.yasal-gecmis li + li { margin-top: var(--bosluk-1); }
+.yasal-not {
+  margin: 0; padding: var(--bosluk-3) var(--bosluk-4);
+  border: 1px solid var(--ayrac); border-radius: var(--radius-md);
+  background: var(--yuzey-2); color: var(--metin);
+}
+.yasal-sayfa > .degismez-ipucu { margin-bottom: var(--bosluk-3); }
+.yasal-sayfa > .yasal-bant { margin-bottom: var(--bosluk-3); }
+.yasal-sayfa > .katlanir { margin-top: var(--bosluk-4); }
+
+/* Panel bandı: tek cümle + bağlantı; dar ekranda bağlantı alta iner. */
+.yasal-bantlar { display: flex; flex-direction: column; gap: var(--bosluk-2); margin-bottom: var(--bosluk-3); }
+.yasal-bant { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--bosluk-1) var(--bosluk-3); margin: 0; overflow-wrap: anywhere; }
+.yasal-bant--bilgi { background: var(--bilgi-yuzey); border-color: var(--bilgi-kenar); color: var(--bilgi); }
+.yasal-bant-bag { color: inherit; font-weight: 600; text-decoration: underline; white-space: nowrap; }
+
+/* YASAL-1 tur 2: değişmezlik tek satırlık katlanır (açılışta gerekçe paragrafı yok). */
+.yasal-sayfa > .yasal-degismez { margin-top: 0; margin-bottom: var(--bosluk-3); }
+.yasal-degismez .katlanir-ad { color: var(--metin-soluk); font-weight: 500; }
+.yasal-degismez .degismez-ipucu { margin: 0; }
+.katlanir-govde > .yasal-not + .yasal-liste { margin-top: var(--bosluk-2); }
+/* Katlanır başlığı zaten "Devletin rakamları — değiştirilemez" der; ortak bileşenin
+   "Bu kayıt değiştirilemez" başlığı burada tekrar ve yanlış ad ("kayıt") olur. */
+.yasal-degismez .degismez-baslik { display: none; }
+
+/* YASAL-4 (2. tur): Panel "Bekleyen iş" satırındaki tek dokunuş eylemi ("Ödendi olarak kaydet")
+   esnek satırda sıkışıp yazısı taşmasın — eylem büzülmez, metin sütunu daralır. */
+.yasal-eylem { flex: 0 0 auto; white-space: nowrap; }
+
+/* PAKET YASAL-PARAM-EKRAN — ByGatech yönetim formu (yalnız ?yonetim=1). Belirteçli, satır içi stil yok. */
+.yasal-yonetim {
+  margin-top: var(--bosluk-4); padding: var(--bosluk-4);
+  border: 1px solid var(--ayrac); border-radius: var(--radius-md); background: var(--yuzey);
+  min-width: 0;
+}
+.yasal-yonetim-baslik { margin: 0 0 var(--bosluk-3); font-size: 1.125rem; font-weight: 700; color: var(--metin); }
+.yasal-onay-deger { margin: 0; font-size: 1.125rem; font-weight: 700; color: var(--metin); overflow-wrap: anywhere; }
+/* Onay penceresi eylemleri: dar ekranda düğme yazısı kırılmaz, satır alta iner. */
+.yasal-onay-eylem { flex-wrap: wrap; }
+.yasal-onay-eylem .btn { white-space: nowrap; flex: 1 1 auto; }
+
+/* PAKET YASAL-PARAM-EKRAN tur 2 — PRO "Yasal kapılar" MASAK satırları (kimlik eşiği + ayrı amaç
+   kademesi) uzun etiket taşır: 375 px'te durum yazısı kartın dışına taşıyordu (gerçek tarayıcı ölçümü).
+   Etiket sarar, durum gerekirse alt satıra iner; diğer kapı satırlarının tek satır kuralı değişmez. */
+.tuval-pro #islem-pro-yasal .fis-pro-yan-satir.yasal-masak-satir { flex-wrap: wrap; row-gap: 2px; }
+.tuval-pro #islem-pro-yasal .fis-pro-yan-satir.yasal-masak-satir > :first-child { white-space: normal; flex: 1 1 12rem; min-width: 0; }
+
+/* YASAL-PARAM-EKRAN tur 3 (hasım DÜŞÜK): Secici hatalıyken etiketi diğer girdilerle (.alan-hatali .alan-etiket-metin)
+   aynı renkte — yalnız bu formda; ortak Secici DOM'una dokunulmadı. Uzun kaynak adresi onayda kırılır. */
+.yasal-yonetim .secici-alan:has(.secici-tetik.hatali) > .alan-etiket { color: var(--tehlike); }
+.yasal-onay-kaynak { margin: 0; overflow-wrap: anywhere; }
+
+/* PAKET YASAL-KAPI-2 (tasarım hakemi YÜKSEK, gerçek Chrome'da ölçüldü — BASİT /islemler, 26 karakterlik kasa adı):
+   ALDIM tek ödeme satırında kasa adı "nowrap" olduğu için tablo kabından (islem-aldim-liste-sar) 27 px taşıyor,
+   tutar sağdan kesiliyordu ("220.000 ₺" → "220.00", 1280); 375'te ödeme türü hücresi 12 px'e ezilip "Kart"
+   harf harf dört satıra kırılıyordu. Kural: ödeme türü ve tutar TEK satır, önce yer alır; kasa adı kalan
+   genişliğe sığmazsa sözcük aralarından SARAR (kısa ad yine tek satır). Sabit renk yok. */
+.tuval-tezgah #islem-aldim-tablo > tbody > #islem-aldim-satir > td.fis-tuval-ad,
+.tuval-tezgah #islem-aldim-tablo > tbody > #islem-aldim-satir > td.sayi { white-space: nowrap; }
+@media (min-width: 561px) {
+  .tuval-tezgah #islem-aldim-tablo > tbody > #islem-aldim-satir > td.fis-tuval-ad,
+  .tuval-tezgah #islem-aldim-tablo > tbody > #islem-aldim-satir > td.sayi { width: 1%; }
+}
+.tuval-tezgah #islem-aldim-tablo > tbody > #islem-aldim-satir .fis-tuval-ayrinti { white-space: normal; overflow-wrap: break-word; }
+@media (max-width: 560px) {
+  html[data-mod] .tuval-tezgah #islem-aldim-tablo > tbody > #islem-aldim-satir { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
+
+/* ═══ PAKET YASAL-KAPI-3 — YASAL-KAPI-2 kapanış devri (tasarım hakemi, 10.10) ═══════════════════════════
+   Sabit renk YOK, satır içi stil yok; yalnız yerleşim. Yıldız kuralları Yıldız seçicisiyle (tuval dili
+   değişmez: renk/yazı tema-yildiz.css'te kalır). */
+
+/* (1) KRİTİK — Yıldız tezgâh ödeme satırı: kasa adı tutarın ÜSTÜNE biniyordu (span kutusu ad sütununu
+   aşıp tutara uzanıyordu; ölçer K9). Ad sütunu esnek satır olur: araç adı ("Kart") hiç küçülmez, kasa adı
+   kalan yere sığar ve üç noktayla kısalır — kendi kutusu da sütunun içinde kalır. Tutar sütunu tam, tek satır.
+   Tuval geometrisi korunur (ölçüldü, 1280 + 375): gap .28em = boşluk karakteri, line-height 1.2109 = Inter yazı kutusu,
+   min-height 1.45em = eski satır kutusu → araç/kasa/tutar metin konumu eski hâlden ≤1 px. */
+html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-ad { display: flex; align-items: center; gap: .28em; min-height: 1.45em; }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-ad > .yz-tezgah-arac { flex: 0 0 auto; white-space: nowrap; line-height: 1.2109; }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-ad > .yz-tezgah-kasa { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2109; }
+
+/* (2) Çekmecedeki kimlik formu SIK: ızgara satır aralığı ve alan aralığı küçülür (boş hata satırları için açılan
+   boşluk kapanır) — zorunlu alanların hepsi 1280×800'de ilk
+   ekranda. Tutar kutusu tam genişlik kalır (SON-KALANLAR kararı). */
+.cekmece .zo-masak-dikey .kart--masak .form-grid-3 { row-gap: .25rem; column-gap: .75rem; }
+/* Beyan açıklaması çekmecede tek satır boyunda başlar, yazdıkça kendiliğinden uzar (field-sizing; en çok ~4 satır). */
+.cekmece .zo-masak-dikey #masak-aciklama { field-sizing: content; min-height: var(--kontrol-yuksekligi, 2.75rem); height: auto; max-height: 8rem; resize: vertical; }
+.cekmece .zo-masak-dikey .kart--masak > .kart-govde { gap: .625rem; }
+
+/* (3) "Tutar kutusu hizası": ₺ eki kutunun DIŞINDA durduğu için tutar kutusu alttaki seçicilerden 17 px kısa
+   kalıyordu. Yalnız Müşteriler çekmecelerinde ek kutunun İÇİNE alınır — sağ kenarlar hizalanır. Ortak Para
+   bileşenine dokunulmaz. */
+.cekmece :is(#th-tutar-sar, #vr-tutar-sar, #dt-tutar-sar, #dv-tutar-sar) .alan-girdi-satir { position: relative; flex-wrap: nowrap; }
+.cekmece :is(#th-tutar-sar, #vr-tutar-sar, #dt-tutar-sar, #dv-tutar-sar) .alan-girdi-satir > .girdi { flex: 1 1 auto; padding-inline-end: 2.25rem; }
+.cekmece :is(#th-tutar-sar, #vr-tutar-sar, #dt-tutar-sar, #dv-tutar-sar) .alan-girdi-satir > .alan-son-ek {
+  position: absolute; inset-inline-end: .75rem; top: 50%; transform: translateY(-50%); pointer-events: none;
+}
+
+/* (4) Eşik üstü kimlik formu çekmecede SIK: belge türü + belge no yan yana, ad soyad tam satır (zo-islem.css'in
+   tek sütun kuralı Banka penceresinde AYNEN kalır — bu kural yalnız çekmecede, geniş ekranda). */
+@media (min-width: 769px) {
+  .cekmece .zo-masak-dikey .kart--masak .form-grid-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cekmece .zo-masak-dikey .kart--masak .form-grid-3 > :nth-child(3) { grid-column: 1 / -1; }
+}
+/* (5) Çekmece içinde kimlik kartı ince kenar boşluklu (çekmece zaten bir kap — kart içinde kart dolgusu ağır):
+   başlık ve gövde dolgusu küçülür; uyarı rengi/kenarı AYNEN. Yıldız'da kart zaten kartsız (tuval) — dokunulmaz. */
+html:root:not([data-sema="yildiz"]) .cekmece .zo-masak-dikey > .kart--masak > .kart-baslik { padding: .625rem .75rem .25rem; }
+html:root:not([data-sema="yildiz"]) .cekmece .zo-masak-dikey > .kart--masak > .kart-govde { padding: .5rem .75rem .75rem; }
+/* (6) Platin çekmecede kimlik kartı başlığı gövde yazı boyunda (tek satır) — eşik cümlesi aynı, yalnız ölçek. */
+html:root:not([data-sema="yildiz"]) .cekmece .zo-masak-dikey > .kart--masak > .kart-baslik > h3 { font-size: 1rem; line-height: 1.3; }
+
+/* (7) YASAL-KAPI-3 tur 2 (tasarım hakemi KRİTİK "fişte zorunlular ilk ekranda değil"): kimlik formu fişte İLK KEZ
+   açılınca başlığı görünür bölgenin üstüne kaydırılır (Islemler.YasalKapi3.cs) — yapışkan üst çubuğun altında
+   kalmasın. Form fişte de sık: ızgara satır aralığı küçük, beyan açıklaması tek satır boyunda başlar, yazdıkça uzar. */
+#masak-baslik { scroll-margin-top: 5.5rem; }
+.islem-sayfa .kart--masak .form-grid-3 { row-gap: .25rem; }
+.islem-sayfa .kart--masak #masak-aciklama { field-sizing: content; min-height: var(--kontrol-yuksekligi, 2.75rem); height: auto; max-height: 8rem; resize: vertical; }
+
+
+/* (8) YASAL-KAPI-3 tur 2 (doğrulayıcı ORTA "375'te 5. zorunlu ilk ekranda değil"): çekmecede kimlik formu ilk kez
+   açılınca beyan açıklaması en az kaydırmayla görünür bölgeye alınır (Cariler.YasalKapi3.cs); altındaki sayaç/hata
+   satırı ve yapışkan altlık payı. */
+.cekmece #masak-aciklama { scroll-margin-bottom: 3rem; }
+
+/* ═══ PAKET P-TEZGAH-TUR-KIMLIK — YASAL-KAPI-3 tasarım kalanları (yalnız GÖRÜNÜM) ═══════════════════════════
+   (1) "Ad Soyad kırpılıyor": fişteki kimlik formunda belge türü + belge no yan yana, Ad Soyad TAM SATIR (çekmecedeki
+       YASAL-KAPI-3 düzeniyle aynı, ≥769 px). Yalnız zorunlu ızgara (doğrudan çocuk); "Diğer bilgiler" ızgarası AYNEN.
+   (2) "BASİT'te iki birincil düğme": tezgâhta seçili tür karosu dolu vurgu (birincil düğme görünümü) taşıyordu —
+       Kaydet'le birlikte ekranda iki birincil. Seçili karo artık çerçeveli (seçili durum), tek birincil Kaydet.
+       Yıldız kendi kuralını taşır (tema-yildiz.css: seçili karo saydam). */
+@media (min-width: 769px) {
+  .islem-sayfa .kart--masak > .kart-govde > .form-grid-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .islem-sayfa .kart--masak > .kart-govde > .form-grid-3 > :nth-child(3) { grid-column: 1 / -1; }
+}
+html:root:not([data-sema="yildiz"])[data-mod] .islem-sayfa.tuval-tezgah .tuval-karo-izgara > .ekran-karo.ekran-karo-birincil {
+  background: var(--yuzey);
+  color: var(--vurgu);
+  border-color: var(--vurgu);
+  box-shadow: inset 0 0 0 1px var(--vurgu);
+}
+/* P-TEZGAH-TUR-KIMLIK sonu */

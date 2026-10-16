@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Tüm ekranlar — karo menü</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:'Manrope',system-ui,sans-serif;background:#e9edf3;color:#172033}
+a{color:#2457d6}a:hover{color:#1a45ad}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; flex-direction: column; background: #f2f4f7; font-size: 18px; line-height: 1.4; overflow: hidden;">
+  <header style="height: 68px; box-sizing: border-box; padding: 0 32px; display: flex; align-items: center; gap: 20px; background: #14213d; color: #ffffff;">
+    <a href="Panel.dc.html" aria-label="Panele dön" style="display: flex; align-items: center; gap: 10px; color: #ffffff; text-decoration: none;">
+      <div style="width: 34px; height: 34px; border-radius: 9px; background: #2457d6; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9z"></path><path d="M2 9h20"></path></svg></div>
+      <span style="font-family: Sora, sans-serif; font-weight: 700; font-size: 21px; letter-spacing: -0.01em;">Mihenk</span>
+    </a>
+    <div style="font-family: Sora, sans-serif; font-size: 22px; font-weight: 600; margin-left: 8px;">Tüm ekranlar</div>
+    <label style="display: flex; align-items: center; gap: 8px; margin-left: 16px; padding: 9px 14px; border: 1px solid #2c3d63; border-radius: 9px; background: #1f2f52; color: #aab7cf; font-size: 16px; width: 360px; box-sizing: border-box;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      <input type="search" placeholder="Ekran adı yaz: fatura, kasa, sayım…" aria-label="Ekran ara" style="border: 0; outline: 0; background: transparent; font: inherit; color: #ffffff; flex-grow: 1;">
+    </label>
+    <div style="flex-grow: 1;"></div>
+    <div style="font-size: 15px; color: #aab7cf;">38 ekranın hepsi burada · yıldızla favorine ekle</div>
+  </header>
+
+  <main style="flex-grow: 1; box-sizing: border-box; padding: 20px 32px; display: flex; flex-direction: column; gap: 14px; overflow: hidden;">
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Günlük iş</div>
+      <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+        <a href="Panel.dc.html" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2457d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg>Panel</a>
+        <a href="Tezgah.dc.html" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 0; border-radius: 10px; background: #2457d6; color: #ffffff; text-decoration: none; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18"></path></svg>Satış</a>
+        <a href="#emanet" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2457d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M8 8V6a4 4 0 0 1 8 0v2"></path></svg>Emanet</a>
+        <a href="#siparis" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2457d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h6l1 2h4v13H4V7h4z"></path><path d="M9 13l2 2 4-4"></path></svg>Sipariş ve tamir</a>
+        <a href="#bildirim" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center; gap: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2457d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0v5l2 3H4l2-3z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>Bildirimler</a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Müşteri ve stok</div>
+      <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+        <a href="Musteriler.dc.html" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Müşteriler</a>
+        <a href="#urunler" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Ürünler</a>
+        <a href="#agac" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Ürün ağacı</a>
+        <a href="#etiket" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Etiketler</a>
+        <a href="#fiyat" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Fiyat listeleri</a>
+        <a href="#sayim" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Sayım</a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Para ve banka</div>
+      <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+        <a href="#kasalar" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kasalar</a>
+        <a href="#vezne" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kasa kuyruğu</a>
+        <a href="#pos" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">POS cihazları</a>
+        <a href="#postah" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">POS alacakları</a>
+        <a href="#banka" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Banka</a>
+        <a href="#evrak" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Çek ve senet</a>
+        <a href="#evraktakvim" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Vade takvimi</a>
+        <a href="#kur" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kur</a>
+        <a href="#gider" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Gider ve virman</a>
+        <a href="#hurda" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Hurda ve ramat</a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Belge ve uyum</div>
+      <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+        <a href="#fatura" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Faturalar</a>
+        <a href="#giderpusula" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Gider pusulaları</a>
+        <a href="#uyum" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Uyum (MASAK)</a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Raporlar</div>
+      <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+        <a href="#raporlar" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Rapor merkezi</a>
+        <a href="#karzarar" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kâr-zarar</a>
+        <a href="#vade" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Vade takibi</a>
+        <a href="#defter" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">İşlem defteri</a>
+        <a href="#satisanaliz" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Satış analizi</a>
+        <a href="#kasarapor" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kasa raporu</a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div style="font-size: 15px; font-weight: 600; color: #5a6577; text-transform: uppercase; letter-spacing: .04em;">Yönetim</div>
+      <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+        <a href="#kullanici" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kullanıcılar</a>
+        <a href="#isletme" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">İşletme</a>
+        <a href="#yetki" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Yetkiler</a>
+        <a href="#denetim" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kim ne yaptı</a>
+        <a href="#kurulum" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Kurulum</a>
+        <a href="#disa" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Veri dışa aktar</a>
+        <a href="#ice" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Veri içe aktar</a>
+        <a href="#yedek" style="height: 68px; box-sizing: border-box; padding: 0 14px; border: 1px solid #d7dce4; border-radius: 10px; background: #ffffff; color: #172033; text-decoration: none; font-size: 17px; font-weight: 500; display: flex; align-items: center;">Yedekler</a>
+      </div>
+    </section>
+
+    <div style="display: flex; gap: 10px; margin-top: 2px;">
+      <a href="#kilavuz" style="padding: 10px 16px; border: 1px solid #d7dce4; border-radius: 9px; background: #ffffff; color: #172033; text-decoration: none; font-size: 16px;">Kılavuz</a>
+      <a href="#ayarlar" style="padding: 10px 16px; border: 1px solid #d7dce4; border-radius: 9px; background: #ffffff; color: #172033; text-decoration: none; font-size: 16px;">Ayarlar</a>
+      <a href="#vitrin" style="padding: 10px 16px; border: 1px solid #d7dce4; border-radius: 9px; background: #ffffff; color: #172033; text-decoration: none; font-size: 16px;">Vitrin panosu</a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

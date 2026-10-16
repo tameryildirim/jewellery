@@ -1,0 +1,126 @@
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   DÜZENLENEBİLİR LİSTE — paket P-06 (PLAN-TEK-SEFER § 2 P-06, kimlik B-4).
+
+   MEKANİZMA (PLAN § 1 md.1): "her kayıt ya düzeltilebilir ya da neden
+   düzeltilemediği yazar" (UX-S25) kuralı ekran ekran değil BURADA kapanır.
+   Liste bu bileşene sarıldığında ÜÇ ŞEY MEKANİK OLARAK ZORUNLU olur:
+
+     1. SatirEylemi  → her satır için bir düzenleme yolu (SatirIciDuzenle,
+                       Cekmece açan düğme, detay bağlantısı …), YA DA
+     2. Gerekce      → DegismezIpucu ile gerekçe + somut düzeltme yolu.
+        İkisi de verilmezse bileşen DERLEME DEĞİL, ÇİZİM anında
+        InvalidOperationException atar (sessiz eksik YASAK, Anayasa md.1).
+     3. Boş durum ile HATA AYRI çizilir (UX-S28): hata varsa boş durum
+        gösterilmez — "kayıt yok"a çevrilmiş hata kabul edilmez.
+
+   ⚠ Bu bileşen HİÇBİR istek atmaz ve HTTP bilmez; yalnız çizer.
+   ⚠ id sözleşmesi (yalnız EKLENEN id'ler): #dl-{Varlik}, #dl-{Varlik}-bos,
+     #dl-{Varlik}-hata, #dl-{Varlik}-sinir, #dl-{Varlik}-satir-{n}.
+     Mevcut sayfa id'leri DEĞİŞMEZ.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+@typeparam TKayit
+
+<div class="duzenlenebilir-liste" id="@($"dl-{Varlik}")">
+
+    @if (!string.IsNullOrWhiteSpace(Hata))
+    {
+        @* UX-S28 — hata boş duruma ÇEVRİLMEZ; kendi bandında, kullanıcının
+           göreceği yerde durur. *@
+        <div class="bant bant-hata" id="@($"dl-{Varlik}-hata")" role="alert">@Hata</div>
+    }
+    else if (Yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (Kayitlar is null || Kayitlar.Count == 0)
+    {
+        <div id="@($"dl-{Varlik}-bos")">
+            <BosDurum Mesaj="@(string.IsNullOrWhiteSpace(BosMesaj) ? Dil.T.Duzeltme.ListeBos : BosMesaj)" />
+        </div>
+    }
+    else
+    {
+        @if (Gerekce is not null)
+        {
+            @* Salt okunur / storno liste: gerekçe BİR KEZ, listenin başında. *@
+            <DegismezIpucu Varlik="@Varlik" Gerekce="@Gerekce" AlternatifYol="@AlternatifYol" />
+        }
+
+        <div class="dl-govde">
+            @{ var sira = 0; }
+            @foreach (var kayit in Kayitlar)
+            {
+                var n = sira++;
+                <div class="dl-satir" id="@($"dl-{Varlik}-satir-{n}")">
+                    @Satir(kayit)
+                    @if (SatirEylemi is not null)
+                    {
+                        <span class="dl-eylem">@SatirEylemi(kayit)</span>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (Sinir is > 0 && Kayitlar.Count >= Sinir)
+        {
+            @* UX-S29 — sessiz kırpma YASAK: sınır ve daraltma yolu yazılır. *@
+            <p class="metin-kucuk metin-soluk" id="@($"dl-{Varlik}-sinir")" role="status">
+                @string.Format(Dil.T.Duzeltme.ListeSiniri, Sinir)
+            </p>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>id gövdesi ve DegismezIpucu varlık adı (cari, urun, talep …).</summary>
+    [Parameter, EditorRequired] public string Varlik { get; set; } = "";
+
+    /// <summary>Çizilecek kayıtlar. null = henüz yüklenmedi / hata.</summary>
+    [Parameter] public IReadOnlyList<TKayit>? Kayitlar { get; set; }
+
+    /// <summary>Satırın kendi içeriği (hücreler).</summary>
+    [Parameter, EditorRequired] public RenderFragment<TKayit> Satir { get; set; } = default!;
+
+    /// <summary>
+    /// Satırın DÜZENLEME YOLU — SatirIciDuzenle, Cekmece açan düğme ya da
+    /// detay bağlantısı. <see cref="Gerekce"/> verilmediyse ZORUNLUDUR.
+    /// </summary>
+    [Parameter] public RenderFragment<TKayit>? SatirEylemi { get; set; }
+
+    /// <summary>
+    /// Düzenlenemezlik gerekçesi (sözlükten çözülmüş). <see cref="SatirEylemi"/>
+    /// verilmediyse ZORUNLUDUR — "ne düğme ne gerekçe" hâli kabul edilmez.
+    /// </summary>
+    [Parameter] public string? Gerekce { get; set; }
+
+    /// <summary>Gerekçenin yanındaki SOMUT düzeltme yolu (düz metin).</summary>
+    [Parameter] public string? AlternatifYol { get; set; }
+
+    /// <summary>Hata bandı metni. Doluysa boş durum ÇİZİLMEZ (UX-S28).</summary>
+    [Parameter] public string? Hata { get; set; }
+
+    [Parameter] public bool Yukleniyor { get; set; }
+
+    /// <summary>Boş durum metni; verilmezse sözlükten "kayıt yok" gelir.</summary>
+    [Parameter] public string? BosMesaj { get; set; }
+
+    /// <summary>Sunucunun liste sınırı (ilk 500 …). 0 ise sınır yazılmaz.</summary>
+    [Parameter] public int Sinir { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // ⚠ Anayasa md.1 — sessiz eksik YASAK. "Düzenleme yolu da yok, gerekçe
+        //   de yok" bir listeyi çizmek, kullanıcıya kaydın kaderini söylememek
+        //   demektir (UX-S25). Bu hâl ÇİZİM ANINDA patlar; bUnit testi
+        //   P06_DuzenlenebilirListe_EYLEMSIZ_ve_GEREKCESIZ_cizilemez bunu tutar.
+        if (SatirEylemi is null && string.IsNullOrWhiteSpace(Gerekce))
+        {
+            throw new InvalidOperationException(
+                $"DuzenlenebilirListe '{Varlik}': ya SatirEylemi ya Gerekce verilmelidir "
+                + "(UX-S25 — her kayıt ya düzeltilebilir ya da neden düzeltilemediği yazar).");
+        }
+    }
+}

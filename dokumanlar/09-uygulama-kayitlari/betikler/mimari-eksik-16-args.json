@@ -1,0 +1,198 @@
+{
+  "sentez_atla": true,
+  "tarih": "2026-09-16",
+  "katmanlar": [
+    {
+      "kod": "K2-19",
+      "ad": "Katman 2 — Satış/POS",
+      "paketler": [
+        {
+          "no": 19,
+          "ad": "Vezne modeli",
+          "parite_gun": "2–3",
+          "durum": "BAŞLANMADI: kod tabanında 'vezne' 0; kasalar + gün kapanışı (A9) + kasa erişim kapatma var"
+        }
+      ]
+    },
+    {
+      "kod": "K3-20",
+      "ad": "Katman 3 — Stok",
+      "paketler": [
+        {
+          "no": 20,
+          "ad": "Metal tipi genişletme (platin, paladyum, rodyum, çelik) + saflık",
+          "parite_gun": "2–3",
+          "durum": "YARIM: Entities.cs:23 PLATIN/PALADYUM/CELIK ve Ayar.Maden var; RODYUM yok; gümüş gram kotasyonu yok (fiyat motoru kural 2)"
+        }
+      ]
+    },
+    {
+      "kod": "K3-25",
+      "ad": "Katman 3 — Stok",
+      "paketler": [
+        {
+          "no": 25,
+          "ad": "Reyon/vitrin bazlı stok bölümlemesi",
+          "parite_gun": "2–3",
+          "durum": "YARIM: reyon ÜRÜN KARTINA bağlı (urunler.reyon_id), stok satırına değil; sayım oturumu reyon kapsamını ürün kartından okuyor (A14)"
+        }
+      ]
+    },
+    {
+      "kod": "K4-27",
+      "ad": "Katman 4 — Cari ve finans",
+      "paketler": [
+        {
+          "no": 27,
+          "ad": "Çoklu birim cari bakiye (TL + has + USD/EUR)",
+          "parite_gun": "3–4",
+          "durum": "BAŞLANMADI: cari_bakiyeler yalnız tl_bakiye + has_gram_bakiye; fişte DOVIZ bacağı (A12) kasaya efektif yazıyor ama cariye döviz bakiyesi yok"
+        }
+      ]
+    },
+    {
+      "kod": "K4-29",
+      "ad": "Katman 4 — Cari ve finans",
+      "paketler": [
+        {
+          "no": 29,
+          "ad": "Çek/senet portföyü",
+          "parite_gun": "5–7",
+          "durum": "BAŞLANMADI: kod tabanında cek/senet 0"
+        }
+      ]
+    },
+    {
+      "kod": "K4-31",
+      "ad": "Katman 4 — Cari ve finans",
+      "paketler": [
+        {
+          "no": 31,
+          "ad": "POS cihazı takibi + komisyon + valör",
+          "parite_gun": "3–4",
+          "durum": "BAŞLANMADI (belirsiz): yalnız kasalar.komisyon_oran alanı var (KasaModulu.cs:66); cihaz/valör/banka yatma eşleşmesi yok; raporlarda pos-fatura-mutabakati var"
+        }
+      ]
+    },
+    {
+      "kod": "K4-32",
+      "ad": "Katman 4 — Cari ve finans",
+      "paketler": [
+        {
+          "no": 32,
+          "ad": "Banka ekstresi içe aktarma + eşleştirme",
+          "parite_gun": "4–6",
+          "durum": "BAŞLANMADI: 'ekstre' yalnız cari ekstre; banka_hareketleri elle giriliyor (BankaModulu)"
+        }
+      ]
+    },
+    {
+      "kod": "K7-43",
+      "ad": "Katman 7 — Platform",
+      "paketler": [
+        {
+          "no": 43,
+          "ad": "Mobil/dar ekran (19 sayfa)",
+          "parite_gun": "5–8",
+          "durum": "BAŞLANMADI (belirsiz): UX-2 Faz A1 (2026-09-16) belirteçler + dar ekran temel kuralları getirdi; hamburger/çekmece (UX-2 A2) ve tablo→kart dönüşümü açık; 375px yatay kaydırma hâlâ var"
+        }
+      ]
+    },
+    {
+      "kod": "K7-44",
+      "ad": "Katman 7 — Platform",
+      "paketler": [
+        {
+          "no": 44,
+          "ad": "PWA kabuğu",
+          "parite_gun": "2–3",
+          "durum": "BAŞLANMADI: wwwroot'ta manifest/service-worker yok (icon-192.png referanssız); CSP sıkı (script-src 'self' 'wasm-unsafe-eval', satır içi script yok)"
+        }
+      ]
+    },
+    {
+      "kod": "K7-45",
+      "ad": "Katman 7 — Platform",
+      "paketler": [
+        {
+          "no": 45,
+          "ad": "TOTP / MFA (TB-14)",
+          "parite_gun": "2–3",
+          "durum": "BAŞLANMADI: totp/mfa 0; JWT 15 dk + refresh rotasyonu var; alan şifreleme (AES-GCM) var; Mehmet'in koşul 6'sı"
+        }
+      ]
+    },
+    {
+      "kod": "K7-46",
+      "ad": "Katman 7 — Platform",
+      "paketler": [
+        {
+          "no": 46,
+          "ad": "Şube görünürlüğü + yetki matrisi",
+          "parite_gun": "3–4",
+          "durum": "BAŞLANMADI (belirsiz): YetkiModulu rol×modül matrisi var; SubeId claim var ama sorgularda şube filtresi 0"
+        }
+      ]
+    },
+    {
+      "kod": "K7-47",
+      "ad": "Katman 7 — Platform",
+      "paketler": [
+        {
+          "no": 47,
+          "ad": "Veri göçü aracı (rakip programdan içe aktarım)",
+          "parite_gun": "4–6",
+          "durum": "BAŞLANMADI ve ADR-0014 ile ÇELİŞİYOR ('import yoktur, bilinçli') — en az üç seçenek sun (ADR korunur + yalnız açılış bakiyesi · kapılı içe aktarım · ADR revizyonu), oylama karar verecek"
+        }
+      ]
+    },
+    {
+      "kod": "K7-48",
+      "ad": "Katman 7 — Platform",
+      "paketler": [
+        {
+          "no": 48,
+          "ad": "Denetim izi tamamlama (storno, basım izi)",
+          "parite_gun": "2–3",
+          "durum": "BAŞLANMADI (belirsiz): DenetimYazmaDinleyicisi otomatik iz; DenetimServisi.OkumaKaydet/ListeOkumaKaydet + YazmaKaydet (paket 33 ile eklendi) var; storno kavramı ve basım izi yok; UX-1 tasarımı DuzeltAkisi'nin storno ucuna bağlanmasını bekliyor (K-UX-3)"
+        }
+      ]
+    },
+    {
+      "kod": "K0-3",
+      "ad": "Katman 0 — Altyapı",
+      "paketler": [
+        {
+          "no": 3,
+          "ad": "Sipariş / iş emri çatısı (durum makinesi) — perakende bacağı",
+          "parite_gun": "5–8",
+          "durum": "BAŞLANMADI: iş emri bacağı Katman 1 ile KAPSAM DIŞI; kalan = müşteri siparişi / atölyeye sipariş / tamir-servis takibi (kurucu: sadece sipariş veriyorum). K0 mimarının ortak kararı: siparisler + siparis_kalemleri + siparis_gecisleri (append-only geçiş logu); para hareketi doğurmaz, ödeme mevcut uçlardan"
+        }
+      ]
+    },
+    {
+      "kod": "K0-5",
+      "ad": "Katman 0 — Altyapı",
+      "paketler": [
+        {
+          "no": 5,
+          "ad": "Belge / etiket şablon motoru",
+          "parite_gun": "4–6",
+          "durum": "YARIM: etiket basımı var (ADR-0015, UrunEtiketleri.razor, ADR-0007 belge üretimi istemcide @media print); fiş/sayım tutanağı/irsaliye şablonu yok. K0 ortak kararı: kullanıcı-yazılı DSL YOK (XSS/ADR-0007); şablon = seçilebilir sabit yerleşimler + işletme logosu/başlık ayarları; UX-2 Faz C BelgeYerlesimi bileşeniyle ortak"
+        }
+      ]
+    },
+    {
+      "kod": "K0-6",
+      "ad": "Katman 0 — Altyapı",
+      "paketler": [
+        {
+          "no": 6,
+          "ad": "Bildirim kanalı + zamanlanmış iş çatısı",
+          "parite_gun": "3–4",
+          "durum": "BAŞLANMADI: tek IHostedService KurZamanlayici; K0 ortak kararı: İKİ tablo — is_calismalari (append-only çalışma kaydı) + bildirimler (kullanıcıya görünen, kapatılabilir); paket 28 hatırlatma, TB-16 MASAK 5 iş günü, ADR-0008 saklama işi buna biner; dış kanal (e-posta/SMS) arayüz olarak bırakılır"
+        }
+      ]
+    }
+  ]
+}

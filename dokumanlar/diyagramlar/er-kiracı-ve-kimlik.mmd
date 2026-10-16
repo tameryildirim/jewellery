@@ -1,0 +1,60 @@
+%% Kuyumcu ERP — Kiracı, Şube ve Kimlik Yönetimi
+%% ŞEMADAN ÜRETİLMİŞTİR — elle çizilmemiştir (er-uret.py).
+%% Kaynak: MySQL information_schema / kuyumcu_net
+%% Veritabanında enforce edilen FK kısıtı: 0 (ölçüldü).
+%% FK işaretleri MANTIKSAL yabancı anahtardır; bütünlük uygulama katmanında korunur.
+erDiagram
+    kullanicilar {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string ad
+        string soyad
+        string email
+        string sifre_hash
+        string rol
+        bool aktif
+        datetime son_giris
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    refresh_tokenler {
+        string id PK
+        string kullanici_id FK "mantiksal"
+        string tenant_id FK "kiraci"
+        string token_hash
+        string ip_adresi
+        string user_agent
+        datetime gecerlilik
+        bool iptal_edildi
+        datetime olusturuldu
+    }
+    rol_yetkileri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string rol
+        string modul
+    }
+    subeler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string ad
+        string adres
+        string telefon
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    tenants {
+        string id PK
+        string ad
+        string plan
+        bool ai_etkin
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+        string kur_kaynagi
+    }
+
+    kullanicilar ||--|{ refresh_tokenler : "kullanici"
+    subeler ||--o{ kullanicilar : "sube"

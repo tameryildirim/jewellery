@@ -1,0 +1,17 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Aylık geri yükleme tatbikatı — zamanlayıcı (Paket T-3 Faz A)
+# Saat dilimi Europe/Istanbul; zamanlama TEK YERDEDİR (uygulamada ikinci
+# zamanlayıcı açılmaz). Persistent=true: sunucu kapalıyken kaçan koşu
+# açılışta telafi edilir.
+# ═══════════════════════════════════════════════════════════════════════════
+[Unit]
+Description=Kuyumcu ERP aylık geri yükleme tatbikatı (ayın 1’i 04:30)
+
+[Timer]
+OnCalendar=*-*-01 04:30:00 Europe/Istanbul
+RandomizedDelaySec=600
+Persistent=true
+Unit=kuyumcu-yedek-tatbikat.service
+
+[Install]
+WantedBy=timers.target

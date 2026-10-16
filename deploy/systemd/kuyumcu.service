@@ -1,0 +1,67 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# KUYUMCU ERP — systemd birimi (Paket T-1 + F-6, MÜHÜR 3 "tek yayın yolu")
+#
+# YER: systemd birimleri YALNIZ deploy/systemd/ altında yaşar. T-3'ün yedek
+# timer'ları da bu dizine, aynı kullanıcı/EnvironmentFile düzenine yaslanır.
+# İkinci bir birim dizini açılmaz (Bertan itirazı, mühürle kapatıldı).
+#
+# KURULUM:
+#   sudo cp deploy/systemd/kuyumcu.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now kuyumcu
+# ═══════════════════════════════════════════════════════════════════════════
+[Unit]
+Description=Kuyumcu ERP (API + Blazor WASM, tek süreç)
+Documentation=file:/opt/kuyumcu/docs/DEPLOY.md
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+# Type=notify: Program.cs'teki builder.Host.UseSystemd() hazır bildirimini yollar;
+# systemd "active" demeden ÖNCE uygulamanın gerçekten dinlediğini bilir.
+Type=notify
+User=kuyumcu
+Group=kuyumcu
+WorkingDirectory=/opt/kuyumcu/yayin
+ExecStart=/opt/kuyumcu/yayin/Kuyumcu.Api
+
+# ── ORTAM ────────────────────────────────────────────────────────────────
+# FAIL-CLOSED 6: üretim birimi Production'a SABİTLENİR. Aşağıdaki satır
+# EnvironmentFile'dan SONRA geldiği için .env içindeki bir Development
+# değeri bile burada ezilir — üretim birimi Development ile başlatılamaz.
+EnvironmentFile=/etc/kuyumcu/.env
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# ── KALICI GÜNLÜK (K14, mühür 4) ─────────────────────────────────────────
+# Günlük journald'a yazılır; `journalctl -u kuyumcu -t kuyumcu-erp` ile okunur.
+# Saklama süresi ve boyut sınırı journald tarafında YAPILANDIRILABİLİRDİR
+# (/etc/systemd/journald.conf: SystemMaxUse, MaxRetentionSec) — rakam KODA
+# GÖMÜLMEZ, docs/DEPLOY.md § günlük anlatır. Saklama süresinin VUK/KVKK
+# dayanağı T-3'te belirlenir; burada yalnız yapılandırılabilirlik sağlanır.
+# MASKELEME: uygulama sır/PII/istek gövdesi yazmaz (appsettings.Production
+# Logging seviyesi Warning; EF komut günlüğü kapalı).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kuyumcu-erp
+
+# ── DAYANIKLILIK ─────────────────────────────────────────────────────────
+# Bekleyen migration varsa uygulama çıkış kodu 3 ile durur (FAIL-CLOSED 5).
+# RestartPreventExitStatus=3: systemd bu durumda YENİDEN BAŞLATMAZ; sonsuz
+# döngü yerine operatör runbook'u çalıştırır (docs/RUNBOOK-SEMA-YUKSELTME.md).
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=3
+
+# ── SIKILAŞTIRMA ─────────────────────────────────────────────────────────
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# Yazılabilir TEK dizin: yükleme/belge deposu. Yayın klasörü salt okunurdur.
+ReadWritePaths=/var/lib/kuyumcu
+
+[Install]
+WantedBy=multi-user.target

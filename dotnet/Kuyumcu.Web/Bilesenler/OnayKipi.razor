@@ -1,0 +1,153 @@
+@inject DilServisi Dil
+
+@* ─────────────────────────────────────────────────────────────────────────────
+   ONAY KİPİ — paket P-65 (tur 8 · görsel E49 + UX-1 B48).
+
+   Yıkıcı eylemin (sil · iptal · pasife al · storno · varsayılana dön) TEK
+   ortak onay penceresi. Sözleşme:
+     1) BAŞLIK EYLEMİ ADLANDIRIR ("Fiyat listesini pasife al"), "Emin misiniz?"
+        değil.
+     2) ONAY ve VAZGEÇ düğmeleri FARKLI FİİL taşır. Onay düğmesi eylemin kendi
+        fiilidir; vazgeç "Vazgeç"tir. Çağıran vazgeç metnini onay fiiliyle
+        AYNI fiille verirse (/yedekler'deki "İptal" / "İptal et" gibi) bileşen
+        onu yok sayar ve sözlükteki "Vazgeç"i basar — iki "iptal" yan yana
+        ÇİZİLEMEZ (OnayKipiTestleri).
+     3) GERİ DÖNÜLEMEZ eylemde type-to-confirm: kullanıcı OnayKelimesi'ni
+        kutuya yazmadan onay düğmesi AÇILMAZ ve kilidin sebebi YAZILIR (UX-S30).
+     4) Onay düğmesi YALNIZ bu pencerede çizilir: sayfa yıkıcı eylemi doğrudan
+        çağırmaz, pencereyi açar (Onayla geri çağrısı gerçek isteği atar).
+
+   ⚠ ModalPencere'yi SARAR, çoğaltmaz: odak tuzağı, Escape, arka tık kapatma
+     ModalPencere'nin tek yolundan gelir. Pages/ altındaki ModalPencere sayacı
+     (denetim.sh DUZ_MODAL) bu yüzden ARTMAZ.
+   ⚠ Mevcut element kimlikleri DEĞİŞMEZ: çağıran OnayId / VazgecId /
+     AciklamaId verir (Vitrin P-67 ve Kullanıcılar kimlikleri korunur).
+   ⚠ Düğme sırası ikincil ÖNCE, eylem SONDA (P-36c PENCERE_DUGME_SIRASI).
+   ───────────────────────────────────────────────────────────────────────────── *@
+
+<ModalPencere Acik="@Acik" Baslik="@Eylem" Kapat="VazgecIstegi" Acildi="Sifirla">
+    <div class="form-dikey" id="@($"{Kimlik}-onay-kipi")" data-onay-kipi="true">
+        @if (!string.IsNullOrWhiteSpace(Aciklama))
+        {
+            <p id="@(AciklamaId ?? $"{Kimlik}-aciklama")">@Aciklama</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Hedef))
+        {
+            <p class="hucre-vurgu" id="@($"{Kimlik}-hedef")">@Hedef</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(GeriDonusYolu))
+        {
+            <p class="metin-kucuk metin-soluk" id="@($"{Kimlik}-geri-donus")">@GeriDonusYolu</p>
+        }
+        @if (GeriDonulemez)
+        {
+            <p class="hata-metni" role="alert" id="@($"{Kimlik}-geri-donulemez")">@M.GeriDonulemezUyari</p>
+            @* Ortak Form bileşeni (P-36 HAM_INPUT: ham girdi etiketi yazılmaz). *@
+            <Metin ElemanId="@($"{Kimlik}-yazarak")" Etiket="@string.Format(M.YazarakOnayla, OnayKelimesi)"
+                   Deger="@yazilan" DegerChanged="YaziDegisti" />
+        }
+        <HataBandi Mesaj="@Hata" Id="@($"{Kimlik}-hata")" />
+        <div class="satir">
+            <button type="button" class="btn btn-ikincil esit-pay" id="@(VazgecId ?? $"{Kimlik}-vazgec")"
+                    @onclick="VazgecIstegi">@VazgecEtiketi</button>
+            <button type="button" class="btn btn-tehlike esit-pay" id="@(OnayId ?? $"{Kimlik}-onayla")"
+                    disabled="@OnayKapali" @onclick="OnayIstegi">@OnayMetni</button>
+        </div>
+        @* UX-S30: kilitli onay düğmesi sebebini söyler. *@
+        @if (!Calisiyor && KelimeBekleniyor)
+        {
+            <p class="metin-kucuk metin-soluk" id="@($"{Kimlik}-kilit")">
+                @M.OnayKilitSebebi: @string.Format(M.YazarakOnaylaKilit, OnayKelimesi)
+            </p>
+        }
+        else if (Calisiyor)
+        {
+            <p class="metin-kucuk metin-soluk" id="@($"{Kimlik}-kilit")">@Dil.T.Kabuk.SunucuOnayiBekleniyor</p>
+        }
+    </div>
+</ModalPencere>
+
+@code {
+    /// <summary>Pencere açık mı (çağıranın "hedef" durumu).</summary>
+    [Parameter] public bool Acik { get; set; }
+
+    /// <summary>Kimlik gövdesi: #{Kimlik}-onay-kipi, #{Kimlik}-onayla, #{Kimlik}-vazgec.</summary>
+    [Parameter, EditorRequired] public string Kimlik { get; set; } = "";
+
+    /// <summary>Başlık = eylemin ADI ("Fiyat listesini pasife al").</summary>
+    [Parameter, EditorRequired] public string Eylem { get; set; } = "";
+
+    /// <summary>Onay düğmesinin metni = eylemin FİİLİ ("Pasife al").</summary>
+    [Parameter, EditorRequired] public string OnayMetni { get; set; } = "";
+
+    /// <summary>İsteğe bağlı vazgeç metni; onay fiiliyle aynıysa yok sayılır.</summary>
+    [Parameter] public string? VazgecMetni { get; set; }
+
+    [Parameter] public string? Aciklama { get; set; }
+    [Parameter] public string? Hedef { get; set; }
+    /// <summary>Geri dönüşü olan eylemde geri dönüş yolu (UX-S25).</summary>
+    [Parameter] public string? GeriDonusYolu { get; set; }
+
+    /// <summary>true ise type-to-confirm: <see cref="OnayKelimesi"/> yazılmadan onay açılmaz.</summary>
+    [Parameter] public bool GeriDonulemez { get; set; }
+    [Parameter] public string OnayKelimesi { get; set; } = "";
+
+    /// <summary>Sunucu yanıtı beklenirken true — iki kez gönderim yok.</summary>
+    [Parameter] public bool Calisiyor { get; set; }
+    [Parameter] public string? Hata { get; set; }
+
+    [Parameter] public EventCallback Onayla { get; set; }
+    [Parameter] public EventCallback Vazgec { get; set; }
+
+    /// <summary>Korunan kimlikler (mevcut testler ve derin bağlantılar için).</summary>
+    [Parameter] public string? OnayId { get; set; }
+    [Parameter] public string? VazgecId { get; set; }
+    [Parameter] public string? AciklamaId { get; set; }
+
+    private OnayKilitMetinleri M => OnayKilitSozlugu.Al(Dil.Dil);
+    private string yazilan = "";
+
+    private bool KelimeBekleniyor =>
+        GeriDonulemez && !string.Equals(yazilan.Trim(), OnayKelimesi.Trim(), StringComparison.Ordinal);
+
+    private bool OnayKapali => Calisiyor || KelimeBekleniyor;
+
+    /// <summary>
+    /// Vazgeç etiketi: çağıranın verdiği metin onay fiiliyle AYNI fiili taşıyorsa
+    /// (ör. "İptal" · "İptal et") sözlükteki "Vazgeç" basılır.
+    /// </summary>
+    private string VazgecEtiketi =>
+        string.IsNullOrWhiteSpace(VazgecMetni) || AyniFiil(VazgecMetni, OnayMetni) ? M.Vazgec : VazgecMetni;
+
+    /// <summary>
+    /// İki düğme metni aynı fiili mi taşıyor? İlk sözcüğün kökü karşılaştırılır
+    /// (Türkçe kültürle küçük harf — İ→i; "İptal" ~ "iptal et", "Cancel" ~ "Cancel").
+    /// </summary>
+    public static bool AyniFiil(string? a, string? b)
+    {
+        static string Kok(string? s)
+        {
+            var ilk = (s ?? "").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            return ilk.Trim(',', '.', '!', '?', '“', '”', '"').ToLower(new System.Globalization.CultureInfo("tr-TR"));
+        }
+        var ka = Kok(a);
+        var kb = Kok(b);
+        return ka.Length > 0 && ka == kb;
+    }
+
+    private void Sifirla() => yazilan = "";
+
+    private void YaziDegisti(string? v) => yazilan = v ?? "";
+
+    private async Task OnayIstegi()
+    {
+        if (OnayKapali) return;
+        await Onayla.InvokeAsync();
+    }
+
+    private async Task VazgecIstegi()
+    {
+        yazilan = "";
+        await Vazgec.InvokeAsync();
+    }
+}

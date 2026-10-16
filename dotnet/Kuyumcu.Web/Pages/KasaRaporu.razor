@@ -1,0 +1,632 @@
+@page "/raporlar/kasa"
+@using System.Globalization
+@using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.Domain.Girdi
+@inject RaporServisi Rapor
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   R11 — KASA DEFTERİ (paket 34 Faz A).
+
+   Gün gün devir → giriş → çıkış → kapanış; yanında o günün SAYIM kapanışı.
+   Kapanmamış gün "AÇIK"tır ve farkı BOŞ kalır — sıfır fark YAZILMAZ
+   (Anayasa md.1: sayılmamış kasanın farkı bilinmiyordur).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(SayfaAdi)</PageTitle>
+
+@* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Kasaraporu (BİREBİR); özgün ekran (kasa özetleri,
+   sayım formu, geçmiş tablolar) yalnız "Günü kapat" / "Tarih seç" / "Tüm ayrıntılar" görünümünde (data-yz-ozgun). *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizOzet B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk zo-belge" id="kr-sayfa">
+    @* ═══ PAKET ZO-BELGE — "ZORUNLU ÖNCE" (kurucu 25.09) ══════════════════════
+       Envanter: bu ekran "tek özet + tek tablo" kuralından EN ÇOK sapan ekrandı —
+       her kasa için 9 sütunlu tam tablo art arda diziliyordu. ARTIK açılışta:
+         1) başlık  2) her kasa için TEK özet satırı (ad · kasadaki para · bugünün
+         sayım durumu · "Sayım gir" TEK birincil eylem)  3) KAPALI "Geçmiş kayıtlar"
+         katlanırı (açılınca tarih/kasa süzgeci + gün gün tablolar + değişmez notu).
+       Muhasebe riski (envanter "risk"): fark uyarısı KAYBOLMAZ — dönemde farklı
+       gün varsa özet satırında KIRMIZI rozetle yazar; tablo açılınca kırmızı satır
+       aynen durur. Sayım gir düğmesinin id'si (kr-sayim-{kasa}) AYNI. *@
+    @* ZO-BELGE 29.09 devam 9 (tasarım hakemi k3 KRİTİK · K17 "açıklama metni satırı 0"): başlık altındaki
+       açıklama satırı kaldırıldı — tuvalde (Profesyonel.png) başlık tek başına durur. *@
+    <SayfaBasi Anahtar="kasa-raporu" Baslik="@SayfaAdi" />
+    @* ŞUBE-KAPSAM-B: kasa seçenekleri ve defter seçili şubenin kasalarıyla. *@
+    <GorunumRozeti Degisti="GorunumDegisti" />
+
+    <HataBandi Mesaj="@(kasaHata ?? hata)" />
+    <BasariBandi Mesaj="@basariMesaj" Jeton="@basariJeton" />
+
+    @* 29.09 doğrulayıcı ORTA: özet satırı ve "Sayım gir" SÜZGEÇTEN BAĞIMSIZ (ozet): katlanırın
+       içindeki tarih/kasa süzgeci yalnız geçmiş tabloyu daraltır; bitiş geçmişe alınsa ya da tek
+       kasa seçilse de bugünkü sayım erişimi ve öteki kasalar özetten kaybolmaz (envanter riski). *@
+    @if (yukleniyor && ozet is null)
+    {
+        <Yukleniyor />
+    }
+    else if (ozet is { } r)
+    {
+        @if ((r.Kasalar?.Count ?? 0) == 0)
+        {
+            <BosDurum Mesaj="@Dil.T.RaporSeti.BosDurum" />
+        }
+        else
+        {
+            @* ── ÖZET: kasa başına tek satır (375 px'te kart gibi yığılır) ── *@
+            <ul class="kart zo-kasa-ozet" id="kr-ozet">
+                @foreach (var kasa in r.Kasalar!)
+                {
+                    var bugun = BugunGunu(kasa);
+                    var farkliGun = FarkliGunSayisi(kasa);
+                    <li class="zo-kasa-satir" id="@($"kr-ozet-{kasa.KasaId}")">
+                        <div class="zo-kasa-ad">
+                            <h2 class="zo-kasa-baslik" id="@($"kr-kasa-{kasa.KasaId}")">@kasa.KasaAd</h2>
+                            @* UX-S33: güncel bakiye dönemden BAĞIMSIZDIR. *@
+                            @* 29.09 devam 9 (hakem k3): "(bugün itibarıyla — dönemden bağımsız)" satırda DEĞİL, (i) ipucunda. *@
+                            <div class="metin-kucuk metin-soluk">@ZB.KasaBugunBakiye
+                                <details class="zo-ipucu" id="@($"kr-bakiye-ipucu-{kasa.KasaId}")">
+                                    <summary aria-label="@($"{ZB.Ipucu}: {ZB.KasaBugunBakiye}")">i</summary>
+                                    <p>@Dil.T.RaporSeti.DonemBagimsiz.Trim('(', ')', ' ')</p>
+                                </details>
+                            </div>
+                        </div>
+                        <span class="zo-kasa-bakiye sayi" id="@($"kr-bakiye-{kasa.KasaId}")">@Bicim.Para(kasa.GuncelBakiye, kasa.ParaBirimi)</span>
+                        <div class="zo-kasa-durum">
+                            @if (bugun is null)
+                            {
+                                <span class="metin-kucuk metin-soluk" id="@($"kr-bugun-{kasa.KasaId}")">@ZB.KasaBugunYok</span>
+                            }
+                            else if (bugun.Durum == "KAPALI")
+                            {
+                                <Rozet Renk="@(bugun.Fark is { } bf && bf != 0m ? "kirmizi" : "yesil")">
+                                    <span id="@($"kr-bugun-{kasa.KasaId}")">@ZB.KasaBugunSayildi@(bugun.Fark is { } bf2 && bf2 != 0m ? $" · {Dil.T.RaporSeti.Fark}: {Bicim.Para(bf2, kasa.ParaBirimi)}" : "")</span>
+                                </Rozet>
+                            }
+                            else
+                            {
+                                <span class="metin-kucuk metin-soluk" id="@($"kr-bugun-{kasa.KasaId}")">@ZB.KasaBugunSayilmadi</span>
+                            }
+                            @if (farkliGun > 0)
+                            {
+                                <Rozet Renk="kirmizi"><span id="@($"kr-fark-uyari-{kasa.KasaId}")">@string.Format(ZB.KasaFarkliGun, farkliGun)</span></Rozet>
+                            }
+                        </div>
+                        <div class="zo-kasa-eylem">
+                            @* B-45 — GÜN SONU SAYIMI BU EKRANDAN GİRİLİR. Sunucu YALNIZ
+                               içinde bulunulan yerel günü kapatır; düğme yalnız bugün
+                               açıkken çizilir, yoksa sebebi yanda yazar (UX-S30). *@
+                            @if (bugun is not null && bugun.Durum != "KAPALI")
+                            {
+                                @* TEK birincil eylem: yalnız BİR kasa bugün sayılmayı bekliyorsa
+                                   birincil; birden çoksa hepsi ikincil (ekranda iki mavi düğme olmaz). *@
+                                <button type="button" @onclick="() => SayimAc(kasa)"
+                                        class="@(AcikBugunSayisi == 1 ? "dugme dugme-birincil dugme-kucuk" : "dugme dugme-ikincil dugme-kucuk")"
+                                        id="@($"kr-sayim-{kasa.KasaId}")">
+                                    @Dil.T.RaporSeti.SayimGir
+                                </button>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    }
+
+    @* ── GEÇMİŞ KAYITLAR — kapalı akordeon (kurucu: geçmiş kayıt listeleri kapalı).
+          Süzgeç (tarih/kasa) de burada: özet açıkken gerekmiyor (envanter). ── *@
+    @if (yanit is not null || hata is not null)
+    {
+        <Katlanir Id="kr-gecmis" Baslik="@ZB.GecmisKayitlar" Sayi="@(yanit is { } ys ? ys.Kasalar?.Sum(k => k.Gunler?.Count ?? 0) : null)"
+                  Sinif="zo-gecmis">
+            <div class="form-grid-3 zo-suzgec-satir" id="kr-suzgec">
+                @* PAKET GOC-A (envanter C · kr-baslangic/bitis "yıl alt/üst sınırı hiçbir tarafta yok"): ortak Tarih Tur=Rapor
+                   (K8e penceresi 2000..gelecek yıl; pencere dışı yıl YAZILAMAZ). Aralık kuralı (başlangıç ≤ bitiş, ≤ 5 yıl)
+                   bitiş alanının altında; bozuk aralıkta istek ATILMAZ. id'ler korunur (TarihAralik -bas/-bit verirdi). *@
+                <Tarih ElemanId="kr-baslangic" Etiket="@Dil.T.RaporSeti.Baslangic" Tur="TarihTuru.Rapor"
+                       Deger="@DateOnly.FromDateTime(baslangic)" DegerChanged="BaslangicDegisti" />
+                <Tarih ElemanId="kr-bitis" Etiket="@Dil.T.RaporSeti.Bitis" Tur="TarihTuru.Rapor" Hata="@AralikHatasi"
+                       Deger="@DateOnly.FromDateTime(bitis)" DegerChanged="BitisDegisti" />
+                @* UX-S22: tek kasa varsa seçici GİZLENİR, değer salt okunur yazılır. *@
+                @if (kasalar.Count > 1)
+                {
+                    <div class="alan">
+                        <Secici ElemanId="kr-kasa" Etiket="@Dil.T.RaporSeti.KasaSecimi"
+                                Secenekler="@(kasalar.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                                @bind-Deger="kasaId" @bind-Deger:after="KasaSuzgecDegisti"
+                                BosSecenekMetni="@Dil.T.RaporSeti.TumKasalar" />
+                    </div>
+                }
+                else if (kasalar.Count == 1)
+                {
+                    <p class="metin-kucuk metin-soluk" id="kr-kasa-sabit">
+                        @Dil.T.RaporSeti.KasaSecimi: @kasalar[0].Ad
+                    </p>
+                }
+            </div>
+
+            @if (yukleniyor)
+            {
+                <Yukleniyor />
+            }
+            else if (yanit is { } g && (g.Kasalar?.Count ?? 0) > 0)
+            {
+                @* KESIF-P3 (TOPLU ZO-BELGE ORTA): "Yalnız bugünün kasası sayılabilir." her geçmiş
+                   açık gün satırında tekrar ediyordu (3 kasa × 6 gün = 18 kez) — kural artık tabloların
+                   ÜSTÜNDE BİR KEZ; satırdaki sebep ekran okuyucuya kalır (id'ler aynı). *@
+                @if (g.Kasalar!.Any(k => GorunenGunler(k).Any(GecmisAcikGun)))
+                {
+                    <p class="metin-kucuk metin-soluk" id="kr-sayim-kural">@KesifP3Sozlugu.Al(Dil.Dil).YalnizBugunSayilir</p>
+                }
+                @foreach (var kasa in g.Kasalar!)
+                {
+                    <section class="zo-kasa-gecmis" aria-labelledby="@($"kr-gecmis-ad-{kasa.KasaId}")">
+                        <h3 class="zo-kasa-gecmis-ad" id="@($"kr-gecmis-ad-{kasa.KasaId}")">@kasa.KasaAd</h3>
+                        <p class="metin-kucuk metin-soluk zo-yana-kaydir" aria-hidden="true">@ZB.YanaKaydir</p>
+                        @* PAKET GOC-A — ORTAK IZGARA (grid:kasa-raporu:kr-gun): TEK tercih (sütun düzeni) her kasanın tablosuna
+                           uygulanır; tablo kimliği "kr-tablo-{KasaId}" korunur (TabloId), diğer kimlikler kasa önekli
+                           (KimlikOneki — aynı sayfada birden çok ızgara). Gün listesi TAM (kasa başına) → yerel sıralama. *@
+                        <Izgara T="KasaGunu" Ekran="kasa-raporu" GridId="kr-gun" Zo="golge" KimlikOneki="@($"kr-gun-{kasa.KasaId}")"
+                                TabloId="@($"kr-tablo-{kasa.KasaId}")" Kolonlar="@GunKolonlari(kasa)"
+                                Ogeler="@IzgaraYerelSiralama.Uygula([.. GorunenGunler(kasa)], gunSira, GunKolonlari(kasa))"
+                                SatirSinif="@(gun => gun.Durum == "ACIK" ? "satir-amber" : gun.Fark != 0m && gun.Fark is not null ? "satir-kirmizi" : null)"
+                                TabloSinif="tablo-tek-satir" Baslik="@kasa.KasaAd" YapiskanIlkSutun="false"
+                                SiralamaDegisti="@GunSiralandi" GecerliSiralama="@gunSira" TercihIstemcisi="@KrTercih" />
+                        @* PAKET S1-i — kasa başına son @GorselSigmaSozlugu.KasaIlkGun gün; kalanı
+                           "N gün daha göster" ile açılır (UX-S29: gün sayısı HER ZAMAN yazılır). *@
+                        <div class="satir-arasi kr-gun-sayfa" id="@($"kr-gun-bilgi-{kasa.KasaId}")">
+                            <span class="metin-kucuk metin-soluk">@GunBilgisi(kasa)</span>
+                            @if (GizliGunSayisi(kasa) > 0)
+                            {
+                                <button type="button" @onclick="() => DahaFazlaGun(kasa)"
+                                        class="dugme dugme-ikincil dugme-kucuk" id="@($"kr-gun-daha-{kasa.KasaId}")">@string.Format(GS.KasaDahaFazlaGun, Math.Min(GizliGunSayisi(kasa), GorselSigmaSozlugu.KasaIlkGun))</button>
+                            }
+                        </div>
+                    </section>
+                }
+
+                @if (g.YazSaatiRiski)
+                {
+                    <div class="bant bant-uyari" role="status" id="kr-yaz-saati">
+                        @Dil.T.RaporSeti.Guvenilirlik: @g.SaatDilimi (UTC@(g.UtcOfsetSaat >= 0 ? "+" : "")@g.UtcOfsetSaat)
+                    </div>
+                }
+            }
+            else if (yanit is not null)
+            {
+                <BosDurum Mesaj="@Dil.T.RaporSeti.BosDurum" />
+            }
+
+            @* UX-S25: rapor türetilmiş veridir — düzenle düğmesi YOK, gerekçe ve
+               doğru düzeltme yolu yazılı. ZO-BELGE: açılışta değil, geçmiş
+               kayıtlar açılınca (kurucu: "değiştirilemez" kutusu açılışta yok). *@
+            <DegismezIpucu Varlik="Rapor"
+                           Gerekce="@Dil.T.Duzeltme.TuretilmisGerekce"
+                           AlternatifYol="@Dil.T.SayfaDuzeltme.RaporDuzeltmeYolu" />
+        </Katlanir>
+    }
+
+    @* ── B-45: gün sonu kasa sayımı ÇOK ALANLI BİR FORMDUR → TEK DÜZENLEME
+          KALIBI: Cekmece (DoD EK md.2 — ModalPencere yalnız yıkıcı onay). ── *@
+    <Cekmece Acik="@(sayimKasa is not null)" Varlik="gun-sayimi"
+             Baslik="@Dil.T.RaporSeti.SayimBaslik" Kapat="() => sayimKasa = null"
+             Kaydet="SayimKaydet" Kaydediliyor="@sayimKaydediliyor">
+        @if (sayimKasa is { } sk)
+        {
+            <div class="form-dikey">
+                @* PAKET PARA-DEMO (madde 1): sayım NAKİT defteriyle karşılaştırılır (sunucu
+                   KasaNakitAyrimi · GET /kasalar/{id}/gun-kapanisi/onizleme). Kart/havale varsa
+                   ayrı satır "sayıma girmez"; önizleme alınamazsa bant + kayıt YOK (fail-closed). *@
+                @if (sayimOnizlemeHata is not null)
+                {
+                    <HataBandi Mesaj="@string.Format(PD.OnizlemeHata, sayimOnizlemeHata)" Id="kr-sayim-onizleme-hata" />
+                }
+                else if (sayimOnizleme is null)
+                {
+                    <Yukleniyor />
+                }
+                else
+                {
+                    <p class="metin-kucuk metin-soluk" id="kr-sayim-defter">
+                        @(NakitDisiVar ? PD.SayilacakNakit : Dil.T.RaporSeti.DefterBakiye): @Bicim.Para(sayimOnizleme.NakitDefter, sk.ParaBirimi)
+                    </p>
+                    @if (NakitDisiVar)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="kr-sayim-nakit-disi">
+                            @PD.KasaToplam @Bicim.Para(sayimOnizleme.ToplamBakiye, sk.ParaBirimi)@if (sayimOnizleme.KartToplam != 0m) {<span id="kr-sayim-kart"> · @PD.KartSayimaGirmez @Bicim.Para(sayimOnizleme.KartToplam, sk.ParaBirimi)</span>}@if (sayimOnizleme.HavaleToplam != 0m) {<span id="kr-sayim-havale"> · @PD.HavaleSayimaGirmez @Bicim.Para(sayimOnizleme.HavaleToplam, sk.ParaBirimi)</span>}
+                        </p>
+                    }
+                }
+                @* BICIM-2 / ZO-BELGE: ham type=number yerine girdi ailesi (Para) —
+                   odak dışında "1.500,00" biçimli, para birimi kasadan (UX-S21/S32).
+                   Hata kimliği AYNI: alan-hata-kr-sayim-tutar. *@
+                @* PAKET GOC-A: K9a sıfır olabilir (eksi yazılamaz, 2 ondalık) — Kasalar gün kapat ile AYNI kural. *@
+                <Para ElemanId="kr-sayim-tutar" Etiket="@Dil.T.RaporSeti.SayilanNakit" Zorunlu="true"
+                      ParaBirimi="@sk.ParaBirimi" Tur="TutarTuru.SifirOlabilir"
+                      @bind-Deger="sayimTutar"
+                      Durum="sayimForm" HataAlani="kr-sayim-tutar" />
+                @* ZO-BELGE (tasarım hakemi t3, K18): etiket "(fark varsa zorunlu) (isteğe bağlı)"
+                   diye kendisiyle çelişiyordu. Artık sayılan tutar defterle TUTMUYORSA "*",
+                   tutuyorsa "(isteğe bağlı)"; kural ipucunda (sunucu kuralı KasaModulu:385). *@
+                @* PAKET GOC-A (envanter C · kr-sayim-aciklama "ekran 200 / sunucu 1000 / Kasalar 500; en az 20 yok"): üst sınır
+                   sunucuyla AYNI sabit (1000) ve fark varken K30 en az 20 — alan altı sözlük metni (sunucu AYNI cümle). *@
+                <Metin ElemanId="kr-sayim-aciklama" Etiket="@ZB.KasaFarkGerekce" EnFazla="@AlanSinirlari.GerekceEnCok"
+                       Hata="@(SayimFarkVar(sk) ? SayimGerekceHatasi : null)"
+                       Zorunlu="@SayimFarkVar(sk)" Ipucu="@(SayimFarkVar(sk) ? null : ZB.KasaFarkGerekceIpucu)"
+                       @bind-Deger="sayimAciklama"
+                       Durum="sayimForm" HataAlani="kr-sayim-aciklama" />
+                <HataBandi Mesaj="@sayimHata" />
+            </div>
+        }
+    </Cekmece>
+</div>
+}
+
+@code {
+    // 29.09 doğrulayıcı DÜŞÜK: geçmiş tablolarında Ana Kasa "0 ₺", Döviz Kasası "0,00 $" basılıyordu
+    // (Bicim.Tl sıfır kuruşu atar, dövizde iki hane). Gün gün kasa defteri sayım ve fark taşıyan
+    // bir muhasebe dökümüdür: GEÇMİŞ TABLOLARINDA tüm para birimlerinde kuruş İKİ HANE. Özet
+    // satırları ekranın genel biçimini (Bicim.Para) korur (Bicim.BelgePara: TRY → TlKurus,
+    // döviz → Para). Tek merkez Bicim; yeni biçim kuralı yazılmadı.
+    private static string GecmisPara(decimal n, string? paraBirimi) => Bicim.BelgePara(n, paraBirimi);
+
+    private KasaDefteriYaniti? yanit;
+    /// <summary>Özet satırlarının kaynağı: son 14 gün, TÜM kasalar — süzgeçten bağımsız.</summary>
+    private KasaDefteriYaniti? ozet;
+    private static DateTime OzetBaslangic => DateTime.Today.AddDays(-13);
+    private bool VarsayilanSuzgec =>
+        baslangic == OzetBaslangic && bitis == DateTime.Today && string.IsNullOrEmpty(kasaId);
+    private List<KasaOzeti> kasalar = [];
+    private bool yukleniyor = true;
+    private string? hata;
+    /// <summary>
+    /// ŞUBE-KAPSAM-B tur 2 (doğrulayıcı KRİTİK, UX-S28): kasa seçenekleri okunamadıysa
+    /// sebep AYRI alanda tutulur — defter yüklemesi (<c>Yukle</c>) <c>hata = null</c> ile
+    /// onu ezmez; şube seçiliyken defter de gösterilmez (daraltma listesi yok → boş durum DEĞİL).
+    /// </summary>
+    private string? kasaHata;
+    private bool kasalarOkundu;
+
+    private DateTime baslangic = DateTime.Today.AddDays(-13);
+    private DateTime bitis = DateTime.Today;
+    private string kasaId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await KasalariYukle();
+        await Yukle();
+    }
+
+    /// <summary>
+    /// ŞUBE-KAPSAM-B — kasa SEÇENEKLERİ bakılan şubenin kasalarıdır
+    /// (<c>/kasalar?subeId=</c>; sunucu doğrular). Kasa zaten şubeye bağlıdır.
+    /// </summary>
+    private async Task KasalariYukle()
+    {
+        string? istenen = null;
+        try
+        {
+            kasaHata = null;
+            await SubeliSorgu.HazirAsync(Oturum);
+            istenen = SubeliSorgu.Sube(Oturum);
+            var y = await Api.GetAsync<List<KasaOzeti>>(SubeliSorgu.Ekle("/kasalar", Oturum));
+            if (Eskidi(istenen)) return;
+            kasalar = y;
+            kasalarOkundu = true;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            if (Eskidi(istenen)) return;
+            // Son bilinen seçenek listesi SİLİNMEZ (P-11 / UX-S28); daraltma bu listeye
+            // GÜVENMEZ (kasalarOkundu = false → şube seçiliyken defter gösterilmez).
+            kasalarOkundu = false;
+            kasaHata = ex.Message;
+        }
+    }
+
+    /// <summary>Görünüm şubesi değişti: seçenekler + defter yeniden; seçili kasa o şubede yoksa "tümü".</summary>
+    private async Task GorunumDegisti()
+    {
+        await KasalariYukle();
+        if (kasaId.Length > 0 && kasalar.All(k => k.Id != kasaId)) kasaId = "";
+        ozet = null;
+        await Yukle(ozetTazele: true);
+    }
+
+    /// <summary>
+    /// ŞUBE-KAPSAM-B — defter ucu (R11) şube parametresi taşımaz; "tüm kasalar"
+    /// yanıtı kiracının kasalarını döner. Bir şubeye bakılıyorsa yalnız o şubenin
+    /// kasaları (yukarıdaki daraltılmış seçenek listesi) GÖSTERİLİR — rozet
+    /// "Merkez" derken başka şubenin kasası satır olarak görünmesin.
+    /// </summary>
+    private KasaDefteriYaniti? Daralt(KasaDefteriYaniti y)
+    {
+        if (SubeliSorgu.Sube(Oturum) is null || y.Kasalar is null) return y;
+        // Daraltma listesi okunamadı: satır atıp "kayıt yok" demek YASAK (UX-S28),
+        // süzmeden göstermek başka şubenin kasasını rozet altında gösterir → hiçbiri;
+        // sebep kasaHata bandında.
+        if (!kasalarOkundu) return null;
+        var izinli = kasalar.Select(k => k.Id).ToHashSet();
+        var kalan = y.Kasalar.Where(k => izinli.Contains(k.KasaId)).ToList();
+        return y with { Kasalar = kalan };
+    }
+
+    /// <summary>ŞUBE-KAPSAM-B tur 2 (yarış): istekten sonra seçim değiştiyse yanıt eskidir, atılır.</summary>
+    private bool Eskidi(string? istenen) => !string.Equals(SubeliSorgu.Sube(Oturum), istenen, StringComparison.Ordinal);
+
+    private async Task Yukle(bool ozetTazele = false)
+    {
+        yukleniyor = true;
+        hata = null;
+        gorunenGun.Clear();
+        var istenen = SubeliSorgu.Sube(Oturum);
+        try
+        {
+            var d = await Rapor.KasaDefteri(
+                DateOnly.FromDateTime(baslangic), DateOnly.FromDateTime(bitis),
+                string.IsNullOrEmpty(kasaId) ? null : kasaId);
+            if (Eskidi(istenen)) return;
+            yanit = Daralt(d);
+            // Varsayılan süzgeçte aynı yanıt özetin de kaynağıdır (ikinci istek yok).
+            if (VarsayilanSuzgec) ozet = yanit;
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+        {
+            if (Eskidi(istenen)) return;
+            hata = ex.Message;
+        }
+        if (!VarsayilanSuzgec && (ozet is null || ozetTazele))
+        {
+            try
+            {
+                var o = await Rapor.KasaDefteri(
+                    DateOnly.FromDateTime(OzetBaslangic), DateOnly.FromDateTime(DateTime.Today), null);
+                if (Eskidi(istenen)) return;
+                ozet = Daralt(o);
+            }
+            catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException)
+            {
+                if (Eskidi(istenen)) return;
+                hata = ex.Message;
+            }
+        }
+        yukleniyor = false;
+    }
+
+    // ── B-45: gün sonu kasa sayımı bu ekrandan girilir ──────────────────────
+    private KasaDefteriSatiri? sayimKasa;
+    private decimal? sayimTutar;
+
+    /// <summary>Sayılan tutar defter bakiyesinden farklı mı (sunucuyla aynı: 2 hane yuvarlama).</summary>
+    private bool GecmisAcikGun(KasaGunu gun) => gun.Durum != "KAPALI" && gun.Tarih != BugunAnahtar;
+
+    private bool SayimFarkVar(KasaDefteriSatiri sk) =>
+        sayimTutar is { } t && sayimOnizleme is { } o
+        && Math.Round(t - o.NakitDefter, 2, MidpointRounding.AwayFromZero) != 0m;
+
+    // ── PAKET PARA-DEMO (madde 1): sayılacak NAKİT defteri sunucudan ──
+    private ParaDemoMetinleri PD => ParaDemoSozlugu.Al(Dil.Dil);
+    private Kuyumcu.Contracts.Sayfalar.Kasalar.GunKapanisiOnizleme? sayimOnizleme;
+    private string? sayimOnizlemeHata;
+    private bool NakitDisiVar => sayimOnizleme is { } o && (o.KartToplam != 0m || o.HavaleToplam != 0m);
+    private string? sayimAciklama;
+    private bool sayimKaydediliyor;
+    private string? sayimHata, basariMesaj;
+    private int basariJeton;
+    private readonly FormDurumu sayimForm = new();
+
+    /// <summary>Sunucunun kapatabildiği tek gün: içinde bulunulan yerel gün.</summary>
+    // ── PAKET S1-i — kasa başına gün sayfası ──
+    private GorselSigmaMetinleri GS => GorselSigmaSozlugu.Al(Dil.Dil);
+
+    /// <summary>Kasa kimliği → görünen gün sayısı. Yeni sorguda sıfırlanır.</summary>
+    private readonly Dictionary<string, int> gorunenGun = new(StringComparer.Ordinal);
+
+    private int GorunenSayi(KasaDefteriSatiri kasa) =>
+        gorunenGun.TryGetValue(kasa.KasaId, out var n) ? n : GorselSigmaSozlugu.KasaIlkGun;
+
+    /// <summary>En YENİ n gün, sunucunun sırası korunarak.</summary>
+    internal IEnumerable<KasaGunu> GorunenGunler(KasaDefteriSatiri kasa)
+    {
+        var tum = kasa.Gunler ?? [];
+        var n = GorunenSayi(kasa);
+        if (tum.Count <= n) return tum;
+        var enYeni = tum.Select(g => g.Tarih).OrderByDescending(t => t, StringComparer.Ordinal)
+            .Take(n).ToHashSet(StringComparer.Ordinal);
+        return tum.Where(g => enYeni.Contains(g.Tarih));
+    }
+
+    private int GizliGunSayisi(KasaDefteriSatiri kasa) =>
+        Math.Max(0, (kasa.Gunler?.Count ?? 0) - GorunenSayi(kasa));
+
+    private string GunBilgisi(KasaDefteriSatiri kasa) => GizliGunSayisi(kasa) > 0
+        ? string.Format(GS.KasaGunBilgisi, GorunenSayi(kasa), kasa.Gunler?.Count ?? 0)
+        : GS.KasaTumGunler + " · " + string.Format(GS.ToplamKayit, kasa.Gunler?.Count ?? 0);
+
+    private void DahaFazlaGun(KasaDefteriSatiri kasa) =>
+        gorunenGun[kasa.KasaId] = GorunenSayi(kasa) + GorselSigmaSozlugu.KasaIlkGun;
+
+    // ── PAKET ZO-BELGE — özet satırı yardımcıları ──
+    private ZoBelgeMetinleri ZB => ZoBelgeSozlugu.Al(Dil.Dil);
+    /// <summary>ZO-BELGE 28.09 (UX-S31, doğrulayıcı): sayfa başlığı MENÜ adıyla AYNI —
+    /// tek kaynak MenuAdlari (üst çubuk ve kenar menüsü de oradan okur).
+    /// Eski "Kasa Hareketleri" başlığı menüdeki "Kasa raporu" ile çelişiyordu.</summary>
+    private string SayfaAdi => MenuAdlari.Icin(Dil.Dil).KasaRaporu.Ad;
+
+    /// <summary>Kasanın BUGÜNKÜ gün satırı; süzgeç bugünü kapsamıyorsa null.</summary>
+    internal KasaGunu? BugunGunu(KasaDefteriSatiri kasa) =>
+        kasa.Gunler?.FirstOrDefault(g => g.Tarih == BugunAnahtar);
+
+    /// <summary>Dönemde sayım farkı SIFIRDAN FARKLI gün sayısı — tablo kapalıyken
+    /// de özet satırında kırmızı rozetle yazılır (envanter "risk" maddesi).</summary>
+    /// <summary>Bugün AÇIK (sayım bekleyen) kasa sayısı — tek birincil eylem kuralı.</summary>
+    private int AcikBugunSayisi =>
+        ozet?.Kasalar?.Count(k => BugunGunu(k) is { } g && g.Durum != "KAPALI") ?? 0;
+
+    internal static int FarkliGunSayisi(KasaDefteriSatiri kasa) =>
+        kasa.Gunler?.Count(g => g.Fark is { } f && f != 0m) ?? 0;
+
+    private Task KasaSuzgecDegisti() => Yukle();
+
+    private async Task BaslangicDegisti(DateOnly? v)
+    {
+        if (v is { } g) baslangic = g.ToDateTime(TimeOnly.MinValue);
+        if (AralikHatasi is null) await Yukle();   // PAKET GOC-A: bozuk aralıkta istek YOK (alan altında yazılı)
+    }
+
+    private async Task BitisDegisti(DateOnly? v)
+    {
+        if (v is { } g) bitis = g.ToDateTime(TimeOnly.MinValue);
+        if (AralikHatasi is null) await Yukle();
+    }
+
+    // ── PAKET GOC-A ───────────────────────────────────────────────────────────
+    /// <summary>K8e — başlangıç ≤ bitiş, en çok 5 yıl (Core TarihPenceresi; sözlük metni).</summary>
+    private string? AralikHatasi =>
+        TarihPenceresi.AralikDenetle(DateOnly.FromDateTime(baslangic), DateOnly.FromDateTime(bitis)) is { } h
+            ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+
+    /// <summary>K30 — kasa farkı gerekçesi (fark varken): sunucu GirdiKapisi.Gerekce ile AYNI metin.</summary>
+    private string? SayimGerekceHatasi =>
+        string.IsNullOrWhiteSpace(sayimAciklama) ? null
+        : GerekceKurali.Denetle(sayimAciklama) is { } h ? Kuyumcu.Core.I18n.GirdiSozlugu.Mesaj(h, Dil.Dil) : null;
+
+    private IzgaraTercihIstemcisi? krTercih;
+    private IzgaraTercihIstemcisi KrTercih => krTercih ??= new IzgaraTercihIstemcisi(Api);
+    private IzgaraSiralama? gunSira;
+    private void GunSiralandi(IzgaraSiralama? s) => gunSira = s;
+
+    private IReadOnlyList<IzgaraKolonu<KasaGunu>> GunKolonlari(KasaDefteriSatiri kasa) =>
+    [
+        new() { Anahtar = "tarih", Baslik = Dil.T.RaporSeti.Tarih, ZorunluGorunur = true, SunucuSiralamaAdi = "tarih",
+                HucreSinif = _ => "metin-kucuk", Deger = gun => gun.Tarih,
+                Hucre = gun => @<span id="@($"kr-tarih-{kasa.KasaId}-{gun.Tarih}")">@GunMetni(gun.Tarih)</span> },
+        new() { Anahtar = "devir", Baslik = Dil.T.RaporSeti.Devir, SunucuSiralamaAdi = "devir", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi metin-soluk", Deger = gun => gun.Devir, Hucre = gun => @<text>@GecmisPara(gun.Devir, kasa.ParaBirimi)</text> },
+        new() { Anahtar = "giris", Baslik = Dil.T.RaporSeti.Giris, SunucuSiralamaAdi = "giris", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi", Deger = gun => gun.Giris, Hucre = gun => @<text>@GecmisPara(gun.Giris, kasa.ParaBirimi)</text> },
+        new() { Anahtar = "cikis", Baslik = Dil.T.RaporSeti.Cikis, SunucuSiralamaAdi = "cikis", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi", Deger = gun => gun.Cikis, Hucre = gun => @<text>@GecmisPara(gun.Cikis, kasa.ParaBirimi)</text> },
+        new() { Anahtar = "kapanis", Baslik = Dil.T.RaporSeti.Kapanis, ZorunluGorunur = true, SunucuSiralamaAdi = "kapanis", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi hucre-vurgu", Deger = gun => gun.Kapanis, Hucre = gun => @<text>@GecmisPara(gun.Kapanis, kasa.ParaBirimi)</text> },
+        // Kapanmamış gün: "—" (sıfır DEĞİL — Anayasa md.1).
+        new() { Anahtar = "sayilan", Baslik = Dil.T.RaporSeti.SayilanNakit, SunucuSiralamaAdi = "sayilan", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi", Deger = gun => gun.SayilanNakit,
+                Hucre = gun => @<text>@(gun.SayilanNakit is { } s ? GecmisPara(s, kasa.ParaBirimi) : "—")</text> },
+        new() { Anahtar = "fark", Baslik = Dil.T.RaporSeti.Fark, SunucuSiralamaAdi = "fark", BaslikSinif = "zo-sag",
+                HucreSinif = _ => "sayi", Deger = gun => gun.Fark,
+                Hucre = gun => @<text>@(gun.Fark is { } f ? GecmisPara(f, kasa.ParaBirimi) : "—")</text> },
+        new() { Anahtar = "durum", Baslik = Dil.T.RaporSeti.Durum, HucreSinif = _ => "metin-kucuk", Deger = gun => DurumMetni(gun.Durum) },
+        // Bugünün sayımı ÖZET satırındaki TEK birincil düğmeyle girilir; geçmiş açık günün satırında SEBEBİ yazılır.
+        new() { Anahtar = "sayim", Baslik = Dil.T.RaporSeti.SayimGir, BaslikGizli = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = gun => @<text>@if (GecmisAcikGun(gun))
+                {
+                    <span class="gorunmez" id="@($"kr-sayim-{kasa.KasaId}-{gun.Tarih}-sebep")">@Dil.T.RaporSeti.SayimYalnizBugun</span>
+                }</text> },
+    ];
+
+    /// <summary>ZO-BELGE 29.09 (tasarım hakemi YÜKSEK): sunucunun gün anahtarı ("2026-09-23")
+    /// ekrana HAM basılmaz — Bicim merkezinden yerel tarih ("23.09.2026"). Anahtar ayrıştırılamazsa
+    /// uydurulmaz, olduğu gibi yazılır (Anayasa md.1). Karşılaştırmalar ham anahtarla sürer.</summary>
+    internal string GunMetni(string? anahtar) =>
+        DateOnly.TryParseExact(anahtar, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var g)
+            ? Bicim.Gun(g)   // TOPLU-1 tur 2 (TARIH-TEK): takvim günü ÇEVRİLMEZ, tek kalıp dd.MM.yyyy
+                             // (eski: Local'a damgalanıp saat dilimi çevriliyor, kültürün "d"si "1.10.2026" basıyordu).
+            : anahtar ?? "—";
+
+    private static string BugunAnahtar => Bicim.Makine(Bicim.IsletmeBugun);
+
+    private async Task SayimAc(KasaDefteriSatiri kasa)
+    {
+        sayimHata = null;
+        sayimForm.Temizle();
+        sayimKasa = kasa;
+        // Alan BOŞ (0) başlar: defter bakiyesiyle doldurulsaydı kullanıcı saymadan
+        // kaydeder ve fark hiç görünmezdi (Kasalar.razor ile AYNI gerekçe).
+        sayimTutar = null;
+        sayimAciklama = null;
+        sayimOnizleme = null;
+        sayimOnizlemeHata = null;
+        // UX-S28: hata "0 TL"ye çevrilmez — bant görünür, kayıt kilitli.
+        try { sayimOnizleme = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Kasalar.GunKapanisiOnizleme>($"/kasalar/{kasa.KasaId}/gun-kapanisi/onizleme"); }
+        catch (ApiHata ex) { sayimOnizlemeHata = ex.Message; }
+        catch (System.Text.Json.JsonException ex) { sayimOnizlemeHata = ex.Message; }   // okunamayan yanıt da "0 TL" sayılmaz
+    }
+
+    private async Task SayimKaydet()
+    {
+        if (sayimKasa is not { } sk) return;
+        sayimHata = null;
+        sayimForm.Temizle();
+        // PARA-DEMO: nakit defteri bilinmeden sayım kaydedilmez (sessiz etkisizlik değil — bant yazılı).
+        if (sayimOnizleme is null)
+        {
+            sayimHata = PD.OnizlemeKilit;
+            return;
+        }
+        // Sessiz etkisizlik yasak: negatif/boş gönderim alan altı mesaj verir.
+        // ZO-BELGE: alan artık BOŞ başlar (null); boş gönderim "0" sayılmaz —
+        // sayılmamış kasa sıfır sayılmış gibi kapanmaz (Anayasa md.1).
+        if (sayimTutar is not { } tutar)
+        {
+            sayimForm.Ekle("kr-sayim-tutar", ZB.KasaSayimZorunlu);
+            return;
+        }
+        if (tutar < 0m)
+        {
+            sayimForm.Ekle("kr-sayim-tutar", Dil.T.RaporSeti.SayimNegatif);
+            return;
+        }
+        // PAKET GOC-A: fark varken K30 gerekçe kuralı istekten ÖNCE (sunucu AYNI cümleyle reddeder).
+        if (SayimFarkVar(sk) && SayimGerekceHatasi is { } gerekceHatasi)
+        {
+            sayimForm.Ekle("kr-sayim-aciklama", gerekceHatasi);
+            return;
+        }
+        sayimKaydediliyor = true;
+        try
+        {
+            // UX-S27: POST yanıtı OKUNUR ve sonucu banda yazılır.
+            var yanitJson = await Api.PostAsync($"/kasalar/{sk.KasaId}/gun-kapanisi", new
+            {
+                sayilanNakit = tutar,
+                aciklama = string.IsNullOrWhiteSpace(sayimAciklama) ? null : sayimAciklama.Trim(),
+            });
+            var fark = yanitJson.TryGetProperty("fark", out var fo) && fo.ValueKind
+                is System.Text.Json.JsonValueKind.Number ? fo.GetDecimal() : (decimal?)null;
+            basariMesaj = fark is { } fd
+                ? string.Format(CultureInfo.InvariantCulture, Dil.T.RaporSeti.SayimKaydedildiFark,
+                                Bicim.Para(fd, sk.ParaBirimi))
+                : Dil.T.RaporSeti.SayimKaydedildi;
+            basariJeton++;
+            sayimKasa = null;
+            await Yukle(ozetTazele: true);
+        }
+        catch (ApiHata ex)
+        {
+            sayimHata = FormDurumu.SunucuMesaji(ex, Dil);
+            sayimForm.Sunucudan(ex, new Dictionary<string, string>
+            {
+                ["SayilanNakit"] = "kr-sayim-tutar",
+                ["Aciklama"] = "kr-sayim-aciklama",
+            });
+        }
+        finally { sayimKaydediliyor = false; }
+    }
+
+    /// <summary>UX-S31: ham durum kodu ekrana basılmaz, sözlükten çevrilir.</summary>
+    private string DurumMetni(string? durum) => durum switch
+    {
+        "KAPALI" => Dil.T.RaporSeti.DurumKapali,
+        "YENIDEN_ACILDI" => Dil.T.RaporSeti.DurumYenidenAcildi,
+        _ => Dil.T.RaporSeti.DurumAcik,
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

@@ -1,0 +1,536 @@
+@page "/urunler/etiketler"
+@using Kuyumcu.Core.Domain
+@using Kuyumcu.Web.Servisler
+@using Kuyumcu.Contracts.Sayfalar.UrunEtiketleri
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject OturumServisi Oturum
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ÜRÜN ETİKETLERİ — PLAN-2 Adım 5
+
+   Bertan: "ürün tamlığı kaleminin içinde en çok istenen ve en ucuz olanı."
+
+   İKİ YASAL YÜK BİR ARADA:
+     • Etiket, Kuyum Ticareti Yönetmeliği md.11/(e) gereği sentetik/laboratuvar
+       üretimi taş ibaresini AÇIKÇA taşımak zorundadır (Adım 3).
+     • Barkod, okuyucunun bulabilmesi için Code 128 olarak basılır; GS1
+       numarası DEĞİLDİR ve öyle gösterilmez.
+
+   Yazdırma ADR-0007'ye uyar: SVG istemcide üretilir, sunucuda PDF kütüphanesi
+   yoktur. Tarayıcının "PDF olarak kaydet" seçeneği yeterlidir.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Etiket.Baslik)</PageTitle>
+
+@* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Etiketler (BİREBİR, YildizEtiketler). Özgün kök DOM'da
+   kalır (basılan kâğıt .urun-etiket-sayfa buradadır); Yıldız'da ekranda yalnız "Tüm ayrıntılar"da görünür (data-yz-etiket;
+   Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizEtiketler B="@YildizBaglami" /> }
+<div data-yz-etiket="@YildizEtiketIsaret" class="sayfa">
+    <div class="sayfa-baslik yazdirma-gizle">
+        <SayfaBasi Anahtar="etiketler" Baslik="@Dil.T.Etiket.Baslik" UstBardaGizle="true" Aciklama="@Dil.T.Etiket.Aciklama">
+            <Eylem>
+                @* Ekran başına TEK birincil eylem (brif mührü). *@
+                <button class="btn btn-birincil" id="et-yazdir"
+                        disabled="@(!Yazdirilabilir)" @onclick="Yazdir">
+                    @Dil.T.Etiket.Yazdir (@ToplamEtiket)
+                </button>
+            </Eylem>
+        </SayfaBasi>
+        @* UX-S30 — kilitli düğme SEBEBİNİ söyler. *@
+        @if (!Yazdirilabilir)
+        {
+            <span class="metin-kucuk metin-soluk" id="et-yazdir-kilit">@YazdirKilitSebebi</span>
+        }
+    </div>
+
+    <div class="kart yazdirma-gizle">
+        <div class="form-grid-2">
+            @* S3-3 / QA tur 8 ORTA: arama değişince GÖRÜNMEYEN seçim düşer — ekranda
+               olmayan bir ürünün etiketi basılamaz (yanlış etiket riski). *@
+            <Arama ElemanId="et-ara" Etiket="@Dil.T.Ortak.Ara" YerTutucu="@Dil.T.Etiket.AramaIpucu"
+                   Deger="@arama" DegerChanged="@AramaDegisti" />
+            @* PAKET GOC-C: ortak Adet (K14 tam sayı ≥ 1, kesir tuşta yazılamaz) + üst sınır AlanSinirlari (taslak sınırıyla AYNI). *@
+            <Adet ElemanId="et-adet" Etiket="@Dil.T.Etiket.KopyaAdedi" EnCok="@AlanSinirlari.EtiketKopyaEnCok"
+                  Deger="@((decimal?)kopya)"
+                  DegerChanged="@AdetGirildi"
+                  Durum="form" HataAlani="kopya" />
+        </div>
+
+        <div class="satir">
+            @* DoD EK/1: etkisiz düğme olmaz — seçilecek/temizlenecek bir şey yoksa kilitli. *@
+            <button class="btn btn-ikincil" id="et-tumunu-sec" disabled="@(!Suzulmus.Any())" @onclick="TumunuSec">@Dil.T.Etiket.TumunuSec</button>
+            <button class="btn btn-ikincil" id="et-secimi-temizle" disabled="@(secili.Count == 0)" @onclick="SecimiTemizle">@Dil.T.Etiket.SecimiTemizle</button>
+            <span class="metin-kucuk" id="et-secili-ozet" role="status">@string.Format(E.SeciliOzet, secili.Count, ToplamEtiket)</span>
+            @* P-66 — taslak temizleme: yalnız temizlenecek bir şey varken görünür (etkisiz düğme olmaz). *@
+            @if (TemizlenecekVar)
+            {
+                <button class="btn btn-ikincil" id="et-taslak-temizle" @onclick="TaslagiTemizle">@T.TaslagiTemizle</button>
+            }
+        </div>
+
+        @* ── P-66 — basım taslağının kalıcılığı ─────────────────────────────
+           Kayıp SESSİZ olmaz: geri yükleme bandı, eksik kalem sayısı, temizleme
+           sonucu (+ geri al) ve tarayıcı saklamıyorsa açık not. *@
+        @if (geriYuklendi)
+        {
+            <p class="metin-kucuk" id="et-taslak-geri-yuklendi" role="status">@string.Format(T.GeriYuklendi, secili.Count, kopya)</p>
+        }
+        @if (eksikKalem > 0)
+        {
+            <p class="metin-kucuk metin-amber" id="et-taslak-eksik" role="status">@string.Format(T.EksikKalem, eksikKalem)</p>
+        }
+        @if (temizlenenTaslak is not null)
+        {
+            <div class="satir" id="et-taslak-temizlendi">
+                <BasariBandi Mesaj="@T.Temizlendi" Id="et-taslak-temizlendi-bant" />
+                <button class="btn btn-ikincil" id="et-taslak-geri-al" @onclick="TemizlemeyiGeriAl">@T.GeriAl</button>
+            </div>
+        }
+        @if (yazdirmaBasari is not null)
+        {
+            <BasariBandi Mesaj="@yazdirmaBasari" Id="et-yazdir-basari" />
+        }
+        @if (depoKapali)
+        {
+            <p class="metin-kucuk metin-soluk" id="et-taslak-saklanamiyor">@T.SaklanamiyorNotu</p>
+        }
+        @if (kaldirilanSecim > 0)
+        {
+            <p class="metin-kucuk metin-amber" id="et-secim-kaldirildi" role="status">@string.Format(E.SecimKaldirildi, kaldirilanSecim)</p>
+        }
+
+        <HataBandi Mesaj="@hata" Id="hata-bandi" />
+        @* UX-S29 — sunucu sınırı EKRANDA söylenir; sınıra değdiyse uyarı basar. *@
+        @* TOPLU-4 (TOPLU-2 hakem ORTA): 12 px sınır paragrafı yerine sayaç satırı; daraltma cümlesi
+           yalnız sınıra ulaşınca (UX-S29: sınır yine yazılı). *@
+        @if (!yukleniyor)
+        {
+        <p class="metin-soluk t4-sayac" id="et-sinir">
+            @* TOPLU-6 (TOPLU-4 hakemi ORTA "sınırın altında da 'en çok 50'"): sınırın altında yalnız sayı (sınır
+               title'da yazılı kalır); "en çok N" ve daraltma cümlesi sınıra ulaşınca (UX-S29: o an söylenir). *@
+            @if (UrunListesi.Count >= Sinir)
+            {
+                @string.Format(Toplu4Sozlugu.Al(Dil.Dil).ListeSayac, UrunListesi.Count, Sinir)
+            }
+            else
+            {
+                <span title="@string.Format(Toplu6Sozlugu.Al(Dil.Dil).ListeSiniriBilgi, Sinir)">@string.Format(Toplu6Sozlugu.Al(Dil.Dil).ListeSayacSade, UrunListesi.Count)</span>
+            }
+            @if (UrunListesi.Count >= Sinir)
+            {
+                <span class="metin-amber" id="et-sinir-asildi" role="status">@Dil.T.Kabuk.SinirAsildi @string.Format(Dil.T.Kabuk.SinirUyarisi, Sinir)</span>
+            }
+        </p>
+        }
+
+        @if (yukleniyor)
+        {
+            <Yukleniyor />
+        }
+        else if (hata is null && UrunListesi.Count == 0)
+        {
+            @* UX-S28: boş durum YALNIZ istek başarılı ve sonuç gerçekten boşken. *@
+            <BosDurum Mesaj="@E.ListeBos" />
+        }
+        else if (hata is null && !Suzulmus.Any())
+        {
+            @* QA tur 8: sonuçsuz aramada boş durum yoktu (tablo başlığı tek başına kalıyordu). *@
+            <div id="et-arama-bos"><BosDurum Mesaj="@string.Format(E.AramaSonucYok, arama.Trim())" /></div>
+        }
+        else
+        {
+            @* PAKET GOC-C — ORTAK IZGARA (grid:urun-etiketleri:et-liste). Liste en çok 500 aktif ürün (sayaç ve sınır
+               notu üstte, UX-S29): sınıra değdiyse sıralama KAPALI. Mevcut id'ler (et-sec-*, et-ayar-*) korunur. *@
+            <Izgara T="UrunVeri" Ekran="urun-etiketleri" GridId="et-liste" Kolonlar="@EtiketKolonlari"
+                    Ogeler="@IzgaraYerelSiralama.Uygula(Suzulmus.ToList(), etiketSira, EtiketKolonlari)"
+                    SatirId="@(u => $"et-satir-{u.Id}")" Baslik="@Dil.T.Etiket.Sec"
+                    SiralamaDegisti="@(x => etiketSira = x)" GecerliSiralama="@etiketSira" />
+        }
+    </div>
+
+    @* ── Basılacak sayfa ───────────────────────────────────────────────── *@
+    <div class="urun-etiket-sayfa">
+        @foreach (var u in UrunListesi.Where(x => secili.Contains(x.Id)))
+        {
+            @for (var i = 0; i < kopya; i++)
+            {
+                <div class="urun-etiket" @key="u.Id + '-' + i">
+                    <div class="urun-etiket-ad">@u.Ad</div>
+
+                    @* md.11/(e): ibare etikette AÇIKÇA yer alır — gizlenemez, küçültülmez. *@
+                    @if (Ibare(u).Length > 0)
+                    {
+                        <div class="urun-etiket-ibare">@TurkceMetin.Buyut(Ibare(u))</div>
+                    }
+
+                    @* PAKET 20 — maden + milyem ibaresi ("Platin 950"). Ayar kodu
+                       (PT950) kuyumcunun kodudur; müşterinin okuduğu ibare budur. *@
+                    <div class="urun-etiket-maden">@MadenIbaresi(u)</div>
+                    @if (u.RodyumKaplama && etiketPolitikasi.RodyumIbaresiGoster)
+                    {
+                        @* İbarenin ZORUNLU olduğu doğrulanmadı — varsayılan KAPALI,
+                           yapılandırmadan açılır (ADR-0005). *@
+                        <div class="urun-etiket-ibare">@etiketPolitikasi.RodyumIbaresi</div>
+                    }
+
+                    <div class="urun-etiket-satir">
+                        <span>@KurKaynakAdi.AyarAdi(u.AyarId)</span>
+                        <span>@Bicim.Gram(u.GramAgirlik)</span>
+                        <span>@Bicim.Has(u.HasGrami)</span>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(u.Barkod))
+                    {
+                        <div class="urun-etiket-barkod">@((MarkupString)BarkodSvg(u.Barkod))</div>
+                        <div class="urun-etiket-barkod-metin">@u.Barkod</div>
+                    }
+                    else
+                    {
+                        <div class="urun-etiket-barkod-metin metin-soluk">@Dil.T.Etiket.BarkodYok</div>
+                    }
+
+                    <div class="urun-etiket-kod">@u.Kod</div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+
+    // Etiket ibare politikası sözleşmesi ORTAK:
+    // Kuyumcu.Core/Sozlesmeler/MadenSozlesmeleri.cs (ADR-0005 — varsayılan KAPALI).
+    private Kuyumcu.Core.Sozlesmeler.EtiketIbarePolitikasi etiketPolitikasi = new(false, "rodyum kaplama");
+
+    /// <summary>Etikete basılacak maden ibaresi: "Platin 950".</summary>
+    private static string MadenIbaresi(UrunVeri u) =>
+        u.Milyem > 0m
+            ? $"{KurKaynakAdi.MadenAdi(u.Maden, u.MadenAdi)} {u.Milyem.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}"
+            : KurKaynakAdi.MadenAdi(u.Maden, u.MadenAdi);
+
+    private List<UrunVeri> UrunListesi = [];
+    private readonly HashSet<string> secili = [];
+    private string arama = "";
+    private int kopya = 1;
+    private bool yukleniyor = true;
+    private string? hata;
+
+    private IEnumerable<UrunVeri> Suzulmus =>
+        string.IsNullOrWhiteSpace(arama)
+            ? UrunListesi
+            : UrunListesi.Where(u =>
+                u.Ad.Contains(arama, StringComparison.OrdinalIgnoreCase) ||
+                u.Kod.Contains(arama, StringComparison.OrdinalIgnoreCase) ||
+                (u.Barkod ?? "").Contains(arama, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        try
+        {
+            UrunListesi = await Api.GetAsync<List<UrunVeri>>("/urunler?aktif=true&limit=500");
+            listeGeldi = true;
+            // PAKET 20 — etiket ibare politikası sunucudan gelir; ekran mevzuat
+            // kararı vermez (ADR-0005). Hata bandı ayrıdır: UX-S28 gereği liste
+            // boşaltılmaz, ibare varsayılan KAPALI kalır.
+            var m = await Api.GetAsync<Kuyumcu.Core.Sozlesmeler.MadenTablosuYaniti>("/urunler/madenler");
+            if (m.Etiket is not null) etiketPolitikasi = m.Etiket;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        // P-66 — taslak YALNIZ liste başarıyla geldiyse geri yüklenir: liste
+        // yokken her kalem "listede yok" sayılır ve taslak yanlışlıkla budanırdı.
+        if (listeGeldi) await TaslakGeriYukle();
+        yukleniyor = false;
+    }
+
+    private async Task Sec(string id, bool acik)
+    {
+        if (acik) secili.Add(id); else secili.Remove(id);
+        await TaslakKaydet();
+    }
+
+    private async Task TumunuSec()
+    {
+        foreach (var u in Suzulmus) secili.Add(u.Id);
+        await TaslakKaydet();
+    }
+
+    // ── UX-1-C0 / QA turu 2: "adet=0 ile Yazdır aktif ve boş sayfa basıyor" ──
+    // Sessiz etkisizlik yasağı: düğme kilitlenir VE sebebi yazılır (UX-S30);
+    // ayrıca alanın altına Türkçe mesaj düşer (C0-d).
+    private const int Sinir = 500;
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? etiketSira;
+    private bool EtiketListesiTam => UrunListesi.Count < Sinir;
+    private IReadOnlyList<IzgaraKolonu<UrunVeri>> EtiketKolonlari =>
+    [
+        new() { Anahtar = "sec", Baslik = Dil.T.Etiket.Sec, BaslikGizli = true, ZorunluGorunur = true, KartEtiketsiz = true,
+                Hucre = u => @<Onay ElemanId="@($"et-sec-{u.Id}")" EtiketGizli="true" Etiket="@u.Ad"
+                                     Deger="@secili.Contains(u.Id)"
+                                     DegerChanged="@((bool _v) => Sec(u.Id, _v))" /> },
+        new() { Anahtar = "ad", Baslik = Dil.T.Urun.UrunAdi, ZorunluGorunur = true, SunucuSiralamaAdi = EtiketListesiTam ? "ad" : null,
+                HucreSinif = _ => "hucre-vurgu", Deger = u => u.Ad },
+        new() { Anahtar = "barkod", Baslik = Dil.T.Urun.Barkod, SunucuSiralamaAdi = EtiketListesiTam ? "barkod" : null,
+                HucreSinif = _ => "metin-kucuk", Deger = u => u.Barkod ?? "—" },
+        // KESIF-P4 #85: ham ayar kodu (K22) basılmaz — ad TEK kaynaktan.
+        new() { Anahtar = "ayar", Baslik = Dil.T.Urun.Ayar, SunucuSiralamaAdi = EtiketListesiTam ? "ayar" : null,
+                Deger = u => KurKaynakAdi.AyarAdi(u.AyarId),
+                Hucre = u => @<span id="@($"et-ayar-{u.Id}")"><Rozet Renk="amber">@KurKaynakAdi.AyarAdi(u.AyarId)</Rozet></span> },
+        new() { Anahtar = "has", Baslik = Dil.T.Urun.HasGram, SunucuSiralamaAdi = EtiketListesiTam ? "has" : null, BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = u => u.HasGrami, Hucre = u => @<text>@Bicim.Has(u.HasGrami)</text> },
+        new() { Anahtar = "tas", Baslik = Dil.T.Urun.TasKokeni, HucreSinif = _ => "metin-kucuk", Deger = u => Ibare(u),
+                Hucre = u => @<text>@if (Ibare(u).Length > 0)
+                    {
+                        <Rozet Renk="mavi">@Ibare(u)</Rozet>
+                    }
+                    else
+                    {
+                        <span class="metin-soluk">—</span>
+                    }</text> },
+    ];
+    private readonly FormDurumu form = new();
+
+    private int ToplamEtiket => secili.Count * (kopya > 0 ? kopya : 0);
+
+    private bool Yazdirilabilir => secili.Count > 0 && kopya >= 1;
+
+    // S3-3 / QA tur 8: kilit sebebi tek kelime ("Seç") yanıltıcıydı — ne yapılacağı yazar.
+    private string YazdirKilitSebebi => secili.Count == 0
+        ? E.OnceSecin
+        : Dil.T.Kabuk.SifirdanBuyuk;
+
+    private EtiketEkranMetinleri E => UrunListeSozlugu.Etiket(Dil.Dil);
+
+    /// <summary>Son arama değişikliğinde görünmediği için düşürülen seçim sayısı.</summary>
+    private int kaldirilanSecim;
+
+    /// <summary>
+    /// S3-3 — seçim DAİMA görünen listenin alt kümesidir: arama değişince
+    /// aramaya uymayan seçimler düşer ve kaç tane düştüğü yazılır (sessiz değil).
+    /// Önizleme ve baskı yalnız ekranda görünen seçili ürünleri içerir.
+    /// </summary>
+    private async Task AramaDegisti(string? v)
+    {
+        arama = v ?? "";
+        var gorunen = Suzulmus.Select(u => u.Id).ToHashSet();
+        var once = secili.Count;
+        secili.IntersectWith(gorunen);
+        kaldirilanSecim = once - secili.Count;
+        await TaslakKaydet();
+    }
+
+    private async Task SecimiTemizle()
+    {
+        secili.Clear();
+        kaldirilanSecim = 0;
+        await TaslakKaydet();
+    }
+
+    private async Task AdetGirildi(decimal? v)
+    {
+        kopya = v is { } d ? (int)d : 0;
+        AdetDegisti();
+        await TaslakKaydet();
+    }
+
+    private void AdetDegisti()
+    {
+        form.Temizle();
+        if (kopya < 1) form.Ekle("kopya", Dil.T.Kabuk.SifirdanBuyuk);
+    }
+
+    private async Task Yazdir()
+    {
+        form.Temizle();
+        if (kopya < 1) form.Ekle("kopya", Dil.T.Kabuk.SifirdanBuyuk);
+        if (secili.Count == 0 || !form.Gecerli)
+        {
+            // Sessizce hiçbir şey yapmak YASAK: odak hatalı alana taşınır.
+            if (form.IlkHatali is { } ilk)
+                try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", $"et-adet"); }
+                catch { /* JS yoksa mesaj yine görünür */ }
+            return;
+        }
+        await JS.InvokeVoidAsync("window.print");
+        // P-66 — yazdırma çağrısı hatasız döndü: kayıtlı taslak temizlenir.
+        // Ekrandaki seçim KORUNUR (iptal edilen baskı hemen yinelenebilsin);
+        // kullanıcı bir şey değiştirirse taslak yeniden yazılır.
+        await TaslakSil();
+        temizlenenTaslak = null;
+        geriYuklendi = false;
+        eksikKalem = 0;
+        yazdirmaBasari = T.YazdirmaGonderildi;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // P-66 — BASIM TASLAĞI (tarayıcı deposu, kiracı + kullanıcı anahtarı)
+    //
+    // • Anahtar oturum jetonundan (tenantId + sub) okunur; kullanıcı profili
+    //   (/auth/ben) henüz gelmemiş olsa da doğru anahtar bulunur. Kimlik
+    //   çözülemezse depo KULLANILMAZ (başka kullanıcının taslağına karışma
+    //   riski yerine açık not: "seçim saklanmıyor").
+    // • Her okuma/yazma try/catch içindedir: depo kapalıysa (gizli pencere,
+    //   engellenmiş site verisi) ekran çalışmaya devam eder, taslak yok sayılır.
+    // • Geri yüklemede artık listede olmayan kimlikler SESSİZCE düşürülmez:
+    //   sayısı "{n} kalem artık listede yok" bandıyla söylenir.
+    // ═════════════════════════════════════════════════════════════════════
+    private const string TaslakOnek = "kuyumcu-etiket-taslak";
+
+    private EtiketTaslakMetinleri T => EtiketTaslakSozlugu.Al(Dil.Dil);
+
+    private bool geriYuklendi;
+    private bool listeGeldi;
+    private int eksikKalem;
+    private bool depoKapali;
+    private string? yazdirmaBasari;
+
+    /// <summary>Temizlemeden önceki durum — "Geri al" için bellekte tutulur.</summary>
+    private (HashSet<string> Secili, int Kopya, string Arama)? temizlenenTaslak;
+
+    private bool TemizlenecekVar => secili.Count > 0 || !string.IsNullOrWhiteSpace(arama) || kopya != 1;
+
+    /// <summary>tenantId + sub jeton yükünden okunur; çözülemezse null.</summary>
+    private string? TaslakAnahtari()
+    {
+        var jeton = Oturum.AccessToken;
+        if (string.IsNullOrEmpty(jeton)) return null;
+        try
+        {
+            var parca = jeton.Split('.');
+            if (parca.Length < 2) return null;
+            var b64 = parca[1].Replace('-', '+').Replace('_', '/');
+            b64 = b64.PadRight(b64.Length + (4 - b64.Length % 4) % 4, '=');
+            using var belge = System.Text.Json.JsonDocument.Parse(Convert.FromBase64String(b64));
+            var kok = belge.RootElement;
+            var kiraci = kok.TryGetProperty("tenantId", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.String ? t.GetString() : null;
+            var kullanici = kok.TryGetProperty("sub", out var s) && s.ValueKind == System.Text.Json.JsonValueKind.String ? s.GetString() : null;
+            if (string.IsNullOrWhiteSpace(kiraci) || string.IsNullOrWhiteSpace(kullanici)) return null;
+            return $"{TaslakOnek}:{kiraci}:{kullanici}";
+        }
+        catch (FormatException) { return null; }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
+
+    /// <summary>Sayfa açılışında taslağı geri yükler (ürün listesi geldikten SONRA).</summary>
+    private async Task TaslakGeriYukle()
+    {
+        var anahtar = TaslakAnahtari();
+        if (anahtar is null) { depoKapali = true; return; }
+
+        string? ham;
+        try { ham = await JS.InvokeAsync<string?>("localStorage.getItem", anahtar); }
+        catch (Exception) { depoKapali = true; return; }   // depo kapalı → taslak yok gibi
+        if (string.IsNullOrWhiteSpace(ham)) return;
+
+        List<string> kayitli = [];
+        int kayitliKopya = 1;
+        string kayitliArama = "";
+        try
+        {
+            using var belge = System.Text.Json.JsonDocument.Parse(ham);
+            var kok = belge.RootElement;
+            if (kok.TryGetProperty("secili", out var s) && s.ValueKind == System.Text.Json.JsonValueKind.Array)
+                foreach (var e in s.EnumerateArray())
+                    if (e.ValueKind == System.Text.Json.JsonValueKind.String && e.GetString() is { Length: > 0 } id)
+                        kayitli.Add(id);
+            if (kok.TryGetProperty("kopya", out var k) && k.TryGetInt32(out var kv)) kayitliKopya = kv;
+            if (kok.TryGetProperty("arama", out var a) && a.ValueKind == System.Text.Json.JsonValueKind.String) kayitliArama = a.GetString() ?? "";
+        }
+        catch (System.Text.Json.JsonException) { return; }   // bozuk taslak: yok sayılır, üstüne yazılır
+        catch (InvalidOperationException) { return; }
+
+        kayitli = kayitli.Distinct().ToList();
+        arama = kayitliArama;
+        kopya = kayitliKopya is >= 1 and <= 20 ? kayitliKopya : 1;
+        var gorunen = Suzulmus.Select(u => u.Id).ToHashSet();
+        foreach (var id in kayitli)
+            if (gorunen.Contains(id)) secili.Add(id);
+        eksikKalem = kayitli.Count - secili.Count;
+        geriYuklendi = kayitli.Count > 0 || kopya != 1 || !string.IsNullOrWhiteSpace(arama);
+
+        // Depo ekranla aynı kalsın: düşen kalemler bir sonraki açılışta yeniden sayılmaz.
+        if (eksikKalem > 0) await TaslakKaydet();
+    }
+
+    /// <summary>Her seçim/adet/arama değişikliğinde taslağı yazar; boşsa siler.</summary>
+    private async Task TaslakKaydet()
+    {
+        yazdirmaBasari = null;
+        temizlenenTaslak = null;   // yeni değişiklik "geri al" penceresini kapatır
+        if (!TemizlenecekVar) { await TaslakSil(); return; }
+        var anahtar = TaslakAnahtari();
+        if (anahtar is null) { depoKapali = true; return; }
+        var json = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["v"] = 1,
+            ["secili"] = secili.OrderBy(x => x, StringComparer.Ordinal).ToArray(),
+            ["kopya"] = kopya,
+            ["arama"] = arama,
+        });
+        try { await JS.InvokeVoidAsync("localStorage.setItem", anahtar, json); depoKapali = false; }
+        catch (Exception) { depoKapali = true; }
+    }
+
+    private async Task TaslakSil()
+    {
+        var anahtar = TaslakAnahtari();
+        if (anahtar is null) return;
+        try { await JS.InvokeVoidAsync("localStorage.removeItem", anahtar); }
+        catch (Exception) { depoKapali = true; }
+    }
+
+    /// <summary>"Taslağı temizle": depo silinir, form boşalır; "Geri al" bellekteki kopyadan döner.</summary>
+    private async Task TaslagiTemizle()
+    {
+        temizlenenTaslak = (new HashSet<string>(secili), kopya, arama);
+        secili.Clear();
+        kopya = 1;
+        arama = "";
+        kaldirilanSecim = 0;
+        eksikKalem = 0;
+        geriYuklendi = false;
+        yazdirmaBasari = null;
+        form.Temizle();
+        await TaslakSil();
+    }
+
+    private async Task TemizlemeyiGeriAl()
+    {
+        if (temizlenenTaslak is not { } t) return;
+        temizlenenTaslak = null;
+        arama = t.Arama;
+        kopya = t.Kopya;
+        foreach (var id in t.Secili) secili.Add(id);
+        await TaslakKaydet();
+    }
+
+    /// <summary>
+    /// Barkod SVG'si — istemcide üretilir (ADR-0007). Kodlanamayan bir barkod
+    /// sessizce boş bırakılır; etiket yine basılır, ama sahte bir görsel konmaz.
+    /// </summary>
+    private static string BarkodSvg(string barkod)
+    {
+        try { return Code128.Svg(barkod, yukseklik: 34, modulGenislik: 1.1, sessizAlanModul: 6); }
+        catch (ArgumentException) { return ""; }
+    }
+
+    private static string Ibare(UrunVeri u) => u.TasKokeni switch
+    {
+        "SENTETIK"            => string.IsNullOrWhiteSpace(u.TasIbaresi) ? "sentetik" : u.TasIbaresi!,
+        "LABORATUVAR_URETIMI" => string.IsNullOrWhiteSpace(u.TasIbaresi) ? "laboratuvar üretimi" : u.TasIbaresi!,
+        "YAPAY_URETIM"        => string.IsNullOrWhiteSpace(u.TasIbaresi) ? "yapay üretim" : u.TasIbaresi!,
+        _ => "",
+    };
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

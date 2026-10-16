@@ -1,0 +1,106 @@
+@inject DilServisi Dil
+
+@* ═════════════════════════════════════════════════════════════════════════════
+   PAKET YILDIZ-4B — "YILDIZ" MÜŞTERİLER (tuval Musteri4 koyu / Musteri4a açık · BİREBİR)
+
+   Yerleşim tuvalin <main>'idir: solda üst satır ("7 müşteri · 2 alacak · 1 borç") +
+   64 px ince başlık, ortada 460 px alt çizgili arama, sağda tek beyaz hap "Yeni
+   müşteri"; altında HEPSİ (altı çizili) · BORÇLU · TOPTANCI; satırlar kıl çizgili
+   (ad · soluk alt bilgi · tutar · soluk durum); en altta tuvalin notu.
+
+   ⚠ YALNIZ data-sema="yildiz" (BASİT ve PRO aynı yüz): Cariler.razor bu bileşeni şema
+     Yıldız iken çizer; öteki 8 şemada özgün liste AYNEN.
+   ⚠ İSTEK ATMAZ: arama/süzgeç/satır/yeni = sayfanın mevcut geri çağrıları. Satıra
+     dokununca sayfanın kartı (tahsilat, ekstre, düzenleme, kullanımdan kaldırma) açılır.
+   ⚠ Mevcut id'ler korunur: #cari-arama, #cari-yeni-ac, #cari-segment-{kod}.
+   ═════════════════════════════════════════════════════════════════════════════ *@
+
+<div class="yz yz-musteri" id="yildiz-musteri">
+    <div class="yz-musteri-ana">
+        <div class="yz-bas">
+            <div class="yz-bas-sol">
+                @* P-DIL-BORC-KASA tur 2 (doğrulayıcı DÜŞÜK, 375 px): sayı etiketinden ayrılmasın — her " · " parçası
+                   kırılmaz blok; satır yalnız ayırıcıda kırılır. Metin (TextContent) aynı. *@
+                <p class="yz-ust" id="yildiz-musteri-ust">@{
+                    var ustParcalar = B.Ust.Split(" · ");
+                    for (var i = 0; i < ustParcalar.Length; i++)
+                    {
+                        if (i > 0) { <text>@(" · ")</text> }
+                        <span class="yz-ust-parca">@ustParcalar[i]</span>
+                    }
+                }</p>
+                <h1 class="yz-ince yz-h1" id="yildiz-musteri-baslik">@YildizMusteriSozlugu.Baslik(Dil.Dil)</h1>
+            </div>
+            <div class="yz-alan yz-alan-ara" id="yildiz-musteri-ara">
+                <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
+                <Kuyumcu.Web.Bilesenler.Form.Arama ElemanId="cari-arama"
+                    Etiket="@YildizMusteriSozlugu.AraEtiket(Dil.Dil)" YerTutucu="@YildizMusteriSozlugu.AraYerTutucu(Dil.Dil)"
+                    Deger="@B.Arama" DegerChanged="B.AramaDegisti" />
+            </div>
+            <button type="button" class="yz-b1" id="cari-yeni-ac" @onclick="B.YeniMusteri">@YildizMusteriSozlugu.YeniMusteri(Dil.Dil)</button>
+        </div>
+
+        <div class="yz-sekmeler" id="cari-segment" role="group" aria-label="@YildizMusteriSozlugu.Baslik(Dil.Dil)">
+            @foreach (var s in B.Sekmeler)
+            {
+                <button type="button" id="@($"cari-segment-{s.Kod}")" class="@(s.Secili ? "yz-b2 yz-sekme yz-sekme--secili" : "yz-s yz-sekme")"
+                        aria-pressed="@(s.Secili ? "true" : "false")" @onclick="() => B.SekmeSec.InvokeAsync(s.Kod)">@s.Etiket</button>
+            }
+        </div>
+
+        @B.Bantlar
+
+        @if (B.Yukleniyor && B.Satirlar.Count == 0)
+        {
+            <Yukleniyor />
+        }
+        else if (B.HicYok)
+        {
+            <p class="yz-s yz-bos" id="yildiz-musteri-bos">@YildizMusteriSozlugu.Bos(Dil.Dil)</p>
+        }
+        else if (B.AramaBos)
+        {
+            <p class="yz-s yz-bos" id="yildiz-musteri-arama-bos">@YildizMusteriSozlugu.AramaBos(Dil.Dil)</p>
+        }
+        else if (B.SuzgecBos)
+        {
+            <p class="yz-s yz-bos" id="yildiz-musteri-suzgec-bos">@YildizMusteriSozlugu.SuzgecBos(Dil.Dil)</p>
+        }
+        else if (B.Satirlar.Count > 0)
+        {
+            <div class="yz-sayi yz-musteri-liste" id="yildiz-musteri-liste">
+                @foreach (var r in B.Satirlar)
+                {
+                    <a href="@($"/cariler?cariId={Uri.EscapeDataString(r.Id)}")" class="yz-sat yz-musteri-sat" id="@($"yildiz-musteri-{r.Id}")"
+                       @onclick="() => B.SatirAc.InvokeAsync(r.Id)" @onclick:preventDefault="true">
+                        <span class="yz-musteri-ad">@r.Ad</span>
+                        <span class="yz-s yz-musteri-alt">@r.Alt</span>
+                        <span class="@(r.Borc ? "yz-musteri-tutar yz-kotu" : "yz-musteri-tutar")">@r.Tutar</span>
+                        <span class="yz-s yz-musteri-durum">@r.Durum</span>
+                    </a>
+                }
+            </div>
+        }
+        @if (B.SinirNotu is { } sinir)
+        {
+            <p class="yz-s yz-not" id="cari-sinir" role="status">@sinir</p>
+        }
+        @* YILDIZ-4C (hakem 4B tur 2 DÜŞÜK "alt not tuvalde var uygulamada yok"): tuvalin alt satırı — kullanıcıya yol gösterir
+           (satır → kart: tahsilat, ekstre, düzenleme), tasarım notu değil. *@
+        <div class="yz-musteri-alt">
+        <p class="yz-s yz-musteri-not" id="yildiz-musteri-not">@YildizMusteriSozlugu.Not(Dil.Dil)</p>
+        @* YILDIZ-4D (kurucu 09.10 "tuvalde olmayan öğe ekrana konmaz"): "+ Süzgeç" düğmesi KALDIRILDI. Özellik silinmez:
+           pasif müşteri ARAMAYLA bulunur (Cariler.Yildiz.cs — arama yazılınca pasif kartlar da gelir, satırda "kullanımda değil"
+           yazar; kartından aktife alınır); tür süzgeci bağlantıdan (?tur=, ?aktif=false) gelirse aşağıdaki şerit
+           görünür ve bantta "Temizle" ile kaldırılır. *@
+        </div>
+        @if (B.SuzgecEtkin && B.DigerSuzgecler is not null)
+        {
+            <div class="yz-musteri-suzgec" id="yildiz-musteri-suzgec">@B.DigerSuzgecler</div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public YildizMusteriBaglami B { get; set; } = new();
+}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{BASLIK}}</title>
+{{DAMGA}}
+<!-- ════════════════════════════════════════════════════════════════════════
+     KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
+     DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
+     ({{URETICI}}) içindekiler / kapak / içerik yer tutucularını
+     o dosyadan doldurur. Palet burada DEĞİL: tek kaynak css/belirtecler.css
+     (UX-2 Faz A1, Bertan KOŞUL 1) — kılavuz aydınlık/karanlık temayı izler.
+     OTURUMSUZ ERİŞİM KARARI (P-33, yazılı): kılavuz statik bir dosyadır, hiçbir
+     işletme verisi taşımaz ve giriş ekranında takılan kullanıcı da okuyabilsin
+     diye oturum İSTEMEZ. Bu yüzden içine betik, veri çağrısı ya da çerçeve
+     (iframe) KONMAZ; /kilavuz ekranı da onu çerçevelemez, yeni sekmede açar
+     (Mehmet kararı: CSP frame-ancestors 'none' gevşetilmez).
+     ════════════════════════════════════════════════════════════════════════ -->
+<link rel="stylesheet" href="css/belirtecler.css" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:1rem}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--metin); background:var(--yuzey-govde); line-height:1.65; font-size:16px;
+  }
+  .duzen{display:grid; grid-template-columns:290px 1fr; max-width:1280px; margin:0 auto; min-height:100vh}
+
+  /* ── İçindekiler (sabit sol) ── */
+  .toc{
+    position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+    background:var(--kenar-yuzey); color:var(--kenar-metin); padding:1.25rem 0;
+  }
+  .toc .marka{display:flex;flex-direction:column;font-weight:700;color:var(--kenar-metin-guclu);font-size:1.15rem;padding:0 1.25rem 1rem}
+  .toc .marka .altbaslik{display:block;font-size:.72rem;font-weight:400;color:var(--kenar-metin);letter-spacing:.04em}
+  .toc nav{display:flex;flex-direction:column}
+  .toc a{color:var(--kenar-metin);text-decoration:none;padding:.38rem 1.25rem;font-size:.86rem;border-left:3px solid transparent}
+  .toc a:hover{color:var(--kenar-metin-guclu);border-left-color:var(--vurgu)}
+  .toc .bolum{margin-top:.9rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--kenar-metin-guclu);font-weight:700;padding:.2rem 1.25rem}
+  .toc a.alt{padding-left:2rem;font-size:.8rem}
+
+  /* ── İçerik ── */
+  main{padding:0 2.5rem 5rem; background:var(--yuzey); min-width:0}
+  .kapak{background:var(--vurgu-yuzey);color:var(--vurgu-guclu);border-bottom:1px solid var(--vurgu-kenar);
+    margin:0 -2.5rem 2rem; padding:2.5rem 2.5rem 2rem}
+  .kapak h1{font-size:2rem;font-weight:800;letter-spacing:-.02em;color:var(--metin-guclu)}
+  .kapak p{margin-top:.5rem;max-width:62ch;color:var(--metin)}
+
+  section{scroll-margin-top:1rem; padding-top:2.25rem; border-top:1px solid var(--ayrac); margin-top:2.25rem}
+  section:first-of-type{border-top:0;margin-top:0;padding-top:1rem}
+  h2{font-size:1.45rem;color:var(--metin-guclu);font-weight:800;display:flex;align-items:center;gap:.55rem}
+  h2 .no{background:var(--vurgu-yuzey);color:var(--vurgu-guclu);font-size:.9rem;min-width:1.9rem;height:1.9rem;padding:0 .3rem;
+    display:inline-flex;align-items:center;justify-content:center;border-radius:8px;font-weight:800;flex-shrink:0}
+  h3{font-size:1.1rem;color:var(--metin-guclu);font-weight:700;margin:1.5rem 0 .5rem;scroll-margin-top:1rem}
+  p{margin:.6rem 0}
+  ul,ol{margin:.5rem 0 .5rem 1.3rem}
+  li{margin:.3rem 0}
+  code{background:var(--ayrac);padding:.1rem .38rem;border-radius:5px;font-size:.88em;
+    font-family:"SF Mono",Consolas,Menlo,monospace;color:var(--metin)}
+  strong{color:var(--metin-guclu)}
+  a.ic{color:var(--vurgu);font-weight:600;text-decoration:none;border-bottom:1px dotted var(--vurgu)}
+  a.ic:hover{border-bottom-style:solid}
+  .ekran-capa{display:block;position:relative;top:-1rem;visibility:hidden}
+
+  /* Adım listesi */
+  ol.adimlar{counter-reset:s;list-style:none;margin-left:0}
+  ol.adimlar>li{counter-increment:s;position:relative;padding:.35rem 0 .35rem 2.4rem;margin:.35rem 0}
+  ol.adimlar>li::before{content:counter(s);position:absolute;left:0;top:.3rem;background:var(--vurgu);color:var(--vurgu-metin);
+    width:1.7rem;height:1.7rem;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:.82rem;font-weight:700}
+
+  /* Bilgi kutuları */
+  .kutu{border-radius:var(--yaricap);padding:.9rem 1.1rem;margin:1rem 0;font-size:.95rem;border:1px solid}
+  .kutu p{margin:.2rem 0}
+  .kutu.ipucu{background:var(--vurgu-yuzey);border-color:var(--vurgu-kenar);color:var(--vurgu-guclu)}
+  .kutu.bilgi{background:var(--bilgi-yuzey);border-color:var(--bilgi-kenar);color:var(--bilgi)}
+  .kutu.uyari{background:var(--tehlike-yuzey);border-color:var(--tehlike-kenar);color:var(--tehlike)}
+
+  /* Tablolar */
+  .tablo-sar{overflow-x:auto;margin:1rem 0}
+  table.tablo{width:100%;border-collapse:collapse;background:var(--yuzey);border:1px solid var(--ayrac);font-size:.92rem}
+  table.tablo th{background:var(--yuzey-2);text-align:left;padding:.45rem .6rem;color:var(--metin-soluk);font-weight:600}
+  table.tablo td{padding:.45rem .6rem;border-top:1px solid var(--ayrac);vertical-align:top}
+
+  footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--ayrac);color:var(--metin-soluk);font-size:.85rem}
+  .ust-link{position:fixed;right:1.2rem;bottom:1.2rem;background:var(--vurgu);color:var(--vurgu-metin);width:2.6rem;height:2.6rem;
+    border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:1.1rem}
+  .ipucu{background:var(--vurgu-yuzey);color:var(--vurgu-guclu);border:1px solid var(--vurgu-kenar);border-radius:8px;padding:.5rem .8rem;font-size:.85rem;margin:1rem 0}
+
+  @media (max-width:860px){
+    .duzen{grid-template-columns:1fr}
+    .toc{position:static;height:auto}
+    main{padding:0 1rem 3rem}
+    .kapak{margin:0 -1rem 1.5rem;padding:1.75rem 1rem}
+  }
+
+  /* ── 4 TEMEL DURUM GALERİSİ (UX-2 Faz A2 · K14) ───────────────────────────
+     Sabit renk YOKTUR; her değer belirtecler.css'ten var() ile okunur.
+     Her kart kendi data-tema/data-mod özniteliğini taşır → aynı sayfada
+     aydınlık/karanlık × basit/profesyonel dördü birden görülür. */
+  .galeri{display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:var(--bosluk-4);margin-top:var(--bosluk-4)}
+  .tema-onizleme{background:var(--yuzey-govde);color:var(--metin);border:1px solid var(--kenarlik);border-radius:var(--yaricap-lg);padding:var(--bosluk-4);display:flex;flex-direction:column;gap:var(--bosluk-3)}
+  .tema-onizleme .durum-etiketi{font-size:var(--yazi-xs);letter-spacing:.04em;text-transform:uppercase;color:var(--metin-soluk)}
+  .tema-onizleme .o-basi-metin{flex:1;min-width:0}
+  .tema-onizleme .o-sayfa-basi{display:flex;align-items:flex-end;gap:var(--bosluk-3);flex-wrap:wrap}
+  .tema-onizleme .o-baslik{font-size:var(--yazi-xl);font-weight:600;color:var(--metin-guclu)}
+  .tema-onizleme .o-aciklama{font-size:var(--yazi-sm);color:var(--metin-soluk)}
+  .tema-onizleme .o-dugme{padding:var(--bosluk-2) var(--bosluk-3);border-radius:var(--yaricap-sm);border:1px solid var(--vurgu);background:var(--vurgu);color:var(--vurgu-metin);min-height:var(--dokunma-hedefi)}
+  .tema-onizleme .o-dugme.ikincil{background:var(--yuzey);border-color:var(--kenarlik);color:var(--metin)}
+  .tema-onizleme .o-dugme:focus-visible{outline:var(--odak-halka-kalinlik) solid var(--odak-halka);outline-offset:var(--odak-halka-boslugu)}
+  .tema-onizleme table{width:100%;border-collapse:collapse;background:var(--yuzey);border-radius:var(--yaricap);overflow:hidden}
+  .tema-onizleme th,.tema-onizleme td{padding:var(--bosluk-hucre);line-height:var(--satir-yuksekligi);border-top:1px solid var(--ayrac);font-size:var(--yazi-sm);text-align:left}
+  .tema-onizleme thead th{background:var(--yuzey-2);border-top:none;color:var(--metin-soluk)}
+  .tema-onizleme td.sayi{font-variant-numeric:tabular-nums;text-align:right;color:var(--metin-guclu)}
+  .tema-onizleme .o-rozet{display:inline-block;padding:var(--bosluk-1) var(--bosluk-2);border-radius:var(--yaricap-tam);font-size:var(--yazi-xs);background:var(--basari-yuzey);color:var(--basari);border:1px solid var(--basari-kenar)}
+  .tema-onizleme .o-rozet.bekleyen{background:var(--uyari-yuzey);color:var(--uyari);border-color:var(--uyari-kenar)}
+  .tema-onizleme .o-si{border:1px dashed var(--kenarlik);border-radius:var(--yaricap-sm);padding:var(--bosluk-1) var(--bosluk-2);background:var(--yuzey-2);font-size:var(--yazi-sm)}
+  .tema-onizleme .o-grafik{display:flex;gap:var(--bosluk-1);align-items:flex-end;height:3rem}
+  .tema-onizleme .o-grafik i{flex:1;border-radius:2px 2px 0 0}
+  .tema-onizleme .o-g1{background:var(--grafik-1);height:100%}
+  .tema-onizleme .o-g2{background:var(--grafik-2);height:70%}
+  .tema-onizleme .o-g3{background:var(--grafik-3);height:85%}
+  .tema-onizleme .o-g4{background:var(--grafik-4);height:45%}
+  .tema-onizleme .o-g5{background:var(--grafik-5);height:60%}
+</style>
+</head>
+<body>
+<div class="duzen">
+
+  <!-- ═══════════ İÇİNDEKİLER (üretilir) ═══════════ -->
+  <aside class="toc">
+    <div class="marka">MİHENK<span class="altbaslik">Kullanım Kılavuzu</span></div>
+    <nav>
+{{ICINDEKILER}}
+      <div class="bolum">Tasarım</div>
+      <a href="#galeri">Tasarım galerisi</a>
+    </nav>
+  </aside>
+
+  <!-- ═══════════ İÇERİK (üretilir) ═══════════ -->
+  <main>
+{{KAPAK}}
+{{ICERIK}}
+
+    <!-- ── TASARIM GALERİSİ (UX-2 Faz A2 · mühür K14) ── -->
+    <section id="galeri">
+      <h2><span class="no">🎨</span> Tasarım galerisi — 4 temel durum</h2>
+      <p>Aynı DOM, dört görünüm: <strong>aydınlık/karanlık</strong> × <strong>basit/profesyonel</strong>.
+         Tema renkleri, yoğunluk (satır yüksekliği ve hücre boşluğu) ve dokunma hedefi
+         yalnız <code>data-tema</code> / <code>data-mod</code> özniteliğinden gelir;
+         hiçbir sabit renk ya da satır içi stil kullanılmaz. Görsel regresyon bu
+         galeriden kontrol edilir.</p>
+      <div class="galeri">
+      <div class="tema-onizleme" data-tema="aydinlik" data-mod="basit">
+        <div class="durum-etiketi">Aydınlık · Basit</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      <div class="tema-onizleme" data-tema="aydinlik" data-mod="profesyonel">
+        <div class="durum-etiketi">Aydınlık · Profesyonel</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      <div class="tema-onizleme" data-tema="karanlik" data-mod="basit">
+        <div class="durum-etiketi">Karanlık · Basit</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      <div class="tema-onizleme" data-tema="karanlik" data-mod="profesyonel">
+        <div class="durum-etiketi">Karanlık · Profesyonel</div>
+        <div class="o-sayfa-basi">
+          <div class="o-basi-metin">
+            <div class="o-baslik">Cariler</div>
+            <div class="o-aciklama">Müşteri ve tedarikçi hesapları.</div>
+          </div>
+          <button type="button" class="o-dugme">Yeni cari</button>
+        </div>
+        <table>
+          <thead><tr><th>Cari</th><th>Durum</th><th class="sayi">Bakiye (₺)</th></tr></thead>
+          <tbody>
+            <tr><td>Ahmet Yılmaz</td><td><span class="o-rozet">Aktif</span></td><td class="sayi">6.773,80</td></tr>
+            <tr><td><span class="o-si">Sarraf Demir ✎</span></td><td><span class="o-rozet bekleyen">Vadesi yakın</span></td><td class="sayi">-1.240,00</td></tr>
+          </tbody>
+        </table>
+        <div class="o-grafik" role="img" aria-label="Grafik serisi örneği">
+          <i class="o-g1"></i><i class="o-g2"></i><i class="o-g3"></i><i class="o-g4"></i><i class="o-g5"></i>
+        </div>
+        <div><button type="button" class="o-dugme ikincil">İptal</button>
+             <button type="button" class="o-dugme">Kaydet</button></div>
+      </div>
+      </div>
+      <div class="ipucu"><b>Not:</b> altın (amber) vurgusu yalnız <em>birincil eylem</em> ve
+        <em>aktif durum</em> içindir; metin rengi olarak kullanılmaz (kontrast).
+        Sayısal sütunlar <code>.sayi</code> ile tabular-nums ve sağa hizalıdır.</div>
+    </section>
+
+    <footer>
+      <p>Bu kılavuz docs/KULLANIM_KILAVUZU.md dosyasından üretilmiştir; programdaki her ekranın kendi bölümü vardır.</p>
+    </footer>
+  </main>
+</div>
+<a class="ust-link" href="#" title="Başa dön">↑</a>
+</body>
+</html>

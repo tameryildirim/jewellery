@@ -1,0 +1,284 @@
+@using Kuyumcu.Contracts.Cikti
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   PAKET P-17 (Y-6) — ORTAK A4 BELGE ŞABLONU.
+
+   Satış fişi, tahsilat makbuzu, emanet teslim belgesi ve cari ekstresi
+   BU TEK bileşenden çıkar. Kâğıt düzeni (başlık, düzenleyen kimliği, karşı
+   taraf, tablolar, tutarlar, imza) bir SUNUM kararıdır ve bir kez yazılır.
+
+   ⚠ R-11 (P-01'de 1.1'e ertelendi): şablon MOTORU yok, şablon SABİT.
+   ⚠ ADR-0007: PDF sunucuda üretilmez; tarayıcının "PDF olarak kaydet"i.
+   ⚠ UX-S32: her tutar KENDİ para birimiyle basılır — Bicim.Para(tutar, birim).
+   ⚠ Yeni CSS sabit renk İÇERMEZ; `.belge*` sınıfları app.css'te belirteçlidir.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<article class="belge" id="@($"{Onek}-belge")">
+    @if (!string.IsNullOrWhiteSpace(Belge.Uyari))
+    {
+        @* Kâğıda DA basılır: hükümsüz kayıt geçerli belge gibi dolaşmasın. *@
+        <p class="belge-uyari" id="@($"{Onek}-uyari")">@Belge.Uyari</p>
+    }
+
+    <header class="belge-ust">
+        @* Q9-4 (375 px ölçümü): başlık tek satırda kalır (mevcut .hucre-tek-satir),
+           uzun kayıt numarası gerekirse kırılır (mevcut .kir-uzun) — "SATIŞ FİŞİ"
+           numaranın yanında iki satıra bölünmez. Yeni CSS yok. *@
+        <h1 class="hucre-tek-satir">@Belge.BelgeAdi</h1>
+        @* TOPLU-2 tur 2 (tasarım hakemi KRİTİK, C_ekstre 375): cari ekstresinin "belge no"su
+           CARİNİN KAYIT KİMLİĞİYDİ (bir belge numarası değil) ve 375'te 6 satıra kırılıyordu.
+           Ekstrede numara yerine EKSTRE TARİHİ basılır (id aynı). Diğer türlerde okunur sıra
+           numarası yoksa kayıt kimliği TEK SATIR, küçük ve soluk basılır; altındaki teknik
+           açıklama satırı ("sistemdeki kayıt numarası…") KALDIRILDI. Numara uydurulmaz. *@
+        @* TOPLU-5 tur 2 (tasarım hakemi KRİTİK): müşteriye verilen fişte 26 haneli ham kayıt
+           kimliği basılıyordu. Okunur sıra numarası sunucuda YOK (Q9-4; numara uydurulmaz, yasal
+           belge numarası sanılmasın) → kayıt kimliğinin son 8 hanesi "XXXX-XXXX" KISA KAYIT KODU
+           olarak, "Kayıt kodu" etiketiyle basılır. Tam numara yalnız ekranda (title) durur. *@
+        <div class="belge-no">
+            <span class="etiket" id="@($"{Onek}-no-etiket")">@NoEtiketi</span>
+            <strong class="@NoSinifi" id="@($"{Onek}-no")" title="@NoTamBaslik">@NoMetni</strong>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Belge.Dayanak))
+    {
+        <p class="belge-dayanak">@Dil.T.Cikti.Dayanak: @Belge.Dayanak</p>
+    }
+
+    <section class="belge-taraflar">
+        <div>
+            <h2>@Dil.T.Cikti.Duzenleyen</h2>
+            <p><strong id="@($"{Onek}-duzenleyen")">@(Belge.Duzenleyen.Unvan ?? Dil.T.Cikti.KimlikEksik)</strong></p>
+            @if (!string.IsNullOrEmpty(Belge.Duzenleyen.Sube)) { <p>@Belge.Duzenleyen.Sube</p> }
+            @if (!string.IsNullOrEmpty(Belge.Duzenleyen.Adres)) { <p>@Belge.Duzenleyen.Adres</p> }
+            @if (!string.IsNullOrEmpty(Belge.Duzenleyen.VergiDairesi) || !string.IsNullOrEmpty(Belge.Duzenleyen.VergiNo))
+            {
+                <p>
+                    @if (!string.IsNullOrEmpty(Belge.Duzenleyen.VergiDairesi))
+                    { <span>@Dil.T.SayfaDuzeltme.VergiDairesi: @Belge.Duzenleyen.VergiDairesi</span> }
+                    @if (!string.IsNullOrEmpty(Belge.Duzenleyen.VergiNo))
+                    { <span> · @Dil.T.SayfaDuzeltme.VergiNo: <strong>@Belge.Duzenleyen.VergiNo</strong></span> }
+                </p>
+            }
+            @* TOPLU-5 (hakem ORTA "telefon biçimsiz"): telefon ekranlardaki TEK biçimle (TelefonBicimi) basılır;
+               tanınmayan biçim olduğu gibi kalır (veri DEĞİŞMEZ, yalnız görünüm). *@
+            @if (!string.IsNullOrEmpty(Belge.Duzenleyen.Telefon)) { <p id="@($"{Onek}-duzenleyen-telefon")">@TelefonBicimi.Goster(Belge.Duzenleyen.Telefon)</p> }
+
+            @* TOPLU-2 tur 2: "düzenleyen eksik" uyarısı BELGENİN İÇİNDE değil, önizlemenin ÜSTÜNDE
+               (Cikti.razor) — kâğıt görünümüne amber kutu karışmaz. Bu bileşen yalnız kâğıdı çizer. *@
+        </div>
+
+        @if (Belge.Karsi is { } k)
+        {
+            <div>
+                <h2>@k.Baslik</h2>
+                <p><strong id="@($"{Onek}-karsi")">@k.Ad</strong></p>
+                @if (!string.IsNullOrEmpty(k.VergiNo)) { <p>@Dil.T.SayfaDuzeltme.VergiNo: <strong>@k.VergiNo</strong></p> }
+                @if (!string.IsNullOrEmpty(k.Adres)) { <p>@k.Adres</p> }
+                @if (!string.IsNullOrEmpty(k.Telefon)) { <p id="@($"{Onek}-karsi-telefon")">@TelefonBicimi.Goster(k.Telefon)</p> }
+            </div>
+        }
+    </section>
+
+    @foreach (var bolum in Belge.Bolumler)
+    {
+        <section>
+            <h2>@bolum.Baslik</h2>
+            @if (bolum.Satirlar.Count == 0)
+            {
+                @* UX-S28: boş durum YALNIZ istek başarılı ve sonuç gerçekten boşken. *@
+                <BosDurum Mesaj="@Dil.T.Cikti.SatirYok" />
+            }
+            else
+            {
+                @* TOPLU-5 (ölçüm PRO 960: ekstre 7 sütun, "Has etkisi" sütunu bütün satırlarda BOŞ, kısa hücreler
+                   iki satıra kırılıyordu): HİÇBİR satırında değer olmayan sütun çizilmez (veri/sıra DEĞİŞMEZ; dolu
+                   sütunlar aynen, sütun dizinleri aynı — Hucre/Bicimi aynı dizinle okur). *@
+                var bosSutun = BosSutunlar(bolum);
+                <table class="belge-tablo">
+                    <thead>
+                        <tr>
+                            @for (var i = 0; i < bolum.SutunBasliklari.Length; i++)
+                            {
+                                if (bosSutun.Contains(i)) { continue; }
+                                <th class="@(SayiSutunu(bolum, i) ? SayiSinifi : null)">@bolum.SutunBasliklari[i]</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in bolum.Satirlar)
+                        {
+                            <tr class="@(s.Vurgu ? "belge-satir-vurgu" : null)">
+                                @for (var i = 0; i < s.Hucreler.Length; i++)
+                                {
+                                    if (bosSutun.Contains(i)) { continue; }
+                                    @* Q9-4: hücre sütun biçimiyle basılır (₺45.000,00 · 13,9232 has). *@
+                                    <td class="@(SayiSutunu(bolum, i) ? SayiSinifi : null)" data-etiket="@(i < bolum.SutunBasliklari.Length ? bolum.SutunBasliklari[i] : null)">@Hucre(bolum, s, i)</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            @if (!string.IsNullOrWhiteSpace(bolum.Not))
+            {
+                <p class="metin-kucuk">@bolum.Not</p>
+            }
+        </section>
+    }
+
+    @if (Belge.Tutarlar.Count > 0)
+    {
+        <section>
+            <h2>@Dil.T.Cikti.Tutarlar</h2>
+            <table class="belge-tablo">
+                <tbody>
+                    @foreach (var t in Belge.Tutarlar.Where(Basilir))
+                    {
+                        <tr class="@(t.Toplam ? "belge-toplam" : null)">
+                            <td>@t.Etiket</td>
+                            @* UX-S32: tutar kendi para birimiyle basılır. *@
+                            <td class="belge-sag">@Tutar(t)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    }
+
+    <section class="belge-tarihler">
+        <p>@Dil.T.Cikti.DuzenlemeTarihi: <strong>@Tarih(Belge.DuzenlemeTarihi)</strong></p>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(Belge.Not))
+    {
+        <p class="belge-not">@Belge.Not</p>
+    }
+
+    @if (Belge.ImzaBasliklari.Length > 0)
+    {
+        <section class="belge-imza">
+            @foreach (var i in Belge.ImzaBasliklari)
+            {
+                <div>
+                    <div class="imza-cizgi"></div>
+                    <p>@i</p>
+                </div>
+            }
+        </section>
+    }
+</article>
+
+@code {
+    /// <summary>Basılacak belge — sunucudan gelen ortak sözleşme.</summary>
+    [Parameter, EditorRequired] public OrtakBelge Belge { get; set; } = null!;
+
+    /// <summary>Element kimliği öneki ('<önek>-belge', '<önek>-no', ...).</summary>
+    [Parameter, EditorRequired] public string Onek { get; set; } = "";
+
+    private System.Globalization.CultureInfo Kultur => new(Dil.Locale);
+
+    /// <summary>
+    /// UX-S31 + UX-S32: has gram bir PARA BİRİMİ DEĞİLDİR; "HAS_GRAM" ham kodu
+    /// ekrana basılmaz, has biçimlendiricisine düşer. Para birimleri Bicim.Para'ya.
+    /// </summary>
+    public static string Tutar(CiktiTutar t) =>
+        t.ParaBirimi == "HAS_GRAM" ? Bicim.Has(t.Deger) : Bicim.BelgePara(t.Deger, t.ParaBirimi);   // T-K1: kâğıtta kuruş hep 2 hane
+
+    /// <summary>
+    /// PAKET Q9-4 — tablo hücresinin kâğıttaki biçimi. Sunucu sayıyı Invariant dizer
+    /// ("45000.00"); bu yöntem sütun biçimine göre tr-TR'ye çevirir:
+    /// HAS → Bicim.Has (virgül, 4 hane — Tutarlar bölümündeki toplamla AYNI biçim),
+    /// PARA → Bicim.BelgePara(tutar, satırın para birimi) (UX-S32; T-K1: kuruş hep 2 hane).
+    /// Biçimsiz sütun ya da sayı olmayan hücre olduğu gibi basılır.
+    /// ⚠ Tarayıcı dili biçimi DEĞİŞTİRMEZ (QA 24.09: İngilizce tarayıcıda "TRY6,754.91").
+    /// </summary>
+    public static string Hucre(CiktiBolum bolum, CiktiSatir satir, int i)
+    {
+        var ham = satir.Hucreler[i];
+        var bicim = Bicimi(bolum, i);
+        if (bicim == SutunBicimi.Metin
+            || !decimal.TryParse(ham, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var d))
+            return ham;
+
+        return bicim switch
+        {
+            SutunBicimi.Has => Bicim.Has(d),
+            // Birimi olmayan tutar TL SAYILMAZ (UX-S32): simgesiz tr-TR sayı basılır.
+            SutunBicimi.Para when string.IsNullOrWhiteSpace(satir.ParaBirimi) => Bicim.BelgeSayisi(d, "tr-TR", 2),
+            SutunBicimi.Para => Bicim.BelgePara(d, satir.ParaBirimi),   // T-K1: kâğıtta kuruş hep 2 hane
+            _ => ham,
+        };
+    }
+
+    private static string Bicimi(CiktiBolum bolum, int i) =>
+        bolum.SutunBicimleri is { } b && i < b.Length ? b[i] : SutunBicimi.Metin;
+
+    /// <summary>
+    /// Sayı sütunu sağa yaslanır ve tek satırda kalır (mevcut .belge-sag +
+    /// .hucre-tek-satir sınıfları; yeni CSS yok). 375 px'te "Has gram" başlığı ve
+    /// "13,9232 has" iki satıra bölünüyordu (ölçüldü).
+    /// </summary>
+    private const string SayiSinifi = "belge-sag hucre-tek-satir";
+
+    /// <summary>TOPLU-5 — bütün satırlarında boş (ya da boşluk) olan sütunların dizinleri; satır yoksa boş küme.</summary>
+    public static HashSet<int> BosSutunlar(CiktiBolum bolum)
+    {
+        var l = new HashSet<int>();
+        if (bolum.Satirlar.Count == 0) return l;
+        for (var i = 0; i < bolum.SutunBasliklari.Length; i++)
+            if (bolum.Satirlar.All(x => i >= x.Hucreler.Length || string.IsNullOrWhiteSpace(x.Hucreler[i]))) l.Add(i);
+        return l;
+    }
+
+    /// <summary>Sütun sayı biçimli mi (HAS / PARA)?</summary>
+    public static bool SayiSutunu(CiktiBolum bolum, int i) => Bicimi(bolum, i) != SutunBicimi.Metin;
+
+    private string Tarih(DateTime t) => Bicim.TarihSaat(t);
+
+    /// <summary>
+    /// TOPLU-5 (hakem ORTA "0,0000 has"): altın hesabı hiç işlememiş belgede SIFIR has bakiye satırı
+    /// basılmaz (toplam satırı ve sıfır olmayan has satırı aynen basılır; tutar/hesap DEĞİŞMEZ).
+    /// </summary>
+    public static bool Basilir(CiktiTutar t) => t.Toplam || t.ParaBirimi != "HAS_GRAM" || t.Deger != 0m;
+
+    /// <summary>İşletme kimliğinin belge için zorunlu alanları eksik mi? (Uyarı Cikti.razor'da, belgenin dışında.)</summary>
+    public static bool KimlikEksikMi(OrtakBelge b) =>
+        string.IsNullOrWhiteSpace(b.Duzenleyen.Unvan)
+        || string.IsNullOrWhiteSpace(b.Duzenleyen.Adres)
+        || (string.IsNullOrWhiteSpace(b.Duzenleyen.VergiDairesi)
+            && string.IsNullOrWhiteSpace(b.Duzenleyen.VergiNo));
+
+    /// <summary>TOPLU-2 tur 2 — cari ekstresi mi (belge no yerine ekstre tarihi basılır)?</summary>
+    private bool EkstreMi => Belge.Tur == BelgeTurleri.CariEkstre;
+
+    /// <summary>TOPLU-2 tur 2 — numara hücresinin sınıfı: kayıt kimliği tek satır/küçük/soluk; okunur numara kırılabilir.</summary>
+    private string NoSinifi => !EkstreMi && Belge.BelgeNoKayitKimligi ? "belge-no-kimlik belge-no-kisa" : "kir-uzun";
+
+    /// <summary>TOPLU-5 tur 2 — numara hücresi kayıt kimliği mi (kısa kod basılır)?</summary>
+    private bool KayitKoduMu => !EkstreMi && Belge.BelgeNoKayitKimligi;
+
+    private string NoEtiketi => EkstreMi ? Toplu2Sozlugu.Al(Dil.Dil).EkstreTarihi
+        : KayitKoduMu ? Toplu5Sozlugu.Al(Dil.Dil).CiktiKayitKodu : Dil.T.Cikti.BelgeNo;
+
+    private string NoMetni => EkstreMi ? Bicim.TarihTam(Belge.DuzenlemeTarihi)
+        : KayitKoduMu ? KisaKod(Belge.BelgeNo) : Belge.BelgeNo;
+
+    private string? NoTamBaslik => KayitKoduMu
+        ? string.Format(Toplu5Sozlugu.Al(Dil.Dil).CiktiKayitKoduTam, Belge.BelgeNo) : null;
+
+    /// <summary>
+    /// TOPLU-5 tur 2 — kayıt kimliğinin (ULID, 26 hane) son 8 hanesi "XXXX-XXXX". ULID'in son
+    /// 16 hanesi rastgele kısımdır; 8 hane (32^8) bir işletmenin fişlerini ayırt etmeye yeter.
+    /// 12 haneden kısa değer (zaten okunur) aynen döner. Saf: yalnız görünüm.
+    /// </summary>
+    public static string KisaKod(string? kimlik)
+    {
+        var k = (kimlik ?? "").Trim();
+        if (k.Length < 12) return k;
+        var son = k[^8..].ToUpperInvariant();
+        return $"{son[..4]}-{son[4..]}";
+    }
+}

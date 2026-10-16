@@ -1,0 +1,82 @@
+@inject DilServisi Dil
+
+@* ─────────────────────────────────────────────────────────────────────────────
+   GEREKÇE ALANI — paket UX-1 Faz A.
+
+   NEDEN: aynı mantık bugün DÖRT ayrı yerde kopyalanmış (Kasalar #gun-aciklama,
+   Cariler #dz-gerekce, VeriDisaAktarim #da-gerekce, Uyum #sb-gerekce) ve her
+   kopyada asgari uzunluk başka (0 / 20 / 20 / 300). Tek bileşende toplanır.
+
+   ⚠ BERTAN KOŞUL 3: bu fazda MEVCUT dört yer SARILMAZ — bileşen yalnız YENİ
+     kullanım yerleri için hazır olur. Sarma ayrı bir alt adımdır ve o adımda
+     ilgili bUnit testi DEĞİŞTİRİLMEDEN yeşil kalmalıdır.
+
+   ⚠ AŞKIN K2: asgari uzunluk PARAMETREDİR, 20 SABİTLENMEZ (Uyum ekranı 300
+     ister ve bu sunucudan gelir). Varsayılan 20'dir.
+
+   ⚠ MEHMET K7: bu bileşen TEK KAPI DEĞİLDİR — sunucu tarafındaki DTO da
+     [Required, MinLength(n)] taşır. İstemci kapısı yalnız ön gösterimdir.
+
+   ⚠ Element id'si PARAMETREDİR (mevcut id'ler değişmez sözleşmesi).
+   ───────────────────────────────────────────────────────────────────────────── *@
+
+@* P-36c/3 — ham <textarea> KALDIRILDI: çizimi ortak girdi ailesi yapıyor
+   (Bilesenler/Form/CokSatir). Kimlikler BİREBİR korundu: kutu #@Id, sayaç
+   #@Id-sayac. Bu bileşen artık yalnız "asgari uzunluk" kuralını ve geçerlilik
+   bayrağını taşıyor — ikinci bir girdi çizim yolu YOK. *@
+<div class="alan gerekce-alani">
+    <Kuyumcu.Web.Bilesenler.Form.CokSatir
+        ElemanId="@Id"
+        Etiket="@($"{Etiket ?? Dil.T.Duzeltme.Gerekce} ({string.Format(Dil.T.Duzeltme.EnAzKarakter, AsgariUzunluk)})")"
+        Zorunlu="true" Satir="@Satir" EnFazla="@AzamiUzunluk" SayacGoster="false"
+        Deger="@Deger" DegerChanged="@((string? v) => Metin = v ?? "")" />
+    @* TOPLU-6 (TOPLU-4 hakemi ORTA "sayaç baştan kırmızı"): hiçbir şey yazılmamışken sayaç NÖTR; kullanıcı
+       yazmaya başlayıp eşiğin altında kalınca kırmızı. Geçerlilik kuralı (asgari uzunluk) AYNEN. *@
+    @if (SayacGoster)
+    {
+        <span id="@($"{Id}-sayac")" class="metin-kucuk @(Gecerli || Uzunluk == 0 ? "" : "metin-kirmizi")">
+            @Uzunluk / @AsgariUzunluk
+        </span>
+    }
+    @ChildContent?.Invoke(Gecerli)
+</div>
+
+@code {
+    /// <summary>Metin alanının element id'si — çağıran verir, bileşen uydurmaz.</summary>
+    [Parameter, EditorRequired] public string Id { get; set; } = "gerekce";
+
+    /// <summary>Etiket metni; boşsa sözlükteki "Gerekçe" kullanılır.</summary>
+    [Parameter] public string? Etiket { get; set; }
+
+    /// <summary>Kaydet'in açılması için gereken en az karakter (Aşkın K2).</summary>
+    [Parameter] public int AsgariUzunluk { get; set; } = 20;
+
+    /// <summary>Sunucu DTO'larındaki üst sınırla aynı (MaxLength(1000)).</summary>
+    [Parameter] public int AzamiUzunluk { get; set; } = 1000;
+
+    [Parameter] public int Satir { get; set; } = 3;
+
+    /// <summary>SATINALMA-EKRAN-2 (sade ilke): etiket zaten "en az N karakter" der; sayaç isteğe bağlı gizlenir (varsayılan: gösterilir, diğer ekranlar AYNEN).</summary>
+    [Parameter] public bool SayacGoster { get; set; } = true;
+
+    [Parameter] public string Deger { get; set; } = "";
+    [Parameter] public EventCallback<string> DegerChanged { get; set; }
+
+    /// <summary>Geçerlilik durumunu alan içerik — Kaydet düğmesi burada çizilir.</summary>
+    [Parameter] public RenderFragment<bool>? ChildContent { get; set; }
+
+    private string Metin
+    {
+        get => Deger;
+        set
+        {
+            if (value == Deger) return;
+            Deger = value;
+            DegerChanged.InvokeAsync(value);
+        }
+    }
+
+    private int Uzunluk => (Deger ?? "").Trim().Length;
+
+    private bool Gecerli => Uzunluk >= AsgariUzunluk && Uzunluk <= AzamiUzunluk;
+}

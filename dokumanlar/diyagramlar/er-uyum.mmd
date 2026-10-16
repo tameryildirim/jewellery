@@ -1,0 +1,150 @@
+%% Kuyumcu ERP — Yasal Uyum (MASAK, Gider Pusulası, Denetim İzi)
+%% ŞEMADAN ÜRETİLMİŞTİR — elle çizilmemiştir (er-uret.py).
+%% Kaynak: MySQL information_schema / kuyumcu_net
+%% Veritabanında enforce edilen FK kısıtı: 0 (ölçüldü).
+%% FK işaretleri MANTIKSAL yabancı anahtardır; bütünlük uygulama katmanında korunur.
+erDiagram
+    cariler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string tur
+        string ad
+        string telefon
+        string email
+        string vergi_no
+        string adres
+        string notlar
+        decimal kredi_limiti_tl
+        bool aktif
+        datetime olusturuldu
+        datetime guncellendi
+    }
+    denetim_kayitlari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string kullanici_id FK "mantiksal"
+        string eylem
+        string varlik_turu
+        string varlik_id FK "mantiksal"
+        bool hassas
+        string detay
+        string ip_adresi
+        string user_agent
+        datetime tarih
+    }
+    gider_pusulalari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string pusula_no
+        string hareket_id FK "mantiksal"
+        string sube_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string satici_tipi
+        string satici_ad_soyad
+        string satici_tckn
+        string satici_tckn_hash
+        byte sifre_surumu
+        string satici_adres
+        string ayar_id FK "mantiksal"
+        decimal gram_agirlik
+        decimal has_grami
+        string mal_aciklamasi
+        decimal brut_tutar
+        decimal stopaj_oran
+        decimal stopaj_tutar
+        decimal net_odenen
+        datetime teslim_tarihi
+        datetime duzenleme_son_tarihi
+        string duzeltilen_id FK "mantiksal"
+        datetime olusturuldu
+    }
+    hareketler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string sube_id FK "mantiksal"
+        string tur
+        datetime tarih
+        text aciklama
+        decimal tl_tutari
+        string para_birimi
+        decimal has_grami
+        string kur_snapshot_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string urun_id FK "mantiksal"
+        string karsi_sube_id FK "mantiksal"
+        string kullanici_id FK "mantiksal"
+        string fatura_no
+        datetime olusturuldu
+        string odeme_turu
+        string kmts_kodu
+    }
+    masak_beyanlari {
+        string id PK
+        string tenant_id FK "kiraci"
+        string kimlik_tespiti_id FK "mantiksal"
+        string hareket_id FK "mantiksal"
+        decimal islem_tutari_tl
+        string kademe
+        string islem_amaci
+        string aciklama
+        string fon_kaynagi
+        string ek_belge_referansi
+        string alan_kullanici_id FK "mantiksal"
+        datetime tarih
+        datetime saklama_bitis
+        string duzeltilen_id FK "mantiksal"
+        datetime olusturuldu
+    }
+    masak_kimlik_tespitleri {
+        string id PK
+        string tenant_id FK "kiraci"
+        string hareket_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        decimal islem_tutari_tl
+        string belge_turu
+        string belge_no
+        string ad_soyad
+        date dogum_tarihi
+        string uyruk
+        string adres
+        string tespit_eden_kullanici_id FK "mantiksal"
+        datetime tarih
+        datetime saklama_bitis
+        string duzeltilen_id FK "mantiksal"
+        datetime olusturuldu
+        string belge_no_hash
+        byte sifre_surumu
+    }
+    masak_supheli_bildirimler {
+        string id PK
+        string tenant_id FK "kiraci"
+        string hareket_id FK "mantiksal"
+        string cari_id FK "mantiksal"
+        string kimlik_tespiti_id FK "mantiksal"
+        decimal islem_tutari_tl
+        text gerekce
+        datetime tespit_tarihi
+        datetime son_bildirim_tarihi
+        string durum
+        datetime gonderim_tarihi
+        string gonderim_referansi
+        string kapatma_gerekcesi
+        string bildiren_kullanici_id FK "mantiksal"
+        datetime saklama_bitis
+        datetime olusturuldu
+        datetime guncellendi
+    }
+
+    cariler ||--o{ gider_pusulalari : "cari"
+    cariler ||--o{ hareketler : "cari"
+    cariler ||--o{ masak_kimlik_tespitleri : "cari"
+    cariler ||--o{ masak_supheli_bildirimler : "cari"
+    gider_pusulalari ||--o{ gider_pusulalari : "düzeltir"
+    hareketler ||--|{ gider_pusulalari : "hareket"
+    hareketler ||--o{ masak_beyanlari : "hareket"
+    hareketler ||--o{ masak_kimlik_tespitleri : "hareket"
+    hareketler ||--o{ masak_supheli_bildirimler : "hareket"
+    masak_beyanlari ||--o{ masak_beyanlari : "düzeltir"
+    masak_kimlik_tespitleri ||--|{ masak_beyanlari : "kimlik_tespiti"
+    masak_kimlik_tespitleri ||--o{ masak_kimlik_tespitleri : "düzeltir"
+    masak_kimlik_tespitleri ||--o{ masak_supheli_bildirimler : "kimlik_tespiti"

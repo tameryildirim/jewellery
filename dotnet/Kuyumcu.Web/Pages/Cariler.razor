@@ -1,0 +1,2989 @@
+@page "/cariler"
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject ArayuzModuServisi Modu
+@implements IDisposable
+
+@* Kaynak: apps/web/src/pages/CariPage.tsx — Kasalar.razor desenini izler. *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.Cari.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* ═══ PAKET T-M1 — MÜŞTERİLER TUVALE (tuval/project/Musteriler.dc.html, BASİT) ═══
+   Sarmalayıcı yalnız ÇİZİM sınıfı taşır; PROFESYONEL yüzde sınıf yoktur ve DOM
+   bugünküdür. Panel açıkken (BASİT, ≥ 1024 px) liste panelin SOLUNDA kalır:
+   tuvalde panelin altında kalan sütunlar (Has, eylemler) gizlenir, hiçbir yazı
+   panelin altına girmez (sikisma-olc K9). *@
+<div class="musteri-sayfa @(Sade ? "musteri-sade" : null) @(Sade && duzenleCari is not null ? "musteri-sade--panel-acik" : null)">
+@* PAKET YILDIZ-4B: Yıldız şemasında (BASİT + PRO) liste = tuval Musteri4/Musteri4a (YildizMusteriler); öteki 8 şemada aşağıdaki özgün liste AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizMusteriler B="@YildizBaglami" /> } else {
+<div class="dikey-bosluk">
+    @* ── Sayfa başı: başlık + araç çubuğu yuvası + TEK birincil eylem ──
+       Mevcut arama/süzgeç DOM'u kaldırılmadı, SayfaBasi'nın Filtreler yuvasına
+       taşındı; id'ler değişmedi (K4).
+       T-M1: BASİT yüzde başlık üst çubukta zaten yazılı (tuval) → sayfa başlığı
+       görsel olarak gizlenir ama DOM'da kalır (ekran okuyucu, başlık sırası);
+       açıklama cümlesi tuvalde yok → BASİT'te çizilmez, PRO'da aynen. *@
+    @* TOPLU-5 (hakem ORTA "PRO /cariler sayfa adı iki kez"): üst bar "Müşteriler", şerit "Cariler" yazıyordu —
+       aynı kavram, farklı sözcük. UstBardaGizle: şerit başlığı DOM'da kalır (id, h2 sırası), görsel gizlenir. *@
+    <SayfaBasi Anahtar="cariler" Baslik="@Dil.T.Cari.Baslik" Aciklama="@(Sade ? null : Dil.T.Cari.Aciklama)" UstBardaGizle="true">
+        <Filtreler>
+            @if (Sade)
+            {
+                @* Tuval: büyüteç ikonlu tek kutu "Ad ya da telefon" (460 px) + segmentli seçim. *@
+                <div class="musteri-ara" id="cari-arama-kutu">
+                    <Ikon Ad="@Ikonlar.Arama" Sinif="musteri-ara-ikon" />
+                    <Arama ElemanId="cari-arama" Etiket="@T.AramaYerTutucu" YerTutucu="@T.AramaYerTutucu"
+                           Deger="@arama" DegerChanged="@(async v => { arama = v ?? ""; await Yukle(); })" />
+                </div>
+                <div class="musteri-segment" id="cari-segment" role="group" aria-label="@T.SegmentEtiketi">
+                    @foreach (var (kod, etiket) in Segmentler3)
+                    {
+                        <button type="button" id="@($"cari-segment-{kod}")"
+                                class="musteri-segment-oge @(segment == kod ? "musteri-segment-oge--secili" : null)"
+                                aria-pressed="@(segment == kod ? "true" : "false")"
+                                @onclick="() => segment = kod">@etiket</button>
+                    }
+                </div>
+            }
+            else
+            {
+            <Arama ElemanId="cari-arama" Etiket="@Dil.T.Cari.AraPlaceholder"
+                   Deger="@arama" DegerChanged="@(async v => { arama = v ?? ""; await Yukle(); })" />
+            }
+            @* T-M1: Tür süzgeci ve "pasifleri göster" tuvalde YOK — SİLİNMEDİ:
+               PRO'da hep, BASİT'te "Diğer süzgeçler" açılınca ya da süzgeç
+               ETKİNKEN (derin bağlantı dahil) görünür; görünmez süzgeç olmaz. *@
+            @if (!Sade || digerSuzgecAcik || !string.IsNullOrEmpty(turFiltre) || pasifleriGoster)
+            {
+            @* UX-S31 — tür listesi TEK kaynaktan (CariTurleri); süzgeç formda
+               sunulan beş türün hepsini kapsar. QA turu 2: süzgeç üç, form beş
+               tür sunuyordu; ATOLYE/SARRAF/HER_IKISI hiç süzülemiyordu. *@
+               <Secici ElemanId="cari-tur-filtre"
+                       Etiket="@Dil.T.Cari.Tur"
+                       Secenekler="@(CariTurleri.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                       @bind-Deger="turFiltre"
+                       @bind-Deger:after="Yukle"
+                       BosSecenekMetni="@Dil.T.Ortak.Tumu" />
+            @* QA turu 2 KRİTİK: pasife alınan cari listede AKTİF gibi duruyordu.
+               Liste artık varsayılan olarak AKTİFLERİ gösterir; pasifler bilinçli
+               bir anahtarla açılır ve rozetle ayrılır. *@
+            <Onay ElemanId="cari-pasifleri-goster" Etiket="@Dil.T.Kabuk.PasifleriGoster"
+                  Deger="@pasifleriGoster"
+                  DegerChanged="@(async v => { pasifleriGoster = v; await Yukle(); })" />
+            }
+            @* ── PAKET P-15 (B-29) — DERİN BAĞLANTI SÖZLEŞMESİ ───────────────
+               Sorgu dizesindeki süzgeç UYGULANIR (yukarıdaki kutulara YAZILIR)
+               ve buradan geldiği SÖYLENİR. Önce sessizce yok sayılıyordu:
+               /cariler?cariId=… ile gelen kullanıcı tüm listeyi görüyordu. *@
+            @if (suzgecBaglantidan)
+            {
+                <span class="metin-kucuk" id="cari-suzgec-baglanti">
+                    <Rozet Renk="mavi">@Dil.T.Kabuk.BaglantidanSuzgec</Rozet>
+                    <button type="button" @onclick="BaglantiSuzgeciniTemizle"
+                            class="dugme dugme-kucuk dugme-ikincil" id="cari-suzgec-temizle"
+                            >@Dil.T.Kabuk.BaglantiSuzgeciniTemizle</button>
+                </span>
+            }
+        </Filtreler>
+        <Eylem>
+            @if (Sade)
+            {
+                @* Tuval: ince çizgili "+" (sprite'ta "plus" yok → ::before ile çizilir, T-P1 deseni). *@
+                <button class="btn btn-birincil musteri-yeni" id="cari-yeni-ac" @onclick="YeniModalAc">@Dil.T.Cari.YeniCari</button>
+            }
+            else
+            {
+            <button class="btn btn-birincil" id="cari-yeni-ac" @onclick="YeniModalAc">+ @Dil.T.Cari.YeniCari</button>
+            }
+        </Eylem>
+    </SayfaBasi>
+
+    <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+    @* UX-S29 — sunucu sınırı ekranda söylenir. T-M1: BASİT yüzde sayaç satırı
+       ("N müşteri · M gösteriliyor") listenin ALTINDADIR; sınır cümlesi orada,
+       yalnız sınıra DEĞİLDİĞİNDE yazılır (değmediyse liste eksiksizdir, sayı gerçektir). *@
+    @* TOPLU-5 (hakem ORTA "liste ekranlarında 12 px 'En çok 100 kayıt' notu"): PRO da BASİT gibi sınır
+       cümlesini YALNIZ sınıra değince yazar (değmediyse liste eksiksizdir; UX-S29 sessiz kırpma yok). *@
+    @if (CariListesi.Count >= Sinir)
+    {
+        <p class="metin-kucuk metin-soluk" id="cari-sinir">@string.Format(Dil.T.Kabuk.SinirUyarisi, Sinir)</p>
+        <p class="metin-kucuk metin-amber" id="cari-sinir-asildi" role="status">@Dil.T.Kabuk.SinirAsildi</p>
+    }
+
+    @* ── Liste ── *@
+    @* PAKET ISTEK-1 (GOZ #46): süzgeç değişince ya da istek hata verince
+       ELDEKİ LİSTE SİLİNMEZ; halka yalnız henüz liste yokken çıkar. *@
+    @if (yukleniyor && CariListesi.Count == 0)
+    {
+        <Yukleniyor />
+    }
+    else if (listeHata is null && CariListesi.Count == 0)
+    {
+        @* UX-S28: boş durum YALNIZ istek başarılıyken çıkar. *@
+        <div class="kart">
+            <BosDurum Mesaj="@Dil.T.Cari.CariBulunamadi" />
+        </div>
+    }
+    else if (Sade && listeHata is null && GorunenListe.Count == 0)
+    {
+        @* T-M1: segment süzgecinde kimse yoksa boş durum SÜZGEÇ adına söylenir
+           (liste başarılı, sonuç gerçekten boş — UX-S28). *@
+        <div class="kart musteri-tablo-kart">
+            <BosDurum Mesaj="@T.SegmentBos" />
+        </div>
+    }
+    else
+    {
+        <div class="kart @(Sade ? "musteri-tablo-kart" : null)">
+            @* PAKET GRID-1 — liste ORTAK IZGARADA (Bilesenler/Grid/Izgara.razor): sütun sırası
+               (sürükle + klavye), göster/gizle, SUNUCU sıralaması, kullanıcıya özel kalıcı düzen,
+               "Varsayılana dön". Hücre içerikleri, satır/hücre id ve sınıfları AYNEN korundu
+               (CariHucre* render yöntemleri, @code); KartListe id'si "cari-liste" → #cari-liste-sar. *@
+            <Kuyumcu.Web.Bilesenler.Grid.Izgara T="CariVeri" Ekran="cariler" GridId="cari-liste"
+                    Kolonlar="@CariKolonlari" Ogeler="@GorunenListe"
+                    SatirId="@CariSatirId" SatirSinif="@CariSatirSinifi"
+                    TabloSinif="@(Sade ? "tablo-sik tablo-sik--kimlik musteri-tablo" : "tablo-sik tablo-sik--kimlik")"
+                    Baslik="@Dil.T.Cari.Baslik" YapiskanIlkSutun="@(!Sade)"
+                    SiralamaDegisti="@CariSiralamaDegisti" GecerliSiralama="@cariSiralama"
+                    TercihIstemcisi="@CariTercih" />
+        </div>
+    }
+    @if (Sade && !yukleniyor && listeHata is null)
+    {
+        @* T-M1 — tuval: "184 müşteri · 5 gösteriliyor". N = sunucudan gelen (sınıra
+           değdiyse "100+"), M = segment süzgecinden geçen. "Diğer süzgeçler" tuvalde
+           yok: tür ve pasif süzgecini BASİT'te de ulaşılır tutar (özellik silinmez). *@
+        <p class="musteri-sayac" id="cari-sayac">
+            <span id="cari-sayac-metin">@string.Format(T.Sayac, ToplamMetni, GorunenListe.Count)</span>
+            <span aria-hidden="true"> · </span>
+            <button type="button" class="musteri-baglanti" id="cari-suzgec-daha"
+                    aria-expanded="@(digerSuzgecAcik ? "true" : "false")"
+                    @onclick="() => digerSuzgecAcik = !digerSuzgecAcik">@(digerSuzgecAcik ? T.DigerSuzgeclerKapat : T.DigerSuzgecler)</button>
+        </p>
+    }
+</div>
+}
+</div>
+
+@* ── Yeni cari modalı ── *@
+<ModalPencere Acik="yeniModalAcik" Baslik="@Dil.T.Cari.YeniCari" Kapat="() => yeniModalAcik = false">
+    <div class="form-dikey">
+        @* PAKET GOC-B (C satır 28, K19/K20): ekran 300 / sunucu 200 uyuşmuyordu; "12345" ad olarak geçiyordu →
+           ortak Unvan (en az 2, bir harf; çift boşluk teke), sınır kolonla TEK sabit. *@
+        <Unvan ElemanId="cari-ad" Etiket="@Dil.T.Cari.AdFirma" Zorunlu="true" EnFazla="@AlanSinirlari.CariAd"
+               Deger="@yeniAd" DegerChanged="@(v => yeniAd = v ?? "")"
+               Durum="form" HataAlani="cari-ad" />
+        @* PAKET S3-2 — basit modda görünen: ad, telefon, not (taslak n3); gerisi
+           "Daha fazla ▾" ile açılır. Profesyonel modda DOM BİREBİR bugünküdür. *@
+        @if (YeniTumAlanlar)
+        {
+        <div class="alan">
+            @* UX-S26: seçenekler TEK diziden üretilir — iki modalda iki farklı
+               küme olamaz. Sunucu (CariOlusturDto.Tur regex'i) beşini de kabul eder. *@
+            <Secici ElemanId="cari-tur"
+                    Etiket="@Dil.T.Cari.Tur"
+                    Secenekler="@CariTurSecenekleri"
+                    @bind-Deger="yeniTur" />
+        </div>
+        }
+        <TelefonBicimli ElemanId="cari-telefon" Etiket="@Dil.T.Cari.Telefon"
+                 Deger="@yeniTelefon" DegerChanged="@(v => yeniTelefon = v ?? "")"
+                 Durum="form" HataAlani="cari-telefon" />
+        @if (YeniTumAlanlar)
+        {
+        <Eposta ElemanId="cari-eposta" Etiket="@Dil.T.Auth.Eposta" EnFazla="@AlanSinirlari.Eposta"
+                Deger="@yeniEmail" DegerChanged="@(v => yeniEmail = v ?? "")"
+                Durum="form" HataAlani="cari-eposta" />
+        @* ═══ PAKET P-16 (Y-27) — KİMLİK / KYC ALANLARI ══════════════════════
+           UX-S26: sunucunun OLUŞTURMADA kabul ettiği alanlar düzenlemeye ertelenmez.
+           UX-S24: kimlik TÜRÜ seçilince hane kuralı değişir ve alan altında yazar. *@
+        @* PAKET GOC-B (envanter F1): genel Metin → TcknVeyaVkn (rakam dışı yazılamaz, 10/11 hane dolunca algoritma);
+           kimlik TÜRÜ seçiliyse hane kuralı ayrıca alan altında (TcknAnindaHata, UX-S24). *@
+        <TcknVeyaVkn ElemanId="cari-vergino" Etiket="@Dil.T.Cari.VergiNo"
+               Deger="@yeniVergiNo" DegerChanged="@(v => yeniVergiNo = v ?? "")" Hata="@TcknAnindaHata(yeniVergiNo, yeniKimlikTuru)"
+               Durum="form" HataAlani="cari-vergino"
+               Ipucu="@KimlikHaneIpucu(yeniKimlikTuru)" />
+        <fieldset class="form-grid-2 form-satiri" id="cari-p16">
+            <legend>@Dil.T.Cari.KimlikBolumu</legend>
+            <div class="alan">
+                <Secici ElemanId="cari-kimlik-turu"
+                        Etiket="@Dil.T.Cari.KimlikTuru"
+                        Secenekler="@(KimlikTurleri.Select(t => new SecenekOgesi(t.Deger, t.Etiket)).ToList())"
+                        @bind-Deger="yeniKimlikTuru"
+                        BosSecenekMetni="@Dil.T.Cari.KimlikTuruBelirtilmedi" />
+            </div>
+            <Unvan ElemanId="cari-unvan" Etiket="@Dil.T.Cari.Unvan" EnFazla="@AlanSinirlari.CariUnvan"
+                   Deger="@yeniUnvan" DegerChanged="@(v => yeniUnvan = v ?? "")"
+                   Ipucu="@Dil.T.Cari.UnvanIpucu" />
+            @* PAKET GOC-B (envanter #2) K8f (tur 2): gelecek / 120 yıldan eski yazılamaz; 18 yaş altı ENGEL DEĞİL, yalnız uyarı — sunucu aynı kural. *@
+            <Tarih ElemanId="cari-dogum" Etiket="@Dil.T.Cari.DogumTarihi" Tur="TarihTuru.KisiDogum"
+                   Ipucu="@DogumUyari(yeniDogumTarihi)" @bind-Deger="yeniDogumTarihi" />
+            @* KESIF-P2 (#22): MASAK formuyla AYNI ülke seçicisi (UlkeListesi, ISO alpha-3).
+               Hücre yalnız seçiciyi taşır (ızgara hizası K7); "Diğer ülke" kod kutusu KENDİ hücresidir. *@
+            <div class="alan" id="cari-uyruk-alan">
+                <Secici ElemanId="cari-uyruk" Etiket="@Dil.T.Cari.Uyruk"
+                        Secenekler="@UlkeSecenekleri" BosSecenekMetni="@P2.UyrukSecin"
+                        Deger="@UyrukSecimi(yeniUyruk, yeniUyrukDiger)" DegerChanged="YeniUyrukSecildi" />
+            </div>
+            @if (UyrukDigerMi(yeniUyruk, yeniUyrukDiger))
+            {
+                <Metin ElemanId="cari-uyruk-kod" Etiket="@P2.UyrukKod" Ipucu="@P2.UyrukKodIpucu" EnFazla="@AlanSinirlari.UyrukKod"
+                       Hata="@(UyrukKodHatasi(yeniUyruk, null))"
+                       Deger="@yeniUyruk" DegerChanged="@(v => yeniUyruk = (v ?? "").Trim().ToUpperInvariant())" />
+            }
+            @* PAKET GOC-B (C satır 73, K15): Yuzde — 0–100, en çok 2 ondalık Kaydet'ten ÖNCE alan altında (eskiden yalnız sunucu). *@
+            <Yuzde ElemanId="cari-iskonto" Etiket="@Dil.T.Cari.IskontoYuzde"
+                  @bind-Deger="yeniIskonto" Birim="%"
+                  Durum="form" HataAlani="cari-iskonto"
+                  Ipucu="@Dil.T.Cari.IskontoYuzdeIpucu" />
+            <div class="alan">
+                <Secici ElemanId="cari-segment"
+                        Etiket="@Dil.T.Cari.Segment"
+                        Secenekler="@(Segmentler.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                        @bind-Deger="yeniSegment"
+                        BosSecenekMetni="@Dil.T.Cari.SegmentSecilmedi" />
+            </div>
+            @* PAKET P-26 (Y-37) · UX-S26 — sunucunun OLUŞTURMADA kabul ettiği
+               hesap kodu "sonra düzenlemeden gir" diye ertelenmez. *@
+            <Metin ElemanId="cari-hesap-kodu" Etiket="@Dil.T.Cari.HesapKodu" EnFazla="@AlanSinirlari.HesapKodu"
+                   Deger="@yeniHesapKodu" DegerChanged="@(v => yeniHesapKodu = v ?? "")"
+                   Ipucu="@Dil.T.Cari.HesapKoduIpucu" />
+        </fieldset>
+        @* PAKET GOC-B (C satır 32): 500 karakterlik adres tek satır Metin'deydi → CokSatir; sınır kolonla TEK sabit.
+           K21 "en az 10 karakter" TEYİTSİZ iş kuralı → uygulanmadı (bugünkü davranış). *@
+        <CokSatir ElemanId="cari-adres" Etiket="@Dil.T.Cari.Adres" Satir="2" EnFazla="@AlanSinirlari.Adres"
+                  Deger="@yeniAdres" DegerChanged="@(v => yeniAdres = v ?? "")" />
+        @* UX-S26 — sunucunun OLUŞTURMADA kabul ettiği alanlar "sonra düzenlemeden
+           gir" diye ertelenmez: kredi limiti, varsayılan vade ve fiyat listesi
+           CariOlusturDto'da başından beri vardı, bu modalda YOKTU. *@
+        <div class="form-grid-2 form-satiri">
+            <Para ElemanId="cari-limit" Etiket="@Dil.T.Cari.KrediLimiti" Tur="TutarTuru.SifirOlabilir" ParaBirimi="TRY"
+                  @bind-Deger="yeniKrediLimiti" Durum="form" HataAlani="cari-limit" />
+            <Sayi ElemanId="cari-vade" Etiket="@Dil.T.Vade.VarsayilanVadeGun" EnAz="0" EnCok="3650"
+                  Deger="@(yeniVadeKesirli ?? (yeniVadeGun is { } _g ? (decimal?)_g : null))"
+                  Hata="@(yeniVadeKesirli is not null ? P2.VadeTamSayi : null)"
+                  DegerChanged="YeniVadeDegisti" />
+        </div>
+        <div class="alan">
+            <Secici ElemanId="cari-fiyat-listesi"
+                    Etiket="@Dil.T.Fiyat.FiyatListesi"
+                    Secenekler="@FiyatListesiSecenekleri"
+                    @bind-Deger="yeniFiyatListesiId"
+                    BosSecenekMetni="@VarsayilanListeMetni" />
+        </div>
+        }
+        @* PAKET P-10 (Y-3): CariOlusturDto.Notlar sunucuda vardı, formda YOKTU. *@
+        <CokSatir ElemanId="cari-notlar" Etiket="@Dil.T.Cari.Notlar" Satir="2" EnFazla="@AlanSinirlari.CariNot"
+                  Deger="@yeniNotlar" DegerChanged="@(v => yeniNotlar = v ?? "")"
+                  Ipucu="@Dil.T.Cari.NotlarIpucu" />
+        @if (Modu.BasitMi)
+        {
+            <button @onclick="() => yeniDahaFazla = !yeniDahaFazla" type="button" class="dugme dugme-ikincil dugme-kucuk form-daha-fazla" id="cari-daha-fazla"
+                    aria-expanded="@(yeniDahaFazla ? "true" : "false")">
+                @* T-M1: tuval "Daha fazla (adres, TC, e-posta, limit)" + sağda ok; ok ince
+                   çizgili Ikon (emoji/glif değil), açıkken CSS ile yukarı döner. *@
+                <span>@(yeniDahaFazla ? M.DahaAz : $"{M.DahaFazla} ({M.DahaFazlaIcerik})")</span>
+                <Ikon Ad="@Ikonlar.KatlamaAcik" Sinif="@(yeniDahaFazla ? "katla-ok katla-ok--acik" : "katla-ok")" />
+            </button>
+        }
+        <HataBandi Mesaj="@modalHata" />
+
+        <div class="satir">
+            <button id="cari-yeni-vazgec" class="btn btn-ikincil" style="flex:1" @onclick="() => yeniModalAcik = false">@Vazgec</button>
+            @* DoD EK md.3 / UX-S30: düğme artık boş adda KİLİTLENMEZ — tıklanır ve
+               alan altında Türkçe mesaj çıkar. Sessiz etkisizlik de, sebebi
+               yazmayan kilit de yasak. *@
+            <button id="cari-kaydet" class="btn btn-birincil" style="flex:1" disabled="@(kaydediliyor || sayiKapisi.OnekleVar("cari-") || TcknAnindaHata(yeniVergiNo, yeniKimlikTuru) is not null)"
+                    @onclick="CariOlustur">@Dil.T.Ortak.Kaydet</button>
+        </div>
+        @* ORTAK-1 (KEŞİF #4): Kaydet'in "sayı anlaşılamadı" kilit sebebi (UX-S30) düğmenin hemen altında. *@
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="cari-" ElemanId="cari-sayi-kilit" />
+        @if (TcknAnindaHata(yeniVergiNo, yeniKimlikTuru) is { } tcknKilit) { <p class="metin-kucuk metin-amber" id="cari-tckn-kilit" role="status">@tcknKilit</p> }
+    </div>
+</ModalPencere>
+
+@* ── Cari düzenleme ÇEKMECESİ (DoD EK md.2 — TEK DÜZENLEME KALIBI) ──
+   Çok alanlı düzenleme ModalPencere'den Cekmece'ye taşındı; ModalPencere
+   bundan sonra yalnız YIKICI ONAY için kullanılır (denetim.sh sayacı düşer).
+   ⚠ İÇTEKİ ALAN id'leri AYNEN korundu (#duz-ad, #duz-tur, …) — K4 sözleşmesi.
+   ⚠ İYİMSER KAYDETME YOK: çekmece kendini kapatmaz; sunucu 200 dönünce
+     CariGuncelle `duzenleCari = null` yapar. *@
+@* T-M1: sarmalayıcı yalnız BASİT (tuval) çizim sınıfı taşır; Cekmece ortak
+   bileşendir ve DEĞİŞMEDİ. BASİT'te başlık müşterinin adıdır (tuval "Hasan Kaya"). *@
+<div class="musteri-panel-kap @(Sade ? "musteri-panel-kap--sade" : null)">
+<Cekmece Acik="@(duzenleCari is not null)" Varlik="cari" IptalMetni="@Vazgec"
+         Baslik="@(Sade && duzenleCari is not null ? duzenleCari.Ad : Dil.T.Cari.CariDuzenle)"
+         Kapat="() => duzenleCari = null" Kaydet="CariGuncelle"
+         Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(!DuzKilitli && !string.IsNullOrWhiteSpace(duzAd) && PepGecerli && !sayiKapisi.OnekleVar("duz-") && !UyrukGecersiz(duzUyruk, yuklenenUyruk) && TcknAnindaHata(duzVergiNo, duzKimlikTuru) is null)"
+         KilitSebebi="@(sayiKapisi.Sebep(Dil.Dil, "duz-") ?? TcknAnindaHata(duzVergiNo, duzKimlikTuru) ?? DuzKilitSebebi)">
+    <div class="form-dikey @(Sade ? "musteri-panel-form" : null)">
+        @if (YildizMi && duzenleCari is { } ykart) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizKartEylemleri Eylemler="@YildizKartEylemleri(ykart)" /> }   @* YILDIZ-4B: tuval "kart açılır: tahsilat, ekstre, düzenleme" — listede satır eylemi yok, yollar kartta *@
+        @* T-M1 — tuval uyarı bandı: vadesi geçmiş borç varsa panelin başında KIRMIZI
+           bant ve para alma yolu. "Tahsilat" gerçek düğmedir (tahsilat penceresini
+           açar) — tuvalde "listedeki" düğmeye yönlendiriyordu; panel listeyi
+           örttüğü için yol panelin İÇİNDE verilir (özellik silinmez, UX-S25). *@
+        @if (Sade && duzenleCari is not null && GecikmeGun(duzenleCari) is > 0 and var gg)
+        {
+            <div class="musteri-panel-uyari" id="cari-panel-uyari" role="status">
+                @* Tırnaklar düğmenin DIŞINDA, sözlükte (TR tuval metni; EN tırnaksız). Boşluk sözlükte. *@
+                @string.Format(T.VadeUyariOnce, gg)<button type="button" class="musteri-baglanti musteri-baglanti--tehlike" id="cari-panel-tahsilat" @onclick="PaneldenTahsilat">@T.TahsilatDugmesi</button>@T.VadeUyariSonra
+            </div>
+        }
+        @* PAKET GOC-B (C satır 34): ortak Unvan, sınır kolonla TEK sabit. *@
+        <Unvan ElemanId="duz-ad" Yukleniyor="@DuzKilitli" Etiket="@DuzAdEtiketi" Zorunlu="true" EnFazla="@AlanSinirlari.CariAd"
+               Hata="@(!DuzKilitli && duzenleCari is not null && string.IsNullOrWhiteSpace(duzAd) ? string.Format(P2.AdZorunlu, DuzAdEtiketi) : null)"
+               Deger="@duzAd" DegerChanged="@(v => duzAd = v ?? "")"
+               Durum="form" HataAlani="duz-ad" />
+        @* KESIF-P2 (#22 · ekip kararı 4): eşlenemeyen eski uyruk kodu UYDURULMAZ — kart açılınca
+           (katlı alanlar kapalıyken de) görünür uyarı; değer değişmedikçe kart kaydedilebilir. *@
+        @if (DuzUyrukDuzeltilmeli)
+        {
+            <p class="metin-kucuk" id="duz-uyruk-duzeltin" role="status">
+                <Rozet Renk="sari">@P2.UyrukDuzeltin</Rozet>
+                <span class="metin-soluk" id="duz-uyruk-duzeltin-aciklama">@string.Format(P2.UyrukDuzeltinAciklama, yuklenenUyruk)</span>
+            </p>
+        }
+        @* PAKET S3-2 — basit modda görünen: ad, telefon, not (+ PEP beyanı VARSA);
+           gerisi "Daha fazla ▾". Katlı alanların DEĞERİ yüklenmiştir ve PATCH ile
+           AYNEN geri gider — gizlemek silmek DEĞİLDİR. *@
+        @if (DuzTumAlanlar)
+        {
+        <div class="alan">
+            <Secici ElemanId="duz-tur" Devredisi="@DuzKilitli"
+                    Etiket="@Dil.T.Cari.Tur"
+                    Secenekler="@(CariTurleri.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                    @bind-Deger="duzTur" />
+        </div>
+        }
+        @* T-M1: BASİT'te (katlıyken) telefon tek başına TAM genişlik (tuval); biçim ipucu
+           tuvalde yok → BASİT'te çizilmez, sunucu hatası yine alanın altına düşer. *@
+        <div class="@(DuzTumAlanlar ? "form-grid-2 form-satiri" : "form-tek")">
+            <TelefonBicimli ElemanId="duz-telefon" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.Telefon"
+                     Deger="@duzTelefon" DegerChanged="@(v => duzTelefon = v ?? "")"
+                     Ipucu="@(Sade ? "" : null)"
+                     Durum="form" HataAlani="duz-telefon" />
+            @if (DuzTumAlanlar)
+            {
+            <Eposta ElemanId="duz-eposta" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Auth.Eposta" EnFazla="@AlanSinirlari.Eposta"
+                    Deger="@duzEmail" DegerChanged="@(v => duzEmail = v ?? "")"
+                    Durum="form" HataAlani="duz-eposta" />
+            }
+        </div>
+        @if (DuzTumAlanlar)
+        {
+        @* ═══ PAKET P-16 (Y-27) — OLUŞTURMA FORMUYLA AYNI KÜME (UX-S26) ══════
+           Seçenek listeleri (KimlikTurleri, Segmentler) TEK diziden üretilir. *@
+        <TcknVeyaVkn ElemanId="duz-vergino" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.VergiNo"
+               Deger="@duzVergiNo" DegerChanged="@(v => duzVergiNo = v ?? "")" Hata="@TcknAnindaHata(duzVergiNo, duzKimlikTuru)"
+               Durum="form" HataAlani="duz-vergino"
+               Ipucu="@KimlikHaneIpucu(duzKimlikTuru)" />
+        @* KESIF-P2 tur 2 (#20, hakem): "(isteğe bağlı)" satırı olan ve olmayan etiketler aynı üst çizgide —
+           ortak `.form-satiri` kuralı (app.css (3) ORTAK FORM SATIRI) etiketi rayın üstüne yaslar. Kutu hizası
+           (K7) zaten 0'dı; ölçer etiket METNİNİ ölçmediği için 1440 PRO'da ~13 px metin kayması görünmemişti. *@
+        <fieldset class="form-grid-2 form-satiri" id="duz-p16">
+            <legend>@Dil.T.Cari.KimlikBolumu</legend>
+            <div class="alan">
+                <Secici ElemanId="duz-kimlik-turu" Devredisi="@DuzKilitli"
+                        Etiket="@Dil.T.Cari.KimlikTuru"
+                        Secenekler="@(KimlikTurleri.Select(t => new SecenekOgesi(t.Deger, t.Etiket)).ToList())"
+                        @bind-Deger="duzKimlikTuru"
+                        BosSecenekMetni="@Dil.T.Cari.KimlikTuruBelirtilmedi" />
+            </div>
+            <Unvan ElemanId="duz-unvan" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.Unvan" EnFazla="@AlanSinirlari.CariUnvan"
+                   Deger="@duzUnvan" DegerChanged="@(v => duzUnvan = v ?? "")"
+                   Ipucu="@Dil.T.Cari.UnvanIpucu" />
+            <Tarih ElemanId="duz-dogum" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.DogumTarihi" Tur="TarihTuru.KisiDogum"
+                   Ipucu="@DogumUyari(duzDogumTarihi)" @bind-Deger="duzDogumTarihi" />
+            @* KESIF-P2 (#22): MASAK formuyla AYNI ülke seçicisi. Hücre yalnız seçiciyi taşır
+               (ızgara hizası K7); eşlenemeyen eski kodun rozeti çekmecenin BAŞINDA (#duz-uyruk-duzeltin). *@
+            <div class="alan" id="duz-uyruk-alan">
+                <Secici ElemanId="duz-uyruk" Devredisi="@DuzKilitli" Etiket="@Dil.T.Cari.Uyruk"
+                        Secenekler="@UlkeSecenekleri" BosSecenekMetni="@P2.UyrukSecin"
+                        Deger="@UyrukSecimi(duzUyruk, duzUyrukDiger)" DegerChanged="DuzUyrukSecildi" />
+            </div>
+            @if (UyrukDigerMi(duzUyruk, duzUyrukDiger))
+            {
+                <Metin ElemanId="duz-uyruk-kod" Yukleniyor="@DuzKilitli" Etiket="@P2.UyrukKod" Ipucu="@P2.UyrukKodIpucu" EnFazla="@AlanSinirlari.UyrukKod"
+                       Hata="@(UyrukKodHatasi(duzUyruk, yuklenenUyruk))"
+                       Deger="@duzUyruk" DegerChanged="@(v => duzUyruk = (v ?? "").Trim().ToUpperInvariant())" />
+            }
+            <Yuzde ElemanId="duz-iskonto" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.IskontoYuzde"
+                  @bind-Deger="duzIskonto" Birim="%"
+                  Durum="form" HataAlani="duz-iskonto"
+                  Ipucu="@Dil.T.Cari.IskontoYuzdeIpucu" />
+            <div class="alan">
+                <Secici ElemanId="duz-segment" Devredisi="@DuzKilitli"
+                        Etiket="@Dil.T.Cari.Segment"
+                        Secenekler="@(Segmentler.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                        @bind-Deger="duzSegment"
+                        BosSecenekMetni="@Dil.T.Cari.SegmentSecilmedi" />
+            </div>
+            @* P-26 (Y-37): oluşturma formuyla AYNI alan kümesi.
+               KESIF-P2 (#20 · K7): hesap kodu Segment hücresinin İÇİNDEYDİ — o hücre iki alan
+               boyunda olduğundan ızgara satırı uzuyor, "Standart iskonto" etiketi kutusundan
+               kopuyordu. Oluşturma formundaki gibi KENDİ hücresinde. *@
+            <Metin ElemanId="duz-hesap-kodu" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.HesapKodu" EnFazla="@AlanSinirlari.HesapKodu"
+                   Deger="@duzHesapKodu" DegerChanged="@(v => duzHesapKodu = v ?? "")"
+                   Ipucu="@Dil.T.Cari.HesapKoduIpucu" />
+        </fieldset>
+        <CokSatir ElemanId="duz-adres" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.Adres" Satir="2" EnFazla="@AlanSinirlari.Adres"
+                  Deger="@duzAdres" DegerChanged="@(v => duzAdres = v ?? "")" />
+        }
+        <CokSatir ElemanId="duz-notlar" Yukleniyor="@DuzKilitli" Etiket="@(Sade ? T.Not : Dil.T.Cari.Notlar)" Satir="@(Sade ? 1 : 2)" EnFazla="@AlanSinirlari.CariNot"
+                  Deger="@duzNotlar" DegerChanged="@(v => duzNotlar = v ?? "")"
+                  Ipucu="@(Sade ? null : Dil.T.Cari.NotlarIpucu)" />
+        @if (DuzTumAlanlar)
+        {
+        @* Kredi limiti sunucuda BAŞINDAN BERİ kontrol ediliyordu ama hiçbir
+           ekranda girilemiyordu — yalnız API'den set edilebilen bir kuraldı.
+           Vade ile birlikte buraya açıldı. *@
+        <div class="form-grid-2 form-satiri">
+            <Para ElemanId="duz-limit" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.KrediLimiti" Tur="TutarTuru.SifirOlabilir" ParaBirimi="TRY"
+                  @bind-Deger="duzKrediLimiti" Durum="form" HataAlani="duz-limit" />
+            <Sayi ElemanId="duz-vade" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Vade.VarsayilanVadeGun" EnAz="0" EnCok="3650"
+                  Deger="@(duzVadeKesirli ?? (duzVadeGun is { } _g2 ? (decimal?)_g2 : null))"
+                  Hata="@(duzVadeKesirli is not null ? P2.VadeTamSayi : null)"
+                  DegerChanged="DuzVadeDegisti" />
+        </div>
+        @* Fiyat listesi: boş = kiracının varsayılan listesi. Toptancıya "Toptan" listesi
+           atanır; POS o cari seçilince otomatik o listeden teklif alır. *@
+        <div class="alan">
+            <Secici ElemanId="duz-fiyat-listesi" Devredisi="@DuzKilitli"
+                    Etiket="@Dil.T.Fiyat.FiyatListesi"
+                    Secenekler="@FiyatListesiSecenekleri"
+                    @bind-Deger="duzFiyatListesiId"
+                    BosSecenekMetni="@VarsayilanListeMetni" />
+        </div>
+        }
+        @* PEP beyanı işaretli bir kartta basit modda da GÖRÜNÜR: beyan bir uyum
+           bilgisidir, katlanıp unutulmaz (plan § 3/6 — basit mod yasal hiçbir şeyi saklamaz). *@
+        @if (DuzTumAlanlar || yuklenenPepBeyani || duzPepBeyani)
+        {
+        @* ── PAKET 40-A — PEP BEYANI ─────────────────────────────────────
+           ⚠ Bu bir BEYANDIR, tespit değildir. Beyan işaretliyken görev boşsa
+             Kaydet KİLİTLİDİR ve sebebi çekmecenin alt çubuğunda yazar (UX-S30).
+           ⚠ disabled="@(false)" TUZAĞI: `disabled="false"` DİZGEDİR ve düğmeyi
+             KİLİTLER; kilit Cekmece'nin KaydetAktif bayrağıyla yönetilir. *@
+        <Onay ElemanId="duz-pep" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.PepBeyani"
+              @bind-Deger="duzPepBeyani" Ipucu="@Dil.T.Cari.PepNotu" />
+        @* UX-S24: bağımlı alanın bağını EKRAN kurar — kutu işaretlenince
+           görev alanı açılır; işaretli değilse istenmez. *@
+        @if (duzPepBeyani)
+        {
+            <div class="alan">
+                <Metin ElemanId="duz-pep-gorev" Yukleniyor="@DuzKilitli" Etiket="@Dil.T.Cari.PepGorev" Zorunlu="true"
+                       Deger="@duzPepGorev" DegerChanged="@(v => duzPepGorev = v ?? "")" />
+                @if (!PepGecerli)
+                {
+                    <span id="duz-pep-hata" class="metin-kucuk metin-kirmizi" role="alert">
+                        @Dil.T.Cari.PepGorevZorunlu
+                    </span>
+                }
+                @if (duzPepBeyanTarihi is { } pbt)
+                {
+                    @* UX-S21: sunucunun bildiği alan kullanıcıdan istenmez —
+                       beyan tarihi sunucuda damgalanır, burada yalnız gösterilir. *@
+                    <span id="duz-pep-tarih" class="metin-kucuk metin-soluk">
+                        @Dil.T.Cari.PepBeyanTarihi: @Bicim.TarihSaat(pbt)
+                    </span>
+                }
+            </div>
+        }
+        }
+        @if (Modu.BasitMi)
+        {
+            <button @onclick="() => duzDahaFazla = !duzDahaFazla" type="button" class="dugme dugme-ikincil dugme-kucuk form-daha-fazla" id="duz-daha-fazla"
+                    aria-expanded="@(duzDahaFazla ? "true" : "false")">
+                @* T-M1: tuval "Daha fazla (adres, TC, e-posta, limit)" + sağda ok; ok ince
+                   çizgili Ikon (emoji/glif değil), açıkken CSS ile yukarı döner. *@
+                <span>@(duzDahaFazla ? M.DahaAz : $"{M.DahaFazla} ({M.DahaFazlaIcerik})")</span>
+                <Ikon Ad="@Ikonlar.KatlamaAcik" Sinif="@(duzDahaFazla ? "katla-ok katla-ok--acik" : "katla-ok")" />
+            </button>
+        }
+        <HataBandi Mesaj="@duzHata" />
+        @* T-M1: tuvalin panelinde "kaldır" düğmesi YOK → BASİT'te "Daha fazla" açılınca
+           görünür (SİLİNMEDİ), etiketi jargonsuz "Kullanımdan kaldır"; id ve onay
+           modalı AYNEN. PRO'da bugünkü gibi hep görünür. *@
+        @if (DuzTumAlanlar)
+        {
+        <div class="satir">
+            @* UX-4d madde 13: pasife alma ONAYSIZ çalışıyordu (üründe onay var,
+               caride yok). Ortak onay modalına bağlandı (DoD EK md.4).
+               Geri dönüş yolu listedeki "Aktife al" düğmesidir (UX-S25). *@
+            @if (duzenleCari?.SistemCarisi == true)
+            {
+                @* PAKET B-3 (D2 · K4) — sunucu DELETE/PATCH aktif:false için 400 döner;
+                   ekran düğme yerine değişmezlik gerekçesini ve doğru yolu yazar. *@
+                <DegismezIpucu Varlik="SistemCarisi"
+                               Gerekce="@PesinMetin.DegismezGerekce"
+                               AlternatifYol="@PesinMetin.DegismezYol" />
+            }
+            else
+            {
+                <button id="c-pasife-al" class="btn btn-tehlike"
+                        @onclick="() => PasifOnayAc(duzenleCari)">@(Sade ? T.KullanimdanKaldir : Dil.T.Cari.PasifeAl)</button>
+            }
+        </div>
+        }
+        @* T-M1 — tuval: panelin dibinde "Son değişiklik: Ayşe Y., dün 16:20 · Kim ne yaptı".
+           Zaman listedeki `guncellendi` alanından; KİM bilgisi yalnız SAHİP'te denetim
+           kaydından okunur (uç SAHİP'e açık — diğer rollerde yalnız zaman yazılır,
+           ad UYDURULMAZ). "Kim ne yaptı" bağlantısı da yalnız SAHİP'te çizilir. *@
+        @if (Sade && duzenleCari is not null && SonDegisiklikMetni is { } sdm)
+        {
+            <p class="musteri-son-degisiklik" id="cari-son-degisiklik">
+                <span id="cari-son-degisiklik-metin">@sdm</span>
+                @if (SahipMi)
+                {
+                    <span aria-hidden="true"> · </span>
+                    <a href="/denetim-izi" id="cari-kim-ne-yapti">@T.KimNeYapti</a>
+                }
+                @if (sonDegisiklikHata is { Length: > 0 } sdh)
+                {
+                    @* UX-S28: kim bilgisi okunamadıysa sebep YAZILIR (sessiz yutma yok). *@
+                    <span class="metin-kirmizi" id="cari-son-degisiklik-hata" role="alert"> · @sdh</span>
+                }
+            </p>
+        }
+        @* Kaydet/İptal çekmecenin ALT ÇUBUĞUNDADIR (#cekmece-cari-kaydet /
+           #cekmece-cari-iptal); ikinci bir kaydet düğmesi çizilmez. *@
+    </div>
+</Cekmece>
+</div>
+
+@* ── UX-4d madde 13: pasife alma onay modalı (yıkıcı eylem) ── *@
+<ModalPencere Acik="pasifOnayAcik" Baslik="@($"{(Sade ? T.KullanimdanKaldir : Dil.T.Cari.PasifeAl)}{(pasifAday is null ? "" : $" — {pasifAday.Ad}")}")"
+              Kapat="() => pasifOnayAcik = false">
+    <div class="form-dikey">
+        @* P-38 · B-39: onay HANGİ cariyi kapattığını adıyla söyler (listeden de açılabildiği için). *@
+        <p id="c-pasif-onay-metin">@Dil.T.Cari.PasifeAlOnay</p>
+        @* ── PAKET P-13 · B-39 — BAĞLI KAYIT SAYISI (UX-S23) ─────────────────
+           Pasife alma ENGELLENMEZ (borçlu müşterinin kartı da kapatılabilir);
+           ama kaç hareketi ve ne kadar bakiyesi olan kartı kapattığı
+           kullanıcıya ONAYDAN ÖNCE gösterilir. Sayı yoksa "yok" denmez:
+           istek sürüyorsa bunu söyler (UX-S28 — hata boş duruma çevrilmez). *@
+        @if (pasifBagli is not null)
+        {
+            <p class="metin-kucuk metin-soluk" id="c-pasif-bagli">
+                @string.Format(Dil.T.Cari.PasifeAlBagli,
+                    pasifBagli.HareketSayisi,
+                    Bicim.Tl(pasifBagli.TlBakiye),
+                    HasBicim(pasifBagli.HasGramBakiye))
+            </p>
+        }
+        else if (pasifBagliYukleniyor)
+        {
+            <p class="metin-kucuk metin-soluk" id="c-pasif-bagli-yukleniyor">@Dil.T.Cari.PasifeAlBagliYukleniyor</p>
+        }
+        <HataBandi Mesaj="@duzHata" />
+        <div class="satir">
+            <button id="c-pasif-onayla" class="btn btn-tehlike" disabled="@kaydediliyor"
+                    @onclick="CariPasifeAl">@(Sade ? T.KullanimdanKaldir : Dil.T.Cari.PasifeAl)</button>
+            <button id="c-pasif-vazgec" class="btn btn-ikincil" style="flex:1"
+                    @onclick="() => pasifOnayAcik = false">@Vazgec</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Düzeltme fişi modalı (paket 33) — gerekçe zorunlu, geri alınamaz ── *@
+<ModalPencere Acik="duzeltmeCari is not null" Baslik="@($"{DuzeltmeAdi} — {duzeltmeCari?.Ad}")" Kapat="() => duzeltmeCari = null">
+    <div class="form-dikey">
+        @* KESIF-P2 tur 3 (hakem KRİTİK, karar 2): bant metni ham kod ("CARI_DUZELTME") taşımaz;
+           "Pozitif = borç artar" yerine her alanın altında sade yön ifadesi. Has kutusu 4 ondalık,
+           birimi "has" (karar 5 — "g" yalnız ağırlık). *@
+        <div class="uyari-kutu" id="dz-uyari"><p><Ikon Ad="@Ikonlar.Uyari" /> @P2.DuzeltmeUyari</p></div>
+        <div class="form-grid-2 form-satiri">
+            <Para ElemanId="dz-tl" Etiket="@Dil.T.Cari.TlDelta" Ipucu="@P2.DuzeltmeYon"
+                  Deger="@dzTl" DegerChanged="@(v => dzTl = v ?? 0m)" />
+            <Sayi ElemanId="dz-has" Etiket="@P2.DuzeltmeHasEtiket" Birim="@P2.BirimHas" EnCokOndalik="4"
+                  Ipucu="@P2.DuzeltmeYon"
+                  Deger="@dzHas" DegerChanged="@(v => dzHas = v ?? 0m)" />
+        </div>
+        @* KESIF-P2 (#21 alt madde): aynı pencerede iki sayaç ("0 / 500" + "0/20") vardı —
+           tek sayaç: yazılan karakter ve asgari 20 (CokSatir'in kendi sayacı kapalı). *@
+        <CokSatir ElemanId="dz-gerekce" Etiket="@Dil.T.Cari.Gerekce" Zorunlu="true" Satir="3" SayacGoster="false"
+                  Deger="@dzGerekce" DegerChanged="@(v => dzGerekce = v ?? "")"
+                  Ipucu="@string.Format(P2.GerekceSayac, dzGerekce.Trim().Length, 20)" />
+        <HataBandi Mesaj="@islemHata" />
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="dz-" ElemanId="dz-sayi-kilit" />
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => duzeltmeCari = null">@Vazgec</button>
+            <button class="btn btn-birincil" style="flex:1" id="dz-kaydet"
+                    disabled="@(kaydediliyor || sayiKapisi.OnekleVar("dz-") || dzGerekce.Trim().Length < 20 || (dzTl == 0 && dzHas == 0))"
+                    @onclick="DuzeltmeGonder">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ── Tahsilat ÇEKMECESİ — kuyumcunun günlük işi ──
+   SON-KALANLAR (hasım ORTA, DoD EK md.2 tek düzenleme kalıbı): çok alanlı form ModalPencere değil
+   Cekmece; İptal → Kaydet altlıkta (döviz tahsilatla AYNI düzen). Kimlikler (#th-kaydet,
+   #th-kaydet-kilit, #th-*) AYNEN. Kilit sebebi TEK yerde: altlıktaki #th-kaydet-kilit. *@
+<Cekmece Acik="@(tahsilatCari is not null)" Varlik="tahsilat" IptalMetni="@Vazgec"
+         Baslik="@($"{Dil.T.Cari.Tahsilat} — {tahsilatCari?.Ad}")"
+         Kapat="() => tahsilatCari = null" Kaydet="TahsilatKaydet" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(!(sayiKapisi.OnekleVar("th-") || (thTutar > 0 && string.IsNullOrEmpty(thKasaId)) || ThNakitSinirAsildi || PM.KilitSebebi(Dil.Dil) is not null))"
+         KilitSebebi="@TahsilatKilidi" KaydetMetni="@Dil.T.Ortak.Kaydet"
+         KaydetElemanId="th-kaydet" KilitElemanId="th-kaydet-kilit">
+    <div class="form-dikey">
+        @* PAKET PARA-DEMO (madde 2): "Borcu azaltır" yalnız PARA için doğruydu; altın TL borcunu
+           düşürmez, müşterinin altın hesabına yazılır (sunucu TahsilatGirHareket: iki ayrı bacak). *@
+        @* PARA-DEMO-2 (madde 7): müşterinin GÜNCEL borcu başlığın altında hep görünür. *@
+        <p class="hucre-vurgu" id="th-guncel">@ThGuncelBorc@if (tahsilatCari is { HasGramBakiye: not 0m } thc) {<span class="metin-soluk hucre-tek-satir" id="th-guncel-altin"> · @string.Format(PD2.GuncelAltin, HasBicim(thc.HasGramBakiye))</span>}</p>
+        @* YASAL-KAPI-3 (sade ve şık, "ilk ekranda tüm zorunlular"): kimlik formu açıkken açıklama satırı çizilmez. *@
+        @if (!ThMasakCizilir)
+        {
+            <p class="metin-soluk metin-kucuk" id="th-ipucu">@PD.TahsilatIpucu</p>
+        }
+        @* SON-KALANLAR (hasım DÜŞÜK, B1440__21): tutar kutusu TAM GENİŞLİK (iki sütunlu ızgarada dev tutar
+           kesiliyordu); ödeme türü altında. *@
+            @* PARA-DEMO-2 tur 5 (doğrulayıcı YÜKSEK): Tutar BOŞ gelir (0 değil); altın açık değilken
+               zorunludur ("isteğe bağlı" yazmaz). Kural TEK cümle (ThTutarHatasi) ve yalnız ilk Kaydet
+               denemesinden sonra görünür — pencere açılır açılmaz kırmızı yazı yok. *@
+            @* YASAL-KAPI-3: ödeme türü değişince nakit sınırı cümlesi ve sunucunun eski reddi yeniden değerlendirilir
+               (ThOdemeDegisti). Tutar kutusu TAM GENİŞLİK kalır (SON-KALANLAR kararı, SKC01). *@
+            <Para ElemanId="th-tutar" Etiket="@Dil.T.Cari.TlTutar" EnAz="0" Zorunlu="@(!(thHasAcik || thHas > 0m))"
+                  Deger="@(thTutar > 0m ? thTutar : null)" DegerChanged="@ThTutarDegisti"
+                  Hata="@ThTutarHatasi" />
+            <div class="alan">
+                <Secici ElemanId="th-odeme"
+                        Etiket="@Dil.T.Cari.OdemeTuru"
+                        Secenekler="@TahsilatOdemeSecenekleri"
+                        Deger="@thOdeme" DegerChanged="@((string? v) => ThOdemeDegisti(v))" />
+            </div>
+        @* PAKET YASAL-2 (TB-15): büyük satıştan kalan borçta "Nakit" SUNUCUNUN
+           söylediğine göre kapanır (GET /tevsik/gunluk → taksit); ekran tahmin etmez. *@
+        @if (thTaksit is { KuralDevrede: true } tk)
+        {
+            <div class="uyari-kutu nakit-siniri @(ThNakitSinirAsildi ? "uyari-kirmizi" : null)" id="th-taksit" role="status">
+                <p id="th-taksit-cumle">@(ThNakitKapali
+                    ? string.Format(TT.TahsilatNakitKapali, Bicim.Para(tk.BuyukIslemHaddi ?? 0m, "TRY"))
+                    : string.Format(TT.TahsilatNakitSinirli, Bicim.Para(tk.NakitAlinabilir ?? 0m, "TRY")))</p>
+                <details class="nakit-siniri-neden" id="th-taksit-neden" title="@TT.Dayanak">
+                    <summary>@TT.NedenBaslik</summary>
+                    <p class="metin-kucuk">@TT.NedenMetin</p>
+                </details>
+            </div>
+        }
+        <HataBandi Mesaj="@thTaksitHata" Id="th-taksit-hata" />
+        @* PAKET YASAL-KAPI-2 (tasarım hakemi KRİTİK): eşik üstünde (ya da bugünkü toplamla / sunucu reddiyle) ORTAK
+           MasakFormu açılır — tezgâhtar çıkışsız kalmaz. Tutar inince form ve ret cümlesi kalkar (ParaMasakKapisi). *@
+        @* YASAL-KAPI-3: nakit sınırı aşılmışken form doldurtulmaz (önce ödeme türü); PRO kural satırı yok (eşik başlıkta, tek kez). *@
+        @if (ThMasakCizilir)
+        {
+            <div class="zo-masak-dikey" id="th-masak">
+                <MasakFormu Model="PM.Model" Tutar="PM.Tutar" Esik="PM.Esik!" Sade="@Sade" Gereksinim="PM.Gereksinim!" Degisti="MasakAlaniDegisti" KuralGizli="true" />
+            </div>
+        }
+        <HataBandi Mesaj="@(ThNakitSinirAsildi ? null : PM.RedBandi)" Id="th-masak-ret" />
+        @* PARA-DEMO-2 (madde 7): isteğe bağlı altınla ödeme "+ Altınla öde" arkasında (zorunlu önce);
+           silinince "0,000 g" artığı kalmaz (0 → boş kutu). *@
+        @if (thHasAcik || thHas > 0m)
+        {
+        @* PAKET GOC-B (C satır 68, K11): has gram 6 ondalık — Gram (3 ondalık) yerine ortak Has; eksi yazılamaz. *@
+        <Has ElemanId="th-has" Etiket="@PD.HasGramEtiket" EnCokOndalik="6"
+              Deger="@(thHas > 0m ? thHas : null)" DegerChanged="@ThHasDegisti"
+              Ipucu="@PD.HasGramIpucu" Hata="@thHasSunucuHata" />
+        }
+        @* PARA-DEMO (madde 2, ekip kararı B) + PARA-DEMO-2 (madde 6): TL borçlu müşteride altın girilince TEK cümle,
+           büyük harf yok; ekrandaki GERÇEK düğme adı ve oraya tek dokunuşla giden bağlantı. *@
+        @if (thHas > 0m && (tahsilatCari?.TlBakiye ?? 0m) > 0m)
+        {
+            <div class="uyari-kutu" id="th-has-uyari" role="status">
+                <p>@string.Format(PD2.HasTlBorcUyari, Bicim.Para(tahsilatCari!.TlBakiye, "TRY"), HurdaAlisAdi)</p>
+                <a class="metin-kucuk" href="/islemler?tur=HURDA_ALIS" id="th-has-yol">@string.Format(PD2.HasYolBaglanti, HurdaAlisAdi)</a>
+            </div>
+        }
+        @* UX-4b madde 9 — KASA BACAĞI. Sunucu TL tutarı varsa kasa ZORUNLU tutar
+           (satıştaki kuralın aynısı). UX-S22: tek TL kasası varsa seçici kilitli
+           ve otomatik doludur. Yalnız has gram tahsilatında kasa istenmez. *@
+        @if (thTutar > 0)
+        {
+            <div class="alan">
+                <Secici ElemanId="th-kasa"
+                        Etiket="@Dil.T.Islem.Kasa"
+                        Secenekler="@TahsilatKasaSecenekleri"
+                        @bind-Deger="thKasaId"
+                        Devredisi="@TahsilatKasaTek"
+                        BosSecenekMetni="@Dil.T.Islem.KasaSecin" />
+                @if (TahsilatKasaTek)
+                {
+                    @* PARA-DEMO-2 (madde 7): kasa mesajı TEK satır (kilit sebebi + "otomatik" notu ikisi birden yazılmaz). *@
+                    <span id="th-kasa-tek" class="metin-soluk metin-kucuk">@string.Format(PD2.KasaTekSatir, TahsilatKasalari[0].Ad)</span>
+                }
+            </div>
+        }
+        @if (thNotAcik || !string.IsNullOrEmpty(thAciklama))
+        {
+        <Metin ElemanId="th-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+               Deger="@thAciklama" DegerChanged="@(v => thAciklama = v ?? "")" />
+        }
+        @* PARA-DEMO-2 (madde 7): isteğe bağlılar kapalı gelir; tek dokunuşla açılır. *@
+        @if (!(thHasAcik || thHas > 0m) || !(thNotAcik || !string.IsNullOrEmpty(thAciklama)))
+        {
+            <div class="satir" id="th-istege-bagli">
+                @if (!(thHasAcik || thHas > 0m))
+                {
+                    <button type="button" class="btn btn-ikincil btn-kucuk" id="th-has-ekle" @onclick="() => thHasAcik = true">@PD2.AltinlaOdeEkle</button>
+                }
+                @if (!(thNotAcik || !string.IsNullOrEmpty(thAciklama)))
+                {
+                    <button type="button" class="btn btn-ikincil btn-kucuk" id="th-not-ekle" @onclick="() => thNotAcik = true">@PD2.NotEkle</button>
+                }
+            </div>
+        }
+        <HataBandi Mesaj="@islemHata" />
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="th-" ElemanId="th-sayi-kilit" />
+        @* UX-S30 (P-13): kilitli düğmenin sebebi altlıkta TEK kez (#th-kaydet-kilit, Cekmece). *@
+    </div>
+</Cekmece>
+
+@* ── Veresiye modalı ── *@
+<ModalPencere Acik="veresiyeCari is not null" Baslik="@($"{Dil.T.Cari.Veresiye} — {veresiyeCari?.Ad}")" Kapat="() => veresiyeCari = null">
+    <div class="form-dikey">
+        <p class="metin-soluk metin-kucuk">@Dil.T.Cari.VeresiyeIpucu</p>
+        <Para ElemanId="vr-tutar" Etiket="@Dil.T.Cari.TlTutar" EnAz="0"
+              Deger="@vrTutar" DegerChanged="@VrTutarDegisti" />
+        @* PAKET GOC-B (C satır 69, K11): ortak Has; 0 = boş kutu (has verilmedi), eksi yazılamaz. *@
+        <Has ElemanId="vr-has" Etiket="@Dil.T.Cari.HasGramVerilen" EnCokOndalik="6"
+             Deger="@(vrHas > 0m ? vrHas : null)" DegerChanged="@(v => vrHas = v ?? 0m)" />
+        <Metin ElemanId="vr-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+               Deger="@vrAciklama" DegerChanged="@(v => vrAciklama = v ?? "")" />
+        <HataBandi Mesaj="@islemHata" />
+        <SayiKapisiSebebi Kapi="sayiKapisi" Onek="vr-" ElemanId="vr-sayi-kilit" />
+        @* PAKET YASAL-KAPI-2: veresiye de MASAK kapısına tabidir (sunucu VeresiyeGir) — aynı ortak form ve aynı iz kuralı. *@
+        @if (PM.FormCizilir)
+        {
+            <div class="zo-masak-dikey" id="vr-masak">
+                <MasakFormu Model="PM.Model" Tutar="PM.Tutar" Esik="PM.Esik!" Sade="@Sade" Gereksinim="PM.Gereksinim!" Degisti="MasakAlaniDegisti" KuralGizli="true" />
+            </div>
+        }
+        <HataBandi Mesaj="@PM.RedBandi" Id="vr-masak-ret" />
+        @if (VeresiyeKilidi is { } vrKilit)
+        {
+            <span class="metin-kucuk islem-kaydet-kilit" id="vr-kaydet-kilit" role="status">@vrKilit</span>
+        }
+        <div class="satir">
+            <button class="btn btn-ikincil" style="flex:1" @onclick="() => veresiyeCari = null">@Vazgec</button>
+            <button class="btn btn-birincil" style="flex:1" id="vr-kaydet"
+                    disabled="@(kaydediliyor || sayiKapisi.OnekleVar("vr-") || vrTutar <= 0 || PM.KilitSebebi(Dil.Dil) is not null)"
+                    @onclick="VeresiyeKaydet">@Dil.T.Ortak.Kaydet</button>
+        </div>
+    </div>
+</ModalPencere>
+
+@* ═══ PAKET 27 — DÖVİZ VERESİYE ÇEKMECESİ ═══════════════════════════════════
+   Tek düzenleme kalıbı (MÜHÜR 2 DoD/2): çok alanlı form = Cekmece.
+   TL karşılığı SALT OKUNUR — sunucu hesaplar, istemci gönderemez (UX-S21). *@
+@* TOPLU-5 (hakem ORTA "/cariler iki farklı çekmece kalıbı"): döviz çekmeceleri müşteri düzenleme çekmecesiyle
+   AYNI tuval kalıbında (440 px, aynı dolgu/başlık/etiket/alt şerit — toplu5.css .t5-cekmece-kap). Cekmece ortak
+   bileşendir ve DEĞİŞMEDİ; sarmalayıcı yalnız çizim sınıfı taşır. *@
+<div class="musteri-panel-kap t5-cekmece-kap">
+<Cekmece Acik="@(dovizVeresiyeCari is not null)" Varlik="doviz-veresiye" IptalMetni="@Vazgec"
+         Baslik="@($"{DovizVeresiyeAdi} — {dovizVeresiyeCari?.Ad}")"
+         Kapat="DovizVeresiyeKapat" Kaydet="DovizVeresiyeKaydet"
+         Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(dvTutar > 0m && DovizKuru(dvParaBirimi) is not null && !sayiKapisi.OnekleVar("dv-") && PM.KilitSebebi(Dil.Dil) is null)"
+         KilitSebebi="@(sayiKapisi.Sebep(Dil.Dil, "dv-") ?? (dvTutar > 0m && DovizKuru(dvParaBirimi) is not null ? PM.KilitSebebi(Dil.Dil) : null) ?? DovizKilitSebebi(dvParaBirimi, dvTutar))">
+    <div class="form-dikey">
+        @* K27-C — kullanıcı "fişte dövizle sattım, cariye USD kalsın" bekliyor
+           olabilir; Faz A bunu VERMİYOR ve bunu SAKLAMIYOR.
+           TOPLU-2 tur 2 (tasarım hakemi KRİTİK): BASİT'te açıklama notu YOK — form
+           yalnız zorunluyu gösterir (kurucu temel kuralı); PRO'da notlar SADE dille
+           (Toplu2Sozlugu; "bu sürümde YOKTUR" ekrana basılmaz). Gerçek SAKLANMAZ:
+           PRO'da yazılıdır. *@
+        @if (!Sade)
+        {
+            @* TOPLU-5 (hakem ORTA "PRO Döviz Veresiye 3 satır açıklama"): üç 12 px paragraf TEK ⓘ içinde
+               (metinler ve id'ler AYNEN; açılışta kapalı). *@
+            <div class="t4-ipucu-satir" id="dv-bilgi-satir">
+                <details class="zo-ipucu" id="dv-bilgi">
+                    <summary aria-label="@T5.DovizBilgi">i</summary>
+                    <div class="t4-ipucu-govde">
+                        <p>@Dil.T.Cari.VeresiyeIpucu</p>
+                        <p id="dv-fis-bacagi-not">@Toplu2Sozlugu.Al(Dil.Dil).DovizFisBacagiNot</p>
+                        <p id="dv-vadesiz-not">@Toplu2Sozlugu.Al(Dil.Dil).DovizVadeNot</p>
+                    </div>
+                </details>
+                <span class="metin-soluk" id="dv-bilgi-etiket">@T5.DovizBilgi</span>
+            </div>
+        }
+        <div class="alan">
+            <Secici ElemanId="dv-para-birimi"
+                    Etiket="@Dil.T.Cari.ParaBirimi"
+                    Secenekler="@(DovizBirimleri.Select(pb => new SecenekOgesi(pb, pb)).ToList())"
+                    @bind-Deger="dvParaBirimi"
+                    @bind-Deger:after="DvMasakTazele" />
+            <AlanHatasi Alan="dv-para-birimi" Durum="form" />
+        </div>
+        @* TOPLU-2 tur 2 (K18): tutar olmadan Kaydet KİLİTLİDİR → alan ZORUNLUDUR; "isteğe bağlı" yazmaz. *@
+        <Para ElemanId="dv-tutar" Etiket="@DovizTutarEtiketi(dvParaBirimi)" EnAz="0" Zorunlu="true"
+              ParaBirimi="@dvParaBirimi"
+              Deger="@DvKutuDegeri" DegerChanged="@DvTutarDegisti"
+              Durum="form" HataAlani="dv-tutar" />
+        @* TOPLU-5 (hakem ORTA "boş tutar alan altı mesajı"): kullanıcı tutarı silince/0 bırakınca alanın
+           ALTINDA Türkçe mesaj (DoD EK 3: sessiz etkisizlik yok); Kaydet kilidi ve sebebi aynen. *@
+        @if (dvDokunuldu && dvTutar <= 0m && form.Mesaj("dv-tutar") is null)
+        {
+            <span class="hata-metni alan-hata" id="dv-tutar-bos" role="alert">@T5.DovizTutarBos</span>
+        }
+        @* UX-S21 — sistemin bildiği alan kullanıcıdan istenmez: TL karşılığı
+           kurdan türetilir, rozetle nereden geldiği söylenir, YAZILAMAZ. *@
+        @* TOPLU-5: etiket "TL karşılığı" (eski "bilgi amaçlı — sunucu hesaplar" teknik eki kalktı; nereden
+           geldiğini "Kurdan geldi" rozeti söyler — UX-S21). Değer ve hesap AYNEN. *@
+        <SaltOkunur ElemanId="dv-tl-karsilik" Etiket="@T5.DovizTlKarsiligi"
+                    Deger="@TlKarsiligiMetni(dvParaBirimi, dvTutar)"
+                    BosMetin="@Dil.T.Ortak.DegerYok" KaynakRozeti="@Dil.T.Islem.KurdanGeldi" />
+        <Metin ElemanId="dv-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+               Deger="@dvAciklama" DegerChanged="@(v => dvAciklama = v ?? "")" />
+        @* PAKET YASAL-KAPI-2: MASAK eşiği TL karşılığıyla işler (sunucu DovizVeresiyeGir) — ortak form ve iz kuralı. *@
+        @if (PM.FormCizilir)
+        {
+            <div class="zo-masak-dikey" id="dv-masak">
+                <MasakFormu Model="PM.Model" Tutar="PM.Tutar" Esik="PM.Esik!" Sade="@Sade" Gereksinim="PM.Gereksinim!" Degisti="MasakAlaniDegisti" KuralGizli="true" />
+            </div>
+        }
+        <HataBandi Mesaj="@PM.RedBandi" Id="dv-masak-ret" />
+        <HataBandi Mesaj="@islemHata" />
+    </div>
+</Cekmece>
+
+@* ═══ PAKET 27 — DÖVİZ TAHSİLAT ÇEKMECESİ ══════════════════════════════════ *@
+<Cekmece Acik="@(dovizTahsilatCari is not null)" Varlik="doviz-tahsilat" IptalMetni="@Vazgec"
+         Baslik="@($"{DovizTahsilatAdi} — {dovizTahsilatCari?.Ad}")"
+         Kapat="DovizTahsilatKapat" Kaydet="DovizTahsilatKaydet"
+         Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(dtTutar > 0m && DovizKuru(dtParaBirimi) is not null && !string.IsNullOrEmpty(dtKasaId) && !sayiKapisi.OnekleVar("dt-") && !DtNakitAsildi && PM.KilitSebebi(Dil.Dil) is null)"
+         KilitSebebi="@(sayiKapisi.Sebep(Dil.Dil, "dt-") ?? (DtNakitAsildi ? null : dtTutar > 0m && DovizKuru(dtParaBirimi) is not null && !string.IsNullOrEmpty(dtKasaId) ? PM.KilitSebebi(Dil.Dil) : null) ?? (DtNakitAsildi ? null : DovizKilitSebebi(dtParaBirimi, dtTutar, dtKasaId)))">
+    <div class="form-dikey">
+        @if (!Sade)
+        {
+            <p class="metin-soluk metin-kucuk">@Dil.T.Cari.TahsilatIpucu</p>
+        }
+        <div class="alan">
+            @* UX-S24 — bağımlı alanın bağını EKRAN kurar: para birimi değişince
+               kasa listesi yenilenir ve tek kasa varsa kendiliğinden seçilir. *@
+            <Secici ElemanId="dt-para-birimi"
+                    Etiket="@Dil.T.Kasa.Doviz"
+                    Secenekler="@DovizSecenekleri"
+                    @bind-Deger="dtParaBirimi"
+                    @bind-Deger:after="DtBirimDegisti" />
+        </div>
+        @* K6 — efektif YALNIZ o para birimindeki kasaya girer; sunucu
+           KasaDogrula(beklenenParaBirimi) ile reddeder. Ekran imkânsız
+           seçeneği hiç göstermez; UX-S22: tek kasa varsa seçici GİZLENİR. *@
+        @if (DovizKasalari.Count == 0)
+        {
+            @* TOPLU-2 tur 2: "kasa yok" formun ortasında büyük boş-durum kutusu DEĞİL, kasa satırının
+               kendisidir (para biriminin hemen altında; Kaydet kilidi "Kasa" der — UX-S30). *@
+            <SaltOkunur ElemanId="dt-kasa-yok" Etiket="@Dil.T.Kasa.Baslik" Deger="@null"
+                        BosMetin="@string.Format(KatalogSozlugu.Al(Dil.Dil).DovizKasasiYok, Bicim.ParaIsareti(dtParaBirimi))" />
+        }
+        else if (DovizKasalari.Count == 1)
+        {
+            <SaltOkunur ElemanId="dt-kasa-tek" Etiket="@Dil.T.Kasa.Baslik"
+                        Deger="@DovizKasalari[0].Ad" BosMetin="@Dil.T.Ortak.DegerYok"
+                        KaynakRozeti="@Dil.T.Islem.TekKasaOtomatik" />
+        }
+        else
+        {
+            <div class="alan">
+                <Secici ElemanId="dt-kasa"
+                        Etiket="@Dil.T.Kasa.Baslik"
+                        Secenekler="@(DovizKasalari.Select(k => new SecenekOgesi(k.Id, k.Ad)).ToList())"
+                        @bind-Deger="dtKasaId" />
+                <AlanHatasi Alan="dt-kasa" Durum="form" />
+            </div>
+        }
+        <Para ElemanId="dt-tutar" Etiket="@DovizTutarEtiketi(dtParaBirimi)" EnAz="0" Zorunlu="true"
+              ParaBirimi="@dtParaBirimi"
+              Deger="@dtTutar" DegerChanged="@DtTutarDegisti"
+              Hata="@DtNakitHatasi" Durum="form" HataAlani="dt-tutar" />
+        <SaltOkunur ElemanId="dt-tl-karsilik" Etiket="@T5.DovizTlKarsiligi"
+                    Deger="@TlKarsiligiMetni(dtParaBirimi, dtTutar)"
+                    BosMetin="@Dil.T.Ortak.DegerYok" KaynakRozeti="@Dil.T.Islem.KurdanGeldi" />
+        <Metin ElemanId="dt-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.HareketAciklama"
+               Deger="@dtAciklama" DegerChanged="@(v => dtAciklama = v ?? "")" />
+        @if (DtMasakCizilir)
+        {
+            <div class="zo-masak-dikey" id="dt-masak">
+                <MasakFormu Model="PM.Model" Tutar="PM.Tutar" Esik="PM.Esik!" Sade="@Sade" Gereksinim="PM.Gereksinim!" Degisti="MasakAlaniDegisti" KuralGizli="true" />
+            </div>
+        }
+        <HataBandi Mesaj="@(DtNakitAsildi ? null : PM.RedBandi)" Id="dt-masak-ret" />
+        <HataBandi Mesaj="@islemHata" />
+    </div>
+</Cekmece>
+</div>
+
+@* ── Cari detay modalı (başlığından tutup taşınabilir) ──
+   KESIF-P2 (#8 + KATMAN-1b ORTA "Cari detay penceresi"):
+   • Hareket başlığı ham kod DEĞİL: KatalogSozlugu.HareketTuru(…, basit) (UX-S31).
+   • Has sütunu satırın DEFTER has'ı değil, müşterinin altın hesabına ETKİSİdir
+     (sunucu cariHasEtkisi); satırlar + sayfa dışı etki = üstteki Has Gram bakiyesi.
+   • Emanet satırı rozetle; altın dışı emanet "bakiyeye girmez" rozetiyle, toplama katılmaz.
+     Kural tablonun altında BİR KEZ, kapalı katlanır ipucunda (ekip kararı 3).
+   • İki bakiye kartı aynı StatKart bileşeni (üst kenar hizalı); boş döviz kutusu
+     ÇİZİLMEZ (zorunlu önce kuralı) — döviz bakiyesi varsa kart görünür. *@
+<ModalPencere Acik="detayCari is not null" Baslik="@(detayCari?.Ad ?? Dil.T.Cari.CariDetay)" Kapat="DetayKapat" Suruklenebilir="true">
+    @if (detayCari is not null)
+    {
+        <div class="form-dikey" id="cari-detay">
+            @* stat-izgara: kartlar eşit boyda, üst kenar hizalı (form-grid-2 alt hizalıyordu — ölçüldü 22 px). *@
+            <div class="stat-izgara" id="cari-detay-bakiyeler">
+                <StatKart Renk="@YonRengi(DetayTl)"
+                          Etiket="@Dil.T.Cari.TlBakiye" Deger="@Bicim.Tl(DetayTl)"
+                          Alt="@YonMetni(DetayTl)" />
+                @* KESIF-P2 tur 3 (karar 3): altın bakiyesi EMANETSİZ; yön kelimesi TL ile aynı.
+                   Emanet ayrı "Emanette" kutusunda — bakiyeye girmez. *@
+                <StatKart Renk="@YonRengi(DetayHas, 4)" Etiket="@P2.AltinBakiye" Deger="@HasBicim(DetayHas)"
+                          Alt="@YonMetni(DetayHas, 4)" />
+                @if (DetayEmanette != 0m)
+                {
+                    <StatKart Etiket="@P2.Emanette" Deger="@DetayEmanetteDeger" Alt="@P2.EmanetteAlt" />
+                }
+            </div>
+
+            @* ── TOPLU-1 (CARI-BAKIYE 01.10, YÜKSEK): BAKİYE UYUŞMAZLIĞI — TEK uyarı, bakiyenin YANINDA ──
+               Eskiden altın ve TL için iki ayrı bant aynı teknik cümleyi tekrarlıyor ve hareket listesinin
+               EN ALTINDA kalıyordu. Şimdi: kayıtlı bakiye işlemlerle tutmuyorsa (has farkı ≠ 0 ya da TL farkı
+               > 1 kuruş; null = ölçülemez → yok) bakiye kutularının hemen altında BİR bant. BASİT yüz
+               (tezgâhtar) teknik ayrıntı görmez: "kontrol edilmeli, yöneticinize haber verin". PRO yüz farkları
+               tek cümlede yazar (#cari-detay-uyusmazlik-has / -tl). Sunucu farkı günlüğe ayrıca yazar. *@
+            @if (UyusmazlikVar)
+            {
+                <div class="bant bant-uyari" role="status" id="cari-detay-uyusmazlik">
+                    @if (Sade)
+                    {
+                        @T1.UyusmazlikBasit
+                    }
+                    else
+                    {
+                        @UyusmazlikProMetni()
+                    }
+                </div>
+            }
+
+            @* ── ÜÇÜNCÜ BAKİYE: DÖVİZ (paket 27) — TL/has ile TOPLANMAZ ── *@
+            @if (DetayDoviz.Count > 0)
+            {
+                <div class="kart">
+                    <div class="kart-govde">
+                        <p class="metin-soluk metin-kucuk">@Dil.T.Cari.DovizBakiye</p>
+                        <span class="satir" id="cari-detay-doviz">
+                            @foreach (var (pb, tutar) in DetayDoviz)
+                            {
+                                <Rozet Renk="@(tutar < 0 ? "kirmizi" : "yesil")">@Bicim.Para(tutar, pb)</Rozet>
+                            }
+                        </span>
+                        <p class="metin-soluk metin-kucuk" id="cari-detay-doviz-not">@Dil.T.Cari.DovizVadesizUyari</p>
+                    </div>
+                </div>
+            }
+
+            <HataBandi Mesaj="@detayHata" />
+
+            @* PAKET EKSIK-B1-YAZDIR (B1-3): cari ekstresi A4 belgesi BU ekrandan açılır — iki modda da
+               (eskiden adres elle yazılarak açılıyordu). Belge salt okunurdur; kâğıdı tarayıcı basar. *@
+            <div class="satir yazdirma-gizle">
+                <NavLink id="cari-detay-ekstre-yazdir" class="btn btn-ikincil btn-kucuk"
+                         href="@($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.CariEkstre}/{detayCari.Id}")">@EB1.EkstreYazdir</NavLink>
+            </div>
+
+            <div>
+                <h3 class="metin-soluk metin-kucuk mb-1">@P2.HareketlerBaslik</h3>
+                @if (ekstreYukleniyor)
+                {
+                    <Yukleniyor />
+                }
+                else if (detayHata is not null)
+                {
+                    @* UX-S28: hata "kayıt yok"a çevrilmez — bant yukarıda, boş durum çizilmez. *@
+                }
+                else if (DetayHareketler.Count == 0)
+                {
+                    <BosDurum Mesaj="@Dil.T.Cari.HareketYok" />
+                }
+                else
+                {
+                    @* 375 px'te de has sütunu GÖRÜNÜR kalsın diye tablo değil satır listesi (ölçüldü:
+                       tabloda has sütunu dar ekranda yatay kaydırmanın arkasında kalıyordu). *@
+                    <div id="cari-detay-hareketler">
+                        <div class="satir-arasi liste-satiri metin-soluk metin-kucuk" id="cari-detay-baslik-satiri">
+                            <span>@P2.SutunIslem</span>
+                            <span class="sayi">@P2.SutunTutar · @P2.SutunHasEtkisi · @PD.EkstreSutunBakiye</span>
+                        </div>
+                        @* PAKET PARA-DEMO (madde 5): satır tutarı = cari TL bakiyesine ETKİSİ (sunucu cariTlEtkisi,
+                           tek kural CariBakiyeKurali); peşin ödenen işlem "ödendi, borca yazılmadı" der; her satırda
+                           ödeme türü ve yürüyen bakiye (önceki + satır). Etkisi bilinmeyen satırdan eskisi "—". *@
+                        @{ var yuruyen = YuruyenBakiyeler(); var yuruyenHas = YuruyenHasBakiyeler(); }
+                        @foreach (var h in DetayHareketler)
+                        {
+                            <div class="satir-arasi liste-satiri" id="@($"cari-detay-satir-{h.Id}")">
+                                <div class="esnek">
+                                    @* TOPLU-1 (CARI-BAKIYE 01.10, YÜKSEK): iptal (storno) satırı kaynağın tür adını ("Veresiye")
+                                       aynen taşıyordu — iptal olduğu yazmıyordu. Artık "Veresiye iptali" (BASİT) /
+                                       "Veresiye · storno" (PRO); kaynak sunucunun stornoKaynakId'si. *@
+                                    <span class="hucre-vurgu" id="@($"cari-detay-tur-{h.Id}")" title="@(Sade ? null : h.Tur)">@SatirTurAdi(h)</span>
+                                    @if (EkstreOdemeAdi(h) is { } odemeAdi)
+                                    {
+                                        <span class="metin-soluk hucre-tek-satir" id="@($"cari-detay-odeme-{h.Id}")"> · @odemeAdi</span>
+                                    }
+                                    @if (h.Emanet)
+                                    {
+                                        @* Karar 3: HER emanet satırı "Emanet — bakiyeye girmez"; has'ı toplama katılmaz. *@
+                                        <span id="@($"cari-detay-emanet-{h.Id}")">
+                                            <Rozet Renk="gri">@P2.EmanetBakiyeyeGirmez</Rozet>
+                                        </span>
+                                    }
+                                    @* Açıklama kendi satırında: satır içi "— açıklama" 375 px'te tireden kırılıyordu (K3, ölçüldü). *@
+                                    @if (!string.IsNullOrEmpty(h.Aciklama))
+                                    {
+                                        <p class="metin-soluk metin-kucuk" id="@($"cari-detay-aciklama-{h.Id}")">@SatirAciklamasi(h)</p>
+                                    }
+                                    <p class="metin-soluk metin-kucuk">@Bicim.Tarih(h.Olusturuldu, Dil.Locale)</p>
+                                </div>
+                                <div class="sayi">
+                                    @if (h.CariTlEtkisi is { } tlEtki && tlEtki != 0m)
+                                    {
+                                        <p id="@($"cari-detay-tl-{h.Id}")">@Bicim.Tl(tlEtki)</p>
+                                    }
+                                    else if (h.CariTlEtkisi is not null && h.TlTutari != 0m)
+                                    {
+                                        <p class="metin-soluk metin-kucuk" id="@($"cari-detay-tl-{h.Id}")">@string.Format(PD.EkstrePesinOdendi, Bicim.Tl(h.TlTutari))</p>
+                                    }
+                                    else if (h.TlTutari != 0m)
+                                    {
+                                        <p id="@($"cari-detay-tl-{h.Id}")">@Bicim.Tl(h.TlTutari)</p>
+                                    }
+                                    @* PARA-DEMO-2 (madde 9): has etkisi olmayan satırda boş işaret ("—") basılmaz. *@
+                                    @if (HasEtkili(h))
+                                    {
+                                        <p class="metin-amber" id="@($"cari-detay-has-{h.Id}")">@HasBicim(SatirEtkisi(h))</p>
+                                    }
+                                    @if (h.Emanet && h.EmanetHas != 0m)
+                                    {
+                                        <p class="metin-soluk metin-kucuk" id="@($"cari-detay-emanet-has-{h.Id}")">@string.Format(P2.EmanetSatir, HasBicim(h.EmanetHas))</p>
+                                    }
+                                    @* PARA-DEMO-2 (madde 9): has satırında bakiye has bakiyesini de yazar. *@
+                                    <p class="metin-soluk metin-kucuk" id="@($"cari-detay-bakiye-{h.Id}")">@(HasEtkili(h) ? string.Format(PD2.EkstreHasBakiye, yuruyen.TryGetValue(h.Id, out var ybh) && ybh is { } ybhd ? Bicim.Tl(ybhd) : "—", HasBicim(yuruyenHas.GetValueOrDefault(h.Id))) : yuruyen.TryGetValue(h.Id, out var yb) && yb is { } ybd ? string.Format(PD.EkstreBakiyeSonra, Bicim.Tl(ybd)) : PD.EkstreBakiyeBilinmiyor)</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @* TOPLU-1: bakiye uyuşmazlığı bandı buradan (tablonun altından) bakiye kutularının HEMEN ALTINA taşındı
+                       ve iki bant tek uyarıda birleşti — bkz. #cari-detay-uyusmazlik. *@
+                    @if (ekstre is { SayfaDisiHasEtkisi: not 0m } ek)
+                    {
+                        <p class="metin-soluk metin-kucuk" id="cari-detay-sayfa-disi">@string.Format(P2.SayfaDisiEtki, HasBicim(ek.SayfaDisiHasEtkisi))</p>
+                    }
+                    @if (ekstre is { DahaFazlaVar: true } ek2)
+                    {
+                        <p class="metin-soluk metin-kucuk" id="cari-detay-daha-fazla">@string.Format(P2.DahaFazlaVar, ek2.Limit)</p>
+                    }
+                    <Katlanir Id="cari-detay-kural" Baslik="@P2.HasEtkisiKuralOzet">
+                        <p class="metin-kucuk" id="cari-detay-kural-metin">@P2.HasEtkisiKural</p>
+                    </Katlanir>
+                }
+            </div>
+        </div>
+    }
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>PAKET EKSIK-B1-YAZDIR metinleri (Sozlukler.EksikB1.cs).</summary>
+    private EksikB1Metinleri EB1 => EksikB1Sozlugu.Al(Dil.Dil);
+
+    /// <summary>PAKET GOC-B tur 2 (K8f): 18 yaş altı doğum tarihi ENGEL DEĞİL — alan altında yalnız uyarı.</summary>
+    private string? DogumUyari(DateOnly? d) =>
+        TarihPenceresi.ResitDegil(d, DateOnly.FromDateTime(Bicim.IsletmeBugun)) ? GocBSozlugu.Al(Dil.Dil).DogumResitDegilUyari : null;
+
+    // ═══ PAKET GRID-1 — /cariler listesi ORTAK IZGARADA ═══════════════════════════
+    // Kolon ANAHTARLARI kalıcıdır (grid:cariler:cari-liste tercihinde saklanır) — değiştirme.
+    // Zorunlu görünür: ad, TL bakiye, eylemler (gizlenemez). Sunucu sıralaması: ad, tür,
+    // telefon, TL bakiye (CariSiralama.Tumu ile aynı adlar). Has: sıralanmaz (listede
+    // EMANETSİZ hesaplanır; ham sütuna göre sıra ekrandaki sayıyla çelişir).
+    // Hücre içerikleri eski tablodan AYNEN taşındı (id ve sınıflar korunur).
+    private Kuyumcu.Web.Bilesenler.Grid.IzgaraSiralama? cariSiralama;
+
+    // GRID-1 tur 3: TEK tercih istemcisi — sayfanın ön okuması ve ızgara aynı önbelleği kullanır
+    // (açılışta /tercihler/benim TEK GET; liste boşalıp dolunca ızgara yeniden okumaz).
+    private Kuyumcu.Web.Bilesenler.Grid.IzgaraTercihIstemcisi? cariTercih;
+    private Kuyumcu.Web.Bilesenler.Grid.IzgaraTercihIstemcisi CariTercih =>
+        cariTercih ??= new Kuyumcu.Web.Bilesenler.Grid.IzgaraTercihIstemcisi(Api);
+
+    private IReadOnlyList<Kuyumcu.Web.Bilesenler.Grid.IzgaraKolonu<CariVeri>> CariKolonlari
+    {
+        get
+        {
+            var liste = new List<Kuyumcu.Web.Bilesenler.Grid.IzgaraKolonu<CariVeri>>
+            {
+                new()
+                {
+                    Anahtar = "ad", Baslik = Sade ? T.SutunMusteri : Dil.T.Auth.Ad,
+                    ZorunluGorunur = true, SunucuSiralamaAdi = "ad", KartEtiketsiz = true,
+                    HucreSinif = _ => "hucre-vurgu", HucreTikla = EventCallback.Factory.Create<CariVeri>(this, SatirTikla),
+                    Hucre = c => b => CariHucreAd(b, c),
+                },
+            };
+            if (TurDurumSutunu)
+                liste.Add(new()
+                {
+                    Anahtar = "tur", Baslik = Dil.T.Cari.Tur, SunucuSiralamaAdi = "tur",
+                    Tur = Kuyumcu.Web.Bilesenler.Grid.IzgaraHucreTuru.Rozet,
+                    Hucre = c => b => CariHucreTur(b, c),
+                });
+            liste.Add(Sade
+                ? new()
+                {
+                    Anahtar = "telefon", Baslik = T.SutunTelefon, SunucuSiralamaAdi = "telefon",
+                    HucreSinif = _ => "hucre-tek-satir", HucreTikla = EventCallback.Factory.Create<CariVeri>(this, SatirTikla),
+                    Hucre = c => b => CariHucreTelefonSade(b, c),
+                }
+                : new()
+                {
+                    Anahtar = "telefon", Baslik = Dil.T.Cari.Telefon, SunucuSiralamaAdi = "telefon",
+                    HucreSinif = _ => "hucre-tek-satir",
+                    HucreOznitelikleri = new Dictionary<string, object> { ["data-duzenlenebilir"] = "true" },
+                    Hucre = c => b => CariHucreTelefonPro(b, c),
+                });
+            liste.Add(new()
+            {
+                Anahtar = "tl-bakiye", Baslik = Sade ? P2.SutunBakiye : Dil.T.Cari.TlBakiye,
+                BaslikSinif = "musteri-sutun-borc", ZorunluGorunur = true, SunucuSiralamaAdi = "tl-bakiye",
+                Tur = Kuyumcu.Web.Bilesenler.Grid.IzgaraHucreTuru.Tl,
+                HucreSinif = c => c.TlBakiye < 0 ? "hucre-vurgu sayi musteri-sutun-borc metin-kirmizi" : "hucre-vurgu sayi musteri-sutun-borc",
+                HucreTikla = EventCallback.Factory.Create<CariVeri>(this, SatirTikla),
+                Hucre = c => b => CariHucreTl(b, c),
+            });
+            liste.Add(new()
+            {
+                Anahtar = "has", Baslik = Sade ? T.SutunHas : Dil.T.Cari.HasGram,
+                BaslikSinif = "musteri-sutun-ek", Tur = Kuyumcu.Web.Bilesenler.Grid.IzgaraHucreTuru.Has,
+                HucreSinif = c => c.HasGramBakiye < 0 ? "hucre-vurgu sayi musteri-sutun-ek metin-kirmizi" : "hucre-vurgu sayi musteri-sutun-ek",
+                Hucre = c => b => CariHucreHas(b, c),
+            });
+            if (DovizSutunu)
+                liste.Add(new()
+                {
+                    Anahtar = "doviz", Baslik = Dil.T.Cari.DovizBakiye, BaslikSinif = "musteri-sutun-ek",
+                    Tur = Kuyumcu.Web.Bilesenler.Grid.IzgaraHucreTuru.Para,
+                    HucreSinif = _ => "hucre-vurgu sayi musteri-sutun-ek",
+                    Hucre = c => b => CariHucreDoviz(b, c),
+                });
+            if (DurumSutunu)
+                liste.Add(new()
+                {
+                    Anahtar = "durum", Baslik = Dil.T.Urun.Durum, Tur = Kuyumcu.Web.Bilesenler.Grid.IzgaraHucreTuru.Rozet,
+                    Hucre = c => b => CariHucreDurum(b, c),
+                });
+            liste.Add(new()
+            {
+                Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, BaslikSinif = "musteri-sutun-ek",
+                ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = Kuyumcu.Web.Bilesenler.Grid.IzgaraHucreTuru.Eylem,
+                HucreSinif = _ => "musteri-sutun-ek",
+                Hucre = c => b => CariHucreEylem(b, c),
+            });
+            return liste;
+        }
+    }
+
+    private static string CariSatirId(CariVeri c) => $"c-satir-{c.Id}";
+
+    private string CariSatirSinifi(CariVeri c) =>
+        $"cari-satir {(Sade ? "musteri-satir" : null)} {(Sade && duzenleCari?.Id == c.Id ? "musteri-satir--secili" : null)}";
+
+    /// <summary>Izgara sıralaması değişti (ya da kullanıcının kayıtlı sıralaması yüklendi) → liste SUNUCUDAN sıralı istenir.</summary>
+    private async Task CariSiralamaDegisti(Kuyumcu.Web.Bilesenler.Grid.IzgaraSiralama? s)
+    {
+        cariSiralama = s;
+        await Yukle();
+    }
+
+    private void CariHucreAd(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    @c.Ad
+                                    @if (Sade && GecikmeGun(c) is > 0)
+                                    {
+                                        <span class="cari-rozet cari-rozet--vade" id="@($"c-vade-{c.Id}")">@T.VadeGecti</span>
+                                    }
+                                    @if (Sade && c.Segment == Kuyumcu.Core.Domain.CariSegmentleri.Toptan)
+                                    {
+                                        <span class="cari-rozet cari-rozet--toptan" id="@($"c-toptan-{c.Id}")">@T.Toptanci</span>
+                                    }
+                                    @* S3-2: basit modda tür (Müşteri dışı) ve pasiflik ad hücresinde. *@
+                                    @if (!TurDurumSutunu && c.Tur != "MUSTERI")
+                                    {
+                                        <Rozet Renk="@TurRengi(c.Tur)">@TurEtiketi(c.Tur)</Rozet>
+                                    }
+                                    @if (!DurumSutunu && !c.Aktif)
+                                    {
+                                        <Rozet Renk="gri">@Dil.T.Ortak.Pasif</Rozet>
+                                    }
+                                    @* PAKET B-3 (D2 · K4): "Peşin Müşteri" sistem kartı silinemez /
+                                       pasife alınamaz — düğme yerine KİLİT rozeti ve gerekçe (UX-S25).
+                                       S3-2: eylem hücresinden ad hücresine taşındı (satırda ≤ 3 eylem);
+                                       id AYNEN korundu. *@
+                                    @if (c.SistemCarisi)
+                                    {
+                                        <span id="@($"c-sistem-carisi-{c.Id}")" title="@PesinMetin.DegismezGerekce">
+                                            <Rozet Renk="gri"><Ikon Ad="@Ikonlar.Kilit" /> @PesinMetin.Rozet</Rozet>
+                                        </span>
+                                    }
+                                    @* PAKET 40-A — SALT OKUNUR rozetler. Profili
+                                       hiç hesaplanmamış caride rozet ÇİZİLMEZ:
+                                       "DÜŞÜK" uydurulmaz (Anayasa md.1). Değiştirme
+                                       yolu Uyum > Risk sekmesidir (UX-S25). *@
+                                    @if (c.RiskSeviye is { Length: > 0 } sv)
+                                    {
+                                        <Rozet Renk="@RiskRengi(sv)">@Dil.T.Uyum.SeviyeAdi(sv)</Rozet>
+                                    }
+                                    @if (c.PepBeyani)
+                                    {
+                                        <Rozet Renk="amber">@Dil.T.Cari.PepRozet</Rozet>
+                                    }
+    }
+
+    private void CariHucreTur(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    <Rozet Renk="@TurRengi(c.Tur)">@TurEtiketi(c.Tur)</Rozet>
+    }
+
+    private void CariHucreTelefonSade(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    <span class="cari-telefon-metin" id="@($"c-telefon-{c.Id}")">@TelefonGoster(c.Telefon)</span>
+    }
+
+    private void CariHucreTelefonPro(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    <SatirIciDuzenle Varlik="cari" Alan="telefon" Id="@c.Id"
+                                                     Etiket="@Dil.T.Cari.Telefon" Deger="@TelefonBicimi.Girdi(c.Telefon)"
+                                                     BosOlabilir="true"
+                                                     Kaydediliyor="@(satirKaydedilen == c.Id)"
+                                                     Kaydedildi="@(yeni => TelefonKaydet(c, yeni))" />
+                                    <AlanHatasi Alan="@($"si-telefon-{c.Id}")" Durum="form" />
+    }
+
+    private void CariHucreTl(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    <span class="cari-bakiye izgara-tutar">
+                                        <span class="izgara-tutar-deger">@Bicim.Tl(c.TlBakiye)</span>
+                                        @* KESIF-P2 tur 3 (hakem): TEK BAKIŞ AÇISI — liste (BASİT+PRO), detay kutuları ve
+                                           düzeltme fişi aynı iki ifadeyi kullanır: "Bize borçlu" (artı) / "Biz borçluyuz"
+                                           (eksi). Eski "Borç" başlığı ↔ "Alacak" rozeti çelişkisi kalktı. *@
+                                        @if (BorcDiliSozlugu.Yon(c.TlBakiye, 2) != 0) { <Rozet Renk="@YonRengi(c.TlBakiye)">@YonMetni(c.TlBakiye)</Rozet> }
+                                    </span>
+    }
+
+    private void CariHucreHas(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    <span class="cari-bakiye izgara-tutar">
+                                        <span class="izgara-tutar-deger">@HasBicim(c.HasGramBakiye)</span>
+                                        @if (BorcDiliSozlugu.Yon(c.HasGramBakiye, 4) != 0) { <Rozet Renk="@YonRengi(c.HasGramBakiye, 4)">@YonMetni(c.HasGramBakiye, 4)</Rozet> }
+                                    </span>
+                                    @* PAKET CARI-BAKIYE (tek tanım): hücredeki has sunucudan EMANETSİZ gelir (detayla aynı);
+                                       emanet bakiyeye girmez, ayrı satırda yazılır. İstemci hesaplamaz. *@
+                                    @if (c.EmanetteHas != 0m)
+                                    {
+                                        <div class="metin-soluk metin-kucuk cari-liste-emanette" id="@($"cari-liste-emanette-{c.Id}")">@ListeEmanetteMetni(c)</div>
+                                    }
+    }
+
+    private void CariHucreDoviz(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    @if (DovizRozetleri(c).Count == 0)
+                                    {
+                                        <span class="metin-soluk">—</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="cari-bakiye izgara-tutar">
+                                            @foreach (var (pb, tutar) in DovizRozetleri(c))
+                                            {
+                                                <Rozet Renk="@(tutar < 0 ? "kirmizi" : "yesil")">
+                                                    @Bicim.Para(tutar, pb)
+                                                </Rozet>
+                                            }
+                                        </span>
+                                    }
+    }
+
+    private void CariHucreDurum(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    <Rozet Renk="@(c.Aktif ? "yesil" : "gri")">
+                                        @(c.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)
+                                    </Rozet>
+    }
+
+    private void CariHucreEylem(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
+    {
+                                    @* ═══ PAKET S3-2 → P-61 — SATIRDA EN ÇOK 3 EYLEM + "⋯" ═══
+                                       QA tur 8: satırda 8-9 düğme, satır 305-329 px. S3-2 deseni artık
+                                       ORTAK bileşende (Bilesenler/SatirEylemleri.razor): görünen
+                                       [Tahsilat | Aktife al] · Düzenle · ⋯; geri kalan HER eylem (Detay,
+                                       Veresiye, Düzeltme, Döviz tahsilat/veresiye, Kullanımdan kaldır)
+                                       "⋯" penceresinde — ÖZELLİK SİLİNMEDİ. Sıra ve id'ler AYNEN
+                                       CariEylemleri(c) içinde. Yerli popover: JS YOK, CSP istisnası YOK. *@
+                                    <SatirEylemleri Onek="c" SatirId="@c.Id" SatirAdi="@c.Ad"
+                                                    Eylemler="@CariEylemleri(c)"
+                                                    MenuBaslik="@string.Format(M.MenuBaslik, c.Ad)"
+                                                    MenuIpucu="@M.MenuIpucu" DigerIslemler="@M.DigerIslemler">
+                                        <MenuEk>
+                                            @if (!DovizYapilabilir)
+                                            {
+                                                @* UX-S30 — kilitli düğmenin sebebi YAZILI (title yetmez: dokunmatikte görünmez). *@
+                                                <p class="metin-kucuk metin-soluk" id="@($"c-doviz-kilit-{c.Id}")">@Dil.T.Cari.KurYokDovizYapilamaz</p>
+                                            }
+                                        </MenuEk>
+                                    </SatirEylemleri>
+    }
+    // ═══ /PAKET GRID-1 ═══════════════════════════════════════════════════════════════
+
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    // ═══ PAKET S3-2 — MÜŞTERİLER: LİSTE + ÇEKMECE (plan § 6 S-3, taslak Musteriler.dc.html) ═══
+    // ⚠ Mod YETKİ DEĞİLDİR (plan § 3/6): yalnız ÇİZİM kararı. Sunucu kapıları aynen.
+    private MusteriListeMetinleri M => MusteriListeSozlugu.Al(Dil.Dil);
+
+    // ═══ PAKET T-M1 — MÜŞTERİLER TUVALE (tuval/project/Musteriler.dc.html) ═══
+    // ⚠ YALNIZ GÖRÜNÜM: Kaydet()/POST/PATCH yolları, yetki ve yasal kapılar DEĞİŞMEDİ.
+    //   Segment süzgeci İSTEMCİDE, sunucunun zaten döndürdüğü listeden çalışır.
+    private MusteriTuvalMetinleri T => MusteriTuvalSozlugu.Al(Dil.Dil);
+    private KesifP2Metinleri P2 => KesifP2Sozlugu.Al(Dil.Dil);
+    private Toplu1Metinleri T1 => Toplu1Sozlugu.Al(Dil.Dil);
+
+    // ── TOPLU-1: cari detay uyuşmazlık + iptal satırı ───────────────────────────────────
+    private bool HasUyusmazligi => ekstre is { BakiyeUyusmazligiHas: not 0m };
+    private bool TlUyusmazligi => ekstre is { BakiyeUyusmazligiTl: { } f } && Math.Abs(f) > 0.01m;
+    private bool UyusmazlikVar => HasUyusmazligi || TlUyusmazligi;
+
+    /// <summary>PRO cümlesi: kalıp HTML'e kodlanır, farklar kimlikli span olarak yerleşir.</summary>
+    private MarkupString UyusmazlikProMetni() =>
+        new(string.Format(System.Net.WebUtility.HtmlEncode(T1.UyusmazlikPro), UyusmazlikFarklari().Value));
+
+    /// <summary>PRO cümlesindeki farklar: yalnız GERÇEKTEN olan fark yazılır (altın · TL).</summary>
+    private MarkupString UyusmazlikFarklari()
+    {
+        var p = new List<string>();
+        if (HasUyusmazligi)
+            p.Add($"<span id=\"cari-detay-uyusmazlik-has\">{System.Net.WebUtility.HtmlEncode(string.Format(T1.UyusmazlikAltinFark, HasBicim(ekstre!.BakiyeUyusmazligiHas)))}</span>");
+        if (TlUyusmazligi)
+            p.Add($"<span id=\"cari-detay-uyusmazlik-tl\">{System.Net.WebUtility.HtmlEncode(string.Format(T1.UyusmazlikTlFark, Bicim.Tl(ekstre!.BakiyeUyusmazligiTl!.Value)))}</span>");
+        return new MarkupString(string.Join(" · ", p));
+    }
+
+    /// <summary>İptal (storno) ters kaydı: sunucu stornoKaynakId'si doluysa satır "… iptali" adını taşır.</summary>
+    private string SatirTurAdi(EkstreHareket h)
+    {
+        var ad = KatalogSozlugu.HareketTuru(h.Tur, Dil.Dil, Sade);
+        if (string.IsNullOrEmpty(h.StornoKaynakId)) return ad;
+        return string.Format(Sade ? T1.IptalSatiriBasit : T1.IptalSatiriPro, ad);
+    }
+
+    /// <summary>Storno açıklamasının "STORNO: " ön eki (sunucunun iç işareti) ekrana çıkmaz — "İptal sebebi: …".</summary>
+    private string? SatirAciklamasi(EkstreHareket h)
+    {
+        const string onEk = "STORNO: ";
+        if (h.Aciklama is { } a && !string.IsNullOrEmpty(h.StornoKaynakId) && a.StartsWith(onEk, StringComparison.Ordinal))
+            return string.Format(T1.IptalSebebi, a[onEk.Length..].Trim());
+        return h.Aciklama;
+    }
+
+    // ═══ KESIF-P2 (#22) — UYRUK: MASAK formuyla tek standart (UlkeListesi, ISO alpha-3) ═══
+    private bool yeniUyrukDiger, duzUyrukDiger;
+    /// <summary>Düzenleme açılırken sunucudan gelen değer (eşlenemeyen eski kod AYNEN korunur).</summary>
+    private string? yuklenenUyruk;
+
+    private IReadOnlyList<SecenekOgesi> UlkeSecenekleri =>
+        UlkeListesi.Tumu.Select(u => new SecenekOgesi(u.Kod, Dil.Dil == "en" ? u.En : u.Tr))
+            .Append(new SecenekOgesi(UlkeListesi.Diger, P2.UyrukDiger))
+            .ToList();
+
+    private static bool UyrukDigerMi(string deger, bool diger) =>
+        diger || (!string.IsNullOrWhiteSpace(deger) && !UlkeListesi.Listede(deger));
+
+    private static string? UyrukSecimi(string deger, bool diger) =>
+        UyrukDigerMi(deger, diger) ? UlkeListesi.Diger : (string.IsNullOrWhiteSpace(deger) ? null : deger);
+
+    /// <summary>Kod kutusunun alan altı hatası. Değişmeyen eski değer hata DEĞİL (rozet söyler).</summary>
+    private string? UyrukKodHatasi(string deger, string? yuklenen) =>
+        UyrukGecersiz(deger, yuklenen) ? P2.UyrukKodGecersiz : null;
+
+    /// <summary>Gönderilirse sunucunun 400 vereceği değer mi? (3 harf + ISO; değişmeyen eski değer serbest)</summary>
+    private static bool UyrukGecersiz(string deger, string? yuklenen)
+    {
+        if (string.IsNullOrWhiteSpace(deger)) return false;
+        var v = deger.Trim().ToUpperInvariant();
+        if (yuklenen is not null && v == yuklenen.Trim().ToUpperInvariant()) return false;
+        return v.Length != 3 || !UlkeListesi.KodGecerli(v);
+    }
+
+    /// <summary>Kayıttaki değer tanınmayan (eşlenemeyen eski) kod ve kullanıcı henüz değiştirmedi.</summary>
+    private bool DuzUyrukDuzeltilmeli =>
+        !string.IsNullOrWhiteSpace(yuklenenUyruk)
+        && (yuklenenUyruk!.Trim().Length != 3 || !UlkeListesi.KodGecerli(yuklenenUyruk))
+        && string.Equals(duzUyruk.Trim(), yuklenenUyruk.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private void YeniUyrukSecildi(string? v) => UyrukSec(v, ref yeniUyruk, ref yeniUyrukDiger);
+    private void DuzUyrukSecildi(string? v) => UyrukSec(v, ref duzUyruk, ref duzUyrukDiger);
+
+    private static void UyrukSec(string? v, ref string deger, ref bool diger)
+    {
+        if (v == UlkeListesi.Diger)
+        {
+            diger = true;
+            // Listedeki bir ülkeden "Diğer"e geçilince eski kod gövdede KALMAZ (MasakFormu ile aynı).
+            if (UlkeListesi.Listede(deger)) deger = "";
+        }
+        else
+        {
+            diger = false;
+            deger = v ?? "";
+        }
+    }
+
+    // ── PAKET YILDIZ-4B — Yıldız yüzünün sayfadan gelen parçaları (özgün DOM'la AYNI id'ler; özgün liste
+    //    Yıldız'da çizilmediği için çift id yok). Bantlar UX-S28 (hata ayrı), süzgeç P-15 derin bağlantı. ──
+    private RenderFragment YildizBantlar => @<text>
+        <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
+        <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+        @if (suzgecBaglantidan)
+        {
+            <span class="metin-kucuk" id="cari-suzgec-baglanti">
+                <Rozet Renk="mavi">@Dil.T.Kabuk.BaglantidanSuzgec</Rozet>
+                <button type="button" @onclick="BaglantiSuzgeciniTemizle" class="yz-b2" id="cari-suzgec-temizle">@Dil.T.Kabuk.BaglantiSuzgeciniTemizle</button>
+            </span>
+        }
+    </text>;
+    private RenderFragment YildizDigerSuzgecler => @<text>
+        <Secici ElemanId="cari-tur-filtre" Etiket="@Dil.T.Cari.Tur"
+                Secenekler="@(CariTurleri.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
+                @bind-Deger="turFiltre" @bind-Deger:after="Yukle" BosSecenekMetni="@Dil.T.Ortak.Tumu" />
+        <Onay ElemanId="cari-pasifleri-goster" Etiket="@Dil.T.Kabuk.PasifleriGoster" Deger="@pasifleriGoster"
+              DegerChanged="@(async v => { pasifleriGoster = v; await Yukle(); })" />
+    </text>;
+
+    /// <summary>BASİT yüz = tuval çizimi. Mod YETKİ DEĞİLDİR (plan § 3/6).</summary>
+    private bool Sade => Modu.BasitMi;
+
+    /// <summary>Segment kodları — TEK kaynak (düğmeler ve süzgeç aynı diziden).</summary>
+    public const string SegHepsi = "hepsi", SegBorclu = "borclu", SegToptanci = "toptanci";
+    private string segment = SegHepsi;
+    private bool digerSuzgecAcik;
+
+    private IReadOnlyList<(string Kod, string Etiket)> Segmentler3 =>
+        [(SegHepsi, T.Hepsi), (SegBorclu, T.Borclu), (SegToptanci, T.Toptanci)];
+
+    /// <summary>
+    /// Segment süzgeci — yalnız BASİT'te uygulanır. "Borçlu" = bize borçlu (TL ya da
+    /// has bakiyesi artı; işaret kuralı K4: artı = müşteri bize borçlu). "Toptancı" =
+    /// kartın segmenti TOPTAN (CariSegmentleri — tek kaynak). PRO listesi AYNEN.
+    /// </summary>
+    public static IReadOnlyList<CariVeri> SegmentSuz(IReadOnlyList<CariVeri> liste, string seg) => seg switch
+    {
+        SegBorclu => [.. liste.Where(c => c.TlBakiye > 0m || c.HasGramBakiye > 0m)],
+        SegToptanci => [.. liste.Where(c => c.Segment == Kuyumcu.Core.Domain.CariSegmentleri.Toptan)],
+        _ => liste,
+    };
+
+    private IReadOnlyList<CariVeri> GorunenListe => Sade ? SegmentSuz(CariListesi, segment) : CariListesi;
+
+    /// <summary>"N müşteri": sınıra değdiyse "100+" (UX-S29 — sessiz kırpma yok).</summary>
+    private string ToplamMetni => CariListesi.Count >= Sinir ? $"{Sinir}+" : CariListesi.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private bool SahipMi => Oturum.Kullanici?.Rol == "SAHIP";
+
+    /// <summary>
+    /// Telefon GÖRÜNÜMÜ (veri değişmez) — PAKET CUMA-M: tek kaynak Servisler/TelefonBicimi.
+    /// Tuval "0532 411 22 33"; +90'lı ve 0'sız 10 hane de AYNI biçime gelir; boş → "—";
+    /// tanınmayan biçim (yabancı, kısa, harfli) AYNEN.
+    /// </summary>
+    public static string TelefonGoster(string? tel) => TelefonBicimi.Goster(tel);
+
+    // ── Vade bilgisi (rozet "Vade geçti" + panel uyarı bandı) ──
+    // Kaynak /raporlar/vade-takibi (MUHASEBE+). 403 → rozet ÇİZİLMEZ (gecikme uydurulmaz);
+    // diğer hata → liste hata bandı (UX-S28: hata "kayıt yok"a çevrilmez).
+    private Dictionary<string, int?> gecikmeler = [];
+    private bool vadeIstendi;
+
+    /// <summary>
+    /// Mod bilgisi (profil) listeden SONRA gelebilir: ilk çizimde PRO görünüp sonra
+    /// BASİT'e dönen sayfada vade rozetleri eksik kalmasın — bir kez, çizimden sonra.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        await CekmeceKimlikKaydir(); if ((Sade || YildizMi) && !vadeIstendi && !yukleniyor)   // YASAL-KAPI-3 tur 2: kimlik formu görünür · YILDIZ-4B: Yıldız satırı "· N gün" yazar (iki modda)
+        {
+            vadeIstendi = true;
+            await VadeYukle();
+            StateHasChanged();
+        }
+    }
+    private int? GecikmeGun(CariVeri c) => gecikmeler.TryGetValue(c.Id, out var g) ? g : null;
+
+    private async Task VadeYukle()
+    {
+        try
+        {
+            var y = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.VadeTakibi.Yanit>("/raporlar/vade-takibi");
+            gecikmeler = (y.Cariler ?? []).GroupBy(v => v.CariId)
+                .ToDictionary(g => g.Key, g => g.Max(v => v.EnEskiGecikmeGun));
+            yildizKalanlar = YildizKalanlariHesapla(y.Cariler);   // YILDIZ-4B: vadeye kalan gün (aynı yanıt, yeni istek YOK)
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { gecikmeler = []; }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { gecikmeler = []; listeHata ??= ex.Message; }
+    }
+
+    /// <summary>Tuval: satıra dokununca sağ panel açılır (yalnız BASİT; PRO'da Düzenle düğmesi).</summary>
+    private Task SatirTikla(CariVeri c) => Sade ? DuzenleAc(c) : Task.CompletedTask;
+
+    /// <summary>Uyarı bandındaki "Tahsilat": panel kapanır, tahsilat penceresi açılır.</summary>
+    private async Task PaneldenTahsilat()
+    {
+        if (duzenleCari is not { } c) return;
+        duzenleCari = null;
+        await TahsilatAc(c);
+    }
+
+    // ── "Son değişiklik: Ayşe Y., dün 16:20 · Kim ne yaptı" ──
+    private DateTime? sonDegisiklikZaman;
+    private string? sonDegisiklikKim;
+    // T-M1 doğrulayıcı DÜŞÜK: kişi bilgisi (SAHİP · /denetim) gelene dek ad yerine yer tutucu.
+    private bool sonDegisiklikKisiBekleniyor;
+    private string? sonDegisiklikHata;
+    private static readonly string[] YazmaEylemleri = ["EKLEME", "GUNCELLEME", "SILME"];
+
+    /// <summary>Sunucu UTC yazar (Kind belirsiz serileşir) → yerel saate.</summary>
+    public static DateTime Yerel(DateTime t) =>
+        Bicim.IsletmeZamani(t);   // TOPLU-1 TARIH-TEK: işletme saati (Europe/Istanbul)
+
+    /// <summary>"Ayşe Yılmaz" → "Ayşe Y." (tuval). Tek kelime ya da "sistem" AYNEN.</summary>
+    public static string KisaAd(string ad)
+    {
+        var p = ad.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return p.Length < 2 ? ad.Trim() : $"{string.Join(' ', p[..^1])} {char.ToUpper(p[^1][0], System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))}.";
+    }
+
+    public static string ZamanMetni(DateTime yerel, DateTime simdi, MusteriTuvalMetinleri t, string dil)
+    {
+        var saat = Bicim.Saat(yerel);
+        if (yerel.Date == simdi.Date) return string.Format(t.Bugun, saat);
+        if (yerel.Date == simdi.Date.AddDays(-1)) return string.Format(t.Dun, saat);
+        return $"{Bicim.GunBicim(yerel, "d", System.Globalization.CultureInfo.GetCultureInfo(dil == "en" ? "en-GB" : "tr-TR"))} {saat}";
+    }
+
+    private string? SonDegisiklikMetni
+    {
+        get
+        {
+            if (sonDegisiklikZaman is not { } z) return null;
+            var zaman = ZamanMetni(Yerel(z), DateTime.Now, T, Dil.Dil);
+            if (sonDegisiklikKisiBekleniyor) return string.Format(T.SonDegisiklikKimli, T.KisiAliniyor, zaman);
+            return sonDegisiklikKim is { Length: > 0 } kim
+                ? string.Format(T.SonDegisiklikKimli, KisaAd(kim), zaman)
+                : string.Format(T.SonDegisiklik, zaman);
+        }
+    }
+
+    private async Task SonDegisiklikYukle(CariVeri c, Func<bool> guncel)
+    {
+        sonDegisiklikZaman = c.Guncellendi;
+        sonDegisiklikKim = null;
+        sonDegisiklikHata = null;
+        sonDegisiklikKisiBekleniyor = false;
+        // Denetim izi YALNIZ SAHİP'e açık (DenetimController sınıf düzeyi RolGerekli).
+        if (!Sade || !SahipMi) return;
+        sonDegisiklikKisiBekleniyor = true;
+        try
+        {
+            var s = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.DenetimIzi.Sayfa>(
+                $"/denetim?varlikTuru=Cari&varlikId={Uri.EscapeDataString(c.Id)}&limit=20");
+            var son = (s.Kayitlar ?? []).Where(k => YazmaEylemleri.Contains(k.Eylem))
+                .OrderByDescending(k => k.Tarih).FirstOrDefault();
+            if (!guncel()) return;   // başka açılışa ait yanıt: dokunma
+            if (son is not null)
+            {
+                sonDegisiklikKim = son.Kullanici;
+                sonDegisiklikZaman = son.Tarih;
+            }
+            sonDegisiklikKisiBekleniyor = false;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { if (guncel()) sonDegisiklikKisiBekleniyor = false; /* rol değişmiş olabilir: yalnız zaman yazılır */ }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { if (guncel()) { sonDegisiklikKisiBekleniyor = false; sonDegisiklikHata = ex.Message; } }
+    }
+
+    // ── P-61 — satır eylemleri TEK kaynaktan (SatirEylemleri bileşeni) ──
+    // Sıra = ekran sırası: ilk 2 satırda görünür, gerisi "⋯" penceresinde.
+    private EventCallback Cb(Func<Task> f) => EventCallback.Factory.Create(this, f);
+    private EventCallback Cb(Action f) => EventCallback.Factory.Create(this, f);
+
+    /// <summary>P-DIL-BORC-KASA (O21): BASİT modda "Düzeltme Fişi" yerine düz karşılık.</summary>
+    private string DuzeltmeAdi => Sade ? BorcDiliSozlugu.BakiyeDuzelt(Dil.Dil) : Dil.T.Cari.Duzeltme;
+    private string DovizTahsilatAdi => Sade ? BorcDiliSozlugu.DovizleTahsilat(Dil.Dil) : Dil.T.Cari.DovizTahsilat;
+    private string DovizVeresiyeAdi => Sade ? BorcDiliSozlugu.DovizleVeresiye(Dil.Dil) : Dil.T.Cari.DovizVeresiye;
+
+    private IReadOnlyList<SatirEylemleri.Eylem> CariEylemleri(CariVeri c)
+    {
+        var pasif = !c.Aktif && !c.SistemCarisi;
+        // T-M1: BASİT yüzde satır düğmeleri tuvaldeki gibi YALNIZ yazılıdır.
+        // KESIF-P2 (KIYAS UX-5): PRO'daki 6 emoji de kalktı (ikon kuralı: ince çizgi ya da hiç;
+        // SatirEylemleri.Eylem.Ikon metin taşır — çizgi ikon tipi UX-5-GENIS'in işi).
+        var tahsilat = new SatirEylemleri.Eylem($"c-tahsilat-{c.Id}", Dil.T.Cari.Tahsilat, Cb(() => TahsilatAc(c)));
+        var l = new List<SatirEylemleri.Eylem>();
+        // QA turu 2 KRİTİK: pasife almanın GERİ DÖNÜŞ YOLU (UX-S25) — pasif satırda birinci eylem.
+        if (pasif)
+            l.Add(new($"c-aktife-al-{c.Id}", Dil.T.Kabuk.AktifeAl, Cb(() => AktifeAl(c)),
+                      kilitli: kaydediliyor, kilitNedeni: Dil.T.Kabuk.Kaydediliyor));
+        else
+            l.Add(tahsilat);
+        l.Add(new($"c-duzenle-{c.Id}", Dil.T.Ortak.Duzenle, Cb(() => DuzenleAc(c))));
+        // Pasif satırda tahsilat yolu KAYBOLMAZ: "⋯" penceresinde.
+        if (pasif) l.Add(tahsilat);
+        l.Add(new($"c-detay-{c.Id}", Dil.T.Ortak.Detay, Cb(() => DetayAc(c))));
+        l.Add(new($"c-veresiye-{c.Id}", Dil.T.Cari.Veresiye, Cb(() => VeresiyeAc(c))));
+        // Elle bakiye müdahalesi TEZGÂHTAR'a GÖSTERİLMEZ (ekip oyu Q3); API de [RolGerekli] ile kapalı.
+        if (DuzeltmeGorebilir)
+            l.Add(new($"c-duzeltme-{c.Id}", DuzeltmeAdi, Cb(() => DuzeltmeAc(c)),
+                      ariaEtiket: $"{c.Ad} — {DuzeltmeAdi}"));
+        // Paket 27 — döviz defteri; UX-S30: kur yoksa KİLİTLİ ve sebebi yazılı (MenuEk).
+        l.Add(new($"c-doviz-tahsilat-{c.Id}", DovizTahsilatAdi, Cb(() => DovizTahsilatAc(c)),
+                  kilitli: !DovizYapilabilir, kilitNedeni: Dil.T.Cari.KurYokDovizYapilamaz));
+        if (DuzeltmeGorebilir)
+            l.Add(new($"c-doviz-veresiye-{c.Id}", DovizVeresiyeAdi, Cb(() => DovizVeresiyeAc(c)),
+                      kilitli: !DovizYapilabilir, kilitNedeni: Dil.T.Cari.KurYokDovizYapilamaz));
+        // P-38 · B-39 — yıkıcı eylem onay modalından geçer; geri dönüş pasif satırdaki "Aktife al".
+        if (c.Aktif && !c.SistemCarisi)
+            l.Add(new($"c-pasife-al-{c.Id}", Sade ? T.KullanimdanKaldir : Dil.T.Cari.PasifeAl, Cb(() => PasifOnayAc(c)),
+                      tehlike: true, kilitli: kaydediliyor, kilitNedeni: Dil.T.Kabuk.Kaydediliyor,
+                      ariaEtiket: $"{c.Ad} — {(Sade ? T.KullanimdanKaldir : Dil.T.Cari.PasifeAl)}"));
+        return l;
+    }
+
+    /// <summary>Tür ve durum ayrı sütun mu? Profesyonel modda EVET (bugünkü tablo);
+    /// basit modda ad hücresinde rozet olarak durur — bilgi kaybolmaz.</summary>
+    private bool TurDurumSutunu => Modu.ProfesyonelMi;
+
+    /// <summary>
+    /// TOPLU-5 (hakem ORTA "/cariler PRO 960 sağ kırpık"): Durum sütunu PRO'da yalnız "Pasifleri göster" AÇIKKEN
+    /// çizilir. Kapalıyken liste yalnız aktifleri getirir (her satır "Aktif") — sütun bilgi taşımıyor, 960 px'te
+    /// tabloyu taşırıyordu. Pasif satır (anahtar açıkken) rozetini sütunda; sütun yokken ad hücresinde taşır.
+    /// </summary>
+    private bool DurumSutunu => Modu.ProfesyonelMi && pasifleriGoster;
+
+    /// <summary>Döviz sütunu: yalnız listede döviz bakiyesi olan bir hesap VARSA (boş sütun gürültüdür).
+    /// TOPLU-5 (hakem ORTA "/cariler PRO 960 sağ kırpık"): PRO da artık bu kurala uyar — hep "—" taşıyan
+    /// sütun 960 px'te tabloyu taşırıyordu. Döviz bakiyesi oluşunca sütun iki modda da görünür.</summary>
+    private bool DovizSutunu => CariListesi.Any(c => DovizRozetleri(c).Count > 0);
+
+    // ── Basit modda form katlama ("Daha fazla ▾"): alan GİZLENİR ama DEĞERİ KORUNUR ──
+    // Düzenlemede katlı alanlar sunucudan yüklenen değeri taşır → PATCH o değeri
+    // AYNEN geri yazar (sessiz silme YOK). Oluşturmada katlı alan boş kalır → null.
+    // Katlı bir alana hata düşerse grup KENDİLİĞİNDEN açılır (sessiz etkisizlik yasak).
+    private bool yeniDahaFazla, duzDahaFazla;
+    private bool YeniTumAlanlar => Modu.ProfesyonelMi || yeniDahaFazla;
+    private bool DuzTumAlanlar => Modu.ProfesyonelMi || duzDahaFazla;
+
+    /// <summary>Basit modda katlanmadan görünen alanlar (taslak: ad, telefon, not).</summary>
+    internal static readonly string[] YeniGorunurAlanlar = ["cari-ad", "cari-telefon", "cari-notlar"];
+    internal static readonly string[] DuzGorunurAlanlar = ["duz-ad", "duz-telefon", "duz-notlar"];
+
+    private static bool GizliAlandaHataVar(FormDurumu f, string[] gorunur) =>
+        f.HataSayisi > gorunur.Count(f.Var);
+
+    private void ModDegisti() => InvokeAsync(async () =>
+    {
+        // T-M1: BASİT'e geçildiyse vade rozetleri O AN yüklenir (PRO bunu çizmez).
+        if ((Sade || YildizMi) && !yukleniyor) { vadeIstendi = true; await VadeYukle(); }
+        StateHasChanged();
+    });
+
+    private List<CariVeri> CariListesi = [];
+    private bool yukleniyor = true;
+    private string? listeHata;
+
+    private string arama = "";
+    private string turFiltre = "";
+
+    // ── UX-1-C0 ortak form altyapısı ────────────────────────────────────────
+    private const int Sinir = 100;              // sunucu limiti — ekranda YAZILIR (UX-S29)
+    private readonly FormDurumu form = new();
+    private string? basari;
+    private int basariJeton;
+    private string? satirKaydedilen;            // satır içi düzenlemede bekleyen kayıt
+    /// <summary>QA turu 2: pasifler varsayılan olarak GİZLİ, anahtarla açılır.</summary>
+    private bool pasifleriGoster;
+
+    /// <summary>
+    /// Sunucu alan adı → ekran id eşlemesi (UX-4d madde 8). 400 yanıtındaki
+    /// "Email" / "KrediLimitiTl" anahtarları doğru girdinin ALTINA düşer.
+    /// </summary>
+    private static readonly Dictionary<string, string> YeniEsleme = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ad"] = "cari-ad", ["tur"] = "cari-tur", ["telefon"] = "cari-telefon",
+        ["email"] = "cari-eposta", ["vergiNo"] = "cari-vergino", ["adres"] = "cari-adres",
+        ["krediLimitiTl"] = "cari-limit", ["varsayilanVadeGun"] = "cari-vade",
+        ["fiyatListesiId"] = "cari-fiyat-listesi",
+    };
+
+    private static readonly Dictionary<string, string> DuzEsleme = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ad"] = "duz-ad", ["tur"] = "duz-tur", ["telefon"] = "duz-telefon",
+        ["email"] = "duz-eposta", ["vergiNo"] = "duz-vergino", ["adres"] = "duz-adres",
+        ["krediLimitiTl"] = "duz-limit", ["varsayilanVadeGun"] = "duz-vade",
+        ["fiyatListesiId"] = "duz-fiyat-listesi",
+    };
+
+    private async Task OdakIlkHataya()
+    {
+        if (form.IlkHatali is not { } ilk) return;
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", ilk); }
+        catch { /* JS yoksa alan altı mesaj yine görünür */ }
+    }
+
+    private void Basarili(string mesaj)
+    {
+        basari = mesaj;
+        basariJeton++;   // aynı metin ikinci kez de bandı açsın (UX-S27)
+    }
+
+    /// <summary>UX-S31 — ham enum kodu değil, TEK kaynaktan (CariTurleri) etiket.</summary>
+    private string TurEtiketi(string tur) =>
+        CariTurleri.FirstOrDefault(t => t.Deger == tur).Etiket ?? tur.Replace("_", " ");
+
+    // yeni cari formu
+    private bool yeniModalAcik;
+    private bool kaydediliyor;
+    private string? modalHata;
+    private string yeniAd = "";
+    private string yeniTur = "MUSTERI";
+    private string yeniTelefon = "";
+    private string yeniEmail = "";
+    private string yeniAdres = "";
+    // UX-S26 — düzenleme modalıyla parite
+    private string yeniVergiNo = "";
+    private decimal? yeniKrediLimiti;
+    private int? yeniVadeGun;
+    // KESIF-P2 (#5 vade): '1,5' SESSİZCE 1'e kırpılmaz — kesirli değer burada durur, alan altında
+    // hata yazılır, ortak geçersiz sayı kapısına ("cari-vade-tam") bildirilir: Kaydet PASİF, POST 0.
+    // ⚠ P1 SayisalAlan.TamSayi parametresi gelince bu yerel denetim ona bağlanır (rapor notu).
+    private decimal? yeniVadeKesirli;
+    private decimal? duzVadeKesirli;
+
+    private static bool TamMi(decimal d) => d == decimal.Truncate(d);
+
+    private void YeniVadeDegisti(decimal? v)
+    {
+        yeniVadeKesirli = v is { } d && !TamMi(d) ? d : null;
+        yeniVadeGun = v is { } t && TamMi(t) ? (int)t : null;
+        sayiKapisi.Bildir("cari-vade-tam", Dil.T.Vade.VarsayilanVadeGun, yeniVadeKesirli is not null);
+    }
+
+    private void DuzVadeDegisti(decimal? v)
+    {
+        duzVadeKesirli = v is { } d && !TamMi(d) ? d : null;
+        duzVadeGun = v is { } t && TamMi(t) ? (int)t : null;
+        sayiKapisi.Bildir("duz-vade-tam", Dil.T.Vade.VarsayilanVadeGun, duzVadeKesirli is not null);
+    }
+    private string yeniFiyatListesiId = "";
+
+    /// <summary>
+    /// Cari türlerinin TEK kaynağı (UX-S26/S31). Sunucunun kabul ettiği küme:
+    /// CariOlusturDto.Tur ve CariGuncelleDto.Tur regex'i — beş değer.
+    /// </summary>
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> CariTurSecenekleri =>
+        [.. CariTurleri.Select(t => new SecenekOgesi(t.Deger, t.Etiket))];
+
+    private IReadOnlyList<SecenekOgesi> FiyatListesiSecenekleri =>
+        [.. fiyatListeleri.Select(fl => new SecenekOgesi(fl.Id, $"{fl.Ad} ({fl.Tur})"))];
+
+    private string VarsayilanListeMetni => $"— ({Dil.T.Fiyat.Varsayilan})";
+
+    private IReadOnlyList<SecenekOgesi> TahsilatKasaSecenekleri =>
+        [.. TahsilatKasalari.Select(k => new SecenekOgesi(k.Id, $"{k.Ad} ({Bicim.ParaIsareti(k.ParaBirimi)})"))];
+
+    private IReadOnlyList<SecenekOgesi> DovizSecenekleri =>
+        [.. DovizBirimleri.Select(pb => new SecenekOgesi(pb, pb))];
+
+    private (string Deger, string Etiket)[] CariTurleri =>
+    [
+        ("MUSTERI", Dil.T.Cari.Musteri),
+        ("TEDARIKCI", Dil.T.Cari.Tedarikci),
+        ("HER_IKISI", Dil.T.Cari.HerIkisi),
+        ("ATOLYE", Dil.T.Cari.Atolye),
+        ("SARRAF", Dil.T.Cari.Sarraf),
+    ];
+
+    // ═══ PAKET P-16 (Y-27) — KİMLİK TÜRÜ VE SEGMENT: TEK KAYNAK ═══════════
+    // ⚠ Değerler Kuyumcu.Core sabitlerinden gelir; ekran ham dizge YAZMAZ ve
+    //   sunucunun kabul ettiği kümeden ayrışamaz (UX-S26/S31).
+    private (string Deger, string Etiket)[] KimlikTurleri =>
+    [
+        (Kuyumcu.Core.Domain.KimlikNo.Tckn, Dil.T.Cari.KimlikTckn),
+        (Kuyumcu.Core.Domain.KimlikNo.Vkn, Dil.T.Cari.KimlikVkn),
+    ];
+
+    private (string Deger, string Etiket)[] Segmentler =>
+    [
+        (Kuyumcu.Core.Domain.CariSegmentleri.Bireysel, Dil.T.Cari.SegmentBireysel),
+        (Kuyumcu.Core.Domain.CariSegmentleri.Kurumsal, Dil.T.Cari.SegmentKurumsal),
+        (Kuyumcu.Core.Domain.CariSegmentleri.Toptan, Dil.T.Cari.SegmentToptan),
+        (Kuyumcu.Core.Domain.CariSegmentleri.Vip, Dil.T.Cari.SegmentVip),
+    ];
+
+    /// <summary>UX-S24 — seçilen türe göre hane kuralı ALAN ALTINDA yazar.</summary>
+    private string KimlikHaneIpucu(string tur) => tur switch
+    {
+        Kuyumcu.Core.Domain.KimlikNo.Tckn => Dil.T.Cari.KimlikTckn,
+        Kuyumcu.Core.Domain.KimlikNo.Vkn => Dil.T.Cari.KimlikVkn,
+        _ => Dil.T.Cari.KimlikNoHaneIpucu,
+    };
+
+    // ── yeni cari: P-16 alanları ──
+    private string yeniKimlikTuru = "", yeniUnvan = "", yeniUyruk = "", yeniSegment = "";
+    private string yeniHesapKodu = "";
+    private DateOnly? yeniDogumTarihi;
+    private decimal? yeniIskonto;
+    // ── düzenleme: P-16 alanları ──
+    private string duzKimlikTuru = "", duzUnvan = "", duzUyruk = "", duzSegment = "";
+    private string duzHesapKodu = "";
+    private DateOnly? duzDogumTarihi;
+    private decimal? duzIskonto;
+
+    /// <summary>
+    /// TCKN 11 / VKN 10 hane — ALAN ALTI doğrulama (PLAN P-16 DoD).
+    /// ⚠ Kural Kuyumcu.Core.Domain.KimlikNo'dan gelir: sunucu ve ekran AYNI
+    ///   kaynağı kullanır, "ekranda geçti sunucuda patladı" ayrışması doğamaz.
+    /// </summary>
+    /// <summary>
+    /// PAKET TCKN-DOGRULAMA — ANINDA alan altı hata + Kaydet kilidi sebebi: numara T.C. kimlik no sayılıyorsa
+    /// (tür TCKN ya da tür boş ve 11 hane) ve 11 hane yazılmış ama doğrulama kuralından geçmiyorsa
+    /// "TC kimlik numarası geçerli değil." Tek kaynak Core KimlikNoDogrulayici (sunucu KimlikNo.Dogrula ile aynı).
+    /// </summary>
+    private string? TcknAnindaHata(string? no, string? tur)
+    {
+        var n = no?.Trim() ?? "";
+        if (n.Length != 11 || !KimlikNoDogrulayici.YalnizRakam(n)) return null;
+        if (!(string.IsNullOrEmpty(tur) || tur == Kuyumcu.Core.Domain.KimlikNo.Tckn)) return null;
+        return KimlikNoDogrulayici.TcknGecerli(n) ? null : KimlikNoSozlugu.Al(Dil.Dil).TcknGecersiz;
+    }
+
+    private void KimlikDogrula(string alan, string no, string tur)
+    {
+        var hata = Kuyumcu.Core.Domain.KimlikNo.Dogrula(no, string.IsNullOrEmpty(tur) ? null : tur);
+        if (hata is not null) form.Ekle(alan, hata);
+    }
+
+    // düzenleme modalı
+    private CariVeri? duzenleCari;
+    // PAKET B-3 (D2) — Peşin Müşteri metinleri (ayrı sözlük dosyası, TR+EN).
+    private PesinMusteriMetinleri PesinMetin => PesinMusteriSozlugu.Al(Dil.Dil);
+    private string duzAd = "", duzTur = "MUSTERI", duzTelefon = "", duzEmail = "", duzVergiNo = "", duzAdres = "";
+    // PAKET CUMA-M: kartın SAKLI telefonu (ham). Kullanıcı telefona dokunmadıysa PATCH
+    // bu değeri AYNEN geri yollar — ilgisiz bir düzeltme saklı biçimi sessizce değiştirmez.
+    private string? duzTelefonKayitli;
+
+    /// <summary>PATCH gövdesindeki telefon: dokunulmadıysa saklı değer, değiştiyse normalize (TelefonBicimi.Sunucuya).</summary>
+    private string? DuzTelefonGovdesi() =>
+        TelefonBicimi.Girdi(duzTelefonKayitli) == duzTelefon.Trim()
+            ? (string.IsNullOrWhiteSpace(duzTelefonKayitli) ? null : duzTelefonKayitli)
+            : TelefonBicimi.Sunucuya(duzTelefon);
+
+    /// <summary>PAKET CUMA-M: "formu kapat" ikincil düğmesi — tuval "Vazgeç" (OnayKilit tek kaynak; "İptal" kaydı iptal etmekle karışıyordu).</summary>
+    private string Vazgec => OnayKilitSozlugu.Al(Dil.Dil).Vazgec;
+    // PAKET P-10 (Y-3) — sunucunun kabul ettiği `notlar` alanı; ekranda girişi yoktu.
+    private string duzNotlar = "", yeniNotlar = "";
+    private decimal? duzKrediLimiti;
+    private string duzFiyatListesiId = "";
+    private List<FiyatListesiOzet> fiyatListeleri = [];
+    private int? duzVadeGun;
+    private string? duzHata;
+
+    // tahsilat / veresiye modalları
+    private CariVeri? tahsilatCari;
+    private CariVeri? duzeltmeCari; private decimal dzTl, dzHas; private string dzGerekce = "";
+    private decimal thTutar, thHas;
+    private string thOdeme = "NAKIT", thAciklama = "", thKasaId = "";
+    private List<KasaOzet> kasalar = [];
+
+    /// <summary>
+    /// Tahsilat TL kasasına yazılır: sunucu IslemDogrulayici.KasaDogrula(..., "TRY", ...)
+    /// ile döviz kasasını REDDEDER (K6). Ekran imkânsız seçeneği hiç göstermez.
+    /// </summary>
+    private List<KasaOzet> TahsilatKasalari => kasalar.Where(k => k.ParaBirimi == "TRY").ToList();
+
+    private bool TahsilatKasaTek => TahsilatKasalari.Count == 1;
+
+    private CariVeri? veresiyeCari;
+    private decimal vrTutar, vrHas;
+    private string vrAciklama = "";
+    private string? islemHata;
+
+    // detay modalı
+    private CariVeri? detayCari;
+    private EkstreYaniti? ekstre;
+    private bool ekstreYukleniyor;
+    private string? detayHata;
+
+    private decimal DetayTl => ekstre?.Bakiye.TlBakiye ?? detayCari?.TlBakiye ?? 0;
+    // KESIF-P2 tur 3 (karar 3): üstteki altın bakiyesi EMANETSİZ (sunucu bakiyeEmanetsizHas); eski
+    // sunucu alanı göndermiyorsa kayıtlı bakiye. Emanet payı ayrı "Emanette" kutusunda.
+    private decimal DetayHas => ekstre is { } e ? (e.BakiyeEmanetsizHas ?? e.Bakiye.HasGramBakiye) : detayCari?.HasGramBakiye ?? 0;
+    private decimal DetayEmanette => ekstre?.EmanetteHas ?? 0m;
+
+    /// <summary>
+    /// P-DIL-BORC-KASA (Y18): satırdaki emanet BIRAKILDIĞI GİBİ yazılır ("Emanette 22 ayar · 12,50 g");
+    /// sunucu ayarı bilmiyorsa (eski kayıt) has'a düşer — uydurulmaz.
+    /// </summary>
+    /// <summary>
+    /// Detay kartı (Y18): liste satırının bırakıldığı gibi özeti, ekstredeki emanetle AYNI has'ı
+    /// söylüyorsa "22 ayar · 12,50 g"; değilse (ayar bilinmiyor ya da veri ayrıştı) has.
+    /// </summary>
+    private string DetayEmanetteDeger =>
+        detayCari?.EmanetBirakildigi is { Count: > 0 } bg
+        && Math.Round(bg.Sum(x => x.Has), 4) == Math.Round(DetayEmanette, 4)
+            ? string.Join(" + ", EmanetDiliSozlugu.Parcalar(bg, Dil.Dil))
+            : HasBicim(DetayEmanette);
+
+    private string ListeEmanetteMetni(CariVeri c) =>
+        c.EmanetBirakildigi is { Count: > 0 } bg
+            ? EmanetDiliSozlugu.Emanette(bg, Dil.Dil)
+            : string.Format(P2.ListeEmanette, HasBicim(c.EmanetteHas));
+
+    /// <summary>Satırın ekrandaki bakiye etkisi (emanet 0). Eski sunucu BakiyeHasEtkisi göndermezse CariHasEtkisi.</summary>
+    private static decimal SatirEtkisi(EkstreHareket h) =>
+        h.Emanet ? 0m : (h.BakiyeHasEtkisi != 0m ? h.BakiyeHasEtkisi : h.CariHasEtkisi);
+
+    /// <summary>KESIF-P2 tur 3 — tek bakış açısı: artı "Bize borçlu", eksi "Biz borçluyuz", sıfır yok.</summary>
+    // P-DIL-BORC-KASA tur 2: tek işaret kuralı (BorcDiliSozlugu.Yon) — yön gösterilen hassasiyetten (TL 2, has 4).
+    private string? YonMetni(decimal n, int hane = 2) => BorcDiliSozlugu.Yon(n, hane) is var y && y == 1 ? P2.YonBizeBorclu : y == -1 ? P2.YonBizBorcluyuz : null;
+    private static string YonRengi(decimal n, int hane = 2) => BorcDiliSozlugu.Yon(n, hane) is var y && y == -1 ? "kirmizi" : y == 1 ? "yesil" : "";
+
+    /// <summary>
+    /// KESIF-P2 tur 3 — karar 5 (BICIM-TEK, cari kısmı): bu sayfadaki HER has tek biçimleyiciden geçer:
+    /// binlik gruplu, 4 ondalık, tam sıfırda "0 has", eksi işareti U+2212 (Bicim.Tl ile aynı), birim
+    /// "has". ⚠ Ortak Bicim.Has (P-57: gruplamasız, "0,0000 has", ASCII tire) P2 dosya alanı dışında
+    /// ve başka ekranların testlerine bağlı — global geçiş sahibine (P7/P8) bildirildi; o gün bu
+    /// yardımcı Bicim.Has'a yönlenir.
+    /// </summary>
+    public static string HasBicim(decimal n)
+    {
+        var y = decimal.Round(n, 4, MidpointRounding.AwayFromZero);
+        // PAKET DIL-EKRAN: birim etkin dilden (TR "has", EN "fine") — sayı biçimi tr-TR sabit kalır.
+        var birim = Kuyumcu.Core.I18n.DilEkranSozlugu.HasBirimi(Bicim.Dil);
+        if (y == 0m) return $"0\u00a0{birim}";
+        var govde = Math.Abs(y).ToString("N4", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+        return y < 0 ? $"\u2212{govde}\u00a0{birim}" : $"{govde}\u00a0{birim}";
+    }
+
+    // ═══ PAKET 27 — DÖVİZ DEFTERİ (ekran tarafı) ════════════════════════════
+
+    /// <summary>
+    /// Kapalı küme — sunucudaki <c>DovizBakiye.ParaBirimleri</c> ile AYNI
+    /// (UX-S31: aynı kavram tek kaynaktan). TRY burada YOKTUR: TRY, TL
+    /// bakiyesidir; döviz seçicisine konsa aynı borç iki yerde tutulurdu.
+    /// </summary>
+    private static readonly string[] DovizBirimleri = ["USD", "EUR", "GBP"];
+
+    private KurVeri? guncelKur;
+    private CariVeri? dovizVeresiyeCari;
+    private CariVeri? dovizTahsilatCari;
+    private string dvParaBirimi = "USD", dvAciklama = "";
+    private decimal dvTutar;
+    /// <summary>TOPLU-6 (TOPLU-5 hakemi DÜŞÜK "Döviz Veresiye: kutu boş gelsin"): tutar yokken kutu "0" değil BOŞ;
+    /// gövdeye giden değer ve Kaydet kilidi AYNI (dvTutar).</summary>
+    private decimal? DvKutuDegeri => dvDokunuldu || dvTutar > 0m ? dvTutar : null;
+    /// <summary>TOPLU-5: tutar alanına dokunuldu mu (alan altı "Tutarı girin" yalnız dokunulduktan sonra).</summary>
+    private bool dvDokunuldu;
+    /// <summary>TOPLU-5 metinleri (Sozlukler.Toplu5.cs).</summary>
+    private Toplu5Metinleri T5 => Toplu5Sozlugu.Al(Dil.Dil);
+    private string dtParaBirimi = "USD", dtAciklama = "", dtKasaId = "";
+    private decimal dtTutar;
+
+
+    /// <summary>Seçilen para biriminin kuru — <c>null</c> = kur YOK (fail-closed).</summary>
+    private decimal? DovizKuru(string paraBirimi) => paraBirimi switch
+    {
+        "USD" => guncelKur?.UsdTry is > 0m ? guncelKur.UsdTry : null,
+        "EUR" => guncelKur?.EurTry is > 0m ? guncelKur.EurTry : null,
+        "GBP" => guncelKur?.GbpTry is > 0m ? guncelKur.GbpTry : null,
+        _ => null,
+    };
+
+    /// <summary>Hiçbir para biriminin kuru yoksa döviz düğmeleri KİLİTLİDİR (UX-S30).</summary>
+    private bool DovizYapilabilir => DovizBirimleri.Any(pb => DovizKuru(pb) is not null);
+
+    /// <summary>Sıfırdan farklı döviz bakiyeleri — gürültü yok (rozet yalnız dolu olana).</summary>
+    private static List<(string ParaBirimi, decimal Tutar)> DovizRozetleri(CariVeri c)
+    {
+        var liste = new List<(string, decimal)>();
+        if (c.UsdBakiye != 0m) liste.Add(("USD", c.UsdBakiye));
+        if (c.EurBakiye != 0m) liste.Add(("EUR", c.EurBakiye));
+        if (c.GbpBakiye != 0m) liste.Add(("GBP", c.GbpBakiye));
+        return liste;
+    }
+
+    private List<(string ParaBirimi, decimal Tutar)> DetayDoviz
+    {
+        get
+        {
+            var b = ekstre?.Bakiye;
+            var liste = new List<(string, decimal)>();
+            var usd = b?.UsdBakiye ?? detayCari?.UsdBakiye ?? 0m;
+            var eur = b?.EurBakiye ?? detayCari?.EurBakiye ?? 0m;
+            var gbp = b?.GbpBakiye ?? detayCari?.GbpBakiye ?? 0m;
+            if (usd != 0m) liste.Add(("USD", usd));
+            if (eur != 0m) liste.Add(("EUR", eur));
+            if (gbp != 0m) liste.Add(("GBP", gbp));
+            return liste;
+        }
+    }
+
+    /// <summary>Seçilen para birimindeki AKTİF kasalar (K6: başkasına yazılamaz).</summary>
+    private List<KasaOzet> DovizKasalari => kasalar.Where(k => k.ParaBirimi == dtParaBirimi).ToList();
+
+    /// <summary>
+    /// TL karşılığının EKRAN metni — bilgi amaçlıdır, gövdede GÖNDERİLMEZ;
+    /// sunucu kendi kuruyla yeniden hesaplar (UX-S21).
+    /// </summary>
+    private string TlKarsiligiMetni(string paraBirimi, decimal tutar)
+    {
+        if (DovizKuru(paraBirimi) is not { } kur) return Dil.T.Cari.KurYokDovizYapilamaz;
+        return Bicim.Tl(Math.Round(tutar * kur, 2, MidpointRounding.AwayFromZero));
+    }
+
+    /// <summary>UX-S30 — kilitli düğmenin SEBEBİ; görünmez kural olmaz.</summary>
+    /// <summary>TOPLU-2 tur 2 — döviz tutar alanının sade adı ("Tutar (USD)"); kilit sebebi AYNI adı söyler.</summary>
+    private string DovizTutarEtiketi(string paraBirimi) => string.Format(Toplu2Sozlugu.Al(Dil.Dil).DovizTutar, paraBirimi);
+
+    private string DovizKilitSebebi(string paraBirimi, decimal tutar, string? kasaId = null)
+    {
+        if (DovizKuru(paraBirimi) is null) return Dil.T.Cari.KurYokDovizYapilamaz;
+        if (tutar <= 0m) return DovizTutarEtiketi(paraBirimi);
+        if (kasaId is not null && string.IsNullOrEmpty(kasaId)) return Dil.T.Kasa.Baslik;
+        return Dil.T.Ortak.Kaydet;
+    }
+
+    /// <summary>
+    /// Kur fotoğrafını çeker. ⚠ UX-S28: hata "kayıt yok"a ÇEVRİLMEZ — istek
+    /// patlarsa <c>guncelKur</c> null kalır, düğmeler kilitlenir ve sebebi
+    /// ekranda yazar; sessizce "kur 0" varsayılmaz.
+    /// </summary>
+    private async Task KurYukle()
+    {
+        try { guncelKur = await Api.GetAsync<KurVeri>("/kur/guncel"); }
+        catch (ApiHata ex) { guncelKur = null; islemHata = ex.Message; }
+    }
+
+    private async Task DovizVeresiyeAc(CariVeri c)
+    {
+        islemHata = null; form.Temizle();
+        dvParaBirimi = DovizBirimleri.FirstOrDefault(pb => DovizKuru(pb) is not null) ?? "USD";
+        dvTutar = 0m; dvAciklama = ""; dvDokunuldu = false;
+        await KurYukle();
+        await PM.Ac(c.Id);   // YASAL-KAPI-2
+        dovizVeresiyeCari = c;
+    }
+
+    private void DovizVeresiyeKapat() => dovizVeresiyeCari = null;
+
+    private async Task DovizVeresiyeKaydet()
+    {
+        if (dovizVeresiyeCari is null || sayiKapisi.OnekleVar("dv-")) return;   // ORTAK-1: POST YOK
+        islemHata = null;
+        // SESSİZ ETKİSİZLİK YASAĞI: eksikse istek atılmaz, sebebi alan altında yazar.
+        form.Temizle();
+        if (dvTutar <= 0m) form.Ekle("dv-tutar", Dil.T.Kabuk.FormEksik);
+        if (DovizKuru(dvParaBirimi) is null) form.Ekle("dv-para-birimi", Dil.T.Cari.KurYokDovizYapilamaz);
+        if (!form.Gecerli) { islemHata = Dil.T.Kabuk.FormEksik; await OdakIlkHataya(); return; }
+
+        kaydediliyor = true;
+        try
+        {
+            // ⚠ TL karşılığı GÖNDERİLMEZ — sunucu kendi kuruyla hesaplar.
+            await Api.PostAsync($"/cari/{dovizVeresiyeCari.Id}/doviz-veresiye", new
+            {
+                paraBirimi = dvParaBirimi,
+                tutar = dvTutar,
+                aciklama = BosIseNull(dvAciklama),
+                kurSnapshotId = guncelKur!.Id,
+                masak = PM.Govde,   // YASAL-KAPI-2
+            });
+            dovizVeresiyeCari = null;
+            Basarili(Dil.T.Kabuk.Kaydedildi);   // UX-S27: sonuç GÖRÜNÜR
+            await Yukle();
+        }
+        catch (ApiHata ex) when (ParaMasakKapisi.MasakReddi(ex)) { await PM.Reddet(ex, Dil.Dil); }
+        catch (ApiHata ex) { islemHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task DovizTahsilatAc(CariVeri c)
+    {
+        islemHata = null; form.Temizle();
+        dtParaBirimi = DovizBirimleri.FirstOrDefault(pb => DovizKuru(pb) is not null) ?? "USD";
+        dtTutar = 0m; dtAciklama = ""; dtKasaId = "";
+        await KurYukle();
+        await KasalariYukle();
+        DovizKasaSec();
+        NS.Ac();             // YASAL-KAPI-3: efektif tahsilat da nakit sınırına tabi (sunucu: TL karşılığı)
+        await PM.Ac(c.Id);   // YASAL-KAPI-2
+        dovizTahsilatCari = c;
+        var (gunluk, hata) = await TevsikGunlukSor(c.Id);
+        if (dovizTahsilatCari?.Id == c.Id) { NS.Yukle(gunluk); if (hata is not null) islemHata = hata; }   // UX-S28: yutulmaz
+    }
+
+    /// <summary>UX-S22 — tek kasa varsa sorulmaz, atanır; para birimi değişince yeniden.</summary>
+    private void DovizKasaSec()
+    {
+        var uygun = DovizKasalari;
+        dtKasaId = uygun.Count == 1 ? uygun[0].Id
+                 : uygun.Any(k => k.Id == dtKasaId) ? dtKasaId : "";
+        StateHasChanged();
+    }
+
+    private void DovizTahsilatKapat() => dovizTahsilatCari = null;
+
+    private async Task DovizTahsilatKaydet()
+    {
+        if (dovizTahsilatCari is null || sayiKapisi.OnekleVar("dt-")) return;   // ORTAK-1: POST YOK
+        islemHata = null;
+        form.Temizle();
+        if (dtTutar <= 0m) form.Ekle("dt-tutar", Dil.T.Kabuk.FormEksik);
+        if (DovizKuru(dtParaBirimi) is null) form.Ekle("dt-para-birimi", Dil.T.Cari.KurYokDovizYapilamaz);
+        if (string.IsNullOrEmpty(dtKasaId)) form.Ekle("dt-kasa", Dil.T.Kasa.Baslik);
+        if (!form.Gecerli) { islemHata = Dil.T.Kabuk.FormEksik; await OdakIlkHataya(); return; }
+
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/cari/{dovizTahsilatCari.Id}/doviz-tahsilat", new
+            {
+                paraBirimi = dtParaBirimi,
+                tutar = dtTutar,
+                kasaId = dtKasaId,
+                aciklama = BosIseNull(dtAciklama),
+                kurSnapshotId = guncelKur!.Id,
+                masak = PM.Govde,   // YASAL-KAPI-2
+            });
+            dovizTahsilatCari = null;
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex) when (ParaMasakKapisi.MasakReddi(ex)) { await PM.Reddet(ex, Dil.Dil); }
+        catch (ApiHata ex) when (CariNakitSiniri.NakitReddi(ex)) { NS.Reddet(ex, DtOlcuTl, dovizTahsilatCari?.Id); }   // YASAL-KAPI-3: alan altında
+        catch (ApiHata ex) { islemHata = ex.Message; }
+        kaydediliyor = false;
+    }
+    private List<EkstreHareket> DetayHareketler => ekstre?.Hareketler ?? [];
+
+    // ── PAKET P-15 (B-29) — derin bağlantı durumu ───────────────────────────
+    /// <summary>Süzgeç adres çubuğundan mı geldi? (rozet + temizleme yolu)</summary>
+    private bool suzgecBaglantidan;
+    /// <summary>Bağlantının işaret ettiği cari; liste yüklendikten sonra açılır.</summary>
+    private string? baglantiCariId;
+    /// <summary>SUNUM 14.10: bağlantı "islem=tahsilat" taşıyorsa kart yerine o müşterinin tahsilat penceresi açılır (Bugün → "Tahsil et").</summary>
+    private bool baglantiTahsilat;
+
+    /// <summary>
+    /// Sorgu dizesindeki süzgeçleri KUTULARA yazar. Tanınmayan değer SESSİZCE
+    /// yok sayılmaz — kutu boş kalır ve rozet de çıkmaz, kullanıcı süzgecin
+    /// uygulanmadığını görür (Anayasa md.1).
+    /// </summary>
+    private void SorgudanSuzgecOku()
+    {
+        var suzgecler = DerinBaglanti.Suzgecler(Nav.Uri);
+        if (suzgecler.Count == 0) return;
+
+        if (suzgecler.TryGetValue("q", out var q))
+        {
+            arama = q;
+            suzgecBaglantidan = true;
+        }
+        if (suzgecler.TryGetValue("tur", out var tur)
+            && CariTurleri.Any(t => t.Deger == tur))
+        {
+            turFiltre = tur;
+            suzgecBaglantidan = true;
+        }
+        if (suzgecler.TryGetValue("aktif", out var aktif) && bool.TryParse(aktif, out var a))
+        {
+            pasifleriGoster = !a;
+            suzgecBaglantidan = true;
+        }
+        if (suzgecler.TryGetValue("cariId", out var id))
+        {
+            baglantiCariId = id;
+            suzgecBaglantidan = true;
+            baglantiTahsilat = suzgecler.TryGetValue("islem", out var islem) && islem == "tahsilat";
+        }
+    }
+
+    /// <summary>
+    /// Bağlantıdan gelen cariyi açar. Liste süzgecinin dışında kaldıysa
+    /// SESSİZCE bırakılmaz: adı sunucudan okunur, arama kutusuna yazılır ve
+    /// liste yeniden çekilir (süzgeç KUTUDA görünür — UX-S24/B-29).
+    /// </summary>
+    private async Task BaglantiCarisiniAc()
+    {
+        if (baglantiCariId is not { Length: > 0 } id) return;
+        var hedef = CariListesi.FirstOrDefault(c => c.Id == id);
+        if (hedef is null)
+        {
+            try
+            {
+                var detay = await Api.GetAsync<CariDetayVeri>($"/cari/{id}");
+                arama = detay.Ad;
+                pasifleriGoster = true;
+                await Yukle();
+                hedef = CariListesi.FirstOrDefault(c => c.Id == id);
+            }
+            catch (Exception ex) when (ex is ApiHata or JsonException)
+            {
+                // UX-S28: hata "kayıt yok"a çevrilmez; sebebi görünür.
+                listeHata = ex.Message;
+                return;
+            }
+        }
+        if (hedef is not null) { if (baglantiTahsilat) await TahsilatAc(hedef); else await DetayAc(hedef); }
+    }
+
+    /// <summary>Bağlantıdan gelen süzgeci kaldırır — geri dönüş yolu (UX-S25).</summary>
+    private async Task BaglantiSuzgeciniTemizle()
+    {
+        arama = "";
+        turFiltre = "";
+        pasifleriGoster = false;
+        baglantiCariId = null;
+        baglantiTahsilat = false;
+        suzgecBaglantidan = false;
+        await Yukle();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        Modu.Degisti += ModDegisti;
+        SorgudanSuzgecOku();
+        // GRID-1 tur 2: kayıtlı sıralama İLK liste isteğinden önce okunur (tek istek, sırasız anlık görüntü yok).
+        cariSiralama = await CariTercih.KayitliSiralamaAsync("cariler", "cari-liste", CariKolonlari);
+        await Yukle();
+        await BaglantiCarisiniAc();
+        // Döviz düğmelerinin kilidi kura bağlıdır (UX-S30); kur ilk yüklemede
+        // çekilir ki düğme "sebepsiz kapalı" görünmesin.
+        await KurYukle();
+    }
+
+    private static string TurRengi(string tur) => tur switch
+    {
+        "MUSTERI" => "mavi",
+        "TEDARIKCI" => "amber",
+        _ => "yesil",
+    };
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        listeHata = null;
+        try
+        {
+            var sorgu = new List<string> { $"limit={Sinir}" };
+            if (!string.IsNullOrWhiteSpace(arama))
+                sorgu.Add($"q={Uri.EscapeDataString(arama.Trim())}");
+            if (!string.IsNullOrEmpty(turFiltre))
+                sorgu.Add($"tur={turFiltre}");
+            // Varsayılan AKTİF: pasife alınan cari listede "aktif gibi" duramaz
+            // (QA turu 2 KRİTİK). Uç `aktif` süzgecini zaten destekliyordu.
+            if (!pasifleriGoster) sorgu.Add("aktif=true");
+            // PAKET GRID-1: ızgaranın sıralaması SUNUCUDA uygulanır (sınırlı listede
+            // istemci sıralaması yalnız gelen 100 kaydı sıralar ve yanıltır).
+            if (cariSiralama is not null) sorgu.Add(cariSiralama.Sorgu);
+            CariListesi = await Api.GetAsync<List<CariVeri>>($"/cari?{string.Join("&", sorgu)}");
+            // T-M1: "Vade geçti" rozeti ve panel bandı — yalnız BASİT yüz çizer.
+            if (Sade || YildizMi) { vadeIstendi = true; await VadeYukle(); }
+        }
+        catch (ApiHata ex)
+        {
+            // PAKET ISTEK-1 (UX-S28): hata listeyi BOŞALTMAZ — son başarılı
+            // liste ekranda kalır, üstteki #hata-bandi sebebi söyler.
+            listeHata = ex.Message;
+        }
+        yukleniyor = false;
+    }
+
+    private async Task YeniModalAc()
+    {
+        modalHata = null;
+        form.Temizle();
+        yeniAd = "";
+        yeniTur = "MUSTERI";
+        yeniTelefon = "";
+        yeniEmail = "";
+        yeniAdres = "";
+        yeniVergiNo = "";
+        yeniKimlikTuru = ""; yeniUnvan = ""; yeniUyruk = ""; yeniSegment = "";
+        yeniHesapKodu = "";
+        yeniDogumTarihi = null; yeniIskonto = null;
+        yeniKrediLimiti = null;
+        yeniVadeGun = null; yeniVadeKesirli = null; sayiKapisi.Bildir("cari-vade-tam", "", false);
+        yeniUyrukDiger = false;
+        yeniFiyatListesiId = "";
+        yeniNotlar = "";   // P-10: önceki kaydın notu yeni forma sızmaz
+        yeniDahaFazla = false;   // S3-2: basit modda form KATLI açılır
+        // Fiyat listesi seçicisi İSTEĞE BAĞLIDIR: uç erişilemezse modal ÇÖKMEZ,
+        // yalnız seçici boş kalır (düzenleme modalındaki desenin aynısı).
+        await FiyatListeleriniYukle();
+        yeniModalAcik = true;
+    }
+
+    private async Task FiyatListeleriniYukle()
+    {
+        try { fiyatListeleri = (await Api.GetAsync<List<FiyatListesiOzet>>("/fiyat/listeler")).Where(f => f.Aktif).ToList(); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { fiyatListeleri = []; modalHata = ex.Message; }
+    }
+
+    private async Task CariOlustur()
+    {
+        if (sayiKapisi.OnekleVar("cari-")) return;   // ORTAK-1: POST YOK (düğme de pasif, sebep yazılı)
+        modalHata = null;
+        // SESSİZ ETKİSİZLİK YASAĞI (C0-d): eksik alan varsa istek ATILMAZ ama
+        // kullanıcı NEDEN olmadığını alanın altında görür ve odak oraya gider.
+        form.Temizle();
+        form.Zorunlu("cari-ad", yeniAd, Dil);
+        form.Eposta("cari-eposta", yeniEmail, Dil);
+        form.Telefon("cari-telefon", yeniTelefon, Dil);
+        form.NegatifDegil("cari-limit", yeniKrediLimiti, Dil);
+        // PAKET P-16 (Y-27): TCKN 11 / VKN 10 hane — ALAN ALTINDA.
+        KimlikDogrula("cari-vergino", yeniVergiNo, yeniKimlikTuru);
+        // KESIF-P2 (#22): sunucunun 400 vereceği uyruk POST'a gitmez; alan altında yazar.
+        if (UyrukGecersiz(yeniUyruk, null)) { yeniUyrukDiger = true; form.Ekle("cari-uyruk-kod", P2.UyrukKodGecersiz); }
+        if (yeniIskonto is < 0m or > 100m) form.Ekle("cari-iskonto", Dil.T.Cari.IskontoYuzdeIpucu);
+        if (!form.Gecerli)
+        {
+            // S3-2: hata katlı bir alandaysa grup AÇILIR — alan altı mesaj görünmeli.
+            if (GizliAlandaHataVar(form, YeniGorunurAlanlar)) yeniDahaFazla = true;
+            modalHata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/cari", new
+            {
+                ad = yeniAd.Trim(),
+                tur = yeniTur,
+                telefon = TelefonBicimi.Sunucuya(yeniTelefon),
+                email = BosIseNull(yeniEmail),
+                vergiNo = BosIseNull(yeniVergiNo),
+                adres = BosIseNull(yeniAdres),
+                krediLimitiTl = yeniKrediLimiti,
+                varsayilanVadeGun = yeniVadeGun,
+                fiyatListesiId = string.IsNullOrEmpty(yeniFiyatListesiId) ? null : yeniFiyatListesiId,
+                notlar = BosIseNull(yeniNotlar),
+                // ═══ PAKET P-16 (Y-27) ═══
+                unvan = BosIseNull(yeniUnvan),
+                kimlikTuru = BosIseNull(yeniKimlikTuru),
+                dogumTarihi = yeniDogumTarihi,
+                uyruk = BosIseNull(yeniUyruk),
+                iskontoYuzde = yeniIskonto,
+                segment = BosIseNull(yeniSegment),
+                hesapKodu = BosIseNull(yeniHesapKodu),
+            });
+            yeniModalAcik = false;
+            Basarili(Dil.T.Kabuk.Kaydedildi);   // UX-S27: sonuç GÖRÜNÜR
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, YeniEsleme);
+            if (GizliAlandaHataVar(form, YeniGorunurAlanlar)) yeniDahaFazla = true;
+            modalHata = FormDurumu.SunucuMesaji(ex, Dil);
+            await OdakIlkHataya();
+        }
+        kaydediliyor = false;
+    }
+
+    private async Task DetayAc(CariVeri cari)
+    {
+        detayCari = cari;
+        detayHata = null;
+        ekstre = null;
+        ekstreYukleniyor = true;
+        try { ekstre = await Api.GetAsync<EkstreYaniti>($"/cari/{cari.Id}/ekstre"); }
+        catch (ApiHata ex) { detayHata = ex.Message; }
+        ekstreYukleniyor = false;
+    }
+
+    private void DetayKapat()
+    {
+        detayCari = null;
+        ekstre = null;
+        detayHata = null;
+    }
+
+    // ── Düzenleme ────────────────────────────────────────────────────────────
+
+    // ── PAKET 40-A — PEP beyanı düzenleme durumu ────────────────────────────
+    private bool duzPepBeyani;
+    private string duzPepGorev = "";
+    private DateTime? duzPepBeyanTarihi;
+    private bool yuklenenPepBeyani;
+    private string yuklenenPepGorev = "";
+
+    /// <summary>Beyan işaretliyse görev ZORUNLU — sunucu da 400 döner.</summary>
+    private bool PepGecerli => !duzPepBeyani || !string.IsNullOrWhiteSpace(duzPepGorev);
+
+    /// <summary>Risk rozetinin rengi — ham kod ekrana basılmaz (UX-S31).</summary>
+    private static string RiskRengi(string seviye) => seviye switch
+    {
+        "YUKSEK" => "kirmizi",
+        "ORTA" => "amber",
+        _ => "mavi",
+    };
+
+    // ── T-M1 doğrulayıcı KRİTİK (yarış): panel önceki müşterinin alanlarıyla açılıp
+    //   Kaydet'e izin veriyordu → B'nin kartı A'nın verisiyle PATCH'leniyordu.
+    //   Kural: (1) açılışta TÜM duz* alanları sıfırlanır; (2) GET /cari/{id} dönene
+    //   dek alanlar ve Kaydet KİLİTLİ (sebep: "yükleniyor"); (3) yanıt YALNIZ hâlâ
+    //   aynı açılıştaysa uygulanır (açılış sayacı + Id); (4) GET başarısızsa kilit
+    //   kalkmaz — boş/eksik alanla PATCH katlı alanları SİLERDİ.
+    private bool duzYuklendi;
+    private int duzAcilis;
+
+    /// <summary>Kart sunucudan gelmeden alanlar ve Kaydet kilitli.</summary>
+    private bool DuzKilitli => duzenleCari is not null && !duzYuklendi;
+
+    // KESIF-P2 (TOPLU ORTAK-1 DÜŞÜK): kilit sebebi alanın GÖRÜNEN etiketini söyler
+    // (BASİT'te "Ad soyad"; eskiden "Ad / Firma Adı" yazıyordu) ve alan altında da mesaj çıkar.
+    private string DuzAdEtiketi => Sade ? T.AdSoyad : Dil.T.Cari.AdFirma;
+
+    private string DuzKilitSebebi =>
+        DuzKilitli ? (duzHata is null ? T.KartYukleniyor : T.KartYuklenemedi)
+        : !PepGecerli ? Dil.T.Cari.PepGorevZorunlu
+        : UyrukGecersiz(duzUyruk, yuklenenUyruk) ? P2.UyrukKodGecersiz
+        : DuzAdEtiketi;
+
+    private void DuzAlanlariSifirla()
+    {
+        duzAd = ""; duzTur = "MUSTERI"; duzTelefon = ""; duzTelefonKayitli = null; duzEmail = "";
+        duzVergiNo = ""; duzAdres = "";
+        duzKimlikTuru = ""; duzUnvan = ""; duzDogumTarihi = null; duzUyruk = "";
+        duzIskonto = null; duzSegment = ""; duzHesapKodu = "";
+        duzKrediLimiti = null; duzVadeGun = null; duzFiyatListesiId = "";
+        duzVadeKesirli = null; sayiKapisi.Bildir("duz-vade-tam", "", false);
+        duzUyrukDiger = false; yuklenenUyruk = null;
+        duzNotlar = "";
+        duzPepBeyani = false; duzPepGorev = ""; duzPepBeyanTarihi = null;
+        yuklenenPepBeyani = false; yuklenenPepGorev = "";
+    }
+
+    private async Task DuzenleAc(CariVeri c)
+    {
+        duzHata = null;
+        form.Temizle();
+        duzDahaFazla = false;   // S3-2: basit modda çekmece KATLI açılır
+        DuzAlanlariSifirla();
+        duzYuklendi = false;
+        duzenleCari = c;
+        var acilis = ++duzAcilis;
+        bool Guncel() => acilis == duzAcilis && duzenleCari?.Id == c.Id;
+        // T-M1: panelin dibindeki "Son değişiklik" satırı (yalnız BASİT'te çizilir).
+        // Kartla PARALEL çekilir (kilit penceresini uzatmaz); sonucu Guncel() ile yazılır.
+        var sonDegisiklik = SonDegisiklikYukle(c, Guncel);
+        // Liste yalnız özet taşır (vergi no, adres yok) — kartın tamamı çekilir,
+        // yoksa kaydet dediğinde görünmeyen alanlar SİLİNİRDİ.
+        try
+        {
+            var tam = await Api.GetAsync<CariDetayVeri>($"/cari/{c.Id}");
+            if (!Guncel()) { await sonDegisiklik; return; }   // panel kapandı ya da başka kart açıldı
+            duzAd = tam.Ad; duzTur = tam.Tur;
+            duzTelefon = TelefonBicimi.Girdi(tam.Telefon); duzTelefonKayitli = tam.Telefon; duzEmail = tam.Email ?? "";
+            duzVergiNo = tam.VergiNo ?? ""; duzAdres = tam.Adres ?? "";
+            // ── PAKET P-16 (Y-27) ──
+            duzKimlikTuru = tam.KimlikTuru ?? ""; duzUnvan = tam.Unvan ?? "";
+            duzDogumTarihi = tam.DogumTarihi; duzUyruk = tam.Uyruk ?? ""; yuklenenUyruk = tam.Uyruk;
+            duzIskonto = tam.IskontoYuzde; duzSegment = tam.Segment ?? "";
+            duzHesapKodu = tam.HesapKodu ?? "";
+            duzKrediLimiti = tam.KrediLimitiTl; duzVadeGun = tam.VarsayilanVadeGun;
+            duzFiyatListesiId = tam.FiyatListesiId ?? "";
+            duzNotlar = tam.Notlar ?? "";
+            duzPepBeyani = tam.PepBeyani; duzPepGorev = tam.PepGorev ?? "";
+            duzPepBeyanTarihi = tam.PepBeyanTarihi;
+            yuklenenPepBeyani = tam.PepBeyani; yuklenenPepGorev = tam.PepGorev ?? "";
+            duzYuklendi = true;
+            // Liste seçenekleri modal açılırken çekilir. Bu seçici İSTEĞE BAĞLIDIR: sunucu
+            // hatası ya da bozuk yanıt (JSON) ne olursa olsun düzenleme modalı ÇÖKMEZ —
+            // yalnız seçici boş kalır ve hata bandında sebep görünür. Aksi halde fiyat
+            // listesi ucu erişilemezken hiçbir cari düzenlenemezdi.
+            try { fiyatListeleri = (await Api.GetAsync<List<FiyatListesiOzet>>("/fiyat/listeler")).Where(f => f.Aktif).ToList(); }
+            catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { fiyatListeleri = []; if (Guncel()) duzHata = ex.Message; }
+        }
+        catch (ApiHata ex) { if (Guncel()) duzHata = ex.Message; }
+        await sonDegisiklik;
+    }
+
+    private async Task CariGuncelle()
+    {
+        if (sayiKapisi.OnekleVar("duz-")) return;   // ORTAK-1: PATCH YOK
+        // T-M1 yarış kilidi: kart sunucudan gelmeden (ya da gelemediyse) PATCH ATILMAZ.
+        if (duzenleCari is null || !duzYuklendi) return;
+        var hedefId = duzenleCari.Id;
+        duzHata = null;
+        form.Temizle();
+        form.Zorunlu("duz-ad", duzAd, Dil);
+        form.Eposta("duz-eposta", duzEmail, Dil);
+        form.Telefon("duz-telefon", duzTelefon, Dil);
+        form.NegatifDegil("duz-limit", duzKrediLimiti, Dil);
+        // PAKET P-16 (Y-27): TCKN 11 / VKN 10 hane — ALAN ALTINDA.
+        KimlikDogrula("duz-vergino", duzVergiNo, duzKimlikTuru);
+        if (UyrukGecersiz(duzUyruk, yuklenenUyruk)) { duzUyrukDiger = true; form.Ekle("duz-uyruk-kod", P2.UyrukKodGecersiz); }
+        if (duzIskonto is < 0m or > 100m) form.Ekle("duz-iskonto", Dil.T.Cari.IskontoYuzdeIpucu);
+        if (!form.Gecerli)
+        {
+            // S3-2: yüklenen eski bir değer (ör. 9 haneli vergi no) katlı alanda
+            // hatalıysa grup AÇILIR; kullanıcı neden kaydedemediğini GÖRÜR.
+            if (GizliAlandaHataVar(form, DuzGorunurAlanlar)) duzDahaFazla = true;
+            duzHata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync($"/cari/{hedefId}", new
+            {
+                ad = duzAd.Trim(),
+                tur = duzTur,
+                telefon = DuzTelefonGovdesi(),
+                email = BosIseNull(duzEmail),
+                vergiNo = BosIseNull(duzVergiNo),
+                adres = BosIseNull(duzAdres),
+                krediLimitiTl = duzKrediLimiti,
+                varsayilanVadeGun = duzVadeGun,
+                fiyatListesiId = string.IsNullOrEmpty(duzFiyatListesiId) ? null : duzFiyatListesiId,
+                // Üç durumlu sözleşme (CariGuncelleDto.NotlarVerildi): alan GÖNDERİLDİĞİ
+                // için boş değer "sil" demektir — ekran notu gösterdiğine göre
+                // kullanıcının silme kararını da taşımak zorundadır.
+                notlar = BosIseNull(duzNotlar),
+                // ═══ PAKET P-16 (Y-27) ═══ Ekran bu alanları GÖSTERDİĞİ için
+                // "boşalttım" kararını da taşır: boş = SİL (PATCH sözleşmesi).
+                unvan = BosIseNull(duzUnvan),
+                kimlikTuru = BosIseNull(duzKimlikTuru),
+                dogumTarihi = duzDogumTarihi,
+                uyruk = BosIseNull(duzUyruk),
+                iskontoYuzde = duzIskonto,
+                segment = BosIseNull(duzSegment),
+                hesapKodu = BosIseNull(duzHesapKodu),
+            });
+
+            // ⚠ PEP AYRI UÇTAN gider (PATCH /cari/{id}/pep). Sebebi kurul engel 4:
+            //   pep alanlarını CariGuncelleDto gövdesine koyup tam gövde yazan bir
+            //   uç, istemci bir alanı göndermediğinde onu SESSİZCE SIFIRLARDI.
+            //   İkinci istek yalnız beyan GERÇEKTEN değiştiyse atılır.
+            if (duzPepBeyani != yuklenenPepBeyani
+                || (duzPepGorev?.Trim() ?? "") != yuklenenPepGorev)
+            {
+                await Api.PatchAsync($"/cari/{hedefId}/pep", new
+                {
+                    pepBeyani = duzPepBeyani,
+                    pepGorev = duzPepBeyani ? duzPepGorev?.Trim() : null,
+                });
+            }
+
+            duzenleCari = null;
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, DuzEsleme);
+            if (GizliAlandaHataVar(form, DuzGorunurAlanlar)) duzDahaFazla = true;
+            duzHata = FormDurumu.SunucuMesaji(ex, Dil);
+            await OdakIlkHataya();
+        }
+        kaydediliyor = false;
+    }
+
+    // ── Aktif/pasif geçişi (UX-S25: her pasifleştirmenin GERİ DÖNÜŞÜ vardır) ──
+
+    /// <summary>
+    /// QA turu 2 KRİTİK: "pasife alma geri alınamıyor". Sunucudaki
+    /// PATCH /cari/{id} {aktif:true} ucu vardı, ekranda düğmesi yoktu.
+    /// ⚠ Yalnız `aktif` gönderilir: PATCH sözleşmesi "gövdede yoksa koru"
+    ///   olduğu için diğer alanlara dokunulmaz.
+    /// </summary>
+    private async Task AktifeAl(CariVeri c)
+    {
+        duzHata = null;
+        listeHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<object>($"/cari/{c.Id}", new { aktif = true });
+            Basarili(Dil.T.Kabuk.AktifeAlindi);
+            await Yukle();
+        }
+        catch (ApiHata ex) { listeHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// Tek alanlı düzeltme — satır içi (K6). Telefon biçimi sunucudakiyle AYNI
+    /// kuralla (Iletisim.TelefonGecerli) ön kontrolden geçer; son sözü sunucu söyler.
+    /// </summary>
+    private async Task TelefonKaydet(CariVeri c, string yeniDeger)
+    {
+        var alan = $"si-telefon-{c.Id}";
+        form.Temizle();
+        listeHata = null;
+        if (!form.Telefon(alan, yeniDeger, Dil)) return;
+
+        satirKaydedilen = c.Id;
+        try
+        {
+            await Api.PatchAsync<object>($"/cari/{c.Id}",
+                new { telefon = TelefonBicimi.Sunucuya(yeniDeger) });
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await Yukle();
+        }
+        catch (ApiHata ex)
+        {
+            form.Ekle(alan, FormDurumu.SunucuMesaji(ex, Dil));
+            listeHata = FormDurumu.SunucuMesaji(ex, Dil);
+        }
+        satirKaydedilen = null;
+    }
+
+    /// <summary>Tahsilat kaydetme kilidinin SEBEBİ — yoksa null (UX-S30).</summary>
+    private string? TahsilatKilidi =>
+        // Tur 5: boş tutar bir KİLİT değildir — Kaydet açıktır, deneme alanın altında tek cümle yazar (ThTutarHatasi).
+        // SON-KALANLAR tur 2 (doğrulayıcı DÜŞÜK, kasaSecinKez=2): seçicinin yer tutucusu zaten "Kasa seçin..."
+        // der; altlıktaki kilit sebebi AYNI cümleyi tekrar etmez, ne yapılacağını söyler.
+        thTutar > 0 && string.IsNullOrEmpty(thKasaId) ? SonKalanlarSozlugu.Al(Dil.Dil).TahsilatKasaKilit
+        // Tur 2 (hakem [KRİTİK]): nakit sınırı aşımı bir "eksik" değildir — sebebi
+        // tutar alanının ALTINDA kırmızı yazılır (ThNakitSinirHatasi); burada tekrar yok.
+        // YASAL-KAPI-2: MASAK kimlik formu eksikse sebep (eşik sayısı form başlığında, burada tekrar yok).
+        // YASAL-KAPI-3: nakit sınırı aşılmışken form çizilmez → "kimlik bilgilerini doldurun" DENMEZ (sebep alan altında).
+        : ThNakitSinirAsildi ? null
+        : PM.KilitSebebi(Dil.Dil);
+
+    /// <summary>PARA-DEMO-2 tur 5 — Kaydet denendi mi (boş tutar hatası yalnız denemeden sonra görünür).</summary>
+    private bool thDenendi;
+    private bool ThBos => thTutar <= 0 && thHas <= 0;
+    /// <summary>Tutar alanının altındaki TEK hata: boş deneme → "Tutar ya da altın girin."; yoksa nakit sınırı.</summary>
+    private string? ThTutarHatasi => thTutarSunucuHata ?? (thDenendi && ThBos ? PD2.TutarYaDaAltin : ThNakitSinirHatasi);
+
+    /// <summary>Nakit sınırı aşıldıysa tutar alanının altındaki kırmızı hata (DoD EK md.3).</summary>
+    /// YASAL-KAPI-3: büyük işlemin taksiti (TB-15) önce; yoksa günlük nakit hakkı / sunucu reddi izi (CariNakitSiniri).
+    private string? ThNakitSinirHatasi => !ThNakitSinirAsildi ? null
+        : ThTaksitNakitAsildi ? string.Format(TT.TahsilatNakitSinirAsildi, Bicim.Para(thTaksit!.NakitAlinabilir ?? 0m, "TRY"))
+        : NS.Hata(thOdeme == "NAKIT", thTutar, tahsilatCari?.Id, Dil.Dil, TT.TahsilatNakitSinirAsildi);
+
+    // ── PAKET YASAL-2 (TB-15) — büyük satışın taksiti ────────────────────────
+    private TevsikTaksitMetinleri TT => TevsikTaksitSozlugu.Al(Dil.Dil);
+    private Kuyumcu.Contracts.Sayfalar.NakitSiniri.TaksitOnizlemeVeri? thTaksit;
+    private string? thTaksitHata;
+
+    /// <summary>Sunucu: bu borçtan hiç nakit alınamaz (ilk açık parti büyük işlemden).</summary>
+    private bool ThNakitKapali => thTaksit is { KuralDevrede: true, NakitAlinabilir: <= 0m };
+
+    /// <summary>Nakit seçili ve tutar sunucunun söylediği sınırı aşıyor (UX-S30 kilidi).</summary>
+    private bool ThNakitSinirAsildi => ThTaksitNakitAsildi || ThGunlukNakitAsildi;   // YASAL-KAPI-3: + günlük nakit hakkı
+    private bool ThTaksitNakitAsildi =>
+        thOdeme == "NAKIT" && thTaksit is { KuralDevrede: true, NakitAlinabilir: { } n } && thTutar > n;
+
+    /// <summary>
+    /// Ödeme türü seçenekleri (tek kaynak dizi). Nakit kapalıysa NAKİT listede
+    /// GÖRÜNÜR ama SEÇİLEMEZ ve nedenini alt satırında söyler (tur 2: gizlemek yerine
+    /// "devre dışı + neden" — şartname § 4.1).
+    /// </summary>
+    private IReadOnlyList<SecenekOgesi> TahsilatOdemeSecenekleri =>
+        [new SecenekOgesi("NAKIT", Dil.T.Cari.Nakit, ThNakitKapali ? TT.NakitPasifSebep : NS.NakitKapali ? Y3.NakitBugunPasif : null,
+            Pasif: ThNakitKapali || NS.NakitKapali),   // YASAL-KAPI-3: bugünkü nakit hakkı 0 → seçilemez
+         new SecenekOgesi("KART", Dil.T.Cari.Kart), new SecenekOgesi("HAVALE", Dil.T.Cari.Havale)];
+
+    /// <summary>Tahsilat açılırken taksit önizlemesi (hata yutulmaz — UX-S28).</summary>
+    private async Task TaksitOnizlemeYukle(string cariId)
+    {
+        thTaksit = null; thTaksitHata = null;
+        // YASAL-KAPI-3: aynı yanıtın günlük nakit hakkı da tutulur (CariNakitSiniri) — tek soru, iki kural.
+        var (gunluk, hata) = await TevsikGunlukSor(cariId);
+        // Tur 2 (gerçek tarayıcı bulgusu): pencere bu arada BAŞKA cari için açıldıysa
+        // geç gelen yanıt o carinin kutusuna yazılmaz.
+        if (tahsilatCari?.Id != cariId) return;
+        thTaksitHata = hata;
+        thTaksit = gunluk?.Taksit;
+        NS.Yukle(gunluk);
+        if ((ThNakitKapali || NS.NakitKapali) && thOdeme == "NAKIT") thOdeme = "KART";
+    }
+
+    private bool pasifOnayAcik;
+    private CariBagliKayit? pasifBagli;
+    private bool pasifBagliYukleniyor;
+
+    /// <summary>
+    /// P-38 · B-39 — pasife alınacak cari. Artık çekmeceden BAĞIMSIZDIR:
+    /// liste satırından da, çekmeceden de aynı onay modalı açılır.
+    /// </summary>
+    private CariVeri? pasifAday;
+
+    /// <summary>
+    /// PAKET P-13 (B-39): onay penceresi açılırken bağlı kayıt sayıları okunur.
+    /// İstek patlarsa pencere yine açılır ama sayı UYDURULMAZ; hata bandı çıkar
+    /// (Anayasa md.1 · UX-S28).
+    /// </summary>
+    private async Task PasifOnayAc(CariVeri? cari)
+    {
+        if (cari is null) return;
+        pasifAday = cari;
+        duzHata = null;
+        listeHata = null;
+        pasifBagli = null;
+        pasifOnayAcik = true;
+        pasifBagliYukleniyor = true;
+        try { pasifBagli = await Api.GetAsync<CariBagliKayit>($"/cari/{cari.Id}/bagli-kayitlar"); }
+        catch (ApiHata ex) { duzHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        pasifBagliYukleniyor = false;
+    }
+
+    private async Task CariPasifeAl()
+    {
+        if (pasifAday is null) return;
+        duzHata = null;
+        kaydediliyor = true;
+        try
+        {
+            // Sunucu SİLMEZ, pasife alır — hareket geçmişi korunur.
+            await Api.DeleteAsync<object>($"/cari/{pasifAday.Id}");
+            pasifOnayAcik = false;
+            // Çekmece yalnız AYNI cari açıksa kapanır (listeden pasife alınan
+            // başka bir cari, açık çekmeceyi kapatmaz).
+            if (duzenleCari is not null && duzenleCari.Id == pasifAday.Id) duzenleCari = null;
+            pasifAday = null;
+            Basarili(Dil.T.Cari.PasifeAlOnay);
+            await Yukle();
+        }
+        catch (ApiHata ex) { duzHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    // ── Tahsilat / veresiye ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Düzeltme fişi yalnız SAHIP · MUDUR · MUHASEBE rollerine ÇİZİLİR (KenarCubugu deseni).
+    /// ⚠ Bu bir KAPI DEĞİL, ikinci kapıdır: sunucudaki [RolGerekli] kaldırılmadan durur.
+    /// </summary>
+    private bool DuzeltmeGorebilir => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR" or "MUHASEBE";
+
+    private void DuzeltmeAc(CariVeri c) { islemHata = null; duzeltmeCari = c; dzTl = 0; dzHas = 0; dzGerekce = ""; }
+
+    private async Task DuzeltmeGonder()
+    {
+        if (duzeltmeCari is null || sayiKapisi.OnekleVar("dz-")) return;   // ORTAK-1: POST YOK
+        kaydediliyor = true; islemHata = null;
+        try
+        {
+            await Api.PostAsync($"/cari/{duzeltmeCari.Id}/duzeltme", new { tlDelta = dzTl, hasDelta = dzHas, gerekce = dzGerekce.Trim(), kurSnapshotId = await GuncelKurId() });
+            duzeltmeCari = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { islemHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task TahsilatAc(CariVeri c)
+    {
+        islemHata = null; tahsilatCari = c; thTutarSunucuHata = null; thHasSunucuHata = null;
+        thTutar = 0m; thHas = 0m; thOdeme = "NAKIT"; thAciklama = ""; thKasaId = ""; thHasAcik = false; thNotAcik = false; thDenendi = false;
+        // Tur 2 (gerçek tarayıcı bulgusu): önceki carinin nakit sınırı kutusu, kasalar
+        // yüklenirken YENİ carinin penceresinde görünüyordu → ilk çizimden önce temizlenir.
+        thTaksit = null; thTaksitHata = null;
+        NS.Ac();             // YASAL-KAPI-3: önceki formun nakit sınırı izi kalmaz
+        await PM.Ac(c.Id);   // YASAL-KAPI-2: önceki formun beyanı/izi kalmaz
+        await KasalariYukle();
+        // UX-S22 — tek TL kasası varsa sorulmaz, atanır.
+        if (TahsilatKasaTek) thKasaId = TahsilatKasalari[0].Id;
+        await TaksitOnizlemeYukle(c.Id);   // PAKET YASAL-2 (TB-15)
+    }
+
+    private async Task KasalariYukle()
+    {
+        try { kasalar = (await Api.GetAsync<List<KasaOzet>>("/kasalar")).Where(k => k.Aktif).ToList(); }
+        catch (ApiHata ex) { kasalar = []; islemHata = ex.Message; }
+    }
+
+    private async Task TahsilatKaydet()
+    {
+        if (tahsilatCari is null || sayiKapisi.OnekleVar("th-")) return;   // ORTAK-1: POST YOK
+        thDenendi = true;
+        if (ThBos) return;   // PARA-DEMO-2 tur 5: POST YOK — alanın altında "Tutar ya da altın girin."
+        islemHata = null; thTutarSunucuHata = null; thHasSunucuHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/cari/{tahsilatCari.Id}/tahsilat", new
+            {
+                tlTutari = thTutar > 0 ? thTutar : (decimal?)null,
+                hasGrami = thHas > 0 ? thHas : (decimal?)null,
+                odemeTuru = thOdeme,
+                // TL tutarı varsa sunucu kasayı ZORUNLU tutar (UX-4b madde 9).
+                kasaId = thTutar > 0 ? BosIseNull(thKasaId) : null,
+                aciklama = BosIseNull(thAciklama),
+                kurSnapshotId = await GuncelKurId(),
+                masak = PM.Govde,   // YASAL-KAPI-2: yalnız kapı açıkken (eşik altında gövdede beyan yok)
+            });
+            var tahsilEdilenId = tahsilatCari.Id;
+            tahsilatCari = null;
+            await Yukle();
+            // PARA-DEMO (UX-S27): kayıt sonucu görünür — TL borç ve altın hesabı AYRI yazılır.
+            if (CariListesi.FirstOrDefault(c => c.Id == tahsilEdilenId) is { } sonra)
+                Basarili(string.Format(PD.TahsilatKaydedildi, Bicim.Para(sonra.TlBakiye, "TRY"), HasBicim(sonra.HasGramBakiye)));
+        }
+        // YASAL-KAPI-2: MASAK reddi ham metinle basılmaz — kimlik alanları açılır (ParaMasakKapisi).
+        catch (ApiHata ex) when (ParaMasakKapisi.MasakReddi(ex)) { await PM.Reddet(ex, Dil.Dil); }
+        // YASAL-KAPI-3: nakit sınırı reddi bantta değil tutar alanının altında; ödeme türü/tutar değişince kalkar (iz).
+        catch (ApiHata ex) when (CariNakitSiniri.NakitReddi(ex) && thOdeme == "NAKIT") { NS.Reddet(ex, thTutar, tahsilatCari?.Id); }
+        // SON-KALANLAR (hasım DÜŞÜK, Pk1440__21): alan anahtarlı red (tlTutari / hasGrami) kutunun ALTINDA ve
+        // kutu kırmızı; bantta tekrar yok. Alan dışı ya da çizili olmayan alanın reddi bantta kalır (UX-S28).
+        catch (ApiHata ex)
+        {
+            var tl = ex.Alanlar.FirstOrDefault(a => string.Equals(a.Key, "tlTutari", StringComparison.OrdinalIgnoreCase)).Value;
+            var has = ex.Alanlar.FirstOrDefault(a => string.Equals(a.Key, "hasGrami", StringComparison.OrdinalIgnoreCase)).Value;
+            var hasCizili = thHasAcik || thHas > 0m;
+            thTutarSunucuHata = tl is { Length: > 0 } ? string.Join(" ", tl) : null;
+            thHasSunucuHata = hasCizili && has is { Length: > 0 } ? string.Join(" ", has) : null;
+            var esleme = new Dictionary<string, string> { ["tlTutari"] = "th-tutar" };
+            if (hasCizili) esleme["hasGrami"] = "th-has";
+            islemHata = FormDurumu.BantMesaji(ex, Dil, esleme);
+        }
+        kaydediliyor = false;
+    }
+
+    /// <summary>SON-KALANLAR — sunucunun tutar/altın alanı reddi (alan altında); kullanıcı yazınca silinir.</summary>
+    private string? thTutarSunucuHata, thHasSunucuHata;
+    private async Task ThTutarDegisti(decimal? v) { thTutar = v ?? 0m; thTutarSunucuHata = null; await PM.Tazele(thTutar, tahsilatCari?.Id); }
+    private void ThHasDegisti(decimal? v) { thHas = v ?? 0m; thHasSunucuHata = null; }
+
+    private ParaDemoMetinleri PD => ParaDemoSozlugu.Al(Dil.Dil);
+
+    /// <summary>
+    /// PARA-DEMO (madde 5) — satır başına yürüyen TL bakiye (satırdan SONRAKİ bakiye).
+    /// Liste en yeniden eskiye; en yeni satırın sonrası = sunucunun kayıtlı TL bakiyesi,
+    /// her eski satır = sonraki − o satırın etkisi. Etkisi bilinmeyen satırdan eskisi null ("—"),
+    /// uydurulmaz (Anayasa md.1).
+    /// </summary>
+    private ParaDemo2Metinleri PD2 => ParaDemo2Sozlugu.Al(Dil.Dil);
+    /// <summary>PARA-DEMO-2 (madde 7): "+ Altınla öde" / "+ Not ekle" açıldı mı (pencere her açılışta kapalı).</summary>
+    private bool thHasAcik, thNotAcik;
+    /// <summary>PARA-DEMO-2 (madde 6): hurda alış ekranının bu moddaki GERÇEK adı (BASİT karo "Alış · eski altın").</summary>
+    private string HurdaAlisAdi => Sade ? SatisTuvalSozlugu.Al(Dil.Dil).KaroAlisEskiAltin : Dil.T.Islem.HurdaAlis;
+    /// <summary>PARA-DEMO-2 (madde 7): tahsilat penceresinde güncel borç satırı.</summary>
+    private string ThGuncelBorc => (tahsilatCari?.TlBakiye ?? 0m) switch
+    {
+        > 0m => string.Format(PD2.GuncelBorc, Bicim.Para(tahsilatCari!.TlBakiye, "TRY")),
+        < 0m => string.Format(PD2.GuncelAlacak, Bicim.Para(-tahsilatCari!.TlBakiye, "TRY")),
+        _ => PD2.BorcYok,
+    };
+
+    /// <summary>PARA-DEMO-2 (madde 9): satırın has bakiyesine etkisi var mı (emanet hariç).</summary>
+    private static bool HasEtkili(EkstreHareket h) => !h.Emanet && h.HasBakiyesineGirer && SatirEtkisi(h) != 0m;
+
+    /// <summary>
+    /// PARA-DEMO-2 (madde 1): ekstre satırının ödeme adı — gerçek karmada "Karma ödeme" değil bacak
+    /// türleri ("Kart + Havale", sunucu odemeAraclari); bilinmeyen kod uydurulmaz.
+    /// </summary>
+    private string? EkstreOdemeAdi(EkstreHareket h) =>
+        h.OdemeTuru == "KARMA" && h.OdemeAraclari is { Count: > 0 } araclar
+            // PARA-DEMO-3 tur 2: karma adı gün sonuyla TEK üreticiden (ParaDemo3Sozlugu.OdemeAdi).
+            ? Kuyumcu.Core.I18n.ParaDemo3Sozlugu.OdemeAdi(h.OdemeTuru, araclar, Dil.Dil)
+            : PD.OdemeAdi(h.Tur, h.TlTutari, h.HasGrami, h.OdemeTuru);
+
+    /// <summary>PARA-DEMO-2 (madde 9): yürüyen HAS bakiyesi — en yeni satır = üstteki emanetsiz has, eskisi = sonraki − etki.</summary>
+    private Dictionary<string, decimal> YuruyenHasBakiyeler()
+    {
+        var sonuc = new Dictionary<string, decimal>();
+        var sonra = DetayHas;
+        foreach (var h in DetayHareketler)
+        {
+            sonuc[h.Id] = sonra;
+            sonra -= HasEtkili(h) ? SatirEtkisi(h) : 0m;
+        }
+        return sonuc;
+    }
+
+    private Dictionary<string, decimal?> YuruyenBakiyeler()
+    {
+        var sonuc = new Dictionary<string, decimal?>();
+        decimal? sonra = DetayTl;
+        foreach (var h in DetayHareketler)
+        {
+            sonuc[h.Id] = sonra;
+            sonra = sonra is { } s && h.CariTlEtkisi is { } e ? s - e : null;
+        }
+        return sonuc;
+    }
+
+    private async Task VeresiyeAc(CariVeri c)
+    {
+        islemHata = null; veresiyeCari = c;
+        vrTutar = 0m; vrHas = 0m; vrAciklama = "";
+        await PM.Ac(c.Id);   // YASAL-KAPI-2
+    }
+
+    private async Task VeresiyeKaydet()
+    {
+        if (veresiyeCari is null || sayiKapisi.OnekleVar("vr-")) return;   // ORTAK-1: POST YOK
+        islemHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync($"/cari/{veresiyeCari.Id}/veresiye", new
+            {
+                tlTutari = vrTutar,
+                hasGrami = vrHas > 0 ? vrHas : (decimal?)null,
+                aciklama = BosIseNull(vrAciklama),
+                kurSnapshotId = await GuncelKurId(),
+                masak = PM.Govde,   // YASAL-KAPI-2
+            });
+            veresiyeCari = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) when (ParaMasakKapisi.MasakReddi(ex)) { await PM.Reddet(ex, Dil.Dil); }
+        catch (ApiHata ex) { islemHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    /// <summary>
+    /// İşlemin bağlanacağı kur fotoğrafı. Sunucu bunu ZORUNLU tutar: her hareket
+    /// o anki kura bağlıdır, sonradan yeniden fiyatlanamaz.
+    /// </summary>
+    private async Task<string> GuncelKurId()
+    {
+        var kur = await Api.GetAsync<KurVeri>("/kur/guncel");
+        return kur.Id;
+    }
+
+
+    private static string? BosIseNull(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose()
+    {
+        Dil.Degisti -= Yenile;
+        Modu.Degisti -= ModDegisti;
+    }
+}

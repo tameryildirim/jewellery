@@ -1,0 +1,243 @@
+@using Kuyumcu.Core.I18n
+@using System.Globalization
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+
+@* ═══ PAKET YASAL-3 (§ 4.3) — UYUM → SAKLAMA: GEREKÇELİ BEKLETME ══════════════════
+   • Tek birincil eylem "Beklet" → Cekmece (oluşturma = düzenleme alan kümesi; UX-S26).
+   • Satır eylemleri: Düzenle (Cekmece, bitiş + gerekçe) · Bekletmeyi kaldır (OnayKipi;
+     satır silinmez — DegismezIpucu). Yalnız SAHİP yazabilir; diğer rollerde istek ATILMAZ.
+   • Geçmiş gizlemeler KAPALI katlanır (kurucu kuralı).
+   • Hata "kayıt yok"a çevrilmez (UX-S28); sunucu sonucu başarı bandına yazılır (UX-S27).
+   ════════════════════════════════════════════════════════════════════════════ *@
+@if (Yetkili)
+{
+    <div class="kart" id="skb">
+        <div class="kart-govde form-dikey">
+            <div class="dugme-satir">
+                <h3 class="esnek" id="skb-baslik">@M.BekletmeBaslik</h3>
+                <button type="button" class="dugme dugme-ikincil" id="skb-yeni" disabled="@(veri is null)"
+                        title="@(veri is null ? M.BekletmeHata.Replace("{0}", "") : null)" @onclick="YeniAc">@M.BekletmeYeni</button>
+            </div>
+            <p class="metin-kucuk" id="skb-aciklama">@M.BekletmeAciklama</p>
+            @if (veri is { Kuru: true })
+            {
+                <p class="bant yasal-bant yasal-bant--bilgi" id="skb-kuru" role="status">@M.BekletmeKuruNot</p>
+            }
+            <HataBandi Mesaj="@hata" Id="skb-hata" />
+            <BasariBandi Mesaj="@basari" Id="skb-basari" Jeton="@basariJeton" />
+            @if (veri is { } v)
+            {
+                @if (v.Bekletmeler.Count == 0)
+                {
+                    <BosDurum Mesaj="@M.BekletmeBos" />
+                }
+                else
+                {
+                    @* PAKET GOC-B — ORTAK IZGARA (grid:uyum:skb-bekletme). Mevcut id'ler korunur (#skb-tablo, #skb-liste-sar,
+                       #skb-satir-{id}); sunucu en çok 100 bekletme döndürür → sınıra değdiyse sıralama kapalı + sınır notu. *@
+                    <Izgara T="SaklamaBekletmeSatiri" Ekran="uyum" GridId="skb-bekletme" Kolonlar="@BekletmeKolonlari"
+                            Ogeler="@IzgaraYerelSiralama.Uygula(v.Bekletmeler, bekletmeSira, BekletmeKolonlari)"
+                            SatirId="@(b => $"skb-satir-{b.Id}")" TabloId="skb-tablo" KartListeId="skb-liste"
+                            Baslik="@M.BekletmeBaslik" SiralamaDegisti="@(x => bekletmeSira = x)" GecerliSiralama="@bekletmeSira" />
+                    @if (!BekletmeTam)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="skb-sinir-notu">@string.Format(GocASozlugu.Al(Dil.Dil).SiralamaSinirNotu, BekletmeSiniri)</p>
+                    }
+                    @if (v.Bekletmeler.Any(b => b.Kaldirildi is not null))
+                    {
+                        <DegismezIpucu Varlik="SaklamaBekletme" Gerekce="@M.BekletmeSilinmez" />
+                    }
+                }
+                <Katlanir Id="skb-gecmis" Baslik="@M.MaskelemeGecmisi" Sayi="@v.Maskelemeler.Count">
+                    @if (v.Maskelemeler.Count == 0)
+                    {
+                        <BosDurum Mesaj="@M.MaskelemeGecmisBos" />
+                    }
+                    else
+                    {
+                        <ul class="metin-kucuk" id="skb-gecmis-liste">
+                            @foreach (var g in v.Maskelemeler)
+                            {
+                                <li>@Bicim.TarihSaat(g.Tarih) · @(g.Otomatik ? M.MaskelemeOtomatik : M.MaskelemeElle) · @Ozet(g.Ozet)</li>
+                            }
+                        </ul>
+                    }
+                </Katlanir>
+            }
+        </div>
+    </div>
+
+    <Cekmece Acik="formAcik" Varlik="saklama-bekletme" Baslik="@(duzenlenen is null ? M.BekletmeYeni : M.BekletmeDuzenle)"
+             Kaydediliyor="@kaydediliyor" KaydetAktif="@(KilitSebebi is null)" KilitSebebi="@KilitSebebi"
+             Kapat="FormKapat" Kaydet="FormKaydet">
+        @if (duzenlenen is null)
+        {
+            <Secim ElemanId="skb-kapsam" Etiket="@M.BekletmeKapsam" Deger="@kapsam" DegerChanged="KapsamDegisti"
+                   Secenekler="@KapsamSecenekleri" Hata="@AlanHata("kapsam")" />
+            @if (kapsam == "TESPIT")
+            {
+                <Secim ElemanId="skb-tespit" Etiket="@M.BekletmeTespit" Deger="@tespitId" DegerChanged="@(x => tespitId = x)"
+                       Secenekler="@tespitSecenekleri" Yukleniyor="@tespitYukleniyor" Hata="@(AlanHata("kimlikTespitiId") ?? tespitHata)" Zorunlu="true" />
+            }
+        }
+        else
+        {
+            <SaltOkunur ElemanId="skb-kapsam-salt" Etiket="@M.BekletmeKapsam" Deger="@(duzenlenen.Kapsam == "TUMU" ? M.BekletmeKapsamTumu : M.BekletmeKapsamTek)" />
+        }
+        <Tarih ElemanId="skb-bitis" Etiket="@M.BekletmeBitis" Deger="@bitis" DegerChanged="@(x => bitis = x)"
+               EnErken="@Bugun.AddDays(1)" EnGec="@Bugun.AddYears(1)" Zorunlu="true" Hata="@AlanHata("bitis")" />
+        <GerekceAlani Id="skb-gerekce" Etiket="@M.BekletmeGerekce" AsgariUzunluk="20" AzamiUzunluk="500"
+                      Deger="@gerekce" DegerChanged="@(x => gerekce = x)" />
+        <p class="metin-kucuk metin-soluk" id="skb-gerekce-ipucu">@M.BekletmeGerekceIpucu</p>
+        @if (AlanHata("gerekce") is { } gh) { <p class="hata-metni" id="skb-gerekce-hata" role="alert">@gh</p> }
+        <HataBandi Mesaj="@formHata" Id="skb-form-hata" />
+    </Cekmece>
+
+    <OnayKipi Acik="@(kaldirilacak is not null)" Kimlik="skb-kaldir" Eylem="@M.BekletmeKaldir"
+              OnayMetni="@M.BekletmeKaldirOnay" Aciklama="@M.BekletmeKaldirAciklama"
+              Calisiyor="@kaydediliyor" Hata="@kaldirHata"
+              Onayla="Kaldir" Vazgec="KaldirVazgec" />
+}
+
+@code {
+    // ── PAKET GOC-B — ortak ızgara kolonları ──
+    private IzgaraSiralama? bekletmeSira;
+    /// <summary>Sunucunun bekletme listesi sınırı (SaklamaYaptirimModulu Take(100)).</summary>
+    private const int BekletmeSiniri = 100;
+    private bool BekletmeTam => (veri?.Bekletmeler.Count ?? 0) < BekletmeSiniri;
+    private string BekletmeDurumAdi(SaklamaBekletmeSatiri b) =>
+        b.Kaldirildi is not null ? M.BekletmeKaldirildi : b.Aktif ? M.BekletmeAktif : M.BekletmeBitti;
+
+    private IReadOnlyList<IzgaraKolonu<SaklamaBekletmeSatiri>> BekletmeKolonlari =>
+    [
+        new() { Anahtar = "kapsam", Baslik = M.BekletmeKapsam, ZorunluGorunur = true, SunucuSiralamaAdi = BekletmeTam ? "kapsam" : null,
+                HucreSinif = _ => "hucre-tek-satir", Deger = b => b.Kapsam == "TUMU" ? M.BekletmeKapsamTumu : M.BekletmeKapsamTek },
+        new() { Anahtar = "durum", Baslik = M.BekletmeDurum, SunucuSiralamaAdi = BekletmeTam ? "durum" : null,
+                HucreSinif = _ => "hucre-tek-satir", Deger = BekletmeDurumAdi,
+                Hucre = b => @<Rozet Renk="@(b.Aktif ? "yesil" : "gri")">@BekletmeDurumAdi(b)</Rozet> },
+        new() { Anahtar = "bitis", Baslik = M.BekletmeBitis, ZorunluGorunur = true, SunucuSiralamaAdi = BekletmeTam ? "bitis" : null,
+                Tur = IzgaraHucreTuru.Tarih, HucreSinif = _ => "hucre-tek-satir", Deger = b => b.BitisGunu },
+        new() { Anahtar = "gerekce", Baslik = M.BekletmeGerekce, HucreSinif = _ => "metin-kucuk", Deger = b => b.Gerekce },
+        new() { Anahtar = "eylem", Baslik = M.BekletmeDuzenle, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = b => @<text>@if (b.Kaldirildi is null)
+                    {
+                        <div class="dugme-satir">
+                            <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="@($"skb-duzenle-{b.Id}")" @onclick="() => DuzenleAc(b)">@M.BekletmeDuzenle</button>
+                            <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="@($"skb-kaldir-{b.Id}")" @onclick="() => kaldirilacak = b">@M.BekletmeKaldir</button>
+                        </div>
+                    }</text> },
+    ];
+
+    private SaklamaBekletmeListesi? veri;
+    private string? hata, basari, formHata, kaldirHata, tespitHata;
+    private int basariJeton;
+    private bool formAcik, kaydediliyor, tespitYukleniyor;
+    private SaklamaBekletmeSatiri? duzenlenen, kaldirilacak;
+    private string? kapsam = "TUMU", tespitId;
+    private DateOnly? bitis;
+    private string gerekce = "";
+    private IReadOnlyDictionary<string, string[]> alanlar = new Dictionary<string, string[]>();
+    private IReadOnlyList<SecenekOgesi> tespitSecenekleri = [];
+
+    private Yasal3Metinleri M => Yasal3Sozlugu.Al(Dil.Dil);
+    private CultureInfo Kultur => CultureInfo.GetCultureInfo(Dil.Dil == "en" ? "en-GB" : "tr-TR");
+    private bool Yetkili => Oturum.Kullanici?.Rol is "SAHIP";
+    private static DateOnly Bugun => DateOnly.FromDateTime(DateTime.Now);
+
+    private IReadOnlyList<SecenekOgesi> KapsamSecenekleri =>
+        [new("TUMU", M.BekletmeKapsamTumu), new("TESPIT", M.BekletmeKapsamTek)];
+
+    /// <summary>Kaydet kilidinin sebebi (UX-S30) — istemci tarafı ön denetim; son söz sunucuda.</summary>
+    private string? KilitSebebi =>
+        bitis is null ? M.BekletmeBitis
+        : (gerekce?.Trim().Length ?? 0) < 20 ? $"{M.BekletmeGerekce} {(gerekce?.Trim().Length ?? 0)}/20"
+        : duzenlenen is null && kapsam == "TESPIT" && string.IsNullOrEmpty(tespitId) ? M.BekletmeTespit
+        : null;
+
+    private string? AlanHata(string alan) => alanlar.TryGetValue(alan, out var m) && m.Length > 0 ? m[0] : null;
+
+    private static string Ozet(string? o) =>
+        o is null ? "" : System.Text.RegularExpressions.Regex.Replace(o, @"^saklama süresi maskelemesi( \(otomatik\))?: ", "");
+
+    protected override async Task OnInitializedAsync() => await Yukle();
+
+    private async Task Yukle()
+    {
+        if (!Yetkili) return;
+        hata = null;
+        try { veri = await Api.GetAsync<SaklamaBekletmeListesi>("/masak/saklama-bekletmeleri"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = string.Format(M.BekletmeHata, ex.Message); }
+    }
+
+    private void YeniAc()
+    {
+        duzenlenen = null; kapsam = "TUMU"; tespitId = null; bitis = null; gerekce = "";
+        formHata = null; alanlar = new Dictionary<string, string[]>(); formAcik = true;
+    }
+
+    private void DuzenleAc(SaklamaBekletmeSatiri b)
+    {
+        duzenlenen = b; bitis = b.BitisGunu; gerekce = b.Gerekce;
+        formHata = null; alanlar = new Dictionary<string, string[]>(); formAcik = true;
+    }
+
+    private async Task KapsamDegisti(string? k)
+    {
+        kapsam = k;
+        if (k != "TESPIT" || tespitSecenekleri.Count > 0) return;
+        tespitYukleniyor = true; tespitHata = null;
+        try
+        {
+            var liste = await Api.GetAsync<List<SaklamaTespitOzeti>>("/masak/kimlik-tespitleri?limit=200");
+            tespitSecenekleri = [.. liste.Select(t => new SecenekOgesi(t.Id,
+                $"{Bicim.TarihTam(t.Tarih)} · {t.AdSoyad}",
+                Bicim.TarihTam(t.SaklamaBitis)))];
+        }
+        catch (ApiHata ex) { tespitHata = ex.Message; }
+        tespitYukleniyor = false;
+    }
+
+    private void FormKapat() { formAcik = false; duzenlenen = null; }
+
+    private async Task FormKaydet()
+    {
+        formHata = null; alanlar = new Dictionary<string, string[]>();
+        if (KilitSebebi is { } k) { formHata = k; return; }   // DoD EK md.3: sessiz etkisizlik yok
+        kaydediliyor = true;
+        try
+        {
+            SaklamaBekletmeSatiri s = duzenlenen is null
+                ? await Api.PostAsync<SaklamaBekletmeSatiri>("/masak/saklama-bekletme",
+                    new { kapsam, kimlikTespitiId = kapsam == "TESPIT" ? tespitId : null, bitis, gerekce })
+                : await Api.PatchAsync<SaklamaBekletmeSatiri>($"/masak/saklama-bekletme/{Uri.EscapeDataString(duzenlenen.Id)}",
+                    new { bitis, gerekce });
+            formAcik = false; duzenlenen = null;
+            basari = string.Format(M.BekletmeKaydedildi, Bicim.Gun(s.BitisGunu)); basariJeton++;
+            await Yukle();
+        }
+        catch (ApiHata ex) { alanlar = ex.Alanlar; formHata = ex.Alanlar.Count > 0 ? null : ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private async Task Kaldir()
+    {
+        if (kaldirilacak is null) return;
+        kaydediliyor = true; kaldirHata = null;
+        try
+        {
+            await Api.PostAsync<SaklamaBekletmeSatiri>($"/masak/saklama-bekletme/{Uri.EscapeDataString(kaldirilacak.Id)}/kaldir");
+            kaldirilacak = null;
+            basari = M.BekletmeKaldirildi; basariJeton++;
+            await Yukle();
+        }
+        catch (ApiHata ex) { kaldirHata = ex.Message; }
+        kaydediliyor = false;
+    }
+
+    private void KaldirVazgec() { kaldirilacak = null; kaldirHata = null; }
+
+}

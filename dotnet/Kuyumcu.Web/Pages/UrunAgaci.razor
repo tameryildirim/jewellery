@@ -1,0 +1,921 @@
+@page "/urunler/agac"
+@using Kuyumcu.Core.Sozlesmeler
+@using Kuyumcu.Contracts.Sayfalar.UrunAgaci
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   ÜRÜN AĞACI VE REYONLAR
+
+   TESPİT (2026-09-14): çok seviyeli kategori ağacı ve reyon API'de VARDI,
+   ekranı YOKTU. Kullanıcı ne kategori açabiliyor ne de malın hangi vitrinde
+   durduğunu söyleyebiliyordu — yani sunucudaki yetenek fiilen ölüydü.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(Dil.T.UrunAgaci.Baslik)</PageTitle>
+@* ORTAK-1 (KEŞİF #4): sayfadaki HER Sayi/Para/Gram kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+@* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) liste = tuval Y_Urunagaci (BİREBİR); özgün ekran yalnız "ayrıntı" görünümünde
+   çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+@if (YildizOzgunCiz) {
+<div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    <div class="sayfa-baslik">
+        <SayfaBasi Anahtar="urun-agaci" Baslik="@Dil.T.UrunAgaci.Baslik"
+                   Aciklama="@Dil.T.UrunAgaci.Aciklama">
+            <Eylem>
+                <button class="btn btn-birincil" id="agac-yeni-kategori" @onclick="() => KategoriModalAc(null)">
+                    + @Dil.T.UrunAgaci.YeniKategori
+                </button>
+            </Eylem>
+        </SayfaBasi>
+    </div>
+    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+
+    @* ── Kategoriler ── *@
+    <div class="kart">
+        <div class="kart-baslik satir-arasi">
+            <h2>@Dil.T.UrunAgaci.Kategoriler</h2>
+            @* Birincil eylem kart başlığından SAYFA BAŞINA taşındı (ekran başına
+               tek birincil eylem, brif mührü); ikinci bir kopyası açılmadı. *@
+        </div>
+        <div class="kart-govde">
+            @if (kategoriYukleniyor)
+            {
+                <Yukleniyor />
+            }
+            else if (kategoriHata is not null)
+            {
+                <HataBandi Mesaj="@kategoriHata" Id="hata-bandi" />
+            }
+            else if (agac.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.UrunAgaci.KategoriYok" />
+            }
+            else
+            {
+                <ul class="agac">
+                    @foreach (var k in agac)
+                    {
+                        @DugumCiz(k, 0)
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    @* ── Reyonlar ── *@
+    <div class="kart">
+        <div class="kart-baslik satir-arasi">
+            <h2>@Dil.T.UrunAgaci.Reyonlar</h2>
+            @* ORTAK-1 hakem turu 29.09: ekranda iki birincil düğme vardı; "+ Yeni Reyon" ikincil (tek birincil = sayfa başı). *@
+            <button class="btn btn-ikincil btn-kucuk" id="agac-yeni-reyon" @onclick="ReyonModalAc">
+                + @Dil.T.UrunAgaci.YeniReyon
+            </button>
+        </div>
+        <div class="kart-govde">
+            @* ORTAK-1 hakem turu 29.09 (KRİTİK): HUB'daki geliştirici değişiklik notu ("Reyon artık … SAYIM
+               KAPSAMI hâlâ …") ekrandaydı. BASİT'te çizilmez; PRO'da tek sade cümle (ORTAK-1 sözlüğü). *@
+            @if (!Dil.BasitMi)
+            {
+                <p class="metin-soluk metin-kucuk" id="agac-reyon-sayim-notu"><Ikon Ad="@Ikonlar.Uyari" /> @OrtakGorunumSozlugu.Al(Dil.Dil).UrunAgaciReyonSayimNotu</p>
+            }
+            @if (reyonYukleniyor)
+            {
+                <Yukleniyor />
+            }
+            else if (reyonHata is not null)
+            {
+                <HataBandi Mesaj="@reyonHata" />
+            }
+            else if (reyonlar.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.UrunAgaci.ReyonYok" />
+            }
+            else
+            {
+                @* PAKET GOC-C — ORTAK IZGARA (grid:urun-agaci:reyon-liste). Reyon listesi TAMDIR → yerel sıralama.
+                   Mevcut id'ler (r-icerik-*, r-duzenle-*, r-tasi-*, r-tasi-kilit-*, r-pasife-al-*, r-aktife-al-*) korunur. *@
+                <Izgara T="ReyonSatiri" Ekran="urun-agaci" GridId="reyon-liste" TabloSinif="q10-th-tek" Kolonlar="@ReyonKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(reyonlar, reyonSira, ReyonKolonlari)"
+                        SatirId="@(r => $"r-satir-{r.Id}")" Baslik="@Dil.T.UrunAgaci.ReyonAdi"
+                        SiralamaDegisti="@(x => reyonSira = x)" GecerliSiralama="@reyonSira" />
+            }
+        </div>
+    </div>
+</div>
+}
+
+@* ── Reyon içeriği (PAKET 25) ────────────────────────────────────────────────
+   UX-S23: soyut kaydın (reyon) etkisi AYNI ekranda görünür. UX-S28: hata
+   "kayıt yok"a çevrilmez — boş durum yalnız istek başarılı VE sonuç boşken. *@
+@if (icerikReyon is not null)
+{
+    <div class="kart" id="reyon-icerik-kart">
+        <div class="kart-baslik satir-arasi">
+            <h2>@Dil.T.Yerlesim.ReyonIcerigi — @icerikReyon.Ad</h2>
+            <button class="btn btn-ikincil btn-kucuk" id="reyon-icerik-kapat"
+                    @onclick="() => icerikReyon = null">@Dil.T.Ortak.Kapat</button>
+        </div>
+        <div class="kart-govde">
+            @if (icerikYukleniyor)
+            {
+                <Yukleniyor />
+            }
+            else if (icerikHata is not null)
+            {
+                <HataBandi Mesaj="@icerikHata" Id="reyon-icerik-hata" />
+            }
+            else if (icerikSatirlar.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.Yerlesim.ReyonBos" />
+            }
+            else
+            {
+                @* PAKET GOC-C — ORTAK IZGARA (grid:urun-agaci:reyon-icerik). Sunucu sayfalı (sınırda not aşağıda,
+                   UX-S29): sınırdaysa sıralama KAPALI. *@
+                <Izgara T="ReyonIcerikSatiri" Ekran="urun-agaci" GridId="reyon-icerik" Kolonlar="@IcerikKolonlari"
+                        Ogeler="@IzgaraYerelSiralama.Uygula(icerikSatirlar, icerikSira, IcerikKolonlari)"
+                        Baslik="@Dil.T.Yerlesim.ReyonIcerigi"
+                        SiralamaDegisti="@(x => icerikSira = x)" GecerliSiralama="@icerikSira" />
+                @* UX-S29: sunucu sınırı EKRANDA söylenir, sessiz kırpma yok. *@
+                @if (icerikSinirda)
+                {
+                    <p class="metin-kucuk metin-soluk" id="reyon-icerik-sinir">@Dil.T.Yerlesim.Sinirda</p>
+                }
+            }
+        </div>
+    </div>
+}
+
+@* ── Reyon içi taşıma — ÇEKMECE (tek düzenleme kalıbı, DoD EK md.2) ── *@
+<Cekmece Acik="tasiAcik" Varlik="reyon-tasima" Baslik="@Dil.T.Yerlesim.Tasi"
+         Kapat="() => tasiAcik = false" Kaydet="TasimaKaydet"
+         Kaydediliyor="@kaydediliyor" KaydetAktif="@TasimaGecerli"
+         KilitSebebi="@(sayiKapisi.Sebep(Dil.Dil, "tasi-") ?? TasimaKilitSebebi)">
+    <div class="form-dikey">
+        @* UX-S22: kaynak reyon TEK seçenektir (tıklanan satır) — seçici
+           gösterilmez, salt okunur satır olarak yazılır. *@
+        <div class="alan">
+            <label>@Dil.T.Yerlesim.KaynakReyon</label>
+            <p class="hucre-vurgu" id="tasi-kaynak">@tasiKaynak?.Ad</p>
+        </div>
+        <div class="alan">
+            <Secici ElemanId="tasi-urun"
+                    Etiket="@Dil.T.Yerlesim.UrunAdi"
+                    Secenekler="@TasiUrunSecenekleri"
+                    @bind-Deger="tasiUrunId"
+                    BosSecenekMetni="—" />
+        </div>
+        <div class="alan">
+            <Secici ElemanId="tasi-hedef"
+                    Etiket="@Dil.T.Yerlesim.HedefReyon"
+                    Secenekler="@(HedefAdaylari.Select(hr => new SecenekOgesi(hr.Id, hr.Ad)).ToList())"
+                    @bind-Deger="tasiHedefId"
+                    BosSecenekMetni="—" />
+        </div>
+        <div class="alan">
+            @* Sessiz etkisizlik YASAK: alan altı Türkçe mesaj. *@
+            <Sayi ElemanId="tasi-adet" Etiket="@Dil.T.Yerlesim.Adet" Zorunlu="true" EnAz="0" EnCokOndalik="3"
+                  Deger="@tasiAdet" DegerChanged="@(v => tasiAdet = v ?? 0m)"
+                  Hata="@(tasiAdet <= 0m ? Dil.T.Yerlesim.AdetGecersiz : null)"
+                  HataKimligi="tasi-adet-hata" />
+            @if (tasiAdet > 0m && TasiSecilenAdet is { } mevcut && tasiAdet > mevcut)
+            {
+                <span class="metin-kucuk metin-hata" id="tasi-adet-asim">@Dil.T.Yerlesim.YetersizYerlesim</span>
+            }
+        </div>
+        <HataBandi Mesaj="@tasiHata" Id="tasi-hata" />
+    </div>
+</Cekmece>
+
+@* ── Kategori ekle / düzenle — ÇEKMECE (DoD EK md.2: tek düzenleme kalıbı) ──
+   İçteki alan id'leri AYNEN korundu (#k-ad, #k-ust, #k-sira). *@
+<Cekmece Acik="kategoriModalAcik" Varlik="kategori"
+         Baslik="@(kDuzenlenenId is null ? (YildizMi ? YildizAgacSozlugu.YeniGrup(Dil.Dil) : Dil.T.UrunAgaci.YeniKategori) : Dil.T.Ortak.Duzenle)"
+         Kapat="() => kategoriModalAcik = false" Kaydet="KategoriKaydet"
+         Kaydediliyor="@kaydediliyor" KaydetAktif="@(!sayiKapisi.OnekleVar("k-"))"
+         KilitSebebi="@sayiKapisi.Sebep(Dil.Dil, "k-")">
+    <div class="form-dikey">
+        @* YILDIZ-KATMAN (5A kalanı "Ürün ağacı başlık/düğme adı"): Yıldız'da düğme "Yeni grup" (tuval Y_Urunagaci
+           "gruplar ve alt gruplar") — çekmece başlığı ve alan adları AYNI kavramı söyler (UX-S31). Öteki şemalar AYNEN. *@
+        <Metin ElemanId="k-ad" Etiket="@(YildizMi ? YildizKatmanSozlugu.GrupAdi(Dil.Dil) : Dil.T.UrunAgaci.KategoriAdi)" Zorunlu="true" EnFazla="@AlanSinirlari.UrunKategoriAdi"
+               Deger="@kAd" DegerChanged="@(v => kAd = v ?? "")"
+               Durum="form" HataAlani="k-ad" />
+        <div class="form-grid-2">
+            <div class="alan">
+                <Secici ElemanId="k-ust"
+                        Etiket="@(YildizMi ? YildizKatmanSozlugu.UstGrup(Dil.Dil) : Dil.T.UrunAgaci.UstKategori)"
+                        Secenekler="@(UstAdaylari.Select(d => new SecenekOgesi(d.Id, d.Etiket)).ToList())"
+                        @bind-Deger="kUstId"
+                        BosSecenekMetni="@Dil.T.UrunAgaci.KokSeviye" />
+                @* Döngü koruması sunucuda; burada aday listesinden düşürerek
+                   kullanıcıyı hataya hiç sokmuyoruz. *@
+                <span class="metin-soluk metin-kucuk">@(YildizMi ? YildizKatmanSozlugu.DonguUyarisi(Dil.Dil) : Dil.T.UrunAgaci.DonguUyarisi)</span>
+            </div>
+            @* QA turu 2 DÜŞÜK: Sıra = -3 kabul ediliyordu. min=0 + alan altı mesaj. *@
+            @* PAKET GOC-C (K17 tarzı tam sayı): 2,7 eskiden SESSİZCE 2'ye kırpılıyordu; int taşması 400 değil istisnaydı. *@
+            <Sayi ElemanId="k-sira" Etiket="@Dil.T.UrunAgaci.Sira" EnAz="0" EnCok="@KategoriSiraEnCok" TamSayi="true"
+                  Deger="@((decimal?)kSira)" DegerChanged="@(v => kSira = v is { } _s && _s == decimal.Truncate(_s) && _s <= KategoriSiraEnCok ? (int)_s : 0)"
+                  Durum="form" HataAlani="k-sira" />
+        </div>
+        @* PAKET P-13 · B-40 / UX-S22: aktif/pasif işaret kutusu BURADAN KALDIRILDI.
+           Aynı soruya iki cevap vardı (kutu sessizce pasife alıyor, onay ve bağlı
+           kayıt uyarısı olmadan). Tek cevap ağaç satırındaki düğmedir. *@
+        @if (kDuzenlenenId is not null)
+        {
+            <p class="metin-kucuk metin-soluk" id="k-aktiflik-yolu">@Dil.T.UrunAgaci.KategoriPasifOnay</p>
+        }
+        <HataBandi Mesaj="@kategoriModalHata" />
+        @* Kaydet/İptal çekmecenin alt çubuğunda (#cekmece-kategori-kaydet/-iptal). *@
+    </div>
+</Cekmece>
+
+@* ── Reyon ekle / düzenle — ÇEKMECE ──
+   UX-S26: oluşturma ve düzenleme AYNI alan kümesini taşır ve seçenek listeleri
+   TEK diziden üretilir; "sonra düzenlemeden gir" ertelemesi yoktur. *@
+<Cekmece Acik="reyonModalAcik" Varlik="reyon"
+         Baslik="@(rDuzenlenen is null ? Dil.T.UrunAgaci.YeniReyon : Dil.T.Ortak.Duzenle)"
+         Kapat="() => reyonModalAcik = false" Kaydet="ReyonKaydet"
+         Kaydediliyor="@kaydediliyor">
+    <div class="form-dikey">
+        <Metin ElemanId="r-ad" Etiket="@Dil.T.UrunAgaci.ReyonAdi" Zorunlu="true" EnFazla="@AlanSinirlari.ReyonAdi"
+               Deger="@rAd" DegerChanged="@(v => rAd = v ?? "")"
+               Durum="form" HataAlani="r-ad" />
+        <div class="form-grid-2">
+            <div class="alan">
+                <Secici ElemanId="r-sube"
+                        Etiket="@Dil.T.UrunAgaci.Sube"
+                        Secenekler="@SubeSecenekleri"
+                        @bind-Deger="rSubeId"
+                        Devredisi="@(rDuzenlenen is not null)"
+                        DevredisiSebebi="@(rDuzenlenen is not null ? Dil.T.UrunAgaci.ReyonSubeDegismez : null)"
+                        Hata="@form.Mesaj("r-sube")"
+                        BosSecenekMetni="—" />
+                <AlanHatasi Alan="r-sube" Durum="form" />
+                @if (rDuzenlenen is not null)
+                {
+                    @* UX-S30/UX-S25: kilitli alan SEBEBİNİ söyler. Reyonun şubesi
+                       sunucuda değiştirilebilir bir alan DEĞİLDİR (ReyonGuncelleDto
+                       şube taşımaz); doğru yol yeni reyon açıp ürünleri taşımaktır. *@
+                    <span class="metin-kucuk metin-soluk" id="r-sube-kilit">@Dil.T.UrunAgaci.SubeDegismez</span>
+                }
+            </div>
+            <div class="alan">
+                <Secici ElemanId="r-tip"
+                        Etiket="@Dil.T.UrunAgaci.ReyonTipi"
+                        Secenekler="@(new List<SecenekOgesi> { new SecenekOgesi("VITRIN", Dil.T.UrunAgaci.TipVitrin), new SecenekOgesi("KASA", Dil.T.UrunAgaci.TipKasa), new SecenekOgesi("DEPO", Dil.T.UrunAgaci.TipDepo), new SecenekOgesi("CANTA", Dil.T.UrunAgaci.TipCanta) })"
+                        @bind-Deger="rTip" />
+            </div>
+        </div>
+        @if (rDuzenlenen is not null)
+        {
+            <Onay ElemanId="r-aktif" Etiket="@Dil.T.Ortak.Aktif" @bind-Deger="rAktif" />
+        }
+        <HataBandi Mesaj="@reyonModalHata" />
+    </div>
+</Cekmece>
+
+@* ── Pasife alma onayı — TEK ortak modal (yıkıcı eylem, DoD EK md.4) ────────
+   ⚠ PAKET P-13: kategori için İKİNCİ bir ModalPencere AÇILMADI; reyonunki
+   ortaklaştırıldı. İki ayrı pencere hem `ModalPencere` sayacını artırırdı hem
+   de aynı soruyu iki farklı yüzle sorardı (UX-S22). Kimlikler korunuyor:
+   reyonda r-pasif-*, kategoride k-pasif-*. *@
+<ModalPencere Acik="@(rPasifAday is not null || kPasifAday is not null)" Baslik="@PasifeAlMetni"
+              Kapat="() => { rPasifAday = null; kPasifAday = null; }">
+    <div class="form-dikey">
+        @if (rPasifAday is not null)
+        {
+            <p id="r-pasif-onay-metin">@Dil.T.UrunAgaci.ReyonPasifOnay</p>
+            <p class="hucre-vurgu">@rPasifAday.Ad</p>
+            <HataBandi Mesaj="@reyonHata" />
+            <div class="satir">
+                <button id="r-pasif-onayla" class="btn btn-tehlike" disabled="@kaydediliyor" @onclick="ReyonPasifeAl">@PasifeAlMetni</button>
+                <button id="r-pasif-vazgec" class="btn btn-ikincil esit-pay" @onclick="() => rPasifAday = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            </div>
+        }
+        else if (kPasifAday is not null)
+        {
+            <p id="k-pasif-onay-metin">@Dil.T.UrunAgaci.KategoriPasifOnay</p>
+            <p class="hucre-vurgu">@kPasifAday.Ad</p>
+            @if (kPasifBagli is not null)
+            {
+                <p class="metin-kucuk metin-soluk" id="k-pasif-bagli">
+                    @(kPasifBagli.UrunSayisi == 0 && kPasifBagli.AltKategoriSayisi == 0
+                        ? Dil.T.UrunAgaci.KategoriBagliYok
+                        : string.Format(Dil.T.UrunAgaci.KategoriBagliKayit,
+                            kPasifBagli.UrunSayisi, kPasifBagli.AltKategoriSayisi))
+                </p>
+            }
+            <HataBandi Mesaj="@kategoriHata" />
+            <div class="satir">
+                <button id="k-pasif-onayla" class="btn btn-tehlike" disabled="@kaydediliyor" @onclick="KategoriPasifeAl">@Dil.T.UrunAgaci.KategoriPasifeAl</button>
+                <button id="k-pasif-vazgec" class="btn btn-ikincil esit-pay" @onclick="() => kPasifAday = null"><Kuyumcu.Web.Bilesenler.Yildiz.YildizVazgec /></button>
+            </div>
+        }
+    </div>
+</ModalPencere>
+</CascadingValue>
+
+@code {
+    /// <summary>ORTAK-1 (KEŞİF #4): ortak geçersiz sayı kapısı — "1.500" gibi anlaşılamayan sayı varken ilgili formun Kaydet'i PASİF, gövdeye 0/eski değer GİTMEZ.</summary>
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+    // PAKET Q10-5 (K8 · D10): basit modda "Pasife al" jargonu "Kullanımdan kaldır"
+    // okunur (KAT-1 katalog karşılığı, tek kaynak); profesyonel mod değişmez.
+    // Kıyas devri 28.09 (UX-5) → hakem turu 29.09: HUB'daki KapsamUyarisi (başında "⚠") artık
+    // okunmaz; PRO notu ORTAK-1 sözlüğünden, işaret Ikon bileşeniyle çizilir.
+    private string PasifeAlMetni => Dil.BasitMi ? KatalogSozlugu.Al(Dil.Dil).KullanimdanKaldir : Dil.T.Cari.PasifeAl;
+
+    // ── P-36c GÖÇ YARDIMCILARI ──────────────────────────────────────────
+    private IReadOnlyList<SecenekOgesi> TasiUrunSecenekleri =>
+        [.. icerikSatirlar.Select(x => new SecenekOgesi(x.UrunId, $"{x.Ad} ({Bicim.Miktar(x.Adet, x.Birim)})"))];
+
+    private IReadOnlyList<SecenekOgesi> SubeSecenekleri =>
+        [.. subeler.Select(sb => new SecenekOgesi(sb.Id, sb.Ad))];
+
+
+    private List<KategoriDugum> agac = [];
+    private List<ReyonSatiri> reyonlar = [];
+
+    /// <summary>PAKET GOC-C: kategori sırası üst sınırı (sunucu KategoriOlusturDto Range ile AYNI sabit).</summary>
+    private const int KategoriSiraEnCok = Kuyumcu.Core.Domain.Girdi.AlanSinirlari.KategoriSiraEnCok;
+
+    // ── PAKET GOC-C — ortak ızgara kolonları (başlıklar sözlükten; anahtarlar kalıcı) ──
+    private IzgaraSiralama? reyonSira, icerikSira;
+    private IReadOnlyList<IzgaraKolonu<ReyonSatiri>> ReyonKolonlari =>
+    [
+        new() { Anahtar = "ad", Baslik = Dil.T.UrunAgaci.ReyonAdi, ZorunluGorunur = true, SunucuSiralamaAdi = "ad",
+                HucreSinif = _ => "hucre-vurgu", Deger = r => r.Ad },
+        new() { Anahtar = "tip", Baslik = Dil.T.UrunAgaci.ReyonTipi, SunucuSiralamaAdi = "tip", Deger = r => TipAdi(r.Tip),
+                Hucre = r => @<Rozet Renk="mavi">@TipAdi(r.Tip)</Rozet> },
+        new() { Anahtar = "sube", Baslik = Dil.T.UrunAgaci.Sube, SunucuSiralamaAdi = "sube",
+                HucreSinif = _ => "metin-soluk metin-kucuk hucre-tek-satir", Deger = r => SubeAdi(r.SubeId) },   // ölçüm K3: "Merkez Şube" kırılıyordu
+        new() { Anahtar = "urun-sayisi", Baslik = Dil.T.UrunAgaci.UrunSayisi, SunucuSiralamaAdi = "urun-sayisi", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.UrunSayisi },
+        // PAKET 25 + UX-S23: fiilen duran mal adedi — sayı O KAYITLARA giden bağlantıdır (reyon içeriği).
+        new() { Anahtar = "yerlesik", Baslik = Dil.T.Yerlesim.YerlesikAdet, SunucuSiralamaAdi = "yerlesik", BaslikSinif = "sayi",
+                HucreSinif = _ => "sayi", Deger = r => r.YerlesikAdet,
+                Hucre = r => @<button class="btn btn-ikincil btn-kucuk" id="@($"r-icerik-{r.Id}")" @onclick="() => IcerikAc(r)">@Bicim.Miktar(r.YerlesikAdet, null)</button> },
+        new() { Anahtar = "durum", Baslik = Dil.T.Urun.Durum, SunucuSiralamaAdi = "durum",
+                Deger = r => r.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif,
+                Hucre = r => @<Rozet Renk="@(r.Aktif ? "yesil" : "gri")">@(r.Aktif ? Dil.T.Ortak.Aktif : Dil.T.Ortak.Pasif)</Rozet> },
+        // QA turu 1-2 KRİTİK (UX-S25): düzenle / taşı / pasife al — her düğme istek atar ya da kilitli + sebep.
+        new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true,
+                KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                Hucre = r => @<div class="rozet-satir">
+                    <button class="btn btn-ikincil btn-kucuk" @onclick="() => ReyonDuzenleAc(r)" id="@($"r-duzenle-{r.Id}")">
+                        <Ikon Ad="@Ikonlar.Kalem" /> @Dil.T.Ortak.Duzenle
+                    </button>
+                    <button class="btn btn-ikincil btn-kucuk" id="@($"r-tasi-{r.Id}")"
+                            disabled="@(r.YerlesikAdet <= 0m || !r.Aktif)" @onclick="() => TasiAc(r)">@Dil.T.Yerlesim.Tasi</button>
+                    @if (r.YerlesikAdet <= 0m || !r.Aktif)
+                    {
+                        <span class="metin-kucuk metin-soluk hucre-not-tek-satir" id="@($"r-tasi-kilit-{r.Id}")">@Dil.T.Yerlesim.ReyonBos</span>
+                    }
+                    @if (r.Aktif)
+                    {
+                        <button class="btn btn-tehlike btn-kucuk" disabled="@kaydediliyor" id="@($"r-pasife-al-{r.Id}")"
+                                @onclick="() => ReyonPasifOnayAc(r)">@PasifeAlMetni</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-ikincil btn-kucuk" disabled="@kaydediliyor" id="@($"r-aktife-al-{r.Id}")"
+                                @onclick="() => ReyonAktifeAl(r)">@Dil.T.Kabuk.AktifeAl</button>
+                    }
+                </div> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<ReyonIcerikSatiri>> IcerikKolonlari =>
+    [
+        new() { Anahtar = "kod", Baslik = Dil.T.Yerlesim.UrunKodu, SunucuSiralamaAdi = icerikSinirda ? null : "kod",
+                HucreSinif = _ => "metin-soluk metin-kucuk", Deger = x => x.Kod },
+        new() { Anahtar = "ad", Baslik = Dil.T.Yerlesim.UrunAdi, ZorunluGorunur = true, SunucuSiralamaAdi = icerikSinirda ? null : "ad",
+                HucreSinif = _ => "hucre-vurgu", Deger = x => x.Ad },
+        new() { Anahtar = "adet", Baslik = Dil.T.Yerlesim.Adet, ZorunluGorunur = true, SunucuSiralamaAdi = icerikSinirda ? null : "adet",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = x => x.Adet,
+                Hucre = x => @<text>@Bicim.Miktar(x.Adet, x.Birim)</text> },
+    ];
+    private List<SubeOzet> subeler = [];
+
+    private bool kategoriYukleniyor = true, reyonYukleniyor = true, kaydediliyor;
+    private string? kategoriHata, reyonHata, kategoriModalHata, reyonModalHata;
+
+    private bool kategoriModalAcik, reyonModalAcik;
+    private string? kDuzenlenenId;
+    private string kAd = "", kUstId = "";
+    private int kSira;
+
+    private string rAd = "", rSubeId = "", rTip = "VITRIN";
+
+    // ── PAKET 25 — reyon içeriği + reyon içi taşıma ──────────────────────────
+    private ReyonSatiri? icerikReyon;
+    private List<ReyonIcerikSatiri> icerikSatirlar = [];
+    private bool icerikYukleniyor, icerikSinirda;
+    private string? icerikHata;
+
+    private bool tasiAcik;
+    private ReyonSatiri? tasiKaynak;
+    private string tasiUrunId = "", tasiHedefId = "";
+    private decimal tasiAdet;
+    private string? tasiHata;
+
+    private List<ReyonSatiri> HedefAdaylari => reyonlar
+        .Where(x => x.Aktif && x.SubeId == tasiKaynak?.SubeId && x.Id != tasiKaynak?.Id)
+        .ToList();
+
+    private decimal? TasiSecilenAdet =>
+        icerikSatirlar.FirstOrDefault(x => x.UrunId == tasiUrunId)?.Adet;
+
+    private bool TasimaGecerli => !sayiKapisi.OnekleVar("tasi-") &&   // ORTAK-1
+        !string.IsNullOrEmpty(tasiUrunId) && !string.IsNullOrEmpty(tasiHedefId)
+        && tasiAdet > 0m && TasiSecilenAdet is { } m && tasiAdet <= m;
+
+    /// <summary>UX-S30: kilitli düğme HANGİ koşulun eksik olduğunu söyler.</summary>
+    private string TasimaKilitSebebi =>
+        string.IsNullOrEmpty(tasiUrunId) ? Dil.T.Yerlesim.UrunSecilmeli
+        : string.IsNullOrEmpty(tasiHedefId) ? Dil.T.Yerlesim.HedefSecilmeli
+        : tasiAdet <= 0m ? Dil.T.Yerlesim.AdetGecersiz
+        : Dil.T.Yerlesim.YetersizYerlesim;
+
+    // ── UX-1-C0 ortak form altyapısı + reyon düzenleme durumu ───────────────
+    // ⚠ Alan adı bilinçli olarak "rDuzenlenen": kategorinin kullandığı kimlik
+    //   kalıbının İKİNCİ bir kopyası AÇILMAZ (DoD EK md.2 · denetim.sh sayacı).
+    private readonly FormDurumu form = new();
+    private string? basari;
+    private int basariJeton;
+    private ReyonSatiri? rDuzenlenen;
+    private ReyonSatiri? rPasifAday;
+    private bool rAktif = true;
+
+    private static readonly Dictionary<string, string> KategoriEsleme = new(StringComparer.OrdinalIgnoreCase)
+    { ["ad"] = "k-ad", ["ustId"] = "k-ust", ["sira"] = "k-sira" };
+
+    private static readonly Dictionary<string, string> ReyonEsleme = new(StringComparer.OrdinalIgnoreCase)
+    { ["ad"] = "r-ad", ["subeId"] = "r-sube", ["tip"] = "r-tip" };
+
+    private void Basarili(string mesaj) { basari = mesaj; basariJeton++; }
+
+    private async Task OdakIlkHataya()
+    {
+        if (form.IlkHatali is not { } ilk) return;
+        try { await JS.InvokeVoidAsync("kuyumcuOdak.alana", ilk); }
+        catch { /* JS yoksa alan altı mesaj yine görünür */ }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Dil.Degisti += Yenile;
+        await Task.WhenAll(KategoriYukle(), ReyonYukle(), SubeYukle());
+    }
+
+    private async Task KategoriYukle()
+    {
+        kategoriYukleniyor = true;
+        kategoriHata = null;
+        try
+        {
+            // sadeceAktif=false: pasif kategoriler de yönetilebilmeli, yoksa
+            // yanlışlıkla pasife alınan bir dal ekrandan tümden kaybolurdu.
+            agac = await Api.GetAsync<List<KategoriDugum>>("/urun-kategorileri?sadeceAktif=false");
+        }
+        catch (ApiHata ex) { agac = []; kategoriHata = ex.Message; }
+        kategoriYukleniyor = false;
+    }
+
+    private async Task ReyonYukle()
+    {
+        reyonYukleniyor = true;
+        reyonHata = null;
+        try { reyonlar = await Api.GetAsync<List<ReyonSatiri>>("/reyonlar"); }
+        catch (ApiHata ex) { reyonlar = []; reyonHata = ex.Message; }
+        reyonYukleniyor = false;
+    }
+
+    private async Task SubeYukle()
+    {
+        try { subeler = await Api.GetAsync<List<SubeOzet>>("/subeler"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { subeler = []; reyonHata ??= ex.Message; }
+    }
+
+    // ── Ağaç çizimi ──────────────────────────────────────────────────────────
+
+    private RenderFragment DugumCiz(KategoriDugum k, int seviye) => @<li class="agac-dugum">
+        <div class="agac-satir" style="padding-inline-start:@(seviye * 1.25)rem">
+            <span class="hucre-vurgu">@k.Ad</span>
+            <span class="metin-soluk metin-kucuk">@k.UrunSayisi @Dil.T.UrunAgaci.UrunSayisi</span>
+            @if (!k.Aktif)
+            {
+                <Rozet Renk="gri">@Dil.T.Ortak.Pasif</Rozet>
+            }
+            <button class="btn btn-ikincil btn-kucuk" @onclick="() => KategoriModalAc(k)">
+                @Dil.T.Ortak.Duzenle
+            </button>
+            <button class="btn btn-ikincil btn-kucuk" @onclick="() => AltEkle(k)">
+                + @Dil.T.UrunAgaci.YeniKategori
+            </button>
+            @* ── PAKET P-13 · B-40 ────────────────────────────────────────────
+               Kategori pasife alınamıyordu: tek yol çekmecedeki işaret kutusuydu,
+               onay yoktu, bağlı kayıt uyarısı yoktu ve HARD DELETE ucu da yoktu.
+               Reyonla AYNI kalıp: satırda düğme → onay penceresi → geri dönüş. *@
+            @if (k.Aktif)
+            {
+                <button class="btn btn-tehlike btn-kucuk" disabled="@kaydediliyor"
+                        id="@($"k-pasife-{k.Id}")" @onclick="() => KategoriPasifOnayAc(k)">
+                    @Dil.T.UrunAgaci.KategoriPasifeAl
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-ikincil btn-kucuk" disabled="@kaydediliyor"
+                        id="@($"k-aktife-al-{k.Id}")" @onclick="() => KategoriAktifeAl(k)">
+                    @Dil.T.Kabuk.AktifeAl
+                </button>
+            }
+        </div>
+        @if (k.Cocuklar.Count > 0)
+        {
+            <ul class="agac">
+                @foreach (var alt in k.Cocuklar)
+                {
+                    @DugumCiz(alt, seviye + 1)
+                }
+            </ul>
+        }
+    </li>;
+
+    // ── Kategori kaydetme ────────────────────────────────────────────────────
+
+    private void KategoriModalAc(KategoriDugum? k)
+    {
+        kategoriModalHata = null;
+        form.Temizle();
+        kDuzenlenenId = k?.Id;
+        kAd = k?.Ad ?? "";
+        kUstId = k is null ? "" : (UstBul(agac, k.Id) ?? "");
+        kSira = k?.Sira ?? 0;
+        kategoriModalAcik = true;
+    }
+
+    private void AltEkle(KategoriDugum ust)
+    {
+        kategoriModalHata = null;
+        form.Temizle();
+        kDuzenlenenId = null;
+        kAd = "";
+        kUstId = ust.Id;
+        kSira = 0;
+        kategoriModalAcik = true;
+    }
+
+    private async Task KategoriKaydet()
+    {
+        if (sayiKapisi.OnekleVar("k-")) return;   // ORTAK-1: POST/PATCH YOK
+        kategoriModalHata = null;
+        // QA turu 1+2 ORTA: "boş adla Kaydet sessizce etkisiz" — artık mesaj var.
+        form.Temizle();
+        form.Zorunlu("k-ad", kAd, Dil);
+        if (kSira < 0) form.Ekle("k-sira", Dil.T.Kabuk.NegatifOlamaz);
+        if (!form.Gecerli)
+        {
+            kategoriModalHata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            if (kDuzenlenenId is null)
+            {
+                await Api.PostAsync("/urun-kategorileri", new
+                {
+                    ad = kAd.Trim(),
+                    ustId = string.IsNullOrEmpty(kUstId) ? null : kUstId,
+                    sira = kSira,
+                });
+            }
+            else
+            {
+                await Api.PatchAsync($"/urun-kategorileri/{kDuzenlenenId}", new
+                {
+                    ad = kAd.Trim(),
+                    ustId = string.IsNullOrEmpty(kUstId) ? null : kUstId,
+                    sira = kSira,
+                    // PAKET P-13 · B-40: `aktif` ARTIK GÖNDERİLMİYOR. PATCH
+                    // sözleşmesi "gövdede yoksa koru" olduğu için düzenleme
+                    // kaydı aktifliğe dokunmaz; aktiflik tek yoldan (satırdaki
+                    // düğme → DELETE / PATCH {aktif:true}) değişir.
+                });
+            }
+            kategoriModalAcik = false;
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await KategoriYukle();
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, KategoriEsleme);
+            kategoriModalHata = FormDurumu.SunucuMesaji(ex, Dil);
+            await OdakIlkHataya();
+        }
+        kaydediliyor = false;
+    }
+
+    // ── PAKET P-13 · B-40 — kategori pasife alma / aktife alma ───────────────
+
+    private KategoriDugum? kPasifAday;
+    private KategoriBagliKayit? kPasifBagli;
+
+    /// <summary>
+    /// Onay penceresi açılırken bağlı kayıt sayıları okunur (UX-S23). İstek
+    /// patlarsa sayı UYDURULMAZ; hata bandı çıkar (Anayasa md.1 · UX-S28).
+    /// </summary>
+    private async Task KategoriPasifOnayAc(KategoriDugum k)
+    {
+        kategoriHata = null;
+        kPasifBagli = null;
+        kPasifAday = k;
+        try { kPasifBagli = await Api.GetAsync<KategoriBagliKayit>($"/urun-kategorileri/{k.Id}/bagli-kayitlar"); }
+        catch (ApiHata ex) { kategoriHata = FormDurumu.SunucuMesaji(ex, Dil); }
+    }
+
+    /// <summary>SİLMEZ, pasife alır: sunucu DELETE ucu soft delete yapar.</summary>
+    private async Task KategoriPasifeAl()
+    {
+        if (kPasifAday is null) return;
+        kategoriHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.DeleteAsync<object>($"/urun-kategorileri/{kPasifAday.Id}");
+            kPasifAday = null;
+            Basarili(Dil.T.UrunAgaci.KategoriPasifOnay);
+            await KategoriYukle();
+        }
+        catch (ApiHata ex) { kategoriHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>Geri dönüş yolu: PATCH {aktif:true} (UX-S25).</summary>
+    private async Task KategoriAktifeAl(KategoriDugum k)
+    {
+        kategoriHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<object>($"/urun-kategorileri/{k.Id}", new { aktif = true });
+            Basarili(Dil.T.Kabuk.AktifeAlindi);
+            await KategoriYukle();
+        }
+        catch (ApiHata ex) { kategoriHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    // ── Reyon kaydetme ───────────────────────────────────────────────────────
+
+    private void ReyonModalAc()
+    {
+        reyonModalHata = null;
+        form.Temizle();
+        rDuzenlenen = null;
+        rAd = "";
+        // UX-S22 — tek şube varsa sorulmaz, atanır.
+        rSubeId = subeler.Count == 1 ? subeler[0].Id : "";
+        rTip = "VITRIN";
+        rAktif = true;
+        reyonModalAcik = true;
+    }
+
+    /// <summary>
+    /// QA turu 1+2 KRİTİK: "reyon oluşturulduktan sonra düzenlenemiyor".
+    /// UX-S26 gereği düzenleme formu OLUŞTURMA formunun ta kendisidir —
+    /// ikinci bir alan kümesi açılmaz; yalnız şube kilitlenir ve sebebi yazar.
+    /// </summary>
+    private void ReyonDuzenleAc(ReyonSatiri r)
+    {
+        reyonModalHata = null;
+        form.Temizle();
+        rDuzenlenen = r;
+        rAd = r.Ad;
+        rSubeId = r.SubeId;
+        rTip = r.Tip;
+        rAktif = r.Aktif;
+        reyonModalAcik = true;
+    }
+
+    // ── PAKET 25 — reyon içeriği ve reyon içi taşıma ─────────────────────────
+
+    private async Task IcerikAc(ReyonSatiri r)
+    {
+        icerikReyon = r;
+        icerikYukleniyor = true;
+        icerikHata = null;
+        icerikSatirlar = [];
+        icerikSinirda = false;
+        try
+        {
+            var y = await Api.GetAsync<ReyonIcerikYaniti>($"/reyonlar/{r.Id}/stok");
+            icerikSatirlar = y.Satirlar ?? [];
+            icerikSinirda = y.SinirdaMi;
+        }
+        catch (ApiHata ex)
+        {
+            // UX-S28: hata "kayıt yok"a ÇEVRİLMEZ — ayrı bandda görünür.
+            icerikHata = ex.Message;
+        }
+        icerikYukleniyor = false;
+    }
+
+    private async Task TasiAc(ReyonSatiri r)
+    {
+        tasiKaynak = r;
+        tasiHata = null;
+        tasiUrunId = "";
+        tasiHedefId = "";
+        tasiAdet = 0m;
+        await IcerikAc(r);          // hedef listesi ve adet sınırı içerikten gelir
+        tasiAcik = true;
+    }
+
+    private async Task TasimaKaydet()
+    {
+        if (tasiKaynak is null || !TasimaGecerli) return;
+        tasiHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/reyonlar/tasima", new
+            {
+                subeId = tasiKaynak.SubeId,
+                urunId = tasiUrunId,
+                kaynakReyonId = tasiKaynak.Id,
+                hedefReyonId = tasiHedefId,
+                adet = tasiAdet,
+            });
+            tasiAcik = false;
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await ReyonYukle();
+            if (icerikReyon is not null)
+            {
+                var guncel = reyonlar.FirstOrDefault(x => x.Id == icerikReyon.Id);
+                if (guncel is not null) await IcerikAc(guncel);
+            }
+        }
+        catch (ApiHata ex)
+        {
+            tasiHata = ex.Message;
+        }
+        kaydediliyor = false;
+    }
+
+    private async Task ReyonKaydet()
+    {
+        reyonModalHata = null;
+        form.Temizle();
+        form.Zorunlu("r-ad", rAd, Dil);
+        if (rDuzenlenen is null) form.Zorunlu("r-sube", rSubeId, Dil);
+        if (!form.Gecerli)
+        {
+            reyonModalHata = Dil.T.Kabuk.FormEksik;
+            await OdakIlkHataya();
+            return;
+        }
+        kaydediliyor = true;
+        try
+        {
+            if (rDuzenlenen is null)
+            {
+                await Api.PostAsync("/reyonlar", new { subeId = rSubeId, ad = rAd.Trim(), tip = rTip });
+            }
+            else
+            {
+                // PATCH sözleşmesi: yalnız GÖSTERİLEN alanlar gönderilir; şube
+                // gövdede hiç yoktur (sunucu da kabul etmez), sorumlu kullanıcı
+                // bu ekranda sorulmadığı için gönderilmez = KORUNUR.
+                await Api.PatchAsync<object>($"/reyonlar/{rDuzenlenen.Id}",
+                    new { ad = rAd.Trim(), tip = rTip, aktif = rAktif });
+            }
+            reyonModalAcik = false;
+            rDuzenlenen = null;
+            Basarili(Dil.T.Kabuk.Kaydedildi);
+            await ReyonYukle();
+        }
+        catch (ApiHata ex)
+        {
+            form.Sunucudan(ex, ReyonEsleme);
+            reyonModalHata = FormDurumu.SunucuMesaji(ex, Dil);
+            await OdakIlkHataya();
+        }
+        kaydediliyor = false;
+    }
+
+    private void ReyonPasifOnayAc(ReyonSatiri r) { reyonHata = null; rPasifAday = r; }
+
+    /// <summary>
+    /// DELETE /reyonlar/{id} SİLMEZ, `aktif=0` yazar (UX-S25). Üzerinde ürün
+    /// varsa sunucu 409 döner — bu bir YETKİ hatası değil İŞ KURALIDIR ve
+    /// kullanıcıya öyle gösterilir (48-A doğrulayıcı devri).
+    /// </summary>
+    private async Task ReyonPasifeAl()
+    {
+        if (rPasifAday is null) return;
+        reyonHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.DeleteAsync<object>($"/reyonlar/{rPasifAday.Id}");
+            rPasifAday = null;
+            Basarili(Dil.T.UrunAgaci.ReyonPasifOnay);
+            await ReyonYukle();
+        }
+        catch (ApiHata ex) { reyonHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    /// <summary>Geri dönüş yolu: PATCH {aktif:true} (UX-S25 — her pasifin dönüşü vardır).</summary>
+    private async Task ReyonAktifeAl(ReyonSatiri r)
+    {
+        reyonHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PatchAsync<object>($"/reyonlar/{r.Id}", new { aktif = true });
+            Basarili(Dil.T.Kabuk.AktifeAlindi);
+            await ReyonYukle();
+        }
+        catch (ApiHata ex) { reyonHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaydediliyor = false;
+    }
+
+    // ── Yardımcılar ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Üst adayları: kendisi ve KENDİ ALT AĞACI hariç tüm kategoriler.
+    /// Bir kategori kendi torununun altına taşınırsa ağaç yürüyüşü sonsuz
+    /// döngüye girerdi — sunucu da reddeder, biz listeden hiç göstermeyiz.
+    /// </summary>
+    private List<DuzKategori> UstAdaylari =>
+        Duzlestir(agac, "").Where(d => kDuzenlenenId is null || !YasakUst(d.Id)).ToList();
+
+    private bool YasakUst(string adayId)
+    {
+        var kendisi = Bul(agac, kDuzenlenenId!);
+        if (kendisi is null) return false;
+        return adayId == kendisi.Id || AltAgactaVarMi(kendisi, adayId);
+    }
+
+    private static bool AltAgactaVarMi(KategoriDugum k, string id) =>
+        k.Cocuklar.Any(a => a.Id == id || AltAgactaVarMi(a, id));
+
+    private static KategoriDugum? Bul(List<KategoriDugum> dugumler, string id)
+    {
+        foreach (var d in dugumler)
+        {
+            if (d.Id == id) return d;
+            var alt = Bul(d.Cocuklar, id);
+            if (alt is not null) return alt;
+        }
+        return null;
+    }
+
+    private static string? UstBul(List<KategoriDugum> dugumler, string id, string? ust = null)
+    {
+        foreach (var d in dugumler)
+        {
+            if (d.Id == id) return ust;
+            var bulunan = UstBul(d.Cocuklar, id, d.Id);
+            if (bulunan is not null) return bulunan;
+        }
+        return null;
+    }
+
+    private static List<DuzKategori> Duzlestir(List<KategoriDugum> dugumler, string onek)
+    {
+        var sonuc = new List<DuzKategori>();
+        foreach (var d in dugumler)
+        {
+            var etiket = onek.Length == 0 ? d.Ad : $"{onek} › {d.Ad}";
+            sonuc.Add(new DuzKategori(d.Id, etiket));
+            sonuc.AddRange(Duzlestir(d.Cocuklar, etiket));
+        }
+        return sonuc;
+    }
+
+    private string TipAdi(string tip) => tip switch
+    {
+        "VITRIN" => Dil.T.UrunAgaci.TipVitrin,
+        "KASA"   => Dil.T.UrunAgaci.TipKasa,
+        "DEPO"   => Dil.T.UrunAgaci.TipDepo,
+        "CANTA"  => Dil.T.UrunAgaci.TipCanta,
+        _        => tip,
+    };
+
+    private string SubeAdi(string id) => subeler.FirstOrDefault(s => s.Id == id)?.Ad ?? id;
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Dil.Degisti -= Yenile;
+}

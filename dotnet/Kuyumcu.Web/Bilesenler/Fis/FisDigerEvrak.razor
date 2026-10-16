@@ -1,0 +1,107 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* ═══ PAKET S2-6 — ÇEK/SENET DEVRİ (ciro + rücu, P-21 · Y-21) ═══
+   Uçlar: GET /evraklar?durum=… · POST /evraklar/{id}/ciro · POST /evraklar/{id}/rucu
+   (ikisi de onay modalı). Devredilebilir evrak = sunucunun izinli geçişlerinde
+   CIRO_EDILDI olan; dönen evrak = durumu CIRO_EDILDI olan (sunucu karar verir).
+   ⚠ İstek atmaz — niyet DigerIstek ile sayfaya gider. *@
+<div class="form-dikey" id="evrak-ciro-form">
+    @if (Durum.EvrakDahaFazla)
+    {
+        <p class="bant bant-uyari" id="evrak-sinir" role="status">@string.Format(M.SinirUyari, EvrakLimit)</p>
+    }
+    @if (Durum.Devredilebilir is { } dev)
+    {
+        @if (dev.Count == 0)
+        {
+            <BosDurum Mesaj="@M.DevirBos" />
+        }
+        else
+        {
+            <Secici ElemanId="evrak-ciro-evrak" Etiket="@M.DevirEvrak" Zorunlu="true"
+                    Secenekler="@Secenekler(dev)" Deger="@E.CiroEvrakId" DegerChanged="@(v => E.CiroEvrakId = v)"
+                    Hata="@Hata(DigerEylemler.EvrakCiro, "ciro-evrak")" />
+            <Secici ElemanId="evrak-ciro-cari" Etiket="@M.Kime" Zorunlu="true" BosSecenekMetni="@Satis3Sozlugu.Al(Dil.Dil).MusteriSecin"
+                    Secenekler="@CariSecenekleri" Deger="@E.CiroCariId" DegerChanged="@(v => E.CiroCariId = v)"
+                    Hata="@Hata(DigerEylemler.EvrakCiro, "ciro-cari")" />
+            <FisDigerEylem Id="evrak-ciro" Metin="@M.Devret" Mesgul="Durum.Mesgul" KurVar="Baglam.KurVar" Tikla="CiroOnayla"
+                           Eksik="@FisDigerEylem.Etiketler(E.CiroHatalari(M), ("ciro-evrak", M.DevirEvrak), ("ciro-cari", M.Kime))" />   @* t10 *@
+        }
+    }
+</div>
+
+<details class="katlanir fis-gecmis" id="evrak-rucu-gecmis">   @* SATIS-3: geçmiş/ikincil bölüm KAPALI katlanır (kurucu 25.09 "piyano gibi"); içerik DOM'da — id'ler aynı *@
+<summary class="katlanir-baslik" id="evrak-rucu-gecmis-ac"><h3 id="evrak-rucu-baslik" class="katlanir-ad">@M.DonenBaslik</h3></summary>
+<div class="form-dikey" id="evrak-rucu-form">
+    @if (Durum.Devredilmis is { } don)
+    {
+        @if (don.Count == 0)
+        {
+            <BosDurum Mesaj="@M.DonenBos" />
+        }
+        else
+        {
+            <Secici ElemanId="evrak-rucu-evrak" Etiket="@M.DonenEvrak" Zorunlu="true"
+                    Secenekler="@Secenekler(don)" Deger="@E.RucuEvrakId" DegerChanged="@(v => E.RucuEvrakId = v)"
+                    Hata="@Hata(DigerEylemler.EvrakRucu, "rucu-evrak")" />
+            <GerekceAlani Id="evrak-rucu-aciklama" Etiket="@M.Gerekce" AsgariUzunluk="@EvrakGirisi.RucuGerekceAsgari"
+                          Deger="@E.RucuAciklama" DegerChanged="@(v => E.RucuAciklama = v)" />
+            @if (Hata(DigerEylemler.EvrakRucu, "rucu-aciklama") is { } gh)
+            {
+                <span class="hata-metni alan-hata" id="evrak-rucu-aciklama-hata" role="alert">@gh</span>
+            }
+            <div class="satir">
+                <button type="button" class="btn btn-tehlike" id="evrak-rucu" disabled="@(Durum.Mesgul || !Baglam.KurVar)"
+                        aria-describedby="@(Baglam.KurVar ? null : "islem-diger-kur-yok")"
+                        @onclick="RucuOnayla">@M.DonenKaydet</button>
+            </div>
+        }
+    }
+</div>
+
+</details>
+
+@code {
+    [Parameter, EditorRequired] public DigerIslemDurumu Durum { get; set; } = new();
+    [Parameter, EditorRequired] public DigerBaglam Baglam { get; set; } = new([], [], [], [], false, null);
+    [Parameter] public EventCallback<DigerIstek> Istek { get; set; }
+
+    /// <summary>Sayfanın evrak listesi isteğindeki limit (Islemler.Diger.cs ile aynı sabit).</summary>
+    public const int EvrakLimit = 50;
+
+    private FisDigerMetinleri M => FisDigerSozlugu.Al(Dil.Dil);
+    private EvrakGirisi E => Durum.Evrak;
+
+    private IReadOnlyList<SecenekOgesi> CariSecenekleri =>
+        Baglam.Cariler.Where(c => !c.SistemCarisi).Select(c => new SecenekOgesi(c.Id, c.Ad)).ToList();
+
+    /// <summary>Evrak etiketi: no · tutar (para birimiyle, UX-S32) · vade · kimden.</summary>
+    private static IReadOnlyList<SecenekOgesi> Secenekler(List<Kuyumcu.Core.Sozlesmeler.EvrakSatiri> l) =>
+        l.Select(e => new SecenekOgesi(e.Id,
+            $"{e.EvrakNo} · {Bicim.Para(e.Tutar, e.ParaBirimi)} · {Bicim.Gun(e.VadeGunu)}",
+            e.KaynakCariAd ?? e.BorcluAd)).ToList();
+
+    private string? Hata(string eylem, string alan) =>
+        Durum.Denenen.Contains(eylem)
+            ? (eylem == DigerEylemler.EvrakCiro ? E.CiroHatalari(M) : E.RucuHatalari(M)).GetValueOrDefault(alan)
+            : null;
+
+    private async Task CiroOnayla()
+    {
+        Durum.Denenen.Add(DigerEylemler.EvrakCiro);
+        if (E.CiroHatalari(M).Count > 0) return;
+        Durum.Onay = DigerEylemler.EvrakCiro;
+        Durum.OnayId = E.CiroEvrakId;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.Ciz));
+    }
+
+    private async Task RucuOnayla()
+    {
+        Durum.Denenen.Add(DigerEylemler.EvrakRucu);
+        if (E.RucuHatalari(M).Count > 0) return;
+        Durum.Onay = DigerEylemler.EvrakRucu;
+        Durum.OnayId = E.RucuEvrakId;
+        await Istek.InvokeAsync(new DigerIstek(DigerEylemler.Ciz));
+    }
+}

@@ -1,0 +1,98 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# KUYUMCU ERP — ÜRETİM COMPOSE (Paket T-1 + F-6)
+#
+# GELİŞTİRME compose'u (/docker-compose.yml) ÜRETİMDE KULLANILMAZ: orada
+# MySQL root parolası düz metin gömülüdür ve 3306 ana makineye açıktır.
+# Burada ikisi de KAPALIDIR:
+#   • parola .env'den gelir (deploy/.env.ornek → dotnet/kurulum.sh üretir)
+#   • mysql servisinde `ports` ANAHTARI YOKTUR; yalnız iç ağda `expose`
+#
+# Çalıştırma:
+#   docker compose --env-file /etc/kuyumcu/.env -f docker-compose.uretim.yml up -d
+# ═══════════════════════════════════════════════════════════════════════════
+name: kuyumcu-uretim
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: kuyumcu-mysql-uretim
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD .env dosyasindan gelmelidir}
+      MYSQL_DATABASE: ${KUYUMCU_VT:?KUYUMCU_VT .env dosyasindan gelmelidir}
+    # ⚠ `ports` YOK — bu KASITLIDIR. Veritabanına erişim yalnız iç ağdan.
+    expose:
+      - "3306"
+    networks:
+      - kuyumcu_ic
+    volumes:
+      - kuyumcu_uretim_mysql:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_turkish_ci
+    healthcheck:
+      # Parola KOMUT SATIRINDA taşınmaz (ps çıktısında görünürdü); MYSQL_PWD ile
+      # yalnız süreç ortamına verilir.
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -u root --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  api:
+    image: kuyumcu-erp:uretim
+    container_name: kuyumcu-api-uretim
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:5000
+      KUYUMCU_VT: ${KUYUMCU_VT:?}
+      ConnectionStrings__Kuyumcu: ${ConnectionStrings__Kuyumcu:?}
+      Jwt__Secret: ${Jwt__Secret:?}
+      KUYUMCU_SIFRELEME_ANAHTARI: ${KUYUMCU_SIFRELEME_ANAHTARI:?}
+      Uretim__TersVekilArkasinda: "true"
+    # Dışa YALNIZ ters vekil (nginx/IIS) çıkar; api konteyneri ana makinede
+    # 127.0.0.1'e bağlanır, genel arayüze DEĞİL.
+    ports:
+      - "127.0.0.1:5000:5000"
+    networks:
+      - kuyumcu_ic
+    volumes:
+      - kuyumcu_uretim_veri:/var/lib/kuyumcu
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:5000/saglik || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1g
+    # K14 (mühür 4) — kalıcı günlük asgarisi: json-file rotasyonu.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  kuyumcu_ic:
+    driver: bridge
+    internal: false
+
+volumes:
+  kuyumcu_uretim_mysql:
+  kuyumcu_uretim_veri:
