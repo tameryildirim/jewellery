@@ -459,14 +459,16 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
     /// </para>
     /// </summary>
     /// <summary>
-    /// M2 (müşteri 16.10: "KDV oranını düzenlediği bir şey olacak") — kalemin KDV oranı:
-    /// istekte açıkça verilen oran &gt; ürün kartındaki <c>KdvOrani</c> (yüzde → kesir) &gt; yapılandırma
-    /// varsayılanı. Eskiden ürün kartındaki oran faturada HİÇ okunmuyordu (gizli hata).
+    /// M2 (müşteri 16.10: "KDV oranını düzenlediği bir şey olacak"; kurucu 16.10: "ürünün KDV'si
+    /// özelde kayıt edilmemişse faturada seçilen KDV uygulansın, KDV'si olan ürünler kendi
+    /// KDV'sine göre olacak") — kalemin KDV oranı: ürün kartındaki <c>KdvOrani</c> (yüzde → kesir)
+    /// &gt; faturada seçilen oran &gt; yapılandırma varsayılanı. Eskiden ürün oranı faturada HİÇ
+    /// okunmuyordu (gizli hata); fatura ekranı oranı her zaman gönderdiği için ürün oranı öncelikli olmalı.
     /// </summary>
-    private decimal KalemKdvOrani(decimal? istekOrani, Data.Urun? urun) =>
-        istekOrani ?? (urun?.KdvOrani is { } yuzde
+    private decimal KalemKdvOrani(decimal? secilenOran, Data.Urun? urun) =>
+        urun?.KdvOrani is { } yuzde
             ? Math.Round(yuzde / 100m, 4, MidpointRounding.AwayFromZero)
-            : ayar.VarsayilanOran);
+            : secilenOran ?? ayar.VarsayilanOran;
 
     /// <summary>M2 — belge başlığı oranı: bütün kalemler aynı orandaysa o, değilse genel oran.</summary>
     private static decimal BaslikOrani(IReadOnlyCollection<decimal> kalemOranlari, decimal genel) =>
@@ -492,8 +494,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 .OrderBy(h => h.Olusturuldu).ThenBy(h => h.Id)
                 .ToListAsync();
 
-        // M2 — oran verilmediyse kümenin ürün oranları ortaksa o (kaydetmeyle AYNI kural).
-        if (kdvOran is null)
+        // M2 — kümenin kalem oranları (ürün oranı > seçilen > varsayılan) ortaksa o (kaydetmeyle AYNI kural).
         {
             var kumeUrunIdler = kume.Where(h => !string.IsNullOrEmpty(h.UrunId)).Select(h => h.UrunId!).Distinct().ToList();
             var kumeUrunleri = kumeUrunIdler.Count == 0 ? new Dictionary<string, Data.Urun>()
@@ -501,7 +502,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                     .Where(u => u.TenantId == islem.TenantId && kumeUrunIdler.Contains(u.Id))
                     .Take(kumeUrunIdler.Count)   // B-8: kümenin ürün sayısıyla sınırlı
                     .ToDictionaryAsync(u => u.Id);
-            oran = BaslikOrani(kume.Select(h => KalemKdvOrani(null,
+            oran = BaslikOrani(kume.Select(h => KalemKdvOrani(kdvOran,
                 string.IsNullOrEmpty(h.UrunId) ? null : kumeUrunleri.GetValueOrDefault(h.UrunId))).ToList(), oran);
         }
 

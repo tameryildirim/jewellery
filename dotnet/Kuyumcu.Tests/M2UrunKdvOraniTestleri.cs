@@ -7,8 +7,9 @@ namespace Kuyumcu.Tests;
 // ═════════════════════════════════════════════════════════════════════════════
 // M2 (müşteri görüşmesi 16.10: "KDV oranını düzenlediği bir şey olacak") —
 // ürün kartındaki KDV oranı faturada KULLANILIR. Eskiden kart alanı vardı ama
-// fatura onu hiç okumuyordu (gizli hata). Öncelik: istekteki oran > ürün oranı >
-// yapılandırma varsayılanı (0,20).
+// fatura onu hiç okumuyordu (gizli hata). Kurucu 16.10: "ürünün KDV'si kayıtlı
+// değilse faturada seçilen uygulansın, KDV'si olan ürün kendi KDV'siyle".
+// Öncelik: ürün oranı > faturada seçilen oran > yapılandırma varsayılanı (0,20).
 // ═════════════════════════════════════════════════════════════════════════════
 
 [Collection("veritabani")]
@@ -52,11 +53,12 @@ public sealed class M2UrunKdvOraniTestleri(TestVeritabani vt)
     }
 
     [Fact]
-    public async Task Istekte_acikca_verilen_oran_urun_oranini_ezer()
+    public async Task Kendi_KDVsi_olan_urun_faturada_secilen_orana_ragmen_KENDI_oraniyla_faturalanir()
     {
+        // Fatura ekranı oranı HER ZAMAN gönderir (seçim zorunlu) — ürün oranı yine kazanmalı.
         using var kurulum = vt.OlusturSistem();
-        var k = TestKurulum.KiraciKur(kurulum, "M2 istek oranı");
-        var fisId = FisYaz(kurulum, k, 10m, 1_200m);
+        var k = TestKurulum.KiraciKur(kurulum, "M2 ürün öncelikli");
+        var fisId = FisYaz(kurulum, k, 10m, 1_100m);
 
         using var db = vt.Olustur(k);
         await new MFatura.FaturaServisi(db).FistenOlustur(
@@ -64,8 +66,25 @@ public sealed class M2UrunKdvOraniTestleri(TestVeritabani vt)
 
         using var kontrol = vt.OlusturSistem();
         var kalem = kontrol.FaturaKalemleri.Single(x => x.TenantId == k.TenantId);
-        Assert.Equal(0.20m, kalem.KdvOran);
-        Assert.Equal(200.00m, kalem.KdvTutar);
+        Assert.Equal(0.10m, kalem.KdvOran);
+        Assert.Equal(100.00m, kalem.KdvTutar);
+    }
+
+    [Fact]
+    public async Task KDVsi_kayitli_olmayan_urunde_faturada_secilen_oran_uygulanir()
+    {
+        using var kurulum = vt.OlusturSistem();
+        var k = TestKurulum.KiraciKur(kurulum, "M2 seçilen oran");
+        var fisId = FisYaz(kurulum, k, null, 1_010m);
+
+        using var db = vt.Olustur(k);
+        await new MFatura.FaturaServisi(db).FistenOlustur(
+            new MFatura.FaturaFistenDto { FisId = fisId, KdvOran = 0.01m }, k.Islem);
+
+        using var kontrol = vt.OlusturSistem();
+        var kalem = kontrol.FaturaKalemleri.Single(x => x.TenantId == k.TenantId);
+        Assert.Equal(0.01m, kalem.KdvOran);
+        Assert.Equal(10.00m, kalem.KdvTutar);
     }
 
     [Fact]
