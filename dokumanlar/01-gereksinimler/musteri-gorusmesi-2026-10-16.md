@@ -242,3 +242,16 @@ Amaç: kayıttaki her talebin **zayıf yanını** önceden görmek. Talepler red
 **Mevzuat bağı:** KDVK 23/e yasal hesabı (satış − has bedeli) zaten ürüne göre DEĞİŞEN bir pay üretir; müşterinin gözlemi doğru, fark: yasa payı hesaplatır, müşteri sabitlemek istiyor.
 
 **Tasarım önerisi (M4'e eklendi):** ürün kartında iki ayrı alan — "KDV oranı (%)" ve "Matraha giren pay (binde)"; pay seçenek listesi: Yasal hesap (varsayılan, hesaplanan binde gösterilir) / Sabit binde (müşavir onaylı kilit) / Faturada elle toplam matrah (değişiklik kaydı + uyarı); Ayarlar'da kural: koşul → matrah payı + KDV oranı + liste yeri; öncelik ürün > ad kuralı > kategori. Dönem ve ciro maddeleri teyitsiz koda girmez.
+
+---
+
+# EK-5 — Maliyet ve işçilik modeli (kayıttan, kurucu 16.10 isteği)
+
+1. **Elle girilen milyem = MALİYET milyemi:** "Bilezik maliyet fiyatı 920… benim maliyetim bu, 6.085 lira maliyet" (04:38–04:43); "eğer ben 925'den maliyetim varsa 925 yazacağım, 922 varsa 922" (10:32). 925 = has 916 + toptancının işçiliği (kuyumcunun ÖDEDİĞİ).
+2. **Bilezik kârsız satılır:** "bileziği kârsız satıyoruz, işçiliği o (toptancı) alıyor; biz alıp sattığımız makastan…" (24:00–24:03); "10 gram bilezik sattığımda fiyat bu oluyor, bu maliyet" (04:54).
+3. **Sahte kâr şikâyeti:** sistem has değerini (91 bin) maliyet, aradaki ~3.600'ü kâr gösterdi → "3.600 kâr etmiş görürsem üstüne vergi alır… hiç kâr etmediğim şeyden sürekli KDV öderim" (05:31–05:47).
+4. **İşçilik faturası:** toptancı işçiliği faturalanmazsa aradaki fark kâr görünür, denetimde ceza (10:53–12:08, 21:10–21:50).
+5. **Çeşit başına maliyet milyemi:** CNC, el örgüsü, kilitli… 925/930/990 (17:40–18:03); işçilik farkı değişirse elle müdahale (17:22).
+6. **KDV payı maliyetin üstüne:** "binde bir gir… 60 lira da KDV'ye, bunun üzerine ekle, fiyatın içinde onu ekle" (04:59–05:07).
+
+**Düzeltme (M1b):** M1'in "satış milyemi − ayar milyemi = işçilik" ayrımı bu farkı gelir gibi gösterir — yanlış. Doğru model: **maliyet = gram × alış (maliyet) milyemi × has; satış = maliyet + eklenen + KDV payı; kâr = satış − maliyet.** Has değeri hiçbir ekranda maliyet/kâr gibi görünmez. Ürüne alış milyemi alanı; satış milyemi boşsa satış = alış milyemi (kârsız bilezik). Tezgâh fiyat kırılımı "maliyet · eklenen · KDV payı" olur.
