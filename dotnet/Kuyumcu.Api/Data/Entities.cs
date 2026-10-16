@@ -531,8 +531,20 @@ public class Urun : IKiraciVarlik
     /// fark (satış − ayar milyemi) işçilik olarak ayrışır, liste marjı UYGULANMAZ. Boş = eski davranış.
     /// </summary>
     [Column("satis_milyemi", TypeName = "decimal(7,2)")] public decimal? SatisMilyemi { get; set; }
+    /// <summary>
+    /// M1b (müşteri 16.10: "eğer ben 925'den maliyetim varsa 925 yazacağım") — ALIŞ (maliyet) milyemi:
+    /// maliyet = net gram × alış milyemi/1000 × has kuru. Satış milyemi boşsa satış da bununla yapılır
+    /// ("bileziği kârsız satıyoruz"). Kâr = satış − maliyet; has değeri maliyet sayılmaz.
+    /// </summary>
+    [Column("alis_milyemi", TypeName = "decimal(7,2)")] public decimal? AlisMilyemi { get; set; }
     /// <summary>M1 — elle fiyat ofseti (± TL, birim başına): hesaplanan liste fiyatına eklenir. Boş = yok.</summary>
     [Column("fiyat_ofset_tl", TypeName = "decimal(12,2)")] public decimal? FiyatOfsetTl { get; set; }
+    /// <summary>
+    /// M2b (müşteri 16.10) — KDV'ye giren pay, BİNDE. Doluysa kuyum faturasında satırın
+    /// toplam × binde/1000 kadarı KDV matrahı olur, KDV = matrah × KDV oranı, kalanı %0'a girer.
+    /// Boş = yasal hesap (satış − has bedeli, KDVK 23/e).
+    /// </summary>
+    [Column("kdv_matrah_binde", TypeName = "decimal(7,3)")] public decimal? KdvMatrahBinde { get; set; }
     /// <summary>
     /// Kanonik parite kodu (CEYREK_YENI, YARIM_YENI, RESAT…). Doluysa ürünün
     /// piyasa fiyatı kur kaynağının o kalemine ait fiyattan okunur; boşsa

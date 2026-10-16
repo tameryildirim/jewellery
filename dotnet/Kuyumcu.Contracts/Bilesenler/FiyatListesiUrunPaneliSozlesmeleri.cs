@@ -13,5 +13,5 @@ public sealed record Satir(
     string UrunId, string Kod, string Ad, string AyarId, decimal Gram, decimal HasGrami, decimal? IscilikTl,
     bool TeklifVar, string? Sebep, decimal HasDegeri, decimal MarjTl, decimal IscilikTlUygulanan,
     decimal ListeFiyati, decimal IndirimTutari, decimal SatisFiyati, string? KampanyaId, string Kaynak,
-    GecersizKilmaOzeti? GecersizKilma);
+    GecersizKilmaOzeti? GecersizKilma, decimal? MaliyetTl = null);   // M1b
 public sealed record Sonuc(int Toplam, int Limit, int Offset, List<Satir> Satirlar);

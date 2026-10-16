@@ -84,4 +84,6 @@ public sealed record UrunTamKart(
     decimal? KdvOrani = null, string? SeriNo = null, string? Olcu = null,
     decimal? MinStok = null,
     // M1 (16.10) — satış milyemi + fiyat ofseti (GET /urunler/{id} varlığın tamamını döner).
-    decimal? SatisMilyemi = null, decimal? FiyatOfsetTl = null);
+    decimal? SatisMilyemi = null, decimal? FiyatOfsetTl = null,
+    // M1b · M2b (16.10) — alış (maliyet) milyemi + KDV'ye giren pay (binde).
+    decimal? AlisMilyemi = null, decimal? KdvMatrahBinde = null);

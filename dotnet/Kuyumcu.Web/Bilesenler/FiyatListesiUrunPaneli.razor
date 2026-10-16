@@ -307,6 +307,12 @@
                             {<span class="rozet rozet-amber" id="@($"flp-rozet-{s.UrunId}")">@Sebep(s)</span>}</text> },
                 FiyatKolonu("marj", Dil.T.Fiyat.MarjTl, s => s.MarjTl, tam),
             };
+            // M1b (müşteri 16.10: "has değeri maliyet olarak gözüküyor") — alış milyemi girilmiş ürün
+            // varsa GERÇEK maliyet sütunu has değerinin yanına gelir; yoksa sütun hiç çıkmaz (sade).
+            if (satirlar.Any(s => s.MaliyetTl is not null))
+                k.Insert(k.Count - 1, new() { Anahtar = "maliyet", Baslik = Dil.T.Fiyat.MaliyetTl, BaslikSinif = "sayi",
+                    HucreSinif = _ => "sayi hucre-tek-satir", Deger = s => s.MaliyetTl,
+                    Hucre = s => @<text>@(s.MaliyetTl is { } m ? Para(m) : "—")</text> });
             // Tur 3: BASİT'te İşçilik ve Kaynak gizli (ayrıntı PRO'da).
             if (Modu.ProfesyonelMi) k.Add(FiyatKolonu("iscilik", Dil.T.Fiyat.IscilikTl, s => s.IscilikTlUygulanan, tam));
             var liste = FiyatKolonu("liste", Dil.T.Fiyat.ListeFiyati, s => s.ListeFiyati, tam);

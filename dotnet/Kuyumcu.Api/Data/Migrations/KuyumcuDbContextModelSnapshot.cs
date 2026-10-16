@@ -5617,6 +5617,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("decimal(15,2)")
                         .HasColumnName("alis_maliyeti");
 
+                    b.Property<decimal?>("AlisMilyemi")
+                        .HasColumnType("decimal(7,2)")
+                        .HasColumnName("alis_milyemi");
+
                     b.Property<string>("AyarId")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -5667,6 +5671,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")
                         .HasColumnName("kategori_id");
+
+                    b.Property<decimal?>("KdvMatrahBinde")
+                        .HasColumnType("decimal(7,3)")
+                        .HasColumnName("kdv_matrah_binde");
 
                     b.Property<decimal?>("KdvOrani")
                         .HasColumnType("decimal(5,2)")

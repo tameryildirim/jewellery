@@ -495,6 +495,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 .ToListAsync();
 
         // M2 — kümenin kalem oranları (ürün oranı > seçilen > varsayılan) ortaksa o (kaydetmeyle AYNI kural).
+        decimal? kumeBinde = null;
         {
             var kumeUrunIdler = kume.Where(h => !string.IsNullOrEmpty(h.UrunId)).Select(h => h.UrunId!).Distinct().ToList();
             var kumeUrunleri = kumeUrunIdler.Count == 0 ? new Dictionary<string, Data.Urun>()
@@ -504,6 +505,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                     .ToDictionaryAsync(u => u.Id);
             oran = BaslikOrani(kume.Select(h => KalemKdvOrani(kdvOran,
                 string.IsNullOrEmpty(h.UrunId) ? null : kumeUrunleri.GetValueOrDefault(h.UrunId))).ToList(), oran);
+            // M2b — kümenin bütün kalemlerinde aynı binde pay varsa önizleme de o yöntemle.
+            var bindeler = kume.Select(h => string.IsNullOrEmpty(h.UrunId) ? null
+                : kumeUrunleri.GetValueOrDefault(h.UrunId)?.KdvMatrahBinde).Distinct().ToList();
+            kumeBinde = bindeler.Count == 1 ? bindeler[0] : null;
         }
 
         var bacaklar = await HasBacaklariniTopla(kume, islem);
@@ -519,11 +524,11 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         string? uyari = null;
         if (toplam is { } t && t > 0m)
         {
-            if (hasDeger >= t)
+            if (kumeBinde is null && hasDeger >= t)
                 uyari = Kuyumcu.Core.I18n.SunucuIletiSozlugu.Cevir("Has altın bedeli toplam tutardan küçük olmalıdır");
             else
             {
-                var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, t, oran);
+                var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, t, oran, kumeBinde);
                 matrah = sonuc.Matrah;
                 kdvTutar = sonuc.KdvTutar;
                 araToplam = sonuc.AraToplam;
@@ -811,7 +816,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 }
             }
 
-            var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalemOran);
+            var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalemOran, kdvTuru == "KUYUM" ? urun?.KdvMatrahBinde : null);
 
             kalemler.Add(new Data.FaturaKalemi
             {
@@ -1143,7 +1148,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                     kalemKuru = kur.AltinHasFiyati;
                 }
 
-                var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalemOran);
+                var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalemOran, kdvTuru == "KUYUM" ? urun?.KdvMatrahBinde : null);
                 hasDeger = sonuc.HasDeger;
                 kdvMatrah = sonuc.Matrah;
                 kdvTutar = sonuc.KdvTutar;
@@ -1495,7 +1500,13 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                     bacaklar.Add(new HasBacagi(yeniHasGramToplam, dayanakKur));
             }
 
-            var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalem.KdvOran);
+            // M2b — kuyum kaleminde ürünün KDV'ye giren payı (binde) varsa müşterinin yöntemi.
+            decimal? kalemBinde = null;
+            if (kalem.KdvTuru == "KUYUM" && !string.IsNullOrEmpty(kalem.UrunId))
+                kalemBinde = await db.Urunler.AsNoTracking()
+                    .Where(u => u.Id == kalem.UrunId && u.TenantId == islem.TenantId)
+                    .Select(u => u.KdvMatrahBinde).FirstOrDefaultAsync();
+            var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalem.KdvOran, kalemBinde);
             kalem.HasDeger = sonuc.HasDeger;
             kalem.KdvMatrah = sonuc.Matrah;
             kalem.KdvTutar = sonuc.KdvTutar;
@@ -1623,7 +1634,8 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         // M2 — taslağa eklenen kalem: ürün kartında oran varsa o, yoksa belgenin oranı.
         var eklenenOran = urun?.KdvOrani is { } urunYuzde
             ? Math.Round(urunYuzde / 100m, 4, MidpointRounding.AwayFromZero) : fatura.KdvOran;
-        var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, eklenenOran);
+        var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, eklenenOran,
+            fatura.KdvTuru == "KUYUM" ? urun?.KdvMatrahBinde : null);   // M2b
         var yeni = new Data.FaturaKalemi
         {
             Id            = Kimlik.Ulid(),

@@ -92,6 +92,39 @@ public static class OzelMatrahMotoru
     /// Has bedeli toplama eşit ya da ondan büyükse (matrah negatife düşer);
     /// oran veya toplam geçersizse. FAIL-CLOSED: "has bedeli 0" varsayılmaz.
     /// </exception>
+    /// <summary>
+    /// M2b — müşterinin yöntemi (16.10: "150 bin liralık fatura… binde 1'i, 150 TL'si KDV'ye
+    /// giren kısım, geri kalanı %0'a giren… %20 dediğimde 30 TL"): matrah = toplam × binde/1000,
+    /// KDV = matrah × oran, kalan (toplam − matrah − KDV) %0 kısmıdır (HasDeger sütununa yazılır).
+    /// Satır toplamı DEĞİŞMEZ. Has gramı bilgi olarak bacaklardan taşınır; kur zorunlu değildir.
+    /// </summary>
+    public static OzelMatrahSonuc HesaplaBinde(
+        IReadOnlyList<HasBacagi> bacaklar, decimal toplam, decimal binde, decimal kdvOran)
+    {
+        if (toplam <= 0m)
+            throw new BadRequestException("Toplam tutar sıfırdan büyük olmalıdır");
+        if (kdvOran < 0m || kdvOran > 1m)
+            throw new BadRequestException("KDV oranı 0 ile 1 arasında olmalıdır");
+        if (binde <= 0m || binde > 1000m)
+            throw new BadRequestException("KDV'ye giren pay binde 0 ile 1000 arasında olmalıdır");
+        var hasGram = Yuvarla6(bacaklar.Sum(b => Yuvarla6(b.HasGrami)));
+        var matrah = Yuvarla2(toplam * binde / 1000m);
+        var kdvTutar = Yuvarla2(matrah * kdvOran);
+        if (matrah + kdvTutar > toplam)
+        {   // binde 1000'e yakınsa KDV dahil iç yüzdeye düş — toplam aşılmaz
+            matrah = Yuvarla2(toplam / (1m + kdvOran));
+            kdvTutar = Yuvarla2(toplam - matrah);
+        }
+        var sifirKismi = Yuvarla2(toplam - matrah - kdvTutar);
+        return new OzelMatrahSonuc(hasGram, sifirKismi, matrah, kdvTutar, Yuvarla2(toplam - kdvTutar), null);
+    }
+
+    /// <summary>M2b — ürün payı doluysa müşterinin binde yöntemi, değilse yasal hesap (tek giriş noktası).</summary>
+    public static OzelMatrahSonuc Hesapla(
+        IReadOnlyList<HasBacagi> bacaklar, decimal toplam, decimal kdvOran, decimal? matrahBinde) =>
+        matrahBinde is > 0m ? HesaplaBinde(bacaklar, toplam, matrahBinde.Value, kdvOran)
+                            : Hesapla(bacaklar, toplam, kdvOran);
+
     public static OzelMatrahSonuc Hesapla(
         IReadOnlyList<HasBacagi> bacaklar, decimal toplam, decimal kdvOran)
     {

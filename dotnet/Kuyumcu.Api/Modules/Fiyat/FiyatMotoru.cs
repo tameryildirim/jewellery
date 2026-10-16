@@ -14,10 +14,12 @@ namespace Kuyumcu.Api.Modules.Fiyat;
 /// <param name="Kaynak">Fiyatın NEREDEN geldiği: <see cref="FiyatKaynagi"/> (LISTE · URUN_GECERSIZ_KILMA · URUN_SABIT_FIYAT).</param>
 /// <param name="OfsetTl">M1 — liste fiyatına eklenen elle ofset (± TL); yoksa 0.</param>
 /// <param name="SatisMilyemi">M1 — fiyat satış milyemiyle hesaplandıysa o milyem; değilse null.</param>
+/// <param name="MaliyetTl">M1b — alış (maliyet) milyemi biliniyorsa birim maliyet (net gram × alış milyemi × has); değilse null. Kâr = satış − maliyet.</param>
 public sealed record FiyatTeklifi(
     decimal ListeFiyati, decimal HasDegeri, decimal MarjTl, decimal IscilikTl,
     decimal IndirimTutari, decimal SatisFiyati, string? KampanyaId, bool SabitFiyat,
-    string Kaynak = FiyatKaynagi.Liste, decimal OfsetTl = 0m, decimal? SatisMilyemi = null);
+    string Kaynak = FiyatKaynagi.Liste, decimal OfsetTl = 0m, decimal? SatisMilyemi = null,
+    decimal? MaliyetTl = null);
 
 /// <summary>
 /// Fiyatın kaynağı — ekranda rozet, denetimde cevap ("bu fiyat nereden geldi?").
@@ -60,6 +62,9 @@ public static class FiyatKaynagi
 ///     zaten içerdiği için LİSTENİN genel marjı UYGULANMAZ (çift kâr olurdu); liste × ürün
 ///     geçersiz kılmasında AÇIKÇA verilmiş marj yine uygulanır (daha özel kural). Sabit TL işçilik
 ///     (× liste çarpanı) üstüne eklenir.
+///  6b. M1b (müşteri 16.10: "925'den maliyetim varsa 925 yazacağım", "bileziği kârsız satıyoruz") —
+///     ALIŞ (maliyet) milyemi: maliyet = net gram × alış milyemi/1000 × has kuru (teklifte MaliyetTl).
+///     Satış milyemi BOŞSA satış alış milyemiyle yapılır (kârsız satış); kural 6 aynen işler.
 ///  7. M1 — FİYAT OFSETİ (± TL) yalnız hesaplanan (has) dalda liste fiyatına eklenir; sabit fiyatta
 ///     anlamsızdır (fiyat zaten elle konmuştur). Sonuç eksiye düşmez.
 /// </summary>
@@ -79,6 +84,7 @@ public static class FiyatMotoru
         string kaynak;
         decimal ofsetTl = 0m;            // M1 kural 7
         decimal? satisMilyemi = null;    // M1 kural 6
+        decimal? maliyetTl = null;       // M1b kural 6b
 
         // Pasif ya da boş geçersiz kılma hiç yokmuş gibidir (fail-open değil:
         // "yok" hâli listenin kuralıdır, uydurma bir fiyat değil).
@@ -122,10 +128,13 @@ public static class FiyatMotoru
             var carpanYuzde = gk?.IscilikCarpanYuzde ?? liste.IscilikCarpanYuzde;
             kaynak = gk is null ? FiyatKaynagi.Liste : FiyatKaynagi.UrunGecersizKilma;
             hasDegeri = Yuvarla(urun.HasGrami * hasKuru);
-            if (urun.SatisMilyemi is > 0m && urun.Milyem > 0m)
+            if (urun.AlisMilyemi is > 0m && urun.Milyem > 0m)
+                maliyetTl = Yuvarla(urun.HasGrami * 1000m / urun.Milyem * urun.AlisMilyemi.Value / 1000m * hasKuru);
+            var etkinSatisMilyemi = urun.SatisMilyemi is > 0m ? urun.SatisMilyemi : urun.AlisMilyemi;   // 6b
+            if (etkinSatisMilyemi is > 0m && urun.Milyem > 0m)
             {
                 // Kural 6 — satış milyemi: işçilik milyemde, genel liste marjı yok.
-                satisMilyemi = urun.SatisMilyemi.Value;
+                satisMilyemi = etkinSatisMilyemi.Value;
                 var netGram = urun.HasGrami * 1000m / urun.Milyem;
                 var altinVeIscilik = Yuvarla(netGram * satisMilyemi.Value / 1000m * hasKuru);
                 marjTl = gk?.HasMarjYuzde is { } gkMarj ? Yuvarla(hasDegeri * gkMarj / 100m) : 0m;
@@ -147,7 +156,7 @@ public static class FiyatMotoru
         return new FiyatTeklifi(
             listeFiyati, hasDegeri, marjTl, iscilikTl,
             indirim, Yuvarla(listeFiyati - indirim),
-            indirim > 0m ? kampanya!.Id : null, sabit, kaynak, ofsetTl, satisMilyemi);
+            indirim > 0m ? kampanya!.Id : null, sabit, kaynak, ofsetTl, satisMilyemi, maliyetTl);
     }
 
     /// <summary>Kampanyanın BİRİM indirimi.</summary>

@@ -345,6 +345,8 @@ public static partial class SunucuIletiSozlugu
         // M1 (16.10) — satış milyemi / fiyat ofseti kapısı
         ("Satış milyemi yalnız altın ürünlerde kullanılır; bu üründe satış fiyatını girin", "Selling fineness applies to gold items only; enter a sale price for this item"),
         ("Fiyat ofseti çok büyük", "The price adjustment is too large"),
+        ("Alış milyemi yalnız altın ürünlerde kullanılır", "Purchase fineness applies to gold items only"),
+        ("KDV'ye giren pay binde 0 ile 1000 arasında olmalıdır", "The VAT-able share must be between 0 and 1000 per mille"),
         ("Gerçek milyem en çok 2 ondalık basamak taşıyabilir", "The actual fineness can have at most 2 decimal places"),
         ("Geçerli bir davet jetonu gerekiyor. Kayıt yalnız yöneticinin ürettiği tek kullanımlık davetle açılır; jetonunuz geçersiz, kullanılmış ya da süresi dolmuş olabilir.", "A valid invitation token is required. Registration opens only with a single-use invitation produced by the administrator; your token may be invalid, already used or expired."),
         ("Geçerli bir e-posta adresi giriniz", "Enter a valid e-mail address"),

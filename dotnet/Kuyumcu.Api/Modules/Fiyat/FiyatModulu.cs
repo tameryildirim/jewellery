@@ -687,7 +687,7 @@ public sealed class FiyatServisi(KuyumcuDbContext db, DenetimServisi? denetim = 
                     0m, 0m, 0m, 0m, 0m, 0m, null, FiyatKaynagi.Liste, ozet)
                 : new OnizlemeSatiri(u.Id, u.Kod, u.Ad, u.AyarId, u.GramAgirlik, u.HasGrami, u.IscilikTl,
                     true, null, t.HasDegeri, t.MarjTl, t.IscilikTl, t.ListeFiyati, t.IndirimTutari,
-                    t.SatisFiyati, t.KampanyaId, t.Kaynak, ozet));
+                    t.SatisFiyati, t.KampanyaId, t.Kaynak, ozet, t.MaliyetTl));
         }
         return satirlar;
     }
@@ -940,7 +940,7 @@ public sealed record OnizlemeSatiri(
     string UrunId, string Kod, string Ad, string AyarId, decimal Gram, decimal HasGrami, decimal? IscilikTl,
     bool TeklifVar, string? Sebep, decimal HasDegeri, decimal MarjTl, decimal IscilikTlUygulanan,
     decimal ListeFiyati, decimal IndirimTutari, decimal SatisFiyati, string? KampanyaId, string Kaynak,
-    GecersizKilmaOzeti? GecersizKilma);
+    GecersizKilmaOzeti? GecersizKilma, decimal? MaliyetTl = null);   // M1b — alış milyemiyle birim maliyet
 
 public sealed record OnizlemeSonucu(int Toplam, int Limit, int Offset, IReadOnlyList<OnizlemeSatiri> Satirlar);
 
@@ -1034,6 +1034,8 @@ public sealed class FiyatModulu(FiyatServisi servis, KuyumcuDbContext db) : Cont
             // Paket 49 — fiyatın kaynağı (LISTE · URUN_GECERSIZ_KILMA · URUN_SABIT_FIYAT).
             // GERİYE DÖNÜK UYUMLU EK: POS bu alanı okumak zorunda değildir.
             kaynak = t.Kaynak,
+            // M1 · M1b — satış milyemi, ofset ve (alış milyemi biliniyorsa) birim maliyet; kâr = satış − maliyet.
+            satisMilyemi = t.SatisMilyemi, ofsetTl = t.OfsetTl, maliyetTl = t.MaliyetTl,
             // FEY md.11 — fiş/etiket bunu "indirim öncesi fiyat" olarak basar.
             indirimOncesiFiyat = t.IndirimTutari > 0m ? oncesi : (decimal?)null,
         };

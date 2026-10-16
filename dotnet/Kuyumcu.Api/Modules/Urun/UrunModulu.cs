@@ -147,6 +147,12 @@ public sealed class UrunOlusturDto
     /// <summary>M1 — fiyat ofseti (± TL, birim başına); hesaplanan fiyata eklenir. Boş = yok.</summary>
     [Range(-9999999999.99, 9999999999.99)] public decimal? FiyatOfsetTl { get; set; }
 
+    /// <summary>M1b — alış (maliyet) milyemi (1–2000). Boş = maliyet milyemle hesaplanmaz.</summary>
+    [Range(1, 2000)] public decimal? AlisMilyemi { get; set; }
+
+    /// <summary>M2b — KDV'ye giren pay, binde (0,001–1000). Boş = yasal hesap (satış − has bedeli).</summary>
+    [Range(0.001, 1000)] public decimal? KdvMatrahBinde { get; set; }
+
     /// <summary>
     /// Kanonik parite kodu (CEYREK_YENI, YARIM_YENI, RESAT…). Verilmezse ürün
     /// adından otomatik tahmin edilir; hiç eşleşmezse boş kalır ve fiyat
@@ -374,6 +380,18 @@ public sealed class UrunGuncelleDto
     public decimal? FiyatOfsetTl { get => _fiyatOfsetTl; set { _fiyatOfsetTl = value; FiyatOfsetTlVerildi = true; } }
     [JsonIgnore] public bool FiyatOfsetTlVerildi { get; private set; }
 
+    /// <summary>M1b — alış (maliyet) milyemi. null → temizlenir.</summary>
+    private decimal? _alisMilyemi;
+    [Range(1, 2000)]
+    public decimal? AlisMilyemi { get => _alisMilyemi; set { _alisMilyemi = value; AlisMilyemiVerildi = true; } }
+    [JsonIgnore] public bool AlisMilyemiVerildi { get; private set; }
+
+    /// <summary>M2b — KDV'ye giren pay (binde). null → temizlenir (yasal hesaba dönülür).</summary>
+    private decimal? _kdvMatrahBinde;
+    [Range(0.001, 1000)]
+    public decimal? KdvMatrahBinde { get => _kdvMatrahBinde; set { _kdvMatrahBinde = value; KdvMatrahBindeVerildi = true; } }
+    [JsonIgnore] public bool KdvMatrahBindeVerildi { get; private set; }
+
     /// <summary>Parite kodu. null (ya da geriye uyum: "") → eşleşme kaldırılır.</summary>
     private string? _pariteKodu;
     [MaxLength(30)]
@@ -533,8 +551,14 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
     /// ofset işaretli tutar, kolon decimal(12,2) tavanı. Altın dışı madende satış milyemi
     /// ALTIN has kuruyla çarpılacağı için REDDEDİLİR (K20-4 — başka madenin kuru ikame edilmez).
     /// </summary>
-    public static void SatisMilyemiKapisi(decimal? satisMilyemi, decimal? ofset, string? ayarId)
+    public static void SatisMilyemiKapisi(decimal? satisMilyemi, decimal? ofset, string? ayarId,
+        decimal? alisMilyemi = null, decimal? kdvMatrahBinde = null)
     {
+        GirdiKapisi.Denetle(SatisMilyemiKurali.Denetle(alisMilyemi), "alisMilyemi");          // M1b — aynı aralık
+        GirdiKapisi.Denetle(KdvMatrahPayiKurali.Denetle(kdvMatrahBinde), "kdvMatrahBinde");    // M2b
+        if (alisMilyemi is not null && ayarId is { Length: > 0 }
+            && (Kuyumcu.Core.Domain.Ayarlar.MadenBul(ayarId) ?? Kuyumcu.Core.Domain.Maden.Altin) != Kuyumcu.Core.Domain.Maden.Altin)
+            throw new BadRequestException("Alış milyemi yalnız altın ürünlerde kullanılır").AlanIle("alisMilyemi");
         GirdiKapisi.Denetle(SatisMilyemiKurali.Denetle(satisMilyemi), "satisMilyemi");
         if (satisMilyemi is not null && ayarId is { Length: > 0 }
             && (Kuyumcu.Core.Domain.Ayarlar.MadenBul(ayarId) ?? Kuyumcu.Core.Domain.Maden.Altin) != Kuyumcu.Core.Domain.Maden.Altin)
@@ -589,7 +613,7 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
     public async Task<object> Olustur(UrunOlusturDto dto, AktifKullanici islem)
     {
         GercekMilyemKapisi(dto.GercekMilyem);   // PATCH-4 t2: servis içi aralık kapısı
-        SatisMilyemiKapisi(dto.SatisMilyemi, dto.FiyatOfsetTl, dto.AyarId);   // M1
+        SatisMilyemiKapisi(dto.SatisMilyemi, dto.FiyatOfsetTl, dto.AyarId, dto.AlisMilyemi, dto.KdvMatrahBinde);   // M1 · M1b · M2b
         // PAKET PATCH-3: POST kolon tavanı (PATCH ile ortak kapı) — 500 değil 400 alan.
         UrunKolonKapisi(dto.GramAgirlik, dto.TasAgirlik, dto.SatisFiyati, dto.AlisMaliyeti,
             dto.KonsinyeBirimBedel, dto.IscilikTl, dto.MinStok);
@@ -682,6 +706,8 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
             SatisFiyati = dto.SatisFiyati,
             SatisMilyemi = dto.SatisMilyemi,
             FiyatOfsetTl = dto.FiyatOfsetTl is { } ofs && ofs != 0m ? ofs : null,
+            AlisMilyemi = dto.AlisMilyemi,            // M1b
+            KdvMatrahBinde = dto.KdvMatrahBinde,      // M2b
             PariteKodu  = PariteCoz(dto.PariteKodu, dto.Ad, dto.Tip),
             KmtsKodu    = KmtsKodu.Dogrula(dto.KmtsKodu, yasal),   // YASAL-4 Y4-C: tek doğrulama yeri
             // Barkod verilmediyse ÜRETİLİR (PLAN-2 Adım 5). Etiket basmak için
@@ -1091,13 +1117,17 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
         // null ya da 0 gönderilirse sabit fiyat temizlenir (satışta hesaplamaya dönülür)
         if (dto.SatisFiyatiVerildi) mevcut.SatisFiyati = dto.SatisFiyati is > 0m ? dto.SatisFiyati.Value : null;
         // M1 — satış milyemi / ofset: kayıtlı + gelen BİRLEŞİMİ kapıdan geçer (ayar bu PATCH'te değişebilir).
-        if (dto.SatisMilyemiVerildi || dto.FiyatOfsetTlVerildi)
+        if (dto.SatisMilyemiVerildi || dto.FiyatOfsetTlVerildi || dto.AlisMilyemiVerildi || dto.KdvMatrahBindeVerildi)
         {
             var sm = dto.SatisMilyemiVerildi ? dto.SatisMilyemi : mevcut.SatisMilyemi;
             var of = dto.FiyatOfsetTlVerildi ? dto.FiyatOfsetTl : mevcut.FiyatOfsetTl;
-            SatisMilyemiKapisi(sm, of, dto.AyarId ?? mevcut.AyarId);   // ayar bu PATCH'te değişiyorsa YENİSİ
+            var am = dto.AlisMilyemiVerildi ? dto.AlisMilyemi : mevcut.AlisMilyemi;
+            var kb = dto.KdvMatrahBindeVerildi ? dto.KdvMatrahBinde : mevcut.KdvMatrahBinde;
+            SatisMilyemiKapisi(sm, of, dto.AyarId ?? mevcut.AyarId, am, kb);   // ayar bu PATCH'te değişiyorsa YENİSİ
             mevcut.SatisMilyemi = sm;
             mevcut.FiyatOfsetTl = of is { } o && o != 0m ? o : null;
+            mevcut.AlisMilyemi = am;
+            mevcut.KdvMatrahBinde = kb;
         }
         if (dto.Aktif is not null)     mevcut.Aktif = dto.Aktif.Value;
 

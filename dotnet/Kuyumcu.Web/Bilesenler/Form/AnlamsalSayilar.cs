@@ -40,6 +40,13 @@ public class SatisMilyemiAlani : Sayi
     protected override GirdiHatasi? KuralDenetle(decimal d) => SatisMilyemiKurali.Denetle(d) ?? base.KuralDenetle(d);
 }
 
+/// <summary>M2b — KDV'ye giren pay (binde): 0 &lt; x ≤ 1000, en çok 3 ondalık (Core KdvMatrahPayiKurali).</summary>
+public class KdvMatrahPayiAlani : Sayi
+{
+    protected override bool EksiYazilabilir => false;
+    protected override GirdiHatasi? KuralDenetle(decimal d) => KdvMatrahPayiKurali.Denetle(d) ?? base.KuralDenetle(d);
+}
+
 /// <summary>K15 — yüzde: 0–100 (Marj=true: 0–500), en çok <see cref="OndalikHane"/> ondalık.</summary>
 public class Yuzde : Sayi
 {

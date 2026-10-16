@@ -976,6 +976,11 @@ public sealed class SozlukUrun
     /// <summary>M1 — fiyat ofseti (± TL) alanı etiketi ve ipucu.</summary>
     public required string FiyatOfset { get; init; }
     public required string FiyatOfsetIpucu { get; init; }
+    /// <summary>M1b — alış (maliyet) milyemi; M2b — KDV'ye giren pay (binde).</summary>
+    public required string AlisMilyemi { get; init; }
+    public required string AlisMilyemiIpucu { get; init; }
+    public required string KdvMatrahBinde { get; init; }
+    public required string KdvMatrahBindeIpucu { get; init; }
     public required string SatisFiyati { get; init; }
     public required string SatisFiyatiIpucu { get; init; }
     public required string Milyem { get; init; }
@@ -2404,6 +2409,8 @@ public sealed class SozlukFiyat
     public required string Gram { get; init; }
     public required string HasDegeri { get; init; }
     public required string MarjTl { get; init; }
+    /// <summary>M1b — alış (maliyet) milyemiyle birim maliyet sütunu.</summary>
+    public required string MaliyetTl { get; init; }
     public required string IscilikTl { get; init; }
     public required string SatisFiyati { get; init; }
     public required string SebepGumus { get; init; }
@@ -3977,9 +3984,13 @@ public static class Sozlukler
             GercekMilyem = "Gerçek Milyem",
             GercekMilyemIpucu = "Boş bırakılırsa ayarın standart milyemi kullanılır",
             SatisMilyemi = "Satış milyemi",
-            SatisMilyemiIpucu = "Örn. 925 — fiyat: gram × milyem × has. Boşsa fiyat listesi kullanılır",
+            SatisMilyemiIpucu = "Örn. 950 — fiyat: gram × milyem × has. Boşsa alış milyemi, o da boşsa fiyat listesi",
             FiyatOfset = "Fiyat farkı (₺)",
             FiyatOfsetIpucu = "Hesaplanan fiyata eklenir; eksi yazılabilir",
+            AlisMilyemi = "Alış milyemi (maliyet)",
+            AlisMilyemiIpucu = "Toptancıdan alış milyemi, örn. 925. Satış milyemi boşsa bu milyemle satılır",
+            KdvMatrahBinde = "KDV'ye giren pay (binde)",
+            KdvMatrahBindeIpucu = "Örn. 1 = toplamın binde 1'i KDV'ye girer, kalanı %0. Boşsa yasal hesap",
             SatisFiyati = "Satış Fiyatı (₺)",
             SatisFiyatiIpucu = "Boş bırakılırsa satışta has×kur + işçilik otomatik hesaplanır",
             Milyem = "Milyem",
@@ -4047,7 +4058,7 @@ public static class Sozlukler
             HedefMarj = "Hedef marj (%)",
             HedefMarjIpucu = "Yalnız fiyat önerisi içindir; satışı kısıtlamaz.",
             KdvOrani = "KDV oranı (%)",
-            KdvOraniIpucu = "Boş bırakın: oran ürün tipinden türetilir. Yalnız elle ezmek için doldurun.",
+            KdvOraniIpucu = "Yüzde olarak, örn. 20. Boşsa faturada seçilen oran. Binde pay için \"KDV'ye giren pay\" alanı",
             SeriNo = "Seri numarası",
             Olcu = "Ölçü / boy",
             OlcuIpucu = "Yüzük ölçüsü, bilezik/zincir boyu (örn. 17, 18 cm).",
@@ -5318,7 +5329,7 @@ public static class Sozlukler
             KampanyaAktiflestirildi = "Kampanya yeniden aktif edildi.",
             TopluMarj = "Toplu marj önizlemesi (%)",
             TopluMarjNot = "Salt hesap: kaydedilmez, hiçbir ürünün fiyatını değiştirmez.",
-            Ayar = "Ayar", Gram = "Has gram", HasDegeri = "Has değeri", MarjTl = "Marj (TL)",
+            Ayar = "Ayar", Gram = "Has gram", HasDegeri = "Has değeri", MarjTl = "Marj (TL)", MaliyetTl = "Maliyet",
             IscilikTl = "İşçilik (TL)", SatisFiyati = "Satış fiyatı",
             SebepGumus = "Gümüş — otomatik fiyat yok",
             SebepListeYok = "Fiyat listesi yok",
@@ -6901,9 +6912,13 @@ public static class Sozlukler
             GercekMilyem = "Actual Fineness",
             GercekMilyemIpucu = "Leave empty to use the karat's standard fineness",
             SatisMilyemi = "Selling fineness",
-            SatisMilyemiIpucu = "E.g. 925 — price: gram × fineness × fine gold. Empty uses the price list",
+            SatisMilyemiIpucu = "E.g. 950 — price: gram × fineness × fine gold. Empty uses purchase fineness, then the price list",
             FiyatOfset = "Price adjustment (₺)",
             FiyatOfsetIpucu = "Added to the calculated price; may be negative",
+            AlisMilyemi = "Purchase fineness (cost)",
+            AlisMilyemiIpucu = "Fineness bought from the wholesaler, e.g. 925. Used for sale when selling fineness is empty",
+            KdvMatrahBinde = "VAT-able share (per mille)",
+            KdvMatrahBindeIpucu = "E.g. 1 = 1‰ of the total is subject to VAT, the rest 0%. Empty uses the legal method",
             SatisFiyati = "Sale Price (₺)",
             SatisFiyatiIpucu = "Leave empty to auto-calculate fine×rate + labor at sale time",
             Milyem = "Fineness",
@@ -6970,7 +6985,7 @@ public static class Sozlukler
             HedefMarj = "Target margin (%)",
             HedefMarjIpucu = "Used for price suggestions only; it does not restrict sales.",
             KdvOrani = "VAT rate (%)",
-            KdvOraniIpucu = "Leave empty: the rate is derived from the product type. Fill it only to override manually.",
+            KdvOraniIpucu = "As a percentage, e.g. 20. Empty uses the rate chosen on the invoice. For a per-mille share use \"VAT-able share\"",
             SeriNo = "Serial number",
             Olcu = "Size / length",
             OlcuIpucu = "Ring size, bracelet or chain length (e.g. 17, 18 cm).",
@@ -8242,7 +8257,7 @@ public static class Sozlukler
             KampanyaAktiflestirildi = "The campaign has been reactivated.",
             TopluMarj = "Bulk margin preview (%)",
             TopluMarjNot = "Calculation only: nothing is saved, no product price changes.",
-            Ayar = "Karat", Gram = "Fine grams", HasDegeri = "Fine-gold value", MarjTl = "Margin (₺)",
+            Ayar = "Karat", Gram = "Fine grams", HasDegeri = "Fine-gold value", MarjTl = "Margin (₺)", MaliyetTl = "Cost",
             IscilikTl = "Labour (₺)", SatisFiyati = "Sale price",
             SebepGumus = "Silver — no automatic price",
             SebepListeYok = "No price list",

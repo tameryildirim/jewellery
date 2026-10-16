@@ -152,6 +152,26 @@ public static class SatisMilyemiKurali
     }
 }
 
+/// <summary>
+/// M2b (müşteri 16.10: "150 bin liralık fatura, binde 1'i KDV'ye giren kısım, geri kalanı %0";
+/// "yaz binde birden") — ürünün KDV'ye giren payı, BİNDE: 0 &lt; x ≤ 1000, en çok 3 ondalık
+/// (kolon decimal(7,3)).
+/// </summary>
+public static class KdvMatrahPayiKurali
+{
+    public const decimal EnAz = 0.001m;
+    public const decimal EnCok = 1000m;
+    public const int OndalikHane = 3;
+
+    public static GirdiHatasi? Denetle(decimal? d)
+    {
+        if (d is not { } x) return null;
+        if (x <= 0m) return new(GirdiKodu.SayiSifir);
+        if (x > EnCok) return new(GirdiKodu.MilyemAralik, EnAz, EnCok);
+        return SayiKurali.Ondalik(x, OndalikHane);
+    }
+}
+
 /// <summary>K13 — ayar: serbest giriş yok, yalnız Ayarlar listesi.</summary>
 public static class AyarKurali
 {
