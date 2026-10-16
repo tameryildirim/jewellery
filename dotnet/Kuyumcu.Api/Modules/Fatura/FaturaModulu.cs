@@ -458,6 +458,20 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
     /// FİŞİN TAMAMI faturalanır (B-4) ve ekran bunu göstermek zorundadır.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// M2 (müşteri 16.10: "KDV oranını düzenlediği bir şey olacak") — kalemin KDV oranı:
+    /// istekte açıkça verilen oran &gt; ürün kartındaki <c>KdvOrani</c> (yüzde → kesir) &gt; yapılandırma
+    /// varsayılanı. Eskiden ürün kartındaki oran faturada HİÇ okunmuyordu (gizli hata).
+    /// </summary>
+    private decimal KalemKdvOrani(decimal? istekOrani, Data.Urun? urun) =>
+        istekOrani ?? (urun?.KdvOrani is { } yuzde
+            ? Math.Round(yuzde / 100m, 4, MidpointRounding.AwayFromZero)
+            : ayar.VarsayilanOran);
+
+    /// <summary>M2 — belge başlığı oranı: bütün kalemler aynı orandaysa o, değilse genel oran.</summary>
+    private static decimal BaslikOrani(IReadOnlyCollection<decimal> kalemOranlari, decimal genel) =>
+        kalemOranlari.Count > 0 && kalemOranlari.Distinct().Count() == 1 ? kalemOranlari.First() : genel;
+
     public async Task<object> OzelMatrahOnizleme(
         string hareketId, decimal? kdvOran, decimal? toplam, AktifKullanici islem)
     {
@@ -477,6 +491,18 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 .Where(h => h.TenantId == islem.TenantId && h.FisId == hareket.FisId)
                 .OrderBy(h => h.Olusturuldu).ThenBy(h => h.Id)
                 .ToListAsync();
+
+        // M2 — oran verilmediyse kümenin ürün oranları ortaksa o (kaydetmeyle AYNI kural).
+        if (kdvOran is null)
+        {
+            var kumeUrunIdler = kume.Where(h => !string.IsNullOrEmpty(h.UrunId)).Select(h => h.UrunId!).Distinct().ToList();
+            var kumeUrunleri = kumeUrunIdler.Count == 0 ? new Dictionary<string, Data.Urun>()
+                : await db.Urunler.AsNoTracking()
+                    .Where(u => u.TenantId == islem.TenantId && kumeUrunIdler.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id);
+            oran = BaslikOrani(kume.Select(h => KalemKdvOrani(null,
+                string.IsNullOrEmpty(h.UrunId) ? null : kumeUrunleri.GetValueOrDefault(h.UrunId))).ToList(), oran);
+        }
 
         var bacaklar = await HasBacaklariniTopla(kume, islem);
         var (hasGram, hasDeger) = OzelMatrahMotoru.HasBedeli(bacaklar);
@@ -746,6 +772,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         {
             var g = girdiler[i];
             var urun = string.IsNullOrEmpty(g.UrunId) ? null : urunler[g.UrunId];
+            var kalemOran = KalemKdvOrani(dto.KdvOran, urun);   // M2
             var hareket = string.IsNullOrEmpty(g.HareketId) ? null : hareketler[g.HareketId];
 
             var satirToplam = OzelMatrahMotoru.Yuvarla2(
@@ -782,7 +809,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 }
             }
 
-            var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kdvOran);
+            var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalemOran);
 
             kalemler.Add(new Data.FaturaKalemi
             {
@@ -810,7 +837,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 IscilikTl     = g.IscilikTl,
                 IndirimTutari = g.IndirimTutari,
                 KdvTuru       = kdvTuru,
-                KdvOran       = Math.Round(kdvOran, 4, MidpointRounding.AwayFromZero),
+                KdvOran       = Math.Round(kalemOran, 4, MidpointRounding.AwayFromZero),
                 HasDeger      = sonuc.HasDeger,
                 HasBirimFiyat = kalemKuru,
                 KdvMatrah     = sonuc.Matrah,
@@ -852,7 +879,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             // KALEM OTORİTEDİR, başlık türetilmiştir (açık sorunun kararı).
             HasDeger        = hasDeger,
             AraToplam       = araToplam,
-            KdvOran         = Math.Round(kdvOran, 4, MidpointRounding.AwayFromZero),
+            KdvOran         = Math.Round(BaslikOrani(kalemler.Select(x => x.KdvOran).ToList(), kdvOran), 4, MidpointRounding.AwayFromZero),
             KdvTutar        = kdvTutar,
             Toplam          = toplam,
             ParaBirimi      = dto.ParaBirimi ?? "TRY",
@@ -1094,6 +1121,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
 
             decimal hasDeger = 0m, kdvMatrah = 0m, kdvTutar = 0m;
             decimal? kalemKuru = null;   // has bedeli dayanağı — hareketin kur KAYDI
+            var kalemOran = KalemKdvOrani(dto.KdvOran, urun);   // M2
             var hasGram = OzelMatrahMotoru.Yuvarla6(Math.Abs(h.HasGrami));
             if (OzelMatrahKapsaminda(h.Maden)) altinHasGram += hasGram;
 
@@ -1113,7 +1141,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                     kalemKuru = kur.AltinHasFiyati;
                 }
 
-                var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kdvOran);
+                var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalemOran);
                 hasDeger = sonuc.HasDeger;
                 kdvMatrah = sonuc.Matrah;
                 kdvTutar = sonuc.KdvTutar;
@@ -1143,7 +1171,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 IscilikTl     = null,
                 IndirimTutari = indirim,
                 KdvTuru       = kdvTuru,
-                KdvOran       = Math.Round(kdvOran, 4, MidpointRounding.AwayFromZero),
+                KdvOran       = Math.Round(kalemOran, 4, MidpointRounding.AwayFromZero),
                 HasDeger      = hasDeger,
                 HasBirimFiyat = kalemKuru,
                 KdvMatrah     = kdvMatrah,
@@ -1173,7 +1201,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             KdvTuru         = kdvTuru,
             HasDeger        = hasToplam,
             AraToplam       = OzelMatrahMotoru.Yuvarla2(toplam - kdvToplam),
-            KdvOran         = Math.Round(kdvOran, 4, MidpointRounding.AwayFromZero),
+            KdvOran         = Math.Round(BaslikOrani(kalemler.Select(x => x.KdvOran).ToList(), kdvOran), 4, MidpointRounding.AwayFromZero),
             KdvTutar        = kdvToplam,
             Toplam          = toplam,
             ParaBirimi      = dto.ParaBirimi ?? "TRY",
@@ -1590,7 +1618,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             }
         }
 
-        var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, fatura.KdvOran);
+        // M2 — taslağa eklenen kalem: ürün kartında oran varsa o, yoksa belgenin oranı.
+        var eklenenOran = urun?.KdvOrani is { } urunYuzde
+            ? Math.Round(urunYuzde / 100m, 4, MidpointRounding.AwayFromZero) : fatura.KdvOran;
+        var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, eklenenOran);
         var yeni = new Data.FaturaKalemi
         {
             Id            = Kimlik.Ulid(),
@@ -1613,7 +1644,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             IscilikTl     = g.IscilikTl,
             IndirimTutari = g.IndirimTutari,
             KdvTuru       = fatura.KdvTuru,
-            KdvOran       = fatura.KdvOran,
+            KdvOran       = eklenenOran,
             HasDeger      = sonuc.HasDeger,
             HasBirimFiyat = kalemKuru,
             KdvMatrah     = sonuc.Matrah,
