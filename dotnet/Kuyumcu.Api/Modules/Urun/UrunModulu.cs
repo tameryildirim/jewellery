@@ -141,6 +141,12 @@ public sealed class UrunOlusturDto
     /// <summary>Opsiyonel sabit satış fiyatı; boşsa satışta hesaplanır</summary>
     [Range(0, double.MaxValue)] public decimal? SatisFiyati { get; set; }
 
+    /// <summary>M1 — satış milyemi (1–2000); doluysa satış = net gram × milyem/1000 × has. Boş = liste kuralı.</summary>
+    [Range(1, 2000)] public decimal? SatisMilyemi { get; set; }
+
+    /// <summary>M1 — fiyat ofseti (± TL, birim başına); hesaplanan fiyata eklenir. Boş = yok.</summary>
+    [Range(-9999999999.99, 9999999999.99)] public decimal? FiyatOfsetTl { get; set; }
+
     /// <summary>
     /// Kanonik parite kodu (CEYREK_YENI, YARIM_YENI, RESAT…). Verilmezse ürün
     /// adından otomatik tahmin edilir; hiç eşleşmezse boş kalır ve fiyat
@@ -356,6 +362,18 @@ public sealed class UrunGuncelleDto
     public decimal? SatisFiyati { get => _satisFiyati; set { _satisFiyati = value; SatisFiyatiVerildi = true; } }
     [JsonIgnore] public bool SatisFiyatiVerildi { get; private set; }
 
+    /// <summary>M1 — satış milyemi. null → temizlenir (liste kuralına dönülür).</summary>
+    private decimal? _satisMilyemi;
+    [Range(1, 2000)]
+    public decimal? SatisMilyemi { get => _satisMilyemi; set { _satisMilyemi = value; SatisMilyemiVerildi = true; } }
+    [JsonIgnore] public bool SatisMilyemiVerildi { get; private set; }
+
+    /// <summary>M1 — fiyat ofseti (± TL). null ya da 0 → temizlenir.</summary>
+    private decimal? _fiyatOfsetTl;
+    [Range(-9999999999.99, 9999999999.99)]
+    public decimal? FiyatOfsetTl { get => _fiyatOfsetTl; set { _fiyatOfsetTl = value; FiyatOfsetTlVerildi = true; } }
+    [JsonIgnore] public bool FiyatOfsetTlVerildi { get; private set; }
+
     /// <summary>Parite kodu. null (ya da geriye uyum: "") → eşleşme kaldırılır.</summary>
     private string? _pariteKodu;
     [MaxLength(30)]
@@ -510,6 +528,26 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
     }
 
     /// <summary>
+    /// M1 — satış milyemi + fiyat ofseti SERVİS İÇİ kapısı (POST ve PATCH aynı kapı, UX-S26).
+    /// Satış milyemi 1–2000, en çok 2 ondalık (Core <see cref="SatisMilyemiKurali"/>);
+    /// ofset işaretli tutar, kolon decimal(12,2) tavanı. Altın dışı madende satış milyemi
+    /// ALTIN has kuruyla çarpılacağı için REDDEDİLİR (K20-4 — başka madenin kuru ikame edilmez).
+    /// </summary>
+    public static void SatisMilyemiKapisi(decimal? satisMilyemi, decimal? ofset, string? ayarId)
+    {
+        GirdiKapisi.Denetle(SatisMilyemiKurali.Denetle(satisMilyemi), "satisMilyemi");
+        if (satisMilyemi is not null && ayarId is { Length: > 0 }
+            && (Kuyumcu.Core.Domain.Ayarlar.MadenBul(ayarId) ?? Kuyumcu.Core.Domain.Maden.Altin) != Kuyumcu.Core.Domain.Maden.Altin)
+            throw new BadRequestException("Satış milyemi yalnız altın ürünlerde kullanılır; bu üründe satış fiyatını girin").AlanIle("satisMilyemi");
+        if (ofset is { } o && o != 0m)
+        {
+            GirdiKapisi.Tutar(o, "fiyatOfsetTl", TutarTuru.Isaretli);
+            if (Math.Abs(o) >= 10_000_000_000m)
+                throw new BadRequestException("Fiyat ofseti çok büyük").AlanIle("fiyatOfsetTl");
+        }
+    }
+
+    /// <summary>
     /// PAKET PATCH-4 t2 (hasım KRİTİK): gerçek milyem SERVİS İÇİ kapısı — DTO DataAnnotations
     /// yalnız controller yolunda koşar ve int işlenenli Range ondalığı yuvarlayarak sınıyordu
     /// (1000,4 → has brüt gramı aşıyordu = sahte has). Verildiyse 1 ≤ m ≤ 1000 ve en çok
@@ -551,6 +589,7 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
     public async Task<object> Olustur(UrunOlusturDto dto, AktifKullanici islem)
     {
         GercekMilyemKapisi(dto.GercekMilyem);   // PATCH-4 t2: servis içi aralık kapısı
+        SatisMilyemiKapisi(dto.SatisMilyemi, dto.FiyatOfsetTl, dto.AyarId);   // M1
         // PAKET PATCH-3: POST kolon tavanı (PATCH ile ortak kapı) — 500 değil 400 alan.
         UrunKolonKapisi(dto.GramAgirlik, dto.TasAgirlik, dto.SatisFiyati, dto.AlisMaliyeti,
             dto.KonsinyeBirimBedel, dto.IscilikTl, dto.MinStok);
@@ -641,6 +680,8 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
             HasGrami    = hasGrami,
             IscilikTl   = dto.IscilikTl ?? 0m,
             SatisFiyati = dto.SatisFiyati,
+            SatisMilyemi = dto.SatisMilyemi,
+            FiyatOfsetTl = dto.FiyatOfsetTl is { } ofs && ofs != 0m ? ofs : null,
             PariteKodu  = PariteCoz(dto.PariteKodu, dto.Ad, dto.Tip),
             KmtsKodu    = KmtsKodu.Dogrula(dto.KmtsKodu, yasal),   // YASAL-4 Y4-C: tek doğrulama yeri
             // Barkod verilmediyse ÜRETİLİR (PLAN-2 Adım 5). Etiket basmak için
@@ -1049,6 +1090,15 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
         if (dto.IscilikTl is not null) mevcut.IscilikTl = dto.IscilikTl.Value;
         // null ya da 0 gönderilirse sabit fiyat temizlenir (satışta hesaplamaya dönülür)
         if (dto.SatisFiyatiVerildi) mevcut.SatisFiyati = dto.SatisFiyati is > 0m ? dto.SatisFiyati.Value : null;
+        // M1 — satış milyemi / ofset: kayıtlı + gelen BİRLEŞİMİ kapıdan geçer (ayar bu PATCH'te değişebilir).
+        if (dto.SatisMilyemiVerildi || dto.FiyatOfsetTlVerildi)
+        {
+            var sm = dto.SatisMilyemiVerildi ? dto.SatisMilyemi : mevcut.SatisMilyemi;
+            var of = dto.FiyatOfsetTlVerildi ? dto.FiyatOfsetTl : mevcut.FiyatOfsetTl;
+            SatisMilyemiKapisi(sm, of, dto.AyarId ?? mevcut.AyarId);   // ayar bu PATCH'te değişiyorsa YENİSİ
+            mevcut.SatisMilyemi = sm;
+            mevcut.FiyatOfsetTl = of is { } o && o != 0m ? o : null;
+        }
         if (dto.Aktif is not null)     mevcut.Aktif = dto.Aktif.Value;
 
         // Kategori / reyon / konsinye — üçü de doğrulanır, sessizce yazılmaz.

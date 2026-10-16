@@ -383,6 +383,14 @@
                   Deger="@yeniIscilik" DegerChanged="@(v => yeniIscilik = v ?? 0m)"
                   Durum="form" HataAlani="u-iscilik" />
             }
+            @* M1 (müşteri 16.10: "milyemi, çarpanı burada olacak, elimle müdahale edebileceğim") — yalnız altın. *@
+            @if (YeniTumAlanlar && MadenAltin(yeniAyar))
+            {
+            <SatisMilyemiAlani ElemanId="u-satis-milyemi" Etiket="@Dil.T.Urun.SatisMilyemi"
+                  @bind-Deger="yeniSatisMilyemi" Ipucu="@Dil.T.Urun.SatisMilyemiIpucu" Durum="form" HataAlani="u-satis-milyemi" />
+            <Para ElemanId="u-fiyat-ofset" Etiket="@Dil.T.Urun.FiyatOfset" Tur="TutarTuru.Isaretli"
+                  @bind-Deger="yeniFiyatOfset" Ipucu="@Dil.T.Urun.FiyatOfsetIpucu" Durum="form" HataAlani="u-fiyat-ofset" />
+            }
             @* Kıymetsiz madende (çelik) satış fiyatı ZORUNLU → basit modda da görünür. *@
             @if (YeniTumAlanlar || !MadenKiymetli(yeniAyar))
             {
@@ -810,6 +818,13 @@
                 <Para ElemanId="d-iscilik" Etiket="@Dil.T.Islem.IscilikTutari" Tur="TutarTuru.SifirOlabilir"
                       Deger="@dIscilik" DegerChanged="@(v => dIscilik = v ?? 0m)" Durum="form" HataAlani="d-iscilik" />
                 }
+                @if (DuzTumAlanlar && MadenAltin(dAyar))
+                {
+                <SatisMilyemiAlani ElemanId="d-satis-milyemi" Etiket="@Dil.T.Urun.SatisMilyemi"
+                      @bind-Deger="dSatisMilyemi" Ipucu="@Dil.T.Urun.SatisMilyemiIpucu" Durum="form" HataAlani="d-satis-milyemi" />
+                <Para ElemanId="d-fiyat-ofset" Etiket="@Dil.T.Urun.FiyatOfset" Tur="TutarTuru.Isaretli"
+                      @bind-Deger="dFiyatOfset" Ipucu="@Dil.T.Urun.FiyatOfsetIpucu" Durum="form" HataAlani="d-fiyat-ofset" />
+                }
                 @* Kıymetsiz madende satış fiyatı ZORUNLU → basit modda da görünür. *@
                 @if (DuzTumAlanlar || !MadenKiymetli(dAyar))
                 {
@@ -1181,6 +1196,10 @@
     private static bool MadenKiymetli(string ayarId) =>
         Kuyumcu.Core.Domain.Ayarlar.Bul(ayarId)?.Kiymetli ?? true;
 
+    /// <summary>M1 — satış milyemi yalnız altında (sunucu SatisMilyemiKapisi ile aynı kural, K20-4).</summary>
+    private static bool MadenAltin(string ayarId) =>
+        (Kuyumcu.Core.Domain.Ayarlar.MadenBul(ayarId) ?? Kuyumcu.Core.Domain.Maden.Altin) == Kuyumcu.Core.Domain.Maden.Altin;
+
     /// <summary>Ürün grubunun dayattığı maden; yoksa null (grup serbest).</summary>
     private static string? TipinMadeni(string tip) => tip switch
     {
@@ -1479,6 +1498,7 @@
     private decimal yeniIscilik;
     private decimal? yeniGercekMilyem;
     private decimal? yeniSatisFiyati;
+    private decimal? yeniSatisMilyemi, yeniFiyatOfset;   // M1
 
     private string? stokUrunId;
     /// <summary>PAKET GOC-C (#6 · K14): stok penceresindeki ürün GRAM birimli mi (değilse sayım/yerleşim adedi tam sayı).</summary>
@@ -1546,6 +1566,7 @@
         ["ad"] = "u-ad", ["kod"] = "u-kod", ["gramAgirlik"] = "u-gram", ["tasAgirlik"] = "u-tas",
         ["gercekMilyem"] = "u-gercek-milyem", ["ayarId"] = "u-ayar", ["tip"] = "u-tip",
         ["barkod"] = "u-barkod", ["satisFiyati"] = "u-satis-fiyati", ["iscilikTl"] = "u-iscilik",
+        ["satisMilyemi"] = "u-satis-milyemi", ["fiyatOfsetTl"] = "u-fiyat-ofset",
         // URUN-ACILIS-ATOMIK tur 2: açılış stoğu reddi kutunun ALTINA yazılır (kutu kırmızı,
         // odak oraya) — eşlenmeyince 'Daha fazla' boşuna açılıyor, hata görünmüyordu.
         ["acilisStogu.adet"] = "u-acilis-stok", ["acilisStogu.subeId"] = "u-acilis-stok",
@@ -1557,6 +1578,7 @@
         ["ad"] = "d-ad", ["kod"] = "d-kod", ["gramAgirlik"] = "d-gram", ["tasAgirlik"] = "d-tas",
         ["gercekMilyem"] = "d-gercek-milyem", ["ayarId"] = "d-ayar", ["tip"] = "d-tip",
         ["barkod"] = "d-barkod", ["satisFiyati"] = "d-satis", ["iscilikTl"] = "d-iscilik",
+        ["satisMilyemi"] = "d-satis-milyemi", ["fiyatOfsetTl"] = "d-fiyat-ofset",
     };
 
     private void Basarili(string mesaj) { basari = mesaj; basariJeton++; }
@@ -1606,6 +1628,7 @@
     private decimal dGram, dTas, dIscilik;
     private bool dGramBos;
     private decimal? dSatisFiyati;
+    private decimal? dSatisMilyemi, dFiyatOfset;   // M1
 
     private EtiketVeri? etiket;
 
@@ -1829,6 +1852,7 @@
         yeniIscilik = 0;
         yeniGercekMilyem = null;
         yeniSatisFiyati = null;
+        yeniSatisMilyemi = null; yeniFiyatOfset = null;   // M1
         yeniKategoriId = "";
         yeniReyonId = "";
         yeniKonsinye = false;
@@ -1933,6 +1957,8 @@
                 tasIbaresi = string.IsNullOrEmpty(yeniTasIbaresi) ? null : yeniTasIbaresi,
                 iscilikTl = yeniIscilik,
                 satisFiyati = yeniSatisFiyati,
+                satisMilyemi = MadenAltin(yeniAyar) ? yeniSatisMilyemi : null,   // M1
+                fiyatOfsetTl = MadenAltin(yeniAyar) ? yeniFiyatOfset : null,
                 barkod = string.IsNullOrWhiteSpace(yeniBarkod) ? null : yeniBarkod.Trim(),
                 gercekMilyem = yeniGercekMilyem,
                 kategoriId = string.IsNullOrEmpty(yeniKategoriId) ? null : yeniKategoriId,
@@ -2125,6 +2151,7 @@
             dReyonId = u.ReyonId ?? "";
             dIscilik = u.IscilikTl;
             dSatisFiyati = u.SatisFiyati;
+            dSatisMilyemi = u.SatisMilyemi; dFiyatOfset = u.FiyatOfsetTl;   // M1
             dKarat = u.PirlantaKarat;
             dRenk = u.PirlantaRenk ?? "";
             dBerraklik = u.PirlantaBerraklik ?? "";
@@ -2208,6 +2235,9 @@
                 ["iscilikTl"] = dIscilik,
                 // null = sabit fiyatı SİL (satışta hesaplamaya dön) — boşaltılan alanın anlamı.
                 ["satisFiyati"] = dSatisFiyati,
+                // M1 — null = temizle (liste kuralına dön). Altın dışı ayarda gönderilmez → sunucu reddetmez.
+                ["satisMilyemi"] = MadenAltin(dAyar) ? dSatisMilyemi : null,
+                ["fiyatOfsetTl"] = MadenAltin(dAyar) ? dFiyatOfset : null,
                 ["barkod"] = Bos(dBarkod.Trim()),
                 // PIRLANTA dışı tipte 4C null gider = SİLİNİR (4C yalnız PIRLANTA tipinde
                 // girilir — PirlantaKapisi; tip değişince eski 4C kalıp kapıya takılmaz).

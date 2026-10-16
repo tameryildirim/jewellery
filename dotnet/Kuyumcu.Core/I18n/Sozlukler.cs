@@ -970,6 +970,12 @@ public sealed class SozlukUrun
     public required string TasKokenYok { get; init; }
     public required string GercekMilyem { get; init; }
     public required string GercekMilyemIpucu { get; init; }
+    /// <summary>M1 — satış milyemi alanı etiketi ve ipucu.</summary>
+    public required string SatisMilyemi { get; init; }
+    public required string SatisMilyemiIpucu { get; init; }
+    /// <summary>M1 — fiyat ofseti (± TL) alanı etiketi ve ipucu.</summary>
+    public required string FiyatOfset { get; init; }
+    public required string FiyatOfsetIpucu { get; init; }
     public required string SatisFiyati { get; init; }
     public required string SatisFiyatiIpucu { get; init; }
     public required string Milyem { get; init; }
@@ -3970,6 +3976,10 @@ public static class Sozlukler
             TasKokenYok = "Taşsız",
             GercekMilyem = "Gerçek Milyem",
             GercekMilyemIpucu = "Boş bırakılırsa ayarın standart milyemi kullanılır",
+            SatisMilyemi = "Satış milyemi",
+            SatisMilyemiIpucu = "Örn. 925 — fiyat: gram × milyem × has. Boşsa fiyat listesi kullanılır",
+            FiyatOfset = "Fiyat farkı (₺)",
+            FiyatOfsetIpucu = "Hesaplanan fiyata eklenir; eksi yazılabilir",
             SatisFiyati = "Satış Fiyatı (₺)",
             SatisFiyatiIpucu = "Boş bırakılırsa satışta has×kur + işçilik otomatik hesaplanır",
             Milyem = "Milyem",
@@ -6890,6 +6900,10 @@ public static class Sozlukler
             TasKokenYok = "No stone",
             GercekMilyem = "Actual Fineness",
             GercekMilyemIpucu = "Leave empty to use the karat's standard fineness",
+            SatisMilyemi = "Selling fineness",
+            SatisMilyemiIpucu = "E.g. 925 — price: gram × fineness × fine gold. Empty uses the price list",
+            FiyatOfset = "Price adjustment (₺)",
+            FiyatOfsetIpucu = "Added to the calculated price; may be negative",
             SatisFiyati = "Sale Price (₺)",
             SatisFiyatiIpucu = "Leave empty to auto-calculate fine×rate + labor at sale time",
             Milyem = "Fineness",

@@ -82,4 +82,6 @@ public sealed record UrunTamKart(
     // yazılsaydı Blazor çözümlemesi ondalık değerde patlardı (QA tur 3 dersi).
     string? TedarikciId = null, decimal? AlisMaliyeti = null, decimal? HedefMarj = null,
     decimal? KdvOrani = null, string? SeriNo = null, string? Olcu = null,
-    decimal? MinStok = null);
+    decimal? MinStok = null,
+    // M1 (16.10) — satış milyemi + fiyat ofseti (GET /urunler/{id} varlığın tamamını döner).
+    decimal? SatisMilyemi = null, decimal? FiyatOfsetTl = null);

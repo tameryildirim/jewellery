@@ -5634,6 +5634,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(10)")
                         .HasColumnName("birim");
 
+                    b.Property<decimal?>("FiyatOfsetTl")
+                        .HasColumnType("decimal(12,2)")
+                        .HasColumnName("fiyat_ofset_tl");
+
                     b.Property<string>("GorselUrl")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)")
@@ -5750,6 +5754,10 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.Property<decimal?>("SatisFiyati")
                         .HasColumnType("decimal(15,2)")
                         .HasColumnName("satis_fiyati");
+
+                    b.Property<decimal?>("SatisMilyemi")
+                        .HasColumnType("decimal(7,2)")
+                        .HasColumnName("satis_milyemi");
 
                     b.Property<string>("SeriNo")
                         .HasMaxLength(60)

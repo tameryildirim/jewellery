@@ -132,6 +132,26 @@ public static class MilyemKurali
         && Math.Abs(m - a.Milyem) > SapmaUyari;
 }
 
+/// <summary>
+/// M1 (müşteri 16.10: "bileziğin milyemi, çarpanı burada olacak, elimle müdahale edebileceğim;
+/// 925 ise 925") — SATIŞ milyemi: kuyumcunun satışta has fiyatıyla çarptığı milyem
+/// (ayar milyemi + işçilik/kâr payı). Ayar milyeminden farklı olarak 1000'i aşabilir
+/// (24 ayarda kâr payı); kolon decimal(7,2) → 1–2000, en çok 2 ondalık.
+/// </summary>
+public static class SatisMilyemiKurali
+{
+    public const decimal EnAz = 1m;
+    public const decimal EnCok = 2000m;
+    public const int OndalikHane = 2;
+
+    public static GirdiHatasi? Denetle(decimal? d)
+    {
+        if (d is not { } x) return null;
+        if (x < EnAz || x > EnCok) return new(GirdiKodu.MilyemAralik, EnAz, EnCok);
+        return SayiKurali.Ondalik(x, OndalikHane);
+    }
+}
+
 /// <summary>K13 — ayar: serbest giriş yok, yalnız Ayarlar listesi.</summary>
 public static class AyarKurali
 {

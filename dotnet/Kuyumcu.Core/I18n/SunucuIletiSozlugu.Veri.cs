@@ -342,6 +342,9 @@ public static partial class SunucuIletiSozlugu
         ("Geri alma kaydı için şube seçimi gerekli", "Choosing a branch is required for the rollback record"),
         ("Geri alınacak açılış oturumu bulunamadı", "The opening session to roll back was not found"),
         ("Gerçek milyem 1 ile 1000 arasında olmalı", "The actual fineness must be between 1 and 1000"),
+        // M1 (16.10) — satış milyemi / fiyat ofseti kapısı
+        ("Satış milyemi yalnız altın ürünlerde kullanılır; bu üründe satış fiyatını girin", "Selling fineness applies to gold items only; enter a sale price for this item"),
+        ("Fiyat ofseti çok büyük", "The price adjustment is too large"),
         ("Gerçek milyem en çok 2 ondalık basamak taşıyabilir", "The actual fineness can have at most 2 decimal places"),
         ("Geçerli bir davet jetonu gerekiyor. Kayıt yalnız yöneticinin ürettiği tek kullanımlık davetle açılır; jetonunuz geçersiz, kullanılmış ya da süresi dolmuş olabilir.", "A valid invitation token is required. Registration opens only with a single-use invitation produced by the administrator; your token may be invalid, already used or expired."),
         ("Geçerli bir e-posta adresi giriniz", "Enter a valid e-mail address"),

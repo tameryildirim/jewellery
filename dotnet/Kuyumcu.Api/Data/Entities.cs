@@ -527,6 +527,13 @@ public class Urun : IKiraciVarlik
     /// <summary>Opsiyonel sabit satış fiyatı; boşsa satışta has×kur+işçilik hesaplanır.</summary>
     [Column("satis_fiyati", TypeName = "decimal(15,2)")] public decimal? SatisFiyati { get; set; }
     /// <summary>
+    /// M1 (müşteri 16.10) — SATIŞ milyemi: doluysa satış = net gram × satış milyemi/1000 × has kuru;
+    /// fark (satış − ayar milyemi) işçilik olarak ayrışır, liste marjı UYGULANMAZ. Boş = eski davranış.
+    /// </summary>
+    [Column("satis_milyemi", TypeName = "decimal(7,2)")] public decimal? SatisMilyemi { get; set; }
+    /// <summary>M1 — elle fiyat ofseti (± TL, birim başına): hesaplanan liste fiyatına eklenir. Boş = yok.</summary>
+    [Column("fiyat_ofset_tl", TypeName = "decimal(12,2)")] public decimal? FiyatOfsetTl { get; set; }
+    /// <summary>
     /// Kanonik parite kodu (CEYREK_YENI, YARIM_YENI, RESAT…). Doluysa ürünün
     /// piyasa fiyatı kur kaynağının o kalemine ait fiyattan okunur; boşsa
     /// has gram × kur + işçilik ile hesaplanır. Bkz. PariteKodlari.

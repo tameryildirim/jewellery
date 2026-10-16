@@ -33,6 +33,13 @@ public class Milyem : Sayi
     protected override GirdiHatasi? KuralDenetle(decimal d) => MilyemKurali.Denetle(d) ?? base.KuralDenetle(d);
 }
 
+/// <summary>M1 — satış milyemi: 1–2000, en çok 2 ondalık (Core SatisMilyemiKurali; sunucuyla aynı kural).</summary>
+public class SatisMilyemiAlani : Sayi
+{
+    protected override bool EksiYazilabilir => false;
+    protected override GirdiHatasi? KuralDenetle(decimal d) => SatisMilyemiKurali.Denetle(d) ?? base.KuralDenetle(d);
+}
+
 /// <summary>K15 — yüzde: 0–100 (Marj=true: 0–500), en çok <see cref="OndalikHane"/> ondalık.</summary>
 public class Yuzde : Sayi
 {
