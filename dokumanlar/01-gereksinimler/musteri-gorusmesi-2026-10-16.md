@@ -195,7 +195,7 @@ Kaynak raporlarının tamamı bu oturumun araştırma ajanlarından; ham notlar 
 | F6 | **Toplu fatura** (yüzlerce siparişi tek tuşla) | Yok | Gün sonu toplu e-Arşiv (fişlerden) — kuyumcu için anlamlı biçimi bu |
 | F7 | Ürün yönetimi | Var (kuyumcuya özgü: ayar, has, milyem) | — (Mihenk üstün) |
 | F8 | 10 yıl saklama | Kayıtlar silinmez (append-only defter); belge arşiv süresi tanımı **yok** | Saklama politikası belgesi + entegratör arşivi |
-| F9 | Muhasebe programı entegrasyonu (Luca, Zirve — müşteri yorumu) | Doğrulanacak (kodda 2 dosyada ad geçiyor) | Luca/Zirve/Logo dışa aktarım (mali müşavire veri) |
+| F9 | Muhasebe programı entegrasyonu (Luca, Zirve — müşteri yorumu) | **YOK** — genel CSV dışa aktarım var (`DisaAktarimModulu`, fatura + muhasebe fişi); Luca/Zirve biçimi yok (önceki "2 dosyada geçiyor" notu YANLIŞTI: o dosyalar marka görseli "logo") | Luca/Zirve içe aktarım biçimi (mali müşavirden örnek dosya) |
 | F10 | Kontör bazlı fiyat (1,50–2,50 ₺/kontör), kurulum ücretsiz, referans bonusu | Fiyat modeli yok (F-8 birim ekonomi belgesi var) | Mustafa (FinOps): fatura maliyeti + kontör modeli kıyası |
 | F11 | ISO 27001/9001 rozeti, 7/24 destek | Yok | Satış/kurumsal karar |
 | F12 | Mobil uygulama (bağlantılar boş — yayında mı belirsiz) | Web, telefonda Tezgâh düzeni sunum sonrası listesinde | Telefon düzeni (PWA) |
