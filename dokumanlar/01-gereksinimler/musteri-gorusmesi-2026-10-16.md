@@ -178,3 +178,47 @@ Kesinlik: **K** birincil metin okundu · **O** kısmen/ikincil · **D** doğrula
 | 7 | İşçilik belgesi zorunluluğu + üç sütunlu kâr raporu | Denetim savunması = satış argümanı |
 
 Kaynak raporlarının tamamı bu oturumun araştırma ajanlarından; ham notlar depoda değil.
+
+---
+
+# EK-2 — Faturalog özellik eşitliği (kurucu 16.10: "Faturalog'un tüm özelliklerini de istiyoruz")
+
+⚠ Faturalog'un özellik listesi yalnız üreticinin pazarlama sitesinden; "tüm özellikler" ancak **demo hesabı veya müşterinin ekranından** kesinleşir (Claude hesap açamaz — kurucu/müşteri talep eder).
+
+| # | Faturalog özelliği (üretici beyanı) | Mihenk bugün | Yapılacak |
+|---|---|---|---|
+| F1 | Açık bankacılık: çok banka, TL+döviz+kredi kartı hesapları tek panel | Banka modülü var, hareketler **elle** | Sağlayıcı soyutlaması + simülasyon → banka web servisi/API (EK § F) |
+| F2 | Gelen ödeme → cari eşleşir → **otomatik fatura** ("saniyeler içinde", kurala göre) | `hareketler/{id}/eslestir` + `faturaya-donustur` VAR, **elle tetikli** | Eşleştirme motoru + kural ("bu IBAN'dan gelen → e-Arşiv önerisi"), onay kuyruğu |
+| F3 | Transferdeki kişi bilgisinden **cari otomatik açma** ("AI Hub") | Yok | Ad/IBAN'dan cari önerisi; otomatik açma yerine onaylı öneri (TCKN kuralları kataloğu) |
+| F4 | e-Fatura **giden + gelen** yönetimi | Fatura modülü (giden, fişten fatura, özel matrah) var; gelen fatura kayıtları var; **GİB'e gönderim/alma YOK** | Entegratör (ayrı oturum) |
+| F5 | Alıcı e-Fatura mükellefi mi → otomatik **e-Fatura/e-Arşiv ayrımı** | Yok | Entegratör mükellef sorgusu |
+| F6 | **Toplu fatura** (yüzlerce siparişi tek tuşla) | Yok | Gün sonu toplu e-Arşiv (fişlerden) — kuyumcu için anlamlı biçimi bu |
+| F7 | Ürün yönetimi | Var (kuyumcuya özgü: ayar, has, milyem) | — (Mihenk üstün) |
+| F8 | 10 yıl saklama | Kayıtlar silinmez (append-only defter); belge arşiv süresi tanımı **yok** | Saklama politikası belgesi + entegratör arşivi |
+| F9 | Muhasebe programı entegrasyonu (Luca, Zirve — müşteri yorumu) | Doğrulanacak (kodda 2 dosyada ad geçiyor) | Luca/Zirve/Logo dışa aktarım (mali müşavire veri) |
+| F10 | Kontör bazlı fiyat (1,50–2,50 ₺/kontör), kurulum ücretsiz, referans bonusu | Fiyat modeli yok (F-8 birim ekonomi belgesi var) | Mustafa (FinOps): fatura maliyeti + kontör modeli kıyası |
+| F11 | ISO 27001/9001 rozeti, 7/24 destek | Yok | Satış/kurumsal karar |
+| F12 | Mobil uygulama (bağlantılar boş — yayında mı belirsiz) | Web, telefonda Tezgâh düzeni sunum sonrası listesinde | Telefon düzeni (PWA) |
+
+**Mihenk'te olup Faturalog'da görünmeyen (fark):** has/milyem stok, KDV 23/e özel matrah motoru, sarrafiye, hurda alış + gider pusulası, emanet, MASAK kimlik tespiti, tezgâh satış, kasa/POS, kur.
+
+---
+
+# EK-3 — Muhalif görüşler (karşı tez) — kurucu 16.10 isteği
+
+Amaç: kayıttaki her talebin **zayıf yanını** önceden görmek. Talepler reddedilmiyor; tasarım bu itirazlara dayanıklı kurulmalı.
+
+1. **"Harem'den çek, daha ucuz" →** Daha ucuz kaynak, kuyumcunun **satış** fiyatını düşürür = marj kaybı. Kuyumcunun maliyeti toptancısının fiyatıdır, Harem'in perakende ekranı değil. Ayrıca tek kaynağa bağımlılık + lisanssız veri riski (resmî API yok). → Kaynak "referans", satış fiyatı kuyumcunun kuralı olmalı.
+2. **"Tek satış milyemi (925) yeter" →** İşçiliği gömer: KDV matrahı ve kâr raporu işçiliği ayrı ister. Milyem işçilik altın yükselince kendiliğinden pahalanır — müşteri TL ile kıyaslar ("geçen ay işçilik 1.500 idi"). Adet ürünlerde (çeyrek) milyem anlamsız. → İkisi birden: kuyumcu tek sayı girer, sistem ayrıştırır; adet ürünlerde TL.
+3. **"Devlet anlık kuru bilemez, işçilik faturası gereksiz" (kayıttaki taraflardan biri) →** Mevzuat bunu zaten kapatmış: has bedeli **önceki işgünü borsa kapanışıyla** sabittir (GUT), yani "anlık kur" savunması geçmez. İncelemede has stok sayımı/randıman farkı re'sen tarhiyata gidebilir. → Mihenk belgesiz işçiliği **kolaylaştırmamalı**; aksi yazılımı vergi kaçırma aracına çevirir (bizim için hukuki risk).
+4. **"Binde 1 KDV oranını ürüne gireyim" →** Sabit oran mevzuatta yok; matrahı yapay düşürür, denetimde "has bedeli şişirilmiş" sorusu doğar. → Oran yalnız uyarı göstergesi.
+5. **"Fiş yok, her satışa doğrudan e-Arşiv" →**
+   - **Maliyet:** günde ~1.000 işlem × 1,50–2,50 ₺ kontör = **günde 1.500–2.500 ₺, ayda 45–75 bin ₺** (Faturalog fiyatıyla). Fiş (ÖKC) ise bedava.
+   - **Kesinti:** internet/entegratör düşerse satış durur; ÖKC çevrimdışı çalışır.
+   - **Gizlilik:** altın alan müşterilerin bir kısmı kimliğinin kayda girmesini istemez; eşik altında 11111111111 kullanımı da kuralla sınırlı.
+   → Kuyumcu seçsin: eşik altı varsayılan fiş, istenirse e-Arşiv; gün sonu toplu e-Arşiv seçeneği maliyeti düşürür.
+6. **"Para düşünce ekrana gelsin" (banka) →** Banka ücretleri (hesap başı), şifrelerin bizde saklanması (güvenlik yükü), yanlış eşleştirme ile paranın yanlış cariye yazılması, çok müşteri adına toplamada TCMB lisansı. Ayrıca her personelin tüm banka akışını görmesi istenmeyebilir. → Rol bazlı görünürlük + onaylı eşleştirme.
+7. **"Ayarlar'da ad kuralı: adında bilezik geçiyorsa…" →** Ad kuralı kırılgandır ("bilezik kutusu", "Bilezik-Set", yazım farkı). → Kategori/çeşit alanı birincil, ad kuralı yalnız öneri; kural önizlemesi zorunlu.
+8. **"Eski çeyrek ayrı ürün" →** Ağırlık/milyem aynı; ayrı ürün stok karmaşası yaratabilir. Ama piyasa fiyatı farklı → ayrı **fiyat kalemi** şart, ayrı stok kartı tartışılır.
+9. **"Faturalog'un tüm özellikleri" →** Hepsini kopyalamak Mihenk'in "sade ve şık / zorunlu önce" ilkesini bozar (pazaryeri toplu faturası, "AI" cari açma kuyumcunun çoğuna gereksiz). → Kuyumcunun **kullandığı** Faturalog akışlarını eşitle (banka→fatura, mükellef sorgusu, gün sonu toplu), gerisini ekleme.
+10. **Kaynak kısıtı (yöntem itirazı):** Bu görüşme tek işletmenin sözü; Faturalog bilgisi tek kaynaklı; mevzuat yorumları mali müşavirsiz. Tek müşteriye göre ürün şekillendirmek riskli → 2–3 kuyumcuyla teyit.
