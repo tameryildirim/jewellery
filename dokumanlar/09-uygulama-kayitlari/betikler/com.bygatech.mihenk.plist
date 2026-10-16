@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Mihenk inceleme sunucusu (http://localhost:5199) — kurucu 16.10: Claude oturumundan bağımsız, kalıcı.
+     qa-sunucu.sh'ı aynen çalıştırır (üretim kipi, TLS köprüsü, sır ve damga kapıları değişmedi).
+     Bilgisayar açılınca başlar, çökerse 20 sn içinde yeniden kalkar. Günlük: ~/Library/Logs/mihenk-sunucu.log
+     Kur:        cp <bu dosya> ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bygatech.mihenk.plist
+     Durdur:     launchctl bootout gui/$(id -u)/com.bygatech.mihenk
+     Yeniden:    launchctl kickstart -k gui/$(id -u)/com.bygatech.mihenk -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.bygatech.mihenk</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/betikler/qa-sunucu.sh</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/betikler</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/opt/dotnet@8/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key><string>/Users/ramazanakkocan</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>20</integer>
+  <key>StandardOutPath</key><string>/Users/ramazanakkocan/Library/Logs/mihenk-sunucu.log</string>
+  <key>StandardErrorPath</key><string>/Users/ramazanakkocan/Library/Logs/mihenk-sunucu.log</string>
+</dict>
+</plist>
