@@ -499,6 +499,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             var kumeUrunleri = kumeUrunIdler.Count == 0 ? new Dictionary<string, Data.Urun>()
                 : await db.Urunler.AsNoTracking()
                     .Where(u => u.TenantId == islem.TenantId && kumeUrunIdler.Contains(u.Id))
+                    .Take(kumeUrunIdler.Count)   // B-8: kümenin ürün sayısıyla sınırlı
                     .ToDictionaryAsync(u => u.Id);
             oran = BaslikOrani(kume.Select(h => KalemKdvOrani(null,
                 string.IsNullOrEmpty(h.UrunId) ? null : kumeUrunleri.GetValueOrDefault(h.UrunId))).ToList(), oran);
