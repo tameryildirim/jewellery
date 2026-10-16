@@ -222,3 +222,23 @@ Amaç: kayıttaki her talebin **zayıf yanını** önceden görmek. Talepler red
 8. **"Eski çeyrek ayrı ürün" →** Ağırlık/milyem aynı; ayrı ürün stok karmaşası yaratabilir. Ama piyasa fiyatı farklı → ayrı **fiyat kalemi** şart, ayrı stok kartı tartışılır.
 9. **"Faturalog'un tüm özellikleri" →** Hepsini kopyalamak Mihenk'in "sade ve şık / zorunlu önce" ilkesini bozar (pazaryeri toplu faturası, "AI" cari açma kuyumcunun çoğuna gereksiz). → Kuyumcunun **kullandığı** Faturalog akışlarını eşitle (banka→fatura, mükellef sorgusu, gün sonu toplu), gerisini ekleme.
 10. **Kaynak kısıtı (yöntem itirazı):** Bu görüşme tek işletmenin sözü; Faturalog bilgisi tek kaynaklı; mevzuat yorumları mali müşavirsiz. Tek müşteriye göre ürün şekillendirmek riskli → 2–3 kuyumcuyla teyit.
+
+---
+
+# EK-4 — "Oran" çok değişkenli: kayıttan çıkarım (kurucu 16.10 isteği)
+
+**Kritik ayrım:** Konuşmada İKİ oran var. (1) **KDV oranı** %20 ("100 bin liranda %20 çekici olacak", 26:47). (2) **Matraha giren pay** "binde 1" ("Yaz binde birden… %0.1", 27:56). Demoda müşteri ürün kartındaki **KDV oranı** kutusuna %0,1 yazdı — kastı (2) idi. Mevcut alan (1)'dir → binde değeri oraya yazılırsa KDV %0,1 hesaplanır = **yanlış vergi**. Alan adı/uyarısı düzeltilmeli (M4 öncesi küçük düzeltme önerildi).
+
+**Oranın bağlı olduğu değişkenler (dakikalı):**
+1. Ürün türü — "çeyrekte o oranı biz ayarlıyoruz" (24:44); "24 oranını, bileziği, çeyreği tanımladık" (25:05); bilezik binde 1, başka binde 15 (26:31).
+2. Ad kuralı — "içinde bilezik geçiyorsa binde bir" (26:21); ayarlar menüsü (26:17).
+3. Koşullu kural listesi — "bu olursa bunu listenin burasına çek, KDV'sini böyle yaz" (31:22–31:31): kural hem KDV/matrah hem liste yerini belirliyor.
+4. Elle giriş — "elde girebilir yapın" (24:52), "total rakamı gireceğim" (24:40), "manuel hareket ettirmem lazım" (24:37).
+5. Ürün düzenle ekranında — "KDV oranını düzenlediği bir şey olacak" (26:38); işçilik/milyem aynı yerde (26:51).
+6. **[?] Dönem** — "14 döneminde değişiyor" (23:08): oran zamanla değişiyor olabilir; teyit.
+7. **[?] Ciro** — "10 milyonluk ciro… binde 15'ini ver, hesaplayamam diyor" (24:11–24:25): ciro üzerinden götürü bir uygulama; KDV mi başka vergi mi belirsiz → mali müşavir.
+8. Hacim — "bazen 1000 işlem" (24:57): işlem başına elle giriş değil, kural/kategori.
+
+**Mevzuat bağı:** KDVK 23/e yasal hesabı (satış − has bedeli) zaten ürüne göre DEĞİŞEN bir pay üretir; müşterinin gözlemi doğru, fark: yasa payı hesaplatır, müşteri sabitlemek istiyor.
+
+**Tasarım önerisi (M4'e eklendi):** ürün kartında iki ayrı alan — "KDV oranı (%)" ve "Matraha giren pay (binde)"; pay seçenek listesi: Yasal hesap (varsayılan, hesaplanan binde gösterilir) / Sabit binde (müşavir onaylı kilit) / Faturada elle toplam matrah (değişiklik kaydı + uyarı); Ayarlar'da kural: koşul → matrah payı + KDV oranı + liste yeri; öncelik ürün > ad kuralı > kategori. Dönem ve ciro maddeleri teyitsiz koda girmez.
