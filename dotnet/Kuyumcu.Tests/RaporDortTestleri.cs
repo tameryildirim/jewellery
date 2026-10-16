@@ -369,9 +369,14 @@ public sealed class RaporDortTestleri(TestVeritabani vt)
     private async Task Karsilastir(Kiraci k, string? ikinciSube, string baglam)
     {
         var ayBasi = new DateOnly(Bugun.Year, Bugun.Month, 1);
+        // Takvime bağlı kırmızıyı önler: "13 ay önceki ayın 5'i → bugün" ayın ~11'inden sonra rapor dönemi
+        // sınırını (RaporDonemKurali.EnCokGun, iki uç dahil) aşıyordu. Başlangıç sınırın izin verdiği en erken
+        // güne sıkıştırılır — kısmi baş + kapanmış tam aylar + içinde bulunulan ay niyeti her gün korunur.
+        var enErken = Bugun.AddDays(-(Kuyumcu.Core.Domain.Girdi.RaporDonemKurali.EnCokGun - 1));
+        var uzunBas = ayBasi.AddMonths(-13).AddDays(4) < enErken ? enErken : ayBasi.AddMonths(-13).AddDays(4);
         var araliklar = new (DateOnly Bas, DateOnly Bit)[]
         {
-            (ayBasi.AddMonths(-13).AddDays(4), Bugun),                 // kısmi baş + 12 tam ay + içinde bulunulan ay
+            (uzunBas, Bugun),                                          // kısmi baş + 12 tam ay + içinde bulunulan ay (≤ dönem sınırı)
             (ayBasi.AddMonths(-10), ayBasi.AddMonths(-2).AddDays(-1)), // yalnız kapanmış tam aylar
             (ayBasi.AddMonths(-6).AddDays(9), ayBasi.AddMonths(-1).AddDays(14)), // iki kısmi uç
             (Bugun.AddDays(-20), Bugun),                              // canlı (≤ 2 ay)
