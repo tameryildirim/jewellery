@@ -385,13 +385,18 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
         // BİLİNMEZ (alış günü has fiyatı yok) → has bacağı o satırda fail-closed kalır.
         var kartMaliyetleri = await KartMaliyetleri(islem.TenantId,
             hamTuketimler.Where(t => t.BirimMaliyetTl is null).Select(t => t.UrunId));
+        // M1b — kart TL maliyeti de yoksa alış milyeminden (has) maliyet; TL'si satışın KENDİ kuruyla.
+        var milyemHas = await MilyemHasMaliyetleri(islem.TenantId,
+            hamTuketimler.Where(t => t.BirimMaliyetTl is null && KartMaliyeti(kartMaliyetleri, t.UrunId) is null).Select(t => t.UrunId));
+        var hareketKuru = satislar.Concat(iadeler)
+            .Where(h => !string.IsNullOrEmpty(h.KurSnapshotId) && kurlar.ContainsKey(h.KurSnapshotId!))
+            .ToDictionary(h => h.Id, h => kurlar[h.KurSnapshotId!]);
         var tuketimler = hamTuketimler
-            .Select(t => new
+            .Select(t =>
             {
-                t.CikisHareketId, t.Adet,
-                BirimMaliyetTl = t.BirimMaliyetTl ?? KartMaliyeti(kartMaliyetleri, t.UrunId),
-                BirimMaliyetHas = t.BirimMaliyetTl is null ? null : t.BirimMaliyetHas,
-                Kart = t.BirimMaliyetTl is null && KartMaliyeti(kartMaliyetleri, t.UrunId) is not null,
+                var (tl, has, kart) = BirimMaliyetSec(t.BirimMaliyetTl, t.BirimMaliyetHas, t.UrunId, t.CikisHareketId,
+                    kartMaliyetleri, milyemHas, hareketKuru);
+                return new { t.CikisHareketId, t.Adet, BirimMaliyetTl = tl, BirimMaliyetHas = has, Kart = kart };
             })
             .ToList();
 
@@ -750,14 +755,21 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
         var hamSayfaTuketim = sayfaUrunIdleri.Count == 0 ? [] : await KarUrunOnToplam.TuketimleriOku(tuketimSorgu);
         var kartMaliyetleri = await KartMaliyetleri(islem.TenantId,
             hamSayfaTuketim.Where(t => t.BirimMaliyetTl is null).Select(t => t.UrunId));
-        var sayfaTuketim = hamSayfaTuketim
-            .Select(t => new UrunTuketimSatiri(t.CikisHareketId, t.UrunId,
-                t.Adet,
-                t.BirimMaliyetTl ?? KartMaliyeti(kartMaliyetleri, t.UrunId),
-                t.BirimMaliyetTl is null ? null : t.BirimMaliyetHas,
-                t.BirimMaliyetTl is null && KartMaliyeti(kartMaliyetleri, t.UrunId) is not null))
-            .ToList();
         var kurlar = await KurHaritasi(islem.TenantId, sayfaSatislar.Select(h => h.KurSnapshotId));
+        // M1b — kart TL maliyeti yoksa alış milyeminden; TL'si satışın KENDİ kuruyla (ana rapor yoluyla AYNI seçim).
+        var milyemHas = await MilyemHasMaliyetleri(islem.TenantId,
+            hamSayfaTuketim.Where(t => t.BirimMaliyetTl is null && KartMaliyeti(kartMaliyetleri, t.UrunId) is null).Select(t => t.UrunId));
+        var hareketKuru = sayfaSatislar
+            .Where(h => !string.IsNullOrEmpty(h.KurSnapshotId) && kurlar.ContainsKey(h.KurSnapshotId!))
+            .ToDictionary(h => h.Id, h => kurlar[h.KurSnapshotId!]);
+        var sayfaTuketim = hamSayfaTuketim
+            .Select(t =>
+            {
+                var (tl, has, kart) = BirimMaliyetSec(t.BirimMaliyetTl, t.BirimMaliyetHas, t.UrunId, t.CikisHareketId,
+                    kartMaliyetleri, milyemHas, hareketKuru);
+                return new UrunTuketimSatiri(t.CikisHareketId, t.UrunId, t.Adet, tl, has, kart);
+            })
+            .ToList();
 
         var urunAdlari = new Dictionary<string, (string? Kod, string? Ad)>();
         if (sayfaUrunIdleri.Count > 0)
@@ -1129,6 +1141,40 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
             if (sayfa.Count < (KartSayfasiTest.Value ?? KartSayfasi)) return sonuc;
             (sonMaliyet, sonId) = (sayfa[^1].Maliyet, sayfa[^1].Id);
         }
+    }
+
+    /// <summary>
+    /// M1b (müşteri 16.10: "925'den maliyetim varsa 925 yazacağım", "has değeri maliyet olarak
+    /// gözüküyor" — sahte kâr) — ürün kartındaki ALIŞ milyeminden birim HAS maliyeti:
+    /// net gram × alış milyemi/1000 (= has gram × alış milyemi / ayar milyemi). Yalnız ALTIN ürün
+    /// (K20-4); parti ve kart TL maliyeti yoksa kullanılır. TL karşılığı satışın KENDİ kuruyla bulunur.
+    /// </summary>
+    internal async Task<Dictionary<string, decimal>> MilyemHasMaliyetleri(string tenantId, IEnumerable<string?> urunIdler)
+    {
+        var kume = urunIdler.Where(x => !string.IsNullOrEmpty(x)).Select(x => x!).Distinct().ToList();
+        if (kume.Count == 0) return [];
+        var satirlar = await db.Urunler.AsNoTracking()
+            .Where(u => u.TenantId == tenantId && kume.Contains(u.Id) && u.AlisMilyemi != null && u.AlisMilyemi > 0m && u.Milyem > 0m)
+            .Select(u => new { u.Id, u.AyarId, u.HasGrami, u.Milyem, Alis = u.AlisMilyemi!.Value })
+            .Take(kume.Count)
+            .ToListAsync();
+        return satirlar
+            .Where(u => (Kuyumcu.Core.Domain.Ayarlar.MadenBul(u.AyarId) ?? Kuyumcu.Core.Domain.Maden.Altin) == Kuyumcu.Core.Domain.Maden.Altin)
+            .ToDictionary(u => u.Id, u => Math.Round(u.HasGrami * u.Alis / u.Milyem, 6, MidpointRounding.AwayFromZero));
+    }
+
+    /// <summary>M1b — birim maliyet yedeği (parti → kart TL → alış milyemi × satış kuru).</summary>
+    public static (decimal? Tl, decimal? Has, bool Kart) BirimMaliyetSec(
+        decimal? partiTl, decimal? partiHas, string? urunId, string? cikisHareketId,
+        IReadOnlyDictionary<string, decimal> kart, IReadOnlyDictionary<string, decimal> milyemHas,
+        IReadOnlyDictionary<string, decimal> hareketKuru)
+    {
+        if (partiTl is not null) return (partiTl, partiHas, false);
+        if (KartMaliyeti(kart, urunId) is { } k) return (k, null, true);
+        if (urunId is not null && milyemHas.TryGetValue(urunId, out var h)
+            && cikisHareketId is not null && hareketKuru.TryGetValue(cikisHareketId, out var kur) && kur > 0m)
+            return (Math.Round(h * kur, 2, MidpointRounding.AwayFromZero), h, true);
+        return (null, null, false);
     }
 
     internal static decimal? KartMaliyeti(IReadOnlyDictionary<string, decimal> kart, string? urunId) =>
