@@ -417,7 +417,7 @@ public sealed class YasalParametreServisi
         if (e == y) return "AYNI";
         var artisGevsetir = anahtar is YasalAnahtar.TevsikHaddiTl or YasalAnahtar.MasakKimlikEsigiTl
             or YasalAnahtar.MasakAmacBeyaniEsigiTl or YasalAnahtar.MasakBeyanFormuEsigiTl
-            or YasalAnahtar.MasakEkBelgeEsigiTl or YasalAnahtar.FaturaHaddiTl
+            or YasalAnahtar.MasakEkBelgeEsigiTl or YasalAnahtar.FaturaHaddiTl or YasalAnahtar.KuyumcuFaturaHaddiTl
             or YasalAnahtar.MasakSibIsGunu or YasalAnahtar.TevsikBildirimIsGunu or YasalAnahtar.GiderPusulasiGun;
         var artisSikilastirir = anahtar is YasalAnahtar.MasakSaklamaYil;
         if (!artisGevsetir && !artisSikilastirir) return "DEGISIKLIK";

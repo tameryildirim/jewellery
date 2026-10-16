@@ -127,6 +127,12 @@ public static class YasalAnahtar
     public const string KdvOzelMatrahKodu = "KDV_OZEL_MATRAH_KODU";
     public const string ResmiTatil = "RESMI_TATIL";
     public const string FaturaHaddiTl = "FATURA_HADDI_TL";
+    /// <summary>
+    /// M6 (müşteri 16.10: "30 bin lira geçtiğinde isim konmalı… fişe gerek yok") — işlenmiş kıymetli maden
+    /// satışında fatura düzenleme haddi = genel haddin 3 KATI (VUK GT 514 md.4, RG 04.01.2020/30998).
+    /// Yıllık satır olarak tutulur (genel had her yıl değişir); 2026: 12.000 × 3 = 36.000 TL.
+    /// </summary>
+    public const string KuyumcuFaturaHaddiTl = "KUYUMCU_FATURA_HADDI_TL";
     public const string KmtsKodDeseni = "KMTS_KOD_DESENI";
 
     /// <summary>Anahtar → birim. Beyaz listenin TEK kaynağı.</summary>
@@ -149,6 +155,7 @@ public static class YasalAnahtar
             [KdvOzelMatrahKodu] = YasalBirim.Kod,
             [ResmiTatil] = YasalBirim.Tarih,
             [FaturaHaddiTl] = YasalBirim.Tl,
+            [KuyumcuFaturaHaddiTl] = YasalBirim.Tl,
             [KmtsKodDeseni] = YasalBirim.Kod,
         };
 
@@ -170,6 +177,8 @@ public static class YasalAnahtar
         MasakEkBelgeEsigiTl, MasakSibIsGunu, MasakSaklamaYil,
         // PAKET YASAL-4 (Y4-C): KMTS biçimi işlem günü tablodan okunur (Common/KmtsKodu).
         KmtsKodDeseni,
+        // M6 (16.10): kuyumcu fatura haddi satış anında tablodan okunur (Tezgâh belge türü kuralı).
+        KuyumcuFaturaHaddiTl,
     };
 
     /// <summary>
