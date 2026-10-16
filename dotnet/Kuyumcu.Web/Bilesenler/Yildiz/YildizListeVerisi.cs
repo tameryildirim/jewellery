@@ -100,6 +100,10 @@ public sealed class YildizListeBaglami
     /// <summary>Ayrıntı görünümü açık: liste yerine kısa başlık + "Listeye dön" (b2); sayfanın özgün içeriği altında.</summary>
     public bool AyrintiAcik { get; init; }
     public EventCallback AyrintiKapat { get; init; }
+    /// <summary>M4 (16.10) — alt kısımda "+ …" kalıbında isteğe bağlı ek bağlantı (ör. Fiyat kuralları). Boşsa çizilmez.</summary>
+    public string? EkEtiket { get; init; }
+    public string EkId { get; init; } = "";
+    public EventCallback EkTikla { get; init; }
 }
 
 /// <summary>PAKET YILDIZ-5A — liste ekranlarının ortak yazımı (saf).</summary>

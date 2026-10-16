@@ -25,6 +25,7 @@ public static class ModulKayit
         s.AddScoped<Kur.KurServisi>();
         s.AddScoped<Cari.CariServisi>();
         s.AddScoped<Urun.UrunServisi>();
+        s.AddScoped<Urun.UrunKuraliServisi>();   // M4 — ürün kuralları
         s.AddScoped<Satis.SatisServisi>();
         s.AddScoped<Satis.StornoServisi>();   // storno motoru (paket 48 Faz A)
         s.AddScoped<Kasa.KasaServisi>();

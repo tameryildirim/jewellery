@@ -679,6 +679,20 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
         // herhangi bir adım reddederse `await using` geri alır ve HİÇBİR satır kalmaz.
         await using var tx = await db.Database.IsBaslatVeyaDevral();
 
+        // M4 — ürün kuralı: BOŞ bırakılan milyem/binde/KDV alanları uyan ilk kuraldan dolar
+        // (müşteri 16.10: "bilezik diye yazdığım anda… binde bir"). Elle girilen değer kazanır.
+        if (await UrunKuraliServisi.IlkUyan(db, islem.TenantId, dto.Ad, dto.KategoriId) is { } kural)
+        {
+            var altinUrun = (Kuyumcu.Core.Domain.Ayarlar.MadenBul(dto.AyarId) ?? Kuyumcu.Core.Domain.Maden.Altin) == Kuyumcu.Core.Domain.Maden.Altin;
+            if (altinUrun)
+            {
+                dto.AlisMilyemi ??= kural.AlisMilyemi;
+                dto.SatisMilyemi ??= kural.SatisMilyemi;
+                dto.KdvMatrahBinde ??= kural.KdvMatrahBinde;
+            }
+            dto.KdvOrani ??= kural.KdvOrani;
+        }
+
         db.Urunler.Add(new Data.Urun
         {
             Id          = id,

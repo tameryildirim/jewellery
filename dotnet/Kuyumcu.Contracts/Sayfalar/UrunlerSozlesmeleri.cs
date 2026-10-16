@@ -87,3 +87,9 @@ public sealed record UrunTamKart(
     decimal? SatisMilyemi = null, decimal? FiyatOfsetTl = null,
     // M1b · M2b (16.10) — alış (maliyet) milyemi + KDV'ye giren pay (binde).
     decimal? AlisMilyemi = null, decimal? KdvMatrahBinde = null);
+// ── M4 (16.10) — ürün kuralları ──
+public sealed record UrunKuraliVeri(string Id, string Ad, string? AdIcerir, string? KategoriId,
+    decimal? AlisMilyemi, decimal? SatisMilyemi, decimal? KdvMatrahBinde, decimal? KdvOrani, int Sira, bool Aktif);
+public sealed record UrunKuraliOnizlemeSatiri(string Id, string Kod, string Ad, List<string> DegisenAlanlar);
+public sealed record UrunKuraliOnizleme(string KuralId, int UyanSayisi, int DegisecekSayisi, List<UrunKuraliOnizlemeSatiri> Satirlar);
+public sealed record UrunKuraliUygulama(string KuralId, int UyanSayisi, int DegisenSayisi);

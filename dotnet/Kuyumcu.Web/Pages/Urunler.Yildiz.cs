@@ -114,6 +114,10 @@ public partial class Urunler
                 B1Etiket = YildizUrunSozlugu.YeniUrun(dil),
                 B1Id = "urun-yeni-ac",
                 B1Tikla = EventCallback.Factory.Create(this, YeniModalAc),
+                // M4 (16.10) — "+ Fiyat kuralları" (isteğe bağlı; ana ekranda tek birincil düğme kalır).
+                EkEtiket = UrunKuraliSozlugu.Ac(dil),
+                EkId = "urun-kurallar-ac",
+                EkTikla = EventCallback.Factory.Create(this, () => kuralAcik = true),
                 SekmelerId = "yildiz-urun-sekmeler",
                 Sekmeler =
                 [

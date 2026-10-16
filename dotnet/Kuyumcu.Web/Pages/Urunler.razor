@@ -683,6 +683,11 @@
    18 px; yarım sütuna düşen seçici değeri/etiketi kırılıyor, kutular hizadan
    kayıyordu. Çözüm SAYFA İŞARETLEMESİYLE: çekmecede her alan TAM GENİŞLİK
    (form-grid-2 → form-dikey). Ortak katman.css'e dokunulmadı (P7'nin). *@
+@* M4 (16.10) — fiyat kuralları çekmecesi *@
+<UrunKurallariCekmecesi Acik="kuralAcik" Kapat="() => kuralAcik = false"
+                        Kategoriler="@(DuzKategoriler.Select(k => new SecenekOgesi(k.Id, k.Etiket)).ToList())"
+                        Uygulandi="Yukle" />
+
 <Cekmece Acik="duzenleAcik" Varlik="urun" Baslik="@Dil.T.Urun.UrunDuzenle"
          Kapat="() => duzenleAcik = false" Kaydet="UrunGuncelle"
          Kaydediliyor="@kaydediliyor"
@@ -1507,6 +1512,7 @@
     private decimal? yeniGercekMilyem;
     private decimal? yeniSatisFiyati;
     private decimal? yeniSatisMilyemi, yeniFiyatOfset, yeniAlisMilyemi, yeniKdvMatrahBinde;   // M1 · M1b · M2b
+    private bool kuralAcik;   // M4 — fiyat kuralları çekmecesi
 
     private string? stokUrunId;
     /// <summary>PAKET GOC-C (#6 · K14): stok penceresindeki ürün GRAM birimli mi (değilse sayım/yerleşim adedi tam sayı).</summary>

@@ -149,6 +149,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<StokPartisi> StokPartileri => Set<StokPartisi>();
     public DbSet<StokPartiTuketimi> StokPartiTuketimleri => Set<StokPartiTuketimi>();
     public DbSet<UrunKategorisi> UrunKategorileri => Set<UrunKategorisi>();
+    public DbSet<UrunKurali> UrunKurallari => Set<UrunKurali>();   // M4
     public DbSet<Reyon> Reyonlar => Set<Reyon>();
 
     // Paket 25 Faz A — şube stoğunun reyon kırılımı. `stoklar` tablosu DEĞİŞMEDİ;
@@ -788,6 +789,7 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<GiderPusulasi>().HasIndex(g => g.HareketId);
         // Ürün ağacı: alt kategori araması üst kimlik üzerinden yürür.
         mb.Entity<UrunKategorisi>().HasIndex(k => new { k.TenantId, k.UstId });
+        mb.Entity<UrunKurali>().HasIndex(k => new { k.TenantId, k.Aktif, k.Sira });   // M4
         mb.Entity<Reyon>().HasIndex(r => new { r.TenantId, r.SubeId });
         // Paket 25: aynı şubede aynı adla iki reyon — bugüne kadar yalnız KODDA
         // engelleniyordu (KategoriModulu.Olustur), eşzamanlı iki POST ikisini de

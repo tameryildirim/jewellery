@@ -1,0 +1,187 @@
+@using Kuyumcu.Contracts.Sayfalar.Urunler
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ M4 (16.10) — Fiyat kuralları çekmecesi ═══════════════════════════════════
+   Müşteri: "Ayarlar bölümünde bileziği ben tanımlarım… içinde bilezik geçiyorsa binde bir…
+   bilezik ise şu kadar, kolyeyse bu kadar, tek tek yapma".
+   Açılışta yalnız kural listesi + "Yeni kural"; form ve önizleme ihtiyaç olunca açılır (zorunlu önce).
+   ═════════════════════════════════════════════════════════════════════════════ *@
+<Cekmece Acik="Acik" Varlik="urun-kurali" Baslik="@UrunKuraliSozlugu.Baslik(Dil.Dil)"
+         Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetGoster="@(form is not null)" KaydetElemanId="uk-kaydet">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="uk-hata">@h</div>
+    }
+    @if (bilgi is { } b)
+    {
+        <div class="bant bant-basari" role="status" id="uk-bilgi">@b</div>
+    }
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (form is null)
+    {
+        @if (kurallar.Count == 0)
+        {
+            <p class="metin-soluk" id="uk-bos">@UrunKuraliSozlugu.KuralYok(Dil.Dil)</p>
+        }
+        <ul class="liste-sade" id="uk-liste">
+            @foreach (var k in kurallar)
+            {
+                <li class="uk-satir" id="@($"uk-{k.Id}")">
+                    <div class="uk-ad">@k.Ad @(k.Aktif ? "" : "·")</div>
+                    <div class="metin-soluk">@UrunKuraliSozlugu.Ozet(k.AdIcerir, KategoriAdi(k.KategoriId), Dil.Dil)</div>
+                    <div>@UrunKuraliSozlugu.Degerler(k.AlisMilyemi, k.SatisMilyemi, k.KdvMatrahBinde, k.KdvOrani, Dil.Dil)</div>
+                    <div class="uk-eylem">
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"uk-duzenle-{k.Id}")" @onclick="() => FormAc(k)">@UrunKuraliSozlugu.Duzenle(Dil.Dil)</button>
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"uk-onizle-{k.Id}")" @onclick="() => Onizle(k.Id)">@UrunKuraliSozlugu.Onizle(Dil.Dil)</button>
+                    </div>
+                    @if (onizleme is { } o && o.KuralId == k.Id)
+                    {
+                        <div class="uk-onizleme" id="uk-onizleme">
+                            <p>@UrunKuraliSozlugu.Uyan(o.UyanSayisi, o.DegisecekSayisi, Dil.Dil)</p>
+                            <ul class="liste-sade metin-kucuk">
+                                @foreach (var s in o.Satirlar.Where(x => x.DegisenAlanlar.Count > 0).Take(20))
+                                {
+                                    <li>@s.Kod — @s.Ad</li>
+                                }
+                            </ul>
+                            <Onay ElemanId="uk-ustune-yaz" Etiket="@UrunKuraliSozlugu.UstuneYaz(Dil.Dil)"
+                                  Deger="@ustuneYaz" DegerChanged="@(async v => { ustuneYaz = v; await Onizle(k.Id); })" />
+                            <button type="button" class="btn btn-birincil btn-kucuk" id="uk-uygula"
+                                    disabled="@(o.DegisecekSayisi == 0 || kaydediliyor)" @onclick="() => Uygula(k.Id)">@UrunKuraliSozlugu.Uygula(Dil.Dil)</button>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+        <button type="button" class="yz-ekle" id="uk-yeni" @onclick="() => FormAc(null)">
+            <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@UrunKuraliSozlugu.YeniKural(Dil.Dil)
+        </button>
+    }
+    else
+    {
+        <div class="form-dikey" id="uk-form">
+            <Metin ElemanId="uk-ad" Etiket="@UrunKuraliSozlugu.Ad(Dil.Dil)" Zorunlu="true" EnFazla="@AlanSinirlari.UrunKuraliMetin"
+                   Deger="@form.Ad" DegerChanged="@(v => form.Ad = v ?? "")" />
+            <Metin ElemanId="uk-ad-icerir" Etiket="@UrunKuraliSozlugu.AdIcerir(Dil.Dil)" EnFazla="@AlanSinirlari.UrunKuraliMetin"
+                   Ipucu="@UrunKuraliSozlugu.AdIcerirIpucu(Dil.Dil)"
+                   Deger="@form.AdIcerir" DegerChanged="@(v => form.AdIcerir = v)" />
+            <div class="alan">
+                <Secici ElemanId="uk-kategori" Etiket="@UrunKuraliSozlugu.Kategori(Dil.Dil)"
+                        Secenekler="@Kategoriler.ToList()" @bind-Deger="form.KategoriId" BosSecenekMetni="—" />
+            </div>
+            <SatisMilyemiAlani ElemanId="uk-alis-milyemi" Etiket="@Dil.T.Urun.AlisMilyemi" @bind-Deger="form.AlisMilyemi" />
+            <SatisMilyemiAlani ElemanId="uk-satis-milyemi" Etiket="@Dil.T.Urun.SatisMilyemi" @bind-Deger="form.SatisMilyemi" />
+            <KdvMatrahPayiAlani ElemanId="uk-kdv-binde" Etiket="@Dil.T.Urun.KdvMatrahBinde" Birim="‰" @bind-Deger="form.KdvMatrahBinde" />
+            <Yuzde ElemanId="uk-kdv-orani" Etiket="@Dil.T.Urun.KdvOrani" Birim="%" @bind-Deger="form.KdvOrani" />
+            <Sayi ElemanId="uk-sira" Etiket="@UrunKuraliSozlugu.Sira(Dil.Dil)" EnAz="0" EnCok="10000" EnCokOndalik="0"
+                  Ipucu="@UrunKuraliSozlugu.SiraIpucu(Dil.Dil)" @bind-Deger="form.Sira" />
+            <Onay ElemanId="uk-aktif" Etiket="@UrunKuraliSozlugu.Aktif(Dil.Dil)" @bind-Deger="form.Aktif" />
+        </div>
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+    /// <summary>Kategori seçenekleri (Ürünler sayfasının düz kategori listesi).</summary>
+    [Parameter] public IReadOnlyList<SecenekOgesi> Kategoriler { get; set; } = [];
+    /// <summary>Kural uygulandıktan sonra ürün listesini tazelemek için.</summary>
+    [Parameter] public EventCallback Uygulandi { get; set; }
+
+    private sealed class KuralFormu
+    {
+        public string? Id { get; set; }
+        public string Ad { get; set; } = "";
+        public string? AdIcerir { get; set; }
+        public string? KategoriId { get; set; }
+        public decimal? AlisMilyemi { get; set; }
+        public decimal? SatisMilyemi { get; set; }
+        public decimal? KdvMatrahBinde { get; set; }
+        public decimal? KdvOrani { get; set; }
+        public decimal? Sira { get; set; } = 0;
+        public bool Aktif { get; set; } = true;
+    }
+
+    private List<UrunKuraliVeri> kurallar = [];
+    private KuralFormu? form;
+    private UrunKuraliOnizleme? onizleme;
+    private bool ustuneYaz;
+    private bool yukleniyor, kaydediliyor, oncekiAcik;
+    private string? hata, bilgi;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !oncekiAcik) { form = null; onizleme = null; hata = bilgi = null; await Yukle(); }
+        oncekiAcik = Acik;
+    }
+
+    private string? KategoriAdi(string? id) => id is null ? null : Kategoriler.FirstOrDefault(k => k.Deger == id)?.Ad;
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try { kurallar = await Api.TazeGetAsync<List<UrunKuraliVeri>>("/urun-kurallari"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }   // P-11: önceki liste KORUNUR
+        finally { yukleniyor = false; }
+    }
+
+    private void FormAc(UrunKuraliVeri? k)
+    {
+        hata = bilgi = null; onizleme = null;
+        form = k is null ? new KuralFormu { Sira = kurallar.Count == 0 ? 0 : kurallar.Max(x => x.Sira) + 1 }
+            : new KuralFormu
+            {
+                Id = k.Id, Ad = k.Ad, AdIcerir = k.AdIcerir, KategoriId = k.KategoriId, AlisMilyemi = k.AlisMilyemi,
+                SatisMilyemi = k.SatisMilyemi, KdvMatrahBinde = k.KdvMatrahBinde, KdvOrani = k.KdvOrani, Sira = k.Sira, Aktif = k.Aktif,
+            };
+    }
+
+    private async Task Kaydet()
+    {
+        if (form is null) return;
+        kaydediliyor = true; hata = bilgi = null;
+        var govde = new
+        {
+            ad = form.Ad, adIcerir = string.IsNullOrWhiteSpace(form.AdIcerir) ? null : form.AdIcerir,
+            kategoriId = string.IsNullOrEmpty(form.KategoriId) ? null : form.KategoriId,
+            alisMilyemi = form.AlisMilyemi, satisMilyemi = form.SatisMilyemi, kdvMatrahBinde = form.KdvMatrahBinde,
+            kdvOrani = form.KdvOrani, sira = (int)(form.Sira ?? 0), aktif = form.Aktif,
+        };
+        try
+        {
+            if (form.Id is null) await Api.PostAsync<JsonElement>("/urun-kurallari", govde);
+            else await Api.PutAsync<JsonElement>($"/urun-kurallari/{form.Id}", govde);
+            form = null; bilgi = UrunKuraliSozlugu.Kaydedildi(Dil.Dil);
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task Onizle(string id)
+    {
+        hata = bilgi = null;
+        try { onizleme = await Api.TazeGetAsync<UrunKuraliOnizleme>($"/urun-kurallari/{id}/onizleme?yalnizBos={(!ustuneYaz).ToString().ToLowerInvariant()}"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }
+    }
+
+    private async Task Uygula(string id)
+    {
+        kaydediliyor = true; hata = bilgi = null;
+        try
+        {
+            var r = await Api.PostAsync<UrunKuraliUygulama>($"/urun-kurallari/{id}/uygula?yalnizBos={(!ustuneYaz).ToString().ToLowerInvariant()}");
+            bilgi = UrunKuraliSozlugu.Uygulandi(r.DegisenSayisi, Dil.Dil);
+            onizleme = null;
+            await Uygulandi.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

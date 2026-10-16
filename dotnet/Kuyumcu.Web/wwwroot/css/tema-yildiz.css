@@ -3839,3 +3839,19 @@ html:root[data-sema="yildiz"] .yildiz-ust a.yildiz-kur-bag:not(#_) {
   transition: color .15s ease;
 }
 html:root[data-sema="yildiz"] .yildiz-ust a.yildiz-kur-bag:not(#_):hover { color: var(--metin); }
+
+/* M4 (16.10) · Fiyat kuralları çekmecesi. "+ Yeni kural" katman içi "+ …" açıcılarıyla AYNI tuval .ekle kalıbında;
+   kural satırları ince çizgiyle ayrılır; önizlemede sıra: açıklama → seçenek → düğme. Etki: yalnız #uk-* (bu çekmece). */
+html:root[data-sema="yildiz"] body #uk-yeni:not(#_) {
+  display: inline-flex; align-items: center; gap: 8px; height: auto; min-height: 0; padding: 16px 0; border: 0; border-radius: 0 !important;
+  background: transparent; box-shadow: none; color: var(--metin-soluk); font-size: 15px; font-weight: 400 !important; letter-spacing: .04em; cursor: pointer;
+}
+html:root[data-sema="yildiz"] body #uk-yeni:hover:not(#_) { color: var(--metin); }
+html:root[data-sema="yildiz"] body #uk-yeni svg:not(#_) { fill: none; stroke: currentColor; stroke-width: 1.5; }
+html:root[data-sema="yildiz"] body #uk-liste > .uk-satir:not(#_) {
+  display: flex; flex-direction: column; gap: 4px; padding: 16px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+}
+html:root[data-sema="yildiz"] body #uk-liste .uk-eylem:not(#_) { display: flex; gap: 8px; margin-top: 8px; }
+html:root[data-sema="yildiz"] body #uk-onizleme:not(#_) { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 12px; }
+html:root[data-sema="yildiz"] body #uk-onizleme > *:not(#_) { order: 0; margin: 0; }
+html:root[data-sema="yildiz"] body #uk-onizleme > #uk-uygula:not(#_) { order: 9; }

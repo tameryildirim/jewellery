@@ -126,6 +126,12 @@
             {
                 <p class="yz-s yz-liste-not" id="@($"{B.Kok}-not")">@not</p>
             }
+            @if (B.EkEtiket is { Length: > 0 } ek)
+            {
+                <button type="button" class="yz-ekle" id="@B.EkId" @onclick="B.EkTikla">
+                    <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@ek
+                </button>
+            }
             @if (B.AyrintiAc.HasDelegate)
             {
                 <button type="button" class="yz-ekle" id="@($"{B.Kok}-ayrinti")" @onclick="B.AyrintiAc">
