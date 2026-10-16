@@ -351,6 +351,8 @@ public static partial class SunucuIletiSozlugu
         ("Kural için kategori ya da adda geçen metin seçin", "Choose a category or text contained in the name for the rule"),
         ("Kural en az bir değer taşımalı", "The rule must carry at least one value"),
         ("Kural bulunamadı", "Rule not found"),
+        ("Belge türü FIS ya da FATURA olmalıdır", "Document type must be FIS or FATURA"),
+        ("Fatura için müşteri seçin — Peşin Müşteri'ye fatura kesilmez", "Choose a customer for the invoice — no invoice is issued to the walk-in customer"),
         ("Kategori bulunamadı", "Category not found"),
         ("KDV'ye giren pay binde 0 ile 1000 arasında olmalıdır", "The VAT-able share must be between 0 and 1000 per mille"),
         ("Gerçek milyem en çok 2 ondalık basamak taşıyabilir", "The actual fineness can have at most 2 decimal places"),

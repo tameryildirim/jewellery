@@ -449,6 +449,13 @@ public sealed class SatisFisKalemDto
 /// </summary>
 public sealed class SatisFisiDto
 {
+    /// <summary>
+    /// M6 (müşteri 16.10: "fişe hiç gerek yok… sisteme girdiğim anda fatura kessin") — satış belgesi:
+    /// <c>FIS</c> (varsayılan, bugünkü davranış) | <c>FATURA</c>. FATURA'da satış kaydedildikten sonra
+    /// AYNI istekte fişten kuyum faturası oluşur (gerçek müşteri şart — Peşin Müşteri'ye fatura kesilmez);
+    /// satan SAHIP/MUDUR/MUHASEBE ise fatura numaralanır (KESILDI), değilse TASLAK kalır.
+    /// </summary>
+    [RegularExpression("FIS|FATURA")] public string? BelgeTuru { get; set; }
 
     /// <summary>
     /// Bu borcun vadesi — İŞLEM GÜNÜNDEN İTİBAREN GÜN sayısı. Boşsa carinin
@@ -3024,7 +3031,8 @@ public sealed partial class SatisServisi(
 [Authorize]
 [Route("api/v1/islemler")]
 [Yetki.ModulYetkisi("islem")]
-public sealed class SatisController(SatisServisi servis, StornoServisi storno) : ControllerBase
+public sealed class SatisController(SatisServisi servis, StornoServisi storno,
+    Kuyumcu.Api.Modules.Fatura.FaturaServisi? fatura = null, KuyumcuDbContext? db = null) : ControllerBase
 {
     private AktifKullanici Islem => AktifKullanici.FromClaims(User);
 
@@ -3071,7 +3079,39 @@ public sealed class SatisController(SatisServisi servis, StornoServisi storno) :
     /// (nakit + kart + havale + veresiye tek fişte). Yetki: mevcut satışla aynı.
     /// </summary>
     [HttpPost("satis-fisi")]
-    public Task<object> SatisFisi([FromBody] SatisFisiDto dto) => servis.SatisFisi(dto, Islem);
+    public async Task<object> SatisFisi([FromBody] SatisFisiDto dto)
+    {
+        if (dto.BelgeTuru != "FATURA") return await servis.SatisFisi(dto, Islem);   // FİŞ: yanıt AYNEN eskisi
+
+        // M6 — FATURA: önce (satıştan ÖNCE) gerçek müşteri kapısı; sonra satış; sonra fatura.
+        var islem = Islem;
+        if (fatura is null || db is null)
+            throw new InvalidOperationException("Fatura servisi yok — faturalı satış yapılamaz");
+        var cari = string.IsNullOrEmpty(dto.CariId) ? null : await db.Cariler.AsNoTracking()
+            .Where(c => c.Id == dto.CariId && c.TenantId == islem.TenantId)
+            .Select(c => new { c.Id, c.SistemCarisi }).FirstOrDefaultAsync();
+        if (cari is null || cari.SistemCarisi)
+            throw new BadRequestException("Fatura için müşteri seçin — Peşin Müşteri'ye fatura kesilmez").AlanIle("cariId");
+
+        var satis = await servis.SatisFisi(dto, islem);
+        var fisId = System.Text.Json.JsonSerializer.SerializeToElement(satis).GetProperty("fisId").GetString();
+        object? faturaSonuc = null; string? faturaHata = null;
+        try
+        {
+            var taslak = System.Text.Json.JsonSerializer.SerializeToElement(await fatura.FistenOlustur(
+                new Kuyumcu.Api.Modules.Fatura.FaturaFistenDto { FisId = fisId, CariId = cari.Id, KdvTuru = "KUYUM" }, islem));
+            var faturaId = taslak.GetProperty("Id").GetString()!;
+            faturaSonuc = islem.Rol is "SAHIP" or "MUDUR" or "MUHASEBE"
+                ? await fatura.DurumGuncelle(faturaId, new Kuyumcu.Api.Modules.Fatura.DurumGuncelleDto { Durum = "KESILDI" }, islem)
+                : taslak;
+        }
+        catch (ApiException ex)
+        {
+            // Satış KAYDEDİLDİ; fatura oluşmadıysa bu sessiz geçilmez — yanıtta sebebiyle döner (UX-S28).
+            faturaHata = ex.Message;
+        }
+        return new { satis, fatura = faturaSonuc, faturaHata };
+    }
 
     /// <summary>
     /// GET /api/v1/islemler/fis/{fisId} — Fişin kalemleri, ödeme bacakları, kur kaydı.

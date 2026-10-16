@@ -3849,9 +3849,15 @@ html:root[data-sema="yildiz"] body #uk-yeni:not(#_) {
 html:root[data-sema="yildiz"] body #uk-yeni:hover:not(#_) { color: var(--metin); }
 html:root[data-sema="yildiz"] body #uk-yeni svg:not(#_) { fill: none; stroke: currentColor; stroke-width: 1.5; }
 html:root[data-sema="yildiz"] body #uk-liste > .uk-satir:not(#_) {
-  display: flex; flex-direction: column; gap: 4px; padding: 16px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  display: flex; flex-direction: column; gap: 4px; padding: 16px 0; border-bottom: 1px solid var(--kenarlik);
 }
 html:root[data-sema="yildiz"] body #uk-liste .uk-eylem:not(#_) { display: flex; gap: 8px; margin-top: 8px; }
 html:root[data-sema="yildiz"] body #uk-onizleme:not(#_) { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 12px; }
 html:root[data-sema="yildiz"] body #uk-onizleme > *:not(#_) { order: 0; margin: 0; }
 html:root[data-sema="yildiz"] body #uk-onizleme > #uk-uygula:not(#_) { order: 9; }
+
+/* M6 (16.10) · Tezgâh "Fiş | Fatura" seçimi: tür sekmeleriyle aynı kalıp, ödeme eklerinin üstünde; zorunluluk notu soluk tek satır.
+   Etki: yalnız #yildiz-belge (Tezgâh satış yüzü). */
+html:root[data-sema="yildiz"] body #yildiz-belge:not(#_) { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 16px; row-gap: 4px; margin: 16px 0 4px; }
+html:root[data-sema="yildiz"] body #yildiz-belge .yz-tur-sekme:disabled:not(#_) { cursor: not-allowed; opacity: .45; }
+html:root[data-sema="yildiz"] body #yildiz-belge-not:not(#_) { margin: 0; color: var(--metin-soluk); font-size: 14px; }

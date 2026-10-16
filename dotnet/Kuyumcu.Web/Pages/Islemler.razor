@@ -651,7 +651,7 @@
     private string? KaydetKilitSebebi =>
         string.IsNullOrEmpty(kurId) ? Dil.T.Islem.BilgiKontrol : GecersizAlanSebebi is { } gas ? gas : IslemBant2Kilidi is { } ib2 ? ib2   // ISLEM-BANT-2: yetki/bant (Islemler.IslemBant2.cs) · t17: anlaşılamayan sayı kutusu ÖNCE söylenir (UX-S30)
         : IadeKipi && iadeSecili is null ? Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).IadeKaynakSecin   // t11: müşteri kaynaktan gelir — önce kaynak
-        : CariGerekli && string.IsNullOrEmpty(cariId) ? CariSecinKilit : PesinVeresiyeVar ? PdKilit.PesinVeresiyeKilit   // PARA-DEMO md.4
+        : CariGerekli && string.IsNullOrEmpty(cariId) ? CariSecinKilit : PesinVeresiyeVar ? PdKilit.PesinVeresiyeKilit : BelgeKilidi is { } belgeKilit ? belgeKilit   // PARA-DEMO md.4 · M6: fatura seçiliyken gerçek müşteri
         : tur == "TAKAS" && TakasBirlesikKilit is { } tskOnce ? tskOnce : YasalKilitSebebi is { } yasalKilit ? yasalKilit   // PARA-DEMO-2 t5 + PARA-DEMO-3: değişimde satıcı + kimlik tespiti eksikleri TEK cümlede, alan adıyla
         : KarmaAcik && !KarmaGonderilebilir ? KarmaKilitSebebi()   // S2-4: altının İLK eksiği; SATIS-3: tutarı boş ödeme satırı
         : !KarmaAcik && KasaGerekli && string.IsNullOrEmpty(kasaId) ? Dil.T.Islem.KasaSecin
@@ -828,7 +828,7 @@
 
     private bool Gonderilebilir =>
         !gecersizAlanlar.Var && IslemBant2Kilidi is null && MasakTamam && YasalKilitSebebi is null && !PesinVeresiyeVar   // ISLEM-BANT-2 · PARA-DEMO md.4 · t17: anlaşılamayan sayı kutusu varken HİÇBİR gövde gitmez · t10: istemcinin (sunucu eşiğiyle) bildiği yasal engel
-        && (!CariGerekli || !string.IsNullOrEmpty(cariId))
+        && (!CariGerekli || !string.IsNullOrEmpty(cariId)) && BelgeKilidi is null   // M6
         && !string.IsNullOrEmpty(kurId)
         && (KarmaAcik ? KarmaGonderilebilir : !KasaGerekli || !string.IsNullOrEmpty(kasaId))
         && tur switch
@@ -865,7 +865,7 @@
         try
         {
             // P-16 (B-31): YALNIZ aktif cariler (pasif cari POS'ta seçilebiliyordu — QA tur 5).
-            await CarileriTazele();   // aktif cari listesi — tek istek yeri (S2-3: kayıttan sonra da)
+            await CarileriTazele(); await BelgeAyariYukle();   // aktif cari listesi — tek istek yeri (S2-3: kayıttan sonra da) · M6: Fiş/Fatura varsayılanı + kuyumcu haddi
             urunler = await Api.GetAsync<List<UrunVeri>>("/urunler?aktif=true&limit=200");
             subeler = (await Api.GetAsync<List<SubeVeri>>("/subeler")).Where(s => s.Aktif).ToList();
             masakEsik = await Api.GetAsync<Esikler>("/masak/esikler");   // kişisel veri yok, tüm roller
@@ -1097,7 +1097,7 @@
         kapiSunucudanAcildi = false;
         basarili = false;
         sonFisNo = null; yazdirHata = null; yazdirIdler.Clear(); otoYazdir = SatisTuvali && TekBelge; otoYazdirAcildi = false;   // T-S1: etiket "ve yazdır" diyorsa yazdırma KAYITTAN SONRA açılır
-        sonIskontoNotu = null;
+        sonIskontoNotu = null; sonFaturaNotu = null;   // M6
         yerlesimUyarisi = null; fisTaksitUyari = null; fisTaksitHata = null;   // YASAL-2 t3
         form.Temizle();
         if (string.IsNullOrEmpty(kurId)) { hata = Dil.T.Islem.BilgiKontrol; return; }
@@ -1163,9 +1163,9 @@
                     masak = MasakGovdesi,
                     // PAKET P-16 (Y-4 / UX-S21): boş gönderilirse sunucu carinin
                     // kartındaki oranı uygular; ekran onun yerine tahmin yapmaz.
-                    fisIskontoYuzde,
+                    fisIskontoYuzde, belgeTuru = BelgeGovde,   // M6: FATURA → satış + fatura aynı istekte
                 }));
-                sonFisNo = FisYaniti.FisNo(fy);
+                fy = BelgeYaniti(fy); sonFisNo = FisYaniti.FisNo(fy);   // M6: faturalı yanıtın satış kısmı fiş okuyucularına AYNEN
                 sonIskontoNotu = FisAltinBacagi.NotBirlestir(FisYaniti.IskontoNotu(fy, Dil.T.Islem), FisAltinBacagi.PusulaNotu(fy, Dil.Dil));   // UX-S27 (B-4): pusula no
             }
             else if (tur == "SATIS" && FisUcunaGider)
@@ -1184,10 +1184,10 @@
                     masak = MasakGovdesi,
                     personelId = SaticiGovde,   // S2-5b (null = oturum kullanıcısı)
                     fisIskontoYuzde = HediyeVar || IskontoVar ? fisIskontoYuzde : 0m,   // L-1: düz fişe carinin oranı sessizce girmez (bacak = ToplamTl)
-                    reyonId = SecilenReyon,   // L-1: tek kalemli uçla aynı reyon sözleşmesi
+                    reyonId = SecilenReyon, belgeTuru = BelgeGovde,   // L-1: tek kalemli uçla aynı reyon sözleşmesi · M6
                 }));
                 // UX-S27: POST yanıtı OKUNUR — fiş no, uygulanan iskonto ve reyon uyarısı banda yazılır.
-                sonFisNo = FisYaniti.FisNo(hy);
+                hy = BelgeYaniti(hy); sonFisNo = FisYaniti.FisNo(hy);   // M6
                 sonIskontoNotu = FisYaniti.IskontoNotu(hy, Dil.T.Islem);
                 yerlesimUyarisi = FisYaniti.YerlesimUyarisi(hy);
             }
@@ -1338,7 +1338,7 @@
         // başarı: formu sıfırla, kasa bakiyelerini tazele, bandı 3 sn göster
         var taksitSorgu = FisTaksitSorgusu(); SonKaydiTut(); kalemler.Clear();   // T-S1 (QA-10): kaydedilenin özeti bir sonraki Kaydet'e kadar görünür
         fisIskontoYuzde = null; indirimAcik = false;   // PAKET P-16: bir sonraki fişe iskonto sızmaz
-        cariId = "";
+        cariId = ""; belgeTuru = belgeVarsayilan;   // M6: sonraki satış işletme varsayılanıyla açılır
         PesinOnSec();             // PAKET B-3: yeni fiş yine Peşin Müşteri ile açılır
         aciklama = "";
         // DP4-03 — satıcı kimliği FİŞE ÖZGÜDÜR, sonraki alışa taşınmaz.

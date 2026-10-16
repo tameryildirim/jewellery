@@ -169,7 +169,14 @@ public partial class Islemler
                 HataAyrinti = SunucuAyrinti,
                 SonFis = SonFisNoGorunen is { } no
                     ? string.Format(SatisEkraniSozlugu.Al(Dil.Dil).SonFis, no) + (string.IsNullOrEmpty(sonIskontoNotu) ? "" : $" · {sonIskontoNotu}")
+                      + (string.IsNullOrEmpty(sonFaturaNotu) ? "" : $" · {sonFaturaNotu}")   // M6: fatura no / taslak / oluşmadı
                     : null,
+                // M6 — Fiş | Fatura seçimi (yalnız satışta; haddi aşınca Fatura kilitli seçili).
+                BelgeGorunur = BelgeSecimiGorunur,
+                BelgeTuru = FaturaSecili ? "FATURA" : "FIS",
+                BelgeZorunlu = FaturaZorunlu,
+                BelgeNotu = BelgeNotu,
+                BelgeSec = EventCallback.Factory.Create<string>(this, BelgeSec),
                 YazdirAdresleri = [.. yazdirIdler.Select(FisYazdir.YazdirAdresi).OfType<string>()],
                 YazdirHata = yazdirHata is null ? null : string.Format(FisYazdirSozlugu.Al(Dil.Dil).YazdirHata, yazdirHata),
                 Uyarilar = [.. new[] { yerlesimUyarisi, fisTaksitUyari }.OfType<string>(), .. new[] { fisTaksitHata, reyonHata, YildizMusteriGorunur ? null : pesinHata }.OfType<string>()],   // tur 3: katman kapalıyken Peşin yükleme hatası da görünür   // YILDIZ-4C: reyon yükleme uyarısı da (özgün bant Yıldız'da ekran dışında kalıyordu)

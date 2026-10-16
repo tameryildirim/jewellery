@@ -52,6 +52,13 @@ public sealed class YildizTezgahBaglami
     /// <summary>BASİT tek ödeme: Nakit / Kart / Havale seçimi (sayfanın BasitOdemeSecenekleri; null = seçici özgün ödeme alanında).</summary>
     public IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi>? OdemeSecenekleri { get; init; }
     public string OdemeTuru { get; init; } = "NAKIT";
+    /// <summary>M6 (16.10) — satış belgesi seçimi (Fiş | Fatura). Yalnız satışta görünür.</summary>
+    public bool BelgeGorunur { get; init; }
+    public string BelgeTuru { get; init; } = "FIS";
+    /// <summary>Kuyumcu fatura haddi aşıldı: Fatura kilitli seçili.</summary>
+    public bool BelgeZorunlu { get; init; }
+    public string? BelgeNotu { get; init; }
+    public EventCallback<string> BelgeSec { get; init; }
     public EventCallback<string> OdemeTuruSec { get; init; }
     public string FarkMetni { get; init; } = "";
     public bool FarkTamam { get; init; }

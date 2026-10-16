@@ -33,7 +33,8 @@ public partial class Islemler
     /// PAKET L-1 — satış TEK fiş ucuna (/islemler/satis-fisi) mı gider? Karma · hediye · iskonto
     /// ya da ≥2 kalem → EVET. Kaydet() dalı ve "tek belge" kararı AYNI kuraldan okunur.
     /// </summary>
-    private bool FisUcunaGider => tur == "SATIS" && FisYazdir.FisUcuMu(kalemler.Count, karmaOdeme || HediyeVar || IskontoVar);
+    private bool FisUcunaGider => tur == "SATIS" && (FisYazdir.FisUcuMu(kalemler.Count, karmaOdeme || HediyeVar || IskontoVar)
+                                                     || FaturaSecili);   // M6: faturalı satış fiş ucundan (satış + fatura tek istek)
 
     /// <summary>
     /// PAKET L-1b — alış TEK fiş ucuna (/islemler/alis-fisi) mı gider? ≥2 kalem → EVET (satışla aynı

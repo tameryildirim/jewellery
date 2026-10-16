@@ -236,8 +236,15 @@ public static class KiraciAyarAnahtari
     /// </summary>
     public const string KmtsKullanimi = "kmts_kullanimi";
 
+    /// <summary>
+    /// M6 (müşteri 16.10: "fişe hiç gerek yok… sisteme girdiğim anda fatura kessin") — Tezgâh'ta satış
+    /// belgesinin varsayılanı: <c>FIS</c> | <c>FATURA</c>. Yoksa "FIS" (bugünkü davranış). Kuyumcu her
+    /// satışta değiştirebilir; kuyumcu fatura haddini aşan satışta ekran FATURA'ya geçer.
+    /// </summary>
+    public const string SatisBelgeVarsayilan = "satis_belge_varsayilan";
+
     public static readonly string[] Tumu =
-        [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi];
+        [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi, SatisBelgeVarsayilan];
 }
 
 /// <summary>

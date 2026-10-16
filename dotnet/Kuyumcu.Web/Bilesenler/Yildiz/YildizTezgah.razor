@@ -136,6 +136,25 @@
             </div>
             @* TEZGAH-ODEME tur 2 (hakem KRİTİK "haplar kabın dibinde yarıdan kesik"): hap sırası kaydırma kabının DIŞINDA — hiçbir
                yükseklikte kırpılmaz; açılan alanlar kabın içinde hapların hemen üstünde açılır ve görünür bölgeye kaydırılır. *@
+            @if (B.BelgeGorunur)
+            {
+                @* M6 (müşteri 16.10: "fişe gerek yok… girdiğim anda fatura kessin") — Fiş | Fatura. Tür sekmeleriyle AYNI kalıp;
+                   kuyumcu fatura haddi aşılınca Fiş seçilemez (not satırı sebebi söyler). *@
+                <div class="yz-belge" id="yildiz-belge" role="group" aria-label="@SatisBelgeSozlugu.Grup(Dil.Dil)">
+                    <span class="yz-tur-satir">
+                        <button type="button" id="yildiz-belge-fis" aria-pressed="@(B.BelgeTuru == "FIS" ? "true" : "false")"
+                                class="@(B.BelgeTuru == "FIS" ? "yz-tur-sekme yz-tur-sekme--secili" : "yz-tur-sekme")"
+                                disabled="@(B.BelgeZorunlu || B.Kaydediliyor)" @onclick='() => B.BelgeSec.InvokeAsync("FIS")'>@SatisBelgeSozlugu.Fis(Dil.Dil)</button>
+                        <button type="button" id="yildiz-belge-fatura" aria-pressed="@(B.BelgeTuru == "FATURA" ? "true" : "false")"
+                                class="@(B.BelgeTuru == "FATURA" ? "yz-tur-sekme yz-tur-sekme--secili" : "yz-tur-sekme")"
+                                disabled="@B.Kaydediliyor" @onclick='() => B.BelgeSec.InvokeAsync("FATURA")'>@SatisBelgeSozlugu.Fatura(Dil.Dil)</button>
+                    </span>
+                    @if (B.BelgeNotu is { } belgeNotu)
+                    {
+                        <p class="yz-s yz-belge-not" id="yildiz-belge-not">@belgeNotu</p>
+                    }
+                </div>
+            }
             <div class="yz-tezgah-ekler" id="yildiz-tezgah-ekler">
                 @if (B.Karma)
                 {
