@@ -742,7 +742,7 @@ public sealed class OlcumKapisiTestleri
                      && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
             .SelectMany(File.ReadAllLines)
             .Where(l => !l.TrimStart().StartsWith("//", StringComparison.Ordinal))
-            .Count(l => Regex.IsMatch(l, @"ExecuteUpdateAsync\(|ExecuteDeleteAsync\("));
+            .Count(l => Regex.IsMatch(l, @"ExecuteUpdateAsync\(|ExecuteDeleteAsync\(|ExecuteSqlRawAsync\("));   // 17.10 P0-7: ham SQL de sayılır
 
         var m = Regex.Match(Denetim(), @"denetle ""ExecuteUpdate/Delete \(beyaz liste (\d+)\)"" ""[^""]+"" (\d+)");
         Assert.True(m.Success, "denetim.sh'ta ExecuteUpdate/Delete beyaz liste sayacı YOK — kapı sökülmüş.");

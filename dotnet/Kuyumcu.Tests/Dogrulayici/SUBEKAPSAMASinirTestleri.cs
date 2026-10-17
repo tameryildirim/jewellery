@@ -216,7 +216,14 @@ public sealed class SUBEKAPSAMASinirTestleri(HttpFikstur f)
         var k = Kiraci("DOGR-SK-A S7 alt");
         var b = SubeEkle(k);
         await HareketYaz(k, b, "SATIS", 100_000m, 0m, "VERESIYE", 0m);
-        var c = await VeresiyeSatis(TezA(k), k, 99_999.99m);
+        // 17.10 P0-4: 99.999,99 TL > kuyumcu fatura haddi → faturalı satış fişi + kimlikli cari.
+        using (var db = f.Vt.OlusturSistem()) TestKurulum.CariyeTcknYaz(db, k);
+        var c = await TezA(k).PostJson("/api/v1/islemler/satis-fisi", new
+        {
+            cariId = k.CariId, belgeTuru = "FATURA", kurSnapshotId = k.KurId, fisIskontoYuzde = 0m,
+            kalemler = new[] { new { urunId = k.UrunId, adet = 1m, birimFiyatTl = 99_999.99m, hediye = false } },
+            odemeler = new[] { new { arac = "VERESIYE", tutarTl = 99_999.99m, kasaId = (string?)null } },
+        });
         Assert.True(c.IsSuccessStatusCode, await c.Metin());
     }
 

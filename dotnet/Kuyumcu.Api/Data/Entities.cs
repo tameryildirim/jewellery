@@ -1350,6 +1350,15 @@ public class Fatura : IKiraciVarlik
     /// yalnızca belge üzerindeki özet kurdur.
     /// </summary>
     [Column("has_birim_fiyat", TypeName = "decimal(15,4)")] public decimal? HasBirimFiyat { get; set; }
+
+    // ── 17.10 P0-8 — ALICI BİLGİSİ BELGEYE DONDURULUR ────────────────────────
+    // Kesim anında carinin unvanı/adı, kimlik no'su ve adresi belgeye kopyalanır; cari kartı sonradan
+    // düzeltilince kesilmiş faturanın alıcısı GERİYE DÖNÜK değişmez (VUK 230: faturada alıcının adı,
+    // adresi, vergi no'su belgenin kendisinde bulunur). Taslakta boştur; KESILDI geçişinde bir kez yazılır.
+    [Column("alici_unvan"), MaxLength(300)] public string? AliciUnvan { get; set; }
+    [Column("alici_vergi_no"), MaxLength(20)] public string? AliciVergiNo { get; set; }
+    [Column("alici_kimlik_turu"), MaxLength(4)] public string? AliciKimlikTuru { get; set; }
+    [Column("alici_adres"), MaxLength(500)] public string? AliciAdres { get; set; }
 }
 
 /// <summary>

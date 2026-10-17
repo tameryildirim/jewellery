@@ -96,14 +96,16 @@ denetle "Find/FindAsync (yasak)" "\.Find\(|\.FindAsync\(" 0
 #     AuthModulu.cs:376  son giriş damgası — kimlik öncesi, tek toplu nokta
 #     AuthModulu.cs:432  refresh token iptali (hash ile) — kimlik öncesi
 #     AuthModulu.cs:495  kullanıcının tüm tokenlarının iptali — kimlik öncesi
-#     KurModulu.cs:1211  yetim kur snapshot bakımı — kiracılar arası sistem kapsamı;
-#                        harekete bağlı snapshot Where(...) ile korunur, defter yazılmaz
+#     KurModulu.cs       yetim kur snapshot bakımı — kiracılar arası sistem kapsamı; 17.10 P0-7'den beri
+#                        HAM SQL (ExecuteSqlRawAsync, pencere fonksiyonu): günün son kuru + 6 tabloya bağlı
+#                        kur korunur, defter yazılmaz. Ham SQL de bu sayaca DAHİLDİR (kaçak yol olmasın).
+#     SatirKilidi.cs     SELECT … FOR UPDATE satır kilidi (ham SQL, YAZMAZ — eşzamanlılık kapıları)
 #   Belgeler düzeltildi: SRS F-803, tehdit-modeli § Sınır 5, ADR-0004.
 #   Sayı "yeşile boyamak" için YÜKSELTİLEMEZ: OlcumKapisiTestleri bu tavanı
 #   gerçek çağrı sayısına EŞİTLİYOR — yeni çağrıda hem denetim hem test kırılır.
-#   ÖLÇÜM: grep -rnE 'ExecuteUpdateAsync\(|ExecuteDeleteAsync\(' Kuyumcu.Api \
-#            --include='*.cs' | grep -v '/obj/\|/bin/' | wc -l   → 5
-denetle "ExecuteUpdate/Delete (beyaz liste 5)" "ExecuteUpdate|ExecuteDelete" 5
+#   ÖLÇÜM: grep -rnE 'ExecuteUpdateAsync\(|ExecuteDeleteAsync\(|ExecuteSqlRawAsync\(' Kuyumcu.Api \
+#            --include='*.cs' | grep -v '/obj/\|/bin/' | wc -l   → 6   (17.10: ham SQL dahil — 4 Auth + Kur bakımı + satır kilidi)
+denetle "ExecuteUpdate/Delete (beyaz liste 6)" "ExecuteUpdate|ExecuteDelete|ExecuteSqlRaw" 6
 
 # hareketler defterine yazmanın TEK kapısı HareketFabrikasi.Ekle'dir (nakit payı
 # = tevsik kümülatifinin kaynağı; fabrikayı atlayan yazma payı boş bırakır ve

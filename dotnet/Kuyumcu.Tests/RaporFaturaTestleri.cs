@@ -116,18 +116,17 @@ public sealed class FaturaTestleri(TestVeritabani vt)
         var k = TestKurulum.KiraciKur(kurulum, "Kuyum KDV");
         using var db = vt.Olustur(k);
 
+        // 17.10 P0-5: has bedeli ELLE yazılan (gramı bilinmeyen) kuyum faturası artık KESİLMEZ — KDVK 23/e
+        // has gramı ister. Matrah hesabı (4.200 TL işçilik → 700 KDV) hareket bağlı yolda FaturaOzelMatrahTestleri'nde.
         var servis = new MFatura.FaturaServisi(db);
-        await servis.Olustur(new MFatura.FaturaOlusturDto
+        var hata = await Assert.ThrowsAsync<Kuyumcu.Api.Common.BadRequestException>(() => servis.Olustur(new MFatura.FaturaOlusturDto
         {
             CariId = k.CariId, Tur = "SATIS", Toplam = 385_676.63m, KdvOran = 0.20m,
             KdvTuru = "KUYUM", HasDeger = 381_476.63m,
-        }, k.Islem);
-
+        }, k.Islem));
+        Assert.Equal("Kuyum faturası yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.", hata.Message);
         using var kontrol = vt.OlusturSistem();
-        var fatura = kontrol.Faturalar.Single(f => f.TenantId == k.TenantId);
-        // KDV yalnız 4.200 TL işçilik matrahından: 4200 − 4200/1,20 = 700,00
-        Assert.Equal(700.00m, fatura.KdvTutar);
-        Assert.Equal(384_976.63m, fatura.AraToplam);
+        Assert.False(kontrol.Faturalar.Any(f => f.TenantId == k.TenantId));
     }
 
     [Fact]

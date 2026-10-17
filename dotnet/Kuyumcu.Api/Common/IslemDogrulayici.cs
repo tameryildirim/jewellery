@@ -22,6 +22,41 @@ public static class IslemDogrulayici
         if (!gecerli) throw new NotFoundException("Kur kaydı bulunamadı");
     }
 
+    /// <summary>
+    /// 17.10 P0-3 — SATIŞ/ALIŞ kur tazeliği (sunucu kapısı; ekrandaki bayat şeridinin sunucu karşılığı).
+    /// <list type="bullet">
+    /// <item>İptal edilmiş kur kaydıyla işlem yapılmaz.</item>
+    /// <item>Elle girilen (MANUAL) kur yalnız girildiği İŞLETME GÜNÜ geçerlidir — dünün elle kuruyla satış yok.</item>
+    /// <item>Dış kaynak kuru: son başarılı ÇEKİM (yoksa kaydın yazımı) bayatlık eşiğinden eskiyse işlem yok
+    /// (fiyat değişmeyince satır yazılmaz; sakin piyasada eski satır bayat SAYILMAZ — ölçüt çekim zamanı).</item>
+    /// </list>
+    /// Yol her durumda söylenir: Kur ekranından güncel kuru alın ya da elle girin.
+    /// </summary>
+    public static async Task KurTazeDogrula(
+        KuyumcuDbContext db, string kurSnapshotId, string tenantId,
+        Modules.Kur.KurKaynakDefteri? defter, DateTime simdi)
+    {
+        var s = await db.KurSnapshots.AsNoTracking()
+            .Where(x => x.Id == kurSnapshotId && x.TenantId == tenantId)
+            .Select(x => new { x.Kaynak, x.Olusturuldu, x.IptalEdildi })
+            .FirstOrDefaultAsync()
+            ?? throw new NotFoundException("Kur kaydı bulunamadı");
+        if (s.IptalEdildi)
+            throw new BadRequestException("Bu kur kaydı iptal edilmiş; güncel kurla işlem yapın.").AlanIle("kurSnapshotId");
+        if (s.Kaynak == Modules.Kur.KurKaynakDefteri.ManuelKod)
+        {
+            if (DateOnly.FromDateTime(Zaman.UtcdenYerele(s.Olusturuldu)) < DateOnly.FromDateTime(Zaman.UtcdenYerele(simdi)))
+                throw new ConflictException("Elle girilen kur önceki güne ait; Kur ekranından bugünün kurunu girin.");
+            return;
+        }
+        var sonCekim = defter?.SonCekim(s.Kaynak);
+        var son = sonCekim is { } c && c > s.Olusturuldu ? c : s.Olusturuldu;
+        var esik = defter?.BayatEsigi ?? TimeSpan.FromMinutes(3);
+        if (simdi - son > esik)
+            throw new ConflictException(
+                $"Kur {Zaman.UtcdenYerele(son):HH:mm}'den beri güncellenemedi; Kur ekranından güncel kuru alın ya da elle girin.");
+    }
+
     /// <summary>Cari bu kiracıya ait olmalı. Boş/null kimlik sessizce geçer (cari opsiyonel uçlar için).</summary>
     public static async Task CariDogrula(KuyumcuDbContext db, string? cariId, string tenantId)
     {

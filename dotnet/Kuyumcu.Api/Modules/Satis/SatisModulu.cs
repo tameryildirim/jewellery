@@ -695,8 +695,31 @@ public sealed class IscilikDto
 public sealed partial class SatisServisi(
     KuyumcuDbContext db, ILogger<SatisServisi> logger, MasakKuralMotoru? masakMotoru = null,
     HurdaAyarlari? hurdaAyarlari = null, Tevsik.TevsikKurali? tevsikKurali = null,
-    Pos.PosAyarlari? posAyarlari = null, YasalParametreServisi? yasal = null)
+    Pos.PosAyarlari? posAyarlari = null, YasalParametreServisi? yasal = null,
+    Kur.KurKaynakDefteri? kurDefteri = null)
 {
+    /// <summary>
+    /// 17.10 P0-4 — KUYUMCU FATURA HADDİ SUNUCUDA (VUK GT 514 md.4; tarihli yasal parametre
+    /// <c>KUYUMCU_FATURA_HADDI_TL</c>, işlem günü). Ekran kilidi yetmez: had üstü satış FİŞ olarak API'den
+    /// geçiyordu. Had üstünde (a) belge FATURA olmalı, (b) müşterinin geçerli TCKN/VKN'si olmalı.
+    /// Yasal parametre servisi yoksa (yalnız doğrudan kurulan test servisi) kapı uygulanmaz; DI yolunda daima var.
+    /// </summary>
+    private async Task FaturaHaddiKapisi(decimal toplam, string? belgeTuru, string? cariId,
+        AktifKullanici islem, DateTime simdi, bool fisYolu)
+    {
+        if (yasal?.SatirBul(YasalAnahtar.KuyumcuFaturaHaddiTl, YasalParametreServisi.IslemGunu(simdi))?.DegerSayi is not { } had
+            || toplam <= had) return;
+        var hadMetin = had.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+        if (belgeTuru != "FATURA")
+            throw fisYolu
+                ? new BadRequestException($"{hadMetin} TL üstündeki satış faturalı kesilir; belge türünü Fatura seçin.").AlanIle("belgeTuru")
+                : new BadRequestException($"{hadMetin} TL üstündeki satış faturalı satış fişiyle yapılır.").AlanIle("belgeTuru");
+        var vergiNo = string.IsNullOrEmpty(cariId) ? null : await db.Cariler.AsNoTracking()
+            .Where(c => c.Id == cariId && c.TenantId == islem.TenantId).Select(c => c.VergiNo).FirstOrDefaultAsync();
+        if (string.IsNullOrWhiteSpace(vergiNo) || Kuyumcu.Core.Domain.KimlikNo.Dogrula(vergiNo, Kuyumcu.Core.Domain.KimlikNo.TurTuret(vergiNo)) is not null)
+            throw new BadRequestException($"{hadMetin} TL üstündeki faturada müşterinin geçerli TC kimlik ya da vergi numarası zorunludur.").AlanIle("cariId");
+    }
+
     // Fiyat listesi/kampanya teklifi — ince bir db sarmalayıcısı; DI'ye eklemek yerine
     // burada kurulur ki mevcut ctor imzası ve onu kuran testler değişmesin.
     private readonly Fiyat.FiyatServisi fiyat = new(db);
@@ -762,6 +785,7 @@ public sealed partial class SatisServisi(
 
         // K1: yabancı kimlikler transaction açılmadan önce doğrulanır
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
+        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3: bayat/iptal/dünkü elle kur ile satış-alış yok
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
         // PAKET P-16 (B-31): SATIŞ carisi ayrıca AKTİF olmalı — ekran pasif
         // cariyi listeden gizler, sunucu gizlemeye GÜVENMEZ (fail-closed).
@@ -822,6 +846,7 @@ public sealed partial class SatisServisi(
             db, islem.TenantId, dto.CariId, dto.VadeGun,
             dto.OdemeTuru == "VERESIYE" ? toplamTl : 0m, alacakYonu: true, now, dto.KurSnapshotId);
 
+        await FaturaHaddiKapisi(toplamTl, null, dto.CariId, islem, DateTime.UtcNow, fisYolu: false);   // 17.10 P0-4
         await using var tx = await db.Database.CariIcinBaslat(islem.TenantId, dto.CariId, now);   // PAKET MASAK-ESZAMAN: işlem + CARİ SATIRI KİLİDİ
         // PAKET MASAK-ESZAMAN: kümülatif kapılar kilit altında, güncel toplamla YİNELENİR (eşik/kural aynı).
         masakGerek = await masak.KilitAltindaYinele(db, islem.TenantId, dto.CariId, toplamTl, dto.Masak, now, masakGerek, islem);
@@ -929,6 +954,7 @@ public sealed partial class SatisServisi(
         var subeId = SubeBelirle(islem, "Alış için şube seçimi gerekli");
 
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
+        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3: bayat/iptal/dünkü elle kur ile satış-alış yok
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
 
         var urun      = await UrunBul(dto.UrunId, islem.TenantId);
@@ -1205,6 +1231,7 @@ public sealed partial class SatisServisi(
         var subeId = SubeBelirle(islem, "Hurda alış için şube seçimi gerekli");
 
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
+        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3: bayat/iptal/dünkü elle kur ile satış-alış yok
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
 
         var ayar = Ayarlar.Bul(dto.AyarId)
@@ -1608,6 +1635,7 @@ public sealed partial class SatisServisi(
         var subeId = SubeBelirle(islem, "Satış için şube seçimi gerekli");
 
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
+        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3: bayat/iptal/dünkü elle kur ile satış-alış yok
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
         // PAKET P-16 (B-31): SATIŞ carisi ayrıca AKTİF olmalı — ekran pasif
         // cariyi listeden gizler, sunucu gizlemeye GÜVENMEZ (fail-closed).
@@ -1785,6 +1813,7 @@ public sealed partial class SatisServisi(
         // AÇANA bırakır; yoksa davranış AYNEN eskisi gibidir.
         // ⚠ `await using`: istisna hâlinde geri alma (rollback) davranışı
         //   AYNEN korunur — null üzerinde `await using` güvenlidir.
+        await FaturaHaddiKapisi(fisToplam, dto.BelgeTuru, dto.CariId, islem, DateTime.UtcNow, fisYolu: true);   // 17.10 P0-4
         await using var tx = await db.Database.CariIcinBaslat(islem.TenantId, dto.CariId, now);   // PAKET MASAK-ESZAMAN: işlem + CARİ SATIRI KİLİDİ (dış işlem varsa katılır)
         // PAKET MASAK-ESZAMAN: kümülatif kapılar kilit altında, güncel toplamla YİNELENİR (eşik/kural aynı).
         masakGerek = await masak.KilitAltindaYinele(db, islem.TenantId, dto.CariId, fisToplam, dto.Masak, now, masakGerek, islem);
@@ -2400,6 +2429,7 @@ public sealed partial class SatisServisi(
         var subeId = SubeBelirle(islem, "Takas için şube seçimi gerekli");
 
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
+        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3: bayat/iptal/dünkü elle kur ile satış-alış yok
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
 
         var ayar = Ayarlar.Bul(dto.EskiUrunAyarId)
@@ -3093,9 +3123,12 @@ public sealed class SatisController(SatisServisi servis, StornoServisi storno,
         if (cari is null || cari.SistemCarisi)
             throw new BadRequestException("Fatura için müşteri seçin — Peşin Müşteri'ye fatura kesilmez").AlanIle("cariId");
 
+        // 17.10 P0-4: satış ve fatura TEK İŞLEMDE — fatura kesilemezse satış da yazılmaz (faturasız kalan
+        // faturalı satış yok). Satış servisi dış işleme katılır (CariIcinBaslat → BaslatVeyaDevral).
+        await using var tx = await db.Database.IsBaslatVeyaDevral();
         var satis = await servis.SatisFisi(dto, islem);
         var fisId = System.Text.Json.JsonSerializer.SerializeToElement(satis).GetProperty("fisId").GetString();
-        object? faturaSonuc = null; string? faturaHata = null;
+        object faturaSonuc;
         try
         {
             var taslak = System.Text.Json.JsonSerializer.SerializeToElement(await fatura.FistenOlustur(
@@ -3107,10 +3140,11 @@ public sealed class SatisController(SatisServisi servis, StornoServisi storno,
         }
         catch (ApiException ex)
         {
-            // Satış KAYDEDİLDİ; fatura oluşmadıysa bu sessiz geçilmez — yanıtta sebebiyle döner (UX-S28).
-            faturaHata = ex.Message;
+            if (tx is not null) await tx.RollbackAsync();
+            throw new BadRequestException($"Fatura kesilemedi, satış kaydedilmedi: {ex.Message}").AlanIle("belgeTuru");
         }
-        return new { satis, fatura = faturaSonuc, faturaHata };
+        if (tx is not null) await tx.CommitAsync();
+        return new { satis, fatura = faturaSonuc, faturaHata = (string?)null };
     }
 
     /// <summary>

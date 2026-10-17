@@ -38,17 +38,20 @@ public sealed class P53HttpTestleri(HttpFikstur f)
         var k = YeniKiraci("P53H-KUYUM");
         var sahip = f.Ortam.Istemci(k);
 
-        // ELLE kaynaklı kuyum taslağı — eski istemcinin toplamı AÇIK bıraktığı durum.
-        var olustur = await sahip.PostAsJsonAsync("/api/v1/faturalar", new
+        // ELLE kaynaklı kuyum taslağı — 17.10 P0-5'ten beri API bu yolu AÇMAZ; P0-5 öncesi doğmuş
+        // taslakların düzeltilebildiği (geçmiş veri) doğrudan tabloya yazılarak sınanır.
+        var id = Kuyumcu.Api.Common.Kimlik.Ulid();
+        using (var tohum = f.Vt.OlusturSistem())
         {
-            cariId = k.CariId, tur = "SATIS", toplam = 1200m, kdvOran = 0.20m,
-            kdvTuru = "KUYUM", hasDeger = 500m,
-        });
-        Assert.Equal(HttpStatusCode.OK, olustur.StatusCode);
-        var fj = await olustur.Json();
-        var id = fj.GetProperty("id").GetString()!;
-        Assert.Equal("KUYUM", fj.GetProperty("kdvTuru").GetString());
-        Assert.Equal("ELLE", fj.GetProperty("hasDegerKaynagi").GetString());
+            tohum.Faturalar.Add(new Kuyumcu.Api.Data.Fatura
+            {
+                Id = id, TenantId = k.TenantId, CariId = k.CariId, Tur = "SATIS", KdvTuru = "KUYUM",
+                HasDeger = 500m, Toplam = 1200m, KdvOran = 0.20m, KdvTutar = 116.67m, AraToplam = 1083.33m,
+                Durum = "TASLAK", HasDegerKaynagi = "ELLE", Tarih = DateTime.UtcNow,
+                Olusturuldu = DateTime.UtcNow, Guncellendi = DateTime.UtcNow,
+            });
+            tohum.SaveChanges();
+        }
 
         // Ekranın gönderdiği gövde (toplam YOK) → 200 ve alanlar yansır.
         var yeniCari = await IkinciCari(sahip);

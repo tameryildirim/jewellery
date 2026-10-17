@@ -599,8 +599,15 @@ public sealed class KurKaynakDefteri
         new(StringComparer.OrdinalIgnoreCase);
     private readonly object kilit = new();
 
+    /// <summary>
+    /// 17.10 P0-3 — kur bayatlık eşiği: ÜÇ yoklama aralığı (istemcideki PAKET ISTEK-1 kuralıyla AYNI ölçü;
+    /// <c>Kur:GuncellemeSaniye</c> × 3). Ölçüt çekim zamanıdır, yazım değil (PANO-KARAR §4/2).
+    /// </summary>
+    public TimeSpan BayatEsigi { get; }
+
     public KurKaynakDefteri(IHttpClientFactory httpFactory, ILogger<KurKaynakDefteri> logger, IConfiguration yapilandirma)
     {
+        BayatEsigi = TimeSpan.FromSeconds(Math.Max(10, yapilandirma.GetValue("Kur:GuncellemeSaniye", 60)) * 3);
         // ═════════════════════════════════════════════════════════════════════
         // MÜHÜR 4 EKİ — UX-4d madde 24 (K13): SÖZLEŞMESİZ KAYNAK KAPISI.
         //
@@ -675,11 +682,13 @@ public sealed class KurKaynakDefteri
     /// <summary>Son çekimdeki parite listesini saklar (her kaynak için ayrı).</summary>
     public void PariteleriKaydet(string kaynakKod, IReadOnlyList<Parite>? pariteler)
     {
-        if (pariteler is null || pariteler.Count == 0) return;
         lock (kilit)
         {
-            sonPariteler[kaynakKod] = pariteler;
+            // 17.10 P0-3: BAŞARILI ÇEKİM ZAMANI her durumda yazılır — parite vermeyen kaynakta (ya da boş
+            // listede) yazılmasaydı satış/alış kur tazeliği kapısı sakin piyasada kuru "bayat" sayıp işlemi durdururdu.
             sonCekim[kaynakKod] = DateTime.UtcNow;
+            if (pariteler is null || pariteler.Count == 0) return;
+            sonPariteler[kaynakKod] = pariteler;
         }
     }
 
@@ -723,6 +732,10 @@ public sealed class KurServisi(
         sozlesmesizKaynaklarAcik = kaynakDefteri.SozlesmesizKaynaklarAcik,
         seciliSozlesmesiz = KurKaynakDefteri.Sozlesmesiz(await TenantKaynagi(tenantId)),
         manuelKod = KurKaynakDefteri.ManuelKod,
+        // 17.10 P0-3: seçili kaynaktan son BAŞARILI çekim (UTC; hiç çekilmediyse null) ve bayatlık eşiği —
+        // satış/alış kur tazeliği kapısı bunlara bakar (PANO-KARAR §4/2: ölçüt çekim, yazım değil).
+        sonCekim = kaynakDefteri.SonCekim(await TenantKaynagi(tenantId)),
+        bayatEsigiSaniye = (int)kaynakDefteri.BayatEsigi.TotalSeconds,
     };
 
     /// <summary>
@@ -848,7 +861,7 @@ public sealed class KurServisi(
     // ─── Dış kaynaktan çek ve kaydet ─────────────────────────────────────────
 
     public async Task<KurSnapshotCevap> DisKaynakKurCek(string tenantId) =>
-        (await KaydetVeyaMevcut(tenantId, await DisVeriCek(await TenantKaynagi(tenantId)))).Cevap;
+        (await KaydetVeyaMevcut(tenantId, await DisVeriCek(await TenantKaynagi(tenantId)), kullaniciIstedi: true)).Cevap;
 
     /// <summary>
     /// Dış kaynaktan yalnız veri çeker, kaydetmez. Zamanlayıcı bunu TEK KEZ
@@ -879,7 +892,8 @@ public sealed class KurServisi(
     /// 10 saniyelik sorgu aralığında her tur satır yazmak günde ~8.600 gereksiz
     /// kayıt üretirdi; yalnız gerçekten değişen fiyat deftere geçer ve push edilir.
     /// </summary>
-    public async Task<(KurSnapshotCevap Cevap, bool Yazildi)> KaydetVeyaMevcut(string tenantId, DisKurVerisi veri)
+    public async Task<(KurSnapshotCevap Cevap, bool Yazildi)> KaydetVeyaMevcut(
+        string tenantId, DisKurVerisi veri, bool kullaniciIstedi = false)
     {
         var son = await db.KurSnapshots.AsNoTracking()
             .Where(s => s.TenantId == tenantId && !s.IptalEdildi)
@@ -889,9 +903,66 @@ public sealed class KurServisi(
         if (son is not null && Ayni(son, veri))
             return (SnapshotZenginlestir(son), false);
 
+        // ── 17.10 P0-3 — DEVRE KESİCİ: dış kaynaktan gelen değer son geçerli kurdan elle girişteki
+        // makul bandın (Core FiyatBandi — Kur ekranıyla AYNI kural) dışına sıçradıysa YAZILMAZ. Hatalı bir
+        // kaynak verisi hem teklif fiyatına hem işlem bandının referansına kendiliğinden geçiyordu. Kuyumcu
+        // durumu bildirimle görür; doğruysa Kur ekranından bant onayıyla (SAHİP/MÜDÜR, gerekçeli) girer.
+        if (son is not null && Sicrama(son, veri) is { } sicrama)
+        {
+            logger.LogWarning("[{TenantId}] KUR_SICRAMA — {Kaynak} {Alan}: {Onceki} → {Yeni}; yazılmadı",
+                tenantId, veri.Kaynak, sicrama.Alan, sicrama.Onceki, sicrama.Yeni);
+            if (kullaniciIstedi)
+                throw new ConflictException(
+                    "Kaynaktan gelen kur son kurdan çok farklı; yazılmadı. Doğruysa Kur ekranından elle girip onaylayın.");
+            await SicramaBildir(tenantId, veri.Kaynak, sicrama);
+            return (SnapshotZenginlestir(son), false);
+        }
+
         var cevap = await SnapshotKaydet(tenantId, veri.AltinHasFiyati, veri.GramAltinFiyati,
             veri.UsdTry, veri.EurTry, veri.GbpTry, veri.Kaynak);
         return (cevap, true);
+    }
+
+    private sealed record SicramaBilgisi(string Alan, decimal? Onceki, decimal Yeni);
+
+    /// <summary>Bildirim türü (hareket türü DEĞİL — hareketler defterine yazılmaz).</summary>
+    public const string SicramaBildirimTuru = "KUR_SICRAMA";
+
+    /// <summary>Son geçerli kurla dış kaynak değeri arasında bant dışı sıçrama (ilk bulunan alan).</summary>
+    private static SicramaBilgisi? Sicrama(KurSnapshot son, DisKurVerisi v)
+    {
+        (string Alan, decimal? Yeni, FiyatTuru Tur, decimal? Onceki)[] alanlar =
+        [
+            ("altinHasFiyati", v.AltinHasFiyati, FiyatTuru.Has, son.AltinHasFiyati),
+            ("gramAltinFiyati", v.GramAltinFiyati, FiyatTuru.GramAltin, son.GramAltinFiyati),
+            ("usdTry", v.UsdTry, FiyatTuru.Doviz, son.UsdTry),
+            ("eurTry", v.EurTry, FiyatTuru.Doviz, son.EurTry),
+            ("gbpTry", v.GbpTry, FiyatTuru.Doviz, son.GbpTry),
+        ];
+        foreach (var a in alanlar)
+            if (a.Yeni is { } y && a.Onceki is > 0m && FiyatBandi.Denetle(Yuvarla4(y), a.Tur, a.Onceki) is not null)
+                return new(a.Alan, a.Onceki, y);
+        return null;
+    }
+
+    /// <summary>Uygulama içi bildirim — günde kaynak başına bir kez (tekillik anahtarı).</summary>
+    private async Task SicramaBildir(string tenantId, string kaynak, SicramaBilgisi s)
+    {
+        var gun = DateOnly.FromDateTime(Zaman.UtcdenYerele(DateTime.UtcNow));
+        var tekillik = $"KUR_SICRAMA:{kaynak}:{gun:yyyy-MM-dd}";
+        if (await db.Bildirimler.AnyAsync(b => b.TenantId == tenantId && b.TekillikAnahtari == tekillik)) return;
+        db.Bildirimler.Add(new Bildirim
+        {
+            Id = Kimlik.Ulid(), TenantId = tenantId, Tur = SicramaBildirimTuru, Onem = BildirimOnem.Kritik,
+            Baslik = "Kaynaktan gelen kur durduruldu",
+            Govde = $"{kaynak} kuru son kurdan çok farklı geldi ({s.Onceki:N2} → {s.Yeni:N2}); fiyatlar eski kurda kaldı. "
+                  + "Kaynak doğruysa Kur ekranından elle girip onaylayın.",
+            HedefRota = "/kur", GorunurRoller = "SAHIP,MUDUR",
+            IlgiliVarlikTuru = "KurSnapshot", IlgiliVarlikId = null,
+            TekillikAnahtari = tekillik, Olusturuldu = DateTime.UtcNow,
+        });
+        try { await db.SaveChangesAsync(); }
+        catch (DbUpdateException) { db.ChangeTracker.Clear(); }   // eşzamanlı ikinci tur — bildirim zaten var
     }
 
     private static bool Ayni(KurSnapshot son, DisKurVerisi v) =>
@@ -1345,15 +1416,33 @@ public sealed class KurZamanlayici(
         // ⚠ ExecuteDelete SaveChanges'ı atlar; yazma denetçisi bunu görmez.
         await using var sistem = kapsam.Sistem();
         var db = sistem.ServiceProvider.GetRequiredService<KuyumcuDbContext>();
-        // hareketler.kur_snapshot_id NOT NULL: bir harekete bağlı snapshot ASLA silinmez,
-        // aksi halde 90 gün sonra her işlemin kur kanıtı yetim kalırdı.
-        await db.KurSnapshots
-            .Where(s => s.Olusturuldu < sinir
-                     && !db.Hareketler.Any(h => h.KurSnapshotId == s.Id))
-            .ExecuteDeleteAsync(iptal);
+        // 17.10 P0-7 (eksik/fazla): ASLA silinmeyenler —
+        //  (1) bir kayda bağlı snapshot: hareketler + pos_tahsilatlari + stok_partileri + odeme_kalemleri +
+        //      vezne_fisleri + siparisler (eskiden yalnız hareketler korunuyordu; diğer beşi yetim kalabiliyordu),
+        //  (2) her kiracının her İŞLETME GÜNÜNÜN son kuru (günün kapanış kuru — fiyat geçmişi kanıtı).
+        // Silinen yalnız gün içi, hiçbir kayda bağlı olmayan ara kurlardır (dakikalık çekim ~500 bin satır/yıl).
+        // Europe/Istanbul 2016'dan beri sabit UTC+3 (yaz saati yok) — Zaman.UtcdenYerele ile aynı gün sınırı.
+        var silinen = await EskiKurlariSil(db, sinir, iptal);
 
-        logger.LogInformation("Eski kur kayıtları temizlendi");
+        logger.LogInformation("Eski kur kayıtları temizlendi: {Silinen} gün içi ara kur silindi (günün son kuru ve bağlı kurlar korundu)", silinen);
     }
+
+    /// <summary>17.10 P0-7 — temizlik sorgusu (test edilebilir). Dönen: silinen satır sayısı.</summary>
+    public static Task<int> EskiKurlariSil(KuyumcuDbContext db, DateTime sinir, CancellationToken iptal) =>
+        db.Database.ExecuteSqlRawAsync(@"
+DELETE k FROM kur_snapshots k
+JOIN (SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (
+                 PARTITION BY tenant_id, DATE(DATE_ADD(olusturuldu, INTERVAL 3 HOUR))
+                 ORDER BY olusturuldu DESC, id DESC) AS sira
+          FROM kur_snapshots WHERE olusturuldu < {0}) g
+       WHERE g.sira > 1) aday ON aday.id = k.id
+WHERE NOT EXISTS (SELECT 1 FROM hareketler x WHERE x.kur_snapshot_id = k.id)
+  AND NOT EXISTS (SELECT 1 FROM pos_tahsilatlari x WHERE x.kur_snapshot_id = k.id)
+  AND NOT EXISTS (SELECT 1 FROM stok_partileri x WHERE x.kur_snapshot_id = k.id)
+  AND NOT EXISTS (SELECT 1 FROM odeme_kalemleri x WHERE x.kur_snapshot_id = k.id)
+  AND NOT EXISTS (SELECT 1 FROM vezne_fisleri x WHERE x.kur_snapshot_id = k.id)
+  AND NOT EXISTS (SELECT 1 FROM siparisler x WHERE x.kur_snapshot_id = k.id)", [sinir], iptal);
 
     private static TimeZoneInfo IstanbulSaatDilimi()
     {

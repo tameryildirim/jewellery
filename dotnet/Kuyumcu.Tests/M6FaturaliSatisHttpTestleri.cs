@@ -16,10 +16,14 @@ namespace Kuyumcu.Tests;
 [Collection("http")]
 public sealed class M6FaturaliSatisHttpTestleri(HttpFikstur f)
 {
-    private Kiraci YeniKiraci(string ad)
+    /// <summary>
+    /// 4 g 22 ayar ürün → satış ≈ 27.500 TL: kuyumcu fatura haddinin (36.000) ALTINDA — M6 davranışı burada sınanır.
+    /// Had üstü (P0-4, 17.10) ayrı testlerde: <see cref="Had_ustu_FIS_400_belgeTuru"/> vb.
+    /// </summary>
+    private Kiraci YeniKiraci(string ad, decimal urunGram = 4m)
     {
         using var db = f.Vt.OlusturSistem();
-        return TestKurulum.KiraciKur(db, "M6-" + ad);
+        return TestKurulum.KiraciKur(db, "M6-" + ad, urunGram: urunGram);
     }
 
     /// <summary>Satış fiyatı ürünün has değerinin %10 üstü (özel matrah pozitif kalsın).</summary>
@@ -117,5 +121,61 @@ public sealed class M6FaturaliSatisHttpTestleri(HttpFikstur f)
         Assert.Equal(HttpStatusCode.Forbidden, t.StatusCode);
         var x = await f.Ortam.Istemci(k, "SAHIP").PutAsJsonAsync("/api/v1/satis-belge", new { varsayilan = "MAKBUZ" });
         Assert.Equal(HttpStatusCode.BadRequest, x.StatusCode);
+    }
+
+    // ── 17.10 P0-4 — kuyumcu fatura haddi SUNUCUDA (10 g ürün ≈ 69.000 TL > 36.000) ─────────────
+    private static void CariyeTcknYaz(HttpFikstur f, Kiraci k, string? tc)
+    {
+        using var db = f.Vt.OlusturSistem();
+        var c = db.Cariler.Single(x => x.Id == k.CariId && x.TenantId == k.TenantId);
+        c.VergiNo = tc; c.KimlikTuru = tc is null ? null : "TCKN";
+        db.SaveChanges();
+    }
+
+    [Fact]
+    public async Task Had_ustu_FIS_400_belgeTuru_ve_satis_yazilmaz()
+    {
+        var k = YeniKiraci("had-fis", urunGram: 10m);
+        var c = await f.Ortam.Istemci(k, "SAHIP").PostAsJsonAsync("/api/v1/islemler/satis-fisi", Fis(k, k.CariId, null));
+        Assert.Equal(HttpStatusCode.BadRequest, c.StatusCode);
+        Assert.Contains("belgeTuru", await c.Content.ReadAsStringAsync());
+        using var db = f.Vt.OlusturSistem();
+        Assert.Equal(0, await db.Hareketler.CountAsync(h => h.TenantId == k.TenantId && h.Tur == "SATIS"));
+    }
+
+    [Fact]
+    public async Task Had_ustu_FATURA_TCsiz_400_cariId_TCli_KESILIR()
+    {
+        var k = YeniKiraci("had-tc", urunGram: 10m);
+        var s = f.Ortam.Istemci(k, "SAHIP");
+        var red = await s.PostAsJsonAsync("/api/v1/islemler/satis-fisi", Fis(k, k.CariId, "FATURA"));
+        Assert.Equal(HttpStatusCode.BadRequest, red.StatusCode);
+        Assert.Contains("cariId", await red.Content.ReadAsStringAsync());
+
+        CariyeTcknYaz(f, k, "10000000146");   // algoritmaya uygun TCKN
+        var ok = await s.PostAsJsonAsync("/api/v1/islemler/satis-fisi", Fis(k, k.CariId, "FATURA"));
+        Assert.True(ok.StatusCode == HttpStatusCode.OK, await ok.Content.ReadAsStringAsync());
+        using var db = f.Vt.OlusturSistem();
+        var fatura = await db.Faturalar.AsNoTracking().SingleAsync(x => x.TenantId == k.TenantId);
+        Assert.Equal("KESILDI", fatura.Durum);
+        Assert.Equal("10000000146", fatura.AliciVergiNo);   // P0-8: alıcı belgeye donduruldu
+    }
+
+    [Fact]
+    public async Task Kesilen_faturanin_alicisi_cari_duzeltilince_DEGISMEZ()
+    {
+        var k = YeniKiraci("dondur");
+        var s = f.Ortam.Istemci(k, "SAHIP");
+        Assert.Equal(HttpStatusCode.OK, (await s.PostAsJsonAsync("/api/v1/islemler/satis-fisi", Fis(k, k.CariId, "FATURA"))).StatusCode);
+        string ilkAd;
+        using (var db = f.Vt.OlusturSistem())
+        {
+            var c = db.Cariler.Single(x => x.Id == k.CariId && x.TenantId == k.TenantId);
+            ilkAd = string.IsNullOrWhiteSpace(c.Unvan) ? c.Ad : c.Unvan!;
+            c.Ad = "Sonradan Değişen Ad"; c.Unvan = null;
+            db.SaveChanges();
+        }
+        using var kontrol = f.Vt.OlusturSistem();
+        Assert.Equal(ilkAd, (await kontrol.Faturalar.AsNoTracking().SingleAsync(x => x.TenantId == k.TenantId)).AliciUnvan);
     }
 }

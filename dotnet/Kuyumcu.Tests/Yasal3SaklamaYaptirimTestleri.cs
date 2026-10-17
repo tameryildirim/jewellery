@@ -362,7 +362,15 @@ public sealed class YaptirimHttpTestleri(HttpFikstur f)
         var ad = "Zeynep Testoğlu " + new string(listedeki[..6].Select(c => (char)('a' + (c - '0'))).ToArray());
         await Yukle(ad.ToUpperInvariant(), listedeki);
 
-        var r = await f.Ortam.Istemci(k, "SAHIP").PostAsJsonAsync("/api/v1/islemler/satis", Satis(k, Yasal3Yardim.Kimlik(Yasal3Yardim.Tckn(), ad)));
+        // 17.10 P0-4: 200.000 TL > kuyumcu fatura haddi → faturalı satış fişi + kimlikli cari.
+        using (var db = f.Vt.OlusturSistem()) TestKurulum.CariyeTcknYaz(db, k);
+        var r = await f.Ortam.Istemci(k, "SAHIP").PostAsJsonAsync("/api/v1/islemler/satis-fisi", new
+        {
+            cariId = k.CariId, belgeTuru = "FATURA", kurSnapshotId = k.KurId, fisIskontoYuzde = 0m,
+            kalemler = new[] { new { urunId = k.UrunId, adet = 1m, birimFiyatTl = 200_000m, hediye = false } },
+            odemeler = new[] { new { arac = "HAVALE", tutarTl = 200_000m, kasaId = k.KasaId } },
+            masak = Yasal3Yardim.Kimlik(Yasal3Yardim.Tckn(), ad),
+        });
         Assert.True(r.IsSuccessStatusCode, $"{(int)r.StatusCode}: {await r.Content.ReadAsStringAsync()}");
 
         using var kontrol = f.Vt.OlusturSistem();

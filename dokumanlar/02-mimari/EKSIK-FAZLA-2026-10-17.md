@@ -73,3 +73,19 @@ kanıtı, M7a göçünün A1'e alınması, **O-0 hotfix'inin her şeyden önce g
 - **Kurucu:** O-0'ın "kilitle" mi "bekçiyle düzelt" mi olacağı; mahsup tablosu (çoklu borçta kuyumcunun seçtiği borcu kapatma) açılsın mı; K-13 fire; H-6 RFID; ilk banka; entegratör; avukat görüşü.
 - **Mali müşavir:** 36.000 TL kuyumcu haddi (514 md.4 yürürlüğü), "binde" yöntemi, BIST kapanış kaynağı, kur kaydı saklama süresi, "satış dışı" paranın ciro/MASAK dışı sayılması, avans faturası zamanı, stopaj özelgesi, MASAK "bağlantılı işlem" penceresi.
 - **Müşteri:** Faturalog'da fatura otomatik mi onaylı mı; gram veresiyeye TL hangi kurla düşülüyor.
+
+## 7. P0 uygulama durumu (17.10, akşam)
+
+| # | Durum | Not |
+|---|---|---|
+| 1 | Bekliyor → "Havaleden satış" paketi | Kurucu kararı 17.10-1 (listeden seç → fatura + arka planda fiş). Eski yol o pakette değişir |
+| 2 | **Bitti** (`13e4bda`) | Tevsik / ŞİB / iş turu bayrağı `false` ise üretim açılmaz |
+| 3 | **Bitti** | Devre kesici (bant dışı dış kur yazılmaz, günde bir kritik bildirim); satış/alış/takas/hurda kur tazeliği kapısı (iptal kur, dünkü elle kur, son çekimi 3 yoklama aralığından eski dış kur → durur); son çekim her başarılı çekimde yazılır; `/kur/kaynaklar` son çekimi döner. Canlıda ölçüldü: son çekim 26 sn önce, eşik 180 sn |
+| 4 | **Bitti** | Had üstü FİŞ 400 `belgeTuru`; had üstü faturada geçerli TCKN/VKN zorunlu; satış + fatura TEK işlemde (fatura kesilemezse satış yazılmaz). Kapı tüm yasal kapılardan SONRA çalışır |
+| 5 | **Kısmen bitti** | Elle has bedeli yolu API'de kapandı. **"Binde" yöntemi kurucu kararına bırakıldı** (müşterinin açık isteği; mevzuatta karşılığı yok) |
+| 6 | İncelendi — açık yok | Gün sonu kilidi kasaya bağlıdır; banka kararının kasa bacağı yoktur. Kur yalnız referans; iptal kur dışlanır |
+| 7 | **Bitti** | Kur temizliği: günün son kuru + 6 tabloya bağlı kur korunur (eskiden yalnız hareketler korunuyordu). Konsinye borcunun defter satırı → ayrı paket (tasarım kararı) |
+| 8 | **Bitti** | Kesim anında alıcı unvan/TCKN-VKN/adres faturaya dondurulur (geçiş `P0FaturaAliciDondur`) |
+| 9 | 1 ile birleşti | Havale bugün tasarım gereği kasaya yazılıyor (satış, vezne, takas, tahsilat); doğru çözüm havaleden satış akışının banka bacağı |
+
+Test 12.721 / 0 · denetim yalnız bilinen P-23/P-30 · canlı yedek `kuyumcu_net-1710-p0-oncesi.sql.gz` → geçiş → yayın.

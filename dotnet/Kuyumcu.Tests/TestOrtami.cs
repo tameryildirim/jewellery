@@ -180,6 +180,19 @@ public static class TestKurulum
         db.SaveChanges();
     }
 
+    /// <summary>
+    /// 17.10 P0-4: kuyumcu fatura haddinin (36.000 TL) üstündeki satış FATURALI ve müşteri kimlikli olmak zorunda.
+    /// Bu tutarı bilerek aşan (MASAK/tevsik/yaptırım) testler fikstür carisine geçerli bir TCKN yazar.
+    /// </summary>
+    public static string CariyeTcknYaz(KuyumcuDbContext db, Kiraci k)
+    {
+        var tc = Yasal3Yardim.Tckn();
+        var c = db.Cariler.Single(x => x.Id == k.CariId && x.TenantId == k.TenantId);
+        c.VergiNo = tc; c.KimlikTuru = "TCKN";
+        db.SaveChanges();
+        return tc;
+    }
+
     public static Kiraci KiraciKur(
         KuyumcuDbContext db, string ad,
         string kasaDoviz = "TRY", decimal urunGram = 10m, string ayarId = "K22", decimal stokAdet = 100m)

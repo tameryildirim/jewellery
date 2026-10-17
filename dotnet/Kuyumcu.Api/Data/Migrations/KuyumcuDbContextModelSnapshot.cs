@@ -1188,6 +1188,26 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("aciklama");
 
+                    b.Property<string>("AliciAdres")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("alici_adres");
+
+                    b.Property<string>("AliciKimlikTuru")
+                        .HasMaxLength(4)
+                        .HasColumnType("varchar(4)")
+                        .HasColumnName("alici_kimlik_turu");
+
+                    b.Property<string>("AliciUnvan")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)")
+                        .HasColumnName("alici_unvan");
+
+                    b.Property<string>("AliciVergiNo")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("alici_vergi_no");
+
                     b.Property<decimal>("AraToplam")
                         .HasColumnType("decimal(15,2)")
                         .HasColumnName("ara_toplam");

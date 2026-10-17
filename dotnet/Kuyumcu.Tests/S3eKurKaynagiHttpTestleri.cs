@@ -233,7 +233,9 @@ public sealed class P73KurZamanlayiciTestleri(HttpFikstur f)
             await using var kk = kapsam.Kiraci(k.TenantId);
             var sonuc = await kk.ServiceProvider.GetRequiredService<KurServisi>()
                 .OtomatikGuncelle(k.TenantId,
-                    new DisKurVerisi(3000m + tur, 2800m + tur, 34m, 37m, 43m, "ALTINKAYNAK"));
+                    // 17.10 P0-3: değerler fikstür kurunun (6.827,20) YAKININDA — devre kesici gerçekçi
+                    // olmayan sıçramayı (eskiden 3.000 = %56 düşüş) yazmaz; bu test yalnız tur sayısını ölçer.
+                    new DisKurVerisi(6_827m + tur, 6_861m + tur, 34m, 37m, 43m, "ALTINKAYNAK"));
             Assert.NotNull(sonuc);
             tur++;
         }

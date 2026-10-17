@@ -193,24 +193,21 @@ public sealed class FaturaOzelMatrahTestleri(TestVeritabani vt)
     // ── 5. ELLE yol korunur (hareketId YOK) ──────────────────────────────────
 
     [Fact]
-    public async Task HareketId_yoksa_ELLE_deger_kabul_edilir_ve_kaynak_ELLE_kalir()
+    public async Task HareketId_yoksa_ELLE_has_bedeli_REDDEDILIR_satir_yazilmaz()
     {
+        // 17.10 P0-5 (mevzuat kilidi): eskiden ELLE değer kabul edilip kaynak "ELLE" kalıyordu.
         using var kurulum = vt.OlusturSistem();
         var k = TestKurulum.KiraciKur(kurulum, "PAKET38 elle");
         using var db = vt.Olustur(k);
 
-        await new MFatura.FaturaServisi(db).Olustur(new MFatura.FaturaOlusturDto
+        await Assert.ThrowsAsync<Kuyumcu.Api.Common.BadRequestException>(() => new MFatura.FaturaServisi(db).Olustur(new MFatura.FaturaOlusturDto
         {
             CariId = k.CariId, Toplam = 75_000m, KdvOran = 0.20m,
             KdvTuru = "KUYUM", HasDeger = 60_000m,
-        }, k.Islem);
+        }, k.Islem));
 
         using var kontrol = vt.OlusturSistem();
-        var f = kontrol.Faturalar.Single(x => x.TenantId == k.TenantId);
-        Assert.Equal(60_000.00m, f.HasDeger);
-        Assert.Equal("ELLE", f.HasDegerKaynagi);
-        Assert.Null(f.HasGram);
-        Assert.Null(f.HasBirimFiyat);
+        Assert.False(kontrol.Faturalar.Any(x => x.TenantId == k.TenantId));
     }
 
     // ── 6. Özel matrah kodu: yalnız KUYUM, yalnız yapılandırmadan ────────────

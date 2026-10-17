@@ -111,10 +111,14 @@ public sealed class TevsikTaksitHttpTestleri(HttpFikstur f)
     [Fact]
     public async Task K1_cok_kalemli_fis_kalemleri_had_altinda_FIS_haddi_asiyor_nakit_taksit_400()
     {
-        var k = YeniKiraci("K1 cok kalem");
+        // 17.10 P0-4: fiş toplamı 62.000 > kuyumcu fatura haddi → FATURA + kimlikli cari; 2 g ürün
+        // (has ≈ 12.500 TL) — 20.000'lik kalem has değerinin altına düşmesin (özel matrah pozitif).
+        Kiraci k;
+        using (var kdb = f.Vt.OlusturSistem()) { k = TestKurulum.KiraciKur(kdb, "PAKETYASAL2-TEST-K1 cok kalem", urunGram: 2m); TestKurulum.CariyeTcknYaz(kdb, k); }
         var fis = await f.Ortam.Istemci(k, "SAHIP").PostAsJsonAsync("/api/v1/islemler/satis-fisi", new
         {
             cariId = k.CariId,
+            belgeTuru = "FATURA",
             kalemler = new[] { 20_000m, 21_000m, 21_000m }
                 .Select(b => new { urunId = k.UrunId, adet = 1m, birimFiyatTl = b, hediye = false }),
             odemeler = new[] { new { arac = "VERESIYE", tutarTl = 62_000m, kasaId = (string?)null } },

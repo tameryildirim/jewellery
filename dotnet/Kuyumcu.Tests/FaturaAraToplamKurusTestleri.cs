@@ -65,20 +65,16 @@ public sealed class FaturaAraToplamKurusTestleri(HttpFikstur f)
     /// 11.000,00'a çıkarıyordu.
     /// </summary>
     [Fact]
-    public async Task Kuyum_elle_has_fatura_ARA_arti_KDV_TOPLAMA_esittir()
+    public async Task Kuyum_elle_has_fatura_artik_400()
     {
+        // 17.10 P0-5: elle has bedeli yolu kapandı; kuruş eşitliği hareket bağlı kuyum yolunda
+        // (FaturaOzelMatrahTestleri) ve standart yolda (yukarıdaki teori) sınanır.
         var k = YeniKiraci("ZO-BELGE kurus kuyum");
 
         var cevap = await f.Ortam.Istemci(k, "SAHIP").PostAsJsonAsync("/api/v1/faturalar",
             new { cariId = k.CariId, tur = "SATIS", toplam = 10_999.99m, kdvOran = 0.20m,
                   kdvTuru = "KUYUM", hasDeger = 10_000m });
 
-        Assert.Equal(HttpStatusCode.OK, cevap.StatusCode);
-
-        using var db = f.Vt.OlusturSistem();
-        var fatura = db.Faturalar.Single(x => x.TenantId == k.TenantId);
-        Assert.Equal(166.67m, fatura.KdvTutar);
-        Assert.Equal(10_833.32m, fatura.AraToplam);
-        Assert.Equal(fatura.Toplam, fatura.AraToplam + fatura.KdvTutar);
+        Assert.Equal(HttpStatusCode.BadRequest, cevap.StatusCode);
     }
 }

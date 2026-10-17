@@ -300,15 +300,13 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 // (Faturalar.razor KuyumEngeli) ama API doğrudan çağrılabilir.
                 // FAIL-CLOSED: has bedeli 0 olan kuyum faturası YOKTUR; açıkça
                 // gönderilen 0 da reddedilir (sessizce STANDART'a düşürülmez).
-                if (dto.HasDeger is not { } elleHas || elleHas <= 0m)
-                    throw new BadRequestException(
-                        "Kuyum faturasında has bedeli zorunludur: ya işlem/hareket bağı verin "
-                        + "ya da has değerini girin.");
-                hasDeger = elleHas;
-                if (hasDeger >= toplam)
-                    throw new BadRequestException("Has altın değeri toplam tutardan küçük olmalıdır");
-                var matrahKdvDahil = toplam - hasDeger;          // işçilik+kâr, KDV dahil
-                kdvTutar = matrahKdvDahil - matrahKdvDahil / (1m + kdvOran);
+                // 17.10 P0-5 — MEVZUAT KİLİDİ: KDVK 23/e özel matrahı ürünün HAS GRAMINI ister (has bedeli =
+                // has gram × kur). Gramı bilinmeyen, elle yazılmış has bedeli denetlenemez ve matrahı keyfî
+                // düşürür. Bu yol API'de de KAPALI: kuyum faturası yalnız hareket bağından (satış) ya da
+                // has gramı bilinen kalemlerden kesilir. (Ekran zaten KuyumEngeli ile kapatıyordu.)
+                throw new BadRequestException(
+                    "Kuyum faturası yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.")
+                    .AlanIle("hasDeger");
             }
         }
         else
@@ -1783,6 +1781,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         // ── P-22 / B-3: SERİ YALNIZ BURADA TÜKETİLİR ────────────────────────
         // TASLAK → KESILDI: belge numarasını ŞİMDİ alır. Taslak iken düzeltilen
         // ya da iptal edilen belge seride boşluk BIRAKMAZ.
+        // 17.10 P0-8: alıcı bilgisi kesim anında belgeye dondurulur (bir kez; sonradan cari düzeltmesi belgeyi değiştirmez).
+        if (dto.Durum == "KESILDI" && fatura.AliciUnvan is null)
+            await AliciyiDondur(db, fatura);
+
         if (dto.Durum == "KESILDI" && fatura.FaturaNo is null)
             // BELGE-KALAN: seri yılı belgenin İŞLETME yılıdır (1 Ocak 00:00–03:00 TSI kaydı UTC'de
             // önceki yıldır).
@@ -1799,6 +1801,20 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
     }
 
     // ─── Yardımcı ─────────────────────────────────────────────────────────────
+
+    /// <summary>17.10 P0-8 — carinin o anki unvanı (yoksa adı), kimlik no'su, türü ve adresi belgeye kopyalanır.</summary>
+    internal static async Task AliciyiDondur(KuyumcuDbContext db, Data.Fatura fatura)
+    {
+        var c = await db.Cariler.AsNoTracking()
+            .Where(x => x.Id == fatura.CariId && x.TenantId == fatura.TenantId)
+            .Select(x => new { x.Ad, x.Unvan, x.VergiNo, x.KimlikTuru, x.Adres })
+            .FirstOrDefaultAsync();
+        if (c is null) return;
+        fatura.AliciUnvan = string.IsNullOrWhiteSpace(c.Unvan) ? c.Ad : c.Unvan;
+        fatura.AliciVergiNo = c.VergiNo;
+        fatura.AliciKimlikTuru = c.KimlikTuru;
+        fatura.AliciAdres = c.Adres;
+    }
 
     // ⚠ P-22 / B-3: BU SINIFTA ARTIK NUMARA ÜRETİCİSİ YOKTUR. Seriyi tüketen
     //   TEK NOKTA FaturaSeriKapisi.Tuket'tir (denetim.sh: SERI_TUKETIM_NOKTASI = 1).
@@ -1828,6 +1844,8 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         f.HasDegerKaynagi,
         // Paket 38: özel matrahın KANITI belgeyle birlikte okunur.
         f.OzelMatrahKodu,
+        // 17.10 P0-8: kesim anındaki alıcı (cari kartı sonradan değişse de belge bunu gösterir)
+        f.AliciUnvan, f.AliciVergiNo, f.AliciKimlikTuru, f.AliciAdres,
         f.HasGram,
         f.HasBirimFiyat,
         CariAd = cariAd ?? "—",

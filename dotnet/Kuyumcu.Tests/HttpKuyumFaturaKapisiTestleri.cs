@@ -14,9 +14,8 @@ namespace Kuyumcu.Tests;
 //   Ekran bu yolu kapatıyordu (Faturalar.razor KuyumEngeli) ama API doğrudan
 //   çağrılabilir; kapı sunucuda da kapatıldı.
 //
-// ⚠ REGRESYON SÖZLEŞMESİ: RaporFaturaTestleri.KuyumKdv_HasBedeliMatrahDisiKalir
-//   HasDeger'i AÇIKÇA gönderir (381.476,63) — o test bu kapıdan etkilenmez ve
-//   adı/gövdesi bu pakette DEĞİŞTİRİLMEDİ.
+// ⚠ 17.10 P0-5: ELLE has bedeli yolu tümüyle kapandı (gönderilse de 400); RaporFaturaTestleri
+//   KuyumKdv_HasBedeliMatrahDisiKalir da reddi sınar.
 // ═════════════════════════════════════════════════════════════════════════════
 
 [Collection("http")]
@@ -76,20 +75,18 @@ public sealed class HttpKuyumFaturaKapisiTestleri(HttpFikstur f)
     // ── (3) Has bedeli verilince kuyum faturası KESİLİR (kapı dar değil) ────
 
     [Fact]
-    public async Task Kuyum_faturasi_has_bedeli_verilince_KESILIR_ve_KDV_matrah_disi_kalir()
+    public async Task Kuyum_faturasi_ELLE_has_bedeli_verilse_de_400_alan_hasDeger_satir_yazilmaz()
     {
+        // 17.10 P0-5 (mevzuat kilidi): gramı bilinmeyen elle has bedeliyle kuyum faturası kesilmez.
         var k = YeniKiraci("C2 kuyum has var");
 
         var cevap = await f.Ortam.Istemci(k, "SAHIP")
             .PostAsJsonAsync("/api/v1/faturalar", Govde(k, "KUYUM", 8_000m));
 
-        Assert.Equal(HttpStatusCode.OK, cevap.StatusCode);
-
+        Assert.Equal(HttpStatusCode.BadRequest, cevap.StatusCode);
+        Assert.Contains("hasDeger", await cevap.Content.ReadAsStringAsync());
         using var db = f.Vt.OlusturSistem();
-        var fatura = db.Faturalar.Single(x => x.TenantId == k.TenantId);
-        Assert.Equal(8_000m, fatura.HasDeger);
-        // KDV yalnız (10.000 − 8.000) üzerinden: 2.000 − 2.000/1,20 = 333,33
-        Assert.Equal(333.33m, Math.Round(fatura.KdvTutar, 2));
+        Assert.False(db.Faturalar.Any(x => x.TenantId == k.TenantId));
     }
 
     // ── (4) STANDART fatura bu kapıdan ETKİLENMEZ ───────────────────────────

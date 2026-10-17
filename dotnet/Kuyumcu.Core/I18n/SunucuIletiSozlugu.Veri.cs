@@ -1298,5 +1298,16 @@ public static partial class SunucuIletiSozlugu
         ("Bu IBAN başka bir müşteride kayıtlı: {}. Bir IBAN tek müşteriye bağlanır.", "This IBAN is saved for another customer: {}. An IBAN belongs to one customer only."),
         ("IBAN bulunamadı", "IBAN not found"),
         ("Bu para müşterinin hesabına başka bir belgeyle zaten işlendi; karar verilmez.", "This money was already posted to the customer's account by another document; no decision is needed."),
+        ("Kuyum faturası yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.", "A jewellery invoice can only be issued from a sale record or from lines with known fine-gold grams; the fine-gold value cannot be typed in by hand."),
+        // ── 17.10 P0-4: kuyumcu fatura haddi sunucuda ──
+        ("Fatura kesilemedi, satış kaydedilmedi: {}", "The invoice could not be issued; the sale was not saved: {}"),
+        ("{} TL üstündeki satış faturalı kesilir; belge türünü Fatura seçin.", "Sales above {} TL require an invoice; choose Invoice as the document type."),
+        ("{} TL üstündeki satış faturalı satış fişiyle yapılır.", "Sales above {} TL are made with an invoiced sales slip."),
+        ("{} TL üstündeki faturada müşterinin geçerli TC kimlik ya da vergi numarası zorunludur.", "Invoices above {} TL require the customer's valid national ID or tax number."),
+        // ── 17.10 P0-3: kur tazeliği + devre kesici ──
+        ("Bu kur kaydı iptal edilmiş; güncel kurla işlem yapın.", "This rate record has been voided; use the current rate."),
+        ("Elle girilen kur önceki güne ait; Kur ekranından bugünün kurunu girin.", "The manually entered rate is from a previous day; enter today's rate on the Rates screen."),
+        ("Kur {}'den beri güncellenemedi; Kur ekranından güncel kuru alın ya da elle girin.", "Rates have not been updated since {}; fetch the current rate on the Rates screen or enter it manually."),
+        ("Kaynaktan gelen kur son kurdan çok farklı; yazılmadı. Doğruysa Kur ekranından elle girip onaylayın.", "The rate from the source differs too much from the last rate and was not saved. If it is correct, enter and approve it on the Rates screen."),
     ];
 }
