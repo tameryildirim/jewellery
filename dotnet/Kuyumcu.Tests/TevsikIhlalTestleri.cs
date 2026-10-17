@@ -79,6 +79,19 @@ internal static class IhlalFikstur
     }
 
     public static DateTime Ogle(DateOnly g) => Zaman.YerelGunAraligiUtc(g).Item1.AddHours(12);
+
+    /// <summary>
+    /// "N dakika önce" — ama HER ZAMAN BUGÜNÜN (işletme günü) içinde ve sıra korunarak. Gece 00:00–00:40 arası
+    /// UtcNow − 30 dk dünün 23:5x'ine düşüp "aynı gün" senaryosunu iki güne bölüyordu (18.10 00:23 ölçüldü).
+    /// Gün başından bu yana yeterli süre yoksa an, gün başı ile şimdi arasına orantılı sıkıştırılır (dakika ≤ 60).
+    /// </summary>
+    public static DateTime AyniGunOnce(int dakika)
+    {
+        var simdi = DateTime.UtcNow;
+        var gunBasi = Zaman.YerelGunAraligiUtc(Zaman.YerelBugun(simdi)).Item1;
+        var t = simdi.AddMinutes(-dakika);
+        return t >= gunBasi ? t : gunBasi.AddSeconds((simdi - gunBasi).TotalSeconds * (1 - dakika / 60.0));
+    }
 }
 
 public sealed class TevsikIhlalSafTestleri
@@ -171,8 +184,8 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         var k = YeniKiraci("K9");
         using (var db = vt.OlusturSistem())
         {
-            IhlalFikstur.Nakit(db, k, 20_000m, DateTime.UtcNow.AddMinutes(-30));
-            IhlalFikstur.Nakit(db, k, 15_000m, DateTime.UtcNow.AddMinutes(-10));
+            IhlalFikstur.Nakit(db, k, 20_000m, IhlalFikstur.AyniGunOnce(30));
+            IhlalFikstur.Nakit(db, k, 15_000m, IhlalFikstur.AyniGunOnce(10));
         }
         var s = await Kostur(k);
         Assert.Equal(IsDurum.Basarili, s.Durum);
@@ -196,8 +209,8 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         var k = YeniKiraci("esik alti");
         using (var db = vt.OlusturSistem())
         {
-            IhlalFikstur.Nakit(db, k, 20_000m, DateTime.UtcNow.AddMinutes(-30));
-            IhlalFikstur.Nakit(db, k, 10_000m, DateTime.UtcNow.AddMinutes(-10));
+            IhlalFikstur.Nakit(db, k, 20_000m, IhlalFikstur.AyniGunOnce(30));
+            IhlalFikstur.Nakit(db, k, 10_000m, IhlalFikstur.AyniGunOnce(10));
         }
         await Kostur(k);
         Assert.Empty(Ihlaller(k));
@@ -214,8 +227,8 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         using (var db = vt.OlusturSistem())
         {
             vatandas = IhlalFikstur.Cari(db, k, "Vatandaş Hurda");
-            IhlalFikstur.Nakit(db, k, 35_000m, DateTime.UtcNow.AddMinutes(-20), "HURDA_ALIS", vatandas);
-            IhlalFikstur.Nakit(db, k, 35_000m, DateTime.UtcNow.AddMinutes(-15), "SATIS");
+            IhlalFikstur.Nakit(db, k, 35_000m, IhlalFikstur.AyniGunOnce(20), "HURDA_ALIS", vatandas);
+            IhlalFikstur.Nakit(db, k, 35_000m, IhlalFikstur.AyniGunOnce(15), "SATIS");
         }
         await Kostur(k);
 
@@ -239,7 +252,7 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
     public async Task K10_is_ayni_gun_iki_kez_kosar_1_satir_1_bildirim()
     {
         var k = YeniKiraci("K10");
-        using (var db = vt.OlusturSistem()) IhlalFikstur.Nakit(db, k, 40_000m, DateTime.UtcNow.AddMinutes(-5));
+        using (var db = vt.OlusturSistem()) IhlalFikstur.Nakit(db, k, 40_000m, IhlalFikstur.AyniGunOnce(5));
 
         var s1 = await Kostur(k);
         var s2 = await Kostur(k, elle: k.KullaniciId);
@@ -310,7 +323,7 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         using (var db = vt.OlusturSistem())
         {
             cari = IhlalFikstur.Cari(db, k, "Zeynep Kaya", "12345678950");
-            IhlalFikstur.Nakit(db, k, 33_000m, DateTime.UtcNow.AddMinutes(-3), "HURDA_ALIS", cari);
+            IhlalFikstur.Nakit(db, k, 33_000m, IhlalFikstur.AyniGunOnce(3), "HURDA_ALIS", cari);
         }
         await Kostur(k);
         var b = Assert.Single(Bildirimler(k));
@@ -333,8 +346,8 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         using (var db = vt.OlusturSistem())
         {
             subeB = TestKurulum.SubeEkle(db, k.TenantId, "Şube B");
-            IhlalFikstur.Nakit(db, k, 20_000m, DateTime.UtcNow.AddMinutes(-40));
-            IhlalFikstur.Nakit(db, k, 15_000m, DateTime.UtcNow.AddMinutes(-20), subeId: subeB);
+            IhlalFikstur.Nakit(db, k, 20_000m, IhlalFikstur.AyniGunOnce(40));
+            IhlalFikstur.Nakit(db, k, 15_000m, IhlalFikstur.AyniGunOnce(20), subeId: subeB);
         }
         await Kostur(k);
         var t = Assert.Single(Ihlaller(k));
@@ -354,8 +367,8 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         using (var db = vt.OlusturSistem())
         {
             subeB = TestKurulum.SubeEkle(db, k.TenantId, "Şube B");
-            IhlalFikstur.Nakit(db, k, 20_000m, DateTime.UtcNow.AddMinutes(-40));
-            IhlalFikstur.Nakit(db, k, 15_000m, DateTime.UtcNow.AddMinutes(-20), subeId: subeB);
+            IhlalFikstur.Nakit(db, k, 20_000m, IhlalFikstur.AyniGunOnce(40));
+            IhlalFikstur.Nakit(db, k, 15_000m, IhlalFikstur.AyniGunOnce(20), subeId: subeB);
         }
         using (var sdb = vt.OlusturSubeli(k.TenantId, k.SubeId))
         {
@@ -383,7 +396,7 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         {
             kaynakId = TaksitFikstur.Borc(db, k, 62_000m, DateTime.UtcNow.AddDays(-4));
             tahsilatId = Kimlik.Ulid();
-            var an = DateTime.UtcNow.AddMinutes(-30);
+            var an = IhlalFikstur.AyniGunOnce(30);
             db.Hareketler.Add(new Hareket
             {
                 Id = tahsilatId, TenantId = k.TenantId, SubeId = k.SubeId, Tur = "TAHSILAT", Tarih = an,
@@ -392,7 +405,7 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
             });
             db.CariBakiyeler.First(b => b.CariId == k.CariId).TlBakiye -= 20_000m;
             db.SaveChanges();
-            IhlalFikstur.Nakit(db, k, 15_000m, DateTime.UtcNow.AddMinutes(-10));   // aynı gün toplam 35.000
+            IhlalFikstur.Nakit(db, k, 15_000m, IhlalFikstur.AyniGunOnce(10));   // aynı gün toplam 35.000
         }
         await Kostur(k);
         var t = Assert.Single(Ihlaller(k));
@@ -410,7 +423,7 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
     public async Task Islem_tutari_40000_fisin_10000_nakit_payi_ISLEM_TUTARI_ihlali()
     {
         var k = YeniKiraci("islem tutari");
-        using (var db = vt.OlusturSistem()) IhlalFikstur.Nakit(db, k, 10_000m, DateTime.UtcNow.AddMinutes(-5), toplam: 40_000m);
+        using (var db = vt.OlusturSistem()) IhlalFikstur.Nakit(db, k, 10_000m, IhlalFikstur.AyniGunOnce(5), toplam: 40_000m);
         await Kostur(k);
         var t = Assert.Single(Ihlaller(k));
         Assert.Equal(TevsikIhlalTuru.IslemTutari, t.Tur);
@@ -425,7 +438,7 @@ public sealed class TevsikIhlalDbTestleri(TestVeritabani vt)
         {
             var kaynak = TaksitFikstur.Borc(db, k, 62_000m, DateTime.UtcNow.AddDays(-4));
             var id = Kimlik.Ulid();
-            var an = DateTime.UtcNow.AddMinutes(-5);
+            var an = IhlalFikstur.AyniGunOnce(5);
             db.Hareketler.Add(new Hareket
             {
                 Id = id, TenantId = k.TenantId, SubeId = k.SubeId, Tur = "TAHSILAT", Tarih = an,
@@ -466,7 +479,7 @@ public sealed class TevsikIhlalHttpTestleri(HttpFikstur f)
     /// <summary>Aşım yaratır ve işi ÜRETİM DI'siyle elle koşturur; ihlal kimliğini döner.</summary>
     private async Task<string> IhlalYarat(Kiraci k, string tur = "HURDA_ALIS", DateTime? an = null)
     {
-        using (var db = f.Vt.OlusturSistem()) IhlalFikstur.Nakit(db, k, 36_000m, an ?? DateTime.UtcNow.AddMinutes(-5), tur);
+        using (var db = f.Vt.OlusturSistem()) IhlalFikstur.Nakit(db, k, 36_000m, an ?? IhlalFikstur.AyniGunOnce(5), tur);
         var c = await f.Ortam.Istemci(k, "SAHIP").PostJson($"/api/v1/isler/{TevsikKurtarmaIsi.IsKodu}/calistir", new { });
         Assert.Equal(HttpStatusCode.OK, c.StatusCode);
         Assert.Equal("BASARILI", (await c.Json()).GetProperty("durum").GetString());
@@ -483,11 +496,11 @@ public sealed class TevsikIhlalHttpTestleri(HttpFikstur f)
         var kaynakGun = DateTime.UtcNow.AddDays(-4);
         using (var db = f.Vt.OlusturSistem())
         {
-            IhlalFikstur.Nakit(db, k, 11_250.50m, DateTime.UtcNow.AddMinutes(-5), toplam: 41_250.50m);
+            IhlalFikstur.Nakit(db, k, 11_250.50m, IhlalFikstur.AyniGunOnce(5), toplam: 41_250.50m);
             var cari2 = IhlalFikstur.Cari(db, k, "Taksit Müşterisi");
             var kid = TaksitFikstur.Borc(db, k, 62_000m, kaynakGun);
             db.Hareketler.First(h => h.Id == kid).CariId = cari2;
-            var an = DateTime.UtcNow.AddMinutes(-3);
+            var an = IhlalFikstur.AyniGunOnce(3);
             db.Hareketler.Add(new Hareket
             {
                 Id = Kimlik.Ulid(), TenantId = k.TenantId, SubeId = k.SubeId, Tur = "TAHSILAT", Tarih = an,

@@ -153,8 +153,8 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
     public void HS_E3_havale_adresi_acilista_havaleyi_secer()
     {
         var e = HavaleAdresiyleAc().TezgahBekle();
-        e.WaitForElement("#yildiz-havale-birak", TimeSpan.FromSeconds(5));
-        Assert.Equal("true", e.Find("#yildiz-belge-fatura").GetAttribute("aria-pressed"));
+        e.WaitForElement("#yildiz-havale-birak", TimeSpan.FromSeconds(5));   // havale seçili
+        Assert.Empty(e.FindAll("#yildiz-belge-fis, #yildiz-belge-fatura"));   // 17.10: Fiş|Fatura seçimi yok; havaleden satış hep faturalı
     }
 
     [Fact]

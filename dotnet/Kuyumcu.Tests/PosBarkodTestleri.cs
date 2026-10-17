@@ -302,6 +302,9 @@ public sealed class AlisOdemeAraciEkranTestleri : BunitContext
         var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.TezgahBekle();   // TEMA TEMİZLİĞİ 17.10: sayfa yüklenmeden tür düğmesine basılmaz (Yıldız tezgâhı çizildi)
         e.FindAll("button").First(b => b.TextContent.Contains(islemTuru)).Click();
+        // Alış/Hurda formu tür seçiminden SONRA çizilir; tam süitin yükü altında Find erken koşup '#islem-cari'yi
+        // bulamıyordu (18.10). Form gelene kadar beklenir — bulunamazsa süre dolunca yine kırmızı.
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#islem-cari")), TimeSpan.FromSeconds(10));
         istekler.Clear();
         return e;
     }
