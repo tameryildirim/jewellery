@@ -140,14 +140,19 @@ public sealed class BasitModPosTestleri : BunitContext
         return e;
     }
 
-    /// <summary>Bir kalem ekler (10.000 TL × adet).</summary>
-    private static void KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, int adet = 1)
-    {
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        if (adet != 1) e.Find("#islem-adet").Input(adet.ToString());
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-    }
+    /// <summary>Bir kalem ekler (10.000 TL); Yıldız tezgâhında kalem satırı çizilene dek bekler.</summary>
+    private static void KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.YildizKalemEkle();
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ fişi artık hep Yıldız tezgâhıdır. Müşteri "Değiştir" katmanından seçilir
+    // (sahte sunucu sistem carisini vermez → Peşin ön seçimi yok); ödeme türü / kasa / vade alanları (FisOdemeKasa,
+    // AYNI id'ler) tek ödeme satırına dokununca açılan ödeme düzenindedir; Kaydet #yildiz-tezgah-kaydet; yasal
+    // kapının cümlesi Fark satırının notunda (#yildiz-tezgah-not), sunucu reddi #yildiz-tezgah-hata.
+    private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Satisa(string mod, bool musteri = true)
+    {
+        var e = Ekran(mod).YildizHazir(null);
+        if (musteri) e.YildizMusteriSec("c1");
+        return e;
+    }
     private static JsonElement Govde(string g) => JsonDocument.Parse(g).RootElement;
 
     /// <summary>POST eşzamansızdır: satış isteğinin GELMESİNİ bekler ve gövdesini verir.</summary>
@@ -217,17 +222,22 @@ public sealed class BasitModPosTestleri : BunitContext
     [Fact]
     public void Basit_modda_vade_alani_YOKTUR()
     {
-        var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Satisa(ArayuzModuServisi.Basit);
         KalemEkle(e);
+        e.YildizOdemeAc();   // ödeme alanlarının çizildiği yer — boş DOM'da yanlış yeşil olmasın
 
+        Assert.NotEmpty(e.FindAll("#yildiz-tezgah-odeme-duzen #islem-odeme-sade, #yildiz-tezgah-odeme-duzen #islem-aldim-odeme"));
         Assert.Empty(e.FindAll("#islem-vade"));
     }
 
     [Fact]
     public void Basit_modda_odeme_turu_SORULMAZ_sade_satir_yazilir()
     {
-        var e = Ekran(ArayuzModuServisi.Basit);
+        // PARA-DEMO-2: tezgâhın tek ödeme satırı Nakit/Kart/Havale seçtirir (#islem-aldim-odeme); tam ödeme türü
+        // listesi (#islem-odeme — veresiye/döviz…) BASİT'te sorulmaz, satır seçilen türü yazar.
+        var e = Satisa(ArayuzModuServisi.Basit, musteri: false);
+        Assert.StartsWith("Nakit", e.Find("#yildiz-odeme-0 .yz-tezgah-arac").TextContent.Trim());
+        e.YildizOdemeAc();
 
         Assert.Empty(e.FindAll("#islem-odeme"));
         Assert.Contains("Nakit", e.Find("#islem-odeme-sade").TextContent);
@@ -239,15 +249,16 @@ public sealed class BasitModPosTestleri : BunitContext
     public void Tek_kasa_varken_secici_GIZLI_ve_govdeye_o_kasa_konur()
     {
         kasaSayisi = 1;
-        var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Satisa(ArayuzModuServisi.Basit);
         KalemEkle(e);
+        e.YildizOdemeAc();
         istekler.Clear();
-
-        e.Find("#islem-kaydet").Click();
 
         Assert.Empty(e.FindAll("#islem-kasa"));
         Assert.NotNull(e.Find("#islem-kasa-tek"));
+        Assert.Contains("Merkez Kasa", e.Find("#yildiz-odeme-0 .yz-tezgah-kasa").TextContent);
+        e.YildizKaydet();
+
         var post = Satis(e);
         Assert.Equal("ks1", Govde(post).GetProperty("kasaId").GetString());
     }
@@ -259,16 +270,17 @@ public sealed class BasitModPosTestleri : BunitContext
     public void Iki_kasa_varken_BASITte_ilk_kasa_OTOMATIK_PROda_secici_GORUNUR()
     {
         kasaSayisi = 2;
-        var b = Ekran(ArayuzModuServisi.Basit);
+        var b = Satisa(ArayuzModuServisi.Basit);
+        b.YildizOdemeAc();
         b.WaitForAssertion(() => Assert.Contains("Merkez Kasa", b.Find("#islem-kasa-tek").TextContent), TimeSpan.FromSeconds(5));
         Assert.Empty(b.FindAll("#islem-kasa"));
-        SeciciYardim.Sec(b, "islem-cari", "c1");
         KalemEkle(b);
         istekler.Clear();
-        b.Find("#islem-kaydet").Click();
+        b.YildizKaydet();
         Assert.Equal("ks1", Govde(Satis(b)).GetProperty("kasaId").GetString());
 
-        var e = Ekran(ArayuzModuServisi.Profesyonel);
+        var e = Ekran(ArayuzModuServisi.Profesyonel).YildizHazir(null);
+        e.YildizOdemeAc();
         Assert.NotNull(e.Find("#islem-kasa"));
         // ⚠ KARARSIZLIK ÖNLEMİ (P-36c/3): kasa listesi SUNUCUDAN asenkron gelir;
         //   seçiciyi veri gelmeden açmak yüklü makinede BOŞ liste okutuyordu
@@ -286,16 +298,20 @@ public sealed class BasitModPosTestleri : BunitContext
     public void YASAL_KAPI_tevsik_basit_modda_odeme_turunu_ACAR()
     {
         nakitKapali = true;
-        var e = Ekran(ArayuzModuServisi.Basit);
-        Assert.Empty(e.FindAll("#islem-odeme"));   // kapı kapalıyken gizli
+        var e = Satisa(ArayuzModuServisi.Basit);       // müşteri seçimi → TevsikOnizle
+        e.YildizOdemeAc();
+        Assert.Empty(e.FindAll("#islem-odeme"));   // kapı kapalıyken gizli (ödeme düzeni AÇIK — boş DOM değil)
+        e.Find("#yildiz-tezgah-odeme-tamam").Click();
 
-        SeciciYardim.Sec(e, "islem-cari", "c1");        // @bind:after → TevsikOnizle
         KalemEkle(e);
+        e.YildizOdemeAc();
         e.WaitForElement("#islem-odeme");
         Satis4Yardim.NakitElleSec(e);   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
 
         Assert.NotNull(e.Find("#islem-odeme"));            // seçici AÇILDI
-        Assert.NotNull(e.Find("#islem-yasal-kapi"));       // bant çıktı
+        // bant çıktı: Yıldız'da özgün bandın (#islem-yasal-kapi) cümlesi Fark satırında, kötü durum renginde
+        e.WaitForAssertion(() => Assert.Contains("yz-kotu", e.Find("#yildiz-tezgah-not").ClassList));
+        Assert.False(string.IsNullOrWhiteSpace(e.Find("#yildiz-tezgah-not").TextContent));
     }
 
     // ── ⚠ YASAL KAPI 2 — MASAK ──────────────────────────────────────────────
@@ -304,17 +320,18 @@ public sealed class BasitModPosTestleri : BunitContext
     public void YASAL_KAPI_masak_basit_modda_kimlik_formunu_CIZER()
     {
         masakEsigi = 5_000m;                       // eşik SUNUCUDAN gelir
-        var e = Ekran(ArayuzModuServisi.Basit);
-        Assert.Empty(e.FindAll("#masak-belge-no"));
+        var e = Satisa(ArayuzModuServisi.Basit);
+        Assert.Empty(e.FindAll("#masak-belge-no, #yildiz-tezgah-kimlik"));
 
-        SeciciYardim.Sec(e, "islem-cari", "c1");
         KalemEkle(e);
-        e.WaitForElement("#masak-belge-no");
+        // Yıldız: kimlik formu "+ Kimlik bilgisi" çekmecesinde (aynı MasakFormu, aynı kapı)
+        e.WaitForElement("#yildiz-tezgah-kimlik", TimeSpan.FromSeconds(5)).Click();
+        e.WaitForElement("#cekmece-yildiz-kimlik #masak-belge-no");
 
         Assert.NotNull(e.Find("#masak-belge-no"));
-        // YASAL-KAPI-3 tur 2: form açıkken "gereken alanlar açıldı" bandı çizilmez — formun başlığı söyler (uyarı tek kez)
-        Assert.Empty(e.FindAll("#islem-yasal-kapi"));
-        Assert.NotNull(e.Find("#masak-baslik"));
+        Assert.True(e.YildizKaydetKilitli());
+        // YASAL-KAPI-3 tur 2: form açıkken genel "gereken alanlar açıldı" cümlesi yazılmaz — kilit eksik alanı söyler (uyarı tek kez)
+        Assert.NotEqual(Kuyumcu.Core.I18n.Sozlukler.Tr.Arayuz.YasalKapiAcildi, e.Find("#yildiz-tezgah-not").TextContent.Trim());
     }
 
     // ── ⚠ YASAL KAPI 3 — TAŞ KÖKENİ (yalnız sunucuda) ───────────────────────
@@ -322,20 +339,19 @@ public sealed class BasitModPosTestleri : BunitContext
     [Fact]
     public void YASAL_KAPI_tas_kokeni_400u_basit_modda_GOSTERILIR_ve_alanlari_ACAR()
     {
-        var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Satisa(ArayuzModuServisi.Basit);
         KalemEkle(e);
 
         postHatasi = "Taş ağırlığı girilmiş üründe taş kökeni zorunludur";
-        e.Find("#islem-kaydet").Click();
-        e.WaitForElement("#islem-odeme");
+        e.YildizKaydet();
 
         // UX-S28: hata YUTULMAZ, olduğu gibi gösterilir
-        Assert.Contains("taş kökeni", e.Find("#hata-bandi").TextContent,
-                        StringComparison.OrdinalIgnoreCase);
-        // ProAlan.ZorunluGorunur: gizli alanlar AÇILDI
+        e.WaitForAssertion(() => Assert.Contains("taş kökeni", e.Find("#yildiz-tezgah-hata").TextContent,
+                        StringComparison.OrdinalIgnoreCase));
+        // ProAlan.ZorunluGorunur: gizli alanlar AÇILDI (ödeme düzeninde tam ödeme türü seçicisi)
+        e.YildizOdemeAc();
+        e.WaitForElement("#islem-odeme");
         Assert.NotNull(e.Find("#islem-odeme"));
-        Assert.NotNull(e.Find("#islem-yasal-kapi"));
     }
 
     // ── Veri koruma: gizlenen alan gövdeye KONMAZ ───────────────────────────
@@ -343,12 +359,11 @@ public sealed class BasitModPosTestleri : BunitContext
     [Fact]
     public void Basit_modda_gizlenen_alan_POST_govdesine_KONMAZ()
     {
-        var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Satisa(ArayuzModuServisi.Basit);
         KalemEkle(e);
         istekler.Clear();
 
-        e.Find("#islem-kaydet").Click();
+        e.YildizKaydet();
 
         var g = Govde(Satis(e));
         // vadeGun ANAHTARI HİÇ YOKTUR — null olarak da gitmez ("gövdede olmayan
@@ -362,12 +377,11 @@ public sealed class BasitModPosTestleri : BunitContext
     [Fact]
     public void Profesyonel_modda_govde_ALAN_KAYBETMEZ()
     {
-        var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Satisa(ArayuzModuServisi.Profesyonel);
         KalemEkle(e);
         istekler.Clear();
 
-        e.Find("#islem-kaydet").Click();
+        e.YildizKaydet();
 
         Assert.True(Govde(Satis(e)).TryGetProperty("vadeGun", out _));
     }

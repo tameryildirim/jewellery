@@ -3,6 +3,7 @@ using Bunit;
 using Kuyumcu.Contracts.Sayfalar.Islemler;
 using Kuyumcu.Core.I18n;
 using Kuyumcu.Web.Bilesenler.Fis;
+using Kuyumcu.Web.Bilesenler.Yildiz;
 using Kuyumcu.Web.Servisler;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -102,24 +103,25 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ fişi artık hep Yıldız tezgâhıdır. Müşteri seçimi "Değiştir" katmanında
+    // (YildizMusteriSecici); seçili müşterinin TL durumu üst satırda (#yildiz-tezgah-ust-musteri,
+    // YildizTezgahBicim.MusteriDurumu). Peşin reddinin "gerçek müşteri seçin" bandı AYNI id'lerle
+    // (#islem-pesin-esik, #islem-pesin-esik-sec, #islem-pesin-esik-yeni) bu katmanda; sunucu mesajı
+    // Fark bloğunun hata satırında (#yildiz-tezgah-hata). Eski fiş üst satırının HAS+döviz rozeti
+    // (#islem-cari-bakiye) Yıldız'da BİLEREK yok (tuvalde yok — Yildiz4CTestleri.Y4C_13 "eski üst özet YOK").
+
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ekran(string mod)
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
-        return e;
+        return Render<Kuyumcu.Web.Pages.Islemler>().YildizHazir();
     }
 
     /// <summary>Basit satış ekranı + 10.000 TL'lik bir kalem; sonra Kaydet.</summary>
     private void KalemEkleVeKaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.WaitForAssertion(() => Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
-        e.Find("#islem-kalem-ekle").Click();
-        e.WaitForElement("#islem-kalem-liste-sar");
-        e.Find("#islem-kaydet").Click();
+        e.YildizKalemEkle(beklenenFiyat: "10000");
+        e.YildizKaydet();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis")));
     }
 
@@ -127,62 +129,66 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         ? JsonSerializer.Serialize(new { message = KimlikReddi, alanlar = new { cariId = new[] { KimlikReddi } }, error = "Bad Request", statusCode = 400 })
         : JsonSerializer.Serialize(new { message = "Stok yetersiz.", error = "Bad Request", statusCode = 400 });
 
-    // ═══ ROZET ═════════════════════════════════════════════════════════════
+    private static CariVeri Cari(string id) =>
+        JsonSerializer.Deserialize<List<CariVeri>>(CariListesi, new JsonSerializerOptions(JsonSerializerDefaults.Web))!.Single(c => c.Id == id);
+
+    private static string UstMusteri(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
+        e.Find("#yildiz-tezgah-ust-musteri").TextContent.Replace(' ', ' ').Trim();
+
+    /// <summary>"Değiştir" katmanını açar (bant yalnız orada çizilir — boş DOM'da yanlış yeşil olmasın diye katman beklenir).</summary>
+    private static void KatmanAc(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        if (e.FindAll("#yildiz-musteri-secici").Count == 0) e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForElement("#yildiz-musteri-secici");
+    }
+
+    // ═══ ÜST SATIR DURUMU (eski "rozet") ═══════════════════════════════════
 
     [Fact]
     public void S23E_01_gercek_musteri_secilince_rozet_metni_cari_bakiyesiyle_AYNI()
     {
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        e.YildizMusteriSec("c1");
 
-        var rozet = e.WaitForElement("#islem-cari-bakiye");
         // Liste JSON'unun ekranda kullanılan tipe ayrıştırılmış hâli (sunucu sözleşmesi).
-        var c1 = JsonSerializer.Deserialize<List<CariVeri>>(CariListesi, new JsonSerializerOptions(JsonSerializerDefaults.Web))!
-            .Single(c => c.Id == "c1");
+        var c1 = Cari("c1");
         Assert.Equal(38900m, c1.TlBakiye);
-        Assert.Equal(5.66m, c1.HasGramBakiye);
-        Assert.Equal(FisBakiyeRozeti.Olustur(c1, M)!.Value.Metin, rozet.TextContent.Trim());
-        Assert.Contains(Bicim.Tl(38900m), rozet.TextContent);
-        Assert.Contains("5,660 g has", rozet.TextContent);
-        Assert.StartsWith(M.Borcu, rozet.TextContent.Trim());
-        Assert.Contains("rozet-sari", rozet.ClassName);
-        Assert.False(string.IsNullOrWhiteSpace(rozet.GetAttribute("title")));
+        var durum = YildizTezgahBicim.MusteriDurumu(c1, "tr")!;
+        Assert.Contains(Bicim.Tl(38900m), durum);   // durum GET /cari listesindeki bakiyeden
+        e.WaitForAssertion(() => Assert.Equal($"Hasan Kaya · {durum}".Replace(' ', ' '), UstMusteri(e)));
+        // Yıldız katmanındaki satır da AYNI durumu yazar (tek kaynak)
+        e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForAssertion(() => Assert.Contains(durum, e.Find("#yildiz-musteri-sat-c1").TextContent));
     }
 
     [Fact]
     public void S23E_02_Pesin_Musteri_on_secili_rozet_Borcu_yok_yesil()
     {
+        // Yıldız: Peşin Müşteri'de bakiye durumu YAZILMAZ (sistem carisi — YildizTezgahBicim.MusteriDurumu null).
         var e = Ekran(ArayuzModuServisi.Basit);
-        var rozet = e.WaitForElement("#islem-cari-bakiye");
-        Assert.Equal(M.BorcuYok, rozet.TextContent.Trim());
-        Assert.Contains("rozet-yesil", rozet.ClassName);
+        Assert.Equal("Peşin Müşteri", UstMusteri(e));
+        Assert.Null(YildizTezgahBicim.MusteriDurumu(Cari("pm1"), "tr"));
     }
 
     [Fact]
     public void S23E_03_alacakli_musteri_mavi_ve_karisik_yon_iki_yonu_ayri_yazar_doviz_kendi_birimiyle()
     {
+        // Yıldız üst satırı TL durumunu yazar (tuval "· bize borçlu / biz borçluyuz"); eski rozetin HAS + döviz
+        // yön satırı tuvalde yok (bilerek). Yön kuralı tek kaynaktan (BorcDiliSozlugu.Durum).
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c2");
-        var r2 = e.WaitForElement("#islem-cari-bakiye");
-        Assert.Equal($"{M.Alacagi}: {Bicim.Tl(1500m)}", r2.TextContent.Trim());
-        Assert.Contains("rozet-mavi", r2.ClassName);
+        e.YildizMusteriSec("c2");
+        var d2 = YildizTezgahBicim.MusteriDurumu(Cari("c2"), "tr")!;
+        Assert.Contains(Bicim.Tl(1500m), d2);
+        e.WaitForAssertion(() => Assert.Equal($"Elif Arslan · {d2}".Replace(' ', ' '), UstMusteri(e)));
 
-        SeciciYardim.Sec(e, "islem-cari", "c3");
-        e.WaitForAssertion(() =>
-        {
-            var r3 = e.Find("#islem-cari-bakiye").TextContent.Trim();
-            Assert.Equal($"{M.Borcu}: {Bicim.Tl(1000m)} · {Bicim.Para(250m, "USD")} — {M.Alacagi}: 22,000 g has", r3);
-        });
+        e.YildizMusteriSec("c3");
+        var d3 = YildizTezgahBicim.MusteriDurumu(Cari("c3"), "tr")!;
+        Assert.NotEqual(d2, d3);   // alacaklı ↔ borçlu yönü ayrı yazılır
+        e.WaitForAssertion(() => Assert.Equal($"Mehmet Öz · {d3}".Replace(' ', ' '), UstMusteri(e)));
     }
 
-    [Fact]
-    public void S23E_04_musteri_bosaltilinca_rozet_CIZILMEZ()
-    {
-        var e = Ekran(ArayuzModuServisi.Profesyonel);
-        e.WaitForElement("#islem-cari-bakiye");
-        SeciciYardim.Sec(e, "islem-cari", "");
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-cari-bakiye")));
-    }
+    // TEMA TEMİZLİĞİ 17.10: S23E_04_musteri_bosaltilinca_rozet_CIZILMEZ kaldırıldı — Yıldız müşteri katmanında "boş müşteri"
+    // seçimi yok (katman yalnız müşteri seçer; boşaltma yalnız "gerçek müşteri seçin" bandıyla — S23E_06'da sınanır).
 
     // ═══ "GERÇEK MÜŞTERİ SEÇİN" BANDI ══════════════════════════════════════
 
@@ -191,14 +197,17 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
     {
         satisRed = Govde400(alanli: true);
         var e = Ekran(ArayuzModuServisi.Basit);
+        KatmanAc(e);
         Assert.Empty(e.FindAll("#islem-pesin-esik"));
+        e.Find("#yildiz-tezgah-degistir").Click();   // katman kapanır
         KalemEkleVeKaydet(e);
 
+        e.WaitForAssertion(() => Assert.Contains(KimlikReddi, e.Find("#yildiz-tezgah-hata").TextContent));   // sunucu sözü yutulmaz
+        KatmanAc(e);
         var bant = e.WaitForElement("#islem-pesin-esik");
         Assert.Equal("alert", bant.GetAttribute("role"));
         Assert.Contains(M.KimlikBandi, bant.TextContent);
         Assert.DoesNotMatch(@"\d", bant.TextContent);           // eşik sayısı istemcide YOK
-        Assert.Contains(KimlikReddi, e.Find("#hata-bandi").TextContent);   // sunucu sözü yutulmaz
         Assert.Equal("/cariler", e.Find("#islem-pesin-esik-yeni").GetAttribute("href"));
     }
 
@@ -208,14 +217,16 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         satisRed = Govde400(alanli: true);
         var e = Ekran(ArayuzModuServisi.Basit);
         KalemEkleVeKaydet(e);
+        KatmanAc(e);
         e.WaitForElement("#islem-pesin-esik");
         var postSayisi = istekler.Count(i => i.Metot == "POST");
 
         e.Find("#islem-pesin-esik-sec").Click();
 
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pesin-esik")));
-        Assert.Equal("", SeciciYardim.SeciliDeger(e, "islem-cari") ?? "");
-        Assert.Empty(e.FindAll("#islem-pesin-notu"));
+        Assert.Single(e.FindAll("#yildiz-musteri-secici"));                       // katman açık — boş DOM değil
+        Assert.Empty(e.FindAll("#yildiz-musteri-liste [aria-current=true]"));     // ön seçim kalktı
+        Assert.Empty(e.FindAll("#yildiz-tezgah-ust-musteri"));
         Assert.Equal(postSayisi, istekler.Count(i => i.Metot == "POST"));
     }
 
@@ -225,7 +236,8 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         satisRed = Govde400(alanli: false);
         var e = Ekran(ArayuzModuServisi.Basit);
         KalemEkleVeKaydet(e);
-        e.WaitForAssertion(() => Assert.Contains("Stok yetersiz.", e.Find("#hata-bandi").TextContent));
+        e.WaitForAssertion(() => Assert.Contains("Stok yetersiz.", e.Find("#yildiz-tezgah-hata").TextContent));
+        KatmanAc(e);
         Assert.Empty(e.FindAll("#islem-pesin-esik"));
     }
 
@@ -234,9 +246,10 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
     {
         satisRed = Govde400(alanli: true);
         var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        e.YildizMusteriSec("c1");
         KalemEkleVeKaydet(e);
-        e.WaitForAssertion(() => Assert.Contains(KimlikReddi, e.Find("#hata-bandi").TextContent));
+        e.WaitForAssertion(() => Assert.Contains(KimlikReddi, e.Find("#yildiz-tezgah-hata").TextContent));
+        KatmanAc(e);
         Assert.Empty(e.FindAll("#islem-pesin-esik"));
     }
 
@@ -245,18 +258,19 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
     {
         ikinciCariListesi = CariListesi.Replace("\"tlBakiye\":38900", "\"tlBakiye\":48900");
         var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.Contains(Bicim.Tl(38900m), e.Find("#islem-cari-bakiye").TextContent));
+        e.YildizMusteriSec("c1");
+        e.WaitForAssertion(() => Assert.Contains(Bicim.Tl(38900m).Replace(' ', ' '), UstMusteri(e)));
         KalemEkleVeKaydet(e);
 
         // Kayıttan sonra GET /cari yeniden çekildi; fiş yine Peşin ile açıldı.
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
+        e.WaitForAssertion(() => Assert.Equal("Peşin Müşteri", UstMusteri(e)));
         var sonPost = istekler.FindIndex(i => i.Metot == "POST");
         Assert.Contains(istekler.Skip(sonPost), i => i.Metot == "GET" && i.Yol.EndsWith("/cari"));
+        KatmanAc(e);
         Assert.Empty(e.FindAll("#islem-pesin-esik"));
 
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.Contains(Bicim.Tl(48900m), e.Find("#islem-cari-bakiye").TextContent));
+        e.YildizMusteriSec("c1");
+        e.WaitForAssertion(() => Assert.Contains(Bicim.Tl(48900m).Replace(' ', ' '), UstMusteri(e)));
     }
 
     [Fact]
@@ -265,13 +279,16 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         satisRed = Govde400(alanli: true);
         var e = Ekran(ArayuzModuServisi.Basit);
         KalemEkleVeKaydet(e);
+        KatmanAc(e);
         e.WaitForElement("#islem-pesin-esik");
 
         satisRed = null;   // sunucu artık kabul ediyor (ör. tutar düşürüldü)
-        e.Find("#islem-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click();
         e.WaitForAssertion(() => Assert.Equal(2, istekler.Count(i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis"))));
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pesin-esik")));
-        Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari"));
+        Assert.Equal("Peşin Müşteri", UstMusteri(e));
+        KatmanAc(e);
+        Assert.Empty(e.FindAll("#islem-pesin-esik"));
     }
 
     [Fact]
@@ -280,12 +297,15 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         satisRed = Govde400(alanli: true);
         var e = Ekran(ArayuzModuServisi.Basit);
         KalemEkleVeKaydet(e);
+        KatmanAc(e);
         e.WaitForElement("#islem-pesin-esik");
 
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pesin-esik")));
-        SeciciYardim.Sec(e, "islem-cari", "pm1");
-        e.WaitForElement("#islem-pesin-notu");
+        e.YildizMusteriSec("c1");
+        KatmanAc(e);
+        Assert.Empty(e.FindAll("#islem-pesin-esik"));
+        e.YildizMusteriSec("pm1");
+        e.WaitForAssertion(() => Assert.Equal("Peşin Müşteri", UstMusteri(e)));
+        KatmanAc(e);
         Assert.Empty(e.FindAll("#islem-pesin-esik"));
     }
 
@@ -295,12 +315,15 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         satisRed = Govde400(alanli: true);
         var e = Ekran(ArayuzModuServisi.Basit);
         KalemEkleVeKaydet(e);
+        KatmanAc(e);
         e.WaitForElement("#islem-pesin-esik");
 
-        e.Find("#islem-tur-HURDA_ALIS").Click();   // T-S1: ALIS basitte karo değil (PRO) — başka türe geçiş aynı
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pesin-esik")));
-        e.Find("#islem-tur-SATIS").Click();
-        e.WaitForElement("#islem-pesin-notu");
+        e.Find("#yildiz-tur-HURDA_ALIS").Click();   // Yıldız'ın görünür "Alış" sekmesi
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#yildiz-tezgah")));
+        Assert.Empty(e.FindAll("#islem-pesin-esik"));
+        e.Find("#yildiz-tur-SATIS").Click();
+        e.WaitForElement("#yildiz-tezgah-degistir");
+        KatmanAc(e);
         Assert.Empty(e.FindAll("#islem-pesin-esik"));
     }
 

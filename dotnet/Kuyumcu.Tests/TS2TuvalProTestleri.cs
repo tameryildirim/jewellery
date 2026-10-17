@@ -38,10 +38,9 @@ public sealed class TS2TuvalProTestleri : BunitContext
     private bool tevsikDevrede;
     private decimal? tevsikKalan;                  // null → kalan = had
     private bool listeHata;                        // true → /fiyat/listeler 500
-    private bool teklifSabit;                      // true → /fiyat/teklif SABİT FİYATLI (sunucu ayrıştırmaz: has/marj/işçilik 0)
     private string urunHas = "3.94", urunGram = "4.3";
-    private bool teklifKampanya;                   // T-S2b: /fiyat/teklif KAMPANYA İNDİRİMLİ (liste 10000, işçilik 500 indirim ÖNCESİ, satış 9000)
-    private string urunMilyem = "916";             // T-S2b: milyem kayıtlı değilse (0) hücre "—"   // doğrulayıcı bulgusu: küçük has/gram ekranda kaybolmaz
+    // TEMA TEMİZLİĞİ 17.10: teklifSabit / teklifKampanya bayrakları yalnız silinen geniş tablo testlerinindi (kaldırıldı).
+    private readonly string urunMilyem = "916";             // T-S2b: milyem kayıtlı değilse (0) hücre "—"   // doğrulayıcı bulgusu: küçük has/gram ekranda kaybolmaz
 
     public TS2TuvalProTestleri()
     {
@@ -77,8 +76,6 @@ public sealed class TS2TuvalProTestleri : BunitContext
                     $$"""{"had":{{h}},"kuralEtkin":true,"kumulatifHesaplandi":true,"bugunkuNakitToplam":0,"kalanNakitHakki":{{(t.tevsikKalan ?? t.tevsikHad)?.ToString(CultureInfo.InvariantCulture)}},"islemTutariKuraliDevrede":{{(t.tevsikDevrede ? "true" : "false")}}}""",
                 var v when v.Contains("/fiyat/listeler") =>
                     """[{"id":"fl1","ad":"Vitrin","varsayilan":true,"aktif":true},{"id":"fl2","ad":"Toptan","varsayilan":false,"aktif":true},{"id":"fl3","ad":"Eski","varsayilan":false,"aktif":false}]""",
-                var v when v.Contains("/fiyat/teklif") && t.teklifKampanya => """{"teklifVar":true,"listeFiyati":10000,"hasDegeri":9500,"marjTl":0,"iscilikTl":500,"indirimTutari":1000,"satisFiyati":9000,"kampanyaId":"kmp1","sabitFiyat":false,"kaynak":"LISTE","indirimOncesiFiyat":10000}""",
-                var v when v.Contains("/fiyat/teklif") && t.teklifSabit => """{"teklifVar":true,"listeFiyati":10000,"hasDegeri":0,"marjTl":0,"iscilikTl":0,"indirimTutari":0,"satisFiyati":10000,"kampanyaId":null,"sabitFiyat":true,"indirimOncesiFiyat":null}""",
                 var v when v.Contains("/fiyat/teklif") => """{"teklifVar":true,"listeFiyati":10000,"hasDegeri":9500,"marjTl":0,"iscilikTl":500,"indirimTutari":0,"satisFiyati":10000,"kampanyaId":null,"sabitFiyat":false,"indirimOncesiFiyat":null}""",
                 var v when v.Contains("/kur/guncel") => """{"id":"kur-1","altinHasFiyati":6800,"ayarFiyatlari":[]}""",
                 var v when v.Contains("/urunler") => $$"""[{"id":"u1","ad":"Burma Bilezik","ayarId":"K22","hasGrami":{{t.urunHas}},"iscilikTl":0,"satisFiyati":10000,"gramAgirlik":{{t.urunGram}},"milyem":{{t.urunMilyem}},"barkod":"BLZ-00412","kod":"K-1"}]""",
@@ -107,15 +104,29 @@ public sealed class TS2TuvalProTestleri : BunitContext
         return e;
     }
 
+    // TEMA TEMİZLİĞİ 17.10: PRO SATIŞ da artık Yıldız tezgâhıdır. Eski T-S2 tuvalinin geniş kalem tablosu + alt toplam
+    // şeridi (FisProKalemKarti), sağ sütunu (FisProYanSutun: yasal kapılar kartı · müşteri kartı · kısayollar) ve ödeme
+    // hapı (FisProOdemeHapi) Yıldız satışında BİLEREK çizilmez (Yildiz4BTestleri.Y4B_20, Yildiz4CTestleri.Y4C_20).
+    // Satıcı + fiyat listesi "Değiştir" katmanının ekinde (#yildiz-musteri-pro-ac → #yildiz-musteri-pro); yasal durum
+    // Fark satırının notunda (#yildiz-tezgah-not); karma "+ Başka ödeme"/"− Tek ödeme" hapları.
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> KalemliPro(string beklenenFiyat = "10000")
     {
-        var e = Ekran();
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.WaitForAssertion(() => Assert.Equal(beklenenFiyat, SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
-        e.Find("#islem-kalem-ekle").Click();
-        e.WaitForElement("#islem-kalem-pro");
+        var e = Ekran().YildizHazir();
+        e.YildizKalemEkle(beklenenFiyat: beklenenFiyat);
         return e;
     }
+
+    /// <summary>"Değiştir" katmanını ve satıcı/fiyat listesi ekini açar (hata varsa ek kendiliğinden açık gelir).</summary>
+    private static void ProEkAc(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        if (e.FindAll("#yildiz-musteri-secici").Count == 0) e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForElement("#yildiz-musteri-secici");
+        if (e.FindAll("#yildiz-musteri-pro").Count == 0) e.Find("#yildiz-musteri-pro-ac").Click();
+        e.WaitForElement("#yildiz-musteri-pro");
+    }
+
+    private static string YasalNot(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
+        e.FindAll("#yildiz-tezgah-not").FirstOrDefault()?.TextContent.Trim() ?? "";
 
     private int SatisPostSayisi() { lock (istekler) return istekler.Count(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")); }
     private bool Istendi(string parca) { lock (istekler) return istekler.Any(i => i.Yol.Contains(parca)); }
@@ -243,76 +254,39 @@ public sealed class TS2TuvalProTestleri : BunitContext
     [Fact]
     public void Alan_satiri_Musteri_Tarih_Para_Satici_Fiyat_listesi_varsayilan_sonra_musteriden()
     {
-        var e = Ekran();
-        var satir = e.WaitForElement("#islem-ust-satir");
-        Assert.Contains(SatisEkraniSozlugu.Tr.MusteriEtiketi, e.Find("label[for=islem-cari]").TextContent);
-        Assert.NotNull(satir.QuerySelector("#islem-tarih"));
-        Assert.NotNull(satir.QuerySelector("#islem-para"));
-        Assert.Contains(SatisProSozlugu.Tr.AlanSatici, satir.QuerySelector("#islem-satan-sar")!.TextContent);
-        Assert.Contains("Test Tezgâhtar", satir.QuerySelector("#islem-satan")!.TextContent);
+        // Yıldız: Satıcı + Fiyat listesi "Değiştir" katmanının ekinde (aynı FisSatici / FisProFiyatListesi, aynı id'ler).
+        // Tarih/Para kutuları Yıldız'da BİLEREK yok (sistemin bildiği değer — UX-S21, tuvalde yok).
+        var e = Ekran().YildizHazir();
+        ProEkAc(e);
+        Assert.Contains(SatisProSozlugu.Tr.AlanSatici, e.Find("#yildiz-musteri-pro #islem-satan-sar").TextContent);
+        Assert.Contains("Test Tezgâhtar", e.Find("#islem-satan").TextContent);
         e.WaitForAssertion(() => Assert.Contains("Vitrin", e.Find("#islem-fiyat-listesi").TextContent));
         Assert.Contains(SatisProSozlugu.Tr.FiyatListesiVarsayilan, e.Find("#islem-fiyat-listesi-kaynak").TextContent);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        Assert.Empty(e.FindAll("#islem-tarih, #islem-para"));
+        e.YildizMusteriSec("c1");   // seçimle katman kapanır
+        ProEkAc(e);
         e.WaitForAssertion(() => Assert.Contains("Toptan", e.Find("#islem-fiyat-listesi").TextContent));
         Assert.Contains(SatisProSozlugu.Tr.FiyatListesiCariden, e.Find("#islem-fiyat-listesi-kaynak").TextContent);
-        Assert.NotNull(e.Find("#islem-cari-bakiye"));   // borç rozeti Müşteri kutusunda
+        Assert.Contains(Bicim.Tl(38_900m).Replace(' ', ' '), e.Find("#yildiz-tezgah-ust").TextContent.Replace(' ', ' '));   // borç durumu üst satırda
     }
 
     [Fact]
     public void Fiyat_listesi_okunamazsa_sebep_yazar_rakam_uydurmaz()
     {
         listeHata = true;
-        var e = Ekran();
+        var e = Ekran().YildizHazir();
+        e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForElement("#yildiz-musteri-pro");   // hata gizlenmez: ek KENDİLİĞİNDEN açık gelir (UX-S28)
         e.WaitForElement("#islem-fiyat-listesi-hata");
         Assert.Contains("sunucu hatası", e.Find("#islem-fiyat-listesi-hata").TextContent);
         Assert.Empty(e.FindAll("#islem-fiyat-listesi-kaynak"));
     }
 
-    [Fact]
-    public void Genis_tablo_tuval_kolonlari_urun_kartindan_ve_teklif_iscilikli()
-    {
-        var e = KalemliPro();
-        var basliklar = e.FindAll("#islem-kalem-pro thead th").Select(x => x.TextContent.Trim()).Take(9).ToArray();
-        var P = SatisProSozlugu.Tr;
-        Assert.Equal([P.SutunBarkod, P.SutunUrun, P.SutunAyar, P.SutunMilyem, P.SutunGram, P.SutunHas, P.SutunAdet, P.SutunIscilik, P.SutunTutar], basliklar);
-        var hucre = e.FindAll("#islem-kalem-pro tbody tr.fis-pro-satir td").Select(x => x.TextContent.Trim()).ToArray();
-        Assert.Equal("BLZ-00412", hucre[0]);
-        Assert.Equal("Burma Bilezik", e.Find("#islem-kalem-pro tbody tr.fis-pro-satir td.fis-pro-ad .fis-pro-ad-metin").TextContent.Trim());
-        Assert.Equal("BLZ-00412", e.Find("#islem-kalem-pro tbody tr.fis-pro-satir td.fis-pro-ad .fis-pro-ad-barkod").TextContent.Trim());   // SATIS-3: barkod adın altında
-        Assert.Equal("22", hucre[2]);
-        Assert.Equal("916", hucre[3]);
-        Assert.Equal("4,30", hucre[4]);
-        Assert.Equal("3,94", hucre[5]);
-        Assert.Equal(Bicim.Tl(500m), hucre[7]);
-        Assert.Equal(Bicim.Tl(10000m), hucre[8]);
-        // Birim fiyat / iskonto / hediye / sil ✎ satırında — kapalıyken DOM'da yok
-        Assert.Empty(e.FindAll("#si-kalem-fiyat-u1-ac"));
-        e.Find("#islem-kalem-duzenle-0").Click();
-        Assert.Equal("true", e.Find("#islem-kalem-duzenle-0").GetAttribute("aria-expanded"));
-        Assert.NotNull(e.Find("#islem-kalem-ayrinti-0 #si-kalem-fiyat-u1-ac"));
-        Assert.NotNull(e.Find("#islem-kalem-ayrinti-0 #si-kalem-iskonto-u1-ac"));
-        Assert.NotNull(e.Find("#islem-kalem-ayrinti-0 #islem-kalem-hediye-0"));
-        // fiyat elle değişince teklifin işçiliği artık bilinmez → "—"
-        e.Find("#si-kalem-fiyat-u1-ac").Click();
-        e.Find("#si-kalem-fiyat-u1").Input("9000");
-        e.Find("#si-kalem-fiyat-u1-kaydet").Click();
-        e.WaitForAssertion(() => Assert.Equal("—", e.Find("#islem-kalem-iscilik-0").TextContent.Trim()));
-    }
-
-    [Fact]
-    public void Sabit_fiyatli_kalemde_iscilik_hucre_ve_serit_TIRE_0_TL_uydurulmaz()
-    {
-        // Doğrulayıcı bulgusu (KRİTİK): sabit fiyatta sunucu işçiliği ayrıştırmaz (iscilikTl 0 = "ayrıştırılmadı").
-        teklifSabit = true;
-        var e = KalemliPro();
-        Assert.Equal("—", e.Find("#islem-kalem-iscilik-0").TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.IscilikBilinmiyor, e.Find("#islem-kalem-iscilik-0").GetAttribute("title"));
-        Assert.Equal("—", e.Find("#islem-pro-toplam-iscilik").TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.IscilikBilinmiyor, e.Find("#islem-pro-toplam-iscilik").GetAttribute("title"));
-        Assert.NotEqual(Bicim.Tl(0m), e.Find("#islem-pro-toplam-iscilik").TextContent.Trim());
-        Assert.NotEqual(Bicim.Tl(0m), e.Find("#islem-kalem-iscilik-0").TextContent.Trim());
-        Assert.Equal(Bicim.Tl(10000m), e.Find("#islem-pro-genel-toplam").TextContent.Trim());   // fiyat yine teklifin fiyatı
-    }
+    // TEMA TEMİZLİĞİ 17.10: Genis_tablo_tuval_kolonlari_urun_kartindan_ve_teklif_iscilikli ve
+    // Sabit_fiyatli_kalemde_iscilik_hucre_ve_serit_TIRE_0_TL_uydurulmaz kaldırıldı — geniş kalem tablosu ve alt toplam
+    // şeridi (FisProKalemKarti: Barkod/Milyem/İşçilik sütunları, #islem-pro-toplam-iscilik) Yıldız satışında BİLEREK yok
+    // (Y4C_20 "#islem-kalem-pro yok"); Yıldız kalem satırı işçilik yazmaz → uydurulacak işçilik rakamı da yok. İşçilik
+    // kuralı (TeklifIscilik / SatirIscilik) saf testlerde AYNEN (Iscilik_yalniz_teklif..., TS2b_indirimli...).
 
     // ═══ PAKET T-S2b — doğrulayıcı bulgusu (t3, KRİTİK): kampanya indirimli üründe İşçilik
     //     indirim ÖNCESİ değeri gösteriyordu. İndirim fiyatın bütününden düşer; işçilik payı
@@ -342,106 +316,30 @@ public sealed class TS2TuvalProTestleri : BunitContext
         Assert.Null(FisHesap.ToplamHasBilinen([a, isk], urunler));                        // "i" ürün kartı yok → has bilinmez
     }
 
-    [Fact]
-    public void TS2b_kampanyali_kalemde_iscilik_hucre_ve_serit_TIRE_indirim_oncesi_500_BASILMAZ()
-    {
-        teklifKampanya = true;
-        var e = KalemliPro("9000");
-        var hucre = e.Find("#islem-kalem-iscilik-0");
-        Assert.Equal("—", hucre.TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.IscilikBilinmiyor, hucre.GetAttribute("title"));
-        Assert.Equal("—", e.Find("#islem-pro-toplam-iscilik").TextContent.Trim());
-        Assert.DoesNotContain(Bicim.Tl(500m), e.Find("#islem-kalem-pro").TextContent);
-        Assert.DoesNotContain(Bicim.Tl(500m), e.Find("#islem-pro-toplam").TextContent);
-        // Tutar ve genel toplam SUNUCUNUN indirim SONRASI satış fiyatı
-        var satir = e.FindAll("#islem-kalem-pro tbody tr.fis-pro-satir td").Select(x => x.TextContent.Trim()).ToArray();
-        Assert.Equal(Bicim.Tl(9000m), satir[8]);
-        Assert.Equal(Bicim.Tl(9000m), e.Find("#islem-pro-genel-toplam").TextContent.Trim());
-        Assert.Equal("3,94 g", e.Find("#islem-pro-toplam-has").TextContent.Trim());   // has indirimden etkilenmez (ürün kartı)
-    }
-
-    [Fact]
-    public void TS2b_satir_iskontosu_girilince_iscilik_TIRE_kaldirilinca_geri_gelir()
-    {
-        var e = KalemliPro();
-        Assert.Equal(Bicim.Tl(500m), e.Find("#islem-kalem-iscilik-0").TextContent.Trim());
-        e.Find("#islem-kalem-duzenle-0").Click();
-        e.Find("#si-kalem-iskonto-u1-ac").Click();
-        e.Find("#si-kalem-iskonto-u1").Input("10");
-        e.Find("#si-kalem-iskonto-u1-kaydet").Click();
-        e.WaitForAssertion(() => Assert.Equal("—", e.Find("#islem-kalem-iscilik-0").TextContent.Trim()));
-        Assert.Equal("—", e.Find("#islem-pro-toplam-iscilik").TextContent.Trim());
-        Assert.Equal(Bicim.Tl(9000m), e.Find("#islem-pro-genel-toplam").TextContent.Trim());
-        e.Find("#si-kalem-iskonto-u1-ac").Click();
-        e.Find("#si-kalem-iskonto-u1").Input("0");
-        e.Find("#si-kalem-iskonto-u1-kaydet").Click();
-        e.WaitForAssertion(() => Assert.Equal(Bicim.Tl(500m), e.Find("#islem-kalem-iscilik-0").TextContent.Trim()));
-    }
-
-    [Fact]
-    public void TS2b_fis_iskontosu_girilince_serit_iscilik_TIRE_silinince_geri_gelir()
-    {
-        var e = KalemliPro();
-        Assert.Equal(Bicim.Tl(500m), e.Find("#islem-pro-toplam-iscilik").TextContent.Trim());
-        e.Find("#islem-fis-iskonto").Input("5");
-        e.WaitForAssertion(() => Assert.Equal("—", e.Find("#islem-pro-toplam-iscilik").TextContent.Trim()));
-        Assert.Equal(SatisProSozlugu.Tr.IscilikBilinmiyor, e.Find("#islem-pro-toplam-iscilik").GetAttribute("title"));
-        Assert.Equal(Bicim.Tl(9500m), e.Find("#islem-pro-genel-toplam").TextContent.Trim());
-        e.Find("#islem-fis-iskonto").Input("");
-        e.WaitForAssertion(() => Assert.Equal(Bicim.Tl(500m), e.Find("#islem-pro-toplam-iscilik").TextContent.Trim()));
-    }
-
-    [Fact]
-    public void TS2b_milyem_kayitli_degilse_hucre_TIRE_0_uydurulmaz()
-    {
-        urunMilyem = "0";
-        var e = KalemliPro();
-        Assert.Equal("—", e.Find("#islem-kalem-milyem-0").TextContent.Trim());
-        Assert.Equal("4,30", e.Find("#islem-kalem-gram-0").TextContent.Trim());
-        Assert.Equal("3,94", e.Find("#islem-kalem-has-0").TextContent.Trim());
-    }
-
-    [Fact]
-    public void Alt_toplam_has_iscilik_KDV_faturada_genel_toplam()
-    {
-        var e = KalemliPro();
-        Assert.Equal("3,94 g", e.Find("#islem-pro-toplam-has").TextContent.Trim());
-        Assert.Equal(Bicim.Tl(500m), e.Find("#islem-pro-toplam-iscilik").TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.KdvFaturada, e.Find("#islem-pro-kdv").TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.KdvIpucu, e.Find("#islem-pro-kdv").GetAttribute("title"));
-        Assert.Equal(Bicim.Tl(10000m), e.Find("#islem-pro-genel-toplam").TextContent.Trim());
-        Assert.Contains(SatisProSozlugu.Tr.Kdv, e.Find("#islem-pro-toplam").TextContent);
-    }
-
-    [Fact]
-    public void Bos_fiste_kart_ve_toplam_seridi_CIZILIR_bos_durum_metniyle()
-    {
-        var e = Ekran();
-        Assert.Equal(SatisProSozlugu.Tr.KalemBos, e.Find("#islem-pro-kalem-bos").TextContent.Trim());
-        Assert.NotNull(e.Find("#islem-pro-toplam"));
-        Assert.Equal(Bicim.Tl(0m), e.Find("#islem-pro-genel-toplam").TextContent.Trim());
-        Assert.Empty(e.FindAll("#islem-kalem-pro"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: TS2b_kampanyali_kalemde_iscilik_hucre_ve_serit_TIRE_indirim_oncesi_500_BASILMAZ,
+    // TS2b_satir_iskontosu_girilince_iscilik_TIRE_kaldirilinca_geri_gelir, TS2b_fis_iskontosu_girilince_serit_iscilik_TIRE_silinince_geri_gelir,
+    // TS2b_milyem_kayitli_degilse_hucre_TIRE_0_uydurulmaz, Alt_toplam_has_iscilik_KDV_faturada_genel_toplam ve
+    // Bos_fiste_kart_ve_toplam_seridi_CIZILIR_bos_durum_metniyle kaldırıldı — hepsi geniş kalem tablosunun hücreleri
+    // (#islem-kalem-iscilik/-milyem-N, ✎ satırı) ve alt toplam şeridi (#islem-pro-toplam-*, KDV "Faturada") içindi; ikisi de
+    // Yıldız satışında BİLEREK yok (Y4C_20). Kampanya/iskonto sonrası tutarın sunucu fiyatından geldiği gövde testleri
+    // (Yildiz4CTestleri.Y4C_23 indirimli gövde = platin) ve boş fiş durumu (Yildiz4BTestleri.Y4B_11) Yıldız yolunda.
 
     [Fact]
     public void Hap_Karma_boler_ozet_Fark_yazar_Tek_geri_doner_istek_atmaz()
     {
-        // SATIS-2 (kurucu 11:35): "Karma | Tek" anahtarı yerine TEK bağlantı — "+ Başka ödeme ekle" (#islem-pro-karma)
-        // mevcut OdemeyiBol yolunu, karmada "Tek ödemeye dön" (#islem-pro-tek) TekOdemeyeDon'u çağırır.
+        // Yıldız: "+ Başka ödeme" mevcut OdemeyiBol yolunu, karmada "− Tek ödeme" TekOdemeyeDon(Aracla) yolunu çağırır.
         var e = KalemliPro();
-        Assert.Empty(e.FindAll("#islem-pro-tek"));
-        Assert.Equal(SatisSadeSozlugu.Tr.BaskaOdemeEkle, e.Find("#islem-pro-karma").TextContent.Trim());
-        Assert.Contains(Bicim.Tl(10000m), e.Find("#islem-pro-odeme-ozet").TextContent);
+        Assert.Empty(e.FindAll("#yildiz-tezgah-tek-odeme"));
+        Assert.Equal(YildizTezgahSozlugu.BaskaOdeme("tr"), e.Find("#yildiz-tezgah-baska-odeme").TextContent.Trim());
+        Assert.Equal(Bicim.TlKurus(10000m), e.Find("#yildiz-odeme-0 .yz-tezgah-odeme-tutar").TextContent.Trim());
         var once = istekler.Count(i => i.Metot == "POST");
-        e.Find("#islem-pro-karma").Click();
-        e.WaitForElement("#islem-pro-tek");
-        Assert.Empty(e.FindAll("#islem-pro-karma"));
-        Assert.NotNull(e.Find("#islem-pro-fark"));
-        Assert.Equal(Bicim.Tl(0m), e.Find("#islem-pro-fark").TextContent.Trim());   // tek ödeme ilk bacak oldu → fark 0
-        Assert.True(e.Find("#islem-karma").HasAttribute("checked") || e.Find("#islem-karma").GetAttribute("checked") is not null);
-        e.Find("#islem-pro-tek").Click();
-        e.WaitForElement("#islem-pro-karma");
-        Assert.Empty(e.FindAll("#islem-pro-fark"));
+        e.YildizBol();
+        e.WaitForElement("#yildiz-tezgah-tek-odeme");
+        Assert.Empty(e.FindAll("#yildiz-odeme-0"));
+        Assert.Equal(Bicim.Tl(0m).Replace(' ', ' '), e.YildizFark());   // tek ödeme ilk satır oldu → fark 0
+        e.Find("#yildiz-tezgah-tek-odeme").Click();
+        e.WaitForElement("#yildiz-odeme-0");
+        Assert.Empty(e.FindAll("#yildiz-tezgah-tek-odeme, .bacak-satiri"));
         Assert.Equal(once, istekler.Count(i => i.Metot == "POST"));
     }
 
@@ -450,96 +348,90 @@ public sealed class TS2TuvalProTestleri : BunitContext
     {
         var e = KalemliPro();
         var once = SatisPostSayisi();
-        e.Find("#islem-vazgec").Click();
-        e.WaitForElement("#islem-pro-kalem-bos");
-        Assert.Empty(e.FindAll("#islem-vazgec"));
+        Assert.Equal("button", e.Find("#yildiz-tezgah-vazgec").LocalName);
+        e.Find("#yildiz-tezgah-vazgec").Click();
+        e.WaitForElement("#yildiz-tezgah-bos");
+        Assert.Equal("a", e.Find("#yildiz-tezgah-vazgec").LocalName);   // boş fişte boşaltan düğme yok (ana sayfa bağlantısı)
         Assert.Equal(once, SatisPostSayisi());
     }
 
     [Fact]
     public void Yasal_kapilar_esikler_SUNUCUDAN_nakit_Uygun_kimlik_Altinda()
     {
-        var e = Ekran();
-        e.WaitForAssertion(() => Assert.Equal(string.Format(SatisProSozlugu.Tr.NakitKurali, Bicim.Tl(50_000m)), e.Find("#islem-pro-nakit-etiket").TextContent.Trim()));
-        Assert.Equal(SatisProSozlugu.Tr.Uygun, e.Find("#islem-pro-nakit").TextContent.Trim());
-        Assert.Equal(string.Format(SatisProSozlugu.Tr.KimlikEsigi, Bicim.Tl(200_000m)), e.Find("#islem-pro-kimlik-etiket").TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.Altinda, e.Find("#islem-pro-kimlik").TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.KdvFaturada, e.Find("#islem-pro-kdv-matrah").TextContent.Trim());
+        // Yıldız: yasal durum tek satır — "Yasal kurallar uygun · nakit <SUNUCUNUN haddi> sınırının altında".
+        // Eski kartın kimlik eşiği ve KDV matrahı satırları Yıldız'da BİLEREK yok (tuval).
+        var e = Ekran().YildizHazir();
+        e.WaitForAssertion(() => Assert.Equal(
+            $"{YildizTezgahSozlugu.YasalUygun("tr")} · {YildizTezgahSozlugu.NakitSinirAlti(Bicim.Tl(50_000m), "tr")}", YasalNot(e)));
     }
 
+    /// <summary>
+    /// ÜRÜN BULGUSU (TEMA TEMİZLİĞİ 17.10, GC): Yıldız PRO tek ödemede TevsikOnizle yalnız proTevsik'i tazeler
+    /// (Islemler.Pro.cs) — sunucunun "işlem tutarı kuralı devrede" bilgisi eski yan sütun kartında "Aşıldı" diye
+    /// görünüyordu; Yıldız Fark notu (YildizNot) bu bilgiyi okumaz ve "Yasal kurallar uygun" der. Test bu yüzden KIRMIZI.
+    /// </summary>
     [Fact]
     public void Yasal_kapilar_sunucu_devrede_derse_Asildi()
     {
         tevsikDevrede = true;
-        var e = Ekran();
-        e.WaitForAssertion(() => Assert.Equal(SatisProSozlugu.Tr.Asildi, e.Find("#islem-pro-nakit").TextContent.Trim()));
+        var e = KalemliPro();
+        // önce sunucu yanıtı işlendi (not satırı yazıldı) — boş metinde yanlış yeşil olmaz
+        e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(YasalNot(e))), TimeSpan.FromSeconds(5));
+        // sunucu nakit kuralını bu fişte devrede sayıyorsa ekran "uygun" DEMEZ
+        Assert.DoesNotContain(YildizTezgahSozlugu.YasalUygun("tr"), YasalNot(e));
     }
 
+    /// <summary>ÜRÜN BULGUSU (GC): aynı kök — sunucunun günlük KALAN nakit hakkı Yıldız PRO tek ödemede okunmaz.</summary>
     [Fact]
     public void Yasal_kapilar_gunluk_KALAN_nakit_hakkini_asan_fiste_Asildi()
     {
         tevsikKalan = 5_000m;   // sunucu: bu müşterinin bugünkü kalan nakit hakkı 5.000 (had yine sunucudan)
         var e = KalemliPro();   // fiş 10.000
-        e.WaitForAssertion(() => Assert.Equal(SatisProSozlugu.Tr.Asildi, e.Find("#islem-pro-nakit").TextContent.Trim()));
+        e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(YasalNot(e))), TimeSpan.FromSeconds(5));
+        Assert.DoesNotContain(YildizTezgahSozlugu.YasalUygun("tr"), YasalNot(e));
     }
 
     [Fact]
     public void Yasal_kapilar_sunucu_yanit_vermezse_SAYISIZ_Bilinmiyor_ve_sebep()
     {
+        // Yıldız: had bilinmiyorsa "uygun" DENMEZ, sayı UYDURULMAZ — not satırı yazılmaz.
         tevsikHad = null;
-        var e = Ekran();
-        e.WaitForElement("#islem-pro-yasal-hata");
-        Assert.Equal(SatisProSozlugu.Tr.NakitKuraliSayisiz, e.Find("#islem-pro-nakit-etiket").TextContent.Trim());
-        Assert.Equal(SatisProSozlugu.Tr.Bilinmiyor, e.Find("#islem-pro-nakit").TextContent.Trim());
-        Assert.DoesNotMatch(@"\d", e.Find("#islem-pro-nakit-etiket").TextContent);   // istemci varsayılanı YOK
+        var e = KalemliPro();
+        e.WaitForAssertion(() => Assert.True(Istendi("/tevsik/gunluk")));
+        Assert.Single(e.FindAll("#yildiz-tezgah-fark"));   // blok çizili — boş DOM değil
+        Assert.DoesNotContain(YildizTezgahSozlugu.YasalUygun("tr"), e.Find("#yildiz-tezgah-fark").TextContent);
+        Assert.DoesNotMatch(@"\d", YasalNot(e));   // istemci varsayılanı YOK
     }
 
-    [Fact]
-    public void Musteri_karti_bakiye_son_islem_Karti_ac_Pesinde_istek_yok()
-    {
-        var e = Ekran();
-        // SATIS-2 (kurucu 11:35): müşteri kartı YALNIZ gerçek müşteri seçiliyken — Peşin'de kart hiç çizilmez.
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
-        Assert.Empty(e.FindAll("#islem-pro-musteri"));
-        Assert.False(Istendi("/cari/pm1/bakiye"));
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.Contains("4", e.Find("#islem-pro-musteri-son").TextContent));
-        Assert.Equal(new DateTime(2026, 9, 4).ToString("d MMMM", new CultureInfo("tr-TR")), e.Find("#islem-pro-musteri-son").TextContent.Trim());
-        Assert.Equal(string.Format(SatisProSozlugu.Tr.Borclu, "5,66 g"), e.Find("#islem-pro-musteri-has").TextContent.Trim());
-        Assert.Equal(string.Format(SatisProSozlugu.Tr.Borclu, Bicim.Tl(38_900m)), e.Find("#islem-pro-musteri-tl").TextContent.Trim());
-        Assert.Equal("/cariler?cariId=c1", e.Find("#islem-pro-karti-ac").GetAttribute("href"));
-        Assert.Single(istekler, i => i.Yol.Contains("/cari/c1/bakiye"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Musteri_karti_bakiye_son_islem_Karti_ac_Pesinde_istek_yok kaldırıldı — sağ sütunun müşteri kartı
+    // (#islem-pro-musteri: son işlem, has/TL bakiye, "Kartı aç") Yıldız'da BİLEREK yok; müşterinin TL durumu üst satırda
+    // (S23FisMusteriEkranTestleri.S23E_01). "Peşin'de bakiye isteği yok" güvencesi aşağıdaki testte Yıldız yolunda.
 
     [Fact]
     public void Musteri_karti_Vazgec_ile_Pesine_donunce_Pesin_bakiyesi_ISTENMEZ()
     {
         var e = KalemliPro();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#islem-pro-karti-ac")));
-        e.Find("#islem-vazgec").Click();
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pro-musteri")));   // SATIS-2: Peşin'de kart yok
+        Assert.False(Istendi("/cari/pm1/bakiye"));
+        e.YildizMusteriSec("c1");
+        e.WaitForAssertion(() => Assert.Contains("Hasan Kaya", e.Find("#yildiz-tezgah-ust").TextContent));
+        e.Find("#yildiz-tezgah-vazgec").Click();
+        e.WaitForAssertion(() => Assert.Contains("Peşin Müşteri", e.Find("#yildiz-tezgah-ust").TextContent));
         Assert.False(Istendi("/cari/pm1/bakiye"));
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Kisayollar_karti_dort_tus_ve_F2_F4_F8_gercekten_odaklar kaldırıldı — kısayollar kartı
+    // (#islem-pro-kisayollar) Yıldız'da BİLEREK gizli (PTezgahTurKimlikTestleri.TK_13). F2 aşağıda Yıldız yolunda sınanır;
+    // F4 (#islem-cari) ve F8 (#islem-odeme) hedefleri Yıldız satış tezgâhında çizili değildir → ÜRÜN BULGUSU (rapor).
+
     [Fact]
-    public void Kisayollar_karti_dort_tus_ve_F2_F4_F8_gercekten_odaklar()
+    public void TemaGC_Yildiz_PRO_F2_barkod_alanina_odaklar()
     {
-        var e = Ekran();
-        Assert.Equal(["F2", "F4", "F8", "F9"], e.FindAll("#islem-pro-kisayollar kbd").Select(x => x.TextContent.Trim()).ToArray());
+        var e = Ekran().YildizHazir();
         int Odak(string hedef) => JSInterop.Invocations.Count(i => i.Identifier == "kuyumcuOdak.alana" && Equals(i.Arguments[0], hedef));
-        // Kararsızlık düzeltmesi (doğrulayıcı bulgusu ORTA): açılıştaki ASENKRON barkod odağı
-        // (FisKalemGirisi.OnAfterRenderAsync) bitmeden sayaç okunursa F2 sayımı kayar →
-        // önce açılış odağı ve yükleme bitsin, sonra her tuşun KENDİ çağrısı beklenerek sayılır.
-        e.WaitForElement("#islem-barkod");
-        e.WaitForAssertion(() => Assert.Equal(1, Odak("islem-barkod")));
-        foreach (var (tus, hedef) in new[] { ("F2", "islem-barkod"), ("F4", "islem-cari"), ("F8", "islem-odeme") })
-        {
-            var once = Odak(hedef);
-            e.Find(".islem-sayfa").KeyDown(new KeyboardEventArgs { Key = tus });
-            e.WaitForAssertion(() => Assert.Equal(once + 1, Odak(hedef)));
-        }
-        Assert.Equal(2, Odak("islem-barkod"));   // açılış 1 + F2 1 — fazladan odak çağrısı yok
+        e.WaitForElement("#yildiz-tezgah-giris #islem-barkod");
+        e.WaitForAssertion(() => Assert.Equal(1, Odak("islem-barkod")));   // açılış odağı
+        e.Find(".islem-sayfa").KeyDown(new KeyboardEventArgs { Key = "F2" });
+        e.WaitForAssertion(() => Assert.Equal(2, Odak("islem-barkod")));
     }
 
     [Fact]
@@ -557,21 +449,20 @@ public sealed class TS2TuvalProTestleri : BunitContext
     public void F9_kilitli_Kaydette_HICBIR_SEY_gondermez_hata_bandi_dogurmaz()
     {
         var e = KalemliPro();
-        e.Find("#islem-pro-karma").Click();
-        e.WaitForElement("#islem-bacak-0-tutar");
+        e.YildizBol();
         e.Find("#islem-bacak-0-tutar").Input("6000");
-        e.WaitForElement("#islem-bacak-1-tutar").Input("3000");   // SATIS-3: iki satır da elle → fark ≠ 0 → Kaydet kilitli (sebep altta)
-        e.WaitForAssertion(() => Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled")));
+        e.WaitForElement("#islem-bacak-1-tutar").Input("3000");   // SATIS-3: iki satır da elle → fark ≠ 0 → Kaydet kilitli (sebep Fark notunda)
+        e.WaitForAssertion(() => Assert.True(e.YildizKaydetKilitli()));
         e.Find(".islem-sayfa").KeyDown(new KeyboardEventArgs { Key = "F9" });
         Assert.Equal(0, SatisPostSayisi());
-        Assert.Empty(e.FindAll("#hata-bandi"));
+        Assert.Empty(e.FindAll("#hata-bandi, #yildiz-tezgah-hata"));
     }
 
     [Fact]
     public void F9_dolu_fiste_KAYDEDER()
     {
         var e = KalemliPro();
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
+        e.WaitForAssertion(() => Assert.False(e.YildizKaydetKilitli()), TimeSpan.FromSeconds(5));
         e.Find(".islem-sayfa").KeyDown(new KeyboardEventArgs { Key = "F9" });
         e.WaitForAssertion(() => Assert.Equal(1, SatisPostSayisi()), TimeSpan.FromSeconds(5));
     }
@@ -579,12 +470,12 @@ public sealed class TS2TuvalProTestleri : BunitContext
     [Fact]
     public void Kaydet_ve_yazdir_etiketi_ve_sag_sutun_notu()
     {
-        var e = Ekran();
-        Assert.Equal(SatisTuvalSozlugu.Tr.KaydetYazdir, e.Find("#islem-kaydet").TextContent.Trim());
+        var e = Ekran().YildizHazir();
+        Assert.Equal(SatisTuvalSozlugu.Tr.KaydetYazdir, e.Find("#yildiz-tezgah-kaydet").TextContent.Trim());
         // SATIS-2 (j): tuvalin tasarım notu ("Basit modda katlı olan her şey burada açık…") ürün metni DEĞİL — ekranda yok.
+        // (Sağ sütunun "Yasal kapılar" kartı Yıldız'da yok; yasal durum Fark notunda — Yasal_kapilar_* testleri.)
         Assert.Empty(e.FindAll("#islem-pro-not"));
         Assert.DoesNotContain(SatisProSozlugu.Tr.ProNot, e.Markup);
-        Assert.Contains(SatisProSozlugu.Tr.YasalKapilar, e.Find("#islem-pro-yasal").TextContent);
     }
 
     [Fact]
@@ -626,20 +517,22 @@ public sealed class TS2TuvalProTestleri : BunitContext
     public void GramSayi_en_az_iki_en_cok_uc_hane_tr_TR(string deger, string beklenen) =>
         Assert.Equal(beklenen, FisHesap.GramSayi(decimal.Parse(deger, CultureInfo.InvariantCulture)));
 
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: eski geniş tablo hücreleri (#islem-kalem-pro) Yıldız'da yok; AYNI güvence ("küçük has/gram
+    /// ekranda KAYBOLMAZ — P-57: 0,001 g '0,00 g' diye BASILMAZ") Yıldız kalem satırının ayrıntısında ve toplam ayrıntısında
+    /// sınanır. ÜRÜN BULGUSU (GC): YildizTezgahBicim.Gram iki haneye yuvarlar (N2) → 0,001 g "0,00 g" basılır; has dört
+    /// hanedir (doğru). Test bu yüzden KIRMIZI kalabilir — gram kısmı ürün düzeltmesi bekler.
+    /// </summary>
     [Fact]
     public void Kalem_tablosu_ve_toplam_serit_kucuk_has_ve_grami_KAYBETMEZ()
     {
         urunHas = "0.0001"; urunGram = "0.001";
         var e = KalemliPro();
-        var hucre = e.FindAll("#islem-kalem-pro tbody tr.fis-pro-satir td").Select(x => x.TextContent.Trim()).ToArray();
-        Assert.Equal("0,001", hucre[4]);    // gram
-        Assert.Equal("0,0001", hucre[5]);   // has
-        Assert.Equal("0,0001 g", e.Find("#islem-pro-toplam-has").TextContent.Trim());
-        // Hücre dar kalırsa kesilen değer title'da TAM okunur
-        var td = e.FindAll("#islem-kalem-pro tbody tr.fis-pro-satir td");
-        // GOC-C-2: hücre kimliği ve title'ı ortak ızgara hücresinin içindeki span'da (td satıra özgü öznitelik almaz).
-        Assert.Equal("0,0001", td[5].QuerySelector("span")!.GetAttribute("title"));
-        Assert.Equal("0,001", td[4].QuerySelector("span")!.GetAttribute("title"));
+        var ayrinti = e.Find("#yildiz-kalem-0 .yz-tezgah-ayrinti").TextContent.Trim();
+        Assert.Contains("0,0001 g has", ayrinti);   // has
+        Assert.Contains("0,001 g", ayrinti);        // gram (P-57: en çok üç hane, değer kaybolmaz)
+        Assert.Contains("0,001 g", e.Find("#yildiz-tezgah-toplam-ayrinti").TextContent);
+        Assert.Contains("0,0001 g has", e.Find("#yildiz-tezgah-toplam-ayrinti").TextContent);
     }
 
     [Fact]

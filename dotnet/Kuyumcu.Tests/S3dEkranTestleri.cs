@@ -98,22 +98,38 @@ public sealed class S3dEkranTestleri : BunitContext
         => Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
 
+    // TEMA TEMİZLİĞİ 17.10: İşlemler SATIŞ'ta hep Yıldız tezgâhıyla açılır. Reyon seçicisi (#islem-reyon, aynı
+    // ReyonParcasi) kalem satırına dokununca açılan düzenlemede; müşteri "Değiştir" katmanında; Kaydet
+    // #yildiz-tezgah-kaydet. Hurda alış Yıldız'ın görünür "Alış" sekmesinden (#yildiz-tur-HURDA_ALIS) açılır —
+    // o türün formu (#islem-cari, #islem-kaydet, satıcı kimliği alanları) AYNEN.
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ac()
     {
         OturumKur();
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        // Sahte API listeleri ASENKRON doluyor: yalnız seçiciyi beklemek yetmez,
-        // SEÇENEK de gelmiş olmalı. Yoksa Change("c1") boşa düşer ve kilit
-        // sebebi "Cari seçin"e kayar (tam süitte yakalanan sıra bağımlılığı).
-        e.WaitForAssertion(() =>
-            Assert.Contains(SeciciYardim.Secenekler(e, "islem-cari"),
-                o => o.Deger() == "c1"));
-        return e;
+        // Sahte sunucu sistem carisini vermez → Peşin ön seçimi beklenmez.
+        return Render<Kuyumcu.Web.Pages.Islemler>().YildizHazir(null);
     }
 
     private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
         => e.Find("#islem-kaydet");
+
+    /// <summary>Satış tezgâhında kalem ekler ve kalem satırının düzenlemesini (reyon · açıklama) açar.</summary>
+    private static void KalemVeDuzen(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        e.YildizKalemEkle();
+        e.Find("#yildiz-kalem-0").Click();
+        e.WaitForElement("#yildiz-kalem-duzen-0");
+    }
+
+    private string SatisGovdesi()
+    {
+        string? g = null;
+        Assert.True(SpinWait.SpinUntil(() =>
+        {
+            lock (istekler) g = istekler.FirstOrDefault(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")).Item3;
+            return g is not null;
+        }, TimeSpan.FromSeconds(10)), "satış POST'u gelmedi");
+        return g!;
+    }
 
     // ── DP4-01 · reyon çıkmazı ───────────────────────────────────────────────
 
@@ -126,6 +142,7 @@ public sealed class S3dEkranTestleri : BunitContext
     {
         reyonSayisi = 1;
         var e = Ac();
+        KalemVeDuzen(e);
         e.WaitForElement("#islem-reyon");
 
         var secici = e.Find("#islem-reyon");
@@ -147,17 +164,16 @@ public sealed class S3dEkranTestleri : BunitContext
     {
         reyonSayisi = 1;
         var e = Ac();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        e.YildizMusteriSec("c1");
+        KalemVeDuzen(e);
         e.WaitForElement("#islem-reyon");
         istekler.Clear();
 
-        Kaydet(e).Click();
+        e.YildizKaydet();
 
-        var satis = istekler.First(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis"));
-        Assert.Contains("\"reyonId\":null", satis.Govde);
-        Assert.DoesNotContain("\"reyonId\":\"r1\"", satis.Govde);
+        var satis = SatisGovdesi();
+        Assert.Contains("\"reyonId\":null", satis);
+        Assert.DoesNotContain("\"reyonId\":\"r1\"", satis);
     }
 
     [Fact]
@@ -165,17 +181,15 @@ public sealed class S3dEkranTestleri : BunitContext
     {
         reyonSayisi = 2;
         var e = Ac();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        e.YildizMusteriSec("c1");
+        KalemVeDuzen(e);
         e.WaitForElement("#islem-reyon");
         SeciciYardim.Sec(e, "islem-reyon", "r2");
         istekler.Clear();
 
-        Kaydet(e).Click();
+        e.YildizKaydet();
 
-        var satis = istekler.First(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis"));
-        Assert.Contains("\"reyonId\":\"r2\"", satis.Govde);
+        Assert.Contains("\"reyonId\":\"r2\"", SatisGovdesi());
     }
 
     // ── DP4-03 · hurda alışta satıcı kimliği ─────────────────────────────────
@@ -183,7 +197,7 @@ public sealed class S3dEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> HurdaAc()
     {
         var e = Ac();
-        e.Find("#islem-tur-HURDA_ALIS").Click();
+        e.Find("#yildiz-tur-HURDA_ALIS").Click();
         e.WaitForElement("#hurda-gram");
         // ⚠ P-10 notu (Anayasa md.1 — gizlenmedi): başlangıç yüklemesine bir
         // istek daha eklenince (GET /pos/cihazlar) bu satır tam süitte ARA SIRA
