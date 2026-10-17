@@ -262,6 +262,11 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(5)")
                         .HasColumnName("para_birimi");
 
+                    b.Property<string>("SaglayiciReferans")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("saglayici_referans");
+
                     b.Property<string>("StornoKaynakId")
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")
@@ -298,6 +303,9 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.HasIndex("TenantId", "Tarih");
 
                     b.HasIndex("TenantId", "BankaHesapId", "DedupeAnahtar")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "BankaHesapId", "SaglayiciReferans")
                         .IsUnique();
 
                     b.HasIndex("TenantId", "CariId", "Olusturuldu");
@@ -356,6 +364,15 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasMaxLength(5)
                         .HasColumnType("varchar(5)")
                         .HasColumnName("para_birimi");
+
+                    b.Property<string>("SaglayiciKodu")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("saglayici_kodu");
+
+                    b.Property<DateTime?>("SonCekim")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("son_cekim");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -4713,6 +4730,61 @@ namespace Kuyumcu.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("rol_yetkileri");
+                });
+
+            modelBuilder.Entity("Kuyumcu.Api.Data.SahteBankaHareketi", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("aciklama");
+
+                    b.Property<string>("BankaHesapId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("banka_hesap_id");
+
+                    b.Property<string>("GonderenAd")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasColumnName("gonderen_ad");
+
+                    b.Property<string>("GonderenIban")
+                        .HasMaxLength(34)
+                        .HasColumnType("varchar(34)")
+                        .HasColumnName("gonderen_iban");
+
+                    b.Property<string>("GonderenKimlikNo")
+                        .HasMaxLength(11)
+                        .HasColumnType("varchar(11)")
+                        .HasColumnName("gonderen_kimlik_no");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("Tutar")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("tutar");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BankaHesapId", "Olusturuldu");
+
+                    b.ToTable("sahte_banka_hareketleri");
                 });
 
             modelBuilder.Entity("Kuyumcu.Api.Data.SaklamaBekletme", b =>

@@ -123,6 +123,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<EkstreSatiri> EkstreSatirlari => Set<EkstreSatiri>();
     public DbSet<CariIban> CariIbanlari => Set<CariIban>();
     public DbSet<AlisIscilikBelgesi> AlisIscilikBelgeleri => Set<AlisIscilikBelgesi>();   // M9
+    public DbSet<SahteBankaHareketi> SahteBankaHareketleri => Set<SahteBankaHareketi>();   // M7 demo bankası
     public DbSet<CariMahsup> CariMahsuplar => Set<CariMahsup>();   // 17.10 kısmi ödeme / borçlu satış seçimi
     public DbSet<Fatura> Faturalar => Set<Fatura>();
     public DbSet<FaturaKalemi> FaturaKalemleri => Set<FaturaKalemi>();
@@ -515,6 +516,9 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<CariIban>().HasIndex(c => new { c.TenantId, c.CariId });
         // M9: bir alışın TEK işçilik belgesi kaydı.
         mb.Entity<AlisIscilikBelgesi>().HasIndex(b => new { b.TenantId, b.AlisHareketId }).IsUnique();
+        // M7: çekici aynı sağlayıcı hareketini iki kez yazamaz (NULL'lar — elle/ekstre — kısıtlanmaz).
+        mb.Entity<BankaHareket>().HasIndex(b => new { b.TenantId, b.BankaHesapId, b.SaglayiciReferans }).IsUnique();
+        mb.Entity<SahteBankaHareketi>().HasIndex(s => new { s.TenantId, s.BankaHesapId, s.Olusturuldu });
         // 17.10: defter yürüyüşü carinin mahsuplarını okur; ödeme başına arama da var.
         mb.Entity<CariMahsup>().HasIndex(m => new { m.TenantId, m.CariId });
         mb.Entity<CariMahsup>().HasIndex(m => new { m.TenantId, m.OdemeHareketId });

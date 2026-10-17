@@ -255,6 +255,8 @@ public static class DuzeltmePolitikasi
         D("UrunKurali", "api/v1/urun-kurallari/{id}"),
         // M9: alış işçilik belgesi — alışı değiştirmez, belge bilgisi düzeltilebilir.
         D("AlisIscilikBelgesi", "api/v1/alis-iscilik/{alisHareketId}"),
+        // M7: demo bankasının gelen havalesi — sağlayıcı kaydıdır; düzeltme banka hareketinin stornosuyla.
+        S("SahteBankaHareketi", GerekceAnahtarlari.Sistem),
         // 17.10 mahsup (ödemenin hangi borçlu satışa sayıldığı): append-only; düzeltme = ödemenin stornosu.
         S("CariMahsup", GerekceAnahtarlari.Defter, "api/v1/bankalar/hareketler/{hareketId}/karar/geri-al"),
         S("GunKapanisi", GerekceAnahtarlari.Kapanis),

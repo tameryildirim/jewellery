@@ -1193,6 +1193,14 @@ public class BankaHesap : IKiraciVarlik
     [Column("para_birimi"), MaxLength(5)] public string ParaBirimi { get; set; } = "TRY";
     [Column("bakiye", TypeName = "decimal(15,2)")] public decimal Bakiye { get; set; }
     [Column("aktif")] public bool Aktif { get; set; } = true;
+    /// <summary>
+    /// M7 (müşteri 16.10: "düşer düşmez hemen şak ekranda görüyoruz") — hareketleri kendiliğinden çeken
+    /// sağlayıcı (<see cref="Modules.Banka.BankaSaglayicilari"/>): <c>null</c> = elle/ekstre (bugünkü davranış),
+    /// <c>SAHTE</c> = demo bankası. Gerçek banka bağlantısı (API/HBH) aynı arayüze takılır.
+    /// </summary>
+    [Column("saglayici_kodu"), MaxLength(20)] public string? SaglayiciKodu { get; set; }
+    /// <summary>Çekicinin bu hesapta son başarılı turu (UTC).</summary>
+    [Column("son_cekim")] public DateTime? SonCekim { get; set; }
     [Column("olusturuldu")] public DateTime Olusturuldu { get; set; }
     [Column("guncellendi")] public DateTime Guncellendi { get; set; }
 }
@@ -1259,6 +1267,13 @@ public class BankaHareket : IKiraciVarlik, IBacakliHareket
     [Column("dedupe_anahtar"), MaxLength(64)] public string? DedupeAnahtar { get; set; }
 
     [Column("durum"), MaxLength(15)] public string Durum { get; set; } = "BEKLIYOR";
+
+    /// <summary>
+    /// M7 — sağlayıcının (banka bağlantısının) bu harekete verdiği tekil kimlik. (tenant, hesap, saglayici_referans)
+    /// BENZERSİZDİR: çekici aynı hareketi ikinci kez yazamaz. ⚠ <see cref="BankaReferans"/>'a tekillik KONMADI:
+    /// banka ekstresinde bir EFT ile masrafı aynı dekont numarasını meşru olarak taşıyabilir.
+    /// </summary>
+    [Column("saglayici_referans"), MaxLength(64)] public string? SaglayiciReferans { get; set; }
 
     /// <summary>
     /// M7a (kurucu 17.10: "borcu vardır ama ekstra bir altın daha almıştır… borçtan düşülsün mü
