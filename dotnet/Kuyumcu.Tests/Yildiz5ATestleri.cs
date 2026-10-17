@@ -139,7 +139,10 @@ public sealed class Yildiz5ATestleri : BunitContext
     }
 
     private static EmanetHareket H(string id, string tur, int gunOnce, decimal has, string? storno = null, string? maden = null) =>
-        new(id, tur, DateTime.UtcNow.Date.AddHours(9).AddDays(-gunOnce), has, null, storno, null, maden);
+        // İŞLETME GÜNÜNÜN 09:00'u (UTC karşılığı): UtcNow.Date 00:00–03:00 İstanbul arasında bir gün geride kalıyor ve
+        // eşik testi bir gün kayıyordu (18.10 00:05'te ölçüldü; ekran günü Bicim.IsletmeBugun ile sayar).
+        new(id, tur, Kuyumcu.Api.Common.Zaman.YerelGunAraligiUtc(DateOnly.FromDateTime(Bicim.IsletmeBugun)).Item1.AddHours(9).AddDays(-gunOnce),
+            has, null, storno, null, maden);
 
     [Fact]
     public void Y5A_04_emanet_satirlari_fifo_storno_esik()

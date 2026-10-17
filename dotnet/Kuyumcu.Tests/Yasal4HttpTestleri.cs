@@ -301,7 +301,9 @@ public sealed class Yasal4HttpTestleri(HttpFikstur f)
         var k = YeniKiraci("MUT2");
         var id = await HurdaAl(k);
         Duzelt(k, id, Iptal);
-        var m = await Mutabakat(k, DateTime.UtcNow);
+        // "Bugün" İŞLETME GÜNÜDÜR (Europe/Istanbul): 00:00–03:00 arası UTC günü bir gün geride kalır ve rapor dünü
+        // sorardı (18.10 00:03'te ölçülen kırmızı) — sunucunun gün kuralıyla aynı gün sorulur.
+        var m = await Mutabakat(k, Kuyumcu.Api.Common.Zaman.YerelBugun().ToDateTime(TimeOnly.MinValue));
         Assert.Equal(1, m.GetProperty("hurda").GetProperty("gecikmisPusulaSayisi").GetInt32());
         Assert.Equal(0, m.GetProperty("hurda").GetProperty("belgesizSayisi").GetInt32());
         Assert.Contains(m.GetProperty("uyarilar").EnumerateArray(), u => u.GetString()!.Contains("yeniden düzenlenmeli", StringComparison.Ordinal));
