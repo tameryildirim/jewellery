@@ -81,26 +81,30 @@ public sealed class DovizBacagiEkranTestleri : BunitContext
         }
     }
 
-    /// <summary>Karma kipte, bir kalemli (10.000 TL) fiş ve ilk bacağı DOVIZ seçilmiş ekran.</summary>
+    /// <summary>
+    /// Karma kipte, bir kalemli (10.000 TL) fiş ve ilk satırı DOVIZ seçilmiş ekran.
+    /// TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — müşteri "Değiştir" katmanından, karma "+ Başka ödeme" ile (sayfanın
+    /// OdemeyiBol'u: iki satır). Tek DÖVİZ satırı sınansın diye ikinci satır "Çıkar" ile kaldırılır (döviz tek ödemeye inmez).
+    /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> DovizBacagiAc()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-arac");
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
+        TemaTemizligiGDYardimcisi.KarmaAc(e);
         SeciciYardim.Sec(e, "islem-bacak-0-arac", "DOVIZ");
         e.WaitForElement("#islem-bacak-0-birim");
+        e.Find("#islem-bacak-sil-1").Click();
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-bacak-1-arac")));
+        Assert.Equal("DOVIZ", SeciciYardim.SeciliDeger(e, "islem-bacak-0-arac"));
         istekler.Clear();
         return e;
     }
 
     private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
-        => e.FindAll("button").First(b => b.TextContent.Contains("Kaydet"));
+        => e.Find(TemaTemizligiGDYardimcisi.Kaydet);
 
     [Fact]
     public void DOVIZ_secilince_birim_ve_miktar_alanlari_cizilir_TL_SALT_OKUNUR()
@@ -154,7 +158,7 @@ public sealed class DovizBacagiEkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#islem-bacak-0-kasa"));
         Assert.Contains("Dolar Kasa", e.Find("#islem-bacak-0-kasa-tek").TextContent);
 
-        e.Find("#islem-bacak-ekle").Click();
+        e.Find("#yildiz-tezgah-baska-odeme").Click();   // Yıldız: karmada "+ Başka ödeme" yeni satır ekler (BacakEkle aynası)
         e.WaitForElement("#islem-bacak-1-arac");
         Assert.Empty(e.FindAll("#islem-bacak-1-kasa"));
         Assert.Contains("Merkez", e.Find("#islem-bacak-1-kasa-tek").TextContent);

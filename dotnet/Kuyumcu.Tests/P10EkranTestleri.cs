@@ -407,7 +407,8 @@ public sealed class P10CariNotEkranTestleri : BunitContext
     public void Cari_duzenlemesi_mevcut_NOTU_okur_ve_geri_gonderir()
     {
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
+        // TEMA TEMİZLİĞİ 17.10: liste = YildizMusteriler — satıra dokununca kart (özgün düzenleme çekmecesi, DuzenleAc).
+        e.WaitForElement("#yildiz-musteri-c1").Click();
         e.WaitForElement("#duz-notlar");
         Assert.Contains("Eski müşteri", e.Find("#duz-notlar").OuterHtml);
 
@@ -508,31 +509,45 @@ public sealed class P10PosBacagiEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> KartBacakli()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-arac");
+        var e = KarmaAcik();
         SeciciYardim.Sec(e, "islem-bacak-0-arac", "KART");
         // SATIS-3 (kurucu 25.09, KAYNAK 2 md.6): POS seçicisi YALNIZ birden çok cihazda; taksit "+ Taksit" ile.
         e.WaitForAssertion(() => Assert.True(e.FindAll("#islem-bacak-0-pos, #islem-bacak-0-taksit-ac, #islem-bacak-0-pos-tek").Count > 0 || cihazlar == "[]"));
         return e;
     }
 
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı. Karma ödeme "+ Başka ödeme" ile açılır (sayfanın OdemeyiBol'u):
+    /// tek ödeme İLK satır (NAKIT), ikinci satır eklenir. Satır kuralları (FisOdemeBacaklari) AYNI bileşendir.
+    /// </summary>
+    private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> KarmaAcik()
+    {
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
+        SeciciYardim.Sec(e, "islem-urun", "u1");
+        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
+        TemaTemizligiGDYardimcisi.KarmaAc(e);
+        return e;
+    }
+
+    /// <summary>
+    /// Yıldız'da tek KART satırı kalınca karma kendiliğinden tek ödemeye iner (TekeIndirilebilir) — POS bilgisi
+    /// gövdede ödeme satırı olarak gitsin diye kart 6.000 + nakit 4.000 (fiş 10.000) iki satırla kaydedilir.
+    /// </summary>
+    private static void KartVeNakitTutarlari(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        SeciciYardim.Sec(e, "islem-bacak-0-tutar", "6000");
+        SeciciYardim.Sec(e, "islem-bacak-1-arac", "NAKIT");
+        SeciciYardim.Sec(e, "islem-bacak-1-tutar", "4000");
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+    }
+
     [Fact]
     public void NAKIT_bacaginda_POS_alanlari_CIZILMEZ()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-arac");
+        var e = KarmaAcik();
+        Assert.Equal("NAKIT", SeciciYardim.SeciliDeger(e, "islem-bacak-0-arac"));   // satır çizildi, araç NAKİT
 
         Assert.Empty(e.FindAll("#islem-bacak-0-pos"));
         Assert.Empty(e.FindAll("#islem-bacak-0-taksit"));
@@ -559,9 +574,9 @@ public sealed class P10PosBacagiEkranTestleri : BunitContext
         e.Find("#islem-bacak-0-taksit-ac").Click();
         e.WaitForElement("#islem-bacak-0-taksit");
         SeciciYardim.Sec(e, "islem-bacak-0-taksit", "6");
-        SeciciYardim.Sec(e, "islem-bacak-0-tutar", "10000");
+        KartVeNakitTutarlari(e);
         istekler.Clear();
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
 
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
@@ -583,9 +598,9 @@ public sealed class P10PosBacagiEkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#islem-bacak-0-pos"));
         Assert.NotNull(e.Find("#islem-bacak-0-pos-tek"));
 
-        SeciciYardim.Sec(e, "islem-bacak-0-tutar", "10000");
+        KartVeNakitTutarlari(e);
         istekler.Clear();
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
 
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
@@ -605,9 +620,9 @@ public sealed class P10PosBacagiEkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#islem-bacak-0-pos-yok"));
         Assert.Empty(e.FindAll("#islem-bacak-0-pos"));
         Assert.Empty(e.FindAll("#islem-bacak-0-taksit, #islem-bacak-0-taksit-ac"));
-        SeciciYardim.Sec(e, "islem-bacak-0-tutar", "10000");
+        KartVeNakitTutarlari(e);
         istekler.Clear();
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
         var g = System.Text.Json.JsonDocument.Parse(istekler.First(i => i.Metot == "POST").Govde).RootElement;
         var pc = g.GetProperty("odemeler")[0].TryGetProperty("posCihazId", out var v) ? v.ToString() : "";

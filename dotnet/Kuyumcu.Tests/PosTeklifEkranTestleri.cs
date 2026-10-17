@@ -70,16 +70,16 @@ public sealed class PosTeklifEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> UrunSec()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — müşteri "Değiştir" katmanından (aynı cariId → aynı teklif isteği).
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/kur/guncel")));
         SeciciYardim.Sec(e, "islem-urun", "u1");
         return e;
     }
 
     private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
-        => e.FindAll("button").First(b => b.TextContent.Contains("Kaydet"));
+        => e.Find(TemaTemizligiGDYardimcisi.Kaydet);
 
     [Fact]
     public void Urun_secilince_fiyat_SUNUCU_teklifinden_dolar_ve_kirilim_gorunur()
@@ -128,11 +128,13 @@ public sealed class PosTeklifEkranTestleri : BunitContext
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.Equal("63.250", e.Find("#islem-birimfiyat").GetAttribute("value")));   // BICIM-2: odak dışı kutu gruplu
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        e.WaitForElement("#islem-kalem-duzenle-0").Click();   // T-S2: hediye ✎ düzenleme satırında (tuval Profesyonel)
-        e.WaitForElement("#islem-kalem-hediye-0");
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
+        // Yıldız: satıra dokun → satır içi düzenleme (PRO: adet · fiyat · iskonto · hediye — FisKalemTablosu kuralının aynası)
+        e.Find("#yildiz-kalem-0").Click();
+        e.WaitForElement("#yildiz-kalem-0-hediye");
         // aynı ürün ikinci eklemede adet artırır → tek kalem; ayrı kalem için hediye kutusu tek kalemde
-        e.Find("#islem-kalem-hediye-0").Change(true);
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.Find("#yildiz-kalem-0-hediye").Change(true);
+        TemaTemizligiGDYardimcisi.OdemeSec(e, "KART");
         if (e.FindAll("#islem-kasa").Count > 0) SeciciYardim.Sec(e, "islem-kasa", "ks1");   // SATIS-3: tek kasada seçici yok (otomatik)
         istekler.Clear();
 

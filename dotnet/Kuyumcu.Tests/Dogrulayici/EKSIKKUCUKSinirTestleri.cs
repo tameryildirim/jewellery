@@ -184,18 +184,29 @@ public sealed class EKSIKKUCUKSatisSinirTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1",
                                 null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        e.WaitForElement("#islem-pesin-notu");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/fiyat/teklif")));
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
         return e;
     }
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — müşteri "Değiştir" katmanından seçilir (aynı cariId → MusteriDegisti →
+    // aynı teklif isteği), Kaydet #yildiz-tezgah-kaydet. ⚠ ÜRÜN BULGUSU: fiyat listesi sorusu (FisListeDegisti —
+    // #islem-liste-degisti/-guncelle/-eski/-hata) yalnız özgün kalem tablosunun parçasında (Islemler.razor KalemParcasi)
+    // çizilir; Yıldız tezgâhı o parçayı ÇİZMEZ. "Sorar" testleri bandı bekleyip KIRMIZI kalır; "sormaz" testleri gövdeyi
+    // sınadıktan sonra bandın çizilebileceği yerin varlığını denetler (boş DOM'da yanlış yeşil yok).
+    private static void ListeBandiYeriVar(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
+        Assert.True(e.FindAll("#islem-kalem-tablo, #islem-kalem-liste").Count > 0,
+            "ÜRÜN BULGUSU (tema temizliği 17.10): fiyat listesi sorusu (FisListeDegisti) Yıldız tezgâhında çizilmiyor — 'sormaz' denetimi anlamsız kalır");
+
+
     private decimal GidenFiyat(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        e.Find("#islem-kaydet").Click();
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")));
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")).Govde).RootElement;
         return (g.TryGetProperty("kalemler", out var k) ? k[0] : g).GetProperty("birimFiyatTl").GetDecimal();
@@ -203,7 +214,7 @@ public sealed class EKSIKKUCUKSatisSinirTestleri : BunitContext
 
     private void CariyeGecVeTeklifiBekle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/fiyat/teklif") && i.Yol.Contains("cariId=c1")));
     }
 
@@ -219,6 +230,7 @@ public sealed class EKSIKKUCUKSatisSinirTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/tevsik")));
         Assert.Empty(e.FindAll("#islem-liste-degisti"));
         Assert.Equal(10000m, GidenFiyat(e));
+        ListeBandiYeriVar(e);
     }
 
     [Fact]
@@ -252,6 +264,7 @@ public sealed class EKSIKKUCUKSatisSinirTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/tevsik")));
         Assert.Empty(e.FindAll("#islem-liste-degisti"));
         Assert.Equal(10000m, GidenFiyat(e));
+        ListeBandiYeriVar(e);
     }
 }
 

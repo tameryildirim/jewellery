@@ -100,9 +100,11 @@ public sealed class PosBarkodTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — barkod alanı aynı (FisKalemGirisi, #islem-barkod); okutulan ürün
+    // tezgâhın kalem satırına düşer (.yz-tezgah-kalem: [ayar] [ad · ayrıntı] [tutar]).
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         istekler.Clear();
         return e;
     }
@@ -152,7 +154,7 @@ public sealed class PosBarkodTestleri : BunitContext
         Okut(e, "869001");
 
         e.WaitForAssertion(() =>
-            Assert.Contains(e.FindAll("tbody tr"), tr => tr.TextContent.Contains("Burma Bilezik")));
+            Assert.Contains(e.FindAll(TemaTemizligiGDYardimcisi.Kalem), tr => tr.TextContent.Contains("Burma Bilezik")));
     }
 
     /// <summary>
@@ -171,8 +173,9 @@ public sealed class PosBarkodTestleri : BunitContext
         e.WaitForAssertion(() =>
         {
             Assert.Contains(istekler, i => i.Yol.Contains("/fiyat/teklif?urunId=u1") && i.Yol.Contains("kurSnapshotId=kur-1"));
-            Assert.Contains(Bicim.Tl(10000m),
-                e.FindAll("tbody tr").First(tr => tr.TextContent.Contains("Burma Bilezik")).TextContent);
+            // Yıldız kalem tutarı kuruşlu (Bicim.TlKurus) — sunucu fiyatı satırda
+            Assert.Contains(Bicim.TlKurus(10000m),
+                e.FindAll(TemaTemizligiGDYardimcisi.Kalem).First(tr => tr.TextContent.Contains("Burma Bilezik")).TextContent);
         });
     }
 
@@ -297,6 +300,7 @@ public sealed class AlisOdemeAraciEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ciz(string islemTuru)
     {
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        e.TezgahBekle();   // TEMA TEMİZLİĞİ 17.10: sayfa yüklenmeden tür düğmesine basılmaz (Yıldız tezgâhı çizildi)
         e.FindAll("button").First(b => b.TextContent.Contains(islemTuru)).Click();
         istekler.Clear();
         return e;
@@ -345,7 +349,9 @@ public sealed class AlisOdemeAraciEkranTestleri : BunitContext
         // PAKET B-4 (G-1 + B4-3): tek etiketli "ALTIN" sunucuda artık 400; eski
         // altın karma ödemenin ALTIN bacağından alınır (B4AltinBacagiFisEkranTestleri).
         // Reddedilecek seçenek tek ödeme listesinde GÖSTERİLMEZ, yolu ipucu söyler.
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — tek ödeme seçicisi ödeme satırına dokununca açılır (aynı parça).
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.OdemeAc(e);
 
         var degerler = SeciciYardim.Secenekler(e, "islem-odeme")
             .Select(o => o.Deger()).ToList();
@@ -385,9 +391,13 @@ public sealed class AlisOdemeAraciEkranTestleri : BunitContext
         //      görevinin tetiklediği ikinci render'dan önce düşerse eski değeri
         //      ("VERESIYE") görüyordu; tam süitte kararsız kırmızı buradan geliyordu.
         // Artık gerçek kanıt okunuyor: SUNUCUYA GİDEN GÖVDE.
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        SeciciYardim.Sec(e, "islem-odeme", "VERESIYE");
-        e.FindAll("button").First(b => b.TextContent.Contains("Alış")).Click();
+        // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — VERESIYE ödeme satırına dokununca açılan seçiciden; Alış sekmesi
+        // (#yildiz-tur-ALIS — aynı TurSecDiger yolu).
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.OdemeSec(e, "VERESIYE");
+        Assert.Equal("VERESIYE", SeciciYardim.SeciliDeger(e, "islem-odeme"));
+        TemaTemizligiGDYardimcisi.TurSec(e, "ALIS");
+        e.WaitForElement("#islem-cari");
         istekler.Clear();
 
         SeciciYardim.Sec(e, "islem-cari", "c1");

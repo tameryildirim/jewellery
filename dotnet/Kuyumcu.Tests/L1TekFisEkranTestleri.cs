@@ -89,10 +89,11 @@ public sealed class L1TekFisEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        return e;
+        // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı (BASİT ve PRO); Kaydet #yildiz-tezgah-kaydet, seçili müşteri üst satırda.
+        return Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
     }
+
+    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.Find(TemaTemizligiGDYardimcisi.Kaydet);
 
     private static void KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, string urunId, int beklenen)
     {
@@ -100,17 +101,17 @@ public sealed class L1TekFisEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Equal(urunId, SeciciYardim.SeciliDeger(e, "islem-urun")));
         e.WaitForAssertion(() => Assert.Equal("20000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForAssertion(() => Assert.Equal(beklenen, e.FindAll("#islem-kalem-tablo tbody tr, #islem-kalem-pro tr.fis-pro-satir").Count), TimeSpan.FromSeconds(5));
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, beklenen);
     }
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> IkiKalemliFis(string mod)
     {
         var e = Ekran(mod);
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
         KalemEkle(e, "u1", 1);
         KalemEkle(e, "u2", 2);
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"),
-            "Kaydet kilitli: " + string.Join(" | ", e.FindAll("#islem-kaydet-kilit, .alan-hata").Select(x => x.TextContent.Trim()))), TimeSpan.FromSeconds(5));
+        e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled"),
+            "Kaydet kilitli: " + string.Join(" | ", e.FindAll("#yildiz-tezgah-not, .alan-hata").Select(x => x.TextContent.Trim()))), TimeSpan.FromSeconds(5));
         return e;
     }
 
@@ -139,7 +140,7 @@ public sealed class L1TekFisEkranTestleri : BunitContext
     {
         var e = IkiKalemliFis(mod);
         Assert.Empty(e.FindAll("#islem-kaydet-cokfis"));   // "N ayrı fiş" notu KALKTI
-        e.Find("#islem-kaydet").Click();
+        Kaydet(e).Click();
         e.WaitForAssertion(() => Assert.Equal(1, Post("/islemler/satis-fisi")), TimeSpan.FromSeconds(5));
         Assert.Equal(0, Post("/islemler/satis"));   // ⚠ L-1: kalem başına POST YOK
 
@@ -161,13 +162,16 @@ public sealed class L1TekFisEkranTestleri : BunitContext
     public void Iki_kalemli_fis_TEK_belge_Kaydet_ve_yazdir_kayittan_SONRA_yazdirma_sekmesi_acilir()
     {
         var e = IkiKalemliFis(ArayuzModuServisi.Basit);
-        Assert.Equal(SatisTuvalSozlugu.Tr.KaydetYazdir, e.Find("#islem-kaydet").TextContent.Trim());
+        Assert.Equal(SatisTuvalSozlugu.Tr.KaydetYazdir, Kaydet(e).TextContent.Trim());
         Assert.Empty(AcilanSekmeler());
-        e.Find("#islem-kaydet").Click();
+        Kaydet(e).Click();
         e.WaitForElement("#islem-yazdir-otomatik", TimeSpan.FromSeconds(5));
         var acilan = Assert.Single(AcilanSekmeler());
         Assert.Equal(FisYazdir.YazdirAdresi("01J00000000000000000000011"), acilan.Arguments[0]);   // fişin İLK kalemi → belge fişin tüm kalemlerini basar
         Assert.Single(e.FindAll("#islem-yazdir-sar a"));
+        // Yıldız: görünür bağlantı Fark bloğunda TEK (tek belge) — özgün #islem-yazdir-sar Yıldız'da gizli
+        Assert.Single(e.FindAll("a[id^='yildiz-tezgah-yazdir']"));
+        Assert.Equal(FisYazdir.YazdirAdresi("01J00000000000000000000011"), e.Find("#yildiz-tezgah-yazdir").GetAttribute("href"));
     }
 
     [Fact]
@@ -175,23 +179,25 @@ public sealed class L1TekFisEkranTestleri : BunitContext
     {
         fisReddet = true;
         var e = IkiKalemliFis(ArayuzModuServisi.Basit);
-        e.Find("#islem-kaydet").Click();
+        Kaydet(e).Click();
         e.WaitForAssertion(() => Assert.Contains("tevsik", e.Markup), TimeSpan.FromSeconds(5));
         Assert.Contains(RetMesaji, e.Markup);
         Assert.Equal(1, Post("/islemler/satis-fisi"));
         Assert.Equal(0, Post("/islemler/satis"));   // red sonrası kalem başına "yedek" yol YOK
         Assert.Empty(e.FindAll(".bant-basari"));
         Assert.Empty(AcilanSekmeler());
-        Assert.Equal(2, e.FindAll("#islem-kalem-tablo tbody tr").Count);   // fiş kaybolmaz, düzeltilebilir
+        Assert.Equal(2, e.FindAll(TemaTemizligiGDYardimcisi.Kalem).Count);   // fiş kaybolmaz, düzeltilebilir
+        Assert.False(string.IsNullOrWhiteSpace(e.Find("#yildiz-tezgah-hata").TextContent));   // Yıldız: red Kaydet'in hemen üstündeki hata satırında GÖRÜNÜR (sunucu metni ayrıntıda)
     }
 
     [Fact]
     public void Tek_kalemli_satis_bugunku_satis_ucunda_kalir_davranis_DEGISMEDI()
     {
         var e = Ekran(ArayuzModuServisi.Basit);
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
         KalemEkle(e, "u1", 1);
-        e.Find("#islem-kaydet").Click();
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        Kaydet(e).Click();
         e.WaitForAssertion(() => Assert.Equal(1, Post("/islemler/satis")), TimeSpan.FromSeconds(5));
         Assert.Equal(0, Post("/islemler/satis-fisi"));
         lock (istekler)

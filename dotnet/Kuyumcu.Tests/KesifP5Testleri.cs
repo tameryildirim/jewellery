@@ -145,14 +145,23 @@ public sealed class KesifP5EkranTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı (YildizTezgah). Müşteri "Değiştir" katmanında, ödeme türü ödeme satırına
+    // dokununca açılan özgün ödeme parçasında (#islem-odeme · #islem-odeme-otomatik), Kaydet #yildiz-tezgah-kaydet.
+    // Öteki türler (Hurda alış) Yıldız tür yüzünde özgün formla (#islem-cari · #islem-kaydet AYNI).
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ekran(string mod, string rol = "TEZGAHTAR")
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", rol, "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")), Bekle);
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
         return e;
+    }
+
+    /// <summary>Hurda alışı: Yıldız'da "Diğer" → tür ızgarası (aynı TurSecDiger).</summary>
+    private static void Hurda(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        TemaTemizligiGDYardimcisi.TurSec(e, "HURDA_ALIS");
+        e.WaitForElement("#hurda-satici");
     }
 
     private void KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, int beklenen = 1, string urunId = "u1")
@@ -160,8 +169,11 @@ public sealed class KesifP5EkranTestleri : BunitContext
         SeciciYardim.Sec(e, "islem-urun", urunId);
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForAssertion(() => Assert.Equal(beklenen, e.FindAll("#islem-kalem-tablo tbody tr, #islem-kalem-pro tr.fis-pro-satir").Count), Bekle);
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, beklenen);
     }
+
+    private static string? Odeme(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => TemaTemizligiGDYardimcisi.OdemeTuru(e);
+    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.Find(TemaTemizligiGDYardimcisi.Kaydet);
 
     private List<(string Metot, string Yol, string Govde)> Postlar(string uc) { lock (istekler) return istekler.Where(i => i.Metot == "POST" && i.Yol.Contains(uc)).ToList(); }
     private int Say(string parca) { lock (istekler) return istekler.Count(i => i.Yol.Contains(parca)); }
@@ -174,14 +186,17 @@ public sealed class KesifP5EkranTestleri : BunitContext
     public void SATIS4a_esik_ustu_satista_odeme_varsayilani_KART_Kaydet_ETKIN_govdede_KART(string mod)
     {
         var e = Ekran(mod);
-        SeciciYardim.Sec(e, "islem-cari", "c1");   // gerçek müşteri (Peşin Müşteri bu tutarda yasal olarak kullanılamaz — sunucu K2)
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");   // gerçek müşteri (Peşin Müşteri bu tutarda yasal olarak kullanılamaz — sunucu K2)
         KalemEkle(e);                              // 129.247,86 > sunucu haddi 30.000
-        e.WaitForAssertion(() => Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
-        // YASAL-KAPI-3 tur 2 (hakem "aynı uyarı tek kez"): PRO'da not "Yasal kapılar" panelinde TEK yerde, alan altında ikinci kez yok.
-        Assert.Equal(string.Format(P5.OdemeOtomatikKart, Bicim.Tl(30000m)), e.Find(mod == ArayuzModuServisi.Profesyonel ? "#islem-pro-nakit-not" : "#islem-odeme-otomatik").TextContent.Trim());
-        if (mod == ArayuzModuServisi.Profesyonel) Assert.Empty(e.FindAll("#islem-odeme-otomatik"));
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
+        e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
+        // YASAL-KAPI-3 tur 2 (hakem "aynı uyarı tek kez"): Yıldız'da (iki modda) not ödeme alanının altında TEK yerde
+        // (PRO "Yasal kapılar" paneli Yıldız tezgâhında yok — OtomatikNotPanelde = false).
+        Assert.Equal(string.Format(P5.OdemeOtomatikKart, Bicim.Tl(30000m)), e.Find("#islem-odeme-otomatik").TextContent.Trim());
+        Assert.Single(e.FindAll("#islem-odeme-otomatik"));
+        Assert.Empty(e.FindAll("#islem-pro-nakit-not"));
+        Assert.Contains(Sozlukler.Tr.Islem.OdemeKart, e.Find("#yildiz-odeme-0").TextContent);   // ödeme satırı da Kart yazar
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        Kaydet(e).Click();
         e.WaitForAssertion(() => Assert.Single(Postlar("/islemler/satis")), Bekle);
         var g = Postlar("/islemler/satis")[0].Govde;
         Assert.Contains("\"KART\"", g);
@@ -194,15 +209,20 @@ public sealed class KesifP5EkranTestleri : BunitContext
         // canlı ölçümde bulundu: önceki fişin önizlemesi (işlem tutarı kuralı devrede) boş fişte kalıyordu
         tevsikJson = """{"had":30000,"kuralEtkin":true,"kumulatifHesaplandi":true,"bugunkuNakitToplam":0,"kalanNakitHakki":30000,"islemTutariKuraliDevrede":true}""";
         var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
-        e.WaitForAssertion(() => Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
-        e.WaitForElement("#islem-son-fis", Bekle);
+        e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        Kaydet(e).Click();
+        e.WaitForElement("#yildiz-tezgah-son-fis", Bekle);   // Yıldız: son kayıt Fark bloğunda (özgün #islem-son-fis bandı gizli)
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 0);   // boş fiş çizildi
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-yasal-kapi")), Bekle);
+        // Yıldız: boş fişte ödeme satırı Nakit, açık ödeme seçicisi (#islem-odeme) ve nakit engeli YOK.
+        e.WaitForAssertion(() => Assert.Contains(Sozlukler.Tr.Islem.OdemeNakit, e.Find("#yildiz-odeme-0").TextContent), Bekle);
+        TemaTemizligiGDYardimcisi.OdemeAc(e);
         Assert.Empty(e.FindAll("#islem-odeme"));
         Assert.DoesNotContain(Satis3Sozlugu.Tr.NakitAlinamaz, e.Markup);
+        Assert.DoesNotContain(string.Format(Satis3Sozlugu.Tr.NakitHaddiKilit, Bicim.Tl(30000m)), e.Markup);
     }
 
     [Fact]
@@ -211,27 +231,29 @@ public sealed class KesifP5EkranTestleri : BunitContext
         // tasarım hakemi KRİTİK (01.10): PRO "Yasal kapılar" paneli önceki fişin önizlemesiyle 0 ₺ fişte "Aşıldı" kalıyordu.
         // Sahte sunucu gerçeğiyle aynı: kural fiş tutarına göre devrede (129.247,86 → devrede; 0 ₺ → değil).
         tevsikTutaraGore = true;
+        // TEMA TEMİZLİĞİ 17.10: PRO "Yasal kapılar" paneli (FisProYanSutun) Yıldız tezgâhında yok — yasal durum Fark bloğunun
+        // not satırında (#yildiz-tezgah-not) ve Kaydet kilidinde. Güvence AYNI: önceki fişin "devrede" bayrağı boş fişte kalmaz.
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
-        e.WaitForAssertion(() => Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.Equal(SatisProSozlugu.Tr.Uygun, e.Find("#islem-pro-nakit").TextContent.Trim());   // Kart: nakit kapısı işlemez
-        SeciciYardim.Sec(e, "islem-odeme", "NAKIT");                                             // önce sunucunun "devrede"si görünür olsun
-        e.WaitForAssertion(() => Assert.Equal(SatisProSozlugu.Tr.Asildi, e.Find("#islem-pro-nakit").TextContent.Trim()), Bekle);
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
+        e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);   // Kart: nakit kapısı işlemez
+        TemaTemizligiGDYardimcisi.OdemeSec(e, "NAKIT");    // önce sunucunun "devrede"si görünür olsun
+        var engel = string.Format(Satis3Sozlugu.Tr.NakitHaddiKilit, Bicim.Tl(30000m));
+        e.WaitForAssertion(() => Assert.Equal(engel, Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.True(TemaTemizligiGDYardimcisi.KaydetKilitli(e));
+        TemaTemizligiGDYardimcisi.OdemeSec(e, "KART");
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        Kaydet(e).Click();
         e.WaitForAssertion(() => Assert.Single(Postlar("/islemler/satis")), Bekle);
-        e.WaitForElement("#islem-son-fis", Bekle);
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-kalem-pro tr.fis-pro-satir")), Bekle);
-        // boş fiş: nakit satırı "Aşıldı" DEĞİL (önceki fişin bayrağı bayat) — panel kırmızı açılmaz
+        e.WaitForElement("#yildiz-tezgah-son-fis", Bekle);
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 0);
+        // boş fiş: nakit engeli (bayat bayrak) YOK — not satırı kötü değil, Kaydet'in sebebi nakit haddi değil
         e.WaitForAssertion(() =>
         {
-            var nakit = e.FindAll("#islem-pro-nakit");
-            Assert.NotEmpty(nakit);
-            Assert.All(nakit, n => Assert.NotEqual(SatisProSozlugu.Tr.Asildi, n.TextContent.Trim()));
-            Assert.All(nakit, n => Assert.DoesNotContain("metin-kirmizi", n.ClassName ?? ""));
+            Assert.DoesNotContain(engel, e.Markup);
+            Assert.DoesNotContain(Satis3Sozlugu.Tr.NakitAlinamaz, e.Markup);
+            Assert.All(e.FindAll("#yildiz-tezgah-not"), n => Assert.DoesNotContain("yz-kotu", n.ClassName ?? ""));
         }, Bekle);
     }
 
@@ -239,25 +261,28 @@ public sealed class KesifP5EkranTestleri : BunitContext
     public void SATIS4a_PRO_otomatik_kart_nedeni_YASAL_panelde_gorunur_nakit_satiri_ASILDI_degil()
     {
         // doğrulayıcı DÜŞÜK (01.10): PRO'da ödeme katmanı kapalıyken otomatik seçimin nedeni görünmüyordu
+        // TEMA TEMİZLİĞİ 17.10: Yıldız PRO'da neden ödeme alanının altında (panel yok) — ödeme satırına dokununca görünür.
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
-        e.WaitForAssertion(() => Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
-        e.WaitForAssertion(() => Assert.Equal(string.Format(P5.OdemeOtomatikKart, Bicim.Tl(30000m)), e.Find("#islem-pro-nakit-not").TextContent.Trim()), Bekle);
-        Assert.Equal(SatisProSozlugu.Tr.Uygun, e.Find("#islem-pro-nakit").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(string.Format(P5.OdemeOtomatikKart, Bicim.Tl(30000m)), e.Find("#islem-odeme-otomatik").TextContent.Trim()), Bekle);
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);   // Kart: nakit kapısı uygun
         SeciciYardim.Sec(e, "islem-odeme", "NAKIT");   // elle Nakit → not düşer
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pro-nakit-not")), Bekle);
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-odeme-otomatik")), Bekle);
+        Assert.Equal("NAKIT", SeciciYardim.SeciliDeger(e, "islem-odeme"));
     }
 
     [Fact]
     public void SATIS4a_Vazgec_ile_bosalan_fiste_OTOMATIK_kart_varsayilana_NAKITe_doner()
     {
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
-        e.WaitForAssertion(() => Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
-        e.Find("#islem-vazgec").Click();
-        e.WaitForAssertion(() => Assert.Equal("NAKIT", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
+        e.Find("#yildiz-tezgah-vazgec").Click();
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 0);
+        e.WaitForAssertion(() => Assert.Equal("NAKIT", Odeme(e)), Bekle);
         Assert.Empty(e.FindAll("#islem-odeme-otomatik"));
     }
 
@@ -265,14 +290,15 @@ public sealed class KesifP5EkranTestleri : BunitContext
     public void SATIS4a_elle_NAKIT_secimi_EZILMEZ_kilit_sebebi_haddi_soyler()
     {
         var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
-        e.WaitForAssertion(() => Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
         SeciciYardim.Sec(e, "islem-odeme", "NAKIT");
-        e.WaitForAssertion(() => Assert.Equal(string.Format(Satis3Sozlugu.Tr.NakitHaddiKilit, Bicim.Tl(30000m)), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(string.Format(Satis3Sozlugu.Tr.NakitHaddiKilit, Bicim.Tl(30000m)), Kaydet(e).GetAttribute("title")), Bekle);
         Assert.Equal("NAKIT", SeciciYardim.SeciliDeger(e, "islem-odeme"));
         Assert.Empty(e.FindAll("#islem-odeme-otomatik"));
-        e.Find("#islem-kaydet").Click();
+        Assert.True(TemaTemizligiGDYardimcisi.KaydetKilitli(e));
+        Kaydet(e).Click();
         Assert.Empty(Postlar("/islemler/satis"));
     }
 
@@ -281,9 +307,9 @@ public sealed class KesifP5EkranTestleri : BunitContext
     {
         tevsikHata = true;   // sunucu haddi okunamadı → istemci sayı gömmez, davranış eskisi gibi (son söz sunucuda)
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
-        e.WaitForAssertion(() => Assert.Equal("NAKIT", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal("NAKIT", Odeme(e)), Bekle);
         Assert.Empty(e.FindAll("#islem-odeme-otomatik"));
     }
 
@@ -292,26 +318,30 @@ public sealed class KesifP5EkranTestleri : BunitContext
     {
         fiyat = 20000m; tevsikJson = Tevsik(30000m);
         var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
+        TemaTemizligiGDYardimcisi.OdemeAc(e);
         Assert.Empty(e.FindAll("#islem-odeme-otomatik"));   // 20.000 ≤ had → nakit
         KalemEkle(e, 2, "u2");                               // ikinci kalem: 40.000 > had
-        e.WaitForAssertion(() => Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
         Assert.NotEmpty(e.FindAll("#islem-odeme-otomatik"));
         // doğrulayıcı (ORTA, 01.10): fiş DOLU kalarak tutar hadde ALTINA iner (boş fiş dalı değil) — 2 kalem → 1 kalem
-        e.Find("#islem-kalem-sil-1").Click();
-        e.WaitForAssertion(() => Assert.Single(e.FindAll("#islem-kalem-tablo tbody tr")), Bekle);
+        // Yıldız: satıra dokun → "Çıkar" (sayfanın KalemSil'i — özgün ✕ ile aynı)
+        e.Find("#yildiz-kalem-1").Click();
+        e.WaitForElement("#yildiz-kalem-cikar-1").Click();
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-odeme-otomatik")), Bekle);
+        TemaTemizligiGDYardimcisi.OdemeAc(e);
         Assert.Empty(e.FindAll("#islem-odeme"));                          // BASİT: Nakit'e dönen ödeme seçicisi yeniden gizlenir
         Assert.Contains(Sozlukler.Tr.Islem.OdemeNakit, e.Find("#islem-odeme-sade").TextContent);
+        Assert.Contains(Sozlukler.Tr.Islem.OdemeNakit, e.Find("#yildiz-odeme-0").TextContent);
     }
 
     [Fact]
     public void SATIS4a_Hurda_esik_ustu_varsayilan_HAVALE_para_disari_yonunde()
     {
         var e = Ekran(ArayuzModuServisi.Basit, "MUDUR");
-        e.Find("#islem-tur-HURDA_ALIS").Click();
-        e.WaitForElement("#hurda-satici");
+        Hurda(e);
         SeciciYardim.Sec(e, "islem-cari", "c2");
         e.Find("#hurda-gram").Input("10");   // 10 g × 750‰ × 6.800 ≈ 51.000 > had 30.000
         e.WaitForAssertion(() => Assert.Equal("HAVALE", SeciciYardim.SeciliDeger(e, "islem-odeme")), Bekle);
@@ -325,8 +355,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
     {
         masakEsikJson = Esik(1000m); gereksinimJson = GereksinimKimlik;
         var e = Ekran(ArayuzModuServisi.Basit, "MUDUR");
-        e.Find("#islem-tur-HURDA_ALIS").Click();
-        e.WaitForElement("#hurda-satici");
+        Hurda(e);
         SeciciYardim.Sec(e, "islem-cari", "c2");
         e.Find("#hurda-gram").Input("10");
         SeciciYardim.Sec(e, "hurda-satici-tip", "NIHAI_TUKETICI");
@@ -359,8 +388,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
     {
         masakEsikJson = Esik(1000m); gereksinimJson = GereksinimKimlik;
         var e = Ekran(ArayuzModuServisi.Basit, "MUDUR");
-        e.Find("#islem-tur-HURDA_ALIS").Click();
-        e.WaitForElement("#hurda-satici");
+        Hurda(e);
         SeciciYardim.Sec(e, "islem-cari", "c2");
         e.Find("#hurda-gram").Input("10");
         SeciciYardim.Sec(e, "hurda-satici-tip", "NIHAI_TUKETICI");
@@ -376,8 +404,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
     {
         masakEsikJson = Esik(1000m); gereksinimJson = GereksinimKimlik;
         var e = Ekran(ArayuzModuServisi.Basit, "MUDUR");
-        e.Find("#islem-tur-HURDA_ALIS").Click();
-        e.WaitForElement("#hurda-satici");
+        Hurda(e);
         SeciciYardim.Sec(e, "islem-cari", "c2");
         e.Find("#hurda-gram").Input("10");
         SeciciYardim.Sec(e, "hurda-satici-tip", "NIHAI_TUKETICI");
@@ -392,8 +419,9 @@ public sealed class KesifP5EkranTestleri : BunitContext
     {
         masakEsikJson = Esik(1000m); gereksinimJson = GereksinimKimlik;
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         KalemEkle(e);
+        TemaTemizligiGDYardimcisi.KimlikAc(e);   // Yıldız: "+ Kimlik bilgisi" çekmecesi (MasakParcasi, aynı kapı)
         e.WaitForElement("#masak-belge-no", Bekle);
         e.WaitForAssertion(() => Assert.Equal("10000000146", e.Find("#masak-belge-no").GetAttribute("value")), Bekle);
         Assert.Equal("Ayşe Nur Demir", e.Find("#masak-ad-soyad").GetAttribute("value"));
@@ -409,8 +437,9 @@ public sealed class KesifP5EkranTestleri : BunitContext
     {
         masakEsikJson = Esik(1000m); gereksinimJson = GereksinimKimlik;
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c3");
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c3");
         KalemEkle(e);
+        TemaTemizligiGDYardimcisi.KimlikAc(e);
         e.WaitForElement("#masak-belge-no", Bekle);
         e.WaitForAssertion(() => Assert.Equal("Anadolu Holding A.Ş.", e.Find("#masak-ad-soyad").GetAttribute("value")), Bekle);
         Assert.True(string.IsNullOrEmpty(e.Find("#masak-belge-no").GetAttribute("value")));
@@ -462,22 +491,23 @@ public sealed class KesifP5EkranTestleri : BunitContext
         fiyat = 10000m;
         var e = Ekran(ArayuzModuServisi.Profesyonel);
         KalemEkle(e);
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
-        e.WaitForElement("#islem-son-fis", Bekle);
-        var metin = e.Find("#islem-son-fis").TextContent;
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        Kaydet(e).Click();
+        // Yıldız: son kayıt satırı Fark bloğunda (#yildiz-tezgah-son-fis — görünür alan); özgün #islem-son-fis aynı metin
+        e.WaitForElement("#yildiz-tezgah-son-fis", Bekle);
+        var metin = e.Find("#yildiz-tezgah-son-fis").TextContent;
         Assert.Contains(Bicim.Tl(10000m), metin);
         Thread.Sleep(3600);   // başarı bandı 3 sn'de kapanır
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#basari-bandi .bant-basari, .bant-basari")), Bekle);
-        Assert.Equal(metin, e.Find("#islem-son-fis").TextContent);
+        Assert.Equal(metin, e.Find("#yildiz-tezgah-son-fis").TextContent);
+        Assert.Contains(Bicim.Tl(10000m), e.Find("#islem-son-fis").TextContent);
     }
 
     [Fact]
     public void SATIS4d_Hurda_kaydinda_da_son_kayit_satiri_tur_ve_tutarla_kalir()
     {
         var e = Ekran(ArayuzModuServisi.Basit, "MUDUR");
-        e.Find("#islem-tur-HURDA_ALIS").Click();
-        e.WaitForElement("#hurda-satici");
+        Hurda(e);
         SeciciYardim.Sec(e, "islem-cari", "c2");
         e.Find("#hurda-gram").Input("1");   // 5.100 < had
         SeciciYardim.Sec(e, "hurda-satici-tip", "NIHAI_TUKETICI");
@@ -494,36 +524,23 @@ public sealed class KesifP5EkranTestleri : BunitContext
     public void Kasasiz_kiracida_BASIT_kasa_secici_yer_tutucusu_satirin_TAMAMINI_alir()
     {
         // doğrulayıcı DÜŞÜK (01.10): kasa yokken "Kasa seçin..." yarım sütunda iki satıra kırılıyordu (BASİT 1280)
+        // TEMA TEMİZLİĞİ 17.10: eski BASİT tezgâhın iki sütunlu ızgarası (.fis-tuval-icerik > .form-grid-2) Yıldız'da yok —
+        // kasa seçicisi ödeme satırına dokununca açılan düzende TAM satır (.yz-duzen). Güvence: kasa yokken seçici yer tutucusuyla
+        // çizilir ve kasa uydurulmaz (ödeme satırında kasa eki yok). Sığma ölçümü gerçek tarayıcıda (sikisma-olc.js).
         kasalarJson = "[]";
         var e = Ekran(ArayuzModuServisi.Basit);
+        TemaTemizligiGDYardimcisi.OdemeAc(e);
         e.WaitForElement("#islem-kasa", Bekle);
-        var alan = e.Find("#islem-kasa-sar").ParentElement!;
-        Assert.Contains("alan", alan.ClassList);
-        Assert.Contains("form-grid-2", alan.ParentElement!.ClassList);
-        Assert.Contains("fis-tuval-icerik", alan.ParentElement!.ParentElement!.ClassList);
+        Assert.NotNull(e.Find("#yildiz-tezgah-odeme-duzen").QuerySelector("#islem-kasa"));
         Assert.NotNull(e.Find("#islem-kasa").QuerySelector(".secici-metin.yer-tutucu"));
-        var css = CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "tuval-satis.css");
-        Assert.Contains(".tuval-tezgah .fis-tuval-icerik > .form-grid-2 > .alan:has(> .secici-alan .secici-metin.yer-tutucu) { grid-column: 1 / -1; }", css);
+        Assert.Null(e.Find("#yildiz-odeme-0").QuerySelector(".yz-tezgah-kasa"));
     }
 
     // ═══ #67 · #70 ═══════════════════════════════════════════════════════════
 
-    [Fact]
-    public void Islemler_alt_dugmeler_ayni_sinif()
-    {
-        fiyat = 10000m;
-        var e = Ekran(ArayuzModuServisi.Profesyonel);
-        KalemEkle(e);
-        var vazgec = e.Find("#islem-vazgec");
-        var kaydet = e.Find("#islem-kaydet");
-        Assert.Contains("btn", vazgec.ClassList);
-        Assert.Contains("btn", kaydet.ClassList);
-        Assert.Equal("islem-alt-satir", vazgec.ParentElement!.Id);   // aynı satırın doğrudan çocukları (css kuralı onlara)
-        Assert.Equal("islem-alt-satir", kaydet.ParentElement!.Id);
-        var css = CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "tuval-satis.css");
-        Assert.Matches(new Regex(@"html\[data-mod\] \.islem-sayfa #islem-alt-satir > #islem-vazgec \{\s*height: var\(--dugme-yuksekligi-buyuk\); min-height: var\(--dugme-yuksekligi-buyuk\);"), css);
-        Assert.Matches(new Regex(@"#islem-alt-satir > :is\(#islem-vazgec, #islem-kaydet\) \{ flex: 1 1 calc\(50% - 6px\);"), css);
-    }
+    // TEMA TEMİZLİĞİ 17.10: Islemler_alt_dugmeler_ayni_sinif kaldırıldı — eski alt satır (#islem-alt-satir: Vazgeç ile Kaydet
+    // aynı .btn sınıfı) Yıldız tezgâhında yok; tuval kalıbı bilerek farklı (Vazgeç .yz-b2 · Kaydet tek birincil .yz-b1) —
+    // YildizTezgahOdemeTestleri.YTO_02 (ekranda tek birincil Kaydet) ve Yildiz4BTestleri sınar.
 }
 
 public sealed class KesifP5BilesenTestleri : BunitContext

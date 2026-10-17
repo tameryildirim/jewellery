@@ -480,8 +480,7 @@ public sealed class P38EkranTestleri : BunitContext
     [Fact]
     public void Islemler_urun_listesini_YALNIZ_aktif_suzgeciyle_ceker()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();   // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı
 
         // Sorgu dizesinde aktif=true YOKSA pasife alınmış ürün POS'ta seçilebilir
         // olurdu — "Pasife Al" onayının verdiği söz tutulmazdı (QA turu 7 #67).
@@ -491,26 +490,43 @@ public sealed class P38EkranTestleri : BunitContext
 
     // ── B-39 (#48) — ileri ve geri eylem AYNI yerde ─────────────────────────
 
+    // TEMA TEMİZLİĞİ 17.10: Müşteriler listesi = YildizMusteriler (tuval Musteri4) — listede satır eylemi YOK; eylemler
+    // satıra dokununca açılan KARTTA (özgün düzenleme çekmecesi + YildizKartEylemleri). Simetri ve onay güvencesi kartta sınanır.
+
+    /// <summary>Satıra dokunup kartı açar (DuzenleAc) — kart çekmecesi çizilene kadar bekler.</summary>
+    private static void KartAc(IRenderedComponent<Kuyumcu.Web.Pages.Cariler> e, string id)
+    {
+        e.WaitForElement($"#yildiz-musteri-{id}").Click();
+        e.WaitForElement("#duz-ad");
+    }
+
     [Fact]
     public void Cari_listesinde_AKTIF_satirda_PASIFE_AL_dugmesi_vardir()
     {
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-pasife-al-c1");
+        KartAc(e, "c1");
 
-        // Simetri: pasif satırda "Aktife al", aktif satırda "Pasife Al".
-        Assert.NotNull(e.Find("#c-aktife-al-c2"));
-        Assert.Empty(e.FindAll("#c-pasife-al-c2"));
+        // Simetri: aktif kartta "Pasife Al" (özgün düğme, onay modalına bağlı), "Aktife al" YOK.
+        Assert.NotNull(e.Find("#c-pasife-al"));
         Assert.Empty(e.FindAll("#c-aktife-al-c1"));
+
+        // Pasif kart: Yıldız listesi pasifleri aramayla gösterir ("kullanımda değil") — kartında "Aktife al" VAR, "Pasife Al" YOK.
+        e.Find("#cari-arama").Input("Kapalı");
+        KartAc(e, "c2");
+        e.WaitForElement("#c-aktife-al-c2");
+        Assert.Empty(e.FindAll("#c-pasife-al"));
+        Assert.Empty(e.FindAll("#c-pasife-al-c2"));
     }
 
     [Fact]
     public void Listeden_pasife_alma_ONAY_ister_ve_DELETE_atar()
     {
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-pasife-al-c1");
+        KartAc(e, "c1");
+        e.WaitForElement("#c-pasife-al");
         istekler.Clear();
 
-        e.Find("#c-pasife-al-c1").Click();
+        e.Find("#c-pasife-al").Click();
 
         // Yıkıcı eylem: önce onay (DoD EK md.4) — tıklamak TEK BAŞINA silmez.
         e.WaitForElement("#c-pasif-onayla");

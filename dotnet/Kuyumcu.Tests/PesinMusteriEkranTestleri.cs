@@ -88,26 +88,28 @@ public sealed class PesinMusteriEkranTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı. Seçili müşteri üst satırda (#yildiz-tezgah-ust-musteri); seçim
+    // "Değiştir" katmanında. Peşin yükleme hatası tezgâhın not satırında (Uyarilar) ve katmanda (#islem-pesin-hata).
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Pos()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1",
                                 null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        return e;
+        return Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
     }
 
     [Fact]
     public void B3E_01_satis_Pesin_Musteri_ON_SECILI_ve_POST_govdesinde_o_cari_gider()
     {
         var e = Pos();
-        e.WaitForElement("#islem-pesin-notu");
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
         Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.EndsWith("/cari/sistem-carisi"));
 
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        e.Find("#islem-kaydet").Click();
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
 
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")));
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")).Govde).RootElement;
@@ -117,23 +119,35 @@ public sealed class PesinMusteriEkranTestleri : BunitContext
     [Fact]
     public void B3E_02_not_metninde_ESIK_SAYISI_YOK()
     {
+        // Yıldız tezgâhı Peşin Müşteri'yi üst satırda yazar (ayrı not satırı tuvalde yok): eşik SAYISI orada da yok.
         var e = Pos();
-        var not = e.WaitForElement("#islem-pesin-notu").TextContent;
-        Assert.Contains("Peşin Müşteri", not);
-        Assert.DoesNotMatch(@"\d", not);
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
+        var ust = e.Find("#yildiz-tezgah-ust").TextContent;
+        Assert.Contains("Peşin Müşteri", ust);
+        Assert.DoesNotMatch(@"\d", ust);
+        // Öteki türlerin formunda özgün not (#islem-pesin-notu) — Peşin yalnız satışta seçili gelir; not metni burada sınanamaz,
+        // Yıldız katmanındaki Peşin satırı da sayı taşımaz:
+        e.Find("#yildiz-tezgah-degistir").Click();
+        var sat = e.WaitForElement("#yildiz-musteri-sat-pm1").TextContent;
+        Assert.Contains("Peşin Müşteri", sat);
+        Assert.DoesNotMatch(@"\d", sat);
     }
 
     [Fact]
     public void B3E_03_alis_turunde_on_secim_TASINMAZ_satisa_donunce_geri_gelir()
     {
         var e = Pos();
-        e.WaitForElement("#islem-pesin-notu");
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
 
-        e.Find("#islem-tur-ALIS").Click();
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pesin-notu")));
+        TemaTemizligiGDYardimcisi.TurSec(e, "ALIS");
+        // Alış: Yıldız tür yüzünde özgün müşteri satırı (FisMusteriSatiri) — Peşin ön seçimi TAŞINMAZ.
+        e.WaitForElement("#islem-cari");
+        e.WaitForAssertion(() => Assert.NotEqual("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
+        Assert.Empty(e.FindAll("#islem-pesin-notu"));
 
-        e.Find("#islem-tur-SATIS").Click();
-        e.WaitForElement("#islem-pesin-notu");
+        TemaTemizligiGDYardimcisi.TurSec(e, "SATIS");
+        e.TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
     }
 
     [Fact]
@@ -141,20 +155,26 @@ public sealed class PesinMusteriEkranTestleri : BunitContext
     {
         pesinHatali = true;
         var e = Pos();
-        var bant = e.WaitForElement("#islem-pesin-hata");
-        Assert.Contains("Peşin Müşteri", bant.TextContent);
-        Assert.Empty(e.FindAll("#islem-pesin-notu"));
-        Assert.NotNull(e.Find("#islem-kaydet"));
+        // Katman kapalıyken Peşin yükleme hatası tezgâhın not satırında (Uyarilar) — yutulmaz.
+        e.WaitForAssertion(() => Assert.Contains(e.FindAll("[id^='yildiz-tezgah-uyari-']"), u => u.TextContent.Contains("Peşin Müşteri")));
+        Assert.Null(TemaTemizligiGDYardimcisi.TezgahMusterisi(e));   // Peşin seçili DEĞİL
+        Assert.NotNull(e.Find(TemaTemizligiGDYardimcisi.Kaydet));     // tezgâh açık kalır
+        // "Değiştir" katmanında da kendi bandı (#islem-pesin-hata)
+        e.Find("#yildiz-tezgah-degistir").Click();
+        Assert.Contains("Peşin Müşteri", e.WaitForElement("#islem-pesin-hata").TextContent);
     }
 
     // ── Cari ekranı ──────────────────────────────────────────────────────────
 
+    // TEMA TEMİZLİĞİ 17.10: Müşteriler listesi = YildizMusteriler (tuval Musteri4). Tuval listesinde sistem kartı (Peşin
+    // Müşteri) HİÇ yer almaz (Cariler.Yildiz.cs YildizSatirlar: !SistemCarisi) — listede ona "Pasife al" sunulması imkânsız;
+    // eski satır rozeti (#c-sistem-carisi-*) ve satır eylemleri listeyle birlikte kalktı.
     private IRenderedComponent<Kuyumcu.Web.Pages.Cariler> CariEkrani()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-sistem-carisi-pm1");
+        e.WaitForElement("#yildiz-musteri-c1");
         return e;
     }
 
@@ -162,22 +182,17 @@ public sealed class PesinMusteriEkranTestleri : BunitContext
     public void B3E_05_listede_sistem_kartinda_PASIFE_AL_YOK_kilit_rozeti_VAR()
     {
         var e = CariEkrani();
+        // Sistem kartı listede yok → "Pasife al" de yok; sıradan cari listede (liste çizildi — boş DOM değil).
+        Assert.Empty(e.FindAll("#yildiz-musteri-pm1"));
         Assert.Empty(e.FindAll("#c-pasife-al-pm1"));
-        Assert.NotNull(e.Find("#c-pasife-al-c1"));   // sıradan cari: mevcut davranış
-        var rozet = e.Find("#c-sistem-carisi-pm1");
-        Assert.False(string.IsNullOrWhiteSpace(rozet.GetAttribute("title")));
+        // sıradan cari: kartında mevcut davranış (Pasife al VAR)
+        e.Find("#yildiz-musteri-c1").Click();
+        e.WaitForElement("#c-pasife-al");
+        Assert.Empty(e.FindAll("#degismez-ipucu-SistemCarisi"));
     }
 
-    [Fact]
-    public void B3E_06_duzenle_cekmecesinde_DegismezIpucu_var_pasife_al_dugmesi_yok()
-    {
-        var e = CariEkrani();
-        // Satır sırası: sunucu ada göre sıralar; burada sahte listede pm1 ikinci satır.
-        var duzenle = e.FindAll("button").Where(b => b.TextContent.Contains("Düzenle")).ToList();
-        duzenle[1].Click();
-        e.WaitForElement("#degismez-ipucu-SistemCarisi");
-        Assert.Empty(e.FindAll("#c-pasife-al"));
-        // Ipucu bileşeni düğme ÜRETMEZ; DELETE isteği atılmadı.
-        Assert.DoesNotContain(istekler, i => i.Metot == "DELETE");
-    }
+    // TEMA TEMİZLİĞİ 17.10: B3E_06_duzenle_cekmecesinde_DegismezIpucu_var_pasife_al_dugmesi_yok kaldırıldı — Yıldız Müşteriler
+    // listesinde sistem kartı (Peşin Müşteri) BİLEREK yok (Cariler.Yildiz.cs: tuval Musteri4), bağlantı (?cariId=) kartı değil
+    // detay penceresini açar; sistem kartının düzenleme çekmecesine kullanıcı yolu kalmadı. "Sistem kartında Pasife al yok"
+    // güvencesi B3E_05'te (listede yok → eylemi de yok); sunucu kapısı (DELETE/PATCH aktif:false → 400) PesinMusteriHttpTestleri.B3H_03/B3H_04'te.
 }
