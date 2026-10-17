@@ -173,18 +173,16 @@ public sealed class PTezgahTurKimlikTestleri : BunitContext
     [InlineData(ArayuzModuServisi.Profesyonel)]
     public void TK_03_platin_form_acikken_kilit_cumlesi_Kaydetin_YANINDA_ve_alan_adli(string mod)
     {
-        kimlikEsigi = 5000m; amac = true;
-        var e = Ekran(mod, "platin");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        KalemEkle(e);
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#islem-odeme, #islem-aldim-odeme")), Bekle);
-        SeciciYardim.Sec(e, e.FindAll("#islem-odeme").Count > 0 ? "islem-odeme" : "islem-aldim-odeme", "KART");
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
-        e.WaitForAssertion(() => Assert.StartsWith(Onek, e.Find("#islem-kaydet").GetAttribute("title") ?? ""), Bekle);
-        var kilit = e.Find("#islem-kaydet-kilit");
-        Assert.Equal(e.Find("#islem-kaydet").GetAttribute("title"), kilit.TextContent.Trim());
+        // TEMA TEMİZLİĞİ 17.10: Platin şeması kaldırıldı — satış hep Yıldız tezgâhı. Güvence AYNI, iki modda: kimlik formu
+        // açıkken kilitli Kaydet'in sebebi eksik ALANIN ADINI söyler ve Kaydet'in YANINDA (Fark bloğunun not satırı) görünür.
+        var e = KimlikCekmecesi(mod);
+        e.WaitForAssertion(() => Assert.StartsWith(Onek, e.Find("#yildiz-tezgah-kaydet").GetAttribute("title") ?? ""), Bekle);
+        Assert.True(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled"));
+        var kilit = e.Find("#yildiz-tezgah-not");
+        Assert.Equal(e.Find("#yildiz-tezgah-kaydet").GetAttribute("title"), kilit.TextContent.Trim());
         Assert.DoesNotContain("gorunmez", kilit.ClassName);
         Assert.Contains(ParaDemo3Sozlugu.Tr.AlanIslemAmaci, kilit.TextContent);
+        Assert.NotNull(e.Find("#yildiz-tezgah-alt #yildiz-tezgah-not"));   // Kaydet ile aynı blokta (Fark + eylemler)
     }
 
     [Fact]
@@ -240,14 +238,8 @@ public sealed class PTezgahTurKimlikTestleri : BunitContext
         Assert.Empty(e.FindAll("#yildiz-tur-ust"));
     }
 
-    [Fact]
-    public void TK_06_platinde_tur_sekmesi_yok_ozgun_izgara_AYNEN()
-    {
-        var e = Ekran(ArayuzModuServisi.Basit, "platin");
-        Assert.Empty(e.FindAll("#yildiz-tur-secici, #yildiz-tur-ust"));
-        Assert.NotNull(e.Find("#islem-tur-SATIS"));
-        Assert.DoesNotContain("yz-islem-tur", e.Find(".islem-sayfa").ClassList);
-    }
+    // TEMA TEMİZLİĞİ 17.10: TK_06_platinde_tur_sekmesi_yok_ozgun_izgara_AYNEN kaldırıldı — Platin şeması (ve sekmesiz özgün ızgara
+    // yüzü) bilerek kaldırıldı; Yıldız tür sekmeleri ve "Diğer"le açılan özgün ızgara TK_05'te sınanır.
 
     // ── Y2 · müşteri katmanı seçimle kapanır ───────────────────────────────────
 
@@ -294,7 +286,10 @@ public sealed class PTezgahTurKimlikTestleri : BunitContext
         Assert.DoesNotContain("#", System.Text.RegularExpressions.Regex.Replace(blok, @"(#[a-z][\w-]*|/\*.*?\*/)", "", System.Text.RegularExpressions.RegexOptions.Singleline));   // sabit renk (#hex) yok
         var s = CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "yasal.css");
         Assert.Contains(".islem-sayfa .kart--masak > .kart-govde > .form-grid-3 > :nth-child(3) { grid-column: 1 / -1; }", s);   // Ad Soyad tam satır
-        Assert.Contains("html:root:not([data-sema=\"yildiz\"])[data-mod] .islem-sayfa.tuval-tezgah .tuval-karo-izgara > .ekran-karo.ekran-karo-birincil {", s);
+        // TEMA TEMİZLİĞİ 17.10: Yıldız DIŞI şemaların BASİT tür karosu kuralı (html:root:not([data-sema="yildiz"]) … .ekran-karo-birincil)
+        // kaldırıldı — o şemalar yok; Yıldız'da tek birincil düğme Kaydet'tir (YTO_02).
+        Assert.DoesNotContain(":not([data-sema=\"yildiz\"])",
+            System.Text.RegularExpressions.Regex.Replace(s, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline));
     }
 
     // ── TUR 2 (doğrulayıcı + tasarım hakemi bulguları) ─────────────────────────────

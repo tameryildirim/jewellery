@@ -262,9 +262,25 @@ public sealed class YasalKapi2EkranTestleri : BunitContext
         return e;
     }
 
-    private static void Dugme(IRenderedComponent<Kuyumcu.Web.Pages.Cariler> e, string metin) =>
-        (e.FindAll("button").FirstOrDefault(b => b.TextContent.Trim() == metin)
-         ?? e.FindAll("button").First(b => b.TextContent.Contains(metin) && !b.TextContent.Contains("Döviz"))).Click();
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: Müşteriler listesi artık hep Yıldız (YildizMusteriler) — satırda eylem düğmesi yok; satıra dokununca
+    /// müşteri kartı açılır, eylemler kartın başındadır (YildizKartEylemleri: CariEylemleri TEK kaynak, id'ler AYNEN c-{eylem}-{cariId}).
+    /// Eylem yeni bir pencere açınca kart kapanır; sonraki eylem için satıra yeniden dokunulur (kullanıcının yolu).
+    /// </summary>
+    private static void Dugme(IRenderedComponent<Kuyumcu.Web.Pages.Cariler> e, string metin)
+    {
+        var kod = metin switch
+        {
+            "Tahsilat" => "tahsilat",
+            "Veresiye" => "veresiye",
+            "Döviz Tahsilat" => "doviz-tahsilat",
+            "Döviz Veresiye" => "doviz-veresiye",
+            _ => throw new ArgumentException("bilinmeyen eylem: " + metin),
+        };
+        var bekle = TimeSpan.FromSeconds(5);
+        if (e.FindAll($"#yildiz-kart-eylemler #c-{kod}-c1").Count == 0) e.WaitForElement("#yildiz-musteri-c1", bekle).Click();
+        e.WaitForElement($"#yildiz-kart-eylemler #c-{kod}-c1", bekle).Click();
+    }
 
     private static JsonElement? Masak(string govde) =>
         JsonDocument.Parse(govde).RootElement.TryGetProperty("masak", out var m) && m.ValueKind == JsonValueKind.Object ? m : null;
