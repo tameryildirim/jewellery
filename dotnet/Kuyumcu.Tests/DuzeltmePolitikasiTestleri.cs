@@ -387,9 +387,14 @@ public sealed class DuzeltmePolitikasiTestleri
         Assert.DoesNotContain("/sistem/kiracilar", Kuyumcu.Web.Servisler.BasitMenu.Yollar);
         Assert.False(Kuyumcu.Web.Servisler.BasitMenu.Icerir("/sistem/kiracilar"));
 
-        var kenar = File.ReadAllText(Path.Combine(
-            CssKaynak.Kok(), "Kuyumcu.Web", "Layout", "KenarCubugu.razor"));
-        Assert.DoesNotContain("/sistem", kenar, StringComparison.Ordinal);
+        // TEMA TEMİZLİĞİ 17.10: kenar çubuklu kabuk kaldırıldı; profesyonel menünün kaynağı artık MenuTanimi + YildizKabuk.
+        foreach (var dosya in new[] { "MenuTanimi.cs", "YildizKabuk.cs" })
+        {
+            var menu = File.ReadAllText(Path.Combine(CssKaynak.Kok(), "Kuyumcu.Web", "Layout", dosya));
+            Assert.DoesNotContain("/sistem", menu, StringComparison.Ordinal);
+        }
+        Assert.DoesNotContain(Kuyumcu.Web.Layout.MenuTanimi.Ogeler.Concat(Kuyumcu.Web.Layout.MenuTanimi.AltBlok),
+            o => o.Yol.StartsWith("/sistem", StringComparison.Ordinal));
     }
 
     [Fact]

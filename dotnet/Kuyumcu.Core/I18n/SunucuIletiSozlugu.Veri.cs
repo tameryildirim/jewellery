@@ -1299,6 +1299,17 @@ public static partial class SunucuIletiSozlugu
         ("IBAN bulunamadı", "IBAN not found"),
         ("Bu para müşterinin hesabına başka bir belgeyle zaten işlendi; karar verilmez.", "This money was already posted to the customer's account by another document; no decision is needed."),
         ("Kuyum faturası yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.", "A jewellery invoice can only be issued from a sale record or from lines with known fine-gold grams; the fine-gold value cannot be typed in by hand."),
+        // ── 17.10 havaleden satış ──
+        ("Banka hareketi yalnız havale bacağına bağlanır.", "A bank transaction can only be linked to a transfer leg."),
+        ("Bankaya gelen havale bacağına kasa verilemez — para bankada.", "A transfer received in the bank cannot have a cash register — the money is in the bank."),
+        ("Bir fişe yalnız bir gelen havale bağlanır.", "Only one incoming transfer can be linked to a slip."),
+        ("Gelen havale bulunamadı", "Incoming transfer not found"),
+        ("Bu banka hareketi satışa bağlanamaz (gelen TL havale değil ya da geri alınmış).", "This bank transaction cannot be linked to a sale (not an incoming TL transfer, or reversed)."),
+        ("Bu havale için zaten karar verildi ya da bir satışa bağlandı.", "A decision was already made for this transfer or it is already linked to a sale."),
+        ("Havale bacağının tutarı gelen havaleye eşit olmalıdır.", "The transfer leg must equal the incoming transfer amount."),
+        ("Bu havale başka bir müşteriye bağlı; fişte aynı müşteriyi seçin.", "This transfer belongs to another customer; select the same customer on the slip."),
+        ("Bu havale bir satışta kullanıldı; dekont stornolanamaz. Satış yanlışsa satış iadesi yapın, para iadesi ayrı ödeme olarak yazılır.", "This transfer was used in a sale; the bank entry cannot be reversed. If the sale is wrong, make a sales return; the refund is recorded as a separate payment."),
+        ("Bu havale bir satışta kullanıldı; karar geri alınamaz. Satış yanlışsa satış iadesi yapın.", "This transfer was used in a sale; the decision cannot be undone. If the sale is wrong, make a sales return."),
         // ── 17.10 kısmi ödeme / borçlu satış seçimi ──
         ("Seçilen satışa düşülecek tutar sıfırdan büyük ve en çok iki ondalık olmalıdır.", "The amount applied to a selected sale must be greater than zero with at most two decimals."),
         ("Aynı satış iki kez seçilemez.", "The same sale cannot be selected twice."),

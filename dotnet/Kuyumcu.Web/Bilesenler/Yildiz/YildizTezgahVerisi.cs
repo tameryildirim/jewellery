@@ -59,6 +59,14 @@ public sealed class YildizTezgahBaglami
     public bool BelgeZorunlu { get; init; }
     public string? BelgeNotu { get; init; }
     public EventCallback<string> BelgeSec { get; init; }
+    /// <summary>17.10 havaleden satış — tezgâhın seçebileceği bekleyen gelen havaleler (yalnız satışta).</summary>
+    public IReadOnlyList<YildizHavaleOgesi> Havaleler { get; init; } = [];
+    /// <summary>Seçili havale (tezgâh havaleyi satıyor); null = normal satış.</summary>
+    public string? SeciliHavaleId { get; init; }
+    public bool HavalelerAcik { get; init; }
+    public EventCallback HavalelerAcKapa { get; init; }
+    public EventCallback<string> HavaleSec { get; init; }
+    public EventCallback HavaleBirak { get; init; }
     public EventCallback<string> OdemeTuruSec { get; init; }
     public string FarkMetni { get; init; } = "";
     public bool FarkTamam { get; init; }
@@ -210,3 +218,6 @@ public static class YildizTezgahBicim
         return Kuyumcu.Core.I18n.BorcDiliSozlugu.Durum(c.TlBakiye, 2, v => Servisler.Bicim.Tl(v), dil);
     }
 }
+
+/// <summary>17.10 — tezgâhtaki bekleyen havale satırı (ad · tutar · tarih; IBAN yok).</summary>
+public sealed record YildizHavaleOgesi(string Id, string Ad, string Tutar, string Tarih);

@@ -184,6 +184,18 @@ Müşteriden eski ürünü alıp yeni ürün verdiğiniz işlemdir. Eski ürün�
 
 Şubeler arası stok aktarımıdır. Kaynak şube, hedef şube, ürün ve adet seçilir. Kasa ve cari gerekmez; Müdür ve üstü roller yapabilir.
 
+### Havaleden satış
+
+Müşteri ürünün parasını hesabınıza havale ya da EFT ile gönderdiyse satışı bu paradan yaparsınız. Fatura kendiliğinden kesilir, satış fişi de arka planda oluşur.
+
+- **Gelen havaleler:** satış ekranında, Fiş | Fatura seçiminin yanında **Gelen havaleler (sayı)** düğmesi görünür. Bu düğme yalnız, son 30 gün içinde gelmiş ve henüz kullanılmamış havale varsa çıkar. Düğmeye basınca liste açılır; her satırda gönderen, tutar ve tarih yazar (IBAN görünmez). Bu listeyi tezgâhtar da görür.
+- **Havaleyi seçin:** müşteri havaleyi gönderen kişi olur, belge **Fatura**, ödeme **Havale** olarak ayarlanır. Satılan ürünleri ekleyin.
+- **Tutar eşit olmalı:** fişin toplamı gelen paraya eşit olmadan Kaydet açılmaz; eşit olmadığında sebebi yazar. Toplamı fiyat ya da indirimle eşitleyin. Havaleden satışta başka ödeme aracı eklenmez.
+- **Kaydet:** satış, fatura ve paranın bu satışa bağlanması tek seferde yapılır. Para bankada olduğu için kasaya yazılmaz. Havale listeden düşer.
+- **Havaleden değil:** havaleyi yanlış seçtiyseniz bu düğmeyle normal satışa dönersiniz; eklediğiniz ürünler kalır.
+- Aynı yol **Banka › Karar bekleyen gelen ödemeler** kutusundaki **Ürün seç ve sat** düğmesiyle de açılır.
+- Havaleden yapılan satış yanlışsa **satış iadesi** yapın. Para iadesi ayrı bir ödeme olarak yazılır; havale satışta kullanılmış sayılır ve dekontu stornolanamaz.
+
 ### Yanlış işlemi düzeltme
 
 Kaydedilmiş bir işlem silinmez ve üzerine yazılmaz. Yanlış işlemi **Storno** ile ters kayıtla geri alır, doğrusunu yeniden girersiniz. Böylece hem hata hem düzeltmesi kayıtta görünür kalır. İade için işlemler listesinde ilgili satışı açıp **İade** yolunu kullanın.
@@ -361,7 +373,8 @@ Müşteriye bağlanmış gelen para ekranın üstünde **Karar bekleyen gelen ö
 
 - **Borcu olan satışlar:** müşterinin borcu kalan satışları listelenir; vadesi en eski olan üstte ve gelen tutar önerilen şekilde işaretli gelir. Müşteri "şu borcumu ödüyorum" dediyse işaretleri ve tutarları değiştirin. Seçtiğiniz satış önce kapanır, artan para en eski borca gider.
 - **Borcundan düş:** para müşterinin borcundan düşülür. Kısmi ödemede kalan borç açık kalır. Gelen para borçtan fazlaysa fazlası **müşterinin hesabında** alacak olarak durur.
-- **Yeni alışverişin ödemesi:** borca dokunulmaz.
+- **Ürün seç ve sat:** para yeni bir alışverişin ödemesiyse satış ekranı bu havaleyle açılır (bkz. **Havaleden satış**). Fatura kendiliğinden kesilir.
+- **Satış zaten girildi:** satışı önceden girdiyseniz para o alışverişin ödemesi sayılır; borca dokunulmaz.
 - **Geri al:** verdiğiniz kararı geri alır; borç eski haline döner, ödeme yeniden listeye düşer. Kayıt silinmez, ters kayıtla geri alınır.
 - **Faturası yok — 7 gün geçti:** faturası kesilmemiş ve üzerinden 7 günden fazla geçmiş satışta bu uyarı görünür. Borçtan düşmek fatura kesmez; faturayı Faturalar ekranından kesin (fatura satıştan itibaren 7 gün içinde kesilir).
 - **Altın borcu:** müşterinin gram cinsinden borcu bilgi olarak yazar; bu kutudan düşülmez.

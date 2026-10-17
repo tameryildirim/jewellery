@@ -72,7 +72,7 @@ public partial class Islemler
     private IReadOnlyList<YildizTezgahOdeme> YildizOdemeler()
     {
         if (!karmaOdeme)
-            return [new(0, YildizAracAdi(odemeTuru), odemeTuru == "VERESIYE" ? null : YildizKasaAdi(kasaId), Bicim.TlKurus(ToplamTl))];
+            return [new(0, YildizAracAdi(odemeTuru), odemeTuru == "VERESIYE" || HavaleModu ? null : YildizKasaAdi(kasaId), Bicim.TlKurus(ToplamTl))];   // 17.10: havale kasaya girmez
         return [.. bacaklar.Select((b, i) => new YildizTezgahOdeme(i, YildizAracAdi(b.Arac),
             b.Arac == "VERESIYE" ? null : YildizKasaAdi(b.KasaId), Bicim.TlKurus(b.TutarTl)))];
     }
@@ -186,6 +186,9 @@ public partial class Islemler
                 BelgeZorunlu = FaturaZorunlu,
                 BelgeNotu = BelgeNotu,
                 BelgeSec = EventCallback.Factory.Create<string>(this, BelgeSec),
+                Havaleler = HavaleOgeleri, SeciliHavaleId = HavaleModu ? havale?.Id : null, HavalelerAcik = havalelerAcik,
+                HavalelerAcKapa = EventCallback.Factory.Create(this, () => havalelerAcik = !havalelerAcik),
+                HavaleSec = EventCallback.Factory.Create<string>(this, HavaleSec), HavaleBirak = EventCallback.Factory.Create(this, HavaleBirak),
                 YazdirAdresleri = [.. yazdirIdler.Select(FisYazdir.YazdirAdresi).OfType<string>()],
                 YazdirHata = yazdirHata is null ? null : string.Format(FisYazdirSozlugu.Al(Dil.Dil).YazdirHata, yazdirHata),
                 Uyarilar = [.. new[] { yerlesimUyarisi, fisTaksitUyari }.OfType<string>(), .. new[] { fisTaksitHata, reyonHata, YildizMusteriGorunur ? null : pesinHata }.OfType<string>()],   // tur 3: katman kapalıyken Peşin yükleme hatası da görünür   // YILDIZ-4C: reyon yükleme uyarısı da (özgün bant Yıldız'da ekran dışında kalıyordu)

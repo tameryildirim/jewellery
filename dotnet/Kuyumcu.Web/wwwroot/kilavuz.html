@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 65573776ccc4de58b0e03414bec5d07d8dd304671907709430134c3c16575f5d · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 15669e9cb0ac1a3c308a954e2019b77d9c42eb3231bd2b7c53f1407687ada30a · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -358,6 +358,17 @@
       <p>Müşteriden eski ürünü alıp yeni ürün verdiğiniz işlemdir. Eski ürünün ayarı ve gramı ile yeni ürün girilir; program farkı hesaplar. Fark müşterinin aleyhineyse müşteri öder, lehineyse fark müşteriye ödenir ya da carisine yazılır.</p>
       <h3 id="transfer">Transfer</h3>
       <p>Şubeler arası stok aktarımıdır. Kaynak şube, hedef şube, ürün ve adet seçilir. Kasa ve cari gerekmez; Müdür ve üstü roller yapabilir.</p>
+      <h3>Havaleden satış</h3>
+      <p>Müşteri ürünün parasını hesabınıza havale ya da EFT ile gönderdiyse satışı bu paradan yaparsınız. Fatura kendiliğinden kesilir, satış fişi de arka planda oluşur.</p>
+      <ul>
+        <li><strong>Gelen havaleler:</strong> satış ekranında, Fiş | Fatura seçiminin yanında <strong>Gelen havaleler (sayı)</strong> düğmesi görünür. Bu düğme yalnız, son 30 gün içinde gelmiş ve henüz kullanılmamış havale varsa çıkar. Düğmeye basınca liste açılır; her satırda gönderen, tutar ve tarih yazar (IBAN görünmez). Bu listeyi tezgâhtar da görür.</li>
+        <li><strong>Havaleyi seçin:</strong> müşteri havaleyi gönderen kişi olur, belge <strong>Fatura</strong>, ödeme <strong>Havale</strong> olarak ayarlanır. Satılan ürünleri ekleyin.</li>
+        <li><strong>Tutar eşit olmalı:</strong> fişin toplamı gelen paraya eşit olmadan Kaydet açılmaz; eşit olmadığında sebebi yazar. Toplamı fiyat ya da indirimle eşitleyin. Havaleden satışta başka ödeme aracı eklenmez.</li>
+        <li><strong>Kaydet:</strong> satış, fatura ve paranın bu satışa bağlanması tek seferde yapılır. Para bankada olduğu için kasaya yazılmaz. Havale listeden düşer.</li>
+        <li><strong>Havaleden değil:</strong> havaleyi yanlış seçtiyseniz bu düğmeyle normal satışa dönersiniz; eklediğiniz ürünler kalır.</li>
+        <li>Aynı yol <strong>Banka › Karar bekleyen gelen ödemeler</strong> kutusundaki <strong>Ürün seç ve sat</strong> düğmesiyle de açılır.</li>
+        <li>Havaleden yapılan satış yanlışsa <strong>satış iadesi</strong> yapın. Para iadesi ayrı bir ödeme olarak yazılır; havale satışta kullanılmış sayılır ve dekontu stornolanamaz.</li>
+      </ul>
       <h3>Yanlış işlemi düzeltme</h3>
       <p>Kaydedilmiş bir işlem silinmez ve üzerine yazılmaz. Yanlış işlemi <strong>Storno</strong> ile ters kayıtla geri alır, doğrusunu yeniden girersiniz. Böylece hem hata hem düzeltmesi kayıtta görünür kalır. İade için işlemler listesinde ilgili satışı açıp <strong>İade</strong> yolunu kullanın.</p>
     </section>
@@ -515,7 +526,8 @@
       <ul>
         <li><strong>Borcu olan satışlar:</strong> müşterinin borcu kalan satışları listelenir; vadesi en eski olan üstte ve gelen tutar önerilen şekilde işaretli gelir. Müşteri &quot;şu borcumu ödüyorum&quot; dediyse işaretleri ve tutarları değiştirin. Seçtiğiniz satış önce kapanır, artan para en eski borca gider.</li>
         <li><strong>Borcundan düş:</strong> para müşterinin borcundan düşülür. Kısmi ödemede kalan borç açık kalır. Gelen para borçtan fazlaysa fazlası <strong>müşterinin hesabında</strong> alacak olarak durur.</li>
-        <li><strong>Yeni alışverişin ödemesi:</strong> borca dokunulmaz.</li>
+        <li><strong>Ürün seç ve sat:</strong> para yeni bir alışverişin ödemesiyse satış ekranı bu havaleyle açılır (bkz. <strong>Havaleden satış</strong>). Fatura kendiliğinden kesilir.</li>
+        <li><strong>Satış zaten girildi:</strong> satışı önceden girdiyseniz para o alışverişin ödemesi sayılır; borca dokunulmaz.</li>
         <li><strong>Geri al:</strong> verdiğiniz kararı geri alır; borç eski haline döner, ödeme yeniden listeye düşer. Kayıt silinmez, ters kayıtla geri alınır.</li>
         <li><strong>Faturası yok — 7 gün geçti:</strong> faturası kesilmemiş ve üzerinden 7 günden fazla geçmiş satışta bu uyarı görünür. Borçtan düşmek fatura kesmez; faturayı Faturalar ekranından kesin (fatura satıştan itibaren 7 gün içinde kesilir).</li>
         <li><strong>Altın borcu:</strong> müşterinin gram cinsinden borcu bilgi olarak yazar; bu kutudan düşülmez.</li>

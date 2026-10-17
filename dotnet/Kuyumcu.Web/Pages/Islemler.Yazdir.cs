@@ -34,7 +34,7 @@ public partial class Islemler
     /// ya da ≥2 kalem → EVET. Kaydet() dalı ve "tek belge" kararı AYNI kuraldan okunur.
     /// </summary>
     private bool FisUcunaGider => tur == "SATIS" && (FisYazdir.FisUcuMu(kalemler.Count, karmaOdeme || HediyeVar || IskontoVar)
-                                                     || FaturaSecili);   // M6: faturalı satış fiş ucundan (satış + fatura tek istek)
+                                                     || FaturaSecili || HavaleModu);   // M6: faturalı satış fiş ucundan · 17.10 havaleden satış
 
     /// <summary>
     /// PAKET L-1b — alış TEK fiş ucuna (/islemler/alis-fisi) mı gider? ≥2 kalem → EVET (satışla aynı

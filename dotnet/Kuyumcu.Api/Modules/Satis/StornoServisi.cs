@@ -298,6 +298,7 @@ public sealed class StornoServisi(
             foreach (var b in kararli) { b.CariKarari = null; b.KararHareketId = null; }
         }
 
+
         // Gerekçeli denetim izi — AYNI transaction, SaveChanges'tan ÖNCE.
         denetim.YazmaKaydet(islem, "Storno", stornoId,
             $"{kaynak.Tur} stornosu (kaynak {kaynak.Id})"
@@ -574,6 +575,11 @@ public sealed class StornoServisi(
                 + "Önce faturayı iptal edin, sonra dekontu stornolayın.");
 
         // M7a (17.10): borcundan düşülmüş ödeme önce geri alınır; yoksa müşterinin borcu düşük kalır.
+        // 17.10 havaleden satış: satışta kullanılan havale ters kayıtla kopartılamaz (satış stornolanmaz; düzeltme iadedir).
+        if (kaynak.CariKarari == Modules.Banka.CariKarari.Satis && kaynak.HareketId is not null)
+            await BankaReddet(islem, kaynak.Id, gerekce, "satışa bağlı havale",
+                "Bu havale bir satışta kullanıldı; dekont stornolanamaz. Satış yanlışsa satış iadesi yapın, para iadesi ayrı ödeme olarak yazılır.");
+
         if (kaynak.CariKarari == Modules.Banka.CariKarari.Borc)
             await BankaReddet(islem, kaynak.Id, gerekce, "borçtan düşülmüş ödeme",
                 "Bu ödeme müşterinin borcundan düşüldü. Önce 'Borçtan düşmeyi geri al' deyin, sonra dekontu stornolayın.");

@@ -2857,7 +2857,8 @@ P10_KONTROL() {   # $1 kaynak, $2 sınıf, $3 razor
   local a c
   for a in $(P10_ALANLAR "$1" "$2"); do
     c="$(printf '%s' "${a:0:1}" | tr 'A-Z' 'a-z')${a:1}"
-    if ! grep -qE "[^A-Za-z]$c = " "$3"; then
+    # 17.10: ekran = razor + aynı sayfanın kısmi sınıf dosyaları (Islemler.Havale.cs gibi; alan orada yazılır).
+    if ! grep -qE "[^A-Za-z]$c = " "$3" "${3%.razor}".*.cs 2>/dev/null; then
       P10_ESLESMEZ=$((P10_ESLESMEZ + 1))
       P10_ESLESMEZ_LISTE="$P10_ESLESMEZ_LISTE $2.$a"
     fi

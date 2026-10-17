@@ -699,6 +699,47 @@ public sealed partial class SatisServisi(
     Kur.KurKaynakDefteri? kurDefteri = null)
 {
     /// <summary>
+    /// 17.10 HAVALEDEN SATIŞ — bacağın gösterdiği banka hareketi bu satışa bağlanabilir mi? Gelen · TL · stornosuz ·
+    /// virman bacağı değil · henüz karar/satışa bağlanmamış · tutar bacağa EŞİT · başka müşteriye bağlı değil.
+    /// </summary>
+    private async Task<Data.BankaHareket> HavaleDogrula(OdemeBacagiDto b, string? cariId, string tenantId)
+    {
+        var h = await db.BankaHareketleri.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == b.BankaHareketId && x.TenantId == tenantId)
+            ?? throw new NotFoundException("Gelen havale bulunamadı");
+        var stornolu = await db.BankaHareketleri.AsNoTracking()
+            .AnyAsync(x => x.TenantId == tenantId && x.StornoKaynakId == h.Id);
+        if (h.Yon != HareketYonu.BankaGelen || h.ParaBirimi != "TRY" || h.StornoKaynakId is not null || stornolu
+            || h.KarsiBacakId is not null || h.FaturaId is not null)
+            throw new ConflictException("Bu banka hareketi satışa bağlanamaz (gelen TL havale değil ya da geri alınmış).");
+        if (h.CariKarari is not null || h.HareketId is not null)
+            throw new ConflictException("Bu havale için zaten karar verildi ya da bir satışa bağlandı.");
+        if (b.TutarTl != h.Tutar)
+            throw new BadRequestException("Havale bacağının tutarı gelen havaleye eşit olmalıdır.").AlanIle("odemeler");
+        if (h.CariId is not null && !string.IsNullOrEmpty(cariId) && h.CariId != cariId)
+            throw new BadRequestException("Bu havale başka bir müşteriye bağlı; fişte aynı müşteriyi seçin.").AlanIle("cariId");
+        return h;
+    }
+
+    /// <summary>17.10 — havaleyi satışa bağlar (aynı işlemde, satır kilitli; eşzamanlı ikinci bağlama 409).</summary>
+    private async Task HavaleyiBagla(string bankaHareketId, string? cariId, string ilkHareketId, string tenantId)
+    {
+        await db.Database.Kilitle(KilitTablosu.BankaHareketleri, bankaHareketId, tenantId);
+        var h = await db.BankaHareketleri.FirstAsync(x => x.Id == bankaHareketId && x.TenantId == tenantId);
+        await db.Entry(h).ReloadAsync();
+        if (h.CariKarari is not null || h.HareketId is not null)
+            throw new ConflictException("Bu havale için zaten karar verildi ya da bir satışa bağlandı.");
+        if (h.CariId is null && !string.IsNullOrEmpty(cariId)
+            && !await Cari.SistemCarisi.MiAsync(db, tenantId, cariId))
+            h.CariId = cariId;
+        h.Durum = "ESLESTI";
+        h.CariKarari = Banka.CariKarari.Satis;
+        h.KararHareketId = ilkHareketId;
+        // MASAK süzgeci (paket 41): bağlanan dekont kümülatiften düşer, satış satırı sayılır — tek kez.
+        h.HareketId = ilkHareketId;
+    }
+
+    /// <summary>
     /// 17.10 P0-4 — KUYUMCU FATURA HADDİ SUNUCUDA (VUK GT 514 md.4; tarihli yasal parametre
     /// <c>KUYUMCU_FATURA_HADDI_TL</c>, işlem günü). Ekran kilidi yetmez: had üstü satış FİŞ olarak API'den
     /// geçiyordu. Had üstünde (a) belge FATURA olmalı, (b) müşterinin geçerli TCKN/VKN'si olmalı.
@@ -1753,8 +1794,18 @@ public sealed partial class SatisServisi(
         // MASAK: FİŞİN TOPLAMINA bakar. Nakit payına çevrilmesi mevzuata aykırı
         // bir gevşetme olurdu — 100.000 nakit + 2.400.000 havale ile kapanan fiş
         // eşiğin altına düşerdi.
+        // 17.10 HAVALEDEN SATIŞ: banka hareketine bağlı havale bacağı (en çok bir).
+        var havaleBacaklari = sepet.Bacaklar.Where(b => !string.IsNullOrEmpty(b.BankaHareketId)).ToList();
+        if (havaleBacaklari.Count > 1)
+            throw new BadRequestException("Bir fişe yalnız bir gelen havale bağlanır.").AlanIle("odemeler");
+        var havale = havaleBacaklari.Count == 1
+            ? await HavaleDogrula(havaleBacaklari[0], dto.CariId, islem.TenantId) : null;
+
+        // ⚠ 17.10: havalenin parası MASAK'a dekontun girildiği gün banka satırıyla ZATEN sayıldı; kümülatif
+        //   kontrol yalnız fişin YENİ kısmını ekler (aksi hâlde aynı para iki kez eşiğe girerdi). Bağlandıktan sonra
+        //   banka satırı hareket_id ile kümülatiften düşer, satış satırı sayılır — toplam tek kez.
         var masakGerek = await masak.DogrulaKumulatif(
-            db, islem.TenantId, dto.CariId, fisToplam, dto.Masak, now, islem);
+            db, islem.TenantId, dto.CariId, fisToplam - (havale?.Tutar ?? 0m), dto.Masak, now, islem);
 
         // K6: her bacağın kasası ayrı doğrulanır. TL bacağı TRY kasasına, DOVIZ
         // bacağı KENDİ para biriminin kasasına — dolar avro kasasına giremez.
@@ -1763,7 +1814,7 @@ public sealed partial class SatisServisi(
         var kasalar = new Dictionary<string, Data.Kasa>();
         // PAKET B-4: ALTIN bacağı da kasadan GEÇMEZ (B4-5/B4-19) — tek ölçü
         // OdemeAraci.KasayaGirer'dir (VERESIYE + ALTIN hariç).
-        foreach (var b in sepet.Bacaklar.Where(b => Data.OdemeAraci.KasayaGirer(b.Arac)))
+        foreach (var b in sepet.Bacaklar.Where(b => Data.OdemeAraci.KasayaGirer(b.Arac) && string.IsNullOrEmpty(b.BankaHareketId)))
         {
             var beklenen = b.Arac == "DOVIZ" ? b.ParaBirimi! : "TRY";
             if (kasalar.TryGetValue(b.KasaId!, out var mevcut) && mevcut.ParaBirimi != beklenen)
@@ -1930,7 +1981,7 @@ public sealed partial class SatisServisi(
             string? kasaHareketId = null;
             string? posTahsilatId = null;
 
-            if (Data.OdemeAraci.KasayaGirer(b.Arac))
+            if (Data.OdemeAraci.KasayaGirer(b.Arac) && string.IsNullOrEmpty(b.BankaHareketId))   // 17.10: bankadaki havale kasaya girmez
             {
                 var bacakKasa = kasalar[b.KasaId!];
                 kasaHareketId = await KasaGuncelle(bacakKasa, islem.TenantId,
@@ -1987,6 +2038,7 @@ public sealed partial class SatisServisi(
                 "Fiş yazılmadı.");
         // PAKET P-23c: yazma TEK KAPIDAN geçer (Data/OdemeKalemFabrikasi.cs).
         Data.OdemeKalemFabrikasi.Yaz(db, yazilanKalemler);
+        if (havale is not null) await HavaleyiBagla(havale.Id, dto.CariId, ilkHareketId!, islem.TenantId);   // 17.10
 
         await db.SaveChangesAsync();
         if (tx is not null) await tx.CommitAsync();
@@ -3151,6 +3203,36 @@ public sealed class SatisController(SatisServisi servis, StornoServisi storno,
     /// GET /api/v1/islemler/fis/{fisId} — Fişin kalemleri, ödeme bacakları, kur kaydı.
     /// İşlem modülüne erişebilen tüm roller okuyabilir; kiracı dışı fis_id → 404.
     /// </summary>
+    /// <summary>
+    /// GET /api/v1/islemler/havale-bekleyen — 17.10 HAVALEDEN SATIŞ: tezgâhın seçebileceği, henüz karar verilmemiş
+    /// ve satışa bağlanmamış gelen TL havaleler (son 30 gün). Kurucu: tezgâhtar görür; satır yalnız tarih · gönderen
+    /// · tutar · müşteri taşır (IBAN, açıklama, banka hesabı DÖNMEZ — personelin banka akışını görmesi gerekmez).
+    /// </summary>
+    [HttpGet("havale-bekleyen")]
+    public async Task<object> HavaleBekleyen()
+    {
+        if (db is null) throw new InvalidOperationException("Veritabanı yok");
+        var islem = Islem;
+        var sinir = DateTime.UtcNow.AddDays(-30);
+        var satirlar = await db.BankaHareketleri.AsNoTracking()
+            .Where(b => b.TenantId == islem.TenantId && b.Yon == HareketYonu.BankaGelen && b.ParaBirimi == "TRY"
+                     && b.CariKarari == null && b.HareketId == null && b.FaturaId == null
+                     && b.StornoKaynakId == null && b.KarsiBacakId == null && b.Olusturuldu >= sinir)
+            .StornoCiftiniDisla(db, islem.TenantId)
+            .OrderByDescending(b => b.Olusturuldu).Take(50)
+            .Select(b => new { b.Id, b.Tarih, b.Tutar, b.KarsiTarafAd, b.CariId })
+            .ToListAsync();
+        var cariIdler = satirlar.Where(s => s.CariId != null).Select(s => s.CariId!).Distinct().ToList();
+        var adlar = await db.Cariler.AsNoTracking()
+            .Where(c => c.TenantId == islem.TenantId && cariIdler.Contains(c.Id))
+            .OrderBy(c => c.Id).Take(cariIdler.Count).ToDictionaryAsync(c => c.Id, c => c.Ad);
+        return satirlar.Select(s => new
+        {
+            id = s.Id, tarih = s.Tarih, tutar = s.Tutar, karsiTarafAd = s.KarsiTarafAd,
+            cariId = s.CariId, cariAd = s.CariId is null ? null : adlar.GetValueOrDefault(s.CariId),
+        }).ToList();
+    }
+
     [HttpGet("fis/{fisId}")]
     public Task<object> FisOku(string fisId) => servis.FisOku(fisId, Islem);
 

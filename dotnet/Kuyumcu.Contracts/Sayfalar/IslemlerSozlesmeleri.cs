@@ -54,3 +54,6 @@ public sealed record OdemeKalemiSatiri(
 public sealed record IadeAdayi(
     string Id, DateTime Tarih, decimal TlTutari, string UrunId, string? UrunAdi,
     decimal ToplamAdet, decimal IadeEdilenAdet, decimal KalanAdet, string? CariId);
+
+/// <summary>17.10 havaleden satış — GET /islemler/havale-bekleyen satırı (IBAN, açıklama, banka hesabı dönmez).</summary>
+public sealed record HavaleSatiri(string Id, DateTime Tarih, decimal Tutar, string? KarsiTarafAd, string? CariId, string? CariAd);

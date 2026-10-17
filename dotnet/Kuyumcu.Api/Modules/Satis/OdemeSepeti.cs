@@ -35,6 +35,13 @@ public sealed class OdemeBacagiDto
     [MaxLength(36)] public string? KasaId { get; set; }
 
     /// <summary>
+    /// 17.10 HAVALEDEN SATIŞ (kurucu: "para gelince listeye düşer, tezgâhtar ne sattıysa seçer, fatura kesilir,
+    /// arka planda fişe dönüşür"): yalnız HAVALE bacağında. Bacak KASAYA YAZILMAZ — para zaten bu banka
+    /// hareketiyle hesaba girdi; satış o hareketi tüketir (kasada olmayan para kasada görünmez, çift sayım yok).
+    /// </summary>
+    [MaxLength(36)] public string? BankaHareketId { get; set; }
+
+    /// <summary>
     /// YALNIZ DOVIZ bacağı: efektifin para birimi (USD · EUR · GBP). Kasanın para
     /// birimiyle sunucuda eşlenir; TRY döviz bacağı olamaz.
     /// </summary>
@@ -230,6 +237,14 @@ public static class OdemeSepeti
                 if (!string.IsNullOrEmpty(b.KasaId))
                     throw new BadRequestException(
                         "Eski altın bacağına kasa verilemez — altın kasaya TL olarak girmez");
+            }
+            else if (!string.IsNullOrEmpty(b.BankaHareketId))
+            {
+                // 17.10 havaleden satış: banka hareketine bağlı HAVALE bacağı kasadan GEÇMEZ.
+                if (b.Arac != "HAVALE")
+                    throw new BadRequestException("Banka hareketi yalnız havale bacağına bağlanır.").AlanIle("odemeler");
+                if (!string.IsNullOrEmpty(b.KasaId))
+                    throw new BadRequestException("Bankaya gelen havale bacağına kasa verilemez — para bankada.").AlanIle("odemeler");
             }
             else if (string.IsNullOrEmpty(b.KasaId))
             {

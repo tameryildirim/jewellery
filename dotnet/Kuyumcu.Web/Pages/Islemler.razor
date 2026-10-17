@@ -905,7 +905,7 @@
         try { saticilar = await Api.GetAsync<SaticiPersonelListesi>("/islemler/personeller"); }
         catch (Exception ex) when (ex is ApiHata or JsonException) { saticiHata = ex.Message; }
 
-        yukleniyor = false;
+        yukleniyor = false; await HavaleYukle();   // 17.10 havaleden satış: EN SONDA — açılış adımlarını geciktirmez (Islemler.Havale.cs)
     }
 
     private async Task KasalariYukle()
@@ -1177,7 +1177,7 @@
                 {
                     cariId = string.IsNullOrEmpty(cariId) ? null : cariId,
                     kalemler = kalemler.Select(k => new { urunId = k.UrunId, adet = k.Adet, birimFiyatTl = k.BirimFiyat, hediye = k.Hediye, satirIskontoYuzde = k.SatirIskontoYuzde }),
-                    odemeler = new[] { new { arac = odemeTuru, tutarTl = ToplamTl, kasaId = odemeTuru == "VERESIYE" ? null : kasa } },
+                    odemeler = TekOdeme(kasa),   // 17.10: havale modunda banka hareketine bağlı bacak (Islemler.Havale.cs)
                     vadeGun,
                     kurSnapshotId = kurId,
                     aciklama = acikl,

@@ -153,6 +153,27 @@
                     {
                         <p class="yz-s yz-belge-not" id="yildiz-belge-not">@belgeNotu</p>
                     }
+                    @if (B.SeciliHavaleId is not null)
+                    {
+                        <button type="button" class="yz-tur-sekme" id="yildiz-havale-birak" disabled="@B.Kaydediliyor"
+                                @onclick="() => B.HavaleBirak.InvokeAsync()">@HavaleSozlugu.Birak(Dil.Dil)</button>
+                    }
+                    else if (B.Havaleler.Count > 0)
+                    {
+                        @* 17.10 havaleden satış (kurucu: "tezgâhtar ne sattıysa kendisi seçer") — bekleyen havaleler katlı gelir. *@
+                        <button type="button" class="yz-tur-sekme yz-tur-diger" id="yildiz-havaleler-ac" aria-expanded="@(B.HavalelerAcik ? "true" : "false")"
+                                aria-controls="yildiz-havaleler" @onclick="() => B.HavalelerAcKapa.InvokeAsync()">@HavaleSozlugu.Bekleyenler(B.Havaleler.Count, Dil.Dil)</button>
+                        @if (B.HavalelerAcik)
+                        {
+                            <ul class="yz-havaleler" id="yildiz-havaleler">
+                                @foreach (var h in B.Havaleler)
+                                {
+                                    <li><button type="button" class="yz-tur-sekme" id="@($"yildiz-havale-{h.Id}")" disabled="@B.Kaydediliyor"
+                                                @onclick="() => B.HavaleSec.InvokeAsync(h.Id)">@h.Ad · @h.Tutar · @h.Tarih</button></li>
+                                }
+                            </ul>
+                        }
+                    }
                 </div>
             }
             <div class="yz-tezgah-ekler" id="yildiz-tezgah-ekler">
@@ -162,14 +183,17 @@
                     <button type="button" class="yz-b3" id="yildiz-tezgah-baska-odeme" disabled="@(B.BacakTavan || B.Kaydediliyor)"
                             title="@(B.BacakTavan ? YildizTezgahSozlugu.BacakTavan(Dil.Dil) : null)" @onclick="B.BacakEkle">@YildizTezgahSozlugu.BaskaOdeme(Dil.Dil)</button>
                 }
-                else
+                else if (B.SeciliHavaleId is null)   @* 17.10 havaleden satış: ödeme yalnız gelen havale — ek ödeme ve para üstü yok *@
                 {
                     <button type="button" class="yz-b3" id="yildiz-tezgah-baska-odeme" disabled="@(!B.KalemVar || B.Kaydediliyor)"
                             title="@(B.KalemVar ? null : YildizTezgahSozlugu.KalemYok(Dil.Dil))" @onclick="BaskaOdeme">@YildizTezgahSozlugu.BaskaOdeme(Dil.Dil)</button>
                 }
+                @if (B.SeciliHavaleId is null)
+                {
                 <button type="button" class="yz-b3" id="yildiz-tezgah-para-ustu" disabled="@(!B.ParaUstuKullanilir)"
                         title="@(B.ParaUstuKullanilir ? null : (B.KalemVar ? YildizTezgahSozlugu.ParaUstuKilit(Dil.Dil) : YildizTezgahSozlugu.KalemYok(Dil.Dil)))"
                         aria-expanded="@(paraUstu ? "true" : "false")" @onclick="() => paraUstu = !paraUstu">@YildizTezgahSozlugu.ParaUstu(Dil.Dil)</button>
+                }
                 <button type="button" class="yz-b3" id="yildiz-tezgah-indirim" disabled="@(!B.KalemVar || B.Kaydediliyor)" aria-expanded="@(B.IndirimGorunur ? "true" : "false")"
                         aria-controls="yildiz-tezgah-indirim-alan" title="@(B.KalemVar ? null : YildizTezgahSozlugu.KalemYok(Dil.Dil))" @onclick="B.Indirim">@YildizTezgahSozlugu.Indirim(Dil.Dil)</button>
                 @if (B.Karma)

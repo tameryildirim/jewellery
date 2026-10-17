@@ -2,6 +2,7 @@
 @using Kuyumcu.Core.Domain.Girdi
 @inject ApiIstemci Api
 @inject DilServisi Dil
+@inject NavigationManager Nav
 
 @* ═══ M7a (kurucu 17.10) — "borcu vardır ama ekstra bir altın daha almıştır… borçtan düşülsün mü
    diye müşteri karar versin". Müşteriye bağlanmış, kararı verilmemiş gelen ödemeler kuyumcunun ÖNÜNE
@@ -77,8 +78,11 @@
                     <div class="satir">
                         <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"go-borc-{s.Id}")" disabled="@calisiyor"
                                 @onclick="() => Karar(s, KararBorc)">@(s.BorcTl > 0m ? GelenOdemeSozlugu.BorcundanDus(Dil.Dil) : GelenOdemeSozlugu.AlacakYaz(Dil.Dil))</button>
+                        @* 17.10 havaleden satış: tezgâh bu havaleyle açılır, ürün seçilir, fatura kesilir (fiş arka planda). *@
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"go-sat-{s.Id}")" disabled="@calisiyor"
+                                @onclick="@(() => Nav.NavigateTo($"/islemler?havale={s.Id}"))">@HavaleSozlugu.UrunSecSat(Dil.Dil)</button>
                         <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"go-satis-{s.Id}")" disabled="@calisiyor"
-                                @onclick="() => Karar(s, KararSatis)">@GelenOdemeSozlugu.YeniAlisveris(Dil.Dil)</button>
+                                @onclick="() => Karar(s, KararSatis)">@HavaleSozlugu.SatisGirildi(Dil.Dil)</button>
                     </div>
                 </div>
             }

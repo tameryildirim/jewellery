@@ -29,13 +29,14 @@ public partial class Islemler
 
     /// <summary>Kaydet kilidi: fatura seçiliyken gerçek müşteri yoksa sebep (UX-S30 — görünmez kural yok).</summary>
     private string? BelgeKilidi =>
-        FaturaSecili && (string.IsNullOrEmpty(cariId) || cariId == pesinCariId) ? SatisBelgeSozlugu.MusteriSecin(Dil.Dil) : null;
+        FaturaSecili && (string.IsNullOrEmpty(cariId) || cariId == pesinCariId) ? SatisBelgeSozlugu.MusteriSecin(Dil.Dil)
+        : HavaleKilidi;   // 17.10 havaleden satış: fiş toplamı gelen havaleye eşit olmalı
 
     /// <summary>Satış gövdesine giden belge türü (fişte alan gönderilmez → yanıt ve davranış eskisi gibi).</summary>
     private string? BelgeGovde => FaturaSecili ? "FATURA" : null;
 
-    private string? BelgeNotu => FaturaZorunlu && kuyumcuFaturaHaddi is { } h
-        ? SatisBelgeSozlugu.Zorunlu(Bicim.Tl(h), Dil.Dil) : null;
+    private string? BelgeNotu => HavaleNotu ?? (FaturaZorunlu && kuyumcuFaturaHaddi is { } h
+        ? SatisBelgeSozlugu.Zorunlu(Bicim.Tl(h), Dil.Dil) : null);
 
     private async Task BelgeAyariYukle()
     {
@@ -63,6 +64,7 @@ public partial class Islemler
     /// </summary>
     private JsonElement BelgeYaniti(JsonElement y)
     {
+        HavaleKapat();   // 17.10: başarılı satışla havale modu biter
         if (y.ValueKind != JsonValueKind.Object || !y.TryGetProperty("satis", out var satis)) return y;
         if (y.TryGetProperty("faturaHata", out var fh) && fh.ValueKind == JsonValueKind.String)
             sonFaturaNotu = SatisBelgeSozlugu.FaturaOlusmadi(fh.GetString()!, Dil.Dil);

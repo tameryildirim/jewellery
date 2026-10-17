@@ -421,6 +421,8 @@ public sealed class GelenOdemeServisi(
         var h = await db.BankaHareketleri.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == bankaHareketId && x.TenantId == islem.TenantId)
             ?? throw new NotFoundException("Banka hareketi bulunamadı");
+        if (h.CariKarari == CariKarari.Satis && h.HareketId is not null)
+            throw new ConflictException("Bu havale bir satışta kullanıldı; karar geri alınamaz. Satış yanlışsa satış iadesi yapın.");
         if (h.CariKarari == CariKarari.Satis)
         {
             var t = await db.BankaHareketleri.FirstAsync(x => x.Id == h.Id && x.TenantId == islem.TenantId);
