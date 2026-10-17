@@ -118,6 +118,29 @@ Programı ilk kez kullanıyorsanız bir iş gününü şu sırayla yürütün; h
 
 > [!UYARI] Her işlem o andaki kura bağlanır. Kur yanlışsa has hesabı da yanlış olur. Kur çubuğu "kur yok" ya da "eski" diyorsa satış yapmadan önce kuru yenileyin.
 
+### Kur kaynakları {#kur-kaynaklari}
+
+Kurların nereden geldiğini **İşletme → Ayarlar** sekmesinden siz seçersiniz. Üç ayrı seçim vardır; her birinin yanında kısa bir durum yazar (son çekim saati, son kapanış, "anahtar tanımlı değil" gibi). Seçim hemen yazılmaz: **Değişikliği kaydet** düğmesine basıp açılan pencerede onaylarsınız. Bu ayarları işletme sahibi değiştirir.
+
+1. **Kur kaynağı (altın):** has altın ve sarrafiye fiyatlarının geldiği yer — Altınkaynak, Harem Altın, Truncgil ya da Ankara Altın Borsası.
+2. **Döviz kaynağı:** dolar, euro ve sterlin kurunun geldiği yer. Altın kaynağından ayrı seçilir. **Merkez Bankası (EVDS)** önerilen kaynaktır; bunun için işletmenize ait EVDS anahtarının sistemde tanımlı olması gerekir. Anahtar yoksa bu seçenek soluk görünür ve seçilemez. İsterseniz **Altın kaynağıyla aynı** seçeneğiyle dövizi altın kaynağından da alabilirsiniz. Merkez Bankası günde bir kez kur yayımladığı için döviz kuru gün içinde değişmez.
+3. **Faturada has fiyatı:** kuyum faturasında KDV'nin dışında bırakılan has altın bedelinin hangi fiyatla hesaplanacağı. Mevzuat bu fiyat için Borsa İstanbul'un son işgünü külçe altın kapanışını ister; yeni işletmelerde varsayılan budur.
+   - **Borsa İstanbul kapanışı:** her işgünü Borsa İstanbul günlük bülteninden kapanışı siz girersiniz (aşağıya bakın).
+   - **Harem Altın** ya da **Altınkaynak:** kapanış o kaynaktan kendiliğinden alınır.
+   - **Kendi girdiğim kapanış:** kapanışı kendi belirlediğiniz değerle girersiniz.
+   - **Satıştaki kur:** satış anındaki kur kullanılır (önceki davranış).
+
+Faturada **son işgününün** kapanışı kullanılır: bugünün faturası dünün (hafta sonuysa cumanın) kapanışıyla hesaplanır. Son 10 günde kapanış yoksa fatura **kesilmez** ve ekran nedenini söyler; kapanışı girdikten sonra faturayı yeniden kesin. Her faturaya kullanılan kaynağın kodu (BIST, HAREM, ALTINKAYNAK, ELLE, ISLEM_KURU) ile kapanışın günü ve fiyatı yazılır. Ürün kartında "binde" pay tanımlı ürünlerde has fiyatı kullanılmaz; o faturaya BINDE yazılır.
+
+**Kapanışı elle girme:** **İşletme → Ayarlar**'da has fiyatı kaynağı Borsa İstanbul ya da Kendi girdiğim kapanış seçiliyken **+ Kapanış gir** düğmesi görünür. Günü seçin, kapanış değerini yazın ve birimini seçin. Borsa İstanbul bülteni fiyatı **TL / kg** olarak yayımlar; bu birimi seçerseniz değer 1.000'e bölünerek gram fiyatına çevrilir (1000/1000 saflık). Yanlış girdiyseniz aynı günü yeniden girerek düzeltebilirsiniz; ancak bir faturada kullanılmış kapanış artık değiştirilemez.
+
+> [!UYARI] Harem Altın, Altınkaynak, Truncgil ve Ankara Altın Borsası ile veri kullanım sözleşmemiz yoktur. Bu kaynaklar ekranda **İzinsiz kaynak** diye işaretlenir ve yalnız sistem yöneticisi açtığında görünür. Harem Altın için yazılı izin başvurusu satış sonrasında yapılacaktır; o zamana kadar ticari kullanım riski işletmeye aittir.
+
+**Kuru koruyan iki kapı:**
+
+- **Eski kur:** kaynaktan birkaç dakikadır yeni kur gelmiyorsa satış ve alış kaydedilmez; ekran kurun hangi saatten beri güncellenmediğini söyler. Kur ekranından kuru yenileyin ya da elle girin. Elle girilen kur yalnız girildiği gün geçerlidir.
+- **Ani sıçrama:** kaynaktan gelen fiyat son kurdan çok farklıysa (yüzde 20'den fazla) yazılmaz; fiyatlar eski kurda kalır ve Sahip ile Müdür'e bildirim gider. Fiyat gerçekten doğruysa Kur ekranından elle girip "Fiyat doğru" onayıyla ve nedenini yazarak kaydedin.
+
 <!-- grup: Günlük İş -->
 
 ## Panel {#panel}

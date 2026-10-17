@@ -23,6 +23,7 @@ public static class ModulKayit
         s.AddScoped<Kullanici.KullaniciServisi>();
         s.AddSingleton<Kur.KurKaynakDefteri>();   // kur kaynağı adaptör defteri
         s.AddScoped<Kur.KurServisi>();
+        s.AddScoped<Kur.OzelMatrahKapanisServisi>();   // KUR KAYNAKLARI (17.10): has bedeli kapanışları + kaynak ayarları
         s.AddScoped<Cari.CariServisi>();
         s.AddScoped<Cari.CariIbanServisi>();   // M7a
         s.AddScoped<Urun.UrunServisi>();

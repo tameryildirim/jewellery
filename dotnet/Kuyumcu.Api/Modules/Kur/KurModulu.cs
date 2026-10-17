@@ -94,7 +94,9 @@ public sealed record KurSnapshotCevap(
     // PAKET S-3b: yanlis girilen MANUEL kur GECERSIZ kilinabilir; satir silinmez.
     bool IptalEdildi = false,
     string? IptalGerekce = null,
-    DateTime? IptalTarihi = null);
+    DateTime? IptalTarihi = null,
+    // KUR KAYNAKLARI (17.10): döviz alanlarının kaynağı (null: altın kaynağının kendi kuru / elle).
+    string? DovizKaynak = null);
 
 // ── Pariteler (sarrafiye kalemleri) ─────────────────────────────────────────
 
@@ -246,7 +248,12 @@ public sealed record DisKurVerisi(
     decimal? EurTry,
     decimal? GbpTry,
     string Kaynak,
-    IReadOnlyList<Parite>? Pariteler = null);
+    IReadOnlyList<Parite>? Pariteler = null,
+    // KUR KAYNAKLARI (17.10): kaynağın bildirdiği gün kapanışı (has bedeli 23/e) — yoksa null.
+    KaynakKapanisi? Kapanis = null,
+    // KUR KAYNAKLARI (17.10): döviz alanlarının GERÇEK kaynağı (altın kaynağından ayrı seçilebilir).
+    // null = altın kaynağının kendi döviz kuru (bugünkü davranış).
+    string? DovizKaynak = null);
 
 /// <summary>Dış kur kaynağı adaptörü — her kaynak bu arayüzü uygular.</summary>
 public interface IKurAdaptoru
@@ -417,8 +424,9 @@ public sealed class AltinkaynakAdaptoru(IHttpClientFactory httpFactory, ILogger 
         zamanAsimi.CancelAfter(TimeSpan.FromSeconds(8));
 
         var http = httpFactory.CreateClient();
-        var altin = await Kalemler(http, AltinUrl, zamanAsimi.Token);
-        var doviz = await Kalemler(http, DovizUrl, zamanAsimi.Token);
+        var altinJson = await Govde(http, AltinUrl, zamanAsimi.Token);
+        var altin = Kalemler(altinJson);
+        var doviz = Kalemler(await Govde(http, DovizUrl, zamanAsimi.Token));
 
         decimal? S(Dictionary<string, (decimal? Alis, decimal? Satis)> d, string k) =>
             d.TryGetValue(k, out var f) ? f.Satis : null;
@@ -431,11 +439,10 @@ public sealed class AltinkaynakAdaptoru(IHttpClientFactory httpFactory, ILogger 
             logger.LogWarning("Altınkaynak: döviz kurları okunamadı, null kaydedilecek");
 
         return new DisKurVerisi(has, S(altin, "GA"), usd, S(doviz, "EUR"), S(doviz, "GBP"), Kod,
-            AdaptorYardim.PariteKur(altin, Esleme));
+            AdaptorYardim.PariteKur(altin, Esleme), Kapanis(altinJson));
     }
 
-    private static async Task<Dictionary<string, (decimal? Alis, decimal? Satis)>> Kalemler(
-        HttpClient http, string url, CancellationToken iptal)
+    private static async Task<string> Govde(HttpClient http, string url, CancellationToken iptal)
     {
         using var istek = new HttpRequestMessage(HttpMethod.Get, url);
         istek.Headers.Accept.ParseAdd("application/json");
@@ -443,8 +450,38 @@ public sealed class AltinkaynakAdaptoru(IHttpClientFactory httpFactory, ILogger 
         using var cevap = await http.SendAsync(istek, iptal);
         if (!cevap.IsSuccessStatusCode)
             throw new HttpRequestException($"Altınkaynak HTTP {(int)cevap.StatusCode}");
+        return await cevap.Content.ReadAsStringAsync(iptal);
+    }
 
-        var govde = await cevap.Content.ReadAsStringAsync(iptal);
+    /// <summary>
+    /// KUR KAYNAKLARI (17.10) — has bedeli kapanışı: akıştaki "IAB_KAPANIS" ("İAB Kapanış") kalemi.
+    /// Gerçek yük (17.10.2026 16:48, araştırma dosyası): {"Alis":"6.622,00","Satis":"6.622,00",
+    /// "Kod":"IAB_KAPANIS","GuncellenmeZamani":"16.10.2026 00:00:00"} — gün GuncellenmeZamani'nin
+    /// tarihidir, değer TL/has gram (tr-TR). Borsa İstanbul resmî kapanışı DEĞİLDİR (araştırma § 5);
+    /// kuyumcu bu kaynağı seçerse faturaya ALTINKAYNAK kodu yazılır. Kalem yoksa null.
+    /// </summary>
+    public static KaynakKapanisi? Kapanis(string altinJson)
+    {
+        using var doc = JsonDocument.Parse(altinJson);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return null;
+        foreach (var oge in doc.RootElement.EnumerateArray())
+        {
+            if (oge.ValueKind != JsonValueKind.Object
+                || !oge.TryGetProperty("Kod", out var k) || k.GetString()?.Trim() != "IAB_KAPANIS") continue;
+            var fiyat = AdaptorYardim.Sayi(oge, "Satis", true) ?? AdaptorYardim.Sayi(oge, "Alis", true);
+            var zamanHam = oge.TryGetProperty("GuncellenmeZamani", out var z) ? z.GetString() : null;
+            if (fiyat is null || !DateTime.TryParseExact(zamanHam, "dd.MM.yyyy HH:mm:ss",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var gun))
+                return null;
+            return new KaynakKapanisi(DateOnly.FromDateTime(gun), fiyat.Value,
+                string.Create(CultureInfo.InvariantCulture, $"Altınkaynak İAB Kapanış {fiyat.Value} · {gun:dd.MM.yyyy}"));
+        }
+        return null;
+    }
+
+    /// <summary>Altınkaynak dizi yanıtı → kod → (alış, satış). Saf (test edilir).</summary>
+    public static Dictionary<string, (decimal? Alis, decimal? Satis)> Kalemler(string govde)
+    {
         using var doc = JsonDocument.Parse(govde);
 
         var sonuc = new Dictionary<string, (decimal? Alis, decimal? Satis)>(StringComparer.OrdinalIgnoreCase);
@@ -634,6 +671,8 @@ public sealed class KurKaynakDefteri
                          new AltinkaynakAdaptoru(httpFactory, logger),
                          new AnkaraAltinBorsasiAdaptoru(httpFactory, logger),
                          new TruncgilAdaptoru(httpFactory, logger),
+                         // KUR KAYNAKLARI (kurucu 17.10): Harem — belgesiz uç, AYNI sözleşmesiz kapının arkasında.
+                         new HaremAdaptoru(logger),
                      })
                 adaptorler[a.Kod] = a;
 
@@ -641,7 +680,87 @@ public sealed class KurKaynakDefteri
         VarsayilanKod = !string.IsNullOrEmpty(istenen) && adaptorler.TryGetValue(istenen, out var v)
             ? v.Kod
             : adaptorler.Count > 0 ? "ALTINKAYNAK" : ManuelKod;
+
+        // ── KUR KAYNAKLARI (kurucu 17.10) — DÖVİZ KAYNAĞI altın kaynağından AYRI ─────────────
+        // EVDS hukuken temiz kaynaktır (EVDS Kullanım Şartları: kaynak gösterilerek ticari kullanım
+        // serbest) → sözleşmesiz kapıya BAĞLI DEĞİL, yalnız anahtara bağlı. Anahtar değeri bu
+        // sınıfta tutulur, hiçbir yere yazılmaz (yalnız "var/yok" dışarı verilir).
+        // TCMB today.xml ticari kullanımda yazılı izne tabidir (araştırma § 1/5) → sözleşmesiz kapıda.
+        var evdsAnahtar = yapilandirma["Kur:EvdsAnahtar"];
+        EvdsAnahtarVar = !string.IsNullOrWhiteSpace(evdsAnahtar);
+        dovizAdaptorleri = new Dictionary<string, OnbellekliDovizAdaptoru>(StringComparer.OrdinalIgnoreCase);
+        if (EvdsAnahtarVar)
+            dovizAdaptorleri[KurKaynakKodlari.Evds] =
+                new OnbellekliDovizAdaptoru(new EvdsDovizAdaptoru(httpFactory, evdsAnahtar!.Trim()));
+        if (SozlesmesizKaynaklarAcik)
+            dovizAdaptorleri[KurKaynakKodlari.Tcmb] = new OnbellekliDovizAdaptoru(new TcmbDovizAdaptoru(httpFactory));
+        // Kurucu 17.10 "döviz için EVDS'ye geçilir": anahtar varsa varsayılan EVDS; yoksa bugünkü davranış.
+        VarsayilanDovizKod = EvdsAnahtarVar ? KurKaynakKodlari.Evds : KurKaynakKodlari.DovizAltinKaynagi;
     }
+
+    // ═══ DÖVİZ KAYNAKLARI ═══════════════════════════════════════════════════
+
+    private readonly Dictionary<string, OnbellekliDovizAdaptoru> dovizAdaptorleri;
+
+    /// <summary>EVDS anahtarı tanımlı mı? (DEĞER asla dışarı verilmez.)</summary>
+    public bool EvdsAnahtarVar { get; }
+
+    /// <summary>Kiracı döviz kaynağı seçmemişse kullanılan kod.</summary>
+    public string VarsayilanDovizKod { get; }
+
+    /// <summary>Ekranda gösterilen döviz kaynakları (seçilemeyenler dahil — sebebiyle birlikte).</summary>
+    public static readonly IReadOnlyList<string> DovizSiralama =
+    [
+        KurKaynakKodlari.Evds, KurKaynakKodlari.DovizAltinKaynagi, KurKaynakKodlari.Harem,
+        KurKaynakKodlari.Altinkaynak, KurKaynakKodlari.Truncgil, KurKaynakKodlari.Tcmb,
+    ];
+
+    /// <summary>
+    /// Döviz kodu bugün seçilebilir mi? null: seçilebilir; değilse sebep kodu
+    /// (ANAHTAR_YOK · SOZLESMESIZ_KAPALI · BILINMEYEN).
+    /// </summary>
+    public string? DovizEngeli(string? kod) => kod switch
+    {
+        KurKaynakKodlari.DovizAltinKaynagi => null,
+        KurKaynakKodlari.Evds => EvdsAnahtarVar ? null : "ANAHTAR_YOK",
+        KurKaynakKodlari.Tcmb => dovizAdaptorleri.ContainsKey(kod) ? null : "SOZLESMESIZ_KAPALI",
+        KurKaynakKodlari.Harem or KurKaynakKodlari.Altinkaynak or KurKaynakKodlari.Truncgil =>
+            adaptorler.ContainsKey(kod) ? null : "SOZLESMESIZ_KAPALI",
+        _ => "BILINMEYEN",
+    };
+
+    public bool DovizGecerli(string? kod) => !string.IsNullOrEmpty(kod) && DovizEngeli(kod) is null;
+
+    /// <summary>Bu döviz kodu bir ALTIN adaptörünün kendi döviz kurundan mı okunur?</summary>
+    public bool DovizAltinAdaptorunden(string kod) =>
+        kod is KurKaynakKodlari.Harem or KurKaynakKodlari.Altinkaynak or KurKaynakKodlari.Truncgil
+        && adaptorler.ContainsKey(kod);
+
+    /// <summary>Günlük döviz kaynağından (EVDS · TCMB) çek — önbellekli; başarı zamanı SonCekim'e yazılır.</summary>
+    public async Task<DovizVerisi> DovizCek(string kod, CancellationToken iptal = default)
+    {
+        if (!dovizAdaptorleri.TryGetValue(kod, out var a))
+            throw new ApiException(503, kod == KurKaynakKodlari.Evds
+                    ? "EVDS anahtarı tanımlı değil; döviz kaynağını Ayarlar'dan değiştirin ya da anahtarı tanımlayın."
+                    : "Seçili döviz kaynağı kapalı; döviz kaynağını Ayarlar'dan değiştirin.",
+                "Service Unavailable");
+        var veri = await a.DovizCek(iptal);
+        if (a.SonBasari is { } t)
+            lock (kilit) { if (!sonCekim.TryGetValue(kod, out var eski) || eski < t) sonCekim[kod] = t; }
+        return veri;
+    }
+
+    /// <summary>Has bedeli kaynağı bugün seçilebilir mi? null: seçilebilir; değilse sebep kodu.</summary>
+    public string? OzelMatrahEngeli(string? kod) => kod switch
+    {
+        KurKaynakKodlari.Bist or KurKaynakKodlari.IslemKuru or KurKaynakKodlari.Elle => null,
+        KurKaynakKodlari.Harem or KurKaynakKodlari.Altinkaynak => adaptorler.ContainsKey(kod) ? null : "SOZLESMESIZ_KAPALI",
+        _ => "BILINMEYEN",
+    };
+
+    /// <summary>Kapanışı otomatik bildirilen has bedeli kaynağı için adaptör var mı (zamanlayıcı çeker)?</summary>
+    public bool KapanisAdaptoruVar(string? kod) =>
+        kod is not null && KurKaynakKodlari.OtomatikKapanisli.Contains(kod) && adaptorler.ContainsKey(kod);
 
     /// <summary>MANUAL: adaptörü olmayan, elle girilen kaynak kodu.</summary>
     public const string ManuelKod = "MANUAL";
@@ -654,7 +773,7 @@ public sealed class KurKaynakDefteri
 
     /// <summary>Bu kod sözleşmesiz bir kaynağa mı ait? (ekran uyarı şeridi için)</summary>
     public static bool Sozlesmesiz(string? kod) =>
-        kod is "ALTINKAYNAK" or "ANKARA" or "TRUNCGIL";
+        kod is "ALTINKAYNAK" or "ANKARA" or "TRUNCGIL" or KurKaynakKodlari.Harem or KurKaynakKodlari.Tcmb;
 
     /// <summary>Kiracı bir şey seçmemişse kullanılacak kaynak.</summary>
     public string VarsayilanKod { get; }
@@ -736,7 +855,153 @@ public sealed class KurServisi(
         // satış/alış kur tazeliği kapısı bunlara bakar (PANO-KARAR §4/2: ölçüt çekim, yazım değil).
         sonCekim = kaynakDefteri.SonCekim(await TenantKaynagi(tenantId)),
         bayatEsigiSaniye = (int)kaynakDefteri.BayatEsigi.TotalSeconds,
+        // ── KUR KAYNAKLARI (kurucu 17.10) — Ayarlar ekranının üç seçimi ve durumları ──────────
+        // Her seçenek: kod, seçilebilir mi, değilse sebep kodu (ANAHTAR_YOK · SOZLESMESIZ_KAPALI),
+        // sözleşmesiz mi, son başarılı çekim (UTC). EVDS anahtarının DEĞERİ hiçbir yerde dönmez.
+        altinSecenekleri = kaynakDefteri.Kodlar.Select(k => new KaynakSecenegi(
+            k, null, KurKaynakDefteri.Sozlesmesiz(k), kaynakDefteri.SonCekim(k), null, null)).ToList(),
+        dovizSecenekleri = KurKaynakDefteri.DovizSiralama.Select(k => new KaynakSecenegi(
+            k, kaynakDefteri.DovizEngeli(k), KurKaynakDefteri.Sozlesmesiz(k),
+            k == KurKaynakKodlari.DovizAltinKaynagi ? null : kaynakDefteri.SonCekim(k), null, null)).ToList(),
+        dovizSecili = await TenantDovizKaynagi(tenantId),
+        dovizVarsayilan = kaynakDefteri.VarsayilanDovizKod,
+        evdsAnahtarVar = kaynakDefteri.EvdsAnahtarVar,
+        ozelMatrahSecenekleri = await OzelMatrahSecenekleri(tenantId),
+        ozelMatrahSecili = await OzelMatrahKaynakCozucu.KiraciKaynagi(db, tenantId),
+        ozelMatrahVarsayilan = KurKaynakKodlari.OzelMatrahVarsayilan,
     };
+
+    /// <summary>Ayar ekranı seçeneği (durum satırıyla birlikte).</summary>
+    public sealed record KaynakSecenegi(
+        string Kod, string? Engel, bool Sozlesmesiz, DateTime? SonCekim,
+        DateOnly? SonKapanisGunu, decimal? SonKapanisFiyati);
+
+    private async Task<List<KaynakSecenegi>> OzelMatrahSecenekleri(string tenantId)
+    {
+        // Her kaynağın SON kapanışı tek sorguda (kaynak başına en yeni gün).
+        var sonlar = await db.OzelMatrahKapanislari.AsNoTracking()
+            .Where(k => k.TenantId == tenantId)
+            .GroupBy(k => k.Kaynak)
+            .Select(g => new { Kaynak = g.Key, Gun = g.Max(x => x.Gun) })
+            .Take(KurKaynakKodlari.OzelMatrahTumu.Count + 4)
+            .ToListAsync();
+        var liste = new List<KaynakSecenegi>(KurKaynakKodlari.OzelMatrahTumu.Count);
+        foreach (var kod in KurKaynakKodlari.OzelMatrahTumu)
+        {
+            var son = sonlar.FirstOrDefault(s => s.Kaynak == kod);
+            decimal? fiyat = null;
+            if (son is not null)
+                fiyat = await db.OzelMatrahKapanislari.AsNoTracking()
+                    .Where(k => k.TenantId == tenantId && k.Kaynak == kod && k.Gun == son.Gun)
+                    .OrderBy(k => k.Id).Select(k => (decimal?)k.Fiyat).FirstOrDefaultAsync();
+            liste.Add(new KaynakSecenegi(kod, kaynakDefteri.OzelMatrahEngeli(kod),
+                KurKaynakKodlari.OtomatikKapanisli.Contains(kod), null, son?.Gun, fiyat));
+        }
+        return liste;
+    }
+
+    /// <summary>Kiracının döviz kaynağı; seçmemişse ya da seçimi artık geçersizse varsayılan.</summary>
+    public async Task<string> TenantDovizKaynagi(string tenantId)
+    {
+        var kod = await db.Tenants.AsNoTracking().Where(t => t.Id == tenantId)
+            .Select(t => t.DovizKaynagi).FirstOrDefaultAsync();
+        return kaynakDefteri.DovizGecerli(kod) ? kod! : kaynakDefteri.VarsayilanDovizKod;
+    }
+
+    /// <summary>
+    /// KUR KAYNAKLARI (17.10) — döviz kaynağını değiştirir (SAHİP/MÜDÜR) ve hemen yeni kurla
+    /// birleşik çekim dener; çekim başarısız olsa da ayar kaydedilmiş kalır (altın kaynağıyla aynı).
+    /// </summary>
+    public async Task<object> DovizKaynakAyarla(string kaynak, AktifKullanici islem)
+    {
+        if (kaynakDefteri.DovizEngeli(kaynak) is { } engel)
+            throw new BadRequestException(engel == "ANAHTAR_YOK"
+                ? "EVDS anahtarı tanımlı değil; bu kaynak seçilemez."
+                : $"Bu döviz kaynağı şu an seçilemez: {kaynak}").AlanIle("kaynak");
+        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == islem.TenantId)
+            ?? throw new NotFoundException("İşletme bulunamadı");
+        var eski = tenant.DovizKaynagi;
+        tenant.DovizKaynagi = kaynak;
+        tenant.Guncellendi = DateTime.UtcNow;
+        denetim.YazmaKaydet(islem, "Tenant", tenant.Id, $"döviz kaynağı · {eski ?? "-"} → {kaynak}",
+            hassas: false, eylem: DenetimEylemi.Guncelleme);
+        await db.SaveChangesAsync();
+
+        string? uyari = null;
+        try
+        {
+            var altinKod = await TenantKaynagi(islem.TenantId);
+            if (kaynakDefteri.Gecerli(altinKod))
+                await KaydetVeyaMevcut(islem.TenantId, await BirlesikVeriCek(altinKod, kaynak));
+        }
+        catch (Exception ex)
+        {
+            uyari = Kuyumcu.Core.I18n.SunucuIletiSozlugu.Cevir($"Kaynak kaydedildi ama kur şu an çekilemedi: {ex.Message}");
+            logger.LogWarning("[{TenantId}] {Kaynak} döviz kaynağından ilk çekim başarısız: {Mesaj}",
+                islem.TenantId, kaynak, ex.Message);
+        }
+        return new { dovizSecili = kaynak, uyari };
+    }
+
+    /// <summary>KUR KAYNAKLARI (17.10) — has bedeli (23/e) kaynağını değiştirir (SAHİP/MÜDÜR).</summary>
+    public async Task<object> OzelMatrahKaynakAyarla(string kaynak, AktifKullanici islem)
+    {
+        if (!KurKaynakKodlari.OzelMatrahTumu.Contains(kaynak))
+            throw new BadRequestException($"Geçersiz has bedeli kaynağı: {kaynak}").AlanIle("kaynak");
+        if (kaynakDefteri.OzelMatrahEngeli(kaynak) is not null)
+            throw new BadRequestException($"Bu has bedeli kaynağı şu an seçilemez: {kaynak}").AlanIle("kaynak");
+        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == islem.TenantId)
+            ?? throw new NotFoundException("İşletme bulunamadı");
+        var eski = tenant.OzelMatrahKaynagi;
+        tenant.OzelMatrahKaynagi = kaynak;
+        tenant.Guncellendi = DateTime.UtcNow;
+        // Vergi hesabını değiştiren ayar → denetim izine HASSAS yazılır.
+        denetim.YazmaKaydet(islem, "Tenant", tenant.Id, $"has bedeli kaynağı · {eski ?? "-"} → {kaynak}",
+            hassas: true, eylem: DenetimEylemi.Guncelleme);
+        await db.SaveChangesAsync();
+        return new { ozelMatrahSecili = kaynak };
+    }
+
+    /// <summary>
+    /// Altın kaynağından çeker ve döviz alanlarını SEÇİLİ döviz kaynağından doldurur (tek kiracı yolu:
+    /// "Şimdi çek", kaynak değişimi). Zamanlayıcı aynı birleştirmeyi <see cref="Birlestir"/> ile yapar.
+    /// </summary>
+    public async Task<DisKurVerisi> BirlesikVeriCek(string altinKod, string dovizKod)
+    {
+        var altin = await DisVeriCek(altinKod);
+        if (dovizKod == KurKaynakKodlari.DovizAltinKaynagi || dovizKod == altin.Kaynak)
+            return Birlestir(altin, dovizKod, null, null);
+        try
+        {
+            if (kaynakDefteri.DovizAltinAdaptorunden(dovizKod))
+                return Birlestir(altin, dovizKod, await DisVeriCek(dovizKod), null);
+            return Birlestir(altin, dovizKod, null, await kaynakDefteri.DovizCek(dovizKod));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("{Kaynak} döviz kuru alınamadı: {Mesaj}", dovizKod, ex.Message);
+            return Birlestir(altin, dovizKod, null, null);   // döviz okunamadı → döviz alanları boş
+        }
+    }
+
+    /// <summary>
+    /// SAF birleştirme: altın verisinin döviz alanları seçili döviz kaynağından gelir.
+    /// ALTIN_KAYNAGI (ya da altınla aynı kod) → altın verisinin kendi kuru, DovizKaynak = altın kodu.
+    /// Döviz kaynağı okunamadıysa (<paramref name="dovizHatali"/>) döviz alanları BOŞ kalır —
+    /// başka bir kaynağın kuru SESSİZCE yerine konmaz (Anayasa md.1); ekran döviz kaynağının
+    /// son çekimini gösterir.
+    /// </summary>
+    public static DisKurVerisi Birlestir(DisKurVerisi altin, string dovizKod,
+        DisKurVerisi? dovizAltin, DovizVerisi? doviz)
+    {
+        if (dovizKod == KurKaynakKodlari.DovizAltinKaynagi || dovizKod == altin.Kaynak)
+            return altin with { DovizKaynak = altin.Kaynak };
+        if (dovizAltin is not null)
+            return altin with { UsdTry = dovizAltin.UsdTry, EurTry = dovizAltin.EurTry, GbpTry = dovizAltin.GbpTry, DovizKaynak = dovizKod };
+        if (doviz is not null)
+            return altin with { UsdTry = doviz.UsdTry, EurTry = doviz.EurTry, GbpTry = doviz.GbpTry, DovizKaynak = dovizKod };
+        return altin with { UsdTry = null, EurTry = null, GbpTry = null, DovizKaynak = dovizKod };
+    }
 
     /// <summary>
     /// Kiracının kur kaynağını değiştirir ve YENİ kaynaktan hemen kur çeker
@@ -759,7 +1024,7 @@ public sealed class KurServisi(
 
         // Yeni kaynaktan anında çek; başarısız olursa ayar yine kaydedilmiş kalır.
         string? uyari = null;
-        try { await KaydetVeyaMevcut(tenantId, await DisVeriCek(kod)); }
+        try { await KaydetVeyaMevcut(tenantId, await BirlesikVeriCek(kod, await TenantDovizKaynagi(tenantId))); }
         catch (Exception ex)
         {
             uyari = Kuyumcu.Core.I18n.SunucuIletiSozlugu.Cevir($"Kaynak kaydedildi ama kur şu an çekilemedi: {ex.Message}");
@@ -861,7 +1126,9 @@ public sealed class KurServisi(
     // ─── Dış kaynaktan çek ve kaydet ─────────────────────────────────────────
 
     public async Task<KurSnapshotCevap> DisKaynakKurCek(string tenantId) =>
-        (await KaydetVeyaMevcut(tenantId, await DisVeriCek(await TenantKaynagi(tenantId)), kullaniciIstedi: true)).Cevap;
+        (await KaydetVeyaMevcut(tenantId,
+            await BirlesikVeriCek(await TenantKaynagi(tenantId), await TenantDovizKaynagi(tenantId)),
+            kullaniciIstedi: true)).Cevap;
 
     /// <summary>
     /// Dış kaynaktan yalnız veri çeker, kaydetmez. Zamanlayıcı bunu TEK KEZ
@@ -900,6 +1167,13 @@ public sealed class KurServisi(
             .OrderByDescending(s => s.Olusturuldu)
             .FirstOrDefaultAsync();
 
+        // KUR KAYNAKLARI (17.10): seçili döviz kaynağı bu tur okunamadıysa (üç alan da boş) ve son kur
+        // AYNI döviz kaynağından geliyorsa, son kurdaki döviz korunur — başka kaynağın kuru konmaz,
+        // döviz de her turda boşalıp dolmaz. Döviz kaynağının bayatlığını ekran son çekimden gösterir.
+        if (son is not null && veri.DovizKaynak is not null && son.DovizKaynak == veri.DovizKaynak
+            && veri.UsdTry is null && veri.EurTry is null && veri.GbpTry is null)
+            veri = veri with { UsdTry = son.UsdTry, EurTry = son.EurTry, GbpTry = son.GbpTry };
+
         if (son is not null && Ayni(son, veri))
             return (SnapshotZenginlestir(son), false);
 
@@ -919,7 +1193,7 @@ public sealed class KurServisi(
         }
 
         var cevap = await SnapshotKaydet(tenantId, veri.AltinHasFiyati, veri.GramAltinFiyati,
-            veri.UsdTry, veri.EurTry, veri.GbpTry, veri.Kaynak);
+            veri.UsdTry, veri.EurTry, veri.GbpTry, veri.Kaynak, dovizKaynak: veri.DovizKaynak);
         return (cevap, true);
     }
 
@@ -967,6 +1241,7 @@ public sealed class KurServisi(
 
     private static bool Ayni(KurSnapshot son, DisKurVerisi v) =>
         son.Kaynak == v.Kaynak
+        && son.DovizKaynak == v.DovizKaynak
         && son.AltinHasFiyati == Yuvarla4(v.AltinHasFiyati)
         && son.GramAltinFiyati == Yuvarla4(v.GramAltinFiyati)
         && son.UsdTry == Yuvarla4(v.UsdTry)
@@ -1142,7 +1417,7 @@ public sealed class KurServisi(
 
     private async Task<KurSnapshotCevap> SnapshotKaydet(
         string tenantId, decimal altinHasFiyati, decimal? gramAltinFiyati,
-        decimal? usdTry, decimal? eurTry, decimal? gbpTry, string kaynak, string? id = null)
+        decimal? usdTry, decimal? eurTry, decimal? gbpTry, string kaynak, string? id = null, string? dovizKaynak = null)
     {
         var snapshot = new KurSnapshot
         {
@@ -1154,6 +1429,7 @@ public sealed class KurServisi(
             EurTry = eurTry is null ? null : Math.Round(eurTry.Value, 4, MidpointRounding.AwayFromZero),
             GbpTry = gbpTry is null ? null : Math.Round(gbpTry.Value, 4, MidpointRounding.AwayFromZero),
             Kaynak = kaynak,
+            DovizKaynak = dovizKaynak,
             Olusturuldu = DateTime.UtcNow,
         };
         db.KurSnapshots.Add(snapshot);
@@ -1182,7 +1458,7 @@ public sealed class KurServisi(
 
         return new KurSnapshotCevap(
             s.Id, s.TenantId, hasFiyati, s.GramAltinFiyati, s.UsdTry, s.EurTry, s.GbpTry, s.Kaynak, s.Olusturuldu, ayarFiyatlari,
-            s.IptalEdildi, s.IptalGerekce, s.IptalTarihi);
+            s.IptalEdildi, s.IptalGerekce, s.IptalTarihi, s.DovizKaynak);
     }
 }
 
@@ -1193,8 +1469,35 @@ public sealed class KurServisi(
 [Route("api/v1/kur")]
 // P-09 (Y-39): yetki matrisi RotaModulleri haritasından türetilir.
 [Yetki.ModulYetkisi("kur")]
-public sealed class KurController(KurServisi servis) : ControllerBase
+public sealed class KurController(KurServisi servis, OzelMatrahKapanisServisi kapanislar) : ControllerBase
 {
+    /// <summary>
+    /// PATCH /api/v1/kur/doviz-kaynak — KUR KAYNAKLARI (kurucu 17.10): döviz kaynağı, altın kaynağından AYRI.
+    /// Yazma yalnız SAHİP/MÜDÜR (paket yönergesi § 1/4).
+    /// </summary>
+    [HttpPatch("doviz-kaynak")]
+    [RolGerekli("SAHIP", "MUDUR")]
+    public Task<object> DovizKaynakAyarla([FromBody] KaynakSecDto dto) =>
+        servis.DovizKaynakAyarla(dto.Kaynak, Islem);
+
+    /// <summary>PATCH /api/v1/kur/ozel-matrah-kaynak — has bedeli (KDVK 23/e) kaynağı — SAHİP/MÜDÜR.</summary>
+    [HttpPatch("ozel-matrah-kaynak")]
+    [RolGerekli("SAHIP", "MUDUR")]
+    public Task<object> OzelMatrahKaynakAyarla([FromBody] KaynakSecDto dto) =>
+        servis.OzelMatrahKaynakAyarla(dto.Kaynak, Islem);
+
+    /// <summary>GET /api/v1/kur/kapanislar?kaynak=&amp;limit= — has bedeli gün kapanışları — MUHASEBE+.</summary>
+    [HttpGet("kapanislar")]
+    [RolGerekli("SAHIP", "MUDUR", "MUHASEBE")]
+    public Task<List<KapanisCevap>> Kapanislar([FromQuery] string? kaynak, [FromQuery] int? limit) =>
+        kapanislar.Listele(Islem.TenantId, kaynak, limit ?? 30);
+
+    /// <summary>POST /api/v1/kur/kapanis — BIST bülteninden ya da elle has bedeli kapanışı — SAHİP/MÜDÜR (201).</summary>
+    [HttpPost("kapanis")]
+    [RolGerekli("SAHIP", "MUDUR")]
+    public async Task<IActionResult> KapanisGir([FromBody] KapanisGirDto dto) =>
+        StatusCode(StatusCodes.Status201Created, await kapanislar.Gir(dto, Islem));
+
     private AktifKullanici Islem => AktifKullanici.FromClaims(User);
 
     /// <summary>GET /api/v1/kur/guncel — En güncel kur + tüm ayarların gram fiyatları (POS ekranı için tüm rollere açık)</summary>
@@ -1361,7 +1664,7 @@ public sealed class KurZamanlayici(
         logger.LogDebug("Kur güncelleme görevi başladı");
 
         // ADIM1-KARAR §3/Ç1 madde 1: kiracı listesini okumak SİSTEM kapsamıdır.
-        List<(string Id, string? Kaynak)> aktifTenantlar;
+        List<KiraciKurAyari> aktifTenantlar;
         KurKaynakDefteri defter;
         await using (var sistem = kapsam.Sistem())
         {
@@ -1369,40 +1672,69 @@ public sealed class KurZamanlayici(
             defter = sistem.ServiceProvider.GetRequiredService<KurKaynakDefteri>();
             aktifTenantlar = (await db.Tenants.AsNoTracking()
                 .Where(t => t.Aktif)
-                .Select(t => new { t.Id, t.KurKaynagi })
+                .OrderBy(t => t.Id)
+                .Select(t => new { t.Id, t.KurKaynagi, t.DovizKaynagi, t.OzelMatrahKaynagi })
                 .ToListAsync(iptal))
-                .Select(t => (t.Id, t.KurKaynagi))
+                .Select(t => new KiraciKurAyari(t.Id,
+                    defter.Gecerli(t.KurKaynagi) ? t.KurKaynagi! : defter.VarsayilanKod,
+                    defter.DovizGecerli(t.DovizKaynagi) ? t.DovizKaynagi! : defter.VarsayilanDovizKod,
+                    OzelMatrahKaynakCozucu.Coz(t.OzelMatrahKaynagi)))
                 .ToList();
         }
         if (aktifTenantlar.Count == 0) return;
 
-        // Kiracılar KAYNAĞA GÖRE gruplanır: her kaynağa tur başına TEK istek atılır.
-        var gruplar = aktifTenantlar.GroupBy(t =>
-            defter.Gecerli(t.Kaynak) ? t.Kaynak! : defter.VarsayilanKod);
-
-        foreach (var grup in gruplar)
+        // KUR KAYNAKLARI (17.10): KAYNAK BAŞINA TEK ÇEKİM — kiracı sayısı kadar değil (mevcut desen).
+        // Çekilecek altın adaptörleri = kiracıların altın kaynakları ∪ altın adaptöründen okunan döviz
+        // kaynakları ∪ kapanışı otomatik bildirilen has bedeli kaynakları (HAREM · ALTINKAYNAK).
+        var plan = KurCekimPlani.Kur(aktifTenantlar, defter);
+        var altinVerileri = new Dictionary<string, DisKurVerisi>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kod in plan.AltinKodlari)
         {
-            DisKurVerisi veri;
             try
             {
                 await using var cekimKapsami = kapsam.Sistem();
-                veri = await cekimKapsami.ServiceProvider
-                    .GetRequiredService<KurServisi>().DisVeriCek(grup.Key);
+                altinVerileri[kod] = await cekimKapsami.ServiceProvider.GetRequiredService<KurServisi>().DisVeriCek(kod);
             }
             catch (Exception ex)
             {
-                logger.LogWarning("{Kaynak} kurları çekilemedi, bu tur atlanıyor: {Mesaj}",
-                    grup.Key, ex.Message);
-                continue;
+                logger.LogWarning("{Kaynak} kurları çekilemedi, bu tur atlanıyor: {Mesaj}", kod, ex.Message);
             }
-
-            // ADIM1-KARAR §3/Ç1 madde 2: kur YAZIMI sistem değil, KİRACI kapsamıdır.
-            // Böylece yazma yapısal olarak doğru kiracıya çakılır — güvenlik kazancı.
-            foreach (var t in grup)
+        }
+        var dovizVerileri = new Dictionary<string, DovizVerisi>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kod in plan.GunlukDovizKodlari)
+        {
+            try { dovizVerileri[kod] = await defter.DovizCek(kod, iptal); }
+            catch (Exception ex)
             {
-                await using var kiraciKapsami = kapsam.Kiraci(t.Id);
-                await kiraciKapsami.ServiceProvider
-                    .GetRequiredService<KurServisi>().OtomatikGuncelle(t.Id, veri);
+                logger.LogWarning("{Kaynak} döviz kuru çekilemedi: {Mesaj}", kod, ex.Message);
+            }
+        }
+
+        // ADIM1-KARAR §3/Ç1 madde 2: kur YAZIMI sistem değil, KİRACI kapsamıdır.
+        // Böylece yazma yapısal olarak doğru kiracıya çakılır — güvenlik kazancı.
+        foreach (var t in aktifTenantlar)
+        {
+            await using var kiraciKapsami = kapsam.Kiraci(t.Id);
+            if (altinVerileri.TryGetValue(t.Altin, out var altin))
+            {
+                var veri = KurServisi.Birlestir(altin, t.Doviz,
+                    defter.DovizAltinAdaptorunden(t.Doviz) ? altinVerileri.GetValueOrDefault(t.Doviz) : null,
+                    dovizVerileri.GetValueOrDefault(t.Doviz));
+                await kiraciKapsami.ServiceProvider.GetRequiredService<KurServisi>().OtomatikGuncelle(t.Id, veri);
+            }
+            // Has bedeli kapanışı (HAREM · ALTINKAYNAK): kiracı bu kaynağı seçtiyse günün kapanışı yazılır.
+            if (defter.KapanisAdaptoruVar(t.OzelMatrah)
+                && altinVerileri.TryGetValue(t.OzelMatrah, out var matrahVeri) && matrahVeri.Kapanis is { } kapanis)
+            {
+                try
+                {
+                    await kiraciKapsami.ServiceProvider.GetRequiredService<OzelMatrahKapanisServisi>()
+                        .OtomatikKaydet(t.Id, t.OzelMatrah, kapanis);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning("[{TenantId}] {Kaynak} kapanışı yazılamadı: {Mesaj}", t.Id, t.OzelMatrah, ex.Message);
+                }
             }
         }
     }

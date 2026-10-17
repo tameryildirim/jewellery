@@ -24,7 +24,8 @@ public static class KurKaynakAdi
         "ANKARA" => t.Kur.KaynakAnkara,
         "TRUNCGIL" => t.Kur.KaynakTruncgil,
         "MANUAL" => t.Kur.KaynakManuel,
-        _ => kod ?? "",
+        // KUR KAYNAKLARI (17.10): Harem + döviz/has fiyatı kodları tek çeviriciden.
+        _ => KurKaynakSozlugu.Ad(Servisler.Bicim.Dil, kod, k => k ?? ""),
     };
 
     /// <summary>

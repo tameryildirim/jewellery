@@ -107,6 +107,8 @@ public class KuyumcuDbContext : DbContext
     public DbSet<Kasa> Kasalar => Set<Kasa>();
     public DbSet<KasaHareket> KasaHareketleri => Set<KasaHareket>();
     public DbSet<GunKapanisi> GunKapanislari => Set<GunKapanisi>();
+    /// <summary>KUR KAYNAKLARI (17.10) — has bedeli (KDVK 23/e) gün kapanışları. IKiraciVarlik (süzgeç otomatik).</summary>
+    public DbSet<OzelMatrahKapanisi> OzelMatrahKapanislari => Set<OzelMatrahKapanisi>();
     public DbSet<FiyatListesi> FiyatListeleri => Set<FiyatListesi>();
     public DbSet<Kampanya> Kampanyalar => Set<Kampanya>();
     public DbSet<FiyatListesiUrunFiyati> FiyatListesiUrunFiyatlari => Set<FiyatListesiUrunFiyati>();
@@ -420,6 +422,9 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<Belge>().HasIndex(b => new { b.TenantId, b.Sha256 });
         mb.Entity<GunKapanisi>()
             .HasIndex(g => new { g.TenantId, g.KasaId, g.YerelGun }).IsUnique();
+        // KUR KAYNAKLARI (17.10): kiracı + kaynak + gün başına TEK kapanış; "son işgünü" sorgusu bu indeksten.
+        mb.Entity<OzelMatrahKapanisi>()
+            .HasIndex(k => new { k.TenantId, k.Kaynak, k.Gun }).IsUnique();
         // ── PAKET 40-A — RİSK PROFİLİ İNDEKSLERİ ────────────────────────────
         //   (a) "bu carinin GÜNCEL profili" = en son olusturuldu satırı; tarihçe
         //       ucu da son 10 satırı bu indeksten okur.

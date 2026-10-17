@@ -99,6 +99,8 @@ public static class AlanSinirlari
     public const int FaturaKalemAciklama = 300;
     /// <summary>Fatura açıklaması.</summary>
     public const int FaturaAciklama = 500;
+    /// <summary>KUR KAYNAKLARI (17.10) — has bedeli kapanışının dayanak notu (ozel_matrah_kapanislari.dayanak varchar(300)).</summary>
+    public const int KapanisDayanakEnCok = 300;
     /// <summary>Gider pusulası satıcı adı soyadı.</summary>
     public const int PusulaSaticiAd = 200;
     /// <summary>Gider pusulası mal açıklaması.</summary>

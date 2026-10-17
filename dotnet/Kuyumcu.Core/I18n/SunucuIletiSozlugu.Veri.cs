@@ -1309,5 +1309,20 @@ public static partial class SunucuIletiSozlugu
         ("Elle girilen kur önceki güne ait; Kur ekranından bugünün kurunu girin.", "The manually entered rate is from a previous day; enter today's rate on the Rates screen."),
         ("Kur {}'den beri güncellenemedi; Kur ekranından güncel kuru alın ya da elle girin.", "Rates have not been updated since {}; fetch the current rate on the Rates screen or enter it manually."),
         ("Kaynaktan gelen kur son kurdan çok farklı; yazılmadı. Doğruysa Kur ekranından elle girip onaylayın.", "The rate from the source differs too much from the last rate and was not saved. If it is correct, enter and approve it on the Rates screen."),
+        // KUR KAYNAKLARI (17.10) — döviz kaynağı, has bedeli kaynağı ve gün kapanışı
+        ("EVDS anahtarı tanımlı değil; döviz kaynağını Ayarlar'dan değiştirin ya da anahtarı tanımlayın.", "The EVDS key is not set; change the currency source in Settings or set the key."),
+        ("Seçili döviz kaynağı kapalı; döviz kaynağını Ayarlar'dan değiştirin.", "The selected currency source is off; change the currency source in Settings."),
+        ("EVDS anahtarı tanımlı değil; bu kaynak seçilemez.", "The EVDS key is not set; this source cannot be selected."),
+        ("Bu döviz kaynağı şu an seçilemez: {}", "This currency source cannot be selected right now: {}"),
+        ("Geçersiz has bedeli kaynağı: {}", "Invalid fine gold value source: {}"),
+        ("Bu has bedeli kaynağı şu an seçilemez: {}", "This fine gold value source cannot be selected right now: {}"),
+        ("Has bedeli için {} kapanışı bulunamadı (fatura günü {}, son {} gün). İşletme → Ayarlar'dan son işgününün kapanışını girin.", "No {} closing price was found for the fine gold value (invoice day {}, last {} days). Enter the last business day's closing in Business → Settings."),
+        ("Bu kaynağın kapanışı elle girilmez", "This source's closing price is not entered manually"),
+        ("Geçersiz birim", "Invalid unit"),
+        ("Gün zorunludur", "The day is required"),
+        ("Borsa İstanbul hafta sonu kapalıdır; son işgününün kapanışını girin", "Borsa Istanbul is closed at weekends; enter the last business day's closing"),
+        ("Kapanış değeri sıfırdan büyük olmalıdır", "The closing price must be greater than zero"),
+        ("Kapanış değeri zorunludur", "The closing price is required"),
+        ("Bu kapanış {} faturada kullanıldı; değiştirilemez.", "This closing price was used on {} invoice(s); it cannot be changed."),
     ];
 }

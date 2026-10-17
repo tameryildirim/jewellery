@@ -135,6 +135,19 @@ public class Tenant
     /// <summary>Kur çekilecek kaynak (ALTINKAYNAK · TRUNCGIL). Boşsa yapılandırmadaki varsayılan.</summary>
     [Column("kur_kaynagi"), MaxLength(20)] public string? KurKaynagi { get; set; }
     /// <summary>
+    /// KUR KAYNAKLARI (kurucu 17.10) — döviz kuru kaynağı, altın kaynağından AYRI:
+    /// EVDS · TCMB · ALTIN_KAYNAGI · HAREM · ALTINKAYNAK · TRUNCGIL. Boşsa varsayılan
+    /// (EVDS anahtarı tanımlıysa EVDS, değilse altın kaynağının kendi döviz kuru).
+    /// </summary>
+    [Column("doviz_kaynagi"), MaxLength(20)] public string? DovizKaynagi { get; set; }
+    /// <summary>
+    /// KUR KAYNAKLARI (kurucu 17.10) — has bedeli (KDVK 23/e) kaynağı:
+    /// BIST · HAREM · ALTINKAYNAK · ISLEM_KURU · ELLE. YENİ işletme kayıtta BIST ile doğar
+    /// (kurucu varsayılanı; AuthServisi). BOŞ = bu paketten önceki kiracı → ISLEM_KURU (bugünkü
+    /// davranış; geçiş faturalamayı kesmez — D1 kalıbı, geri doldurma yok).
+    /// </summary>
+    [Column("ozel_matrah_kaynagi"), MaxLength(20)] public string? OzelMatrahKaynagi { get; set; }
+    /// <summary>
     /// Satılan malın maliyeti hangi sırayla düşülür: FIFO · LIFO · ORTALAMA.
     /// Boşsa FIFO — kuyumcuda en yaygın ve VUK'a en uygun olanı.
     /// </summary>
@@ -347,6 +360,12 @@ public class KurSnapshot : IKiraciVarlik
     [Column("eur_try", TypeName = "decimal(15,4)")] public decimal? EurTry { get; set; }
     [Column("gbp_try", TypeName = "decimal(15,4)")] public decimal? GbpTry { get; set; }
     [Column("kaynak"), MaxLength(20)] public string Kaynak { get; set; } = "MANUAL";
+
+    /// <summary>
+    /// KUR KAYNAKLARI (17.10) — döviz alanlarının (usd/eur/gbp) GERÇEK kaynağı; altın kaynağından
+    /// ayrı seçilebilir (EVDS · TCMB · HAREM …). NULL: altın kaynağının kendi kuru ya da elle giriş.
+    /// </summary>
+    [Column("doviz_kaynak"), MaxLength(20)] public string? DovizKaynak { get; set; }
 
     /// <summary>
     /// PAKET S-3b — yanlış girilen MANUEL kur kaydı GEÇERSİZ kılındı mı?
@@ -1350,6 +1369,18 @@ public class Fatura : IKiraciVarlik
     /// yalnızca belge üzerindeki özet kurdur.
     /// </summary>
     [Column("has_birim_fiyat", TypeName = "decimal(15,4)")] public decimal? HasBirimFiyat { get; set; }
+
+    // ── KUR KAYNAKLARI (kurucu 17.10) — has bedelinin KAYNAK KODU belgeye yazılır ──────
+    /// <summary>
+    /// Has bedelinin fiyat kaynağı: BIST · HAREM · ALTINKAYNAK · ELLE (gün kapanışı) ·
+    /// ISLEM_KURU (satıştaki kur kaydı) · BINDE (müşterinin binde yöntemi, fiyat kullanılmadı).
+    /// Yalnız KUYUM faturasında dolar.
+    /// </summary>
+    [Column("ozel_matrah_kaynak_kodu"), MaxLength(12)] public string? OzelMatrahKaynakKodu { get; set; }
+    /// <summary>Kullanılan kapanışın işletme günü (son işgünü) — ISLEM_KURU/BINDE'de NULL.</summary>
+    [Column("ozel_matrah_kapanis_gunu")] public DateOnly? OzelMatrahKapanisGunu { get; set; }
+    /// <summary>Kullanılan kapanış fiyatı (TL / has gram, 1000/1000) — ISLEM_KURU/BINDE'de NULL.</summary>
+    [Column("ozel_matrah_kapanis_fiyati", TypeName = "decimal(15,4)")] public decimal? OzelMatrahKapanisFiyati { get; set; }
 
     // ── 17.10 P0-8 — ALICI BİLGİSİ BELGEYE DONDURULUR ────────────────────────
     // Kesim anında carinin unvanı/adı, kimlik no'su ve adresi belgeye kopyalanır; cari kartı sonradan

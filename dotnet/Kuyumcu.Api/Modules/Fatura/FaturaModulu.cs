@@ -257,6 +257,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         decimal kdvTutar;
         decimal? hasGram = null, hasBirimFiyat = null;
         var hasKaynagi = "ELLE";
+        Kur.OzelMatrahFiyatCozumu? matrahCozum = null;   // KUR KAYNAKLARI (17.10): has bedeli fiyat kaynağı
         if (kdvTuru == "KUYUM")
         {
             if (damgalanacak.Count > 0)
@@ -264,7 +265,8 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 // ── PAKET 38: HAS BEDELİ DEFTERDEN TÜRETİLİR ─────────────────
                 // MATRAHIN KÜMESİ = DAMGANIN KÜMESİ. Ayrışsaydı damgalanmış bir
                 // kalem matraha girmemiş olur, fatura ile defter çelişirdi.
-                var sonuc = await HasBedeliTuret(damgalanacak, toplam, kdvOran, islem);
+                matrahCozum = await Kur.OzelMatrahKaynakCozucu.Coz(db, islem.TenantId, tarih);
+                var sonuc = await HasBedeliTuret(damgalanacak, toplam, kdvOran, islem, matrahCozum);
 
                 // TUTARLILIK KAPISI — TOLERANS YOK (OdemeSepeti'nin "bacak toplamı
                 // = fiş toplamı" kuralıyla aynı; kasiyer matrahı seçemez, seçseydi
@@ -350,6 +352,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             HasGram         = hasGram,
             HasBirimFiyat   = hasBirimFiyat,
             HasDegerKaynagi = kdvTuru == "KUYUM" ? hasKaynagi : "ELLE",
+            // KUR KAYNAKLARI (17.10): has bedelinin KAYNAK KODU + kapanış günü + fiyatı belgeye yazılır.
+            OzelMatrahKaynakKodu    = kdvTuru == "KUYUM" ? matrahCozum?.BelgeKodu(false) : null,
+            OzelMatrahKapanisGunu   = kdvTuru == "KUYUM" ? matrahCozum?.BelgeGunu : null,
+            OzelMatrahKapanisFiyati = kdvTuru == "KUYUM" ? matrahCozum?.BelgeFiyati : null,
         });
         await db.SaveChangesAsync();
 
@@ -405,14 +411,19 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
     /// </para>
     /// </summary>
     private async Task<OzelMatrahSonuc> HasBedeliTuret(
-        List<Data.Hareket> kume, decimal toplam, decimal kdvOran, AktifKullanici islem)
+        List<Data.Hareket> kume, decimal toplam, decimal kdvOran, AktifKullanici islem, Kur.OzelMatrahFiyatCozumu cozum)
     {
-        var bacaklar = await HasBacaklariniTopla(kume, islem);
+        var bacaklar = await HasBacaklariniTopla(kume, islem, cozum);
         return OzelMatrahMotoru.Hesapla(bacaklar, toplam, kdvOran);
     }
 
+    /// <summary>
+    /// KUR KAYNAKLARI (17.10): bacağın has fiyatı <paramref name="cozum"/>'den gelir — ISLEM_KURU'da
+    /// hareketin KENDİ kur kaydı (bugünkü davranış AYNEN), diğer kaynaklarda seçili kaynağın SON
+    /// İŞGÜNÜ kapanışı (bulunamazsa fail-closed 400).
+    /// </summary>
     private async Task<List<HasBacagi>> HasBacaklariniTopla(
-        List<Data.Hareket> kume, AktifKullanici islem)
+        List<Data.Hareket> kume, AktifKullanici islem, Kur.OzelMatrahFiyatCozumu cozum)
     {
         // YASAL-4 Y4-D (K-10b): yalnız ALTIN bacakları özel matraha girer
         // (bkz. OzelMatrahKapsaminda). Gümüş/platin bacağı ALTIN fiyatıyla
@@ -435,12 +446,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         {
             var kur = string.IsNullOrEmpty(h.KurSnapshotId)
                 ? null : kurlar.GetValueOrDefault(h.KurSnapshotId);
-            if (kur is null || kur.AltinHasFiyati <= 0m)
-                throw new BadRequestException(
-                    "Faturalandırılan işlemin kur kaydı bulunamadı — has bedeli hesaplanamaz");
-            // HER BACAK KENDİ KUR KAYDIYLA: tek kur VARSAYILMAZ (fişin kalemleri
-            // farklı KurSnapshotId taşıyabilir).
-            bacaklar.Add(new HasBacagi(Math.Abs(h.HasGrami), kur.AltinHasFiyati));
+            // HER BACAK KENDİ KUR KAYDIYLA (ISLEM_KURU): tek kur VARSAYILMAZ (fişin kalemleri
+            // farklı KurSnapshotId taşıyabilir). Kapanış kaynağında hepsi aynı son işgünü kapanışı.
+            bacaklar.Add(new HasBacagi(Math.Abs(h.HasGrami), cozum.Fiyat(kur?.AltinHasFiyati,
+                "Faturalandırılan işlemin kur kaydı bulunamadı — has bedeli hesaplanamaz")));
         }
         return bacaklar;
     }
@@ -509,7 +518,11 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             kumeBinde = bindeler.Count == 1 ? bindeler[0] : null;
         }
 
-        var bacaklar = await HasBacaklariniTopla(kume, islem);
+        // KUR KAYNAKLARI (17.10): önizleme kaydetmeyle AYNI kaynağı kullanır (bugünün faturası için).
+        var matrahCozum = await Kur.OzelMatrahKaynakCozucu.Coz(db, islem.TenantId, DateTime.UtcNow);
+        var bacaklar = kumeBinde is null
+            ? await HasBacaklariniTopla(kume, islem, matrahCozum)
+            : await HasBacaklariniTopla(kume, islem, Kur.OzelMatrahKaynakCozucu.IslemKuruCozumu(DateTime.UtcNow));
         var (hasGram, hasDeger) = OzelMatrahMotoru.HasBedeli(bacaklar);
 
         // Zaten damgalı bir küme faturalanamaz; ÖNİZLEME bunu HATA olarak değil
@@ -557,6 +570,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             kdvTutar,
             araToplam,
             hasDegerKaynagi = "HAREKET",
+            // KUR KAYNAKLARI (17.10): has bedelinin kaynak kodu + kullanılan kapanış (kaydetmeyle aynı).
+            ozelMatrahKaynakKodu = kumeBinde is null ? matrahCozum.BelgeKodu(false) : Kur.KurKaynakKodlari.Binde,
+            ozelMatrahKapanisGunu = kumeBinde is null ? matrahCozum.BelgeGunu : null,
+            ozelMatrahKapanisFiyati = kumeBinde is null ? matrahCozum.BelgeFiyati : null,
             faturaNo = damgali,
             uyari,
             // Y4-D: kümede has bacağı olan altın DIŞI (gümüş/platin/paladyum) satır var
@@ -771,6 +788,9 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         var faturaId = Kimlik.Ulid();
         var now = DateTime.UtcNow;
         var tarih = dto.Tarih ?? now;
+        // KUR KAYNAKLARI (17.10): belgenin TEK has bedeli fiyat kaynağı (kalemler karışmaz).
+        var matrahCozum = kdvTuru == "KUYUM" ? await Kur.OzelMatrahKaynakCozucu.Coz(db, islem.TenantId, tarih) : null;
+        var bindeKullanildi = false;
 
         var kalemler = new List<Data.FaturaKalemi>(girdiler.Count);
         for (var i = 0; i < girdiler.Count; i++)
@@ -800,17 +820,31 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                     ? kurlar.GetValueOrDefault(hareket.KurSnapshotId)
                     : sonKur;
                 // Y4-D: altın dışı ürün kaleminde has bedeli düşülmez (kur da gerekmez).
-                if (OzelMatrahKapsaminda(kalemMaden))
+                // M2b: binde yöntemli üründe has fiyatı KULLANILMAZ — kapanış aranmaz (bugünkü kural).
+                if (OzelMatrahKapsaminda(kalemMaden) && urun.KdvMatrahBinde is > 0m)
                 {
-                    if (kur is null || kur.AltinHasFiyati <= 0m)
+                    bindeKullanildi = true;
+                    if (kur is { AltinHasFiyati: > 0m })
+                    {
+                        bacaklar.Add(new HasBacagi(
+                            KalemToplamHas(Math.Round(g.Miktar, 3, MidpointRounding.AwayFromZero), urun.HasGrami)!.Value,
+                            kur.AltinHasFiyati));
+                        kalemKuru = kur.AltinHasFiyati;
+                    }
+                    else
                         throw new BadRequestException(
                             $"{i + 1}. kalem için kur kaydı bulunamadı — has bedeli hesaplanamaz");
-
-                    // Değişmez: has bedeli = round2(KALEME YAZILAN has gram × dayanak kur) — PATCH yoluyla aynı.
+                }
+                else if (OzelMatrahKapsaminda(kalemMaden))
+                {
+                    // Değişmez: has bedeli = round2(KALEME YAZILAN has gram × dayanak fiyat) — PATCH yoluyla aynı.
+                    // KUR KAYNAKLARI: dayanak fiyat = ISLEM_KURU'da kur kaydı, diğerlerinde son işgünü kapanışı.
+                    var dayanak = matrahCozum!.Fiyat(kur?.AltinHasFiyati,
+                        $"{i + 1}. kalem için kur kaydı bulunamadı — has bedeli hesaplanamaz");
                     bacaklar.Add(new HasBacagi(
                         KalemToplamHas(Math.Round(g.Miktar, 3, MidpointRounding.AwayFromZero), urun.HasGrami)!.Value,
-                        kur.AltinHasFiyati));
-                    kalemKuru = kur.AltinHasFiyati;
+                        dayanak));
+                    kalemKuru = dayanak;
                 }
             }
 
@@ -900,6 +934,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             OzelMatrahKodu  = OzelMatrahKoduFor(kdvTuru, hasDeger),
             HasGram         = kdvTuru == "KUYUM" ? KalemHasGrami(kalemler) : null,
             HasBirimFiyat   = kdvTuru == "KUYUM" ? OzetKur(hasDeger, KalemHasGrami(kalemler)) : null,
+            // KUR KAYNAKLARI (17.10): has bedelinin kaynak kodu + kapanış günü + fiyatı.
+            OzelMatrahKaynakKodu    = matrahCozum?.BelgeKodu(bindeKullanildi),
+            OzelMatrahKapanisGunu   = matrahCozum?.BelgeGunu,
+            OzelMatrahKapanisFiyati = matrahCozum?.BelgeFiyati,
         });
         db.FaturaKalemleri.AddRange(kalemler);
         await db.SaveChangesAsync();
@@ -1071,6 +1109,9 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         var faturaId = Kimlik.Ulid();
         var now = DateTime.UtcNow;
         var tarih = dto.Tarih ?? now;
+        // KUR KAYNAKLARI (17.10): belgenin TEK has bedeli fiyat kaynağı.
+        var matrahCozum = kdvTuru == "KUYUM" ? await Kur.OzelMatrahKaynakCozucu.Coz(db, islem.TenantId, tarih) : null;
+        var bindeKullanildi = false;
 
         var kalemler = new List<Data.FaturaKalemi>(hareketler.Count);
         var altinHasGram = 0m;   // Y4-D: başlık has gramı — yalnız altın bacakları
@@ -1139,11 +1180,17 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                     // FAIL-CLOSED: kur kaydı yoksa "has bedeli 0" varsayılmaz —
                     // 0 yazmak tüm tutarı matraha sokar, kuyumcuya FAZLA KDV ödetir.
                     var kur = string.IsNullOrEmpty(h.KurSnapshotId) ? null : kurlar.GetValueOrDefault(h.KurSnapshotId);
-                    if (kur is null || kur.AltinHasFiyati <= 0m)
-                        throw new BadRequestException(
-                            $"{i + 1}. kalem için kur kaydı bulunamadı — has bedeli hesaplanamaz");
-                    bacaklar.Add(new HasBacagi(hasGram, kur.AltinHasFiyati));
-                    kalemKuru = kur.AltinHasFiyati;
+                    var kurYok = $"{i + 1}. kalem için kur kaydı bulunamadı — has bedeli hesaplanamaz";
+                    decimal dayanak;
+                    if (urun?.KdvMatrahBinde is > 0m)
+                    {   // M2b: binde yöntemi fiyat KULLANMAZ — kapanış aranmaz; kur kapısı bugünkü gibi.
+                        bindeKullanildi = true;
+                        dayanak = kur is { AltinHasFiyati: > 0m } ? kur.AltinHasFiyati : throw new BadRequestException(kurYok);
+                    }
+                    else
+                        dayanak = matrahCozum!.Fiyat(kur?.AltinHasFiyati, kurYok);   // KUR KAYNAKLARI
+                    bacaklar.Add(new HasBacagi(hasGram, dayanak));
+                    kalemKuru = dayanak;
                 }
 
                 var sonuc = OzelMatrahMotoru.Hesapla(bacaklar, satirToplam, kalemOran, kdvTuru == "KUYUM" ? urun?.KdvMatrahBinde : null);
@@ -1224,6 +1271,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             // ürünsüz gümüş satırı da dışarıda kalır).
             HasGram         = kdvTuru == "KUYUM" ? OzelMatrahMotoru.Yuvarla6(altinHasGram) : null,
             HasBirimFiyat   = kdvTuru == "KUYUM" ? OzetKur(hasToplam, OzelMatrahMotoru.Yuvarla6(altinHasGram)) : null,
+            // KUR KAYNAKLARI (17.10): has bedelinin kaynak kodu + kapanış günü + fiyatı.
+            OzelMatrahKaynakKodu    = matrahCozum?.BelgeKodu(bindeKullanildi),
+            OzelMatrahKapanisGunu   = matrahCozum?.BelgeGunu,
+            OzelMatrahKapanisFiyati = matrahCozum?.BelgeFiyati,
         });
         db.FaturaKalemleri.AddRange(kalemler);
         await db.SaveChangesAsync();
@@ -1621,11 +1672,29 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
                 var sonKur = await db.KurSnapshots.AsNoTracking()
                     .Where(k => k.TenantId == islem.TenantId)
                     .OrderByDescending(k => k.Olusturuldu).FirstOrDefaultAsync();
-                if (sonKur is null || sonKur.AltinHasFiyati <= 0m)
-                    throw new BadRequestException("Kur kaydı bulunamadı — has bedeli hesaplanamaz");
-                // Değişmez: has bedeli = round2(KALEME YAZILAN has gram × dayanak kur) — PATCH yoluyla aynı.
-                bacaklar.Add(new HasBacagi(KalemToplamHas(miktar, urun.HasGrami)!.Value, sonKur.AltinHasFiyati));
-                kalemKuru = sonKur.AltinHasFiyati;
+                decimal dayanak;
+                if (urun.KdvMatrahBinde is > 0m)
+                {   // M2b: binde yöntemi fiyat KULLANMAZ — bugünkü kur kapısı aynen.
+                    if (sonKur is null || sonKur.AltinHasFiyati <= 0m)
+                        throw new BadRequestException("Kur kaydı bulunamadı — has bedeli hesaplanamaz");
+                    dayanak = sonKur.AltinHasFiyati;
+                    if (fatura.OzelMatrahKaynakKodu is null) fatura.OzelMatrahKaynakKodu = Kur.KurKaynakKodlari.Binde;
+                }
+                else
+                {
+                    // KUR KAYNAKLARI (17.10): belgenin İLK fiyat kaynağı ve kapanış günü korunur
+                    // (bir belgede iki kapanış olmaz); belge henüz fiyat kullanmadıysa kiracının ayarı.
+                    var fiyatliKod = fatura.OzelMatrahKaynakKodu is { } k && k != Kur.KurKaynakKodlari.Binde ? k : null;
+                    var cozum = await Kur.OzelMatrahKaynakCozucu.Coz(db, islem.TenantId, fatura.Tarih,
+                        fiyatliKod, fiyatliKod is null ? null : fatura.OzelMatrahKapanisGunu);
+                    dayanak = cozum.Fiyat(sonKur?.AltinHasFiyati, "Kur kaydı bulunamadı — has bedeli hesaplanamaz");
+                    fatura.OzelMatrahKaynakKodu = cozum.BelgeKodu(false);
+                    fatura.OzelMatrahKapanisGunu = cozum.BelgeGunu;
+                    fatura.OzelMatrahKapanisFiyati = cozum.BelgeFiyati;
+                }
+                // Değişmez: has bedeli = round2(KALEME YAZILAN has gram × dayanak fiyat) — PATCH yoluyla aynı.
+                bacaklar.Add(new HasBacagi(KalemToplamHas(miktar, urun.HasGrami)!.Value, dayanak));
+                kalemKuru = dayanak;
             }
         }
 
@@ -1848,6 +1917,10 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
         f.AliciUnvan, f.AliciVergiNo, f.AliciKimlikTuru, f.AliciAdres,
         f.HasGram,
         f.HasBirimFiyat,
+        // KUR KAYNAKLARI (17.10): has bedelinin kaynak kodu + kullanılan kapanış günü ve fiyatı.
+        f.OzelMatrahKaynakKodu,
+        f.OzelMatrahKapanisGunu,
+        f.OzelMatrahKapanisFiyati,
         CariAd = cariAd ?? "—",
         IslemdenGeldi = islemdenGeldi,
     };

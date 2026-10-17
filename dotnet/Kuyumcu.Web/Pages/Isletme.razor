@@ -403,7 +403,43 @@
                                     <span class="rozet rozet-amber" id="i-kur-kaynagi-varsayilan">@Dil.T.Yonetim.AyarBelirlenmedi</span>
                                 }
                                 <span class="metin-soluk metin-kucuk" id="i-kur-kaynagi-not">@Dil.T.Yonetim.KurKaynagiNotu</span>
+                                @if (SeciliDurum(kaynakYaniti?.AltinSecenekleri, tenant.KurKaynagi) is { } altinDurum)
+                                {
+                                    <span class="metin-soluk metin-kucuk" id="i-kur-kaynagi-durum">@altinDurum</span>
+                                }
                             </div>
+                            @* ── KUR KAYNAKLARI (kurucu 17.10) — döviz kaynağı altın kaynağından AYRI; faturada has
+                               fiyatı (KDVK 23/e) kaynağı. Seçim TASLAKTIR (KESIF-P1 #12): kayıt aşağıdaki onayla.
+                               Seçilemeyen seçenek listede SEBEBİYLE görünür (anahtar yok / izinsiz kaynak kapalı). *@
+                            @if (kaynakYaniti?.DovizSecenekleri is { Count: > 0 })
+                            {
+                                <div class="alan">
+                                    <Secici ElemanId="i-doviz-kaynagi" Etiket="@KK.DovizKaynagi"
+                                            Secenekler="@DovizSecenekleri" Deger="@taslakDoviz" DegerChanged="@DovizSecildiDeger"
+                                            Devredisi="@(SaltOkunur || kaydediliyor)" DevredisiSebebi="@SaltOkunurSebebi" />
+                                    @if (SeciliDurum(kaynakYaniti.DovizSecenekleri, kaynakYaniti.DovizSecili) is { } dovizDurum)
+                                    {
+                                        <span class="metin-soluk metin-kucuk" id="i-doviz-kaynagi-durum">@dovizDurum</span>
+                                    }
+                                </div>
+                            }
+                            @if (kaynakYaniti?.OzelMatrahSecenekleri is { Count: > 0 })
+                            {
+                                <div class="alan">
+                                    <Secici ElemanId="i-has-fiyat-kaynagi" Etiket="@KK.HasFiyatKaynagi"
+                                            Secenekler="@HasFiyatSecenekleri" Deger="@taslakHasFiyat" DegerChanged="@HasFiyatSecildiDeger"
+                                            Devredisi="@(SaltOkunur || kaydediliyor)" DevredisiSebebi="@SaltOkunurSebebi" />
+                                    @* P-26 kuralı: has fiyatı (özel matrah) bilgisi gösteren ekran KAYNAĞINI da yazar — seçili kaynağın durumu. *@
+                                    @if (SeciliDurum(kaynakYaniti.OzelMatrahSecenekleri, kaynakYaniti.OzelMatrahSecili) is { } ozelMatrahKaynakDurumu)
+                                    {
+                                        <span class="metin-soluk metin-kucuk" id="i-has-fiyat-durum">@ozelMatrahKaynakDurumu</span>
+                                    }
+                                    @if (kaynakYaniti.OzelMatrahSecili is "BIST" or "ELLE")
+                                    {
+                                        <button type="button" class="btn btn-ikincil btn-kucuk" id="i-kapanis-ac" disabled="@SaltOkunur" @onclick="KapanisAc">+ @KK.KapanisGir</button>
+                                    }
+                                </div>
+                            }
                             <div class="alan">
                                 <Secici ElemanId="i-maliyet-yontemi"
                                         Etiket="@Dil.T.Yonetim.MaliyetYontemi"
@@ -520,6 +556,22 @@
             <HataBandi Mesaj="@subeModalHata" Id="s-hata" />
         </div>
     }
+</Cekmece>
+@* ── KUR KAYNAKLARI (17.10) — has fiyatı gün kapanışı (BIST bülteni ya da kendi değeri). POST /kur/kapanis SAHİP/MÜDÜR. ── *@
+<Cekmece Acik="kapanisAcik" Varlik="kapanis" Baslik="@KK.KapanisGir"
+         Kaydediliyor="@kaydediliyor" KaydetAktif="@KapanisGecerli" KilitSebebi="@(KapanisGecerli ? null : Dil.T.Yonetim.ZorunluAlan)"
+         Kapat="() => kapanisAcik = false" Kaydet="KapanisKaydet">
+    <div class="form-dikey">
+        <Tarih ElemanId="k-gun" Etiket="@KK.Gun" Zorunlu="true" Deger="@kapanisGun" DegerChanged="@(v => kapanisGun = v)"
+               EnGec="@KapanisBugun" Tur="TarihTuru.Islem" />
+        <Para ElemanId="k-deger" Etiket="@KK.Kapanis" Zorunlu="true" Tur="TutarTuru.Pozitif"
+              Deger="@kapanisDeger" DegerChanged="@(v => kapanisDeger = v)" />
+        <Secici ElemanId="k-birim" Etiket="@KK.Birim" Secenekler="@KapanisBirimleri"
+                Deger="@kapanisBirim" DegerChanged="@(v => kapanisBirim = v ?? "TL_GRAM")" />
+        <Metin ElemanId="k-not" Etiket="@KK.Not" EnFazla="@AlanSinirlari.KapanisDayanakEnCok"
+               Deger="@kapanisNot" DegerChanged="@(v => kapanisNot = v)" />
+        <HataBandi Mesaj="@kapanisHata" Id="k-hata" />
+    </div>
 </Cekmece>
 </CascadingValue>
 
@@ -764,6 +816,13 @@
             if (secilenArayuzModu != tenant.VarsayilanArayuzModu)
                 l.Add(("mod", Dil.T.Arayuz.VarsayilanBaslik,
                     string.Format(P1.AyarModEtki, ModAdi(tenant.VarsayilanArayuzModu), ModAdi(secilenArayuzModu))));
+            // KUR KAYNAKLARI (17.10): döviz kaynağı ve faturada has fiyatı — aynı taslak + onay akışı.
+            if (kaynakYaniti is not null && taslakDoviz.Length > 0 && taslakDoviz != (kaynakYaniti.DovizSecili ?? ""))
+                l.Add(("doviz", KK.DovizKaynagi,
+                    string.Format(KK.DovizEtki, KurKaynakAdi.Ad(kaynakYaniti.DovizSecili, Dil.T), KurKaynakAdi.Ad(taslakDoviz, Dil.T))));
+            if (kaynakYaniti is not null && taslakHasFiyat.Length > 0 && taslakHasFiyat != (kaynakYaniti.OzelMatrahSecili ?? ""))
+                l.Add(("matrah", KK.HasFiyatKaynagi,
+                    string.Format(KK.HasFiyatEtki, KurKaynakAdi.Ad(kaynakYaniti.OzelMatrahSecili, Dil.T), KurKaynakAdi.Ad(taslakHasFiyat, Dil.T))));
             if (vezneOkundu && taslakVezne != vezneZorunlu)
                 l.Add(("vezne", Dil.T.Vezne.AyrimZorunlu,
                     string.Format(P1.AyarVezneEtki, VezneAdi(vezneZorunlu), VezneAdi(taslakVezne))));
@@ -782,6 +841,8 @@
     private void TaslagiSifirla()
     {
         taslakKurKaynagi = tenant?.KurKaynagi ?? "";
+        taslakDoviz = kaynakYaniti?.DovizSecili ?? "";
+        taslakHasFiyat = kaynakYaniti?.OzelMatrahSecili ?? "";
         taslakMaliyet = tenant?.MaliyetYontemi ?? "";
         if (tenant is not null) secilenArayuzModu = tenant.VarsayilanArayuzModu;
         taslakVezne = vezneZorunlu;
@@ -817,6 +878,8 @@
                 {
                     case "maliyet": await MaliyetYontemiSecildi(new ChangeEventArgs { Value = taslakMaliyet }); break;
                     case "kur": await KurKaynagiSecildi(new ChangeEventArgs { Value = taslakKurKaynagi }); break;
+                    case "doviz": await KaynakAyariYaz("/kur/doviz-kaynak", taslakDoviz); break;
+                    case "matrah": await KaynakAyariYaz("/kur/ozel-matrah-kaynak", taslakHasFiyat); break;
                     case "mod": await ArayuzModuKaydet(); break;
                     case "vezne": await VezneDegistir(taslakVezne); break;
                 }
@@ -1024,8 +1087,114 @@
         {
             var y = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Panel.KaynakYaniti>("/kur/kaynaklar");
             kurKaynaklari = [.. y.Kaynaklar ?? []];
+            kaynakYaniti = y;
+            taslakDoviz = y.DovizSecili ?? "";
+            taslakHasFiyat = y.OzelMatrahSecili ?? "";
         }
         catch (ApiHata ex) { adminHata = ex.Message; }
+    }
+
+    // ═══ KUR KAYNAKLARI (kurucu 17.10) — döviz kaynağı · faturada has fiyatı · gün kapanışı ═══
+    private KurKaynakMetinleri KK => KurKaynakSozlugu.Al(Dil.Dil);
+    private Kuyumcu.Contracts.Sayfalar.Panel.KaynakYaniti? kaynakYaniti;
+    private string taslakDoviz = "";
+    private string taslakHasFiyat = "";
+
+    private void DovizSecildiDeger(string? v) { taslakDoviz = v ?? ""; ayarOnayHata = null; }
+    private void HasFiyatSecildiDeger(string? v) { taslakHasFiyat = v ?? ""; ayarOnayHata = null; }
+
+    /// <summary>Seçeneğin kısa durumu: seçilemez sebebi ya da (izinsiz · son çekim · son kapanış). Açıklama paragrafı yok.</summary>
+    private string? Durum(Kuyumcu.Contracts.Sayfalar.Panel.KaynakSecenegiVeri s)
+    {
+        if (s.Engel is "ANAHTAR_YOK") return KK.AnahtarYok;
+        if (s.Engel is not null) return KK.Kapali;
+        var parca = new List<string>(3);
+        if (s.Sozlesmesiz) parca.Add(KK.Sozlesmesiz);
+        if (s.SonCekim is { } t) parca.Add(string.Format(KK.SonCekim, Bicim.IsletmeSaati(t)));
+        if (s.SonKapanisGunu is { } g)
+            parca.Add(string.Format(KK.SonKapanis, Bicim.Gun(g),
+                s.SonKapanisFiyati is { } f ? Bicim.Tl(f) : "—"));
+        else if (s.Kod is "BIST" or "ELLE" or "HAREM" or "ALTINKAYNAK" && kaynakYaniti?.OzelMatrahSecenekleri?.Contains(s) == true)
+            parca.Add(KK.KapanisYok);
+        return parca.Count == 0 ? null : string.Join(" · ", parca);
+    }
+
+    private string? SeciliDurum(List<Kuyumcu.Contracts.Sayfalar.Panel.KaynakSecenegiVeri>? liste, string? kod) =>
+        liste?.FirstOrDefault(s => s.Kod == kod) is { } s ? Durum(s) : null;
+
+    private IReadOnlyList<SecenekOgesi> DovizSecenekleri =>
+        [.. (kaynakYaniti?.DovizSecenekleri ?? []).Select(s =>
+            new SecenekOgesi(s.Kod, KurKaynakAdi.Ad(s.Kod, Dil.T), Durum(s), Pasif: s.Engel is not null))];
+
+    private IReadOnlyList<SecenekOgesi> HasFiyatSecenekleri =>
+        [.. (kaynakYaniti?.OzelMatrahSecenekleri ?? []).Select(s =>
+            new SecenekOgesi(s.Kod, KurKaynakAdi.Ad(s.Kod, Dil.T), Durum(s), Pasif: s.Engel is not null))];
+
+    /// <summary>Döviz / has fiyatı kaynağı yazma (PATCH, SAHİP/MÜDÜR) + durumu yeniden oku.</summary>
+    private async Task KaynakAyariYaz(string uc, string kod)
+    {
+        if (string.IsNullOrWhiteSpace(kod)) return;
+        adminHata = null;
+        try
+        {
+            await Api.PatchAsync<object>(uc, new { kaynak = kod });
+            await KurKaynaklariYukle();
+        }
+        catch (ApiHata ex) { adminHata = ex.Message; }
+    }
+
+    // ── gün kapanışı girişi (BIST bülteni ya da kendi değeri) ──
+    private bool kapanisAcik;
+    private DateOnly? kapanisGun;
+    private decimal? kapanisDeger;
+    private string kapanisBirim = "TL_GRAM";
+    private string? kapanisNot;
+    private string? kapanisHata;
+
+    private static DateOnly KapanisBugun => Bicim.IsletmeGunu(DateTime.UtcNow);   // işletme günü (Europe/Istanbul)
+
+    private IReadOnlyList<SecenekOgesi> KapanisBirimleri =>
+    [
+        new SecenekOgesi("TL_GRAM", KK.BirimGram),
+        new SecenekOgesi("TL_KG", KK.BirimKg),
+    ];
+
+    private bool KapanisGecerli => kapanisGun is not null && kapanisDeger is > 0m;
+
+    private void KapanisAc()
+    {
+        kapanisHata = null;
+        kapanisDeger = null;
+        kapanisNot = null;
+        // Son işgünü önerisi: dün; hafta sonuysa cuma (tatil günü kuyumcu seçer).
+        var g = KapanisBugun.AddDays(-1);
+        while (g.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) g = g.AddDays(-1);
+        kapanisGun = g;
+        kapanisBirim = kaynakYaniti?.OzelMatrahSecili == "BIST" ? "TL_KG" : "TL_GRAM";
+        kapanisAcik = true;
+    }
+
+    private async Task KapanisKaydet()
+    {
+        if (!KapanisGecerli || kaynakYaniti?.OzelMatrahSecili is not ("BIST" or "ELLE") ) return;
+        kapanisHata = null;
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync<object>("/kur/kapanis", new
+            {
+                kaynak = kaynakYaniti.OzelMatrahSecili,
+                gun = Bicim.Makine(kapanisGun!.Value),
+                deger = kapanisDeger,
+                birim = kapanisBirim,
+                dayanak = string.IsNullOrWhiteSpace(kapanisNot) ? null : kapanisNot.Trim(),
+            });
+            kapanisAcik = false;
+            await KurKaynaklariYukle();
+            BasariGoster(KK.KapanisKaydedildi);
+        }
+        catch (ApiHata ex) { kapanisHata = ex.Message; }
+        finally { kaydediliyor = false; }
     }
 
     private async Task KurKaynagiSecildi(ChangeEventArgs e)

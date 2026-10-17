@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 8f1f0fc92abb0d12ab3ca90641915d1962ce6e696955c0e40e7a53625891da0d · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 02706f1d9e5add5a481841ed8906aed3d6d8d279ec19b65de372e6ccfc6324a6 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -140,6 +140,7 @@
       <a href="#arayuz">Arayüz turu</a>
       <a href="#gunluk-akis">Bir iş günü</a>
       <a href="#kur">Kur</a>
+      <a class="alt" href="#kur-kaynaklari">— Kur kaynakları</a>
       <div class="bolum">Günlük İş</div>
       <a href="#panel">Panel</a>
       <a href="#islemler">Satış</a>
@@ -303,6 +304,21 @@
         <li><strong>Elle kur girişi:</strong> kaynağa ulaşılamıyorsa yetkili kullanıcı kuru elle girebilir; elle girilen kur ekranda öyle işaretlenir.</li>
       </ul>
       <div class="kutu uyari"><p>Her işlem o andaki kura bağlanır. Kur yanlışsa has hesabı da yanlış olur. Kur çubuğu &quot;kur yok&quot; ya da &quot;eski&quot; diyorsa satış yapmadan önce kuru yenileyin.</p></div>
+      <h3 id="kur-kaynaklari">Kur kaynakları</h3>
+      <p>Kurların nereden geldiğini <strong>İşletme → Ayarlar</strong> sekmesinden siz seçersiniz. Üç ayrı seçim vardır; her birinin yanında kısa bir durum yazar (son çekim saati, son kapanış, &quot;anahtar tanımlı değil&quot; gibi). Seçim hemen yazılmaz: <strong>Değişikliği kaydet</strong> düğmesine basıp açılan pencerede onaylarsınız. Bu ayarları işletme sahibi değiştirir.</p>
+      <ol class="adimlar">
+        <li><strong>Kur kaynağı (altın):</strong> has altın ve sarrafiye fiyatlarının geldiği yer — Altınkaynak, Harem Altın, Truncgil ya da Ankara Altın Borsası.</li>
+        <li><strong>Döviz kaynağı:</strong> dolar, euro ve sterlin kurunun geldiği yer. Altın kaynağından ayrı seçilir. <strong>Merkez Bankası (EVDS)</strong> önerilen kaynaktır; bunun için işletmenize ait EVDS anahtarının sistemde tanımlı olması gerekir. Anahtar yoksa bu seçenek soluk görünür ve seçilemez. İsterseniz <strong>Altın kaynağıyla aynı</strong> seçeneğiyle dövizi altın kaynağından da alabilirsiniz. Merkez Bankası günde bir kez kur yayımladığı için döviz kuru gün içinde değişmez.</li>
+        <li><strong>Faturada has fiyatı:</strong> kuyum faturasında KDV'nin dışında bırakılan has altın bedelinin hangi fiyatla hesaplanacağı. Mevzuat bu fiyat için Borsa İstanbul'un son işgünü külçe altın kapanışını ister; yeni işletmelerde varsayılan budur. - <strong>Borsa İstanbul kapanışı:</strong> her işgünü Borsa İstanbul günlük bülteninden kapanışı siz girersiniz (aşağıya bakın). - <strong>Harem Altın</strong> ya da <strong>Altınkaynak:</strong> kapanış o kaynaktan kendiliğinden alınır. - <strong>Kendi girdiğim kapanış:</strong> kapanışı kendi belirlediğiniz değerle girersiniz. - <strong>Satıştaki kur:</strong> satış anındaki kur kullanılır (önceki davranış).</li>
+      </ol>
+      <p>Faturada <strong>son işgününün</strong> kapanışı kullanılır: bugünün faturası dünün (hafta sonuysa cumanın) kapanışıyla hesaplanır. Son 10 günde kapanış yoksa fatura <strong>kesilmez</strong> ve ekran nedenini söyler; kapanışı girdikten sonra faturayı yeniden kesin. Her faturaya kullanılan kaynağın kodu (BIST, HAREM, ALTINKAYNAK, ELLE, ISLEM_KURU) ile kapanışın günü ve fiyatı yazılır. Ürün kartında &quot;binde&quot; pay tanımlı ürünlerde has fiyatı kullanılmaz; o faturaya BINDE yazılır.</p>
+      <p><strong>Kapanışı elle girme:</strong> <strong>İşletme → Ayarlar</strong>'da has fiyatı kaynağı Borsa İstanbul ya da Kendi girdiğim kapanış seçiliyken <strong>+ Kapanış gir</strong> düğmesi görünür. Günü seçin, kapanış değerini yazın ve birimini seçin. Borsa İstanbul bülteni fiyatı <strong>TL / kg</strong> olarak yayımlar; bu birimi seçerseniz değer 1.000'e bölünerek gram fiyatına çevrilir (1000/1000 saflık). Yanlış girdiyseniz aynı günü yeniden girerek düzeltebilirsiniz; ancak bir faturada kullanılmış kapanış artık değiştirilemez.</p>
+      <div class="kutu uyari"><p>Harem Altın, Altınkaynak, Truncgil ve Ankara Altın Borsası ile veri kullanım sözleşmemiz yoktur. Bu kaynaklar ekranda <strong>İzinsiz kaynak</strong> diye işaretlenir ve yalnız sistem yöneticisi açtığında görünür. Harem Altın için yazılı izin başvurusu satış sonrasında yapılacaktır; o zamana kadar ticari kullanım riski işletmeye aittir.</p></div>
+      <p><strong>Kuru koruyan iki kapı:</strong></p>
+      <ul>
+        <li><strong>Eski kur:</strong> kaynaktan birkaç dakikadır yeni kur gelmiyorsa satış ve alış kaydedilmez; ekran kurun hangi saatten beri güncellenmediğini söyler. Kur ekranından kuru yenileyin ya da elle girin. Elle girilen kur yalnız girildiği gün geçerlidir.</li>
+        <li><strong>Ani sıçrama:</strong> kaynaktan gelen fiyat son kurdan çok farklıysa (yüzde 20'den fazla) yazılmaz; fiyatlar eski kurda kalır ve Sahip ile Müdür'e bildirim gider. Fiyat gerçekten doğruysa Kur ekranından elle girip &quot;Fiyat doğru&quot; onayıyla ve nedenini yazarak kaydedin.</li>
+      </ul>
     </section>
 
     <section id="panel">
