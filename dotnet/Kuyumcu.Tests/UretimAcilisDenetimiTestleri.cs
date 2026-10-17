@@ -267,4 +267,26 @@ public class UretimAcilisDenetimiTestleri
             .First(p => p.TrimStart().StartsWith("password=", StringComparison.OrdinalIgnoreCase));
         return parca[(parca.IndexOf('=') + 1)..];
     }
+
+    // ── 17.10 P0-2 — mevzuat kilidi: kapı bayrağı üretimde kapatılamaz ─────────
+    [Theory]
+    [InlineData("Tevsik:Etkin")]
+    [InlineData("Tevsik:IslemTutariKuraliEtkin")]
+    [InlineData("Isler:Etkin")]
+    [InlineData("Isler:Masak:Etkin")]
+    public void Mevzuat_kapisi_bayragi_false_ise_uretim_ACILMAZ(string anahtar)
+    {
+        var y = new ConfigurationBuilder().AddConfiguration(Yapilandirma())
+            .AddInMemoryCollection(new Dictionary<string, string?> { [anahtar] = "false" }).Build();
+        var hata = Durdu(y);
+        Assert.Contains(anahtar, hata.Message);
+    }
+
+    [Fact]
+    public void Mevzuat_bayraklari_acik_ya_da_tanimsizken_uretim_acilir()
+    {
+        var y = new ConfigurationBuilder().AddConfiguration(Yapilandirma())
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Tevsik:Etkin"] = "true", ["Isler:Masak:Etkin"] = "True" }).Build();
+        UretimAcilisDenetimi.Dogrula(y, new SahteOrtam());
+    }
 }

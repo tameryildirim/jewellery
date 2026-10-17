@@ -49,6 +49,13 @@ public static class UretimAcilisDenetimi
     public const string YedekAnahtari = "Yedek:SifrelemeAnahtari";
 
     /// <summary>
+    /// Üretimde "false" olamayacak mevzuat bayrakları. ⚠ Isler:Etkin listede: tüm iş turunu kapatır,
+    /// MASAK bildirim süresi sayacı da durur.
+    /// </summary>
+    public static readonly string[] MevzuatKilitAnahtarlari =
+        ["Tevsik:Etkin", "Tevsik:IslemTutariKuraliEtkin", "Isler:Etkin", "Isler:Masak:Etkin"];
+
+    /// <summary>
     /// Kara listedeki GERÇEK (yer tutucu olmayan) örnek sırların SHA-256 parmak izleri.
     /// Sıra: [0] appsettings.Development.json Jwt:Secret, [1] geliştirme MySQL parolası.
     /// </summary>
@@ -126,6 +133,17 @@ public static class UretimAcilisDenetimi
             throw new InvalidOperationException(
                 $"{YedekAnahtari} ile {AlanSifreleme.YapilandirmaAnahtari} aynı olamaz " +
                 "(yedek anahtarı alan şifreleme anahtarından ayrı tutulur).");
+
+        // ── FAIL-CLOSED 5: MEVZUAT KİLİDİ (17.10, eksik/fazla P0-2) ──────────
+        // Mevzuatın zorunlu kıldığı kapılar bir yapılandırma bayrağıyla SESSİZCE
+        // kapatılamaz: 459 s. VUK GT tevsik kapısı ve MASAK şüpheli işlem bildirim
+        // süresi sayacı (Tedbirler Yön. md.28/2 — 10 iş günü). Bayrak kapalıysa
+        // üretim açılmaz; kural kod ve yasal parametre tablosuyla değişir, ayarla değil.
+        foreach (var anahtar in MevzuatKilitAnahtarlari)
+            if (string.Equals(yapilandirma[anahtar], "false", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    $"{anahtar}=false — mevzuat kapısı yapılandırmayla kapatılamaz (459 s. VUK GT / MASAK md.28). " +
+                    "Uygulama açılmıyor — fail-closed.");
 
         // ── FAIL-CLOSED 4: TLS ──────────────────────────────────────────────
         // Ya Kestrel doğrudan HTTPS dinler, ya da ters vekil arkasında olduğu
