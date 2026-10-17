@@ -59,6 +59,19 @@ public sealed class BankaKararDto
     [Required(ErrorMessage = "Karar zorunludur")]
     [RegularExpression("BORC|SATIS", ErrorMessage = "Karar BORC ya da SATIS olmalıdır")]
     public string Karar { get; set; } = null!;
+
+    /// <summary>
+    /// 17.10 — BORC kararında paranın hangi borçlu satışlara ne kadar sayılacağı (TBK 101/1: borçlunun beyanı).
+    /// Boş = bugünkü gibi en eski borçtan (FIFO). Σ tutar ≤ gelen para; her satır ≤ o satışın açık kalanı.
+    /// </summary>
+    [MaxLength(50)]
+    public List<MahsupDto>? Mahsuplar { get; set; }
+}
+
+public sealed class MahsupDto
+{
+    [Required, StringLength(36, MinimumLength = 1)] public string BorcHareketId { get; set; } = null!;
+    [Range(0.01, 999_999_999_999.99)] public decimal TutarTl { get; set; }
 }
 
 public sealed class GelenOdemeServisi(
@@ -224,18 +237,85 @@ public sealed class GelenOdemeServisi(
             .OrderBy(b => b.CariId).Take(cariIdler.Count)
             .ToDictionaryAsync(b => b.CariId, b => b.TlBakiye);
 
-        return satirlar.Select(s => new
+        var hasBorclari = await db.CariBakiyeler.AsNoTracking()
+            .Where(b => b.TenantId == islem.TenantId && cariIdler.Contains(b.CariId))
+            .OrderBy(b => b.CariId).Take(cariIdler.Count)
+            .ToDictionaryAsync(b => b.CariId, b => b.HasGramBakiye);
+        var simdi = DateTime.UtcNow;
+        var satislar = new Dictionary<string, List<BorcluSatis>>();
+        foreach (var c in cariIdler) satislar[c] = await BorcluSatislar(c, islem.TenantId, simdi);
+
+        return satirlar.Select(s =>
         {
-            id = s.Id,
-            bankaHesapId = s.BankaHesapId,
-            tarih = s.Tarih,
-            tutar = s.Tutar,
-            karsiTarafAd = s.KarsiTarafAd,
-            aciklama = s.Aciklama,
-            cariId = s.CariId,
-            cariAd = adlar.GetValueOrDefault(s.CariId!),
-            borcTl = Math.Max(0m, bakiyeler.GetValueOrDefault(s.CariId!)),
+            var liste = satislar[s.CariId!];
+            return new
+            {
+                id = s.Id,
+                bankaHesapId = s.BankaHesapId,
+                tarih = s.Tarih,
+                tutar = s.Tutar,
+                karsiTarafAd = s.KarsiTarafAd,
+                aciklama = s.Aciklama,
+                cariId = s.CariId,
+                cariAd = adlar.GetValueOrDefault(s.CariId!),
+                borcTl = Math.Max(0m, bakiyeler.GetValueOrDefault(s.CariId!)),
+                // Müşterinin bizdeki parası (negatif TL bakiye) — "hesabında X TL var" (araştırma § 1-5).
+                alacakTl = Math.Max(0m, -bakiyeler.GetValueOrDefault(s.CariId!)),
+                // Gram (has) borç ayrı gösterilir; TL'den grama çevrim mali müşavir kararına kadar YOK (araştırma § 1-6).
+                hasBorcGram = Math.Max(0m, hasBorclari.GetValueOrDefault(s.CariId!)),
+                borcluSatislar = OneriDagit(liste, s.Tutar),
+            };
         }).ToList();
+    }
+
+    /// <summary>Açık (borcu kalan) veresiye satış — karar ekranının listesi.</summary>
+    public sealed record BorcluSatis(string HareketId, DateTime Tarih, DateOnly Vade, int GecikmeGun,
+        decimal KalanTl, string? FisId, bool Faturali, bool FaturaSuresiGecti, decimal OneriTl = 0m);
+
+    /// <summary>
+    /// Carinin açık TL borçları (VadeKapisi — mahsup + FIFO yürüyüşü) ve fatura durumları.
+    /// Sıra TBK 102: vadesi gelmiş olanlar önce, vadesi eski olan önce, sonra tarih.
+    /// VUK 231/5: faturası kesilmemiş ve teslimden 7 günü geçmiş satış işaretlenir (fatura bu ekrandan KESİLMEZ).
+    /// </summary>
+    private async Task<List<BorcluSatis>> BorcluSatislar(string cariId, string tenantId, DateTime simdi)
+    {
+        var (borclar, _) = await Vade.VadeKapisi.AcikBorclar(db, tenantId, cariId, simdi);
+        if (borclar.Count == 0) return [];
+        var idler = borclar.Select(b => b.HareketId).ToList();
+        var hareketler = await db.Hareketler.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && idler.Contains(x.Id))
+            .OrderBy(x => x.Id).Take(idler.Count)
+            .Select(x => new { x.Id, x.Tur, x.FisId })
+            .ToDictionaryAsync(x => x.Id);
+        // Fatura bağı TEK YOLDAN (ADR-0018 — FaturaHareketBagi.Bagsiz: kalem otoritesi + eski damga).
+        var faturasiz = (await FaturaHareketBagi.Bagsiz(db, tenantId,
+                db.Hareketler.AsNoTracking().Where(x => x.TenantId == tenantId && idler.Contains(x.Id)))
+            .OrderBy(x => x.Id).Take(idler.Count).Select(x => x.Id).ToListAsync()).ToHashSet();
+        var bugun = DateOnly.FromDateTime(Zaman.UtcdenYerele(simdi));
+        return [.. borclar
+            .Where(b => hareketler.TryGetValue(b.HareketId, out var hh) && hh.Tur == "SATIS")
+            .Select(b =>
+            {
+                var hh = hareketler[b.HareketId];
+                var faturali = !faturasiz.Contains(b.HareketId);
+                var gun = bugun.DayNumber - DateOnly.FromDateTime(Zaman.UtcdenYerele(b.Tarih)).DayNumber;
+                return new BorcluSatis(b.HareketId, b.Tarih, b.Vade, b.GecikmeGun, b.AcikTutar, hh.FisId,
+                    faturali, !faturali && gun > 7);
+            })
+            .OrderByDescending(b => b.GecikmeGun >= 0)
+            .ThenBy(b => b.Vade).ThenBy(b => b.Tarih)];
+    }
+
+    /// <summary>Gelen tutarı TBK 102 sırasıyla öneri olarak dağıtır (kullanıcı değiştirebilir).</summary>
+    private static List<BorcluSatis> OneriDagit(List<BorcluSatis> liste, decimal tutar)
+    {
+        var kalan = tutar;
+        return [.. liste.Select(b =>
+        {
+            var pay = Math.Min(b.KalanTl, Math.Max(0m, kalan));
+            kalan -= pay;
+            return b with { OneriTl = pay };
+        })];
     }
 
     // ── 4) Karar ────────────────────────────────────────────────────────────
@@ -295,6 +375,8 @@ public sealed class GelenOdemeServisi(
                 Olusturuldu = now,
             });
             await CariBakiyeYazici.Uygula(db, islem.TenantId, h.CariId!, -h.Tutar, 0m, now);
+            if (dto.Mahsuplar is { Count: > 0 } secim)
+                await MahsuplariYaz(secim, h, tahsilatId, islem, now);
             h.CariKarari = CariKarari.Borc;
             h.KararHareketId = tahsilatId;
             denetim.YazmaKaydet(islem, "BankaOdemeKarari", h.Id,
@@ -304,6 +386,33 @@ public sealed class GelenOdemeServisi(
         await db.SaveChangesAsync();
         if (tx is not null) await tx.CommitAsync();
         return new { id = h.Id, cariKarari = h.CariKarari, kararHareketId = h.KararHareketId };
+    }
+
+    /// <summary>
+    /// 17.10 — kullanıcının seçtiği borçlu satışlar: her satır o satışın AÇIK kalanını, toplam gelen parayı aşamaz.
+    /// Açıklık, karar ANINDAKİ yürüyüşten okunur (aynı işlemde, cari satırı kilitliyken).
+    /// </summary>
+    private async Task MahsuplariYaz(List<MahsupDto> secim, BankaHareket h, string tahsilatId, AktifKullanici islem, DateTime now)
+    {
+        if (secim.Any(m => m.TutarTl <= 0m || decimal.Round(m.TutarTl, 2) != m.TutarTl))
+            throw new BadRequestException("Seçilen satışa düşülecek tutar sıfırdan büyük ve en çok iki ondalık olmalıdır.").AlanIle("mahsuplar");
+        if (secim.Select(m => m.BorcHareketId).Distinct().Count() != secim.Count)
+            throw new BadRequestException("Aynı satış iki kez seçilemez.").AlanIle("mahsuplar");
+        if (secim.Sum(m => m.TutarTl) > h.Tutar)
+            throw new BadRequestException("Seçilen satışlara düşülecek toplam, gelen paradan büyük olamaz.").AlanIle("mahsuplar");
+        var aciklar = (await BorcluSatislar(h.CariId!, islem.TenantId, now)).ToDictionary(b => b.HareketId, b => b.KalanTl);
+        foreach (var m in secim)
+        {
+            if (!aciklar.TryGetValue(m.BorcHareketId, out var kalan))
+                throw new BadRequestException("Seçilen satış bu müşterinin açık borcu değil.").AlanIle("mahsuplar");
+            if (m.TutarTl > kalan)
+                throw new BadRequestException("Seçilen satışa düşülecek tutar, o satışın kalan borcundan büyük olamaz.").AlanIle("mahsuplar");
+            db.CariMahsuplar.Add(new CariMahsup
+            {
+                Id = Kimlik.Ulid(), TenantId = islem.TenantId, CariId = h.CariId!, OdemeHareketId = tahsilatId,
+                BorcHareketId = m.BorcHareketId, TutarTl = m.TutarTl, KullaniciId = islem.Id, Olusturuldu = now,
+            });
+        }
     }
 
     /// <summary>Borçtan düşmeyi geri alır: TAHSILAT stornolanır (tek storno motoru), karar boşalır.</summary>

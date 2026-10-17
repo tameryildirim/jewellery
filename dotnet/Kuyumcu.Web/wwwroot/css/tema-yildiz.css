@@ -3893,3 +3893,7 @@ html:root[data-sema="yildiz"] body #cari-iban-liste .btn:not(#_) {
   padding: 2px 2px; min-height: 0; color: var(--metin); font-size: 15px;
 }
 html:root[data-sema="yildiz"] body #go-bilgi:not(#_) { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* 17.10 — borçlu satış seçimi */
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-satislar:not(#_) { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; }
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-satis:not(#_) { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px solid var(--kenarlik); }
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-satis-sec:not(#_) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

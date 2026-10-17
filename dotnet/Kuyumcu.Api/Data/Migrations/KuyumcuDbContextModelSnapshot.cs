@@ -732,6 +732,60 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.ToTable("cari_ibanlari");
                 });
 
+            modelBuilder.Entity("Kuyumcu.Api.Data.CariMahsup", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BorcHareketId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("borc_hareket_id");
+
+                    b.Property<string>("CariId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("cari_id");
+
+                    b.Property<string>("KullaniciId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kullanici_id");
+
+                    b.Property<string>("OdemeHareketId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("odeme_hareket_id");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("TutarTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("tutar_tl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CariId");
+
+                    b.HasIndex("TenantId", "OdemeHareketId");
+
+                    b.ToTable("cari_mahsuplar");
+                });
+
             modelBuilder.Entity("Kuyumcu.Api.Data.CariRiskProfili", b =>
                 {
                     b.Property<string>("Id")

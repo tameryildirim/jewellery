@@ -1299,6 +1299,12 @@ public static partial class SunucuIletiSozlugu
         ("IBAN bulunamadı", "IBAN not found"),
         ("Bu para müşterinin hesabına başka bir belgeyle zaten işlendi; karar verilmez.", "This money was already posted to the customer's account by another document; no decision is needed."),
         ("Kuyum faturası yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.", "A jewellery invoice can only be issued from a sale record or from lines with known fine-gold grams; the fine-gold value cannot be typed in by hand."),
+        // ── 17.10 kısmi ödeme / borçlu satış seçimi ──
+        ("Seçilen satışa düşülecek tutar sıfırdan büyük ve en çok iki ondalık olmalıdır.", "The amount applied to a selected sale must be greater than zero with at most two decimals."),
+        ("Aynı satış iki kez seçilemez.", "The same sale cannot be selected twice."),
+        ("Seçilen satışlara düşülecek toplam, gelen paradan büyük olamaz.", "The total applied to the selected sales cannot exceed the incoming payment."),
+        ("Seçilen satış bu müşterinin açık borcu değil.", "The selected sale is not an open debt of this customer."),
+        ("Seçilen satışa düşülecek tutar, o satışın kalan borcundan büyük olamaz.", "The amount applied to a sale cannot exceed that sale's remaining debt."),
         // ── 17.10 P0-4: kuyumcu fatura haddi sunucuda ──
         ("Fatura kesilemedi, satış kaydedilmedi: {}", "The invoice could not be issued; the sale was not saved: {}"),
         ("{} TL üstündeki satış faturalı kesilir; belge türünü Fatura seçin.", "Sales above {} TL require an invoice; choose Invoice as the document type."),

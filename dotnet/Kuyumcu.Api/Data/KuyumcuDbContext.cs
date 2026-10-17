@@ -120,6 +120,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<EkstreIthalati> EkstreIthalatlari => Set<EkstreIthalati>();
     public DbSet<EkstreSatiri> EkstreSatirlari => Set<EkstreSatiri>();
     public DbSet<CariIban> CariIbanlari => Set<CariIban>();
+    public DbSet<CariMahsup> CariMahsuplar => Set<CariMahsup>();   // 17.10 kısmi ödeme / borçlu satış seçimi
     public DbSet<Fatura> Faturalar => Set<Fatura>();
     public DbSet<FaturaKalemi> FaturaKalemleri => Set<FaturaKalemi>();
     public DbSet<RolYetki> RolYetkileri => Set<RolYetki>();
@@ -506,6 +507,9 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<CariIban>().HasIndex(c => new { c.TenantId, c.IbanHash }).IsUnique();
         // (g) Cari kartından "bu müşterinin IBAN'ları".
         mb.Entity<CariIban>().HasIndex(c => new { c.TenantId, c.CariId });
+        // 17.10: defter yürüyüşü carinin mahsuplarını okur; ödeme başına arama da var.
+        mb.Entity<CariMahsup>().HasIndex(m => new { m.TenantId, m.CariId });
+        mb.Entity<CariMahsup>().HasIndex(m => new { m.TenantId, m.OdemeHareketId });
         // M7a: TAHSILAT stornosu kararı boşaltırken banka satırını bu kolondan bulur.
         mb.Entity<BankaHareket>().HasIndex(b => new { b.TenantId, b.KararHareketId });
         // (h) Ekstre satırının IBAN'ı da aranır (otomatik eşleşme yolu).

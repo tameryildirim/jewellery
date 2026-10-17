@@ -1,10 +1,14 @@
 @using Kuyumcu.Core.I18n
+@using Kuyumcu.Core.Domain.Girdi
 @inject ApiIstemci Api
 @inject DilServisi Dil
 
 @* ═══ M7a (kurucu 17.10) — "borcu vardır ama ekstra bir altın daha almıştır… borçtan düşülsün mü
    diye müşteri karar versin". Müşteriye bağlanmış, kararı verilmemiş gelen ödemeler kuyumcunun ÖNÜNE
-   düşer; borç varsa uyarı. Liste boşsa hiçbir şey çizilmez (zorunlu önce). Yetkisiz rolde (403) gizli. ═══ *@
+   düşer; borç varsa uyarı. Liste boşsa hiçbir şey çizilmez (zorunlu önce). Yetkisiz rolde (403) gizli.
+   17.10 (kısmi ödeme araştırması § 5): borçlu satışlar listelenir, gelen tutar TBK 102 sırasıyla ÖNERİ olarak
+   dağıtılır (kullanıcı değiştirir), kalan açık kalır, fazla "müşterinin hesabında" kalır. SOR kararıdır:
+   iki seçenek EŞİT ağırlıkta (ön seçim yok). Borçlu satış seçimi fatura KESMEZ (VUK 231/5). ═══ *@
 @if (gorunur && (satirlar.Count > 0 || hata is not null || bilgi is not null))
 {
     <section class="kart go-kutu" id="gelen-odeme-karari" aria-label="@GelenOdemeSozlugu.Baslik(Dil.Dil)">
@@ -23,6 +27,9 @@
             }
             @foreach (var s in satirlar)
             {
+                var liste = s.BorcluSatislar ?? [];
+                var secim = Secim(s);
+                var dusulecek = liste.Where(x => secim.Secili.Contains(x.HareketId)).Sum(x => secim.Tutar.GetValueOrDefault(x.HareketId));
                 <div class="go-satir" id="@($"go-{s.Id}")">
                     <div class="go-ust">
                         <strong>@GelenOdemeSozlugu.Geldi(s.CariAd ?? s.KarsiTarafAd ?? "—", Bicim.Tl(s.Tutar), Dil.Dil)</strong>
@@ -34,10 +41,41 @@
                     }
                     else
                     {
-                        <p class="metin-soluk" id="@($"go-bilgi-{s.Id}")">@GelenOdemeSozlugu.BorcuYok(Dil.Dil)</p>
+                        <p class="metin-soluk" id="@($"go-bilgi-{s.Id}")">@(s.AlacakTl > 0m ? GelenOdemeSozlugu.HesabindaVar(Bicim.Tl(s.AlacakTl), Dil.Dil) : GelenOdemeSozlugu.BorcuYok(Dil.Dil))</p>
+                    }
+                    @if (liste.Count > 0)
+                    {
+                        <ul class="liste-sade go-satislar" id="@($"go-satislar-{s.Id}")" aria-label="@GelenOdemeSozlugu.BorcluSatislar(Dil.Dil)">
+                            @foreach (var x in liste)
+                            {
+                                var sec = secim.Secili.Contains(x.HareketId);
+                                <li class="go-satis" id="@($"go-satis-{s.Id}-{x.HareketId}")">
+                                    <div class="go-satis-sec">
+                                        <Onay ElemanId="@($"go-sec-{s.Id}-{x.HareketId}")"
+                                              Etiket="@($"{Bicim.Gun(x.Tarih)}{(x.FisId is null ? "" : " · " + GelenOdemeSozlugu.Fis(Dil.Dil))} · {GelenOdemeSozlugu.Kalan(Bicim.Tl(x.KalanTl), Dil.Dil)}")"
+                                              Deger="@sec" DegerChanged="@(v => Isaretle(s, x, v))" />
+                                        @if (x.FaturaSuresiGecti) { <span class="rozet rozet-uyari" id="@($"go-fatura-gecti-{x.HareketId}")">@GelenOdemeSozlugu.FaturaGecti(Dil.Dil)</span> }
+                                    </div>
+                                    @if (sec && liste.Count > 1)   @* tek satışta tutar gelen paradır — kutu gereksiz (sade) *@
+                                    {
+                                        <Para ElemanId="@($"go-tutar-{s.Id}-{x.HareketId}")" Etiket="@GelenOdemeSozlugu.DusulecekTutar(Dil.Dil)" Zorunlu="true" Tur="TutarTuru.Pozitif" ParaBirimi="TRY"
+                                              Deger="@secim.Tutar.GetValueOrDefault(x.HareketId)" DegerChanged="@(v => secim.Tutar[x.HareketId] = v ?? 0m)" />
+                                    }
+                                </li>
+                            }
+                        </ul>
+                        <p class="metin-kucuk" id="@($"go-ozet-{s.Id}")">@GelenOdemeSozlugu.Dusulecek(Bicim.Tl(dusulecek), Bicim.Tl(Math.Max(0m, s.BorcTl - s.Tutar)), Dil.Dil)</p>
+                    }
+                    @if (s.Tutar > s.BorcTl && s.BorcTl > 0m)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="@($"go-fazla-{s.Id}")">@GelenOdemeSozlugu.HesabindaKalacak(Bicim.Tl(s.Tutar - s.BorcTl), Dil.Dil)</p>
+                    }
+                    @if (s.HasBorcGram > 0m)
+                    {
+                        <p class="metin-kucuk metin-soluk" id="@($"go-has-{s.Id}")">@GelenOdemeSozlugu.AltinBorcu(Bicim.Has(s.HasBorcGram), Dil.Dil)</p>
                     }
                     <div class="satir">
-                        <button type="button" class="btn btn-birincil btn-kucuk" id="@($"go-borc-{s.Id}")" disabled="@calisiyor"
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"go-borc-{s.Id}")" disabled="@calisiyor"
                                 @onclick="() => Karar(s, KararBorc)">@(s.BorcTl > 0m ? GelenOdemeSozlugu.BorcundanDus(Dil.Dil) : GelenOdemeSozlugu.AlacakYaz(Dil.Dil))</button>
                         <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"go-satis-{s.Id}")" disabled="@calisiyor"
                                 @onclick="() => Karar(s, KararSatis)">@GelenOdemeSozlugu.YeniAlisveris(Dil.Dil)</button>
@@ -55,11 +93,38 @@
     /// <summary>Karar verilince (sayfa bakiye/hareket listesini tazelesin diye).</summary>
     [Parameter] public EventCallback Degisti { get; set; }
 
+    private sealed class SatisSecimi
+    {
+        public HashSet<string> Secili { get; } = [];
+        public Dictionary<string, decimal> Tutar { get; } = [];
+    }
+
     private List<GelenOdemeSatiri> satirlar = [];
+    private readonly Dictionary<string, SatisSecimi> secimler = [];
     private bool gorunur = true, calisiyor;
     private string? hata, bilgi, sonKararId;
 
     protected override Task OnInitializedAsync() => Yenile();
+
+    /// <summary>Satırın seçimi; ilk kez görülüyorsa sunucunun TBK 102 önerisiyle dolar.</summary>
+    private SatisSecimi Secim(GelenOdemeSatiri s)
+    {
+        if (secimler.TryGetValue(s.Id, out var v)) return v;
+        v = new SatisSecimi();
+        foreach (var x in s.BorcluSatislar ?? [])
+            if (x.OneriTl > 0m) { v.Secili.Add(x.HareketId); v.Tutar[x.HareketId] = x.OneriTl; }
+        return secimler[s.Id] = v;
+    }
+
+    private void Isaretle(GelenOdemeSatiri s, BorcluSatisSatiri x, bool sec)
+    {
+        var v = Secim(s);
+        if (!sec) { v.Secili.Remove(x.HareketId); return; }
+        v.Secili.Add(x.HareketId);
+        var kullanilan = (s.BorcluSatislar ?? []).Where(y => y.HareketId != x.HareketId && v.Secili.Contains(y.HareketId))
+            .Sum(y => v.Tutar.GetValueOrDefault(y.HareketId));
+        v.Tutar[x.HareketId] = Math.Max(0m, Math.Min(x.KalanTl, s.Tutar - kullanilan));
+    }
 
     /// <summary>Sayfa yeni dekont girince çağırır.</summary>
     public async Task Yenile()
@@ -68,6 +133,7 @@
         {
             satirlar = await Api.TazeGetAsync<List<GelenOdemeSatiri>>("/bankalar/karar-bekleyen");
             hata = null;
+            foreach (var k in secimler.Keys.Where(k => satirlar.All(s => s.Id != k)).ToList()) secimler.Remove(k);
         }
         catch (ApiHata ex) when (ex.StatusCode == 403) { gorunur = false; }
         catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }   // P-11: liste KORUNUR
@@ -79,11 +145,17 @@
         calisiyor = true; hata = bilgi = null; sonKararId = null;
         try
         {
-            await Api.PostAsync<JsonElement>($"/bankalar/hareketler/{s.Id}/karar", new { karar });
+            var v = Secim(s);
+            var mahsuplar = karar == KararBorc
+                ? (s.BorcluSatislar ?? []).Where(x => v.Secili.Contains(x.HareketId) && v.Tutar.GetValueOrDefault(x.HareketId) > 0m)
+                    .Select(x => new { borcHareketId = x.HareketId, tutarTl = v.Tutar[x.HareketId] }).ToList()
+                : null;
+            await Api.PostAsync<JsonElement>($"/bankalar/hareketler/{s.Id}/karar", new { karar, mahsuplar });
             bilgi = karar == KararBorc
                 ? GelenOdemeSozlugu.Dusuldu(s.CariAd ?? "", Dil.Dil)
                 : GelenOdemeSozlugu.SatisSayildi(Dil.Dil);
             sonKararId = s.Id;
+            secimler.Remove(s.Id);
             await Yenile();
             await Degisti.InvokeAsync();
         }

@@ -258,4 +258,87 @@ public sealed class M7aGelenOdemeHttpTestleri(HttpFikstur f)
         var kr = await s.PostAsJsonAsync($"/api/v1/bankalar/hareketler/{id}/karar", new { karar = "BORC" });
         Assert.Equal(HttpStatusCode.Conflict, kr.StatusCode);
     }
+
+    // ── 17.10 kısmi ödeme / borçlu satış seçimi (KISMI-ODEME-ARASTIRMASI § 5) ──────────────────
+    private async Task<string> VeresiyeSatis(Kiraci k, decimal tutar)
+    {
+        var c = await f.Ortam.Istemci(k, "SAHIP").PostAsJsonAsync("/api/v1/islemler/satis-fisi", new
+        {
+            cariId = k.CariId, kurSnapshotId = k.KurId, fisIskontoYuzde = 0m,
+            kalemler = new[] { new { urunId = k.UrunId, adet = 1m, birimFiyatTl = tutar, hediye = false } },
+            odemeler = new[] { new { arac = "VERESIYE", tutarTl = tutar, kasaId = (string?)null } },
+        });
+        var y = await c.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(c.IsSuccessStatusCode, y.ToString());
+        using var db = f.Vt.OlusturSistem();
+        var fisId = y.GetProperty("fisId").GetString();
+        return db.Hareketler.AsNoTracking().Single(h => h.TenantId == k.TenantId && h.FisId == fisId && h.Tur == "SATIS").Id;
+    }
+
+    private async Task<Dictionary<string, decimal>> AcikSatislar(Kiraci k)
+    {
+        using var db = f.Vt.OlusturSistem();
+        var (borclar, _) = await Kuyumcu.Api.Modules.Vade.VadeKapisi.AcikBorclar(db, k.TenantId, k.CariId, DateTime.UtcNow);
+        return borclar.ToDictionary(b => b.HareketId, b => b.AcikTutar);
+    }
+
+    [Fact]
+    public async Task Borclu_satis_listesi_TBK102_onerisiyle_gelir_secilen_satis_kapanir_en_eski_acik_kalir()
+    {
+        Kiraci k;
+        using (var db = f.Vt.OlusturSistem()) k = TestKurulum.KiraciKur(db, "M7a-mahsup", urunGram: 1m);
+        var hesap = await HesapAc(k);
+        var s1 = await VeresiyeSatis(k, 10_000m);
+        var s2 = await VeresiyeSatis(k, 15_000m);
+        var d = (await Dekont(k, hesap, new { yon = "GELEN", tutar = 12_000m, cariId = k.CariId })).GetProperty("hareketId").GetString()!;
+        var s = f.Ortam.Istemci(k, "SAHIP");
+
+        var satir = (await s.GetFromJsonAsync<JsonElement>("/api/v1/bankalar/karar-bekleyen")).EnumerateArray().Single(x => x.GetProperty("id").GetString() == d);
+        var liste = satir.GetProperty("borcluSatislar").EnumerateArray().ToList();
+        Assert.Equal([s1, s2], liste.Select(x => x.GetProperty("hareketId").GetString()));       // en eski önce
+        Assert.Equal(10_000m, liste[0].GetProperty("oneriTl").GetDecimal());                     // öneri en eskiden
+        Assert.Equal(2_000m, liste[1].GetProperty("oneriTl").GetDecimal());
+        Assert.False(liste[0].GetProperty("faturaSuresiGecti").GetBoolean());
+
+        // Müşteri "yeni olanı ödüyorum" dedi (TBK 101/1): 12.000 → ikinci satış
+        var kr = await s.PostAsJsonAsync($"/api/v1/bankalar/hareketler/{d}/karar",
+            new { karar = "BORC", mahsuplar = new[] { new { borcHareketId = s2, tutarTl = 12_000m } } });
+        Assert.True(kr.IsSuccessStatusCode, await kr.Content.ReadAsStringAsync());
+        var acik = await AcikSatislar(k);
+        Assert.Equal(10_000m, acik[s1]);          // en eski DOKUNULMADI (FIFO olsaydı kapanırdı)
+        Assert.Equal(3_000m, acik[s2]);
+
+        // Geri al → mahsup yok sayılır, borç geri gelir
+        Assert.True((await s.PostAsync($"/api/v1/bankalar/hareketler/{d}/karar/geri-al", null)).IsSuccessStatusCode);
+        // Storno çifti yürüyüşte birbirini götürür: iki satış da TAM borcuyla açık (vadesiz parti doğmaz).
+        var sonra = await AcikSatislar(k);
+        Assert.Equal(10_000m, sonra[s1]);
+        Assert.Equal(15_000m, sonra[s2]);
+    }
+
+    [Fact]
+    public async Task Hatali_secimler_400_ve_hicbir_sey_yazilmaz()
+    {
+        Kiraci k;
+        using (var db = f.Vt.OlusturSistem()) k = TestKurulum.KiraciKur(db, "M7a-mahsup-red", urunGram: 1m);
+        var hesap = await HesapAc(k);
+        var s1 = await VeresiyeSatis(k, 10_000m);
+        var d = (await Dekont(k, hesap, new { yon = "GELEN", tutar = 5_000m, cariId = k.CariId })).GetProperty("hareketId").GetString()!;
+        var s = f.Ortam.Istemci(k, "SAHIP");
+
+        foreach (var govde in new object[]
+        {
+            new { karar = "BORC", mahsuplar = new[] { new { borcHareketId = s1, tutarTl = 6_000m } } },        // gelen paradan fazla
+            new { karar = "BORC", mahsuplar = new[] { new { borcHareketId = "baskasi", tutarTl = 1_000m } } }, // açık borç değil
+            new { karar = "BORC", mahsuplar = new[] { new { borcHareketId = s1, tutarTl = 1_000.001m } } },    // 3 ondalık
+        })
+        {
+            var r = await s.PostAsJsonAsync($"/api/v1/bankalar/hareketler/{d}/karar", govde);
+            Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        }
+        using var kontrol = f.Vt.OlusturSistem();
+        Assert.Equal(0, kontrol.CariMahsuplar.Count(m => m.TenantId == k.TenantId));
+        Assert.Equal(0, kontrol.Hareketler.Count(h => h.TenantId == k.TenantId && h.Tur == "TAHSILAT"));
+        Assert.Null(kontrol.BankaHareketleri.Single(b => b.Id == d).CariKarari);
+    }
 }

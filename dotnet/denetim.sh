@@ -432,7 +432,7 @@ fi
 # YASAL-4 (2026-10-01): StopajOdemesi (stopaj_odemeleri) → 74 -> 75
 # AUTH-SIFIRLA (2026-10-01): Data/ParolaSifirlamaJetonu.cs (parola_sifirlama_jetonlari) → 75 -> 76
 # M4 (2026-10-16): Data/UrunKurali.cs (urun_kurallari — müşteri "fiyat kuralları") → 76 -> 77
-BEKLENEN_VARLIK=77
+BEKLENEN_VARLIK=78
 VARLIK=$(grep -c ": IKiraciVarlik" "$API/Data/Entities.cs" || true)
 EK=$(grep -rl ": IKiraciVarlik" "$API/Data" --include='*.cs' | grep -v Entities.cs | xargs grep -c ": IKiraciVarlik" 2>/dev/null | awk -F: '{t+=$2} END{print t+0}')
 MODUL_VARLIK=$(grep -rn ": IKiraciVarlik" "$API/Modules" --include='*.cs' 2>/dev/null | grep -v '/obj/\|/bin/' | wc -l | tr -d ' ')

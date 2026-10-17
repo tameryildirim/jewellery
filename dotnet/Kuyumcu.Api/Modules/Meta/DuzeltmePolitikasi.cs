@@ -253,6 +253,8 @@ public static class DuzeltmePolitikasi
         D("CariIban", "api/v1/cari/{id}/ibanlar/{ibanId}"),
         // M4 (16.10) ürün kuralı: kuyumcunun ayarı, serbestçe düzenlenir (pasife alma = Aktif).
         D("UrunKurali", "api/v1/urun-kurallari/{id}"),
+        // 17.10 mahsup (ödemenin hangi borçlu satışa sayıldığı): append-only; düzeltme = ödemenin stornosu.
+        S("CariMahsup", GerekceAnahtarlari.Defter, "api/v1/bankalar/hareketler/{hareketId}/karar/geri-al"),
         S("GunKapanisi", GerekceAnahtarlari.Kapanis),
         S("SayimOturumu", GerekceAnahtarlari.Sayim),
         S("SayimSatiri", GerekceAnahtarlari.Sayim),

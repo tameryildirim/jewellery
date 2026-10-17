@@ -37,6 +37,9 @@ public readonly record struct AcikParti(
 /// </summary>
 public static class VadeKapisi
 {
+    /// <summary>B-8: tek carinin storno/mahsup satırı tavanı (bir carinin ömür boyu hareketi bunun çok altında).</summary>
+    private const int TavanSatir = 100_000;
+
     /// <summary>
     /// Borcun vade gününü hesaplar.
     /// Öncelik: işlemdeki <paramref name="vadeGun"/> → carinin varsayılanı → 0 gün.
@@ -179,9 +182,9 @@ public static class VadeKapisi
     /// gecikmediği hâlde "12 gün gecikmiş" görünüyordu. Defteri yürümek bu
     /// kapanmayı hatırlar; bakiyeyi dağıtmak hatırlamaz.
     ///
-    /// ⚠ Ödemeleri tek tek borçlara bağlayan bir MAHSUP TABLOSU yine yok ve
-    /// bilinçli: öyle bir tablo, ona satır yazmayan her ödeme yolunda bakiyeden
-    /// sapardı. Tek doğruluk kaynağı defterdir.
+    /// ⚠ 17.10: <c>cari_mahsuplar</c> tablosu VAR ama bakiyeyi DEĞİŞTİRMEZ — yalnız azaltan satırın önce hangi
+    /// partiyi tüketeceğini söyler; satır yazmayan ödeme yolları bugünkü FIFO'yla aynı kalır (sapma yok).
+    /// Tek doğruluk kaynağı yine defterdir.
     ///
     /// Bakiyenin İŞARETİ yönü belirler: pozitif bakiye müşterinin bize borcu,
     /// negatif bakiye bizim tedarikçiye borcumuzdur. İki yön aynı listede
@@ -268,8 +271,31 @@ public static class VadeKapisi
         var hareketler = await db.Hareketler.AsNoTracking()
             .Where(h => h.TenantId == tenantId && h.CariId == cariId)
             .OrderBy(h => h.Tarih).ThenBy(h => h.Id)
-            .Select(h => new { h.Id, h.Tur, h.Tarih, h.TlTutari, h.VeresiyeTutar, h.VadeTarihi, h.FisId })
+            .Select(h => new { h.Id, h.Tur, h.Tarih, h.TlTutari, h.VeresiyeTutar, h.VadeTarihi, h.FisId, h.StornoKaynakId })
             .ToListAsync();
+        // Storno satırının kendisi de yürüyüşe girmez (kaynağıyla birlikte düşer — aşağıda).
+        hareketler = [.. hareketler.Where(h => h.StornoKaynakId == null)];
+
+        // 17.10 — STORNO ÇİFTİ BİRBİRİNİ GÖTÜRÜR: stornolanan satır ve onun storno satırı yürüyüşe girmez.
+        // Eskiden storno satırı "vadesiz yeni parti" açıyordu; toplam bakiye doğruydu ama satış bazındaki kalan
+        // bozuluyordu (geri alınan tahsilat hangi satışı kapattıysa o satış açık görünmüyordu). Çift eşit ve
+        // ters etkili olduğu için TOPLAM DEĞİŞMEZ (StornoCiftiniDisla ile aynı ilke).
+        var stornolu = await db.Hareketler.AsNoTracking()
+            .Where(h => h.TenantId == tenantId && h.CariId == cariId && h.StornoKaynakId != null)
+            .OrderBy(h => h.Id).Take(TavanSatir)
+            .Select(h => h.StornoKaynakId!).ToListAsync();
+        var ciftDisi = stornolu.ToHashSet();
+        hareketler = [.. hareketler.Where(h => !ciftDisi.Contains(h.Id))];
+        // 17.10 — kullanıcının (müşterinin, TBK 101/1) seçtiği mahsuplar: azaltan satır ÖNCE bunları tüketir.
+        var mahsuplar = (await db.CariMahsuplar.AsNoTracking()
+                .Where(m => m.TenantId == tenantId && m.CariId == cariId)
+                .OrderBy(m => m.Olusturuldu).ThenBy(m => m.Id)
+                .Take(TavanSatir)
+                .Select(m => new { m.OdemeHareketId, m.BorcHareketId, m.TutarTl })
+                .ToListAsync())
+            .Where(m => !stornolu.Contains(m.OdemeHareketId))
+            .GroupBy(m => m.OdemeHareketId)
+            .ToDictionary(g => g.Key, g => g.Select(x => (x.BorcHareketId, x.TutarTl)).ToList());
 
         var partiler = new List<YuruyenParti>();
 
@@ -293,8 +319,23 @@ public static class VadeKapisi
                 continue;
             }
 
-            // Borç azaldı: en eski açık partiden başlayarak tüket.
+            // Borç azaldı: önce müşterinin seçtiği partiler (mahsup), sonra en eski açık partiden (FIFO).
             var dusulecek = -etki;
+            if (mahsuplar.TryGetValue(h.Id, out var secilenler))
+                foreach (var (borcId, tutar) in secilenler)
+                {
+                    var i = partiler.FindIndex(p => p.Id == borcId);
+                    if (i < 0 || dusulecek <= 0m) continue;
+                    var tuket = Math.Min(Math.Min(partiler[i].Kalan, tutar), dusulecek);
+                    if (tuket <= 0m) continue;
+                    partiler[i] = partiler[i] with { Kalan = partiler[i].Kalan - tuket };
+                    dusulecek -= tuket;
+                    if (tuketimler is not null)
+                    {
+                        if (!tuketimler.TryGetValue(h.Id, out var ml)) tuketimler[h.Id] = ml = [];
+                        ml.Add((borcId, tuket));
+                    }
+                }
             for (var i = 0; i < partiler.Count && dusulecek > 0m; i++)
             {
                 var p = partiler[i];

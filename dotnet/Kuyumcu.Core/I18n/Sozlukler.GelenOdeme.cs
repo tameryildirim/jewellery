@@ -23,6 +23,20 @@ public static class GelenOdemeSozlugu
     public static string GeriAl(string dil) => En(dil) ? "Undo" : "Geri al";
     public static string GeriAlindi(string dil) => En(dil) ? "Decision undone; the payment is back in the list." : "Karar geri alındı; ödeme yeniden listede.";
 
+    // ── Borçlu satış seçimi (17.10) ──
+    public static string BorcluSatislar(string dil) => En(dil) ? "Sales with debt" : "Borcu olan satışlar";
+    public static string Kalan(string tutar, string dil) => En(dil) ? $"remaining {tutar}" : $"kalan {tutar}";
+    public static string Dusulecek(string dusulecek, string kalanBorc, string dil) => En(dil)
+        ? $"To deduct {dusulecek} · Remaining debt {kalanBorc}" : $"Düşülecek {dusulecek} · Kalan borç {kalanBorc}";
+    public static string HesabindaKalacak(string tutar, string dil) => En(dil)
+        ? $"{tutar} will stay on the customer's account" : $"Müşterinin hesabında {tutar} kalacak";
+    public static string HesabindaVar(string tutar, string dil) => En(dil)
+        ? $"Customer already has {tutar} on account" : $"Müşterinin hesabında zaten {tutar} var";
+    public static string AltinBorcu(string miktar, string dil) => En(dil) ? $"Gold debt {miktar} (not deducted here)" : $"Altın borcu {miktar} (burada düşülmez)";
+    public static string FaturaGecti(string dil) => En(dil) ? "No invoice — 7 days passed" : "Faturası yok — 7 gün geçti";
+    public static string Fis(string dil) => En(dil) ? "Slip" : "Fiş";
+    public static string DusulecekTutar(string dil) => En(dil) ? "Amount to deduct" : "Düşülecek tutar";
+
     // ── Dekont sonucu ──
     public static string Baglandi(string ad, string dil) => En(dil) ? $"Payment linked to customer {ad}." : $"Ödeme {ad} adlı müşteriye bağlandı.";
     public static string YeniMusteri(string ad, string dil) => En(dil)
