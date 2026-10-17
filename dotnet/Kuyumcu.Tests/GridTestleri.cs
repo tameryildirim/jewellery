@@ -9,6 +9,7 @@ using Kuyumcu.Core.Domain;
 using Kuyumcu.Core.I18n;
 using Kuyumcu.Web.Bilesenler.Grid;
 using Kuyumcu.Web.Servisler;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -438,14 +439,26 @@ public sealed class GridTercihHttpTestleri(HttpFikstur f)
     }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// TEMA TEMİZLİĞİ 17.10 (GG): /cariler'in eski özgün listesi (ortak ızgarada tablo) KALDIRILDI — liste artık
+// Yıldız tuvali (YildizMusteriler). ORTAK IZGARA ise kırka yakın Yıldız ekranında (Kullanıcılar, Kasa raporu,
+// Vezne, Ürünler …) AYNEN yaşar ve davranışı (panel, taşıma, gizleme, sıralama, kalıcı tercih, varsayılana dön,
+// yazma hatası geri alma, sürükle-bırak, klavye, odak) başka bir yerde sınanmıyordu. Güvence korunur:
+//   • bileşen katmanı: Izgara<CariVeri> AYNI kolon kümesiyle (eski cari kolonları: anahtar, zorunlu, sunucu adı,
+//     taşınamaz eylem) ve AYNI tercih anahtarıyla (grid:cariler:cari-liste — BilinenEkranlar'da) doğrudan çizilir;
+//     iddialar aynıdır. "Sunucuya gider" iddiası ızgaranın sözleşmesine iner: SiralamaDegisti sayfaya sirala=&yon=
+//     sorgusunu verir (sayfanın onu uca koyması aşağıdaki sayfa testlerinde).
+//   • sayfa katmanı (Yıldız /cariler): kayıtlı sıralama İLK liste isteğinde gider, ikinci GET yok (GE07/GE14/GE15).
+// Kaldırılanlar (yalnız eski cari tablosunun düzenine aitti): GE12, GE17'nin tutar/rozet iç düzeni, GE23 — aşağıda.
+// ═════════════════════════════════════════════════════════════════════════════
 public sealed class GridEkranTestleri : BunitContext
 {
     private const string Anahtar = "grid:cariler:cari-liste";
     private readonly List<(string Metot, string Yol, string Govde)> istekler = [];
+    private readonly List<IzgaraSiralama?> siralamalar = [];
     private string tercihGovdesi = """{"tercihler":{}}""";
     private HttpStatusCode yazmaKodu = HttpStatusCode.OK;
     private bool yazmaAgHatasi;
-    private string cariListesi = CariListesi;
 
     private const string CariListesi = """
         [{"id":"c1","ad":"Ayşe Demir","tur":"MUSTERI","telefon":"05551234567",
@@ -457,6 +470,9 @@ public sealed class GridEkranTestleri : BunitContext
           "usdBakiye":0,"eurBakiye":0,"gbpBakiye":0,
           "riskSeviye":null,"pepBeyani":false}]
         """;
+
+    private static readonly IReadOnlyList<Kuyumcu.Contracts.Sayfalar.Cariler.CariVeri> Ogeler =
+        JsonSerializer.Deserialize<List<Kuyumcu.Contracts.Sayfalar.Cariler.CariVeri>>(CariListesi, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
 
     public GridEkranTestleri()
     {
@@ -490,7 +506,7 @@ public sealed class GridEkranTestleri : BunitContext
             else g = yol switch
             {
                 var y when y.EndsWith("/kur/guncel") => """{"id":"kur-1","altinHasFiyati":6800,"usdTry":40,"eurTry":44,"gbpTry":null}""",
-                var y when y.EndsWith("/cari") => t.cariListesi,
+                var y when y.EndsWith("/cari") => CariListesi,
                 var y when y.EndsWith("/kasalar") => """[{"id":"ks1","ad":"Merkez Kasa","paraBirimi":"TRY","aktif":true}]""",
                 var y when y.Contains("/fiyat/listeler") => """[{"id":"fl1","ad":"Perakende","tur":"PERAKENDE","aktif":true}]""",
                 _ => "{}",
@@ -508,17 +524,54 @@ public sealed class GridEkranTestleri : BunitContext
     private void TercihVer(string deger) =>
         tercihGovdesi = JsonSerializer.Serialize(new { tercihler = new Dictionary<string, string> { [Anahtar] = deger } });
 
-    private IRenderedComponent<SayfaCariler> Ciz(string mod = ArayuzModuServisi.Profesyonel)
+    private static Kuyumcu.Core.I18n.Sozluk Tr => Kuyumcu.Core.I18n.Sozlukler.Tr;
+
+    /// <summary>Eski /cariler PRO kolon kümesi (anahtar, zorunluluk, sunucu sıralama adı, taşınamaz eylem AYNEN).</summary>
+    private static IReadOnlyList<IzgaraKolonu<Kuyumcu.Contracts.Sayfalar.Cariler.CariVeri>> Kolonlar() =>
+    [
+        new() { Anahtar = "ad", Baslik = Tr.Auth.Ad, ZorunluGorunur = true, SunucuSiralamaAdi = "ad", KartEtiketsiz = true, Deger = c => c.Ad },
+        new() { Anahtar = "tur", Baslik = Tr.Cari.Tur, SunucuSiralamaAdi = "tur", Tur = IzgaraHucreTuru.Rozet, Deger = c => c.Tur },
+        new() { Anahtar = "telefon", Baslik = Tr.Cari.Telefon, SunucuSiralamaAdi = "telefon", Deger = c => c.Telefon },
+        new() { Anahtar = "tl-bakiye", Baslik = Tr.Cari.TlBakiye, ZorunluGorunur = true, SunucuSiralamaAdi = "tl-bakiye", Tur = IzgaraHucreTuru.Tl, Deger = c => c.TlBakiye },
+        new() { Anahtar = "has", Baslik = Tr.Cari.HasGram, Tur = IzgaraHucreTuru.Has, Deger = c => c.HasGramBakiye },
+        new()
+        {
+            Anahtar = "eylem", Baslik = Tr.Ortak.Eylemler, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+            Tur = IzgaraHucreTuru.Eylem,
+            Hucre = c => b => { b.OpenElement(0, "button"); b.AddAttribute(1, "id", $"c-eylem-{c.Id}"); b.AddContent(2, Tr.Ortak.Duzenle); b.CloseElement(); },
+        },
+    ];
+
+    /// <summary>Ortak ızgarayı eski cari kolonları + aynı tercih anahtarıyla çizer; açılış tercih okuması beklenir.</summary>
+    private IRenderedComponent<Izgara<Kuyumcu.Contracts.Sayfalar.Cariler.CariVeri>> Ciz(IzgaraTercihIstemcisi? istemci = null)
     {
-        Services.GetRequiredService<OturumServisi>().KullaniciAta(
-            new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<SayfaCariler>();
+        var e = Render<Izgara<Kuyumcu.Contracts.Sayfalar.Cariler.CariVeri>>(p => p
+            .Add(x => x.Ekran, "cariler")
+            .Add(x => x.GridId, "cari-liste")
+            .Add(x => x.Kolonlar, Kolonlar())
+            .Add(x => x.Ogeler, Ogeler)
+            .Add(x => x.SatirId, c => $"c-satir-{c.Id}")
+            .Add(x => x.SatirSinif, _ => "cari-satir")
+            .Add(x => x.Baslik, Tr.Cari.Baslik)
+            .Add(x => x.SiralamaDegisti, EventCallback.Factory.Create<IzgaraSiralama?>(this, s => siralamalar.Add(s)))
+            .Add(x => x.TercihIstemcisi, istemci));
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("tr.cari-satir")));
         e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "GET" && i.Yol.EndsWith("/tercihler/benim")));
         return e;
     }
 
-    private static List<string> Kolonlar(IRenderedComponent<SayfaCariler> e) =>
+    /// <summary>Yıldız /cariler sayfası (sayfa katmanı: kayıtlı sıralamanın liste isteğine girişi).</summary>
+    private IRenderedComponent<SayfaCariler> SayfaCiz(string mod = ArayuzModuServisi.Profesyonel)
+    {
+        Services.GetRequiredService<OturumServisi>().KullaniciAta(
+            new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
+        var e = Render<SayfaCariler>();
+        e.WaitForAssertion(() => Assert.NotNull(e.Find(TemaTemizligiGGYardimcisi.Satir("c1"))));
+        e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "GET" && i.Yol.EndsWith("/tercihler/benim")));
+        return e;
+    }
+
+    private static List<string> Kolonlar(IRenderedComponent<Izgara<Kuyumcu.Contracts.Sayfalar.Cariler.CariVeri>> e) =>
         [.. e.FindAll("#cari-liste-tablo thead th").Select(t => t.GetAttribute("data-kolon")!)];
 
     private static IzgaraTercihi SonYazilan(List<(string Metot, string Yol, string Govde)> istekler)
@@ -533,7 +586,7 @@ public sealed class GridEkranTestleri : BunitContext
     {
         var e = Ciz();
         Assert.Equal(["ad", "tur", "telefon", "tl-bakiye", "has", "eylem"], Kolonlar(e));
-        // Mevcut id sözleşmesi: KartListe → #cari-liste-sar, satır #c-satir-<id>, eylem #c-eylem-<id>.
+        // Id sözleşmesi: KartListe → #<GridId>-sar, satır/hücre id'leri çağırandan.
         Assert.NotNull(e.Find("#cari-liste-sar > table.veri-tablosu"));
         Assert.NotNull(e.Find("#c-satir-c1"));
         Assert.NotNull(e.Find("#c-eylem-c1"));
@@ -542,14 +595,11 @@ public sealed class GridEkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#cari-liste-okunamadi"));
         // Her hücre kart düzeni için data-etiket taşır (ad ve eylem hariç: kendini söyler).
         var tel = e.Find("#c-satir-c1 td[data-kolon='telefon']");
-        Assert.Equal(Dil(e).Cari.Telefon, tel.GetAttribute("data-etiket"));
+        Assert.Equal(Tr.Cari.Telefon, tel.GetAttribute("data-etiket"));
         Assert.Null(e.Find("#c-satir-c1 td[data-kolon='ad']").GetAttribute("data-etiket"));
         // Başlık metni yalnız başlıktır (yön oku CSS'te).
-        Assert.Equal(Dil(e).Auth.Ad, e.Find("th[data-kolon='ad']").TextContent.Trim());
+        Assert.Equal(Tr.Auth.Ad, e.Find("th[data-kolon='ad']").TextContent.Trim());
     }
-
-    private static Kuyumcu.Core.I18n.Sozluk Dil(IRenderedComponent<SayfaCariler> e) =>
-        e.Services.GetRequiredService<DilServisi>().T;
 
     [Fact]
     public void GE02_Kayitli_duzen_uygulanir_gizli_kolon_cizilmez_sayaci_yazilir()
@@ -621,24 +671,27 @@ public sealed class GridEkranTestleri : BunitContext
     [Fact]
     public void GE06_Baslik_siralamasi_SUNUCUYA_gider_artan_azalan_varsayilan_aria_sort()
     {
+        // Izgara listeyi KENDİ sıralamaz: SiralamaDegisti ile sayfaya sunucu sorgusunu (sirala=&yon=) verir.
         var e = Ciz();
         Assert.Equal("none", e.Find("th[data-kolon='ad']").GetAttribute("aria-sort"));
         Assert.Null(e.Find("th[data-kolon='has']").GetAttribute("aria-sort"));     // sunucu adı yok → düğme yok
         Assert.Empty(e.FindAll("#cari-liste-sirala-has"));
+        Assert.Empty(siralamalar);                                                // tercih yokken bildirim yok
 
         e.Find("#cari-liste-sirala-tl-bakiye").Click();
-        e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "GET" && i.Yol.Contains("/cari?") && i.Yol.Contains("sirala=tl-bakiye&yon=artan")));
+        e.WaitForAssertion(() => Assert.Equal("sirala=tl-bakiye&yon=artan", Assert.Single(siralamalar)!.Sorgu));
         Assert.Equal("ascending", e.Find("th[data-kolon='tl-bakiye']").GetAttribute("aria-sort"));
         Assert.Equal(new IzgaraSiralamaTercihi("tl-bakiye", "artan"), SonYazilan(Istekler()).O);
 
         e.Find("#cari-liste-sirala-tl-bakiye").Click();
-        e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Yol.Contains("sirala=tl-bakiye&yon=azalan")));
+        e.WaitForAssertion(() => Assert.Equal(2, siralamalar.Count));
+        Assert.Equal("sirala=tl-bakiye&yon=azalan", siralamalar[1]!.Sorgu);
         Assert.Equal("descending", e.Find("th[data-kolon='tl-bakiye']").GetAttribute("aria-sort"));
 
-        var once = Istekler().Count(i => i.Metot == "GET" && i.Yol.Contains("/cari?"));
         e.Find("#cari-liste-sirala-tl-bakiye").Click();
-        e.WaitForAssertion(() => Assert.True(Istekler().Count(i => i.Metot == "GET" && i.Yol.Contains("/cari?")) > once));
-        Assert.DoesNotContain("sirala=", Istekler().Last(i => i.Metot == "GET" && i.Yol.Contains("/cari?")).Yol);
+        e.WaitForAssertion(() => Assert.Equal(3, siralamalar.Count));
+        Assert.Null(siralamalar[2]);                                              // varsayılan: sırasız istek
+        Assert.Equal("none", e.Find("th[data-kolon='tl-bakiye']").GetAttribute("aria-sort"));
         Assert.Null(SonYazilan(Istekler()).O);
     }
 
@@ -646,8 +699,12 @@ public sealed class GridEkranTestleri : BunitContext
     public void GE07_Kayitli_siralama_acilista_sunucudan_istenir()
     {
         TercihVer("""{"s":1,"k":[],"g":[],"o":{"a":"ad","y":"azalan"}}""");
+        // Sayfa (Yıldız /cariler): kayıtlı sıralama liste isteğine girer.
+        SayfaCiz();
+        Assert.Contains("sirala=ad&yon=azalan", Assert.Single(ListeIstekleri()));
+        // Bileşen: sayfa önceden göndermediyse (GecerliSiralama yok) açılışta bildirir, başlık yönü yazar.
         var e = Ciz();
-        e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "GET" && i.Yol.Contains("sirala=ad&yon=azalan")));
+        e.WaitForAssertion(() => Assert.Equal("sirala=ad&yon=azalan", Assert.Single(siralamalar)!.Sorgu));
         Assert.Equal("descending", e.Find("th[data-kolon='ad']").GetAttribute("aria-sort"));
     }
 
@@ -713,11 +770,10 @@ public sealed class GridEkranTestleri : BunitContext
     [Fact]
     public void GE13_Surukle_birak_JS_geri_cagrisi_tercihi_yazar_ve_HEMEN_cizer()
     {
-        var e = Ciz();
-        var izgara = e.FindComponent<Izgara<Kuyumcu.Contracts.Sayfalar.Cariler.CariVeri>>();
+        var izgara = Ciz();
         izgara.InvokeAsync(() => izgara.Instance.Birak("has", "ad"));
-        e.WaitForAssertion(() => Assert.Equal(["has", "ad", "tur", "telefon", "tl-bakiye", "eylem"], Kolonlar(e)));
-        e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "PATCH"));
+        izgara.WaitForAssertion(() => Assert.Equal(["has", "ad", "tur", "telefon", "tl-bakiye", "eylem"], Kolonlar(izgara)));
+        izgara.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "PATCH"));
         Assert.Equal(["has", "ad", "tur", "telefon", "tl-bakiye"], SonYazilan(Istekler()).K);
         // Taşınamaz kolon bırakılamaz → istek yok.
         var once = Istekler().Count(i => i.Metot == "PATCH");
@@ -731,10 +787,10 @@ public sealed class GridEkranTestleri : BunitContext
     [Fact]
     public void GE14_Kayitli_siralama_ILK_liste_isteginde_gider_ikinci_GET_yok()
     {
-        // GRID-1 tur 2 (doğrulayıcı ORTA): önce sırasız, sonra sıralı iki GET atılıyordu.
+        // GRID-1 tur 2 (doğrulayıcı ORTA): önce sırasız, sonra sıralı iki GET atılıyordu. Yıldız /cariler'de sınanır.
         TercihVer("""{"s":1,"k":[],"g":[],"o":{"a":"tl-bakiye","y":"azalan"}}""");
-        var e = Ciz();
-        e.WaitForAssertion(() => Assert.Equal("descending", e.Find("th[data-kolon='tl-bakiye']").GetAttribute("aria-sort")));
+        var e = SayfaCiz();
+        e.WaitForAssertion(() => Assert.NotEmpty(ListeIstekleri()));
         var liste = ListeIstekleri();
         Assert.Single(liste);
         Assert.Contains("sirala=tl-bakiye&yon=azalan", liste[0]);
@@ -747,22 +803,20 @@ public sealed class GridEkranTestleri : BunitContext
     [Fact]
     public void GE15_Tercih_yokken_tek_liste_istegi_siralamasiz()
     {
-        var e = Ciz();
+        var e = SayfaCiz();
         var liste = ListeIstekleri();
         Assert.Single(liste);
         Assert.DoesNotContain("sirala=", liste[0]);
-        Assert.Equal("none", e.Find("th[data-kolon='ad']").GetAttribute("aria-sort"));
+        Assert.Single(Istekler(), i => i.Metot == "GET" && i.Yol.EndsWith("/tercihler/benim"));
     }
 
-    [Theory]
-    [InlineData(ArayuzModuServisi.Profesyonel)]
-    [InlineData(ArayuzModuServisi.Basit)]
-    public void GE16_Kart_rolu_sutun_SIRASINDAN_bagimsiz_ad_birincil_eylem_sabit(string mod)
+    [Fact]
+    public void GE16_Kart_rolu_sutun_SIRASINDAN_bagimsiz_ad_birincil_eylem_sabit()
     {
         // GRID-1 tur 2 (doğrulayıcı KRİTİK): telefon başa alınınca ilk hücre artık ad değil;
         // kart kalıbı yeri ROLDEN alır.
         TercihVer("""{"s":1,"k":["telefon","ad"],"g":["has"],"o":null}""");
-        var e = Ciz(mod);
+        var e = Ciz();
         e.WaitForAssertion(() => Assert.Equal("telefon", e.Find("#c-satir-c1 td").GetAttribute("data-kolon")));
         Assert.Equal("birincil", e.Find("#c-satir-c1 td[data-kolon='ad']").GetAttribute("data-izgara-rol"));
         Assert.Equal("sabit", e.Find("#c-satir-c1 td[data-kolon='eylem']").GetAttribute("data-izgara-rol"));
@@ -772,12 +826,10 @@ public sealed class GridEkranTestleri : BunitContext
 
     // ═══ GRID-1 tur 3 (doğrulayıcı bulguları) ═══
 
-    [Theory]
-    [InlineData(ArayuzModuServisi.Profesyonel)]
-    [InlineData(ArayuzModuServisi.Basit)]
-    public void GE17_Sayisal_sutun_basligi_ve_degeri_AYNI_hiza_sinifi_tutar_rozet_sabit_duzen(string mod)
+    [Fact]
+    public void GE17_Sayisal_sutun_basligi_ve_degeri_AYNI_hiza_sinifi()
     {
-        var e = Ciz(mod);
+        var e = Ciz();
         foreach (var a in new[] { "tl-bakiye", "has" })
         {
             Assert.Contains("izgara-sayi", e.Find($"th[data-kolon='{a}']").ClassList);
@@ -788,53 +840,32 @@ public sealed class GridEkranTestleri : BunitContext
             Assert.DoesNotContain("izgara-sayi", e.Find($"th[data-kolon='{a}']").ClassList);
             Assert.DoesNotContain("izgara-sayi", e.Find($"#c-satir-c1 td[data-kolon='{a}']").ClassList);
         }
-        // Tutar hücresi: tutar kendi kutusunda, rozet ondan SONRA (sabit dikey düzen).
-        var tutar = e.Find("#c-satir-c1 td[data-kolon='tl-bakiye'] .izgara-tutar");
-        Assert.Equal("izgara-tutar-deger", tutar.Children[0].ClassName);
-        Assert.Contains("₺", tutar.Children[0].TextContent);
-        Assert.True(tutar.Children.Length >= 2, "rozet tutarın altında ayrı öğe");
-    }
-
-    /// <summary>Sayfanın listeyi yeniden çekmesi (arama/süzgeç yolu) + yeniden çizim.</summary>
-    private static void YukleCagir(IRenderedComponent<SayfaCariler> e)
-    {
-        const System.Reflection.BindingFlags b = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-        e.InvokeAsync(async () =>
-        {
-            await (Task)typeof(SayfaCariler).GetMethod("Yukle", b)!.Invoke(e.Instance, null)!;
-            typeof(Microsoft.AspNetCore.Components.ComponentBase).GetMethod("StateHasChanged", b)!.Invoke(e.Instance, null);
-        }).GetAwaiter().GetResult();
+        // TEMA TEMİZLİĞİ 17.10: tutar/rozet iç düzeni (.izgara-tutar) eski cari hücresinindi (CariHucreTl) — kaldırıldı.
     }
 
     private int OdakSayisi() => JSInterop.Invocations.Count(i => i.Identifier.EndsWith("focus", StringComparison.OrdinalIgnoreCase));
 
     [Fact]
-    public void GE18_Acilista_tercih_TEK_GET_liste_bosalip_dolunca_da_yeniden_okunmaz()
+    public async Task GE18_Acilista_tercih_TEK_GET_liste_bosalip_dolunca_da_yeniden_okunmaz()
     {
+        // Sayfa tek tercih istemcisi tutar; ızgara liste boşalınca kalkar, dolunca YENİDEN kurulur → önbellekten okur.
         TercihVer("""{"s":1,"k":["telefon","ad"],"g":[],"o":{"a":"tl-bakiye","y":"azalan"}}""");
-        var e = Ciz();
+        var istemci = new IzgaraTercihIstemcisi(Services.GetRequiredService<ApiIstemci>());
+        var e = Ciz(istemci);
         e.WaitForAssertion(() => Assert.Equal("telefon", Kolonlar(e)[0]));
         Assert.Single(Istekler(), i => i.Metot == "GET" && i.Yol.EndsWith("/tercihler/benim"));
-        // Liste boşalır (ızgara kalkar) → dolar (ızgara yeniden kurulur): tercih ÖNBELLEKTEN.
-        cariListesi = "[]";
-        YukleCagir(e);
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("tr.cari-satir")));
-        cariListesi = CariListesi;
-        YukleCagir(e);
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("tr.cari-satir")));
-        Assert.Equal("telefon", Kolonlar(e)[0]);
+        // Izgara kalkar → yeniden kurulur: tercih ÖNBELLEKTEN.
+        await DisposeComponentsAsync();
+        var e2 = Ciz(istemci);
+        Assert.Equal("telefon", Kolonlar(e2)[0]);
         Assert.Single(Istekler(), i => i.Metot == "GET" && i.Yol.EndsWith("/tercihler/benim"));
         // Yazılan değişiklik önbelleğe de işlenir: ızgara yeniden kurulunca SON düzen gelir.
-        e.Find("#cari-liste-sutunlar-ac").Click();
-        e.Find("#cari-liste-gizle-has").Click();
-        e.WaitForAssertion(() => Assert.DoesNotContain("has", Kolonlar(e)));
-        cariListesi = "[]";
-        YukleCagir(e);
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("tr.cari-satir")));
-        cariListesi = CariListesi;
-        YukleCagir(e);
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("tr.cari-satir")));
-        Assert.DoesNotContain("has", Kolonlar(e));
+        e2.Find("#cari-liste-sutunlar-ac").Click();
+        e2.Find("#cari-liste-gizle-has").Click();
+        e2.WaitForAssertion(() => Assert.DoesNotContain("has", Kolonlar(e2)));
+        await DisposeComponentsAsync();
+        var e3 = Ciz(istemci);
+        Assert.DoesNotContain("has", Kolonlar(e3));
         Assert.Single(Istekler(), i => i.Metot == "GET" && i.Yol.EndsWith("/tercihler/benim"));
     }
 
@@ -904,35 +935,8 @@ public sealed class GridEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.True(OdakSayisi() > odak1, "panel taşıması sonrası odak verilmedi"));
     }
 
-    [Fact]
-    public void GE23_Mod_gecisinde_hucre_oznitelikleri_KORUNUR_data_kolon_ve_etiket()
-    {
-        // GRID-1 tur 3 (canlı bulundu, 375 BASİT): PRO→BASİT geçişinde telefon td'si (iki ayrı dal,
-        // aynı @key) class/data-kolon/data-etiket özniteliklerini kaybediyordu → kart etiketi yoktu.
-        var e = Ciz();
-        Assert.Equal("true", e.Find("#c-satir-c1 td[data-kolon='telefon']").GetAttribute("data-duzenlenebilir"));
-        var modu = Services.GetRequiredService<ArayuzModuServisi>();
-        e.InvokeAsync(() => modu.Uygula(ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("table.musteri-tablo")));
-        var td = e.Find("#c-satir-c1 td:has(.cari-telefon-metin)");
-        Assert.Equal("telefon", td.GetAttribute("data-kolon"));
-        Assert.Equal(MusteriTuvalSozlugu.Tr.SutunTelefon, td.GetAttribute("data-etiket"));
-        Assert.Contains("hucre-tek-satir", td.ClassList);
-        Assert.Null(td.GetAttribute("data-duzenlenebilir"));
-        // Ve geri: PRO'da düzenleme özniteliği geri gelir.
-        e.InvokeAsync(() => modu.Uygula(ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
-        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#c-satir-c1 td[data-kolon='telefon']").GetAttribute("data-duzenlenebilir")));
-        Assert.Equal(Kuyumcu.Core.I18n.Sozlukler.Tr.Cari.Telefon, e.Find("#c-satir-c1 td[data-kolon='telefon']").GetAttribute("data-etiket"));
-    }
-
-    [Fact]
-    public void GE12_Basit_modda_da_ayni_izgara_basliklar_tuval_metinleri()
-    {
-        var e = Ciz(ArayuzModuServisi.Basit);
-        Assert.Equal(["ad", "telefon", "tl-bakiye", "has", "eylem"], Kolonlar(e));
-        Assert.NotNull(e.Find("table.musteri-tablo.izgara-tablo"));
-        Assert.Equal(MusteriTuvalSozlugu.Tr.SutunMusteri, e.Find("th[data-kolon='ad']").TextContent.Trim());
-    }
+    // TEMA TEMİZLİĞİ 17.10: GE23_Mod_gecisinde_hucre_oznitelikleri_KORUNUR_data_kolon_ve_etiket kaldırıldı — eski cari tablosunun BASİT/PRO iki telefon hücresine (CariHucreTelefonSade/Pro) aitti; Yıldız /cariler'de tablo yok. Izgara'nın dala göre ayrışan @key kuralı GridKaynakTestleri.GS01'de sınanır.
+    // TEMA TEMİZLİĞİ 17.10: GE12_Basit_modda_da_ayni_izgara_basliklar_tuval_metinleri kaldırıldı — eski BASİT cari tablosunun (musteri-tablo) tuval başlıklarıydı; Yıldız'da liste YildizMusteriler (Yildiz4BTestleri.Y4B_13, Yildiz4DTestleri.Y4D_10).
 }
 
 /// <summary>

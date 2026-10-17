@@ -417,7 +417,7 @@ public sealed class KesifP2EkranTestleri : BunitContext
     public void CariDetay_ham_hareket_kodu_yok()
     {
         var e = Ciz();
-        e.Find("#c-detay-c1").Click();
+        e.KartEylemi("c1", "detay");   // TEMA TEMİZLİĞİ 17.10: Detay kartın eylemi
         e.WaitForElement("#cari-detay-hareketler");
         var metin = e.Find("#cari-detay-hareketler").TextContent;
 
@@ -475,7 +475,7 @@ public sealed class KesifP2EkranTestleri : BunitContext
         ekstreYaniti = Ekstre.Replace("\"sayfaDisiHasEtkisi\":0,", "\"sayfaDisiHasEtkisi\":0,\"bakiyeUyusmazligiHas\":77.86,");
         Assert.Contains("bakiyeUyusmazligiHas", ekstreYaniti);
         var e = Ciz();
-        e.Find("#c-detay-c1").Click();
+        e.KartEylemi("c1", "detay");
         e.WaitForElement("#cari-detay-hareketler");
 
         var bant = e.Find("#cari-detay-uyusmazlik");
@@ -488,7 +488,7 @@ public sealed class KesifP2EkranTestleri : BunitContext
         // Sayfa dışı gerçekten varsa (sınır) o metin çıkar, uyuşmazlık bandı çıkmaz.
         ekstreYaniti = Ekstre.Replace("\"sayfaDisiHasEtkisi\":0,\"dahaFazlaVar\":false", "\"sayfaDisiHasEtkisi\":-2.5,\"dahaFazlaVar\":true");
         var e2 = Ciz();
-        e2.Find("#c-detay-c1").Click();
+        e2.KartEylemi("c1", "detay");
         e2.WaitForElement("#cari-detay-hareketler");
         Assert.Empty(e2.FindAll("#cari-detay-uyusmazlik"));
         Assert.Contains(H(-2.5m), e2.Find("#cari-detay-sayfa-disi").TextContent);
@@ -498,7 +498,7 @@ public sealed class KesifP2EkranTestleri : BunitContext
     public void Cari_vade_kesirli_reddedilir()
     {
         var e = Ciz();
-        Dugme(e, "Düzenle").Click();
+        e.KartAc("c1");   // TEMA TEMİZLİĞİ 17.10: Yıldız — satıra dokununca kart (düzenleme)
         e.WaitForAssertion(() => Assert.Equal("30", e.Find("#duz-vade").GetAttribute("value")));
 
         e.Find("#duz-vade").Input("1,5");
@@ -523,7 +523,7 @@ public sealed class KesifP2EkranTestleri : BunitContext
     public void Cari_uyruk_MASAK_ile_ayni_ulke_secicisi_ve_duzeltin_rozeti()
     {
         var e = Ciz();
-        Dugme(e, "Düzenle").Click();
+        e.KartAc("c1");   // TEMA TEMİZLİĞİ 17.10: Yıldız — satıra dokununca kart (düzenleme)
         e.WaitForElement("#duz-uyruk-duzeltin");
         Assert.Contains(P2.UyrukDuzeltin, e.Find("#duz-uyruk-duzeltin").TextContent);
         var secenekler = SeciciYardim.Secenekler(e, "duz-uyruk").Select(o => o.Deger()).ToList();
@@ -548,7 +548,7 @@ public sealed class KesifP2EkranTestleri : BunitContext
     public void CariDuzeltme_tek_sayac()
     {
         var e = Ciz();
-        e.Find("#c-duzeltme-c1").Click();
+        e.KartEylemi("c1", "duzeltme");
         e.WaitForElement("#dz-gerekce");
         Assert.Empty(e.FindAll("#dz-gerekce-sayac"));   // CokSatir'in "0 / 500" sayacı YOK
         var govde = e.Find("#dz-gerekce").ParentElement!.ParentElement!.TextContent;
@@ -590,20 +590,24 @@ public sealed class KesifP2EkranTestleri : BunitContext
         Assert.StartsWith("\u2212", H(-2.0001m));
         Assert.StartsWith("\u2212", Bicim.Tl(-1500.5m));   // TL ile aynı eksi işareti
 
+        // TEMA TEMİZLİĞİ 17.10: liste = Yıldız satırı (iki modda aynı yüz). Satır has'ı tuval kalıbıyla yazar
+        // ("−114,96 g has" — YildizMusteriBicim.Satir); detaydaki 4 ondalıklı HasBicim ile AYNI DEĞİL → raporda ÜRÜN BULGUSU.
+        // Korunan güvence: tek eksi işareti (U+2212, ASCII tire yok), tek yön kelimesi, muhasebe "Alacak/Borç" sözü yok.
+        // Eski BASİT tablonun "Bakiye" sütun başlığı (th.musteri-sutun-borc) Yıldız satırında yok — kaldırıldı.
         foreach (var mod in new[] { Kuyumcu.Web.Servisler.ArayuzModuServisi.Basit, Kuyumcu.Web.Servisler.ArayuzModuServisi.Profesyonel })
         {
             var e = Ciz();
             Services.GetRequiredService<Kuyumcu.Web.Servisler.ArayuzModuServisi>().Uygula(mod, mod);
             e.Render();
-            var satir = Assert.Single(e.FindAll("tr.cari-satir"));
+            e.WaitForElement(TemaTemizligiGGYardimcisi.Satir("c1"));
+            var satir = Assert.Single(e.FindAll("#yildiz-musteri-liste > .yz-musteri-sat"));
             var metin = satir.TextContent;
-            Assert.Contains(H(-114.958m), metin);                 // "−114,9580 has" gruplu biçim
+            Assert.Contains("\u2212114,96", metin);               // has eksi işareti TL ile aynı (U+2212)
             Assert.DoesNotContain("-114", metin);                  // ASCII tire yok
-            Assert.Contains(P2.YonBizBorcluyuz, metin);            // TL ve has eksi → aynı kelime
+            Assert.Contains(Bicim.Tl(-1500m), metin);
+            Assert.Contains(YildizBugunSozlugu.BizBorcluyuz("tr"), metin);   // TL eksi → tek yön kelimesi (BorcDiliSozlugu — tek kaynak)
             Assert.DoesNotContain(Sozlukler.Tr.Cari.Alacak, metin);
             Assert.DoesNotContain(">" + Sozlukler.Tr.Cari.Borc + "<", satir.InnerHtml);
-            if (mod == Kuyumcu.Web.Servisler.ArayuzModuServisi.Basit)
-                Assert.Contains(P2.SutunBakiye, e.Find("th.musteri-sutun-borc").TextContent);
         }
     }
 
@@ -611,7 +615,7 @@ public sealed class KesifP2EkranTestleri : BunitContext
     public void Duzenle_bos_ad_alan_altinda_etiketle_ayni_mesaj()
     {
         var e = Ciz();
-        Dugme(e, "Düzenle").Click();
+        e.KartAc("c1");   // TEMA TEMİZLİĞİ 17.10: Yıldız — satıra dokununca kart (düzenleme)
         e.WaitForAssertion(() => Assert.Equal("Ayşe Demir", e.Find("#duz-ad").GetAttribute("value")));
         e.Find("#duz-ad").Input("");
         var etiket = Sozlukler.Tr.Cari.AdFirma;

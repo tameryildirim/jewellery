@@ -496,11 +496,17 @@ public sealed class Istek1EkranTestleri : BunitContext
         return e;
     }
 
-    private IRenderedComponent<Kuyumcu.Web.Pages.Cariler> CarilerCiz()
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: Yıldız Müşteriler'de tür süzgeci (#cari-tur-filtre) yalnız BAĞLANTIDAN etkinken görünür
+    /// (tuvalde süzgeç düğmesi yok — Yildiz4DTestleri). Kullanıcının o seçiciye ulaştığı gerçek yol: /cariler?tur=….
+    /// </summary>
+    private IRenderedComponent<Kuyumcu.Web.Pages.Cariler> CarilerCiz(string? baglanti = null)
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("k1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
+        if (baglanti is not null)
+            Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>().NavigateTo(baglanti);
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
         e.WaitForAssertion(() => Assert.Contains("Ayşe Yılmaz", e.Markup));
         return e;
@@ -527,15 +533,18 @@ public sealed class Istek1EkranTestleri : BunitContext
     [Fact]
     public void ISTEK1_21_Cariler_Tur_suzgeci_degisip_429_gelince_LISTE_EKRANDA_KALIR()
     {
-        var e = CarilerCiz();
+        var e = CarilerCiz("/cariler?tur=MUSTERI");
+        e.WaitForElement("#cari-tur-filtre");
         yogun = true;
 
         SeciciYardim.Sec(e, "cari-tur-filtre", "TEDARIKCI");
 
         e.WaitForAssertion(() => Assert.StartsWith("Biraz yoğunluk var", e.Find("#hata-bandi").TextContent.Trim()));
-        Assert.Contains("Ayşe Yılmaz", e.Markup);
-        Assert.Contains("Toptancı AŞ", e.Markup);
+        // Eldeki liste SİLİNMEZ: Yıldız satırları yerinde; "henüz müşteri yok"/"aramaya uyan yok" denmez (UX-S28).
+        Assert.Contains("Ayşe Yılmaz", e.Find("#yildiz-musteri-c1").TextContent);
+        Assert.Contains("Toptancı AŞ", e.Find("#yildiz-musteri-c2").TextContent);
         Assert.Empty(e.FindAll(".bos-durum"));
+        Assert.Empty(e.FindAll("#yildiz-musteri-bos, #yildiz-musteri-arama-bos, #yildiz-musteri-suzgec-bos"));
     }
 
     [Theory]
@@ -562,7 +571,8 @@ public sealed class Istek1EkranTestleri : BunitContext
     [Fact]
     public void ISTEK1_23_Cariler_Tur_filtresi_ACMAK_istek_atmaz()
     {
-        var e = CarilerCiz();
+        var e = CarilerCiz("/cariler?tur=MUSTERI");
+        e.WaitForElement("#cari-tur-filtre");
         var once = sunucu.Kayit.Count;
 
         e.Find("#cari-tur-filtre").Click();

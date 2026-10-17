@@ -182,24 +182,22 @@ public sealed class Toplu5DemoTohumTestleri
 // ═══ (3) /cariler — üst bar tekrarı · sınır notu · döviz sütunu · döviz çekmecesi ═══
 public sealed class Toplu5CariTestleri : BunitContext
 {
-    private bool dovizli;
-
     public Toplu5CariTestleri()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddScoped<DilServisi>();
         Services.AddScoped<OturumServisi>();
         Services.AddScoped<ArayuzModuServisi>();
-        Services.AddScoped(_ => new HttpClient(new Sahte(this)) { BaseAddress = new Uri("http://test.local/api/v1/") });
+        Services.AddScoped(_ => new HttpClient(new Sahte()) { BaseAddress = new Uri("http://test.local/api/v1/") });
         Services.AddScoped<ApiIstemci>();
     }
 
-    private sealed class Sahte(Toplu5CariTestleri t) : HttpMessageHandler
+    private sealed class Sahte : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage istek, CancellationToken iptal)
         {
             var y = istek.RequestUri!.AbsolutePath;
-            var usd = t.dovizli ? "120.5" : "0";
+            var usd = "0";   // TEMA TEMİZLİĞİ 17.10: dövizli liste yalnız kaldırılan döviz sütunu testindeydi
             var g = y switch
             {
                 _ when y.EndsWith("/kur/guncel") => """{"id":"kur-1","altinHasFiyati":6800,"usdTry":40,"eurTry":44,"gbpTry":null}""",
@@ -220,22 +218,15 @@ public sealed class Toplu5CariTestleri : BunitContext
     {
         Toplu5Ortak.Oturum(this, mod);
         var e = Render<Cariler>();
-        e.WaitForState(() => e.FindAll("#c-doviz-veresiye-c1").Count > 0);
+        // TEMA TEMİZLİĞİ 17.10: liste = Yıldız tuvali; döviz eylemleri müşteri kartındadır.
+        e.WaitForElement(TemaTemizligiGGYardimcisi.Satir("c1"));
         return e;
     }
 
-    private static void Ac(IRenderedComponent<Cariler> e, string id) => e.FindAll($"#{id}")[0].Click();
+    /// <summary>Kartın eylemi (ör. "c-doviz-veresiye-c1" → satıra dokun → kart → Döviz veresiye).</summary>
+    private static void Ac(IRenderedComponent<Cariler> e, string id) => e.KartEylemi("c1", id["c-".Length..^"-c1".Length]);
 
-    [Theory]
-    [InlineData(ArayuzModuServisi.Profesyonel)]
-    [InlineData(ArayuzModuServisi.Basit)]
-    public void T5_Serit_basligi_ust_bar_tekrari_olarak_gorsel_gizli_DOMda_kalir(string mod)
-    {
-        var e = Ciz(mod);
-        var serit = e.Find("#sayfa-basi-cariler");
-        Assert.Contains("sayfa-basi--baslik-ustte", serit.ClassName ?? "", StringComparison.Ordinal);
-        Assert.Equal(Services.GetRequiredService<DilServisi>().T.Cari.Baslik, e.Find("h2#sayfa-basi-cariler-baslik").TextContent.Trim());
-    }
+    // TEMA TEMİZLİĞİ 17.10: T5_Serit_basligi_ust_bar_tekrari_olarak_gorsel_gizli_DOMda_kalir kaldırıldı — eski listenin SayfaBasi şeridi (#sayfa-basi-cariler, görsel gizli h2) Yıldız'da yok; başlık tuvaldeki görünür h1 "Müşteriler" (#yildiz-musteri-baslik — Yildiz4BTestleri.Y4B_13).
 
     [Theory]
     [InlineData(ArayuzModuServisi.Profesyonel)]
@@ -247,28 +238,8 @@ public sealed class Toplu5CariTestleri : BunitContext
         Assert.Empty(e.FindAll("#cari-sinir-asildi"));
     }
 
-    [Fact]
-    public void T5_PRO_durum_sutunu_yalniz_pasifler_gosterilirken()
-    {
-        var e = Ciz(ArayuzModuServisi.Profesyonel);
-        var durum = Sozlukler.Tr.Urun.Durum;
-        Assert.DoesNotContain(e.FindAll("table thead th"), th => th.TextContent.Trim() == durum);
-        Assert.Contains(e.FindAll("table thead th"), th => th.TextContent.Trim() == Sozlukler.Tr.Cari.Tur);   // Tür sütunu AYNEN
-        e.Find("#cari-pasifleri-goster").Change(true);
-        e.WaitForAssertion(() => Assert.Contains(e.FindAll("table thead th"), th => th.TextContent.Trim() == durum));
-    }
-
-    [Fact]
-    public void T5_PRO_doviz_sutunu_yalniz_doviz_bakiyesi_varken()
-    {
-        var bos = Ciz(ArayuzModuServisi.Profesyonel);
-        Assert.DoesNotContain(bos.FindAll("table thead th"), th => th.TextContent.Trim() == Sozlukler.Tr.Cari.DovizBakiye);
-        bos.Dispose();
-        dovizli = true;
-        var dolu = Render<Cariler>();
-        dolu.WaitForState(() => dolu.FindAll("#c-doviz-veresiye-c1").Count > 0);
-        Assert.Contains(dolu.FindAll("table thead th"), th => th.TextContent.Trim() == Sozlukler.Tr.Cari.DovizBakiye);
-    }
+    // TEMA TEMİZLİĞİ 17.10: T5_PRO_durum_sutunu_yalniz_pasifler_gosterilirken kaldırıldı — eski PRO tablosunun Durum/Tür sütunlarıydı; Yıldız satırında sütun yok, pasiflik alt satırda "kullanımda değil" (YildizMusteriBicim.Satir; Yildiz4DTestleri).
+    // TEMA TEMİZLİĞİ 17.10: T5_PRO_doviz_sutunu_yalniz_doviz_bakiyesi_varken kaldırıldı — Yıldız listesinde döviz sütunu yok; döviz bakiyesi kartın Detay penceresinde yalnız doluysa (CariEkranTestleri.Doviz_bakiyesi_olan_satirda_USD_rozeti_gorunur / _sifir_olan_caride_rozet_CIKMAZ).
 
     [Fact]
     public void T5_PRO_doviz_veresiye_uc_aciklama_TEK_ipucunda_etiket_sade()

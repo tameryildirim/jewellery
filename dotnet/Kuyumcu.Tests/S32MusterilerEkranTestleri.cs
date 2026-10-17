@@ -118,80 +118,44 @@ public sealed class S32MusterilerEkranTestleri : BunitContext
             ? v.ToString() : null;
     }
 
-    /// <summary>Satırda GÖRÜNEN eylemler: yalnız .satir-eylem içindekiler ("⋯" penceresi hariç).</summary>
-    private static IReadOnlyList<AngleSharp.Dom.IElement> GorunenEylemler(
-        IRenderedComponent<Kuyumcu.Web.Pages.Cariler> e, string id) =>
-        e.Find($"#c-eylem-{id}").QuerySelectorAll("button").ToList();
+    // TEMA TEMİZLİĞİ 17.10: S32_01_Her_satirda_en_cok_uc_gorunen_eylem_vardir_ucuncusu_menu kaldırıldı — Yıldız listesinde satır eylemi ve "⋯" penceresi yok (satıra dokununca kart açılır); eylemlerin tamamı kartta (S32_02).
+    // TEMA TEMİZLİĞİ 17.10: S32_03_Menu_yerli_popover_her_oge_pencereyi_kapatir kaldırıldı — satır "⋯" popover penceresi Yıldız listesinde yok; eylemler kartın eylem satırında düz düğmedir (YildizKartEylemleri; her eylem önce kartı kapatır).
 
-    // ── (1) SATIRDA EN ÇOK 3 EYLEM ─────────────────────────────────────────
-
-    [Theory]
-    [InlineData(ArayuzModuServisi.Profesyonel)]
-    [InlineData(ArayuzModuServisi.Basit)]
-    public void S32_01_Her_satirda_en_cok_uc_gorunen_eylem_vardir_ucuncusu_menu(string mod)
-    {
-        var e = Ciz(mod);
-        foreach (var id in new[] { "c1", "c2", "c3", "pm" })
-        {
-            var d = GorunenEylemler(e, id);
-            Assert.Equal(3, d.Count);
-            Assert.Equal($"c-menu-ac-{id}", d[2].Id);
-            Assert.Equal($"c-duzenle-{id}", d[1].Id);
-        }
-        // Satırda GÖRÜNEN eylemler dışındaki her düğme "⋯" penceresinin içindedir.
-        foreach (var satir in e.FindAll("tr.cari-satir"))
-        {
-            var disarida = satir.QuerySelectorAll("button")
-                .Where(b => b.Closest(".satir-menu") is null && b.Closest(".satir-eylem") is null
-                            && b.Closest(".satir-ici") is null)
-                .ToList();
-            Assert.Empty(disarida);
-        }
-    }
-
-    // ── (2) ÖZELLİK SİLİNMEDİ: eski eylemlerin HEPSİ menüde, id'ler AYNEN ──
+    // ── (2) ÖZELLİK SİLİNMEDİ: eski eylemlerin HEPSİ kartta, id'ler AYNEN ──
 
     [Fact]
     public void S32_02_Eski_eylemlerin_hepsi_menude_durur_idler_aynen()
     {
+        // TEMA TEMİZLİĞİ 17.10: satır menüsü yerine müşteri KARTININ eylem satırı (CariEylemleri — TEK kaynak).
         var e = Ciz();
-        var menu = e.Find("#c-menu-c1");
-        foreach (var id in new[] { "c-detay-c1", "c-veresiye-c1", "c-duzeltme-c1",
-                                   "c-doviz-tahsilat-c1", "c-doviz-veresiye-c1", "c-pasife-al-c1" })
-            Assert.NotNull(menu.QuerySelector($"#{id}"));
-        // Aktife al yalnız PASİF satırda ve GÖRÜNÜR (geri dönüş tek tık).
-        Assert.Equal("c-aktife-al-c3", GorunenEylemler(e, "c3")[0].Id);
+        e.KartAc("c1");
+        var k1 = e.KartEylemKimlikleri();
+        foreach (var id in new[] { "c-tahsilat-c1", "c-detay-c1", "c-veresiye-c1", "c-duzeltme-c1",
+                                   "c-doviz-tahsilat-c1", "c-doviz-veresiye-c1" })
+            Assert.Contains(id, k1);
+        // Aktif kartta tahsilat BİRİNCİ eylem; pasife alma kartın altındaki tek düğmede (tekrar yok).
+        Assert.Equal("c-tahsilat-c1", k1[0]);
+        Assert.DoesNotContain("c-pasife-al-c1", k1);
+        Assert.NotNull(e.Find("#c-pasife-al"));
+        // Pasif kartta Aktife al BİRİNCİ eylem (geri dönüş tek tık); tahsilat yolu kaybolmadı.
+        e.Find("#cekmece-cari-iptal").Click();
+        e.KartAc("c3");
+        var k3 = e.KartEylemKimlikleri();
+        Assert.Equal("c-aktife-al-c3", k3[0]);
+        Assert.Contains("c-tahsilat-c3", k3);
         Assert.Empty(e.FindAll("#c-pasife-al-c3"));
-        // Pasif satırın tahsilat yolu kaybolmadı: menüde.
-        Assert.NotNull(e.Find("#c-menu-c3").QuerySelector("#c-tahsilat-c3"));
-        // Aktif satırda tahsilat GÖRÜNÜR birinci eylem.
-        Assert.Equal("c-tahsilat-c1", GorunenEylemler(e, "c1")[0].Id);
-    }
-
-    [Fact]
-    public void S32_03_Menu_yerli_popover_her_oge_pencereyi_kapatir()
-    {
-        var e = Ciz();
-        var ac = e.Find("#c-menu-ac-c1");
-        Assert.Equal("c-menu-c1", ac.GetAttribute("popovertarget"));
-        Assert.False(string.IsNullOrWhiteSpace(ac.GetAttribute("aria-label")));
-        var menu = e.Find("#c-menu-c1");
-        Assert.Equal("auto", menu.GetAttribute("popover"));
-        var ogeler = menu.QuerySelectorAll("button").ToList();
-        Assert.True(ogeler.Count >= 6);
-        Assert.All(ogeler, b =>
-        {
-            Assert.Equal("c-menu-c1", b.GetAttribute("popovertarget"));
-            Assert.Equal("hide", b.GetAttribute("popovertargetaction"));
-        });
     }
 
     [Fact]
     public void S32_04_Sistem_carisi_kilit_rozeti_ad_hucresinde_pasife_alma_yok()
     {
+        // TEMA TEMİZLİĞİ 17.10: Yıldız listesinde (tuval Musteri4) Peşin Müşteri sistem kartı SATIR olarak yok
+        // (üst satırdaki sayıda var) → kartı listeden açılamaz, pasife/aktife alma yolu YOK. Ad hücresindeki kilit
+        // rozeti eski tabloya aitti (kaldırıldı); kartın içindeki değişmezlik gerekçesi (DegismezIpucu) AYNEN.
         var e = Ciz();
-        var kilit = e.Find("#c-sistem-carisi-pm");
-        Assert.NotNull(kilit.Closest("td.hucre-vurgu"));
+        e.WaitForElement(TemaTemizligiGGYardimcisi.Satir("c1"));
+        Assert.Empty(e.FindAll(TemaTemizligiGGYardimcisi.Satir("pm")));
+        Assert.StartsWith("4 müşteri", e.Find("#yildiz-musteri-ust").TextContent);
         Assert.Empty(e.FindAll("#c-pasife-al-pm"));
         Assert.Empty(e.FindAll("#c-aktife-al-pm"));
     }
@@ -202,11 +166,13 @@ public sealed class S32MusterilerEkranTestleri : BunitContext
     public void S32_05_Menuden_Detay_ekstre_ister_Pasife_al_onayla_DELETE_atar()
     {
         var e = Ciz();
-        e.Find("#c-detay-c1").Click();
+        e.KartEylemi("c1", "detay");
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.EndsWith("/cari/c1/ekstre")));
 
         istekler.Clear();
-        e.Find("#c-pasife-al-c1").Click();
+        // Pasife alma: kartın altındaki düğme (PRO'da hep görünür) → onay penceresi → DELETE.
+        e.KartAc("c1");
+        e.Find("#c-pasife-al").Click();
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#c-pasif-onayla")));
         e.Find("#c-pasif-onayla").Click();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "DELETE" && i.Yol.EndsWith("/cari/c1")));
@@ -216,42 +182,14 @@ public sealed class S32MusterilerEkranTestleri : BunitContext
     public void S32_06_Gorunen_Tahsilat_formu_acar()
     {
         var e = Ciz();
-        e.Find("#c-tahsilat-c1").Click();
+        e.KartEylemi("c1", "tahsilat");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#th-kaydet")));
     }
 
     // ── (4) BASİT MOD: SÜTUNLAR ────────────────────────────────────────────
 
-    [Fact]
-    public void S32_07_Basit_modda_tur_ve_durum_sutun_degil_ad_hucresinde_rozet()
-    {
-        var pro = Ciz(ArayuzModuServisi.Profesyonel);
-        var proBaslik = pro.FindAll("table.veri-tablosu thead th").Count;
-
-        var e = Ciz(ArayuzModuServisi.Basit);
-        var basitBaslik = e.FindAll("table.veri-tablosu thead th").Count;
-        // TOPLU-5: PRO'da Durum sütunu yalnız "Pasifleri göster" açıkken (kapalıyken hep "Aktif"tir) → fark yalnız Tür.
-        Assert.Equal(proBaslik - 1, basitBaslik);   // Tür sütunu yok (Durum iki yüzde de ad hücresinde rozet)
-        var c2Ad = e.Find("#c-satir-c2 td");
-        Assert.Contains(Sozlukler.Tr.Cari.Tedarikci, c2Ad.TextContent);
-        var c3Ad = e.Find("#c-satir-c3 td");
-        Assert.Contains(Sozlukler.Tr.Ortak.Pasif, c3Ad.TextContent);
-        // Müşteri türü rozet olarak TEKRARLANMAZ (gürültü yok).
-        Assert.DoesNotContain(Sozlukler.Tr.Cari.Musteri, e.Find("#c-satir-c1 td").TextContent);
-    }
-
-    [Fact]
-    public void S32_08_Basit_modda_doviz_sutunu_yalniz_doviz_bakiyesi_varsa_cizilir()
-    {
-        var dovizli = Ciz(ArayuzModuServisi.Basit);
-        Assert.Contains(dovizli.FindAll("table.veri-tablosu thead th"),
-            th => th.TextContent.Contains(Sozlukler.Tr.Cari.DovizBakiye));
-
-        cariListesi = DovizsizListe;
-        var dovizsiz = Render<Kuyumcu.Web.Pages.Cariler>();
-        Assert.DoesNotContain(dovizsiz.FindAll("table.veri-tablosu thead th"),
-            th => th.TextContent.Contains(Sozlukler.Tr.Cari.DovizBakiye));
-    }
+    // TEMA TEMİZLİĞİ 17.10: S32_07_Basit_modda_tur_ve_durum_sutun_degil_ad_hucresinde_rozet kaldırıldı — eski tablonun sütun/rozet düzeniydi; Yıldız satırında (ad · alt · tutar · durum) tür sütunu/rozeti yok, pasiflik alt satırda "kullanımda değil" (Yildiz4DTestleri — YildizMusteriBicim.Satir), iki modda aynı yüz.
+    // TEMA TEMİZLİĞİ 17.10: S32_08_Basit_modda_doviz_sutunu_yalniz_doviz_bakiyesi_varsa_cizilir kaldırıldı — Yıldız listesinde döviz sütunu yok; döviz bakiyesi kartın Detay penceresinde, yalnız doluysa (CariEkranTestleri.Doviz_bakiyesi_olan_satirda_USD_rozeti_gorunur / Doviz_bakiyesi_sifir_olan_caride_rozet_CIKMAZ).
 
     // ── (5) BASİT MOD: FORM ≤ 8 ALAN + "DAHA FAZLA" ─────────────────────────
 
@@ -293,7 +231,7 @@ public sealed class S32MusterilerEkranTestleri : BunitContext
     public void S32_11_Basit_modda_katli_alanlar_PATCHte_AYNEN_geri_yazilir_silinmez()
     {
         var e = Ciz(ArayuzModuServisi.Basit);
-        e.Find("#c-duzenle-c1").Click();
+        e.KartAc("c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#duz-ad")));
         Assert.Empty(e.FindAll("#duz-vergino"));      // katlı
         Assert.NotEmpty(e.FindAll("#duz-daha-fazla"));
@@ -317,7 +255,7 @@ public sealed class S32MusterilerEkranTestleri : BunitContext
     public void S32_12_Katli_alanda_hata_varsa_grup_kendiliginden_acilir_istek_atilmaz()
     {
         var e = Ciz(ArayuzModuServisi.Basit);
-        e.Find("#c-duzenle-c2").Click();
+        e.KartAc("c2");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#duz-ad")));
         Assert.Empty(e.FindAll("#duz-vergino"));
 
@@ -332,7 +270,7 @@ public sealed class S32MusterilerEkranTestleri : BunitContext
     public void S32_13_PEP_beyanli_kartta_beyan_basit_modda_da_gorunur()
     {
         var e = Ciz(ArayuzModuServisi.Basit);
-        e.Find("#c-duzenle-c3").Click();
+        e.KartAc("c3");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#duz-ad")));
         Assert.NotEmpty(e.FindAll("#duz-pep"));
         Assert.NotEmpty(e.FindAll("#duz-pep-gorev"));
@@ -340,7 +278,7 @@ public sealed class S32MusterilerEkranTestleri : BunitContext
 
         // PEP beyansız kartta basit modda beyan katlıdır.
         e.Find("#cekmece-cari-iptal").Click();
-        e.Find("#c-duzenle-c1").Click();
+        e.KartAc("c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#duz-ad")));
         Assert.Empty(e.FindAll("#duz-pep"));
     }

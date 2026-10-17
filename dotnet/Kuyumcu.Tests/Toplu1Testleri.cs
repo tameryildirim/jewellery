@@ -663,8 +663,7 @@ public sealed class Toplu1CariTestleri : BunitContext
                 EtkinArayuzModu: basit ? "BASIT" : "PROFESYONEL"));
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => basit);
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-detay-c1");
-        e.Find("#c-detay-c1").Click();
+        e.KartEylemi("c1", "detay");   // TEMA TEMİZLİĞİ 17.10: satıra dokun → kart → Detay
         e.WaitForElement("#cari-detay-hareketler");
         return e;
     }

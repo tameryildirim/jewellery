@@ -118,12 +118,18 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", mod, mod));
         var e = Render<SayfaCariler>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("tr.cari-satir")));
+        // TEMA TEMİZLİĞİ 17.10: liste = Yıldız tuvali (YildizMusteriler) — BASİT ve PRO aynı yüz.
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#yildiz-musteri-liste > .yz-musteri-sat")));
         return e;
     }
 
     private static List<string> SatirIdleri(IRenderedComponent<SayfaCariler> e) =>
-        [.. e.FindAll("tr.cari-satir").Select(t => t.Id!.Replace("c-satir-", ""))];
+        [.. e.FindAll("#yildiz-musteri-liste > .yz-musteri-sat").Select(t => t.Id!.Replace("yildiz-musteri-", ""))];
+
+    /// <summary>Satıra dokun (Yıldız: satırın kendisi bağlantıdır).</summary>
+    private static void Dokun(IRenderedComponent<SayfaCariler> e, string id) => e.Find($"#yildiz-musteri-{id}").Click();
+
+    private static string Ust(int n, int alacak, int borc) => YildizMusteriSozlugu.Ust(n, alacak, borc, "tr");
 
     // ── (1) SEGMENT: Hepsi / Borçlu / Toptancı + sayaç ─────────────────────────
 
@@ -131,19 +137,20 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     public void TM1_01_Segment_Borclu_ve_Toptanci_suzer_sayac_N_ve_M_yazar()
     {
         var e = Ciz();
+        // TEMA TEMİZLİĞİ 17.10: "N müşteri · M gösteriliyor" sayacı yerine Yıldız üst satırı (N = sunucudan gelen;
+        // segment süzgeci sayıyı DEĞİŞTİRMEZ, satırları süzer).
         Assert.Equal("true", e.Find("#cari-segment-hepsi").GetAttribute("aria-pressed"));
         Assert.Equal(4, SatirIdleri(e).Count);
-        Assert.Equal(string.Format(MusteriTuvalSozlugu.Tr.Sayac, 4, 4), e.Find("#cari-sayac-metin").TextContent.Trim());
+        Assert.Equal(Ust(4, 1, 1), e.Find("#yildiz-musteri-ust").TextContent);
 
         e.Find("#cari-segment-borclu").Click();
         Assert.Equal(["c1", "c3"], SatirIdleri(e));      // TL ya da has ile bize borçlu
         Assert.Equal("true", e.Find("#cari-segment-borclu").GetAttribute("aria-pressed"));
         Assert.Equal("false", e.Find("#cari-segment-hepsi").GetAttribute("aria-pressed"));
-        Assert.Equal(string.Format(MusteriTuvalSozlugu.Tr.Sayac, 4, 2), e.Find("#cari-sayac-metin").TextContent.Trim());
+        Assert.Equal(Ust(4, 1, 1), e.Find("#yildiz-musteri-ust").TextContent);
 
         e.Find("#cari-segment-toptanci").Click();
         Assert.Equal(["c2"], SatirIdleri(e));
-        Assert.Equal(string.Format(MusteriTuvalSozlugu.Tr.Sayac, 4, 1), e.Find("#cari-sayac-metin").TextContent.Trim());
 
         // Segment İSTEMCİDE çalışır: sunucuya ek liste isteği atılmaz.
         Assert.Single(istekler, i => i.Metot == "GET" && i.Yol.Contains("/cari?"));
@@ -155,47 +162,47 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
         cariListesi = """[{"id":"c4","ad":"Ali Can","tur":"MUSTERI","telefon":null,"email":null,"tlBakiye":0,"hasGramBakiye":0,"aktif":true}]""";
         var e = Ciz();
         e.Find("#cari-segment-toptanci").Click();
-        Assert.Empty(e.FindAll("tr.cari-satir"));
-        Assert.Contains(MusteriTuvalSozlugu.Tr.SegmentBos, e.Markup);
-        Assert.Equal(string.Format(MusteriTuvalSozlugu.Tr.Sayac, 1, 0), e.Find("#cari-sayac-metin").TextContent.Trim());
+        Assert.Empty(e.FindAll("#yildiz-musteri-liste > .yz-musteri-sat"));
+        // Boş durum SÜZGEÇ adına konuşur ("henüz müşteri yok" DENMEZ — istek başarılı, kart var).
+        Assert.Equal(YildizMusteriSozlugu.SuzgecBos("tr"), e.Find("#yildiz-musteri-suzgec-bos").TextContent);
+        Assert.Empty(e.FindAll("#yildiz-musteri-bos"));
+        Assert.Equal(Ust(1, 0, 0), e.Find("#yildiz-musteri-ust").TextContent);
     }
 
-    // ── (2) SADE TABLO: sütunlar, rozetler, telefon biçimi, Borç = Bicim.Tl ────
+    // ── (2) SATIR: vade gecikmesi, toptancı, telefon biçimi, bakiye = Bicim.Tl + tek yön kelimesi ────
+    // TEMA TEMİZLİĞİ 17.10: eski sade tablonun (başlıklar, #c-vade/#c-toptan rozetleri, #c-telefon hücresi, satır
+    // düğmeleri) yerine Yıldız satırı (ad · alt · tutar · durum). Aynı bilgiler satırda AYNI kaynaklardan yazılır.
+
+    private static string Alt(IRenderedComponent<SayfaCariler> e, string id) => e.Find($"#yildiz-musteri-{id} .yz-musteri-alt").TextContent;
+    private static string Durum(IRenderedComponent<SayfaCariler> e, string id) => e.Find($"#yildiz-musteri-{id} .yz-musteri-durum").TextContent;
 
     [Fact]
     public void TM1_02_Basit_tablo_Musteri_Telefon_Borc_rozetler_ve_telefon_bicimi()
     {
         var e = Ciz();
-        var basliklar = e.FindAll("table.musteri-tablo thead th").Select(t => t.TextContent.Trim()).ToList();
-        Assert.Equal(MusteriTuvalSozlugu.Tr.SutunMusteri, basliklar[0]);
-        Assert.Equal(MusteriTuvalSozlugu.Tr.SutunTelefon, basliklar[1]);
-        // KESIF-P2 tur 3 (hakem): "Borç" başlığı altında eksi tutar ↔ detayda "Alacak" çelişkisi kalktı —
-        // başlık "Bakiye", yön her satırda tek bakış açısıyla ("Bize borçlu" / "Biz borçluyuz").
-        Assert.Equal(Kuyumcu.Core.I18n.KesifP2Sozlugu.Tr.SutunBakiye, basliklar[2]);
-
-        Assert.Equal(MusteriTuvalSozlugu.Tr.VadeGecti, e.Find("#c-vade-c1").TextContent.Trim());
-        Assert.Empty(e.FindAll("#c-vade-c2"));             // gecikme 0 → rozet YOK
-        Assert.Equal(MusteriTuvalSozlugu.Tr.Toptanci, e.Find("#c-toptan-c2").TextContent.Trim());
-        Assert.Empty(e.FindAll("#c-toptan-c4"));           // BIREYSEL
-
-        Assert.Equal("0532 411 22 33", e.Find("#c-telefon-c1").TextContent.Trim());
-        Assert.Equal("0212 511 40 40", e.Find("#c-telefon-c2").TextContent.Trim());
-        Assert.Equal("0541 208 90 17", e.Find("#c-telefon-c3").TextContent.Trim());
-        Assert.Equal("—", e.Find("#c-telefon-c4").TextContent.Trim());
-
-        var borc = e.Find("#c-satir-c2 td.musteri-sutun-borc");
-        Assert.Contains(Bicim.Tl(-151300m), borc.TextContent);
-        Assert.Contains("metin-kirmizi", borc.ClassName);
-        // KESIF-P2 tur 3: BASİT ve PRO aynı yön kelimesi; muhasebe "Alacak/Borç" rozeti yok.
-        Assert.DoesNotContain(Dil(e).Cari.Borc, borc.TextContent);
-        Assert.Contains(Kuyumcu.Core.I18n.KesifP2Sozlugu.Tr.YonBizBorcluyuz, borc.TextContent);
-        // Satır düğmeleri tuvaldeki gibi YALNIZ yazı: emoji yok.
-        var eylem = e.Find("#c-eylem-c1").TextContent;
-        Assert.DoesNotContain("💵", eylem);
-        Assert.DoesNotContain("✏", eylem);
+        // Vadesi geçmiş borç: gecikme günü durumda; gecikme 0 → gün yazılmaz.
+        e.WaitForAssertion(() => Assert.Contains(YildizBugunSozlugu.GunGecti(12, "tr"), Durum(e, "c1")));
+        Assert.DoesNotContain("gün", Durum(e, "c2"));
+        // Toptancı (segment) alt satırda; BIREYSEL'de yok.
+        Assert.StartsWith(YildizMusteriSozlugu.ToptanciAlt("tr"), Alt(e, "c2"));
+        Assert.DoesNotContain(YildizMusteriSozlugu.ToptanciAlt("tr"), Alt(e, "c4"));
+        // Telefon tuval biçiminde (TelefonGoster — tek kaynak).
+        Assert.Equal("0532 411 22 33", Alt(e, "c1"));
+        Assert.EndsWith("0212 511 40 40", Alt(e, "c2"));
+        Assert.Equal("0541 208 90 17", Alt(e, "c3"));
+        // Bakiye: Bicim.Tl, eksi kırmızı; yön tek bakış açısıyla ("biz borçluyuz"), muhasebe "Borç" sözü yok.
+        var tutar = e.Find("#yildiz-musteri-c2 .yz-musteri-tutar");
+        Assert.Equal(Bicim.Tl(-151300m), tutar.TextContent);
+        Assert.Contains("yz-kotu", tutar.ClassList);
+        Assert.DoesNotContain("yz-kotu", e.Find("#yildiz-musteri-c1 .yz-musteri-tutar").ClassList);
+        Assert.StartsWith(YildizBugunSozlugu.BizBorcluyuz("tr"), Durum(e, "c2"));
+        Assert.DoesNotContain(Dil(e).Cari.Borc, e.Find("#yildiz-musteri-c2").TextContent);
+        // Satırda emoji yok.
+        Assert.DoesNotContain("💵", e.Find("#yildiz-musteri-liste").TextContent);
+        Assert.DoesNotContain("✏", e.Find("#yildiz-musteri-liste").TextContent);
         // Arama kutusu: tuval yer tutucusu ve büyüteç ikonu.
-        Assert.Equal(MusteriTuvalSozlugu.Tr.AramaYerTutucu, e.Find("#cari-arama").GetAttribute("placeholder"));
-        Assert.NotNull(e.Find("#cari-arama-kutu svg.ikon"));
+        Assert.Equal(YildizMusteriSozlugu.AraYerTutucu("tr"), e.Find("#cari-arama").GetAttribute("placeholder"));
+        Assert.NotNull(e.Find("#yildiz-musteri-ara svg"));
     }
 
     private Kuyumcu.Core.I18n.Sozluk Dil(IRenderedComponent<SayfaCariler> _) =>
@@ -206,7 +213,10 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     {
         ozel["/raporlar/vade-takibi"] = (HttpStatusCode.Forbidden, """{"message":"Yetkiniz yok"}""");
         var e = Ciz(rol: "TEZGAHTAR");
-        Assert.Empty(e.FindAll(".cari-rozet--vade"));
+        e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/raporlar/vade-takibi")));
+        // Gecikme bilinmiyor → gün UYDURULMAZ (yalnız yön); yetki hatası bant olarak çıkmaz.
+        Assert.Equal(YildizMusteriSozlugu.BizeBorclu("tr"), Durum(e, "c1"));
+        Assert.Empty(e.FindAll("#hata-bandi"));
         Assert.DoesNotContain("Yetkiniz yok", e.Markup);
         Assert.Equal(4, SatirIdleri(e).Count);   // liste YERİNDE
     }
@@ -226,10 +236,10 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     public void TM1_04_Satira_dokununca_panel_acilir_basligi_ad_satir_secili()
     {
         var e = Ciz();
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#cekmece-cari")));
         Assert.Equal("Hasan Kaya", e.Find("#cekmece-cari-baslik").TextContent.Trim());
-        Assert.Contains("musteri-satir--secili", e.Find("#c-satir-c1").ClassName);
+        // TEMA TEMİZLİĞİ 17.10: eski tablonun "seçili satır" sınıfı (musteri-satir--secili) Yıldız satırında yok — kaldırıldı.
         Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.EndsWith("/cari/c1"));
         Assert.NotNull(e.Find(".musteri-sade--panel-acik"));
     }
@@ -237,20 +247,22 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     [Fact]
     public void TM1_04b_PRO_modda_satir_hucresi_panel_acmaz_Duzenle_dugmesi_acar()
     {
+        // TEMA TEMİZLİĞİ 17.10: Yıldız'da "Düzenle" satırın kendisidir — PRO'da da satıra dokununca kart açılır
+        // (Cariler.YildizSatirAc: BASİT ve PRO aynı yol). PRO kartının başlığı "Cari Düzenle" (BASİT'te müşterinin adı)
+        // ve BASİT çizim sarmalayıcısı PRO'da yok — bu ayrım korunur.
         var e = Ciz(ArayuzModuServisi.Profesyonel);
-        e.Find("#c-satir-c1 td").Click();
-        Assert.Empty(e.FindAll("#cekmece-cari"));
         Assert.Empty(e.FindAll(".musteri-sade"));
-        e.Find("#c-duzenle-c1").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#cekmece-cari")));
         Assert.Equal(Dil(e).Cari.CariDuzenle, e.Find("#cekmece-cari-baslik").TextContent.Trim());
+        Assert.Empty(e.FindAll(".musteri-sade--panel-acik"));
     }
 
     [Fact]
     public void TM1_05_Panel_uyari_bandi_gecikme_gununu_yazar_Tahsilat_penceresini_acar()
     {
         var e = Ciz();
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#cari-panel-uyari")));
         Assert.Contains(string.Format(MusteriTuvalSozlugu.Tr.VadeUyariOnce, 12), e.Find("#cari-panel-uyari").TextContent);
         // Düğme metni YALNIZ "Tahsilat" (tırnak düğmenin dışında; doğrulayıcı bulgusu 24.09).
@@ -264,7 +276,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
         Assert.Contains(istekler, i => i.Yol.EndsWith("/kasalar"));
 
         // Gecikmesi olmayan kartta bant YOK.
-        e.Find("#c-satir-c2 td").Click();
+        Dokun(e, "c2");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#cekmece-cari")));
         Assert.Empty(e.FindAll("#cari-panel-uyari"));
     }
@@ -273,7 +285,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     public void TM1_06_Panel_alanlari_tuval_etiketleri_kaldir_dugmesi_Daha_fazla_icinde()
     {
         var e = Ciz();
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#duz-ad")));
         Assert.Equal(MusteriTuvalSozlugu.Tr.AdSoyad, e.Find("#duz-ad-sar .alan-etiket-metin").TextContent.Trim());
         Assert.Equal(MusteriTuvalSozlugu.Tr.Not, e.Find("#duz-notlar-sar .alan-etiket-metin").TextContent.Trim());
@@ -292,7 +304,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     public void TM1_06b_Panel_Kaydet_yolu_DEGISMEDI_PATCH_katli_alanlari_aynen_tasir()
     {
         var e = Ciz();
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#duz-ad")));
         istekler.Clear();
         e.Find("#cekmece-cari-kaydet").Click();
@@ -309,7 +321,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     public void TM1_07_Sahipte_son_degisiklik_YAZMA_kaydindan_kim_ve_baglanti()
     {
         var e = Ciz(rol: "SAHIP");
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#cari-son-degisiklik")));
         var d = istekler.Single(i => i.Yol.Contains("/denetim?"));
         Assert.Contains("varlikTuru=Cari", d.Yol);
@@ -324,7 +336,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     public void TM1_07b_Sahip_disinda_denetim_istenmez_ad_uydurulmaz_yalniz_zaman()
     {
         var e = Ciz(rol: "TEZGAHTAR");
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#cari-son-degisiklik")));
         Assert.DoesNotContain(istekler, i => i.Yol.Contains("/denetim"));
         Assert.Empty(e.FindAll("#cari-kim-ne-yapti"));
@@ -338,40 +350,15 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     {
         ozel["/denetim"] = (HttpStatusCode.InternalServerError, """{"message":"Denetim okunamadı"}""");
         var e = Ciz(rol: "SAHIP");
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.Contains("Denetim okunamadı", e.Find("#cari-son-degisiklik-hata").TextContent));
         Assert.NotEmpty(e.Find("#cari-son-degisiklik-metin").TextContent.Trim());
     }
 
     // ── (5) ÖZELLİK SİLİNMEZ: tür/pasif süzgeci, PRO yüz, sınır ────────────────
 
-    [Fact]
-    public void TM1_08_Diger_suzgecler_tur_ve_pasif_suzgecini_BASITte_de_acar()
-    {
-        var e = Ciz();
-        Assert.Empty(e.FindAll("#cari-tur-filtre"));
-        Assert.Equal("false", e.Find("#cari-suzgec-daha").GetAttribute("aria-expanded"));
-        e.Find("#cari-suzgec-daha").Click();
-        Assert.NotEmpty(e.FindAll("#cari-tur-filtre"));
-        Assert.NotEmpty(e.FindAll("#cari-pasifleri-goster"));
-        Assert.Equal("true", e.Find("#cari-suzgec-daha").GetAttribute("aria-expanded"));
-    }
-
-    [Fact]
-    public void TM1_09_PRO_yuz_bugunku_gibi_satir_ici_telefon_rozet_ve_suzgecler()
-    {
-        var e = Ciz(ArayuzModuServisi.Profesyonel);
-        Assert.Empty(e.FindAll("#cari-segment"));
-        Assert.Empty(e.FindAll("#cari-sayac"));
-        Assert.NotEmpty(e.FindAll("#cari-tur-filtre"));
-        // TOPLU-5 (hakem ORTA "12 px 'En çok 100 kayıt' notu"): PRO da sınır cümlesini yalnız sınıra değince yazar (TM1_10).
-        Assert.Empty(e.FindAll("#cari-sinir"));
-        Assert.Empty(e.FindAll("#c-telefon-c1"));
-        // KESIF-P2 tur 3: PRO rozeti de BASİT/detay ile aynı kelime.
-        Assert.Contains(Kuyumcu.Core.I18n.KesifP2Sozlugu.Tr.YonBizBorcluyuz, e.Find("#c-satir-c2 td.musteri-sutun-borc").TextContent);
-        Assert.Equal(4, SatirIdleri(e).Count);            // segment PRO'da uygulanmaz
-        Assert.DoesNotContain(istekler, i => i.Yol.Contains("/raporlar/vade-takibi"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: TM1_08_Diger_suzgecler_tur_ve_pasif_suzgecini_BASITte_de_acar kaldırıldı — "Diğer süzgeçler" (#cari-suzgec-daha) tuvalde yok, Yıldız'da bilerek kaldırıldı (Yildiz4DTestleri.Y4D_01); pasif müşteri aramayla bulunur (Y4D YildizAramaPasifi), tür/pasif süzgeci bağlantıdan etkinken görünür (CariEkranTestleri.Baglantidaki_tur_suzgeci_KUTUYA_yazilir).
+    // TEMA TEMİZLİĞİ 17.10: TM1_09_PRO_yuz_bugunku_gibi_satir_ici_telefon_rozet_ve_suzgecler kaldırıldı — eski PRO tablo yüzü (satır içi telefon, tür süzgeci hep açık, segmentsiz, vade isteği yok) Yıldız'da yok; PRO ve BASİT aynı Yıldız listesi (Yildiz4BTestleri.Y4B_13).
 
     [Fact]
     public void TM1_10_Sinira_degince_sayac_100_arti_ve_sinir_uyarisi_gorunur()
@@ -380,9 +367,11 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
             $$"""{"id":"s{{i}}","ad":"Müşteri {{i}}","tur":"MUSTERI","telefon":null,"email":null,"tlBakiye":0,"hasGramBakiye":0,"aktif":true}""");
         cariListesi = "[" + string.Join(",", satirlar) + "]";
         var e = Ciz();
-        Assert.Equal(string.Format(MusteriTuvalSozlugu.Tr.Sayac, "100+", 100), e.Find("#cari-sayac-metin").TextContent.Trim());
-        Assert.NotEmpty(e.FindAll("#cari-sinir-asildi"));
-        Assert.NotEmpty(e.FindAll("#cari-sinir"));
+        // TEMA TEMİZLİĞİ 17.10: sayaç → Yıldız üst satırı "100+ müşteri"; sınır ve aşıldı cümleleri TEK notta (#cari-sinir).
+        Assert.Equal(YildizMusteriSozlugu.UstSinirli(100, 0, 0, "tr"), e.Find("#yildiz-musteri-ust").TextContent);
+        var not = e.Find("#cari-sinir").TextContent;
+        Assert.Contains(string.Format(Dil(e).Kabuk.SinirUyarisi, 100), not);
+        Assert.Contains(Dil(e).Kabuk.SinirAsildi, not);
     }
 
     [Fact]
@@ -479,7 +468,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     {
         var e = Ciz();
         // A (Hasan) açılır, kart yüklenir, kapatılır.
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.Equal("Hasan Kaya", e.Find("#duz-ad").GetAttribute("value")));
         e.Find("#cekmece-kapat").Click();
         Assert.Empty(e.FindAll("#cekmece-cari"));
@@ -489,7 +478,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
         bekle["/cari/c3"] = kaynak;
         ozel["/cari/c3"] = (HttpStatusCode.OK, ZeynepKarti);
         istekler.Clear();
-        e.Find("#c-satir-c3 td").Click();
+        Dokun(e, "c3");
         e.WaitForAssertion(() => Assert.Equal("Zeynep Demir", e.Find("#cekmece-cari-baslik").TextContent.Trim()));
 
         // Yanıt gelmeden: A'nın hiçbir değeri alanlarda YOK, alanlar ve Kaydet KİLİTLİ, sebep yazılı.
@@ -530,10 +519,10 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
         var kaynakA = new TaskCompletionSource();
         bekle["/cari/c1"] = kaynakA;
         ozel["/cari/c3"] = (HttpStatusCode.OK, ZeynepKarti);
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#cekmece-cari")));
         e.Find("#cekmece-kapat").Click();
-        e.Find("#c-satir-c3 td").Click();
+        Dokun(e, "c3");
         e.WaitForAssertion(() => Assert.Equal("Zeynep Demir", e.Find("#duz-ad").GetAttribute("value")));
 
         // A'nın GEÇ yanıtı şimdi gelir: B'nin alanlarını EZMEMELİ.
@@ -557,7 +546,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     {
         var e = Ciz();
         ozel["/cari/c3"] = (HttpStatusCode.InternalServerError, """{"hata":"Sunucu hatası"}""");
-        e.Find("#c-satir-c3 td").Click();
+        Dokun(e, "c3");
         e.WaitForAssertion(() => Assert.Contains(MusteriTuvalSozlugu.Tr.KartYuklenemedi, e.Find("#cekmece-cari-kilit").TextContent));
         Assert.True(Kilitli(e, "#cekmece-cari-kaydet"));
         istekler.Clear();
@@ -571,7 +560,7 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
         var e = Ciz();
         var denetim = new TaskCompletionSource();
         bekle["/denetim"] = denetim;
-        e.Find("#c-satir-c1 td").Click();
+        Dokun(e, "c1");
         // Denetim yanıtı beklerken kart YÜKLENMİŞ olmalı (sıralı bekleme kilidi uzatmaz).
         e.WaitForAssertion(() => Assert.Equal("Hasan Kaya", e.Find("#duz-ad").GetAttribute("value")));
         Assert.False(Kilitli(e, "#cekmece-cari-kaydet"));
