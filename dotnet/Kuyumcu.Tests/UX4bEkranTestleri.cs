@@ -72,6 +72,8 @@ public sealed class UX4bEkranTestleri : BunitContext
                 var y when y.EndsWith("/urun-kategorileri") => "[]",
                 var y when y.Contains("/masak/esikler") =>
                     """{"kimlikEsigi":185000,"amacBeyaniEsigi":185000,"beyanFormuEsigi":185000,"ekBelgeEsigi":185000,"asgariAciklamaUzunlugu":20,"belgeTurleri":["TC_KIMLIK"]}""",
+                // TEMA TEMİZLİĞİ 17.10: müşteri KARTI (Yıldız'da tahsilatın yolu) IBAN listesini okur — gerçek şekil: boş liste.
+                var y when y.EndsWith("/ibanlar") => "[]",
                 var y when y.EndsWith("/cari/c1") =>
                     """{"id":"c1","ad":"Ayşe Demir","tur":"MUSTERI","telefon":null,"email":null,"vergiNo":null,"adres":null}""",
                 var y when y.Contains("/cari") =>
@@ -105,25 +107,43 @@ public sealed class UX4bEkranTestleri : BunitContext
 
     // ═════════ Madde 7 — POS ═════════════════════════════════════════════════
 
+    // TEMA TEMİZLİĞİ 17.10: satış fişi HER ZAMAN Yıldız tezgâhıdır (#yildiz-tezgah); müşteri seçimi "Değiştir" katmanında,
+    // ödeme/kasa ödeme satırına dokununca (#yildiz-odeme-0) açılan düzende, karma "+ Başka ödeme"dedir. Öteki türler Yıldız
+    // tür sekmelerinden (#yildiz-tur-HURDA_ALIS) ya da "Diğer"den (#yildiz-tezgah-tur → #islem-tur-{TÜR}) seçilir ve eski
+    // formla çizilir. Testler bu gerçek yolları sürer; iddialar (kur kaynağı, kasa süzgeci, gövde) AYNI.
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Pos()
     {
         Oturum();
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
+        e.WaitForElement("#yildiz-tezgah");
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/kur/guncel")));
         return e;
     }
 
-    /// <summary>İşlem türü sekmesi bir düğmedir (Islemler.razor "sekme-grubu").</summary>
-    private static void TurSec(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, string etiket)
-        => e.FindAll("button.sekme").First(b => b.TextContent.Trim() == etiket).Click();
+    /// <summary>İşlem türü: ana türler Yıldız sekmesinde (#yildiz-tur-{kod}); ötekiler "Diğer" listesinde (#islem-tur-{kod}).</summary>
+    private static void TurSec(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, string kod)
+    {
+        if (e.FindAll($"#yildiz-tur-{kod}").Count > 0) { e.Find($"#yildiz-tur-{kod}").Click(); return; }
+        e.Find("#yildiz-tezgah-tur").Click();
+        e.WaitForElement($"#islem-tur-{kod}").Click();
+    }
+
+    /// <summary>Tezgâha bir kalem ekler (teklif yok — birim fiyat elle) ve kalem satırının çizilmesini bekler.</summary>
+    private void KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        SeciciYardim.Sec(e, "islem-urun", "u1");
+        e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/fiyat/teklif")));
+        e.Find("#islem-birimfiyat").Input("10000");
+        e.Find("#islem-kalem-ekle").Click();
+        e.WaitForAssertion(() => Assert.Single(e.FindAll(".yz-tezgah-kalem")));
+    }
 
     [Fact]
     public void POS_hurda_has_gram_fiyati_KURDAN_gelir_ve_rozeti_soyler()
     {
         // UX-S21: sistemin bildiği değer boş giriş alanı olarak konmaz.
         var e = Pos();
-        TurSec(e, "Hurda Alış");
+        TurSec(e, "HURDA_ALIS");
         // Canlı kur ASENKRON yansır: değerin gelmesini bekle, yoksa iddia
         // "henüz gelmedi" hâlini ölçer (kararsız test).
         e.WaitForAssertion(() => Assert.Equal("6.800", e.Find("#hurda-fiyat").GetAttribute("value")));   // BICIM-2: odak dışı kutu gruplu
@@ -134,7 +154,7 @@ public sealed class UX4bEkranTestleri : BunitContext
     public void POS_elle_girilen_hurda_fiyati_ELLE_GIRILDI_rozeti_alir()
     {
         var e = Pos();
-        TurSec(e, "Hurda Alış");
+        TurSec(e, "HURDA_ALIS");
         // ÖNCE kur yansısın: aksi hâlde elle giriş, arkadan gelen kur
         // yansımasıyla aynı render turuna düşüp ölçüm kararsızlaşıyor.
         e.WaitForAssertion(() => Assert.Equal("6.800", e.Find("#hurda-fiyat").GetAttribute("value")));   // BICIM-2: odak dışı kutu gruplu
@@ -148,7 +168,7 @@ public sealed class UX4bEkranTestleri : BunitContext
     public void POS_takas_eski_urun_fiyati_da_KURDAN_gelir()
     {
         var e = Pos();
-        TurSec(e, "Takas");
+        TurSec(e, "TAKAS");
         e.WaitForAssertion(() => Assert.Equal("6.800", e.Find("#takas-eski-fiyat").GetAttribute("value")));   // BICIM-2: odak dışı kutu gruplu
         Assert.Contains("Kurdan geldi", e.Find("#takas-eski-fiyat-kaynak").TextContent);
     }
@@ -158,13 +178,15 @@ public sealed class UX4bEkranTestleri : BunitContext
     {
         // UX-S22 — aynı ekranda aynı sorunun iki farklı cevabı olamaz.
         // SATIS-3 (kurucu 25.09 "kasa otomatik"): tek kasada kilitli seçici de çizilmez —
-        // tek salt okunur satır kasanın ADINI ve "otomatik"i yazar; gövdedeki kasaId ayrı testlerde.
+        // Yıldız tezgâhında tek kasa ödeme satırında TEK kez yazar ("Nakit · Merkez Kasa"); kasa seçicisi ve
+        // "tek kasa — otomatik seçildi" notu yok — ödeme düzeni açıldığında da (UX-S22).
         var e = Pos();
-        // YASAL-KAPI-3 tur 2 (tasarım hakemi KRİTİK "PRO'da teknik not + ödeme bilgisi üç yerde"): PRO satışta tek kasa
-        // alt çubuktaki ödeme özetinde TEK kez yazar — ayrı kasa bloğu ve "tek kasa — otomatik seçildi" notu yok.
-        e.WaitForAssertion(() => Assert.Contains("Merkez Kasa", e.Find("#islem-pro-odeme-ozet").TextContent));
+        e.WaitForAssertion(() => Assert.Contains("Merkez Kasa", e.Find("#yildiz-odeme-0").TextContent));
         Assert.Empty(e.FindAll("#islem-kasa"));
         Assert.Empty(e.FindAll("#islem-kasa-tek"));
+        e.Find("#yildiz-odeme-0").Click();
+        e.WaitForElement("#yildiz-tezgah-odeme-duzen");
+        Assert.Empty(e.FindAll("#islem-kasa"));
         Assert.DoesNotContain(Kuyumcu.Core.I18n.Sozlukler.Tr.Islem.TekKasaOtomatik, e.Markup);
     }
 
@@ -179,6 +201,9 @@ public sealed class UX4bEkranTestleri : BunitContext
              {"id":"ks3","ad":"Yedek TL","paraBirimi":"TRY","aktif":true}]
             """;
         var e = Pos();
+        // Yıldız: kasa seçicisi ödeme satırına dokununca açılan ödeme düzenindedir.
+        e.Find("#yildiz-odeme-0").Click();
+        e.WaitForElement("#yildiz-tezgah-odeme-duzen #islem-kasa");
         // ⚠ KARARSIZLIK ÖNLEMİ (P-36c/3): kasa listesi SUNUCUDAN asenkron gelir;
         //   veri gelmeden açılan seçici BOŞ okunuyordu (tam süitte aralıklı kırmızı).
         var degerler = new List<string?>();
@@ -244,9 +269,20 @@ public sealed class UX4bEkranTestleri : BunitContext
     {
         Oturum();
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("button");
+        e.WaitForElement("#yildiz-musteri-c1");
         istekler.Clear();
         return e;
+    }
+
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: Yıldız müşteri listesinde satır eylemi yok — satıra dokununca açılan kartın eylem satırındaki
+    /// "Tahsilat" (#c-tahsilat-c1, özgün satır eylemiyle AYNI geri çağrı TahsilatAc) tahsilat çekmecesini açar.
+    /// </summary>
+    private static void TahsilatAc(IRenderedComponent<Kuyumcu.Web.Pages.Cariler> e)
+    {
+        e.Find("#yildiz-musteri-c1").Click();
+        e.WaitForElement("#c-tahsilat-c1").Click();
+        e.WaitForElement("#th-tutar");
     }
 
     [Fact]
@@ -284,7 +320,7 @@ public sealed class UX4bEkranTestleri : BunitContext
     public void Tahsilat_govdesinde_KASA_ID_gider_tek_kasada_otomatik()
     {
         var e = CariEkrani();
-        e.FindAll("button").First(b => b.TextContent.Contains("Tahsilat")).Click();
+        TahsilatAc(e);
         e.Find("#th-tutar").Input("1500");
         e.WaitForElement("#th-kasa");
         Assert.True(e.Find("#th-kasa").HasAttribute("disabled"));   // UX-S22
@@ -302,7 +338,7 @@ public sealed class UX4bEkranTestleri : BunitContext
              {"id":"ks2","ad":"Dolar Kasa","paraBirimi":"USD","aktif":true}]
             """;
         var e = CariEkrani();
-        e.FindAll("button").First(b => b.TextContent.Contains("Tahsilat")).Click();
+        TahsilatAc(e);
         e.Find("#th-tutar").Input("1500");
         e.WaitForElement("#th-kasa");
         // P-36c: TL tahsilatta uygun TEK kasa kaldığı için seçici KİLİTLİ ve
@@ -321,7 +357,7 @@ public sealed class UX4bEkranTestleri : BunitContext
              {"id":"ks3","ad":"Yedek TL","paraBirimi":"TRY","aktif":true}]
             """;
         var e = CariEkrani();
-        e.FindAll("button").First(b => b.TextContent.Contains("Tahsilat")).Click();
+        TahsilatAc(e);
         e.Find("#th-tutar").Input("1500");
         e.WaitForElement("#th-kasa");
         Assert.True(e.Find("#th-kaydet").HasAttribute("disabled"));
@@ -335,7 +371,7 @@ public sealed class UX4bEkranTestleri : BunitContext
     public void Sadece_has_gram_tahsilatinda_kasa_secicisi_CIKMAZ()
     {
         var e = CariEkrani();
-        e.FindAll("button").First(b => b.TextContent.Contains("Tahsilat")).Click();
+        TahsilatAc(e);
         e.Find("#th-has-ekle").Click();   // PARA-DEMO-2 (madde 7): altınla ödeme "+ Altınla öde" arkasında
         e.Find("#th-has").Input("5");
         Assert.Empty(e.FindAll("#th-kasa"));
@@ -386,18 +422,22 @@ public sealed class UX4bEkranTestleri : BunitContext
     // soruluyordu (aynı ekranda aynı soru iki kez — UX-S22). Üstteki alan
     // POST /islemler/satis-fisi gövdesine HİÇ girmiyordu: ölü alan.
 
-    /// <summary>Karma kipini açar ve bacak alanının çizilmesini bekler.</summary>
-    private static void KarmaAc(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: Yıldız tezgâhında karma "+ Başka ödeme"dir (#yildiz-tezgah-baska-odeme → OdemeyiBol; özgün
+    /// #islem-karma anahtarı satışta ulaşılamaz). Kalem gerekir (düğme kalemsiz kilitli); iki ödeme satırı açılır.
+    /// </summary>
+    private void KarmaAc(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
+        if (e.FindAll(".yz-tezgah-kalem").Count == 0) KalemEkle(e);
+        e.Find("#yildiz-tezgah-baska-odeme").Click();
+        e.WaitForAssertion(() => Assert.Equal(2, e.FindAll(".bacak-satiri").Count));
     }
 
     [Fact]
     public void Karma_acikken_ust_kasa_secicisi_CIZILMEZ()
     {
         var e = Pos();
-        Assert.Contains("Merkez Kasa", e.Find("#islem-pro-odeme-ozet").TextContent);  // YASAL-KAPI-3: PRO satışta tek kasa özette (ayrı blok yok)
+        e.WaitForAssertion(() => Assert.Contains("Merkez Kasa", e.Find("#yildiz-odeme-0").TextContent));  // tek kasa ödeme satırında
         KarmaAc(e);
         Assert.Empty(e.FindAll("#islem-kasa"));       // karma açıkken DOM'da YOK
         Assert.Empty(e.FindAll("#islem-kasa-tek"));
@@ -413,11 +453,15 @@ public sealed class UX4bEkranTestleri : BunitContext
             """;
         var e = Pos();
         KarmaAc(e);
-        e.Find("#islem-bacak-ekle").Click();
         e.WaitForElement("#islem-bacak-0-kasa");
         SeciciYardim.Sec(e, "islem-bacak-0-kasa", "ks3");
 
-        e.Find("#islem-karma").Change(false);
+        // Yıldız'da karma, öteki satır "Çıkar"ılınca tek ödemeye iner (YildizTezgah → TekOdemeyeDonAracla → KarmaDegisti):
+        // kalan (son) satırın kasası tek ödemenin kasası olur.
+        e.Find("#islem-bacak-sil-1").Click();
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll(".bacak-satiri")));
+        e.WaitForAssertion(() => Assert.Contains("Yedek TL", e.Find("#yildiz-odeme-0").TextContent));
+        e.Find("#yildiz-odeme-0").Click();
         e.WaitForElement("#islem-kasa");
         Assert.Equal("ks3", SeciciYardim.SeciliDeger(e, "islem-kasa"));
     }
@@ -428,9 +472,8 @@ public sealed class UX4bEkranTestleri : BunitContext
         // UX-S22: tek seçenek sorulmaz. kasaYaniti varsayılanı tek TRY kasasıdır.
         var e = Pos();
         KarmaAc(e);
-        e.Find("#islem-bacak-ekle").Click();
         e.WaitForElement("#islem-bacak-0-arac");
-        // SATIS-3 (KAYNAK 5): tek TL kasasında bacak başına "Kasa seçin" HİÇ yok; PRO'da kısa satır.
+        // SATIS-3 (KAYNAK 5): tek TL kasasında bacak başına "Kasa seçin" HİÇ yok; kısa satır.
         Assert.Empty(e.FindAll("#islem-bacak-0-kasa"));
         Assert.Contains("Merkez Kasa", e.Find("#islem-bacak-0-kasa-tek").TextContent);
         Assert.DoesNotContain("otomatik", e.Find("#islem-bacak-0-kasa-tek").TextContent);   // YASAL-KAPI-3: teknik not yok
@@ -440,19 +483,23 @@ public sealed class UX4bEkranTestleri : BunitContext
     public void Karma_fis_govdesinde_YALNIZ_BACAK_kasasi_gider()
     {
         var e = Pos();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/fiyat/teklif")));
-        e.Find("#islem-birimfiyat").Input("10000");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        KalemEkle(e);
+        // Müşteri Yıldız'da "Değiştir" katmanından seçilir (aynı MusteriDegisti yolu).
+        e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForElement("#yildiz-musteri-sec-c1").Click();
+        e.WaitForAssertion(() => Assert.Contains("Ayşe Demir", e.Find("#yildiz-tezgah-ust").TextContent));
 
         KarmaAc(e);
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-tutar");
-        SeciciYardim.Sec(e, "islem-bacak-0-tutar", "10000");
+        // "+ Başka ödeme": 1. satır Nakit (fiş toplamı), 2. satır 0 — 2. satırı Çıkar'mak tek ödemeye indirir; bu yüzden
+        // ödeme iki satıra BÖLÜNÜR (Nakit 6.000 + 4.000) ve fiş TEK POST (satis-fisi) ile gider.
+        e.Find("#islem-bacak-0-tutar").Input("6000");
+        e.Find("#islem-bacak-0-tutar").Blur();
+        e.Find("#islem-bacak-1-tutar").Input("4000");
+        e.Find("#islem-bacak-1-tutar").Blur();
+        e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
         istekler.Clear();
 
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.Find("#yildiz-tezgah-kaydet").Click();
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
 

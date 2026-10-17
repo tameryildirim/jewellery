@@ -264,15 +264,25 @@ public sealed class PSayimEkranTestleri : BunitContext
         lock (istekler) return [.. istekler.Where(i => i.Metot == "POST" && i.Yol.EndsWith("/sayim/o1/say")).Select(i => i.Govde)];
     }
 
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10 (eski ad KlasikOturum): yalnız Yıldız yüzü kaldı. Açık sayım (o1) Yıldız'da kendiliğinden açılır;
+    /// "Barkod okut" (#yildiz-sayim-b2) okutma alanlarını Yıldız yüzünde açar — aynı kimlikler (#sy-barkod, #sy-adet), aynı
+    /// Say yolu; "Say" düğmesi artık aynı yerdeki #yildiz-sayim-b2'dir (özgün #sy-say yalnız "Tüm ayrıntılar" arkasında).
+    /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> KlasikOturum()
     {
-        Hazirla(false);
+        Hazirla(true);
         var e = Render<Kuyumcu.Web.Pages.Sayim>();
-        e.WaitForElement("#sy-tablo tbody tr", TimeSpan.FromSeconds(10));
-        e.Find("#sy-tablo tbody tr button").Click();
-        e.WaitForElement("#sy-barkod", TimeSpan.FromSeconds(10));
+        var dil = Services.GetRequiredService<DilServisi>();
+        e.WaitForAssertion(() => Assert.Equal(Kuyumcu.Core.I18n.YildizSayimSozlugu.BarkodOkut(dil.Dil), e.Find("#yildiz-sayim-b2").TextContent.Trim()), TimeSpan.FromSeconds(10));
+        e.Find("#yildiz-sayim-b2").Click();
+        e.WaitForElement("#yildiz-sayim-okut #sy-barkod", TimeSpan.FromSeconds(10));
+        Assert.Equal(Kuyumcu.Core.I18n.YildizForm5ASozlugu.Say(dil.Dil), e.Find("#yildiz-sayim-b2").TextContent.Trim());   // aynı yerde artık "Say"
         return e;
     }
+
+    /// <summary>Yıldız okutma alanının "Say" düğmesi (özgün #sy-say ile aynı Say yolu).</summary>
+    private static void SayaBas(IRenderedComponent<Kuyumcu.Web.Pages.Sayim> e) => e.Find("#yildiz-sayim-b2").Click();
 
     private static void OkutEnter(IRenderedComponent<Kuyumcu.Web.Pages.Sayim> e, string barkod)
     {
@@ -313,7 +323,7 @@ public sealed class PSayimEkranTestleri : BunitContext
         var e = KlasikOturum();
         e.Find("#sy-barkod").Input("869001");
         e.Find("#sy-adet").Input("4");
-        e.Find("#sy-say").Click();
+        SayaBas(e);
         e.WaitForAssertion(() => Assert.Single(SayGovdeleri()), TimeSpan.FromSeconds(10));
         var j = JsonDocument.Parse(SayGovdeleri()[0]).RootElement;
         Assert.Equal(4m, j.GetProperty("sayilanAdet").GetDecimal());
@@ -333,7 +343,7 @@ public sealed class PSayimEkranTestleri : BunitContext
         Assert.Empty(SayGovdeleri());
         // Gram yazılınca gider (kesir serbest).
         e.Find("#sy-adet").Input("2,5");
-        e.Find("#sy-say").Click();
+        SayaBas(e);
         e.WaitForAssertion(() => Assert.Single(SayGovdeleri()), TimeSpan.FromSeconds(10));
         Assert.Equal(2.5m, sayilan["u2"]);
     }
@@ -352,10 +362,15 @@ public sealed class PSayimEkranTestleri : BunitContext
     [Fact]
     public void PS_B5_yeni_sayim_adi_tarih_saatle_OTOMATIK_dolu()
     {
-        oturumVar = false;
-        Hazirla(false);
+        // TEMA TEMİZLİĞİ 17.10: Yıldız'da tek şubede "Sayım başlat" form sormaz (B6); formun açıldığı Yıldız yolu
+        // "Reyon ya da kategori seçerek başlat"tır (B7) — ad orada otomatik dolu ve AYNEN gövdeye gider (Kaydet = #sy-ac).
+        oturumVar = false; reyonVar = true;
+        Hazirla(true);
         var e = Render<Kuyumcu.Web.Pages.Sayim>();
-        e.WaitForElement("#sy-yeni", TimeSpan.FromSeconds(10)).Click();
+        var dil = Services.GetRequiredService<DilServisi>();
+        e.WaitForAssertion(() => Assert.Equal(dil.T.Sayim.BolumleBaslat, e.Find("#yildiz-sayim-b2").TextContent.Trim()), TimeSpan.FromSeconds(10));
+        e.Find("#yildiz-sayim-b2").Click();
+        e.WaitForElement("#yildiz-sayim-form #sy-ad", TimeSpan.FromSeconds(10));
         var ad = e.Find("#sy-ad").GetAttribute("value") ?? "";
         Assert.Matches(@"^Sayım \d{2}\.\d{2}\.\d{4} \d{2}:\d{2}$", ad);
         e.Find("#sy-ac").Click();

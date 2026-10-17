@@ -252,7 +252,7 @@ public sealed class S3cFormSaglamligiTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> SayimOturumu()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-ac-o1");
         e.Find("#sy-ac-o1").Click();
         e.WaitForElement("#sy-satirlar tbody tr");

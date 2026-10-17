@@ -464,6 +464,8 @@ public sealed class GocCEkranTestleri : BunitContext
                 var y when y.Contains("/reyonlar") => "[]",
                 var y when y.Contains("/kur/pariteler") => """{"kaynak":"TEST","pariteler":[]}""",
                 var y when y.Contains("/kur/guncel") => """{"id":"kur-1","altinHasFiyati":6800,"usdTry":40,"kaynak":"MANUAL","olusturuldu":"2026-10-08T08:00:00Z","ayarFiyatlari":[]}""",
+                // TEMA TEMİZLİĞİ 17.10: Yıldız açık sayımı kendiliğinden açar — ayrıntı yanıtı gerekir.
+                var y when y.Contains("/sayim/o1") => """{"id":"o1","ad":"Ekim sayımı","subeId":"sb1","kapsamTur":"TUMU","durum":"ACIK","toplamSatir":0,"sayilan":0,"sayilmayan":0,"farkli":0,"eksikAdet":0,"fazlaAdet":0,"netFarkHas":0,"hareketli":0,"satirlar":[]}""",
                 var y when y.EndsWith("/sayim") && istek.Method == HttpMethod.Get => """[{"id":"o1","ad":"Ekim sayımı","kapsamTur":"TUMU","durum":"ACIK"}]""",
                 var y when y.Contains("/tercihler/benim") => """{"tercihler":{}}""",
                 _ => "{}",
@@ -532,7 +534,7 @@ public sealed class GocCEkranTestleri : BunitContext
     public void GCE03_Sayim_oturum_listesi_ortak_izgarada_ham_girdi_yok()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-tablo tbody tr", Uzun);
         Assert.Contains("izgara-tablo", e.Find("#sy-tablo").ClassName);
         Assert.NotNull(e.Find("#sy-tablo-sutunlar-ac"));

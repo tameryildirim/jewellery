@@ -391,10 +391,12 @@ public sealed class Q95SayimFormTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> YeniForm()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
-        e.WaitForElement("#sy-yeni");
-        e.Find("#sy-yeni").Click();
-        e.WaitForElement("#sy-form");
+        // TEMA TEMİZLİĞİ 17.10: Yıldız yolu — açık sayım yokken "Sayım başlat" (#yildiz-sayim-b1); iki şubede form
+        // Yıldız form kalıbında açılır (#yildiz-sayim-form) — alanlar ve "Kaydet" (#sy-ac) özgünle AYNI kimlik/kapı (Ac).
+        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        e.WaitForElement("#yildiz-sayim-b1").Click();
+        e.WaitForElement("#yildiz-sayim-form #sy-ad");
+        Assert.NotNull(e.Find("#yildiz-sayim-form #sy-sube"));
         return e;
     }
 

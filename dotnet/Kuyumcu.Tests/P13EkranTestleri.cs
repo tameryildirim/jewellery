@@ -117,7 +117,9 @@ public sealed class P13EkranTestleri : BunitContext
         istekler.Clear();
 
         // Düzenleme çekmecesi → pasife al → onay penceresi
-        e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız listesinde satır "Düzenle" düğmesi yok — satıra dokununca kart (düzenleme
+        // çekmecesi, Cariler.Yildiz.cs YildizSatirAc → DuzenleAc) açılır; "Pasife al" kartın altındaki özgün düğmedir.
+        e.WaitForElement("#yildiz-musteri-c1").Click();
         e.WaitForElement("#c-pasife-al").Click();
 
         e.WaitForAssertion(() => Assert.True(Gitti("GET", "/cari/c1/bagli-kayitlar")));

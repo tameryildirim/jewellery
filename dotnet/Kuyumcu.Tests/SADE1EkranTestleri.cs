@@ -405,8 +405,11 @@ public sealed class SADE1EkranTestleri : BunitContext
     public void Sayim_IPTAL_durumu_EYLEM_metniyle_basilmaz()
     {
         Oturum();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız açık sayımı (sy2) kendiliğinden açar — özgün listeye "Tüm ayrıntılar → ← Sayım" ile
+        // varılır; ayrıntı yanıtı gerekir (ilk eşleşen kazanır: "/sayim/" önce).
+        Yol("/sayim/", """{"id":"sy2","ad":"Ekim","subeId":"s1","kapsamTur":"TUMU","durum":"ACIK","toplamSatir":0,"sayilan":0,"sayilmayan":0,"farkli":0,"eksikAdet":0,"fazlaAdet":0,"netFarkHas":0,"hareketli":0,"satirlar":[]}""");
         Yol("/sayim", """[{"id":"sy1","ad":"Eylül sayımı","kapsamTur":"TUMU","durum":"IPTAL"},{"id":"sy2","ad":"Ekim","kapsamTur":"TUMU","durum":"ACIK"}]""");
-        var c = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
+        var c = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#sy-durum-sy1")));
         var iptal = c.Find("#sy-durum-sy1").TextContent.Trim();
         Assert.Equal(SadeSozlugu.Tr.SayimIptalEdildi, iptal);
@@ -477,7 +480,9 @@ public sealed class SADE1EkranTestleri : BunitContext
         // Uygulama açılışındaki okuma BAŞLADI ama yanıt gelmedi (istek sürüyor).
         var okuma = Services.GetRequiredService<GorunumServisi>().YukleAsync();
         var c = Render<Kuyumcu.Web.Pages.Ayarlar>();
-        c.WaitForAssertion(() => Assert.NotNull(c.Find("#gorunum-sema")));
+        // TEMA TEMİZLİĞİ 17.10: kartın renk şeması seçicisi (#gorunum-sema) bilerek kaldırıldı — kart çizildi mi, kalan
+        // seçiciyle (yazı ölçeği #gorunum-olcek, aynı kart #ayar-gorunum) ölçülür.
+        c.WaitForAssertion(() => Assert.NotNull(c.Find("#ayar-gorunum #gorunum-olcek")));
         Assert.Contains(istekler, i => i.Yol.EndsWith("/v1/gorunum"));
         Assert.False(okuma.IsCompleted);
         // Okunmadı ama DENENİP BİTMEDİ → hata bandı YOK (yanıp sönme yok); kilit sebebi gri satırda.

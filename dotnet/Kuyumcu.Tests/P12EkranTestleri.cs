@@ -288,7 +288,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B43_emanet_aciklamasi_SATIR_ICI_duzeltilir()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetOzgunAc();
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForElement("#e-gecmis-ac").Click();   // EMANET-1: geçmiş katlanırda KAPALI
 

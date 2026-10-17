@@ -233,9 +233,12 @@ public sealed class KesifP1AyarlarTestleri : BunitContext
     {
         await Servis.YukleAsync();
         var e = Render<Kuyumcu.Web.Pages.Ayarlar>();
-        e.WaitForElement("#gk-sema-grafit.secili");
+        // TEMA TEMİZLİĞİ 17.10: tek şema Yıldız — Görünüm kartındaki renk şeması seçicileri (#gk-sema-*) bilerek kaldırıldı;
+        // seçili işaret kalıbı kalan üç bölümde (aydınlık/karanlık · yazı · mod) AYNI sınanır.
+        e.WaitForElement("#gk-tema-sistem.secili");
+        Assert.Empty(e.FindAll("#ayar-gorunum-karti [id^='gk-sema-']"));
         var secililer = e.FindAll("#ayar-gorunum-karti .gk-sema.secili, #ayar-gorunum-karti .gk-secenek.secili");
-        Assert.Equal<string>(["gk-sema-grafit", "gk-tema-sistem", "gk-yazi-18", "gk-mod-profesyonel"], secililer.Select(b => b.Id ?? "").ToList());
+        Assert.Equal<string>(["gk-tema-sistem", "gk-yazi-18", "gk-mod-profesyonel"], secililer.Select(b => b.Id ?? "").ToList());
         foreach (var b in secililer)
         {
             var isaret = Assert.Single(b.QuerySelectorAll(".gk-isaret"));

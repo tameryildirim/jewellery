@@ -714,6 +714,10 @@ public sealed class S36BildirimTestleri : BunitContext
     public void S36_27_bos_durum_BIR_cumle_BIR_dugme_ve_dugme_GERCEK_istek_atar()
     {
         var e = Ciz();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız açılışı tuvaldeki gibi "Hepsi"dir (Bildirimler.Yildiz.cs → TUMU); açık bildirimlerin
+        // boş durumu özgün ekranın "Açık" sekmesindedir.
+        e.WaitForElement("#bildirim-sekme-acik").Click();
+        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#bildirim-sekme-acik").GetAttribute("aria-selected")));
         e.WaitForElement("#bildirim-bos");
         var bos = e.Find("#bildirim-bos");
         Assert.Single(bos.QuerySelectorAll(".bos-durum p"));
@@ -732,6 +736,11 @@ public sealed class S36BildirimTestleri : BunitContext
     {
         var e = Ciz();
         e.WaitForElement("#sayfa-basi-bildirimler-aciklama");
+        // TEMA TEMİZLİĞİ 17.10: Yıldız açılışı "Hepsi" (TUMU) — önce "Açık" sekmesine geçilir, açıklaması o an okunur.
+        e.Find("#bildirim-sekme-acik").Click();
+        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#bildirim-sekme-acik").GetAttribute("aria-selected")));
+        e.WaitForAssertion(() => Assert.NotEqual(KasaBildirimSozlugu.Tr.AciklamaTumu,
+            e.Find("#sayfa-basi-bildirimler-aciklama").TextContent.Trim()));
         var acik = e.Find("#sayfa-basi-bildirimler-aciklama").TextContent.Trim();
 
         e.Find("#bildirim-sekme-kapali").Click();

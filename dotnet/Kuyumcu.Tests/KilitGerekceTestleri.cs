@@ -81,7 +81,9 @@ public sealed class KilitGerekceTestleri : BunitContext
             // Emanet
             var y when y.Contains("/cari") => """[{"id":"c1","ad":"Ayşe Demir","tur":"MUSTERI"}]""",
             var y when y.Contains("/emanet/") =>
-                """{"cariId":"c1","mevcutHasGramBakiye":0,"madenBakiyeleri":[],"hareketler":[]}""",
+                // TEMA TEMİZLİĞİ 17.10: Yıldız emanet listesi satırı (özgün ekranın tek girişi) için GERİ VERİLMİŞ bir emanet —
+                // elimizdeki bakiye yine 0 ("elimizde emanet yok" durumu aynı).
+                """{"cariId":"c1","mevcutHasGramBakiye":0,"madenBakiyeleri":[],"hareketler":[{"id":"eh1","tur":"EMANET_GIRIS","tarih":"2026-09-10T10:00:00Z","hasGrami":5,"aciklama":"Bilezik","stornoKaynakId":null,"fisId":null},{"id":"eh2","tur":"EMANET_CIKIS","tarih":"2026-09-12T10:00:00Z","hasGrami":-5,"aciklama":"İade","stornoKaynakId":null,"fisId":null}]}""",
             _ => null,
         });
     }
@@ -167,21 +169,14 @@ public sealed class KilitGerekceTestleri : BunitContext
     [Fact]
     public void Emanet_kilitli_dugmeler_sebebini_yazar()
     {
-        var c = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız'da özgün emanet ekranının TEK girişi bir emanet satırına dokunmaktır ve müşteri SEÇİLİ
+        // açılır (Emanet.Yildiz.cs YildizMusteriAc; seçicide boş seçenek yok). Bu yüzden "müşteri seçilmeden iki düğme kilitli"
+        // hâli Yıldız'da ulaşılamaz; Yıldız'daki karşılığı ("Emanet al" formunda müşteri seçilmeden Kaydet → alan altı
+        // EmanetMusteriSecilmedi) Yildiz5AFormTestleri'nde sınanır. Aşağıdaki kapı (seçili müşteri, elde emanet yok) AYNEN.
+        var c = Render<Kuyumcu.Web.Pages.Emanet>().EmanetOzgunAc("eh1");
         c.WaitForElement("#e-giris-ac");
 
-        // Müşteri seçilmeden: iki düğme de kilitli, sebep title'da VE görünür satırda.
-        var giris = c.Find("#e-giris-ac");
-        var cikis = c.Find("#e-cikis-ac");
-        Assert.True(giris.HasAttribute("disabled"));
-        Assert.True(cikis.HasAttribute("disabled"));
-        Assert.Equal(O.EmanetMusteriSecilmedi, giris.GetAttribute("title"));
-        Assert.Equal(O.EmanetMusteriSecilmedi, cikis.GetAttribute("title"));
-        Assert.Equal("e-kilit", giris.GetAttribute("aria-describedby"));
-        Assert.Contains(O.EmanetMusteriSecilmedi, c.Find("#e-kilit").TextContent, StringComparison.Ordinal);
-
         // Müşteri seçildi, elimizde emanet yok: "+ Emanet Al" açılır, "İade Et" sebebini değiştirir.
-        SeciciYardim.Sec(c, "e-cari", "c1");
         c.WaitForAssertion(() => Assert.False(c.Find("#e-giris-ac").HasAttribute("disabled")));
         Assert.Null(c.Find("#e-giris-ac").GetAttribute("title"));
         Assert.True(c.Find("#e-cikis-ac").HasAttribute("disabled"));

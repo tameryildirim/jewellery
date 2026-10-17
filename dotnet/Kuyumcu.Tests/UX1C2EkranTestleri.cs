@@ -336,7 +336,9 @@ public sealed class UX1C2EkranTestleri : BunitContext
         e.Find("#h-tutar").Input("100");
 
         // Modalı kapat, yeniden aç: yön VARSAYILANA döner.
-        e.FindAll("button").First(b => b.TextContent.Trim() == "İptal").Click();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız katmanında çekmecenin ikincil düğmesi "Vazgeç"tir (YildizKatmanSozlugu) — kimliğiyle bulunur.
+        e.Find("#cekmece-kasa-hareket-iptal").Click();
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#h-tur")));
         e.Find("#kasa-hareket-k1").Click();
         e.WaitForElement("#h-tur");
 
@@ -588,7 +590,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> EmanetSayfasi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetOzgunAc();
         e.WaitForElement("#e-cari");
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForElement("#e-gecmis-ac").Click();   // EMANET-1: geçmiş katlanırda KAPALI
@@ -654,7 +656,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> SayimListesi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-tablo tbody tr");
         istekler.Clear();
         return e;

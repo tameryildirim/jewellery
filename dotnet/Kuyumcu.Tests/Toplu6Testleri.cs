@@ -673,7 +673,11 @@ public sealed class Toplu6GiderTestleri : Toplu4Tabani
         Assert.Equal(Toplu6Sozlugu.Tr.VirmanYapBasit, e.Find("#gd-v-kaydet").TextContent.Trim());
         Assert.Equal(Toplu6Sozlugu.Tr.SayfaAciklamaBasit, e.Find("#sayfa-basi-gider-aciklama").TextContent.Trim());
         var baslik = e.Find("#sayfa-basi-gider-baslik").TextContent;
-        var govde = string.Concat(e.Nodes.Select(n => n.TextContent)).Replace(baslik, "", StringComparison.Ordinal);
+        // TEMA TEMİZLİĞİ 17.10: Yıldız yüzünün başlığı (#yildiz-gider-baslik) da SAYFA BAŞLIĞIDIR — tuval birebir "Gider ve virman"
+        // (YildizListeBicim.EkranAdi, kurucu 09.10); sayfa başlığı hariç kuralı ona da uygulanır, gövde aynı sınanır.
+        var yildizBaslik = e.Find("#yildiz-gider-baslik").TextContent;
+        var govde = string.Concat(e.Nodes.Select(n => n.TextContent)).Replace(baslik, "", StringComparison.Ordinal)
+            .Replace(yildizBaslik, "", StringComparison.Ordinal);
         Assert.DoesNotContain("irman", govde, StringComparison.OrdinalIgnoreCase);
     }
 
