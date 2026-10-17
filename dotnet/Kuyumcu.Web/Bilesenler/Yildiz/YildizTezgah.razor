@@ -210,7 +210,7 @@
                 {
                     @* 18.10: fatura haddinde kartta TC yok → ekrandan çıkmadan yaz, satış aynı belgeyle sürer. *@
                     <div class="yz-tezgah-kimlik" id="yildiz-tezgah-kimlik">
-                        <Kuyumcu.Web.Bilesenler.Form.TcknVeyaVkn ElemanId="yildiz-tezgah-kimlik-no" Etiket="@MusteriAcSozlugu.KimlikEtiket(Dil.Dil)"
+                        <Kuyumcu.Web.Bilesenler.Form.TcknVeyaVkn ElemanId="yildiz-tezgah-kimlik-no" Etiket="@MusteriAcSozlugu.KimlikEtiket(Dil.Dil)" Zorunlu="true"
                                      Deger="@kimlikGirdi" DegerChanged="@(v => kimlikGirdi = v ?? "")" Hata="@B.KimlikHata" />
                         <button type="button" class="yz-b1" id="yildiz-tezgah-kimlik-kaydet" disabled="@(B.Kaydediliyor || kimlikGirdi.Length < 10)"
                                 @onclick="() => B.KimlikKaydet.InvokeAsync(kimlikGirdi)">@MusteriAcSozlugu.KimlikKaydet(Dil.Dil)</button>
