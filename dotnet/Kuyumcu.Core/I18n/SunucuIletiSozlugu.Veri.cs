@@ -1297,5 +1297,6 @@ public static partial class SunucuIletiSozlugu
         ("Bu IBAN zaten bu müşteride kayıtlı.", "This IBAN is already saved for this customer."),
         ("Bu IBAN başka bir müşteride kayıtlı: {}. Bir IBAN tek müşteriye bağlanır.", "This IBAN is saved for another customer: {}. An IBAN belongs to one customer only."),
         ("IBAN bulunamadı", "IBAN not found"),
+        ("Bu para müşterinin hesabına başka bir belgeyle zaten işlendi; karar verilmez.", "This money was already posted to the customer's account by another document; no decision is needed."),
     ];
 }

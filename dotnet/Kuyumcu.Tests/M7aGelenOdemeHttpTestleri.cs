@@ -236,4 +236,26 @@ public sealed class M7aGelenOdemeHttpTestleri(HttpFikstur f)
         var tasi = await s.PostAsJsonAsync($"/api/v1/cari/{b}/ibanlar", new { iban = silinen.GetProperty("iban").GetString() });
         Assert.True(tasi.IsSuccessStatusCode, await tasi.Content.ReadAsStringAsync());
     }
+
+    [Fact]
+    public async Task Hesabi_baska_belgeyle_islenmis_para_KAPALI_listeye_dusmez_karar_409()
+    {
+        var k = YeniKiraci("kapali");
+        var hesap = await HesapAc(k);
+        var id = Kuyumcu.Api.Common.Kimlik.Ulid();
+        using (var db = f.Vt.OlusturSistem())
+        {
+            db.BankaHareketleri.Add(new BankaHareket
+            {
+                Id = id, TenantId = k.TenantId, BankaHesapId = hesap, Yon = "GELEN", Tutar = 500m, ParaBirimi = "TRY",
+                CariId = k.CariId, Durum = "ESLESTI", CariKarari = Kuyumcu.Api.Modules.Banka.CariKarari.Kapali,
+                Tarih = DateTime.UtcNow, Olusturuldu = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+        var s = f.Ortam.Istemci(k, "SAHIP");
+        Assert.Empty((await s.GetFromJsonAsync<JsonElement>("/api/v1/bankalar/karar-bekleyen")).EnumerateArray());
+        var kr = await s.PostAsJsonAsync($"/api/v1/bankalar/hareketler/{id}/karar", new { karar = "BORC" });
+        Assert.Equal(HttpStatusCode.Conflict, kr.StatusCode);
+    }
 }

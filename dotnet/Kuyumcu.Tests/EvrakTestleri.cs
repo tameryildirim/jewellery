@@ -387,6 +387,8 @@ public sealed class EvrakTestleri(TestVeritabani vt)
             .Single(x => x.TenantId == k.TenantId && x.BankaHesapId == hesapId);
         Assert.Equal("GELEN", bh.Yon);
         Assert.Equal(40_000m, bh.Tutar);
+        // M7a: borç evrak GİRİŞİNDE düşüldü → tahsil satırı "borcundan düşülsün mü?" listesine DÜŞMEZ (çift düşme yok).
+        Assert.Equal(Kuyumcu.Api.Modules.Banka.CariKarari.Kapali, bh.CariKarari);
     }
 
     // ── Kiracı izolasyonu ────────────────────────────────────────────────────

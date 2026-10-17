@@ -34,6 +34,11 @@ public static class CariKarari
 {
     public const string Borc = "BORC";
     public const string Satis = "SATIS";
+    /// <summary>
+    /// Müşteri hesabı bu paradan ÖNCE başka bir belgeyle işlendi (ör. çek/senet girişinde borç düşüldü,
+    /// tahsilde yalnız para bankaya geçer). Karar sorulmaz; "borcundan düş" aynı parayı ikinci kez düşürürdü.
+    /// </summary>
+    public const string Kapali = "KAPALI";
 }
 
 public static class CariCozumYolu
@@ -337,6 +342,8 @@ public sealed class GelenOdemeServisi(
             throw new ConflictException("Döviz hesabına gelen ödeme müşterinin döviz tahsilatından girilir.");
         if (h.Durum != "ESLESTI")
             throw new ConflictException($"Bu dekont için karar verilemez (durum: {h.Durum}).");
+        if (h.CariKarari == CariKarari.Kapali)
+            throw new ConflictException("Bu para müşterinin hesabına başka bir belgeyle zaten işlendi; karar verilmez.");
     }
 }
 

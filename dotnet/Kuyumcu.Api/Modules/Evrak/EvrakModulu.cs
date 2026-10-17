@@ -607,6 +607,8 @@ public sealed class EvrakServisi(
                 Aciklama = $"{e.EvrakTuru} tahsili · {e.EvrakNo}",
                 CariId = e.KaynakCariId,
                 Durum = "ESLESTI",
+                // M7a: carinin borcu evrak GİRİŞİNDE düşüldü; tahsilde yalnız para bankaya geçer → karar sorulmaz.
+                CariKarari = Banka.CariKarari.Kapali,
                 Tarih = now,
                 Olusturuldu = now,
             });
