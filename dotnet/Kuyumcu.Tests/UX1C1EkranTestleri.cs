@@ -698,7 +698,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> PosEkrani()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-son-satislar");
         return e;
     }

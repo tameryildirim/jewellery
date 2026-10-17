@@ -25,6 +25,7 @@ internal static class TemaTemizligiGCYardimcisi
     /// <summary>Yıldız satış tezgâhı çizildi ve açılış yüklemesi (Peşin Müşteri ön seçimi) bitti.</summary>
     public static IRenderedComponent<Islemler> YildizHazir(this IRenderedComponent<Islemler> e, string? pesinAdi = "Peşin Müşteri")
     {
+        e.TezgahBekle();   // açılış bitti + renderer kuyruğu boş (TemaTemizligiGDYardimcisi)
         e.WaitForElement("#yildiz-tezgah-kaydet", TimeSpan.FromSeconds(10));
         // Sahte sunucu sistem carisini vermiyorsa (pesinAdi null) Peşin ön seçimi beklenmez; kur gelene dek beklenir.
         if (pesinAdi is not null)

@@ -125,7 +125,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", rol, "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         // TEMA TEMİZLİĞİ 17.10: SATIŞ fişi Yıldız tezgâhıdır (#yildiz-tezgah); Peşin Müşteri varsayılanı üst satırda yazılır.
         e.WaitForElement("#yildiz-tezgah-kaydet", Bekle);
         e.WaitForAssertion(() => Assert.Equal("pm1", GA.MusteriId(e)), Bekle);

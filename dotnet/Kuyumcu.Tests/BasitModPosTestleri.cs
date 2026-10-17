@@ -135,7 +135,7 @@ public sealed class BasitModPosTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ekran(string mod)
     {
         ModuKur(mod);
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-tur-SATIS");
         return e;
     }

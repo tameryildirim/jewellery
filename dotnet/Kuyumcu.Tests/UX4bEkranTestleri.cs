@@ -114,7 +114,7 @@ public sealed class UX4bEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Pos()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah");
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/kur/guncel")));
         return e;

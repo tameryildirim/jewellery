@@ -102,7 +102,7 @@ public sealed class SATIS3T22KaporaNakitTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-tur-SATIS");
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-tezgah-kaydet")));   // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhı
         e.Find($"#islem-diger-{tur.ToLowerInvariant()}").Click();
@@ -115,7 +115,7 @@ public sealed class SATIS3T22KaporaNakitTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-tur-SATIS");
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-tezgah-kaydet")));   // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhı
         e.Find($"#islem-diger-{DigerTurleri.Avans.ToLowerInvariant()}").Click();

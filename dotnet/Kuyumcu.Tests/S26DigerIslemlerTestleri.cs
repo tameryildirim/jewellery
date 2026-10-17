@@ -101,7 +101,7 @@ public sealed class S26DigerIslemlerTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-tur-SATIS");
         return e;
     }

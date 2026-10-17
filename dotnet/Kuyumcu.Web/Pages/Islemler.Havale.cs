@@ -34,6 +34,13 @@ public partial class Islemler
         ? [new { arac = "HAVALE", tutarTl = ToplamTl, kasaId = (string?)null, bankaHareketId = h.Id }]
         : [new { arac = odemeTuru, tutarTl = ToplamTl, kasaId = odemeTuru == "VERESIYE" ? null : kasa }];
 
+    /// <summary>
+    /// Açılışın TÜM adımları (bekleyen havaleler dahil) bitti mi — sayfa kabında data-acilis="bitti".
+    /// Davranış değiştirmez; bUnit tezgâh yardımcıları (TemaTemizligiGDYardimcisi.TezgahBekle) bunu bekler:
+    /// açılışın son adımı sürerken basılan düğme renderer kuyruğuna düşüp tıklamadan SONRA işleniyordu (17.10 dalgalı kırmızılar).
+    /// </summary>
+    private bool acilisBitti;
+
     private List<HavaleSatiri> bekleyenHavaleler = [];
     private bool havalelerAcik;
 
@@ -45,7 +52,9 @@ public partial class Islemler
         var sorgu = new Uri(Nav.Uri).Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Split('=', 2)).Where(p => p.Length == 2)
             .ToDictionary(p => Uri.UnescapeDataString(p[0]), p => Uri.UnescapeDataString(p[1]));
-        if (sorgu.TryGetValue("havale", out var id) && !string.IsNullOrWhiteSpace(id)) HavaleSec(id);
+        // Açılış yarışı: havale listesi gelirken tezgâhtar başka türe geçtiyse (Alış …) havale o fişe ZORLANMAZ —
+        // HavaleSec türü SATIŞ yapıp kalemleri temizlemeden taşırdı; havale listede kalır, oradan seçilir.
+        if (sorgu.TryGetValue("havale", out var id) && !string.IsNullOrWhiteSpace(id) && tur == "SATIS") HavaleSec(id);
     }
 
     /// <summary>Havaleyi seçer: müşteri havalenin müşterisi, ödeme HAVALE, belge FATURA (kurucu: "direkt fatura kesilir").</summary>

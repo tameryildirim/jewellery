@@ -29,7 +29,7 @@
 
 <PageTitle>@Marka.SayfaBasligi(SayfaAdi)</PageTitle>
 
-<CascadingValue Value="gecersizAlanlar" IsFixed="true"><div class="dikey-bosluk islem-sayfa@((Modu.BasitMi ? " tuval-tezgah" : " tuval-pro") + YildizSinif)" @onkeydown="ProKisayol">   @* S1-i .islem-sayfa · T-S1: basit = Tezgah.dc.html · T-S2: pro = Profesyonel.dc.html (css/tuval-satis.css) + F-tuşları *@
+<CascadingValue Value="gecersizAlanlar" IsFixed="true"><div class="dikey-bosluk islem-sayfa@((Modu.BasitMi ? " tuval-tezgah" : " tuval-pro") + YildizSinif)" data-acilis="@(acilisBitti ? "bitti" : "suruyor")" @onkeydown="ProKisayol">   @* S1-i .islem-sayfa · T-S1: basit = Tezgah.dc.html · T-S2: pro = Profesyonel.dc.html (css/tuval-satis.css) + F-tuşları *@
 
     <SayfaBasi Anahtar="islemler" Baslik="@SayfaAdi" Aciklama="@SayfaAciklamasi" UstBardaGizle="true" /><Kuyumcu.Web.Layout.UstBarBasligi Baslik="@SayfaAdi" />   @* S1-i: üst bar ve menüyle AYNI ad (UX-S31) · DEGISIM-GUNSONU: üst bar seçili türün adını yazar (Değişim) — şerit tekrarı görsel gizli *@
 
@@ -905,7 +905,7 @@
         try { saticilar = await Api.GetAsync<SaticiPersonelListesi>("/islemler/personeller"); }
         catch (Exception ex) when (ex is ApiHata or JsonException) { saticiHata = ex.Message; }
 
-        yukleniyor = false; await HavaleYukle();   // 17.10 havaleden satış: EN SONDA — açılış adımlarını geciktirmez (Islemler.Havale.cs)
+        yukleniyor = false; await HavaleYukle(); acilisBitti = true;   // 17.10 havaleden satış: EN SONDA — açılış adımlarını geciktirmez (Islemler.Havale.cs) · açılış işareti: Islemler.Havale.cs
     }
 
     private async Task KasalariYukle()

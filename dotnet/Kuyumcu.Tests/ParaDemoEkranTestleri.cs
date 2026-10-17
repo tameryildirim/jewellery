@@ -458,7 +458,7 @@ public sealed class ParaDemoIslemEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Sahip", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-tur-SATIS");
         return e;
     }

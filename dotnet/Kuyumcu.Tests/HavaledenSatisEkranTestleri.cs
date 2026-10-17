@@ -14,6 +14,9 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
 {
     private readonly List<(string Metot, string Yol, string Govde)> istekler = [];
 
+    /// <summary>Doluysa bekleyen havale listesi bu kapı açılana dek DÖNMEZ (açılış yarışını sahnelemek için).</summary>
+    private TaskCompletionSource? havaleKapisi;
+
     private sealed class SahteApi(HavaledenSatisEkranTestleri t) : HttpMessageHandler
     {
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage istek, CancellationToken iptal)
@@ -21,6 +24,7 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
             var yol = istek.RequestUri!.PathAndQuery;
             var govde = istek.Content is null ? "" : await istek.Content.ReadAsStringAsync(iptal);
             lock (t.istekler) t.istekler.Add((istek.Method.Method, yol, govde));
+            if (yol.Contains("/islemler/havale-bekleyen") && t.havaleKapisi is { } kapi) await kapi.Task;
             var y = yol switch
             {
                 var v when v.Contains("/gorunum") => """{"sema":"yildiz","yaziOlcegi":"18","temaModu":"karanlik"}""",
@@ -72,7 +76,7 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Hakan", "Tunalı", "h@ornek.com", "TEZGAHTAR", "s1", "BASIT", "BASIT"));
         Services.GetRequiredService<GorunumServisi>().YukleAsync().GetAwaiter().GetResult();
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
 
         // Katlı: yalnız "Gelen havaleler (1)" düğmesi; liste kapalı.
@@ -124,7 +128,7 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Hakan", "Tunalı", "h@ornek.com", "TEZGAHTAR", "s1", "BASIT", "BASIT"));
         Services.GetRequiredService<GorunumServisi>().YukleAsync().GetAwaiter().GetResult();
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-havaleler-ac", TimeSpan.FromSeconds(10)).Click();
         e.WaitForElement("#yildiz-havale-bh1", TimeSpan.FromSeconds(5)).Click();
         e.WaitForElement("#yildiz-havale-birak", TimeSpan.FromSeconds(5)).Click();
@@ -134,5 +138,40 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
             Assert.NotNull(e.Find("#yildiz-havaleler-ac"));
             Assert.DoesNotContain("havalesi", e.FindAll("#yildiz-belge-not").FirstOrDefault()?.TextContent ?? "");
         }, TimeSpan.FromSeconds(5));
+    }
+
+    private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> HavaleAdresiyleAc()
+    {
+        Services.GetRequiredService<OturumServisi>().KullaniciAta(
+            new OturumKullanici("u1", "Hakan", "Tunalı", "h@ornek.com", "TEZGAHTAR", "s1", "BASIT", "BASIT"));
+        Services.GetRequiredService<GorunumServisi>().YukleAsync().GetAwaiter().GetResult();
+        Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>().NavigateTo("islemler?havale=bh1");
+        return Render<Kuyumcu.Web.Pages.Islemler>();
+    }
+
+    [Fact]
+    public void HS_E3_havale_adresi_acilista_havaleyi_secer()
+    {
+        var e = HavaleAdresiyleAc().TezgahBekle();
+        e.WaitForElement("#yildiz-havale-birak", TimeSpan.FromSeconds(5));
+        Assert.Equal("true", e.Find("#yildiz-belge-fatura").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void HS_E4_havale_listesi_gelirken_baska_ture_gecen_tezgahtarin_secimi_EZILMEZ()
+    {
+        // Açılış yarışı (17.10): tezgâh çizildi, havale listesi henüz gelmedi; tezgâhtar Hurda alışa geçti.
+        // Liste gelince ?havale= türü SATIŞ'a geri ÇEVİRMEZ (HavaleSec kalemleri temizlemeden taşırdı).
+        havaleKapisi = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var e = HavaleAdresiyleAc();
+        e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
+        Assert.Equal("suruyor", e.Find("[data-acilis]").GetAttribute("data-acilis"));
+        TemaTemizligiGDYardimcisi.TurSec(e, "HURDA_ALIS");
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#yildiz-tezgah")), TimeSpan.FromSeconds(5));
+
+        havaleKapisi.SetResult();
+        e.TezgahBekle();
+        Assert.Empty(e.FindAll("#yildiz-tezgah"));        // hâlâ Hurda alış — satış tezgâhına dönülmedi
+        Assert.Empty(e.FindAll("#yildiz-havale-birak"));  // havale bu fişe zorlanmadı
     }
 }

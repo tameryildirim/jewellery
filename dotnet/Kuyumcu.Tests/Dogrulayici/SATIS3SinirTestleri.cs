@@ -2760,7 +2760,7 @@ public sealed class SATIS3SinirTestleriT21Hasim : BunitContext
     /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> DovizliAc(bool ikinciSatir)
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
         e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
@@ -2942,7 +2942,7 @@ public sealed class SATIS3SinirTestleriT21HasimTur2 : BunitContext
     /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ac(bool ikinciSatir)
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
         e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
@@ -3095,7 +3095,7 @@ public sealed class SATIS3SinirTestleriT22Hasim : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
         // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — Kapora tezgâhın "Diğer" listesinden açılır.
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.YildizDigerAc("avans");
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-kur-yok")));
         SeciciYardim.Sec(e, "avans-cari", "c1");
@@ -3236,7 +3236,7 @@ public sealed class SATIS3SinirTestleriT23Hasim : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
         // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — "Diğer" işlemler tezgâhın "Diğer" listesinden açılır.
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.YildizDigerAc(tur.ToLowerInvariant());
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-kur-yok")));
         return e;

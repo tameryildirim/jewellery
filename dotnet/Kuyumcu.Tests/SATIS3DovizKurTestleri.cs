@@ -74,7 +74,7 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
     /// satır boş Kart); özgün gizli "Karma ödeme" kutusu ve "+ Başka ödeme ekle" düğmesi tezgâhta kullanıcıya görünmez.</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ac(string arac0)
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah-kaydet", Bekle);
         GA.MusteriSec(e, "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
@@ -214,7 +214,7 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, ArayuzModuServisi.Basit));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah-kaydet", Bekle);
         GA.MusteriSec(e, "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");

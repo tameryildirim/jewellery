@@ -83,7 +83,7 @@ public sealed class L1bAlisFisiEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Sahip", "s@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-tur-ALIS").Click();
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#islem-urun")));
         return e;

@@ -99,7 +99,7 @@ public sealed class Yasal3EkranTestleri : BunitContext
         // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhıdır (#yildiz-tezgah; Kaydet #yildiz-tezgah-kaydet, Kaydet hatası
         // #yildiz-tezgah-hata, Peşin art arda sorusu Fark bloğunda AYNI bileşen/kimliklerle — Y4C_26). Peşin Müşteri'nin
         // yüklendiği an: tezgâhın üst satırı onun adını yazar (özgün #islem-pesin-notu satışta çizilmez).
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah");
         e.WaitForAssertion(() => Assert.Contains("Peşin Müşteri", e.Find("#yildiz-tezgah-ust").TextContent));
         SeciciYardim.Sec(e, "islem-urun", "u1");

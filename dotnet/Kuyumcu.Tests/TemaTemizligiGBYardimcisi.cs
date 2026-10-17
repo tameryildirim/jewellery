@@ -23,6 +23,7 @@ internal static class TemaTemizligiGBYardimcisi
     /// <summary>Yıldız tezgâhı çizildi ve sistem carisi (Peşin Müşteri) varsayılan müşteri olarak yüklendi.</summary>
     public static IRenderedComponent<Islemler> YildizPesinBekle(this IRenderedComponent<Islemler> e, string pesinAdi = "Peşin Müşteri")
     {
+        e.TezgahBekle();   // açılış bitti + renderer kuyruğu boş (TemaTemizligiGDYardimcisi)
         e.WaitForElement("#yildiz-tezgah", Bekle);
         e.WaitForAssertion(() => Assert.Contains(pesinAdi, e.Find("#yildiz-tezgah-ust").TextContent), Bekle);
         return e;

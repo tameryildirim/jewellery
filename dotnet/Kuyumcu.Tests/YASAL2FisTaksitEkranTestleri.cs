@@ -82,7 +82,7 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
     /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> VeresiyeSatisKaydet(string odeme = "VERESIYE")
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
         e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");

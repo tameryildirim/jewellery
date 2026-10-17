@@ -299,7 +299,7 @@ public sealed class AlisOdemeAraciEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ciz(string islemTuru)
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.TezgahBekle();   // TEMA TEMİZLİĞİ 17.10: sayfa yüklenmeden tür düğmesine basılmaz (Yıldız tezgâhı çizildi)
         e.FindAll("button").First(b => b.TextContent.Contains(islemTuru)).Click();
         istekler.Clear();
