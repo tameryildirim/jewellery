@@ -850,8 +850,9 @@ public sealed class ParaDemo3OdemeAdiTutarlilikTestleri : BunitContext
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
 
         // Ekstre (Cariler › detay): her satırın ödeme adı ("· " önekiyle basılır).
+        // TEMA TEMİZLİĞİ 17.10: Yıldız Müşteriler listesi — eylemler müşterinin kartında (CariKartEylemi).
         var cari = Render<Kuyumcu.Web.Pages.Cariler>();
-        cari.WaitForElement("#c-detay-c1").Click();
+        cari.CariKartEylemi("c1", "c-detay");
         cari.WaitForElement("#cari-detay-odeme-h5");
         var ekstreAdlari = Satirlar.Select(s => cari.Find($"#cari-detay-odeme-{s.Id}").TextContent.Trim().TrimStart('·').Trim()).ToArray();
 

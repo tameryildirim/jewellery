@@ -645,6 +645,8 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         SeciciHazir();
         var tur = typeof(Kuyumcu.Web.Pages.Panel).Assembly.GetType("Kuyumcu.Web.Pages." + sayfa)!;
         var e = Render(b => { b.OpenComponent(0, tur); b.CloseComponent(); });
+        // TEMA TEMİZLİĞİ 17.10: bu ekranların özgün gövdesi (şubeli çağrılar + rozet) Yıldız'da "Tüm ayrıntılar"ın arkasında.
+        if (sayfa is "Hurda" or "KasaRaporu" or "PosTahsilatlar") e.AyrintiAc(sure: TimeSpan.FromSeconds(10));
         e.WaitForAssertion(() => Assert.NotEmpty(Getler(parca)), TimeSpan.FromSeconds(10));
         // Hurda formu YAZMA (oturum) şubesinin bakiyesini ayrıca okur (?subeId=s1) — bilinçli;
         // görünüm çağrısı yine s2 taşımalı.
@@ -721,16 +723,24 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
     public void Emanet_cari_secilince_emanet_istegi_subeId_tasir_ve_rozet_cizer()
     {
         d.Ek["/cari?"] = Fikstur<Istek1EkranTestleri>("Cariler");
-        d.Ek["/emanet/c1"] = """{"cariId":"c1","mevcutHasGramBakiye":0,"hareketler":[],"madenBakiyeleri":[]}""";
+        // TEMA TEMİZLİĞİ 17.10: Yıldız Emanet listesinde "Tüm ayrıntılar" düğmesi YOK; özgün gövdeye (rozet + seçili müşteri)
+        // kullanıcı yolu listedeki müşteri adıdır (YildizMusteriAc → cariId + CariDegisti). Satır çıksın diye c1'de bir emanet girişi var.
+        d.Ek["/emanet/c1"] = """
+            {"cariId":"c1","mevcutHasGramBakiye":12.5,
+             "madenBakiyeleri":[{"maden":"ALTIN","madenAdi":"Altın","gram":12.5}],
+             "hareketler":[
+               {"id":"h1","tur":"EMANET_GIRIS","tarih":"2026-09-10T10:00:00Z","hasGrami":12.5,
+                "aciklama":"Bilezik 2 adet","stornoKaynakId":null,"fisId":null,"maden":"ALTIN"}]}
+            """;
         OturumAc();
         d.Kayitli = "s2";
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#e-cari")), TimeSpan.FromSeconds(10));
-        SeciciYardim.Sec(e, "e-cari", "c1");
-        e.WaitForAssertion(() => Assert.NotEmpty(Getler("/emanet/c1")), TimeSpan.FromSeconds(10));
+        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        e.WaitForElement("#yildiz-emanet-musteri-h1", TimeSpan.FromSeconds(10)).Click();
+        e.WaitForElement(YildizAyrintiYardimcisi.OzgunGovde, TimeSpan.FromSeconds(10));
+        e.WaitForAssertion(() => Assert.True(Getler("/emanet/c1").Count >= 2), TimeSpan.FromSeconds(10));   // liste + seçili müşteri
         Assert.All(Getler("/emanet/c1"), y => Assert.Contains("subeId=s2", y, StringComparison.Ordinal));
-        Assert.Contains("Şube 2", e.Find("#gorunum-rozeti").TextContent, StringComparison.Ordinal);
+        e.WaitForAssertion(() => Assert.Contains("Şube 2", e.Find("#gorunum-rozeti").TextContent, StringComparison.Ordinal), TimeSpan.FromSeconds(10));
     }
 
     /// <summary>ORTA (test açığı): ürün listesi kiracı geneli, STOK ADETLERİ seçili şubeden.</summary>
@@ -819,9 +829,10 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.Kayitli = "s2";
         SeciciHazir();
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-borclu-kapsam")), TimeSpan.FromSeconds(10));
-        Assert.Equal(SubeKapsamBSozlugu.Tr.KartTumSubelerNotu, e.Find("#panel-soru-borclu-kapsam").TextContent.Trim());
-        Assert.Equal(SubeKapsamBSozlugu.Tr.KartTumSubelerNotu, e.Find("#panel-soru-bekleyen-kapsam").TextContent.Trim());
+        // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — kiracı geneli müşteri/iş listesi ("Seni bekleyen") TEK notla söyler.
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kapsam")), TimeSpan.FromSeconds(10));
+        Assert.Equal(SubeKapsamBSozlugu.Tr.KartTumSubelerNotu, e.Find("#yildiz-bugun-kapsam").TextContent.Trim());
+        Assert.Single(e.FindAll("#yildiz-bugun-kapsam"));
     }
 
     [Fact]
@@ -830,10 +841,10 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         OturumAc(mod: ArayuzModuServisi.Basit);
         SeciciHazir();
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-borclu")), TimeSpan.FromSeconds(10));
+        e.BugunBekle();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün; olumsuz iddia çizilmiş listede
         e.WaitForAssertion(() => Assert.Equal(SubeKapsamBSozlugu.Tr.RozetTumu, e.Find("#gorunum-rozeti-metin").TextContent.Trim()));
-        Assert.Empty(e.FindAll("#panel-soru-borclu-kapsam"));
-        Assert.Empty(e.FindAll("#panel-soru-bekleyen-kapsam"));
+        Assert.NotNull(e.Find("#yildiz-bugun-bekleyen-baslik"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-kapsam"));
     }
 
     /// <summary>DÜŞÜK: Raporlar cari yaşlandırma sekmesi kiracı geneli rozetini taşır; kimlik çakışması yok.</summary>
@@ -1006,7 +1017,8 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.Ek["/pozisyon"] = PozisyonGovdesi(107.0m, 11.3m, "TUM_SUBELER");
         SeciciHazir();
         var p = Render<Kuyumcu.Web.Pages.Panel>();
-        p.WaitForAssertion(() => Assert.NotNull(p.Find("#pozisyon-cari-kapsam")), TimeSpan.FromSeconds(10));
+        // TEMA TEMİZLİĞİ 17.10: Panel'in pozisyonu Bugün alt şeridindedir (YildizBugun, GET /pozisyon) — seçili şubenin yanıtı.
+        p.WaitForAssertion(() => Assert.Contains("3,2", p.Find("#yildiz-bugun-vitrin").TextContent, StringComparison.Ordinal), TimeSpan.FromSeconds(10));
         var poz = Getler("/pozisyon");
         Assert.NotEmpty(poz);
         Assert.All(poz, y => Assert.EndsWith("/pozisyon?subeId=s2", y, StringComparison.Ordinal));

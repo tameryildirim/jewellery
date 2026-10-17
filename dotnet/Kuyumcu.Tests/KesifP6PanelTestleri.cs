@@ -84,6 +84,17 @@ public sealed class KesifP6PanelTestleri : BunitContext
                     """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/", StringComparison.Ordinal) =>
                     """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — alt şerit ve YILDIZ-4C satırlarının uçları gerçekçi.
+                var y when y.EndsWith("/pozisyon", StringComparison.Ordinal) => """
+                    {"anaMaden":"ALTIN",
+                     "altin":{"maden":"ALTIN","vitrinGram":120.5,"hurdaGram":0,"cariAlacakGram":0,"cariBorcGram":0,
+                              "netGram":120.5,"alacakliCariSayisi":0,"borcluOlduguCariSayisi":0,"konsinyeGram":0,"emanetGram":0},
+                     "digerMadenler":[],"madenlerToplanmaz":false,"defterBakiyeFarki":0,
+                     "hesaplanmaAni":"2026-09-21T09:00:00Z","donemdenBagimsiz":true}
+                    """,
+                var y when y.EndsWith("/raporlar/kasa-defteri", StringComparison.Ordinal) =>
+                    """{"baslangic":"2026-09-20","bitis":"2026-09-20","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari", StringComparison.Ordinal) => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             };
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -111,6 +122,7 @@ public sealed class KesifP6PanelTestleri : BunitContext
         // S1-j: hava SUNUCUDAN gelir; sahte sunucunun varsayılanı 204 (KAPALI).
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private void OturumAc(string ad = "Ahmet", string rol = "SAHIP")
@@ -122,10 +134,13 @@ public sealed class KesifP6PanelTestleri : BunitContext
     {
         OturumAc(rol: rol);
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-selam");
+        e.BugunBekle();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (kur kartı kaldırıldı)
         return e;
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Bugün'de kur kartı YOK (tuval) — kaynak adı/İşletme bağlantısı orada çizilmez. Güvencenin
+    // özü (Panel hiçbir rolde kur kaynağını YAZAMAZ, seçici yoktur) Bugün yüzünde, PRO yükleyicileri (GET /kur/kaynaklar)
+    // açıldıktan sonra sınanır.
     [Theory]
     [InlineData("SAHIP")]
     [InlineData("MUDUR")]
@@ -134,34 +149,18 @@ public sealed class KesifP6PanelTestleri : BunitContext
     public void Panel_kur_kaynagi_secici_yok_PATCH_yok(string rol)
     {
         var e = Ekran(rol);
-        e.WaitForAssertion(() => Assert.Equal("Altınkaynak", e.Find("#panel-kur-kaynak-ad").TextContent.Trim()),
+        e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Item1 == "GET" && i.Item2.Contains("/kur/kaynaklar", StringComparison.Ordinal)),
             TimeSpan.FromSeconds(10));
-        // Seçici (combobox) yok, tıklanabilir kaynak listesi yok.
+        e.BugunBekle();
+        // Seçici (combobox) yok, tıklanabilir kaynak listesi yok, düğme yok (Panel POST/PATCH ETMEZ).
         Assert.Empty(e.FindAll("#kur-kaynak"));
         Assert.Empty(e.FindAll("#kur-kaynak-liste"));
-        Assert.Empty(e.FindAll("#panel-kur-kaynak-alan [role='combobox']"));
-        // Panel hiçbir koşulda kaynak yazmaz.
+        Assert.Empty(e.FindAll("#yildiz-bugun select, #yildiz-bugun [role='combobox'], #yildiz-bugun button"));
+        // Panel hiçbir koşulda kaynak (ya da başka bir şey) yazmaz.
         Assert.DoesNotContain(istekler, i => i.Item1 == "PATCH" && i.Item2.Contains("/kur/kaynak", StringComparison.Ordinal));
+        Assert.DoesNotContain(istekler, i => i.Item1 != "GET");
     }
 
-    [Fact]
-    public void Panel_kur_kaynagi_SAHIPE_Isletme_baglantisi_verir()
-    {
-        var e = Ekran("SAHIP");
-        e.WaitForElement("#panel-kur-kaynak-isletme-bag");
-        Assert.Equal("/isletme", e.Find("#panel-kur-kaynak-isletme-bag").GetAttribute("href"));
-        Assert.Equal(KesifP6Sozlugu.Tr.KaynakIsletmeBaglanti, e.Find("#panel-kur-kaynak-isletme-bag").TextContent.Trim());
-        Assert.Empty(e.FindAll("#panel-kur-kaynak-yalniz-sahip"));
-    }
-
-    [Theory]
-    [InlineData("MUDUR")]
-    [InlineData("TEZGAHTAR")]
-    public void Panel_kur_kaynagi_diger_rollere_sebep_yazar_baglanti_yok(string rol)
-    {
-        var e = Ekran(rol);
-        e.WaitForElement("#panel-kur-kaynak-yalniz-sahip");
-        Assert.Equal(KesifP6Sozlugu.Tr.KaynakYalnizSahip, e.Find("#panel-kur-kaynak-yalniz-sahip").TextContent.Trim());
-        Assert.Empty(e.FindAll("#panel-kur-kaynak-isletme-bag"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Panel_kur_kaynagi_SAHIPE_Isletme_baglantisi_verir kaldırıldı — Bugün'de kur kartı (kaynak adı + İşletme bağlantısı) BİLEREK yok (tuval); kaynak yalnız İşletme'de onaylı değişir (KesifP6EkranTestleri, Dogrulayici/KESIFP6SinirTestleri).
+    // TEMA TEMİZLİĞİ 17.10: Panel_kur_kaynagi_diger_rollere_sebep_yazar_baglanti_yok kaldırıldı — aynı gerekçe: kur kartı Bugün'de yok; Panel'in yazma yolu olmadığı Panel_kur_kaynagi_secici_yok_PATCH_yok'ta.
 }

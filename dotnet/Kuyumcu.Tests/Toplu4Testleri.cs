@@ -125,13 +125,20 @@ public sealed class Toplu4PanelTestleri : Toplu4Tabani
              "netGram":0,"alacakliCariSayisi":0,"borcluOlduguCariSayisi":0,"konsinyeGram":0,"emanetGram":0},
              "digerMadenler":[],"madenlerToplanmaz":false,"defterBakiyeFarki":0,"hesaplanmaAni":"2026-10-02T06:00:00Z","donemdenBagimsiz":true}
             """);
+        // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün gün sonu / emanet satırlarının uçları gerçekçi ("{}" liste ayrışmaz → sahte bant).
+        Yol("/raporlar/kasa-defteri", """{"baslangic":"2026-10-01","bitis":"2026-10-01","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""");
+        Yol("/cari", "[]");
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — "Kim borçlu?" kartı yerine "Seni bekleyen" müşteri satırları (tuval:
+    // ad · soluk tutar · durum · tek eylem). Güvence: TL ve has TEK satırlık birleşik metne sıkıştırılmaz (taşma), has
+    // kaybolmaz (satırın title'ında), uzun ad kırpılmaz.
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Ciz()
     {
         Oturum(ArayuzModuServisi.Basit);
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-borclu-tutar-c1", TimeSpan.FromSeconds(10));
+        e.BugunBekle();
+        e.WaitForElement("#yildiz-bekleyen-cari-c1", TimeSpan.FromSeconds(10));
         return e;
     }
 
@@ -139,17 +146,16 @@ public sealed class Toplu4PanelTestleri : Toplu4Tabani
     public void T4_Kim_borclu_TL_ve_has_AYRI_satir_parcalari()
     {
         var e = Ciz();
-        var parca = e.FindAll("#panel-borclu-tutar-c1 > .panel-tutar-parca");
-        Assert.Equal(2, parca.Count);
-        Assert.Equal(Bicim.Tl(24423.82m), parca[0].TextContent.Trim());
-        Assert.Equal("12,3000 has", parca[1].TextContent.Trim());   // RAPOR-GORUNUM: tek has dili (Bicim.Has)
-        // Tek satırlık birleşik metin hücrede YOK; tamamı title'da okunur.
-        Assert.DoesNotContain(" · ", e.Find("#panel-borclu-tutar-c1").TextContent, StringComparison.Ordinal);
-        Assert.Equal($"{Bicim.Tl(24423.82m)} · 12,3000 has", e.Find("#panel-borclu-tutar-c1").GetAttribute("title"));
+        var c1 = e.Find("#yildiz-bekleyen-cari-c1");
+        // Görünen tutar TEK parça (TL); has aynı satıra " · " ile EKLENMEZ.
+        Assert.Equal($"· {Bicim.Tl(24423.82m)}", c1.QuerySelector(".yildiz-bugun-sat-ek")!.TextContent.Trim());
+        Assert.DoesNotContain("12,3000", c1.QuerySelector(".yildiz-bugun-sat-metin")!.TextContent, StringComparison.Ordinal);
+        // Has silinmedi: tamamı satırın title'ında okunur (RAPOR-GORUNUM: tek has dili, Bicim.Has).
+        Assert.Equal($"{Bicim.Tl(24423.82m)} · 12,3000 has", c1.GetAttribute("title"));
         // Yalnız TL'si olan satır tek parça.
-        Assert.Single(e.FindAll("#panel-borclu-tutar-c2 > .panel-tutar-parca"));
-        // Ad kesilmez/kırpılmaz: tamamı metinde (title'da da).
-        Assert.Contains("Sanayi ve Ticaret", e.Find("#panel-borclu-c1 .panel-liste-ad").TextContent, StringComparison.Ordinal);
+        Assert.Equal($"· {Bicim.Tl(22096.97m)}", e.Find("#yildiz-bekleyen-cari-c2 .yildiz-bugun-sat-ek").TextContent.Trim());
+        // Ad kesilmez/kırpılmaz: tamamı metinde.
+        Assert.Contains("Anadolu Döküm Toptan Kuyumculuk Sanayi ve Ticaret", c1.QuerySelector(".yildiz-bugun-sat-metin")!.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]

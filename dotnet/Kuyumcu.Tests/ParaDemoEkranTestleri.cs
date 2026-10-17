@@ -322,8 +322,9 @@ public sealed class ParaDemoCariEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
+        // TEMA TEMİZLİĞİ 17.10: Yıldız Müşteriler listesi — eylemler müşterinin kartında (CariKartEylemi).
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-tahsilat-c1");
+        e.WaitForElement("#yildiz-musteri-c1");
         istekler.Clear();
         return e;
     }
@@ -332,7 +333,7 @@ public sealed class ParaDemoCariEkranTestleri : BunitContext
     public void PDE2_tahsilat_ipucu_BORCU_AZALTIR_demez_altin_ayri_hesaba()
     {
         var e = Ciz();
-        e.Find("#c-tahsilat-c1").Click();
+        e.CariKartEylemi("c1", "c-tahsilat");
         e.WaitForElement("#th-ipucu");
         Assert.Equal(ParaDemoSozlugu.Tr.TahsilatIpucu, e.Find("#th-ipucu").TextContent.Trim());
         Assert.DoesNotContain("Borcu azaltır", e.Markup);
@@ -343,7 +344,7 @@ public sealed class ParaDemoCariEkranTestleri : BunitContext
     public void PDE2_TL_borclu_musteride_altin_girilince_UYARI_ve_dogru_yol_yazili()
     {
         var e = Ciz();
-        e.Find("#c-tahsilat-c1").Click();
+        e.CariKartEylemi("c1", "c-tahsilat");
         // PARA-DEMO-2 (madde 7): altınla ödeme isteğe bağlı — "+ Altınla öde" arkasında.
         e.WaitForElement("#th-has-ekle").Click();
         e.WaitForElement("#th-has");
@@ -368,7 +369,7 @@ public sealed class ParaDemoCariEkranTestleri : BunitContext
     public void PDE2_borcsuz_musteride_altin_uyarisi_CIKMAZ()
     {
         var e = Ciz();
-        e.Find("#c-tahsilat-c2").Click();
+        e.CariKartEylemi("c2", "c-tahsilat");
         e.WaitForElement("#th-has-ekle").Click();   // PARA-DEMO-2 (madde 7)
         e.WaitForElement("#th-has");
         e.Find("#th-has").Input("1");
@@ -379,7 +380,7 @@ public sealed class ParaDemoCariEkranTestleri : BunitContext
     public void PDE5_detayda_odeme_turu_borc_etkisi_ve_YURUYEN_bakiye()
     {
         var e = Ciz();
-        e.Find("#c-detay-c1").Click();
+        e.CariKartEylemi("c1", "c-detay");
         e.WaitForElement("#cari-detay-hareketler");
 
         Assert.Equal("· Kart", e.Find("#cari-detay-odeme-h3").TextContent.Trim());
@@ -462,34 +463,45 @@ public sealed class ParaDemoIslemEkranTestleri : BunitContext
         return e;
     }
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ fişi HER ZAMAN Yıldız tezgâhıdır — ödeme türü tek ödeme satırının açtığı düzende
+    // (#islem-odeme, FisOdemeKasa — aynı id), Kaydet #yildiz-tezgah-kaydet, kilit sebebi düğmenin title'ı + not satırı
+    // (#yildiz-tezgah-not), müşteri "Değiştir" katmanında (#yildiz-tezgah-degistir → #yildiz-musteri-sec-{id}).
+    private static void TezgahKalemOdeme(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, string odeme)
+    {
+        e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
+        SeciciYardim.Sec(e, "islem-urun", "u1");
+        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        e.WaitForAssertion(() => Assert.Single(e.FindAll(".yz-tezgah-kalem")), TimeSpan.FromSeconds(5));
+        if (e.FindAll("#yildiz-tezgah-odeme-duzen").Count == 0) e.Find("#yildiz-odeme-0").Click();
+        e.WaitForElement("#islem-odeme");
+        SeciciYardim.Sec(e, "islem-odeme", odeme);
+    }
+
     [Fact]
     public void PDE4_Pesin_Musteri_VERESIYE_secilince_Kaydet_ONCEDEN_kilitli_sebebi_yazili()
     {
         var e = Pos();
-        e.WaitForElement("#islem-pesin-notu");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        SeciciYardim.Sec(e, "islem-odeme", "VERESIYE");
+        TezgahKalemOdeme(e, "VERESIYE");
 
-        e.WaitForAssertion(() => Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled")));
-        Assert.Equal(ParaDemoSozlugu.Tr.PesinVeresiyeKilit, e.Find("#islem-kaydet-kilit").TextContent.Trim());
-        e.Find("#islem-kaydet").Click();
+        e.WaitForAssertion(() => Assert.True(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
+        Assert.Equal(ParaDemoSozlugu.Tr.PesinVeresiyeKilit, e.Find("#yildiz-tezgah-kaydet").GetAttribute("title"));
+        Assert.Equal(ParaDemoSozlugu.Tr.PesinVeresiyeKilit, e.Find("#yildiz-tezgah-not").TextContent.Trim());
+        e.Find("#yildiz-tezgah-kaydet").Click();
         Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis"));
 
         // Geri dönüş yolu: gerçek müşteri seçilince kilit kalkar.
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")));
+        e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForElement("#yildiz-musteri-sec-c1").Click();
+        e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
     }
 
     [Fact]
     public void PDE4_Pesin_Musteri_NAKITte_kilit_YOK()
     {
         var e = Pos();
-        e.WaitForElement("#islem-pesin-notu");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        SeciciYardim.Sec(e, "islem-odeme", "NAKIT");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")));
+        TezgahKalemOdeme(e, "NAKIT");
+        e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
+        Assert.DoesNotContain(ParaDemoSozlugu.Tr.PesinVeresiyeKilit, e.Find("#yildiz-tezgah").TextContent, StringComparison.Ordinal);
     }
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> TakasDolu()

@@ -156,6 +156,14 @@ public sealed class P37cPanelVeKapsamTestleri : BunitContext
     // PAKET T-K3: Ayarlar — tuval Ayarlar.dc.html başlığı üst barda, sekmeler yanında (gerekçe dosyada).
     private static readonly string[] Muaflar = ["Panel.razor", "Ekranlar.razor", "Ayarlar.razor"];
 
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: eski özgün gövdesi KALDIRILAN ve başlığı Yıldız tuval bileşeninin KENDİSİNDE olan ekranlar
+    /// (SayfaBasi yerine tuval başlığı: Cariler → YildizMusteriler, h1 #yildiz-musteri-baslik). Sessiz istisna DEĞİL: ekran
+    /// o bileşeni çizmiyorsa test kırılır.
+    /// </summary>
+    private static readonly (string Dosya, string Bilesen)[] YildizTuvalBasligi =
+        [("Cariler.razor", "<Kuyumcu.Web.Bilesenler.Yildiz.YildizMusteriler")];
+
     [Fact]
     public void Her_ekran_ortak_arac_seridini_kullanir_muafiyet_YAZILIDIR()
     {
@@ -169,6 +177,8 @@ public sealed class P37cPanelVeKapsamTestleri : BunitContext
 
         var eksik = sayfalar
             .Where(y => !Muaflar.Contains(Path.GetFileName(y)))
+            .Where(y => !YildizTuvalBasligi.Any(t => t.Dosya == Path.GetFileName(y)
+                        && File.ReadAllText(y).Contains(t.Bilesen, StringComparison.Ordinal)))
             .Where(y => !File.ReadAllText(y).Contains("<SayfaBasi", StringComparison.Ordinal))
             .Select(Path.GetFileName)
             .ToArray();

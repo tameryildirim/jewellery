@@ -172,6 +172,7 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     internal sealed class SahteApi(Dictionary<string, string> ozel) : HttpMessageHandler
@@ -228,6 +229,10 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
                 var y when y.EndsWith("/raporlar/katalog", StringComparison.Ordinal) => """{"toplam":0,"faz":"A","raporlar":[]}""",
                 var y when y.EndsWith("/subeler", StringComparison.Ordinal) => """[{"id":"s1","ad":"Merkez","aktif":true}]""",
                 var y when y.EndsWith("/kasalar", StringComparison.Ordinal) => "[]",
+                // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün gün sonu / emanet satırlarının uçları gerçekçi.
+                var y when y.EndsWith("/raporlar/kasa-defteri", StringComparison.Ordinal) =>
+                    """{"baslangic":"2026-10-02","bitis":"2026-10-02","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari", StringComparison.Ordinal) => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaFazlasiVar":false}""",
             };
             return Task.FromResult(Yanit(cevap));
@@ -244,11 +249,12 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", rol, "s1",
                 ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (eski BASİT kartları ve PRO ızgarası kaldırıldı). "İki ekran aynı
+    // sayıyı söyler" güvenceleri Bugün'ün rakamı, "Seni bekleyen" satırları ve alt şeridi üzerinde korunur.
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Panel()
     {
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#panel-iskelet-soru-bekleyen")), TimeSpan.FromSeconds(10));
+        e.BugunBekle(pozisyon: true);
         return e;
     }
 
@@ -276,7 +282,9 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
         // PAKET RAPOR-3 (hasım YÜKSEK): iki ekran AYNI satırı gösterir ("Yasal liste yüklenmedi"), yönlendirme cümlesi yok.
         var beklenen = KarRaporSozlugu.Tr.IsYasalListeYok;
         var p = Panel();
-        p.WaitForAssertion(() => Assert.Equal(beklenen, p.Find("#panel-soru-bekleyen-yasal-liste-eski-git").TextContent.Trim()));
+        p.WaitForAssertion(() => Assert.Equal(beklenen, p.Find("#yildiz-bekleyen-yasal-liste-eski .yildiz-bugun-sat-metin").TextContent.Trim()));
+        Assert.Equal("/uyum?sekme=risk", p.Find("#yildiz-bekleyen-yasal-liste-eski-eylem").GetAttribute("href"));
+        Assert.Empty(p.FindAll("#yildiz-bugun-bekleyen-bos"));
         var r = Raporlar();
         r.WaitForAssertion(() => Assert.Equal(beklenen, r.Find("#bugun-bekleyen-yasal-liste-eski-git").TextContent.Trim()));
         Assert.DoesNotContain(RaporBugunSozlugu.Tr.BekleyenYok, r.Find("#bugun-bekleyen").TextContent, StringComparison.Ordinal);
@@ -290,7 +298,7 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
         ozel["/masak/ozet"] = """{"acikBildirim":0,"suresiGecmis":2,"yaklasan":0,"son30GunTespit":0}""";
         Oturum();
         var p = Panel();
-        p.WaitForAssertion(() => Assert.NotNull(p.Find("#panel-uyum-masak-gecti")));
+        p.WaitForAssertion(() => Assert.StartsWith("2 ", p.Find("#yildiz-bekleyen-masak-gecti .yildiz-bugun-sat-metin").TextContent.Trim(), StringComparison.Ordinal));
         var r = Raporlar();
         r.WaitForAssertion(() => Assert.Equal(string.Format(KarRaporSozlugu.Tr.BekleyenUyumSatiri, 2),
             r.Find("#bugun-bekleyen-uyum-git").TextContent.Trim()));
@@ -308,21 +316,26 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
         Assert.Empty(r.FindAll("#bugun-bekleyen-uyum"));
     }
 
-    // ── R2-23 · T3: altın pozisyonu — iki ekranda da gösterilen kırılım toplamı = ana değer (hurda dahil) ──
+    // ── R2-23 · T3: altın pozisyonu — Rapor merkezinde gösterilen kırılım toplamı = ana değer (hurda dahil);
+    //   Panel (Bugün alt şeridi) AYNI ana değeri yazar. TEMA TEMİZLİĞİ 17.10: Panel'in pozisyon KARTI (kırılımlı) kaldırıldı;
+    //   Bugün tuvali yalnız net pozisyonu (bir ondalık) ve vitrini yazar — iki ekranın aynı sayıyı söylemesi korunur. ──
     [Fact]
     public void R2_23_Altin_pozisyonu_kirilim_toplami_ana_degere_esit_iki_ekranda()
     {
         Oturum();
-        foreach (var e in new IRenderedComponent<Microsoft.AspNetCore.Components.IComponent>[] { Panel(), Raporlar() })
-        {
-            e.WaitForAssertion(() => Assert.NotNull(e.Find("#pozisyon-net")));
-            var net = Sayi(e.Find("#pozisyon-net").TextContent);
-            var kirilim = e.FindAll("#pozisyon-kirilim .pozisyon-kirilim-oge");
-            var toplam = kirilim.Sum(o => o.Id == "pozisyon-borc" ? -Sayi(o.TextContent) : Sayi(o.TextContent));
-            Assert.Equal(160.1812m, net);
-            Assert.Equal(net, toplam);
-            Assert.Contains("0,9160 has", e.Find("#pozisyon-hurda").TextContent, StringComparison.Ordinal);
-        }
+        var r = Raporlar();
+        r.WaitForAssertion(() => Assert.NotNull(r.Find("#pozisyon-net")));
+        var net = Sayi(r.Find("#pozisyon-net").TextContent);
+        var kirilim = r.FindAll("#pozisyon-kirilim .pozisyon-kirilim-oge");
+        var toplam = kirilim.Sum(o => o.Id == "pozisyon-borc" ? -Sayi(o.TextContent) : Sayi(o.TextContent));
+        Assert.Equal(160.1812m, net);
+        Assert.Equal(net, toplam);
+        Assert.Contains("0,9160 has", r.Find("#pozisyon-hurda").TextContent, StringComparison.Ordinal);
+
+        var p = Panel();
+        Assert.Equal($"{YildizBugunSozlugu.AltinPozisyonu("tr")} {Kuyumcu.Web.Bilesenler.Yildiz.YildizBugunBicim.HasKisa(net, YildizBugunSozlugu.GramHas("tr"), true)}",
+            p.Find("#yildiz-bugun-pozisyon").TextContent.Trim());
+        Assert.Equal("+160,2 g has", p.Find("#yildiz-bugun-pozisyon b").TextContent.Trim());
     }
 
     // ── R2-24 · T1: yalnız gümüş alınan gün "0,0000 has" YAZILMAZ; gümüş alış ve gümüş hurda kendi satırında ──
@@ -382,13 +395,15 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
             """;
         Oturum();
         var p = Panel();
-        p.WaitForAssertion(() => Assert.NotNull(p.Find("#panel-borclu-tutar-c2")));
-        Assert.Contains("0,0001 has", p.Find("#panel-borclu-tutar-c2").TextContent, StringComparison.Ordinal);
-        Assert.Empty(p.FindAll("#panel-borclu-tutar-c1"));
+        p.WaitForAssertion(() => Assert.NotNull(p.Find("#yildiz-bekleyen-cari-c2")));
+        Assert.Contains("0,0001 has", p.Find("#yildiz-bekleyen-cari-c2 .yildiz-bugun-sat-ek").TextContent, StringComparison.Ordinal);
+        Assert.Empty(p.FindAll("#yildiz-bekleyen-cari-c1"));
+        Assert.DoesNotContain("0,0000 has", p.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
         Assert.Equal(0.00005m, Kuyumcu.Web.Pages.Panel.HasGosterimEsigi);
     }
 
-    // ── R2-27 · Panel kâr satırı kısa ve tek öbek: "eksik: 9 satış, 1 iade" bölünmez ──
+    // ── R2-27 · Panel kâr satırı kısa ve tek öbek. TEMA TEMİZLİĞİ 17.10: Bugün alt şeridinde maliyeti eksik satış/iade
+    //   varken kâr rakamı BASILMAZ (fail-closed) — yalnız "maliyet eksik" yazar; kısmi rakam ve uzun kapsam cümlesi yok. ──
     [Fact]
     public void R2_27_Panel_kar_satiri_kisa_ve_bolunmez()
     {
@@ -399,11 +414,12 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
             """;
         Oturum();
         var p = Panel();
-        p.WaitForAssertion(() => Assert.NotNull(p.Find("#panel-soru-satis-kar")));
-        var metin = p.Find("#panel-soru-satis-kar").TextContent.Trim();
-        // PAKET RAPOR-3 (hasım ORTA): kapsam söylenir — 11 satışın 9'unun maliyeti yok → "(yalnız 2 satış)".
-        Assert.Equal($"Kâr {Bicim.TlKurus(20419.65m)} (yalnız 2 satış) · 9\u00A0satış\u00A0ve\u00A01\u00A0iadenin\u00A0maliyeti\u00A0yok", metin);
-        Assert.DoesNotContain("eksik:", metin, StringComparison.Ordinal);
+        p.WaitForAssertion(() => Assert.NotNull(p.Find("#yildiz-bugun-kar")));
+        var metin = p.Find("#yildiz-bugun-kar").TextContent.Trim();
+        Assert.Equal($"{YildizBugunSozlugu.Kar("tr")} {YildizBugunSozlugu.MaliyetEksik("tr")}", metin);
+        Assert.DoesNotContain(Bicim.Tl(20419.65m), p.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain(Bicim.TlKurus(20419.65m), p.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
+        Assert.Equal("/raporlar/kar-zarar", p.Find("#yildiz-bugun-kar").GetAttribute("href"));   // ayrıntı Kâr-zarar'da
     }
 
     // ── R2-28 · Rapor merkezi BASİT: "Diğer raporlar" açıklaması ⓘ arkasında (düz satır değil), bağlantı korunur ──
@@ -424,17 +440,19 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
         Oturum();
         var iade = string.Format(KarRaporSozlugu.Tr.BugunIadeSatiri, 1, Bicim.Tl(6874.15m));
         var p = Panel();
-        p.WaitForAssertion(() => Assert.Equal(Bicim.Tl(252277.99m), p.Find("#panel-soru-satis-deger").TextContent.Trim()));
-        Assert.Equal(36.234m, Sayi(p.Find("#panel-soru-satis-has").TextContent));
-        Assert.Equal(iade, p.Find("#panel-soru-satis-iade").TextContent.Trim());
-        Assert.DoesNotContain(Bicim.Tl(259152.14m), p.Find("#panel-soru-satis").TextContent, StringComparison.Ordinal);
+        // Bugün'ün dev rakamı NET satıştır (Rapor merkezi ve Kâr-zarar "Bugün" ile aynı); brüt görünmez.
+        // Not: has ve iade alt satırı Bugün tuvalinde yazılmaz (bilerek) — Rapor merkezinde.
+        p.WaitForAssertion(() => Assert.Equal(Bicim.TlKurus(252277.99m), p.Find("#yildiz-bugun-rakam").TextContent.Trim()));
+        Assert.DoesNotContain(Bicim.Tl(259152.14m), p.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain(Bicim.TlKurus(259152.14m), p.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
         var r = Raporlar();
         r.WaitForAssertion(() => Assert.Equal(Bicim.Tl(252277.99m), r.Find("#bugun-satis-deger").TextContent.Trim()));
         Assert.Equal(36.234m, Sayi(r.Find("#bugun-satis-has").TextContent));
         Assert.Equal(iade, r.Find("#bugun-satis-iade").TextContent.Trim());
     }
 
-    // ── R2-34 · TUR 2: Panel PRO "Günlük satış" NET + iade alt satırı; "Günün nakit akışı (satış − alış − hurda)" AYNI net satıştan ──
+    // ── R2-34 · TUR 2: Panel PRO "Günlük satış" NET. TEMA TEMİZLİĞİ 17.10: PRO stat kartları ("Günlük satış",
+    //   "Günün nakit akışı") kaldırıldı — PRO'da da Bugün çizilir; dev rakam AYNI net satıştır, brüt görünmez. ──
     [Fact]
     public void R2_34_Panel_PRO_gunluk_satis_net_nakit_akisi_ayni_satistan()
     {
@@ -443,13 +461,10 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        e.WaitForAssertion(() => Assert.Equal(Bicim.Tl(252277.99m),
-            e.Find(".stat-izgara .stat-kart .stat-deger").TextContent.Trim()), TimeSpan.FromSeconds(10));
-        var kartlar = e.FindAll(".stat-izgara .stat-kart");
-        Assert.Equal(string.Format(KarRaporSozlugu.Tr.BugunIadeSatiri, 1, Bicim.Tl(6874.15m)),
-            kartlar[0].QuerySelector(".stat-alt")!.TextContent.Trim());
-        Assert.Equal(Bicim.Tl(252277.99m), kartlar[3].QuerySelector(".stat-deger")!.TextContent.Trim());   // net − 0 alış − 0 hurda
+        e.BugunBekle();
+        Assert.Equal(Bicim.TlKurus(252277.99m), e.Find("#yildiz-bugun-rakam").TextContent.Trim());
+        Assert.DoesNotContain(Bicim.TlKurus(259152.14m), e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
+        Assert.Empty(e.FindAll("#panel-izgara"));
     }
 
     // ── R2-32 · TUR 2 (hasım DÜŞÜK): nakit sınırı aşımı Rapor merkezinde de Panel'le AYNI — şerit kartta,
@@ -471,7 +486,9 @@ public sealed class RaporIkiTutarlilikTestleri : BunitContext
         // PAKET RAPOR-3 (hasım YÜKSEK): aşım iki ekranda AYNI satır bileşeniyle ("1 nakit sınırı aşımı" → Uyum › Nakit).
         var cumle = string.Format(KarRaporSozlugu.Tr.IsNakitSiniri, 1);
         var p = Panel();
-        p.WaitForAssertion(() => Assert.Equal(cumle, p.Find("#panel-soru-bekleyen-yasal-nakit-git").TextContent.Trim()));
+        p.WaitForAssertion(() => Assert.Equal(cumle, p.Find("#yildiz-bekleyen-yasal-nakit .yildiz-bugun-sat-metin").TextContent.Trim()));
+        Assert.Equal("/uyum?sekme=nakit", p.Find("#yildiz-bekleyen-yasal-nakit-eylem").GetAttribute("href"));
+        Assert.Empty(p.FindAll("#yildiz-bekleyen-is-tv1"));
         var r = Raporlar();
         r.WaitForAssertion(() => Assert.Equal(cumle, r.Find("#bugun-bekleyen-yasal-nakit-git").TextContent.Trim()));
         Assert.Empty(r.FindAll("#bugun-bekleyen #nsp-odeme"));     // kırmızı kutu kartta ikinci kez çizilmez
