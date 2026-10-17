@@ -52,10 +52,15 @@ public sealed class M1bKarMilyemTestleri(TestVeritabani vt)
         Assert.Equal(739.36m, d.GetProperty("karTl").GetDecimal());
         Assert.Equal(1m, d.GetProperty("kartMaliyetliAdet").GetDecimal());
         Assert.NotEqual(JsonValueKind.Null, d.GetProperty("karHas").ValueKind);   // has bacağı artık BİLİNİR
+        // M9: milyem maliyeti satış kuruyla → altın fiyat farkı 0, kârın tamamı makas (işçilik) kârı.
+        Assert.Equal(739.36m, d.GetProperty("makasKariTl").GetDecimal());
+        Assert.Equal(0m, d.GetProperty("altinFiyatKariTl").GetDecimal());
 
         var u = J(await new KarZararServisi(db).UrunBazli(k.Islem, Bugun, Bugun, null, 50));
         var satir = Assert.Single(u.GetProperty("satirlar").EnumerateArray());
         Assert.Equal(739.36m, satir.GetProperty("karTl").GetDecimal());
+        Assert.Equal(739.36m, satir.GetProperty("makasKariTl").GetDecimal());
+        Assert.Equal(0m, satir.GetProperty("altinFiyatKariTl").GetDecimal());
     }
 
     [Fact]

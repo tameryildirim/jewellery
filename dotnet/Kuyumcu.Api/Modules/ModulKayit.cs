@@ -44,6 +44,7 @@ public static class ModulKayit
         // çağırır (K4-OK-2 / denetim.sh "BankaHareketleri.Add" sayacı).
         s.AddScoped<Banka.EkstreServisi>();
         s.AddScoped<Banka.GelenOdemeServisi>();   // M7a
+        s.AddScoped<Maliyet.AlisIscilikServisi>();   // M9
         s.AddScoped<Fatura.FaturaServisi>();
         s.AddScoped<Rapor.RaporServisi>();
         // ── Paket 34 Faz A — rapor seti (salt okur; deftere YAZMAZ) ─────────

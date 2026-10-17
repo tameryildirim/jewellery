@@ -931,7 +931,7 @@ public sealed class KarRaporKarZararEkranTestleri : BunitContext
         c.WaitForAssertion(() => Assert.Contains(c.FindAll("table"), t => t.TextContent.Contains("Bilezik", StringComparison.Ordinal)));
         var urunTablosu = c.FindAll("table").First(t => t.TextContent.Contains("Bilezik", StringComparison.Ordinal));
         var basliklar = urunTablosu.QuerySelectorAll("thead th").ToList();
-        Assert.Equal(8, basliklar.Count);
+        Assert.Equal(10, basliklar.Count);   // M9 (17.10): + İşçilik kârı, Altın farkı
         Assert.DoesNotContain("sayi", basliklar[0].ClassName ?? "", StringComparison.Ordinal);
         Assert.All(basliklar.Skip(1), th => Assert.Contains("sayi", th.ClassName ?? "", StringComparison.Ordinal));
     }

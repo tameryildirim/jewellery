@@ -109,6 +109,71 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.ToTable("acilis_kalemleri");
                 });
 
+            modelBuilder.Entity("Kuyumcu.Api.Data.AlisIscilikBelgesi", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AlisHareketId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("alis_hareket_id");
+
+                    b.Property<string>("BelgeNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("belge_no");
+
+                    b.Property<DateOnly?>("BelgeTarihi")
+                        .HasColumnType("date")
+                        .HasColumnName("belge_tarihi");
+
+                    b.Property<string>("BelgeTuru")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("belge_turu");
+
+                    b.Property<string>("CariId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("cari_id");
+
+                    b.Property<DateTime>("Guncellendi")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("guncellendi");
+
+                    b.Property<decimal>("IscilikTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("iscilik_tl");
+
+                    b.Property<string>("KullaniciId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kullanici_id");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "AlisHareketId")
+                        .IsUnique();
+
+                    b.ToTable("alis_iscilik_belgeleri");
+                });
+
             modelBuilder.Entity("Kuyumcu.Api.Data.BankaHareket", b =>
                 {
                     b.Property<string>("Id")

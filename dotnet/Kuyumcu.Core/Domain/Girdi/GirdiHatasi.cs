@@ -163,6 +163,8 @@ public static class AlanSinirlari
     public const int UrunAd = 300;
     /// <summary>M4 — ürün kuralı adı ve "adında geçen" metni (sunucu MaxLength(100)).</summary>
     public const int UrunKuraliMetin = 100;
+    /// <summary>M9: alış işçilik belgesinin numarası (alis_iscilik_belgeleri.belge_no).</summary>
+    public const int IscilikBelgeNo = 50;
     /// <summary>Ürün açıklaması (urunler.aciklama varchar(1000)).</summary>
     public const int UrunAciklama = 1000;
     /// <summary>Sertifika no · seri no · taş ibaresi (varchar(60)).</summary>

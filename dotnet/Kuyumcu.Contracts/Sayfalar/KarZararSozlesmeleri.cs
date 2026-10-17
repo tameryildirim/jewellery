@@ -20,7 +20,9 @@ public sealed record UrunSatiri(
     // "—" has kârı gerekçesiz kalmasın ("Has yalnız altında hesaplanır").
     string? Maden = null,
     // PAKET RAPOR-4 (VERİ 1): maliyeti partide olmayıp ürün kartındaki alış maliyetinden alınan adet.
-    decimal KartMaliyetliAdet = 0m);
+    decimal KartMaliyetliAdet = 0m,
+    // M9: altın kârının iki parçası (makas/işçilik + altın fiyat farkı) — hesaplanamazsa null.
+    decimal? MakasKariTl = null, decimal? AltinFiyatKariTl = null);
 // PAKET OLCEK-YUK t2 (UX-S29): sunucu sınırı ekrana taşınır — toplam ürün sayısı ve "daha fazlası var" sunucudan.
 public sealed record UrunYanit(List<UrunSatiri> Satirlar, bool DahaFazlasiVar = false, int ToplamUrunSayisi = 0, int Limit = 0, int Ofset = 0);
 // MADEN-AYRIMI: ToplamHasGram YALNIZ ALTIN hası; diğer madenler MadenKirilimi'nde (saf + fiziksel gram).
@@ -34,3 +36,9 @@ public sealed record StokVeri(
     decimal KartMaliyetliAdet = 0m);
 /// <summary>MADEN-AYRIMI: stokta bir madenin saf gramı (altında = has) ve tartı gramı (bilinmiyorsa null).</summary>
 public sealed record StokMadenSatiri(string Maden, string MadenAdi, decimal Adet, decimal ToplamGram, decimal? FizikselGram);
+// M9 (16.10): alış işçilik belgesi — GET/PUT /alis-iscilik (sunucu bu tipleri döndürür; derleyici kilidi).
+public sealed record AlisIscilikBelge(string BelgeTuru, string? BelgeNo, DateOnly? BelgeTarihi, decimal IscilikTl);
+public sealed record AlisIscilikSatiri(
+    string HareketId, DateTime Tarih, string CariId, string CariAd, string? UrunAd, decimal? Adet,
+    decimal OdenenTl, decimal HasGrami, decimal HasBedeliTl, decimal IscilikTahminiTl, AlisIscilikBelge? Belge);
+public sealed record AlisIscilikListe(int Gun, int BelgesizSayisi, decimal BelgesizIscilikTl, List<AlisIscilikSatiri> Satirlar);

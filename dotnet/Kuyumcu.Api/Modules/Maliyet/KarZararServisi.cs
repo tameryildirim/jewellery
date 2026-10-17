@@ -192,6 +192,9 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
             karHas     = R(olcum.KarHas, 4),
             // KAR-RAPOR-2 tur 2: BASİT 2 haneli has kartı bu alanı basar (görünen bileşenlerin farkı).
             karHasIkiHane = olcum.KarHasIkiHane,
+            // M9: altın kârı = makas (işçilik) kârı + altın fiyat farkı kârı (toplamı kuruşu kuruşuna).
+            makasKariTl = olcum.MakasKariTl,
+            altinFiyatKariTl = olcum.AltinFiyatKariTl,
             // KAR-RAPOR-2: has bacağı da AYNI kümeden — bilinenHasilatHas − maliyetHas = karHas.
             bilinenHasilatHas = olcum.BilinenHasilatHas,
             maliyetiEksikHasilatHas = olcum.HasilatHas - olcum.BilinenHasilatHas,
@@ -289,7 +292,9 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
         string HasKarDurumu = KarDurumlari.VeriYok, int HasMaliyetiEksikSatisAdedi = 0,
         int HasMaliyetiEksikIadeAdedi = 0, int YalnizHasMaliyetiEksikAdedi = 0,
         // RAPOR-4: maliyeti ürün kartından alınan (parti maliyeti olmayan) adet — kaynak etiketi için.
-        decimal KartMaliyetliAdet = 0m);
+        decimal KartMaliyetliAdet = 0m,
+        // M9: altın kârının iki parçası (KarAyrimi) — hesaplanamazsa null.
+        decimal? MakasKariTl = null, decimal? AltinFiyatKariTl = null);
 
     private async Task<DonemOlcumu> Olc(
         AktifKullanici islem, DateOnly baslangic, DateOnly bitis, string? subeId)
@@ -528,6 +533,11 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
         decimal? karHas = altinHesaplanamadi ? null : bilinenHasilatHasR - maliyetHasR;
         decimal? karHasIkiHane = altinHesaplanamadi ? null : R2(bilinenHasilatHasR) - R2(maliyetHasR);
         decimal? donemKariTl = karTl is null ? null : karTl + iscilikR - giderR;
+        // M9 (müşteri 16.10: "3.600 kâr etmiş görürsem üstüne vergi alır"): altın kârı iki parçaya ayrılır.
+        var (makasKari, altinFiyatKari) = altinHesaplanamadi ? ((decimal?)null, (decimal?)null) : KarAyrimi(
+            hasBilinenSatislar.Select(h => h.TlTutari).Concat(hasBilinenIadeler.Select(h => -Math.Abs(h.TlTutari))),
+            hasTuketim.Select(t => (t.CikisHareketId, t.Adet, t.BirimMaliyetTl, t.BirimMaliyetHas)),
+            hareketKuru);
 
         // ── Kâr köprüsü: işaretli kalemlerin TOPLAMI dönem kârına EŞİTTİR.
         var koprü = new List<object>
@@ -561,7 +571,38 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
             karDurumu, bilinenHasilatR, eksikSatislar.Count, eksikIadeler.Count, eksikTutarR,
             bilinenHasilatHasR, karHasIkiHane,
             altinKarDurumu, hasEksikSatisAdedi, hasEksikIadeAdedi, yalnizHasEksikAdedi,
-            kartMaliyetliAdet);
+            kartMaliyetliAdet, makasKari, altinFiyatKari);
+    }
+
+    /// <summary>
+    /// M9 — ALTIN ürün TL kârının iki parçası (müşteri 16.10: has değeri kâr gibi görünmesin).
+    /// <list type="bullet">
+    ///   <item><b>Makas (işçilik) kârı</b> = hasılat − satılan malın has maliyetinin SATIŞ anı has fiyatıyla
+    ///   değeri; has kârı (gram) × satış kuru — kuyumcunun alıp sattığı "makas".</item>
+    ///   <item><b>Altın fiyat farkı kârı</b> = has maliyetinin satış kuruyla değeri − ödenen TL maliyet;
+    ///   stoktaki altının alıştan satışa değer kazanması (düşüşte eksi).</item>
+    /// </list>
+    /// Toplamları = R2(hasılat) − R2(maliyet). Bir satırın kuru ya da TL/has maliyeti eksikse UYDURULMAZ: (null, null).
+    /// İade hasılata EKSİ, tüketimi eksi adetle girer (Olc ile aynı işaret düzeni).
+    /// </summary>
+    public static (decimal? MakasTl, decimal? AltinFiyatTl) KarAyrimi(
+        IEnumerable<decimal> hasilatIsaretli,
+        IEnumerable<(string? CikisHareketId, decimal Adet, decimal? BirimTl, decimal? BirimHas)> tuketim,
+        IReadOnlyDictionary<string, decimal> hareketKuru)
+    {
+        var hasilatlar = hasilatIsaretli.ToList();
+        if (hasilatlar.Count == 0) return (null, null);
+        decimal hasSatisKuruyla = 0m, maliyetTl = 0m;
+        foreach (var t in tuketim)
+        {
+            if (t.BirimHas is not { } h || t.BirimTl is not { } tl || t.CikisHareketId is null
+                || !hareketKuru.TryGetValue(t.CikisHareketId, out var kur) || kur <= 0m)
+                return (null, null);
+            hasSatisKuruyla += h * t.Adet * kur;
+            maliyetTl += tl * t.Adet;
+        }
+        var hasDegeriR = R2(hasSatisKuruyla);
+        return (R2(hasilatlar.Sum()) - hasDegeriR, hasDegeriR - R2(maliyetTl));
     }
 
     /// <summary>MADEN-AYRIMI: hareket ALTIN mı (boş/NULL ALTIN sayılır — HareketToplami.MadenKodu tek kaynak).</summary>
@@ -840,6 +881,10 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
         public decimal maliyetiBilinmeyenAdet { get; init; }
         public string guvenilirlik { get; init; } = "";
         public decimal kartMaliyetliAdet { get; init; }
+        /// <summary>M9: makas (işçilik) kârı — yalnız altın, hesaplanamazsa null.</summary>
+        public decimal? makasKariTl { get; init; }
+        /// <summary>M9: altın fiyat farkı kârı — yalnız altın, hesaplanamazsa null.</summary>
+        public decimal? altinFiyatKariTl { get; init; }
     }
 #pragma warning restore IDE1006
 
@@ -872,6 +917,12 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
                 KartAdet       = g.Where(x => x.Kart).Sum(x => Math.Abs(x.Adet)),
             });
 
+
+        // M9: satışın kendi has fiyatı (KarAyrimi) — kuru bulunamayan satış sözlükte yoktur.
+        var hareketKuru = satislar
+            .Where(h => !string.IsNullOrEmpty(h.KurSnapshotId) && kurlar.ContainsKey(h.KurSnapshotId))
+            .ToDictionary(h => h.Id, h => kurlar[h.KurSnapshotId]);
+        var tuketimHarekette = tuketimler.Where(t => t.CikisHareketId != null && kimlikler.Contains(t.CikisHareketId)).ToList();
 
         return satislar
             .GroupBy(s => s.UrunId)
@@ -916,6 +967,12 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
                 var altinUrun = AltinMaden(urunMadeni);
                 var hasHesaplanamadi = urunHesaplanamadi || !altinUrun || hasDurum == KarDurumlari.Hesaplanamadi;
                 decimal? karHasU = hasHesaplanamadi ? null : R4(bilinenHasilatHas) - R4(maliyetHas);
+                var hasKimlik = hasBilinen.Select(x => x.Id).ToHashSet();
+                var (makasU, altinFiyatU) = hasHesaplanamadi ? ((decimal?)null, (decimal?)null) : KarAyrimi(
+                    hasBilinen.Select(x => x.Tur == "SATIS_IADE" ? -Math.Abs(x.TlTutari) : x.TlTutari),
+                    tuketimHarekette.Where(t => hasKimlik.Contains(t.CikisHareketId!))
+                        .Select(t => (t.CikisHareketId, t.Adet, t.BirimMaliyetTl, t.BirimMaliyetHas)),
+                    hareketKuru);
                 return new UrunKarSatiri
                 {
                     urunId = g.Key,
@@ -948,6 +1005,8 @@ public sealed class KarZararServisi(KuyumcuDbContext db)
                         m?.BilinenAdet ?? 0m, m?.BilinmeyenAdet ?? 0m, kursuz),
                     // RAPOR-4 (VERİ 1): maliyeti ürün kartından alınan adet — ekran "kart maliyeti" rozeti basar.
                     kartMaliyetliAdet = Math.Round(m?.KartAdet ?? 0m, 3, MidpointRounding.AwayFromZero),
+                    makasKariTl = makasU,
+                    altinFiyatKariTl = altinFiyatU,
                 };
             })
             // Kârı hesaplanamayan ürün sona (null büyük değildir); kararlı sıra: ürün kimliği (ordinal).

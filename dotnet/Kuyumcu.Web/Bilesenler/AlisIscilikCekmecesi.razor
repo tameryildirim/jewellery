@@ -1,0 +1,154 @@
+@using Kuyumcu.Contracts.Sayfalar.KarZarar
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ M9 (16.10) — Alış işçilik belgeleri çekmecesi ═════════════════════════════
+   Müşteri: "aradaki masrafı fatura etmen lazım, yoksa kâr görünür". Açılışta yalnız liste;
+   belge formu satırdaki "Belge gir" ile açılır (zorunlu önce). "Belgesiz" de kaydedilir ama
+   uyarı sürer. Alış DEĞİŞMEZ — belge bilgisi alışın yanındadır. ═══ *@
+<Cekmece Acik="Acik" Varlik="alis-iscilik" Baslik="@KarAyrimiSozlugu.IscilikBelgeleri(Dil.Dil)"
+         Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetGoster="@(form is not null)" KaydetElemanId="ai-kaydet">
+    @if (hata is { } h) { <div class="bant bant-hata" role="alert" id="ai-hata">@h</div> }
+    @if (bilgi is { } b) { <div class="bant bant-basari" role="status" id="ai-bilgi">@b</div> }
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (form is null)
+    {
+        @if (liste is { Satirlar.Count: 0 })
+        {
+            <p class="metin-soluk" id="ai-bos">@KarAyrimiSozlugu.Bos(Dil.Dil)</p>
+        }
+        <ul class="liste-sade" id="ai-liste">
+            @foreach (var s in liste?.Satirlar ?? [])
+            {
+                <li class="ai-satir" id="@($"ai-{s.HareketId}")">
+                    <div class="ai-ust"><strong>@s.CariAd</strong><span class="metin-soluk metin-kucuk">@Bicim.Gun(s.Tarih)</span></div>
+                    <div class="metin-soluk">@(s.UrunAd ?? "—")</div>
+                    <div class="metin-kucuk">@KarAyrimiSozlugu.Odenen(Dil.Dil) @Bicim.TlKurus(s.OdenenTl) · @KarAyrimiSozlugu.HasBedeli(Dil.Dil) @Bicim.TlKurus(s.HasBedeliTl) · <strong>@KarAyrimiSozlugu.Iscilik(Dil.Dil) @Bicim.TlKurus(s.IscilikTahminiTl)</strong></div>
+                    <div class="ai-eylem">
+                        <span class="@(Belgeli(s) ? "metin-yesil" : "metin-kirmizi")" id="@($"ai-durum-{s.HareketId}")">@Durum(s)</span>
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"ai-gir-{s.HareketId}")"
+                                @onclick="() => FormAc(s)">@(s.Belge is null ? KarAyrimiSozlugu.BelgeGir(Dil.Dil) : KarAyrimiSozlugu.Duzelt(Dil.Dil))</button>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <div class="form-dikey" id="ai-form">
+            <p class="metin-soluk">@form.CariAd · @Bicim.Gun(form.Tarih) · @KarAyrimiSozlugu.Iscilik(Dil.Dil) @Bicim.TlKurus(form.Tahmin)</p>
+            <Secim ElemanId="ai-tur" Etiket="@KarAyrimiSozlugu.BelgeTuru(Dil.Dil)" Zorunlu="true"
+                   Secenekler="@TurSecenekleri" Deger="@form.Tur" DegerChanged="@(v => form.Tur = v ?? FaturaKodu)" />
+            @if (form.Tur == BelgesizKodu)
+            {
+                <div class="uyari-kutu" id="ai-belgesiz-not" role="note"><p>@KarAyrimiSozlugu.BelgesizNot(Dil.Dil)</p></div>
+            }
+            else
+            {
+                <Metin ElemanId="ai-no" Etiket="@KarAyrimiSozlugu.BelgeNo(Dil.Dil)" Zorunlu="true" EnFazla="@AlanSinirlari.IscilikBelgeNo"
+                       Deger="@form.No" DegerChanged="@(v => form.No = v ?? "")" />
+                <Tarih ElemanId="ai-tarih" Etiket="@KarAyrimiSozlugu.BelgeTarihi(Dil.Dil)" Zorunlu="true" EnGec="@Bugun"
+                       Deger="@form.BelgeTarihi" DegerChanged="@(v => form.BelgeTarihi = v)" />
+            }
+            <Para ElemanId="ai-tutar" Etiket="@KarAyrimiSozlugu.IscilikTutari(Dil.Dil)" Zorunlu="true" Tur="TutarTuru.Pozitif"
+                  Deger="@form.Tutar" DegerChanged="@(v => form.Tutar = v)" />
+        </div>
+    }
+</Cekmece>
+
+@code {
+    private static DateOnly Bugun => DateOnly.FromDateTime(DateTime.Now);
+    private const string FaturaKodu = "FATURA", GiderKodu = "GIDER_PUSULASI", BelgesizKodu = "BELGESIZ";
+
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+    /// <summary>Kayıttan sonra sayfa uyarı sayısını tazelesin.</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private sealed class BelgeFormu
+    {
+        public string HareketId { get; init; } = "";
+        public string CariAd { get; init; } = "";
+        public DateTime Tarih { get; init; }
+        public decimal Tahmin { get; init; }
+        public string Tur { get; set; } = "FATURA";
+        public string No { get; set; } = "";
+        public DateOnly? BelgeTarihi { get; set; }
+        public decimal? Tutar { get; set; }
+    }
+
+    private AlisIscilikListe? liste;
+    private BelgeFormu? form;
+    private bool yukleniyor, kaydediliyor, oncekiAcik;
+    private string? hata, bilgi;
+
+    private IReadOnlyList<SecenekOgesi> TurSecenekleri =>
+    [
+        new(FaturaKodu, KarAyrimiSozlugu.Fatura(Dil.Dil)),
+        new(GiderKodu, KarAyrimiSozlugu.GiderPusulasi(Dil.Dil)),
+        new(BelgesizKodu, KarAyrimiSozlugu.Belgesiz(Dil.Dil)),
+    ];
+
+    private static bool Belgeli(AlisIscilikSatiri s) => s.Belge is { } b && b.BelgeTuru != BelgesizKodu;
+
+    private string Durum(AlisIscilikSatiri s) => s.Belge switch
+    {
+        null => KarAyrimiSozlugu.BelgeYok(Dil.Dil),
+        { BelgeTuru: BelgesizKodu } => KarAyrimiSozlugu.Belgesiz(Dil.Dil),
+        { BelgeTuru: GiderKodu } b => $"{KarAyrimiSozlugu.GiderPusulasi(Dil.Dil)} {b.BelgeNo}",
+        var b => $"{KarAyrimiSozlugu.Fatura(Dil.Dil)} {b.BelgeNo}",
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !oncekiAcik) { form = null; hata = bilgi = null; await Yukle(); }
+        oncekiAcik = Acik;
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try { liste = await Api.TazeGetAsync<AlisIscilikListe>("/alis-iscilik"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }   // P-11: önceki liste KORUNUR
+        finally { yukleniyor = false; }
+    }
+
+    private void FormAc(AlisIscilikSatiri s)
+    {
+        hata = bilgi = null;
+        form = new BelgeFormu
+        {
+            HareketId = s.HareketId, CariAd = s.CariAd, Tarih = s.Tarih, Tahmin = s.IscilikTahminiTl,
+            Tur = s.Belge?.BelgeTuru ?? FaturaKodu, No = s.Belge?.BelgeNo ?? "",
+            BelgeTarihi = s.Belge?.BelgeTarihi, Tutar = s.Belge?.IscilikTl ?? s.IscilikTahminiTl,
+        };
+    }
+
+    private async Task Kaydet()
+    {
+        if (form is null) return;
+        kaydediliyor = true; hata = bilgi = null;
+        var belgeli = form.Tur != BelgesizKodu;
+        try
+        {
+            await Api.PutAsync<AlisIscilikBelge>($"/alis-iscilik/{form.HareketId}", new
+            {
+                belgeTuru = form.Tur,
+                belgeNo = belgeli && !string.IsNullOrWhiteSpace(form.No) ? form.No : null,
+                belgeTarihi = belgeli ? form.BelgeTarihi : null,
+                iscilikTl = form.Tutar,
+            });
+            form = null; bilgi = KarAyrimiSozlugu.Kaydedildi(Dil.Dil);
+            await Yukle();
+            await Degisti.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

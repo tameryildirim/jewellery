@@ -1341,5 +1341,17 @@ public static partial class SunucuIletiSozlugu
         ("Kapanış değeri sıfırdan büyük olmalıdır", "The closing price must be greater than zero"),
         ("Kapanış değeri zorunludur", "The closing price is required"),
         ("Bu kapanış {} faturada kullanıldı; değiştirilemez.", "This closing price was used on {} invoice(s); it cannot be changed."),
+        // ── M9 (17.10): alış işçilik belgesi ──
+        ("Belge türü zorunludur", "Document type is required"),
+        ("Belge türü FATURA, GIDER_PUSULASI ya da BELGESIZ olmalıdır", "Document type must be FATURA (invoice), GIDER_PUSULASI (expense voucher) or BELGESIZ (no document)"),
+        ("Gün 1 ile 400 arasında olmalıdır", "Days must be between 1 and 400"),
+        ("Alış bulunamadı", "Purchase not found"),
+        ("Bu alış stornolanmıştır; işçilik belgesi girilmez.", "This purchase has been reversed; no making-charge document can be entered."),
+        ("Belge numarası zorunludur", "Document number is required"),
+        ("Belge tarihi zorunludur", "Document date is required"),
+        ("Belge tarihi bugünden ileri olamaz", "Document date cannot be in the future"),
+        ("İşçilik tutarı en çok 2 ondalık olmalıdır", "Making charge can have at most 2 decimals"),
+        ("İşçilik tutarı sıfırdan büyük olmalıdır", "Making charge must be greater than zero"),
+        ("İşçilik tutarı alışın tutarını aşamaz", "Making charge cannot exceed the purchase amount"),
     ];
 }

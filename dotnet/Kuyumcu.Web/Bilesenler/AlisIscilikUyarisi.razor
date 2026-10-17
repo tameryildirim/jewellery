@@ -1,0 +1,38 @@
+@using Kuyumcu.Contracts.Sayfalar.KarZarar
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ M9 (16.10) — kâr raporunda belgesiz alış işçiliği uyarısı + belge çekmecesi. Belgesiz yoksa
+   yalnız küçük bir bağlantı ("Alış işçilik belgeleri"); yetkisiz rolde (403) hiçbir şey çizilmez. ═══ *@
+@if (gorunur)
+{
+    @if (liste is { BelgesizSayisi: > 0 } l)
+    {
+        <div class="uyari-kutu" id="kz-iscilik-uyari" role="status">
+            <p>@KarAyrimiSozlugu.BelgesizUyari(l.BelgesizSayisi, Bicim.TlKurus(l.BelgesizIscilikTl), Dil.Dil)</p>
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="kz-iscilik-ac" @onclick="() => acik = true">@KarAyrimiSozlugu.Ac(Dil.Dil)</button>
+        </div>
+    }
+    else if (liste is not null)
+    {
+        <button type="button" class="kz-iscilik-bag" id="kz-iscilik-ac" @onclick="() => acik = true">@KarAyrimiSozlugu.IscilikBelgeleri(Dil.Dil)</button>
+    }
+    @if (hata is { } h) { <div class="bant bant-hata" role="alert" id="kz-iscilik-hata">@h</div> }
+    <AlisIscilikCekmecesi Acik="acik" Kapat="() => acik = false" Degisti="Yukle" />
+}
+
+@code {
+    private AlisIscilikListe? liste;
+    private bool gorunur = true, acik;
+    private string? hata;
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task Yukle()
+    {
+        try { liste = await Api.TazeGetAsync<AlisIscilikListe>("/alis-iscilik"); hata = null; }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { gorunur = false; }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }   // P-11
+    }
+}

@@ -434,7 +434,8 @@ fi
 # M4 (2026-10-16): Data/UrunKurali.cs (urun_kurallari — müşteri "fiyat kuralları") → 76 -> 77
 # 17.10: Data/CariMahsup.cs (cari_mahsuplar) 77 -> 78; KUR KAYNAKLARI: Data/OzelMatrahKapanisi.cs (ozel_matrah_kapanislari) 78 -> 79
 #   (ham/olcum-2026-09-18.json sayaclar.BEKLENEN_VARLIK.deger de 79 — dosya git dışıdır, ana checkout'ta).
-BEKLENEN_VARLIK=79
+# M9 (17.10): Data/AlisIscilikBelgesi.cs (alis_iscilik_belgeleri) 79 -> 80
+BEKLENEN_VARLIK=80
 VARLIK=$(grep -c ": IKiraciVarlik" "$API/Data/Entities.cs" || true)
 EK=$(grep -rl ": IKiraciVarlik" "$API/Data" --include='*.cs' | grep -v Entities.cs | xargs grep -c ": IKiraciVarlik" 2>/dev/null | awk -F: '{t+=$2} END{print t+0}')
 MODUL_VARLIK=$(grep -rn ": IKiraciVarlik" "$API/Modules" --include='*.cs' 2>/dev/null | grep -v '/obj/\|/bin/' | wc -l | tr -d ' ')

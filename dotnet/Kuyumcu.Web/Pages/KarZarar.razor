@@ -220,7 +220,16 @@
                             }
                         }
                     </div>
+                    @* M9 (16.10): altın kârının TL'si iki parçaya ayrılır — toplamı altın ürünlerin TL kârıdır. *@
+                    @if (o.MakasKariTl is { } mk && o.AltinFiyatKariTl is { } af)
+                    {
+                        <div class="stat-izgara" id="kz-kar-ayrimi">
+                            <StatKart Renk="@KarRengi(mk)" Etiket="@KarAyrimiSozlugu.Makas(Dil.Dil)" Deger="@Bicim.TlKurus(mk)" Alt="@KarAyrimiSozlugu.MakasAlt(Dil.Dil)" />
+                            <StatKart Renk="@KarRengi(af)" Etiket="@KarAyrimiSozlugu.AltinFiyat(Dil.Dil)" Deger="@Bicim.TlKurus(af)" Alt="@KarAyrimiSozlugu.AltinFiyatAlt(Dil.Dil)" />
+                        </div>
                     }
+                    }
+                    <AlisIscilikUyarisi />   @* M9: belgesiz alış işçiliği uyarısı + belge çekmecesi *@
                     @* MADEN-2: TL'si bilinen ama alış günü altın fiyatı bilinmeyen altın satışı — has kârına
                        katılmadığı AYRICA söylenir (TL eksiği yukarıdaki kutuda; aynı satış iki kez anlatılmaz). *@
                     @if (o.YalnizHasMaliyetiEksikAdedi > 0)
@@ -657,7 +666,9 @@
         // ── MADEN-2: has bacağının kendi kâr durumu + TL'si bilinip has'ı bilinmeyen altın hareketi
         string? HasKarDurumu = null, int YalnizHasMaliyetiEksikAdedi = 0,
         // ── RAPOR-4 (VERİ 1): maliyeti ürün kartından alınan adet (kaynak etiketi)
-        decimal KartMaliyetliAdet = 0m);
+        decimal KartMaliyetliAdet = 0m,
+        // ── M9: altın kârı = makas (işçilik) kârı + altın fiyat farkı kârı (sunucu hesaplar)
+        decimal? MakasKariTl = null, decimal? AltinFiyatKariTl = null);
 
     // ── PAKET KAR-RAPOR yardımcıları ──
     private KarRaporMetinleri KR => KarRaporSozlugu.Al(Dil.Dil);
@@ -823,6 +834,13 @@
                         <div class="gorsel-gizli kz-urun-has-altin-degil">@KR.HasYalnizAltinNot</div>
                     }
                 </div> },
+        // M9: altın kârının iki parçası (sunucu sıralamaz — yalnız sayfa içi).
+        new() { Anahtar = "makas", Baslik = KarAyrimiSozlugu.MakasKisa(Dil.Dil),
+                BaslikSinif = "sayi", HucreSinif = u => $"sayi {(u.MakasKariTl is null ? "metin-soluk" : null)}", Deger = u => u.MakasKariTl,
+                Hucre = u => @<text>@(u.MakasKariTl is { } umk ? Bicim.TlKurus(umk) : "—")</text> },
+        new() { Anahtar = "altin-fiyat", Baslik = KarAyrimiSozlugu.AltinFiyatKisa(Dil.Dil),
+                BaslikSinif = "sayi", HucreSinif = u => $"sayi {(u.AltinFiyatKariTl is null ? "metin-soluk" : null)}", Deger = u => u.AltinFiyatKariTl,
+                Hucre = u => @<text>@(u.AltinFiyatKariTl is { } uaf ? Bicim.TlKurus(uaf) : "—")</text> },
         new() { Anahtar = "marj", Baslik = Dil.T.KarZarar.Marj, SunucuSiralamaAdi = urunDahaVar ? null : "marj",
                 BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.KarMarjiYuzde,
                 Hucre = u => @<text>@(u.KarMarjiYuzde is null ? "—" : $"%{u.KarMarjiYuzde}")</text> },

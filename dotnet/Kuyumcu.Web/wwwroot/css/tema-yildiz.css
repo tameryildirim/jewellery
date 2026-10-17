@@ -3889,3 +3889,16 @@ html:root[data-sema="yildiz"] body #go-bilgi:not(#_) { display: flex; align-item
 html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-satislar:not(#_) { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; }
 html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-satis:not(#_) { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px solid var(--kenarlik); }
 html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-satis-sec:not(#_) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ── M9 (17.10): alış işçilik belgeleri ─────────────────────────────────────── */
+html:root[data-sema="yildiz"] body #kz-iscilik-uyari:not(#_) { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+html:root[data-sema="yildiz"] body #kz-iscilik-uyari p:not(#_) { margin: 0; flex: 1 1 280px; }
+html:root[data-sema="yildiz"] body .kz-iscilik-bag:not(#_) {
+  margin-top: 16px; padding: 0; border: 0; border-bottom: 1px solid var(--kenarlik); background: transparent;
+  color: var(--metin-soluk); font: inherit; font-size: 15px; cursor: pointer;
+}
+html:root[data-sema="yildiz"] body #ai-liste > .ai-satir:not(#_) {
+  display: flex; flex-direction: column; gap: 4px; padding: 16px 0; border-bottom: 1px solid var(--kenarlik);
+}
+html:root[data-sema="yildiz"] body #ai-liste .ai-ust:not(#_) { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+html:root[data-sema="yildiz"] body #ai-liste .ai-eylem:not(#_) { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
