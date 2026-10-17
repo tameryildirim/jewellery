@@ -26,7 +26,8 @@ public sealed record YildizKalemGirdi(int Sira, string Alan, string Metin);
 public sealed record YildizKalemHediye(int Sira, bool Deger);
 
 /// <summary>YILDIZ-4C — müşteri seçim listesinin satırı (tuval "Seni bekleyen" kalıbı: ad · soluk durum · b3).</summary>
-public sealed record YildizMusteriSecenegi(string Id, string Ad, string? Durum);
+/// <param name="KimlikNo">M6b: TC/VKN — aramada birebir eşleşme ile bulunur (ekranda yazılmaz).</param>
+public sealed record YildizMusteriSecenegi(string Id, string Ad, string? Durum, string? KimlikNo = null);
 
 /// <summary>
 /// PAKET YILDIZ-4B — Tezgâh ekranının bağlamı: Islemler.Yildiz.cs doldurur, YildizTezgah çizer.
@@ -155,6 +156,9 @@ public sealed class YildizTezgahBaglami
     public string MusteriSeciliId { get; init; } = "";
     /// <summary>Seçim: sayfa cariId'yi yazar ve MusteriDegisti'yi çağırır (FisMusteriSatiri.Sec ile AYNI sıra).</summary>
     public EventCallback<string> MusteriSec { get; init; }
+    /// <summary>M6b — TC/VKN ile müşteri aç (no, ad); sayfa POST /islemler/musteri-ac çağırır ve seçer.</summary>
+    public EventCallback<(string No, string Ad)> MusteriAc { get; init; }
+    public string? MusteriAcHata { get; init; }
     public string? PesinHata { get; init; }
     public bool PesinKimlikGerekli { get; init; }
     public EventCallback GercekMusteriSec { get; init; }
@@ -210,7 +214,7 @@ public static class YildizTezgahBicim
     {
         var a = (arama ?? "").Trim();
         var uyan = a.Length == 0 ? liste
-            : [.. liste.Where(m => Tr.CompareInfo.IndexOf(m.Ad, a, CompareOptions.IgnoreCase) >= 0)];
+            : [.. liste.Where(m => Tr.CompareInfo.IndexOf(m.Ad, a, CompareOptions.IgnoreCase) >= 0 || (m.KimlikNo is { Length: > 0 } k && k == a))];   // M6b: TC/VKN birebir
         return [.. uyan.Where(m => m.Id == seciliId), .. uyan.Where(m => m.Id != seciliId)];
     }
 

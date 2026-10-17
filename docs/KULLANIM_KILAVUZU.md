@@ -162,7 +162,7 @@ Girişten sonra açılan ana ekrandır. Günün satış ve alış toplamları, h
 ### Satış ve otomatik fiyat {#satis}
 
 1. **Satış** sekmesini seçin.
-2. Müşteriyi (cariyi) seçin. Kayıtlı olmayan, peşin ödeyen müşteri için "Peşin Müşteri" kullanılabilir.
+2. Müşteriyi (cariyi) seçin. Kayıtlı olmayan, peşin ödeyen müşteri için "Peşin Müşteri" kullanılabilir. Müşteri aramasına **TC kimlik ya da vergi numarası** yazarsanız o numarayla kayıtlı müşteri kendiliğinden seçilir. Kayıt yoksa adını yazıp **Müşteriyi aç ve seç** düğmesine basın; müşteri bu numarayla kaydedilir ve seçilir (tezgâhtar da açabilir). Numara geçersizse ekran uyarır.
 3. Ürünü barkodu, kodu ya da adıyla bulun. Birim fiyat kendiliğinden dolar: ürünün sabit satış fiyatı varsa o, yoksa has gram güncel kurla çarpılır ve işçilik eklenir.
 4. Adedi girip kalemi ekleyin; birden çok kalem ekleyebilirsiniz. Toplam altta görünür.
 5. Ödeme türünü ve kasayı seçin. Ödemeyi birden çok parçaya bölebilirsiniz (bir kısmı nakit, bir kısmı kart gibi).

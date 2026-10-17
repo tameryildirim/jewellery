@@ -1317,6 +1317,9 @@ public static partial class SunucuIletiSozlugu
         ("Satır {}: adet sıfırdan büyük olmalı", "Line {}: quantity must be greater than zero"),
         ("Satır {}: birim fiyat sıfır ya da daha büyük olmalı", "Line {}: unit price must be zero or greater"),
         ("Mal geldi tamamlanamadı: {}", "Goods receipt could not be completed: {}"),
+        // 17.10 M6b — tezgâhta TC/VKN ile müşteri bul ya da aç
+        ("Geçerli bir TC kimlik ya da vergi numarası yazın", "Enter a valid Turkish ID or tax number"),
+        ("Bu numarayla kayıtlı müşteri yok; yeni müşteri için ad soyad yazın", "No customer with this number; enter a name and surname for the new customer"),
         // ── 17.10 kısmi ödeme / borçlu satış seçimi ──
         ("Seçilen satışa düşülecek tutar sıfırdan büyük ve en çok iki ondalık olmalıdır.", "The amount applied to a selected sale must be greater than zero with at most two decimals."),
         ("Aynı satış iki kez seçilemez.", "The same sale cannot be selected twice."),

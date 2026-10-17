@@ -18,10 +18,31 @@
     <label class="yz-alan yz-tezgah-musteri-ara" for="yildiz-musteri-ara">
         <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
         <input type="search" id="yildiz-musteri-ara" class="yz-girdi" placeholder="@YildizTezgahSozlugu.MusteriAra(Dil.Dil)"
-               aria-label="@YildizTezgahSozlugu.MusteriAra(Dil.Dil)" autocomplete="off" value="@arama" @oninput="e => arama = e.Value?.ToString() ?? string.Empty" />
+               aria-label="@YildizTezgahSozlugu.MusteriAra(Dil.Dil)" autocomplete="off" value="@arama" @oninput="AramaDegisti" />
     </label>
 
-    @if (Gorunen.Count == 0)
+    @if (KimlikNo is { } no && !Gorunen.Any(m => m.KimlikNo == no))
+    {
+        @* M6b (kurucu: "TC'yi yazın… yoksa otomatik kaydetsin") — bu numarada kart yok: ad yazılıp tek düğmeyle açılır ve seçilir. *@
+        <div class="yz-duzen yz-tezgah-musteri-yeni" id="yildiz-musteri-yeni">
+            <p class="yz-s" id="yildiz-musteri-yeni-metin">@MusteriAcSozlugu.Yok(Dil.Dil)</p>
+            <label class="yz-alan" for="yildiz-musteri-yeni-ad">
+                <input type="text" id="yildiz-musteri-yeni-ad" class="yz-girdi" placeholder="@MusteriAcSozlugu.AdSoyad(Dil.Dil)"
+                       aria-label="@MusteriAcSozlugu.AdSoyad(Dil.Dil)" autocomplete="off" value="@yeniAd" @oninput="e => yeniAd = e.Value?.ToString() ?? string.Empty" />
+            </label>
+            <button type="button" class="yz-b2" id="yildiz-musteri-yeni-ac" disabled="@(string.IsNullOrWhiteSpace(yeniAd) || B.Kaydediliyor)"
+                    @onclick="() => B.MusteriAc.InvokeAsync((no, yeniAd.Trim()))">@MusteriAcSozlugu.AcVeSec(Dil.Dil)</button>
+            @if (B.MusteriAcHata is { Length: > 0 } mh)
+            {
+                <p class="yz-tezgah-not yz-kotu" id="yildiz-musteri-yeni-hata" role="alert">@mh</p>
+            }
+        </div>
+    }
+    else if (KimlikGecersiz)
+    {
+        <p class="yz-tezgah-not yz-kotu" id="yildiz-musteri-kimlik-hata" role="alert">@MusteriAcSozlugu.Gecersiz(Dil.Dil)</p>
+    }
+    else if (Gorunen.Count == 0)
     {
         <p class="yz-s yz-bos" id="yildiz-musteri-yok">@YildizMusteriSozlugu.AramaBos(Dil.Dil)</p>
     }
@@ -86,7 +107,29 @@
     public const int EnCok = 8;
 
     private string arama = "";
+    private string yeniAd = "";
     private bool proAcik;
+
+    /// <summary>M6b: aramadaki geçerli TC (11, kontrol haneleri) ya da VKN (10 rakam); değilse null.</summary>
+    private string? KimlikNo
+    {
+        get
+        {
+            var a = arama.Trim();
+            return a.Length is 10 or 11 && KimlikNoDogrulayici.TcknVeyaVknDenetle(a) == KimlikNoHatasi.Yok ? a : null;
+        }
+    }
+
+    /// <summary>11 rakam yazıldı ama TC kuralından geçmiyor (ör. 11111111111).</summary>
+    private bool KimlikGecersiz => arama.Trim() is { Length: 11 } a && KimlikNoDogrulayici.YalnizRakam(a) && !KimlikNoDogrulayici.TcknGecerli(a);
+
+    /// <summary>M6b: numara bir kartla birebir eşleşirse o müşteri kendiliğinden seçilir ("otomatik bulsun").</summary>
+    private async Task AramaDegisti(ChangeEventArgs e)
+    {
+        arama = e.Value?.ToString() ?? string.Empty;
+        if (KimlikNo is { } no && B.MusteriSecenekleri.Where(m => m.KimlikNo == no).ToList() is [var tek] && tek.Id != B.MusteriSeciliId)
+            await B.MusteriSec.InvokeAsync(tek.Id);
+    }
 
     /// <summary>Satıcı/fiyat listesi hatası varsa açık gelir (hata gizlenmez — UX-S28).</summary>
     private bool ProAcik => proAcik || B.ProUstAcikZorunlu;

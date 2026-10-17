@@ -207,9 +207,10 @@ public partial class Islemler
                 IndirimAlani = YildizIndirimAlani,
                 BacakEkle = EventCallback.Factory.Create(this, YildizBacakEkle),
                 BacakTavan = bacaklar.Count >= 5,
-                MusteriSecenekleri = [.. cariler.Select(c => new YildizMusteriSecenegi(c.Id, c.Ad, YildizTezgahBicim.MusteriDurumu(c, Dil.Dil)))],
+                MusteriSecenekleri = [.. cariler.Select(c => new YildizMusteriSecenegi(c.Id, c.Ad, YildizTezgahBicim.MusteriDurumu(c, Dil.Dil), c.SistemCarisi ? null : c.VergiNo))],
                 MusteriSeciliId = cariId ?? "",
                 MusteriSec = EventCallback.Factory.Create<string>(this, YildizMusteriSec),
+                MusteriAc = EventCallback.Factory.Create<(string No, string Ad)>(this, YildizMusteriAc), MusteriAcHata = musteriAcHata,
                 PesinHata = pesinHata,
                 PesinKimlikGerekli = pesinKimlikGerekli,
                 GercekMusteriSec = EventCallback.Factory.Create(this, GercekMusteriSec),
@@ -275,6 +276,26 @@ public partial class Islemler
     private decimal YildizParaUstuNakit => karmaOdeme
         ? bacaklar.Where(b => b.Arac == "NAKIT").Sum(b => b.TutarTl)
         : odemeTuru == "NAKIT" ? ToplamTl : 0m;
+
+    private string? musteriAcHata;
+
+    /// <summary>
+    /// M6b — tezgâhta TC/VKN ile müşteri bul ya da aç (sunucu: bulursa o, yoksa ad + kimlik no ile açar). Yeni kart
+    /// listeye eklenir ve seçim AYNI yoldan yapılır (YildizMusteriSec → MusteriDegisti).
+    /// </summary>
+    private async Task YildizMusteriAc((string No, string Ad) g)
+    {
+        musteriAcHata = null;
+        try
+        {
+            var y = await Api.PostAsync<System.Text.Json.JsonElement>("/islemler/musteri-ac", new { kimlikNo = g.No, ad = g.Ad });
+            var id = y.GetProperty("id").GetString()!;
+            var ad = y.GetProperty("ad").GetString() ?? g.Ad;
+            if (!cariler.Any(c => c.Id == id)) cariler.Add(new Kuyumcu.Contracts.Sayfalar.Islemler.CariVeri(id, ad, VergiNo: g.No));
+            await YildizMusteriSec(id);
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { musteriAcHata = ex.Message; }
+    }
 
     /// <summary>Müşteri katmanından seçim: FisMusteriSatiri.Sec ile AYNI sıra (cariId yazılır → MusteriDegisti).</summary>
     private async Task YildizMusteriSec(string id)
