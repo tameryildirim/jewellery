@@ -5385,6 +5385,10 @@ P23_FARK=""
 if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "kuyumcu-mysql"; then
   P23_PAROLA=$(awk -F': ' '/^[[:space:]]*MYSQL_ROOT_PASSWORD:/ {print $2; exit}' ../docker-compose.yml 2>/dev/null)
   if [ -n "${P23_PAROLA:-}" ]; then
+    # 18.10 (P-23 fiş düzeyi — açık kalan karar kapatıldı): satış sepeti ödeme kalemini FİŞ düzeyinde bir kez yazar
+    # (çok bacaklı fişte kalem ilk harekete bağlı, fis_id ortak). Hareket başına arama, tek havaleyle ödenmiş 3 kalemli
+    # fişin 2 bacağını "kalemsiz" sayıyordu (yanlış pozitif). Artık hareketin FİŞİNDE aktif kalem varsa kalemli sayılır;
+    # tutar tutarlılığını aşağıdaki FIS_TOPLAM_ODEME_KALEMI_FARKI (fiş toplamı = kalem toplamı) ölçer.
     P23_KALEMSIZ=$(docker exec kuyumcu-mysql mysql -uroot -p"$P23_PAROLA" -N kuyumcu_net -e "
       SELECT COUNT(*) FROM hareketler h
        WHERE ((COALESCE(h.nakit_tutar,0)+COALESCE(h.veresiye_tutar,0)) > 0
@@ -5392,7 +5396,8 @@ if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/n
          AND h.storno_kaynak_id IS NULL
          AND NOT EXISTS (SELECT 1 FROM hareketler s WHERE s.storno_kaynak_id = h.id)
          AND NOT EXISTS (SELECT 1 FROM odeme_kalemleri k
-                          WHERE k.hareket_id = h.id AND k.aktif = 1);" 2>/dev/null | tr -d ' ')
+                          WHERE k.aktif = 1
+                            AND (k.hareket_id = h.id OR k.fis_id = COALESCE(h.fis_id, h.id)));" 2>/dev/null | tr -d ' ')
     # ── 3) FIS_TOPLAM_ODEME_KALEMI_FARKI = 0  (GERÇEK FARK) ────────────────
     # Fiş = aynı fis_id'yi taşıyan hareket kümesi; fis_id yoksa hareketin
     # KENDİSİ tek satırlık fiştir (odeme_kalemleri.fis_id de bu değeri taşır).
