@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 02706f1d9e5add5a481841ed8906aed3d6d8d279ec19b65de372e6ccfc6324a6 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 65573776ccc4de58b0e03414bec5d07d8dd304671907709430134c3c16575f5d · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -154,6 +154,7 @@
       <a href="#bildirimler">Bildirimler</a>
       <div class="bolum">Müşteri ve Stok</div>
       <a href="#cariler">Müşteriler</a>
+      <a class="alt" href="#cari-iban">— IBAN listesi</a>
       <a href="#urunler">Ürünler</a>
       <a class="alt" href="#urun-agaci">— Ürün Ağacı</a>
       <a class="alt" href="#etiketler">— Ürün Etiketleri</a>
@@ -166,6 +167,7 @@
       <a href="#pos">POS Cihazları</a>
       <a class="alt" href="#pos-hakedis">— POS alacakları</a>
       <a href="#banka">Banka</a>
+      <a class="alt" href="#banka-karar">— Karar bekleyen gelen ödemeler</a>
       <a class="alt" href="#banka-ekstre">— Banka ekstresi eşleştirme</a>
       <a href="#evraklar">Çek ve senet</a>
       <a class="alt" href="#vade-takvimi">— Vade Takvimi</a>
@@ -405,6 +407,8 @@
       </ol>
       <h3>Cari ayrıntısı, ekstre ve tahsilat</h3>
       <p>Listedeki bir cariye basınca bütün hareketleri TL ve has gram olarak listelenir. Buradan tahsilat alabilir, cari ekstresini yazdırabilirsiniz. Cari bilgileri satırdaki <strong>Düzenle</strong> ile değiştirilir; kullanılmayan cari silinmez, <strong>Pasife al</strong> ile kapatılır ve istenirse geri açılır.</p>
+      <h3 id="cari-iban">IBAN listesi</h3>
+      <p>Müşterinin kartında <strong>IBAN'lar</strong> bölümü vardır; bir müşteri birden çok hesaptan para gönderebilir. <strong>+ IBAN ekle</strong> ile yeni IBAN yazılır, <strong>Kaldır</strong> ile bağ kaldırılır (geçmiş ödemeler etkilenmez). Listedeki bir IBAN'dan para gelince ödeme bu müşteriye kendiliğinden bağlanır. Bir IBAN yalnız bir müşteride kayıtlı olabilir; başka müşterideyse program kimde olduğunu söyler. Bankadan öğrenilen IBAN'ların yanında &quot;bankadan&quot; yazar.</p>
     </section>
 
     <section id="urunler">
@@ -502,9 +506,20 @@
       <p>Banka hesaplarınızı ve dekont hareketlerini izlediğiniz ekrandır.</p>
       <ul>
         <li><strong>Hesap ekleme:</strong> banka adı, hesap adı, hesap sahibi, IBAN ve para birimi girilir. Hesap bilgileri <strong>Düzenle</strong> ile değiştirilir; kapanan hesap pasife alınır ve geri açılabilir.</li>
-        <li><strong>Dekont girme:</strong> gelen ya da giden hareket elle girilir.</li>
+        <li><strong>Dekont girme:</strong> gelen ya da giden hareket elle girilir. Gelen parada <strong>gönderenin IBAN'ı</strong> ya da <strong>TC / vergi numarası</strong> yazılırsa program müşteriyi kendisi bulur: önce TC / vergi numarasına, sonra kayıtlı IBAN'a bakar. Bulamazsa ve TC ya da IBAN varsa müşteriyi kendisi kaydeder. Yalnız ad yazılmışsa müşteri açılmaz; adı benzeyen müşteri varsa &quot;bu kişi olabilir&quot; diye söylenir, bağlamayı siz yaparsınız (iki &quot;Mehmet Yılmaz&quot; olabilir).</li>
         <li><strong>Ekstre yükleme:</strong> bankadan aldığınız ekstre dosyası yüklenir ve satırlar eşleştirme ekranına gelir.</li>
         <li><strong>Gelen parayı faturaya dönüştürme:</strong> gelen bir hareketin satırındaki düğmeyle, faturanın kesileceği cari seçilerek fatura oluşturulur.</li>
+      </ul>
+      <h3 id="banka-karar">Karar bekleyen gelen ödemeler</h3>
+      <p>Müşteriye bağlanmış gelen para ekranın üstünde <strong>Karar bekleyen gelen ödemeler</strong> kutusuna düşer. Program parayı kendiliğinden borçtan düşmez; karar sizindir (müşteri borcunu mu ödüyor, yeni bir şey mi alıyor?).</p>
+      <ul>
+        <li><strong>Borcu olan satışlar:</strong> müşterinin borcu kalan satışları listelenir; vadesi en eski olan üstte ve gelen tutar önerilen şekilde işaretli gelir. Müşteri &quot;şu borcumu ödüyorum&quot; dediyse işaretleri ve tutarları değiştirin. Seçtiğiniz satış önce kapanır, artan para en eski borca gider.</li>
+        <li><strong>Borcundan düş:</strong> para müşterinin borcundan düşülür. Kısmi ödemede kalan borç açık kalır. Gelen para borçtan fazlaysa fazlası <strong>müşterinin hesabında</strong> alacak olarak durur.</li>
+        <li><strong>Yeni alışverişin ödemesi:</strong> borca dokunulmaz.</li>
+        <li><strong>Geri al:</strong> verdiğiniz kararı geri alır; borç eski haline döner, ödeme yeniden listeye düşer. Kayıt silinmez, ters kayıtla geri alınır.</li>
+        <li><strong>Faturası yok — 7 gün geçti:</strong> faturası kesilmemiş ve üzerinden 7 günden fazla geçmiş satışta bu uyarı görünür. Borçtan düşmek fatura kesmez; faturayı Faturalar ekranından kesin (fatura satıştan itibaren 7 gün içinde kesilir).</li>
+        <li><strong>Altın borcu:</strong> müşterinin gram cinsinden borcu bilgi olarak yazar; bu kutudan düşülmez.</li>
+        <li>Çek ve senet tahsilinden bankaya gelen para bu kutuya düşmez: o borç evrak alınırken zaten kapanmıştır.</li>
       </ul>
       <h3 id="banka-ekstre">Banka ekstresi eşleştirme</h3>
       <span class="ekran-capa" id="e-banka-ekstre-kayit"></span>
@@ -544,6 +559,9 @@
         <li><strong>Durum akışı:</strong> taslak fatura düzenlenebilir; kesilen fatura yerinde değiştirilmez. Durum geçişleri (kes, ödendi işaretle, iptal et) onay ister.</li>
         <li><strong>Kuyum faturalarında KDV:</strong> kuyum ürünlerinde KDV'nin hangi tutar üzerinden hesaplanacağı programın ayarlarında tanımlıdır. Bu kuralın işletmenize uygunluğunu mali müşavirinize teyit ettirin; kılavuz oran ya da kural yazmaz.</li>
         <li><strong>Yanlış fatura:</strong> kesilmiş fatura silinmez; iptal edilip doğrusu kesilir.</li>
+        <li><strong>Fatura sınırı:</strong> kuyumcu fatura sınırının (2026'da 36.000 TL) üstündeki satış fişle yapılamaz, faturalı kesilir ve müşterinin geçerli TC kimlik ya da vergi numarası gerekir. Fatura kesilemezse satış da kaydedilmez; sebep ekranda yazar.</li>
+        <li><strong>Kuyum faturası:</strong> yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.</li>
+        <li><strong>Alıcı bilgisi:</strong> fatura kesildiği anda müşterinin adı/unvanı, kimlik numarası ve adresi faturaya yazılır; müşteri kartı sonradan düzeltilse de kesilmiş fatura değişmez.</li>
       </ul>
       <div class="kutu bilgi"><p>Program faturayı kendi içinde üretir ve yazdırır; Gelir İdaresi'ne elektronik iletim bu sürümde yoktur (bkz. <a class="ic" href="#haric">Bu sürümde olmayanlar</a>).</p></div>
     </section>

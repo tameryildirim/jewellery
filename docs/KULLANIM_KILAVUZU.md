@@ -242,6 +242,10 @@ Müşteri, tedarikçi ve atölye hesaplarının tutulduğu ekrandır. Her cari i
 
 Listedeki bir cariye basınca bütün hareketleri TL ve has gram olarak listelenir. Buradan tahsilat alabilir, cari ekstresini yazdırabilirsiniz. Cari bilgileri satırdaki **Düzenle** ile değiştirilir; kullanılmayan cari silinmez, **Pasife al** ile kapatılır ve istenirse geri açılır.
 
+### IBAN listesi {#cari-iban}
+
+Müşterinin kartında **IBAN'lar** bölümü vardır; bir müşteri birden çok hesaptan para gönderebilir. **+ IBAN ekle** ile yeni IBAN yazılır, **Kaldır** ile bağ kaldırılır (geçmiş ödemeler etkilenmez). Listedeki bir IBAN'dan para gelince ödeme bu müşteriye kendiliğinden bağlanır. Bir IBAN yalnız bir müşteride kayıtlı olabilir; başka müşterideyse program kimde olduğunu söyler. Bankadan öğrenilen IBAN'ların yanında "bankadan" yazar.
+
 ## Ürünler {#urunler}
 
 <!-- ekran: /urunler -->
@@ -347,9 +351,21 @@ Kartla yapılan her satıştan doğan ve bankanın size yatıracağı alacaklar 
 Banka hesaplarınızı ve dekont hareketlerini izlediğiniz ekrandır.
 
 - **Hesap ekleme:** banka adı, hesap adı, hesap sahibi, IBAN ve para birimi girilir. Hesap bilgileri **Düzenle** ile değiştirilir; kapanan hesap pasife alınır ve geri açılabilir.
-- **Dekont girme:** gelen ya da giden hareket elle girilir.
+- **Dekont girme:** gelen ya da giden hareket elle girilir. Gelen parada **gönderenin IBAN'ı** ya da **TC / vergi numarası** yazılırsa program müşteriyi kendisi bulur: önce TC / vergi numarasına, sonra kayıtlı IBAN'a bakar. Bulamazsa ve TC ya da IBAN varsa müşteriyi kendisi kaydeder. Yalnız ad yazılmışsa müşteri açılmaz; adı benzeyen müşteri varsa "bu kişi olabilir" diye söylenir, bağlamayı siz yaparsınız (iki "Mehmet Yılmaz" olabilir).
 - **Ekstre yükleme:** bankadan aldığınız ekstre dosyası yüklenir ve satırlar eşleştirme ekranına gelir.
 - **Gelen parayı faturaya dönüştürme:** gelen bir hareketin satırındaki düğmeyle, faturanın kesileceği cari seçilerek fatura oluşturulur.
+
+### Karar bekleyen gelen ödemeler {#banka-karar}
+
+Müşteriye bağlanmış gelen para ekranın üstünde **Karar bekleyen gelen ödemeler** kutusuna düşer. Program parayı kendiliğinden borçtan düşmez; karar sizindir (müşteri borcunu mu ödüyor, yeni bir şey mi alıyor?).
+
+- **Borcu olan satışlar:** müşterinin borcu kalan satışları listelenir; vadesi en eski olan üstte ve gelen tutar önerilen şekilde işaretli gelir. Müşteri "şu borcumu ödüyorum" dediyse işaretleri ve tutarları değiştirin. Seçtiğiniz satış önce kapanır, artan para en eski borca gider.
+- **Borcundan düş:** para müşterinin borcundan düşülür. Kısmi ödemede kalan borç açık kalır. Gelen para borçtan fazlaysa fazlası **müşterinin hesabında** alacak olarak durur.
+- **Yeni alışverişin ödemesi:** borca dokunulmaz.
+- **Geri al:** verdiğiniz kararı geri alır; borç eski haline döner, ödeme yeniden listeye düşer. Kayıt silinmez, ters kayıtla geri alınır.
+- **Faturası yok — 7 gün geçti:** faturası kesilmemiş ve üzerinden 7 günden fazla geçmiş satışta bu uyarı görünür. Borçtan düşmek fatura kesmez; faturayı Faturalar ekranından kesin (fatura satıştan itibaren 7 gün içinde kesilir).
+- **Altın borcu:** müşterinin gram cinsinden borcu bilgi olarak yazar; bu kutudan düşülmez.
+- Çek ve senet tahsilinden bankaya gelen para bu kutuya düşmez: o borç evrak alınırken zaten kapanmıştır.
 
 ### Banka ekstresi eşleştirme {#banka-ekstre}
 
@@ -395,6 +411,9 @@ Kesilen ve taslak faturalar burada listelenir.
 - **Durum akışı:** taslak fatura düzenlenebilir; kesilen fatura yerinde değiştirilmez. Durum geçişleri (kes, ödendi işaretle, iptal et) onay ister.
 - **Kuyum faturalarında KDV:** kuyum ürünlerinde KDV'nin hangi tutar üzerinden hesaplanacağı programın ayarlarında tanımlıdır. Bu kuralın işletmenize uygunluğunu mali müşavirinize teyit ettirin; kılavuz oran ya da kural yazmaz.
 - **Yanlış fatura:** kesilmiş fatura silinmez; iptal edilip doğrusu kesilir.
+- **Fatura sınırı:** kuyumcu fatura sınırının (2026'da 36.000 TL) üstündeki satış fişle yapılamaz, faturalı kesilir ve müşterinin geçerli TC kimlik ya da vergi numarası gerekir. Fatura kesilemezse satış da kaydedilmez; sebep ekranda yazar.
+- **Kuyum faturası:** yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.
+- **Alıcı bilgisi:** fatura kesildiği anda müşterinin adı/unvanı, kimlik numarası ve adresi faturaya yazılır; müşteri kartı sonradan düzeltilse de kesilmiş fatura değişmez.
 
 > [!BILGI] Program faturayı kendi içinde üretir ve yazdırır; Gelir İdaresi'ne elektronik iletim bu sürümde yoktur (bkz. [Bu sürümde olmayanlar](#haric)).
 
