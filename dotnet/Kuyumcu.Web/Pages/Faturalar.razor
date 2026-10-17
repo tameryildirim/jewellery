@@ -31,6 +31,7 @@
         <Eylem>
             @* PAKET CUMA-J (K7): "Fişten fatura kes" bir EYLEMDİR, filtre değil; id aynı. *@
             <button class="btn btn-ikincil btn-kucuk" id="ff-ac" @onclick="FistenModalAc">@Dil.T.Fatura.FistenKes</button>
+            <button class="btn btn-ikincil btn-kucuk" id="ft-ac" @onclick="() => topluAcik = true">@Kuyumcu.Core.I18n.FaturaTopluSozlugu.Ac(Dil.Dil)</button>   @* 18.10 toplu fatura *@
             <button class="btn btn-birincil btn-kucuk" id="fk-yeni" @onclick="YeniModalAc">+ @Dil.T.Fatura.YeniFatura</button>
         </Eylem>
     </SayfaBasi>
@@ -64,6 +65,7 @@
                Secenekler="@DurumSecenekleri" Deger="@durumFiltre" DegerChanged="DurumFiltreDegisti" />
     </Katlanir>
 
+    <TopluFaturaCekmecesi Acik="topluAcik" Kapat="() => topluAcik = false" Kesildi="TopluKesildi" />
     <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
     <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="4000" Id="basari-bandi" />
 

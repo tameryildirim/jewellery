@@ -1,0 +1,97 @@
+@using Kuyumcu.Contracts.Sayfalar.Faturalar
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ 18.10 — Toplu fatura (Faturalog: "tek tuşla"; kuyumcu: gün sonu). Açılışta bugünün faturasız fişleri, kesilebilenler
+   İŞARETLİ gelir; kesilemeyenin sebebi satırında (Peşin Müşteri / TC yok) ve kutusu kilitli. Tek birincil düğme. ═══ *@
+<Cekmece Acik="Acik" Varlik="toplu-fatura" Baslik="@FaturaTopluSozlugu.Baslik(Dil.Dil)"
+         Kapat="Kapat" Kaydet="Kes" Kaydediliyor="@kesiliyor" KaydetElemanId="ft-kes"
+         KaydetMetni="@FaturaTopluSozlugu.Kes(secili.Count, Dil.Dil)" KaydetAktif="@(secili.Count > 0)">
+    @if (hata is { } h) { <div class="bant bant-hata" role="alert" id="ft-hata">@h</div> }
+    @if (bilgi is { } b) { <div class="bant bant-basari" role="status" id="ft-bilgi">@b</div> }
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else
+    {
+        @if (liste is { Adaylar.Count: 0 }) { <p class="metin-soluk" id="ft-bos">@FaturaTopluSozlugu.Bos(Dil.Dil)</p> }
+        <ul class="liste-sade" id="ft-liste">
+            @foreach (var a in liste?.Adaylar ?? [])
+            {
+                var sonuc = sonuclar.GetValueOrDefault(a.Anahtar);
+                <li class="ft-satir" id="@($"ft-{a.Anahtar}")">
+                    <div class="ft-sol">
+                        <Onay ElemanId="@($"ft-sec-{a.Anahtar}")" Etiket="@($"{a.CariAd ?? "—"} · {Bicim.TarihSaat(a.Tarih)} · {FaturaTopluSozlugu.Kalem(a.KalemSayisi, Dil.Dil)}")"
+                              Deger="@secili.Contains(a.Anahtar)" Devredisi="@(!a.Kesilebilir || kesiliyor)"
+                              DegerChanged="@(v => Sec(a.Anahtar, v))" />
+                    </div>
+                    <span class="sayi">@Bicim.TlKurus(a.TutarTl)</span>
+                    @if (sonuc is { FaturaNo: { } no })
+                    {
+                        <span class="metin-yesil metin-kucuk" id="@($"ft-no-{a.Anahtar}")">@no</span>
+                    }
+                    else if ((sonuc?.Hata ?? a.Sebep) is { } sebep)
+                    {
+                        <span class="metin-kirmizi metin-kucuk ft-sebep" id="@($"ft-sebep-{a.Anahtar}")">@sebep</span>
+                    }
+                </li>
+            }
+        </ul>
+        @if (gun == 1)
+        {
+            <button type="button" class="yz-ekle" id="ft-yedi-gun" @onclick="() => Yukle(7)">@FaturaTopluSozlugu.SonYediGun(Dil.Dil)</button>
+        }
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+    /// <summary>Kesim bitince sayfa listeyi tazelesin; sonuç cümlesi bandına gider.</summary>
+    [Parameter] public EventCallback<string> Kesildi { get; set; }
+
+    private TopluAdayListesi? liste;
+    private readonly HashSet<string> secili = [];
+    private Dictionary<string, TopluSonucSatiri> sonuclar = [];
+    private bool yukleniyor, kesiliyor, oncekiAcik;
+    private int gun = 1;
+    private string? hata, bilgi;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !oncekiAcik) { hata = bilgi = null; sonuclar = []; await Yukle(1); }
+        oncekiAcik = Acik;
+    }
+
+    private async Task Yukle(int g)
+    {
+        gun = g; yukleniyor = true;
+        try
+        {
+            liste = await Api.TazeGetAsync<TopluAdayListesi>($"/faturalar/toplu?gun={g}");
+            secili.Clear();
+            foreach (var a in liste.Adaylar.Where(x => x.Kesilebilir)) secili.Add(a.Anahtar);
+        }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }   // P-11: önceki liste KORUNUR
+        finally { yukleniyor = false; }
+    }
+
+    private void Sec(string anahtar, bool v) { if (v) secili.Add(anahtar); else secili.Remove(anahtar); }
+
+    private async Task Kes()
+    {
+        kesiliyor = true; hata = bilgi = null;
+        try
+        {
+            var s = await Api.PostAsync<TopluSonuc>("/faturalar/toplu", new { anahtarlar = secili.ToList() });
+            sonuclar = s.Satirlar.ToDictionary(x => x.Anahtar);
+            bilgi = FaturaTopluSozlugu.Sonuc(s.Kesilen, s.Hatali, Dil.Dil);
+            foreach (var x in s.Satirlar.Where(x => x.FaturaId is not null)) secili.Remove(x.Anahtar);
+            await Kesildi.InvokeAsync(bilgi);
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kesiliyor = false; }
+    }
+}

@@ -63,3 +63,10 @@ public sealed record OzelMatrahOnizleme(
     string HasDegerKaynagi, string? FaturaNo, string? Uyari,
     // ZO-BELGE (30.09): kümede altın dışı has bacağı var mı (not yalnız o zaman görünür).
     bool AltinDisiMadenVar = false);
+// 18.10 — toplu fatura (GET/POST /faturalar/toplu; sunucu bu tipleri döndürür — derleyici kilidi).
+public sealed record TopluAday(
+    string Anahtar, string? FisId, string? HareketId, DateTime Tarih, string? CariId, string? CariAd,
+    decimal TutarTl, int KalemSayisi, bool Kesilebilir, string? Sebep);
+public sealed record TopluAdayListesi(int Gun, List<TopluAday> Adaylar);
+public sealed record TopluSonucSatiri(string Anahtar, string? FaturaId, string? FaturaNo, string? Durum, string? Hata);
+public sealed record TopluSonuc(int Kesilen, int Hatali, List<TopluSonucSatiri> Satirlar);

@@ -3911,3 +3911,11 @@ html:root[data-sema="yildiz"] body #ai-liste .ai-eylem:not(#_) { display: flex; 
 /* ── 18.10: tezgâhta eksik TC kutusu (fatura haddi) ─────────────────────────── */
 html:root[data-sema="yildiz"] body #yildiz-tezgah-kimlik:not(#_) { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
 html:root[data-sema="yildiz"] body #yildiz-tezgah-kimlik > .alan:not(#_) { flex: 1 1 220px; min-width: 0; }
+
+/* ── 18.10: toplu fatura çekmecesi ──────────────────────────────────────────── */
+html:root[data-sema="yildiz"] body #ft-liste > .ft-satir:not(#_) {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--kenarlik);
+}
+html:root[data-sema="yildiz"] body #ft-liste .ft-sol:not(#_) { display: flex; align-items: flex-start; gap: 10px; min-width: 0; cursor: pointer; }
+html:root[data-sema="yildiz"] body #ft-liste .ft-sol input:not(#_) { margin-top: 4px; flex: none; }
+html:root[data-sema="yildiz"] body #ft-liste .ft-satir > :nth-child(n+3):not(#_) { grid-column: 1 / -1; padding-left: 28px; }

@@ -832,7 +832,7 @@ public sealed class FaturaEkranTestleri : BunitContext
         e.Find("#fk-suzgec-ac").Click();
         Assert.Equal("radiogroup", e.Find("#fk-durum-filtre").GetAttribute("role"));
         var eylem = e.Find("#sayfa-basi-faturalar-eylem");
-        Assert.Equal(["ff-ac", "fk-yeni"], eylem.QuerySelectorAll("button").Select(b => b.Id));
+        Assert.Equal(["ff-ac", "ft-ac", "fk-yeni"], eylem.QuerySelectorAll("button").Select(b => b.Id));   // 18.10: + toplu fatura (ikincil)
         // TEK birincil eylem korunur (UX-1-C2): fişten kes ikincil kalır.
         Assert.Single(eylem.QuerySelectorAll("button.btn-birincil"));
         Assert.Contains("btn-ikincil", e.Find("#ff-ac").ClassList);

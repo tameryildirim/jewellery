@@ -47,6 +47,7 @@ public static class ModulKayit
         s.AddScoped<Maliyet.AlisIscilikServisi>();   // M9
         s.AddScoped<Banka.BankaCekimServisi>();      // M7
         s.AddScoped<Banka.BankaSaglayiciServisi>();  // M7
+        s.AddScoped<Fatura.FaturaTopluServisi>();    // 18.10 toplu fatura
         s.AddScoped<Fatura.FaturaServisi>();
         s.AddScoped<Rapor.RaporServisi>();
         // ── Paket 34 Faz A — rapor seti (salt okur; deftere YAZMAZ) ─────────

@@ -1373,5 +1373,12 @@ public static partial class SunucuIletiSozlugu
         ("Peşin Müşteri kartına kimlik yazılmaz; müşteriyi seçin ya da açın.", "An ID cannot be written to the Walk-in Customer card; select or open the customer."),
         ("Bu müşterinin kartında başka bir kimlik numarası kayıtlı; kartı Müşteriler ekranından düzeltin.", "This customer's card already has another ID number; correct the card on the Customers screen."),
         ("Bu kimlik numarası başka bir müşteride kayıtlı: {}. O müşteriyi seçin.", "This ID number belongs to another customer: {}. Select that customer."),
+        // ── 18.10: toplu fatura ──
+        ("En az bir fiş seçin", "Select at least one receipt"),
+        ("Tek seferde en çok 100 fiş", "At most 100 receipts at a time"),
+        ("Gün 1 ile 31 arasında olmalıdır", "Days must be between 1 and 31"),
+        ("Peşin Müşteri'ye fatura kesilmez — fişe müşteri bağlayın", "No invoice for the Walk-in Customer — link a customer to the receipt"),
+        ("Fatura sınırı üstünde müşterinin TC / vergi numarası yok", "Above the invoice limit the customer has no ID / tax number"),
+        ("Bu fiş faturalanabilir değil (faturası var ya da bulunamadı)", "This receipt cannot be invoiced (already invoiced or not found)"),
     ];
 }
