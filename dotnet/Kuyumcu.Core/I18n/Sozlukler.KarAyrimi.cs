@@ -35,4 +35,6 @@ public static class KarAyrimiSozlugu
     public static string BelgeTarihi(string dil) => En(dil) ? "Document date" : "Belge tarihi";
     public static string IscilikTutari(string dil) => En(dil) ? "Making charge on the document" : "Belgedeki işçilik";
     public static string Kaydedildi(string dil) => En(dil) ? "Saved." : "Kaydedildi.";
+    // Fiyat kuralı 8
+    public static string KdvPayi(string dil) => En(dil) ? "VAT share" : "KDV payı";
 }

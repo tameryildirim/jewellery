@@ -691,7 +691,7 @@ public sealed class FiyatServisi(KuyumcuDbContext db, DenetimServisi? denetim = 
                     0m, 0m, 0m, 0m, 0m, 0m, null, FiyatKaynagi.Liste, ozet)
                 : new OnizlemeSatiri(u.Id, u.Kod, u.Ad, u.AyarId, u.GramAgirlik, u.HasGrami, u.IscilikTl,
                     true, null, t.HasDegeri, t.MarjTl, t.IscilikTl, t.ListeFiyati, t.IndirimTutari,
-                    t.SatisFiyati, t.KampanyaId, t.Kaynak, ozet, t.MaliyetTl));
+                    t.SatisFiyati, t.KampanyaId, t.Kaynak, ozet, t.MaliyetTl, t.KdvPayiTl));
         }
         return satirlar;
     }
@@ -944,7 +944,8 @@ public sealed record OnizlemeSatiri(
     string UrunId, string Kod, string Ad, string AyarId, decimal Gram, decimal HasGrami, decimal? IscilikTl,
     bool TeklifVar, string? Sebep, decimal HasDegeri, decimal MarjTl, decimal IscilikTlUygulanan,
     decimal ListeFiyati, decimal IndirimTutari, decimal SatisFiyati, string? KampanyaId, string Kaynak,
-    GecersizKilmaOzeti? GecersizKilma, decimal? MaliyetTl = null);   // M1b — alış milyemiyle birim maliyet
+    GecersizKilmaOzeti? GecersizKilma, decimal? MaliyetTl = null,   // M1b — alış milyemiyle birim maliyet
+    decimal KdvPayiTl = 0m);   // fiyat kuralı 8 — KDV payı
 
 public sealed record OnizlemeSonucu(int Toplam, int Limit, int Offset, IReadOnlyList<OnizlemeSatiri> Satirlar);
 

@@ -313,6 +313,11 @@
                 k.Insert(k.Count - 1, new() { Anahtar = "maliyet", Baslik = Dil.T.Fiyat.MaliyetTl, BaslikSinif = "sayi",
                     HucreSinif = _ => "sayi hucre-tek-satir", Deger = s => s.MaliyetTl,
                     Hucre = s => @<text>@(s.MaliyetTl is { } m ? Para(m) : "—")</text> });
+            // Fiyat kuralı 8 (ses kaydı 04:59): KDV'ye giren pay (binde) olan üründe fiyatın üstüne eklenen KDV.
+            if (satirlar.Any(s => s.KdvPayiTl > 0m))
+                k.Insert(k.Count - 1, new() { Anahtar = "kdv-payi", Baslik = Kuyumcu.Core.I18n.KarAyrimiSozlugu.KdvPayi(Dil.Dil), BaslikSinif = "sayi",
+                    HucreSinif = _ => "sayi hucre-tek-satir", Deger = s => s.KdvPayiTl,
+                    Hucre = s => @<text>@(s.KdvPayiTl > 0m ? Para(s.KdvPayiTl) : "—")</text> });
             // Tur 3: BASİT'te İşçilik ve Kaynak gizli (ayrıntı PRO'da).
             if (Modu.ProfesyonelMi) k.Add(FiyatKolonu("iscilik", Dil.T.Fiyat.IscilikTl, s => s.IscilikTlUygulanan, tam));
             var liste = FiyatKolonu("liste", Dil.T.Fiyat.ListeFiyati, s => s.ListeFiyati, tam);
