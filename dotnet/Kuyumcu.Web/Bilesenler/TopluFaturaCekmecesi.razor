@@ -5,7 +5,7 @@
 
 @* ═══ 18.10 — Toplu fatura (Faturalog: "tek tuşla"; kuyumcu: gün sonu). Açılışta bugünün faturasız fişleri, kesilebilenler
    İŞARETLİ gelir; kesilemeyenin sebebi satırında (Peşin Müşteri / TC yok) ve kutusu kilitli. Tek birincil düğme. ═══ *@
-<Cekmece Acik="Acik" Varlik="toplu-fatura" Baslik="@FaturaTopluSozlugu.Baslik(Dil.Dil)"
+<Cekmece Acik="Acik" Varlik="toplu-fatura" Baslik="@FaturaTopluSozlugu.BaslikGun(gun, Dil.Dil)"
          Kapat="Kapat" Kaydet="Kes" Kaydediliyor="@kesiliyor" KaydetElemanId="ft-kes"
          KaydetMetni="@FaturaTopluSozlugu.Kes(secili.Count, Dil.Dil)" KaydetAktif="@(secili.Count > 0)">
     @if (hata is { } h) { <div class="bant bant-hata" role="alert" id="ft-hata">@h</div> }
