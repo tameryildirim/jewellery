@@ -3907,3 +3907,7 @@ html:root[data-sema="yildiz"] body #ai-liste > .ai-satir:not(#_) {
 }
 html:root[data-sema="yildiz"] body #ai-liste .ai-ust:not(#_) { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 html:root[data-sema="yildiz"] body #ai-liste .ai-eylem:not(#_) { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+/* ── 18.10: tezgâhta eksik TC kutusu (fatura haddi) ─────────────────────────── */
+html:root[data-sema="yildiz"] body #yildiz-tezgah-kimlik:not(#_) { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+html:root[data-sema="yildiz"] body #yildiz-tezgah-kimlik > .alan:not(#_) { flex: 1 1 220px; min-width: 0; }

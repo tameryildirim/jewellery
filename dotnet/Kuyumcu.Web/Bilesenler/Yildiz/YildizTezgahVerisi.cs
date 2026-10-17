@@ -159,6 +159,10 @@ public sealed class YildizTezgahBaglami
     /// <summary>M6b — TC/VKN ile müşteri aç (no, ad); sayfa POST /islemler/musteri-ac çağırır ve seçer.</summary>
     public EventCallback<(string No, string Ad)> MusteriAc { get; init; }
     public string? MusteriAcHata { get; init; }
+    /// <summary>18.10: fatura haddinde seçili müşterinin kartında TC yok → hatanın altında TC kutusu.</summary>
+    public bool KimlikSor { get; init; }
+    public EventCallback<string> KimlikKaydet { get; init; }
+    public string? KimlikHata { get; init; }
     public string? PesinHata { get; init; }
     public bool PesinKimlikGerekli { get; init; }
     public EventCallback GercekMusteriSec { get; init; }

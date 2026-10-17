@@ -163,9 +163,13 @@ public sealed class GelenOdemeServisi(
                 }, islem);
                 if (!string.IsNullOrWhiteSpace(dto.KarsiIban))
                     await IbanOgretSessiz(db, cariId, dto.KarsiIban, dto.KarsiTarafAd, islem);
+                // 18.10: havale TC taşıyor, bulunan müşterinin kartında TC yoksa yazılır (fatura haddinde kilit çıkmasın).
+                var kimlikYazildi = cozum.Yol == CariCozumYolu.Iban && kimlikNo is not null
+                    && (await Cari.CariKimlikTamamlayici.Tamamla(db, islem.TenantId, cariId, kimlikNo)).Durum == Cari.CariKimlikTamamlayici.Yazildi;
                 dto.CariId = cariId;
                 var sonuc = await banka.HareketEkle(hesapId, dto, islem, bankaReferans, saglayiciReferans);
                 if (tx is not null) await tx.CommitAsync();
+                if (kimlikYazildi) await Masak.YaptirimServisi.CariTara(db, islem.TenantId, cariId, kimlikNo, dto.KarsiTarafAd, islem);
                 return await Yanit(sonuc, cozum with { CariId = cariId }, islem);
             }
             catch (BadRequestException) when (tx is not null)
@@ -181,7 +185,10 @@ public sealed class GelenOdemeServisi(
 
         if (cozum.Yol == CariCozumYolu.Secildi && gelen && !string.IsNullOrWhiteSpace(dto.KarsiIban))
             await IbanOgretSessiz(db, dto.CariId!, dto.KarsiIban, dto.KarsiTarafAd, islem);
+        var secilendeKimlik = cozum.Yol == CariCozumYolu.Secildi && gelen && kimlikNo is not null
+            && (await Cari.CariKimlikTamamlayici.Tamamla(db, islem.TenantId, dto.CariId!, kimlikNo)).Durum == Cari.CariKimlikTamamlayici.Yazildi;
         var duz = await banka.HareketEkle(hesapId, dto, islem, bankaReferans, saglayiciReferans);
+        if (secilendeKimlik) await Masak.YaptirimServisi.CariTara(db, islem.TenantId, dto.CariId!, kimlikNo, dto.KarsiTarafAd, islem);
         return await Yanit(duz, cozum, islem);
     }
 

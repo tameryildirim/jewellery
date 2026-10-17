@@ -1329,7 +1329,7 @@
             // hâlde neyi düzelteceğini göremezdi.
             hata = SunucuMesaji(ex); masakSunucudanGerekli |= MasakReddi(ex);   // t10: BASİT'te kısa cümle · MASAK alanları açılır
             kapiSunucudanAcildi = true;
-            pesinKimlikGerekli = ex.StatusCode == 400 && ex.Alanlar.ContainsKey("cariId") && cariId == pesinCariId; Yasal3Yakala(ex);   // YASAL-3: soru / yaptırım kodu
+            pesinKimlikGerekli = ex.StatusCode == 400 && ex.Alanlar.ContainsKey("cariId") && cariId == pesinCariId; Yasal3Yakala(ex); MusteriKimlikYakala(ex);   // YASAL-3 · 18.10 eksik TC
         }
         kaydediliyor = false;
         if (!kaydedildi) return;

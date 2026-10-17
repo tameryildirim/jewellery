@@ -1369,5 +1369,9 @@ public static partial class SunucuIletiSozlugu
         ("Gönderen adı zorunludur", "Sender name is required"),
         ("Bu hesap demo bankasına bağlı değil; önce hesabın sağlayıcısını 'Demo banka' yapın.", "This account is not connected to the demo bank; set its provider to 'Demo bank' first."),
         ("IBAN geçersiz", "Invalid IBAN"),
+        // ── 18.10: tezgâhta eksik müşteri kimliği ──
+        ("Peşin Müşteri kartına kimlik yazılmaz; müşteriyi seçin ya da açın.", "An ID cannot be written to the Walk-in Customer card; select or open the customer."),
+        ("Bu müşterinin kartında başka bir kimlik numarası kayıtlı; kartı Müşteriler ekranından düzeltin.", "This customer's card already has another ID number; correct the card on the Customers screen."),
+        ("Bu kimlik numarası başka bir müşteride kayıtlı: {}. O müşteriyi seçin.", "This ID number belongs to another customer: {}. Select that customer."),
     ];
 }

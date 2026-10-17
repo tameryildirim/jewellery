@@ -211,6 +211,8 @@ public partial class Islemler
                 MusteriSeciliId = cariId ?? "",
                 MusteriSec = EventCallback.Factory.Create<string>(this, YildizMusteriSec),
                 MusteriAc = EventCallback.Factory.Create<(string No, string Ad)>(this, YildizMusteriAc), MusteriAcHata = musteriAcHata,
+                KimlikSor = MusteriKimlikSor, KimlikHata = musteriKimlikHata,
+                KimlikKaydet = EventCallback.Factory.Create<string>(this, MusteriKimlikKaydet),
                 PesinHata = pesinHata,
                 PesinKimlikGerekli = pesinKimlikGerekli,
                 GercekMusteriSec = EventCallback.Factory.Create(this, GercekMusteriSec),

@@ -8,5 +8,8 @@ public static class MusteriAcSozlugu
     public static string Yok(string dil) => En(dil) ? "No customer with this number. Enter the name to open one." : "Bu numarayla kayıtlı müşteri yok. Adını yazıp açın.";
     public static string AdSoyad(string dil) => En(dil) ? "Name and surname" : "Ad soyad";
     public static string AcVeSec(string dil) => En(dil) ? "Open customer and select" : "Müşteriyi aç ve seç";
+    // 18.10: fatura haddinde kartta eksik TC
+    public static string KimlikEtiket(string dil) => En(dil) ? "Customer's ID / tax number (required for this invoice)" : "Müşterinin TC / vergi no (bu fatura için zorunlu)";
+    public static string KimlikKaydet(string dil) => En(dil) ? "Save and sell" : "Kaydet ve sat";
     public static string Gecersiz(string dil) => En(dil) ? "This ID number is not valid; check the digits." : "Bu TC kimlik numarası geçerli değil; rakamları kontrol edin.";
 }

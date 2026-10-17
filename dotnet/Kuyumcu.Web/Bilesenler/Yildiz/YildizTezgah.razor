@@ -206,6 +206,16 @@
                 {
                     <span class="yz-tezgah-not yz-kotu" id="yildiz-tezgah-hata" role="alert" tabindex="-1" title="@B.HataAyrinti">@hataMetni</span>
                 }
+                @if (B.KimlikSor)
+                {
+                    @* 18.10: fatura haddinde kartta TC yok → ekrandan çıkmadan yaz, satış aynı belgeyle sürer. *@
+                    <div class="yz-tezgah-kimlik" id="yildiz-tezgah-kimlik">
+                        <Kuyumcu.Web.Bilesenler.Form.TcknVeyaVkn ElemanId="yildiz-tezgah-kimlik-no" Etiket="@MusteriAcSozlugu.KimlikEtiket(Dil.Dil)"
+                                     Deger="@kimlikGirdi" DegerChanged="@(v => kimlikGirdi = v ?? "")" Hata="@B.KimlikHata" />
+                        <button type="button" class="yz-b1" id="yildiz-tezgah-kimlik-kaydet" disabled="@(B.Kaydediliyor || kimlikGirdi.Length < 10)"
+                                @onclick="() => B.KimlikKaydet.InvokeAsync(kimlikGirdi)">@MusteriAcSozlugu.KimlikKaydet(Dil.Dil)</button>
+                    </div>
+                }
                 @if (B.BelgeSoruAcik)
                 {
                     @* 17.10 kurucu: "müşteriye sorsun fatura kesilsin mi diye; zorunlu durumda hayır derse emin misiniz
@@ -309,6 +319,7 @@
     private bool paraUstu;
     private bool kimlikAcik;
     private string? odaklananHata;
+    private string kimlikGirdi = "";   // 18.10: eksik TC kutusu
     private bool oncekiKarma;
 
     /// <summary>
