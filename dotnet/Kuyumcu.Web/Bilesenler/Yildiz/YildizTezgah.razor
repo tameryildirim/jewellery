@@ -278,7 +278,13 @@
     {
         if (oncekiKarma && !B.Karma) odemeDuzen = false;
         oncekiKarma = B.Karma;
+        // Tema temizliği (17.10) bulgusu: TEK ödemeli kayıttan sonra da (fiş sıfırlandı: kalem sayısı >0 → 0) düzen paneli
+        // açık kalıyordu — yeni boş fişin ödeme formu başarı notunun altına biniyordu. Yalnız görünüm durumu.
+        if (oncekiKalemSayisi > 0 && B.Kalemler.Count == 0) odemeDuzen = false;
+        oncekiKalemSayisi = B.Kalemler.Count;
     }
+
+    private int oncekiKalemSayisi;
 
     private int oncekiOdemeSayisi;
 

@@ -366,9 +366,8 @@ public sealed class TS2TuvalProTestleri : BunitContext
     }
 
     /// <summary>
-    /// ÜRÜN BULGUSU (TEMA TEMİZLİĞİ 17.10, GC): Yıldız PRO tek ödemede TevsikOnizle yalnız proTevsik'i tazeler
-    /// (Islemler.Pro.cs) — sunucunun "işlem tutarı kuralı devrede" bilgisi eski yan sütun kartında "Aşıldı" diye
-    /// görünüyordu; Yıldız Fark notu (YildizNot) bu bilgiyi okumaz ve "Yasal kurallar uygun" der. Test bu yüzden KIRMIZI.
+    /// TEMA TEMİZLİĞİ 17.10 (GC bulgusu, giderildi): Yıldız PRO tek ödemede sunucunun "işlem tutarı kuralı devrede" bilgisi
+    /// eskiden yalnız PRO yan sütununda "Aşıldı" diye görünüyordu; Fark notu (YildizNot) artık proTevsik'i okur ve "uygun" DEMEZ.
     /// </summary>
     [Fact]
     public void Yasal_kapilar_sunucu_devrede_derse_Asildi()
@@ -381,7 +380,7 @@ public sealed class TS2TuvalProTestleri : BunitContext
         Assert.DoesNotContain(YildizTezgahSozlugu.YasalUygun("tr"), YasalNot(e));
     }
 
-    /// <summary>ÜRÜN BULGUSU (GC): aynı kök — sunucunun günlük KALAN nakit hakkı Yıldız PRO tek ödemede okunmaz.</summary>
+    /// <summary>Aynı kök (giderildi): sunucunun günlük KALAN nakit hakkı Yıldız PRO tek ödemede not satırına yansır.</summary>
     [Fact]
     public void Yasal_kapilar_gunluk_KALAN_nakit_hakkini_asan_fiste_Asildi()
     {
@@ -520,8 +519,8 @@ public sealed class TS2TuvalProTestleri : BunitContext
     /// <summary>
     /// TEMA TEMİZLİĞİ 17.10: eski geniş tablo hücreleri (#islem-kalem-pro) Yıldız'da yok; AYNI güvence ("küçük has/gram
     /// ekranda KAYBOLMAZ — P-57: 0,001 g '0,00 g' diye BASILMAZ") Yıldız kalem satırının ayrıntısında ve toplam ayrıntısında
-    /// sınanır. ÜRÜN BULGUSU (GC): YildizTezgahBicim.Gram iki haneye yuvarlar (N2) → 0,001 g "0,00 g" basılır; has dört
-    /// hanedir (doğru). Test bu yüzden KIRMIZI kalabilir — gram kısmı ürün düzeltmesi bekler.
+    /// sınanır. (GC bulgusu giderildi: YildizTezgahBicim.Gram
+    /// artık FisHesap.GramSayi — en az iki, en çok üç hane.)
     /// </summary>
     [Fact]
     public void Kalem_tablosu_ve_toplam_serit_kucuk_has_ve_grami_KAYBETMEZ()

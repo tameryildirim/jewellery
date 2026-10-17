@@ -194,13 +194,11 @@ public sealed class EKSIKKUCUKSatisSinirTestleri : BunitContext
     }
 
     // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — müşteri "Değiştir" katmanından seçilir (aynı cariId → MusteriDegisti →
-    // aynı teklif isteği), Kaydet #yildiz-tezgah-kaydet. ⚠ ÜRÜN BULGUSU: fiyat listesi sorusu (FisListeDegisti —
-    // #islem-liste-degisti/-guncelle/-eski/-hata) yalnız özgün kalem tablosunun parçasında (Islemler.razor KalemParcasi)
-    // çizilir; Yıldız tezgâhı o parçayı ÇİZMEZ. "Sorar" testleri bandı bekleyip KIRMIZI kalır; "sormaz" testleri gövdeyi
-    // sınadıktan sonra bandın çizilebileceği yerin varlığını denetler (boş DOM'da yanlış yeşil yok).
+    // aynı teklif isteği), Kaydet #yildiz-tezgah-kaydet. Fiyat listesi sorusu (FisListeDegisti) tezgâhın giriş satırının
+    // altında çizilir (Islemler.Yildiz.cs YildizGiris); "sormaz" testleri bandın çizileceği kabın VARLIĞINI denetler
+    // (boş DOM'da yanlış yeşil yok).
     private static void ListeBandiYeriVar(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
-        Assert.True(e.FindAll("#islem-kalem-tablo, #islem-kalem-liste").Count > 0,
-            "ÜRÜN BULGUSU (tema temizliği 17.10): fiyat listesi sorusu (FisListeDegisti) Yıldız tezgâhında çizilmiyor — 'sormaz' denetimi anlamsız kalır");
+        Assert.True(e.FindAll("#yildiz-tezgah-giris").Count > 0, "Yıldız tezgâhının giriş satırı (fiyat listesi sorusunun yeri) çizilmedi");
 
 
     private decimal GidenFiyat(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)

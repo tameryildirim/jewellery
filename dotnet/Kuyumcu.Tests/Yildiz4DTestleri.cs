@@ -67,7 +67,7 @@ public sealed class Yildiz4DTestleri : BunitContext
         Assert.DoesNotContain("SÜZGEÇ", e.Markup);
         Assert.Empty(e.FindAll("#yildiz-musteri-suzgec"));
         // tuvalin üç sekmesi + alt notu AYNEN; alt satırda nottan başka öğe yok
-        Assert.Equal(["HEPSİ", "BORÇLU", "TOPTANCI"], e.FindAll("#cari-segment > button").Select(x => x.TextContent.Trim()));
+        Assert.Equal(["HEPSİ", "BORÇLU", "TOPTANCI"], e.FindAll("#cari-segment-serit > button").Select(x => x.TextContent.Trim()));
         Assert.Equal(["yildiz-musteri-not"], e.FindAll(".yz-musteri-alt > *").Select(x => x.Id));
         // satırdaki her eleman tıklanınca gerçek geri çağrı (sekme)
         var cagri = new List<string>();

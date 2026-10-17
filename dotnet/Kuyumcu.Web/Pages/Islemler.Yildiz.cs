@@ -221,6 +221,23 @@ public partial class Islemler
     /// <summary>Satıra dokununca açılan düzenleme: kalem tablosu (+ indirim) · reyon · açıklama (özgün "Diğer ayrıntılar" alanları; tuval kalıbı "satıra dokun").</summary>
     private RenderFragment YildizKalemDuzen => b => { b.AddContent(0, KalemParcasi); b.AddContent(1, ReyonParcasi); b.AddContent(2, AciklamaParcasi); };
 
+    /// <summary>
+    /// Tezgâhın giriş satırı + fiyat listesi sorusu (EKSIK-KUCUK B2-12, UX-S24). Tema temizliği (17.10) bulgusu: soru
+    /// yalnız özgün kalem tablosunun parçasındaydı ve Yıldız tezgâhında hiç çizilmiyordu; aynı bileşen, aynı kimlikler.
+    /// </summary>
+    private RenderFragment YildizGiris => b =>
+    {
+        b.AddContent(0, KalemGirisParcasi);
+        b.OpenComponent<FisListeDegisti>(1);
+        b.AddComponentParameter(2, nameof(FisListeDegisti.Sayi), BekleyenOneri.Count);
+        b.AddComponentParameter(3, nameof(FisListeDegisti.Guncelle), EventCallback.Factory.Create(this, ListeFiyatlariniUygula));
+        b.AddComponentParameter(4, nameof(FisListeDegisti.EskiKalsin), EventCallback.Factory.Create(this, ListeOnerisiniReddet));
+        b.AddComponentParameter(5, nameof(FisListeDegisti.Hata), listeHata);
+        b.AddComponentParameter(6, nameof(FisListeDegisti.Basari), listeBasari);
+        b.AddComponentParameter(7, nameof(FisListeDegisti.Jeton), listeBasariJeton);
+        b.CloseComponent();
+    };
+
     // ═══ PAKET YILDIZ-4C — etkileşim hâlleri (hakem 4B tur 2 KRİTİK: eski tablo/karma formu ikinci kez açılıyordu) ═══
 
     /// <summary>Kalem düzenlemesinin altındaki fiş alanları: reyon · açıklama (özgün parçalar, id'ler aynı).</summary>

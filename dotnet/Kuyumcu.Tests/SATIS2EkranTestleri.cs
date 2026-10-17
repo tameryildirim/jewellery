@@ -225,8 +225,8 @@ public sealed class SATIS2EkranTestleri : BunitContext
 
     /// <summary>
     /// Uygunken TEK satır ("Yasal kurallar uygun · nakit &lt;sunucunun haddi&gt; sınırının altında"); sunucu kuralı devrede
-    /// derse "uygun" DENMEZ. ÜRÜN BULGUSU (GC): ikinci yarı Yıldız PRO tek ödemede kırmızı — sunucunun "kural devrede"
-    /// bilgisi Fark notuna yansımıyor (ayrıntı: TS2TuvalProTestleri.Yasal_kapilar_sunucu_devrede_derse_Asildi).
+    /// derse "uygun" DENMEZ. (GC bulgusu giderildi: sunucunun "kural devrede"
+    /// bilgisi Fark notuna yansır — TS2TuvalProTestleri.Yasal_kapilar_sunucu_devrede_derse_Asildi.)
     /// </summary>
     [Fact]
     public void PRO_yasal_kapilar_uygunken_TEK_satir_asilinca_KART()

@@ -379,7 +379,7 @@
                                Gerekce="@PesinMetin.DegismezGerekce"
                                AlternatifYol="@PesinMetin.DegismezYol" />
             }
-            else
+            else if (duzenleCari?.Aktif != false)   @* tema temizliği 17.10 bulgusu: pasif kartta "Pasife al" çizilmez (geri yol "Aktife al") *@
             {
                 <button id="c-pasife-al" class="btn btn-tehlike"
                         @onclick="() => PasifOnayAc(duzenleCari)">@(Sade ? T.KullanimdanKaldir : Dil.T.Cari.PasifeAl)</button>

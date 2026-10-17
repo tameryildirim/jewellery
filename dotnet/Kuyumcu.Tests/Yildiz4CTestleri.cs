@@ -427,7 +427,7 @@ public sealed class Yildiz4CTestleri : BunitContext
         Assert.Empty(e.FindAll("#yildiz-musteri-bos"));
         Assert.DoesNotContain("Henüz müşteri yok", e.Markup);
         // süzgeç sekme satırında DEĞİL; YILDIZ-4D: "+ Süzgeç" tuvalde yok → hiç çizilmez (Yildiz4DTestleri)
-        Assert.Equal(3, e.FindAll("#cari-segment > *").Count);
+        Assert.Equal(3, e.FindAll("#cari-segment-serit > *").Count);
         Assert.Empty(e.FindAll("#cari-suzgec-daha"));
         Assert.Empty(cagri);
         var hic = new YildizMusteriBaglami { HicYok = true };
