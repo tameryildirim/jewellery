@@ -206,6 +206,7 @@
         return bicim switch
         {
             SutunBicimi.Has => Bicim.Has(d),
+            SutunBicimi.Gram => Bicim.Gram(d),   // M5
             // Birimi olmayan tutar TL SAYILMAZ (UX-S32): simgesiz tr-TR sayı basılır.
             SutunBicimi.Para when string.IsNullOrWhiteSpace(satir.ParaBirimi) => Bicim.BelgeSayisi(d, "tr-TR", 2),
             SutunBicimi.Para => Bicim.BelgePara(d, satir.ParaBirimi),   // T-K1: kâğıtta kuruş hep 2 hane

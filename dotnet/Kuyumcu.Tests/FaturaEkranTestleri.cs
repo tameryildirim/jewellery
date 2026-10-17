@@ -1557,7 +1557,7 @@ public sealed class FaturaEkranTestleri : BunitContext
         var basit = false;
         dil.BasitModuBagla(() => basit);
         var e = P54KalemleriAc("TASLAK");
-        Assert.Equal(11, e.FindAll("#fd-kalem-tablosu thead th").Count);
+        Assert.Equal(12, e.FindAll("#fd-kalem-tablosu thead th").Count);   // M5 (18.10): + Gram
         Assert.Contains("zo-kalem-genis", e.Find("#fd-kalem-tablosu").ClassList);
 
         basit = true;

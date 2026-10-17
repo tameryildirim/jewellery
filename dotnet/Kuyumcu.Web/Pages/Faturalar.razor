@@ -1019,6 +1019,15 @@
                         {
                             @Bicim.Miktar(k.Miktar, k.Birim)
                         }</text> },
+                // M5 (ses kaydı 07:07: "kesmem için hem gramını görmem hem de değerini görmem lazım… hepsini has'a
+                // çeviremezsin"): ürünün GRAMI ana değer, has gramı yalnız altında ek bilgi.
+                new() { Anahtar = "gram", Baslik = Dil.T.Urun.Gram, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
+                        Deger = k => k.GramAgirlik,
+                        Hucre = k => @<text><span class="hucre-tek-satir" id="@($"fd-kalem-gram-{k.Id}")">@(k.GramAgirlik is { } g ? Bicim.Gram(g) : "—")</span>
+                        @if (k.HasGrami is { } h && h > 0m)
+                        {
+                            <span class="metin-kucuk metin-soluk hucre-tek-satir" id="@($"fd-kalem-has-{k.Id}")">@Bicim.Has(h)</span>
+                        }</text> },
                 new() { Anahtar = "fiyat", Baslik = Dil.T.Fatura.BirimFiyat, ZorunluGorunur = true, HucreSinif = _ => "sayi", HucreOznitelikleri = KalemDuzenlenebilir ? DuzenlenebilirOznitelik : null,
                         Hucre = k => @<text>@if (KalemDuzenlenebilir)
                         {

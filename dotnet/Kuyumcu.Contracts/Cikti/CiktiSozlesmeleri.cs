@@ -67,6 +67,8 @@ public static class SutunBicimi
     public const string Has = "HAS";
     /// <summary>Para — satırın para birimiyle tr-TR (Bicim.Para; TRY → ₺45.000,00).</summary>
     public const string Para = "PARA";
+    /// <summary>M5 — ürünün tartı gramı (Bicim.Gram: tr-TR, 3 hane, "g"); has'tan AYRI büyüklük.</summary>
+    public const string Gram = "GRAM";
 }
 
 /// <summary>

@@ -126,6 +126,12 @@ public sealed class CiktiServisi(
                 .ToListAsync(iptal);
 
         var urunAdlari = await UrunAdlari(bacaklar.Select(b => b.UrunId), islem.TenantId, iptal);
+        // M5 (ses kaydı 07:07: "hem gramını görmem hem de değerini görmem lazım… hepsini has'a çeviremezsin"):
+        // ürünün GRAMI (gram × adet) kâğıtta has'tan ÖNCE; ürünsüz satırda "—". Ürün yoksa sütun hiç açılmaz.
+        var urunGramlari = await UrunGramlari(bacaklar.Select(b => b.UrunId), islem.TenantId, iptal);
+        var gramSutunu = bacaklar.Any(b => b.UrunId is not null);
+        string GramHucre(Hareket b) => b.UrunId is not null && urunGramlari.TryGetValue(b.UrunId, out var g) && g > 0m
+            ? Sayi(g * Math.Abs(b.Adet ?? 1m), 3) : "—";
 
         // ⚠ Para birimi TUTARLA BİRLİKTE taşınır (UX-S32) — "varsayılan TL" yok.
         //   Kalem satırları ve toplam AYNI birimi taşır (Q9-4: kalem-toplam tutarlı).
@@ -147,6 +153,13 @@ public sealed class CiktiServisi(
                 b.UrunId is not null && urunAdlari.TryGetValue(b.UrunId, out var ad0) ? ad0 : (b.Aciklama ?? "—"),
                 Sayi(Math.Abs(b.TlTutari), 2),
             ]
+            : gramSutunu ? [
+                Sozluk.HareketTuru(b.Tur),
+                b.UrunId is not null && urunAdlari.TryGetValue(b.UrunId, out var adG) ? adG : (b.Aciklama ?? "—"),
+                GramHucre(b),
+                Sayi(Math.Abs(b.HasGrami), 4),
+                Sayi(Math.Abs(b.TlTutari), 2),
+            ]
             : [
                 Sozluk.HareketTuru(b.Tur),
                 b.UrunId is not null && urunAdlari.TryGetValue(b.UrunId, out var ad) ? ad : (b.Aciklama ?? "—"),
@@ -156,11 +169,14 @@ public sealed class CiktiServisi(
 
         var bolum = new CiktiBolum(
             tur == BelgeTurleri.EmanetTeslim ? "Emanet Kalemleri" : "Kalemler",
-            hasSutunuYok ? ["Tür", "Açıklama", "Tutar"] : ["Tür", "Açıklama", "Has gram", "Tutar"],
+            hasSutunuYok ? ["Tür", "Açıklama", "Tutar"]
+                : gramSutunu ? ["Tür", "Açıklama", "Gram", "Has gram", "Tutar"]
+                : ["Tür", "Açıklama", "Has gram", "Tutar"],
             satirlar,
             bacaklar.Count > 1 ? $"Bu belge {bacaklar.Count} bacaklı tek fişin tamamını gösterir." : null,
             SutunBicimleri: hasSutunuYok
                 ? [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Para]
+                : gramSutunu ? [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Gram, SutunBicimi.Has, SutunBicimi.Para]
                 : [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Has, SutunBicimi.Para]);
 
         var tutarlar = new List<CiktiTutar>
@@ -447,6 +463,18 @@ public sealed class CiktiServisi(
     }
 
     // ── ortak ───────────────────────────────────────────────────────────────
+
+    /// <summary>M5: ürünün birim gramı (gram_agirlik) — fiş kaleminde gram × adet.</summary>
+    private async Task<Dictionary<string, decimal>> UrunGramlari(
+        IEnumerable<string?> idler, string tenantId, CancellationToken iptal)
+    {
+        var liste = idler.Where(x => x is not null).Select(x => x!).Distinct().ToList();
+        if (liste.Count == 0) return [];
+        return await db.Urunler.AsNoTracking()
+            .Where(u => liste.Contains(u.Id) && u.TenantId == tenantId)
+            .Take(liste.Count)
+            .ToDictionaryAsync(u => u.Id, u => u.GramAgirlik, iptal);
+    }
 
     private async Task<Dictionary<string, string>> UrunAdlari(
         IEnumerable<string?> idler, string tenantId, CancellationToken iptal)
