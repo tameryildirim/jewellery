@@ -66,21 +66,23 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
     private static Kuyumcu.Core.I18n.Satis3Metinleri S3 => Kuyumcu.Core.I18n.Satis3Sozlugu.Al("tr");
     private int Say(string parca) { lock (istekler) return istekler.Count(i => i.Yol.Contains(parca)); }
     private List<string> FisGovdeleri() { lock (istekler) return [.. istekler.Where(i => i.Yol.EndsWith("/islemler/satis-fisi")).Select(i => i.Govde)]; }
-    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.Find("#islem-kaydet");
+    /// <summary>TEMA TEMİZLİĞİ 17.10: SATIŞ fişi Yıldız tezgâhıdır — Kaydet tezgâhın birincil düğmesi (aynı kilit ve sebep).</summary>
+    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => GA.Kaydet(e);
 
-    /// <summary>Karma kip, 10.000 TL tek kalem; bacak-0 = araç, bacak-1 otomatik kalan (Kart).</summary>
+    /// <summary>Karma kip, 10.000 TL tek kalem; bacak-0 = araç, bacak-1 otomatik kalan (Kart).
+    /// TEMA TEMİZLİĞİ 17.10: karma tezgâhın "+ Başka ödeme"siyle açılır (sayfanın OdemeyiBol'u — İLK satır fişin tamamı, İKİNCİ
+    /// satır boş Kart); özgün gizli "Karma ödeme" kutusu ve "+ Başka ödeme ekle" düğmesi tezgâhta kullanıcıya görünmez.</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ac(string arac0)
     {
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        e.WaitForElement("#yildiz-tezgah-kaydet", Bekle);
+        GA.MusteriSec(e, "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-kalem-ekle").Click();
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-arac");
+        e.WaitForElement(".yz-tezgah-kalem", Bekle);
+        GA.KarmaAc(e);
+        Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-bacak-1-arac"));
         SeciciYardim.Sec(e, "islem-bacak-0-arac", arac0);
         return e;
     }
@@ -128,16 +130,15 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
     [Fact]
     public void T21_kur_yokken_doviz_girilince_Kaydet_PASIF_sebep_yazili_fark_TAMAM_demez_POST_yok()
     {
-        var e = Ac("DOVIZ");
-        e.Find("#islem-bacak-ekle").Click();                    // bacak-1: otomatik kalan (tamamını üstlenir)
-        e.WaitForElement("#islem-bacak-1-arac");
+        var e = Ac("DOVIZ");                                     // bacak-1: otomatik kalan (tamamını üstlenir) — Ac açtı
         SeciciYardim.Sec(e, "islem-bacak-0-doviz", "250");
         e.WaitForAssertion(() => Assert.Equal("0.00", SeciciYardim.SeciliDeger(e, "islem-bacak-0-tutar")), Bekle);
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#islem-bacak-0-kur-yok")), Bekle);
         Assert.Contains(S3.DovizKuruYok, e.Find("#islem-bacak-0-kur-yok").TextContent);
         Assert.Equal(S3.DovizKuruYok, e.Find("#islem-bacak-fark-metin").TextContent.Trim());   // "0 ₺ ✓" değil
         Assert.True(Kaydet(e).HasAttribute("disabled"));
-        Assert.Equal(S3.DovizKuruYok, e.Find("#islem-kaydet-kilit").TextContent.Trim());
+        Assert.Equal(S3.DovizKuruYok, e.Find("#yildiz-tezgah-not").TextContent.Trim());   // TEMA TEMİZLİĞİ: Kaydet'in yanındaki not satırı
+        Assert.Equal("—", e.Find("#yildiz-tezgah-fark-tutar").TextContent.Trim());        // tezgâhın Fark'ı da "0 ₺ ✓" demez
         Kaydet(e).Click();
         Assert.Empty(FisGovdeleri());
     }
@@ -176,9 +177,7 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
         kurYok = false;
         var e = Ac("VERESIYE");
         SeciciYardim.Sec(e, "islem-bacak-0-tutar", "10000");     // elle: tamamı veresiye
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-1-arac");
-        SeciciYardim.Sec(e, "islem-bacak-1-arac", "VERESIYE");   // ikinci, BOŞ (0) veresiye satırı
+        SeciciYardim.Sec(e, "islem-bacak-1-arac", "VERESIYE");   // ikinci, BOŞ (0) veresiye satırı (Ac'ın açtığı ikinci satır)
         e.WaitForAssertion(() => Assert.Equal(2, e.FindAll("[id$='-arac'][id^='islem-bacak-']").Count), Bekle);
         e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")), Bekle);
         Kaydet(e).Click();
@@ -201,33 +200,34 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
         SeciciYardim.Sec(e, "islem-bacak-0-birim", "EUR");
         SeciciYardim.Sec(e, "islem-bacak-0-doviz", "100");
         e.WaitForAssertion(() => Assert.Equal("4400.00", SeciciYardim.SeciliDeger(e, "islem-bacak-0-tutar")), Bekle);   // 100 × 44
-        e.WaitForAssertion(() => Assert.Equal(string.Format(S3.OdemeKasasiYok, "EUR"), e.Find("#islem-kaydet-kilit").TextContent.Trim()), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(string.Format(S3.OdemeKasasiYok, "EUR"), e.Find("#yildiz-tezgah-not").TextContent.Trim()), Bekle);   // TEMA TEMİZLİĞİ: not satırı
+        Assert.Equal(string.Format(S3.OdemeKasasiYok, "EUR"), Kaydet(e).GetAttribute("title"));
         Assert.True(Kaydet(e).HasAttribute("disabled"));
         Kaydet(e).Click();
         Assert.Empty(FisGovdeleri());
     }
 
-    /// <summary>t21 — BASİT tuvalin alt "Fark" çubuğu da kur yokken "0 ₺ ✓" demez: tutar "—", sebep metni görünür.</summary>
+    /// <summary>t21 — BASİT tezgâhın "Fark" bloğu da kur yokken "0 ₺ ✓" demez: tutar "—", onay yok, sebep metni görünür.
+    /// TEMA TEMİZLİĞİ 17.10: eski BASİT alt Fark çubuğu (#islem-fark) yerine tezgâhın Fark bloğu (#yildiz-tezgah-fark).</summary>
     [Fact]
     public void T21_BASIT_fark_cubugu_kur_yokken_TAMAM_demez()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, ArayuzModuServisi.Basit));
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        e.WaitForElement("#yildiz-tezgah-kaydet", Bekle);
+        GA.MusteriSec(e, "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForElement("#islem-odeme-bol");
-        e.Find("#islem-odeme-bol").Click();
-        e.WaitForElement("#islem-bacak-1-arac");
+        e.WaitForElement(".yz-tezgah-kalem", Bekle);
+        GA.KarmaAc(e);
         SeciciYardim.Sec(e, "islem-bacak-1-arac", "DOVIZ");
         SeciciYardim.Sec(e, "islem-bacak-1-doviz", "100");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#islem-bacak-1-kur-yok")), Bekle);
-        Assert.Equal("—", e.Find("#islem-fark-tutar").TextContent.Trim());
-        Assert.DoesNotContain("fis-fark-tamam", e.Find("#islem-fark").ClassName);
-        Assert.Equal(S3.DovizKuruYok, e.Find("#islem-fark-durum").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.Equal("—", e.Find("#yildiz-tezgah-fark-tutar").TextContent.Trim()), Bekle);
+        Assert.Empty(e.FindAll("#yildiz-tezgah-fark .yz-tezgah-onay"));
+        Assert.Equal(S3.DovizKuruYok, e.Find("#yildiz-tezgah-not").TextContent.Trim());
         Assert.True(Kaydet(e).HasAttribute("disabled"));
     }
 }

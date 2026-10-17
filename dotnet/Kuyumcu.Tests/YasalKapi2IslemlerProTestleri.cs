@@ -32,32 +32,28 @@ public sealed partial class SATIS3EkranTestleri
         masakEsikJson = Tur3Esik();
         gereksinimOzel = v => v.Contains("tutar=220000") ? Yk2Gereksinim(220_000m) : null;
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        GA.MusteriSec(e, "c1");
         FiyatliKalem(e, "u1", "220000", 1);
-        SeciciYardim.Sec(e, "islem-odeme", "KART");   // nakit (tevsik) kilidi bu testin konusu değil
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
-        Satis4Yardim.MasakBelgeNoSil(e);
+        GA.OdemeSec(e, "KART");   // nakit (tevsik) kilidi bu testin konusu değil
+        GA.KimlikFormuAc(e);      // TEMA TEMİZLİĞİ: tezgâhta form "+ Kimlik bilgisi" çekmecesinde
+        GA.MasakBelgeNoSil(e);
         var y = YasalKapi2Sozlugu.Tr;
 
-        e.WaitForAssertion(() => PTezgahTurKimlikYardim.EksikKilit(e.Find("#islem-kaydet").GetAttribute("title"), ParaDemo3Sozlugu.Tr.AlanIslemAmaci), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
-        foreach (var k in e.FindAll("#islem-kaydet-kilit"))
+        e.WaitForAssertion(() => PTezgahTurKimlikYardim.EksikKilit(GA.Kaydet(e).GetAttribute("title"), ParaDemo3Sozlugu.Tr.AlanIslemAmaci), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
+        foreach (var k in e.FindAll("#islem-kaydet-kilit, #yildiz-tezgah-not"))
         {
             Assert.DoesNotContain(Bicim.Tl(200_000m), k.TextContent, StringComparison.Ordinal);
             Assert.DoesNotContain(Bicim.Tl(370_000m), k.TextContent, StringComparison.Ordinal);
         }
 
-        // 200.000: form başlığı + PRO panel amaç satırı = 2; 370.000: yalnız PRO panel kimlik satırı = 1.
+        // TEMA TEMİZLİĞİ 17.10: PRO "Yasal kapılar" yan paneli (#islem-pro-amac-etiket / #islem-pro-kimlik-etiket) satışta
+        // çizilmez — tezgâhta eşik cümlesi YALNIZ kimlik formunun başlığında (1 blok); 370.000 hiçbir görünür blokta yok;
+        // form kural satırı tezgâhta çizilmez (MasakFormu KuralGizli — eşik başlıkta tek kez). "Uyarı tekrar sayacı 1" iki modda.
         var b200 = EsikBloklari(e, 200_000m);
-        Assert.True(b200.Count == 2, string.Join(" ‖ ", b200));
-        Assert.Contains(b200, s => s.StartsWith("#masak-baslik", StringComparison.Ordinal));
-        Assert.Contains(b200, s => s.StartsWith("#islem-pro-amac-etiket", StringComparison.Ordinal));
-        var b370 = EsikBloklari(e, 370_000m);
-        Assert.True(b370.Count == 1 && b370[0].StartsWith("#islem-pro-kimlik-etiket", StringComparison.Ordinal), string.Join(" ‖ ", b370));
-
-        // Kural satırı yalnız saklama notu; MASAK atfı panelde.
-        Assert.Equal(YasalParamSozlugu.Tr.Saklama, e.Find("#masak-kural").TextContent.Trim());
-        Assert.Contains("MASAK", e.Find("#islem-pro-kimlik-etiket").TextContent, StringComparison.Ordinal);
+        Assert.True(b200.Count == 1 && b200[0].StartsWith("#masak-baslik", StringComparison.Ordinal), string.Join(" ‖ ", b200));
+        Assert.Empty(EsikBloklari(e, 370_000m));
+        Assert.Empty(e.FindAll("#islem-pro-amac-etiket, #islem-pro-kimlik-etiket, #masak-kural"));
     }
 
     [Fact]
@@ -66,12 +62,12 @@ public sealed partial class SATIS3EkranTestleri
         masakEsikJson = Tur3Esik();
         gereksinimOzel = v => v.Contains("tutar=220000") ? Yk2Gereksinim(220_000m) : null;
         var e = Ekran(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        GA.MusteriSec(e, "c1");
         FiyatliKalem(e, "u1", "220000", 1);
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
-        Satis4Yardim.MasakBelgeNoSil(e);
-        e.WaitForAssertion(() => PTezgahTurKimlikYardim.EksikKilit(e.Find("#islem-kaydet").GetAttribute("title")), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
+        GA.OdemeSec(e, "KART");
+        GA.KimlikFormuAc(e);   // TEMA TEMİZLİĞİ: tezgâhta form "+ Kimlik bilgisi" çekmecesinde
+        GA.MasakBelgeNoSil(e);
+        e.WaitForAssertion(() => PTezgahTurKimlikYardim.EksikKilit(GA.Kaydet(e).GetAttribute("title")), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
         var b200 = EsikBloklari(e, 200_000m);
         Assert.True(b200.Count == 1 && b200[0].StartsWith("#masak-baslik", StringComparison.Ordinal), string.Join(" ‖ ", b200));
         Assert.Empty(EsikBloklari(e, 370_000m));

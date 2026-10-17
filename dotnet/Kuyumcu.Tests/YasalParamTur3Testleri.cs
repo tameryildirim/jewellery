@@ -155,11 +155,11 @@ public sealed partial class SATIS3EkranTestleri
         masakEsikJson = Tur3Esik();
         gereksinimOzel = v => v.Contains("tutar=150000&cariId=c1") ? Tur3Toplam(olcu) : null;
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        GA.MusteriSec(e, "c1");
         FiyatliKalem(e, "u1", "150000", 1);
-        SeciciYardim.Sec(e, "islem-odeme", "KART");   // nakit (tevsik) kilidi bu testin konusu değil
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
-        Satis4Yardim.MasakBelgeNoSil(e);
+        GA.OdemeSec(e, "KART");   // nakit (tevsik) kilidi bu testin konusu değil
+        GA.KimlikFormuAc(e);      // TEMA TEMİZLİĞİ: tezgâhta form "+ Kimlik bilgisi" çekmecesinde
+        GA.MasakBelgeNoSil(e);
         return e;
     }
 
@@ -171,12 +171,13 @@ public sealed partial class SATIS3EkranTestleri
         // YASAL-KAPI-2 tur 2 (doğrulayıcı KRİTİK "aynı eşik 4 yerde"): PRO kilit sebebi eşik SAYISI söylemez; tur 3'ün
         // "aşılan kademe söylensin" kararı PRO "Yasal kapılar" panelinde (tek yer): kimlik satırı GEREKİR (MASAK).
         e.WaitForAssertion(() => PTezgahTurKimlikYardim.EksikKilit(
-            e.Find("#islem-kaydet").GetAttribute("title")), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
-        var kilit = e.Find("#islem-kaydet").GetAttribute("title")!;
+            GA.Kaydet(e).GetAttribute("title")), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
+        var kilit = GA.Kaydet(e).GetAttribute("title")!;
         Assert.DoesNotContain(Bicim.Tl(200_000m), kilit);
         Assert.DoesNotContain(Bicim.Tl(370_000m), kilit);
-        Assert.Contains("MASAK", e.Find("#islem-pro-kimlik-etiket").TextContent);
-        Assert.Contains("metin-kirmizi", e.Find("#islem-pro-kimlik").ClassName);
+        // TEMA TEMİZLİĞİ 17.10: PRO "Yasal kapılar" paneli (#islem-pro-kimlik / -etiket) satışta çizilmez — aşılan kademeyi
+        // tezgâhta kimlik formunun başlığı söyler (tek yer; YasalParamTur3MasakFormuTestleri iki modda sınar).
+        Assert.Empty(e.FindAll("#islem-pro-kimlik, #islem-pro-kimlik-etiket"));
         Assert.Equal($"Kimlik ve işlem amacı gerekli — bu müşterinin bugünkü toplamı {Bicim.Tl(370_000m)}",
             e.Find("#masak-baslik").TextContent);
     }
@@ -188,11 +189,15 @@ public sealed partial class SATIS3EkranTestleri
         var m = YasalParamSozlugu.Tr;
         // YASAL-KAPI-2 tur 2: kademe PRO panelinde — amaç satırı GEREKİR, kimlik (MASAK 370.000) satırı altında.
         e.WaitForAssertion(() => PTezgahTurKimlikYardim.EksikKilit(
-            e.Find("#islem-kaydet").GetAttribute("title")), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
-        var kilit = e.Find("#islem-kaydet").GetAttribute("title")!;
+            GA.Kaydet(e).GetAttribute("title")), Bekle);   // P-TEZGAH-TUR-KIMLIK K4: eksik alanın adı
+        var kilit = GA.Kaydet(e).GetAttribute("title")!;
         Assert.DoesNotContain(Bicim.Tl(200_000m), kilit);
         Assert.DoesNotContain(Bicim.Tl(370_000m), kilit);
-        Assert.Contains("metin-kirmizi", e.Find("#islem-pro-amac").ClassName);
-        Assert.Contains("metin-yesil", e.Find("#islem-pro-kimlik").ClassName);
+        // TEMA TEMİZLİĞİ 17.10: PRO panelin amaç/kimlik satırları satışta çizilmez — form amaç alanını İSTER (başlığın dediği
+        // kademe gerçekten açıldı), toplam başlıkta söylenir; 370.000 (kimlik kademesi) hiçbir yerde yazılmaz.
+        Assert.Empty(e.FindAll("#islem-pro-amac, #islem-pro-kimlik"));
+        Assert.NotEmpty(e.FindAll("#masak-amac"));
+        Assert.Contains(Bicim.Tl(250_000m), e.Find("#masak-baslik").TextContent);
+        Assert.DoesNotContain(Bicim.Tl(370_000m), GA.TumMetin(e));
     }
 }
