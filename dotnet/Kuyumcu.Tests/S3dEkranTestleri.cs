@@ -245,7 +245,7 @@ public sealed class S3dEkranTestleri : BunitContext
         // Alan altı Türkçe mesaj (DoD EK md.3) — sessiz etkisizlik yok.
         Assert.Contains("Satıcı tipi zorunludur", e.Find("#hurda-satici-tip-hata").TextContent);
 
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.DoesNotContain(istekler, i => i.Yol.Contains("hurda-alis"));
     }
 
@@ -273,7 +273,7 @@ public sealed class S3dEkranTestleri : BunitContext
         e.Find("#hurda-satici-adres").Input("Ulus Mah. 1");
         istekler.Clear();
 
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         var post = istekler.First(i => i.Metot == "POST" && i.Yol.Contains("hurda-alis"));
         // ⚠ Türkçe JSON gövdesi AYRIŞTIRILARAK sınanır; alt nesnenin İÇİNE
@@ -300,7 +300,7 @@ public sealed class S3dEkranTestleri : BunitContext
 
         e.Find("#hurda-satici-fatura").Input("FTR-2026-77");
         istekler.Clear();
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         var post = istekler.First(i => i.Metot == "POST" && i.Yol.Contains("hurda-alis"));
         var satici = System.Text.Json.JsonDocument.Parse(post.Govde)

@@ -139,7 +139,7 @@ public sealed class PosTeklifEkranTestleri : BunitContext
         istekler.Clear();
 
         e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
         {

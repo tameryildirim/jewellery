@@ -139,7 +139,7 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
         Assert.True(Kaydet(e).HasAttribute("disabled"));
         Assert.Equal(S3.DovizKuruYok, e.Find("#yildiz-tezgah-not").TextContent.Trim());   // TEMA TEMİZLİĞİ: Kaydet'in yanındaki not satırı
         Assert.Equal("—", e.Find("#yildiz-tezgah-fark-tutar").TextContent.Trim());        // tezgâhın Fark'ı da "0 ₺ ✓" demez
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.Empty(FisGovdeleri());
     }
 
@@ -157,7 +157,7 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
         Assert.Equal(once + 1, Say("/kur/guncel"));              // düğme TEK istek
         Assert.Empty(e.FindAll("#islem-bacak-0-kur-yok"));
         e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")), Bekle);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() =>
         {
             var kok = System.Text.Json.JsonDocument.Parse(Assert.Single(FisGovdeleri())).RootElement;
@@ -180,7 +180,7 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
         SeciciYardim.Sec(e, "islem-bacak-1-arac", "VERESIYE");   // ikinci, BOŞ (0) veresiye satırı (Ac'ın açtığı ikinci satır)
         e.WaitForAssertion(() => Assert.Equal(2, e.FindAll("[id$='-arac'][id^='islem-bacak-']").Count), Bekle);
         e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")), Bekle);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() =>
         {
             var o = System.Text.Json.JsonDocument.Parse(Assert.Single(FisGovdeleri())).RootElement.GetProperty("odemeler");
@@ -203,7 +203,7 @@ public sealed class SATIS3DovizKurTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Equal(string.Format(S3.OdemeKasasiYok, "EUR"), e.Find("#yildiz-tezgah-not").TextContent.Trim()), Bekle);   // TEMA TEMİZLİĞİ: not satırı
         Assert.Equal(string.Format(S3.OdemeKasasiYok, "EUR"), Kaydet(e).GetAttribute("title"));
         Assert.True(Kaydet(e).HasAttribute("disabled"));
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.Empty(FisGovdeleri());
     }
 

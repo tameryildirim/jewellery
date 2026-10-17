@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 15669e9cb0ac1a3c308a954e2019b77d9c42eb3231bd2b7c53f1407687ada30a · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: ab90ba42805b4f9f1e3a538f5c531f345a1b79f61ffd19a1daecc5837716e337 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -347,10 +347,18 @@
         <li>Ödeme türünü ve kasayı seçin. Ödemeyi birden çok parçaya bölebilirsiniz (bir kısmı nakit, bir kısmı kart gibi).</li>
         <li><strong>Kaydet</strong>'e basın. Başarı bandında fiş numarası yazar; stok düşer, kasa ve cari bakiyeleri güncellenir.</li>
       </ol>
+      <p><strong>Fatura:</strong> satış fişi her satışta kendiliğinden oluşur; ayrıca seçilmez. Müşteri seçiliyse <strong>Kaydet</strong>'e basınca program <strong>Fatura kesilsin mi?</strong> diye sorar:</p>
+      <ul>
+        <li><strong>Evet:</strong> satış ile birlikte fatura kesilir; fatura numarası başarı bandında yazar.</li>
+        <li><strong>Hayır:</strong> yalnız satış fişi oluşur; bantta &quot;Fatura kesilmedi&quot; yazar.</li>
+        <li>Satış kuyumcu fatura sınırını aşıyorsa ve <strong>Hayır</strong> derseniz program <strong>sınırı aştınız, emin misiniz?</strong> diye uyarır. Uyarıda <strong>Evet, fatura kes</strong> derseniz fatura kesilir; <strong>Geri dön</strong> ile satışa dönersiniz. Sınırın üstünde faturasız satış kaydedilmez.</li>
+        <li>Peşin Müşteri'ye fatura kesilmez, bu yüzden soru sorulmaz. Sınırın üstündeki satışta müşteri seçmeden <strong>Kaydet</strong> açılmaz.</li>
+        <li>İşletme Ayarları'ndaki <strong>Satışta fatura önerilsin</strong> açıksa soruda <strong>Evet</strong> öne çıkar; kapalıysa <strong>Hayır</strong> öne çıkar.</li>
+      </ul>
       <div class="kutu ipucu"><p>Tek kasanız varsa kasa seçici hiç görünmez; kasa kendiliğinden kullanılır. Kart ile ödemede POS cihazı ve komisyon alanı açılır.</p></div>
       <h3 id="alis">Alış, hurda alışı ve işçilik</h3>
       <ul>
-        <li><strong>Alış:</strong> tedarikçiden ürün girişi. Stok artar, kasa ya da cari azalır.</li>
+        <li><strong>Alış:</strong> müşteriden eski altın alımı. Ayar ve gram girilir, tutar has fiyatından hesaplanır. Tedarikçiden gelen ürünü stoğa almak için <strong>Satın alma</strong> ekranındaki <strong>Mal geldi</strong> düğmesini kullanın (bkz. <a class="ic" href="#satinalma">Satın alma</a>).</li>
         <li><strong>Hurda alışı:</strong> müşteriden hurda altın alımı. Ayar ve gram girilir; hurda has gram olarak deftere ve hurda stoğuna işlenir. Vergi mükellefi olmayan kişiden alımda gider pusulası kendiliğinden düzenlenir (bkz. <a class="ic" href="#giderpusulasi">Gider Pusulaları</a>).</li>
         <li><strong>İşçilik:</strong> yalnız işçilik bedeli tahsil edilir, stok hareketi olmaz.</li>
       </ul>
@@ -361,8 +369,8 @@
       <h3>Havaleden satış</h3>
       <p>Müşteri ürünün parasını hesabınıza havale ya da EFT ile gönderdiyse satışı bu paradan yaparsınız. Fatura kendiliğinden kesilir, satış fişi de arka planda oluşur.</p>
       <ul>
-        <li><strong>Gelen havaleler:</strong> satış ekranında, Fiş | Fatura seçiminin yanında <strong>Gelen havaleler (sayı)</strong> düğmesi görünür. Bu düğme yalnız, son 30 gün içinde gelmiş ve henüz kullanılmamış havale varsa çıkar. Düğmeye basınca liste açılır; her satırda gönderen, tutar ve tarih yazar (IBAN görünmez). Bu listeyi tezgâhtar da görür.</li>
-        <li><strong>Havaleyi seçin:</strong> müşteri havaleyi gönderen kişi olur, belge <strong>Fatura</strong>, ödeme <strong>Havale</strong> olarak ayarlanır. Satılan ürünleri ekleyin.</li>
+        <li><strong>Gelen havaleler:</strong> satış ekranında, ödeme satırının altında <strong>Gelen havaleler (sayı)</strong> düğmesi görünür. Bu düğme yalnız, son 30 gün içinde gelmiş ve henüz kullanılmamış havale varsa çıkar. Düğmeye basınca liste açılır; her satırda gönderen, tutar ve tarih yazar (IBAN görünmez). Bu listeyi tezgâhtar da görür.</li>
+        <li><strong>Havaleyi seçin:</strong> müşteri havaleyi gönderen kişi olur, ödeme <strong>Havale</strong> olarak ayarlanır; havaleden satışta fatura her zaman kesilir, soru sorulmaz. Satılan ürünleri ekleyin.</li>
         <li><strong>Tutar eşit olmalı:</strong> fişin toplamı gelen paraya eşit olmadan Kaydet açılmaz; eşit olmadığında sebebi yazar. Toplamı fiyat ya da indirimle eşitleyin. Havaleden satışta başka ödeme aracı eklenmez.</li>
         <li><strong>Kaydet:</strong> satış, fatura ve paranın bu satışa bağlanması tek seferde yapılır. Para bankada olduğu için kasaya yazılmaz. Havale listeden düşer.</li>
         <li><strong>Havaleden değil:</strong> havaleyi yanlış seçtiyseniz bu düğmeyle normal satışa dönersiniz; eklediğiniz ürünler kalır.</li>
@@ -465,7 +473,15 @@
     <section id="satinalma">
       <h2><span class="no">17</span> Satın alma</h2>
       <span class="ekran-capa" id="e-satin-alma"></span>
-      <p>Tedarikçiye verdiğiniz siparişi ve gelen malın stoğa alınmasını buradan yürütürsünüz. Ekranı işletme sahibi, müdür ve muhasebe görür; sipariş açıp mal teslim almayı yalnız sahip ve müdür yapar.</p>
+      <p>Tedarikçiden gelen malı stoğa almak ve tedarikçiye sipariş vermek buradan yapılır. Ekranı işletme sahibi, müdür ve muhasebe görür; stoğa almayı ve sipariş açmayı yalnız sahip ve müdür yapar.</p>
+      <p><strong>Mal geldi (tek adım):</strong> mal elinize ulaştıysa en kısa yol budur.</p>
+      <ol class="adimlar">
+        <li><strong>Mal geldi</strong> düğmesine basın.</li>
+        <li>Tedarikçiyi seçin; her satıra ürünü, adedi ve birim alış fiyatını yazın. Birden çok ürün için <strong>+ Satır ekle</strong> kullanın.</li>
+        <li><strong>Stoğa al</strong>'a basın. Mal stoğa girer, tutar tedarikçinin hesabına borç yazılır ve irsaliye kendiliğinden açılır; irsaliye numarası bantta yazar.</li>
+      </ol>
+      <p>Tutar MASAK kimlik eşiğini aşıyorsa ilk <strong>Stoğa al</strong>'da tedarikçinin kimlik beyanı formu açılır; doldurup yeniden <strong>Stoğa al</strong>'a basın. Kayıt herhangi bir nedenle reddedilirse stoğa hiçbir şey girmez ve sebep formun altında yazar.</p>
+      <p><strong>Siparişle (üç adım):</strong> malı önceden sipariş edip sonra teslim almak isterseniz:</p>
       <ol class="adimlar">
         <li><strong>Sipariş:</strong> <strong>+ Yeni sipariş</strong> ile tedarikçiyi ve satırları (ürün, adet, birim fiyat) girin. Sipariş taslak olarak açılır ve düzenlenebilir.</li>
         <li><strong>Onay:</strong> tedarikçiye verdiğiniz siparişi <strong>Onayla</strong> ile onaylayın. Onaylı siparişin satırları artık değişmez.</li>

@@ -140,7 +140,7 @@ public sealed class L1TekFisEkranTestleri : BunitContext
     {
         var e = IkiKalemliFis(mod);
         Assert.Empty(e.FindAll("#islem-kaydet-cokfis"));   // "N ayrı fiş" notu KALKTI
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1, Post("/islemler/satis-fisi")), TimeSpan.FromSeconds(5));
         Assert.Equal(0, Post("/islemler/satis"));   // ⚠ L-1: kalem başına POST YOK
 
@@ -164,7 +164,7 @@ public sealed class L1TekFisEkranTestleri : BunitContext
         var e = IkiKalemliFis(ArayuzModuServisi.Basit);
         Assert.Equal(SatisTuvalSozlugu.Tr.KaydetYazdir, Kaydet(e).TextContent.Trim());
         Assert.Empty(AcilanSekmeler());
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForElement("#islem-yazdir-otomatik", TimeSpan.FromSeconds(5));
         var acilan = Assert.Single(AcilanSekmeler());
         Assert.Equal(FisYazdir.YazdirAdresi("01J00000000000000000000011"), acilan.Arguments[0]);   // fişin İLK kalemi → belge fişin tüm kalemlerini basar
@@ -179,7 +179,7 @@ public sealed class L1TekFisEkranTestleri : BunitContext
     {
         fisReddet = true;
         var e = IkiKalemliFis(ArayuzModuServisi.Basit);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains("tevsik", e.Markup), TimeSpan.FromSeconds(5));
         Assert.Contains(RetMesaji, e.Markup);
         Assert.Equal(1, Post("/islemler/satis-fisi"));
@@ -197,7 +197,7 @@ public sealed class L1TekFisEkranTestleri : BunitContext
         TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
         KalemEkle(e, "u1", 1);
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1, Post("/islemler/satis")), TimeSpan.FromSeconds(5));
         Assert.Equal(0, Post("/islemler/satis-fisi"));
         lock (istekler)

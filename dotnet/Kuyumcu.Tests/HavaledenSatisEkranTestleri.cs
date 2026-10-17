@@ -87,7 +87,7 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
 
         e.WaitForAssertion(() =>
         {
-            Assert.Equal("true", e.Find("#yildiz-belge-fatura").GetAttribute("aria-pressed"));
+            Assert.Empty(e.FindAll("#yildiz-belge-fis, #yildiz-belge-fatura"));   // 17.10: seçim yok; havaleden satış hep faturalı
             Assert.Contains("Selin Ergüven havalesi", e.Find("#yildiz-belge-not").TextContent);
             Assert.NotNull(e.Find("#yildiz-havale-birak"));
             Assert.Empty(e.FindAll("#yildiz-havaleler-ac"));
@@ -99,7 +99,7 @@ public sealed class HavaledenSatisEkranTestleri : BunitContext
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
         e.WaitForAssertion(() => Assert.Single(e.FindAll(".yz-tezgah-kalem")), TimeSpan.FromSeconds(5));
         e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         string? g = null;
         Assert.True(SpinWait.SpinUntil(() =>

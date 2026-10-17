@@ -122,7 +122,7 @@ public sealed partial class SATIS3EkranTestleri
         Assert.Equal(S3.PesinVeNakitAl, metinler[0]);
         Assert.Equal(S3.PesinVeNakitAl, e.Find("#yildiz-tezgah-not").TextContent.Trim());   // TEMA TEMİZLİĞİ: iki modda tek yer tezgâhın not satırı
         Assert.Equal(0, CelisenCift(env));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis"));
     }
 

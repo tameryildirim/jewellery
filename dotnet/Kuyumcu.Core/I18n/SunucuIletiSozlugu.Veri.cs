@@ -1310,6 +1310,13 @@ public static partial class SunucuIletiSozlugu
         ("Bu havale başka bir müşteriye bağlı; fişte aynı müşteriyi seçin.", "This transfer belongs to another customer; select the same customer on the slip."),
         ("Bu havale bir satışta kullanıldı; dekont stornolanamaz. Satış yanlışsa satış iadesi yapın, para iadesi ayrı ödeme olarak yazılır.", "This transfer was used in a sale; the bank entry cannot be reversed. If the sale is wrong, make a sales return; the refund is recorded as a separate payment."),
         ("Bu havale bir satışta kullanıldı; karar geri alınamaz. Satış yanlışsa satış iadesi yapın.", "This transfer was used in a sale; the decision cannot be undone. If the sale is wrong, make a sales return."),
+        // 17.10 Mal geldi (tek adımlı stok girişi)
+        ("Tedarikçi seçin", "Choose a supplier"),
+        ("En az bir ürün satırı girin", "Enter at least one product line"),
+        ("Satır {}: ürün seçin — stok girişi ürünsüz yapılamaz", "Line {}: choose a product — stock cannot be added without a product"),
+        ("Satır {}: adet sıfırdan büyük olmalı", "Line {}: quantity must be greater than zero"),
+        ("Satır {}: birim fiyat sıfır ya da daha büyük olmalı", "Line {}: unit price must be zero or greater"),
+        ("Mal geldi tamamlanamadı: {}", "Goods receipt could not be completed: {}"),
         // ── 17.10 kısmi ödeme / borçlu satış seçimi ──
         ("Seçilen satışa düşülecek tutar sıfırdan büyük ve en çok iki ondalık olmalıdır.", "The amount applied to a selected sale must be greater than zero with at most two decimals."),
         ("Aynı satış iki kez seçilemez.", "The same sale cannot be selected twice."),

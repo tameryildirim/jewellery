@@ -77,7 +77,7 @@ public sealed partial class SATIS3EkranTestleri
         postRed = ("/islemler/satis", YkgMasakRed);
         araIslemVar = true;
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         GA.KimlikFormuAc(e);   // red alanları açtı (TEMA TEMİZLİĞİ: tezgâhta "+ Kimlik bilgisi" çekmecesi)
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#yildiz-tezgah-hata")), Bekle);   // tezgâhın hata satırı (özgün #hata-bandi display:none)
         Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
@@ -148,7 +148,7 @@ public sealed partial class SATIS3EkranTestleri
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
         postRed = null;
         var once = istekler.Count(i => i.Metot == "POST");
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.True(istekler.Count(i => i.Metot == "POST") > once), Bekle);
         var govde = SonPost("/islemler/satis").Govde;
         using var d = JsonDocument.Parse(govde);
@@ -168,7 +168,7 @@ public sealed partial class SATIS3EkranTestleri
         e.WaitForAssertion(() => Assert.Equal(2, YkgKalemSayisi(e)), Bekle);
         postRed = ("/islemler/satis", """{"message":"Peşin Müşteri ile bu tutarda işlem yapılamaz: 13.000,00 TL, tevsik (459 s. VUK GT) eşiğine (12.000,00 TL) ulaşıyor.","alanlar":{"cariId":["gerçek müşteri"]},"statusCode":400}""");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#yildiz-tezgah-hata")), Bekle);   // TEMA TEMİZLİĞİ: red tezgâhın hata satırında
         e.Find("#yildiz-tezgah-degistir").Click();             // "gerçek müşteri seçin" bandı tezgâhın müşteri katmanında (aynı id)
         e.WaitForElement("#islem-pesin-esik", Bekle);

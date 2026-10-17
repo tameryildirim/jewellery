@@ -136,19 +136,11 @@
             </div>
             @* TEZGAH-ODEME tur 2 (hakem KRİTİK "haplar kabın dibinde yarıdan kesik"): hap sırası kaydırma kabının DIŞINDA — hiçbir
                yükseklikte kırpılmaz; açılan alanlar kabın içinde hapların hemen üstünde açılır ve görünür bölgeye kaydırılır. *@
-            @if (B.BelgeGorunur)
+            @if (B.BelgeGorunur && (B.BelgeNotu is not null || B.SeciliHavaleId is not null || B.Havaleler.Count > 0))
             {
-                @* M6 (müşteri 16.10: "fişe gerek yok… girdiğim anda fatura kessin") — Fiş | Fatura. Tür sekmeleriyle AYNI kalıp;
-                   kuyumcu fatura haddi aşılınca Fiş seçilemez (not satırı sebebi söyler). *@
-                <div class="yz-belge" id="yildiz-belge" role="group" aria-label="@SatisBelgeSozlugu.Grup(Dil.Dil)">
-                    <span class="yz-tur-satir">
-                        <button type="button" id="yildiz-belge-fis" aria-pressed="@(B.BelgeTuru == "FIS" ? "true" : "false")"
-                                class="@(B.BelgeTuru == "FIS" ? "yz-tur-sekme yz-tur-sekme--secili" : "yz-tur-sekme")"
-                                disabled="@(B.BelgeZorunlu || B.Kaydediliyor)" @onclick='() => B.BelgeSec.InvokeAsync("FIS")'>@SatisBelgeSozlugu.Fis(Dil.Dil)</button>
-                        <button type="button" id="yildiz-belge-fatura" aria-pressed="@(B.BelgeTuru == "FATURA" ? "true" : "false")"
-                                class="@(B.BelgeTuru == "FATURA" ? "yz-tur-sekme yz-tur-sekme--secili" : "yz-tur-sekme")"
-                                disabled="@B.Kaydediliyor" @onclick='() => B.BelgeSec.InvokeAsync("FATURA")'>@SatisBelgeSozlugu.Fatura(Dil.Dil)</button>
-                    </span>
+                @* 17.10 kurucu: "fiş seçenek olmamalı" — Fiş | Fatura sekmeleri kalktı; fatura Kaydet'te sorulur.
+                   Bu satır yalnız fatura zorunluluk notunu ve gelen havaleleri taşır. *@
+                <div class="yz-belge" id="yildiz-belge">
                     @if (B.BelgeNotu is { } belgeNotu)
                     {
                         <p class="yz-s yz-belge-not" id="yildiz-belge-not">@belgeNotu</p>
@@ -214,6 +206,29 @@
                 {
                     <span class="yz-tezgah-not yz-kotu" id="yildiz-tezgah-hata" role="alert" tabindex="-1" title="@B.HataAyrinti">@hataMetni</span>
                 }
+                @if (B.BelgeSoruAcik)
+                {
+                    @* 17.10 kurucu: "müşteriye sorsun fatura kesilsin mi diye; zorunlu durumda hayır derse emin misiniz
+                       sınırı aştınız uyarısı; evet derse fatura da kesilir". *@
+                    <div class="yz-duzen yz-tezgah-pesin-soru" id="yildiz-belge-soru" role="group" aria-labelledby="yildiz-belge-soru-metin">
+                        @if (B.BelgeSinirMetni is { } sinir)
+                        {
+                            <p class="yz-tezgah-not yz-kotu" id="yildiz-belge-soru-metin">@sinir</p>
+                            <span class="yz-belge-soru-dugmeler">
+                                <button type="button" class="yz-b1" id="yildiz-belge-evet" disabled="@B.Kaydediliyor" @onclick='() => B.BelgeCevap.InvokeAsync("FATURA")'>@SatisBelgeSozlugu.EvetFaturaKes(Dil.Dil)</button>
+                                <button type="button" class="yz-b2" id="yildiz-belge-geri" disabled="@B.Kaydediliyor" @onclick='() => B.BelgeCevap.InvokeAsync("GERI")'>@SatisBelgeSozlugu.GeriDon(Dil.Dil)</button>
+                            </span>
+                        }
+                        else
+                        {
+                            <p class="yz-s" id="yildiz-belge-soru-metin">@SatisBelgeSozlugu.Soru(Dil.Dil)</p>
+                            <span class="yz-belge-soru-dugmeler">
+                                <button type="button" class="@(B.BelgeOneriFatura ? "yz-b1" : "yz-b2")" id="yildiz-belge-evet" disabled="@B.Kaydediliyor" @onclick='() => B.BelgeCevap.InvokeAsync("FATURA")'>@SatisBelgeSozlugu.Evet(Dil.Dil)</button>
+                                <button type="button" class="@(B.BelgeOneriFatura ? "yz-b2" : "yz-b1")" id="yildiz-belge-hayir" disabled="@B.Kaydediliyor" @onclick='() => B.BelgeCevap.InvokeAsync("FIS")'>@SatisBelgeSozlugu.Hayir(Dil.Dil)</button>
+                            </span>
+                        }
+                    </div>
+                }
                 @if (B.PesinSoru is not null)
                 {
                     @* YILDIZ-4C: sunucunun "aynı müşteri mi?" sorusu görünür alanda (özgün yerinde ekran dışındaydı). *@
@@ -264,8 +279,11 @@
                 {
                     <a class="yz-b2" id="yildiz-tezgah-vazgec" href="/">@YildizTezgahSozlugu.Vazgec(Dil.Dil)</a>
                 }
+                @if (!B.BelgeSoruAcik)   @* 17.10: soru açıkken birincil düğme sorunun cevabıdır (ekranda tek birincil) *@
+                {
                 <button type="button" class="yz-b1 yz-tezgah-kaydet" id="yildiz-tezgah-kaydet" disabled="@B.KaydetKilitli"
                         title="@B.KaydetKilitSebebi" @onclick="B.Kaydet">@B.KaydetEtiketi</button>
+                }
             </div>
             </div>
         </aside>

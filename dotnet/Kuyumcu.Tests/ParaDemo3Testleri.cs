@@ -608,7 +608,7 @@ public sealed class ParaDemo3TakasKilitTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Equal(string.Format(p.TakasEksikBasit, beyan), Kilit(e)));
         e.Find("#masak-aciklama").Input("Eski bileziği yenisiyle değiştiriyor");
         e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")));
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/takas")));
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/takas")).Govde).RootElement;
         Assert.Equal("Takı yenileme", g.GetProperty("masak").GetProperty("islemAmaci").GetString());

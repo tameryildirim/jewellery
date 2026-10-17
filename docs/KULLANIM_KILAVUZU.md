@@ -168,11 +168,19 @@ Girişten sonra açılan ana ekrandır. Günün satış ve alış toplamları, h
 5. Ödeme türünü ve kasayı seçin. Ödemeyi birden çok parçaya bölebilirsiniz (bir kısmı nakit, bir kısmı kart gibi).
 6. **Kaydet**'e basın. Başarı bandında fiş numarası yazar; stok düşer, kasa ve cari bakiyeleri güncellenir.
 
+**Fatura:** satış fişi her satışta kendiliğinden oluşur; ayrıca seçilmez. Müşteri seçiliyse **Kaydet**'e basınca program **Fatura kesilsin mi?** diye sorar:
+
+- **Evet:** satış ile birlikte fatura kesilir; fatura numarası başarı bandında yazar.
+- **Hayır:** yalnız satış fişi oluşur; bantta "Fatura kesilmedi" yazar.
+- Satış kuyumcu fatura sınırını aşıyorsa ve **Hayır** derseniz program **sınırı aştınız, emin misiniz?** diye uyarır. Uyarıda **Evet, fatura kes** derseniz fatura kesilir; **Geri dön** ile satışa dönersiniz. Sınırın üstünde faturasız satış kaydedilmez.
+- Peşin Müşteri'ye fatura kesilmez, bu yüzden soru sorulmaz. Sınırın üstündeki satışta müşteri seçmeden **Kaydet** açılmaz.
+- İşletme Ayarları'ndaki **Satışta fatura önerilsin** açıksa soruda **Evet** öne çıkar; kapalıysa **Hayır** öne çıkar.
+
 > [!IPUCU] Tek kasanız varsa kasa seçici hiç görünmez; kasa kendiliğinden kullanılır. Kart ile ödemede POS cihazı ve komisyon alanı açılır.
 
 ### Alış, hurda alışı ve işçilik {#alis}
 
-- **Alış:** tedarikçiden ürün girişi. Stok artar, kasa ya da cari azalır.
+- **Alış:** müşteriden eski altın alımı. Ayar ve gram girilir, tutar has fiyatından hesaplanır. Tedarikçiden gelen ürünü stoğa almak için **Satın alma** ekranındaki **Mal geldi** düğmesini kullanın (bkz. [Satın alma](#satinalma)).
 - **Hurda alışı:** müşteriden hurda altın alımı. Ayar ve gram girilir; hurda has gram olarak deftere ve hurda stoğuna işlenir. Vergi mükellefi olmayan kişiden alımda gider pusulası kendiliğinden düzenlenir (bkz. [Gider Pusulaları](#giderpusulasi)).
 - **İşçilik:** yalnız işçilik bedeli tahsil edilir, stok hareketi olmaz.
 
@@ -188,8 +196,8 @@ Müşteriden eski ürünü alıp yeni ürün verdiğiniz işlemdir. Eski ürün�
 
 Müşteri ürünün parasını hesabınıza havale ya da EFT ile gönderdiyse satışı bu paradan yaparsınız. Fatura kendiliğinden kesilir, satış fişi de arka planda oluşur.
 
-- **Gelen havaleler:** satış ekranında, Fiş | Fatura seçiminin yanında **Gelen havaleler (sayı)** düğmesi görünür. Bu düğme yalnız, son 30 gün içinde gelmiş ve henüz kullanılmamış havale varsa çıkar. Düğmeye basınca liste açılır; her satırda gönderen, tutar ve tarih yazar (IBAN görünmez). Bu listeyi tezgâhtar da görür.
-- **Havaleyi seçin:** müşteri havaleyi gönderen kişi olur, belge **Fatura**, ödeme **Havale** olarak ayarlanır. Satılan ürünleri ekleyin.
+- **Gelen havaleler:** satış ekranında, ödeme satırının altında **Gelen havaleler (sayı)** düğmesi görünür. Bu düğme yalnız, son 30 gün içinde gelmiş ve henüz kullanılmamış havale varsa çıkar. Düğmeye basınca liste açılır; her satırda gönderen, tutar ve tarih yazar (IBAN görünmez). Bu listeyi tezgâhtar da görür.
+- **Havaleyi seçin:** müşteri havaleyi gönderen kişi olur, ödeme **Havale** olarak ayarlanır; havaleden satışta fatura her zaman kesilir, soru sorulmaz. Satılan ürünleri ekleyin.
 - **Tutar eşit olmalı:** fişin toplamı gelen paraya eşit olmadan Kaydet açılmaz; eşit olmadığında sebebi yazar. Toplamı fiyat ya da indirimle eşitleyin. Havaleden satışta başka ödeme aracı eklenmez.
 - **Kaydet:** satış, fatura ve paranın bu satışa bağlanması tek seferde yapılır. Para bankada olduğu için kasaya yazılmaz. Havale listeden düşer.
 - **Havaleden değil:** havaleyi yanlış seçtiyseniz bu düğmeyle normal satışa dönersiniz; eklediğiniz ürünler kalır.
@@ -307,7 +315,17 @@ Stok sayımı, kayıttaki adet ile rafta duran adedi karşılaştırır ve fark�
 
 <!-- ekran: /satin-alma -->
 
-Tedarikçiye verdiğiniz siparişi ve gelen malın stoğa alınmasını buradan yürütürsünüz. Ekranı işletme sahibi, müdür ve muhasebe görür; sipariş açıp mal teslim almayı yalnız sahip ve müdür yapar.
+Tedarikçiden gelen malı stoğa almak ve tedarikçiye sipariş vermek buradan yapılır. Ekranı işletme sahibi, müdür ve muhasebe görür; stoğa almayı ve sipariş açmayı yalnız sahip ve müdür yapar.
+
+**Mal geldi (tek adım):** mal elinize ulaştıysa en kısa yol budur.
+
+1. **Mal geldi** düğmesine basın.
+2. Tedarikçiyi seçin; her satıra ürünü, adedi ve birim alış fiyatını yazın. Birden çok ürün için **+ Satır ekle** kullanın.
+3. **Stoğa al**'a basın. Mal stoğa girer, tutar tedarikçinin hesabına borç yazılır ve irsaliye kendiliğinden açılır; irsaliye numarası bantta yazar.
+
+Tutar MASAK kimlik eşiğini aşıyorsa ilk **Stoğa al**'da tedarikçinin kimlik beyanı formu açılır; doldurup yeniden **Stoğa al**'a basın. Kayıt herhangi bir nedenle reddedilirse stoğa hiçbir şey girmez ve sebep formun altında yazar.
+
+**Siparişle (üç adım):** malı önceden sipariş edip sonra teslim almak isterseniz:
 
 1. **Sipariş:** **+ Yeni sipariş** ile tedarikçiyi ve satırları (ürün, adet, birim fiyat) girin. Sipariş taslak olarak açılır ve düzenlenebilir.
 2. **Onay:** tedarikçiye verdiğiniz siparişi **Onayla** ile onaylayın. Onaylı siparişin satırları artık değişmez.

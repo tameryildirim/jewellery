@@ -535,7 +535,7 @@ public sealed class IadeEkranTestleri : Bunit.BunitContext
         SeciciYardim.Sec(e, "iade-kaynak", "h1");
         e.WaitForElement("#iade-adet");
         e.Find("#iade-adet").Input("2");
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-iade")));

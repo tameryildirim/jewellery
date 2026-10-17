@@ -304,7 +304,7 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         // B4-33: FARK ≠ 0 → kilitli, tıklama POST ATMAZ.
         Assert.True(KaydetKilitli(e));
         lock (istekler) istekler.Clear();
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         lock (istekler) Assert.DoesNotContain(istekler, i => i.Metot == "POST");
 
         // "Kalanı ata" nakit bacağına 840 yazar (altına yazmaz) → FARK 0 → açık.
@@ -312,7 +312,7 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.False(KaydetKilitli(e)));
         Assert.Equal("9160", SeciciYardim.SeciliDeger(e, "altin-tl"));
 
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() =>
         {
             List<(string Metot, string Yol, string Govde)> postlar;

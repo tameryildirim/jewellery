@@ -196,7 +196,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#islem-pro-nakit-not"));
         Assert.Contains(Sozlukler.Tr.Islem.OdemeKart, e.Find("#yildiz-odeme-0").TextContent);   // ödeme satırı da Kart yazar
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Single(Postlar("/islemler/satis")), Bekle);
         var g = Postlar("/islemler/satis")[0].Govde;
         Assert.Contains("\"KART\"", g);
@@ -213,7 +213,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
         KalemEkle(e);
         e.WaitForAssertion(() => Assert.Equal("KART", Odeme(e)), Bekle);
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForElement("#yildiz-tezgah-son-fis", Bekle);   // Yıldız: son kayıt Fark bloğunda (özgün #islem-son-fis bandı gizli)
         TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 0);   // boş fiş çizildi
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-yasal-kapi")), Bekle);
@@ -244,7 +244,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
         Assert.True(TemaTemizligiGDYardimcisi.KaydetKilitli(e));
         TemaTemizligiGDYardimcisi.OdemeSec(e, "KART");
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Single(Postlar("/islemler/satis")), Bekle);
         e.WaitForElement("#yildiz-tezgah-son-fis", Bekle);
         TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 0);
@@ -298,7 +298,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
         Assert.Equal("NAKIT", SeciciYardim.SeciliDeger(e, "islem-odeme"));
         Assert.Empty(e.FindAll("#islem-odeme-otomatik"));
         Assert.True(TemaTemizligiGDYardimcisi.KaydetKilitli(e));
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.Empty(Postlar("/islemler/satis"));
     }
 
@@ -370,7 +370,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
         e.Find("#masak-belge-no").Input("10000000146");
         e.Find("#masak-adres").Input("Kapalıçarşı No:1");
         e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Single(Postlar("/islemler/hurda")), Bekle);
         var g = JsonDocument.Parse(Postlar("/islemler/hurda")[0].Govde).RootElement;
         var s = g.GetProperty("satici");
@@ -492,7 +492,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
         var e = Ekran(ArayuzModuServisi.Profesyonel);
         KalemEkle(e);
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         // Yıldız: son kayıt satırı Fark bloğunda (#yildiz-tezgah-son-fis — görünür alan); özgün #islem-son-fis aynı metin
         e.WaitForElement("#yildiz-tezgah-son-fis", Bekle);
         var metin = e.Find("#yildiz-tezgah-son-fis").TextContent;
@@ -515,7 +515,7 @@ public sealed class KesifP5EkranTestleri : BunitContext
         e.Find("#hurda-satici-tckn").Input("10000000146");
         e.Find("#hurda-satici-adres").Input("Kapalıçarşı No:1");
         e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForElement("#islem-son-fis", Bekle);
         Assert.Matches(@"\d{2}:\d{2}", e.Find("#islem-son-fis").TextContent);
     }

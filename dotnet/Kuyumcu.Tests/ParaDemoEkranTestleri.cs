@@ -486,7 +486,7 @@ public sealed class ParaDemoIslemEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.True(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
         Assert.Equal(ParaDemoSozlugu.Tr.PesinVeresiyeKilit, e.Find("#yildiz-tezgah-kaydet").GetAttribute("title"));
         Assert.Equal(ParaDemoSozlugu.Tr.PesinVeresiyeKilit, e.Find("#yildiz-tezgah-not").TextContent.Trim());
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis"));
 
         // Geri dönüş yolu: gerçek müşteri seçilince kilit kalkar.
@@ -550,7 +550,7 @@ public sealed class ParaDemoIslemEkranTestleri : BunitContext
         e.Find("#takas-satici-adres").Input("Çarşı Mah. 1");
         e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")));
 
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/takas")));
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.Contains("/islemler/takas")).Govde).RootElement;
         var s = g.GetProperty("satici");

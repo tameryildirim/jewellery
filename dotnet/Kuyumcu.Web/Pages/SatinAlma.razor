@@ -38,7 +38,11 @@
 <div class="dikey-bosluk">
     <SayfaBasi Anahtar="satin-alma" Baslik="@SayfaAdi" Aciklama="@M.Aciklama" AciklamaKatli="true">
         <Eylem>
-            <button type="button" class="dugme dugme-birincil" id="sa-yeni" @onclick="YeniAc"
+            @* 17.10 kurucu: stok girişi tek adımlı "Mal geldi" — birincil yol; sipariş (üç adım) ikincil. *@
+            <button type="button" class="dugme dugme-birincil" id="sa-mal-geldi" @onclick="MalGeldiAc"
+                    disabled="@(!YazabilirMi)" aria-disabled="@(YazabilirMi ? "false" : "true")"
+                    title="@(YazabilirMi ? MalGeldiSozlugu.Dugme(Dil.Dil) : M.YazmaYetkisiYok)">@MalGeldiSozlugu.Dugme(Dil.Dil)</button>
+            <button type="button" class="dugme dugme-ikincil" id="sa-yeni" @onclick="YeniAc"
                     disabled="@(!YazabilirMi)" aria-disabled="@(YazabilirMi ? "false" : "true")"
                     title="@(YazabilirMi ? M.YeniSiparis : M.YazmaYetkisiYok)">@M.YeniSiparis</button>
         </Eylem>
@@ -95,9 +99,10 @@
 @* ── Sipariş formu: OLUŞTUR = DÜZENLE (UX-S26) — TEK DÜZENLEME KALIBI: Cekmece ── *@
 <CascadingValue Value="sayiKapisi" IsFixed="true">
 <Cekmece Acik="@formAcik" Varlik="sa-form"
-         Baslik="@(formSiparisId is null ? M.FormYeniBaslik : M.FormDuzenleBaslik)"
+         Baslik="@(malGeldiKipi ? MalGeldiSozlugu.Baslik(Dil.Dil) : formSiparisId is null ? M.FormYeniBaslik : M.FormDuzenleBaslik)"
          Kapat="FormKapat" Kaydet="FormKaydet" Kaydediliyor="@kaydediliyor"
-         KaydetAktif="@(FormKilidi is null && !kaydediliyor)" KilitSebebi="@FormKilidi">
+         KaydetMetni="@(malGeldiKipi ? MalGeldiSozlugu.Kaydet(Dil.Dil) : null)"
+         KaydetAktif="@(FormKilidi is null && FormMasakKilidi is null && !kaydediliyor)" KilitSebebi="@(FormKilidi ?? FormMasakKilidi)">
     <div class="form-dikey">
         <div class="alan">
             @* P-36b: eski kayıt seçicinin YENİ kullanımı açılmaz (SECICI_UZAK_KIP) — ortak Secici uzak kipi; düzenlemede ad sunucudan. *@
@@ -155,6 +160,16 @@
             <Metin ElemanId="sa-form-hesap" Etiket="@M.HesapKodu" EnFazla="@AlanSinirlari.HesapKodu"
                    Deger="@fHesap" DegerChanged="@(v => fHesap = v)" />
         </ProAlan>
+        @if (FormMasakAcik)
+        {
+            @* 17.10 Mal geldi: eşik üstü alışta kimlik beyanı (sipariş detayındaki ile AYNI ortak form). *@
+            <div class="zo-masak-dikey" id="sa-form-masak">
+                <MasakFormu Model="masak" Tutar="FormTutari" Esik="masakEsik!" Sade="@Dil.BasitMi"
+                            Gereksinim="fMasakGereksinim!" Degisti="MasakAlaniDegisti"
+                            ToplamBaslikSablonu="@M.MasakToplamBaslik" ToplamAmacBaslikSablonu="@M.MasakToplamAmacBaslik"
+                            FonEtiketi="@M.MasakFonEtiketi" EkBelgeEtiketi="@M.MasakEkBelgeEtiketi" />
+            </div>
+        }
         <HataBandi Mesaj="@formHata" Id="sa-form-hata" />
     </div>
 </Cekmece>
@@ -443,6 +458,7 @@
     private void YeniAc()
     {
         if (!YazabilirMi) return;
+        malGeldiKipi = false;
         formSiparisId = null; formSiparisDamga = null;
         fTedarikciId = null; fTedarikciAdi = null;
         fAciklama = null; fHesap = null; fBeklenen = null;
@@ -468,7 +484,7 @@
         formAcik = true;
     }
 
-    private void FormKapat() { formAcik = false; formHata = null; }
+    private void FormKapat() { formAcik = false; formHata = null; malGeldiKipi = false; masak = new(); }
 
     private void TedarikciSecildi(string? v) { fTedarikciId = v; }
     private void SatirEkle() { if (satirlar.Count < AzamiSatir) satirlar.Add(new SatinAlmaFormSatiri { Adet = 1m }); }
@@ -483,6 +499,7 @@
 
     private async Task FormKaydet()
     {
+        if (malGeldiKipi) { await MalGeldiKaydet(); return; }   // 17.10 tek adımlı "Mal geldi" (SatinAlma.MalGeldi.cs)
         formDenendi = true;
         if (FormKilidi is not null || kaydediliyor) return;
         kaydediliyor = true;

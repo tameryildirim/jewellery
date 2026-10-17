@@ -43,7 +43,7 @@ public sealed partial class SATIS3EkranTestleri
         Assert.Equal(metin, e.Find("#hurda-yetki-yok").TextContent.Trim());
         e.WaitForAssertion(() => Assert.True(GA.Kaydet(e).HasAttribute("disabled")));
         Assert.Equal(metin, GA.Kaydet(e).GetAttribute("title"));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.Equal(0, HurdaPostSayisi());   // canlıda 403 hiç tetiklenmez
     }
 
@@ -53,7 +53,7 @@ public sealed partial class SATIS3EkranTestleri
         var e = IB2HurdaDolu(ArayuzModuServisi.Profesyonel, "MUHASEBE");
         Assert.Empty(e.FindAll("#hurda-yetki-yok"));
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1, HurdaPostSayisi()));
     }
 
@@ -67,14 +67,14 @@ public sealed partial class SATIS3EkranTestleri
         e.Find("#hurda-fiyat").Input("2000");   // oran dışı (3.400–7.480)
         e.WaitForAssertion(() => Assert.True(GA.Kaydet(e).HasAttribute("disabled")));
         Assert.Equal(string.Format(IslemBant2Sozlugu.Tr.BantOnayBekliyor, KurBantSozlugu.Tr.OnayEtiket), GA.Kaydet(e).GetAttribute("title"));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.Equal(0, HurdaPostSayisi());
         e.Find("#hurda-bant-onay").Change(true);
         e.Find("#hurda-bant-gerekce").Input("kısa");
         e.WaitForAssertion(() => Assert.True(GA.Kaydet(e).HasAttribute("disabled")));
         e.Find("#hurda-bant-gerekce").Input(IB2Gerekce);
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1, HurdaPostSayisi()));
         Assert.Contains("\"bantOnay\":true", SonPost("/islemler/hurda").Govde);
     }
@@ -92,7 +92,7 @@ public sealed partial class SATIS3EkranTestleri
         e.WaitForAssertion(() => Assert.True(GA.Kaydet(e).HasAttribute("disabled")));
         Assert.Equal("true", e.Find("#hurda-fiyat").GetAttribute("aria-invalid"));
         Assert.Equal("—", e.Find("#hurda-hesap-tutar").TextContent.Trim());   // eksi/0/harf/mutlak dışı: kutu altında tutar YOK
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.Equal(0, HurdaPostSayisi());
     }
 

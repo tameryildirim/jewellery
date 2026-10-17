@@ -418,7 +418,7 @@ public sealed class EksikKucukSatisTestleri : BunitContext
     private JsonElement SatisGovdesi(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")));
         return JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")).Govde).RootElement;
     }

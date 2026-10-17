@@ -174,7 +174,7 @@ public sealed class DovizBacagiEkranTestleri : BunitContext
         // SATIS-3: tek USD kasası otomatik — seçici yok, gövdede kasaId = kusd (aşağıda).
 
         e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
         {

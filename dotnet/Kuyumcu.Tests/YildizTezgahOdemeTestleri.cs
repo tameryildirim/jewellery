@@ -244,7 +244,7 @@ public sealed class YildizTezgahOdemeTestleri : BunitContext
         Assert.StartsWith("Kart", e.Find("#yildiz-odeme-0 .yz-tezgah-arac").TextContent.Trim());
         Assert.Equal("0 ₺", e.Find("#yildiz-tezgah-fark-tutar").TextContent.Replace('\u00a0', ' ').Trim());
         Assert.Empty(e.FindAll("#yildiz-tezgah-tek-odeme"));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         var oto = Govde("/islemler/satis");
         Assert.Contains("\"odemeTuru\":\"KART\"", oto);
 
@@ -257,7 +257,7 @@ public sealed class YildizTezgahOdemeTestleri : BunitContext
         SeciciYardim.Sec(m, "islem-bacak-0-arac", "KART");
         m.Find("#yildiz-tezgah-tek-odeme").Click();
         m.WaitForAssertion(() => Assert.Empty(m.FindAll(".bacak-satiri")), TimeSpan.FromSeconds(5));
-        m.Find("#yildiz-tezgah-kaydet").Click();
+        m.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(m);
         Assert.Equal(Govde("/islemler/satis"), oto);
     }
 
@@ -281,7 +281,7 @@ public sealed class YildizTezgahOdemeTestleri : BunitContext
         e.Find("#yildiz-musteri-sec-c1").Click();
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#yildiz-tezgah-acik-hesap")), TimeSpan.FromSeconds(5));
         Assert.Contains("yz-b2", e.Find("#yildiz-tezgah-acik-hesap").ClassList);
-        e.Find("#yildiz-tezgah-acik-hesap").Click();
+        e.Find("#yildiz-tezgah-acik-hesap").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         var g = JsonNode.Parse(Govde("/islemler/satis-fisi"))!;
         var bacak = g["odemeler"]!.AsArray().Select(x => $"{x!["arac"]}={(decimal)x["tutarTl"]!}").ToList();
         Assert.Contains("VERESIYE=6000", bacak);

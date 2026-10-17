@@ -52,13 +52,17 @@ public sealed class YildizTezgahBaglami
     /// <summary>BASİT tek ödeme: Nakit / Kart / Havale seçimi (sayfanın BasitOdemeSecenekleri; null = seçici özgün ödeme alanında).</summary>
     public IReadOnlyList<Kuyumcu.Web.Bilesenler.SecenekOgesi>? OdemeSecenekleri { get; init; }
     public string OdemeTuru { get; init; } = "NAKIT";
-    /// <summary>M6 (16.10) — satış belgesi seçimi (Fiş | Fatura). Yalnız satışta görünür.</summary>
+    /// <summary>Satışta belge satırı (fatura notu · gelen havaleler). 17.10: Fiş | Fatura seçimi YOK.</summary>
     public bool BelgeGorunur { get; init; }
-    public string BelgeTuru { get; init; } = "FIS";
-    /// <summary>Kuyumcu fatura haddi aşıldı: Fatura kilitli seçili.</summary>
-    public bool BelgeZorunlu { get; init; }
     public string? BelgeNotu { get; init; }
-    public EventCallback<string> BelgeSec { get; init; }
+    /// <summary>17.10 kurucu — Kaydet'te "Fatura kesilsin mi?" sorusu açık.</summary>
+    public bool BelgeSoruAcik { get; init; }
+    /// <summary>Hayır dendi ve fatura sınırı aşıldı: "emin misiniz" metni (null = uyarı yok).</summary>
+    public string? BelgeSinirMetni { get; init; }
+    /// <summary>İşletme ayarı: Evet birincil düğme mi (değilse Hayır birincil).</summary>
+    public bool BelgeOneriFatura { get; init; }
+    /// <summary>Cevap: "FATURA" | "FIS" | "GERI".</summary>
+    public EventCallback<string> BelgeCevap { get; init; }
     /// <summary>17.10 havaleden satış — tezgâhın seçebileceği bekleyen gelen havaleler (yalnız satışta).</summary>
     public IReadOnlyList<YildizHavaleOgesi> Havaleler { get; init; } = [];
     /// <summary>Seçili havale (tezgâh havaleyi satıyor); null = normal satış.</summary>

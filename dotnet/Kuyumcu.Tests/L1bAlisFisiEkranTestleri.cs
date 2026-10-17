@@ -118,7 +118,7 @@ public sealed class L1bAlisFisiEkranTestleri : BunitContext
     public void Iki_kalemli_ALIS_TEK_alis_fisi_istegi_kalem_basi_alis_SIFIR_govde_ayristirilir()
     {
         var e = Hazir(2);
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1, Post("/islemler/alis-fisi")), TimeSpan.FromSeconds(5));
         Assert.Equal(0, Post("/islemler/alis"));   // ⚠ L-1b: kalem başına POST YOK
 
@@ -146,7 +146,7 @@ public sealed class L1bAlisFisiEkranTestleri : BunitContext
     {
         fisReddet = true;
         var e = Hazir(2);
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(RetMesaji, e.Markup), TimeSpan.FromSeconds(5));
         Assert.Equal(1, Post("/islemler/alis-fisi"));
         Assert.Equal(0, Post("/islemler/alis"));
@@ -158,7 +158,7 @@ public sealed class L1bAlisFisiEkranTestleri : BunitContext
     public void Tek_kalemli_ALIS_bugunku_alis_ucunda_kalir_davranis_DEGISMEDI()
     {
         var e = Hazir(1);
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1, Post("/islemler/alis")), TimeSpan.FromSeconds(5));
         Assert.Equal(0, Post("/islemler/alis-fisi"));
         var g = Govdesi("/islemler/alis");

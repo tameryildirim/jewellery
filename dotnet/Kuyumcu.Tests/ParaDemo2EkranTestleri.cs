@@ -429,7 +429,7 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#islem-bacak-0-arac"));
         Assert.StartsWith(Sozlukler.Tr.Islem.OdemeHavale, e.Find("#yildiz-odeme-0 .yz-tezgah-arac").TextContent.Trim(), StringComparison.Ordinal);
         e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis")));
         Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi"));   // karma (KARMA etiketi) yolu değil
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST").Govde).RootElement;
@@ -518,7 +518,7 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
         var e = KalemEkle(Ekran(ArayuzModuServisi.Profesyonel));
         OdemeDuzeniAc(e);
         e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")));
         e.WaitForElement("#yildiz-tezgah-son-fis");
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#yildiz-tezgah-odeme-duzen")));
@@ -554,7 +554,7 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Equal(string.Format(kalip, "adres"), e.Find("#islem-kaydet-kilit").TextContent.Trim()));
         e.Find("#masak-adres").Input("Çarşı Mah. 1");
         e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")));
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/takas")));
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/takas")).Govde).RootElement;
         Assert.Equal("10000000146", g.GetProperty("satici").GetProperty("tckn").GetString());

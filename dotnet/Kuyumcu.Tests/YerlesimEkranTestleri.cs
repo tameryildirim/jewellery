@@ -290,7 +290,7 @@ public sealed class YerlesimUyariEkranTestleri : BunitContext
         // gitmez ve sunucu uyarı döndürür.
         var e = SatisEkrani();
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForElement("#islem-yerlesim-uyari");
         Assert.Contains("A-VITRIN", e.Find("#islem-yerlesim-uyari").TextContent);

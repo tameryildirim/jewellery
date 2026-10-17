@@ -204,7 +204,7 @@ public sealed class EKSIKKUCUKSatisSinirTestleri : BunitContext
     private decimal GidenFiyat(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")));
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")).Govde).RootElement;
         return (g.TryGetProperty("kalemler", out var k) ? k[0] : g).GetProperty("birimFiyatTl").GetDecimal();

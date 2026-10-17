@@ -248,7 +248,7 @@ public sealed class UX4bEkranTestleri : BunitContext
         var e = KurEkrani();
         e.FindAll("button").First(b => b.TextContent.Contains("Manuel")).Click();
         e.Find("#m-gbp").Input("44.75");
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         var istek = Assert.Single(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/kur/manuel"));
         Assert.Equal("44.75", Alan(istek.Govde, "gbpTry"));
@@ -309,7 +309,7 @@ public sealed class UX4bEkranTestleri : BunitContext
         e.Find("#cari-ad").Input("Toptancı A");
         e.Find("#cari-vergino").Input("1234567890");
         SeciciYardim.Sec(e, "cari-fiyat-listesi", "fl1");
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         var istek = Assert.Single(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/cari"));
         Assert.Equal("1234567890", Alan(istek.Govde, "vergiNo"));
@@ -408,7 +408,7 @@ public sealed class UX4bEkranTestleri : BunitContext
         var e = UrunEkrani();
         e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
         e.WaitForElement("#d-konsinye");
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         var istek = Assert.Single(istekler, i => i.Metot == "PATCH" && i.Yol.EndsWith("/urunler/u1"));
         Assert.Equal("True", Alan(istek.Govde, "konsinye"));
@@ -499,7 +499,7 @@ public sealed class UX4bEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
         istekler.Clear();
 
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
 

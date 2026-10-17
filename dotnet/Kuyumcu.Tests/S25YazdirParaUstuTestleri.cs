@@ -145,7 +145,7 @@ public sealed class S25YazdirParaUstuEkranTestleri : BunitContext
     {
         e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"),
             "Kaydet kilitli: " + string.Join(" | ", e.FindAll("#islem-kaydet-kilit, .alan-hata").Select(x => x.TextContent.Trim()))));
-        e.Find("#islem-kaydet").Click();
+        e.Find("#islem-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
     }
 
     /// <summary>Karma: "+ Başka ödeme" → ilk satır 6.000 nakit, ikinci satır kalan 4.000 kart.</summary>

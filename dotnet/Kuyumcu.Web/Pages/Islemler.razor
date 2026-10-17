@@ -480,7 +480,7 @@
     {
         if (FisFark.AcikHesapKilidi(BacakKalan, cariId, pesinCariId, bacaklar,
                 Kuyumcu.Core.I18n.TezgahFisiSozlugu.Al(Dil.Dil)) is { } kilit) { hata = kilit; return; }
-        bacaklar.Add(FisFark.AcikHesapBacagi(BacakKalan));
+        if (BelgeSorusuAc()) { belgeSonraAcikHesap = true; return; } bacaklar.Add(FisFark.AcikHesapBacagi(BacakKalan));   // 17.10: fatura sorusu veresiye satırı eklenmeden önce
         await Kaydet();
     }
 
@@ -555,7 +555,7 @@
     private async Task Vazgec()
     {
         kalemler.Clear(); fisIskontoYuzde = null; indirimAcik = false; aciklama = ""; hata = null; masakSunucudanGerekli = false;
-        cariId = ""; PesinOnSec(); giris.Sifirla(); form.Temizle();
+        cariId = ""; PesinOnSec(); giris.Sifirla(); form.Temizle(); belgeTuru = null; belgeSorusuAcik = belgeSinirUyarisi = false;   // 17.10: fatura cevabı fişe özgü
         if (karmaOdeme) await TekOdemeyeDon();
         await TevsikOnizle();
     }
@@ -1089,7 +1089,7 @@
     }
 
     private async Task Kaydet()
-    {
+    {   if (BelgeSorusuAc()) return;   // 17.10 kurucu: müşterili satışta "Fatura kesilsin mi?" önce sorulur (Islemler.Belge.cs)
         hata = null;
         pesinKimlikGerekli = false;   // PAKET S2-3: bant yalnız SON denemenin reddini gösterir
         // Kapı bayrağı her denemede SIFIRLANIR: bir önceki reddin açtığı alan,
@@ -1338,7 +1338,7 @@
         // başarı: formu sıfırla, kasa bakiyelerini tazele, bandı 3 sn göster
         var taksitSorgu = FisTaksitSorgusu(); SonKaydiTut(); kalemler.Clear();   // T-S1 (QA-10): kaydedilenin özeti bir sonraki Kaydet'e kadar görünür
         fisIskontoYuzde = null; indirimAcik = false;   // PAKET P-16: bir sonraki fişe iskonto sızmaz
-        cariId = ""; belgeTuru = belgeVarsayilan;   // M6: sonraki satış işletme varsayılanıyla açılır
+        cariId = ""; belgeTuru = null;   // 17.10: sonraki satışta fatura yeniden sorulur
         PesinOnSec();             // PAKET B-3: yeni fiş yine Peşin Müşteri ile açılır
         aciklama = "";
         // DP4-03 — satıcı kimliği FİŞE ÖZGÜDÜR, sonraki alışa taşınmaz.

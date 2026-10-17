@@ -576,7 +576,7 @@ public sealed class P10PosBacagiEkranTestleri : BunitContext
         SeciciYardim.Sec(e, "islem-bacak-0-taksit", "6");
         KartVeNakitTutarlari(e);
         istekler.Clear();
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
@@ -600,7 +600,7 @@ public sealed class P10PosBacagiEkranTestleri : BunitContext
 
         KartVeNakitTutarlari(e);
         istekler.Clear();
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
@@ -622,7 +622,7 @@ public sealed class P10PosBacagiEkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#islem-bacak-0-taksit, #islem-bacak-0-taksit-ac"));
         KartVeNakitTutarlari(e);
         istekler.Clear();
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
         var g = System.Text.Json.JsonDocument.Parse(istekler.First(i => i.Metot == "POST").Govde).RootElement;
         var pc = g.GetProperty("odemeler")[0].TryGetProperty("posCihazId", out var v) ? v.ToString() : "";

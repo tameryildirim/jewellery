@@ -109,7 +109,7 @@ public sealed class PesinMusteriEkranTestleri : BunitContext
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
         TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")));
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")).Govde).RootElement;

@@ -118,7 +118,7 @@ public sealed class Yasal3EkranTestleri : BunitContext
     {
         satisIlkRed = """{"message":"Az önce bu kasada Peşin Müşteri ile işlem yapıldı. Bu, aynı müşteri mi?","alanlar":{"ayniKisiBeyani":["x"]},"kod":"PESIN_ART_ARDA_SORU","error":"Bad Request","statusCode":400}""";
         var e = Pos();
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForElement("#pesin-soru");
         Assert.Equal(Yasal3Sozlugu.Tr.SoruMetin, e.Find("#pesin-soru-metin").TextContent.Trim());
         Assert.Empty(e.FindAll("#hata-bandi, #yildiz-tezgah-hata"));   // soru, hata bandının YERİNE (Yıldız: Kaydet hatası #yildiz-tezgah-hata)
@@ -140,7 +140,7 @@ public sealed class Yasal3EkranTestleri : BunitContext
     {
         satisIlkRed = """{"message":"Az önce…","alanlar":{"ayniKisiBeyani":["x"]},"kod":"PESIN_ART_ARDA_SORU","statusCode":400}""";
         var e = Pos();
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForElement("#pesin-soru");
         var once = istekler.Count(i => i.Metot == "POST");
         e.Find("#pesin-soru-evet").Click();
@@ -155,7 +155,7 @@ public sealed class Yasal3EkranTestleri : BunitContext
     {
         satisIlkRed = """{"message":"Bu kişiyle işlem yapılamaz (yasal liste). Yöneticinize haber verin.","alanlar":{"cariId":["x"]},"kod":"YAPTIRIM_ENGEL","statusCode":400}""";
         var e = Pos();
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(Yasal3Sozlugu.Tr.EngelMetin, e.Find("#yildiz-tezgah-hata").TextContent.Trim()));
         e.WaitForAssertion(() => Assert.True(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
         Assert.Contains(Yasal3Sozlugu.Tr.EngelKilit, e.Markup, StringComparison.Ordinal);   // UX-S30: sebep yazılı

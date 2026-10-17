@@ -439,6 +439,11 @@ public sealed class S22TezgahFisiTestleri : BunitContext
         Assert.Equal(M.AcikHesapKaydet, e.Find("#yildiz-tezgah-acik-hesap").TextContent.Trim());
 
         e.Find("#yildiz-tezgah-acik-hesap").Click();
+        // 17.10 kurucu: müşterili satışta önce "Fatura kesilsin mi?" — cevaptan önce kayıt ve veresiye satırı yok.
+        e.WaitForElement("#yildiz-belge-hayir");
+        Assert.Empty(FisPostlari());
+        Assert.Empty(e.FindAll("#yildiz-odeme-1"));
+        e.Find("#yildiz-belge-hayir").Click();
 
         e.WaitForAssertion(() => Assert.Single(FisPostlari()));
         var g = FisPostlari()[0];

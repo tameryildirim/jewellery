@@ -178,7 +178,7 @@ public sealed class P16EkranTestleri : BunitContext
         istekler.Clear();
 
         TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
-        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() => Assert.True(Gitti("POST", "/islemler/satis-fisi")));
         var govde = istekler.Single(i => i.Metot == "POST" && i.Yol.Contains("satis-fisi")).Govde;

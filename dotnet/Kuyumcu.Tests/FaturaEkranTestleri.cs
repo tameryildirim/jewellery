@@ -499,7 +499,7 @@ public sealed class FaturaEkranTestleri : BunitContext
         e.Find("#fk-miktar-0").Input("1");
         e.Find("#fk-fiyat-0").Input("1000");
         istekler.Clear();
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
         {
@@ -632,7 +632,7 @@ public sealed class FaturaEkranTestleri : BunitContext
         SeciciSec(e, "fatura-cari", "c1");
         e.Find("#fatura-toplam").Input("1000");
         istekler.Clear();
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
         {
@@ -743,7 +743,7 @@ public sealed class FaturaEkranTestleri : BunitContext
         SeciciSec(e, "fatura-islem", "h1");
         e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
         istekler.Clear();
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
         {
@@ -762,7 +762,7 @@ public sealed class FaturaEkranTestleri : BunitContext
         SeciciSec(e, "fatura-cari", "c1");
         e.Find("#fatura-toplam").Input("1000");
         istekler.Clear();
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
         {

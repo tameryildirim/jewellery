@@ -420,7 +420,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.DoesNotContain("bacak", e.Find("#islem-bacaklar").TextContent, StringComparison.OrdinalIgnoreCase);
         // t3 hakemi ("fark üç kez"): TEMA TEMİZLİĞİ 17.10 — tezgâhta iki modda da "Alınan toplam" satırı yok (fark Fark bloğunda).
         Assert.DoesNotContain(S3.OdemeToplami, e.Find("#islem-bacaklar").TextContent);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")), Bekle);
         var odemeler = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement.GetProperty("odemeler");
         Assert.Equal(1, odemeler.GetArrayLength());
@@ -505,7 +505,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.Find("#altin-gram").Input("2");
         e.Find("#altin-fiyat").Input("4000");   // ISLEM-BANT-2: 1.000 oran dışıydı (bant 3.400–7.480 → Kaydet kilitli)
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")), Bekle);
         var odemeler = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement.GetProperty("odemeler");
         var altin = odemeler.EnumerateArray().Single(o => o.GetProperty("arac").GetString() == "ALTIN");
@@ -586,7 +586,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#islem-bacak-1-kasa"));
         e.Find("#islem-bacak-1-tutar").Input("4000");   // ikinci ödeme dolar → ilk satır kalanı (6.000) üstlenir
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")));
         var g = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement;
         Assert.Equal("ks1", g.GetProperty("odemeler")[0].GetProperty("kasaId").GetString());
@@ -602,7 +602,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Equal("6000", SeciciYardim.SeciliDeger(e, "islem-bacak-0-tutar")));
         Assert.Equal(S3.FarkTamam, e.Find("#islem-bacak-fark-metin").TextContent.Trim());
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")));
         var od = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement.GetProperty("odemeler");
         Assert.Equal(2, od.GetArrayLength());
@@ -659,7 +659,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.WaitForElement("#islem-bacak-0-taksit");
         SeciciYardim.Sec(e, "islem-bacak-0-taksit", "3");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")));
         var b = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement.GetProperty("odemeler")[0];
         Assert.Equal("pc1", b.GetProperty("posCihazId").GetString());
@@ -689,7 +689,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-bacak-1-arac"));
         Assert.Equal("4000", SeciciYardim.SeciliDeger(e, "islem-bacak-1-tutar"));
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")));
         var od = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement.GetProperty("odemeler");
         Assert.Equal(2, od.GetArrayLength());
@@ -768,7 +768,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         // SATIS-3 t10: tutar sunucu haddini aşıyor → Nakit'te Kaydet kilitli (istemci yasal kilidi); havaleye geçilir.
         if (e.FindAll("#islem-odeme").Count > 0) GA.OdemeSec(e, "HAVALE");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/hurda")));
         var g = SonPost("/islemler/hurda").Govde;
         Assert.Contains("Kapalıçarşı No:1", System.Text.RegularExpressions.Regex.Unescape(g));
@@ -835,7 +835,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.Find("#islem-aciklama").Input("vitrin sayımı");
         e.WaitForAssertion(() => Assert.True(e.Find("#islem-diger-ayrinti").HasAttribute("open")));
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/alis")));
         Assert.Contains("vitrin sayımı", System.Text.RegularExpressions.Regex.Unescape(SonPost("/islemler/alis").Govde));
     }
@@ -882,7 +882,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         ParaDemoEkranYardim.TakasSaticiDoldur(e);   // PARA-DEMO md.3: takasta satıcı kimliği zorunlu
         e.Find("#takas-eski-gram").Input("5");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains("\"yeniUrunId\":\"u1\"", SonPost("/islemler/takas").Govde));
     }
 
@@ -1023,7 +1023,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.Find("#yildiz-tezgah-para-ustu").Click();
         e.WaitForElement("#islem-alinan", Bekle);
         e.Find("#islem-alinan").Input("20000");
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")), Bekle);
         Assert.DoesNotContain("20000", SonPost("/islemler/satis-fisi").Govde);   // alınan nakit gövdeye GİRMEZ
     }
@@ -1150,7 +1150,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         var e = KarmaFis();
         e.Find("#islem-bacak-1-tutar").Input("4000");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")));
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-bacaklar .bacak-satiri")), Bekle);   // tek ödeme varsayılanı
         e.WaitForElement("#yildiz-odeme-0", Bekle);                                                  // tezgâhın tek ödeme satırı geri geldi
@@ -1168,7 +1168,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         GA.MusteriSec(e, "c1");
         GA.OdemeSec(e, "KART");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")), Bekle);
         e.WaitForElement("#yildiz-tezgah-son-fis", Bekle);   // kayıt sonrası sıfırlama bitti (TEMA TEMİZLİĞİ: tezgâhın sonuç satırı)
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-kalem-tablo tbody tr.fis-tuval-satir, #islem-kalem-pro tr.fis-pro-satir, .yz-tezgah-kalem")), Bekle);
@@ -1199,7 +1199,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.Equal(2, e.FindAll("#islem-bacaklar .bacak-satiri").Count);   // SİLİNMEDİ
         Assert.Equal("NAKIT", SeciciYardim.SeciliDeger(e, "islem-bacak-0-arac"));
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")), Bekle);
         var odemeler = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement.GetProperty("odemeler");
         Assert.Equal(1, odemeler.GetArrayLength());   // 0 ₺'lik satır gönderilmez
@@ -1226,7 +1226,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.Find("#islem-bacak-kalan-ata").Click();
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
         Assert.Equal(2, e.FindAll("#islem-bacaklar .bacak-satiri").Count);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi")), Bekle);
         var odemeler = JsonDocument.Parse(SonPost("/islemler/satis-fisi").Govde).RootElement.GetProperty("odemeler");
         Assert.Equal(1, odemeler.GetArrayLength());
@@ -1244,7 +1244,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         GA.NakitSec(e);   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
         e.WaitForAssertion(() => Assert.True(GA.Kaydet(e).HasAttribute("disabled")), Bekle);
         Assert.Equal(S3.PesinVeNakitAl, GA.Kaydet(e).GetAttribute("title"));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis"));
     }
 
@@ -1292,7 +1292,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
     {
         postRed = ("/islemler/satis", $$"""{"message":"{{TevsikReddi}}","statusCode":400}""");
         var b = TekKalemli(ArayuzModuServisi.Basit);
-        GA.Kaydet(b).Click();
+        GA.Kaydet(b).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(b);
         // TEMA TEMİZLİĞİ 17.10: tezgâhta sunucu hatası Fark bloğunun hata satırında (#yildiz-tezgah-hata; özgün #hata-bandi
         // display:none); ham dayanak satırın ipucunda (title = sayfanın SunucuAyrinti'si) — yutulmaz.
         b.WaitForAssertion(() => Assert.Equal(string.Format(S3.NakitHaddiKilit, Bicim.Tl(50000m)), b.Find("#yildiz-tezgah-hata").TextContent.Trim()), Bekle);
@@ -1305,7 +1305,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
     {
         postRed = ("/islemler/satis", $$"""{"message":"{{TevsikReddi}}","statusCode":400}""");
         var p = TekKalemli(ArayuzModuServisi.Profesyonel);
-        GA.Kaydet(p).Click();
+        GA.Kaydet(p).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(p);
         p.WaitForAssertion(() => Assert.Contains("VUK", p.Find("#yildiz-tezgah-hata").TextContent), Bekle);   // TEMA TEMİZLİĞİ: tezgâhın hata satırı
         Assert.Contains(Bicim.Tl(40000m), p.Find("#yildiz-tezgah-hata").TextContent);
         Assert.DoesNotContain("40.000,00 TL", p.Find("#yildiz-tezgah-hata").TextContent);
@@ -1318,7 +1318,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
     {
         postRed = ("/islemler/satis", """{"message":"Stok yetersiz.","statusCode":400}""");
         var e = TekKalemli(ArayuzModuServisi.Basit);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains("Stok yetersiz.", e.Find("#yildiz-tezgah-hata").TextContent), Bekle);   // TEMA TEMİZLİĞİ: tezgâhın hata satırı
         GA.MusteriSec(e, "c1");
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#yildiz-tezgah-hata, #hata-bandi")), Bekle);
@@ -1334,7 +1334,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         SeciciYardim.Sec(e, "iade-kaynak", "h1");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
         Assert.Empty(e.FindAll(".kart--masak"));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);   // alanlar GERÇEKTEN açıldı
         Assert.Equal(S3.SunucuKimlikGerekli, e.Find("#hata-bandi").TextContent.Trim());
         Assert.DoesNotContain("masak.aciklama", e.Find("#hata-bandi").TextContent);
@@ -1349,7 +1349,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.WaitForElement("#iade-kaynak", Bekle);
         SeciciYardim.Sec(e, "iade-kaynak", "h1");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
         Assert.DoesNotContain("masak.aciklama", e.Find("#hata-bandi").TextContent);
         Assert.Contains(Bicim.Tl(185000m), e.Find("#hata-bandi").TextContent);
@@ -1488,7 +1488,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         GA.OdemeSec(e, "KART");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
         Assert.NotEmpty(e.FindAll("#islem-odeme"));   // kart seçilince BASİT'te "Nakit" diye gizlenmez
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal("KART",
             JsonDocument.Parse(SonPost("/islemler/takas").Govde).RootElement.GetProperty("odemeTuru").GetString()), Bekle);
     }
@@ -1500,7 +1500,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         var e = TakasDolu(ArayuzModuServisi.Basit, "7000");   // fark ≈ 10.000 − 1 g × 22 ayar × 7.000 → hadden küçük (ISLEM-BANT-2: 9.000 oran dışıydı)
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
         Assert.Empty(e.FindAll("#islem-odeme"));      // zorunlu önce: gerek yokken sorulmaz
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal("NAKIT",
             JsonDocument.Parse(SonPost("/islemler/takas").Govde).RootElement.GetProperty("odemeTuru").GetString()), Bekle);
     }
@@ -1573,12 +1573,12 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.Equal("true", e.Find("#takas-eski-fiyat").GetAttribute("aria-invalid"));
         Assert.Contains(SayiGirisiSozlugu.Tr.Belirsiz, e.Find("#takas-eski-fiyat-sar").TextContent);
         Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/takas"));
         // kullanıcı düzeltir → açılır, gövdeye YAZDIĞI değer girer
         e.Find("#takas-eski-fiyat").Input("4500");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(4500m,
             JsonDocument.Parse(SonPost("/islemler/takas").Govde).RootElement.GetProperty("eskiUrunBirimFiyatTlHasGram").GetDecimal()), Bekle);
     }
@@ -1641,7 +1641,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
         SeciciYardim.Sec(e, "islem-pos", "pc2");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal("pc2",
             JsonDocument.Parse(SonPost("/islemler/takas").Govde).RootElement.GetProperty("posCihazId").GetString()), Bekle);
     }
@@ -1656,7 +1656,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         GA.OdemeSec(e, "KART");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
         Assert.Empty(e.FindAll("#islem-pos"));
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(JsonValueKind.Null,
             JsonDocument.Parse(SonPost("/islemler/takas").Govde).RootElement.GetProperty("posCihazId").ValueKind), Bekle);
     }
@@ -1703,7 +1703,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.Equal("1.500", e.Find($"#{id}").GetAttribute("value"));
         Assert.Contains(tamSayi ? SayiGirisiSozlugu.Tr.BelirsizTam : SayiGirisiSozlugu.Tr.Belirsiz, HataMetni(e, id));   // TOPLU-7A: tam sayı alanı "1,5" önermez
         var once = PostSayisi();
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         Thread.Sleep(200);
         Assert.Equal(once, PostSayisi());
     }
@@ -1723,7 +1723,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         Assert.Empty(e.FindAll("#takas-yeni-fiyat-onizleme"));   // eski teklif "bilgi" diye altına yazılmaz
         TusTus(e, "takas-yeni-fiyat", ["1", "1,", "1,5"]);
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1.5m,
             JsonDocument.Parse(SonPost("/islemler/takas").Govde).RootElement.GetProperty("yeniUrunBirimFiyatTl").GetDecimal()), Bekle);
     }
@@ -1740,7 +1740,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         KilitliVeSessizDegil(e, "takas-eski-gram", ge, string.Format(S3.AlanDuzeltin, ge));
         TusTus(e, "takas-eski-gram", ["1", "1,", "1,5"]);
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(1.5m,
             JsonDocument.Parse(SonPost("/islemler/takas").Govde).RootElement.GetProperty("eskiUrunGram").GetDecimal()), Bekle);
     }
@@ -1957,7 +1957,7 @@ public sealed partial class SATIS3EkranTestleri : BunitContext
         e.WaitForElement("#masak-belge-no", Bekle).Input("10000000146");
         e.Find("#masak-ad-soyad").Input("Mehmet Yılmaz");
         e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
-        GA.Kaydet(e).Click();
+        GA.Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")), Bekle);
         Assert.Contains("\"masak\":{", SonPost("/islemler/satis").Govde);
         e.WaitForAssertion(() => GA.KimlikFormuYok(e), Bekle);

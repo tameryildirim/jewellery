@@ -65,6 +65,7 @@ public partial class Islemler
     {
         havale = null;
         odemeTuru = "NAKIT";
+        belgeTuru = null;   // normal satışta fatura yeniden sorulur
         if (new Uri(Nav.Uri).Query.Contains("havale=")) Nav.NavigateTo("/islemler", replace: true);
     }
 

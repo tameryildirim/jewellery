@@ -283,7 +283,7 @@ public sealed class S23FisMusteriEkranTestleri : BunitContext
         e.WaitForElement("#islem-pesin-esik");
 
         satisRed = null;   // sunucu artık kabul ediyor (ör. tutar düşürüldü)
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Equal(2, istekler.Count(i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis"))));
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pesin-esik")));
         Assert.Equal("Peşin Müşteri", UstMusteri(e));

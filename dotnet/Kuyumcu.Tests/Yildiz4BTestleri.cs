@@ -272,7 +272,7 @@ public sealed class Yildiz4BTestleri : BunitContext
     {
         var (b, cagri) = Baglam();
         var e = Render<YildizTezgah>(p => p.Add(x => x.B, b));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.Find("#yildiz-tezgah-vazgec").Click();
         e.Find("#yildiz-tezgah-baska-odeme").Click();
         e.Find("#yildiz-tezgah-indirim").Click();
@@ -410,7 +410,7 @@ public sealed class Yildiz4BTestleri : BunitContext
         Assert.Equal("Gram altın", y.Find("#yildiz-kalem-0 .yz-tezgah-ad").TextContent);
         Assert.Equal("1 adet · 1,00 g · 0,9950 g has", y.Find("#yildiz-kalem-0 .yz-tezgah-ayrinti").TextContent);
         y.WaitForAssertion(() => Assert.False(y.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        y.Find("#yildiz-tezgah-kaydet").Click();
+        y.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(y);
         Assert.Equal(Y4B23Beklenen[mod], SatisGovdesi());
     }
 
@@ -480,7 +480,7 @@ public sealed class Yildiz4BTestleri : BunitContext
         var e = Satis(mod);
         KalemEkle(e);
         e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#yildiz-tezgah-fark #yildiz-tezgah-hata")), TimeSpan.FromSeconds(5));
         var h = e.Find("#yildiz-tezgah-hata");
         Assert.Contains("yetersiz satılabilir stok", h.TextContent);
@@ -500,7 +500,7 @@ public sealed class Yildiz4BTestleri : BunitContext
         var e = Satis(mod);
         KalemEkle(e);
         e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#yildiz-tezgah-fark #yildiz-tezgah-son-fis")), TimeSpan.FromSeconds(5));
         Assert.StartsWith("Son fiş:", e.Find("#yildiz-tezgah-son-fis").TextContent);
         Assert.Empty(e.FindAll("#yildiz-tezgah-hata"));

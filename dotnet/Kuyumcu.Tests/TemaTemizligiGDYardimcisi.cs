@@ -117,4 +117,15 @@ internal static class TemaTemizligiGDYardimcisi
     /// <summary>Fişteki kalem satırı sayısı beklenene ulaşana kadar bekler.</summary>
     public static void KalemSayisiBekle(IRenderedComponent<Islemler> e, int beklenen) =>
         e.WaitForAssertion(() => Assert.Equal(beklenen, e.FindAll(Kalem).Count), Bekle);
+
+    /// <summary>
+    /// 17.10 kurucu: müşterili satışta Kaydet önce "Fatura kesilsin mi?" sorar. Faturasız eski akışı sınayan
+    /// testler Kaydet'ten sonra bunu çağırır: soru çıktıysa "Hayır" (gövde eskisiyle birebir), çıkmadıysa hiçbir şey.
+    /// Fatura sorusunun kendi davranışı FaturaSorusuEkranTestleri'nde sınanır.
+    /// </summary>
+    public static void FaturaSorusunaHayir<T>(IRenderedComponent<T> e) where T : Microsoft.AspNetCore.Components.IComponent
+    {
+        var hayir = e.FindAll("#yildiz-belge-hayir");
+        if (hayir.Count > 0) hayir[0].Click();
+    }
 }

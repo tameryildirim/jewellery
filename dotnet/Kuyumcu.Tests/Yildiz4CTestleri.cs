@@ -518,7 +518,7 @@ public sealed class Yildiz4CTestleri : BunitContext
         y.Find("#yildiz-musteri-sec-c1").Click();
         y.WaitForAssertion(() => Assert.Contains("Selin Ergüven", y.Find("#yildiz-tezgah-ust").TextContent));
         y.WaitForAssertion(() => Assert.False(y.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        y.Find("#yildiz-tezgah-kaydet").Click();
+        y.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(y);
         var yildiz = Govde("/islemler/satis");
         Assert.Contains("\"cariId\":\"c1\"", yildiz);
         Assert.Contains("5", yildiz);
@@ -534,7 +534,7 @@ public sealed class Yildiz4CTestleri : BunitContext
         var e = Satis(ArayuzModuServisi.Basit);
         KalemEkle(e);
         e.WaitForAssertion(() => Assert.Single(e.FindAll(".yz-tezgah-kalem")), TimeSpan.FromSeconds(5));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#yildiz-tezgah-hata")), TimeSpan.FromSeconds(5));
         e.Find("#yildiz-tezgah-degistir").Click();
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#yildiz-musteri-sec-c2")));
@@ -551,7 +551,7 @@ public sealed class Yildiz4CTestleri : BunitContext
         var e = Satis(ArayuzModuServisi.Basit);
         KalemEkle(e);
         e.WaitForAssertion(() => Assert.Single(e.FindAll(".yz-tezgah-kalem")), TimeSpan.FromSeconds(5));
-        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         // özgün yerinde (fişin altında, Yıldız'da ekran dışı) DEĞİL — Fark bloğunda, tek kez
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#yildiz-tezgah-fark #yildiz-tezgah-pesin-soru #pesin-soru")), TimeSpan.FromSeconds(5));
         Assert.Single(e.FindAll("#pesin-soru"));

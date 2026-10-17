@@ -91,6 +91,7 @@ internal static class TemaTemizligiGCYardimcisi
         e.WaitForAssertion(() => Assert.False(e.YildizKaydetKilitli(),
             "Kaydet kilitli: " + e.Find("#yildiz-tezgah-kaydet").GetAttribute("title")), Bekle);
         e.Find("#yildiz-tezgah-kaydet").Click();
+        TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);   // 17.10: müşterili satışta fatura sorusu → faturasız eski akış
     }
 
     /// <summary>Fark satırının metni (NBSP düzeltilmiş).</summary>

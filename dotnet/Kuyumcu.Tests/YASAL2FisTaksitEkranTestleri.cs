@@ -91,7 +91,7 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
         e.YildizOdemeSec(odeme);
         if (e.FindAll("#islem-kasa").Count > 0 && odeme != "VERESIYE") SeciciYardim.Sec(e, "islem-kasa", "ks1");
         e.WaitForAssertion(() => Assert.False(e.GbYildizKaydet().HasAttribute("disabled"), e.GbYildizKaydet().GetAttribute("title")));
-        e.GbYildizKaydet().Click();
+        e.GbYildizKaydet().Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
         e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "POST"));
         return e;
     }

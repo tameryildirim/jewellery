@@ -225,7 +225,7 @@ public sealed class B4AltinBacagiFisEkranTestleri : BunitContext
         NakitBacakEkle(e);
         e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
         istekler.Clear();
-        Kaydet(e).Click();
+        Kaydet(e).Click(); TemaTemizligiGDYardimcisi.FaturaSorusunaHayir(e);
 
         e.WaitForAssertion(() =>
         {
