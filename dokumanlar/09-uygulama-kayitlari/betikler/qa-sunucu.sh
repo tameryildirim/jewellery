@@ -91,8 +91,11 @@ export Kur__SozlesmesizKaynaklarAcik=true
 #
 # ⚠ DAMGA İÇERİK KARMASIDIR, mtime DEĞİL: K-20 (iCloud eşitlemesi) mtime'ları
 #   oynatıyor ve mtime tabanlı bir kontrol sahte "bayat" üretirdi (PLAN riski).
+# 17.10: yayın ayrı bir kaynak kopyasından (yayin-temiz.sh) derlendiyse damga O kökten ölçülür.
+KAYNAK=$KOK
+[ -r "$YAYIN/.kaynak-kok" ] && [ -d "$(cat "$YAYIN/.kaynak-kok")/dotnet" ] && KAYNAK=$(cat "$YAYIN/.kaynak-kok")
 agac_damgasi() {
-  find "$KOK/dotnet/Kuyumcu.Api" "$KOK/dotnet/Kuyumcu.Web" "$KOK/dotnet/Kuyumcu.Core" \
+  find "$KAYNAK/dotnet/Kuyumcu.Api" "$KAYNAK/dotnet/Kuyumcu.Web" "$KAYNAK/dotnet/Kuyumcu.Core" \
        \( -name '*.cs' -o -name '*.razor' -o -name '*.csproj' \) 2>/dev/null \
     | grep -v '/obj/\|/bin/' | sort | xargs shasum 2>/dev/null | shasum | awk '{print $1}'
 }
@@ -107,7 +110,7 @@ SIMDIKI=$(agac_damgasi)
 # Tazelik kapısının ASIL yeri kapı koşumudur (kapi.sh + yayinla.sh); burada
 # ölçülemiyorsa YÜKSEK SESLE uyarılır ve sunucu açılır.
 BOS_SHA=da39a3ee5e6b4b0d3255bfef95601890afd80709
-DOSYA_SAYISI=$(find "$KOK/dotnet/Kuyumcu.Api" "$KOK/dotnet/Kuyumcu.Web" "$KOK/dotnet/Kuyumcu.Core" \
+DOSYA_SAYISI=$(find "$KAYNAK/dotnet/Kuyumcu.Api" "$KAYNAK/dotnet/Kuyumcu.Web" "$KAYNAK/dotnet/Kuyumcu.Core" \
                  \( -name '*.cs' -o -name '*.razor' -o -name '*.csproj' \) 2>/dev/null \
                | grep -vc '/obj/\|/bin/' || true)
 if [ "${SIMDIKI:-}" = "$BOS_SHA" ] || [ "${DOSYA_SAYISI:-0}" -eq 0 ]; then

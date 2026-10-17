@@ -2,6 +2,10 @@
 # QA yayın anlık görüntüsü: Release publish → $HOME/.kuyumcu-yayin (5199 "kuyumcu-qa" bu dizinden koşar).
 # Sıra: preview_stop(kuyumcu-qa) → zsh betikler/yayinla.sh → preview_start "kuyumcu-qa". Kullanım: zsh betikler/yayinla.sh [etiket]
 KOK=/Users/ramazanakkocan/Desktop/ByGatech/projeler/jewellery
+# 17.10 (iki oturum aynı klasörde): DERLEME KAYNAĞI ayrılabilir. KUYUMCU_KAYNAK verilirse (yayin-temiz.sh:
+# yalnız COMMIT'lenmiş kodun ayrı çalışma kopyası) derleme ve ağaç damgası ORADAN alınır; ham/ anahtarları
+# ve betikler ana kökte kalır. Verilmezse davranış eskisiyle aynı (KAYNAK = KOK).
+KAYNAK="${KUYUMCU_KAYNAK:-$KOK}"
 # HEDEF: TEK KAYNAK (P-42). Yol artık bu dosyada YAZILI DEĞİL; yayin-yolu.sh
 # tanımlar (varsayılan $HOME/.kuyumcu-yayin, KUYUMCU_YAYIN_DIZINI hâlâ üstün).
 # Böylece yayın oturumdan bağımsızdır ve qa-sunucu.sh/nobetci.sh/yayin-butunluk.sh
@@ -15,7 +19,7 @@ LOG="$HEDEF-publish-$(date '+%H%M').log"
 # o dizine yazamazdı → ikinci koşum "Access denied" ile ölürdü. Bu satır kilidi
 # yalnız yayın süresince açar; kapanışı envanter doğrulandıktan SONRA yapılır.
 [ -d "$HEDEF" ] && chmod -R u+w "$HEDEF" 2>/dev/null
-cd "$KOK/dotnet" || exit 2
+cd "$KAYNAK/dotnet" || exit 2
 if dotnet publish Kuyumcu.Api/Kuyumcu.Api.csproj -c Release -o "$HEDEF" --nologo > "$LOG" 2>&1; then
   U=$(grep -c ' warning ' "$LOG"); H=$(grep -c ' error ' "$LOG")
   # ── ÇIKTI BÜTÜNLÜĞÜ (P-41, fail-closed) ─────────────────────────────────────
@@ -42,10 +46,13 @@ if dotnet publish Kuyumcu.Api/Kuyumcu.Api.csproj -c Release -o "$HEDEF" --nologo
   #    yanına yaz. qa-sunucu.sh açılırken damgayı ŞİMDİKİ ağaçla karşılaştırır ve
   #    uyuşmazsa 5199'u AÇMAZ. İçerik karması kullanılır (mtime DEĞİL — K-20
   #    iCloud eşitlemesi mtime'ları oynatıyor ve sahte "bayat" üretirdi).
-  find "$KOK/dotnet/Kuyumcu.Api" "$KOK/dotnet/Kuyumcu.Web" "$KOK/dotnet/Kuyumcu.Core" \
+  find "$KAYNAK/dotnet/Kuyumcu.Api" "$KAYNAK/dotnet/Kuyumcu.Web" "$KAYNAK/dotnet/Kuyumcu.Core" \
        \( -name '*.cs' -o -name '*.razor' -o -name '*.csproj' \) 2>/dev/null \
     | grep -v '/obj/\|/bin/' | sort | xargs shasum 2>/dev/null | shasum | awk '{print $1}' > "$HEDEF/.agac-damgasi"
   echo "  ağaç damgası: $(cut -c1-12 "$HEDEF/.agac-damgasi")… → $HEDEF/.agac-damgasi"
+  # Damganın hangi kaynaktan ölçüldüğü: qa-sunucu.sh açılışta AYNI kökü ölçer (ana klasördeki yarım iş
+  # yayını "bayat" göstermez; kaynak kopya bir sonraki yayına kadar değişmez).
+  printf '%s\n' "$KAYNAK" > "$HEDEF/.kaynak-kok"
   # ── DAMGA ZORUNLULUK ANAHTARI (P-02 düzeltme turu) ──────────────────────────
   # İlk başarılı yayından sonra "damgasız anlık görüntü" artık hoş görülmez:
   # qa-sunucu.sh bu dosyayı görünce damgasız hâli UYUŞMAZLIK sayar ve 5199'u
