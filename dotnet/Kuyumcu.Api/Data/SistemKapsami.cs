@@ -39,6 +39,8 @@ namespace Kuyumcu.Api.Data;
 //      kişi" mükellef geneli, MASAK "bağlantılı işlemler toplamı" yükümlü geneli;
 //      şube yükümlünün birimidir (MASAK GT 34 md.3/1-c). Şubeye kilitli rolde
 //      P-04 süzgeci kümülatifi şubeye bölüyordu → kapı delinebiliyordu.     [Kiraci(id)]
+//  11. BankaCekici (M7) → sağlayıcılı hesabı olan aktif kiracı listesi (yalnız kimlik)   [Sistem]
+//  12. BankaCekici (M7) → kiracı başına sağlayıcı çekimi                              [Kiraci(id)]
 //   `AuthServisi.Ben` dahil JWT-SONRASI her şey istek bağlamında kalır.
 //
 // ⚠ 7-8 (paket F-2-min, mühürlü koşul): bu iki kullanım YAPILANDIRMA SIRRI ile

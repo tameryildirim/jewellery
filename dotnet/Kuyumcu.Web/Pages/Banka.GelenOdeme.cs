@@ -47,6 +47,18 @@ public partial class Banka
         b.CloseComponent();
     };
 
+    // ── M7: demo bankası ──
+    private bool sahteHavaleAcik;
+    private IReadOnlyList<Kuyumcu.Contracts.Sayfalar.Banka.HesapVeri> SahteHesaplar =>
+        [.. hesaplar.Where(h => h.Aktif && h.SaglayiciKodu == "SAHTE")];
+
+    private async Task SahteHavaleSonrasi(string metin)
+    {
+        BasariGoster(metin);
+        if (gelenKarar is not null) await gelenKarar.Yenile();
+        await GelenKararSonrasi();
+    }
+
     private async Task GelenKararSonrasi()
     {
         await HesaplariYukle();

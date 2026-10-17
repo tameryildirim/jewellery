@@ -1,0 +1,74 @@
+@using Kuyumcu.Contracts.Sayfalar.Banka
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ M7 (17.10) — demo bankasına "havale gönder" (müşteri: "şimdilik simülasyon"). Yalnız demo bankasına
+   bağlı hesaplar listelenir. Gönderilen havale çekiciden geçer: müşteri bulunur/açılır, karar kutusuna düşer. ═══ *@
+<Cekmece Acik="Acik" Varlik="sahte-havale" Baslik="@GelenOdemeSozlugu.HavaleGonder(Dil.Dil)"
+         Kapat="Kapat" Kaydet="Gonder" Kaydediliyor="@gonderiliyor" KaydetElemanId="sh-gonder"
+         KaydetAktif="@(Tutar is > 0m && !string.IsNullOrWhiteSpace(ad) && !string.IsNullOrEmpty(hesapId))">
+    @if (hata is { } h) { <div class="bant bant-hata" role="alert" id="sh-hata">@h</div> }
+    <div class="form-dikey" id="sh-form">
+        @if (Hesaplar.Count > 1)
+        {
+            <Secim ElemanId="sh-hesap" Etiket="@GelenOdemeSozlugu.Hesap(Dil.Dil)" Zorunlu="true"
+                   Secenekler="@(Hesaplar.Select(x => new SecenekOgesi(x.Id, $"{x.BankaAdi} · {x.HesapAdi}")).ToList())"
+                   Deger="@hesapId" DegerChanged="@(v => hesapId = v ?? "")" />
+        }
+        <Para ElemanId="sh-tutar" Etiket="@GelenOdemeSozlugu.Tutar(Dil.Dil)" Zorunlu="true" Tur="TutarTuru.Pozitif"
+              Deger="@Tutar" DegerChanged="@(v => Tutar = v)" />
+        <Unvan ElemanId="sh-ad" Etiket="@GelenOdemeSozlugu.GonderenAd(Dil.Dil)" Zorunlu="true" EnFazla="@AlanSinirlari.HesapSahibi"
+               Deger="@ad" DegerChanged="@(v => ad = v ?? "")" />
+        <Iban ElemanId="sh-iban" Etiket="@GelenOdemeSozlugu.KarsiIban(Dil.Dil)" Zorunlu="false"
+              Deger="@iban" DegerChanged="@(v => iban = v ?? "")" />
+        <TcknVeyaVkn ElemanId="sh-kimlik" Etiket="@GelenOdemeSozlugu.KimlikNo(Dil.Dil)"
+                     Deger="@kimlik" DegerChanged="@(v => kimlik = v ?? "")" />
+        <Metin ElemanId="sh-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.SahteHavaleAciklama"
+               Deger="@aciklama" DegerChanged="@(v => aciklama = v ?? "")" />
+    </div>
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+    /// <summary>Demo bankasına bağlı hesaplar.</summary>
+    [Parameter] public IReadOnlyList<HesapVeri> Hesaplar { get; set; } = [];
+    /// <summary>Gönderim sonucu cümlesi (sayfa bandına yazar).</summary>
+    [Parameter] public EventCallback<string> Gonderildi { get; set; }
+
+    private decimal? Tutar;
+    private string ad = "", iban = "", kimlik = "", aciklama = "", hesapId = "";
+    private bool gonderiliyor, oncekiAcik;
+    private string? hata;
+
+    protected override void OnParametersSet()
+    {
+        if (Acik && !oncekiAcik)
+        {
+            Tutar = null; ad = iban = kimlik = aciklama = ""; hata = null;
+            hesapId = Hesaplar.FirstOrDefault()?.Id ?? "";
+        }
+        oncekiAcik = Acik;
+    }
+
+    private async Task Gonder()
+    {
+        gonderiliyor = true; hata = null;
+        try
+        {
+            var y = await Api.PostAsync<JsonElement>($"/bankalar/{hesapId}/sahte-havale", new
+            {
+                tutar = Tutar, gonderenAd = ad,
+                gonderenIban = string.IsNullOrWhiteSpace(iban) ? null : iban.ToUpperInvariant().Replace(" ", ""),
+                gonderenKimlikNo = string.IsNullOrWhiteSpace(kimlik) ? null : kimlik,
+                aciklama = string.IsNullOrWhiteSpace(aciklama) ? null : aciklama,
+            });
+            await Gonderildi.InvokeAsync(GelenOdemeSozlugu.Gonderildi(y.GetProperty("yeni").GetInt32(), Dil.Dil));
+            await Kapat.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { gonderiliyor = false; }
+    }
+}

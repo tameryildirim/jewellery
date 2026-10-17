@@ -165,6 +165,8 @@ public static class AlanSinirlari
     public const int UrunKuraliMetin = 100;
     /// <summary>M9: alış işçilik belgesinin numarası (alis_iscilik_belgeleri.belge_no).</summary>
     public const int IscilikBelgeNo = 50;
+    /// <summary>M7: demo bankası havale açıklaması (sahte_banka_hareketleri.aciklama).</summary>
+    public const int SahteHavaleAciklama = 200;
     /// <summary>Ürün açıklaması (urunler.aciklama varchar(1000)).</summary>
     public const int UrunAciklama = 1000;
     /// <summary>Sertifika no · seri no · taş ibaresi (varchar(60)).</summary>

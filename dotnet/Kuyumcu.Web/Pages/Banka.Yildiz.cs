@@ -58,7 +58,8 @@ public partial class Banka
                 Satirlar = [.. hesaplar.Select(h => new YildizListeSatiri(h.Id,
                 [
                     new(string.IsNullOrWhiteSpace(h.HesapAdi) ? h.BankaAdi : $"{h.BankaAdi} · {h.HesapAdi}", YildizHucreTuru.Ad, $"yildiz-banka-ad-{h.Id}"),
-                    new(h.Aktif ? h.Iban : $"{h.Iban} · {YildizBankaSozlugu.KullanimdaDegil(dil)}"),
+                    new((h.Aktif ? h.Iban : $"{h.Iban} · {YildizBankaSozlugu.KullanimdaDegil(dil)}")
+                        + (h.SaglayiciKodu == "SAHTE" ? $" · {GelenOdemeSozlugu.DemoBanka(dil)}" : "")),
                     new(YildizParaBicim.Tutar(h.Bakiye, h.ParaBirimi), YildizHucreTuru.Deger, $"yildiz-banka-bakiye-{h.Id}"),
                 ],
                 new YildizEylem(YildizBankaSozlugu.Hareketler(dil), $"yildiz-banka-hareket-{h.Id}", EventCallback.Factory.Create(this, () => YildizHareketler(h.Id))),
@@ -68,6 +69,10 @@ public partial class Banka
                 AyrintiAc = EventCallback.Factory.Create(this, () => yildizAyrinti = true),
                 AyrintiAcik = yildizAyrinti,
                 AyrintiKapat = EventCallback.Factory.Create(this, () => yildizAyrinti = false),
+                // M7: demo bankasına bağlı hesap varsa "Havale gönder (demo)".
+                EkEtiket = SahteHesaplar.Count > 0 ? GelenOdemeSozlugu.HavaleGonder(dil) : null,
+                EkId = "yildiz-banka-havale",
+                EkTikla = EventCallback.Factory.Create(this, () => sahteHavaleAcik = true),
             };
         }
     }

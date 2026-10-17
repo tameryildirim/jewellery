@@ -135,7 +135,8 @@ public sealed class GelenOdemeServisi(
     }
 
     // ── 2) Dekont gir: müşteriyi bul / aç, IBAN'ı öğret ──────────────────────
-    public async Task<object> HareketEkle(string hesapId, HareketEkleDto dto, AktifKullanici islem)
+    public async Task<object> HareketEkle(string hesapId, HareketEkleDto dto, AktifKullanici islem,
+        string? bankaReferans = null, string? saglayiciReferans = null)
     {
         var kimlikNo = DogalAnahtar.Normalle(dto.KarsiKimlikNo);
         if (kimlikNo is not null && KimlikNo.Dogrula(kimlikNo, KimlikNo.TurTuret(kimlikNo)) is { } kh)
@@ -163,7 +164,7 @@ public sealed class GelenOdemeServisi(
                 if (!string.IsNullOrWhiteSpace(dto.KarsiIban))
                     await IbanOgretSessiz(db, cariId, dto.KarsiIban, dto.KarsiTarafAd, islem);
                 dto.CariId = cariId;
-                var sonuc = await banka.HareketEkle(hesapId, dto, islem);
+                var sonuc = await banka.HareketEkle(hesapId, dto, islem, bankaReferans, saglayiciReferans);
                 if (tx is not null) await tx.CommitAsync();
                 return await Yanit(sonuc, cozum with { CariId = cariId }, islem);
             }
@@ -180,7 +181,7 @@ public sealed class GelenOdemeServisi(
 
         if (cozum.Yol == CariCozumYolu.Secildi && gelen && !string.IsNullOrWhiteSpace(dto.KarsiIban))
             await IbanOgretSessiz(db, dto.CariId!, dto.KarsiIban, dto.KarsiTarafAd, islem);
-        var duz = await banka.HareketEkle(hesapId, dto, islem);
+        var duz = await banka.HareketEkle(hesapId, dto, islem, bankaReferans, saglayiciReferans);
         return await Yanit(duz, cozum, islem);
     }
 

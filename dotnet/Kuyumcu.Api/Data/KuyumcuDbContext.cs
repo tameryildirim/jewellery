@@ -123,7 +123,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<EkstreSatiri> EkstreSatirlari => Set<EkstreSatiri>();
     public DbSet<CariIban> CariIbanlari => Set<CariIban>();
     public DbSet<AlisIscilikBelgesi> AlisIscilikBelgeleri => Set<AlisIscilikBelgesi>();   // M9
-    public DbSet<SahteBankaHareketi> SahteBankaHareketleri => Set<SahteBankaHareketi>();   // M7 demo bankası
+    public DbSet<SahteBankaHareketi> DemoHavaleleri => Set<SahteBankaHareketi>();   // M7 demo bankası
     public DbSet<CariMahsup> CariMahsuplar => Set<CariMahsup>();   // 17.10 kısmi ödeme / borçlu satış seçimi
     public DbSet<Fatura> Faturalar => Set<Fatura>();
     public DbSet<FaturaKalemi> FaturaKalemleri => Set<FaturaKalemi>();

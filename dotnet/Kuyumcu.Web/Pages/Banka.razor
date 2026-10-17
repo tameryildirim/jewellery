@@ -21,6 +21,7 @@
    kalıbında; özgün ekran (hareketler, dekont, ekstre, storno) yalnız "Hareketler" / "Tüm ayrıntılar"da (data-yz-ozgun). *@
     @if (YildizBosMu) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizBos B="@YildizBosBaglami" /> }
     else { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+<SahteHavalePenceresi Acik="sahteHavaleAcik" Kapat="() => sahteHavaleAcik = false" Hesaplar="@SahteHesaplar" Gonderildi="SahteHavaleSonrasi" />   @* M7: demo bankası *@
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     @* ZO-ISLEM-A 28.09 (tasarım hakemi): başlık altı açıklama satırı YOK (tuvalde yok;
@@ -268,6 +269,7 @@
             <Iban ElemanId="d-iban" Etiket="@Dil.T.Banka.Iban" Zorunlu="true"
                    Deger="@dIban" DegerChanged="@(v => dIban = v ?? "")"
                    Durum="duzenleForm" HataAlani="d-iban" />
+            <BankaSaglayiciAyari HesapId="@duzenleHesap.Id" Kod="@duzenleHesap.SaglayiciKodu" SonCekim="@duzenleHesap.SonCekim" Degisti="HesaplariYukle" />   @* M7 *@
             @* 28.09: oluşturma formuyla AYNI bileşen ve AYNI dizi (UX-S26). *@
             @* SON-KALANLAR tur 2 (tasarım hakemi KRİTİK): bakiyesi ya da hareketi olan hesapta sunucu para
                birimi değişimini 409 alan:paraBirimi ile reddeder. Eskiden bu ret ekranda HİÇBİR YERDE

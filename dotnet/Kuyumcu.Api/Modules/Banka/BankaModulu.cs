@@ -396,7 +396,8 @@ public sealed class BankaServisi(
     /// Gün kilidi (GunKapanisiKapisi) ve vade kapısı da bu pakette BAĞLANMADI:
     /// ayrı kararlar, ayrı paketler.
     /// </summary>
-    public Task<object> HareketEkle(string hesapId, HareketEkleDto dto, AktifKullanici islem)
+    public Task<object> HareketEkle(string hesapId, HareketEkleDto dto, AktifKullanici islem,
+        string? bankaReferans = null, string? saglayiciReferans = null)   // M7: sağlayıcı çekimi referans taşır
     {
         // PAKET GOC-A — kullanıcı girdisi kapısı (servis yolu; DataAnnotations yalnız controller'da):
         // karşı IBAN Core kuralı + kayıt biçimi (boşluksuz, büyük harf), açıklama ekran sınırı,
@@ -410,7 +411,7 @@ public sealed class BankaServisi(
             && DateTime.TryParse(dto.Tarih, CultureInfo.InvariantCulture,
                 DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var t))
             GirdiKapisi.IslemTarihi(Zaman.YerelBugun(t), "tarih");
-        return HareketEkleIc(hesapId, dto, islem);
+        return HareketEkleIc(hesapId, dto, islem, bankaReferans: bankaReferans, saglayiciReferans: saglayiciReferans);
     }
 
     /// <summary>
@@ -428,7 +429,7 @@ public sealed class BankaServisi(
     /// </summary>
     public async Task<object> HareketEkleIc(
         string hesapId, HareketEkleDto dto, AktifKullanici islem,
-        string? ekstreSatirId = null, string? bankaReferans = null)
+        string? ekstreSatirId = null, string? bankaReferans = null, string? saglayiciReferans = null)
     {
         // PAKET PATCH-5 — GİRDİ kapısı (servis içi; ekstre onayı da bu kapıdan geçer): tutar önce 2 haneye
         // yuvarlanır sonra ≤ 0 (0,004 → 0,00 dekont doğmaz; bakiye ile satır aynı değeri alır) + kolon tavanı;
@@ -504,6 +505,7 @@ public sealed class BankaServisi(
             // hiç yakalanmazdı.
             EkstreSatirId = ekstreSatirId,
             BankaReferans = bankaReferans,
+            SaglayiciReferans = saglayiciReferans,   // M7: (tenant, hesap, saglayici_referans) benzersiz
             DedupeAnahtar = DedupeAnahtari.Uret(
                 hesapId, tarih, dto.Tutar, dto.Yon, bankaReferans, dto.KarsiIban, dto.Aciklama),
         });

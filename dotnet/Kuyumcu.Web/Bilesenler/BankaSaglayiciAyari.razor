@@ -1,0 +1,42 @@
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ M7 (17.10) — hesap çekmecesinde "hareketleri bankadan kendiliğinden al (demo banka)". Anahtar
+   hemen kaydeder (PUT /bankalar/{id}/saglayici); hata alanın altında yazar, anahtar geri döner. ═══ *@
+<div class="alan" id="d-saglayici">
+    <Onay ElemanId="d-saglayici-demo" Etiket="@GelenOdemeSozlugu.OtomatikAl(Dil.Dil)"
+          Deger="@acik" DegerChanged="Degistir" />
+    <span class="metin-kucuk metin-soluk" id="d-saglayici-ipucu">
+        @GelenOdemeSozlugu.OtomatikAlIpucu(Dil.Dil)
+        @if (acik && SonCekim is { } sc) { <text> · @GelenOdemeSozlugu.SonCekim(Bicim.TarihSaat(sc), Dil.Dil)</text> }
+    </span>
+    @if (hata is { } h) { <div class="metin-kirmizi metin-kucuk" role="alert" id="d-saglayici-hata">@h</div> }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string HesapId { get; set; } = "";
+    [Parameter] public string? Kod { get; set; }
+    [Parameter] public DateTime? SonCekim { get; set; }
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private bool acik;
+    private string? hata, oncekiHesap;
+
+    protected override void OnParametersSet()
+    {
+        if (HesapId != oncekiHesap) { acik = Kod == "SAHTE"; hata = null; oncekiHesap = HesapId; }
+    }
+
+    private async Task Degistir(bool v)
+    {
+        var eski = acik;
+        acik = v; hata = null;
+        try
+        {
+            await Api.PutAsync<JsonElement>($"/bankalar/{HesapId}/saglayici", new { kod = v ? "SAHTE" : null });
+            await Degisti.InvokeAsync();
+        }
+        catch (ApiHata ex) { acik = eski; hata = ex.Message; }
+    }
+}

@@ -1,7 +1,11 @@
 @using Kuyumcu.Core.I18n
 @using Kuyumcu.Core.Domain.Girdi
+@using Microsoft.AspNetCore.SignalR.Client
 @inject ApiIstemci Api
 @inject DilServisi Dil
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@implements IAsyncDisposable
 @inject NavigationManager Nav
 
 @* ═══ M7a (kurucu 17.10) — "borcu vardır ama ekstra bir altın daha almıştır… borçtan düşülsün mü
@@ -109,6 +113,32 @@
     private string? hata, bilgi, sonKararId;
 
     protected override Task OnInitializedAsync() => Yenile();
+
+    // ── M7: canlı yenileme — banka çekicisi yeni hareket yazınca /hubs/banka "BankaHareketGeldi" gönderir;
+    //    kutu kendini ve sayfayı tazeler (müşteri: "düşer düşmez hemen şak ekranda"). Bağlantı kurulamazsa
+    //    ekran bozulmaz: kutu sayfa açılışında ve her kararda yine tazelenir.
+    private HubConnection? hub;
+    private bool canliKapali;
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!ilk || !gorunur || string.IsNullOrEmpty(Oturum.AccessToken)) return;
+        try
+        {
+            hub = new HubConnectionBuilder()
+                .WithUrl(Nav.ToAbsoluteUri("/hubs/banka"), o => o.AccessTokenProvider = () => Task.FromResult(Oturum.AccessToken))
+                .WithAutomaticReconnect()
+                .Build();
+            hub.On<int>("BankaHareketGeldi", _ => InvokeAsync(async () => { await Yenile(); await Degisti.InvokeAsync(); }));
+            await hub.StartAsync();
+        }
+        catch (Exception) { canliKapali = true; }   // canlı kanal yoksa: açılış + karar tazelemesi sürer (liste KORUNUR)
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hub is not null && !canliKapali) await hub.DisposeAsync();
+    }
 
     /// <summary>Satırın seçimi; ilk kez görülüyorsa sunucunun TBK 102 önerisiyle dolar.</summary>
     private SatisSecimi Secim(GelenOdemeSatiri s)

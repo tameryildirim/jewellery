@@ -58,4 +58,20 @@ public static class GelenOdemeSozlugu
     public static string Kaldir(string dil) => En(dil) ? "Remove" : "Kaldır";
     public static string Ekle(string dil) => En(dil) ? "Add" : "Ekle";
     public static string Ogrenildi(string dil) => En(dil) ? "from bank" : "bankadan";
+
+    // ── M7: banka sağlayıcısı / demo bankası ──
+    public static string DemoBanka(string dil) => En(dil) ? "Demo bank" : "Demo banka";
+    public static string OtomatikAl(string dil) => En(dil) ? "Fetch transactions from the bank automatically (demo bank)" : "Hareketleri bankadan kendiliğinden al (demo banka)";
+    public static string OtomatikAlIpucu(string dil) => En(dil)
+        ? "Incoming transfers appear on screen within seconds. The demo bank is for trying it out; a real bank connection uses the same flow."
+        : "Gelen havale birkaç saniye içinde ekrana düşer. Demo banka denemek içindir; gerçek banka bağlantısı aynı yolu kullanır.";
+    public static string SonCekim(string saat, string dil) => En(dil) ? $"last fetched {saat}" : $"son çekim {saat}";
+    public static string HavaleGonder(string dil) => En(dil) ? "Send transfer (demo)" : "Havale gönder (demo)";
+    public static string Hesap(string dil) => En(dil) ? "Account" : "Hesap";
+    public static string Tutar(string dil) => En(dil) ? "Amount" : "Tutar";
+    public static string GonderenAd(string dil) => En(dil) ? "Sender name" : "Gönderenin adı soyadı";
+    public static string Gonder(string dil) => En(dil) ? "Send" : "Gönder";
+    public static string Gonderildi(int yeni, string dil) => En(dil)
+        ? (yeni > 0 ? "Transfer arrived in the account." : "Transfer sent; it will appear on the next fetch.")
+        : (yeni > 0 ? "Havale hesaba düştü." : "Havale gönderildi; bir sonraki çekimde düşecek.");
 }

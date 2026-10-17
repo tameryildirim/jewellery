@@ -1363,5 +1363,11 @@ public static partial class SunucuIletiSozlugu
         ("İşçilik tutarı en çok 2 ondalık olmalıdır", "Making charge can have at most 2 decimals"),
         ("İşçilik tutarı sıfırdan büyük olmalıdır", "Making charge must be greater than zero"),
         ("İşçilik tutarı alışın tutarını aşamaz", "Making charge cannot exceed the purchase amount"),
+        // ── M7 (17.10): banka sağlayıcısı / demo bankası ──
+        ("Sağlayıcı SAHTE ya da boş olmalıdır", "Provider must be SAHTE (demo bank) or empty"),
+        ("Tutar 0,01 ile 10.000.000 arasında olmalıdır", "Amount must be between 0.01 and 10,000,000"),
+        ("Gönderen adı zorunludur", "Sender name is required"),
+        ("Bu hesap demo bankasına bağlı değil; önce hesabın sağlayıcısını 'Demo banka' yapın.", "This account is not connected to the demo bank; set its provider to 'Demo bank' first."),
+        ("IBAN geçersiz", "Invalid IBAN"),
     ];
 }

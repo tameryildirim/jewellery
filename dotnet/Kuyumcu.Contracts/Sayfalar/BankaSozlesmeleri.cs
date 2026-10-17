@@ -7,7 +7,9 @@ namespace Kuyumcu.Contracts.Sayfalar.Banka;
 // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
 public sealed record HesapVeri(
     string Id, string BankaAdi, string HesapAdi, string? HesapSahibi, string Iban,
-    string ParaBirimi, decimal Bakiye, bool Aktif);
+    string ParaBirimi, decimal Bakiye, bool Aktif,
+    // M7 (17.10): hareketleri kendiliğinden çeken sağlayıcı (SAHTE = demo bankası) ve son çekim anı.
+    string? SaglayiciKodu = null, DateTime? SonCekim = null);
 public sealed record HesapYaniti(List<HesapVeri> Hesaplar);
 // PAKET P-12 (B-42): dekontun storno ve köken bilgisi EKRANA da gelir —
 // "bu satır geri alındı mı" ve "bu satır bankadan mı geldi" sorularının
