@@ -303,27 +303,29 @@ public sealed class IceAktarimEkranTestleri : BunitContext
 
     // ── Menü kapısı ──────────────────────────────────────────────────────────
 
+    // TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı; menünün bütünü "Tüm ekranlar" sayfasıdır
+    // (üst menünün son sözcüğü). Menü kapısı orada sınanır.
+    private List<string> TumEkranYollari(OturumKullanici k)
+    {
+        Services.GetRequiredService<OturumServisi>().KullaniciAta(k);
+        var e = Render<Kuyumcu.Web.Pages.Ekranlar>().KareleriBekle();
+        return e.KareYollari();
+    }
+
     [Fact]
     public void SAHIP_olmayan_kullanicida_menu_baglantisi_YOK()
     {
-        Services.GetRequiredService<OturumServisi>().KullaniciAta(
-            new OturumKullanici("u2", "Müdür", "Kullanıcı", "m@ornek.com", "MUDUR", "s1"));
-        var e = Render<KenarCubugu>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
+        var yollar = TumEkranYollari(new OturumKullanici("u2", "Müdür", "Kullanıcı", "m@ornek.com", "MUDUR", "s1"));
 
-        var yollar = e.FindAll(".kenar-nav a").Select(a => a.GetAttribute("href")!).ToList();
+        Assert.Contains("/", yollar);   // sayfa gerçekten çizildi (boş listede yanlış yeşil yok)
         Assert.DoesNotContain("/veri-ice-aktarim", yollar);
     }
 
     [Fact]
     public void SAHIP_kullanicida_menu_baglantisi_VAR()
     {
-        Services.GetRequiredService<OturumServisi>().KullaniciAta(
-            new OturumKullanici("u1", "Sahip", "Kullanıcı", "s@ornek.com", "SAHIP", "s1"));
-        var e = Render<KenarCubugu>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
+        var yollar = TumEkranYollari(new OturumKullanici("u1", "Sahip", "Kullanıcı", "s@ornek.com", "SAHIP", "s1"));
 
-        var yollar = e.FindAll(".kenar-nav a").Select(a => a.GetAttribute("href")!).ToList();
         Assert.Contains("/veri-ice-aktarim", yollar);
     }
 }

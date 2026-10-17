@@ -89,42 +89,8 @@ public sealed class S1eGirisTestleri : BunitContext
 
     // ── (1) TUVAL ────────────────────────────────────────────────────────────
 
-    [Fact]
-    public void Tuval_IKI_PANEL_sol_kart_ve_sag_panel()
-    {
-        var e = Ciz();
-
-        Assert.NotNull(e.Find("main#giris-sol #giris-kart"));
-        Assert.NotNull(e.Find("aside#giris-panel"));
-        Assert.Equal(KabukTuvalSozlugu.MarkaYazimi, e.Find("h1.giris-marka-ad").TextContent.Trim());
-        Assert.Equal(GirisSozlugu.HosGeldin("tr"), e.Find("#sayfa-basi-giris-baslik").TextContent.Trim());
-        Assert.Equal("Mihenk’e hoş geldin", GirisSozlugu.HosGeldin("tr"));   // T-K4: tuval yazımı
-        Assert.Equal("İşletmenin hesabıyla gir.", e.Find("#sayfa-basi-giris-aciklama").TextContent.Trim());
-        // Eski tanıtım paneli (illüstrasyon + özellik listesi) yok.
-        Assert.Empty(e.FindAll(".giris-panel"));
-        Assert.Empty(e.FindAll("linearGradient"));
-        Assert.Empty(e.FindAll(".giris-ozellik"));
-        // Tek SVG marka rozetindeki ortak ikondur (tuval: elmas).
-        Assert.Single(e.FindAll("svg"));
-        Assert.NotNull(e.Find(".giris-marka-rozet svg"));
-    }
-
-    [Fact]
-    public void Sag_panel_TUVAL_metinleri_ve_UC_rakam()
-    {
-        var e = Ciz();
-
-        Assert.Equal("Tezgâhta bir fiş, defterde her şey.", e.Find("#giris-panel-baslik").TextContent.Trim());
-        Assert.Equal(GirisSozlugu.PanelAlt("tr"), e.Find("#giris-panel-alt").TextContent.Trim());
-        var rakamlar = e.FindAll("#giris-rakamlar > li.giris-rakam");
-        Assert.Equal(3, rakamlar.Count);
-        Assert.Equal(["3 tık", "30 dk", "0"],
-            rakamlar.Select(r => r.QuerySelector(".giris-rakam-deger")!.TextContent.Trim()).ToArray());
-        Assert.Equal(["nakit satış", "öğrenme", "silinen kayıt"],
-            rakamlar.Select(r => r.QuerySelector(".giris-rakam-etiket")!.TextContent.Trim()).ToArray());
-        // Süs şekilleri ekran okuyucudan gizli.
-        Assert.Equal(3, e.FindAll("#giris-panel .giris-sekil[aria-hidden='true']").Count);
-    }
+    // TEMA TEMİZLİĞİ 17.10: Tuval_IKI_PANEL_sol_kart_ve_sag_panel kaldırıldı — iki panelli giriş (aside#giris-panel, h1.giris-marka-ad, giriş sekmesi başlığı) tek şema Yıldız ile BİLEREK kalktı; giriş tuval Giris4 düzenidir (ortada amblem, panel/başlık yok): YildizAmblem2Testleri.YA2_13/YA2_14, YildizAmblem3Testleri.YA3_01.
+    // TEMA TEMİZLİĞİ 17.10: Sag_panel_TUVAL_metinleri_ve_UC_rakam kaldırıldı — sağ panel (#giris-panel-baslik, #giris-rakamlar) tuval Giris4'te yok (YildizAmblem2Testleri.YA2_13: #giris-panel boş).
 
     [Fact]
     public void Giris_formu_EPOSTA_PAROLA_ve_TEK_birincil_dugme()
@@ -358,13 +324,16 @@ public sealed class S1eGirisTestleri : BunitContext
     [Fact]
     public void Mevcut_id_envanteri_KORUNUR()
     {
+        // TEMA TEMİZLİĞİ 17.10: giriş sekmesinde başlık (SayfaBasi) çizilmez (tuval Giris4); başlık
+        // id'leri kayıt sekmesinde yaşar.
         var e = Ciz();
         foreach (var id in new[] { "giris-eposta", "giris-sifre", "giris-kisit", "giris-kisit-liste",
-                                   "giris-kisit-kaynak", "sayfa-basi-giris", "sayfa-basi-giris-baslik" })
+                                   "giris-kisit-kaynak", "giris-amblem" })
             Assert.Single(e.FindAll($"#{id}"));
 
         e.Find("#giris-yeni-dukkan").Click();
-        foreach (var id in new[] { "kayit-isletme", "kayit-ad", "kayit-soyad", "kayit-eposta", "kayit-sifre", "kayit-davet" })
+        foreach (var id in new[] { "kayit-isletme", "kayit-ad", "kayit-soyad", "kayit-eposta", "kayit-sifre", "kayit-davet",
+                                   "sayfa-basi-giris", "sayfa-basi-giris-baslik" })
             Assert.Single(e.FindAll($"#{id}"));
     }
 
@@ -375,10 +344,13 @@ public sealed class S1eGirisTestleri : BunitContext
         await e.InvokeAsync(() => Services.GetRequiredService<DilServisi>().DegistirAsync("en"));
 
         e.WaitForAssertion(() =>
-            Assert.Equal(GirisSozlugu.HosGeldin("en"), e.Find("#sayfa-basi-giris-baslik").TextContent.Trim()));
-        Assert.Equal(GirisSozlugu.PanelBaslik("en"), e.Find("#giris-panel-baslik").TextContent.Trim());
+            Assert.Equal(EkranlarGirisTuvalSozlugu.GirisYap("en"), e.Find("#giris-gonder").TextContent.Trim()));
         Assert.Equal("Show", e.Find("#giris-sifre-goster").TextContent.Trim());
-        Assert.Equal(EkranlarGirisTuvalSozlugu.GirisYap("en"), e.Find("#giris-gonder").TextContent.Trim());
+        Assert.Equal(GirisSozlugu.ParolamiUnuttum("en"), e.Find("#giris-parola-unuttum").TextContent.Trim());
+        // ESKİ: giriş sekmesi başlığı (HosGeldin) ve sağ panel başlığı (PanelBaslik) — Yıldız girişinde
+        // ikisi de yok; kayıt sekmesinin başlığı İngilizce sözlükten gelir.
+        e.Find("#giris-yeni-dukkan").Click();
+        Assert.Equal(GirisSozlugu.YeniDukkanKur("en"), e.Find("#sayfa-basi-giris-baslik").TextContent.Trim());
     }
 
     [Fact]

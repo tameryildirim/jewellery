@@ -78,15 +78,10 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
     }
 
-    private IRenderedComponent<Ekranlar> EkranlarCiz()
-    {
-        Services.GetRequiredService<OturumServisi>().KullaniciAta(
-            new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", null,
-                                ArayuzModuServisi.Basit));
-        var e = Render<Ekranlar>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("a.ekran-karo")));
-        return e;
-    }
+    // TEMA TEMİZLİĞİ 17.10: "Tüm ekranlar" sayfası tuval Tum4 yüzüdür (YildizEkranlar) ve giriş hep
+    // Yıldız düzenindedir (tuval Giris4: ortada amblem, sağ panel ve "… hoş geldin" başlığı YOK).
+    // Eski koyu şeritli karo sayfasının marka/Vitrin/ikonlu ızgara öğeleri ve iki panelli girişin
+    // marka satırı/başlığı kaldırıldı; yazım güvenceleri Yıldız karşılıklarında sınanır.
 
     private IRenderedComponent<Giris> GirisCiz()
     {
@@ -106,8 +101,11 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
         var kucuk = Marka.Ad.ToLower(tr);
         Assert.Equal(char.ToUpper(kucuk[0], tr) + kucuk[1..], KabukTuvalSozlugu.MarkaYazimi);
 
-        var e = EkranlarCiz();
-        Assert.Equal("Mihenk", e.Find("#ekranlar-panele-don .ekranlar-marka-ad").TextContent.Trim());
+        // ESKİ: Tüm ekranlar şeridindeki marka adı (#ekranlar-panele-don kaldırıldı). Yıldız'da marka
+        // yazımı giriş amblemine (ve üst menü amblemine: YildizAmblem2Testleri.YA2_01) AYNI kaynaktan gelir.
+        var e = GirisCiz();
+        Assert.Equal("Mihenk", e.Find("h1#giris-amblem").GetAttribute("aria-label"));
+        Assert.Equal(Marka.Ad.ToUpper(tr), e.Find("#giris-amblem text").TextContent);
     }
 
     [Fact]
@@ -115,29 +113,23 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
     {
         Assert.Equal("Vitrin panosu", EkranlarGirisTuvalSozlugu.VitrinPanosu("tr"));
         Assert.Equal("Showcase board", EkranlarGirisTuvalSozlugu.VitrinPanosu("en"));
-        var e = EkranlarCiz();
-        Assert.Equal("Vitrin panosu", e.Find("#ekranlar-alt-vitrin").TextContent.Trim());
-        Assert.Equal("/vitrin", e.Find("#ekranlar-alt-vitrin").GetAttribute("href"));
+        // TEMA TEMİZLİĞİ 17.10: #ekranlar-alt-vitrin bağlantısı (eski karo sayfasının alt satırı) tuval
+        // Tum4'te yok — ekran kısmı kaldırıldı; Vitrin panosu Kur ekranındaki #kur-vitrin-ac'tan açılır
+        // (MenuTanimi.MenusuzRotalar["/vitrin"] = "Kur.razor").
+        Assert.Equal("Kur.razor", MenuTanimi.MenusuzRotalar["/vitrin"]);
     }
 
-    [Fact]
-    public void TK4_03_Yalniz_Gunluk_is_izgarasi_IKONLU_sinifi_tasir()
-    {
-        var e = EkranlarCiz();
-        var gunluk = e.Find($"#ekranlar-grup-{MenuTanimi.GrupSlug(MenuGrubu.Gunluk)} .ekranlar-izgara");
-        Assert.Contains("ekranlar-izgara-ikonlu", gunluk.ClassList);
-        var ikonlu = e.FindAll(".ekranlar-izgara-ikonlu");
-        Assert.Single(ikonlu);
-        // Diğer grupların ızgarası düz kalır (tuval: ikonsuz karolar, 8 eşit sütun).
-        Assert.True(e.FindAll(".ekranlar-izgara").Count > 1);
-    }
+    // TEMA TEMİZLİĞİ 17.10: TK4_03_Yalniz_Gunluk_is_izgarasi_IKONLU_sinifi_tasir kaldırıldı — tuval Tum4'te her bölüm aynı ızgaradır ve her karede ikon vardır (Yildiz2Testleri.Y2_20, Yildiz4BTestleri.Y4B_14); .ekranlar-izgara-ikonlu Yıldız yüzünde çizilmez.
 
     [Fact]
     public void TK4_04_Giris_tuval_yazimlari_Mihenk_Parola_Giris_yap_surum()
     {
         var e = GirisCiz();
-        Assert.Equal("Mihenk", e.Find("h1.giris-marka-ad").TextContent.Trim());
-        Assert.Equal("Mihenk’e hoş geldin", e.Find("#sayfa-basi-giris-baslik").TextContent.Trim());
+        // ESKİ: h1.giris-marka-ad + #sayfa-basi-giris-baslik "Mihenk’e hoş geldin" — tuval Giris4'te
+        // marka amblemdir ve giriş sekmesinde başlık YOKTUR (YildizAmblem2Testleri.YA2_13/YA2_14).
+        Assert.Equal("Mihenk", e.Find("h1#giris-amblem").GetAttribute("aria-label"));
+        Assert.Single(e.FindAll("h1"));
+        Assert.Empty(e.FindAll("#sayfa-basi-giris-baslik"));
         Assert.Equal("Parola", e.Find("label[for='giris-sifre'] .alan-etiket-metin").TextContent.Trim());
         Assert.Equal("Giriş yap", e.Find("#giris-gonder").TextContent.Trim());
         Assert.StartsWith("Mihenk ", e.Find("#giris-surum").TextContent.Trim(), StringComparison.Ordinal);
@@ -145,9 +137,10 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
         // Parolamı unuttum ile aynı kelime (tek kavram, tek ad).
         Assert.StartsWith(EkranlarGirisTuvalSozlugu.Parola("tr"), GirisSozlugu.ParolamiUnuttum("tr"), StringComparison.Ordinal);
 
-        // Kayıt formu da aynı etiketi kullanır.
+        // Kayıt formu da aynı etiketi kullanır; kayıt sekmesinin başlığı sözlükten.
         e.Find("#giris-yeni-dukkan").Click();
         Assert.Equal("Parola", e.Find("label[for='kayit-sifre'] .alan-etiket-metin").TextContent.Trim());
+        Assert.Equal(GirisSozlugu.YeniDukkanKur("tr"), e.Find("#sayfa-basi-giris-baslik").TextContent.Trim());
     }
 
     [Fact]
@@ -157,7 +150,11 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
         await e.InvokeAsync(() => Services.GetRequiredService<DilServisi>().DegistirAsync("en"));
         e.WaitForAssertion(() => Assert.Equal("Sign in", e.Find("#giris-gonder").TextContent.Trim()));
         Assert.Equal("Password", e.Find("label[for='giris-sifre'] .alan-etiket-metin").TextContent.Trim());
-        Assert.Equal("Welcome to Mihenk", e.Find("#sayfa-basi-giris-baslik").TextContent.Trim());
+        // ESKİ: "Welcome to Mihenk" başlığı — Yıldız girişinde giriş sekmesinin başlığı yok; kayıt
+        // sekmesinin başlığı İngilizce sözlükten gelir.
+        e.Find("#giris-yeni-dukkan").Click();
+        Assert.Equal(GirisSozlugu.YeniDukkanKur("en"), e.Find("#sayfa-basi-giris-baslik").TextContent.Trim());
+        Assert.NotEqual(GirisSozlugu.YeniDukkanKur("tr"), GirisSozlugu.YeniDukkanKur("en"));
     }
 
     // ── (3) Davranış ve id'ler değişmez ──────────────────────────────────────
@@ -165,15 +162,20 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
     [Fact]
     public void TK4_06_Giris_mevcut_idler_KORUNUR()
     {
+        // TEMA TEMİZLİĞİ 17.10: iki panelli girişin id'leri (giris-marka, giris-baglar, giris-panel,
+        // giris-panel-baslik, giris-panel-alt, giris-rakamlar) tuval Giris4 ile BİLEREK kalktı
+        // (YildizAmblem2Testleri.YA2_13/YA2_14); başlık id'leri yalnız kayıt sekmesinde çizilir.
         var e = GirisCiz();
         foreach (var id in new[]
                  {
-                     "giris-sayfa", "giris-sol", "giris-kart", "giris-marka", "giris-dil", "giris-form",
-                     "giris-eposta", "giris-sifre", "giris-sifre-goster", "giris-gonder", "giris-baglar",
+                     "giris-sayfa", "giris-sol", "giris-kart", "giris-amblem", "giris-dil", "giris-form",
+                     "giris-eposta", "giris-sifre", "giris-sifre-goster", "giris-gonder",
                      "giris-parola-unuttum", "giris-yeni-dukkan", "giris-surum", "giris-kisit", "giris-kisit-ozet",
-                     "giris-panel", "giris-panel-baslik", "giris-panel-alt", "giris-rakamlar",
-                     "sayfa-basi-giris-baslik", "sayfa-basi-giris-aciklama",
                  })
+            Assert.NotNull(e.Find("#" + id));
+
+        e.Find("#giris-yeni-dukkan").Click();
+        foreach (var id in new[] { "sayfa-basi-giris-baslik", "sayfa-basi-giris-aciklama", "kayit-form", "giris-girise-don" })
             Assert.NotNull(e.Find("#" + id));
     }
 

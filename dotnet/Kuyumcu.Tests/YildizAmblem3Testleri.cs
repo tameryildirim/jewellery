@@ -82,7 +82,9 @@ public sealed class YildizAmblem3Testleri : BunitContext
 
     private static string TemaJs() => CssKaynak.YorumsuzKod(CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "js", "tema.js"));
 
-    // ── YA3-01) Soğuk açılış + cihazdaki son şema Yıldız → tuval Giris4 düzeni (KRİTİK-2) ─────────
+    // ── YA3-01) Soğuk açılış → tuval Giris4 düzeni; cihaz önbelleği SORULMAZ (TEMA TEMİZLİĞİ 17.10) ─────────
+    // TEMA TEMİZLİĞİ 17.10: tek şema — 'mihenk-son-sema' önbelleği ve kuyumcuGorunum.sonSema kaldırıldı;
+    // data-sema="yildiz" ilk boyamadan önce tema.js'te kalıcı yazılır (YA3_09). Giriş hep Yıldız'dır.
     [Fact]
     public void YA3_01_soguk_acilista_son_sema_yildiz_ise_yildiz_girisi_cizilir()
     {
@@ -91,35 +93,42 @@ public sealed class YildizAmblem3Testleri : BunitContext
         Assert.Single(e.FindAll("#giris-amblem"));
         Assert.Empty(e.FindAll("#giris-panel"));
         Assert.Empty(e.FindAll("#giris-marka"));
-        Assert.Single(JSInterop.Invocations["kuyumcuGorunum.sonSema"]);
+        // ESKİ: sonSema TEK kez sorulurdu. Artık giriş düzeni cihaz önbelleğine bağlı değildir: soru YOK.
+        Assert.DoesNotContain(JSInterop.Invocations, i => i.Identifier == "kuyumcuGorunum.sonSema");
     }
 
-    // ── YA3-02) Hiç giriş yapılmamış cihaz (anahtar yok) / başka şema → varsayılan (Platin) giriş AYNEN ─────────
+    // ── YA3-02) Önbellek yok / başka şema yazıyor → YİNE Yıldız girişi (eski iki panel DÖNMEZ) ─────────
+    // ESKİ: YA3_02_anahtar_yoksa_ya_da_baska_semaysa_eski_giris_aynen — eski (Platin) iki panelli giriş
+    // tek şema kararıyla BİLEREK kaldırıldı; aynı girdilerde artık Yıldız düzeni beklenir.
     [Theory]
     [InlineData(null)]
     [InlineData("platin")]
     [InlineData("bordo")]
     [InlineData("YILDIZ-degil")]
-    public void YA3_02_anahtar_yoksa_ya_da_baska_semaysa_eski_giris_aynen(string? son)
+    public void YA3_02_anahtar_yoksa_ya_da_baska_semaysa_yine_yildiz_girisi(string? son)
     {
         var e = SogukGiris(son);
-        Assert.Equal("giris-sayfa giris-iki-panel", e.Find("#giris-sayfa").GetAttribute("class"));
-        Assert.Single(e.FindAll("#giris-marka"));
-        Assert.Single(e.FindAll("#giris-panel"));
-        Assert.Empty(e.FindAll("#giris-amblem, #giris-alt, #giris-yildiz-satir"));
+        Assert.Equal("giris-sayfa giris-iki-panel giris-yildiz", e.Find("#giris-sayfa").GetAttribute("class"));
+        Assert.Single(e.FindAll("#giris-amblem"));
+        Assert.Single(e.FindAll("#giris-alt"));
+        Assert.Single(e.FindAll("#giris-yildiz-satir"));
+        Assert.Empty(e.FindAll("#giris-marka, #giris-panel, #giris-baglar"));
     }
 
-    // ── YA3-03) Sunucu görünümü bu sekmede OKUNDUYSA o esastır (cihaz önbelleği sunucuyu ezmez) ─────────
+    // ── YA3-03) Sunucu görünümü bu sekmede OKUNDUYSA da giriş Yıldız'dır (tek şema; sunucu sabitler) ─────────
+    // ESKİ beklenti: sunucu "platin" derse eski giriş. TEMA TEMİZLİĞİ 17.10: şema seçimi kalktı —
+    // sunucu ne derse desin (eski istemci/bozuk değer) giriş Yıldız düzenidir.
     [Theory]
-    [InlineData("platin", "yildiz", false)]   // önbellek Yıldız ama sunucu Platin dedi → eski giriş
-    [InlineData("yildiz", null, true)]        // Yıldız oturumundan çıkış (aynı sekme), önbellek yok → Yıldız
-    [InlineData("yildiz", "platin", true)]
-    public async Task YA3_03_sunucu_gorunumu_okunduysa_o_esastir(string sunucu, string? son, bool yildizBeklenen)
+    [InlineData("platin", "yildiz")]
+    [InlineData("yildiz", null)]
+    [InlineData("yildiz", "platin")]
+    public async Task YA3_03_sunucu_gorunumu_okunduysa_o_esastir(string sunucu, string? son)
     {
         gorunumSema = sunucu;
         await Services.GetRequiredService<GorunumServisi>().YukleAsync();
         var e = SogukGiris(son);
-        Assert.Equal(yildizBeklenen, e.Find("#giris-sayfa").ClassList.Contains("giris-yildiz"));
+        Assert.Contains("giris-yildiz", e.Find("#giris-sayfa").ClassList);
+        Assert.Empty(e.FindAll("#giris-panel"));
     }
 
     // ── YA3-04) Tuval Giris4 formu: etiket + alan satırı ×2, yer tutucular tuvaldeki gibi, tek satır unuttum | giriş ─────────
@@ -158,19 +167,7 @@ public sealed class YildizAmblem3Testleri : BunitContext
         Assert.Single(e.FindAll("#giris-alt #giris-surum"));
     }
 
-    // ── YA3-06) Öteki şemalar: form ve kart DOM'u AYNEN (gönder → bağlar[unuttum, yeni dükkân]; sürüm + kısıt kartın çocuğu) ─────────
-    [Fact]
-    public void YA3_06_oteki_semalarda_dom_sirasi_ve_yer_tutucular_aynen()
-    {
-        var e = SogukGiris(null);
-        var form = e.Find("#giris-form");
-        Assert.Equal(new[] { "giris-eposta-sar", "giris-sifre-sar", "giris-gonder", "giris-baglar" }, form.Children.Select(c => c.Id).ToList());
-        Assert.Equal(new[] { "giris-parola-unuttum", "giris-yeni-dukkan" }, e.Find("#giris-baglar").Children.Select(c => c.Id).ToList());
-        Assert.Equal("ornek@isletme.com", e.Find("#giris-eposta").GetAttribute("placeholder"));
-        Assert.Null(e.Find("#giris-sifre").GetAttribute("placeholder"));
-        var kart = e.Find("#giris-kart").Children.Select(c => c.Id).Where(s => !string.IsNullOrEmpty(s)).ToList();
-        Assert.Equal(new[] { "giris-form", "giris-surum", "giris-kisit" }, kart.SkipWhile(s => s != "giris-form").ToList());
-    }
+    // TEMA TEMİZLİĞİ 17.10: YA3_06_oteki_semalarda_dom_sirasi_ve_yer_tutucular_aynen kaldırıldı — öteki şemalar ve eski giriş DOM'u (gönder → #giris-baglar, "ornek@isletme.com" yer tutucusu) tek şema kararıyla BİLEREK kalktı; giriş DOM sırası ve yer tutucuları YA3_04/YA3_05'te sınanır.
 
     // ── YA3-07) MFA ikinci adımı (C4_62 kurtarma kodu alanı) soğuk Yıldız girişinde de DEĞİŞMEZ ─────────
     [Fact]
@@ -199,30 +196,33 @@ public sealed class YildizAmblem3Testleri : BunitContext
         Assert.Contains("alan-hatali", e.Find("#giris-eposta-sar").ClassList);
     }
 
-    // ── YA3-09) tema.js: son şema sunucudan gelen her uygulamada YAZILIR, beyaz liste, ilk boyamadan önce uygulanır, çıkışta silinmez ─────────
+    // ── YA3-09) tema.js: tek şema ilk boyamadan önce KALICI yazılır; son-şema önbelleği YOK (TEMA TEMİZLİĞİ 17.10) ─────────
+    // ESKİ: YA3_09_tema_js_son_semayi_yazar_okur_ilk_boyamada_uygular — 'mihenk-son-sema' localStorage
+    // anahtarı ve kuyumcuGorunum.sonSema kaldırıldı. Sözleşme: sema() gelen değere bakmadan "yildiz"
+    // yazar, dosya yüklenirken (Blazor'dan önce) çağrılır; hiçbir dosya eski anahtara dokunmaz.
     [Fact]
     public void YA3_09_tema_js_son_semayi_yazar_okur_ilk_boyamada_uygular()
     {
         var js = TemaJs();
-        Assert.Contains("var SON_SEMA = 'mihenk-son-sema';", js);
-        var sema = Regex.Match(js, @"function sema\(deger\) \{(?<g>[\s\S]*?)\n    \}");
+        Assert.Contains("var SEMA = 'yildiz';", js);
+        var sema = Regex.Match(js, @"function sema\(\) \{(?<g>[\s\S]*?)\n    \}");
         Assert.True(sema.Success, "sema() bulunamadı");
-        Assert.Contains("var s = yaz('data-sema', deger, SEMALAR);", sema.Groups["g"].Value);
-        Assert.Contains("if (s) localStorage.setItem(SON_SEMA, s); else localStorage.removeItem(SON_SEMA);", sema.Groups["g"].Value);
-        var son = Regex.Match(js, @"function sonSema\(\) \{(?<g>[\s\S]*?)\n    \}");
-        Assert.True(son.Success, "sonSema() bulunamadı");
-        Assert.Contains("localStorage.getItem(SON_SEMA)", son.Groups["g"].Value);
-        Assert.Contains("return SEMALAR.indexOf(d) !== -1 ? d : '';", son.Groups["g"].Value);
-        Assert.Contains("window.kuyumcuGorunum = { uygula: uygula, sema: sema, olcek: olcek, sonSema: sonSema };", js);
-        // İlk boyamadan önce (blazor.webassembly.js'ten önce yüklenen dosyanın gövdesinde) uygulanır
+        Assert.Contains("document.documentElement.setAttribute('data-sema', SEMA);", sema.Groups["g"].Value);
+        Assert.DoesNotContain("localStorage", sema.Groups["g"].Value);
+        Assert.Contains("window.kuyumcuGorunum = { uygula: uygula, sema: sema, olcek: olcek };", js);
+        // İlk boyamadan önce (blazor.webassembly.js'ten önce yüklenen dosyanın gövdesinde) uygulanır.
         var i = js.IndexOf("window.kuyumcuGorunum =", StringComparison.Ordinal);
-        Assert.True(js.IndexOf("yaz('data-sema', sonSema(), SEMALAR);", i, StringComparison.Ordinal) > i, "son şema ilk boyamada uygulanmıyor");
-        // Yalnız sema() yazar/siler: başka hiçbir yer (çıkış dahil) anahtarı silmez
-        Assert.Single(Regex.Matches(js, @"removeItem\(SON_SEMA\)"));
-        Assert.Single(Regex.Matches(js, @"setItem\(SON_SEMA"));
+        Assert.True(js.IndexOf("sema();", i, StringComparison.Ordinal) > i, "tek şema ilk boyamada uygulanmıyor");
+        // Son-şema önbelleği tamamen kalktı: ne tema.js'te ne başka bir istemci dosyasında anahtar/okuyucu var.
+        Assert.DoesNotContain("SON_SEMA", js);
+        Assert.DoesNotContain("mihenk-son-sema", js);
+        Assert.DoesNotContain("sonSema", js);
         foreach (var dosya in Directory.GetFiles(CssKaynak.Yol("Kuyumcu.Web"), "*.*", SearchOption.AllDirectories)
-                     .Where(d => (d.EndsWith(".cs") || d.EndsWith(".razor") || d.EndsWith(".js")) && !d.Contains("/bin/") && !d.Contains("/obj/") && !d.EndsWith("tema.js")))
-            Assert.False(Regex.IsMatch(File.ReadAllText(dosya), @"""mihenk-son-sema""|localStorage[^\n]*mihenk-son-sema"), $"{dosya} anahtara dokunuyor");
+                     .Where(d => (d.EndsWith(".cs") || d.EndsWith(".razor") || d.EndsWith(".js")) && !d.Contains("/bin/") && !d.Contains("/obj/")))
+        {
+            var metin = File.ReadAllText(dosya);
+            Assert.False(Regex.IsMatch(metin, @"mihenk-son-sema|kuyumcuGorunum\.sonSema"), $"{dosya} kaldırılan son-şema önbelleğine dokunuyor");
+        }
     }
 
     // ── YA3-10) CSS — tuval Giris4 değerleri (form, .alan, .ust, girdi, b2, b1, alt bilgi) ─────────

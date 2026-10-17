@@ -1,5 +1,7 @@
 using Bunit;
+using Kuyumcu.Web.Bilesenler.Kabuk;
 using Kuyumcu.Web.Layout;
+using Kuyumcu.Web.Pages;
 using Kuyumcu.Web.Servisler;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,6 +9,9 @@ namespace Kuyumcu.Tests;
 
 // ═════════════════════════════════════════════════════════════════════════════
 // BASİT MOD — KENAR ÇUBUĞU (paket UX-3 Faz A · Aşkın K8 · Mehmet K8)
+//
+// TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı; aynı sözleşme "Tüm ekranlar" sayfasında
+// (Pages/Ekranlar) ve üst menünün hesap menüsünde (YildizUstMenu) sınanır.
 //
 // ⚠ KenarCubugu bu dosyadan ÖNCE hiçbir testte çizilmiyordu (Tests'te 0 dosya).
 //   Kurulum: sahte /yetkiler/benim + OturumServisi + ArayuzModuServisi.
@@ -24,17 +29,24 @@ namespace Kuyumcu.Tests;
 
 public sealed class BasitModMenuTestleri : BunitContext
 {
-    /// <summary>Sahte /yetkiler/benim — modül listesi test başına ayarlanır.</summary>
+    /// <summary>
+    /// Sahte API — /yetkiler/benim modül listesi test başına ayarlanır; "Tüm ekranlar" sayfasının
+    /// tercih okuması ve hesap menüsünün şube listesi için de gerçekçi yanıt döner.
+    /// </summary>
     private sealed class SahteYetkiApi(Func<string> modulJson) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage istek, CancellationToken iptal) =>
-            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            HttpRequestMessage istek, CancellationToken iptal)
+        {
+            var yol = istek.RequestUri!.AbsolutePath;
+            var govde = yol.Contains("/tercihler/benim", StringComparison.Ordinal) ? """{"tercihler":{},"mesaj":"ok"}"""
+                : yol.EndsWith("/subeler", StringComparison.Ordinal) ? """[{"id":"s1","ad":"Merkez","aktif":true}]"""
+                : $$"""{"moduller":{{modulJson()}}}""";
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
             {
-                Content = new StringContent(
-                    $$"""{"moduller":{{modulJson()}}}""",
-                    System.Text.Encoding.UTF8, "application/json"),
+                Content = new StringContent(govde, System.Text.Encoding.UTF8, "application/json"),
             });
+        }
     }
 
     private string moduller = """["cari","urun","islem","kasa","banka","fatura","rapor","kullanici"]""";
@@ -51,29 +63,29 @@ public sealed class BasitModMenuTestleri : BunitContext
         Services.AddScoped<ApiIstemci>();
         Services.AddScoped<YetkiServisi>();
         Services.AddScoped<ArayuzModuServisi>();
-        // P-36b kapanışı (P-37 artığı): KenarCubugu favori/sıra tercihini bu
-        // servisten okur; Program.cs'te kayıtlıydı, fikstürlerde DEĞİLDİ →
-        // kabuk çizen her test DI hatasıyla kırmızıydı.
         Services.AddScoped<MenuTercihServisi>();
+        Services.AddScoped<CanliKurServisi>();   // YildizUstMenu (kur şeridi yalnız okunur)
     }
 
-    private IRenderedComponent<KenarCubugu> Ciz(string rol, string etkinMod)
-    {
+    private void Oturum(string rol, string etkinMod) =>
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", null, etkinMod));
-        var e = Render<KenarCubugu>();
-        // Yetkiler eşzamansız yükleniyor (HazirlaAsync) — çizim tamamlansın.
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
-        return e;
-    }
 
-    private static List<string> Yollar(IRenderedComponent<KenarCubugu> e) =>
-        e.FindAll(".kenar-nav a").Select(a => a.GetAttribute("href")!).ToList();
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı — kullanıcının BÜTÜN ekran listesi artık
+    /// "Tüm ekranlar" sayfasıdır (üst menünün son sözcüğü). Menü sözleşmesi orada sınanır.
+    /// </summary>
+    private List<string> Yollar(string rol, string etkinMod)
+    {
+        Oturum(rol, etkinMod);
+        var e = Render<Ekranlar>().KareleriBekle();
+        return e.KareYollari();
+    }
 
     [Fact]
     public void Profesyonel_modda_SAHIP_tum_menuyu_gorur()
     {
-        var yollar = Yollar(Ciz("SAHIP", ArayuzModuServisi.Profesyonel));
+        var yollar = Yollar("SAHIP", ArayuzModuServisi.Profesyonel);
 
         Assert.Contains("/denetim-izi", yollar);
         Assert.Contains("/isletme", yollar);
@@ -87,24 +99,20 @@ public sealed class BasitModMenuTestleri : BunitContext
     [Fact]
     public void Basit_modda_menu_YETKILI_HER_ekrani_tasir_BasitMenu_ile_daralmaz()
     {
-        // S1-g — ESKİ: Basit_modda_menu_YALNIZ_BasitMenu_listesidir (8 yol).
-        // YENİ: tuval Panel.dc.html satır 30-43 — "Tüm ekranlar (38)" ve 6 grubun
-        // önizlemesi basit yüzde 38 ekranı taşır. Menü = yetkili ekranlar.
-        var yollar = Yollar(Ciz("SAHIP", ArayuzModuServisi.Basit));
+        // S1-g: basit modda da menü = yetkili ekranlar (BasitMenu listesiyle daralmaz).
+        var yollar = Yollar("SAHIP", ArayuzModuServisi.Basit);
 
         Assert.Equal(MenuTanimi.Ogeler.Select(o => o.Yol).OrderBy(x => x), yollar.OrderBy(x => x));
         Assert.True(yollar.Count > BasitMenu.Yollar.Length);
     }
 
     [Fact]
-    public void Basit_modda_profesyonel_ekranlar_menude_KAYBOLMAZ_kapali_grupta_durur()
+    public void Basit_modda_profesyonel_ekranlar_TUM_EKRANLARDA_KAYBOLMAZ()
     {
-        // S1-g — ESKİ: Basit_modda_profesyonel_ekranlar_menude_YOKTUR (16 yol
-        // basit menüde olmamalıydı). YENİ: tuval Panel.dc.html satır 38-43 —
-        // bu ekranlar KAPALI grupların önizlemesinde yazar ve grup açılınca
-        // gidilir; menüden kaybolmaz, yalnız katlanır.
-        var e = Ciz("SAHIP", ArayuzModuServisi.Basit);
-        var yollar = Yollar(e);
+        // ESKİ: Basit_modda_profesyonel_ekranlar_menude_KAYBOLMAZ_kapali_grupta_durur (kenar çubuğunda
+        // kapalı grupta/önizlemede dururdu). Katlanır grup Yıldız'da yok: bu ekranların hepsi basit
+        // modda da "Tüm ekranlar"da karesiyle durur.
+        var yollar = Yollar("SAHIP", ArayuzModuServisi.Basit);
 
         foreach (var yol in new[]
         {
@@ -114,17 +122,13 @@ public sealed class BasitModMenuTestleri : BunitContext
             "/urunler/agac", "/raporlar/kar-zarar", "/raporlar/vade-takibi",
         })
             Assert.Contains(yol, yollar);
-        // Panel rotasında Yönetim grubu kapalı: satırı katlı, adı önizlemede.
-        Assert.True(e.Find("#kenar-satir-denetim-izi").HasAttribute("hidden"));
-        Assert.Contains(Kuyumcu.Core.I18n.MenuAdlari.Tr.KimNeYapti.Kisa,
-            e.Find("#kenar-onizleme-yonetim").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Yetkisiz_kullanici_baglantiyi_gormez_PROFESYONEL_modda()
     {
         moduller = "[]";   // hiçbir modüle yetkisi yok
-        var yollar = Yollar(Ciz("TEZGAHTAR", ArayuzModuServisi.Profesyonel));
+        var yollar = Yollar("TEZGAHTAR", ArayuzModuServisi.Profesyonel);
 
         Assert.DoesNotContain("/cariler", yollar);
         Assert.DoesNotContain("/urunler", yollar);
@@ -140,7 +144,7 @@ public sealed class BasitModMenuTestleri : BunitContext
         // M-UX3-06 hedefi: menü daraltması Yetki.Erisebilir'in YERİNE geçerse
         // (VEYA / yalnız mod kontrolü) bu test kırmızıya döner.
         moduller = "[]";
-        var yollar = Yollar(Ciz("TEZGAHTAR", ArayuzModuServisi.Basit));
+        var yollar = Yollar("TEZGAHTAR", ArayuzModuServisi.Basit);
 
         Assert.DoesNotContain("/cariler", yollar);
         Assert.DoesNotContain("/urunler", yollar);
@@ -155,16 +159,14 @@ public sealed class BasitModMenuTestleri : BunitContext
     public void Yetkili_TEZGAHTAR_basit_modda_calisma_ekranlarini_gorur()
     {
         moduller = """["cari","urun","islem","kasa","rapor"]""";
-        var yollar = Yollar(Ciz("TEZGAHTAR", ArayuzModuServisi.Basit));
+        var yollar = Yollar("TEZGAHTAR", ArayuzModuServisi.Basit);
 
         Assert.Contains("/islemler", yollar);
         Assert.Contains("/cariler", yollar);
         Assert.Contains("/urunler", yollar);
         Assert.Contains("/kasalar", yollar);
         Assert.Contains("/raporlar", yollar);
-        // S1-g — ESKİ: "yetkisi olsa bile basit modda kur/emanet menüde yok".
-        // YENİ (tuval Tezgah.dc.html satır 33-39, tezgâhtar basit yüzü): Emanet
-        // Günlük iş grubunda, Kur Para ve banka grubunda DURUR — yetki varsa.
+        // S1-g: Emanet (Günlük iş) ve Kur (Para ve banka) DURUR — yetki varsa.
         Assert.Contains("/kur", yollar);
         Assert.Contains("/emanet", yollar);
         // Yetki yine son sözü söyler: modülü verilmeyen ekran yoktur (M-UX3-06).
@@ -175,10 +177,13 @@ public sealed class BasitModMenuTestleri : BunitContext
     [Fact]
     public void Kilavuz_ve_Ayarlar_her_modda_alt_blokta_kalir()
     {
+        // TEMA TEMİZLİĞİ 17.10: kenar çubuğunun alt bloğu, üst menünün hesap menüsüne taşındı
+        // (YildizUstMenu #yildiz-kullanici-menu → MenuTanimi.AltBlok). Her modda durur.
         foreach (var mod in new[] { ArayuzModuServisi.Basit, ArayuzModuServisi.Profesyonel })
         {
-            var e = Ciz("SAHIP", mod);
-            var alt = e.FindAll(".kenar-alt a").Select(a => a.GetAttribute("href")).ToList();
+            Oturum("SAHIP", mod);
+            var e = Render<YildizUstMenu>();
+            var alt = e.FindAll("#yildiz-kullanici-menu .yildiz-menu-baglantilar a").Select(a => a.GetAttribute("href")).ToList();
             Assert.Contains("/kilavuz", alt);
             Assert.Contains("/ayarlar", alt);
         }

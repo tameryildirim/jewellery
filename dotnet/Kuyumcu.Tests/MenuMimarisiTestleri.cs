@@ -1,6 +1,7 @@
 using Bunit;
 using Kuyumcu.Core.I18n;
 using Kuyumcu.Web.Layout;
+using Kuyumcu.Web.Pages;
 using Kuyumcu.Web.Servisler;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -291,62 +292,49 @@ public sealed class MenuMimarisiTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
     }
 
-    private IRenderedComponent<KenarCubugu> Ciz(string rol, string etkinMod)
+    // TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı. Menü tanımının ÇİZİMİ artık "Tüm ekranlar"
+    // sayfasıdır (Pages/Ekranlar → YildizEkranlar): her grup bir bölüm (section#ekranlar-grup-{slug},
+    // başlık #ekranlar-grup-baslik-{slug}), her ekran bir kare (a.yz-kare). P-14 DoD'unun soruları
+    // ("grup başlığı var mı, altında gidilecek yer var mı, yetkisizin grubu çiziliyor mu") orada sınanır.
+    private IRenderedComponent<Ekranlar> Ciz(string rol, string etkinMod)
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", null, etkinMod));
-        var e = Render<KenarCubugu>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
-        return e;
+        return Render<Ekranlar>().KareleriBekle();
     }
 
     [Fact]
     public void Cizimde_grup_basligi_VARDIR_ve_altinda_en_az_bir_baglanti_bulunur()
     {
         var e = Ciz("SAHIP", ArayuzModuServisi.Profesyonel);
-        var basliklar = e.FindAll(".kenar-nav .kenar-grup-baslik");
+        var bolumler = e.FindAll("section.yz-tum-bolum");
 
-        Assert.NotEmpty(basliklar);              // grup başlığı > 0 (P-14 DoD)
-        Assert.Equal(MenuTanimi.GrupSirasi.Length, basliklar.Count);
+        Assert.NotEmpty(bolumler);              // grup başlığı > 0 (P-14 DoD)
+        Assert.Equal(MenuTanimi.GrupSirasi.Length, bolumler.Count);
 
-        // Her başlığın hemen ardından bir bağlantı gelmeli (boş başlık yok).
-        var cocuklar = e.Find(".kenar-nav").Children;
-        for (var i = 0; i < cocuklar.Length; i++)
+        // Her bölümün başlığı vardır ve altında gerçekten gidilecek bir yer (bağlantı) bulunur.
+        foreach (var b in bolumler)
         {
-            if (!cocuklar[i].ClassList.Contains("kenar-grup-baslik")) continue;
-            Assert.True(i + 1 < cocuklar.Length, "grup başlığı menünün sonunda boş kaldı");
-
-            // ⚠ SÖZLEŞME DEĞİŞTİ (PAKET P-37, buraya P-36b kapanışında işlendi):
-            //   menü bağlantısı artık <nav>'ın DOĞRUDAN çocuğu değildir; sıralama
-            //   tutamacı, taşı düğmeleri ve favori yıldızıyla birlikte bir
-            //   `.kenar-satir` kabına sarılıdır. Testin SORDUĞU ŞEY değişmedi —
-            //   "başlığın altında gerçekten gidilecek bir yer var mı" — bu yüzden
-            //   etiket adı yerine BAĞLANTININ VARLIĞI sınanır. Böylece kap bir kez
-            //   daha değişse bile test, boş grup başlığını yakalamaya devam eder.
-            var altSatir = cocuklar[i + 1];
-            Assert.True(altSatir.ClassList.Contains("kenar-satir"),
-                $"grup başlığının ardında menü satırı yok: <{altSatir.TagName}>");
-            Assert.NotEmpty(altSatir.QuerySelectorAll("a"));
+            var baslik = b.QuerySelector("h2");
+            Assert.NotNull(baslik);
+            Assert.False(string.IsNullOrWhiteSpace(baslik!.TextContent), $"{b.Id}: boş başlık");
+            Assert.Equal(baslik.Id, b.GetAttribute("aria-labelledby"));
+            Assert.NotEmpty(b.QuerySelectorAll("a.yz-kare[href]"));
         }
     }
 
     [Fact]
     public void Basit_modda_BOS_grup_basligi_cizilmez()
     {
-        // ⚠ SÖZLEŞME İKİNCİ KEZ DEĞİŞTİ (PAKET S1-g, kurucu 24.09 "olmamış"):
-        //   S1-b "basit yüz düz liste, başlık 0" demişti; kurucunun tuvali
-        //   (Panel.dc.html satır 32-43, Tezgah.dc.html satır 33-45) basit modda
-        //   da 6 grup başlığı çizer. Testin SORDUĞU ŞEY P-14'teki hâline döndü:
-        //   "BOŞ grup başlığı çizilmez" — yetkisi olmayan grubun başlığı basit
-        //   modda da yoktur; yetkili SAHİP'te 6 başlığın 6'sı durur.
-        // (Yetkili SAHİP'te 6/6 başlık: MenuKatlamaTestleri.Basit_modda_da_ALTI_grup…)
+        // "BOŞ grup başlığı çizilmez" — yetkisi olmayan grubun başlığı basit modda da yoktur.
         // ⚠ Yetki servisi kullanıcı başına önbellekli: süzgeç İLK çizimden önce kurulur.
         moduller = "[]";
         var t = Ciz("TEZGAHTAR", ArayuzModuServisi.Basit);
-        var basliklar = t.FindAll(".kenar-nav .kenar-grup-baslik").Select(b => b.Id).ToList();
-        Assert.Contains("kenar-grup-gunluk", basliklar);          // Panel yetki istemez
-        Assert.DoesNotContain("kenar-grup-yonetim", basliklar);   // boş grup başlığı YOK
-        Assert.DoesNotContain("kenar-grup-musteri-stok", basliklar);
+        var bolumler = t.BolumKimlikleri();
+        Assert.Contains("ekranlar-grup-gunluk", bolumler);          // Panel yetki istemez
+        Assert.DoesNotContain("ekranlar-grup-yonetim", bolumler);   // boş grup başlığı YOK
+        Assert.DoesNotContain("ekranlar-grup-musteri-stok", bolumler);
+        Assert.Empty(t.FindAll("#ekranlar-grup-baslik-yonetim"));
     }
 
     [Fact]
@@ -355,25 +343,22 @@ public sealed class MenuMimarisiTestleri : BunitContext
         moduller = "[]";                       // hiçbir modül yetkisi yok
         var e = Ciz("TEZGAHTAR", ArayuzModuServisi.Profesyonel);
 
-        var basliklar = e.FindAll(".kenar-nav .kenar-grup-baslik")
-            .Select(b => b.Id).ToList();
+        var bolumler = e.BolumKimlikleri();
 
         // Panel yetki istemez → "Günlük İş" durur; rapor/yönetim grubu gitmeli.
-        Assert.Contains("kenar-grup-gunluk", basliklar);
-        Assert.DoesNotContain("kenar-grup-rapor", basliklar);
-        Assert.DoesNotContain("kenar-grup-yonetim", basliklar);
-        Assert.DoesNotContain("kenar-grup-musteri-stok", basliklar);
+        Assert.Contains("ekranlar-grup-gunluk", bolumler);
+        Assert.DoesNotContain("ekranlar-grup-rapor", bolumler);
+        Assert.DoesNotContain("ekranlar-grup-yonetim", bolumler);
+        Assert.DoesNotContain("ekranlar-grup-musteri-stok", bolumler);
     }
 
     [Fact]
     public void Cizilen_etiketler_menu_tanimiyla_AYNIDIR()
     {
         var e = Ciz("SAHIP", ArayuzModuServisi.Profesyonel);
-        var metinler = e.FindAll(".kenar-nav a").Select(a => a.TextContent.Trim()).ToList();
+        var metinler = e.FindAll("a.yz-kare .yz-kad").Select(a => a.TextContent.Trim()).ToList();
 
-        // S1-g YENİDEN YAZIM — ESKİ: hub sözlüğünün P-14 adları (Hareket Dökümü,
-        // Kasa Hareketleri, POS Hakedişleri, Gecikmiş Alacaklar). YENİ: menü
-        // adları TEK kaynaktan (MenuAdlari, tuval Ekranlar.dc.html) gelir.
+        // Menü adları TEK kaynaktan (MenuAdlari, tuval) gelir; hub sözlüğünün eski P-14 adları dönmez.
         var m = MenuAdlari.Tr;
         Assert.Contains(m.IslemDefteri.Ad, metinler);
         Assert.Contains(m.KasaRaporu.Ad, metinler);
