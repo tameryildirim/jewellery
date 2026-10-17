@@ -245,8 +245,8 @@ public sealed class Masak370EkranTestleri : BunitContext
         // kilitli ve cümle 200.000'i söyler (370.000'i değil).
         var e = IslemlerYildiz(esik, 250_000m);
         var beklenen = string.Format(YasalKapiGeriSozlugu.Tr.PesinKimlikKilit, Bicim.Tl(200_000m));
-        e.WaitForAssertion(() => Assert.Equal(beklenen, e.YildizKaydet().GetAttribute("title")), TimeSpan.FromSeconds(5));
-        Assert.True(e.YildizKaydet().HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.Equal(beklenen, e.GbYildizKaydet().GetAttribute("title")), TimeSpan.FromSeconds(5));
+        Assert.True(e.GbYildizKaydet().HasAttribute("disabled"));
         Assert.DoesNotContain(Bicim.Tl(370_000m), e.Find("#yildiz-tezgah-fark").TextContent);
     }
 
@@ -255,7 +255,7 @@ public sealed class Masak370EkranTestleri : BunitContext
     {
         // Sınırın bir kuruş altı: kimlik kademesi tutmaz → Peşin Müşteri kimlik kilidi YOK (370.000'e göre de yok; ayrım üstteki testte).
         var e = IslemlerYildiz(EsikYeni, 199_999.99m);
-        e.WaitForAssertion(() => Assert.False(e.YildizKaydet().HasAttribute("disabled"), e.YildizKaydet().GetAttribute("title")), TimeSpan.FromSeconds(5));
+        e.WaitForAssertion(() => Assert.False(e.GbYildizKaydet().HasAttribute("disabled"), e.GbYildizKaydet().GetAttribute("title")), TimeSpan.FromSeconds(5));
         Assert.DoesNotContain(Bicim.Tl(200_000m), e.Find("#yildiz-tezgah-fark").TextContent);
     }
 }

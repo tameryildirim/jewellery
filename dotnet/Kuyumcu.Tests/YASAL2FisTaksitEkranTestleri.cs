@@ -84,14 +84,14 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
     {
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
         e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
-        e.YildizMusteriSec("c1");
+        e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
         e.WaitForAssertion(() => Assert.Equal(1, e.YildizKalemSayisi()));
         e.YildizOdemeSec(odeme);
         if (e.FindAll("#islem-kasa").Count > 0 && odeme != "VERESIYE") SeciciYardim.Sec(e, "islem-kasa", "ks1");
-        e.WaitForAssertion(() => Assert.False(e.YildizKaydet().HasAttribute("disabled"), e.YildizKaydet().GetAttribute("title")));
-        e.YildizKaydet().Click();
+        e.WaitForAssertion(() => Assert.False(e.GbYildizKaydet().HasAttribute("disabled"), e.GbYildizKaydet().GetAttribute("title")));
+        e.GbYildizKaydet().Click();
         e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "POST"));
         return e;
     }

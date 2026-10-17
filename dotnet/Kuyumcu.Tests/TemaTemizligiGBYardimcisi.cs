@@ -29,7 +29,7 @@ internal static class TemaTemizligiGBYardimcisi
     }
 
     /// <summary>"Değiştir" katmanından müşteri seçer (YildizMusteriSecici → sayfanın MusteriDegisti'si); katman seçimle kapanır.</summary>
-    public static void YildizMusteriSec(this IRenderedComponent<Islemler> e, string id)
+    public static void GbYildizMusteriSec(this IRenderedComponent<Islemler> e, string id)
     {
         e.WaitForElement("#yildiz-tezgah", Bekle);
         if (e.FindAll("#yildiz-tezgah-musteri").Count == 0) e.Find("#yildiz-tezgah-degistir").Click();
@@ -52,7 +52,7 @@ internal static class TemaTemizligiGBYardimcisi
     }
 
     /// <summary>Tezgâhın Kaydet düğmesi.</summary>
-    public static IElement YildizKaydet(this IRenderedComponent<Islemler> e) => e.Find("#yildiz-tezgah-kaydet");
+    public static IElement GbYildizKaydet(this IRenderedComponent<Islemler> e) => e.Find("#yildiz-tezgah-kaydet");
 
     /// <summary>Tezgâhtaki kalem satırı sayısı.</summary>
     public static int YildizKalemSayisi(this IRenderedComponent<Islemler> e) => e.FindAll(".yz-tezgah-kalem").Count;
