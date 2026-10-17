@@ -15,11 +15,13 @@ namespace Kuyumcu.Api.Modules.Fiyat;
 /// <param name="OfsetTl">M1 — liste fiyatına eklenen elle ofset (± TL); yoksa 0.</param>
 /// <param name="SatisMilyemi">M1 — fiyat satış milyemiyle hesaplandıysa o milyem; değilse null.</param>
 /// <param name="MaliyetTl">M1b — alış (maliyet) milyemi biliniyorsa birim maliyet (net gram × alış milyemi × has); değilse null. Kâr = satış − maliyet.</param>
+/// <param name="KdvPayiTl">KDV payı (müşteri 16.10, 04:59: "binde bir gir… bunun üzerine ekle, fiyatın içinde onu ekle"):
+/// ürünün KDV'ye giren payı (binde) varsa fiyatın ÜSTÜNE eklenen KDV; yoksa 0.</param>
 public sealed record FiyatTeklifi(
     decimal ListeFiyati, decimal HasDegeri, decimal MarjTl, decimal IscilikTl,
     decimal IndirimTutari, decimal SatisFiyati, string? KampanyaId, bool SabitFiyat,
     string Kaynak = FiyatKaynagi.Liste, decimal OfsetTl = 0m, decimal? SatisMilyemi = null,
-    decimal? MaliyetTl = null);
+    decimal? MaliyetTl = null, decimal KdvPayiTl = 0m);
 
 /// <summary>
 /// Fiyatın kaynağı — ekranda rozet, denetimde cevap ("bu fiyat nereden geldi?").
@@ -77,8 +79,9 @@ public static class FiyatMotoru
     /// </param>
     public static FiyatTeklifi? Hesapla(
         Data.Urun urun, decimal hasKuru, FiyatListesi liste, Kampanya? kampanya,
-        FiyatListesiUrunFiyati? gecersizKilma = null)
+        FiyatListesiUrunFiyati? gecersizKilma = null, decimal varsayilanKdvOrani = 0.20m)
     {
+        decimal kdvPayiTl = 0m;          // KDV payı (binde) — kural 8
         decimal listeFiyati, hasDegeri, marjTl, iscilikTl;
         bool sabit;
         string kaynak;
@@ -147,7 +150,18 @@ public static class FiyatMotoru
                 iscilikTl = Yuvarla((urun.IscilikTl ?? 0m) * carpanYuzde / 100m);
             }
             ofsetTl = urun.FiyatOfsetTl ?? 0m;
-            listeFiyati = Math.Max(0m, Yuvarla(hasDegeri + marjTl + iscilikTl + ofsetTl));
+            var oncesi = Math.Max(0m, Yuvarla(hasDegeri + marjTl + iscilikTl + ofsetTl));
+            // Kural 8 — KDV PAYI FİYATIN ÜSTÜNE (müşteri 16.10, 04:59–05:07 ve 26:43–26:49): KDV'ye giren pay
+            // binde b ise faturada KDV = toplam × b/1000 × oran (FaturaModulu → OzelMatrahMotoru.HesaplaBinde).
+            // Kuyumcunun eline fiyattan önceki tutar TAM kalsın diye toplam = önce ÷ (1 − b/1000 × oran);
+            // aradaki fark KDV payıdır. (Kârsız bilezikte KDV fiyattan kesilseydi her satış KDV kadar zarar olurdu.)
+            if (urun.KdvMatrahBinde is { } binde && binde > 0m && binde <= 1000m)
+            {
+                var oran = urun.KdvOrani is { } y ? y / 100m : varsayilanKdvOrani;
+                var pay = binde / 1000m * oran;
+                if (oran > 0m && pay < 1m) kdvPayiTl = Yuvarla(oncesi / (1m - pay) - oncesi);
+            }
+            listeFiyati = oncesi + kdvPayiTl;
         }
 
         var indirim = kampanya is null ? 0m : Indirim(kampanya, listeFiyati, iscilikTl, sabit);
@@ -156,7 +170,7 @@ public static class FiyatMotoru
         return new FiyatTeklifi(
             listeFiyati, hasDegeri, marjTl, iscilikTl,
             indirim, Yuvarla(listeFiyati - indirim),
-            indirim > 0m ? kampanya!.Id : null, sabit, kaynak, ofsetTl, satisMilyemi, maliyetTl);
+            indirim > 0m ? kampanya!.Id : null, sabit, kaynak, ofsetTl, satisMilyemi, maliyetTl, kdvPayiTl);
     }
 
     /// <summary>Kampanyanın BİRİM indirimi.</summary>

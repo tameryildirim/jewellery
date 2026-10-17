@@ -231,8 +231,11 @@ public static class AtlamaSebebi
     public const string KotasyonYok = "KOTASYON_YOK";
 }
 
-public sealed class FiyatServisi(KuyumcuDbContext db, DenetimServisi? denetim = null)
+public sealed class FiyatServisi(KuyumcuDbContext db, DenetimServisi? denetim = null, Modules.Fatura.KdvAyarlari? kdvAyar = null)
 {
+    /// <summary>Kural 8 (KDV payı): ürüne KDV oranı girilmemişse faturanın varsayılan oranı (ADR-0005 tek kaynak).</summary>
+    private decimal VarsayilanKdv => (kdvAyar ?? new Modules.Fatura.KdvAyarlari()).VarsayilanOran;
+
     // ── Listeler ─────────────────────────────────────────────────────────────
 
     public Task<List<FiyatListesi>> Listeler(AktifKullanici islem) =>
@@ -570,17 +573,18 @@ public sealed class FiyatServisi(KuyumcuDbContext db, DenetimServisi? denetim = 
         // Paket 49: liste × ürün geçersiz kılması motorun GİRDİSİDİR; POS da bu
         // yoldan geçtiği için ikinci bir hesap yolu açılmaz (tek motor ilkesi).
         var gk = await GecersizKilma(urun.TenantId, liste.Id, urun.Id);
-        return TeklifHesapla(urun, liste, hasKuru, bugun, adaylar, zincir, gk);
+        return TeklifHesapla(urun, liste, hasKuru, bugun, adaylar, zincir, gk, VarsayilanKdv);
     }
 
     /// <summary>Kampanya seçimi + motor çağrısı — önizleme ve teklif AYNI gövdeyi kullanır.</summary>
     public static FiyatTeklifi? TeklifHesapla(
         Data.Urun urun, FiyatListesi liste, decimal hasKuru, DateOnly bugun,
-        IReadOnlyList<Kampanya> adaylar, IReadOnlySet<string> zincir, FiyatListesiUrunFiyati? gecersizKilma)
+        IReadOnlyList<Kampanya> adaylar, IReadOnlySet<string> zincir, FiyatListesiUrunFiyati? gecersizKilma,
+        decimal varsayilanKdvOrani = 0.20m)
     {
         var uygunlar = adaylar.Where(k => FiyatMotoru.Uygulanir(k, bugun, urun, zincir)).ToList();
         var enIyi = FiyatMotoru.EnIyi(uygunlar, urun, hasKuru, liste, gecersizKilma);
-        return FiyatMotoru.Hesapla(urun, hasKuru, liste, enIyi, gecersizKilma);
+        return FiyatMotoru.Hesapla(urun, hasKuru, liste, enIyi, gecersizKilma, varsayilanKdvOrani);
     }
 
     /// <summary>Bu liste × ürün kesişimindeki AKTİF geçersiz kılma; yoksa null.</summary>
@@ -678,7 +682,7 @@ public sealed class FiyatServisi(KuyumcuDbContext db, DenetimServisi? denetim = 
         {
             var gk = kilinanlar.FirstOrDefault(x => x.UrunId == u.Id);
             var aktifGk = gk is { Aktif: true } ? gk : null;
-            var t = TeklifHesapla(u, liste, hasKuru, bugun, adaylar, KategoriZinciri(u, ustler), aktifGk);
+            var t = TeklifHesapla(u, liste, hasKuru, bugun, adaylar, KategoriZinciri(u, ustler), aktifGk, VarsayilanKdv);
             var ozet = gk is null ? null
                 : new GecersizKilmaOzeti(gk.SabitFiyat, gk.HasMarjYuzde, gk.IscilikCarpanYuzde, gk.Not, gk.Aktif);
             satirlar.Add(t is null
@@ -848,7 +852,7 @@ public sealed class FiyatServisi(KuyumcuDbContext db, DenetimServisi? denetim = 
                 IscilikCarpanYuzde = dto.IscilikCarpanYuzde ?? mevcut?.IscilikCarpanYuzde,
                 Aktif = true,
             };
-            var yeni = TeklifHesapla(u, liste, hasKuru, bugun, adaylar, KategoriZinciri(u, ustler), aday);
+            var yeni = TeklifHesapla(u, liste, hasKuru, bugun, adaylar, KategoriZinciri(u, ustler), aday, VarsayilanKdv);
             if (yeni is null) { atlananlar.Add(new TopluAtlanan(u.Id, u.Kod, AtlamaSebebi.FiyatYok)); continue; }
             degisenler.Add(new TopluSatir(u.Id, u.Kod, u.Ad, onceki.ListeFiyati, yeni.ListeFiyati,
                 FiyatMotoru.Yuvarla(yeni.ListeFiyati - onceki.ListeFiyati)));
@@ -1035,7 +1039,7 @@ public sealed class FiyatModulu(FiyatServisi servis, KuyumcuDbContext db) : Cont
             // GERİYE DÖNÜK UYUMLU EK: POS bu alanı okumak zorunda değildir.
             kaynak = t.Kaynak,
             // M1 · M1b — satış milyemi, ofset ve (alış milyemi biliniyorsa) birim maliyet; kâr = satış − maliyet.
-            satisMilyemi = t.SatisMilyemi, ofsetTl = t.OfsetTl, maliyetTl = t.MaliyetTl,
+            satisMilyemi = t.SatisMilyemi, ofsetTl = t.OfsetTl, maliyetTl = t.MaliyetTl, kdvPayiTl = t.KdvPayiTl,
             // FEY md.11 — fiş/etiket bunu "indirim öncesi fiyat" olarak basar.
             indirimOncesiFiyat = t.IndirimTutari > 0m ? oncesi : (decimal?)null,
         };
