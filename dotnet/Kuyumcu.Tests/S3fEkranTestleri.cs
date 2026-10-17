@@ -235,7 +235,7 @@ public sealed class S3fEkranTestleri : BunitContext
     public void Aralik_bossa_ama_PORTFOYDE_evrak_varsa_portfoyde_evrak_yok_DENMEZ()
     {
         takvimYaniti = TakvimAralikBos;
-        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>();
+        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>().AyrintiAc();
 
         // Doğru cümle + portföy toplamı ekranda.
         Assert.Contains("Seçili tarih aralığında", c.Markup, StringComparison.Ordinal);
@@ -248,7 +248,7 @@ public sealed class S3fEkranTestleri : BunitContext
     public void Portfoy_gercekten_bossa_ESKI_bos_durum_metni_cikar()
     {
         takvimYaniti = TakvimGercektenBos;
-        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>();
+        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>().AyrintiAc();
 
         Assert.Empty(c.FindAll("#evrak-takvim-portfoy"));
         Assert.Empty(c.FindAll("#evrak-takvim-genislet"));
@@ -259,7 +259,7 @@ public sealed class S3fEkranTestleri : BunitContext
     public void Araligi_portfoye_genislet_GERCEK_istek_atar_ve_portfoy_vadelerini_kullanir()
     {
         takvimYaniti = TakvimAralikBos;
-        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>();
+        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>().AyrintiAc();
         takvimYaniti = TakvimDolu;
 
         c.Find("#evrak-takvim-genislet").Click();
@@ -277,7 +277,7 @@ public sealed class S3fEkranTestleri : BunitContext
         Services.GetRequiredService<NavigationManager>()
             .NavigateTo("http://localhost/evraklar?vadeBas=2026-11-20&vadeBit=2026-11-20");
 
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         var get = istekler.Last(i => i.Metot == "GET" && i.Yol.EndsWith("/evraklar"));
         Assert.Contains("vadeBas=2026-11-20", get.Sorgu, StringComparison.Ordinal);
@@ -292,7 +292,7 @@ public sealed class S3fEkranTestleri : BunitContext
     [Fact]
     public void Sorgu_parametresi_YOKSA_vade_suzgeci_bos_kalir_ve_rozet_cikmaz()
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         var get = istekler.Last(i => i.Metot == "GET" && i.Yol.EndsWith("/evraklar"));
         Assert.DoesNotContain("vadeBas=", get.Sorgu, StringComparison.Ordinal);
@@ -305,7 +305,7 @@ public sealed class S3fEkranTestleri : BunitContext
         Services.GetRequiredService<NavigationManager>()
             .NavigateTo("http://localhost/evraklar?vadeBas=filanca");
 
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         var get = istekler.Last(i => i.Metot == "GET" && i.Yol.EndsWith("/evraklar"));
         Assert.DoesNotContain("vadeBas=", get.Sorgu, StringComparison.Ordinal);
@@ -316,7 +316,7 @@ public sealed class S3fEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.GiderPusulalari> PusulaDetayAc()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         // Detay düğmesinin kendi kimliği yok (mevcut kimlikler DEĞİŞMEZ kuralı);
         // satırın ilk eylem düğmesi tıklanır.
         c.FindAll("tbody button")[0].Click();
@@ -481,7 +481,7 @@ public sealed class S3fEkranTestleri : BunitContext
     public void Tahsilati_OLMAYAN_cihazda_bagli_kasa_secicisi_DUZENLEMEDE_de_cizilir()
     {
         posCihazlari = PosTahsilatsiz;
-        var c = Render<Kuyumcu.Web.Pages.Pos>();
+        var c = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         c.Find("#pos-duzenle-p1").Click();
 
         Assert.NotNull(c.Find("#pos-cihaz-kasa"));
@@ -495,7 +495,7 @@ public sealed class S3fEkranTestleri : BunitContext
     public void Tahsilati_OLAN_cihazda_kasa_dogrudan_degismez_ama_GOC_YOLU_vardir()
     {
         posCihazlari = PosTahsilatli;
-        var c = Render<Kuyumcu.Web.Pages.Pos>();
+        var c = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         c.Find("#pos-duzenle-p1").Click();
 
         Assert.Empty(c.FindAll("#pos-cihaz-kasa"));
@@ -511,7 +511,7 @@ public sealed class S3fEkranTestleri : BunitContext
     public void Kasa_degistirilince_PATCH_govdesinde_kasaId_gider()
     {
         posCihazlari = PosTahsilatsiz;
-        var c = Render<Kuyumcu.Web.Pages.Pos>();
+        var c = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         c.Find("#pos-duzenle-p1").Click();
         // PAKET GOC-A: ham <select> → ortak Secici (aynı id); seçim liste öğesine tıklamayla.
         c.Find("#pos-cihaz-kasa").Click();

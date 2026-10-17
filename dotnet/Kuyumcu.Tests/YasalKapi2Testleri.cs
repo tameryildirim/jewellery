@@ -552,7 +552,7 @@ public sealed class YasalKapi2BankaTestleri : BunitContext
     [Fact]
     public void YK2_10_banka_dekontu_sunucu_reddi_ham_metin_yok_alanlar_acilir_tutar_inince_kalkar()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         e.Find("#bh-dekont-gir").Click();
         e.WaitForElement("#dekont-tutar");

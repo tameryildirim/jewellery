@@ -424,7 +424,7 @@ public sealed class OrtakGorunumEkranTestleri : BunitContext
     [Fact]
     public void F1_bos_reyon_notu_tek_satir_sinifi_tasir_id_ayni()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         var not = e.WaitForElement("#r-tasi-kilit-r2");
         Assert.Contains("hucre-not-tek-satir", not.GetAttribute("class") ?? "");
         Assert.Contains("mal yok", not.TextContent);
@@ -435,7 +435,7 @@ public sealed class OrtakGorunumEkranTestleri : BunitContext
     [Fact]
     public void P1_stopaj_hucresi_tek_satir()
     {
-        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("GP-2026-000001", e.Markup));
         var hucre = Assert.Single(e.FindAll("td.hucre-tek-satir"), td => td.TextContent.Contains('%'));
         Assert.Contains("%2", hucre.TextContent.Replace(" ", ""));
@@ -450,7 +450,7 @@ public sealed class OrtakGorunumEkranTestleri : BunitContext
     [Fact]
     public void A1_siparis_no_tek_satir_musteri_adi_hucresi_ad_sinifi_tasir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#sip-satir-s1")));
         var satir = e.Find("#sip-satir-s1");
         var no = satir.QuerySelector("td.hucre-tek-satir");
@@ -765,7 +765,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Vezne> TumYuzeyleriAc()
     {
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         e.Find("#vz-veznele-v2").Click();          // başarı bandı
         e.WaitForElement("#vz-basari-bandi");
@@ -794,7 +794,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
     {
         var pro = Sozlukler.Getir("tr").Vezne;
         Mod(basit: false);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         Assert.Contains(pro.DurumVeznede, e.Find("#vz-satir-v1").TextContent);
         Assert.Equal(pro.VezneyeGonder, e.Find("#vz-veznele-v2").TextContent.Trim());
@@ -805,7 +805,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
     {
         // 28.09 canlı görüntü: #vz-yeni-ac sınıfsız çıplak <button> idi (gri kutu, yazı tipi/yarıçap yok).
         Mod(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         Assert.Equal("btn btn-birincil", e.Find("#vz-yeni-ac").GetAttribute("class"));
         e.Find("#vz-yeni-ac").Click();
@@ -819,7 +819,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
     {
         // 28.09 canlı görüntü: tablo sınıfsız (hücre boşluğu yok), kilit kutusu satırı ~300 px uzatıyordu.
         Mod(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         Assert.Contains("veri-tablosu", e.Find("#vz-liste").ClassList);
         var kilit = e.Find("#vz-kilit-v1");

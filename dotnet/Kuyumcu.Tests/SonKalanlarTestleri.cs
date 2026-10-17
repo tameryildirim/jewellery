@@ -397,7 +397,7 @@ public sealed class SonKalanlarKasaEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-gun-kapat-k1");
         return e;
     }
@@ -665,7 +665,7 @@ public sealed class SonKalanlarGiderEkranTestleri : BunitContext
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
         var modu = Services.GetRequiredService<ArayuzModuServisi>();
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => modu.BasitMi);
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-gecmis-ac", TimeSpan.FromSeconds(10));
         return e;
     }
@@ -771,7 +771,7 @@ public sealed class SonKalanlarBankaEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-duzenle-b1");
         istekler.Clear();
         e.Find("#bh-duzenle-b1").Click();

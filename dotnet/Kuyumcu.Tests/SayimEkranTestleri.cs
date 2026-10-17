@@ -54,7 +54,7 @@ public sealed class SayimEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> OturumAc()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
         e.WaitForElement("#sy-tablo tbody tr");
         e.Find("#sy-tablo tbody tr button").Click();
         e.WaitForElement("#sy-satirlar");

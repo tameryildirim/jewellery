@@ -110,7 +110,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     [Fact]
     public void EvrakTuruKilidiGerekceGosterir()
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-duzenle-e1").Click();
 
         // Kilit AYNI: tür seçici düzenlemede kapalı.
@@ -130,7 +130,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     {
         // Basit yüz: "kapalı hatırlatmalar" kartı.
         OturumAc(ArayuzModuServisi.Basit);
-        var c = Render<Kuyumcu.Web.Pages.Bildirimler>();
+        var c = Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
         var ipucu = c.WaitForElement("#degismez-ipucu-KurulumKapaliIs").TextContent;
         Assert.Contains(O.BildirimKurulumKapaliGerekce, ipucu, StringComparison.Ordinal);
         Assert.Contains(string.Format(O.BildirimKurulumKapaliYol, KasaBildirimSozlugu.Tr.Ac), ipucu, StringComparison.Ordinal);
@@ -142,7 +142,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     public void BildirimKapaliIsAcmaYolu_profesyonel_yuzde_de_yazili()
     {
         OturumAc(ArayuzModuServisi.Profesyonel);
-        var c = Render<Kuyumcu.Web.Pages.Bildirimler>();
+        var c = Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
         var ipucu = c.WaitForElement("#degismez-ipucu-KurulumKapaliIs").TextContent;
         Assert.Contains(O.BildirimKurulumKapaliGerekce, ipucu, StringComparison.Ordinal);
         Assert.Contains(string.Format(O.BildirimKurulumKapaliYol, Sozlukler.Tr.Bildirim.IsAcikKapali), ipucu, StringComparison.Ordinal);
@@ -155,7 +155,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     public void ManuelKurKaydiIptalYoluYazili()
     {
         OturumAc();
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         var ipucu = c.WaitForElement("#degismez-ipucu-ManuelKurKaydi").TextContent;
         Assert.Contains(O.ManuelKurGerekce, ipucu, StringComparison.Ordinal);
         Assert.Contains(string.Format(O.ManuelKurYolu, Sozlukler.Tr.Kur.IptalEt, Sozlukler.Tr.Kur.ManuelGiris),
@@ -167,7 +167,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     [Fact]
     public void Emanet_kilitli_dugmeler_sebebini_yazar()
     {
-        var c = Render<Kuyumcu.Web.Pages.Emanet>();
+        var c = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         c.WaitForElement("#e-giris-ac");
 
         // Müşteri seçilmeden: iki düğme de kilitli, sebep title'da VE görünür satırda.

@@ -144,7 +144,7 @@ public sealed class UrunEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Urunler> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         istekler.Clear();
         return e;
     }
@@ -375,7 +375,7 @@ public sealed class UrunEkranTestleri : BunitContext
     [Fact]
     public void Ekran_acilinca_kategori_agaci_ve_reyonlar_yuklenir()
     {
-        Render<Kuyumcu.Web.Pages.Urunler>();
+        Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
 
         Assert.Contains(istekler, i => i.Yol.EndsWith("/urun-kategorileri"));
         Assert.Contains(istekler, i => i.Yol.EndsWith("/reyonlar"));

@@ -76,7 +76,7 @@ public sealed class CiftBacakEkranTestleri : BunitContext
     [Fact]
     public void Iadesi_yapilmis_emanet_girisinin_geri_al_dugmesi_onceden_kilitli_ve_sebebini_soyler()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         e.WaitForElement("#e-cari");
         e.WaitForAssertion(() => Assert.DoesNotContain(OnayKilitSozlugu.Tr.EmanetKurYok, e.Markup, StringComparison.Ordinal));
         SeciciYardim.Sec(e, "e-cari", "c1");

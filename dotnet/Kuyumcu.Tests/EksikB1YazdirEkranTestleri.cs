@@ -136,7 +136,7 @@ public sealed class EksikB1EmanetEkranTestleri : BunitContext
         foreach (var mod in EksikB1Ortak.Modlar)
         {
             EksikB1Ortak.Oturum(this, mod);
-            var e = Render<Kuyumcu.Web.Pages.Emanet>();
+            var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
             e.WaitForElement("#e-cari");
             SeciciYardim.Sec(e, "e-cari", "c1");
             e.WaitForElement("#e-gecmis-ac").Click();

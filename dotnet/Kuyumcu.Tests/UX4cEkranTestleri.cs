@@ -151,7 +151,7 @@ public sealed class UX4cEkranTestleri : BunitContext
     public void M13_Kasalar_500_donunce_hata_bandi_gorunur_bos_durum_GORUNMEZ()
     {
         hataliYolParcasi = "/kasalar";
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
 
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#hata-bandi")));
         Assert.Contains("kasa listesi okunamadı", e.Find("#hata-bandi").TextContent);
@@ -163,7 +163,7 @@ public sealed class UX4cEkranTestleri : BunitContext
     public void M13_Banka_500_donunce_hata_bandi_gorunur_bos_durum_GORUNMEZ()
     {
         hataliYolParcasi = "/bankalar";
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
 
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#hata-bandi")));
         Assert.Empty(e.FindAll(".bos-durum"));
@@ -328,7 +328,7 @@ public sealed class UX4cEkranTestleri : BunitContext
         // ESKİDEN: "/cari" limitsiz çağrılıyordu, sunucu varsayılanı 50'ydi →
         // 51. müşterinin emaneti bu ekrandan HİÇ alınamıyordu.
         AltmisCari();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
 
         // Sayfa açılışında 51 listede YOK (sunucu sınırı).
         e.WaitForAssertion(() => Assert.DoesNotContain("Müşteri 51", SeciciYardim.ListeMetni(e, "e-cari")));
@@ -350,7 +350,7 @@ public sealed class UX4cEkranTestleri : BunitContext
     {
         // UX-S29 — sessiz kırpma yok.
         AltmisCari();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
 
         // EMANET-1 (doğrulayıcı 28.09): teknik "sunucu sınırı (50 kayıt)" dili sade metne döndü;
         // sözleşme aynı — sınır söylenir ("tüm müşteriler görünmüyor") + daraltma yolu ("adını yazıp arayın").
@@ -363,7 +363,7 @@ public sealed class UX4cEkranTestleri : BunitContext
     public void M10_Cikista_22_ayar_10_gram_govdeye_9_16_HAS_GRAM_olarak_gider()
     {
         // UX-S21 — dönüşümü sistem biliyor; kuyumcudan kafadan has çevirisi istenmez.
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForAssertion(() => Assert.Contains("12,5000", e.Markup));   // P-57: ekran tr-TR
 
@@ -395,7 +395,7 @@ public sealed class UX4cEkranTestleri : BunitContext
             Assert.DoesNotContain("[\"K8\", \"K14\"", kaynak);
         }
 
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         e.Find("#e-giris-ac").Click();   // EMANET-1: metin "Emanet al"; id aynı
         // PAKET S3-5 · UX-S31: seçeneğin DEĞERİ ayar kodudur (K995 · G999 —
         // gövdeye kod gider), GÖRÜNEN metni tek kaynaktaki ayar adıdır.
@@ -416,7 +416,7 @@ public sealed class UX4cEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> AcikOturum()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#sy-yeni")));
         return e;
     }

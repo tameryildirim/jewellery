@@ -80,7 +80,7 @@ public sealed class Q102EkranSinirTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/hurda/defter")));
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         // ZO-ISLEM-A: isteğe bağlı alanlar "+ Detay ekle", defter kapalı akordeon
@@ -412,7 +412,7 @@ public sealed class Q102T3EkranSinirTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/hurda/defter")));
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         // ZO-ISLEM-A: isteğe bağlı alanlar "+ Detay ekle", defter kapalı akordeon

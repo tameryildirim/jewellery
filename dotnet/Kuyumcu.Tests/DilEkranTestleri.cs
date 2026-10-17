@@ -260,7 +260,7 @@ public sealed class DilEkranTestleri : BunitContext
         await dil.DegistirAsync("en");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Dil", "Test", "d@ornek.com", "SAHIP", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Bildirimler>();
+        var e = Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Due date reminder", e.Markup, StringComparison.Ordinal));
         Assert.DoesNotContain("Vade hatırlatma", e.Markup, StringComparison.Ordinal);
 

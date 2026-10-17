@@ -114,7 +114,7 @@ public sealed class EkstreEkranTestleri : BunitContext
     [Fact]
     public void Banka_ekraninda_Ekstre_Yukle_dugmesi_VARDIR_ve_cekmeceyi_acar()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-ekstre-yukle");
 
         e.Find("#bh-ekstre-yukle").Click();
@@ -127,7 +127,7 @@ public sealed class EkstreEkranTestleri : BunitContext
     [Fact]
     public void Dosya_secilmeden_yukleme_dugmesi_KAPALI_ve_SEBEBI_yazili()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-ekstre-yukle");
         e.Find("#bh-ekstre-yukle").Click();
         e.WaitForElement("#ekstre-dosya");

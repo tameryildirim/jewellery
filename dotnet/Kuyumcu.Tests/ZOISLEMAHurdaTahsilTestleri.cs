@@ -86,7 +86,7 @@ public sealed class ZOISLEMAHurdaTahsilTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "MUDUR", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/hurda/defter")));
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         e.WaitForElement("#hrd-detay-ac").Click();

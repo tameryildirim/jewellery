@@ -222,7 +222,7 @@ public sealed class Toplu2SiparisTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1"));
-        var e = Render<Siparisler>();
+        var e = Render<Siparisler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/siparisler")));
         // Yerli <select> yok; tetik ortak Secici düğmesi, kimlik AYNI.
         Assert.Empty(e.FindAll("select#sip-durum-suzgec"));
@@ -694,7 +694,7 @@ public sealed class Toplu2Tur3SeciciDomTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1"));
-        var e = Render<Siparisler>();
+        var e = Render<Siparisler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#sip-durum-suzgec")));
         Assert.Empty(e.FindAll("#sip-durum-suzgec-liste-kap"));
         e.Find("#sip-durum-suzgec").Click();

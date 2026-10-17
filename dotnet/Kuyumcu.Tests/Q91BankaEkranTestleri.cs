@@ -104,7 +104,7 @@ public sealed class Q91BankaEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Banka> Sayfa()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         e.HareketleriAc();   // ZO-ISLEM-A: hareketler kapalı akordeonda
         return e;

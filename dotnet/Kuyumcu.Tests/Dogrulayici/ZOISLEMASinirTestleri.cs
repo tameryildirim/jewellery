@@ -706,7 +706,7 @@ public sealed class ZOISLEMASinir11EkranTestleri : Bunit.BunitContext
     {
         Services.GetRequiredService<Kuyumcu.Web.Servisler.OturumServisi>().KullaniciAta(
             new Kuyumcu.Web.Servisler.OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         return e;
     }
@@ -1022,7 +1022,7 @@ public sealed class ZOISLEMASinir13EkranTestleri : Bunit.BunitContext
         yollar.Add(("/pos/tahsilatlar", "{\"satirlar\":[" + satirlar + "],\"toplamSatir\":1,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}"));
         yollar.Add(("/pos/cihazlar", """[{"id":"p1","ad":"Garanti POS","bankaAdi":"Garanti","subeId":"s1","kasaId":"k1","bankaHesapId":"b2","uyeIsyeriNo":null,"terminalNo":null,"pesinKomisyonOran":0,"valorGun":1,"paraBirimi":"TRY","aktif":true,"bekleyenAlacak":0,"bugunYatacakNet":0}]"""));
         yollar.Add(("/bankalar", """{"hesaplar":[]}"""));
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForElement("#pos-eslestir-hareket-sonuc-0", TimeSpan.FromSeconds(3)).Click();
         e.WaitForElement("#pos-elle", TimeSpan.FromSeconds(3));
         return e;
@@ -1122,7 +1122,7 @@ public sealed class ZOISLEMASinir13EkranTestleri : Bunit.BunitContext
         yollar.Add(("/hareket", """{"id":"bh2","yon":"GELEN","tutar":500,"durum":"BEKLIYOR"}"""));
         yollar.Add(("/bankalar", """{"hesaplar":[{"id":"b1","bankaAdi":"Ziraat","hesapAdi":"Ana Hesap","hesapSahibi":"X Ltd.","iban":"TR200000000000000000000001","paraBirimi":"TRY","bakiye":0,"aktif":true}]}"""));
         yollar.Add(("/cari", """[{"id":"c1","ad":"Ayşe Yılmaz"}]"""));
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir").Click();
         e.WaitForElement("#dekont-tutar");
         return e;
@@ -1229,7 +1229,7 @@ public sealed class ZOISLEMASinirHurdaEkranTestleri : Bunit.BunitContext
         yollar.Add(("/kasalar", """[{"id":"ks1","ad":"Merkez Kasa","paraBirimi":"TRY","bakiye":250000,"aktif":true}]"""));
         yollar.Add(("/kur/guncel", "{\"id\":\"kur-1\",\"altinHasFiyati\":" + fiyat + ",\"gramAltinFiyati\":6850,\"usdTry\":34.0,\"eurTry\":37.0,\"gbpTry\":43.5,\"kaynak\":\"ALTINKAYNAK\",\"olusturuldu\":\"2026-09-25T09:00:00Z\",\"ayarFiyatlari\":[]}"));
         yollar.Add(("/arama", """{"sonuclar":[],"toplam":0}"""));
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         if (kaydetAcik) e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         else e.WaitForElement("#hrd-tutar");
         return e;
@@ -1511,7 +1511,7 @@ public sealed class ZOISLEMASinirHurdaTahsilKurTestleri : Bunit.BunitContext
     {
         Services.GetRequiredService<Kuyumcu.Web.Servisler.OturumServisi>().KullaniciAta(
             new Kuyumcu.Web.Servisler.OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "MUDUR", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         e.WaitForElement("#hrd-detay-ac").Click();
         e.WaitForElement("#hrd-tahsil");
@@ -1750,7 +1750,7 @@ public sealed partial class ZOISLEMASinirHurdaOnayKayitTestleri : Bunit.BunitCon
     {
         Services.GetRequiredService<Kuyumcu.Web.Servisler.OturumServisi>().KullaniciAta(
             new Kuyumcu.Web.Servisler.OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "MUDUR", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         return e;
     }

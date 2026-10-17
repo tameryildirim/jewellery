@@ -80,7 +80,7 @@ public sealed class ParaDemoKasaEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-gun-kapat-k1");
         return e;
     }
@@ -187,7 +187,7 @@ public sealed class ParaDemoKasaRaporuEkranTestleri : BunitContext
     [Fact]
     public void PDE1_kasa_raporu_sayimi_NAKIT_defteriyle_karsilastirir_kart_havale_ayri_yazar()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-sayim-ks1");
         c.Find("#kr-sayim-ks1").Click();
         c.WaitForElement("#kr-sayim-nakit-disi");

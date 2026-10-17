@@ -175,7 +175,7 @@ public sealed class OnayKipiTestleri : BunitContext
     [Fact]
     public void YikiciEylem_Fiyatlandirma_pasife_alma_onaysiz_PATCH_atmaz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-durum-fl2");
         Temizle();
 
@@ -205,7 +205,7 @@ public sealed class OnayKipiTestleri : BunitContext
     [Fact]
     public void Aktiflestirme_yikici_degildir_onaysiz_calisir_davranis_degismedi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-durum-fl3");
         Temizle();
 
@@ -269,7 +269,7 @@ public sealed class OnayKipiTestleri : BunitContext
             v.Find("#vitrin-varsayilana-don-evet-GRAM").TextContent,
             v.Find("#vitrin-varsayilana-don-vazgec-GRAM").TextContent));
 
-        var f = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var f = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         f.WaitForElement("#fl-durum-fl2");
         f.Find("#fl-durum-fl2").Click();
         Assert.False(OnayKipi.AyniFiil(f.Find("#fl-pasif-onayla").TextContent, f.Find("#fl-pasif-vazgec").TextContent));

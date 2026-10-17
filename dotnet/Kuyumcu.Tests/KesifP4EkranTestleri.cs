@@ -118,7 +118,7 @@ public sealed class KesifP4UrunlerTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("k1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.DoesNotContain("…", e.Find("#u-stok-adet-u1").TextContent));
         lock (istekler) istekler.Clear();
         return e;
@@ -507,7 +507,7 @@ public sealed class KesifP4EtiketTestleri : BunitContext
     [Fact]
     public void UrunEtiketleri_ayar_adi()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>();
+        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Equal("22 Ayar", e.Find("#et-ayar-u3").TextContent.Trim()));
         Assert.Equal("925 Gümüş", e.Find("#et-ayar-u4").TextContent.Trim());
 

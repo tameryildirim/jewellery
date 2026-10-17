@@ -446,7 +446,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Urunler> UrunEkrani()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#sayfa-basi-urunler-baslik");
         return e;
     }
@@ -572,7 +572,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.UrunAgaci> AgacEkrani()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForElement("#sayfa-basi-urun-agaci-baslik");
         return e;
     }
@@ -662,7 +662,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     public void Etiketler_URUN_SECILIYKEN_adet_sifirsa_YAZDIR_kilitli_ve_SEBEBI_yazar()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>();
+        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>().AyrintiAc();
         e.WaitForElement("#et-adet");
 
         // Önce ürün SEÇİLİR: kilit yalnız seçimden gelmiyor olmalı.
@@ -680,7 +680,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     public void Etiketler_sunucu_SINIRINI_ekranda_soyler()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>();
+        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>().AyrintiAc();
         e.WaitForElement("#et-sinir");
         // TOPLU-6: sınırın altında sınır sayacın ipucunda (title); sınıra değince metinde (UX-S29).
         Assert.Contains("500", e.Find("#et-sinir").InnerHtml);

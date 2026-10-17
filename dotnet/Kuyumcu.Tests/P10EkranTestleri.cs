@@ -102,7 +102,7 @@ public sealed class P10UrunEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Urunler> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         istekler.Clear();
         return e;
     }
@@ -161,7 +161,7 @@ public sealed class P10UrunEkranTestleri : BunitContext
     public void Parite_secenekleri_TEK_KAYNAKTAN_gelir()
     {
         // UX-S31: sabit liste kopyalanmaz, GET /kur/pariteler okunur.
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         // PAKET ISTEK-1: parite listesi YALNIZ formda kullanılır → form ilk
         // açıldığında çekilir (liste ekranı her açılışta çekmez); kaynak yine TEK.
         Assert.DoesNotContain(istekler, i => i.Metot == "GET" && i.Yol.Contains("/kur/pariteler"));

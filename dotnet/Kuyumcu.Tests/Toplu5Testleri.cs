@@ -373,7 +373,7 @@ public sealed class Toplu5GiderTestleri : BunitContext
         Toplu5Ortak.Oturum(this, mod);
         if (sekme is not null)
             Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>().NavigateTo($"/gider?sekme={sekme}");
-        var e = Render<Gider>();
+        var e = Render<Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForState(() => e.FindAll(sekme is null ? "#gd-kasa" : "#gd-v-kaynak").Count > 0);
         GiderAkordeon.Ac(e); // SON-KALANLAR: geçmiş kayıtlar kapalı akordeon
         return e;
@@ -425,7 +425,7 @@ public sealed class Toplu5GiderTestleri : BunitContext
         Assert.Empty(bos.FindAll("#degismez-ipucu-Gider"));
         bos.Dispose();
         kayitli = true;
-        var dolu = Render<Gider>();
+        var dolu = Render<Gider>().AyrintiAc("#yildiz-gider-ekle");
         GiderAkordeon.Ac(dolu); // SON-KALANLAR: geçmiş kayıtlar kapalı akordeon
         dolu.WaitForState(() => dolu.FindAll("#gd-storno-g1").Count > 0);
         Assert.NotNull(dolu.Find("#degismez-ipucu-Gider"));
@@ -440,7 +440,7 @@ public sealed class Toplu5GiderTestleri : BunitContext
         Assert.Empty(b.FindAll("#gd-kasa-bakiye"));
         b.Dispose();
         Toplu5Ortak.Oturum(this, ArayuzModuServisi.Profesyonel);
-        var pro = Render<Gider>();
+        var pro = Render<Gider>().AyrintiAc("#yildiz-gider-ekle");
         pro.WaitForState(() => pro.FindAll("#gd-kasa").Count > 0);
         SeciciYardim.Sec(pro, "gd-kasa", "k1");
         pro.WaitForElement("#gd-kasa-nakit");
@@ -458,7 +458,7 @@ public sealed class Toplu5GiderTestleri : BunitContext
             Assert.DoesNotContain(jargon, b.Find("#gd-virman-aciklama").TextContent, StringComparison.OrdinalIgnoreCase);
         b.Dispose();
         Toplu5Ortak.Oturum(this, ArayuzModuServisi.Profesyonel);
-        var p = Render<Gider>();
+        var p = Render<Gider>().AyrintiAc("#yildiz-gider-ekle");
         p.WaitForState(() => p.FindAll("#gd-v-kaynak").Count > 0);
         Assert.Equal(Sozlukler.Tr.Gider.VirmanBaslik, p.Find(".kart-baslik h3").TextContent.Trim());
         Assert.Equal(Sozlukler.Tr.Gider.VirmanAciklama, p.Find("#gd-virman-aciklama").TextContent.Trim());
@@ -474,7 +474,7 @@ public sealed class Toplu5GiderTestleri : BunitContext
         Assert.Empty(bos.FindAll("#gd-v-iki-bacak"));
         bos.Dispose();
         kayitli = true;
-        var dolu = Render<Gider>();
+        var dolu = Render<Gider>().AyrintiAc("#yildiz-gider-ekle");
         GiderAkordeon.Ac(dolu); // SON-KALANLAR: geçmiş kayıtlar kapalı akordeon
         dolu.WaitForState(() => dolu.FindAll("#gd-v-iki-bacak").Count > 0);
         var not = dolu.Find("#gd-v-iki-bacak");

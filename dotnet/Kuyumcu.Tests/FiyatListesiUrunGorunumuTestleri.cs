@@ -89,7 +89,7 @@ public sealed class FiyatListesiUrunGorunumuTestleri : BunitContext
     /// <summary>Paneli açar ve istek kaydını temizler.</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Fiyatlandirma> Panel()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         e.Find("#fl-goster-fl1").Click();
         e.WaitForElement("#flp-tablo");
@@ -100,7 +100,7 @@ public sealed class FiyatListesiUrunGorunumuTestleri : BunitContext
     [Fact]
     public void Liste_secilince_urun_tablosu_ve_KAYNAK_rozetleri_cizilir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         e.Find("#fl-goster-fl1").Click();
         e.WaitForElement("#flp-tablo");
@@ -209,7 +209,7 @@ public sealed class FiyatListesiUrunGorunumuTestleri : BunitContext
     public void Bos_onizlemede_BOS_DURUM_cikar()
     {
         sahte.BosOnizleme = true;
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         e.Find("#fl-goster-fl1").Click();
         e.WaitForElement("#flp-bos");
@@ -221,7 +221,7 @@ public sealed class FiyatListesiUrunGorunumuTestleri : BunitContext
     public void Onizleme_hatasinda_HATA_bandi_cikar_BOS_DURUM_cikmaz()
     {
         sahte.OnizlemeHatasi = true;
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         e.Find("#fl-goster-fl1").Click();
 

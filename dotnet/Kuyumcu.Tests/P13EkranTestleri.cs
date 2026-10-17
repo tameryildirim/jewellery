@@ -130,7 +130,7 @@ public sealed class P13EkranTestleri : BunitContext
     [Fact]
     public void Kategori_PasifeAlDugmesi_BagliKaytlariOkurVeDeleteAtar()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForElement("#k-pasife-k1");
         istekler.Clear();
 
@@ -145,7 +145,7 @@ public sealed class P13EkranTestleri : BunitContext
     [Fact]
     public void Kategori_PasifKayit_AktifeAlYoluGosterir()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForElement("#k-aktife-al-k2");
         istekler.Clear();
 
@@ -165,7 +165,7 @@ public sealed class P13EkranTestleri : BunitContext
     [Fact]
     public void Kategori_DuzenlemeKaydi_AktifligeDokunmaz()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForElement("#k-pasife-k1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Düzenle").Click();
         e.WaitForElement("#k-ad");

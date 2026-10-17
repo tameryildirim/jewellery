@@ -101,7 +101,7 @@ public sealed class P19EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Gider> Ekran()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         GiderAkordeon.Ac(e); // SON-KALANLAR: geçmiş kayıtlar kapalı akordeon
         return e;
     }

@@ -264,7 +264,7 @@ public sealed class Toplu4SiparisTestleri : Toplu4Tabani
     private IRenderedComponent<Kuyumcu.Web.Pages.Siparisler> FormAcik(string mod)
     {
         Oturum(mod);
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         e.WaitForElement("#sip-yeni-ac", TimeSpan.FromSeconds(10)).Click();
         e.WaitForElement("#sip-form", TimeSpan.FromSeconds(10));
         return e;
@@ -376,7 +376,7 @@ public sealed class Toplu4UrunSayacTestleri : Toplu4Tabani
     {
         yollar[^1] = ("/urunler", false, urunler);
         Oturum(ArayuzModuServisi.Basit);
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#urun-sinir", TimeSpan.FromSeconds(10));
         return e;
     }
@@ -423,7 +423,7 @@ public sealed class Toplu4KurTestleri : Toplu4Tabani
     public void T4_Kur_ucretsiz_rozeti_kaynak_satirinda_ve_aciklama_ipucunda()
     {
         Oturum(ArayuzModuServisi.Basit, rol: "MUDUR");
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#kur-kaynak-satir > #kur-sozlesmesiz")), TimeSpan.FromSeconds(10));
         Assert.Single(e.FindAll("#kur-sozlesmesiz"));
         Assert.NotNull(e.Find("#kur-kaynak-satir > #kur-has-kaynak"));

@@ -157,7 +157,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Fiyatlandirma> Fiyat()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         istekler.Clear();
         return e;
@@ -233,7 +233,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kasalar> Kasa()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-gecmis-k1");
         istekler.Clear();
         return e;
@@ -411,7 +411,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Banka> BankaSayfasi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         e.HareketleriAc();   // ZO-ISLEM-A: hareketler kapalı akordeonda
         istekler.Clear();
@@ -498,7 +498,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kur> KurSayfasi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#sayfa-basi-kur-baslik");
         istekler.Clear();
         return e;
@@ -588,7 +588,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> EmanetSayfasi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         e.WaitForElement("#e-cari");
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForElement("#e-gecmis-ac").Click();   // EMANET-1: geçmiş katlanırda KAPALI
@@ -654,7 +654,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> SayimListesi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
         e.WaitForElement("#sy-tablo tbody tr");
         istekler.Clear();
         return e;

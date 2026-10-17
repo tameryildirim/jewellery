@@ -88,7 +88,7 @@ public sealed class EmanetEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> MusteriSecili()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         SeciciYardim.Sec(e, "e-cari", "c1");
         istekler.Clear();
         return e;
@@ -97,7 +97,7 @@ public sealed class EmanetEkranTestleri : BunitContext
     [Fact]
     public void Musteri_secilince_emanet_gecmisi_cekilir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         istekler.Clear();
         SeciciYardim.Sec(e, "e-cari", "c1");
 
@@ -145,7 +145,7 @@ public sealed class EmanetEkranTestleri : BunitContext
     {
         // Kur olmadan yazılan emanet, has hesabı olmayan bir emanettir.
         kurDusuk = true;
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         SeciciYardim.Sec(e, "e-cari", "c1");
 
         Assert.True(Dugme(e, "Emanet Al").HasAttribute("disabled"));
@@ -255,7 +255,7 @@ public sealed partial class KurEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kur> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         istekler.Clear();
         return e;
     }
@@ -267,7 +267,7 @@ public sealed partial class KurEkranTestleri : BunitContext
     [Fact]
     public void Acilista_guncel_gecmis_ve_pariteler_cekilir()
     {
-        Render<Kuyumcu.Web.Pages.Kur>();
+        Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
 
         Assert.Contains(istekler, i => i.Yol.Contains("/kur/guncel"));
         Assert.Contains(istekler, i => i.Yol.Contains("/kur/gecmis"));

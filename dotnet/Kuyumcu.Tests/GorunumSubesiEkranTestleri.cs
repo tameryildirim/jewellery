@@ -461,7 +461,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         OturumAc();
         d.Kayitli = "s2";
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(Getler("/kasalar"), y => y.EndsWith("/kasalar?subeId=s2", StringComparison.Ordinal)),
             TimeSpan.FromSeconds(10));
         Assert.NotNull(e.Find("#gorunum-rozeti"));
@@ -483,7 +483,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
     {
         OturumAc();
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#kasa-sube-k2")), TimeSpan.FromSeconds(10));
         Assert.Contains("Şube 2", e.Find("#kasa-sube-k2").TextContent, StringComparison.Ordinal);
         Assert.Contains("Merkez", e.Find("#kasa-sube-k1").TextContent, StringComparison.Ordinal);
@@ -503,7 +503,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         p.WaitForAssertion(() => Assert.NotEmpty(Getler("/raporlar/gunluk")), TimeSpan.FromSeconds(10));
         Assert.Empty(p.FindAll("#gorunum-rozeti"));
 
-        var k = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var k = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         k.WaitForAssertion(() => Assert.NotEmpty(Getler("/kasalar")), TimeSpan.FromSeconds(10));
         Assert.Empty(k.FindAll("#gorunum-rozeti"));
         Assert.All(Getler("/kasalar"), y => Assert.DoesNotContain("subeId", y, StringComparison.Ordinal));
@@ -531,7 +531,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.Kayitli = "s2";
         d.KayitliPasif = true;
         SeciciHazir();
-        var p = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var p = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         p.WaitForAssertion(() => Assert.NotNull(p.Find("#gorunum-gecersiz")), TimeSpan.FromSeconds(10));
         Assert.Equal(SubeKapsamBSozlugu.Tr.GecersizTercihSubeye, p.Find("#gorunum-gecersiz-metin").TextContent.Trim());
         Assert.Equal("s1", SubeliSorgu.Sube(Oturum));
@@ -550,7 +550,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.Kayitli = "s2";
         d.KayitliPasif = true;
         SeciciHazir();
-        var p = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var p = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         p.WaitForAssertion(() => Assert.NotNull(p.Find("#gorunum-gecersiz")), TimeSpan.FromSeconds(10));
         p.WaitForAssertion(() =>
         {
@@ -571,11 +571,11 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.Kayitli = "s2";
         d.KayitliPasif = true;
         SeciciHazir();
-        var p = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var p = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         p.WaitForAssertion(() => Assert.NotNull(p.Find("#gorunum-gecersiz-kapat")), TimeSpan.FromSeconds(10));
         p.Find("#gorunum-gecersiz-kapat").Click();
         p.WaitForAssertion(() => Assert.Empty(p.FindAll("#gorunum-gecersiz")));
-        var h = Render<Kuyumcu.Web.Pages.Hurda>();
+        var h = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         h.WaitForAssertion(() => Assert.NotNull(h.Find("#gorunum-rozeti")), TimeSpan.FromSeconds(10));
         Assert.Empty(h.FindAll("#gorunum-gecersiz"));
     }
@@ -589,7 +589,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.KayitliPasif = true;
         d.PatchKodu = HttpStatusCode.InternalServerError;
         SeciciHazir();
-        var p = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var p = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         p.WaitForAssertion(() => Assert.NotNull(p.Find("#gorunum-gecersiz-hata")), TimeSpan.FromSeconds(10));
         Assert.Contains(SubeKapsamBSozlugu.Tr.GecersizTemizlenemedi.Split("{0}")[0].Trim(), p.Find("#gorunum-gecersiz-hata").TextContent, StringComparison.Ordinal);
         p.Find("#gorunum-gecersiz-kapat").Click();
@@ -693,7 +693,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         OturumAc();
         d.Kayitli = "s2";
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotEmpty(Getler("/raporlar/kasa-defteri")), TimeSpan.FromSeconds(10));
         e.WaitForAssertion(() => Assert.Contains("/kasalar okunamadı (SKB)", e.Markup, StringComparison.Ordinal),
             TimeSpan.FromSeconds(5));
@@ -710,7 +710,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         OturumAc();
         d.Kayitli = "s2";
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Şube 2 Kasası", e.Markup, StringComparison.Ordinal),
             TimeSpan.FromSeconds(10));
         Assert.DoesNotContain("Merkez Kasa", e.Markup, StringComparison.Ordinal);
@@ -725,7 +725,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         OturumAc();
         d.Kayitli = "s2";
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#e-cari")), TimeSpan.FromSeconds(10));
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForAssertion(() => Assert.NotEmpty(Getler("/emanet/c1")), TimeSpan.FromSeconds(10));
@@ -748,7 +748,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         OturumAc();
         d.Kayitli = "s2";
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotEmpty(Getler("/urunler/stok-adetleri")), TimeSpan.FromSeconds(10));
         Assert.All(Getler("/urunler/stok-adetleri"), y => Assert.Contains("subeId=s2", y, StringComparison.Ordinal));
         Assert.All(Getler("/urunler?"), y => Assert.DoesNotContain("subeId", y, StringComparison.Ordinal));
@@ -775,7 +775,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         OturumAc(mod: mod);
         d.Kayitli = kayitli;
         SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#hrd-bakiye-listesi")), TimeSpan.FromSeconds(10));
         return e;
     }
@@ -927,7 +927,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.Ek["/raporlar/kasa-defteri"] = KasaDefteri2;
         OturumAc();
         var s = SeciciHazir();
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Merkez Kasa", e.Markup, StringComparison.Ordinal), TimeSpan.FromSeconds(10));
 
         var kapi = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -1098,7 +1098,7 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         d.Ek["/hurda/bakiye?subeId=s1"] = """{"subeId":"s1","satirlar":[{"maden":"ALTIN","madenAdi":"Altın","hasGram":9.389,"girenHas":9.389,"cikanHas":0,"tahlilFarkiHas":0}],"fireKaydiAcik":false,"kapsam":"SUBE"}""";
         d.Ek["/hurda/defter"] = """{"satirlar":[],"toplamAdet":0}""";
         SeciciHazir();
-        var p = Render<Kuyumcu.Web.Pages.Hurda>();
+        var p = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         p.WaitForAssertion(() => Assert.NotNull(p.Find("#hrd-kendi-subeye-gec")), TimeSpan.FromSeconds(10));
         Assert.DoesNotContain("9,389", p.Markup, StringComparison.Ordinal);
         Assert.Empty(p.FindAll("#hrd-form-alan"));

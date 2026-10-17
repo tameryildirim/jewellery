@@ -189,7 +189,7 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Urun_olusturma_formunda_yedi_kart_alani_VAR_ve_GONDERILIR()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#urun-yeni-ac").Click();
         e.Find("#u-daha-fazla").Click();   // PAKET GOC-C (devir "zorunlu önce"): yeni ürün formu PRO'da da yalnız zorunlularla açılır — isteğe bağlılar "Daha fazla"da
 
@@ -216,7 +216,7 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Urun_duzenleme_cekmecesi_kart_alanlarini_OKUR_ve_PATCH_ile_GONDERIR()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#urun-yeni-ac");
         e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
 

@@ -428,7 +428,7 @@ public sealed class KurBantEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/kur/guncel")));
         e.Find("#kur-manuel-ac").Click();
         lock (istekler) istekler.Clear();

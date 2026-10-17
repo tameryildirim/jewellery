@@ -183,7 +183,7 @@ public sealed class GocATur2EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Banka> BankaHareketleri()
     {
         Kullanici("PROFESYONEL");
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-gecmis-ac");
         e.Find("#bh-gecmis-ac").Click();
         e.WaitForAssertion(() => Assert.Equal(hareketSayisi, e.FindAll("#bh-hareket-tablo tbody tr").Count));
@@ -216,14 +216,14 @@ public sealed class GocATur2EkranTestleri : BunitContext
     {
         Kullanici("PROFESYONEL");
         pusulaSayisi = 2;
-        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         e.WaitForState(() => e.FindAll("#gp-tablo tbody tr").Count == 2);
         Assert.NotEmpty(e.FindAll("#gp-liste-sirala-net"));
         Assert.Empty(e.FindAll("#gp-sinir-notu"));
         e.Dispose();
 
         pusulaSayisi = 100;
-        var e2 = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var e2 = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         e2.WaitForState(() => e2.FindAll("#gp-tablo tbody tr").Count == 100);
         Assert.Empty(e2.FindAll("#gp-tablo .izgara-sirala"));
         Assert.Equal(string.Format(GocASozlugu.Tr.SiralamaSinirNotu, 100), e2.Find("#gp-sinir-notu").TextContent.Trim());
@@ -236,7 +236,7 @@ public sealed class GocATur2EkranTestleri : BunitContext
     {
         hurdaDahaFazla = dahaFazla;
         Kullanici("PROFESYONEL");
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForElement("#hrd-gecmis-ac").Click();
         e.WaitForAssertion(() => Assert.Equal(2, e.FindAll("#hrd-defter tbody tr").Count));
         if (dahaFazla)
@@ -257,7 +257,7 @@ public sealed class GocATur2EkranTestleri : BunitContext
     public void GT08_Kur_manuel_cekmecesi_BASIT_tek_sade_cumle_PRO_ayrintili_ham_kod_hicbir_modda_YOK(string mod)
     {
         Kullanici(mod);
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#kur-manuel-ac");
         e.Find("#kur-manuel-ac").Click();
         e.WaitForElement("#m-uyari");

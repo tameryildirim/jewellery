@@ -94,7 +94,7 @@ public sealed class GiderPusulaEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.GiderPusulalari> Ciz()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count == 2);
         istekler.Clear();
         return c;

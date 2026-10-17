@@ -138,7 +138,7 @@ public sealed class PusulaEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.GiderPusulalari> DuzenleAc()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
         c.Find("#gp-duzenle-gp1").Click();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#cekmece-gider-pusulasi")));
@@ -150,7 +150,7 @@ public sealed class PusulaEkranTestleri : BunitContext
     [Fact]
     public void SatirdaDuzenleEylemiVar()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
 
         var dugme = c.Find("#gp-duzenle-gp1");
@@ -219,7 +219,7 @@ public sealed class PusulaEkranTestleri : BunitContext
 
         // Dönüş adresi LİSTEDE o pusulayı açar; ?duzenle ise düzenleme kipinde.
         nav.NavigateTo("/gider-pusulalari?duzenle=gp1");
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#gp-duz-adres")));
         Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.EndsWith("/gider-pusulalari/gp1"));
     }

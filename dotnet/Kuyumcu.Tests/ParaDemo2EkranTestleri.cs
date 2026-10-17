@@ -58,7 +58,7 @@ public sealed class ParaDemo2KasaEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-gun-kapat-k1");
         return e;
     }
@@ -582,7 +582,7 @@ public sealed class ParaDemo2GiderEkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
         Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>().NavigateTo("http://localhost/gider?sekme=virman");
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-v-hedef");
         Assert.Single(e.FindAll("label[for=gd-v-hedef]"));
     }

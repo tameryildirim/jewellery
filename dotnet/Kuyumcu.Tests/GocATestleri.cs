@@ -502,7 +502,7 @@ public sealed class GocAEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Vezne> Vezne()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1"));
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-yeni-ac");
         e.Find("#vz-yeni-ac").Click();
         e.WaitForElement("#vz-f-urun-0");
@@ -556,7 +556,7 @@ public sealed class GocAEkranTestleri : BunitContext
     [Fact]
     public void GE04_Kur_manuel_USD_sifir_alan_alti_hata_ve_Kaydet_kilitli()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#kur-manuel-ac");
         e.Find("#kur-manuel-ac").Click();
         e.WaitForElement("#m-usd");

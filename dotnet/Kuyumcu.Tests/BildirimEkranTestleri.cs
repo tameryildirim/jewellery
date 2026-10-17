@@ -116,7 +116,7 @@ public sealed class BildirimEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1"));
-        return Render<Kuyumcu.Web.Pages.Bildirimler>();
+        return Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
     }
 
     // ── Yükleme ─────────────────────────────────────────────────────────────

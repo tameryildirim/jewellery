@@ -149,7 +149,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B38_duzenleme_cekmecesinde_ISCILIK_alani_VAR()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-duzenle-v2").Click();
 
         // UX-S26: oluşturma formunun alan kümesi düzenlemede de eksiksizdir.
@@ -166,7 +166,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B38_iscilik_degisikligi_PATCH_govdesine_gider()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-duzenle-v2").Click();
         e.Find("#vz-d-iscilik-0").Input("250.00");
         e.Find("#cekmece-vezne-fisi-kaydet").Click();
@@ -181,7 +181,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void P78_vezne_duzenlemede_1_5_adet_ve_45_000_fiyat_TURKCE_okunur()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-duzenle-v2").Click();
         // Ön doldurma tr-TR gruplamasız: "4900,00" (eskiden "4900.00").
         // TOPLU-1 (K20): birim fiyat binlikli Para girdisi — odak dışında "4.900" (değer 4900 aynı).
@@ -202,7 +202,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void P78_vezne_belirsiz_fiyat_ALAN_ALTINDA_soylenir_ve_PATCH_GITMEZ()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-duzenle-v2").Click();
         e.Find("#vz-d-fiyat-0").Input("1.500");
 
@@ -220,7 +220,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B42_dekont_satirinda_STORNO_dugmesi_VAR_ve_ACIK()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();
         var dugme = e.Find("#bh-storno-bh1");
         Assert.False(dugme.HasAttribute("disabled"));
     }
@@ -229,7 +229,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B42_storno_dugmesi_GERCEK_ISTEK_atar()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();
         e.Find("#bh-storno-bh1").Click();
         e.Find("#bh-storno-gerekce").Input("Yanlis hesaba girildi, duzeltiliyor.");
         e.Find("#bh-storno-onayla").Click();
@@ -243,7 +243,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B42_kisa_gerekcede_onay_dugmesi_KILITLI_ve_sebebi_YAZILI()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();
         e.Find("#bh-storno-bh1").Click();
         e.Find("#bh-storno-gerekce").Input("kisa");
 
@@ -256,7 +256,7 @@ public sealed class P12EkranTestleri : BunitContext
     {
         bankaHareketleri = StornoluDekont;
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();
 
         Assert.True(e.Find("#bh-storno-bh1").HasAttribute("disabled"));   // kaynak
         Assert.True(e.Find("#bh-storno-bh2").HasAttribute("disabled"));   // ters kayıt
@@ -268,7 +268,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B42_dekont_aciklamasi_SATIR_ICI_duzeltilir()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();
         e.Find("#si-banka-dekont-aciklama-bh1-ac").Click();
         e.Find("#si-banka-dekont-aciklama-bh1").Input("Kira tahsilati");
         e.Find("#si-banka-dekont-aciklama-bh1-kaydet").Click();
@@ -288,7 +288,7 @@ public sealed class P12EkranTestleri : BunitContext
     public void B43_emanet_aciklamasi_SATIR_ICI_duzeltilir()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForElement("#e-gecmis-ac").Click();   // EMANET-1: geçmiş katlanırda KAPALI
 

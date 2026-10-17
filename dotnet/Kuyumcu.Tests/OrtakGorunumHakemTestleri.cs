@@ -210,7 +210,7 @@ public sealed class OrtakGorunumHakemTestleri : BunitContext
     // ── /urunler/agac ────────────────────────────────────────────────────────
     private IRenderedComponent<Kuyumcu.Web.Pages.UrunAgaci> Agac()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForElement("#agac-yeni-reyon");
         return e;
     }
@@ -247,7 +247,7 @@ public sealed class OrtakGorunumHakemTestleri : BunitContext
         // KESIF-P6 tur 2 (hakem 01.10, K17 → P6): "deftere yazmaz / işlem uçları" açıklama satırı
         // kaldırıldı (tuvalde yok). Ölçüt: not satırı her iki modda 0, BASİT'te "uçlar" jargonu 0.
         Mod(basit);
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         e.WaitForElement("#sip-yeni-ac");
         Assert.Empty(e.FindAll("#sip-defter-notu"));
         Assert.DoesNotContain(Pro.Siparis.DefterEtkisiYok, e.Markup);
@@ -287,7 +287,7 @@ public sealed class OrtakGorunumHakemTestleri : BunitContext
     public void HK10_vezne_ayar_rozeti_BASIT_yok_PRO_var(bool basit)
     {
         Mod(basit);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-defter-notu");
         e.WaitForAssertion(() => Assert.Equal(basit ? 0 : 1, e.FindAll("#vz-ayrim-rozet").Count));
     }
@@ -297,7 +297,7 @@ public sealed class OrtakGorunumHakemTestleri : BunitContext
     {
         // 30.09 tur ölçümü: "Ayşe Yılmazoğlu" 960–1440'ta iki satıra kırılıyordu (K3, 16 durum).
         Mod(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         var satir = e.WaitForElement("#vz-satir-v1");
         var td = satir.QuerySelectorAll("td").Single(t => t.TextContent.Trim() == "Ayşe Yılmazoğlu");
         Assert.Contains("hucre-tek-satir", td.GetAttribute("class") ?? "");
@@ -309,7 +309,7 @@ public sealed class OrtakGorunumHakemTestleri : BunitContext
         // Hakem turu 30.09 (DÜŞÜK): 960'ta "Kesin — kuyruğa gidince sabitlendi" rozeti tutarın yanında
         // tek satır kalıp Toplam sütununu genişletiyor, eylem sütunu kabın kenarında kesiliyordu.
         Mod(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         var rozet = e.WaitForElement("#vz-toplam-rozet-v1");
         Assert.Contains("vz-toplam-rozet", rozet.GetAttribute("class") ?? "");
         Assert.Matches(@"#vz-liste \.vz-toplam-rozet\s*\{\s*display:\s*block;", Css);

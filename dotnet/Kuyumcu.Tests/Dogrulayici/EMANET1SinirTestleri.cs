@@ -61,7 +61,7 @@ public sealed class EMANET1SinirTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Sec(string govde)
     {
         emanetGovdesi = govde;
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         e.WaitForElement("#e-cari");
         e.WaitForAssertion(() => Assert.DoesNotContain(OnayKilitSozlugu.Tr.EmanetKurYok, e.Markup, StringComparison.Ordinal));
         SeciciYardim.Sec(e, "e-cari", "c1");
@@ -861,7 +861,7 @@ public sealed class EMANET1SinirTestleri : BunitContext
     [Fact]
     public void T1_Acilista_musteri_secilmeden_yalniz_zorunlu_kilit_tek_cumle_Eksik_olan_yok()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         e.WaitForElement("#e-cari");
         e.WaitForAssertion(() => Assert.DoesNotContain(OnayKilitSozlugu.Tr.EmanetKurYok, e.Markup, StringComparison.Ordinal));
         Assert.Empty(e.FindAll("#e-ozet"));

@@ -68,7 +68,7 @@ public sealed class KESIFP1PosSinirTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Pos> YeniCihaz(string oran, string valor)
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-yeni-ac").Click();
         e.WaitForElement("#pos-cihaz-ad").Input("Sınır POS");
         e.Find("#pos-cihaz-banka").Input("Sınır Bankası");
@@ -143,7 +143,7 @@ public sealed class KESIFP1PosSinirTestleri : BunitContext
     [InlineData("2", true)]
     public void Sinir_taksit_adedi(string adet, bool kabul)
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForElement("#pos-taksit-adet").Input(adet);
         e.Find("#pos-taksit-oran").Input("0");
@@ -289,7 +289,7 @@ public sealed class KESIFP1Tur2SinirTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Pos> YeniCihaz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-yeni-ac").Click();
         e.WaitForElement("#pos-cihaz-ad").Input("Sınır POS");
         e.Find("#pos-cihaz-banka").Input("Sınır Bankası");
@@ -329,7 +329,7 @@ public sealed class KESIFP1Tur2SinirTestleri : BunitContext
     [Fact]
     public void T2_duzenleme_gidis_donus_oran_kaymaz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForAssertion(() => Assert.Equal("1,85", e.Find("#pos-cihaz-oran").GetAttribute("value")));
         e.WaitForAssertion(() => Assert.False(e.Find("#cekmece-pos-cihaz-kaydet").HasAttribute("disabled")));
@@ -348,7 +348,7 @@ public sealed class KESIFP1Tur2SinirTestleri : BunitContext
     [InlineData("0", "0")]
     public void T2_satir_ici_oran_sinirlari(string girdi, string? beklenenKesir)
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForElement("#si-pos-taksit-oran-o1-ac").Click();
         e.WaitForElement("#si-pos-taksit-oran-o1").Input(girdi);
@@ -373,7 +373,7 @@ public sealed class KESIFP1Tur2SinirTestleri : BunitContext
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
         try
         {
-            var e = Render<Kuyumcu.Web.Pages.Pos>();
+            var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
             e.WaitForAssertion(() => Assert.Contains("%1,85", e.Markup));
             Assert.DoesNotContain("1.85", e.Markup);
         }

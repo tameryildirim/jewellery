@@ -198,7 +198,7 @@ public sealed class UX4bEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Kur> KurEkrani()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/kur/guncel")));
         istekler.Clear();
         return e;
@@ -347,7 +347,7 @@ public sealed class UX4bEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Urunler> UrunEkrani()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/urunler")));
         istekler.Clear();
         return e;

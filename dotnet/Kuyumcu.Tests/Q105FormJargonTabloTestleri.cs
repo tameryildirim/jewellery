@@ -339,7 +339,7 @@ public sealed class Q105FormJargonTabloTestleri : BunitContext
         AgacYanitlari();
         Oturum();
         Basit();
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Ön Vitrin", e.Markup));
         var tablo = e.FindAll("table").First(t => t.TextContent.Contains("Ön Vitrin"));
         Assert.Contains("q10-th-tek", tablo.ClassName);
@@ -352,7 +352,7 @@ public sealed class Q105FormJargonTabloTestleri : BunitContext
     {
         AgacYanitlari();
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Ön Vitrin", e.Markup));
         var tablo = e.FindAll("table").First(t => t.TextContent.Contains("Ön Vitrin"));
         Assert.Contains(Sozlukler.Tr.Cari.PasifeAl, tablo.TextContent);
@@ -415,7 +415,7 @@ public sealed class Q105FormJargonTabloTestleri : BunitContext
         yanitlar["/reyonlar"] = "[]";
         yanitlar["/urun-kategorileri/duz"] = "[]";
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
         e.WaitForElement("#sy-tablo tbody tr");
         var tablo = e.Find("#sy-tablo");
         // PAKET GOC-C: liste ortak ızgarada — 375 px kart kalıbı ızgaranın TEK kalıbıdır (izgara.css, data-etiket).

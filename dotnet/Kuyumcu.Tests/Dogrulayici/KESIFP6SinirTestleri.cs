@@ -262,7 +262,7 @@ public sealed class KESIFP6SiparisKalemSinirTestleri : Bunit.BunitContext
     {
         Services.GetRequiredService<Kuyumcu.Web.Servisler.OturumServisi>().KullaniciAta(
             new Kuyumcu.Web.Servisler.OturumKullanici("u1", "T", "K", "t@ornek.com", "SAHIP", "sb1", "PROFESYONEL", "PROFESYONEL"));
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         e.WaitForElement("#sip-yeni-ac", Uzun).Click();
         e.WaitForElement("#sip-form", Uzun);
         SeciciYardim.Sec(e, "sip-f-cari", "c1");

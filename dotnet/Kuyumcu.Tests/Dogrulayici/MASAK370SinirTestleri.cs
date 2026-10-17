@@ -232,7 +232,7 @@ public sealed class MASAK370SinirBankaEkranTestleri : BunitContext
     [Fact]
     public void B1_musterisiz_250000_dekont_07_10_sonrasi_MASAK_alanlari_ACILMALI_cikmaz_olmamali()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         e.Find("#bh-dekont-gir").Click();
         e.WaitForElement("#dekont-tutar");
@@ -243,7 +243,7 @@ public sealed class MASAK370SinirBankaEkranTestleri : BunitContext
     [Fact]
     public void B2_kontrol_musterisiz_370000_dekontta_MASAK_alanlari_acilir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         e.Find("#bh-dekont-gir").Click();
         e.WaitForElement("#dekont-tutar");

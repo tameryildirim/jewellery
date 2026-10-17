@@ -490,7 +490,7 @@ public sealed class Istek1EkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("k1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.DoesNotContain("…", e.Find("#u-stok-adet-u1").TextContent));
         Assert.Equal("3 adet", e.Find("#u-stok-adet-u1").TextContent.Trim());
         return e;
@@ -593,7 +593,7 @@ public sealed class Istek1EkranTestleri : BunitContext
         var reyon = sunucu.Say("GET", "/reyonlar");
         var kategori = sunucu.Say("GET", "/urun-kategorileri");
 
-        var e2 = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e2 = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e2.WaitForAssertion(() => Assert.Equal("3 adet", e2.Find("#u-stok-adet-u1").TextContent.Trim()));
 
         Assert.Equal(reyon, sunucu.Say("GET", "/reyonlar"));

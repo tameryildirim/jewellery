@@ -165,7 +165,7 @@ public sealed class EmanetSadeTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         e.WaitForElement("#e-cari");
         return e;
     }

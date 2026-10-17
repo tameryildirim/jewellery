@@ -321,7 +321,7 @@ public sealed class ParaDemo3KasaEkranTestleri : BunitContext
         if (dil == "en") await Services.GetRequiredService<DilServisi>().DegistirAsync("en");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-hareket-k1").Click();
         e.WaitForElement("#h-tutar");
         SeciciYardim.Sec(e, "h-tur", "CIKIS");
@@ -357,7 +357,7 @@ public sealed class ParaDemo3KasaEkranTestleri : BunitContext
         if (dil == "en") await Services.GetRequiredService<DilServisi>().DegistirAsync("en");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", "BASIT", "BASIT"));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-hareket-k1").Click();
         e.WaitForElement("#h-tutar");
         SeciciYardim.Sec(e, "h-tur", "CIKIS");
@@ -414,7 +414,7 @@ public sealed class ParaDemo3GiderEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-kaydet");
         return e;
     }
@@ -687,7 +687,7 @@ public sealed class ParaDemo3Tur2GiderTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-kasa-nakit");
         return e;
     }

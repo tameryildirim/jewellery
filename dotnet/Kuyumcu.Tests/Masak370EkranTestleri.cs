@@ -119,7 +119,7 @@ public sealed class Masak370EkranTestleri : BunitContext
         Yol("/hareketler", """{"hareketler":[]}""");
         Yol("/bankalar", """{"hesaplar":[{"id":"b1","bankaAdi":"Ziraat","hesapAdi":"Ana Hesap","hesapSahibi":"X Ltd.","iban":"TR200000000000000000000001","paraBirimi":"TRY","bakiye":0,"aktif":true}]}""");
         Yol("/cari", """[{"id":"c1","ad":"Ayşe Yılmaz"}]""");
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir").Click();
         e.WaitForElement("#dekont-tutar");
         return e;
@@ -178,7 +178,7 @@ public sealed class Masak370EkranTestleri : BunitContext
         Yol("/kasalar", """[{"id":"ks1","ad":"Merkez Kasa","paraBirimi":"TRY","bakiye":250000,"aktif":true}]""");
         Yol("/kur/guncel", """{"id":"kur-1","altinHasFiyati":6800,"gramAltinFiyati":6850,"usdTry":34.0,"eurTry":37.0,"gbpTry":43.5,"kaynak":"ALTINKAYNAK","olusturuldu":"2026-09-25T09:00:00Z","ayarFiyatlari":[]}""");
         Yol("/arama", """{"sonuclar":[],"toplam":0}""");
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         return e;
     }

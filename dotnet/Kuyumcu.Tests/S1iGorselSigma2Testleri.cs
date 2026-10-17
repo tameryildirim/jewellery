@@ -294,7 +294,7 @@ public sealed class S1iGorselSigma2Testleri : BunitContext
     [Fact]
     public void S1i_10_Kasa_defteri_kasa_basina_son_7_gun_ve_N_gun_daha()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-gecmis-ac");
         c.Find("#kr-gecmis-ac").Click();   // ZO-BELGE: gün tablosu kapalı katlanırda
         c.WaitForAssertion(() => Assert.Equal(7, c.FindAll("#kr-tablo-k1 tbody tr").Count));

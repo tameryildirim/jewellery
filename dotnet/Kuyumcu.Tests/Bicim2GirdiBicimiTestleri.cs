@@ -335,7 +335,7 @@ public sealed class Bicim2GiderPostTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForAssertion(() => e.Find("#gd-kaydet"));
         Assert.Equal("gk1", e.Find("#gd-kategori-sabit").GetAttribute("data-deger"));   // TOPLU-1 UX-S22: tek kategori seçicisiz, kendiliğinden
         e.Find("#gd-tutar").Focus();

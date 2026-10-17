@@ -75,7 +75,7 @@ public sealed class YerlesimEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.UrunAgaci> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         istekler.Clear();
         return e;
     }

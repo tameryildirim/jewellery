@@ -108,7 +108,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Hurda> HurdaEkrani()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         return e;
     }
@@ -373,7 +373,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
     {
         Oturum(rol, sube: null);
         Yol("/hurda/bakiye", "{\"message\":\"" + sunucuMetni + "\"}", (HttpStatusCode)kod);
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#hrd-hata")));
 
         var beklenen = rol == "SAHIP" ? ZoIslemSozlugu.Tr.HurdaSubeYokSahip : SadeSozlugu.Tr.HurdaSubeYok;
@@ -393,7 +393,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
     {
         Oturum("MUDUR", sube: "s1");
         Yol("/hurda/bakiye", """{"message":"Sunucu yoğun, tekrar deneyin."}""", HttpStatusCode.BadRequest);
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Sunucu yoğun", e.Find("#hrd-hata").TextContent));
         Assert.DoesNotContain(SadeSozlugu.Tr.HurdaSubeYok, e.Markup);
         Assert.Single(e.FindAll("#hrd-bakiye-okunamadi"));
@@ -420,7 +420,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
     {
         Oturum();
         BankaYollari(hesaplar);
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         return e;
     }
@@ -537,7 +537,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/tahsilatlar", "{\"satirlar\":[" + PosSatir + "],\"toplamSatir\":1,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}");
         Yol("/pos/cihazlar", """[{"id":"p1","ad":"Garanti POS","bankaAdi":"Garanti","subeId":"s1","kasaId":"k1","bankaHesapId":null,"uyeIsyeriNo":null,"terminalNo":null,"pesinKomisyonOran":0.0185,"valorGun":1,"paraBirimi":"TRY","aktif":true,"bekleyenAlacak":0,"bugunYatacakNet":0.00}]""");
         Yol("/bankalar", """{"hesaplar":[]}""");
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForElement("#pos-t-defter-kart-ac");
         return e;
     }
@@ -575,7 +575,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/tahsilatlar", "{\"satirlar\":[" + PosSatir + "],\"toplamSatir\":1,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}");
         Yol("/pos/cihazlar", "[]");
         Yol("/bankalar", """{"hesaplar":[]}""");
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForElement("#pos-t-defter-kart-ac").Click();
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#pos-t-iptal-t1")));
         var sarmallar = e.FindAll(".tablo-sar");
@@ -607,7 +607,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/tahsilatlar", "{\"satirlar\":[" + PosSatir + "],\"toplamSatir\":250,\"limit\":200,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":true}");
         Yol("/pos/cihazlar", "[]");
         Yol("/bankalar", """{"hesaplar":[]}""");
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForElement("#pos-t-defter-kart-ac");
         e.WaitForAssertion(() => Assert.Equal("250", e.Find("#pos-t-defter-kart-sayi").TextContent.Trim()));
         Assert.Equal("false", e.Find("#pos-t-defter-kart-ac").GetAttribute("aria-expanded"));
@@ -718,7 +718,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
     {
         Oturum("MUDUR", sube: null);
         Yol("/hurda/bakiye", """{"message":"Hurda işlemleri için şube bağlamı gerekli."}""", HttpStatusCode.BadRequest);
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#hrd-hata")));
         Assert.Empty(e.FindAll("#hrd-bakiye-kart"));
         Assert.DoesNotContain(Sozlukler.Tr.Hurda.BakiyeBasligi, e.Markup);
@@ -752,7 +752,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/tahsilatlar", "{\"satirlar\":[" + PosSatir + "," + yatti + "],\"toplamSatir\":2,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}");
         Yol("/pos/cihazlar", "[]");
         Yol("/bankalar", """{"hesaplar":[]}""");
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForElement("#pos-t-defter-kart-ac").Click();
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#pos-t-iptal-t1")));
         foreach (var id in new[] { "t1", "t2" })
@@ -870,7 +870,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/tahsilatlar", "{\"satirlar\":[],\"toplamSatir\":0,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}");
         Yol("/pos/cihazlar", "[]");
         Yol("/bankalar", """{"hesaplar":[]}""");
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         var tablo = e.WaitForElement("#pos-t-valor");
         Assert.Contains("zo-valor-tablo", tablo.ClassList);
         Assert.Equal("tablo-sar", tablo.ParentElement!.GetAttribute("class"));
@@ -1248,7 +1248,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/tahsilatlar", "{\"satirlar\":[" + EslesmisSatir + "],\"toplamSatir\":1,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}");
         Yol("/pos/cihazlar", "[]");
         Yol("/bankalar", """{"hesaplar":[]}""");
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForElement("#pos-t-defter-kart-ac").Click();
         e.WaitForAssertion(() => Assert.Single(e.FindAll("#pos-t-iptal-t3")));
         return e;
@@ -1714,7 +1714,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/valor-takvimi", "{\"message\":\"" + ham + "\"}", HttpStatusCode.Forbidden);
         Yol("/pos/tahsilatlar", "{\"message\":\"" + ham + "\"}", HttpStatusCode.Forbidden);
         Yol("/pos/yatma-adaylari", "{\"message\":\"" + ham + "\"}", HttpStatusCode.Forbidden);
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#pos-t-hata")));
 
         var beklenen = rol == "SAHIP" ? ZoIslemSozlugu.Tr.HurdaSubeYokSahip : SadeSozlugu.Tr.HurdaSubeYok;
@@ -1735,7 +1735,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Oturum("MUDUR", sube: "s1");
         Yol("/pos/valor-takvimi", """{"message":"Sunucu yoğun, tekrar deneyin."}""", HttpStatusCode.Forbidden);
         Yol("/pos/tahsilatlar", "{\"satirlar\":[],\"toplamSatir\":0,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}");
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Sunucu yoğun", e.Find("#pos-t-hata").TextContent));
         Assert.DoesNotContain(SadeSozlugu.Tr.HurdaSubeYok, e.Markup);
         Assert.Empty(e.FindAll("#pos-t-takvim-bos"));
@@ -1777,7 +1777,7 @@ public sealed partial class ZOISLEMAEkranTestleri : BunitContext
         Yol("/pos/valor-takvimi", "[]");
         Yol("/pos/tahsilatlar", "{\"satirlar\":[" + PosSatir + "],\"toplamSatir\":1,\"limit\":50,\"offset\":0,\"azamiSatir\":200,\"sinirDegdi\":false}");
         Yol("/pos/yatma-adaylari", BankaSonuc);
-        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var e = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         e.WaitForElement("#pos-t-defter-kart-ac");
         if (gorur)
         {

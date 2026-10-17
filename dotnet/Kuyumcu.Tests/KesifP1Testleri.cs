@@ -773,7 +773,7 @@ public sealed class KesifP1PosTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Pos> YeniCihaz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-yeni-ac").Click();
         e.WaitForElement("#pos-cihaz-ad").Input("Yapı Kredi POS");
         e.Find("#pos-cihaz-banka").Input("Yapı Kredi");
@@ -826,7 +826,7 @@ public sealed class KesifP1PosTestleri : BunitContext
     [Fact]
     public void Pos_taksit_tam_sayi_ve_yuzde()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForElement("#pos-taksit-adet").Input("2,5");
         e.Find("#pos-taksit-oran").Input("2,75");
@@ -850,7 +850,7 @@ public sealed class KesifP1PosTestleri : BunitContext
     {
         var kaynak = CssKaynak.Metin("Kuyumcu.Web", "Pages", "Pos.razor");
         Assert.DoesNotContain("type=\"number\"", kaynak, StringComparison.Ordinal);
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForElement("#pos-taksit-adet");
         Assert.Empty(e.FindAll("input[type=number]"));
@@ -886,7 +886,7 @@ public sealed class KesifP1PosTestleri : BunitContext
     [Fact]
     public void Pos_taksit_oran_uc_ondalik_reddedilir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForElement("#pos-taksit-adet").Input("6");
         e.Find("#pos-taksit-oran").Input("2,755");
@@ -900,7 +900,7 @@ public sealed class KesifP1PosTestleri : BunitContext
     [Fact]
     public void Pos_satir_ici_oran_uc_ondalik_istek_atmaz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForElement("#si-pos-taksit-oran-o1-ac").Click();
         e.Find("#si-pos-taksit-oran-o1").Input("3,555");
@@ -920,7 +920,7 @@ public sealed class KesifP1PosTestleri : BunitContext
     [Fact]
     public void Pos_tablo_ad_banka_sarar_eylem_sabit_mobil_yigin()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1");
         var tablo = e.Find("#pos-cihaz-tablo");
         Assert.Contains("q10-yigin", tablo.ClassList);
@@ -945,7 +945,7 @@ public sealed class KesifP1PosTestleri : BunitContext
     [Fact]
     public void Pos_taksit_tablosu_yuzde_gosterir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForAssertion(() => Assert.Contains("2,75", e.Find("#cekmece-pos-cihaz").TextContent));
         Assert.DoesNotContain("0,0275", e.Find("#cekmece-pos-cihaz").TextContent);

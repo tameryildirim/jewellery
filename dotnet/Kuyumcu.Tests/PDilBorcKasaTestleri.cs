@@ -207,7 +207,7 @@ public sealed class PDilBorcKasaKasaEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kasalar>();
+        var e = Render<Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-bakiye-k1");
         return e;
     }
@@ -530,7 +530,7 @@ public sealed class PDilBorcKasaEmanetEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Ciz(string mod)
     {
         Toplu5Ortak.Oturum(this, mod);
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForAssertion(() => Assert.Matches("(g|has)$", e.Find("#e-ozet-deger").TextContent.Trim()));
         return e;

@@ -210,7 +210,7 @@ public sealed class GOCBSinirEkranTestleri : BunitContext
     public void GOCB_E01_Evrak_yalniz_not_duzenlenince_PATCH_borclu_kimlik_noyu_null_ile_SILMEZ()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1"));
-        var e = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var e = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         e.WaitForElement("#evrak-satir-e1");
         e.Find("#evrak-duzenle-e1").Click();
         e.WaitForElement("#evrak-form-notlar");

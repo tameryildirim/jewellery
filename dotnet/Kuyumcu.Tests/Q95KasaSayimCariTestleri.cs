@@ -246,7 +246,7 @@ public sealed class Q95KasalarEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#kasa-liste")));
         return e;
     }
@@ -391,7 +391,7 @@ public sealed class Q95SayimFormTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> YeniForm()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
         e.WaitForElement("#sy-yeni");
         e.Find("#sy-yeni").Click();
         e.WaitForElement("#sy-form");

@@ -199,7 +199,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum("MUDUR", sube: null);
         Yol("/hurda/bakiye", """{"message":"Hurda işlemleri için şube bağlamı gerekli."}""", HttpStatusCode.BadRequest);
-        var c = Render<Kuyumcu.Web.Pages.Hurda>();
+        var c = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#hrd-hata")));
         // #24: form kilitli (fieldset disabled → içindeki kaydet düğmesi de) ve NEDEN yazıyor.
         Assert.True(c.Find("#hrd-form-alan").HasAttribute("disabled"));
@@ -219,7 +219,7 @@ public sealed class SADE1EkranTestleri : BunitContext
         Yol("/hurda/bakiye", """{"subeId":"s1","satirlar":[],"fireKaydiAcik":false,"fireNotu":null}""");
         Yol("/hurda/defter", """{"satirlar":[],"toplamAdet":0,"limit":100,"dahaFazlasiVar":false,"sinirNotu":null}""");
         Yol("/kasalar", """[{"id":"ks1","ad":"Merkez Kasa","paraBirimi":"TRY","bakiye":0,"aktif":true}]""");
-        var c = Render<Kuyumcu.Web.Pages.Hurda>();
+        var c = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#hrd-form-alan")));
         c.WaitForAssertion(() => Assert.False(c.Find("#hrd-form-alan").HasAttribute("disabled")));
         Assert.Empty(c.FindAll("#hrd-form-kilit-notu"));
@@ -247,7 +247,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum(mod: "BASIT");
         KurYollari();
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#kur-sozlesmesiz")));
         var satir = c.Find("#kur-sozlesmesiz");
         // TOPLU-3 (demo bulgusu): rozet dili "Deneme" yerine sade "Ücretsiz kur kaynağı" (Toplu3Sozlugu); koşul aynı.
@@ -263,7 +263,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum();
         KurYollari();
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         c.WaitForAssertion(() => Assert.Contains("22 Ayar", c.Markup));
         var hucre = c.FindAll("td").First(td => td.TextContent.Trim() == "22 Ayar");
         Assert.Null(hucre.QuerySelector(".rozet"));
@@ -283,7 +283,7 @@ public sealed class SADE1EkranTestleri : BunitContext
         Oturum(mod: "BASIT");
         Basit();
         PosYollari();
-        var c = Render<Kuyumcu.Web.Pages.Pos>();
+        var c = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#sayfa-basi-pos-aciklama")));
         var metin = c.Find("#sayfa-basi-pos-aciklama").TextContent.Trim();
         Assert.Equal(SadeSozlugu.Tr.PosAciklamaBasit, metin);
@@ -296,7 +296,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum();
         PosYollari();
-        var c = Render<Kuyumcu.Web.Pages.Pos>();
+        var c = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#sayfa-basi-pos-aciklama")));
         Assert.Equal(Sozlukler.Tr.Pos.TatilUyarisi, c.Find("#sayfa-basi-pos-aciklama").TextContent.Trim());
     }
@@ -306,7 +306,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum();
         PosYollari();
-        var c = Render<Kuyumcu.Web.Pages.Pos>();
+        var c = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#pos-pasif-p1")));
         var d = c.Find("#pos-pasif-p1");
         Assert.DoesNotContain("dugme-tehlike", d.ClassName);
@@ -327,7 +327,7 @@ public sealed class SADE1EkranTestleri : BunitContext
         Yol("/pos/valor-takvimi", "[]");
         Yol("/pos/tahsilatlar", """{"satirlar":[],"toplamSatir":0,"limit":50,"offset":0,"azamiSatir":200,"sinirDegdi":false}""");
         PosYollari();
-        var c = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var c = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         // ZO-ISLEM-A: defter kapalı akordeon (ortak Katlanir) — önce açılır.
         c.WaitForElement("#pos-t-defter-kart-ac").Click();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#pos-t-defter-bos")));
@@ -346,7 +346,7 @@ public sealed class SADE1EkranTestleri : BunitContext
         Yol("/pos/valor-takvimi", "[]");
         Yol("/pos/tahsilatlar", """{"message":"defter okunamadı"}""", HttpStatusCode.InternalServerError);
         PosYollari();
-        var c = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var c = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#pos-t-hata")));
         Assert.Empty(c.FindAll("#pos-t-defter-bos"));
     }
@@ -406,7 +406,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum();
         Yol("/sayim", """[{"id":"sy1","ad":"Eylül sayımı","kapsamTur":"TUMU","durum":"IPTAL"},{"id":"sy2","ad":"Ekim","kapsamTur":"TUMU","durum":"ACIK"}]""");
-        var c = Render<Kuyumcu.Web.Pages.Sayim>();
+        var c = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#sy-durum-sy1")));
         var iptal = c.Find("#sy-durum-sy1").TextContent.Trim();
         Assert.Equal(SadeSozlugu.Tr.SayimIptalEdildi, iptal);
@@ -446,7 +446,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum(rol: "TEZGAHTAR");   // PROFESYONEL mod: "Kaynak" sekmesi çizilir
         KurYollari();
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#kur-sozlesmesiz-sahipte")));
         Assert.NotNull(c.Find("#kur-panel-kaynak"));   // mod PRO → sekme gerçekten var
         Assert.Empty(c.FindAll("#kur-sozlesmesiz-ayrinti"));
@@ -461,7 +461,7 @@ public sealed class SADE1EkranTestleri : BunitContext
     {
         Oturum();   // SAHİP, PROFESYONEL
         KurYollari();
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#kur-sozlesmesiz-ayrinti")));
         Assert.Contains(Sozlukler.Tr.Ortak.SozlesmesizKaynakUyari, c.Find("#kur-sozlesmesiz-ayrinti").TextContent);
         Assert.Empty(c.FindAll("#kur-sozlesmesiz-sahipte"));

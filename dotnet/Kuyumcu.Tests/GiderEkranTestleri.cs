@@ -112,7 +112,7 @@ public sealed class GiderEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Gider> Ekran()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForAssertion(() => e.Find("#gd-kaydet"));
         return e;
     }
@@ -257,7 +257,7 @@ public sealed class GiderEkranTestleri : BunitContext
         kasaYaniti = IkiKasa;
         OturumAc();
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/kasalar?kasa=ks2&yon=giris");
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => e.Find("#h-kaydet"));
         Assert.Equal("GIRIS", SeciciYardim.SeciliDeger(e, "h-tur"));
         Assert.Contains("Şube Kasa", e.Markup);
@@ -268,7 +268,7 @@ public sealed class GiderEkranTestleri : BunitContext
     {
         OturumAc();
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/kasalar?kasa=yok&yon=giris");
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Merkez Kasa", e.Markup));
         Assert.Empty(e.FindAll("#h-kaydet"));
     }
@@ -279,7 +279,7 @@ public sealed class GiderEkranTestleri : BunitContext
         kasaYaniti = IkiKasa;
         OturumAc();
         Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/gider?sekme=virman&hedef=ks2");
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForAssertion(() => e.Find("#gd-v-hedef"));
         Assert.True(e.Find("#gd-sekme-virman").HasAttribute("aria-selected"));
         Assert.Equal("KASA:ks2", SeciciYardim.SeciliDeger(e, "gd-v-hedef"));

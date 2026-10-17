@@ -101,7 +101,7 @@ public sealed class KesifP3GiderPusulasiEkranTestleri : BunitContext
     [Fact]
     public void GiderPusulalari_ayar_adi()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("#gp-tablo tbody tr").Count == 2);
 
         // Liste: ayar ADI görünür, ham kod yalnız title'da; maden adı korunur (gümüş).
@@ -120,7 +120,7 @@ public sealed class KesifP3GiderPusulasiEkranTestleri : BunitContext
     [Fact]
     public void GiderPusulalari_tablo_kart_yigini_ve_tek_satir_hucreler()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("#gp-tablo tbody tr").Count == 2);
         var tablo = c.Find("#gp-tablo");
         // #11: dar kapta kart yığını (zo-belge.css container kuralı) — sınıflar yerinde.
@@ -147,7 +147,7 @@ public sealed class KesifP3GiderPusulasiEkranTestleri : BunitContext
     [Fact]
     public void GiderPusulalari_detay_izgara_tek_kapali_ipucu_has_dort_hane()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("#gp-tablo tbody tr").Count == 2);
         c.Find("#gp-detay-gp1").Click();
         c.WaitForElement("#gp-detay-mal");
@@ -170,7 +170,7 @@ public sealed class KesifP3GiderPusulasiEkranTestleri : BunitContext
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => m.BasitMi);
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1", "BASIT", "BASIT"));
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("#gp-tablo tbody tr").Count == 2);
         c.Find("#gp-detay-gp1").Click();
         c.WaitForElement("#gp-degismez");

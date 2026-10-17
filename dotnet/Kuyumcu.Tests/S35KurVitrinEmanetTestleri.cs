@@ -88,7 +88,7 @@ public sealed class S35KurEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Kur> Ciz(string? mod = null)
     {
         if (mod is not null) OturumAc(mod);
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#kur-has-onde");
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#kur-pariteler-tablo, .veri-tablosu")));
         lock (istekler) istekler.Clear();
@@ -367,7 +367,7 @@ public sealed class S35EmanetEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> MusteriSecili()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
         SeciciYardim.Sec(e, "e-cari", "c1");
         // PAKET EMANET-1: geçmiş "Eski kayıtlar" katlanırında KAPALI gelir; açılır.
         e.WaitForElement("#e-gecmis-ac").Click();

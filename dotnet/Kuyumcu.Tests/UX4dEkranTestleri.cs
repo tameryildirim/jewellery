@@ -82,7 +82,7 @@ public sealed class UX4dEkranTestleri : BunitContext
         // SADE-1 doğrulama bulgusu: tam hukuki metin ROL'e bağlı — SAHİP görür.
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Sahip", "t@ornek.com", "SAHIP", "s1", null, "PROFESYONEL"));
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#kur-sozlesmesiz")));
         // PAKET SADE-1 (göz #25, kurucu kararı): günlük ekranda hukuki paragraf yerine
         // TEK satır "Deneme kur kaynağı" rozeti; tam "sözleşmesiz" metni SİLİNMEDİ —
@@ -100,7 +100,7 @@ public sealed class UX4dEkranTestleri : BunitContext
         kurKaynakYaniti =
             """{"kaynaklar":[],"varsayilan":"MANUAL","secili":"MANUAL","sozlesmesizKaynaklarAcik":false,"seciliSozlesmesiz":false,"manuelKod":"MANUAL"}""";
 
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#kur-dis-kapali")));
         Assert.Contains("manuel", c.Find("#kur-dis-kapali").TextContent);
         Assert.Empty(c.FindAll("#kur-sozlesmesiz"));
@@ -264,7 +264,7 @@ public sealed class UX4dEkranTestleri : BunitContext
     [Fact]
     public void M1_Urun_kartinda_ACILIS_STOGU_alani_ve_DegismezIpucu_vardir()
     {
-        var c = Render<Kuyumcu.Web.Pages.Urunler>();
+        var c = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         c.WaitForState(() => c.FindAll("button").Any(b => b.TextContent.Contains("Yeni")));
         c.FindAll("button").First(b => b.TextContent.Contains("Yeni")).Click();
 

@@ -623,7 +623,7 @@ public sealed class KesifP5VezneTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Vezne> FormAcik(bool basit)
     {
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => basit);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         e.Find("#vz-yeni-ac").Click();
         e.WaitForElement("#vz-f-kalem-0");
@@ -653,7 +653,7 @@ public sealed class KesifP5VezneTestleri : BunitContext
     public void Vezne_kuyruk_dar_ekranda_yigin_kart_ve_hucre_etiketleri()
     {
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => false);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         Assert.Contains("q10-yigin", e.Find("#vz-liste").ClassList);
         var hucreler = e.FindAll("#vz-satir-v1 > td");

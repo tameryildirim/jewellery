@@ -565,7 +565,7 @@ public sealed class GocBEkranTestleri : BunitContext
     public void GBE01_Evrak_duzenle_PATCH_govdesi_borclu_kimlik_no_TASIR_ortak_izgara_basliklari_korunur()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var e = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         e.WaitForElement("#evrak-satir-e1");
         Assert.NotNull(e.Find("#evrak-th-tur"));
         Assert.NotNull(e.Find("#evrak-liste-sutunlar-ac"));                 // ortak ızgara: sütun paneli
@@ -590,7 +590,7 @@ public sealed class GocBEkranTestleri : BunitContext
     public void GBE02_Evrak_keside_vadeden_sonra_alan_alti_sozluk_metni_ve_Kaydet_kilitli()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var e = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         e.WaitForElement("#evrak-satir-e1");
         e.Find("#evrak-duzenle-e1").Click();
         e.WaitForElement("#evrak-form-keside-tarihi");
@@ -644,7 +644,7 @@ public sealed class GocBEkranTestleri : BunitContext
     public void GBE05_Evrak_kimlige_dokunulmazsa_PATCH_govdesinde_alan_YOK_acik_kaldir_borcluKimlikSil_gonderir()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var e = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         e.WaitForElement("#evrak-satir-e1");
         e.Find("#evrak-duzenle-e1").Click();
         e.WaitForElement("#evrak-form-notlar");
@@ -679,7 +679,7 @@ public sealed class GocBEkranTestleri : BunitContext
     public void GBE06_Evrak_yabanci_borclu_pasaport_yazilir_bozuk_pasaport_alan_alti_ve_kilit()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var e = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         e.WaitForElement("#evrak-satir-e1");
         e.Find("#evrak-duzenle-e1").Click();
         e.WaitForElement("#evrak-form-borclu-kimlik-turu-secenek-1");

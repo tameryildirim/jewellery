@@ -98,7 +98,7 @@ public sealed class S36KasalarTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Empty(e.FindAll(".yukleniyor, [aria-busy='true']")));
         return e;
     }
@@ -438,7 +438,7 @@ public sealed class S36KasalarTestleri : BunitContext
 
         foreach (var id in idler)
         {
-            var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+            var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
             e.WaitForElement("#kasa-liste");
             var d = e.Find($"#{id}");
             if (d.HasAttribute("disabled"))
@@ -622,7 +622,7 @@ public sealed class S36BildirimTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", mod, mod));
-        return Render<Kuyumcu.Web.Pages.Bildirimler>();
+        return Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
     }
 
     // ── 1) Kapalı hatırlatma basit yüzden açılır ────────────────────────────

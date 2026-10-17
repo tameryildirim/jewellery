@@ -140,7 +140,7 @@ public sealed class Q105SinirTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1"));
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-yeni-ac").Click();
         SeciciYardim.Sec(e, "vz-f-urun-0", "u-1");
         e.Find("#vz-f-adet-0").Input(adet);

@@ -54,7 +54,7 @@ public sealed class S3eKurKaynagiEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kur> Ciz()
     {
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#kur-kaynak-kart")));
         return c;
     }
