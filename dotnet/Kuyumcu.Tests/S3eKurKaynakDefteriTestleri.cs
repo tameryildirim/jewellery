@@ -42,7 +42,9 @@ public sealed class S3eKurKaynakDefteriTestleri
         Assert.Contains("ALTINKAYNAK", kodlar);
         Assert.Contains("ANKARA", kodlar);   // Ankara Altın Borsası
         Assert.Contains("TRUNCGIL", kodlar);
-        Assert.Equal(3, kodlar.Count);
+        // KUR KAYNAKLARI (kurucu 17.10): Harem aynı sözleşmesiz kapının arkasında dördüncü kaynaktır.
+        Assert.Contains("HAREM", kodlar);
+        Assert.Equal(4, kodlar.Count);
     }
 
     [Fact]

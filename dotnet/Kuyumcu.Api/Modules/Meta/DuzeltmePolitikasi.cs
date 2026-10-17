@@ -259,6 +259,9 @@ public static class DuzeltmePolitikasi
         S("SayimOturumu", GerekceAnahtarlari.Sayim),
         S("SayimSatiri", GerekceAnahtarlari.Sayim),
         S("KurSnapshot", GerekceAnahtarlari.Sistem),
+        // KUR KAYNAKLARI (17.10): has bedeli gün kapanışı faturanın DAYANAĞIDIR — bir faturada kullanılınca
+        // değişmez (409). Kullanılmamışsa aynı gün yeniden girilerek düzeltilir (POST /kur/kapanis, denetim izli).
+        S("OzelMatrahKapanisi", GerekceAnahtarlari.Fatura, "api/v1/kur/kapanis"),
         S("RefreshToken", GerekceAnahtarlari.Sistem),
         // PAKET AUTH-SIFIRLA: "Parolamı unuttum" jetonu — sistem üretir, sistem tüketir
         // (tek kullanım, 30 dk, yeni istek eskiyi iptal eder). Düzeltme = yeni bağlantı iste.

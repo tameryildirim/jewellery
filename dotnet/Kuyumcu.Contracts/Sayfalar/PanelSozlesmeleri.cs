@@ -30,7 +30,14 @@ public sealed record NetSatisOzet(int SatisAdet, int IadeAdet, decimal BrutTl, d
 public sealed record AylikGun(string? Tarih, decimal SatisTl, decimal? NetSatisTl = null);
 public sealed record AylikYanit(List<AylikGun>? Gunler);
 // ── kur kaynağı seçimi (tüm roller değiştirebilir) ──
-public sealed record KaynakYaniti(string[]? Kaynaklar, string? Varsayilan, string? Secili);
+public sealed record KaynakYaniti(string[]? Kaynaklar, string? Varsayilan, string? Secili,
+    // KUR KAYNAKLARI (17.10) — İsteğe bağlı ve SONDA (eski yanıt/şekil bozulmaz): Ayarlar'ın üç seçimi.
+    List<KaynakSecenegiVeri>? AltinSecenekleri = null,
+    List<KaynakSecenegiVeri>? DovizSecenekleri = null, string? DovizSecili = null,
+    List<KaynakSecenegiVeri>? OzelMatrahSecenekleri = null, string? OzelMatrahSecili = null);
+/// <summary>KUR KAYNAKLARI (17.10) — bir kaynak seçeneği ve kısa durumu (Engel: ANAHTAR_YOK · SOZLESMESIZ_KAPALI).</summary>
+public sealed record KaynakSecenegiVeri(string Kod, string? Engel, bool Sozlesmesiz, DateTime? SonCekim,
+    DateOnly? SonKapanisGunu = null, decimal? SonKapanisFiyati = null);
 public sealed record KaynakSonuc(string? Secili, string? Uyari);
 // PAKET S3-1 — basit yüzün "Kasada ne var?" kartı: kasalar para birimine göre
 // gruplanır; farklı para birimleri ASLA toplanmaz (UX-S32). Sira = ekrandaki

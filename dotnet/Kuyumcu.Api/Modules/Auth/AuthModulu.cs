@@ -221,6 +221,10 @@ public sealed class AuthServisi(
             // sütunun DB varsayılanı (PROFESYONEL) DEĞİŞMEDİ → mevcut kiracıların
             // satırına dokunulmaz, migration yoktur.
             VarsayilanArayuzModu = Modules.Kullanici.ArayuzModu.Basit,
+            // KUR KAYNAKLARI (kurucu 17.10): YENİ işletmenin has bedeli (KDVK 23/e) kaynağı Borsa
+            // İstanbul kapanışıdır. Aynı D1 kalıbı: yalnız bu kayıt yolunda yazılır; boş sütun
+            // (mevcut kiracılar) bugünkü davranışla (ISLEM_KURU) sürer — faturalama geçişle kesilmez.
+            OzelMatrahKaynagi = Modules.Kur.KurKaynakKodlari.OzelMatrahVarsayilan,
             Olusturuldu = now,
             Guncellendi = now,
         });

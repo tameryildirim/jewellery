@@ -198,7 +198,7 @@ public sealed class UX4dServisTestleri(TestVeritabani vt)
     {
         var defter = Defter(acik: true);
         Assert.True(defter.SozlesmesizKaynaklarAcik);
-        Assert.Equal(3, defter.Kodlar.Count);
+        Assert.Equal(4, defter.Kodlar.Count);   // KUR KAYNAKLARI (17.10): + HAREM, aynı kapının arkasında
         Assert.All(defter.Kodlar, kod => Assert.True(KurKaynakDefteri.Sozlesmesiz(kod)));
     }
 
