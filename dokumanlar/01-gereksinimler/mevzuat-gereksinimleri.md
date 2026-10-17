@@ -32,7 +32,7 @@ Aynı iddia bugün **iki rakip ürünün** sitesinde "Nisan 2026 KMTS düzenleme
 
 | # | Gereksinim | Dayanak | Durum | Üründe |
 |---|---|---|---|---|
-| **M-01** | Kimlik tespiti eşiği **185.000 TL** | Tedbirler Yönetmeliği **md.5/1-b**; rakam 14.01.2023 tarih **32073** sayılı RG, **6702** sayılı CB Kararı ile | ✅ | `MasakEsikleri.KimlikEsigi`, yapılandırmadan |
+| **M-01** | Kimlik tespiti eşiği **370.000 TL** (07.10.2026'dan; öncesi 185.000 TL) | Tedbirler Yönetmeliği **md.5/1-b**; rakam 07.10.2026 tarih **33393** sayılı RG, **11845** sayılı Karar ile (md.1; yayımı tarihinde yürürlükte — birincil metin okundu 17.10.2026). Önceki: RG 14.01.2023/32073, 6702 s. CB Kararı | ✅ | `yasal_parametreler` tarihli satır `MASAK_KIMLIK_ESIGI_TL` (geçiş `MasakKimlikEsigi370`); işlem günü hangi satırı gösteriyorsa o uygulanır |
 | **M-02** | Kimlik tespiti **işlem yapılmadan ÖNCE** tamamlanır | Tedbirler Yönetmeliği **md.5/2** | ✅ | İki fazlı kapı — doğrulama transaction'dan önce; eksikse **400** |
 | **M-03** | Şüpheli işlem bildirimi **en geç 10 iş günü** | Tedbirler Yönetmeliği **md.28/2** | ✅ | `SonBildirimTarihi` — hafta sonu **ve resmî tatiller** hariç |
 | **M-04** | Belge ve kayıtlar **8 yıl** muhafaza | Tedbirler Yönetmeliği **md.46/1** | ✅ | `SaklamaBitis`; süre dolunca **maskeleme** |
@@ -40,7 +40,7 @@ Aynı iddia bugün **iki rakip ürünün** sitesinde "Nisan 2026 KMTS düzenleme
 | **M-06** | Beyan formu kademeleri (2.000.000 / 20.000.000 TL) | **Kaynak doğrulanamadı** — Yönetmelikte bulunamadı; Ağustos 2025 **taslak** tebliğ bankalara yönelik, kuyumcu geçmiyor | ❌ | Eşikler **yapılandırmada**, değiştirilebilir. Mali müşavir teyidi **K2** |
 | **M-07** | ŞİB gönderimi | md.27 · MASAK Online **XML yükleme** | 🔒 | **API ve test sunucusu YOK.** XSD kamuya açık değil. Sistem hazırlar, **gönderim elle** |
 
-**2026'da MASAK mevzuatında yeni bir değişiklik bulunamadı.** 185.000 TL eşiği 2023 tarihlidir.
+**07.10.2026 değişikliği (RG 33393, Karar 11845; birincil metin okundu 17.10.2026):** md.5/1-b 185.000 → **370.000 TL**; md.5/1-c (elektronik transfer) 15.000 → **30.000 TL**; md.24 ve 24/A'daki 15.000 TL ibareleri → **30.000 TL** (gönderen/alıcı bilgisi — banka yükümlülüğü); md.16'ya SMS OTP ile imzasız doğrulama eklendi (finansal kuruluşlar); md.38'e uyum denetimi fıkrası eklendi. Ürün 370.000 TL'yi 07.10.2026 geçişiyle zaten uyguluyor; bu satır belgedeki eski "değişiklik bulunamadı" notunu düzeltir.
 
 ---
 
