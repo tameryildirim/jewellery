@@ -126,7 +126,7 @@
         try
         {
             hub = new HubConnectionBuilder()
-                .WithUrl(Nav.ToAbsoluteUri("/hubs/banka"), o => o.AccessTokenProvider = () => Task.FromResult(Oturum.AccessToken))
+                .WithUrl(Nav.ToAbsoluteUri("/hubs/banka"), o => o.AccessTokenProvider = () => Task.FromResult<string?>(Oturum.AccessToken))
                 .WithAutomaticReconnect()
                 .Build();
             hub.On<int>("BankaHareketGeldi", _ => InvokeAsync(async () => { await Yenile(); await Degisti.InvokeAsync(); }));
