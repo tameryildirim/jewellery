@@ -94,6 +94,16 @@ public partial class Islemler
         // form eksikse Kaydet kilidi eksik alanları söyler; tamamsa "alanları doldurun" demek yanlış olur.
         if (Modu.BasitMi && BasitBantKapiAcik && (BasitBantMesaji is not null || hata is null)) return (BasitBantMesaji ?? Dil.T.Arayuz.YasalKapiAcildi, true);
         if (tevsikHaddi is not { } had || had <= 0m || MasakGerekli || NakitBandiVar) return (null, false);
+        // TEMA TEMİZLİĞİ (17.10) bulgusu: PRO tek ödemede sunucunun nakit önizlemesi YALNIZ proTevsik'e yazılır
+        // (TevsikOnizle → ProYasalTazele; ödeme kapısı bayrakları bilerek boş kalır). Eskiden bunu PRO yan sütunu
+        // ("Aşıldı"/"Bilinmiyor") söylüyordu; tek yüz Yıldız'da o sütun yok → not satırı "uygun" DEMEZ, aynı kararı yazar.
+        if (Modu.ProfesyonelMi && tur == "SATIS" && !karmaOdeme && NakitOdemede)
+        {
+            var p = SatisProSozlugu.Al(Dil.Dil);
+            var kural = ProNakitHad is { } h && h > 0m ? string.Format(p.NakitKurali, Bicim.Tl(h)) : p.NakitKuraliSayisiz;
+            if (ProNakitAsildi == true) return ($"{kural}: {p.Asildi}", true);
+            if (proTevsik is null) return ($"{kural}: {p.Bilinmiyor}", true);   // sunucu yanıt vermedi — "uygun" tahmin edilmez (md.1)
+        }
         var uygun = YildizTezgahSozlugu.YasalUygun(Dil.Dil);
         return (NakitOdemede ? $"{uygun} · {YildizTezgahSozlugu.NakitSinirAlti(Bicim.Tl(had), Dil.Dil)}" : uygun, false);
     }
