@@ -376,18 +376,6 @@ public sealed class Yildiz4BTestleri : BunitContext
         Assert.Empty(e.FindAll(".fis-tuval-izgara"));   // FisVerdimAldim çizilmez
     }
 
-    [Theory]
-    [InlineData(ArayuzModuServisi.Basit)]
-    [InlineData(ArayuzModuServisi.Profesyonel)]
-    public void Y4B_21_baska_semada_ozgun_satis_fisi_aynen(string mod)
-    {
-        var e = Satis(mod, "platin");
-        Assert.Empty(e.FindAll("#yildiz-tezgah"));
-        Assert.DoesNotContain("yz-islem", e.Find(".islem-sayfa").ClassList);
-        Assert.Single(e.FindAll("#islem-kaydet"));
-        Assert.Single(e.FindAll("#islem-alt-satir"));
-    }
-
     [Fact]
     public void Y4B_22_yildizda_alis_turu_ozgun_fis()
     {
@@ -399,18 +387,23 @@ public sealed class Yildiz4BTestleri : BunitContext
         Assert.Single(e.FindAll("#islem-kaydet"));
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Y4B_21_baska_semada_ozgun_satis_fisi_aynen kaldırıldı — "başka şema" yok; SATIŞ fişi her
+    // zaman Yıldız tezgâhıdır.
+    //
+    // Y4B_23 — eskiden Yıldız gövdesi Platin'in gövdesiyle KIYASLANIRDI. Tek şemada kıyas nesnesi kalmadı: gövde,
+    // tema temizliği öncesi Platin'in ürettiği (ve Yıldız'ın birebir aynısı olduğu bu testle kanıtlanmış) değerle
+    // SABİTLENDİ — aynı güvence (tezgâh yüzü gövdeyi değiştirmez) artık kayıtlı beklenen değerle korunur.
+    private static readonly Dictionary<string, string> Y4B23Beklenen = new()
+    {
+        [ArayuzModuServisi.Basit] = "{\"cariId\":\"p1\",\"urunId\":\"u1\",\"adet\":1,\"birimFiyatTl\":10000,\"odemeTuru\":\"NAKIT\",\"kasaId\":\"ks1\",\"kurSnapshotId\":\"kur-1\",\"aciklama\":null,\"masak\":null,\"reyonId\":null}",
+        [ArayuzModuServisi.Profesyonel] = "{\"cariId\":\"p1\",\"urunId\":\"u1\",\"adet\":1,\"birimFiyatTl\":10000,\"odemeTuru\":\"NAKIT\",\"kasaId\":\"ks1\",\"vadeGun\":null,\"kurSnapshotId\":\"kur-1\",\"aciklama\":null,\"masak\":null,\"reyonId\":null}",
+    };
+
     [Theory]
     [InlineData(ArayuzModuServisi.Basit)]
     [InlineData(ArayuzModuServisi.Profesyonel)]
-    public void Y4B_23_satis_govdesi_yildizda_ve_platinde_birebir(string mod)
+    public void Y4B_23_satis_govdesi_tema_temizligi_oncesi_ozgun_govdeyle_birebir(string mod)
     {
-        var p = Satis(mod, "platin");
-        KalemEkle(p);
-        p.WaitForAssertion(() => Assert.False(p.Find("#islem-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        p.Find("#islem-kaydet").Click();
-        var platin = SatisGovdesi();
-        lock (istekler) istekler.Clear();
-
         var y = Satis(mod);
         KalemEkle(y);
         y.WaitForAssertion(() => Assert.Single(y.FindAll(".yz-tezgah-kalem")), TimeSpan.FromSeconds(5));
@@ -418,7 +411,7 @@ public sealed class Yildiz4BTestleri : BunitContext
         Assert.Equal("1 adet · 1,00 g · 0,9950 g has", y.Find("#yildiz-kalem-0 .yz-tezgah-ayrinti").TextContent);
         y.WaitForAssertion(() => Assert.False(y.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
         y.Find("#yildiz-tezgah-kaydet").Click();
-        Assert.Equal(platin, SatisGovdesi());
+        Assert.Equal(Y4B23Beklenen[mod], SatisGovdesi());
     }
 
     [Fact]

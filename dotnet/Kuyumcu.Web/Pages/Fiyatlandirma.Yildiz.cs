@@ -16,7 +16,7 @@ public sealed record YildizFiyatCari(string Id, string? FiyatListesiId = null, s
 // etkin ürün sayısı, "Kullanım" listeye bağlı müşteri sayısıdır (GET /urunler, GET /cari —
 // MEVCUT salt-okuma uçları). "Yeni liste", "Düzenle" ve satır (ürünlere etkisi) MEVCUT form
 // ve paneldir; kampanyalar ve pasife alma "Tüm ayrıntılar"da. Yeni yazma yolu YOK.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Fiyatlandirma
 {

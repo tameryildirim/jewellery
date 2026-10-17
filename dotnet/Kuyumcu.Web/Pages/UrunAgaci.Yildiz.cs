@@ -19,7 +19,7 @@ public sealed record YildizAgacToplam(int Urun, decimal Adet, decimal Has);
 // Adet · Has" sütunları MEVCUT salt-okuma uçlarından toplanır (GET /urunler + GET
 // /urunler/stok-adetleri — Ürünler ekranının kullandığı uçlar). Satır = MEVCUT grup çekmecesi;
 // "Yeni grup" = MEVCUT oluşturma çekmecesi. Reyonlar ve pasif/aktif "Tüm ayrıntılar"da.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class UrunAgaci
 {

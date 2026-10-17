@@ -175,16 +175,8 @@ public sealed class Yildiz3Testleri : BunitContext
         Assert.Equal("/raporlar/islem-defteri", d.GetAttribute("href"));
     }
 
-    [Fact]
-    public void Y3_11_Baska_semada_hero_ozgun_markup_kurus_ogesi_YOK()
-    {
-        sema = "platin";
-        var e = BasitPanel();
-        var d = e.Find("#panel-soru-satis-deger");
-        Assert.Empty(d.QuerySelectorAll(".yildiz-kurus"));
-        Assert.Empty(d.QuerySelectorAll(".yildiz-tam"));
-        Assert.Equal(Bicim.TlKurus(57550m), d.TextContent.Trim());
-    }
+    // TEMA TEMİZLİĞİ 17.10: Y3_11_Baska_semada_hero_ozgun_markup_kurus_ogesi_YOK kaldırıldı — başka şema ve Panel'in
+    // özgün gövdesi (#panel-soru-satis-deger) yok; satış rakamının biçimi Y3_10'da (#yildiz-bugun-rakam) sınanır.
 
     [Fact]
     public void Y3_12_Yildiz_Panelde_bilesenler_ve_idler_ayni_kalir()
@@ -304,14 +296,15 @@ public sealed class Yildiz3Testleri : BunitContext
     }
 
     [Fact]
-    public void Y3_27_Yildiz3_degisen_razor_dosyalari_sema_kosullu_kucuk_dokunustur()
+    public void Y3_27_Panel_tek_yuz_YildizBugun_ozgun_govde_ve_sema_kosulu_YOK()
     {
         var panel = CssKaynak.Metin("Kuyumcu.Web", "Pages", "Panel.razor");
-        // YILDIZ-4A: Yıldız dalı TEK yerde (@if (YildizMi) … else <text>özgün gövde</text>);
-        // özgün satış rakamı başka şemada AYNEN TlKurus, gövdeye Yıldız yaması kalmadı.
-        Assert.Contains("@inject IServiceProvider Hizmetler", panel);
-        Assert.Contains("@if (YildizMi)", panel);
-        Assert.Contains("title=\"@S.SatisBaglantiIpucu\">@Bicim.TlKurus(SatisGosterTl)</a>", panel);
+        // Tema temizliği (17.10): Panel'in gövdesi YALNIZ YildizBugun'dur; şema koşulu ve özgün gövde (karşılama,
+        // kutucuk ızgarası, eski satış rakamı) kaldırıldı. Gövdeye Yıldız yaması (YildizSayi.Bol) da yok.
+        Assert.Contains("<Kuyumcu.Web.Bilesenler.Yildiz.YildizBugun", panel);
+        Assert.DoesNotContain("YildizMi", panel);
+        Assert.DoesNotContain("id=\"panel-karsilama\"", panel);
+        Assert.DoesNotContain("id=\"panel-izgara\"", panel);
         Assert.DoesNotContain("YildizSayi.Bol(", panel);
     }
 

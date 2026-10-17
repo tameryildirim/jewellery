@@ -19,6 +19,11 @@ namespace Kuyumcu.Tests;
 //     tehlike) gereği MUAF bırakıldı. Bu dosya hem kuralı hem de MUAFİYETİN
 //     TEK OLDUĞUNU kilitler: ikinci bir sessiz istisna açılırsa test kırmızıya
 //     döner.
+//
+// ⚠ TEMA TEMİZLİĞİ (kurucu 17.10): 8 şema silindi; (B) kuralı artık ürünün TEK
+//   şeması Yıldız'ın üç kurulumunda (aydınlık · sistem karanlık · kullanıcı
+//   karanlık) ölçülür. Bordo muafiyeti ve Zeytin/Zümrüt eşitliği şemalarla
+//   birlikte anlamsızlaştı; muafiyet listesi BOŞ ve hiçbir çift kuraldan kaçamaz.
 // ═════════════════════════════════════════════════════════════════════════════
 
 public sealed class YaziTipiVeSemaRengiTestleri
@@ -93,88 +98,67 @@ public sealed class YaziTipiVeSemaRengiTestleri
 
     // ── (B) ŞEMA ↔ DURUM RENGİ AYRIMI ───────────────────────────────────────
 
-    /// <summary>Şema bloklarını çıkarır: (şema adı, blok tipi) → belirteç sözlüğü.</summary>
-    private static List<(string Sema, string Tip, Dictionary<string, string> Belirtec)> Bloklar()
+    /// <summary>
+    /// Yıldız'ın üç kurulumu — taban + Yıldız bindirmesi çözülmüş renklerle (tarayıcıdaki gibi):
+    /// (blok tipi) → anlam belirteci (vurgu/basari/uyari/tehlike/bilgi) → hex.
+    /// </summary>
+    private static List<(string Tip, Dictionary<string, string> Belirtec)> YildizBloklari()
     {
-        var css = Belirtecler();
-        var sonuc = new List<(string, string, Dictionary<string, string>)>();
-        foreach (Match m in Regex.Matches(css, @"(?s)(\[data-sema=""[a-z]+""\][^{]*)\{(.*?)\n\s*\}"))
+        var t = BelirtecTablosu.Yukle();
+        var sonuc = new List<(string, Dictionary<string, string>)>();
+        foreach (var (ad, tablo) in YildizTablosu.Temalar(t))
         {
-            var sel = m.Groups[1].Value;
-            var govde = m.Groups[2].Value;
-            var tip = sel.Contains("data-tema=\"karanlik\"", StringComparison.Ordinal) ? "karanlik"
-                    : govde.Contains("color-scheme: light", StringComparison.Ordinal) ? "aydinlik" : "media";
-            var belirtec = Regex.Matches(govde, @"--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6});")
-                .ToDictionary(x => x.Groups[1].Value, x => x.Groups[2].Value);
-            if (!belirtec.ContainsKey("vurgu")) continue;
-            // ⚠ Aynı blok seçicide şema adı BİRDEN ÇOK geçebilir
-            //   (":root[...][data-sema=\"platin\"], .tema-onizleme[...][data-sema=\"platin\"]").
-            //   Blok tektir; şema adı TEKİLLEŞTİRİLİR, yoksa ölçüm iki kez sayardı.
-            foreach (var ad in Regex.Matches(sel, @"data-sema=""([a-z]+)""")
-                                    .Select(x => x.Groups[1].Value).Distinct())
-                sonuc.Add((ad, tip, belirtec));
+            var d = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var k in new[] { "vurgu", "basari", "uyari", "tehlike", "bilgi" })
+                if (t.Coz("--" + k, tablo) is { } hex && Kontrast.HexMi(hex)) d[k] = hex;
+            sonuc.Add((ad, d));
         }
         return sonuc;
     }
 
-    /// <summary>Karar D-S1b-1 (b): kuraldan MUAF olan TEK çift.</summary>
-    private static readonly (string Sema, string Durum)[] Muaflar = [("bordo", "tehlike")];
-
     [Fact]
-    public void Semalar_ve_bloklar_EKSIKSIZ_okunuyor()
+    public void Yildiz_uc_kurulumda_okunuyor_eski_sema_bloku_YOK()
     {
-        var bloklar = Bloklar();
-        var semalar = bloklar.Select(b => b.Sema).Distinct().ToList();
-
-        // 8 şema + "kurumsal" takma adı; her biri 3 blokta (aydınlık/media/karanlık).
-        foreach (var s in new[] { "platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi" })
-            Assert.Contains(s, semalar);
-        Assert.Equal(3, bloklar.Count(b => b.Sema == "platin"));
+        var bloklar = YildizBloklari();
+        Assert.Equal(["YILDIZ-AYDINLIK", "YILDIZ-KARANLIK-MEDYA", "YILDIZ-KARANLIK-TERCIH"], bloklar.Select(b => b.Tip));
+        foreach (var (tip, b) in bloklar)
+            foreach (var ad in new[] { "vurgu", "basari", "uyari", "tehlike", "bilgi" })
+                Assert.True(b.ContainsKey(ad), $"{tip}: --{ad} çözülemedi");
+        // belirtecler.css'te hiçbir şema bloğu kalmadı.
+        Assert.DoesNotMatch(@"(?m)^\s*:root[^{]*\[data-sema=", Belirtecler());
     }
 
+    /// <summary>
+    /// Yıldız'ın TASARIM KARARI (tema-yildiz.css başlığı: "Renk yalnız DURUM içindir: iyi yeşil, kötü kırmızı;
+    /// uyarı sarısı YOK (uyarı metinle söylenir → --uyari nötr)"): uyarı ve bilgi RENKSİZ (nötr) durumlardır ve
+    /// vurguyla aynı akromatik aileden gelir. Bu yüzden ayırt edilebilirlik kuralı RENKLİ iki durumda (başarı,
+    /// tehlike) ölçülür; nötr ikisinin GERÇEKTEN renksiz olduğu ayrıca kilitlenir (sessiz istisna değil).
+    /// </summary>
+    private static readonly string[] NotrDurumlar = ["uyari", "bilgi"];
+
     [Fact]
-    public void Vurgu_ile_durum_rengi_AYIRT_EDILEBILIR_tek_muafiyet_bordo_tehlikedir()
+    public void Vurgu_ile_durum_rengi_AYIRT_EDILEBILIR_notr_durumlar_RENKSIZ()
     {
         var kalan = new List<string>();
-        foreach (var (sema, tip, b) in Bloklar())
+        foreach (var (tip, b) in YildizBloklari())
         {
             var vurgu = Renk.Oklch(b["vurgu"]);
-            foreach (var durum in new[] { "basari", "uyari", "tehlike", "bilgi" })
+            foreach (var notr in NotrDurumlar)
+                if (Renk.Oklch(b[notr]).C >= 0.02) kalan.Add($"{tip} {notr} nötr değil (C={Renk.Oklch(b[notr]).C:F3})");
+            foreach (var durum in new[] { "basari", "tehlike" })
             {
-                if (!b.TryGetValue(durum, out var deger)) continue;
-                var d = Renk.Oklch(deger);
+                var d = Renk.Oklch(b[durum]);
                 var hueFarki = Renk.HueFarki(vurgu.H, d.H);
                 var chromaOrani = Math.Max(vurgu.C, d.C) / Math.Max(Math.Min(vurgu.C, d.C), 1e-6);
                 var gecti = hueFarki >= 30 || chromaOrani >= 2.5;
-                if (!gecti) kalan.Add($"{sema}/{tip} vurgu↔{durum}: hue {hueFarki:F1}°, chroma {chromaOrani:F2}×");
+                if (!gecti) kalan.Add($"{tip} vurgu↔{durum}: hue {hueFarki:F1}°, chroma {chromaOrani:F2}×");
             }
         }
-
-        // Muaf çiftin 3 bloğu (aydınlık + media + karanlık) DIŞINDA kalan olmamalı.
-        var muafDisi = kalan.Where(k => !Muaflar.Any(m =>
-            k.StartsWith(m.Sema + "/", StringComparison.Ordinal)
-            && k.Contains("↔" + m.Durum, StringComparison.Ordinal))).ToList();
-
-        Assert.True(muafDisi.Count == 0,
-            "kuraldan geçmeyen YENİ çift: " + string.Join(" · ", muafDisi));
-        // Muafiyet GERÇEKTEN kullanılıyor: sessizce ölmüş bir istisna bırakılmaz.
-        Assert.Equal(3, kalan.Count);
+        Assert.True(kalan.Count == 0, "kuraldan geçmeyen çift: " + string.Join(" · ", kalan));
     }
 
-    [Fact]
-    public void Zeytin_basarisi_TUVALDEN_gelen_Zumrut_ailesiyle_AYNIDIR()
-    {
-        // Karar D-S1b-1 (a): yeni renk UYDURULMADI; kurucunun onayladığı tuvalin
-        // Zümrüt'te yaptığı çözüm birebir kopyalandı.
-        var bloklar = Bloklar();
-        foreach (var tip in new[] { "aydinlik", "media", "karanlik" })
-        {
-            var zeytin = bloklar.First(b => b.Sema == "zeytin" && b.Tip == tip).Belirtec;
-            var zumrut = bloklar.First(b => b.Sema == "zumrut" && b.Tip == tip).Belirtec;
-            foreach (var ad in new[] { "basari", "basari-vurgu", "basari-yuzey", "basari-kenar" })
-                Assert.Equal(zumrut[ad], zeytin[ad]);
-        }
-    }
+    // TEMA TEMİZLİĞİ 17.10: Zeytin_basarisi_TUVALDEN_gelen_Zumrut_ailesiyle_AYNIDIR kaldırıldı — Zeytin ve
+    // Zümrüt şemaları silindi; Yıldız'ın durum renkleri yukarıdaki iki testte ve TasarimBelirtecTestleri.Kontrast_AA_saglanir'da ölçülür.
 }
 
 /// <summary>Testlerin ortak OKLCH/kontrast hesabı (sRGB → OKLab → OKLCH).</summary>

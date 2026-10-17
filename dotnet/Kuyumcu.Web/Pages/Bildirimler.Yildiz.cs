@@ -12,7 +12,7 @@ namespace Kuyumcu.Web.Pages;
 // Yalnız GÖRÜNÜM: satırlar sayfanın MEVCUT listesidir (GET /bildirimler); "Hepsi" = TUMU,
 // "Okunmadı" = ACIK (sayfanın kendi sekme yolları). Satıra dokunmak MEVCUT kapatma onayını
 // açar; "Git" bildirimin kendi hedef ekranıdır. Okunan (kapalı) satır soluk çizilir.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Bildirimler
 {

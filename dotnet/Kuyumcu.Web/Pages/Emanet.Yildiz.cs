@@ -13,7 +13,7 @@ namespace Kuyumcu.Web.Pages;
 // Yalnız GÖRÜNÜM + OKUMA: liste, müşterilerin emanet satırlarından kurulur (GET /cari ve
 // GET /emanet/{id} — ekranın ve Bugün'ün kullandığı MEVCUT uçlar; yeni uç YOK). Emanet alma,
 // iade ve geri alma Emanet.razor'un MEVCUT çekmeceleri/yollarıdır (davranış değişmez).
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// <summary>GET /cari satırının Yıldız listesinin okuduğu üç alanı (yanıtta ZATEN var).</summary>

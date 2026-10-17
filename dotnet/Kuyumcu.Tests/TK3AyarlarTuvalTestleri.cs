@@ -287,8 +287,9 @@ public sealed class TK3AyarlarTuvalTestleri : BunitContext
         var dd = c.Find("details#ayar-dukkan-gorunum-ayrinti");
         Assert.Equal(acik, dd.HasAttribute("open"));
         Assert.Equal(AyarlarTuvalSozlugu.Tr.DukkanGorunumBaslik, c.Find("#ayar-dukkan-gorunum-ayrinti-baslik").TextContent.Trim());
-        foreach (var id in new[] { "ayar-gorunum", "gorunum-sema", "gorunum-olcek" })
+        foreach (var id in new[] { "ayar-gorunum", "gorunum-olcek" })
             Assert.NotNull(dd.QuerySelector($"#{id}"));
+        Assert.Null(dd.QuerySelector("#gorunum-sema"));   // tema temizliği 17.10: tek şema — dükkân şema seçicisi yok
         Assert.Null(dd.QuerySelector("#ayar-dukkan-bilgi"));
         // Profil, şifre ve iki aşamalı giriş katlı bölümün DIŞINDA (tuvalin Güvenlik'i).
         foreach (var id in new[] { "ayar-profil", "ay-sifre-guncelle", "ayar-mfa" })

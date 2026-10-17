@@ -116,17 +116,16 @@ public sealed class Yildiz1Testleri
         Assert.True(GorunumSecenekleri.SemaGecerli("yildiz"));
         Assert.Contains("yildiz", GorunumSecenekleri.Semalar);
         Assert.Contains("yildiz", Kuyumcu.Web.Servisler.GorunumServisi.Semalar);
-        // Sıra iki yanda AYNI (GorunumEkranTestleri.GE8 ile birlikte).
+        // İki yanda AYNI (GorunumEkranTestleri.GE8 ile birlikte). Tema temizliği (17.10): TEK şema.
         Assert.Equal(GorunumSecenekleri.Semalar, Kuyumcu.Web.Servisler.GorunumServisi.Semalar);
-        // Eski 8 şema yerinde ve sırası değişmedi; Yıldız 9. sıradadır.
-        Assert.Equal(["platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi"],
-                     GorunumSecenekleri.Semalar.Take(8));
-        Assert.Equal("yildiz", GorunumSecenekleri.Semalar[8]);
+        Assert.Equal(["yildiz"], GorunumSecenekleri.Semalar);
+        Assert.Equal("yildiz", GorunumSecenekleri.SemaVarsayilan);
+        Assert.Equal("yildiz", Kuyumcu.Web.Servisler.GorunumServisi.SemaVarsayilan);
 
+        // tema.js: öznitelik kalıcı ve ilk boyamadan önce yazılır (beyaz liste yok, tek değer).
         var js = CssKaynak.YorumsuzKod(CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "js", "tema.js"));
-        var liste = Regex.Match(js, @"var SEMALAR = \[(.*?)\];", RegexOptions.Singleline);
-        Assert.True(liste.Success, "tema.js SEMALAR listesi bulunamadı");
-        Assert.Contains("'yildiz'", liste.Groups[1].Value);
+        Assert.Contains("var SEMA = 'yildiz';", js);
+        Assert.Contains("document.documentElement.setAttribute('data-sema', SEMA);", js);
 
         // UX-S31: ham kod ekrana basılmaz, sözlükten çevrilir (TR + EN).
         Assert.Equal("Yıldız", GorunumSozlugu.Ad(GorunumSozlugu.Semalar, "yildiz", "tr"));
@@ -351,19 +350,12 @@ public sealed class Yildiz1Testleri
 
     // ── Y1-11) Ayarlar › Görünüm önizlemesi şemanın kendi belirtecinden boyanır
     [Fact]
-    public void Y1_11_gorunum_onizlemesi_yildiz_belirteclerini_tasir()
+    public void Y1_11_gorunum_onizlemesi_KALDIRILDI_tema_yildizda_onizleme_secicisi_yok()
     {
+        // Tema temizliği (17.10): Görünüm kartındaki şema önizleme karoları kalktı (tek şema).
         var y = YildizTablosu.Yukle();
-        foreach (var b in new[] { "--kenar-yuzey", "--yuzey-govde", "--yuzey", "--vurgu", "--ayrac" })
-            Assert.True(y.Onizleme.ContainsKey(b), $"önizleme bloğunda {b} yok");
-
-        // Karanlık ve medya bloklarına önizleme sınıfı GİRMEZ (8 şemadaki kuralın aynısı).
-        foreach (var d in CssKaynak.Bildirimler(YildizTablosu.Css())
-                     .Where(d => d.Secici.Contains("gorunum-sema-onizleme", StringComparison.Ordinal) && d.Ozellik.StartsWith("--")))
-        {
-            Assert.DoesNotContain("karanlik", d.Secici);
-            Assert.DoesNotContain("prefers-color-scheme", d.AtKural);
-        }
+        Assert.Empty(y.Onizleme);
+        Assert.DoesNotContain("gorunum-sema-onizleme", YildizTablosu.Css(), StringComparison.Ordinal);
     }
 
     // ── Y1-12) C adımı: ortak bileşen varyantları (kart · b1/b2/b3 · sekme · çip · satır · boş durum · adım · takvim)
@@ -446,14 +438,13 @@ public sealed class Yildiz1HttpTestleri(HttpFikstur f)
             Assert.Equal("yildiz", satir.Sema);
         }
 
-        // Yeni oturum/GET: aynı değer; liste 9 şemayı ve Yıldız'ı taşır.
+        // Yeni oturum/GET: aynı değer; liste YALNIZ Yıldız'ı taşır (tema temizliği 17.10).
         var oku = await f.Ortam.Istemci(k, "TEZGAHTAR").GetAsync("/api/v1/kullanici/gorunum");
         var o = await oku.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
         var og = o.TryGetProperty("gorunum", out var ic2) ? ic2 : o;
         Assert.Equal("yildiz", og.GetProperty("sema").GetString());
         var liste = og.GetProperty("semalar").EnumerateArray().Select(x => x.GetString()).ToList();
-        Assert.Equal(9, liste.Count);
-        Assert.Equal("yildiz", liste[8]);
+        Assert.Equal(["yildiz"], liste);
     }
 
     [Fact]

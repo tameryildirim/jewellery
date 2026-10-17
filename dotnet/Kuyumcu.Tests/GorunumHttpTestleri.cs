@@ -68,21 +68,22 @@ public sealed class GorunumHttpTestleri(HttpFikstur f)
 
     // ── 4) SAHİP yazar, sunucu YAZILANI döndürür (UX-S27) ───────────────────
     [Fact]
-    public async Task GH4_Sahip_semayi_degistirir_ve_yanit_sonucu_tasir()
+    public async Task GH4_Sahip_eski_sema_kodu_gonderir_yildiz_yazilir_ve_yanit_sonucu_tasir()
     {
+        // Tema temizliği (17.10): eski istemci "zumrut" gönderse de 400 almaz; depoya ve yanıta "yildiz" yazılır.
         var k = YeniKiraci("PAKETP36B-TEST-yaz");
         var c = await f.Ortam.Istemci(k, "SAHIP")
             .PatchAsJsonAsync("/api/v1/gorunum", new { sema = "zumrut" });
         Assert.Equal(HttpStatusCode.OK, c.StatusCode);
 
         var (sema, olcek) = await Oku(c);
-        Assert.Equal("zumrut", sema);
+        Assert.Equal("yildiz", sema);
         Assert.Equal(GorunumSecenekleri.OlcekVarsayilan, olcek);
 
         using var db = f.Vt.Olustur(k.TenantId);
         var satir = await db.KiraciAyarlari.AsNoTracking()
             .SingleAsync(a => a.Anahtar == KiraciAyarAnahtari.GorunumSemasi);
-        Assert.Equal("zumrut", satir.Deger);
+        Assert.Equal("yildiz", satir.Deger);
     }
 
     // ── 5) PATCH SÖZLEŞMESİ: gövdede olmayan alan KORUNUR ───────────────────
@@ -92,12 +93,12 @@ public sealed class GorunumHttpTestleri(HttpFikstur f)
         var k = YeniKiraci("PAKETP36B-TEST-patch");
         var i = f.Ortam.Istemci(k, "SAHIP");
 
-        await i.PatchAsJsonAsync("/api/v1/gorunum", new { sema = "zumrut" });
-        var c = await i.PatchAsJsonAsync("/api/v1/gorunum", new { yaziOlcegi = "20" });
+        await i.PatchAsJsonAsync("/api/v1/gorunum", new { yaziOlcegi = "20" });
+        var c = await i.PatchAsJsonAsync("/api/v1/gorunum", new { sema = "yildiz" });
 
         var (sema, olcek) = await Oku(c);
-        Assert.Equal("zumrut", sema);         // ⚠ tam gövdeyle EZİLMEDİ
-        Assert.Equal("20", olcek);
+        Assert.Equal("yildiz", sema);
+        Assert.Equal("20", olcek);            // ⚠ tam gövdeyle EZİLMEDİ
     }
 
     // ── 5b) ESKİ KOD ÖLMEZ (PAKET B-1 göç sözleşmesi): takma adla gelen istek

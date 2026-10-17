@@ -13,7 +13,7 @@ namespace Kuyumcu.Web.Pages;
 // satıştaki fiyatla AYNI motordan okunur (GET /kur/guncel + GET /fiyat/teklifler — tezgâhın
 // kullandığı MEVCUT salt-okuma uçları; istemcide fiyat HESAPLANMAZ). Sekmeler ürün ağacının
 // kök gruplarıdır (sayfanın kategori süzgeci). Satır = MEVCUT düzenleme çekmecesi.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Urunler
 {

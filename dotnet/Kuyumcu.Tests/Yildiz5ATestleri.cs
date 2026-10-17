@@ -361,30 +361,30 @@ public sealed class Yildiz5ATestleri : BunitContext
     }
 
     [Fact]
-    public void Y5A_12_sayfa_dallari_oteki_semalarda_ozgun_ekran_aynen()
+    public void Y5A_12_sayfalar_Yildiz_yuzunu_kosulsuz_cizer_ozgun_govde_Tum_ayrintilar_arkasinda()
     {
+        // Tema temizliği (17.10): şema koşulu (YildizMi) kalktı. Yıldız bileşeni KOŞULSUZ ve özgün kökten ÖNCE;
+        // özgün gövde CANLIDIR ama yalnız "Tüm ayrıntılar" açılınca çizilir (YildizOzgunCiz => yildizAyrinti).
         foreach (var (sayfa, isaret) in new[] {
             ("Emanet", "YildizOzgunIsaret"), ("Siparisler", "YildizOzgunIsaret"), ("Bildirimler", "YildizOzgunIsaret"),
             ("Urunler", "YildizOzgunIsaret"), ("UrunAgaci", "YildizOzgunIsaret"), ("Fiyatlandirma", "YildizOzgunIsaret"),
             ("Sayim", "YildizOzgunIsaret"), ("UrunEtiketleri", "YildizEtiketIsaret") })
         {
             var razor = Kaynak("Kuyumcu.Web", "Pages", sayfa + ".razor");
-            // Tur 2: dal tek satır ya da blok (form/liste seçimi) olabilir; Yıldız bileşeni dalın İÇİNDE ve özgün kökten ÖNCE.
-            var dal = System.Text.RegularExpressions.Regex.Match(razor, @"@if \(YildizMi\)\s*\{");
-            Assert.True(dal.Success, sayfa + ": Yıldız dalı yok");
-            var bilesen = razor.IndexOf("<Kuyumcu.Web.Bilesenler.Yildiz.Yildiz", dal.Index, StringComparison.Ordinal);
-            Assert.True(bilesen > dal.Index, sayfa + ": Yıldız bileşeni dalda değil");
-            if (sayfa != "UrunEtiketleri") Assert.True(bilesen < razor.IndexOf("@if (YildizOzgunCiz) {", StringComparison.Ordinal), sayfa + ": Yıldız dalı özgün kökten sonra");
+            Assert.DoesNotMatch(@"\bYildizMi\b", razor);
+            var bilesen = razor.IndexOf("<Kuyumcu.Web.Bilesenler.Yildiz.Yildiz", StringComparison.Ordinal);
+            Assert.True(bilesen > 0, sayfa + ": Yıldız bileşeni yok");
+            if (sayfa != "UrunEtiketleri") Assert.True(bilesen < razor.IndexOf("@if (YildizOzgunCiz) {", StringComparison.Ordinal), sayfa + ": Yıldız yüzü özgün kökten sonra");
             Assert.Contains($"data-yz-{(sayfa == "UrunEtiketleri" ? "etiket" : "ozgun")}=\"@{isaret}\"", razor);
             var cs = Kaynak("Kuyumcu.Web", "Pages", sayfa + ".Yildiz.cs");
-            // Yıldız dışında öznitelik YAZILMAZ (null) → öteki 8 şemada DOM birebir
-            Assert.Matches($@"private string\? {isaret} => YildizMi \?[^;]*: null;", cs);
-            Assert.Contains("private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);", cs);
+            Assert.DoesNotMatch(@"\bYildizMi\b", cs);
             if (sayfa != "UrunEtiketleri")
             {
                 Assert.Contains("@if (YildizOzgunCiz) {", razor);
-                Assert.Contains("private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;", cs);
+                Assert.Contains("private bool YildizOzgunCiz => yildizAyrinti;", cs);
+                Assert.Matches($@"private string\? {isaret} => ""[a-z-]+"";", cs);
             }
+            else Assert.Contains("private string? YildizEtiketIsaret => (yildizAyrinti ? \"acik\" : \"kapali\");", cs);
         }
     }
 

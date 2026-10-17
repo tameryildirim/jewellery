@@ -125,12 +125,12 @@ public sealed class GorunumEkranTestleri : BunitContext
 
     // ── GE1) Bölüm ve iki seçici VARDIR ─────────────────────────────────────
     [Fact]
-    public void GE1_Gorunum_bolumu_ve_iki_secici_vardir()
+    public void GE1_Gorunum_bolumu_ve_punto_secicisi_vardir_sema_secicisi_yok()
     {
         var e = Render<Kuyumcu.Web.Pages.Ayarlar>();
 
         Assert.NotNull(e.Find("#ayar-gorunum"));
-        Assert.NotNull(e.Find("#gorunum-sema"));
+        Assert.Empty(e.FindAll("#gorunum-sema"));      // tema temizliği 17.10: tek şema Yıldız
         Assert.NotNull(e.Find("#gorunum-olcek"));
 
         // Mevcut bölümlere DOKUNULMADI (kilit yalnız yeni bölüm için açıldı).
@@ -146,13 +146,12 @@ public sealed class GorunumEkranTestleri : BunitContext
     {
         var e = Render<Kuyumcu.Web.Pages.Ayarlar>();
 
-        Assert.Equal(GorunumServisi.Semalar.Length, e.FindAll("#gorunum-sema .secim-secenek").Count);
         Assert.Equal(GorunumServisi.Olcekler.Length, e.FindAll("#gorunum-olcek .secim-secenek").Count);
 
-        var metin = e.Find("#gorunum-sema").TextContent;
-        Assert.DoesNotContain("zumrut", metin);        // ham kod
-        Assert.DoesNotContain("altin", metin);
-        Assert.Contains("Zümrüt", metin);              // sözlükten çevrilmiş ad
+        var metin = e.Find("#gorunum-olcek").TextContent;
+        Assert.DoesNotContain("okunakli", metin);      // ham kod
+        Assert.DoesNotContain("yogun", metin);
+        Assert.Contains("Çok büyük", metin);           // sözlükten çevrilmiş ad
     }
 
     // ── GE3) SAHİP değilse KİLİTLİ ve sebebi YAZILI (UX-S30) ────────────────
@@ -162,9 +161,10 @@ public sealed class GorunumEkranTestleri : BunitContext
         TezgahtarOl();
         var e = Render<Kuyumcu.Web.Pages.Ayarlar>();
 
-        Assert.All(e.FindAll("#gorunum-sema input.secim-radyo"),
+        Assert.NotEmpty(e.FindAll("#gorunum-olcek input.secim-radyo"));
+        Assert.All(e.FindAll("#gorunum-olcek input.secim-radyo"),
             r => Assert.True(r.HasAttribute("disabled")));
-        Assert.NotEmpty(e.Find("#gorunum-sema-durum").TextContent.Trim());
+        Assert.NotEmpty(e.Find("#gorunum-olcek-durum").TextContent.Trim());
     }
 
     // ── GE4) Ayar OKUNAMADIYSA kilitli — "varsayılan seçildi" diye gizlenmez ─
@@ -183,21 +183,20 @@ public sealed class GorunumEkranTestleri : BunitContext
 
     // ── GE5) SAHİP seçince GERÇEK PATCH atılır ve sonuç GÖRÜNÜR (UX-S27) ────
     [Fact]
-    public async Task GE5_Sema_secimi_gercek_istek_atar_ve_sonuc_gorunur()
+    public async Task GE5_Punto_secimi_gercek_istek_atar_ve_sonuc_gorunur()
     {
         SahipOl();
         await Servis.YukleAsync();
         var e = Render<Kuyumcu.Web.Pages.Ayarlar>();
 
-        e.Find("#gorunum-sema-secenek-1").Change(true);
+        // Tema temizliği (17.10): dükkânın tek seçimi punto; şema seçici kalktı.
+        e.Find("#gorunum-olcek-secenek-2").Change(true);
 
-        // ⚠ B-1: beklenen değer SABİT YAZILMAZ, listenin 2. öğesidir —
-        //   liste 3'ten 8'e çıktığında test kendiliğinden doğru kalır.
-        var beklenen = GorunumServisi.Semalar[1];
+        var beklenen = GorunumServisi.Olcekler[2];
         var patch = sahte.Istekler.Single(i =>
             i.Yontem == "PATCH" && i.Yol.EndsWith("/gorunum") && !i.Yol.Contains("/kullanici/"));
         Assert.Contains(beklenen, patch.Govde);
-        Assert.Equal(beklenen, Servis.Sema);
+        Assert.Equal(beklenen, Servis.YaziOlcegi);
         e.WaitForAssertion(() => Assert.NotEmpty(e.Find("#gorunum-basari").TextContent.Trim()));
     }
 

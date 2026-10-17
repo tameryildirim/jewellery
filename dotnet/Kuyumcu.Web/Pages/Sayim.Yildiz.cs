@@ -15,7 +15,7 @@ public sealed record YildizSayimZaman(string Id, DateTime? Acildi = null);
 // Yalnız GÖRÜNÜM + OKUMA: rakam, cümle ve fark listesi sayfanın MEVCUT açık sayımıdır
 // (GET /sayim/{id}); "Sayımı bitir" MEVCUT Kapat yoludur (hareketli satır kararı gerekiyorsa
 // özgün ekranda sorulur), "Barkod okut" ve tüm düzeltmeler özgün ekrandadır ("ayrıntı").
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Sayim
 {

@@ -177,15 +177,9 @@ public sealed class YildizKatmanTestleri : BunitContext
     }
 
     [Fact]
-    public async Task YK_12_oteki_semada_ve_listede_olmayan_rotada_eski_baslik_AYNEN()
+    public async Task YK_12_listede_olmayan_rotada_eski_baslik_AYNEN()
     {
-        sema = "platin";
-        Hazirla("/kullanicilar");
-        var p = Render<UstBar>();
-        Assert.Empty(p.FindAll("#ust-bar-yz-baslik"));
-        Assert.Equal("Kullanıcılar", p.Find("header.ust-bar > h1").TextContent);
-
-        sema = "yildiz";
+        // TEMA TEMİZLİĞİ 17.10: "öteki şemada eski başlık" yarısı kaldırıldı — başka şema yok.
         await Services.GetRequiredService<GorunumServisi>().YukleAsync();
         Services.GetRequiredService<NavigationManager>().NavigateTo("/kasalar");   // kendi Yıldız yüzü var → başlık o yüzde
         var y = Render<UstBar>();
@@ -317,17 +311,23 @@ public sealed class YildizKatmanTestleri : BunitContext
     }
 
     [Fact]
-    public void YK_31_urun_agaci_cekmecesi_Yildizda_grup_der_otekinde_kategori()
+    public void YK_31_urun_agaci_cekmecesi_grup_der_kategori_demez()
     {
         Assert.Equal("Grup adı", YildizKatmanSozlugu.GrupAdi("tr"));
         Assert.Equal("Group name", YildizKatmanSozlugu.GrupAdi("en"));
         Assert.Equal("Üst grup", YildizKatmanSozlugu.UstGrup("tr"));
         Assert.Equal("Parent group", YildizKatmanSozlugu.UstGrup("en"));
         var razor = CssKaynak.Metin("Kuyumcu.Web", "Pages", "UrunAgaci.razor");
-        Assert.Contains("(YildizMi ? YildizAgacSozlugu.YeniGrup(Dil.Dil) : Dil.T.UrunAgaci.YeniKategori)", razor);
-        Assert.Contains("(YildizMi ? YildizKatmanSozlugu.GrupAdi(Dil.Dil) : Dil.T.UrunAgaci.KategoriAdi)", razor);
-        Assert.Contains("(YildizMi ? YildizKatmanSozlugu.UstGrup(Dil.Dil) : Dil.T.UrunAgaci.UstKategori)", razor);
-        Assert.Contains("(YildizMi ? YildizKatmanSozlugu.DonguUyarisi(Dil.Dil) : Dil.T.UrunAgaci.DonguUyarisi)", razor);
+        // Tema temizliği (17.10): tek şema — çekmece her zaman "grup" dilindedir; eski "kategori" metinleri çizilmez.
+        Assert.Contains("YildizAgacSozlugu.YeniGrup(Dil.Dil)", razor);
+        Assert.Contains("YildizKatmanSozlugu.GrupAdi(Dil.Dil)", razor);
+        Assert.Contains("YildizKatmanSozlugu.UstGrup(Dil.Dil)", razor);
+        Assert.Contains("YildizKatmanSozlugu.DonguUyarisi(Dil.Dil)", razor);
+        // Çekmece (kategori formu) eski "kategori" etiketlerini taşımaz. ("+ Yeni kategori" düğmesi özgün gövdede
+        // "Tüm ayrıntılar" arkasında yaşar — o, çekmecenin başlığı değildir.)
+        foreach (var eski in new[] { "Dil.T.UrunAgaci.KategoriAdi", "Dil.T.UrunAgaci.UstKategori", "Dil.T.UrunAgaci.DonguUyarisi", "YildizMi" })
+            Assert.DoesNotContain(eski, razor);
+        Assert.Contains("Baslik=\"@(kDuzenlenenId is null ? (YildizAgacSozlugu.YeniGrup(Dil.Dil)) : Dil.T.Ortak.Duzenle)\"", razor);
         Assert.DoesNotContain("kategori", YildizKatmanSozlugu.DonguUyarisi("tr"));
     }
     // ── Tur 2 (tasarım hakemi KRİTİK): katman eylem satırı TEK KALIP — b1 hap 56 · b2 altı çizili "Vazgeç" ─────────
@@ -373,15 +373,6 @@ public sealed class YildizKatmanTestleri : BunitContext
     }
 
     [Fact]
-    public void YK_41b_cekmece_ikincil_metni_oteki_semada_Iptal_AYNEN()
-    {
-        sema = "platin";
-        Hazirla("/kasalar");
-        var o = Render<Kuyumcu.Web.Bilesenler.Cekmece>(p => p.Add(x => x.Varlik, "yo").Add(x => x.Baslik, "B").Add(x => x.Acik, true));
-        Assert.Equal("İptal", o.Find("#cekmece-yo-iptal").TextContent.Trim());
-    }
-
-    [Fact]
     public void YK_42_YildizVazgec_Yildizda_Vazgec_otekinde_Ortak_Iptal_AYNEN()
     {
         Hazirla("/kullanicilar");
@@ -390,15 +381,8 @@ public sealed class YildizKatmanTestleri : BunitContext
         Assert.Equal("Vazgeç", YildizKatmanSozlugu.Vazgec("tr"));
     }
 
-    [Fact]
-    public void YK_42b_YildizVazgec_oteki_semada_Ortak_Iptal_AYNEN_sarmalayicisiz()
-    {
-        sema = "platin";
-        Hazirla("/kullanicilar");
-        Assert.Equal("İptal", Render<YildizVazgec>().Markup);   // yalnız metin düğümü — öteki 8 şemada DOM AYNEN
-        Assert.Equal("Cancel", YildizKatmanSozlugu.Vazgec("en"));
-        Assert.Equal("Vazgeç", YildizKatmanSozlugu.Vazgec("tr"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: YK_41b ve YK_42b ("öteki şemada İptal AYNEN") kaldırıldı — başka şema yok; çekmece ve
+    // YildizVazgec her zaman "Vazgeç" der (YK_41/YK_42 sınar).
 
     [Fact]
     public void YK_43_sayfalardaki_katman_ikincil_dugmeleri_YildizVazgec_kullanir()

@@ -298,8 +298,8 @@ public sealed class KesifP7Testleri : BunitContext
     }
 
     // Seçili dolgu okunur: metin/dolgu ≥ 4,5:1 ve KAP kenarının (--sekme-kenar) kart yüzeyiyle farkı ≥ 3:1 —
-    // her tema × şema. Eşleme dugme.css'in KENDİSİNDEN okunur (aydınlık = html[data-mod], fildişi =
-    // [data-sema="fildisi"]). KESIF-P7 tur 2 (tasarım hakemi): karanlık için AYRI eşleme YOKTUR — üst çubuk
+    // her tema (taban + Yıldız). Eşleme dugme.css'in KENDİSİNDEN okunur (html[data-mod]; tema temizliği
+    // 17.10 ile Fildişi'ye özgü eşleme şemayla birlikte kalktı). KESIF-P7 tur 2 (tasarım hakemi): karanlık için AYRI eşleme YOKTUR — üst çubuk
     // anahtarı gibi iki temada aynı belirteç ailesi (dolu, çerçevesiz: kenar = dolgu).
     private static Dictionary<string, string> SeciliEsleme(Func<CssKaynak.Bildirim, bool> blok)
     {
@@ -310,20 +310,16 @@ public sealed class KesifP7Testleri : BunitContext
         return d;
     }
 
-    private static Dictionary<string, string> SeciliEslemeTema(string tema,
-        Dictionary<string, string> aydinlik, Dictionary<string, string> fildisi) =>
-        tema.Contains("FILDISI", StringComparison.Ordinal) ? fildisi : aydinlik;
-
     [Fact]
     public void Segment_secili_dolgu_HER_temada_okunur()
     {
-        var aydinlik = SeciliEsleme(x => Normal(x.Secici) == "html[data-mod]" && x.AtKural.Length == 0);
-        var fildisi = SeciliEsleme(x => Normal(x.Secici) == "html[data-mod][data-sema=\"fildisi\"]");
+        var e = SeciliEsleme(x => Normal(x.Secici) == "html[data-mod]" && x.AtKural.Length == 0);
+        // Tema temizliği (17.10): şemaya özgü eşleme KALMADI.
+        Assert.DoesNotContain(Bildirimler("dugme.css"), x => x.Secici.Contains("data-sema", StringComparison.Ordinal));
         var t = BelirtecTablosu.Yukle();
         var kirik = new List<string>();
         foreach (var (tema, tablo) in t.Temalar())
         {
-            var e = SeciliEslemeTema(tema, aydinlik, fildisi);
             foreach (var (on, zemin, asgari) in new[]
                      {
                          (e["--secili-dolgu-metin"], e["--secili-dolgu"], 4.5),
@@ -349,8 +345,7 @@ public sealed class KesifP7Testleri : BunitContext
         Assert.DoesNotContain(Bildirimler("dugme.css"), x => x.Ozellik.StartsWith("--secili-dolgu", StringComparison.Ordinal)
             && (x.AtKural.Contains("prefers-color-scheme", StringComparison.Ordinal) || x.Secici.Contains("karanlik", StringComparison.Ordinal))
             && !x.Deger.Contains("kenar-yuzey", StringComparison.Ordinal) && !x.Deger.Contains("kenar-metin", StringComparison.Ordinal));
-        var aydinlik = SeciliEsleme(x => Normal(x.Secici) == "html[data-mod]" && x.AtKural.Length == 0);
-        var fildisi = SeciliEsleme(x => Normal(x.Secici) == "html[data-mod][data-sema=\"fildisi\"]");
+        var e = SeciliEsleme(x => Normal(x.Secici) == "html[data-mod]" && x.AtKural.Length == 0);
         var t = BelirtecTablosu.Yukle();
         var kirik = new List<string>();
         var koyuSayisi = 0;
@@ -358,11 +353,10 @@ public sealed class KesifP7Testleri : BunitContext
         {
             if (!tema.StartsWith("KARANLIK", StringComparison.Ordinal)) continue;
             koyuSayisi++;
-            var e = SeciliEslemeTema(tema, aydinlik, fildisi);
             var kenar = t.Coz(e["--secili-dolgu-kenar"], tablo);
             var dolgu = t.Coz(e["--secili-dolgu"], tablo);
             var birincil = t.Coz("--vurgu", tablo);
-            var anahtar = t.Coz(tema.Contains("FILDISI", StringComparison.Ordinal) ? "--menu-aktif-yuzey" : "--kenar-yuzey", tablo);
+            var anahtar = t.Coz("--kenar-yuzey", tablo);
             if (kenar is null || dolgu is null || birincil is null || anahtar is null) { kirik.Add($"{tema}: çözülemedi"); continue; }
             if (string.Equals(kenar, birincil, StringComparison.OrdinalIgnoreCase)) kirik.Add($"{tema}: seçili kenar {kenar} = birincil zemin");
             if (string.Equals(dolgu, birincil, StringComparison.OrdinalIgnoreCase)) kirik.Add($"{tema}: seçili dolgu {dolgu} = birincil zemin");

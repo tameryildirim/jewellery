@@ -65,7 +65,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
         public string? OzelTema { get; set; }
         public int? OzelYazi { get; set; }
         public string? OzelMod { get; set; }
-        public string KiraciSema { get; set; } = "grafit";
+        public string KiraciSema { get; set; } = "yildiz";   // tema temizliği 17.10: tek şema
         public string KiraciTema { get; set; } = "sistem";
         public int KiraciYazi { get; set; } = 18;
         public string KiraciMod { get; set; } = "PROFESYONEL";
@@ -86,7 +86,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
                 if (istek.Method == HttpMethod.Patch)
                 {
                     if (PatchReddet)
-                        return Json("""{"message":"Bilinmeyen renk şeması: pembe"}""", HttpStatusCode.BadRequest);
+                        return Json("""{"message":"Bilinmeyen tema modu: pembe"}""", HttpStatusCode.BadRequest);
                     using var j = JsonDocument.Parse(govde);
                     foreach (var p in j.RootElement.EnumerateObject())
                     {
@@ -151,11 +151,11 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
             $$"""
             {"temaModu":"{{OzelTema ?? KiraciTema}}","sema":"{{OzelSema ?? KiraciSema}}","yaziBoyutu":{{OzelYazi ?? KiraciYazi}},
              "temaModuKaynagi":"{{Kaynak(OzelTema is not null, KiraciTema != "sistem")}}",
-             "semaKaynagi":"{{Kaynak(OzelSema is not null, KiraciSema != "platin")}}",
+             "semaKaynagi":"{{Kaynak(OzelSema is not null, KiraciSema != "yildiz")}}",
              "yaziBoyutuKaynagi":"{{Kaynak(OzelYazi is not null, KiraciYazi != 18)}}",
              "ozelTemaModu":{{S(OzelTema)}},"ozelSema":{{S(OzelSema)}},"ozelYaziBoyutu":{{(OzelYazi is null ? "null" : OzelYazi.ToString())}},
              "kiraciTemaModu":"{{KiraciTema}}","kiraciSema":"{{KiraciSema}}","kiraciYaziBoyutu":{{KiraciYazi}},
-             "semalar":["platin","zumrut","grafit","bordo","okyanus","menekse","zeytin","fildisi"],
+             "semalar":["yildiz"],
              "temaModlari":["sistem","aydinlik","karanlik"],"yaziBoyutlari":[16,18,20]}
             """;
 
@@ -180,15 +180,14 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
         [.. sahte.Istekler.Where(i => i.Yontem == "PATCH" && i.Yol.EndsWith(sonEk, StringComparison.Ordinal))
             .Select(i => JsonDocument.Parse(i.Govde).RootElement.Clone())];
 
-    // ── S1f-E1) Tuvalin dört bölümü: 8 + 3 + 3 + 2 düğme + alt satır ────────
+    // ── S1f-E1) Tuvalin üç bölümü (tema temizliği 17.10: renk teması bölümü kalktı) + alt satır ──
     [Fact]
-    public async Task S1f_E1_Kart_tuvalin_dort_bolumunu_ve_alt_satiri_tasir()
+    public async Task S1f_E1_Kart_uc_bolumu_ve_alt_satiri_tasir_sema_secicisi_YOK()
     {
         var e = await Ciz();
 
-        Assert.Equal(9, e.FindAll(".gk-sema-izgara button.gk-sema").Count);   // YILDIZ-1: 8 + "yildiz"
-        foreach (var kod in new[] { "platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi" })
-            Assert.NotNull(e.Find($"#gk-sema-{kod}"));
+        // Tek şema Yıldız: şema ızgarası ve karoları ÇİZİLMEZ.
+        Assert.Empty(e.FindAll(".gk-sema-izgara, button.gk-sema, [id^='gk-sema-'], .gorunum-sema-onizleme"));
         foreach (var kod in new[] { "aydinlik", "karanlik", "sistem" })
             Assert.NotNull(e.Find($"#gk-tema-{kod}"));
         foreach (var kod in new[] { "16", "18", "20" })
@@ -197,6 +196,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
         Assert.NotNull(e.Find("#gk-mod-profesyonel"));
         Assert.NotNull(e.Find("#gk-dukkana-don"));
         Assert.NotNull(e.Find("#gk-varsayilan-yap"));
+        Assert.Equal(3, e.FindAll(".gk-uclu > section.gk-bolum").Count);
 
         // Tuval sırası: Aydınlık · Karanlık · Bilgisayara uy.
         var sira = e.FindAll(".gk-uclu section:first-child button").Select(b => b.Id).ToList();
@@ -204,17 +204,14 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
 
         // Tuval metinleri (TR) — sözlükten, bağımsız beklenenle.
         var metin = e.Find("#ayar-gorunum-karti").TextContent;
-        Assert.Contains("Renk teması", metin);
-        Assert.Contains("8 tema · herkes kendi seçer · işletme varsayılanını sahip belirler", metin);
+        Assert.DoesNotContain("Renk teması", metin);
+        Assert.DoesNotContain("8 tema", metin);
+        Assert.Contains("Aydınlık / karanlık", metin);
         Assert.Contains("Fiş ve etiket kâğıdı her zaman beyaz basılır.", metin);
         Assert.Contains("Rakamlar her boyutta bir kademe büyük görünür.", metin);
         Assert.Contains("Hiçbir özellik kapanmaz, yalnız ilk bakışta görünen değişir.", metin);
         Assert.Contains("Değişiklik hemen uygulanır, kaydetmek gerekmez. Bu tercih sadece senin hesabın içindir.", metin);
         Assert.Contains("Bilgisayara uy", metin);
-        // KESIF-P1 (#44): kartta ad ("Fildişi") ve niteleyici ("(açık menü)") ayrı satırdadır —
-        // 960 px'te ad kelime ortasından kırılmasın diye; sözlükteki tam ad AYNI (bkz. :697).
-        Assert.Equal("Fildişi", e.Find("#gk-sema-fildisi .gk-sema-ad").TextContent.Trim());
-        Assert.Equal("(açık menü)", e.Find("#gk-sema-fildisi-nitel").TextContent.Trim());
         Assert.Contains("Çok büyük", metin);
         Assert.Contains("20 px", metin);
         Assert.Contains("Tezgâh için: tek fiş, büyük düğmeler", metin);
@@ -230,40 +227,30 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
             Assert.DoesNotContain(ham, metin, StringComparison.Ordinal);
     }
 
-    // ── S1f-E3) Seçili durum SUNUCUNUN etkin değeridir; tek "Seçili" rozeti ─
+    // ── S1f-E3) Seçili durum SUNUCUNUN etkin değeridir; her bölümde tek işaret ─
     [Fact]
     public async Task S1f_E3_Secili_durum_sunucunun_etkin_degeridir()
     {
-        sahte.KiraciSema = "bordo";
+        sahte.KiraciTema = "karanlik";
         sahte.OzelYazi = 20;
         var e = await Ciz();
 
-        Assert.Equal("true", e.Find("#gk-sema-bordo").GetAttribute("aria-pressed"));
-        Assert.Equal("false", e.Find("#gk-sema-platin").GetAttribute("aria-pressed"));
-        Assert.Single(e.FindAll(".gk-secili-rozet"));
+        Assert.Equal("true", e.Find("#gk-tema-karanlik").GetAttribute("aria-pressed"));
+        Assert.Equal("false", e.Find("#gk-tema-sistem").GetAttribute("aria-pressed"));
         Assert.Contains("secili", e.Find("#gk-yazi-20").ClassName ?? "");
-        Assert.Equal("true", e.Find("#gk-tema-sistem").GetAttribute("aria-pressed"));
+        // Üç bölüm × tek seçili = üç işaret (tema modu · punto · ekran modu).
+        Assert.Equal(3, e.FindAll("#ayar-gorunum-karti .gk-isaret").Count);
 
-        // Kaynak rozeti (UX-S21): şema dükkândan, punto kullanıcıdan.
-        Assert.Equal("İşletme varsayılanı", e.Find("#gk-sema-kaynak").TextContent);
+        // Kaynak rozeti (UX-S21): tema modu dükkândan, punto kullanıcıdan; şema rozeti YOK.
+        Assert.Equal("İşletme varsayılanı", e.Find("#gk-tema-kaynak").TextContent);
         Assert.Equal("Sizin seçiminiz", e.Find("#gk-yazi-kaynak").TextContent);
+        Assert.Empty(e.FindAll("#gk-sema-kaynak"));
     }
+
+    // TEMA TEMİZLİĞİ 17.10: S1f_E4_Tema_karosu_yalniz_sema_PATCH_atar_ve_bant_yazar kaldırıldı — şema karosu yok
+    // (tek şema); "yalnız kendi alanını PATCH eder" güvencesi tema modu/punto için S1f_E5/E5b'de sınanır.
 
     // ── S1f-E4) Tema karosu GERÇEK PATCH atar, gövdede YALNIZ şema ──────────
-    [Fact]
-    public async Task S1f_E4_Tema_karosu_yalniz_sema_PATCH_atar_ve_bant_yazar()
-    {
-        var e = await Ciz();
-        e.Find("#gk-sema-zumrut").Click();
-
-        e.WaitForAssertion(() => Assert.Single(Patchler("/kullanici/gorunum")));
-        var g = Patchler("/kullanici/gorunum")[0];
-        Assert.Equal("zumrut", g.GetProperty("sema").GetString());
-        Assert.Single(g.EnumerateObject());   // ⚠ öteki alanlar gövdede YOK → sunucuda KORUNUR
-
-        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#gk-sema-zumrut").GetAttribute("aria-pressed")));
-        Assert.Contains(Sozlukler.Tr.Gorunum.Kaydedildi, e.Find("#gk-basari").TextContent);
-    }
 
     // ── S1f-E5) Aydınlık/karanlık — kendi alanını gönderir ──────────────────
     [Theory]
@@ -320,7 +307,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
     [Fact]
     public async Task S1f_E7_Dukkana_don_uc_alani_tek_istekte_null_ve_modu_devreder()
     {
-        sahte.OzelSema = "zeytin";
+        sahte.OzelTema = "karanlik";
         sahte.OzelMod = "BASIT";
         var e = await Ciz();
 
@@ -359,7 +346,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
     [Fact]
     public async Task S1f_E7c_Mod_adimi_duserse_kismi_sonuc_hata_bandinda_yazilir()
     {
-        sahte.OzelSema = "zeytin";
+        sahte.OzelTema = "karanlik";
         sahte.OzelMod = "BASIT";
         sahte.ModReddet = true;
         var e = await Ciz();
@@ -375,6 +362,9 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
     [Fact]
     public async Task S1f_E8_Kendi_secimi_yokken_don_kilitli_ve_sebepli()
     {
+        // Tema temizliği (17.10): göç kullanıcı satırına "yildiz" yazar; şema seçilemediği için bu
+        // "kendi seçim" SAYILMAZ — dön düğmesi işsiz kalır (kilitli + sebep).
+        sahte.OzelSema = "yildiz";
         var e = await Ciz();
         var d = e.Find("#gk-dukkana-don");
         Assert.True(d.HasAttribute("disabled"));
@@ -395,7 +385,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
         Assert.Equal("İşletme varsayılanını yalnız işletme sahibi belirler.", e.Find("#gk-varsayilan-yap-kilit").TextContent);
 
         // Kişisel seçim tezgâhtara AÇIK (tuval n4: "her kullanıcı").
-        Assert.False(e.Find("#gk-sema-bordo").HasAttribute("disabled"));
+        Assert.False(e.Find("#gk-tema-karanlik").HasAttribute("disabled"));
         Assert.False(e.Find("#gk-mod-basit").HasAttribute("disabled"));
         Assert.Empty(Patchler("/api/v1/gorunum"));
         Assert.Empty(Patchler("/admin/tenant"));
@@ -405,7 +395,6 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
     [Fact]
     public async Task S1f_E10_Sahip_etkin_degerleri_dukkan_varsayilani_yapar()
     {
-        sahte.OzelSema = "okyanus";
         sahte.OzelYazi = 20;
         sahte.OzelTema = "karanlik";
         sahte.OzelMod = "BASIT";
@@ -416,7 +405,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
 
         e.WaitForAssertion(() => Assert.Single(Patchler("/admin/tenant")));
         var g = Patchler("/api/v1/gorunum").Single();
-        Assert.Equal("okyanus", g.GetProperty("sema").GetString());
+        Assert.Equal("yildiz", g.GetProperty("sema").GetString());   // tek şema — etkin değer aynen gider
         Assert.Equal("20", g.GetProperty("yaziOlcegi").GetString());
         Assert.Equal("karanlik", g.GetProperty("temaModu").GetString());
         Assert.Equal(3, g.EnumerateObject().Count());
@@ -425,7 +414,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
         Assert.Single(t.EnumerateObject());
 
         e.WaitForAssertion(() => Assert.Contains(
-            "İşletme varsayılanı kaydedildi: kendi seçimini yapmamış herkes bu görünümü görür. (Okyanus · Çok büyük · Karanlık · Basit)",
+            "İşletme varsayılanı kaydedildi: kendi seçimini yapmamış herkes bu görünümü görür. (Çok büyük · Karanlık · Basit)",
             e.Find("#gk-basari").TextContent));
         // Kullanıcının KENDİ satırına dokunulmadı.
         Assert.Empty(Patchler("/kullanici/gorunum"));
@@ -461,8 +450,10 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
             Assert.Equal("gk-kilit", b.GetAttribute("aria-describedby"));
         }
         Assert.DoesNotContain(sahte.Istekler, i => i.Yontem == "PATCH");
-        // Hata "kayıt yok"a çevrilmedi: seçili gösterilen tahmini bir tema YOK.
-        Assert.Empty(e.FindAll(".gk-secili-rozet"));
+        // Hata "kayıt yok"a çevrilmedi: seçili gösterilen tahmini bir tema modu/punto YOK. (Ekran modu işareti
+        // sunucunun görünüm yanıtından değil oturumdan gelir; o bölüm bu iddianın dışındadır.)
+        Assert.NotEmpty(e.FindAll("[id^='gk-tema-'], [id^='gk-yazi-']"));
+        Assert.Empty(e.FindAll("[id^='gk-tema-'] .gk-tik, [id^='gk-yazi-'] .gk-tik"));
     }
 
     // ── S1f-E12) Okuma sürerken "okunamadı" yazılmaz ────────────────────────
@@ -480,21 +471,21 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
     {
         var e = await Ciz();
         sahte.PatchReddet = true;
-        e.Find("#gk-sema-menekse").Click();
+        e.Find("#gk-tema-karanlik").Click();
 
-        e.WaitForAssertion(() => Assert.Contains("Bilinmeyen renk şeması: pembe", e.Find("#gk-hata").TextContent));
+        e.WaitForAssertion(() => Assert.Contains("Bilinmeyen tema modu: pembe", e.Find("#gk-hata").TextContent));
         Assert.Empty(e.FindAll("#gk-basari"));
-        Assert.Equal("false", e.Find("#gk-sema-menekse").GetAttribute("aria-pressed"));
+        Assert.Equal("false", e.Find("#gk-tema-karanlik").GetAttribute("aria-pressed"));
     }
 
     // ── S1f-E14) DoD EK md.1: HER düğme ya istek atar ya kilitli + sebepli ──
     [Fact]
     public async Task S1f_E14_Her_dugme_ya_istek_atar_ya_kilitli_ve_sebeplidir()
     {
-        sahte.OzelSema = "bordo";
+        sahte.OzelTema = "karanlik";
         var e = await Ciz();
         var idler = e.FindAll("#ayar-gorunum-karti button").Select(b => b.Id).ToList();
-        Assert.Equal(9 + 3 + 3 + 2 + 2, idler.Count);   // YILDIZ-1: 9 şema düğmesi
+        Assert.Equal(3 + 3 + 2 + 2, idler.Count);   // tema temizliği 17.10: şema düğmesi yok
 
         foreach (var id in idler)
         {
@@ -525,13 +516,15 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
         Assert.False(ayrinti.HasAttribute("open"));   // katlı başlar
         // KESIF-P1 · TEMA-TEK: "ayar-tema" ve "benim-tema" (ikinci/üçüncü tema seçici) kaldırıldı.
         foreach (var id in new[] { "ayar-benim-gorunum", "ayar-arayuz-modu",
-                                   "benim-sema", "benim-tema-notu", "benim-yazi",
+                                   "benim-tema-notu", "benim-yazi",
                                    "arayuz-devral", "arayuz-basit", "arayuz-profesyonel" })
             Assert.NotNull(ayrinti.QuerySelector($"#{id}"));
         // PAKET T-K3: dükkânın görünüm VARSAYILANI kartı (#ayar-gorunum) tuvaldeki
         // "Dükkân" sekmesine taşındı — silinmedi, seçicileri aynı id'lerle yaşıyor.
-        foreach (var id in new[] { "ayar-gorunum", "gorunum-sema", "gorunum-olcek" })
+        foreach (var id in new[] { "ayar-gorunum", "gorunum-olcek" })
             Assert.NotNull(e.Find($"#ayar-panel-dukkan #{id}"));
+        // Tema temizliği (17.10): iki renk şeması seçicisi (kişisel + dükkân) kalktı.
+        Assert.Empty(e.FindAll("#benim-sema, #gorunum-sema"));
 
         // Yeni kart katlanmış bölümün İÇİNDE değil, önünde.
         Assert.Null(ayrinti.QuerySelector("#ayar-gorunum-karti"));
@@ -550,7 +543,7 @@ public sealed class S1fGorunumKartiEkranTestleri : BunitContext
     {
         var e = await Ciz();
         await Services.GetRequiredService<DilServisi>().DegistirAsync("en");
-        e.WaitForAssertion(() => Assert.Contains("Colour theme", e.Find("#gk-tema-baslik").TextContent));
+        e.WaitForAssertion(() => Assert.Contains("Light / dark", e.Find("#gk-tema-modu-baslik").TextContent));
         Assert.Equal("Back to shop default", e.Find("#gk-dukkana-don").TextContent);
         Assert.Contains("Follow this device", e.Find("#gk-tema-sistem").TextContent);
     }
@@ -600,40 +593,28 @@ public sealed class S1fGorunumKaynakTestleri
         Assert.DoesNotContain("@media print", kod);
         Assert.Contains("padding: 22px 24px; border: 1px solid var(--ayrac); border-radius: 12px;", kod);
         Assert.Contains(".gk-bolum-baslik { margin: 0; font-size: 20px; font-weight: 600;", kod);
-        Assert.Contains(".gk-sema-izgara { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }", kod);
-        Assert.Contains(".gk-sema.secili { border: 3px solid var(--vurgu); }", kod);
-        Assert.Contains(".gk-onizleme-menu { width: 34%; background: var(--kenar-yuzey); }", kod);
+        // Tema temizliği (17.10): şema karosu/önizleme kuralları kartla birlikte kalktı (ölü seçici yok).
+        Assert.DoesNotContain(".gk-sema-izgara", kod);
+        Assert.DoesNotContain(".gk-sema {", kod);
+        Assert.DoesNotContain(".gk-onizleme", kod);
+        Assert.DoesNotContain(".gk-secili-rozet", kod);
         Assert.Contains(".gk-uclu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }", kod);
         Assert.Contains("height: 52px; padding: 0 16px;", kod);
         Assert.Contains(".gk-secenek.secili { border: 2px solid var(--vurgu); }", kod);
         Assert.Contains(".gk-yazi-20 { font-size: 20px; }", kod);
         Assert.Contains(".gk-alt-dugme { height: 50px; min-height: 50px; padding: 0 20px; border-radius: 9px; font-size: 16px; }", kod);
-        Assert.Contains("background: var(--vurgu-yuzey); color: var(--vurgu); font-size: 13px; font-weight: 500;", kod);
     }
 
-    // ── S1f-K3) 8 AYDINLIK şema bloğu önizleme seçicisini taşır; karanlık TAŞIMAZ
+    // ── S1f-K3) Tema temizliği (17.10): şema önizleme seçicisi HİÇBİR yerde kalmadı ──
     [Fact]
-    public void S1f_K3_Sekiz_aydinlik_sema_blogu_onizleme_secicisini_tasir()
+    public void S1f_K3_Sema_onizleme_secicisi_ve_karolari_KALMADI()
     {
-        var css = Oku("Kuyumcu.Web", "wwwroot", "css", "belirtecler.css");
-        // YILDIZ-1: "yildiz" AYRI tema dosyasında yaşar (tema-yildiz.css); önizleme
-        // seçicisini orada taşıması Yildiz1Testleri'nde kilitlidir.
-        foreach (var sema in GorunumServisi.Semalar.Where(x => x != "yildiz"))
-        {
-            var desen = new Regex(
-                $@"(?m)^:root\[data-sema=""{sema}""\][^{{\n]*\.gorunum-sema-onizleme\[data-sema=""{sema}""\] \{{");
-            Assert.True(desen.IsMatch(css), $"'{sema}' aydınlık bloğu önizleme seçicisini taşımıyor.");
-        }
-        foreach (var b in CssKaynak.Bildirimler(css).Where(b => b.Secici.Contains("gorunum-sema-onizleme", StringComparison.Ordinal)))
-        {
-            Assert.DoesNotContain("karanlik", b.Secici);
-            Assert.DoesNotContain("prefers-color-scheme", b.AtKural);
-        }
-        // Önizlemenin kullandığı dört belirteç 8 şemanın HER birinde tanımlı.
-        var t = BelirtecTablosu.Yukle();
-        foreach (var sema in GorunumServisi.Semalar.Where(x => x != "yildiz"))
-            foreach (var belirtec in new[] { "--kenar-yuzey", "--yuzey-govde", "--yuzey", "--vurgu", "--ayrac" })
-                Assert.True(t.Semalar[sema].ContainsKey(belirtec), $"{sema} {belirtec} tanımlamıyor");
+        var css = Path.Combine(Kok(), "Kuyumcu.Web", "wwwroot", "css");
+        foreach (var f in Directory.GetFiles(css, "*.css"))
+            Assert.DoesNotContain("gorunum-sema-onizleme", File.ReadAllText(f), StringComparison.Ordinal);
+        var razor = Oku("Kuyumcu.Web", "Bilesenler", "GorunumKarti.razor");
+        Assert.DoesNotContain("gorunum-sema-onizleme", razor, StringComparison.Ordinal);
+        Assert.DoesNotContain("GorunumServisi.Semalar", razor, StringComparison.Ordinal);
     }
 
     // ── S1f-K4) KÂĞIT DAİMA BEYAZ ──────────────────────────────────────────
@@ -650,8 +631,10 @@ public sealed class S1fGorunumKaynakTestleri
                                   && b.Secici.Contains("body", StringComparison.Ordinal)
                                   && b.Ozellik == "background" && b.Deger.Trim() == "#fff");
 
-        var semaBelirtecleri = BelirtecTablosu.Yukle().Semalar.Values
-            .SelectMany(s => s.Keys).ToHashSet(StringComparer.Ordinal);
+        // Tema temizliği (17.10): şemanın belirteçleri artık Yıldız'ın üç bloğundadır.
+        var y = YildizTablosu.Yukle();
+        var semaBelirtecleri = y.Aydinlik.Keys.Concat(y.KaranlikMedya.Keys).Concat(y.KaranlikTercih.Keys)
+            .ToHashSet(StringComparer.Ordinal);
         Assert.Contains("--kenar-yuzey", semaBelirtecleri);
 
         static bool Kagit(CssKaynak.Bildirim b) =>
@@ -669,9 +652,13 @@ public sealed class S1fGorunumKaynakTestleri
         }
         Assert.True(sizinti.Count == 0, "Şema kâğıda sızıyor:\n  " + string.Join("\n  ", sizinti));
 
-        var bel = Oku("Kuyumcu.Web", "wwwroot", "css", "belirtecler.css");
-        Assert.DoesNotContain(CssKaynak.Bildirimler(bel), b =>
-            b.AtKural.Contains("print", StringComparison.OrdinalIgnoreCase) && b.Secici.Contains("data-sema", StringComparison.Ordinal));
+        foreach (var dosya in new[] { "belirtecler.css", "tema-yildiz.css" })
+        {
+            var bel = Oku("Kuyumcu.Web", "wwwroot", "css", dosya);
+            Assert.DoesNotContain(CssKaynak.Bildirimler(bel), b =>
+                b.AtKural.Contains("print", StringComparison.OrdinalIgnoreCase) && b.Secici.Contains("data-sema", StringComparison.Ordinal)
+                && b.Ozellik.StartsWith("--", StringComparison.Ordinal));
+        }
     }
 
     // ── S1f-K5) Sözlük: TR/EN her alan dolu, EN TR'nin kopyası DEĞİL ────────
@@ -702,7 +689,8 @@ public sealed class S1fGorunumKaynakTestleri
         Assert.Equal("Normal", GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, "16", "tr"));
         Assert.Equal("Büyük", GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, "18", "tr"));
         Assert.Equal("Çok büyük", GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, "20", "tr"));
-        Assert.Equal("Fildişi (açık menü)", GorunumSozlugu.Ad(GorunumSozlugu.Semalar, "fildisi", "tr"));
+        Assert.Equal("Yıldız", GorunumSozlugu.Ad(GorunumSozlugu.Semalar, "yildiz", "tr"));
+        Assert.Equal(["yildiz"], GorunumSozlugu.Semalar.Keys);   // tema temizliği 17.10: tek şema
         Assert.Empty(GorunumSozlugu.AnahtarEksigi(GorunumSozlugu.Semalar, GorunumServisi.Semalar));
     }
 }
@@ -771,7 +759,8 @@ public sealed class S1fGorunumHttpTestleri(HttpFikstur f)
             new { sema = "bordo", yaziOlcegi = "20", temaModu = "karanlik" });
         Assert.Equal(HttpStatusCode.OK, c.StatusCode);
         var g = await Oku(c);
-        Assert.Equal("bordo", g.GetProperty("sema").GetString());
+        // Tema temizliği (17.10): eski şema kodu kabul edilir (eski istemci 400 almaz) ama Yıldız'a çözülür.
+        Assert.Equal("yildiz", g.GetProperty("sema").GetString());
         Assert.Equal("20", g.GetProperty("yaziOlcegi").GetString());
         Assert.Equal("karanlik", g.GetProperty("temaModu").GetString());
 
@@ -784,8 +773,9 @@ public sealed class S1fGorunumHttpTestleri(HttpFikstur f)
         var ben = await (await sahip.GetAsync("/api/v1/auth/ben")).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("BASIT", ben.GetProperty("etkinArayuzModu").GetString());
         var kg = await Oku(await sahip.GetAsync("/api/v1/kullanici/gorunum"));
-        Assert.Equal("bordo", kg.GetProperty("sema").GetString());
-        Assert.Equal("kiraci", kg.GetProperty("semaKaynagi").GetString());
+        Assert.Equal("yildiz", kg.GetProperty("sema").GetString());
+        Assert.Equal("karanlik", kg.GetProperty("temaModu").GetString());
+        Assert.Equal("kiraci", kg.GetProperty("temaModuKaynagi").GetString());
 
         using var db = f.Vt.Olustur(k.TenantId);
         var d = await db.DenetimKayitlari.AsNoTracking()
@@ -817,12 +807,13 @@ public sealed class S1fGorunumHttpTestleri(HttpFikstur f)
     {
         var k = YeniKiraci("PAKETS1-f-TEST-kendi");
         var i = f.Ortam.Istemci(k, "TEZGAHTAR");
-        Assert.Equal(HttpStatusCode.OK, (await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { sema = "menekse" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { sema = "menekse", temaModu = "karanlik" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await i.PatchAsJsonAsync("/api/v1/kullanicilar/ben/arayuz-modu", new { arayuzModu = "BASIT" })).StatusCode);
 
         using var db = f.Vt.Olustur(k.TenantId);
         var s = await db.Kullanicilar.AsNoTracking().SingleAsync(x => x.Id == k.KullaniciId);
-        Assert.Equal("menekse", s.Sema);
+        Assert.Equal("yildiz", s.Sema);          // tema temizliği 17.10: eski kod depoya Yıldız olarak yazılır
+        Assert.Equal("karanlik", s.TemaModu);
         Assert.Equal("BASIT", s.ArayuzModu);
     }
 
