@@ -141,7 +141,7 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Birim_fiyat_sunucudan_DOLDURULUR_ve_kaynagi_rozetle_yazar()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-urun");
         SeciciYardim.Sec(e, "islem-urun", "u1");
 

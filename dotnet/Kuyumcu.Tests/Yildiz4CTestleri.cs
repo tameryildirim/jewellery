@@ -119,16 +119,17 @@ public sealed class Yildiz4CTestleri : BunitContext
         sema = s;
         Oturum(mod);
         Services.GetRequiredService<GorunumServisi>().YukleAsync().GetAwaiter().GetResult();
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement(s == "yildiz" ? "#yildiz-tezgah" : "#islem-kaydet", TimeSpan.FromSeconds(10));
         return e;
     }
 
-    private static void KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
-    {
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-    }
+    /// <summary>
+    /// Ürün seç + "Ekle" — ortak yol (TemaTemizligiGCYardimcisi.YildizKalemEkle): fiyat dolana dek bekler, eklemenin satır
+    /// ya da toplamda görünmesini bekler. Beklemeden art arda ekleme (Y4C_44, 4 kez) önceki "Ekle" işlenirken seçiciyi
+    /// açmaya çalışıyordu: tıklama kuyruğa düşüp liste kapalı kalıyordu ("Listedekiler: []", 17.10 dalgalı kırmızı).
+    /// </summary>
+    private static void KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.YildizKalemEkle();
 
     /// <summary>POST gövdesi (yolu içeren son POST); istemci üretimi kimlikler çıkarılır.</summary>
     private string Govde(string yolParcasi)

@@ -591,7 +591,7 @@ public sealed class Toplu5IslemTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Sahip", "t@ornek.com", "SAHIP", "s1", null, mod));
-        var e = Render<Islemler>();
+        var e = Render<Islemler>().TezgahBekle();
         e.WaitForElement("#islem-tur-SATIS");
         e.Find("#islem-tur-TAKAS").Click();
         e.WaitForElement("#takas-satici");

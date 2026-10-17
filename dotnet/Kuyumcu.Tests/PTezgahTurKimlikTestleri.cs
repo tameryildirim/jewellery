@@ -86,7 +86,7 @@ public sealed class PTezgahTurKimlikTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Hakan", "Tunalı", "h@ornek.com", "SAHIP", "s1", mod, mod));
         Services.GetRequiredService<GorunumServisi>().YukleAsync().GetAwaiter().GetResult();
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement(s == "yildiz" ? "#yildiz-tezgah" : "#islem-kaydet", TimeSpan.FromSeconds(10));
         return e;
     }

@@ -24,12 +24,26 @@ internal static class TemaTemizligiGDYardimcisi
     public const string Kaydet = "#yildiz-tezgah-kaydet";
     public const string Kalem = ".yz-tezgah-kalem";
 
-    /// <summary>Yıldız tezgâhı çizilene kadar bekler.</summary>
+    /// <summary>
+    /// Sayfa açılışı BİTENE kadar bekler: sayfa kabında data-acilis="bitti" (Islemler.Havale.cs acilisBitti — havale listesi
+    /// dahil tüm açılış adımları bitti), sonra renderer kuyruğunu boşaltır. #yildiz-tezgah tek başına yetmiyordu: tezgâh,
+    /// açılışın son adımı (havale listesi) sürerken çizilir; o anda basılan düğme kuyruğa düşer, Click() işlenmeden döner ve
+    /// test boş DOM'a bakar (17.10 ölçüm: tıklamadan hemen sonra #islem-odeme yok, 300 ms sonra var).
+    /// Satış dışı türle açılan sayfada (?tur=) da çalışır; Yıldız tezgâhı varsa o da çizilmiş olur.
+    /// </summary>
     public static IRenderedComponent<Islemler> TezgahBekle(this IRenderedComponent<Islemler> e)
     {
-        e.WaitForElement("#yildiz-tezgah", Bekle);
+        e.WaitForElement("[data-acilis=bitti]", Bekle);
+        AcilisKuyrugunuBosalt(e);
         return e;
     }
+
+    /// <summary>
+    /// Renderer kuyruğunda bekleyen işi (açılışın son çizimi ve OnAfterRenderAsync'i) bitirir: boş bir iş kuyruğun SONUNA
+    /// girer, o bitince öncekiler de bitmiştir. Açılış bittikten sonra yeni istek yoktur; sonraki Click() kuyruğa düşmez.
+    /// </summary>
+    public static void AcilisKuyrugunuBosalt<T>(IRenderedComponent<T> e) where T : Microsoft.AspNetCore.Components.IComponent =>
+        Assert.True(e.InvokeAsync(() => { }).Wait(Bekle), "Renderer kuyruğu 10 sn'de boşalmadı.");
 
     /// <summary>
     /// İşlem türü seçer — kullanıcının Yıldız yolu: görünür sekme (#yildiz-tur-{kod}: Satış · Alış · İade) varsa ona,

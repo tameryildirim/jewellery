@@ -440,7 +440,7 @@ public sealed class IadeEkranTestleri : Bunit.BunitContext
 
     private Bunit.IRenderedComponent<Kuyumcu.Web.Pages.Islemler> IadeEkrani()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.FindAll("button").First(b => b.TextContent.Contains("Satış İadesi")).Click();
         e.WaitForElement("#iade-kaynak");
         istekler.Clear();
@@ -468,7 +468,7 @@ public sealed class IadeEkranTestleri : Bunit.BunitContext
     [Fact]
     public void Iade_sekmesi_adaylari_SUNUCUDAN_ceker()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.FindAll("button").First(b => b.TextContent.Contains("Satış İadesi")).Click();
 
         e.WaitForAssertion(() =>
