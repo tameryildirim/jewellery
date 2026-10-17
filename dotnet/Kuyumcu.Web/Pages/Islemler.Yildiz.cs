@@ -156,7 +156,7 @@ public partial class Islemler
                 ParaUstuKullanilir = kalemler.Count > 0 && YildizParaUstuNakit > 0m && !NakitBandiVar,   // YILDIZ-4C: karmada NAKİT satırları (özgün karma para üstüyle aynı taban)
                 NakitTutar = ToplamTl,
                 ParaUstuNakit = YildizParaUstuNakit,
-                Giris = KalemGirisParcasi,
+                Giris = YildizGiris,
                 KalemDuzen = YildizKalemDuzen,
                 OdemeDuzen = OdemeParcasi,
                 Kaydet = EventCallback.Factory.Create(this, Kaydet),

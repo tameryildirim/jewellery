@@ -456,6 +456,12 @@
     private RenderFragment KalemGirisParcasi => @<FisKalemGirisi Giris="giris" UrunSecenekleri="UrunSecenekleri" Gramli="SecilenGramli"
         Form="form" BarkodOkut="PosBarkodOkut" UrunSecildi="UrunSecildi" Ekle="KalemEkleYaDaTakas" Degisti="Cizim" Basit="Modu.BasitMi" OdakJeton="basariJeton" AcJeton="aramaAcJeton"
         Katli="ProSatis" YerTutucu="@(YildizTezgahMi ? ST.BarkodYerTutucu : Modu.ProfesyonelMi ? SS.UrunAraYerTutucu : null)" Oneriler="oneriler" BosOdakListesi="BosOdakUrunleri" BosOdakIste="EnCokSatanlariYukle" Araniyor="oneriAraniyor" OneriSinirda="oneriSinirda" OneriHata="@oneriHata" Ara="UrunAra" OneriSecildi="OneriSec" SatirFiyatlari="satirFiyatlari" SatirStoklari="satirStoklari" />;
+    /// <summary>
+    /// Tezgâhın giriş satırı + fiyat listesi sorusu (EKSIK-KUCUK B2-12, UX-S24). Tema temizliği (17.10) bulgusu: soru
+    /// yalnız özgün kalem tablosunun parçasındaydı ve Yıldız tezgâhında hiç çizilmiyordu; aynı bileşen, aynı kimlikler.
+    /// </summary>
+    private RenderFragment YildizGiris => @<text>@KalemGirisParcasi<FisListeDegisti Sayi="@BekleyenOneri.Count" Guncelle="ListeFiyatlariniUygula" EskiKalsin="ListeOnerisiniReddet" Hata="@listeHata" Basari="@listeBasari" Jeton="listeBasariJeton" /></text>;
+
     private RenderFragment KalemParcasi => @<text>
                         @* GOC-C-2: KartListe (islem-kalem-liste) artık ortak ızgaranın içinde (FisKalemTablosu) — çift sarmalayıcı yok. *@
                         <FisListeDegisti Sayi="@BekleyenOneri.Count" Guncelle="ListeFiyatlariniUygula" EskiKalsin="ListeOnerisiniReddet" Hata="@listeHata" Basari="@listeBasari" Jeton="listeBasariJeton" />   @* EKSIK-KUCUK B2-12 (UX-S24): müşteri değişti → SORULUR; basılmazsa eski fiyat kalır *@
