@@ -88,24 +88,7 @@ public sealed class Toplu2SafTestleri
         Assert.Contains("margin-top: var(--bosluk-3)", blok);
     }
 
-    // ── (5) Kenar çubuğu hata bandı: tek satır, ≥14 px, × düğmesi ──
-    [Fact]
-    public void T2_Kenar_hata_bandi_tek_satir_kisa_cumle()
-    {
-        var b = Toplu2Ortak.Bolum();
-        var bant = Toplu2Ortak.Blok(b, "#kenar-sira-hatasi");
-        Assert.NotNull(bant);
-        Assert.Contains("flex-direction: row", bant);
-        Assert.Contains("font-size: var(--yazi-sm)", bant);
-        Assert.NotNull(Toplu2Ortak.Blok(b, ".kenar-uyari-kapat"));
-        // Tek kısa cümle (eski metin 2 cümle ~90 karakter idi).
-        foreach (var dil in new[] { "tr", "en" })
-        {
-            var m = MenuSozlugu.KatlamaKaydedilemedi(dil);
-            Assert.True(m.Length <= 40, $"{dil}: {m.Length}");
-            Assert.Single(Regex.Matches(m, @"[.!?]"));
-        }
-    }
+    // TEMA TEMİZLİĞİ 17.10: T2_Kenar_hata_bandi_tek_satir_kisa_cumle kaldırıldı — kenar çubuklu kabuk (Layout/KenarCubugu.razor) bilerek boşaltıldı; #kenar-sira-hatasi bandı ve .kenar-uyari-kapat kuralı ürün CSS'inden kalktı, MenuSozlugu.KatlamaKaydedilemedi artık hiçbir ekranda çizilmez (kabuk YildizUstMenu).
 
     // ── (6) Süzgeç seçicileri ezilmez ──
     [Fact]
@@ -126,19 +109,7 @@ public sealed class Toplu2SafTestleri
         Assert.Contains("text-align: start", blok);
     }
 
-    // ── (7) Menü vurgusu: daha uzun menü öğesi uyuyorsa üst öğe tam eşleşir ──
-    [Theory]
-    [InlineData("/raporlar", "/raporlar/islem-defteri", true)]
-    [InlineData("/raporlar", "/raporlar/kasa", true)]
-    [InlineData("/pos", "/pos/tahsilatlar", true)]
-    [InlineData("/urunler", "/urunler/agac", true)]
-    [InlineData("/raporlar", "/raporlar", false)]
-    [InlineData("/siparisler", "/siparisler/s-123", false)]   // detay menüde yok → üst öğe vurgulu kalır
-    [InlineData("/urunler", "/urunler", false)]
-    public void T2_Menu_tek_vurgu_en_uzun_eslesme(string oge, string yol, bool beklenen)
-    {
-        Assert.Equal(beklenen, KenarCubugu.DahaUzunOgeVar(oge, yol));
-    }
+    // ── (7) Menü vurgusu: kenar çubuğuyla kalktı (tema temizliği 17.10; Yıldız: YildizKabuk.SeciliKimlik) ──
 
     // ── (8) Basılı ekstre: resmî ad, taraf etiketi, sade sınır metni ──
     [Fact]
@@ -234,7 +205,7 @@ public sealed class Toplu2SiparisTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1"));
-        var e = Render<Siparisler>();
+        var e = Render<Siparisler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/siparisler")));
         // Yerli <select> yok; tetik ortak Secici düğmesi, kimlik AYNI.
         Assert.Empty(e.FindAll("select#sip-durum-suzgec"));
@@ -555,8 +526,14 @@ public sealed class Toplu2DovizCekmeceTestleri : BunitContext
         return Render<Cariler>();
     }
 
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: Yıldız müşteri listesinde satır eylemi yok — eylemler satıra dokununca açılan KARTTA aynı
+    /// kimliklerle durur (YildizKartEylemleri; #c-doviz-veresiye-c1 …). Önce satır (#yildiz-musteri-c1), sonra eylem.
+    /// </summary>
     private static void Ac(IRenderedComponent<Cariler> e, string id)
     {
+        e.WaitForState(() => e.FindAll("#yildiz-musteri-c1").Count > 0);
+        e.Find("#yildiz-musteri-c1").Click();
         e.WaitForState(() => e.FindAll($"#{id}").Count > 0);
         e.FindAll($"#{id}")[0].Click();
     }
@@ -706,7 +683,7 @@ public sealed class Toplu2Tur3SeciciDomTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1"));
-        var e = Render<Siparisler>();
+        var e = Render<Siparisler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#sip-durum-suzgec")));
         Assert.Empty(e.FindAll("#sip-durum-suzgec-liste-kap"));
         e.Find("#sip-durum-suzgec").Click();

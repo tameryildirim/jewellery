@@ -567,25 +567,27 @@ public sealed class YedekMenuTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
     }
 
-    private IRenderedComponent<KenarCubugu> Ciz(string rol, string mod)
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı — menünün bütünü "Tüm ekranlar" sayfasıdır
+    /// (üst menünün son sözcüğü). Yedekler karesinin varlığı orada sınanır.
+    /// </summary>
+    private IRenderedComponent<Kuyumcu.Web.Pages.Ekranlar> Ciz(string rol, string mod)
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", null, mod));
-        var e = Render<KenarCubugu>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
+        var e = Render<Kuyumcu.Web.Pages.Ekranlar>().KareleriBekle();
+        Assert.Contains("/", e.KareYollari());   // sayfa gerçekten çizildi (yanlış yeşil yok)
         return e;
     }
 
     [Fact]
     public void Menu_SahipDisindaGorunmez_BasitModdaDaGorunur()
     {
-        Assert.Contains("/yedekler", Ciz("SAHIP", "PROFESYONEL").Markup);
-        Assert.DoesNotContain("/yedekler", Ciz("TEZGAHTAR", "PROFESYONEL").Markup);
-        Assert.DoesNotContain("/yedekler", Ciz("MUDUR", "PROFESYONEL").Markup);
-        // S1-g YENİDEN YAZIM — ESKİ: "basit modda SAHİP'te de menüde yoktur".
-        // YENİ (tuval Panel.dc.html satır 43: Yönetim önizlemesi "… Kurulum ·
-        // Yedek…"): basit mod menüyü DARALTMAZ; yetki (yalnız SAHİP) aynen durur.
-        Assert.Contains("/yedekler", Ciz("SAHIP", "BASIT").Markup);
-        Assert.DoesNotContain("/yedekler", Ciz("MUDUR", "BASIT").Markup);
+        Assert.Contains("/yedekler", Ciz("SAHIP", "PROFESYONEL").KareYollari());
+        Assert.DoesNotContain("/yedekler", Ciz("TEZGAHTAR", "PROFESYONEL").KareYollari());
+        Assert.DoesNotContain("/yedekler", Ciz("MUDUR", "PROFESYONEL").KareYollari());
+        // S1-g: basit mod menüyü DARALTMAZ; yetki (yalnız SAHİP) aynen durur.
+        Assert.Contains("/yedekler", Ciz("SAHIP", "BASIT").KareYollari());
+        Assert.DoesNotContain("/yedekler", Ciz("MUDUR", "BASIT").KareYollari());
     }
 }

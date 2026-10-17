@@ -12,15 +12,14 @@ namespace Kuyumcu.Web.Pages;
 // Yalnız GÖRÜNÜM: satırlar sayfanın MEVCUT listesidir (GET /bildirimler); "Hepsi" = TUMU,
 // "Okunmadı" = ACIK (sayfanın kendi sekme yolları). Satıra dokunmak MEVCUT kapatma onayını
 // açar; "Git" bildirimin kendi hedef ekranıdır. Okunan (kapalı) satır soluk çizilir.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Bildirimler
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "bildirim" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "bildirim";
 
     private bool yildizAyrinti;
     private bool yildizIlkSekme;
@@ -28,7 +27,7 @@ public partial class Bildirimler
     /// <summary>Tuval açılışı "Hepsi" seçili: Yıldız'da ilk çizimden sonra bir kez sayfanın TUMU sekmesine geçilir.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizIlkSekme || yukleniyor) return;
+        if (yildizIlkSekme || yukleniyor) return;
         yildizIlkSekme = true;
         if (durum == "ACIK") { await SekmeTumu(); StateHasChanged(); }
     }

@@ -174,8 +174,8 @@ public sealed class YasalKapi2NakitSiniriEkranTestleri : BunitContext
 
     private IRenderedComponent<Cariler> Tahsilat(IRenderedComponent<Cariler> e)
     {
-        (e.FindAll("button").FirstOrDefault(b => b.TextContent.Trim() == "Tahsilat")
-         ?? e.FindAll("button").First(b => b.TextContent.Contains("Tahsilat") && !b.TextContent.Contains("Döviz"))).Click();
+        // TEMA TEMİZLİĞİ 17.10: tahsilat Yıldız'da müşteri kartının eylemidir (satıra dokun → kart → Tahsilat).
+        e.KartEylemi("c1", "tahsilat");
         e.WaitForElement("#th-tutar");
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/tevsik/gunluk")));   // sunucunun nakit hakkı geldi
         e.Render();
@@ -305,7 +305,7 @@ public sealed class YasalKapi2NakitSiniriEkranTestleri : BunitContext
     public void YK3_08_doviz_tahsilat_TL_karsiligi_kalan_hakki_asarsa_alan_altinda_tek_cumle_form_yok_kilitli()
     {
         var e = Ciz();
-        (e.FindAll("button").First(b => b.TextContent.Contains("Döviz Tahsilat"))).Click();
+        e.KartEylemi("c1", "doviz-tahsilat");   // TEMA TEMİZLİĞİ 17.10: kartın eylemi
         e.WaitForElement("#dt-tutar");
         e.Find("#dt-tutar").Input("10000");          // 10.000 USD × 34 = 340.000 TL > 30.000
         e.WaitForAssertion(() => Assert.Contains(Bicim.Para(30_000m, "TRY"), AlanHatasi(e, "dt-tutar"), StringComparison.Ordinal));

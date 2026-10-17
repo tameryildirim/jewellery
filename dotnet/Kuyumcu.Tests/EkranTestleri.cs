@@ -846,7 +846,7 @@ public sealed class UyumEkranTestleri : UyumEkranTemeli
 public sealed class GiderPusulasiEkranTestleri : UyumEkranTemeli
 {
     private IRenderedComponent<Kuyumcu.Web.Pages.GiderPusulalari> Ciz()
-        => Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        => Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
 
     [Fact]
     public void Sayfa_hata_vermeden_cizilir_ve_pusulayi_listeler()
@@ -998,7 +998,7 @@ public sealed class UrunEkraniTasIbaresiTestleri : BunitContext
             });
     }
 
-    private string Markup() => Render<Kuyumcu.Web.Pages.Urunler>().Markup;
+    private string Markup() => Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc().Markup;
 
     /// <summary>
     /// Adı geçen ürünün TABLO SATIRI.
@@ -1017,7 +1017,7 @@ public sealed class UrunEkraniTasIbaresiTestleri : BunitContext
     public void Sentetik_urunun_yaninda_ibare_GORUNUR()
     {
         // Köken SENTETIK, özel ibare yok → varsayılan "sentetik" basılmalı.
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         var satir = Satir(e, "Safir yüzük");
 
         Assert.Contains("sentetik", satir.QuerySelector(".rozet-mavi")!.TextContent);
@@ -1027,7 +1027,7 @@ public sealed class UrunEkraniTasIbaresiTestleri : BunitContext
     public void Dogal_tasli_urunde_ibare_BASILMAZ()
     {
         // Doğal taşa "sentetik" etiketi basmak yönetmeliğe aykırıdır.
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         var satir = Satir(e, "Pırlanta yüzük");
 
         Assert.DoesNotContain("sentetik", satir.TextContent);
@@ -1038,7 +1038,7 @@ public sealed class UrunEkraniTasIbaresiTestleri : BunitContext
     [Fact]
     public void Tassiz_urunde_ibare_BASILMAZ()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         var satir = Satir(e, "Sade alyans");
 
         Assert.DoesNotContain("sentetik", satir.TextContent);
@@ -1234,7 +1234,7 @@ public sealed class UrunEtiketEkranTestleri : BunitContext
     }
 
     private IRenderedComponent<Kuyumcu.Web.Pages.UrunEtiketleri> Ciz()
-        => Render<Kuyumcu.Web.Pages.UrunEtiketleri>();
+        => Render<Kuyumcu.Web.Pages.UrunEtiketleri>().AyrintiAc();
 
     private static void Sec(IRenderedComponent<Kuyumcu.Web.Pages.UrunEtiketleri> e, string urunAdi)
         => e.FindAll("input[type=checkbox]")

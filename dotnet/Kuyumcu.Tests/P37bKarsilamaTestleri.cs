@@ -36,7 +36,7 @@ public sealed class P37bKarsilamaTestleri : BunitContext
     /// S1-j: GET /api/v1/hava yanıtı. null = 204 (sunucuda hava KAPALI ya da
     /// kaynağa ulaşılamadı — gerçek sunucunun varsayılanı), aksi hâlde 200 + bu gövde.
     /// </summary>
-    private string? havaGovdesi;
+    private readonly string? havaGovdesi = null;   // TEMA TEMİZLİĞİ 17.10: hava çizen testler kaldırıldı; sunucu varsayılanı 204
 
     private sealed class SahteApi(
         List<(string, string, string)> kayit, Func<string?> patlayan, Func<string?> hava) : HttpMessageHandler
@@ -94,6 +94,18 @@ public sealed class P37bKarsilamaTestleri : BunitContext
                     """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/", StringComparison.Ordinal) =>
                     """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — alt şerit (GET /pozisyon) ve YILDIZ-4C satırlarının
+                // uçları gerçekçi yanıt verir ("sonuclar" varsayılanı bu şekillere ayrışmaz → sahte hata bandı).
+                var y when y.EndsWith("/pozisyon", StringComparison.Ordinal) => """
+                    {"anaMaden":"ALTIN",
+                     "altin":{"maden":"ALTIN","vitrinGram":120.5,"hurdaGram":0,"cariAlacakGram":0,"cariBorcGram":0,
+                              "netGram":120.5,"alacakliCariSayisi":0,"borcluOlduguCariSayisi":0,"konsinyeGram":0,"emanetGram":0},
+                     "digerMadenler":[],"madenlerToplanmaz":false,"defterBakiyeFarki":0,
+                     "hesaplanmaAni":"2026-09-21T09:00:00Z","donemdenBagimsiz":true}
+                    """,
+                var y when y.EndsWith("/raporlar/kasa-defteri", StringComparison.Ordinal) =>
+                    """{"baslangic":"2026-09-20","bitis":"2026-09-20","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari", StringComparison.Ordinal) => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             };
             return new HttpResponseMessage(HttpStatusCode.OK)
@@ -121,6 +133,7 @@ public sealed class P37bKarsilamaTestleri : BunitContext
         // S1-j: hava SUNUCUDAN gelir; sahte sunucunun varsayılanı 204 (KAPALI).
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private void OturumAc(string ad = "Ahmet", string rol = "SAHIP")
@@ -132,67 +145,31 @@ public sealed class P37bKarsilamaTestleri : BunitContext
     {
         OturumAc();
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-selam");
+        e.WaitForElement("#yildiz-bugun");   // TEMA TEMİZLİĞİ 17.10: karşılama/selam yüzü kaldırıldı, Panel = Yıldız Bugün
         return e;
     }
 
-    // ── HOŞ GELDİN + KULLANICI ADI ──────────────────────────────────────────
-
-    [Fact]
-    public void Karsilama_selami_KULLANICI_ADINI_tasir()
-    {
-        var e = Ekran();
-        var selam = e.Find("#panel-selam").TextContent;
-
-        Assert.Contains("Ahmet", selam, StringComparison.Ordinal);
-        // Selam saate göre seçilir; hangi saatte koşarsa koşsun dördünden biridir.
-        Assert.Contains(new[] { "Günaydın", "İyi günler", "İyi akşamlar", "İyi geceler" },
-            s => selam.Contains(s, StringComparison.Ordinal));
-        Assert.False(string.IsNullOrWhiteSpace(e.Find("#panel-tarih").TextContent));
-    }
-
-    // ── (1) İLK EKRANDA CEVAP: SABAHIN BEŞ SORUSU ───────────────────────────
-
-    [Fact]
-    public void Karsilama_sabahin_BES_SORUSUNU_kutucuk_olarak_tasir()
-    {
-        var e = Ekran();
-
-        // bugün ne sattım · altın kaç · kim borçlu/bekleyen iş · kasada ne var · tek tık
-        Assert.NotNull(e.Find("#panel-kutucuk-gun-ozeti"));
-        Assert.NotNull(e.Find("#panel-kutucuk-kur"));
-        Assert.NotNull(e.Find("#panel-kutucuk-bekleyen"));
-        Assert.NotNull(e.Find("#panel-kutucuk-kasa"));
-        Assert.NotNull(e.Find("#panel-kutucuk-hizli-eylem"));
-    }
-
-    // ── (4) TEK TIK ─────────────────────────────────────────────────────────
-
-    [Fact]
-    public void Karsilama_en_sik_UC_ISLEMI_tek_tikla_baslatir()
-    {
-        var e = Ekran();
-
-        Assert.Equal("/islemler", e.Find("#panel-satis-yap").GetAttribute("href"));
-        Assert.Equal("/islemler", e.Find("#panel-alis-yap").GetAttribute("href"));
-        Assert.Equal("/vezne", e.Find("#panel-tahsilat").GetAttribute("href"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Karsilama_selami_KULLANICI_ADINI_tasir kaldırıldı — selam/hoş geldin satırı Yıldız Bugün'de BİLEREK yok (tuvalde yok; Bugün üst satırı gün · tarih · şube, Yildiz4ATestleri.Y4A_10).
+    // TEMA TEMİZLİĞİ 17.10: Karsilama_sabahin_BES_SORUSUNU_kutucuk_olarak_tasir kaldırıldı — kutucuk ızgarası kaldırıldı; aynı sorular Bugün'ün rakam/cümle/"Seni bekleyen"/alt şeridinde (Yildiz4ATestleri.Y4A_10, S31PanelSadeTestleri).
+    // TEMA TEMİZLİĞİ 17.10: Karsilama_en_sik_UC_ISLEMI_tek_tikla_baslatir kaldırıldı — hızlı eylem kutucuğu (alış/tahsilat/hurda) Bugün tuvalinde yok; tek birincil "Yeni satış" S31PanelSadeTestleri.S31_02'de, ekranlar üst menü/Tüm ekranlar'da.
 
     // ── (2) BEKLETME YOK — kutucuklar birbirini beklemez ────────────────────
 
     [Fact]
     public void Karsilama_bir_UC_PATLASA_bile_diger_kutucuklar_cizilir()
     {
-        // Günlük özet ucu 500 dönüyor. ESKİ davranış: sayfanın tamamı
-        // <Yukleniyor /> kapısında kilitleniyordu. YENİ: yalnız o kutucuk
-        // hata bandı gösterir, kur ve hızlı eylemler çizilmeye devam eder.
+        // Günlük özet ucu 500 dönüyor. ESKİ davranış: sayfanın tamamı <Yukleniyor /> kapısında
+        // kilitleniyordu. YENİ (Bugün): yalnız dev rakamın yerinde bant durur; "Yeni satış", "Seni bekleyen"
+        // listesi ve alt şerit (pozisyon) çizilmeye devam eder.
         patlayanYol = "/raporlar/gunluk";
         var e = Ekran();
+        e.BugunBekle(pozisyon: true);
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#hata-bandi")));
-        Assert.NotNull(e.Find("#panel-kutucuk-kur"));
-        Assert.NotNull(e.Find("#panel-satis-yap"));
-        Assert.NotNull(e.Find("#panel-kutucuk-kasa"));
+        Assert.NotNull(e.Find("#yildiz-bugun-satis-hata"));
+        Assert.Empty(e.FindAll("#yildiz-bugun .yildiz-bugun-tam"));
+        Assert.NotNull(e.Find("#yildiz-bugun-yeni-satis"));
+        Assert.NotNull(e.Find("#yildiz-bugun-bekleyen-baslik"));
+        Assert.NotNull(e.Find("#yildiz-bugun-pozisyon"));
     }
 
     [Fact]
@@ -208,119 +185,47 @@ public sealed class P37bKarsilamaTestleri : BunitContext
 
     // ── UX-S28 — hata "kayıt yok"a ÇEVRİLMEZ ────────────────────────────────
 
-    [Fact]
-    public void Karsilama_son_islemler_HATASI_bos_duruma_cevrilmez()
-    {
-        patlayanYol = "/raporlar/islem-defteri";
-        var e = Ekran();
-
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-defter-hata")));
-        // "Bugün henüz işlem yok." = istek BAŞARILI ve sonuç gerçekten boşken çıkar.
-        Assert.DoesNotContain("Bugün henüz işlem yok", e.Markup, StringComparison.Ordinal);
-    }
-
-    // ── KUTUCUK DÜZENİ — KULLANICI BAZINDA ──────────────────────────────────
-
-    [Fact]
-    public void Kutucuk_gizlenince_KULLANICI_tercihine_PATCH_atilir()
-    {
-        var e = Ekran();
-        e.Find("#panel-duzen-modu").Click();
-        e.WaitForElement("#panel-gizle-kur").Click();
-
-        e.WaitForAssertion(() => Assert.Contains(istekler,
-            i => i.Metot == "PATCH" && i.Yol.Contains("/tercihler/benim", StringComparison.Ordinal)
-                 && i.Govde.Contains("panel-duzeni", StringComparison.Ordinal)
-                 && i.Govde.Contains("kur", StringComparison.Ordinal)));
-        // Kiracı geneline yazan bir yol YOK (FAVORI_KULLANICI_DISI = 0).
-        Assert.DoesNotContain(istekler,
-            i => i.Metot == "PATCH" && i.Yol.Contains("/tercihler", StringComparison.Ordinal)
-                 && !i.Yol.Contains("/benim", StringComparison.Ordinal));
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#panel-kutucuk-kur")));
-        Assert.NotNull(e.Find("#panel-goster-kur"));
-    }
-
-    [Fact]
-    public void Kutucuk_klavyeyle_ALT_OK_ile_tasinir_erisilebilirlik()
-    {
-        var e = Ekran();
-        e.Find("#panel-kutucuk-gun-ozeti").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs
-        {
-            Key = "ArrowDown",
-            AltKey = true,
-        });
-
-        e.WaitForAssertion(() => Assert.Contains(istekler,
-            i => i.Metot == "PATCH" && i.Govde.Contains("panel-duzeni", StringComparison.Ordinal)));
-    }
-
-    [Fact]
-    public void Duzen_sifirla_tercihi_SILER_geri_donus_yolu_vardir()
-    {
-        var e = Ekran();
-        e.Find("#panel-duzen-modu").Click();
-        e.WaitForElement("#panel-duzen-sifirla").Click();
-
-        e.WaitForAssertion(() => Assert.Contains(istekler,
-            i => i.Metot is "PATCH" or "DELETE"
-                 && i.Yol.Contains("/tercihler/benim", StringComparison.Ordinal)));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Karsilama_son_islemler_HATASI_bos_duruma_cevrilmez kaldırıldı — "Son işlemler" kutucuğu Bugün tuvalinde yok; liste İşlem defterinde (Bugün'ün rakamı oraya bağlanır), UX-S28 Bugün'de S31PanelSadeTestleri.S31_09/S31_17/S31_23'te.
+    // TEMA TEMİZLİĞİ 17.10: Kutucuk_gizlenince_KULLANICI_tercihine_PATCH_atilir kaldırıldı — kutucuk düzeni (gizle/göster) Yıldız'da BİLEREK yok (tuvalde "Kutucukları düzenle" yok).
+    // TEMA TEMİZLİĞİ 17.10: Kutucuk_klavyeyle_ALT_OK_ile_tasinir_erisilebilirlik kaldırıldı — kutucuk sürükleme/taşıma Yıldız'da yok.
+    // TEMA TEMİZLİĞİ 17.10: Duzen_sifirla_tercihi_SILER_geri_donus_yolu_vardir kaldırıldı — kutucuk düzeni ve sıfırlaması Yıldız'da yok.
 
     // ── HAVA — DIŞ KAYNAK, SESSİZ DÜŞER, SAYFAYI BEKLETMEZ ──────────────────
 
     [Fact]
     public void Hava_KAPALIYKEN_kutucuk_cizilmez_ve_HATA_BANDI_atilmaz()
     {
-        // Sunucu 204 döner (Hava:Etkin varsayılanı false).
+        // Sunucu 204 döner (Hava:Etkin varsayılanı false). Bugün'de hava ÇİZİLMEZ (tuvalde yok); Panel
+        // havayı yine KENDİ sunucusundan ister — istemci DIŞ KAYNAĞA HİÇ gitmez (CSP connect-src 'self').
         var e = Ekran();
+        e.BugunBekle();
 
         e.WaitForAssertion(() => Assert.Contains(istekler,
             i => i.Yol.EndsWith("/api/v1/hava", StringComparison.Ordinal)));
         Assert.Empty(e.FindAll("#panel-hava"));
         Assert.DoesNotContain("Hava bilgisi alınamadı", e.Markup, StringComparison.Ordinal);
-        // S1-j: istemci DIŞ KAYNAĞA HİÇ gitmez (CSP connect-src 'self').
         Assert.DoesNotContain(istekler, i => i.Yol.Contains("open-meteo", StringComparison.Ordinal));
         Assert.All(istekler, i => Assert.StartsWith("/api/v1/", i.Yol, StringComparison.Ordinal));
     }
 
-    [Fact]
-    public void Hava_SUNUCUDAN_gelirse_selamda_derece_ve_sehir_gorunur()
-    {
-        // Tuval Panel.dc.html: "İstanbul 21°" — veri sunucudan, uydurma değil.
-        havaGovdesi = """{"derece":21.4,"kod":0,"sehir":"İstanbul","kaynak":"Open-Meteo (CC BY 4.0)"}""";
-        var e = Ekran();
-
-        e.WaitForAssertion(() => Assert.Equal("21°C", e.Find("#panel-hava-derece").TextContent.Trim()));
-        Assert.Equal("İstanbul", e.Find("#panel-hava-sehir").TextContent.Trim());
-        Assert.Equal("Açık", e.Find("#panel-hava-durum").TextContent.Trim());
-        Assert.DoesNotContain(istekler, i => i.Yol.Contains("open-meteo", StringComparison.Ordinal));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Hava_SUNUCUDAN_gelirse_selamda_derece_ve_sehir_gorunur kaldırıldı — selam ve hava Yıldız Bugün'de BİLEREK yok (tuvalde yok).
 
     [Fact]
     public void Hava_sunucu_HATA_verirse_UYDURMA_derece_yazilmaz_bant_atilmaz()
     {
         patlayanYol = "/hava";
         var e = Ekran();
+        e.BugunBekle();
 
         e.WaitForAssertion(() => Assert.Contains(istekler,
             i => i.Yol.EndsWith("/api/v1/hava", StringComparison.Ordinal)));
         Assert.Empty(e.FindAll("#panel-hava"));
         Assert.Empty(e.FindAll("#panel-hava-derece"));
         Assert.DoesNotContain("°C", e.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("rapor ucu cevap vermedi", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);   // hava hatası banda düşmez
     }
 
-    [Fact]
-    public void Hava_sunucu_DERECESIZ_yanit_verirse_0_derece_UYDURULMAZ()
-    {
-        // "{}" gibi derecesiz bir gövde "0°C" olarak çizilseydi yalan olurdu.
-        havaGovdesi = """{"sehir":"İstanbul","kaynak":"Open-Meteo"}""";
-        var e = Ekran();
-
-        e.WaitForAssertion(() => Assert.Contains(istekler,
-            i => i.Yol.EndsWith("/api/v1/hava", StringComparison.Ordinal)));
-        Assert.Empty(e.FindAll("#panel-hava"));
-        Assert.DoesNotContain("°C", e.Markup, StringComparison.Ordinal);
-    }
+    // TEMA TEMİZLİĞİ 17.10: Hava_sunucu_DERECESIZ_yanit_verirse_0_derece_UYDURULMAZ kaldırıldı — Bugün'de hava derecesi hiç çizilmez (tuvalde yok); HavaServisi'nin sessiz düşmesi Hava_istemcisi_* testinde.
 
     [Fact]
     public async Task Hava_istemcisi_sunucu_cevap_vermezse_SESSIZCE_null_doner()

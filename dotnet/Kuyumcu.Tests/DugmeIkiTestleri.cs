@@ -93,7 +93,8 @@ public class DugmeIkiTestleri
         Assert.Contains(Kural(":is(.sekmeler-serit, .musteri-segment)", "border"), b => b.Deger == "1px solid var(--sekme-kenar)");
         Assert.Contains(Kural(".sekmeler-serit > .sekmeler-sekme.secili", "background"), b => b.Deger == "var(--secili-dolgu)");
         Assert.Contains(Kural(".katlanir > .katlanir-h > .katlanir-baslik", "border"), b => b.Deger == "1px solid var(--dugme-kenar)");
-        Assert.Contains(Kural(".gk-sema:not(.secili)", "border-color"), b => b.Deger == "var(--dugme-kenar)");
+        // Tema temizliği (17.10): şema karosu (.gk-sema) kalktı; görünüm kartı seçenekleri aynı kenarı taşır.
+        Assert.Contains(Kural(".gk-secenek:not(.secili)", "border-color"), b => b.Deger == "var(--dugme-kenar)");
         Assert.Contains(Kural("button:is(.pozisyon-ayrinti, .pozisyon-kirilim-oge, .musteri-baglanti)", "border"),
             b => b.Deger == "1px solid var(--dugme-kenar)");
         Assert.Contains(Kural(".karsilama-araclar button.dugme-ikincil", "border"), b => b.Deger == "1px solid var(--dugme-kenar)");
@@ -210,7 +211,8 @@ public class DugmeIkiTestleri
                 if (oran < asgari) kirik.Add($"{tema}: {on} {a} / {zemin} {z} = {oran:0.00} < {asgari}");
             }
         }
-        Assert.True(temaSayisi >= 19, $"tema sayısı {temaSayisi} — 3 temel + 8 şema + 8×2 karanlık bekleniyordu");
+        // Tema temizliği (17.10): 3 temel kurulum + Yıldız'ın 3 kurulumu (8 şema silindi).
+        Assert.True(temaSayisi == 6, $"tema sayısı {temaSayisi} — 3 temel + 3 Yıldız bekleniyordu");
         Assert.True(kirik.Count == 0, "Kontrast altı:\n  " + string.Join("\n  ", kirik));
     }
 

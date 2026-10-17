@@ -54,7 +54,7 @@ public sealed class GirdiBankaEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Banka> YeniHesap()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#banka-yeni");
         e.Find("#banka-yeni").Click();
         e.WaitForElement("#hesap-iban");
@@ -100,7 +100,7 @@ public sealed class GirdiBankaEkranTestleri : BunitContext
     [Fact]
     public void Banka_duzenleme_cekmecesi_de_ortak_Iban_ve_kilit()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-duzenle-b1");
         e.Find("#bh-duzenle-b1").Click();
         e.WaitForElement("#d-iban");

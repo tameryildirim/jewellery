@@ -80,11 +80,13 @@ public sealed class YildizAmblem2Testleri : BunitContext
         return Render<YildizUstMenu>();
     }
 
-    /// <summary>Giriş sayfası; yildiz=true → dükkân görünümü sunucudan "yildiz" okunur (kabukla aynı karar noktası).</summary>
-    private IRenderedComponent<Giris> GirisSayfasi(bool yildiz)
+    /// <summary>
+    /// Giriş sayfası; yukle=true → dükkân görünümü önce sunucudan okunur. Tema temizliği (17.10): tek şema
+    /// Yıldız — okunsa da okunmasa da düzen AYNIDIR (YA2_14 bunu kilitler).
+    /// </summary>
+    private IRenderedComponent<Giris> GirisSayfasi(bool yukle)
     {
-        if (yildiz) Services.GetRequiredService<GorunumServisi>().YukleAsync().GetAwaiter().GetResult();
-        Assert.Equal(yildiz, Kuyumcu.Web.Layout.YildizKabuk.Mi(Services));
+        if (yukle) Services.GetRequiredService<GorunumServisi>().YukleAsync().GetAwaiter().GetResult();
         return Render<Giris>();
     }
 
@@ -427,15 +429,15 @@ public sealed class YildizAmblem2Testleri : BunitContext
         Assert.Single(e.FindAll("h1"));
     }
 
-    // ── YA2-14) Giriş (öteki şemalar): HİÇBİR şey değişmez ─────────
+    // ── YA2-14) Giriş: tek şema (tema temizliği 17.10) — görünüm okunmadan da Yıldız düzeni; eski panel YOK ─────────
     [Fact]
-    public void YA2_14_giris_yildiz_degilse_eski_duzen_aynen()
+    public void YA2_14_giris_gorunum_okunmadan_da_yildiz_duzeni_eski_panel_yok()
     {
         var e = GirisSayfasi(false);
-        Assert.Equal("giris-sayfa giris-iki-panel", e.Find("#giris-sayfa").GetAttribute("class"));
-        Assert.Single(e.FindAll("#giris-marka"));
-        Assert.Single(e.FindAll("#giris-panel"));
-        Assert.Empty(e.FindAll(".amb-parla, .amb-yz, #giris-amblem"));
+        Assert.Equal("giris-sayfa giris-iki-panel giris-yildiz", e.Find("#giris-sayfa").GetAttribute("class"));
+        Assert.Single(e.FindAll("#giris-amblem"));
+        Assert.Empty(e.FindAll("#giris-marka"));
+        Assert.Empty(e.FindAll("#giris-panel"));
     }
 
     // ── YA2-15) Giriş: form 1,6 sn'de belirir (.9 s), alanlar yazılabilir (öznitelik kilidi yok) ─────────

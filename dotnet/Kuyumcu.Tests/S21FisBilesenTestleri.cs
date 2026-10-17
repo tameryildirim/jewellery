@@ -495,8 +495,8 @@ public sealed class S21FisSayfaTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        e.Find("#islem-tur-TAKAS").Click();
+        e.TezgahBekle();   // TEMA TEMİZLİĞİ 17.10: açılış SATIŞ = Yıldız tezgâhı (#islem-cari "Değiştir" katmanında)
+        TemaTemizligiGDYardimcisi.TurSec(e, "TAKAS");   // Yıldız: "Diğer" → tür ızgarası (aynı TurSecDiger yolu)
         e.WaitForAssertion(() => Assert.Equal("6.800", e.Find("#takas-eski-fiyat").GetAttribute("value")));   // BICIM-2: odak dışı kutu gruplu
         SeciciYardim.Sec(e, "islem-cari", "c1");
 

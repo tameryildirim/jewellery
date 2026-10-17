@@ -22,7 +22,7 @@
 
 @* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Vadetakvimi (BİREBİR); özgün ekran (tarih aralığı, gün
    toplamları) yalnız "Tüm ayrıntılar"da (data-yz-ozgun). Öteki 8 şemada AYNEN. *@
-@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizTakvim B="@YildizBaglami" /> }
+<Kuyumcu.Web.Bilesenler.Yildiz.YildizTakvim B="@YildizBaglami" />
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     <SayfaBasi Anahtar="evrak-takvimi" Baslik="@Dil.T.Evrak.TakvimBaslik"

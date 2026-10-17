@@ -98,7 +98,7 @@ public sealed class S36KasalarTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Empty(e.FindAll(".yukleniyor, [aria-busy='true']")));
         return e;
     }
@@ -438,7 +438,7 @@ public sealed class S36KasalarTestleri : BunitContext
 
         foreach (var id in idler)
         {
-            var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+            var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
             e.WaitForElement("#kasa-liste");
             var d = e.Find($"#{id}");
             if (d.HasAttribute("disabled"))
@@ -622,7 +622,7 @@ public sealed class S36BildirimTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", mod, mod));
-        return Render<Kuyumcu.Web.Pages.Bildirimler>();
+        return Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
     }
 
     // ── 1) Kapalı hatırlatma basit yüzden açılır ────────────────────────────
@@ -714,6 +714,10 @@ public sealed class S36BildirimTestleri : BunitContext
     public void S36_27_bos_durum_BIR_cumle_BIR_dugme_ve_dugme_GERCEK_istek_atar()
     {
         var e = Ciz();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız açılışı tuvaldeki gibi "Hepsi"dir (Bildirimler.Yildiz.cs → TUMU); açık bildirimlerin
+        // boş durumu özgün ekranın "Açık" sekmesindedir.
+        e.WaitForElement("#bildirim-sekme-acik").Click();
+        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#bildirim-sekme-acik").GetAttribute("aria-selected")));
         e.WaitForElement("#bildirim-bos");
         var bos = e.Find("#bildirim-bos");
         Assert.Single(bos.QuerySelectorAll(".bos-durum p"));
@@ -732,6 +736,11 @@ public sealed class S36BildirimTestleri : BunitContext
     {
         var e = Ciz();
         e.WaitForElement("#sayfa-basi-bildirimler-aciklama");
+        // TEMA TEMİZLİĞİ 17.10: Yıldız açılışı "Hepsi" (TUMU) — önce "Açık" sekmesine geçilir, açıklaması o an okunur.
+        e.Find("#bildirim-sekme-acik").Click();
+        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#bildirim-sekme-acik").GetAttribute("aria-selected")));
+        e.WaitForAssertion(() => Assert.NotEqual(KasaBildirimSozlugu.Tr.AciklamaTumu,
+            e.Find("#sayfa-basi-bildirimler-aciklama").TextContent.Trim()));
         var acik = e.Find("#sayfa-basi-bildirimler-aciklama").TextContent.Trim();
 
         e.Find("#bildirim-sekme-kapali").Click();

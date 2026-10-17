@@ -36,7 +36,9 @@ public sealed class EMANET1SinirTestleri : BunitContext
                 // Doğrulayıcı 28.09 (Q turu): giriş ucunun sunucu yanıtı yalnız test ayarlarsa değişir.
                 var y when s.girisYaniti is not null && y.EndsWith("/emanet/giris", StringComparison.Ordinal) => s.girisYaniti,
                 var y when y.Contains("/emanet/c1") => s.emanetGovdesi,
-                var y when y.Contains("/cari") => """[{"id":"c1","ad":"Sınır Müşteri"}]""",
+                // TEMA TEMİZLİĞİ 17.10: Yıldız'da özgün gövdeye geçiş listede bir emanet satırıdır → kapı müşterisi c0.
+                var y when y.Contains("/emanet/c0") => TemaTemizligiGEYardimcisi.KapiEmanet,
+                var y when y.Contains("/cari") => "[" + TemaTemizligiGEYardimcisi.KapiCari + """,{"id":"c1","ad":"Sınır Müşteri"}]""",
                 _ => """{"hata":"tanimsiz uc"}""",
             };
             var kod = g.StartsWith("""{"hata""", StringComparison.Ordinal) ? HttpStatusCode.NotFound
@@ -61,8 +63,8 @@ public sealed class EMANET1SinirTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Sec(string govde)
     {
         emanetGovdesi = govde;
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
-        e.WaitForElement("#e-cari");
+        // TEMA TEMİZLİĞİ 17.10: Yıldız yolu — listede satıra bas (özgün gövde), sonra seçiciden sınanan müşteriyi seç.
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc();
         e.WaitForAssertion(() => Assert.DoesNotContain(OnayKilitSozlugu.Tr.EmanetKurYok, e.Markup, StringComparison.Ordinal));
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForElement("#e-ozet-deger");
@@ -857,25 +859,7 @@ public sealed class EMANET1SinirTestleri : BunitContext
         Assert.Equal("1.234.567,0001", hucre);   // MADEN-AYRIMI tur 2: Bicim.Has binlik gruplu
     }
 
-    // ── Doğrulayıcı tur 10 (28.09 21:00): açılış = yalnız zorunlu, sabit literal ──
-    [Fact]
-    public void T1_Acilista_musteri_secilmeden_yalniz_zorunlu_kilit_tek_cumle_Eksik_olan_yok()
-    {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
-        e.WaitForElement("#e-cari");
-        e.WaitForAssertion(() => Assert.DoesNotContain(OnayKilitSozlugu.Tr.EmanetKurYok, e.Markup, StringComparison.Ordinal));
-        Assert.Empty(e.FindAll("#e-ozet"));
-        Assert.Empty(e.FindAll("#e-gecmis"));
-        Assert.Empty(e.FindAll("#e-cari-ara"));
-        Assert.False(e.Find("#e-bilgi").HasAttribute("open"));
-        Assert.True(e.Find("#e-giris-ac").HasAttribute("disabled"));
-        Assert.True(e.Find("#e-cikis-ac").HasAttribute("disabled"));
-        Assert.Equal("Önce müşteri seçin.", e.Find("#e-kilit").TextContent.Trim());
-        Assert.Equal("Emanet al", e.Find("#e-giris-ac").TextContent.Trim());
-        Assert.Equal("Emanet iade et", e.Find("#e-cikis-ac").TextContent.Trim());
-        Assert.DoesNotContain("Eksik olan", e.Markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("0,0000", e.Markup, StringComparison.Ordinal);
-    }
+    // TEMA TEMİZLİĞİ 17.10: T1_Acilista_musteri_secilmeden_yalniz_zorunlu_kilit_tek_cumle_Eksik_olan_yok kaldırıldı — Yıldız'da açılış listedir; özgün gövde yalnız bir satırın müşterisi SEÇİLİ açılır (müşterisiz özgün durum ulaşılamaz). "Önce müşteri seçin" kapısı Yıldız "Emanet al" formunda alan altında: Yildiz5AFormTestleri.Y5A_F01.
 
     // Canlı 5198 verisinin aynısı: G925 30 g (27,75 has gümüş) + K24 5 g altın.
     [Fact]

@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Bunit;
 using Kuyumcu.Core.I18n;
 using Kuyumcu.Web.Layout;
+using Kuyumcu.Web.Pages;
 using Kuyumcu.Web.Servisler;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,14 +75,12 @@ public sealed class S1gMenuTuvalTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
     }
 
-    private IRenderedComponent<KenarCubugu> Ciz(string mod, string rol = "SAHIP", string rota = "/")
+    // TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı; menünün bütününe "Tüm ekranlar" sayfasından ulaşılır.
+    private IRenderedComponent<Ekranlar> TumEkranlar()
     {
-        Services.GetRequiredService<NavigationManager>().NavigateTo(rota);
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
-            new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", rol, "s1", null, mod));
-        var e = Render<KenarCubugu>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
-        return e;
+            new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
+        return Render<Ekranlar>().KareleriBekle();
     }
 
     private static string CssYolu(string ad) =>
@@ -104,18 +103,7 @@ public sealed class S1gMenuTuvalTestleri : BunitContext
         Assert.DoesNotMatch(@"(?m)^\[hidden\]\s*\{\s*display:\s*none\s*;\s*\}", css);
     }
 
-    [Fact]
-    public void Katli_satirlar_hidden_OZNITELIGI_tasir_ve_display_ezen_sinif_kurali_var()
-    {
-        // Genel kuralın NEDEN gerekli olduğunun belgesi: satır sınıfı display
-        // atar (bu kural silinirse genel kural gereksiz görünebilir — değil).
-        var css = File.ReadAllText(CssYolu("app.css"));
-        Assert.Matches(@"\.kenar-satir\s*\{[^}]*display:\s*flex", css);
-
-        var e = Ciz(ArayuzModuServisi.Profesyonel);
-        var katli = e.FindAll(".kenar-satir[data-sira-anahtar]").Where(s => s.HasAttribute("hidden")).ToList();
-        Assert.Equal(MenuTanimi.Ogeler.Count - 5, katli.Count);   // Panel rotası: 5 satır açık
-    }
+    // TEMA TEMİZLİĞİ 17.10: Katli_satirlar_hidden_OZNITELIGI_tasir_ve_display_ezen_sinif_kurali_var kaldırıldı — katlanan kenar satırı (.kenar-satir) ve CSS'i kaldırıldı; genel [hidden] kuralı yukarıdaki testte, Yıldız'da hidden ile katlanan hesap menüsünün kuralı Yildiz2Testleri.Y2_40 ve Y2_13'te.
 
     // ── (3) ADLAR TUVALLE BİREBİR ───────────────────────────────────────────
 
@@ -169,108 +157,28 @@ public sealed class S1gMenuTuvalTestleri : BunitContext
         string[] tuval = ["Günlük iş", "Müşteri ve stok", "Para ve banka", "Belge ve uyum", "Raporlar", "Yönetim"];
         Assert.Equal(tuval, MenuTanimi.GrupSirasi.Select(g => MenuTanimi.GrupEtiketi(g)(Sozlukler.Tr)).ToArray());
 
-        // CSS büyük harfe ÇEVİRMEZ: S1-g bloğu text-transform'u kapatır.
-        var css = File.ReadAllText(CssYolu("app.css"));
-        var blok = css[css.IndexOf("PAKET S1-g — MENÜ VE ÜST BAR", StringComparison.Ordinal)..];
-        Assert.Matches(@"\.kenar-grup-dugme\[aria-expanded=""true""\] \.kenar-grup-ad\s*\{\s*text-transform:\s*none", blok);
+        // TEMA TEMİZLİĞİ 17.10: S1-g bloğunun .kenar-grup-dugme text-transform kuralı kenar çubuğuyla
+        // birlikte kaldırıldı. Yıldız "Tüm ekranlar" bölüm başlığı metni sözlükteki cümle düzenindeki
+        // adla BAŞLAR (DOM'da büyük harfe çevrilmiş kopya yok).
+        var e = TumEkranlar();
+        foreach (var g in MenuTanimi.GrupSirasi)
+            Assert.StartsWith(MenuTanimi.GrupEtiketi(g)(Sozlukler.Tr) + " ",
+                e.Find($"#ekranlar-grup-baslik-{MenuTanimi.GrupSlug(g)}").TextContent.Trim(), StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Kapali_grup_onizlemesi_tuvalin_KISA_adlarini_yazar_tam_adlar_ipucunda()
-    {
-        var e = Ciz(ArayuzModuServisi.Basit);
-        var para = e.Find("#kenar-onizleme-para-banka");
+    // TEMA TEMİZLİĞİ 17.10: Kapali_grup_onizlemesi_tuvalin_KISA_adlarini_yazar_tam_adlar_ipucunda kaldırıldı — kapalı grup önizleme satırı Yıldız'da yok (kısa adlar MenuOgesi.KisaEtiket'te durur, iki dilde dolu oldukları Menu_sozlugu_IKI_DILDE_dolu_ve_EN_adlar_benzersiz'de).
 
-        // Tuval Panel.dc.html: "Kasalar · Vezne · POS · Banka · Çek-senet · Kur · Gider · Hurda…"
-        foreach (var kisa in new[] { "Kasalar", "Vezne", "POS", "Banka", "Çek-senet", "Kur", "Gider", "Hurda" })
-            Assert.Contains(kisa, para.TextContent, StringComparison.Ordinal);
-        Assert.StartsWith("Kasalar · Vezne · POS", para.TextContent.Trim(), StringComparison.Ordinal);
-        // Tam adlar kaybolmaz: ipucunda (title) yazar.
-        Assert.Contains("Kasa kuyruğu", para.GetAttribute("title") ?? "", StringComparison.Ordinal);
-        Assert.Contains("Rapor merkezi · Kâr-zarar · Vade",
-            e.Find("#kenar-onizleme-rapor").TextContent, StringComparison.Ordinal);
-    }
+    // ── (4) YILDIZ VE TUTAMAÇ MENÜDE YOK; FAVORİLER ────────────────────────
 
-    // ── (4) YILDIZ VE TUTAMAÇ MENÜDE YOK; FAVORİLER PRO'DA ─────────────────
-
-    [Theory]
-    [InlineData(ArayuzModuServisi.Basit)]
-    [InlineData(ArayuzModuServisi.Profesyonel)]
-    public void Menude_yildiz_ve_tutamac_SIFIR(string mod)
-    {
-        tercihler = """{"menu-favoriler":"[\"/kur\"]"}""";
-        var e = Ciz(mod);
-
-        Assert.Empty(e.FindAll(".kenar-yildiz"));
-        Assert.Empty(e.FindAll(".kenar-tutamac"));
-        Assert.Empty(e.FindAll("[id^=kenar-favori-]:not([id^=kenar-favori-satir-])"));
-        Assert.DoesNotContain("⠿", e.Find("#kenar-cubugu").TextContent, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void PRO_modda_Favoriler_satiri_favori_varsa_EN_USTTE_basitte_yok()
-    {
-        tercihler = """{"menu-favoriler":"[\"/kur\",\"/faturalar\"]"}""";
-        var pro = Ciz(ArayuzModuServisi.Profesyonel);
-        pro.WaitForAssertion(() => Assert.NotEmpty(pro.FindAll("#kenar-grup-favoriler")));
-
-        var ilk = pro.Find("#kenar-nav").Children.First();
-        Assert.Equal("kenar-grup-favoriler", ilk.Id);
-        Assert.NotNull(pro.Find("#kenar-favori-satir-kur a[href='/kur']"));
-        Assert.NotNull(pro.Find("#kenar-favori-satir-faturalar"));
-
-        var basit = Ciz(ArayuzModuServisi.Basit);
-        Assert.Empty(basit.FindAll("#kenar-grup-favoriler"));
-    }
-
-    [Fact]
-    public void PRO_modda_favori_yoksa_Favoriler_satiri_CIZILMEZ()
-    {
-        var e = Ciz(ArayuzModuServisi.Profesyonel);
-        Assert.Empty(e.FindAll("#kenar-grup-favoriler"));
-    }
-
-    [Fact]
-    public void Sira_sifirla_kayitli_sira_YOKKEN_cizilmez()
-    {
-        var bos = Ciz(ArayuzModuServisi.Basit);
-        Assert.Empty(bos.FindAll("#kenar-sira-sifirla"));
-    }
-
-    [Fact]
-    public void Sira_sifirla_YALNIZ_kayitli_sira_varken_cikar_ipucu_tasir_ve_DELETE_atar()
-    {
-        // ⚠ Tercih servisi kullanıcı başına bir kez okur: tercih İLK çizimden önce kurulur.
-        tercihler = """{"menu-sirasi":"{\"rapor\":[\"/raporlar/kasa\",\"/raporlar\"]}"}""";
-        var e = Ciz(ArayuzModuServisi.Profesyonel);
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#kenar-sira-sifirla")));
-        Assert.False(string.IsNullOrWhiteSpace(e.Find("#kenar-sira-sifirla").GetAttribute("title")));
-
-        e.Find("#kenar-sira-sifirla").Click();
-        e.WaitForAssertion(() => Assert.Contains(istekler,
-            i => i.Metot == "DELETE" && i.Yol.Contains("menu-sirasi", StringComparison.Ordinal)));
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#kenar-sira-sifirla")));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Menude_yildiz_ve_tutamac_SIFIR kaldırıldı — kenar menüsü yok; Yıldız üst menüsü yalnız beş bağlantıdır (Yildiz2Testleri.Y2_10: tam beş a.yildiz-menu-oge), "Tüm ekranlar" sayfasında düğme yok (S1dEkranlarTestleri.Her_dugme_ya_istek_atar_ya_da_gorunur_is_yapar).
+    // TEMA TEMİZLİĞİ 17.10: PRO_modda_Favoriler_satiri_favori_varsa_EN_USTTE_basitte_yok kaldırıldı — Favoriler satırı Yıldız kabuğunda yok (tuval Bugun4/Tum4).
+    // TEMA TEMİZLİĞİ 17.10: PRO_modda_favori_yoksa_Favoriler_satiri_CIZILMEZ kaldırıldı — Favoriler satırı yok.
+    // TEMA TEMİZLİĞİ 17.10: Sira_sifirla_kayitli_sira_YOKKEN_cizilmez kaldırıldı — menü sırası ve #kenar-sira-sifirla Yıldız'da yok.
+    // TEMA TEMİZLİĞİ 17.10: Sira_sifirla_YALNIZ_kayitli_sira_varken_cikar_ipucu_tasir_ve_DELETE_atar kaldırıldı — #kenar-sira-sifirla yok.
 
     // ── (5) KULLANICI KARTI ─────────────────────────────────────────────────
 
-    [Fact]
-    public void Kullanici_karti_bas_harf_ad_rol_ve_PRO_da_SUBE_adi()
-    {
-        var pro = Ciz(ArayuzModuServisi.Profesyonel);
-        Assert.Equal("RA", pro.Find(".kenar-avatar").TextContent.Trim());
-        // T-K2: tuval "Ramazan A." — tam ad title'da (bilgi kaybolmaz).
-        Assert.Equal("Ramazan A.", pro.Find(".kullanici-ad").TextContent.Trim());
-        Assert.Equal("Ramazan Akkocan", pro.Find(".kullanici-ad").GetAttribute("title"));
-        Assert.Equal(Sozlukler.Tr.Kullanici.RolSahip, pro.Find("#kenar-kullanici-rol").TextContent.Trim());
-        pro.WaitForAssertion(() =>
-            Assert.Equal("· Merkez şube", pro.Find("#kenar-kullanici-rol-satir #ust-sube-sabit").TextContent.Trim()));
-
-        // Basit yüz (tuval Panel.dc.html satır 47): yalnız rol.
-        var basit = Ciz(ArayuzModuServisi.Basit);
-        Assert.Empty(basit.FindAll("#ust-sube-sabit"));
-        Assert.Equal(Sozlukler.Tr.Kullanici.RolSahip, basit.Find("#kenar-kullanici-rol").TextContent.Trim());
-    }
+    // TEMA TEMİZLİĞİ 17.10: Kullanici_karti_bas_harf_ad_rol_ve_PRO_da_SUBE_adi kaldırıldı — kenar kullanıcı kartı yok; Yıldız kullanıcı düğmesi "AD S." + baş harf (YildizAmblem2Testleri.YA2_18), şube seçici hesap menüsünde (YildizUstMenu <SubeSecici/>).
 
     // ── KAYNAK KİLİTLERİ ────────────────────────────────────────────────────
 
@@ -279,7 +187,9 @@ public sealed class S1gMenuTuvalTestleri : BunitContext
     {
         var kok = Path.Combine(KilavuzUretimTestleri.DotnetKoku(), "Kuyumcu.Web", "Layout");
         var ust = File.ReadAllText(Path.Combine(kok, "UstBar.razor"));
-        var kenar = File.ReadAllText(Path.Combine(kok, "KenarCubugu.razor"));
+        // TEMA TEMİZLİĞİ 17.10: menü kaynağı artık üst menüdür (KenarCubugu.razor boşaltıldı, silinecek).
+        var kenar = File.ReadAllText(Path.Combine(KilavuzUretimTestleri.DotnetKoku(), "Kuyumcu.Web", "Bilesenler", "Kabuk", "YildizUstMenu.razor"));
+        Assert.Contains("yildiz-menu-oge", kenar, StringComparison.Ordinal);   // doğru dosya okundu (boş metinde yanlış yeşil yok)
 
         Assert.DoesNotContain(">⟳<", ust, StringComparison.Ordinal);
         Assert.DoesNotContain(">⠿<", kenar, StringComparison.Ordinal);

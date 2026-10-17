@@ -721,9 +721,9 @@ public sealed class SATIS3SinirTestleriTur7 : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.Find("#islem-tur-TAKAS").Click();
+        // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — Takas'a tezgâhın "Diğer" listesinden geçilir.
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
+        e.YildizTurGec("TAKAS");
         e.WaitForElement("#takas-eski-gram");
         return e;
     }
@@ -1226,13 +1226,12 @@ public sealed class SATIS3TevsikEsitlikSinirTestleri : BunitContext
         tevsikJson = "{\"had\":" + had + ",\"kuralEtkin\":true,\"kumulatifHesaplandi\":true,\"bugunkuNakitToplam\":0,\"kalanNakitHakki\":" + had + ",\"islemTutariKuraliDevrede\":false}";
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")), Bekle);
+        // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — müşteri "Değiştir"de, ödeme satırda, Kaydet #yildiz-tezgah-kaydet.
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForAssertion(() => Assert.Single(e.FindAll("#islem-kalem-tablo tbody tr, #islem-kalem-pro tr.fis-pro-satir")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(1, e.YildizKalemSayisi()), Bekle);
         return e;
     }
 
@@ -1240,26 +1239,28 @@ public sealed class SATIS3TevsikEsitlikSinirTestleri : BunitContext
     public void Kontrol_had_9999_99_gercek_musteri_NAKIT_fis_10000_KILITLI()
     {
         var e = Fis("9999.99");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        Satis4Yardim.NakitElleSec(e);   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
-        e.WaitForAssertion(() => Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled")), Bekle);
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("NAKIT");   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
+        e.WaitForAssertion(() => Assert.True(e.GbYildizKaydet().HasAttribute("disabled")), Bekle);
     }
 
     [Fact]
     public void Esitlik_had_10000_gercek_musteri_NAKIT_fis_TAM_10000_KILITLENMEZ_asan_degil()
     {
         var e = Fis("10000");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"),
-            e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
+        e.GbYildizMusteriSec("c1");
+        Assert.Contains("Nakit", e.Find("#yildiz-odeme-0").TextContent);   // tam hadde ödeme nakitte kalır (aşan değil)
+        e.WaitForAssertion(() => Assert.False(e.GbYildizKaydet().HasAttribute("disabled"),
+            e.GbYildizKaydet().GetAttribute("title")), Bekle);
     }
 
     [Fact]
     public void Esitlik_had_10000_Pesin_Musteri_fis_TAM_10000_KILITLENMEZ_sunucu_olcut_buyuktur_Had()
     {
         var e = Fis("10000");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"),
-            e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
+        Assert.Contains("Nakit", e.Find("#yildiz-odeme-0").TextContent);
+        e.WaitForAssertion(() => Assert.False(e.GbYildizKaydet().HasAttribute("disabled"),
+            e.GbYildizKaydet().GetAttribute("title")), Bekle);
     }
 }
 
@@ -1387,51 +1388,70 @@ public sealed class SATIS3SinirTestleriTur13 : BunitContext
         "{\"had\":" + had + ",\"kuralEtkin\":true,\"kumulatifHesaplandi\":" + (kumulatif ? "true" : "false")
         + ",\"bugunkuNakitToplam\":0,\"kalanNakitHakki\":" + kalan + ",\"islemTutariKuraliDevrede\":" + (kural ? "true" : "false") + "}";
 
-    /// <summary>PRO satış, gerçek müşteri (c1 — kümülatif ölçülür), 10.000 ₺'lik tek kalem.</summary>
+    // TEMA TEMİZLİĞİ 17.10: PRO yan sütunun "Yasal kapılar" nakit satırı (#islem-pro-nakit — Uygun/Aşıldı/Bilinmiyor) SATIŞ'ta
+    // artık çizilmez (satış hep Yıldız tezgâhı). Aynı nakit durumu Yıldız'da Fark bloğunun not satırında (#yildiz-tezgah-not)
+    // söylenir: "Yasal kurallar uygun · nakit <had> sınırının altında" (Islemler.YildizNot). Sınırlar o satırda sınanır:
+    // "Uygun" = satır uygun der; "Aşıldı"/"Bilinmiyor" = satır uygun DEMEZ (uydurma yok).
+
+    /// <summary>PRO satış, gerçek müşteri (c1 — kümülatif ölçülür), 10.000 ₺'lik tek kalem (Yıldız tezgâhı).</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> ProFis(string json)
     {
         tevsikJson = json;
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")), Bekle);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
+        e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForAssertion(() => Assert.Single(e.FindAll("#islem-kalem-pro tr.fis-pro-satir, #islem-kalem-tablo tbody tr")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(1, e.YildizKalemSayisi()), Bekle);
         return e;
     }
 
-    private static string Nakit(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.Find("#islem-pro-nakit").TextContent.Trim();
+    private static string Uygun => Kuyumcu.Core.I18n.YildizTezgahSozlugu.YasalUygun("tr");
+
+    /// <summary>Not satırı (yoksa boş) — önce Yıldız Fark bloğunun çizildiği doğrulanır (boş DOM'da yanlış yeşil yok).</summary>
+    private static string Not(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        Assert.Single(e.FindAll("#yildiz-tezgah-fark"));
+        return e.FindAll("#yildiz-tezgah-not").FirstOrDefault()?.TextContent.Trim() ?? "";
+    }
+
+    private static void UygunDer(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
+        e.WaitForAssertion(() => Assert.StartsWith(Uygun, Not(e)), Bekle);
+
+    private static void UygunDemez(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        Thread.Sleep(300);
+        e.WaitForAssertion(() => Assert.DoesNotContain(Uygun, Not(e)), Bekle);
+    }
 
     [Fact]
     public void Tur13_esitlik_fis_10000_kalan_10000_UYGUN_asan_degil()
     {
         var e = ProFis(Json("30000", "10000", true, false));
-        e.WaitForAssertion(() => Assert.Equal("Uygun", Nakit(e)), Bekle);
+        UygunDer(e);
     }
 
     [Fact]
     public void Tur13_bir_kurus_asim_fis_10000_kalan_9999_99_ASILDI()
     {
         var e = ProFis(Json("30000", "9999.99", true, false));
-        e.WaitForAssertion(() => Assert.Equal("Aşıldı", Nakit(e)), Bekle);
+        UygunDemez(e);
     }
 
     [Fact]
     public void Tur13_cok_buyuk_kalan_999999999_99_UYGUN()
     {
         var e = ProFis(Json("999999999.99", "999999999.99", true, false));
-        e.WaitForAssertion(() => Assert.Equal("Uygun", Nakit(e)), Bekle);
+        UygunDer(e);
     }
 
     [Fact]
     public void Tur13_kumulatif_hesaplanmadiysa_kalan_0_ASILDI_DEMEZ()
     {
         var e = ProFis(Json("30000", "0", false, false));
-        e.WaitForAssertion(() => Assert.Equal("Uygun", Nakit(e)), Bekle);
+        UygunDer(e);
     }
 
     [Fact]
@@ -1439,23 +1459,25 @@ public sealed class SATIS3SinirTestleriTur13 : BunitContext
     {
         // Günün hakkı tükenmiş (kalan 0) ama fiş boş: 0 > 0 değil → "Aşıldı" değil.
         var e = ProFis(Json("30000", "0", true, true));
-        e.WaitForAssertion(() => Assert.Equal("Aşıldı", Nakit(e)), Bekle);
+        UygunDemez(e);   // sunucu nakit kuralını devrede sayıyor ("Aşıldı")
         tevsikJson = Json("30000", "0", true, false);
-        e.Find("#islem-tur-HURDA_ALIS").Click();
-        e.Find("#islem-tur-SATIS").Click();
-        e.WaitForAssertion(() => Assert.Equal("Uygun", Nakit(e)), Bekle);
+        e.Find("#yildiz-tur-HURDA_ALIS").Click();
+        e.WaitForElement("#yildiz-tur-SATIS", Bekle).Click();
+        e.WaitForElement("#yildiz-tezgah", Bekle);
+        UygunDer(e);
     }
 
     [Fact]
     public void Tur13_sekme_donusu_SUNUCU_HATASINDA_onceki_ASILDI_tasinmaz_BILINMIYOR()
     {
         var e = ProFis(Json("5000", "5000", true, true));
-        Satis4Yardim.NakitElleSec(e);   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
-        e.WaitForAssertion(() => Assert.Equal("Aşıldı", Nakit(e)), Bekle);
+        e.YildizOdemeSec("NAKIT");   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
+        UygunDemez(e);
         tevsikHata = true;
-        e.Find("#islem-tur-HURDA_ALIS").Click();
-        e.Find("#islem-tur-SATIS").Click();
-        e.WaitForAssertion(() => Assert.Equal("Bilinmiyor", Nakit(e)), Bekle);
+        e.Find("#yildiz-tur-HURDA_ALIS").Click();
+        e.WaitForElement("#yildiz-tur-SATIS", Bekle).Click();
+        e.WaitForElement("#yildiz-tezgah", Bekle);
+        UygunDemez(e);
     }
 
     [Theory]
@@ -1713,10 +1735,9 @@ public sealed class SATIS3SinirTestleriT15 : BunitContext
         tevsikJson = "{\"had\":" + had + ",\"kuralEtkin\":true,\"kumulatifHesaplandi\":true,\"bugunkuNakitToplam\":0,\"kalanNakitHakki\":" + had + ",\"islemTutariKuraliDevrede\":false}";
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")), Bekle);
-        e.Find("#islem-tur-TAKAS").Click();
+        // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — Takas'a tezgâhın "Diğer" listesinden geçilir (tür yüzü eski form).
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
+        e.YildizTurGec("TAKAS");
         e.WaitForElement("#takas-eski-gram");
         e.Find("#islem-barkod").Focus();
         foreach (var q in new[] { "b", "bi", "bil" }) e.Find("#islem-barkod").Input(q);
@@ -2042,10 +2063,9 @@ public sealed class SATIS3SinirTestleriHasimT15 : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")), Bekle);
-        e.Find("#islem-tur-TAKAS").Click();
+        // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — Takas'a tezgâhın "Diğer" listesinden geçilir (tür yüzü eski form).
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
+        e.YildizTurGec("TAKAS");
         e.WaitForElement("#takas-eski-gram");
         e.Find("#islem-barkod").Focus();
         foreach (var q in new[] { "b", "bi", "bil" }) e.Find("#islem-barkod").Input(q);
@@ -2319,14 +2339,14 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
     private static readonly TimeSpan Bekle = TimeSpan.FromSeconds(5);
     private List<string> Sorgular() { lock (istekler) return istekler.Where(i => i.Yol.Contains("/masak/gereksinim")).Select(i => i.Yol).ToList(); }
 
+    // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı. MASAK kimlik formu fişin altına AÇILMAZ — eşik/kümülatif tutunca
+    // Fark bloğunda "+ Kimlik bilgisi" (#yildiz-tezgah-kimlik) çıkar, form (aynı MasakParcasi, .kart--masak) onun açtığı
+    // çekmecededir (#cekmece-yildiz-kimlik). "Form açılır" = bu giriş görünür; kilit = #yildiz-tezgah-kaydet (title).
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ekran()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
-        return e;
+        return Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
     }
 
     private static void Kalem(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, string urunId, string fiyat, int beklenen)
@@ -2336,7 +2356,21 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
         if (urunId == "u1") e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-birimfiyat").Input(fiyat);
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForAssertion(() => Assert.Equal(beklenen, e.FindAll("#islem-kalem-tablo tbody tr, #islem-kalem-pro tr.fis-pro-satir").Count), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(beklenen, e.YildizKalemSayisi()), Bekle);
+    }
+
+    /// <summary>Kimlik formu açıldı mı: Yıldız'da "+ Kimlik bilgisi" girişi (form onun çekmecesinde).</summary>
+    private static bool FormAcik(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        Assert.Single(e.FindAll("#yildiz-tezgah-fark"));   // tezgâh çizildi — olumsuz denetim boş DOM'da yeşil vermez
+        return e.FindAll("#yildiz-tezgah-kimlik").Count > 0;
+    }
+
+    /// <summary>Kimlik çekmecesini açar (formun kendisi: .kart--masak / #islem-masak-hata).</summary>
+    private static void CekmeceAc(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        e.Find("#yildiz-tezgah-kimlik").Click();
+        e.WaitForElement("#cekmece-yildiz-kimlik", Bekle);
     }
 
     [Fact]
@@ -2344,26 +2378,29 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
     {
         gereksinimOzel = v => v.Contains("tutar=200000&cariId=c1") ? Kimlik : null;
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("KART");
         Kalem(e, "u1", "100.000", 1);
         Kalem(e, "u2", "100.000", 2);
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
+        e.WaitForAssertion(() => Assert.True(FormAcik(e)), Bekle);
+        CekmeceAc(e);
+        Assert.NotEmpty(e.FindAll("#cekmece-yildiz-kimlik .kart--masak"));
         Satis4Yardim.MasakBelgeNoSil(e);   // SATIS-4 (b): kimlik müşteriden dolar; kilit sınaması için belge no silinir (yeniden dolmaz)
         Assert.Contains(Sorgular(), s => s.EndsWith("/masak/gereksinim?tutar=200000&cariId=c1"));
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
+        Assert.True(e.GbYildizKaydet().HasAttribute("disabled"));
     }
 
     [Fact]
     public void T19d_bir_KURUS_alti_199999_99_sorgu_INVARIANT_nokta_form_ACILMAZ()
     {
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("KART");
         Kalem(e, "u1", "100.000", 1);
         Kalem(e, "u2", "99.999,99", 2);
         e.WaitForAssertion(() => Assert.Contains(Sorgular(), s => s.EndsWith("/masak/gereksinim?tutar=199999.99&cariId=c1")), Bekle);
         Assert.DoesNotContain(Sorgular(), s => s.Contains("199999,99"));
+        Assert.False(FormAcik(e));
         Assert.Empty(e.FindAll(".kart--masak"));
     }
 
@@ -2372,11 +2409,13 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
     {
         gereksinimOzel = v => v.Contains("tutar=999999999.99") ? Kimlik : null;
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("KART");
         Kalem(e, "u1", "999.999.999,99", 1);
         e.WaitForAssertion(() => Assert.Contains(Sorgular(), s => s.EndsWith("/masak/gereksinim?tutar=999999999.99&cariId=c1")), Bekle);
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
+        e.WaitForAssertion(() => Assert.True(FormAcik(e)), Bekle);
+        CekmeceAc(e);
+        Assert.NotEmpty(e.FindAll("#cekmece-yildiz-kimlik .kart--masak"));
     }
 
     [Theory]
@@ -2387,8 +2426,8 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
     public void T19d_sifir_eksi_belirsiz_bos_fiyatta_MASAK_sorusu_GITMEZ_POST_yok(string fiyat)
     {
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("KART");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-birimfiyat").Input(fiyat);
@@ -2404,14 +2443,14 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
         gereksinimHata = true;
         gereksinimOzel = v => v.Contains("tutar=250000") ? Kimlik : null;   // düzelince sunucu kimlik ister (eşik üstü)
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("KART");
         Kalem(e, "u1", "250.000", 1);   // eşik (200.000) üstü → form açılmalı, cevap gelmedi → fail-closed
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
+        e.WaitForAssertion(() => Assert.True(FormAcik(e)), Bekle);
         Thread.Sleep(1500);
         var n = Sorgular().Count(s => s.Contains("tutar=250000"));
         Assert.True(n <= 3, $"gereksinim ucu düşünce {n} istek art arda atıldı (hata sonrası yeniden deneme döngüsü)");
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));   // kimlik girilmeden Kaydet KİLİTLİ (fail-closed)
+        Assert.True(e.GbYildizKaydet().HasAttribute("disabled"));   // kimlik girilmeden Kaydet KİLİTLİ (fail-closed)
     }
 
     [Fact]
@@ -2419,11 +2458,13 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
     {
         gereksinimHata = true;
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("KART");
         Kalem(e, "u1", "250.000", 1);
+        e.WaitForAssertion(() => Assert.True(FormAcik(e)), Bekle);
+        CekmeceAc(e);
         e.WaitForAssertion(() => Assert.Contains(Kuyumcu.Core.I18n.Satis3Sozlugu.Al("tr").MasakGereksinimHata, e.Find("#islem-masak-hata").TextContent), Bekle);
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
+        Assert.True(e.GbYildizKaydet().HasAttribute("disabled"));
         Thread.Sleep(300);
         var once = Sorgular().Count(s => s.Contains("tutar=250000"));
         e.Find("#islem-masak-tekrar").Click();
@@ -2434,7 +2475,8 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
     }
 
     /// <summary>t21 (hasım doğrulayıcı ORTA): MASAK kuralı alınamadıysa Kaydet sebebi GERÇEK engeli söyler ("kimlik bilgilerini
-    /// girin" değil — doldurulacak alan yok) ve BASİT üst bandı "gereken alanlar açıldı" demez. PRO + BASİT.</summary>
+    /// girin" değil — doldurulacak alan yok) ve BASİT üst bandı "gereken alanlar açıldı" demez. PRO + BASİT.
+    /// TEMA TEMİZLİĞİ 17.10: sebep Yıldız'da Kaydet'in title'ı ve Fark bloğunun not satırı (özgün #islem-kaydet-kilit SATIŞ'ta yok).</summary>
     [Theory]
     [InlineData(ArayuzModuServisi.Profesyonel)]
     [InlineData(ArayuzModuServisi.Basit)]
@@ -2443,18 +2485,21 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
         gereksinimHata = true;
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-kaydet");
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        if (mod == ArayuzModuServisi.Profesyonel) SeciciYardim.Sec(e, "islem-odeme", "KART");   // BASİT: tek ödeme Nakit (tevsik haddi burada çok yüksek)
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
+        e.GbYildizMusteriSec("c1");
+        if (mod == ArayuzModuServisi.Profesyonel) e.YildizOdemeSec("KART");   // BASİT: tek ödeme Nakit (tevsik haddi burada çok yüksek)
         Kalem(e, "u1", "250.000", 1);
         var s3 = Kuyumcu.Core.I18n.Satis3Sozlugu.Al("tr");
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#islem-masak-hata")), Bekle);
-        e.WaitForAssertion(() => Assert.Equal(s3.MasakGereksinimHata, e.Find("#islem-kaydet-kilit").TextContent.Trim()), Bekle);
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
-        Assert.Empty(e.FindAll("#islem-yasal-kapi"));   // "Bu işlem yasal bir kapıya takıldı; gereken alanlar açıldı." YOK
-        Assert.DoesNotContain(Services.GetRequiredService<DilServisi>().T.Islem.MasakKimlikEksik, e.Markup);
+        e.WaitForAssertion(() => Assert.True(FormAcik(e)), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(s3.MasakGereksinimHata, e.GbYildizKaydet().GetAttribute("title")), Bekle);
+        Assert.Equal(s3.MasakGereksinimHata, e.Find("#yildiz-tezgah-not").TextContent.Trim());
+        Assert.True(e.GbYildizKaydet().HasAttribute("disabled"));
+        var dil = Services.GetRequiredService<DilServisi>().T;
+        Assert.Empty(e.FindAll("#islem-yasal-kapi"));
+        Assert.DoesNotContain(dil.Arayuz.YasalKapiAcildi, e.Find("#yildiz-tezgah-fark").TextContent);   // "… gereken alanlar açıldı." YOK
+        CekmeceAc(e);
+        Assert.NotEmpty(e.FindAll("#islem-masak-hata"));
+        Assert.DoesNotContain(dil.Islem.MasakKimlikEksik, e.Markup);
     }
 
     [Fact]
@@ -2462,13 +2507,14 @@ public sealed class SATIS3SinirTestleriT19 : BunitContext
     {
         gereksinimOzel = v => v.Contains("tutar=150000&cariId=c1") ? Kimlik : null;
         var e = Ekran();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-odeme", "KART");
+        e.GbYildizMusteriSec("c1");
+        e.YildizOdemeSec("KART");
         Kalem(e, "u1", "150.000", 1);
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
-        SeciciYardim.Sec(e, "islem-cari", "pm1");
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll(".kart--masak")), Bekle);
-        Assert.NotEqual(Kuyumcu.Core.I18n.Sozlukler.Tr.Islem.MasakKimlikEksik, e.Find("#islem-kaydet").GetAttribute("title"));
+        e.WaitForAssertion(() => Assert.True(FormAcik(e)), Bekle);
+        e.GbYildizMusteriSec("pm1");
+        e.WaitForAssertion(() => Assert.False(FormAcik(e)), Bekle);
+        Assert.Empty(e.FindAll(".kart--masak"));
+        Assert.NotEqual(Kuyumcu.Core.I18n.Sozlukler.Tr.Islem.MasakKimlikEksik, e.GbYildizKaydet().GetAttribute("title"));
     }
 }
 
@@ -2705,22 +2751,31 @@ public sealed class SATIS3SinirTestleriT21Hasim : BunitContext
     private static readonly TimeSpan Bekle = TimeSpan.FromSeconds(5);
     private static Kuyumcu.Core.I18n.Satis3Metinleri S3 => Kuyumcu.Core.I18n.Satis3Sozlugu.Al("tr");
     private List<string> Govdeler() { lock (istekler) return [.. istekler.Where(i => i.Yol.EndsWith("/islemler/satis-fisi")).Select(i => i.Govde)]; }
-    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.Find("#islem-kaydet");
+    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.GbYildizKaydet();
 
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı. Karma ödeme tezgâhın "+ Başka ödeme"sidir (sayfanın OdemeyiBol'u:
+    /// tek ödeme ilk satır olur + ikinci boş satır). İlk satır Döviz'e çevrilir; tek satır isteniyorsa ikinci satır "Çıkar"la
+    /// düşer (Döviz satırı tek ödemeye İNDİRİLEMEZ — karma kalır). Sonuç eskisiyle aynı: [Döviz] ya da [Döviz, TL otomatik kalan].
+    /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> DovizliAc(bool ikinciSatir)
     {
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
+        e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-kalem-ekle").Click();
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-arac");
+        e.WaitForAssertion(() => Assert.Equal(1, e.YildizKalemSayisi()), Bekle);
+        e.Find("#yildiz-tezgah-baska-odeme").Click();
+        e.WaitForElement("#islem-bacak-1-arac", Bekle);
         SeciciYardim.Sec(e, "islem-bacak-0-arac", "DOVIZ");
-        if (ikinciSatir) { e.Find("#islem-bacak-ekle").Click(); e.WaitForElement("#islem-bacak-1-arac"); }
+        if (!ikinciSatir)
+        {
+            e.Find("#islem-bacak-sil-1").Click();
+            e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-bacak-1-arac")), Bekle);
+        }
+        e.WaitForElement("#islem-bacak-0-doviz", Bekle);
         return e;
     }
 
@@ -2757,7 +2812,8 @@ public sealed class SATIS3SinirTestleriT21Hasim : BunitContext
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#islem-bacak-0-kur-yok")), Bekle);
         Assert.Equal("0.00", SeciciYardim.SeciliDeger(e, "islem-bacak-0-tutar"));
         Assert.True(Kaydet(e).HasAttribute("disabled"));
-        Assert.Equal(S3.DovizKuruYok, e.Find("#islem-kaydet-kilit").TextContent.Trim());
+        Assert.Equal(S3.DovizKuruYok, Kaydet(e).GetAttribute("title"));                       // Yıldız: kilit sebebi Kaydet'in yanında
+        Assert.Equal(S3.DovizKuruYok, e.Find("#yildiz-tezgah-not").TextContent.Trim());     // ve Fark bloğunun not satırında
         Kaydet(e).Click();
         Assert.Empty(Govdeler());
     }
@@ -2877,22 +2933,31 @@ public sealed class SATIS3SinirTestleriT21HasimTur2 : BunitContext
     private const string KurVar = """{"id":"kur-1","altinHasFiyati":6800,"usdTry":40,"eurTry":44,"ayarFiyatlari":[]}""";
     private static Kuyumcu.Core.I18n.Satis3Metinleri S3 => Kuyumcu.Core.I18n.Satis3Sozlugu.Al("tr");
     private List<string> Govdeler() { lock (istekler) return [.. istekler.Where(i => i.Yol.EndsWith("/islemler/satis-fisi")).Select(i => i.Govde)]; }
-    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.Find("#islem-kaydet");
+    private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => e.GbYildizKaydet();
 
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı. Karma ödeme tezgâhın "+ Başka ödeme"sidir (sayfanın OdemeyiBol'u:
+    /// tek ödeme ilk satır olur + ikinci boş satır). İlk satır Döviz'e çevrilir; tek satır isteniyorsa ikinci satır "Çıkar"la
+    /// düşer (Döviz satırı tek ödemeye İNDİRİLEMEZ — karma kalır). Sonuç eskisiyle aynı: [Döviz] ya da [Döviz, TL otomatik kalan].
+    /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ac(bool ikinciSatir)
     {
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
+        e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), Bekle);
         e.Find("#islem-kalem-ekle").Click();
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-arac");
+        e.WaitForAssertion(() => Assert.Equal(1, e.YildizKalemSayisi()), Bekle);
+        e.Find("#yildiz-tezgah-baska-odeme").Click();
+        e.WaitForElement("#islem-bacak-1-arac", Bekle);
         SeciciYardim.Sec(e, "islem-bacak-0-arac", "DOVIZ");
-        if (ikinciSatir) { e.Find("#islem-bacak-ekle").Click(); e.WaitForElement("#islem-bacak-1-arac"); }
+        if (!ikinciSatir)
+        {
+            e.Find("#islem-bacak-sil-1").Click();
+            e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-bacak-1-arac")), Bekle);
+        }
+        e.WaitForElement("#islem-bacak-0-doviz", Bekle);
         return e;
     }
 
@@ -2952,7 +3017,8 @@ public sealed class SATIS3SinirTestleriT21HasimTur2 : BunitContext
         SeciciYardim.Sec(e, "islem-bacak-0-birim", "GBP");
         e.WaitForAssertion(() => Assert.Equal("0.00", SeciciYardim.SeciliDeger(e, "islem-bacak-0-tutar")), Bekle);
         e.WaitForAssertion(() => Assert.True(Kaydet(e).HasAttribute("disabled")), Bekle);
-        Assert.Equal(S3.DovizKuruYok, e.Find("#islem-kaydet-kilit").TextContent.Trim());
+        Assert.Equal(S3.DovizKuruYok, Kaydet(e).GetAttribute("title"));                       // Yıldız: kilit sebebi Kaydet'in yanında
+        Assert.Equal(S3.DovizKuruYok, e.Find("#yildiz-tezgah-not").TextContent.Trim());     // ve Fark bloğunun not satırında
         Kaydet(e).Click();
         Assert.Empty(Govdeler());
     }
@@ -3028,11 +3094,9 @@ public sealed class SATIS3SinirTestleriT22Hasim : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
+        // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — Kapora tezgâhın "Diğer" listesinden açılır.
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#islem-kaydet")));
-        e.Find("#islem-diger-avans").Click();
-        e.WaitForElement("#islem-diger-panel");
+        e.YildizDigerAc("avans");
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-kur-yok")));
         SeciciYardim.Sec(e, "avans-cari", "c1");
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#avans-acik")));
@@ -3171,11 +3235,9 @@ public sealed class SATIS3SinirTestleriT23Hasim : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
+        // TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — "Diğer" işlemler tezgâhın "Diğer" listesinden açılır.
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#islem-kaydet")));
-        e.Find($"#islem-diger-{tur.ToLowerInvariant()}").Click();
-        e.WaitForElement("#islem-diger-panel");
+        e.YildizDigerAc(tur.ToLowerInvariant());
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-kur-yok")));
         return e;
     }

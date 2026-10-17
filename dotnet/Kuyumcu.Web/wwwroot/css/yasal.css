@@ -131,12 +131,8 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-ad > .yz-tezgah-kasa {
   .cekmece .zo-masak-dikey .kart--masak .form-grid-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .cekmece .zo-masak-dikey .kart--masak .form-grid-3 > :nth-child(3) { grid-column: 1 / -1; }
 }
-/* (5) Çekmece içinde kimlik kartı ince kenar boşluklu (çekmece zaten bir kap — kart içinde kart dolgusu ağır):
-   başlık ve gövde dolgusu küçülür; uyarı rengi/kenarı AYNEN. Yıldız'da kart zaten kartsız (tuval) — dokunulmaz. */
-html:root:not([data-sema="yildiz"]) .cekmece .zo-masak-dikey > .kart--masak > .kart-baslik { padding: .625rem .75rem .25rem; }
-html:root:not([data-sema="yildiz"]) .cekmece .zo-masak-dikey > .kart--masak > .kart-govde { padding: .5rem .75rem .75rem; }
-/* (6) Platin çekmecede kimlik kartı başlığı gövde yazı boyunda (tek satır) — eşik cümlesi aynı, yalnız ölçek. */
-html:root:not([data-sema="yildiz"]) .cekmece .zo-masak-dikey > .kart--masak > .kart-baslik > h3 { font-size: 1rem; line-height: 1.3; }
+/* (5)(6) Tema temizliği (17.10): eski şemalara özgü (:not([data-sema="yildiz"])) çekmece kimlik kartı
+   dolgu/ölçek kuralları kaldırıldı — Yıldız'da kart zaten kartsızdır (tuval). */
 
 /* (7) YASAL-KAPI-3 tur 2 (tasarım hakemi KRİTİK "fişte zorunlular ilk ekranda değil"): kimlik formu fişte İLK KEZ
    açılınca başlığı görünür bölgenin üstüne kaydırılır (Islemler.YasalKapi3.cs) — yapışkan üst çubuğun altında
@@ -160,11 +156,5 @@ html:root:not([data-sema="yildiz"]) .cekmece .zo-masak-dikey > .kart--masak > .k
 @media (min-width: 769px) {
   .islem-sayfa .kart--masak > .kart-govde > .form-grid-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .islem-sayfa .kart--masak > .kart-govde > .form-grid-3 > :nth-child(3) { grid-column: 1 / -1; }
-}
-html:root:not([data-sema="yildiz"])[data-mod] .islem-sayfa.tuval-tezgah .tuval-karo-izgara > .ekran-karo.ekran-karo-birincil {
-  background: var(--yuzey);
-  color: var(--vurgu);
-  border-color: var(--vurgu);
-  box-shadow: inset 0 0 0 1px var(--vurgu);
 }
 /* P-TEZGAH-TUR-KIMLIK sonu */

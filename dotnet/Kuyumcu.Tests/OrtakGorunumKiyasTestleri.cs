@@ -91,6 +91,10 @@ public sealed class OrtakGorunumKiyasPanelTestleri : BunitContext
                     """{"kaynaklar":["ALTINKAYNAK"],"secili":"ALTINKAYNAK","varsayilan":"ALTINKAYNAK"}""",
                 var y when y.Contains("/tercihler/benim") => """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/") => """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün gün sonu / emanet satırlarının uçları gerçekçi.
+                var y when y.EndsWith("/raporlar/kasa-defteri") =>
+                    """{"baslangic":"2026-10-01","bitis":"2026-10-01","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari") => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             };
             return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
@@ -118,6 +122,7 @@ public sealed class OrtakGorunumKiyasPanelTestleri : BunitContext
         Services.AddScoped<Microsoft.Extensions.Configuration.IConfiguration>(
             _ => new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Demo", "Kuyumcu", "d@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
     }
@@ -125,11 +130,12 @@ public sealed class OrtakGorunumKiyasPanelTestleri : BunitContext
     /// <summary>/bildirimler isteği ağ hatasıyla düşen bağlam (KY3).</summary>
     public static OrtakGorunumKiyasPanelTestleri AgHatali() => new(true);
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — "Bekleyen iş" kartı yerine "Seni bekleyen" listesi; bildirim satırı
+    // tuval kalıbında: başlık · soluk ek (müşteri · tutar) · durum (gün) · TEK eylem.
     internal IRenderedComponent<Kuyumcu.Web.Pages.Panel> Ciz()
     {
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#panel-iskelet-soru-bekleyen")), TimeSpan.FromSeconds(10));
+        e.BugunBekle();   // yükleyici biter, liste "yükleniyor"da KALMAZ — kalırsa burada zaman aşımıyla kırılır
         return e;
     }
 
@@ -140,44 +146,47 @@ public sealed class OrtakGorunumKiyasPanelTestleri : BunitContext
         var T = PanelTuvalSozlugu.Al("tr");
         var S = PanelSadeSozlugu.Al("tr");
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-is-ayrinti-b1")), TimeSpan.FromSeconds(5));
-        var b1 = e.Find("#panel-is-ayrinti-b1").TextContent;
-        Assert.Contains("Anadolu Holding A.Ş.", b1);
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bekleyen-is-b1 .yildiz-bugun-sat-ek")), TimeSpan.FromSeconds(5));
+        var b1 = e.Find("#yildiz-bekleyen-is-b1").TextContent;
+        Assert.Contains("Anadolu Holding A.Ş.", e.Find("#yildiz-bekleyen-is-b1 .yildiz-bugun-sat-ek").TextContent);
         Assert.Contains(Bicim.TlKurus(12345.67m), b1);
-        Assert.Contains(string.Format(T.VadeGectiIpucu, 9), b1);
+        Assert.Equal(string.Format(T.VadeGectiIpucu, 9), e.Find("#yildiz-bekleyen-is-b1-durum").TextContent.Trim());
 
-        var b2 = e.Find("#panel-is-ayrinti-b2").TextContent;
-        Assert.Contains("Karadeniz Kuyumculuk", b2);
+        var b2 = e.Find("#yildiz-bekleyen-is-b2").TextContent;
+        Assert.Contains("Karadeniz Kuyumculuk", e.Find("#yildiz-bekleyen-is-b2 .yildiz-bugun-sat-ek").TextContent);
         Assert.Contains(Bicim.TlKurus(5000m), b2);
-        Assert.Contains(string.Format(S.GunKaldi, 3), b2);
+        Assert.Equal(string.Format(S.GunKaldi, 3), e.Find("#yildiz-bekleyen-is-b2-durum").TextContent.Trim());
 
-        // İki satırın görünen metni artık FARKLI (önceden ikisi de yalnız başlıktı).
-        Assert.NotEqual(e.Find("#panel-is-b1").TextContent.Trim(), e.Find("#panel-is-b2").TextContent.Trim());
+        // İki satırın görünen metni FARKLI (önceden ikisi de yalnız başlıktı).
+        Assert.NotEqual(e.Find("#yildiz-bekleyen-is-b1").TextContent.Trim(), e.Find("#yildiz-bekleyen-is-b2").TextContent.Trim());
     }
 
+    // TEMA TEMİZLİĞİ 17.10: satırdaki müşteri adı → müşteri kartı bağlantısı Yıldız'da BİLEREK yok (tuval: satırda TEK eylem);
+    // kalan güvenceler: eylem hedef rotaya gider, müşteriye bağlı olmayan satırda soluk ek (alt satır) YOK.
     [Fact]
     public void KY2_musteri_adi_kartina_baglanir_musterisiz_satirda_alt_satir_yok()
     {
         var e = Ciz();
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-is-cari-b1")), TimeSpan.FromSeconds(5));
-        Assert.Equal("/cariler?cariId=c1", e.Find("#panel-is-cari-b1").GetAttribute("href"));
-        Assert.Equal("/cariler?cariId=c2", e.Find("#panel-is-cari-b2").GetAttribute("href"));
-        // Başlık bağlantısı (hedef rota) ve id'si AYNI kaldı.
-        Assert.Equal("/raporlar/vade-takibi", e.Find("#panel-is-git-b1").GetAttribute("href"));
-        Assert.Empty(e.FindAll("#panel-is-ayrinti-b3"));
-        Assert.Equal("Yedek alındı", e.Find("#panel-is-git-b3").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bekleyen-is-b1-eylem")), TimeSpan.FromSeconds(5));
+        Assert.Equal("/raporlar/vade-takibi", e.Find("#yildiz-bekleyen-is-b1-eylem").GetAttribute("href"));
+        Assert.Equal("/raporlar/vade-takibi", e.Find("#yildiz-bekleyen-is-b2-eylem").GetAttribute("href"));
+        Assert.Single(e.Find("#yildiz-bekleyen-is-b1").QuerySelectorAll("a"));
+        Assert.Empty(e.FindAll("#yildiz-bekleyen-is-b3 .yildiz-bugun-sat-ek"));
+        Assert.Equal("Yedek alındı", e.Find("#yildiz-bekleyen-is-b3 .yildiz-bugun-sat-metin").TextContent.Trim());
+        Assert.Equal("/yedekler", e.Find("#yildiz-bekleyen-is-b3-eylem").GetAttribute("href"));
     }
 
     [Fact]
     public void KY3_bildirim_ag_hatasinda_iskelet_sonsuz_donmez_banda_yazar()
     {
         using var c = AgHatali();
-        var e = c.Ciz();   // iskelet KALKMAZSA burada zaman aşımıyla kırılır
+        var e = c.Ciz();   // liste "yükleniyor"da KALIRSA burada zaman aşımıyla kırılır
         e.WaitForAssertion(() =>
             Assert.Contains(OrtakGorunumSozlugu.Al("tr").PanelBaglantiHatasi,
-                e.Find("#panel-soru-bekleyen-hata").TextContent), TimeSpan.FromSeconds(5));
+                e.Find("#yildiz-bugun-bekleyen-hata").TextContent), TimeSpan.FromSeconds(5));
         // Hata "kayıt yok"a çevrilmez (UX-S28): boş durum metni çıkmaz.
-        Assert.DoesNotContain(PanelSadeSozlugu.Al("tr").BekleyenYok, e.Find("#panel-soru-bekleyen").TextContent);
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-bos"));
+        Assert.DoesNotContain(PanelSadeSozlugu.Al("tr").BekleyenYok, e.Find("#yildiz-bugun").TextContent);
     }
 }
 

@@ -101,15 +101,17 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Islemler_cari_listesini_YALNIZ_aktif_suzgeciyle_ceker()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
+        // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı; müşteri listesi aynı istekten (aktif=true) gelir.
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
 
         // Sorgu dizesinde aktif=true YOKSA pasif cari POS'ta seçilebilir olurdu.
         e.WaitForAssertion(() => Assert.Contains(
             istekler, i => i.Metot == "GET" && i.Yol.EndsWith("/cari") && i.Sorgu.Contains("aktif=true")));
 
-        // UX-S29/S30: listenin neden eksik olabileceği EKRANDA yazar.
-        Assert.Contains("Pasif cariler", e.Find("#islem-cari-pasif-notu").TextContent);
+        // UX-S29/S30: listenin neden eksik olabileceği EKRANDA yazar — müşteri satırı (FisMusteriSatiri) Yıldız'da
+        // öteki türlerin formunda çizilir (tezgâhın "Değiştir" katmanı tuval dilinde, not satırı yok).
+        TemaTemizligiGDYardimcisi.TurSec(e, "ALIS");
+        Assert.Contains("Pasif cariler", e.WaitForElement("#islem-cari-pasif-notu").TextContent);
     }
 
     // ═══ Y-4 — KALEM SATIRINDA AYAR / MİLYEM / GRAM / HAS ═══════════════════
@@ -117,16 +119,17 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Kalem_satiri_ayar_milyem_gram_ve_has_GOSTERIR()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-urun");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForElement("#islem-kalem-ekle").Click();
 
-        var satir = e.WaitForElement(".veri-tablosu tbody tr").TextContent;
-        // T-S2 (tuval Profesyonel.dc.html): ayar ham kod değil ("K22" → "22", UX-S31), gram/has 2 hane tr-TR.
-        Assert.Contains("22", satir);         // ayar
+        // TEMA TEMİZLİĞİ 17.10: Yıldız tezgâh kalem satırı (tuval Tezgah4): [ayar] [ad · adet · gram · has] [tutar].
+        // Milyem tuvalin kalem satırında YOK (bilerek); ayar/gram/has güvencesi aynen.
+        var satir = e.WaitForElement("#yildiz-kalem-0").TextContent;
+        // ayar ham kod değil ("K22" → "22", UX-S31), gram/has tr-TR.
+        Assert.Equal("22", e.Find("#yildiz-kalem-0 .yz-tezgah-ayar").TextContent.Trim());   // ayar
         Assert.DoesNotContain("K22", satir);
-        Assert.Contains("916", satir);        // milyem
         Assert.Contains("5,00", satir);       // gram
         Assert.Contains("4,58", satir);       // has
     }
@@ -163,15 +166,19 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Fis_iskontosu_YUZDE_olarak_FIS_ucuna_gonderilir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
         e.WaitForElement("#islem-urun");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForElement("#islem-kalem-ekle").Click();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
+        // Yıldız: "+ İndirim" fiş iskontosu alanını açar (FisIskontoSatiri — aynı alan, aynı oran kuralı)
+        if (e.FindAll("#islem-fis-iskonto").Count == 0) e.Find("#yildiz-tezgah-indirim").Click();
         e.WaitForElement("#islem-fis-iskonto").Input("10");
         istekler.Clear();
 
-        e.WaitForElement("#islem-kaydet").Click();
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
 
         e.WaitForAssertion(() => Assert.True(Gitti("POST", "/islemler/satis-fisi")));
         var govde = istekler.Single(i => i.Metot == "POST" && i.Yol.Contains("satis-fisi")).Govde;
@@ -189,7 +196,7 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Urun_olusturma_formunda_yedi_kart_alani_VAR_ve_GONDERILIR()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#urun-yeni-ac").Click();
         e.Find("#u-daha-fazla").Click();   // PAKET GOC-C (devir "zorunlu önce"): yeni ürün formu PRO'da da yalnız zorunlularla açılır — isteğe bağlılar "Daha fazla"da
 
@@ -216,7 +223,7 @@ public sealed class P16EkranTestleri : BunitContext
     [Fact]
     public void Urun_duzenleme_cekmecesi_kart_alanlarini_OKUR_ve_PATCH_ile_GONDERIR()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#urun-yeni-ac");
         e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
 
@@ -294,7 +301,8 @@ public sealed class P16EkranTestleri : BunitContext
     {
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
         e.WaitForElement("#cari-yeni-ac");
-        e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
+        // TEMA TEMİZLİĞİ 17.10: liste = YildizMusteriler — satıra dokununca kart (özgün düzenleme çekmecesi, DuzenleAc).
+        e.WaitForElement("#yildiz-musteri-c1").Click();
 
         e.WaitForAssertion(() => Assert.True(Gitti("GET", "/cari/c1")));
         Assert.Equal("Demir Kuyumculuk Ltd.", e.WaitForElement("#duz-unvan").GetAttribute("value"));

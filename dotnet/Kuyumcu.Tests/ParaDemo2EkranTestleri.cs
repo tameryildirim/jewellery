@@ -58,7 +58,7 @@ public sealed class ParaDemo2KasaEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-gun-kapat-k1");
         return e;
     }
@@ -267,8 +267,9 @@ public sealed class ParaDemo2CariEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
+        // TEMA TEMİZLİĞİ 17.10: Yıldız Müşteriler listesi — eylemler müşterinin kartında (CariKartEylemi).
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-tahsilat-c1");
+        e.WaitForElement("#yildiz-musteri-c1");
         istekler.Clear();
         return e;
     }
@@ -277,7 +278,7 @@ public sealed class ParaDemo2CariEkranTestleri : BunitContext
     public void PD2E_7_tahsilat_guncel_borc_HEP_gorunur_istege_baglilar_KAPALI()
     {
         var e = Ciz(ArayuzModuServisi.Basit);
-        e.Find("#c-tahsilat-c1").Click();
+        e.CariKartEylemi("c1", "c-tahsilat");
         e.WaitForElement("#th-guncel");
         Assert.Contains(string.Format(ParaDemo2Sozlugu.Tr.GuncelBorc, Bicim.Para(6424.89m, "TRY")), e.Find("#th-guncel").TextContent);
         Assert.Contains("1,5000", e.Find("#th-guncel-altin").TextContent);
@@ -296,7 +297,7 @@ public sealed class ParaDemo2CariEkranTestleri : BunitContext
     public void PD2E_6_has_uyarisi_BASIT_gercek_dugme_adi_tek_cumle_buyuk_harf_yok_baglanti()
     {
         var e = Ciz(ArayuzModuServisi.Basit);
-        e.Find("#c-tahsilat-c1").Click();
+        e.CariKartEylemi("c1", "c-tahsilat");
         e.WaitForElement("#th-has-ekle").Click();
         e.WaitForElement("#th-has").Input("1");
         var uyari = e.WaitForElement("#th-has-uyari").TextContent;
@@ -313,7 +314,7 @@ public sealed class ParaDemo2CariEkranTestleri : BunitContext
     public void PD2E_1_9_ekstre_karma_Kart_arti_Havale_has_satiri_has_bakiyesi_bos_isaret_yok()
     {
         var e = Ciz(ArayuzModuServisi.Profesyonel);
-        e.Find("#c-detay-c1").Click();
+        e.CariKartEylemi("c1", "c-detay");
         e.WaitForElement("#cari-detay-odeme-h2");
         Assert.Equal("· Kart + Havale", e.Find("#cari-detay-odeme-h2").TextContent.Trim());
         // Has etkisi olmayan satırda "—" basılmaz; has satırında has bakiyesi yazar.
@@ -391,13 +392,28 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
         return e;
     }
 
-    private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> BasitKalemli()
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ fişi HER ZAMAN Yıldız tezgâhıdır (YildizTezgah). Tek ödeme satırı (#yildiz-odeme-0)
+    // ödeme düzenini açar; BASİT'in tek ödeme seçicisi (#islem-aldim-odeme — aynı id, aynı geri çağrı) orada durur.
+    private static IRenderedComponent<Kuyumcu.Web.Pages.Islemler> KalemEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        var e = Ekran(ArayuzModuServisi.Basit);
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
+        e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
-        e.Find("#islem-kalem-ekle").Click();
+        e.FindAll("button").First(x => x.TextContent.Trim() == "Ekle").Click();
+        e.WaitForAssertion(() => Assert.Single(e.FindAll(".yz-tezgah-kalem")), TimeSpan.FromSeconds(5));
+        return e;
+    }
+
+    private static void OdemeDuzeniAc(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        if (e.FindAll("#yildiz-tezgah-odeme-duzen").Count == 0) e.Find("#yildiz-odeme-0").Click();
+        e.WaitForElement("#yildiz-tezgah-odeme-duzen");
+    }
+
+    private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> BasitKalemli()
+    {
+        var e = KalemEkle(Ekran(ArayuzModuServisi.Basit));
+        OdemeDuzeniAc(e);
         e.WaitForElement("#islem-aldim-odeme");
         return e;
     }
@@ -411,8 +427,9 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Equal("HAVALE", SeciciYardim.SeciliDeger(e, "islem-aldim-odeme")));
         Assert.Empty(e.FindAll("#islem-odeme"));   // aynı soru ikinci seçicide sorulmaz (UX-S22)
         Assert.Empty(e.FindAll("#islem-bacak-0-arac"));
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")));
-        e.Find("#islem-kaydet").Click();
+        Assert.StartsWith(Sozlukler.Tr.Islem.OdemeHavale, e.Find("#yildiz-odeme-0 .yz-tezgah-arac").TextContent.Trim(), StringComparison.Ordinal);
+        e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
+        e.Find("#yildiz-tezgah-kaydet").Click();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis")));
         Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.EndsWith("/islemler/satis-fisi"));   // karma (KARMA etiketi) yolu değil
         var g = JsonDocument.Parse(istekler.Last(i => i.Metot == "POST").Govde).RootElement;
@@ -423,10 +440,13 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
     public void PD2E_1_Tek_odemeye_don_SECILI_araci_korur()
     {
         var e = BasitKalemli();
-        e.Find("#islem-odeme-bol").Click();
+        e.Find("#yildiz-tezgah-baska-odeme").Click();
         e.WaitForElement("#islem-bacak-0-arac");
         SeciciYardim.Sec(e, "islem-bacak-0-arac", "KART");
-        e.Find("#islem-odeme-birlestir").Click();
+        e.Find("#yildiz-tezgah-tek-odeme").Click();
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll(".bacak-satiri")), TimeSpan.FromSeconds(5));
+        Assert.StartsWith(Sozlukler.Tr.Islem.OdemeKart, e.Find("#yildiz-odeme-0 .yz-tezgah-arac").TextContent.Trim(), StringComparison.Ordinal);
+        OdemeDuzeniAc(e);
         e.WaitForElement("#islem-aldim-odeme");
         Assert.Equal("KART", SeciciYardim.SeciliDeger(e, "islem-aldim-odeme"));
         Assert.Empty(e.FindAll("#islem-bacak-0-arac"));
@@ -436,8 +456,10 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
     public void PD2E_1_bos_fiste_satirda_secici_YOK_zorunlu_once()
     {
         var e = Ekran(ArayuzModuServisi.Basit);
-        e.WaitForElement("#islem-aldim-satir");
-        Assert.Empty(e.FindAll("#islem-aldim-odeme"));
+        e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
+        e.WaitForElement("#yildiz-tezgah-bos");   // fiş boş
+        Assert.Empty(e.FindAll("#islem-aldim-odeme"));   // ödeme seçicisi açılışta YOK (zorunlu önce: düzen kapalı)
+        Assert.Empty(e.FindAll("#yildiz-tezgah-odeme-duzen"));
     }
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Takas(string mod)
@@ -488,19 +510,18 @@ public sealed class ParaDemo2IslemEkranTestleri : BunitContext
         Assert.Equal(SatisTuvalSozlugu.Tr.KaydetTek, p);
     }
 
+    // TEMA TEMİZLİĞİ 17.10: PRO satış da Yıldız tezgâhıdır — eski PRO ödeme katmanı (#islem-pro-odeme) yok; ödeme düzeni
+    // tezgâhın sağ sütununda (#yildiz-tezgah-odeme-duzen). Güvence: kayıttan sonra düzen açık KALMAZ, kayıt sonucu görünür.
     [Fact]
     public void PD2E_11_PRO_kayittan_sonra_odeme_katmani_KAPALI_basari_bandi_ortulmez()
     {
-        var e = Ekran(ArayuzModuServisi.Profesyonel);
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.WaitForAssertion(() => Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
-        e.Find("#islem-kalem-ekle").Click();
-        e.WaitForElement("#islem-pro-odeme-degistir").Click();
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-pro-odeme").HasAttribute("hidden")));
-        e.Find("#islem-kaydet").Click();
+        var e = KalemEkle(Ekran(ArayuzModuServisi.Profesyonel));
+        OdemeDuzeniAc(e);
+        e.WaitForAssertion(() => Assert.False(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
+        e.Find("#yildiz-tezgah-kaydet").Click();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis")));
-        e.WaitForElement(".bant-basari");
-        e.WaitForAssertion(() => Assert.True(e.Find("#islem-pro-odeme").HasAttribute("hidden")));
+        e.WaitForElement("#yildiz-tezgah-son-fis");
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#yildiz-tezgah-odeme-duzen")));
     }
 
     [Theory]
@@ -582,7 +603,7 @@ public sealed class ParaDemo2GiderEkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1"));
         Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>().NavigateTo("http://localhost/gider?sekme=virman");
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-v-hedef");
         Assert.Single(e.FindAll("label[for=gd-v-hedef]"));
     }
@@ -619,6 +640,7 @@ public sealed class ParaDemo2PanelEkranTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
         Services.AddScoped<Microsoft.Extensions.Configuration.IConfiguration>(_ => new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private sealed class SahteApi(ParaDemo2PanelEkranTestleri t) : HttpMessageHandler
@@ -642,18 +664,22 @@ public sealed class ParaDemo2PanelEkranTestleri : BunitContext
                 var y when y.EndsWith("/kur/kaynaklar") => """{"kaynaklar":["ALTINKAYNAK"],"secili":"ALTINKAYNAK","varsayilan":"ALTINKAYNAK"}""",
                 var y when y.Contains("/tercihler/benim") => """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/") => """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün gün sonu / emanet satırlarının uçları gerçekçi.
+                var y when y.EndsWith("/raporlar/kasa-defteri") => """{"baslangic":"2026-10-01","bitis":"2026-10-01","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari") => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             }));
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — eski "Kasada ne var?" kartı kaldırıldı; kasa Bugün cümlesinde
+    // "Kasada X nakit." diye yazılır ve AYNI kaynaktan (GET /kasalar/nakit-ayrimi, sunucu KasaNakitAyrimi) gelir.
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Basit()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll(".karsilama-iskelet")), TimeSpan.FromSeconds(10));
+        e.BugunBekle();
         return e;
     }
 
@@ -661,15 +687,14 @@ public sealed class ParaDemo2PanelEkranTestleri : BunitContext
     public void PD2E_4_Panel_Kasada_ne_var_alt_satiri_Nakit_ve_Kart_Havale_AYNI_ayrim()
     {
         var e = Basit();
-        // Büyük sayı kasanın TAMAMI (değişmedi); alt satır çekmecedeki NAKİT ile kasaya yazılmış kart+havale.
-        Assert.Equal(Bicim.BelgePara(1500m, "TRY"), e.Find("#panel-soru-kasa-deger").TextContent.Trim());
-        e.WaitForAssertion(() => Assert.Equal($"{PanelTuvalSozlugu.Al("tr").Nakit} {Bicim.BelgePara(1000m, "TRY")}",
-            e.Find("#panel-soru-kasa-grup").TextContent.Trim()));
-        Assert.Equal($"{ParaDemo2Sozlugu.Tr.KartHavaleEtiket} {Bicim.BelgePara(500m, "TRY")}",
-            e.Find("#panel-soru-kasa-karthavale").TextContent.Trim());
-        Assert.DoesNotContain($"Nakit {Bicim.BelgePara(1500m, "TRY")}", e.Find("#panel-soru-kasa").TextContent, StringComparison.Ordinal);
-        Assert.Contains(istekler, y => y.EndsWith("/kasalar/nakit-ayrimi", StringComparison.Ordinal));
-        Assert.Empty(e.FindAll("#panel-soru-kasa-ayrim-hata"));
+        // Kasa 1.500 ₺'nin 500 ₺'si kasaya yazılmış kart+havale: Bugün "Kasada 1.000 ₺ nakit." der — toplam NAKİT diye basılmaz.
+        var cumle = e.Find("#yildiz-bugun-cumle").TextContent;
+        Assert.Contains(YildizBugunSozlugu.CumleKasa(Bicim.Tl(1000m), true, "tr"), cumle, StringComparison.Ordinal);
+        Assert.DoesNotContain(YildizBugunSozlugu.CumleKasa(Bicim.Tl(1500m), true, "tr"), cumle, StringComparison.Ordinal);
+        Assert.DoesNotContain(Bicim.Tl(1500m) + " nakit", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
+        lock (istekler) Assert.Contains(istekler, y => y.EndsWith("/kasalar/nakit-ayrimi", StringComparison.Ordinal));
+        Assert.Empty(e.FindAll("#yildiz-bugun-kasa-ayrim-hata"));
+        // Not: "Kart/Havale 500 ₺" kırılımı Bugün tuvalinde yazılmaz (bilerek); Kasalar ve Rapor merkezinde (PD2E_4 Kasa/Rapor testleri).
     }
 
     [Fact]
@@ -677,11 +702,12 @@ public sealed class ParaDemo2PanelEkranTestleri : BunitContext
     {
         ayrimKodu = System.Net.HttpStatusCode.InternalServerError;
         var e = Basit();
-        e.WaitForElement("#panel-soru-kasa-ayrim-hata");
-        var grup = e.Find("#panel-soru-kasa-grup").TextContent.Trim();
-        Assert.DoesNotContain("Nakit", grup, StringComparison.Ordinal);
-        Assert.Equal($"{PanelSadeSozlugu.KasaGrubu("TRY", "tr")} {Bicim.BelgePara(1500m, "TRY")}", grup);
-        Assert.Empty(e.FindAll("#panel-soru-kasa-karthavale"));
+        e.WaitForElement("#yildiz-bugun-kasa-ayrim-hata");
+        var cumle = e.Find("#yildiz-bugun-cumle").TextContent;
+        // Ayrım okunamadı: kasa toplamı yazılır ama "nakit" DENMEZ; kısa hata kendi bandında (UX-S28).
+        Assert.Contains(YildizBugunSozlugu.CumleKasa(Bicim.Tl(1500m), false, "tr"), cumle, StringComparison.Ordinal);
+        Assert.DoesNotContain("nakit", cumle, StringComparison.Ordinal);
+        Assert.StartsWith(ParaDemo2Sozlugu.Tr.KasaAyrimHata.Split('{')[0], e.Find("#yildiz-bugun-kasa-ayrim-hata").TextContent.Trim(), StringComparison.Ordinal);
     }
 }
 
@@ -731,8 +757,9 @@ public sealed class ParaDemo2TahsilatTutarTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
+        // TEMA TEMİZLİĞİ 17.10: Yıldız Müşteriler listesi — eylemler müşterinin kartında (CariKartEylemi).
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-tahsilat-c1").Click();
+        e.CariKartEylemi("c1", "c-tahsilat");
         e.WaitForElement("#th-tutar");
         // Açılışta: kutu BOŞ (0 yazmaz), "isteğe bağlı" yok, kırmızı yazı ve kilit satırı yok, Kaydet açık.
         Assert.Equal("", e.Find("#th-tutar").GetAttribute("value") ?? "");

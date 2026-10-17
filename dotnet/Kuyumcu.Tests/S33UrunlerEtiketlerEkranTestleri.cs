@@ -136,7 +136,7 @@ public sealed class S33UrunlerEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("k1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.DoesNotContain("…", e.Find("#u-stok-adet-u1").TextContent));
         lock (istekler) istekler.Clear();
         return e;
@@ -320,7 +320,7 @@ public sealed class S33UrunlerEkranTestleri : BunitContext
             + "]";
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("k1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#urun-sinir-asildi")));
     }
 
@@ -548,7 +548,7 @@ public sealed class S33EtiketEkranTestleri : BunitContext
         };
     }
 
-    private IRenderedComponent<Kuyumcu.Web.Pages.UrunEtiketleri> Ciz() => Render<Kuyumcu.Web.Pages.UrunEtiketleri>();
+    private IRenderedComponent<Kuyumcu.Web.Pages.UrunEtiketleri> Ciz() => Render<Kuyumcu.Web.Pages.UrunEtiketleri>().AyrintiAc();
 
     private static void Sec(IRenderedComponent<Kuyumcu.Web.Pages.UrunEtiketleri> e, string urunAdi)
         => e.FindAll("input[type=checkbox]").First(i => i.GetAttribute("aria-label") == urunAdi).Change(true);

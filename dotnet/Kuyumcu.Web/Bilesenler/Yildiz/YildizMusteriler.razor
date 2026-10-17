@@ -12,7 +12,7 @@
      Yıldız iken çizer; öteki 8 şemada özgün liste AYNEN.
    ⚠ İSTEK ATMAZ: arama/süzgeç/satır/yeni = sayfanın mevcut geri çağrıları. Satıra
      dokununca sayfanın kartı (tahsilat, ekstre, düzenleme, kullanımdan kaldırma) açılır.
-   ⚠ Mevcut id'ler korunur: #cari-arama, #cari-yeni-ac, #cari-segment-{kod}.
+   ⚠ Mevcut id'ler korunur: #cari-arama, #cari-yeni-ac, #cari-segment-{kod}. Şerit kabı #cari-segment-serit (tema temizliği 17.10: #cari-segment yeni müşteri formundaki seçicinindir — çift kimlik giderildi).
    ═════════════════════════════════════════════════════════════════════════════ *@
 
 <div class="yz yz-musteri" id="yildiz-musteri">
@@ -40,7 +40,7 @@
             <button type="button" class="yz-b1" id="cari-yeni-ac" @onclick="B.YeniMusteri">@YildizMusteriSozlugu.YeniMusteri(Dil.Dil)</button>
         </div>
 
-        <div class="yz-sekmeler" id="cari-segment" role="group" aria-label="@YildizMusteriSozlugu.Baslik(Dil.Dil)">
+        <div class="yz-sekmeler" id="cari-segment-serit" role="group" aria-label="@YildizMusteriSozlugu.Baslik(Dil.Dil)">
             @foreach (var s in B.Sekmeler)
             {
                 <button type="button" id="@($"cari-segment-{s.Kod}")" class="@(s.Secili ? "yz-b2 yz-sekme yz-sekme--secili" : "yz-s yz-sekme")"

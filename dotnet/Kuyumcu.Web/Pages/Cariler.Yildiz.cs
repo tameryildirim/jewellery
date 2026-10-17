@@ -10,14 +10,13 @@ namespace Kuyumcu.Web.Pages;
 // PAKET YILDIZ-4B — Müşteriler "Yıldız" yüzü (tuval Musteri4/Musteri4a · BİREBİR).
 // Yalnız GÖRÜNÜM: liste, arama, süzgeç, kart, oluşturma ve tüm yazma yolları
 // Cariler.razor'un MEVCUT kodudur; burada yalnız tuval satırları üretilir.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Cariler
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
     /// <summary>Etkin şema Yıldız mı (kabukla AYNI karar noktası)?</summary>
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
 
     /// <summary>Vadeye kalan gün (aynı /raporlar/vade-takibi yanıtından; yeni istek YOK).</summary>
     private Dictionary<string, int> yildizKalanlar = [];

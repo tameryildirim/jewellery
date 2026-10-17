@@ -75,23 +75,30 @@ public sealed class S1jMenuAramaTestleri : BunitContext
         //   KabukAramaEkranTestleri.Secilen_sube… kararsızlığı ölçüldü).
     }
 
-    private IRenderedComponent<KenarCubugu> Menu(string mod = "PROFESYONEL")
+    // TEMA TEMİZLİĞİ 17.10: kenar çubuğu ve içindeki menü kutusu (#menu-arama-girdi) kaldırıldı.
+    // Ekran araması Yıldız kabuğunda iki yerde yaşar: (a) "Tüm ekranlar" sayfasının arama kutusu
+    // (S1dEkranlarTestleri), (b) üst bardaki Ctrl/Cmd+K paletinin EKRANLAR bölümü (GlobalArama) —
+    // palet menü kutusuyla AYNI eşleşme kuralını (MenuTanimi.AramaEslesir) ve AYNI yetki süzgecini
+    // kullanır. Menü kutusunun bUnit güvenceleri aşağıda bu palet üzerinden sınanır.
+
+    /// <summary>Yetkiler yüklü, palet üst bar düğmesiyle açılmış (gerçek kullanıcı yolu).</summary>
+    private IRenderedComponent<GlobalArama> Palet(string mod = "PROFESYONEL")
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, mod));
-        var e = Render<KenarCubugu>();
-        // Yetki yüklenince rapor grubu da çizilir (Satış analizi).
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#kenar-satir-raporlar-satis-analizi")));
+        var yetki = Services.GetRequiredService<YetkiServisi>();
+        var e = Render<GlobalArama>();
+        e.InvokeAsync(() => yetki.HazirlaAsync()).GetAwaiter().GetResult();
+        // Yetki yüklenince rapor ekranları da süzgeçten geçer (Satış analizi).
+        Assert.True(yetki.Erisebilir("rapor"), "ön koşul: rapor modülü yüklenmeli");
+        e.Find("#ust-kayit-ara").Click();
+        Assert.NotNull(e.Find("#kabuk-arama-girdi"));
         return e;
     }
 
-    /// <summary>Görünen (hidden OLMAYAN) menü satırlarının id'leri.</summary>
-    private static List<string> GorunenSatirlar(IRenderedComponent<KenarCubugu> e) =>
-        [.. e.FindAll(".kenar-nav .kenar-satir").Where(s => !s.HasAttribute("hidden")).Select(s => s.Id!)];
-
-    private static Dictionary<string, bool> GizlilikHaritasi(IRenderedComponent<KenarCubugu> e) =>
-        e.FindAll(".kenar-nav .kenar-satir, .kenar-nav .kenar-grup-baslik")
-            .ToDictionary(s => s.Id!, s => s.HasAttribute("hidden"));
+    /// <summary>Paletin EKRANLAR bölümünde çizilen ekran adları (sırayla).</summary>
+    private static List<string> EkranSonuclari(IRenderedComponent<GlobalArama> e) =>
+        [.. e.FindAll("#kabuk-arama-ekranlar .secici-ad").Select(s => s.TextContent.Trim())];
 
     private static KeyboardEventArgs Tus(string k) => new() { Key = k };
 
@@ -101,11 +108,11 @@ public sealed class S1jMenuAramaTestleri : BunitContext
     /// Input'tan hemen sonra Find eski ağacı görebiliyordu (tam süitte ölçülen
     /// kararsızlık). Değerin DOM'a yansıması beklenir.
     /// </summary>
-    private static void Yaz(IRenderedComponent<KenarCubugu> e, string metin)
+    private static void Yaz(IRenderedComponent<GlobalArama> e, string metin)
     {
-        e.Find("#menu-arama-girdi").Input(metin);
+        e.Find("#kabuk-arama-girdi").Input(metin);
         e.WaitForAssertion(() =>
-            Assert.Equal(metin, e.Find("#menu-arama-girdi").GetAttribute("value") ?? ""));
+            Assert.Equal(metin, e.Find("#kabuk-arama-girdi").GetAttribute("value") ?? ""));
     }
 
     // ── SAF: Sadelestir ve eşleşme kuralı ──────────────────────────────────
@@ -176,190 +183,106 @@ public sealed class S1jMenuAramaTestleri : BunitContext
         Assert.Empty(Eslesenler(new string('ş', 5000)));
     }
 
-    // ── bUnit: KENAR ÇUBUĞU KENDİ İÇİNDE SÜZÜLÜR ────────────────────────────
+    // ── bUnit: PALETİN EKRANLAR BÖLÜMÜ (menü kutusunun Yıldız karşılığı) ────
 
     [Fact]
-    public void Sat_yazinca_gorunen_menu_satirlari_YALNIZ_eslesenlerdir()
+    public void Satis_yazinca_paletteki_ekranlar_YALNIZ_eslesenlerdir()
     {
-        var e = Menu();
-        Yaz(e, "satış");   // EKSIK-B1-SATINALMA: "sat" artık "Satın alma"yı da bulur (doğru); bu test iki eşleşmeli gezinmeyi sınar
+        // ESKİ: Sat_yazinca_gorunen_menu_satirlari_YALNIZ_eslesenlerdir (kenar satırları hidden ile süzülürdü).
+        var e = Palet();
+        Yaz(e, "satış");   // EKSIK-B1-SATINALMA: "sat" "Satın alma"yı da bulur (doğru); bu test iki eşleşmeli listeyi sınar
 
-        Assert.Equal(["kenar-satir-islemler", "kenar-satir-raporlar-satis-analizi"], GorunenSatirlar(e));
-        // Eşleşen gruplar AÇIK (başlık görünür), eşleşmeyenler başlığıyla GİZLİ.
-        Assert.False(e.Find("#kenar-grup-gunluk").HasAttribute("hidden"));
-        Assert.False(e.Find("#kenar-grup-rapor").HasAttribute("hidden"));
-        foreach (var g in new[] { "musteri-stok", "para-banka", "belge-uyum", "yonetim" })
-            Assert.True(e.Find($"#kenar-grup-{g}").HasAttribute("hidden"), g);
-        // "Tüm ekranlar" ve alt blok da süzülür.
-        Assert.True(e.Find("#kenar-tum-ekranlar").HasAttribute("hidden"));
-        Assert.True(e.Find("#kenar-alt-kilavuz").HasAttribute("hidden"));
-        Assert.True(e.Find("#kenar-alt-ayarlar").HasAttribute("hidden"));
-        // Menü dışında pencere YOK; "eşleşen yok" satırı da yok.
-        Assert.Empty(e.FindAll(".kabuk-arama-paneli"));
-        Assert.Empty(e.FindAll("#menu-arama-yok"));
+        e.WaitForAssertion(() => Assert.Equal(["Satış", "Satış analizi"], EkranSonuclari(e)));
+        // Sonuç palette (aria-modal komut paleti) çizilir; ayrı bir "eşleşen yok" satırı çıkmaz.
+        Assert.NotNull(e.Find("#kabuk-arama-palet #kabuk-arama-paneli"));
+        Assert.Empty(e.FindAll("#kabuk-arama-yok"));
     }
 
     [Fact]
-    public void Basit_modda_da_menu_suzulur()
+    public void Basit_modda_da_palet_ekranlari_suzulur()
     {
-        var e = Menu(ArayuzModuServisi.Basit);
-        Yaz(e, "satış");   // EKSIK-B1-SATINALMA: "sat" artık "Satın alma"yı da bulur (doğru); bu test iki eşleşmeli gezinmeyi sınar
+        // ESKİ: Basit_modda_da_menu_suzulur. Mod süzgeç değildir (S1-g); yetki süzgeci aynıdır.
+        var e = Palet(ArayuzModuServisi.Basit);
+        Yaz(e, "satış");
 
-        Assert.Equal(["kenar-satir-islemler", "kenar-satir-raporlar-satis-analizi"], GorunenSatirlar(e));
+        e.WaitForAssertion(() => Assert.Equal(["Satış", "Satış analizi"], EkranSonuclari(e)));
     }
 
     [Fact]
     public void Eski_adla_arama_calisir_cari_Musterileri_gosterir()
     {
-        var e = Menu();
+        var e = Palet();
         Yaz(e, "cari");
 
-        Assert.Equal(["kenar-satir-cariler"], GorunenSatirlar(e));
+        e.WaitForAssertion(() => Assert.Equal([MenuAdlari.Tr.Musteriler.Ad], EkranSonuclari(e)));
     }
 
     [Fact]
     public void Alt_blok_aranabilir_ayar_Ayarlari_gosterir()
     {
-        var e = Menu();
+        var e = Palet();
         Yaz(e, "ayar");
 
-        Assert.Empty(GorunenSatirlar(e));
-        Assert.False(e.Find("#kenar-alt-ayarlar").HasAttribute("hidden"));
-        Assert.Empty(e.FindAll("#menu-arama-yok"));
+        e.WaitForAssertion(() => Assert.Equal([MenuTanimi.AltBlok.Single(o => o.Yol == "/ayarlar").Etiket(Sozlukler.Tr)], EkranSonuclari(e)));
+        Assert.Empty(e.FindAll("#kabuk-arama-yok"));
     }
 
-    [Fact]
-    public void Eslesme_yoksa_menude_TEK_satir_Eslesen_ekran_yok()
-    {
-        var e = Menu();
-        Yaz(e, "zzqx");
-
-        Assert.Empty(GorunenSatirlar(e));
-        Assert.Equal("Eşleşen ekran yok", e.Find("#menu-arama-yok").TextContent.Trim());
-        Assert.Single(e.FindAll("#menu-arama-yok"));
-    }
-
-    [Fact]
-    public void Esc_ve_Temizle_menuyu_KATLAMA_TERCIHLI_haline_dondurur_tercihe_YAZMAZ()
-    {
-        // Kullanıcının kayıtlı tercihi: yalnız Raporlar açık.
-        tercihJson = """{"tercihler":{"menu-acik-gruplar":"[\"rapor\"]"}}""";
-        var e = Menu();
-        e.WaitForAssertion(() => Assert.False(e.Find("#kenar-satir-raporlar-kasa").HasAttribute("hidden")));
-        var once = GizlilikHaritasi(e);
-        var yazmaOnce = istekler.Count(i => i.Metot is "PATCH" or "DELETE");
-
-        Yaz(e, "sat");
-        Assert.NotEqual(once, GizlilikHaritasi(e));
-        e.Find("#menu-arama-girdi").KeyDown(Tus("Escape"));
-        e.WaitForAssertion(() => Assert.Equal(once, GizlilikHaritasi(e)));
-        e.WaitForAssertion(() => Assert.Equal("", e.Find("#menu-arama-girdi").GetAttribute("value") ?? ""));
-
-        Yaz(e, "kasa");
-        e.Find("#menu-arama-temizle").Click();
-        e.WaitForAssertion(() => Assert.Equal(once, GizlilikHaritasi(e)));
-
-        // Arama katlama tercihini ne okur ne yazar.
-        Assert.Equal(yazmaOnce, istekler.Count(i => i.Metot is "PATCH" or "DELETE"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Eslesme_yoksa_menude_TEK_satir_Eslesen_ekran_yok kaldırıldı — menü kutusu yok; palette ekran da kayıt da yoksa TEK, kısa "yok" satırı KabukAramaEkranTestleri.KATMAN1b_0_kayit_0_ekran_TEK_bos_durum_SIMGESIZ_ve_KISA'da.
+    // TEMA TEMİZLİĞİ 17.10: Esc_ve_Temizle_menuyu_KATLAMA_TERCIHLI_haline_dondurur_tercihe_YAZMAZ kaldırıldı — katlanır menü ve katlama tercihi Yıldız'da yok; paletin Esc'i KabukAramaEkranTestleri.Esc_paleti_KAPATIR'da.
 
     [Fact]
     public void Ok_tuslari_eslesenler_arasinda_gezer_Enter_ekrana_gider()
     {
-        var e = Menu();
-        Yaz(e, "satış");   // EKSIK-B1-SATINALMA: "sat" artık "Satın alma"yı da bulur (doğru); bu test iki eşleşmeli gezinmeyi sınar
+        var e = Palet();
+        Yaz(e, "satış");
+        e.WaitForAssertion(() => Assert.Equal(2, EkranSonuclari(e).Count));
 
-        e.Find("#menu-arama-girdi").KeyDown(Tus("ArrowDown"));
-        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kenar-satir-islemler").ClassList));
-        e.WaitForAssertion(() => Assert.Equal("kenar-satir-islemler", e.Find("#menu-arama-girdi").GetAttribute("aria-activedescendant")));
+        e.Find("#kabuk-arama-girdi").KeyDown(Tus("ArrowDown"));
+        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kabuk-arama-ekran-0").ClassList));
 
-        e.Find("#menu-arama-girdi").KeyDown(Tus("ArrowDown"));
-        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kenar-satir-raporlar-satis-analizi").ClassList));
-        e.WaitForAssertion(() => Assert.DoesNotContain("secili", e.Find("#kenar-satir-islemler").ClassList));
+        e.Find("#kabuk-arama-girdi").KeyDown(Tus("ArrowDown"));
+        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kabuk-arama-ekran-1").ClassList));
+        e.WaitForAssertion(() => Assert.DoesNotContain("secili", e.Find("#kabuk-arama-ekran-0").ClassList));
 
-        e.Find("#menu-arama-girdi").KeyDown(Tus("ArrowUp"));
-        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kenar-satir-islemler").ClassList));
-        e.Find("#menu-arama-girdi").KeyDown(Tus("ArrowUp"));   // başa sarar
-        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kenar-satir-raporlar-satis-analizi").ClassList));
+        e.Find("#kabuk-arama-girdi").KeyDown(Tus("ArrowUp"));
+        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kabuk-arama-ekran-0").ClassList));
+        e.Find("#kabuk-arama-girdi").KeyDown(Tus("ArrowUp"));   // başa sarar
+        e.WaitForAssertion(() => Assert.Contains("secili", e.Find("#kabuk-arama-ekran-1").ClassList));
 
-        e.Find("#menu-arama-girdi").KeyDown(Tus("Enter"));
+        e.Find("#kabuk-arama-girdi").KeyDown(Tus("Enter"));
         var nav = Services.GetRequiredService<NavigationManager>();
         Assert.EndsWith("/raporlar/satis-analizi", nav.Uri, StringComparison.Ordinal);
-        // Gidince arama temizlenir, menü eski hâline döner.
-        Assert.Equal("", e.Find("#menu-arama-girdi").GetAttribute("value") ?? "");
+        // Gidince palet kapanır, metin silinir.
+        Assert.Empty(e.FindAll("#kabuk-arama-palet"));
     }
 
     [Fact]
     public void Enter_secim_yokken_ILK_eslesene_gider()
     {
-        var e = Menu();
+        var e = Palet();
         Yaz(e, "sat");
-        e.Find("#menu-arama-girdi").KeyDown(Tus("Enter"));
+        e.WaitForAssertion(() => Assert.NotEmpty(EkranSonuclari(e)));
+        e.Find("#kabuk-arama-girdi").KeyDown(Tus("Enter"));
 
         var nav = Services.GetRequiredService<NavigationManager>();
         Assert.EndsWith("/islemler", nav.Uri, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData("s")]
-    [InlineData("ş")]
-    [InlineData("İ")]
-    [InlineData("ı")]
-    [InlineData("*?%&<>\\\"'")]
-    public void Sinir_metinlerinde_klavye_ve_girdi_COKMEZ(string metin)
-    {
-        // K11: keydown, bağlama güncellenmeden ÖNCE gelir — ilk tuşta metin boş.
-        var e = Menu();
-        foreach (var t in new[] { "s", "ArrowDown", "ArrowUp", "Enter" })
-            e.Find("#menu-arama-girdi").KeyDown(Tus(t));
-        Yaz(e, metin);
-        foreach (var t in new[] { "ArrowDown", "ArrowUp", "x" })
-            e.Find("#menu-arama-girdi").KeyDown(Tus(t));
-
-        if (string.IsNullOrWhiteSpace(metin))
-        {
-            // Yazılmamış sayılır: menü süzülmez, "eşleşen yok" satırı çıkmaz.
-            e.WaitForAssertion(() => Assert.Empty(e.FindAll("#menu-arama-yok")));
-            e.WaitForAssertion(() => Assert.Empty(e.FindAll("#menu-arama-temizle")));
-        }
-        else
-        {
-            e.WaitForElement("#menu-arama-temizle");
-        }
-    }
+    // TEMA TEMİZLİĞİ 17.10: Sinir_metinlerinde_klavye_ve_girdi_COKMEZ kaldırıldı — menü kutusu yok; AYNI yedi sınır metni ve tuş dizisi palette KabukAramaEkranTestleri.Palet_klavyesi_bos_ve_sinir_metinlerde_COKMEZ'de, boş/boşluklu metinde eşleşme yokluğu yukarıdaki saf testlerde (Sadelestir/Bos_ya_da_sozcuksuz_sorgu).
 
     [Fact]
-    public void Cok_uzun_metin_menude_COKMEZ_ve_eslesen_yok_der()
+    public void Cok_uzun_metin_palette_COKMEZ_ve_ekran_eslesmez()
     {
-        var e = Menu();
+        // ESKİ: Cok_uzun_metin_menude_COKMEZ_ve_eslesen_yok_der.
+        var e = Palet();
         Yaz(e, new string('a', 2000));
-        e.Find("#menu-arama-girdi").KeyDown(Tus("ArrowDown"));
+        e.Find("#kabuk-arama-girdi").KeyDown(Tus("ArrowDown"));
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#menu-arama-yok")));
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#kabuk-arama-yok")));
+        Assert.Empty(EkranSonuclari(e));
+        Assert.NotNull(e.Find("#kabuk-arama-palet"));
     }
 
-    [Fact]
-    public void Favoriler_de_suzulur()
-    {
-        tercihJson = """{"tercihler":{"menu-favoriler":"[\"/kasalar\",\"/islemler\"]"}}""";
-        var e = Menu();
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#kenar-favori-satir-kasalar")));
-
-        Yaz(e, "sat");
-
-        Assert.False(e.Find("#kenar-favori-satir-islemler").HasAttribute("hidden"));
-        Assert.True(e.Find("#kenar-favori-satir-kasalar").HasAttribute("hidden"));
-    }
-
-    [Fact]
-    public void Menu_kutusunun_yer_tutucusu_Menude_ara_kayit_ifadesi_YOK()
-    {
-        var e = Menu();
-        var yt = e.Find("#menu-arama-girdi").GetAttribute("placeholder")!;
-        // T-K2: tuvaldeki yazım "Ekran ara" (önceki S1-j metni "Menüde ara").
-        Assert.Equal("Ekran ara", yt);
-        Assert.DoesNotContain("Kayıt", yt, StringComparison.Ordinal);
-    }
+    // TEMA TEMİZLİĞİ 17.10: Favoriler_de_suzulur kaldırıldı — menüdeki Favoriler satırı Yıldız kabuğunda yok (tuval Bugun4/Tum4).
+    // TEMA TEMİZLİĞİ 17.10: Menu_kutusunun_yer_tutucusu_Menude_ara_kayit_ifadesi_YOK kaldırıldı — menü kutusu yok; ekran aramasının "Ekran ara" yer tutucusu "Tüm ekranlar" sayfasında (S1dEkranlarTestleri.Baslik_h1_ve_arama_yer_tutucusu_tuvalden). Paletin yer tutucusu bilerek kayıt + ekran der.
 }

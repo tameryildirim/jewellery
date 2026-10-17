@@ -97,7 +97,7 @@ public sealed class BankaEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Banka> DekontModali(string tutar, string? cariId = "c1")
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         e.Find("#bh-dekont-gir").Click();
         e.WaitForElement("#dekont-tutar");
@@ -202,7 +202,7 @@ public sealed class BankaEkranTestleri : BunitContext
         sahte.HesapPost400 = """
             {"message":["Geçerli bir IBAN giriniz (TR + 24 rakam)"],"alanlar":{"iban":["Geçerli bir IBAN giriniz (TR + 24 rakam)"]},"error":"Bad Request","statusCode":400}
             """;
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#banka-yeni");
         e.Find("#banka-yeni").Click();
         e.WaitForElement("#hesap-iban");
@@ -233,7 +233,7 @@ public sealed class BankaEkranTestleri : BunitContext
         sahte.HesapPost400 = """
             {"message":["Geçerli bir IBAN giriniz (TR + 24 rakam)"],"alanlar":{"iban":["Geçerli bir IBAN giriniz (TR + 24 rakam)"]},"error":"Bad Request","statusCode":400}
             """;
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#banka-yeni");
         e.Find("#banka-yeni").Click();
         e.WaitForElement("#hesap-iban");
@@ -267,7 +267,7 @@ public sealed class BankaEkranTestleri : BunitContext
     public void Q105_Basit_modda_dekont_degismezlik_metinleri_storno_demez_PRO_ayni()
     {
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => true);
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();   // ZO-ISLEM-A
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();   // ZO-ISLEM-A
         e.WaitForElement("#degismez-ipucu-BankaHareketiFinansalAlan");
         var metin = e.Find("#degismez-ipucu-BankaHareketiFinansalAlan").TextContent;
         Assert.DoesNotContain("storno", metin, StringComparison.OrdinalIgnoreCase);
@@ -278,7 +278,7 @@ public sealed class BankaEkranTestleri : BunitContext
     [Fact]
     public void Q105_Profesyonel_modda_dekont_metinleri_degismez()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();   // ZO-ISLEM-A
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();   // ZO-ISLEM-A
         e.WaitForElement("#degismez-ipucu-BankaHareketiFinansalAlan");
         Assert.Contains(Kuyumcu.Core.I18n.Sozlukler.Tr.Banka.DekontKilitliAlanlar,
             e.Find("#degismez-ipucu-BankaHareketiFinansalAlan").TextContent);
@@ -288,7 +288,7 @@ public sealed class BankaEkranTestleri : BunitContext
     [Fact]
     public void SADE1_Degismez_kutulari_TEK_ozet_satirinin_arkasinda_katli_metinler_silinmedi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();   // ZO-ISLEM-A
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();   // ZO-ISLEM-A
         e.WaitForElement("#degismez-ipucu-BankaHareketiFinansalAlan");
         var ayrinti = e.Find("#bh-degismez-ayrinti");
         Assert.Equal("details", ayrinti.TagName, StringComparer.OrdinalIgnoreCase);
@@ -328,7 +328,7 @@ public sealed class BankaEkranTestleri : BunitContext
     public void KESIFP6_Banka_iki_bos_alan_tek_satir_sinifi_acicilar_korunur()
     {
         sahte.BosHareketEkle = true;
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();
         e.WaitForElement("#si-banka-dekont-karsitaraf-bh2-ac");
         var bos = e.Find("#si-banka-dekont-karsitaraf-bh2-ac").Closest("td")!;
         var dolu = e.Find("#si-banka-dekont-karsitaraf-bh1-ac").Closest("td")!;

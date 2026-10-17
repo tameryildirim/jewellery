@@ -498,7 +498,7 @@ public sealed class RaporEkranTestleri : BunitContext
     public void Kasa_raporu_kapanmamis_gunu_ACIK_gosterir_ve_farki_bos_birakir()
     {
         OturumKur();
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         // ZO-BELGE: gün tablosu KAPALI "Geçmiş kayıtlar" katlanırında.
         e.WaitForElement("#kr-gecmis-ac");
         e.Find("#kr-gecmis-ac").Click();
@@ -516,7 +516,7 @@ public sealed class RaporEkranTestleri : BunitContext
     public void Kasa_raporu_kasa_secilince_yeni_istek_atar()
     {
         OturumKur();
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotEmpty(Sorgular("/raporlar/kasa-defteri")));
         istekler.Clear();
 

@@ -11,15 +11,14 @@ namespace Kuyumcu.Web.Pages;
 // PAKET YILDIZ-5A — Sipariş ve tamir "Yıldız" yüzü (tuval Y_Siparisvetamir · BİREBİR).
 // Yalnız GÖRÜNÜM: satırlar sayfanın MEVCUT listesidir (GET /siparisler); "Yeni iş" özgün formu,
 // satır ve "Teslim et" MEVCUT ayrıntı/düzenleme ekranını (/siparisler/{id}) açar. Yeni istek YOK.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Siparisler
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "siparis" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "siparis";
 
     private bool yildizAyrinti;
     private string yildizSekme = "acik";

@@ -129,15 +129,15 @@ public sealed class CumaMMusterilerEkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
         var e = Render<SayfaCariler>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("tr.cari-satir")));
+        // TEMA TEMİZLİĞİ 17.10: liste = Yıldız tuvali (iki modda aynı yüz).
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#yildiz-musteri-liste > .yz-musteri-sat")));
         return e;
     }
 
     private IRenderedComponent<SayfaCariler> PaneliAc(string mod = ArayuzModuServisi.Basit)
     {
         var e = Ciz(mod);
-        if (mod == ArayuzModuServisi.Basit) e.Find("#c-satir-c1 td").Click();
-        else e.Find("#c-duzenle-c1").Click();
+        e.KartAc("c1");   // TEMA TEMİZLİĞİ 17.10: Yıldız'da iki modda da satıra dokununca kart açılır
         e.WaitForAssertion(() => Assert.False(e.Find("#duz-telefon").HasAttribute("disabled")));
         return e;
     }
@@ -183,7 +183,8 @@ public sealed class CumaMMusterilerEkranTestleri : BunitContext
     {
         var e = PaneliAc();
         Assert.Equal("0532 411 22 33", e.Find("#duz-telefon").GetAttribute("value"));
-        Assert.Equal("0532 411 22 33", e.Find("#c-telefon-c1").TextContent.Trim());
+        // TEMA TEMİZLİĞİ 17.10: listedeki telefon Yıldız satırının alt bilgisinde (aynı TelefonGoster biçimi).
+        Assert.Equal("0532 411 22 33", e.Find("#yildiz-musteri-c1 .yz-musteri-alt").TextContent.Trim());
     }
 
     [Fact]
@@ -259,18 +260,7 @@ public sealed class CumaMMusterilerEkranTestleri : BunitContext
         Assert.Equal("05324112233", SonGovde("POST").GetProperty("telefon").GetString());
     }
 
-    [Fact]
-    public void CUMA_M_19_PRO_satir_ici_telefon_normalize_gider()
-    {
-        var e = Ciz(ArayuzModuServisi.Profesyonel);
-        e.Find("#si-cari-telefon-c1-ac").Click();
-        e.WaitForElement("#si-cari-telefon-c1");
-        e.Find("#si-cari-telefon-c1").Input("+90 541 987 65 43");
-        istekler.Clear();
-        e.Find("#si-cari-telefon-c1-kaydet").Click();
-        e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "PATCH"));
-        Assert.Equal("05419876543", SonGovde("PATCH").GetProperty("telefon").GetString());
-    }
+    // TEMA TEMİZLİĞİ 17.10: CUMA_M_19_PRO_satir_ici_telefon_normalize_gider kaldırıldı — eski PRO tablosunun satır içi telefon düzenlemesi (#si-cari-telefon-*) Yıldız listesinde yok; telefon kartta düzenlenir ve normalize gider (CUMA_M_15, PRO kartı CUMA_M_10).
 }
 
 [Collection("http")]

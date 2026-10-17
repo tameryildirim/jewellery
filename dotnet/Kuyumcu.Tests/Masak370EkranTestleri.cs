@@ -119,7 +119,7 @@ public sealed class Masak370EkranTestleri : BunitContext
         Yol("/hareketler", """{"hareketler":[]}""");
         Yol("/bankalar", """{"hesaplar":[{"id":"b1","bankaAdi":"Ziraat","hesapAdi":"Ana Hesap","hesapSahibi":"X Ltd.","iban":"TR200000000000000000000001","paraBirimi":"TRY","bakiye":0,"aktif":true}]}""");
         Yol("/cari", """[{"id":"c1","ad":"Ayşe Yılmaz"}]""");
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir").Click();
         e.WaitForElement("#dekont-tutar");
         return e;
@@ -178,7 +178,7 @@ public sealed class Masak370EkranTestleri : BunitContext
         Yol("/kasalar", """[{"id":"ks1","ad":"Merkez Kasa","paraBirimi":"TRY","bakiye":250000,"aktif":true}]""");
         Yol("/kur/guncel", """{"id":"kur-1","altinHasFiyati":6800,"gramAltinFiyati":6850,"usdTry":34.0,"eurTry":37.0,"gbpTry":43.5,"kaynak":"ALTINKAYNAK","olusturuldu":"2026-09-25T09:00:00Z","ayarFiyatlari":[]}""");
         Yol("/arama", """{"sonuclar":[],"toplam":0}""");
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.False(e.Find("#hrd-kaydet").HasAttribute("disabled")));
         return e;
     }
@@ -205,25 +205,34 @@ public sealed class Masak370EkranTestleri : BunitContext
         Assert.Equal(Sozlukler.Tr.Banka.MasakKilitSebep, e.Find("#hrd-kaydet-kilit").TextContent.Trim());
     }
 
-    // ══ /islemler PRO yan sütun ══════════════════════════════════════════════
+    // ══ /islemler (Yıldız tezgâhı) ════════════════════════════════════════════
+    // TEMA TEMİZLİĞİ 17.10: PRO yan sütunun eşik satırları (#islem-pro-amac-etiket / #islem-pro-kimlik-etiket) SATIŞ'ta
+    // artık çizilmez (satış hep Yıldız tezgâhı). Aynı güvence — ekran kimliği sunucunun İSTEDİĞİ tutarda ister (KimlikIstenenTutar,
+    // 200.000), md.5/1-b eşiğinde (370.000) değil; alanı göndermeyen eski sunucuda da iki eşiğin küçüğü — Yıldız'da Peşin Müşteri
+    // kilidinin cümlesinde sınanır (Islemler.PesinKilitMetni: "{kimliğin istendiği tutar} ve üstünde kimlik gerekir …").
 
-    private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> IslemlerPro(string esik)
+    private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> IslemlerYildiz(string esik, decimal fiyat)
     {
         Oturum(ArayuzModuServisi.Profesyonel);
+        var f = fiyat.ToString(System.Globalization.CultureInfo.InvariantCulture);
         Yol("/cari/sistem-carisi", """{"id":"pm1","ad":"Peşin Müşteri","tur":"MUSTERI","aktif":true,"sistemCarisi":true}""");
-        Yol("/tevsik/gunluk", """{"had":50000,"kuralEtkin":true,"kumulatifHesaplandi":true,"bugunkuNakitToplam":0,"kalanNakitHakki":50000,"islemTutariKuraliDevrede":false}""");
+        Yol("/tevsik/gunluk", """{"had":2000000000,"kuralEtkin":true,"kumulatifHesaplandi":true,"bugunkuNakitToplam":0,"kalanNakitHakki":2000000000,"islemTutariKuraliDevrede":false}""");
         Yol("/fiyat/listeler", """[{"id":"fl1","ad":"Vitrin","varsayilan":true,"aktif":true}]""");
+        Yol("/fiyat/teklif", $$"""{"teklifVar":true,"listeFiyati":{{f}},"hasDegeri":{{f}},"marjTl":0,"iscilikTl":0,"indirimTutari":0,"satisFiyati":{{f}},"kampanyaId":null,"sabitFiyat":false,"indirimOncesiFiyat":null}""");
         Yol("/kur/guncel", """{"id":"kur-1","altinHasFiyati":6800,"ayarFiyatlari":[]}""");
-        Yol("/urunler", "[]");
+        Yol("/urunler", $$"""[{"id":"u1","ad":"Set","ayarId":"K22","hasGrami":36,"iscilikTl":0,"satisFiyati":{{f}},"birim":"ADET","milyem":916,"gramAgirlik":39.3}]""");
         Yol("/kasalar", """[{"id":"ks1","ad":"Merkez Kasa","paraBirimi":"TRY","aktif":true}]""");
         Yol("/subeler", """[{"id":"s1","ad":"Merkez","aktif":true}]""");
-        Yol("/cari", """[{"id":"pm1","ad":"Peşin Müşteri"}]""");
+        Yol("/cari", """[{"id":"pm1","ad":"Peşin Müşteri","sistemCarisi":true}]""");
         Yol("/masak/esikler", esik);
         Yol("/islemler/personeller", """{"secimSerbest":false,"oturumId":"u1","personeller":[{"id":"u1","ad":"Test","soyad":"Tezgâhtar"}],"dahaFazlasiVar":false}""");
         Yol("/reyon", "[]");
         Yol("/pos/cihazlar", "[]");
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizPesinBekle();
+        SeciciYardim.Sec(e, "islem-urun", "u1");
+        e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))), TimeSpan.FromSeconds(5));
+        e.Find("#islem-kalem-ekle").Click();
+        e.WaitForAssertion(() => Assert.Equal(1, e.YildizKalemSayisi()), TimeSpan.FromSeconds(5));
         return e;
     }
 
@@ -232,15 +241,21 @@ public sealed class Masak370EkranTestleri : BunitContext
     [InlineData(EsikYeniAlansiz)]
     public void Islemler_PRO_yan_sutun_kimligin_ISTENDIGI_tutari_gosterir_370000_degil(string esik)
     {
-        // YASAL-PARAM-EKRAN tur 2 (tasarım hakemi KRİTİK): kimliği isteyen 200.000 kademesi panelde
-        // KAYBOLMAZ, ama "kimlik eşiği" adıyla değil AYRI satırda ("işlem amacıyla kimlik — teyit bekleniyor");
-        // kimlik satırı md.5/1-b eşiğini (370.000, MASAK) söyler — kilit metniyle aynı kural.
-        var e = IslemlerPro(esik);
-        e.WaitForAssertion(() => Assert.Equal(
-            string.Format(YasalParamSozlugu.Tr.PanelAmac, Bicim.Tl(200_000m)),
-            e.Find("#islem-pro-amac-etiket").TextContent.Trim()));
-        Assert.Equal(string.Format(SatisProSozlugu.Tr.KimlikEsigi, Bicim.Tl(370_000m)),
-            e.Find("#islem-pro-kimlik-etiket").TextContent.Trim());
-        Assert.DoesNotContain(Bicim.Tl(200_000m), e.Find("#islem-pro-kimlik-etiket").TextContent);
+        // 250.000: 200.000 (kimliğin istendiği tutar) ile 370.000 (md.5/1-b) arası — Peşin Müşteri'de Kaydet kimlik kademesiyle
+        // kilitli ve cümle 200.000'i söyler (370.000'i değil).
+        var e = IslemlerYildiz(esik, 250_000m);
+        var beklenen = string.Format(YasalKapiGeriSozlugu.Tr.PesinKimlikKilit, Bicim.Tl(200_000m));
+        e.WaitForAssertion(() => Assert.Equal(beklenen, e.GbYildizKaydet().GetAttribute("title")), TimeSpan.FromSeconds(5));
+        Assert.True(e.GbYildizKaydet().HasAttribute("disabled"));
+        Assert.DoesNotContain(Bicim.Tl(370_000m), e.Find("#yildiz-tezgah-fark").TextContent);
+    }
+
+    [Fact]
+    public void Islemler_YILDIZ_199999_99_kimlik_kademesi_ALTINDA_Pesin_kilidi_yok()
+    {
+        // Sınırın bir kuruş altı: kimlik kademesi tutmaz → Peşin Müşteri kimlik kilidi YOK (370.000'e göre de yok; ayrım üstteki testte).
+        var e = IslemlerYildiz(EsikYeni, 199_999.99m);
+        e.WaitForAssertion(() => Assert.False(e.GbYildizKaydet().HasAttribute("disabled"), e.GbYildizKaydet().GetAttribute("title")), TimeSpan.FromSeconds(5));
+        Assert.DoesNotContain(Bicim.Tl(200_000m), e.Find("#yildiz-tezgah-fark").TextContent);
     }
 }

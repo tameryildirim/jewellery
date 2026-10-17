@@ -16,9 +16,8 @@ public partial class Pos
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "pos" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "pos";
     private bool yildizAyrinti;
 
     /// <summary>Boş durum yalnız istek BAŞARILI ve cihaz gerçekten yokken (UX-S28).</summary>

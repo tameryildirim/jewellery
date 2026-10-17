@@ -157,7 +157,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Fiyatlandirma> Fiyat()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         istekler.Clear();
         return e;
@@ -233,7 +233,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kasalar> Kasa()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-gecmis-k1");
         istekler.Clear();
         return e;
@@ -336,7 +336,9 @@ public sealed class UX1C2EkranTestleri : BunitContext
         e.Find("#h-tutar").Input("100");
 
         // Modalı kapat, yeniden aç: yön VARSAYILANA döner.
-        e.FindAll("button").First(b => b.TextContent.Trim() == "İptal").Click();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız katmanında çekmecenin ikincil düğmesi "Vazgeç"tir (YildizKatmanSozlugu) — kimliğiyle bulunur.
+        e.Find("#cekmece-kasa-hareket-iptal").Click();
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#h-tur")));
         e.Find("#kasa-hareket-k1").Click();
         e.WaitForElement("#h-tur");
 
@@ -411,7 +413,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Banka> BankaSayfasi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Banka>();
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc();
         e.WaitForElement("#bh-dekont-gir");
         e.HareketleriAc();   // ZO-ISLEM-A: hareketler kapalı akordeonda
         istekler.Clear();
@@ -498,7 +500,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kur> KurSayfasi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#sayfa-basi-kur-baslik");
         istekler.Clear();
         return e;
@@ -588,7 +590,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> EmanetSayfasi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetOzgunAc();
         e.WaitForElement("#e-cari");
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForElement("#e-gecmis-ac").Click();   // EMANET-1: geçmiş katlanırda KAPALI
@@ -654,7 +656,7 @@ public sealed class UX1C2EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> SayimListesi()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-tablo tbody tr");
         istekler.Clear();
         return e;

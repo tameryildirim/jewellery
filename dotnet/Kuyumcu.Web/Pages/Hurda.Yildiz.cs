@@ -17,9 +17,8 @@ public partial class Hurda
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "hurda" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "hurda";
     private bool yildizAyrinti;
 
     /// <summary>Yıldız listesinde gösterilen en çok giriş satırı (sayfa kısa; tamamı "Tüm ayrıntılar"da).</summary>

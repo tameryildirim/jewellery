@@ -300,25 +300,32 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ fişi artık hep Yıldız tezgâhıdır. PRO'da satıcı seçicisi (FisSatici — #islem-personel,
+    // #islem-satan, #islem-personel-ipucu/-sinir/-hata AYNI) müşteri "Değiştir" katmanının "+ Satıcı ve fiyat listesi"
+    // ekindedir (#yildiz-musteri-pro-ac → #yildiz-musteri-pro). BASİT Yıldız tezgâhında "Satan" salt okunur satırı
+    // BİLEREK çizilmez (tuvalde yok — Islemler.razor OdemeParcasi notu); gövdeye personelId yine girmez.
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ekran(string mod)
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "SAHIP", "s1", null, mod));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizHazir();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/islemler/personeller")));
         return e;
     }
 
+    /// <summary>PRO: "Değiştir" katmanında satıcı/fiyat listesi ekini açar (hata varsa ek zaten açık gelir).</summary>
+    internal static void SaticiAc(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        if (e.FindAll("#yildiz-musteri-secici").Count == 0) e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForElement("#yildiz-musteri-secici");
+        if (e.FindAll("#yildiz-musteri-pro").Count == 0) e.Find("#yildiz-musteri-pro-ac").Click();
+        e.WaitForElement("#yildiz-musteri-pro");
+    }
+
     private static void KalemVeKaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.WaitForAssertion(() => Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
-        e.Find("#islem-kalem-ekle").Click();
-        e.WaitForElement("#islem-kalem-liste-sar");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"),
-            "Kaydet kilitli: " + string.Join(" | ", e.FindAll("#islem-kaydet-kilit, .alan-hata").Select(x => x.TextContent.Trim()))));
-        e.Find("#islem-kaydet").Click();
+        e.YildizKalemEkle(beklenenFiyat: "10000");
+        e.YildizKaydet();
     }
 
     private JsonElement SatisPostu()
@@ -331,7 +338,8 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
     public void S25b_E1_pro_modda_secici_var_secim_govdeye_personelId_olarak_gider()
     {
         var e = Ekran(ArayuzModuServisi.Profesyonel);
-        e.WaitForElement("#islem-personel");
+        SaticiAc(e);
+        e.WaitForElement("#yildiz-musteri-pro #islem-personel");
         Assert.Equal(2, SeciciYardim.Secenekler(e, "islem-personel").Count);
         Assert.Equal("u1", SeciciYardim.SeciliDeger(e, "islem-personel"));   // varsayılan oturum
         SeciciYardim.Sec(e, "islem-personel", "u2");
@@ -344,11 +352,13 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
     [Fact]
     public void S25b_E2_basit_modda_secici_yok_Satan_satiri_var_govdede_personelId_yok()
     {
+        // TEMA TEMİZLİĞİ 17.10: "Satan" satırı Yıldız BASİT tezgâhında bilerek yok (tuval) — o iddia kaldırıldı;
+        // seçicinin olmadığı ve gövdeye personelId girmediği güvencesi AYNEN.
         var e = Ekran(ArayuzModuServisi.Basit);
-        e.WaitForElement("#islem-satan");
-        Assert.Empty(e.FindAll("#islem-personel"));
-        Assert.Contains(FisSaticiSozlugu.Tr.Satan, e.Find("#islem-satan-sar").TextContent);
-        Assert.Contains("Test Tezgâhtar", e.Find("#islem-satan").TextContent);
+        e.Find("#yildiz-tezgah-degistir").Click();
+        e.WaitForElement("#yildiz-musteri-secici");                 // katman açık — boş DOM değil
+        Assert.Empty(e.FindAll("#yildiz-musteri-pro-ac, #islem-personel"));
+        e.Find("#yildiz-tezgah-degistir").Click();
         KalemVeKaydet(e);
         e.WaitForAssertion(() => Assert.False(SatisPostu().TryGetProperty("personelId", out var v) && v.ValueKind != JsonValueKind.Null));
     }
@@ -358,6 +368,7 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
     {
         api.Personeller = """{"personeller":[{"id":"u1","ad":"Tek","soyad":"Kişi"}],"oturumId":"u1","secimSerbest":true}""";
         var e = Ekran(ArayuzModuServisi.Profesyonel);
+        SaticiAc(e);
         e.WaitForAssertion(() => Assert.Contains("Tek Kişi", e.Find("#islem-satan").TextContent));
         Assert.Empty(e.FindAll("#islem-personel"));
     }
@@ -367,6 +378,7 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
     {
         api.Personeller = """{"personeller":[{"id":"u1","ad":"Test","soyad":"Tezgâhtar"}],"oturumId":"u1","secimSerbest":false}""";
         var e = Ekran(ArayuzModuServisi.Profesyonel);
+        SaticiAc(e);
         e.WaitForElement("#islem-personel-ipucu");
         Assert.Empty(e.FindAll("#islem-personel"));
         Assert.Equal(FisSaticiSozlugu.Tr.KendinizIpucu, e.Find("#islem-personel-ipucu").TextContent.Trim());
@@ -377,6 +389,7 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
     {
         api.Personeller = """{"personeller":[{"id":"u1","ad":"Test","soyad":"Tezgâhtar"},{"id":"u2","ad":"Ayşe","soyad":"Demir"}],"oturumId":"u1","secimSerbest":true,"dahaFazlasiVar":true}""";
         var e = Ekran(ArayuzModuServisi.Profesyonel);
+        SaticiAc(e);
         e.WaitForElement("#islem-personel");
         Assert.Equal(FisSaticiSozlugu.Tr.DahaFazlasiVar, e.Find("#islem-personel-sinir").TextContent.Trim());
     }
@@ -386,6 +399,9 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
     {
         api.PersonelHatali = true;
         var e = Ekran(ArayuzModuServisi.Profesyonel);
+        e.Find("#yildiz-tezgah-degistir").Click();
+        // UX-S28: hata gizlenmez — katman açılınca satıcı eki KENDİLİĞİNDEN açık gelir (ProUstAcikZorunlu)
+        e.WaitForElement("#yildiz-musteri-pro");
         e.WaitForAssertion(() => Assert.Contains("Personel okunamadı (sahte)", e.Find("#islem-personel-hata").TextContent));
         Assert.Empty(e.FindAll("#islem-personel"));
         Assert.Contains("Test Tezgâhtar", e.Find("#islem-satan").TextContent);
@@ -397,12 +413,12 @@ public sealed class S25bSaticiEkranTestleri : BunitContext
     public void S25b_E5_pro_varsayilan_dokunulmadiysa_gövdede_personelId_yok()
     {
         var e = Ekran(ArayuzModuServisi.Profesyonel);
+        SaticiAc(e);
         e.WaitForElement("#islem-personel");
         KalemVeKaydet(e);
         e.WaitForAssertion(() => Assert.False(SatisPostu().TryGetProperty("personelId", out var v) && v.ValueKind != JsonValueKind.Null));
     }
 }
-
 public sealed class S25bModGecisTestleri : BunitContext
 {
     private readonly List<(string Metot, string Yol, string Govde)> istekler = [];
@@ -429,20 +445,19 @@ public sealed class S25bModGecisTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız tezgâhı — PRO seçici "Değiştir" katmanının satıcı ekinde; BASİT'te seçici ve
+        // "Satan" satırı yok (tuval). Güvence AYNI: PRO'daki seçim BASİT'e taşınmaz, gövdede personelId yok.
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizHazir();
+        S25bSaticiEkranTestleri.SaticiAc(e);
         e.WaitForElement("#islem-personel");
         SeciciYardim.Sec(e, "islem-personel", "u2");
         var modu = Services.GetRequiredService<ArayuzModuServisi>();
         e.InvokeAsync(() => modu.Uygula(ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-personel")));
-        Assert.Contains("Test Tezgâhtar", e.Find("#islem-satan").TextContent);
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-personel, #yildiz-musteri-pro-ac")));
+        Assert.Single(e.FindAll("#yildiz-musteri-secici"));   // katman açık — boş DOM değil
 
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.WaitForAssertion(() => Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
-        e.Find("#islem-kalem-ekle").Click();
-        e.WaitForElement("#islem-kalem-liste-sar");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled")));
-        e.Find("#islem-kaydet").Click();
+        e.YildizKalemEkle(beklenenFiyat: "10000");
+        e.YildizKaydet();
         e.WaitForAssertion(() =>
         {
             var p = Assert.Single(istekler, i => i.Metot == "POST" && i.Yol.Contains("/islemler/satis"));

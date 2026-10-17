@@ -666,17 +666,6 @@ textarea { font-family: inherit; }
 /* (T2-3) ZO-BELGE "Veri içe aktar: 'Boş şablonu indir' düğmesi alttaki katlanıra yapışık (0 boşluk)". */
 .zo-belge .alan.zo-ice-sablon + .katlanir { margin-top: var(--bosluk-3); }
 
-/* (T2-5) KATMAN-2 "Kalıcı hata bandı kenar çubuğunda tek satır değil (216 px'te 4 satır, 13 px)":
-   metin tek kısa cümle (MenuSozlugu), yazı ≥14 px, Kapat × ikon düğme aynı satırda. */
-#kenar-sira-hatasi { flex-direction: row; align-items: center; font-size: var(--yazi-sm); }
-#kenar-sira-hatasi > span { flex: 1 1 auto; min-width: 0; }
-.kenar-uyari-kapat {
-  flex: none; display: inline-flex; align-items: center; justify-content: center;
-  width: 2rem; height: 2rem; padding: 0; border: 1px solid var(--tehlike-kenar); border-radius: var(--yaricap-sm);
-  background: transparent; color: inherit; font: inherit; font-size: 1.125rem; line-height: 1; cursor: pointer;
-}
-.kenar-uyari-kapat:focus-visible { outline: var(--odak-halka-kalinlik) solid var(--odak-halka); outline-offset: var(--odak-halka-boslugu); }
-
 /* (T2-6) KESIF-P4/P8 "#urun-durum-filtre ve #cari-tur-filtre ezik (84 px)": süzgeç seçicisi
    "Hepsi" kadar daralıyordu; seçenekler ("Pasifler dahil", "Toptancı") açılınca kutu zıplıyordu.
    Geniş ekranda süzgeç seçicileri ortak asgari genişlik alır (dar ekranda zaten %100).

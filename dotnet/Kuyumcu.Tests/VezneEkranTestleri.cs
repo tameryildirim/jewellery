@@ -155,7 +155,7 @@ public sealed class VezneEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "sb1"));
-        return Render<Kuyumcu.Web.Pages.Vezne>();
+        return Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
     }
 
     // ── Kuyruk ───────────────────────────────────────────────────────────────

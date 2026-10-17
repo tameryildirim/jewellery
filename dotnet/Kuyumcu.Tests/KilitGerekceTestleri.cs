@@ -81,7 +81,9 @@ public sealed class KilitGerekceTestleri : BunitContext
             // Emanet
             var y when y.Contains("/cari") => """[{"id":"c1","ad":"Ayşe Demir","tur":"MUSTERI"}]""",
             var y when y.Contains("/emanet/") =>
-                """{"cariId":"c1","mevcutHasGramBakiye":0,"madenBakiyeleri":[],"hareketler":[]}""",
+                // TEMA TEMİZLİĞİ 17.10: Yıldız emanet listesi satırı (özgün ekranın tek girişi) için GERİ VERİLMİŞ bir emanet —
+                // elimizdeki bakiye yine 0 ("elimizde emanet yok" durumu aynı).
+                """{"cariId":"c1","mevcutHasGramBakiye":0,"madenBakiyeleri":[],"hareketler":[{"id":"eh1","tur":"EMANET_GIRIS","tarih":"2026-09-10T10:00:00Z","hasGrami":5,"aciklama":"Bilezik","stornoKaynakId":null,"fisId":null},{"id":"eh2","tur":"EMANET_CIKIS","tarih":"2026-09-12T10:00:00Z","hasGrami":-5,"aciklama":"İade","stornoKaynakId":null,"fisId":null}]}""",
             _ => null,
         });
     }
@@ -110,7 +112,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     [Fact]
     public void EvrakTuruKilidiGerekceGosterir()
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-duzenle-e1").Click();
 
         // Kilit AYNI: tür seçici düzenlemede kapalı.
@@ -130,7 +132,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     {
         // Basit yüz: "kapalı hatırlatmalar" kartı.
         OturumAc(ArayuzModuServisi.Basit);
-        var c = Render<Kuyumcu.Web.Pages.Bildirimler>();
+        var c = Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
         var ipucu = c.WaitForElement("#degismez-ipucu-KurulumKapaliIs").TextContent;
         Assert.Contains(O.BildirimKurulumKapaliGerekce, ipucu, StringComparison.Ordinal);
         Assert.Contains(string.Format(O.BildirimKurulumKapaliYol, KasaBildirimSozlugu.Tr.Ac), ipucu, StringComparison.Ordinal);
@@ -142,7 +144,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     public void BildirimKapaliIsAcmaYolu_profesyonel_yuzde_de_yazili()
     {
         OturumAc(ArayuzModuServisi.Profesyonel);
-        var c = Render<Kuyumcu.Web.Pages.Bildirimler>();
+        var c = Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
         var ipucu = c.WaitForElement("#degismez-ipucu-KurulumKapaliIs").TextContent;
         Assert.Contains(O.BildirimKurulumKapaliGerekce, ipucu, StringComparison.Ordinal);
         Assert.Contains(string.Format(O.BildirimKurulumKapaliYol, Sozlukler.Tr.Bildirim.IsAcikKapali), ipucu, StringComparison.Ordinal);
@@ -155,7 +157,7 @@ public sealed class KilitGerekceTestleri : BunitContext
     public void ManuelKurKaydiIptalYoluYazili()
     {
         OturumAc();
-        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        var c = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         var ipucu = c.WaitForElement("#degismez-ipucu-ManuelKurKaydi").TextContent;
         Assert.Contains(O.ManuelKurGerekce, ipucu, StringComparison.Ordinal);
         Assert.Contains(string.Format(O.ManuelKurYolu, Sozlukler.Tr.Kur.IptalEt, Sozlukler.Tr.Kur.ManuelGiris),
@@ -167,21 +169,14 @@ public sealed class KilitGerekceTestleri : BunitContext
     [Fact]
     public void Emanet_kilitli_dugmeler_sebebini_yazar()
     {
-        var c = Render<Kuyumcu.Web.Pages.Emanet>();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız'da özgün emanet ekranının TEK girişi bir emanet satırına dokunmaktır ve müşteri SEÇİLİ
+        // açılır (Emanet.Yildiz.cs YildizMusteriAc; seçicide boş seçenek yok). Bu yüzden "müşteri seçilmeden iki düğme kilitli"
+        // hâli Yıldız'da ulaşılamaz; Yıldız'daki karşılığı ("Emanet al" formunda müşteri seçilmeden Kaydet → alan altı
+        // EmanetMusteriSecilmedi) Yildiz5AFormTestleri'nde sınanır. Aşağıdaki kapı (seçili müşteri, elde emanet yok) AYNEN.
+        var c = Render<Kuyumcu.Web.Pages.Emanet>().EmanetOzgunAc("eh1");
         c.WaitForElement("#e-giris-ac");
 
-        // Müşteri seçilmeden: iki düğme de kilitli, sebep title'da VE görünür satırda.
-        var giris = c.Find("#e-giris-ac");
-        var cikis = c.Find("#e-cikis-ac");
-        Assert.True(giris.HasAttribute("disabled"));
-        Assert.True(cikis.HasAttribute("disabled"));
-        Assert.Equal(O.EmanetMusteriSecilmedi, giris.GetAttribute("title"));
-        Assert.Equal(O.EmanetMusteriSecilmedi, cikis.GetAttribute("title"));
-        Assert.Equal("e-kilit", giris.GetAttribute("aria-describedby"));
-        Assert.Contains(O.EmanetMusteriSecilmedi, c.Find("#e-kilit").TextContent, StringComparison.Ordinal);
-
         // Müşteri seçildi, elimizde emanet yok: "+ Emanet Al" açılır, "İade Et" sebebini değiştirir.
-        SeciciYardim.Sec(c, "e-cari", "c1");
         c.WaitForAssertion(() => Assert.False(c.Find("#e-giris-ac").HasAttribute("disabled")));
         Assert.Null(c.Find("#e-giris-ac").GetAttribute("title"));
         Assert.True(c.Find("#e-cikis-ac").HasAttribute("disabled"));

@@ -19,9 +19,8 @@ public partial class KasaRaporu
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "kasa-raporu" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "kasa-raporu";
     private bool yildizAyrinti;
 
     public const int YildizHareketSiniri = 1000;
@@ -33,7 +32,7 @@ public partial class KasaRaporu
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || YildizKasa is not { } k) return;
+        if (YildizKasa is not { } k) return;
         var anahtar = $"{k.KasaId}|{k.KapanisBakiye}|{k.AcilisDeviri}";
         if (anahtar == yildizAnahtar) return;
         yildizAnahtar = anahtar;

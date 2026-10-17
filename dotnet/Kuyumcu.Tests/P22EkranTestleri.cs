@@ -176,7 +176,7 @@ public sealed class P22EkranTestleri : BunitContext
     [Fact]
     public void B44_sayim_adi_satir_ici_duzenlenir_ve_PATCH_atar()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-ac-s1");
         e.Find("#sy-ac-s1").Click();
 
@@ -194,7 +194,7 @@ public sealed class P22EkranTestleri : BunitContext
     [Fact]
     public void B33_sayim_DURUM_sutunu_gercek_durumu_yazar()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-durum-s1");
         var metin = e.Find("#sy-durum-s1").TextContent.Trim();
         // UX-S31: ham kod değil, sözlükten çözülmüş etiket.
@@ -208,7 +208,7 @@ public sealed class P22EkranTestleri : BunitContext
     [Fact]
     public void B45_kasa_raporundan_gun_sonu_sayimi_girilir()
     {
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForElement("#kr-sayim-ks1");
         e.Find("#kr-sayim-ks1").Click();
 
@@ -227,7 +227,7 @@ public sealed class P22EkranTestleri : BunitContext
     [Fact]
     public void B45_negatif_sayim_SESSIZ_gecmez_alan_alti_mesaj_verir()
     {
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForElement("#kr-sayim-ks1");
         e.Find("#kr-sayim-ks1").Click();
         e.WaitForElement("#kr-sayim-tutar");

@@ -149,8 +149,8 @@ public sealed class Yildiz4ATestleri : BunitContext
         KabukServisi.Ortak.GorunumHazirla(Services.GetRequiredService<ApiIstemci>(), oturum).GetAwaiter().GetResult();
         KabukServisi.Ortak.SubeListesiAta(oturum, [new SubeOzeti("s1", "Merkez Şube", true)]);
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement(sema == "yildiz" ? "#yildiz-bugun" : (mod == ArayuzModuServisi.Basit ? "#panel-sade" : "#panel-izgara"), TimeSpan.FromSeconds(10));
-        if (sema == "yildiz")
+        // Tema temizliği (17.10): Panel'in tek yüzü Bugün'dür; sunucu eski şema dese de aynı yüz çizilir.
+        e.WaitForElement("#yildiz-bugun", TimeSpan.FromSeconds(10));
         {
             e.WaitForAssertion(() =>
             {
@@ -292,14 +292,15 @@ public sealed class Yildiz4ATestleri : BunitContext
     [Theory]
     [InlineData(ArayuzModuServisi.Basit, "#panel-sade")]
     [InlineData(ArayuzModuServisi.Profesyonel, "#panel-izgara")]
-    public void Y4A_12_baska_semada_ozgun_Panel_govdesi_AYNEN(string mod, string kok)
+    public void Y4A_12_sunucu_eski_sema_dese_de_Panel_YildizBugun_ozgun_govde_YOK(string mod, string kok)
     {
+        // Tema temizliği (17.10): Panel'in özgün gövdesi silindi. Sunucu (eski veri) "platin" dönse bile her modda
+        // Bugün tuvali çizilir; eski kökler (#panel-sade / #panel-izgara / #panel-karsilama) YOK.
         sema = "platin";
         var e = Panel(mod);
-        Assert.NotEmpty(e.FindAll(kok));
-        Assert.NotEmpty(e.FindAll("#panel-karsilama"));
-        Assert.Empty(e.FindAll("#yildiz-bugun"));
-        Assert.Empty(e.FindAll(".yildiz-bugun-tam"));
+        Assert.NotEmpty(e.FindAll("#yildiz-bugun"));
+        Assert.Empty(e.FindAll(kok));
+        Assert.Empty(e.FindAll("#panel-karsilama"));
     }
 
     [Fact]

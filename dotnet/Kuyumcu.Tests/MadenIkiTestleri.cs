@@ -570,6 +570,7 @@ public sealed class MadenIkiPanelEkranTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private sealed class SahteApi(Func<string> kar) : HttpMessageHandler
@@ -606,6 +607,10 @@ public sealed class MadenIkiPanelEkranTestleri : BunitContext
                 var y when y.Contains("/tercihler/benim", StringComparison.Ordinal) => """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/", StringComparison.Ordinal) =>
                     """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün gün sonu / emanet satırlarının uçları gerçekçi.
+                var y when y.EndsWith("/raporlar/kasa-defteri", StringComparison.Ordinal) =>
+                    """{"baslangic":"2026-10-01","bitis":"2026-10-01","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari", StringComparison.Ordinal) => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             };
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -615,41 +620,39 @@ public sealed class MadenIkiPanelEkranTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — kâr alt şeridin "Kâr" öğesi (#yildiz-bugun-kar), pozisyon alt şeridin
+    // "Altın pozisyonu" öğesi (#yildiz-bugun-pozisyon); eski kart ve kırılımı Bugün'de yok.
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Basit()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-kar")), TimeSpan.FromSeconds(10));
+        e.BugunBekle(pozisyon: true);
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kar")), TimeSpan.FromSeconds(10));
         return e;
     }
 
-    // [ORTA] eksik yalnız iadeden geliyorsa kâr satırı bunu söyler (eskiden düz "Kâr 500 ₺")
+    // [ORTA] eksik yalnız iadeden geliyorsa kâr bunu söyler (eskiden düz "Kâr 500 ₺"): Bugün'de rakam BASILMAZ, "maliyet eksik".
     [Fact]
     public void MI30_Panel_kar_satiri_eksik_iadeyi_soyler()
     {
         var e = Basit();
-        var k = e.Find("#panel-soru-satis-kar");
-        // RAPOR-GORUNUM (tasarım DÜŞÜK): "1 iade" öbeği bölünmez boşlukla tek parça ("iade" tek başına alt satıra düşmez).
-        // PAKET RAPOR-2: kısa kalıp "Kâr … · eksik: 1 iade" (satır "maliyeti eksik:" sonrasında kırılıyordu).
-        // PAKET RAPOR-3 (hasım ORTA): "eksik: 1 iade" → neyin eksik olduğunu söyler: "1 iadenin maliyeti yok".
-        Assert.StartsWith($"Kâr {Bicim.TlKurus(500m)} (yalnız ", k.TextContent.Trim(), StringComparison.Ordinal);
-        Assert.EndsWith("1\u00A0iadenin\u00A0maliyeti\u00A0yok", k.TextContent.Trim(), StringComparison.Ordinal);
-        Assert.Contains("panel-soru-kar--eksik", k.ClassName, StringComparison.Ordinal);
+        var k = e.Find("#yildiz-bugun-kar");
+        Assert.Equal($"{YildizBugunSozlugu.Kar("tr")} {YildizBugunSozlugu.MaliyetEksik("tr")}", k.TextContent.Trim());
+        Assert.DoesNotContain("500", k.TextContent, StringComparison.Ordinal);   // kısmi kâr (500 ₺) yazılmaz
+        Assert.Equal("/raporlar/kar-zarar", k.GetAttribute("href"));
     }
 
-    // [DÜŞÜK] Altın pozisyonum: Bicim.Has ile aynı biçim (binlik + 4 ondalık)
+    // [DÜŞÜK] Altın pozisyonu binlik ayraçlı. TEMA TEMİZLİĞİ 17.10: Bugün alt şeridi tuval biçimidir (bir ondalık,
+    // işaretli, "g has" — YildizBugunBicim.HasKisa, Yildiz4ATestleri.Y4A_05); 4 haneli kırılım kartı Bugün'de yok.
     [Fact]
     public void MI31_Altin_pozisyonu_has_bicimi_binlik_dort_hane()
     {
         var e = Basit();
-        e.WaitForAssertion(() => Assert.Equal("+1.312,8000 has", e.Find("#pozisyon-net").TextContent.Trim()), TimeSpan.FromSeconds(10));
-        // MADEN-2 tur 2 (tasarım hakemi KRİTİK): kırılım alt değerleri ana değerle AYNI has biçiminde — "g" yok.
-        Assert.Equal("Vitrin 1.312,8000 has", e.Find("#pozisyon-vitrin").TextContent.Trim());
-        Assert.Equal("Alacak 0,0000 has", e.Find("#pozisyon-alacak").TextContent.Trim());
-        Assert.DoesNotMatch(@"\d g\b", e.Find("#pozisyon-kirilim").TextContent);
+        Assert.Equal("+1.312,8 g has", e.Find("#yildiz-bugun-pozisyon b").TextContent.Trim());
+        Assert.Equal("1.312,8 g", e.Find("#yildiz-bugun-vitrin b").TextContent.Trim());
+        Assert.Empty(e.FindAll("#pozisyon-kart"));
     }
 
     // MADEN-2 tur 2 (tasarım hakemi KRİTİK — "Alacak hapı düğme gibi görünmesin"): kırılım öğeleri

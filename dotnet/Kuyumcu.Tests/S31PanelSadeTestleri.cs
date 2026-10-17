@@ -20,6 +20,9 @@ namespace Kuyumcu.Tests;
 // UX-S32 (para birimleri toplanmaz) · yetki ≠ mod · tek birincil düğme ·
 // yüze göre yükleme (gereksiz istek yok) · mod değişince eksik yüz yüklenir.
 // ⚠ bUnit sözleşmesi: sahte API "{}" varsayılanı bırakmaz — her uca GERÇEKÇİ yanıt.
+// TEMA TEMİZLİĞİ 17.10: iki yüzün eski gövdesi KALDIRILDI — Panel yalnız Yıldız Bugün'ü çizer (BASİT ve PRO aynı).
+// Aynı sözleşmeler (aynı yükleyiciler, aynı uçlar) Bugün'ün dev rakamı, cümlesi, "Seni bekleyen" satırları ve alt
+// şeridi üzerinde sınanır; yalnız düzene ait testler gerekçeli yorumla kaldırıldı.
 // ═════════════════════════════════════════════════════════════════════════════
 
 public sealed class S31PanelSadeTestleri : BunitContext
@@ -136,6 +139,11 @@ public sealed class S31PanelSadeTestleri : BunitContext
                 var y when y.Contains("/tercihler/benim", StringComparison.Ordinal) => """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/", StringComparison.Ordinal) =>
                     """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün iki tuval satırının uçları — gerçekçi yanıt
+                // ("{}"/sonuclar varsayılanı liste ayrıştıramaz → sahte emanet hata bandı olurdu).
+                var y when y.EndsWith("/raporlar/kasa-defteri", StringComparison.Ordinal) =>
+                    """{"baslangic":"2026-09-22","bitis":"2026-09-22","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[{"kasaId":"k1","kasaAd":"Nakit","paraBirimi":"TRY","acilisDeviri":0,"kapanisBakiye":0,"guncelBakiye":0,"gunler":[]}]}""",
+                var y when y.EndsWith("/cari", StringComparison.Ordinal) => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             };
             return Task.FromResult(Yanit(HttpStatusCode.OK, cevap));
@@ -165,49 +173,40 @@ public sealed class S31PanelSadeTestleri : BunitContext
         // Hava KAPALI: boş yapılandırma = istek atılmaz (HavaServisi sözleşmesi).
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private void OturumAc(string mod, string rol = "SAHIP")
         => Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", rol, "s1", mod, mod));
 
+    // TEMA TEMİZLİĞİ 17.10: Panel artık YALNIZ Yıldız Bugün'ü çizer (eski BASİT "sabahın beş sorusu"
+    // kartları ve PRO kutucuk ızgarası KALDIRILDI). Aynı yükleyicilerin verisi Bugün'ün dev rakamında,
+    // cümlesinde, "Seni bekleyen" listesinde ve alt şeridinde durur — güvenceler oraya taşındı.
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Basit(string rol = "SAHIP")
     {
         OturumAc(ArayuzModuServisi.Basit, rol);
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
+        e.WaitForElement("#yildiz-bugun");
         return e;
     }
 
-    /// <summary>Her kutucuk kendi iskeletini taşır; iskelet kalmadıysa yükleyiciler bitti.</summary>
-    private static void Bekle(IRenderedComponent<Kuyumcu.Web.Pages.Panel> e)
-        => e.WaitForAssertion(() =>
-        {
-            Assert.Empty(e.FindAll(".karsilama-iskelet"));
-            Assert.Empty(e.FindAll(".yukleniyor-kutu"));
-        }, TimeSpan.FromSeconds(10));
+    /// <summary>Panel'in yükleyicileri bitti, Bugün yükleniyor işaretinde değil (olumsuz iddialar BOŞ DOM'da yeşil vermesin).</summary>
+    private static void Bekle(IRenderedComponent<Kuyumcu.Web.Pages.Panel> e, bool pozisyon = false) => e.BugunBekle(pozisyon);
 
     private List<string> Yollar() { lock (istekler) return [.. istekler.Select(i => i.Yol)]; }
 
+    private static string Cumle(IRenderedComponent<Kuyumcu.Web.Pages.Panel> e) =>
+        e.FindAll("#yildiz-bugun-cumle").FirstOrDefault()?.TextContent ?? "";
+
+    private static List<string> CariSatirlari(IRenderedComponent<Kuyumcu.Web.Pages.Panel> e) =>
+        [.. e.BekleyenKimlikleri().Where(k => k.StartsWith("yildiz-bekleyen-cari-", StringComparison.Ordinal))];
+
+    private static Kuyumcu.Core.I18n.PanelSadeMetinleri S => Kuyumcu.Core.I18n.PanelSadeSozlugu.Tr;
+
     // ── İKİ YÜZ ─────────────────────────────────────────────────────────────
 
-    [Fact]
-    public void S31_01_Basit_yuz_SADE_duzeni_cizer_izgara_YOK()
-    {
-        var e = Basit();
-        Bekle(e);
-
-        Assert.NotNull(e.Find("#panel-soru-satis"));
-        Assert.NotNull(e.Find("#panel-soru-kasa"));
-        Assert.NotNull(e.Find("#pozisyon-kart"));          // B-2 kartı yerleşti
-        Assert.NotNull(e.Find("#panel-soru-borclu"));
-        Assert.NotNull(e.Find("#panel-soru-bekleyen"));
-        Assert.Empty(e.FindAll("#panel-izgara"));
-        Assert.Empty(e.FindAll("#panel-duzen-modu"));
-        // Selam satırı iki yüzde de aynı id ile durur (bUnit/QA sözleşmesi).
-        Assert.Contains("Ramazan", e.Find("#panel-selam").TextContent, StringComparison.Ordinal);
-        Assert.False(string.IsNullOrWhiteSpace(e.Find("#panel-tarih").TextContent));
-    }
+    // TEMA TEMİZLİĞİ 17.10: S31_01_Basit_yuz_SADE_duzeni_cizer_izgara_YOK kaldırıldı — BASİT "beş soru" kartları, selam ve tarih satırı Yıldız'da BİLEREK yok (tuvalde yok); Bugün düzeni Yildiz4ATestleri.Y4A_10'da sınanıyor.
 
     [Fact]
     public void S31_02_Basit_yuzde_TEK_birincil_dugme_Yeni_satis()
@@ -215,29 +214,15 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        var birincil = e.FindAll(".dugme-birincil, .btn-birincil");
+        // Yıldız'da birincil düğme = .yildiz-b1 ("Yeni satış" hapı); eski sınıflar da sayılır ki ikinci birincil sızmasın.
+        var birincil = e.FindAll(".yildiz-b1, .dugme-birincil, .btn-birincil");
         Assert.Single(birincil);
-        Assert.Equal("panel-yeni-satis", birincil[0].Id);
+        Assert.Equal("yildiz-bugun-yeni-satis", birincil[0].Id);
         Assert.Equal("/islemler", birincil[0].GetAttribute("href"));
-        Assert.Contains("Yeni satış", birincil[0].TextContent, StringComparison.Ordinal);
+        Assert.Equal("Yeni satış", birincil[0].TextContent.Trim());
     }
 
-    [Fact]
-    public void S31_03_Profesyonel_yuz_P37b_izgarasini_AYNEN_cizer()
-    {
-        OturumAc(ArayuzModuServisi.Profesyonel);
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        Bekle(e);
-
-        foreach (var k in PanelKutucuklari.Tumu)
-            Assert.NotNull(e.Find($"#panel-kutucuk-{k.Kod}"));
-        Assert.NotNull(e.Find("#panel-duzen-modu"));
-        Assert.NotNull(e.Find("#panel-satis-yap"));
-        Assert.Empty(e.FindAll("#panel-sade"));
-        Assert.Empty(e.FindAll("#panel-yeni-satis"));
-        Assert.Empty(e.FindAll("#pozisyon-kart"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: S31_03_Profesyonel_yuz_P37b_izgarasini_AYNEN_cizer kaldırıldı — PRO kutucuk ızgarası kaldırıldı; PRO'da da aynı Bugün düzeni Yildiz4ATestleri.Y4A_11'de sınanıyor.
 
     // ── YÜZE GÖRE YÜKLEME ───────────────────────────────────────────────────
 
@@ -249,38 +234,28 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var basitYollar = Yollar();
         Assert.Contains(basitYollar, y => y.Contains("/raporlar/cari-yaslandirma", StringComparison.Ordinal));
         Assert.Contains(basitYollar, y => y.Contains("/bildirimler", StringComparison.Ordinal));
+        // PRO'ya özgü yükleyiciler (grafik, son işlemler, kur kaynakları) BASİT'te açılmaz.
         Assert.DoesNotContain(basitYollar, y => y.Contains("/raporlar/aylik", StringComparison.Ordinal));
         Assert.DoesNotContain(basitYollar, y => y.Contains("/raporlar/islem-defteri", StringComparison.Ordinal));
         Assert.DoesNotContain(basitYollar, y => y.Contains("/kur/kaynaklar", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public void S31_05_Profesyonel_yuz_basit_yuzun_isteklerini_ATMAZ()
-    {
-        OturumAc(ArayuzModuServisi.Profesyonel);
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        Bekle(e);
-        var yollar = Yollar();
-        Assert.Contains(yollar, y => y.Contains("/raporlar/aylik", StringComparison.Ordinal));
-        Assert.DoesNotContain(yollar, y => y.Contains("/raporlar/cari-yaslandirma", StringComparison.Ordinal));
-        Assert.DoesNotContain(yollar, y => y.Contains("/bildirimler", StringComparison.Ordinal));
-    }
+    // TEMA TEMİZLİĞİ 17.10: S31_05_Profesyonel_yuz_basit_yuzun_isteklerini_ATMAZ kaldırıldı — YILDIZ-4A: BASİT ve PRO aynı Bugün yüzünü çizer, borçlu/bildirim yükleyicileri İKİ modda da BİLEREK açılır (Panel.YuzeGoreYukle); PRO'da Bugün listesi Yildiz4ATestleri.Y4A_11'de.
 
     [Fact]
     public void S31_06_Mod_calisirken_degisince_eksik_yuz_YUKLENIR()
     {
-        OturumAc(ArayuzModuServisi.Profesyonel);
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
+        var e = Basit();
         Bekle(e);
+        Assert.DoesNotContain(Yollar(), y => y.Contains("/raporlar/aylik", StringComparison.Ordinal));
 
-        Services.GetRequiredService<ArayuzModuServisi>().Uygula(ArayuzModuServisi.Basit, ArayuzModuServisi.Basit);
-        e.WaitForElement("#panel-sade");
+        // BASİT → PRO: PRO'nun eksik yükleyicileri O AN (bir kez) açılır; Bugün gövdesi ve verisi yerinde kalır.
+        Services.GetRequiredService<ArayuzModuServisi>().Uygula(ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel);
+        e.WaitForAssertion(() => Assert.Contains(Yollar(), y => y.Contains("/raporlar/aylik", StringComparison.Ordinal)));
         Bekle(e);
-
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-borclu-c1")));
-        Assert.Contains(Yollar(), y => y.Contains("/raporlar/cari-yaslandirma", StringComparison.Ordinal));
+        Assert.Contains(Yollar(), y => y.Contains("/raporlar/islem-defteri", StringComparison.Ordinal));
+        Assert.NotNull(e.Find("#yildiz-bekleyen-cari-c1"));
+        Assert.Single(Yollar(), y => y.Contains("/raporlar/cari-yaslandirma", StringComparison.Ordinal));   // sade yükleyiciler TEKRARLANMAZ
     }
 
     // ── (1) BUGÜN NE SATTIM? ────────────────────────────────────────────────
@@ -291,12 +266,11 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        var deger = e.Find("#panel-soru-satis-deger");
+        var deger = e.Find("#yildiz-bugun-rakam");
         Assert.Equal(Bicim.TlKurus(57550m), deger.TextContent.Trim());
         Assert.Equal("/raporlar/islem-defteri", deger.GetAttribute("href"));   // UX-S23
-        Assert.Contains("3 satış", e.Find("#panel-soru-satis-adet").TextContent, StringComparison.Ordinal);
-        // RAPOR-GORUNUM (veri a): Panel has dili Rapor merkezi ve pozisyon kartıyla TEK (Bicim.Has, N4).
-        Assert.Contains("10,4000 has", e.Find("#panel-soru-satis-has").TextContent, StringComparison.Ordinal);
+        Assert.StartsWith(Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleSatis(3, "tr"), Cumle(e), StringComparison.Ordinal);
+        // Not: satılan has Bugün tuvalinde yazılmaz (bilerek); has dili Rapor merkezinde (RaporGorunum testleri).
     }
 
     [Fact]
@@ -311,8 +285,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        Assert.Equal("Bugün henüz satış yok.", e.Find("#panel-soru-satis-yok").TextContent.Trim());
-        Assert.Empty(e.FindAll("#panel-soru-satis-adet"));
+        Assert.Equal("Bugün satış yok.", Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleSatis(0, "tr"));
+        Assert.StartsWith("Bugün satış yok.", Cumle(e), StringComparison.Ordinal);
+        Assert.DoesNotContain("işlem.", Cumle(e), StringComparison.Ordinal);
+        Assert.Equal(Bicim.TlKurus(0m), e.Find("#yildiz-bugun-rakam").TextContent.Trim());   // başarılı boş yanıt: gerçek sıfır
     }
 
     [Fact]
@@ -322,12 +298,13 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        // UX-S28: hata "0 ₺"a çevrilmez.
-        Assert.NotNull(e.Find("#panel-soru-satis-hata"));
-        Assert.NotNull(e.Find("#panel-soru-kasa-hata"));
-        Assert.Empty(e.FindAll("#panel-soru-satis-deger"));
-        Assert.Empty(e.FindAll("#panel-soru-kasa-deger"));
-        Assert.Empty(e.FindAll("#panel-soru-satis-yetki"));
+        // UX-S28: hata "0 ₺"a çevrilmez — ne satış ne kasa parçası yazılır, bant durur.
+        Assert.NotNull(e.Find("#yildiz-bugun-satis-hata"));
+        Assert.Empty(e.FindAll("#yildiz-bugun .yildiz-bugun-tam"));
+        Assert.Empty(e.FindAll("a#yildiz-bugun-rakam"));
+        Assert.DoesNotContain("Kasada", Cumle(e), StringComparison.Ordinal);
+        Assert.DoesNotContain("Bugün satış yok", Cumle(e), StringComparison.Ordinal);
+        Assert.DoesNotContain(S.YetkiYok, e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -337,10 +314,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit("TEZGAHTAR");
         Bekle(e);
 
-        Assert.Equal("Bu bilgiyi yalnız yönetici görür.", e.Find("#panel-soru-satis-yetki").TextContent.Trim());
-        Assert.NotNull(e.Find("#panel-soru-kasa-yetki"));
-        Assert.Empty(e.FindAll("#panel-soru-satis-hata"));
-        Assert.Empty(e.FindAll("#panel-soru-satis-deger"));
+        Assert.Equal("Bu bilgiyi yalnız yönetici görür.", e.Find("#yildiz-bugun-rakam").TextContent.Trim());
+        Assert.Empty(e.FindAll("#yildiz-bugun-satis-hata"));
+        Assert.Empty(e.FindAll("#yildiz-bugun .yildiz-bugun-tam"));
+        Assert.DoesNotContain("Kasada", Cumle(e), StringComparison.Ordinal);   // kasa tutarı da yazılmaz
     }
 
     // ── (2) KASADA NE VAR? — UX-S32 ─────────────────────────────────────────
@@ -351,20 +328,12 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        // TL kasaları: 44.200 + 40.000 = 84.200 ₺ — Dolar kasası (500 $) EKLENMEZ.
-        var deger = e.Find("#panel-soru-kasa-deger");
-        Assert.Equal(Bicim.BelgePara(84200m, "TRY"), deger.TextContent.Trim());
-        Assert.Equal("/kasalar", deger.GetAttribute("href"));
-        // T-P1 (tuval): alt satır "Nakit X ₺" — TL kasalarının toplamı (banka hesabı yoksa banka yazılmaz).
-        Assert.Equal($"Nakit {Bicim.BelgePara(84200m, "TRY")}", e.Find("#panel-soru-kasa-grup").TextContent.Trim());
-        Assert.Empty(e.FindAll("#panel-soru-kasa-banka"));
-
-        var dolar = e.Find("#panel-soru-kasa-grup-1").TextContent;
-        Assert.Contains("Dolar kasalar", dolar, StringComparison.Ordinal);
-        Assert.Contains(Bicim.BelgePara(500m, "USD"), dolar, StringComparison.Ordinal);
+        // TL kasaları: 44.200 + 40.000 = 84.200 ₺ nakit — Dolar kasası (500 $) EKLENMEZ.
+        var cumle = Cumle(e);
+        Assert.Contains(Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleKasa(Bicim.Tl(84200m), true, "tr"), cumle, StringComparison.Ordinal);
         Assert.DoesNotContain("84.700", e.Markup, StringComparison.Ordinal);
         // Ham para kodu ekrana basılmaz (UX-S31).
-        Assert.DoesNotContain("USD", e.Find("#panel-soru-kasa").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("USD", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     // ── (4) KİM BORÇLU? ─────────────────────────────────────────────────────
@@ -375,18 +344,22 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        var c1 = e.Find("#panel-borclu-c1");
+        var c1 = e.Find("#yildiz-bekleyen-cari-c1");
         Assert.Single(c1.QuerySelectorAll("a, button"));
-        var tahsil = e.Find("#panel-borclu-eylem-c1");
+        var tahsil = e.Find("#yildiz-bekleyen-cari-c1-eylem");
         Assert.Equal("Tahsil et", tahsil.TextContent.Trim());
         Assert.Equal("/cariler?cariId=c1&islem=tahsilat", tahsil.GetAttribute("href"));   // sunum 14.10: Tahsil et → tahsilat penceresi
 
-        var ode = e.Find("#panel-borclu-eylem-c3");
+        var c3 = e.Find("#yildiz-bekleyen-cari-c3");
+        Assert.Single(c3.QuerySelectorAll("a, button"));
+        var ode = e.Find("#yildiz-bekleyen-cari-c3-eylem");
         Assert.Equal("Öde", ode.TextContent.Trim());
         Assert.Equal("/cariler?cariId=c3", ode.GetAttribute("href"));
-        Assert.Contains("panel-liste-tutar--eksi", e.Find("#panel-borclu-tutar-c3").ClassName, StringComparison.Ordinal);
-        Assert.Contains("−22,0000 has", e.Find("#panel-borclu-tutar-c3").TextContent, StringComparison.Ordinal);   // RAPOR-GORUNUM: tek has dili
-        Assert.Equal("Biz müşteriye borçluyuz", e.Find("#panel-borclu-durum-c3").TextContent.Trim());
+        var tutar = e.Find("#yildiz-bekleyen-cari-c3-durum");
+        Assert.Contains("yildiz-bugun-sat-durum--kotu", tutar.ClassName, StringComparison.Ordinal);
+        Assert.Equal("−22,0000 has", tutar.TextContent.Trim());   // RAPOR-GORUNUM: tek has dili (TL bakiyesi yok → has)
+        Assert.Equal($"· {Kuyumcu.Core.I18n.YildizBugunSozlugu.BizBorcluyuz("tr")}", c3.QuerySelector(".yildiz-bugun-sat-ek")!.TextContent);
+        Assert.DoesNotContain("yildiz-bugun-sat-durum--kotu", e.Find("#yildiz-bekleyen-cari-c1-durum").ClassName, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -396,11 +369,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         Bekle(e);
 
         e.WaitForAssertion(() =>
-            Assert.Equal("Vade geçti", e.Find("#panel-borclu-durum-c1").TextContent.Trim()));
-        // T-P1: tuvaldeki kısa metin; gecikme gün sayısı SİLİNMEDİ, title'da okunur.
-        Assert.Equal("12 gündür gecikmede", e.Find("#panel-borclu-durum-c1").GetAttribute("title"));
-        Assert.Contains("panel-liste-durum--gecti", e.Find("#panel-borclu-durum-c1").ClassName, StringComparison.Ordinal);
-        Assert.Equal("3 gün kaldı", e.Find("#panel-borclu-durum-c2").TextContent.Trim());
+            Assert.Equal(Kuyumcu.Core.I18n.YildizBugunSozlugu.GunGecti(12, "tr"), e.Find("#yildiz-bekleyen-cari-c1-durum").TextContent.Trim()));
+        // Gecikme günü üzerine gelince de okunur.
+        Assert.Equal("12 gündür gecikmede", e.Find("#yildiz-bekleyen-cari-c1").GetAttribute("title"));
+        Assert.Equal(Kuyumcu.Core.I18n.YildizBugunSozlugu.Gun(3, "tr"), e.Find("#yildiz-bekleyen-cari-c2-durum").TextContent.Trim());
     }
 
     [Fact]
@@ -409,8 +381,7 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        var sira = e.FindAll("#panel-soru-borclu-liste > li").Select(li => li.Id).ToList();
-        Assert.Equal(["panel-borclu-c1", "panel-borclu-c2", "panel-borclu-c3"], sira);
+        Assert.Equal(["yildiz-bekleyen-cari-c1", "yildiz-bekleyen-cari-c2", "yildiz-bekleyen-cari-c3"], CariSatirlari(e));
     }
 
     [Fact]
@@ -423,8 +394,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         Bekle(e);
 
         Assert.Contains(Yollar(), y => y.Contains("cari-yaslandirma?limit=500", StringComparison.Ordinal));
-        Assert.Contains("500", e.Find("#panel-soru-borclu-sinir").TextContent, StringComparison.Ordinal);
-        Assert.Contains("812 açık hesap", e.Find("#panel-soru-borclu-sayi").TextContent, StringComparison.Ordinal);
+        Assert.Contains("500", e.Find("#yildiz-bugun-borclu-sinir").TextContent, StringComparison.Ordinal);
+        // UX-S29: sınıra değdiyse eksik toplam cümleye YAZILMAZ.
+        Assert.DoesNotContain("bize borçlu", Cumle(e), StringComparison.Ordinal);
+        // Not: "812 açık hesap" sayısı Bugün tuvalinde yazılmaz (bilerek); sayı Müşteriler ekranında.
     }
 
     [Fact]
@@ -433,9 +406,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         ozel["/raporlar/cari-yaslandirma"] = (HttpStatusCode.Forbidden, """{"hata":"yetki yok"}""");
         var e = Basit("TEZGAHTAR");
         Bekle(e);
-        Assert.NotNull(e.Find("#panel-soru-borclu-yetki"));
-        Assert.Empty(e.FindAll("#panel-soru-borclu-hata"));
-        Assert.DoesNotContain("Açık hesap yok.", e.Find("#panel-soru-borclu").TextContent, StringComparison.Ordinal);
+        Assert.Equal(S.YetkiYok, e.Find("#yildiz-bugun-borclu-yetki").TextContent.Trim());
+        Assert.Empty(e.FindAll("#yildiz-bugun-borclu-hata"));
+        Assert.Empty(CariSatirlari(e));
+        Assert.DoesNotContain("bize borçlu", Cumle(e), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -445,8 +419,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        Assert.NotNull(e.Find("#panel-soru-borclu-hata"));
-        Assert.DoesNotContain("Açık hesap yok.", e.Find("#panel-soru-borclu").TextContent, StringComparison.Ordinal);
+        Assert.NotNull(e.Find("#yildiz-bugun-borclu-hata"));
+        Assert.Empty(CariSatirlari(e));
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-bos"));
+        Assert.DoesNotContain("bize borçlu", Cumle(e), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -457,8 +433,11 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        Assert.Contains("Açık hesap yok.", e.Find("#panel-soru-borclu").TextContent, StringComparison.Ordinal);
-        Assert.Empty(e.FindAll("#panel-soru-borclu-liste"));
+        // Başarılı boş yanıt: müşteri satırı yok, bant yok; toplam GERÇEK sıfırdır ve öyle yazılır.
+        Assert.Empty(CariSatirlari(e));
+        Assert.Empty(e.FindAll("#yildiz-bugun-borclu-hata"));
+        Assert.Contains(Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleCari(Bicim.Tl(0m), Bicim.Tl(0m), "tr"), Cumle(e), StringComparison.Ordinal);
+        Assert.NotNull(e.Find("#yildiz-bekleyen-is-b1"));   // öteki işler yerinde
     }
 
     [Fact]
@@ -468,9 +447,9 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-borclu-vade-hata")));
-        Assert.NotNull(e.Find("#panel-borclu-c1"));
-        Assert.Equal("Açık hesap", e.Find("#panel-borclu-durum-c1").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-vade-hata")));
+        Assert.NotNull(e.Find("#yildiz-bekleyen-cari-c1"));
+        Assert.Equal("Açık hesap", e.Find("#yildiz-bekleyen-cari-c1-durum").TextContent.Trim());
     }
 
     // ── (5) BEKLEYEN İŞ ─────────────────────────────────────────────────────
@@ -482,17 +461,17 @@ public sealed class S31PanelSadeTestleri : BunitContext
         Bekle(e);
 
         Assert.Contains(Yollar(), y => y.Contains("/bildirimler?durum=ACIK&limit=5", StringComparison.Ordinal));
-        var git = e.Find("#panel-is-git-b1");
+        var git = e.Find("#yildiz-bekleyen-is-b1-eylem");
         Assert.Equal("/vade-takibi", git.GetAttribute("href"));
-        Assert.Contains("vadesi geçti", git.TextContent, StringComparison.Ordinal);
+        Assert.Contains("vadesi geçti", e.Find("#yildiz-bekleyen-is-b1").TextContent, StringComparison.Ordinal);
         // "//" ile başlayan rota uygulama dışıdır → bağlantı OLMAZ.
-        Assert.Empty(e.FindAll("#panel-is-git-b2"));
-        Assert.NotNull(e.Find("#panel-is-b2"));
+        Assert.Empty(e.FindAll("#yildiz-bekleyen-is-b2-eylem"));
+        Assert.Empty(e.Find("#yildiz-bekleyen-is-b2").QuerySelectorAll("a"));
         // Ham önem/tür kodu ekrana basılmaz (UX-S31); önem sade adla okunur.
-        var metin = e.Find("#panel-soru-bekleyen").OuterHtml;
+        var metin = e.Find("#yildiz-bugun-liste").OuterHtml;
         Assert.DoesNotContain("KRITIK", metin, StringComparison.Ordinal);
         Assert.DoesNotContain("VADE_GECIKTI", metin, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Acil\"", metin, StringComparison.Ordinal);
+        Assert.Equal("Acil", e.Find("#yildiz-bekleyen-is-b1").GetAttribute("title"));
     }
 
     [Fact]
@@ -503,7 +482,7 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        Assert.Contains("İlk 5 iş", e.Find("#panel-soru-bekleyen-sinir").TextContent, StringComparison.Ordinal);
+        Assert.Contains("İlk 5 iş", e.Find("#yildiz-bugun-bekleyen-sinir").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -511,20 +490,27 @@ public sealed class S31PanelSadeTestleri : BunitContext
     {
         ozel["/bildirimler"] = (HttpStatusCode.OK,
             """{"durum":"ACIK","limit":5,"azamiLimit":100,"kapaliGosterimGun":7,"dahaFazlasiVar":false,"bildirimler":[]}""");
+        ozel["/raporlar/cari-yaslandirma"] = (HttpStatusCode.OK,
+            """{"yaslananCariler":[],"ozetTl":{},"toplamSatir":0,"ofset":0,"limit":500,"dahaFazlasiVar":false}""");
         var e = Basit();
         Bekle(e);
-        Assert.Contains("Bekleyen iş yok.", e.Find("#panel-soru-bekleyen").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Bekleyen iş yok.", e.Find("#yildiz-bugun-bekleyen-bos").TextContent, StringComparison.Ordinal);
+        Assert.Empty(e.FindAll("#yildiz-bugun-liste"));
+        Assert.Empty(e.FindAll("#yildiz-bugun .bant-hata"));
     }
 
     [Fact]
     public void S31_23_Bekleyen_is_HATASI_bos_duruma_cevrilmez()
     {
         ozel["/bildirimler"] = (HttpStatusCode.InternalServerError, """{"hata":"bildirim ucu cevap vermedi"}""");
+        ozel["/raporlar/cari-yaslandirma"] = (HttpStatusCode.OK,
+            """{"yaslananCariler":[],"ozetTl":{},"toplamSatir":0,"ofset":0,"limit":500,"dahaFazlasiVar":false}""");
         var e = Basit();
         Bekle(e);
 
-        Assert.NotNull(e.Find("#panel-soru-bekleyen-hata"));
-        Assert.DoesNotContain("Bekleyen iş yok.", e.Find("#panel-soru-bekleyen").TextContent, StringComparison.Ordinal);
+        Assert.NotNull(e.Find("#yildiz-bugun-bekleyen-hata"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-bos"));
+        Assert.DoesNotContain("Bekleyen iş yok.", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -534,9 +520,9 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        var metin = e.Find("#panel-soru-bekleyen").TextContent;
-        Assert.Contains("2", metin, StringComparison.Ordinal);
-        Assert.NotEmpty(e.Find("#panel-soru-bekleyen").QuerySelectorAll("a[href='/uyum']"));
+        var satir = e.Find("#yildiz-bekleyen-masak-gecti");
+        Assert.StartsWith("2 ", satir.QuerySelector(".yildiz-bugun-sat-metin")!.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.Equal("/uyum", e.Find("#yildiz-bekleyen-masak-gecti-eylem").GetAttribute("href"));
     }
 
     // ── KAYNAK SÖZLEŞMESİ ───────────────────────────────────────────────────
@@ -589,13 +575,12 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-kar")));
-        var kar = e.Find("#panel-soru-satis-kar");
-        Assert.Equal($"Kâr {Bicim.TlKurus(4120m)}", kar.TextContent.Trim());
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kar")));
+        var kar = e.Find("#yildiz-bugun-kar");
+        Assert.Equal($"Kâr {Bicim.Tl(4120m)}", kar.TextContent.Trim());
         Assert.Equal("/raporlar/kar-zarar", kar.GetAttribute("href"));        // UX-S23
-        Assert.DoesNotContain("panel-soru-kar--eksi", kar.ClassName, StringComparison.Ordinal);
         Assert.Contains(Yollar(), y => y.Contains($"/raporlar/kar-zarar?baslangic={Bugun}&bitis={Bugun}", StringComparison.Ordinal));
-        Assert.Empty(e.FindAll("#panel-soru-satis-kar-hata"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-kar-hata"));
     }
 
     [Fact]
@@ -605,10 +590,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit("TEZGAHTAR");
         Bekle(e);
 
-        Assert.NotNull(e.Find("#panel-soru-satis-deger"));
-        Assert.Empty(e.FindAll("#panel-soru-satis-kar"));
-        Assert.Empty(e.FindAll("#panel-soru-satis-kar-hata"));
-        Assert.DoesNotContain("Kâr", e.Find("#panel-soru-satis").TextContent, StringComparison.Ordinal);
+        Assert.NotNull(e.Find("#yildiz-bugun-rakam .yildiz-bugun-tam"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-kar"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-kar-hata"));
+        Assert.DoesNotContain("Kâr", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -618,9 +603,9 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-kar-hata")));
-        Assert.Empty(e.FindAll("#panel-soru-satis-kar"));
-        Assert.Equal(Bicim.TlKurus(57550m), e.Find("#panel-soru-satis-deger").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kar-hata")));
+        Assert.Empty(e.FindAll("#yildiz-bugun-kar"));
+        Assert.Equal(Bicim.TlKurus(57550m), e.Find("#yildiz-bugun-rakam").TextContent.Trim());
     }
 
     [Fact]
@@ -632,13 +617,11 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-kar")));
-        var kar = e.Find("#panel-soru-satis-kar");
-        // Maliyeti bilinmeyen satış varken rakam BASILMAZ (yanıltıcı olurdu); eksik olduğu söylenir.
-        Assert.Contains("2 ürünün maliyeti bilinmiyor", kar.GetAttribute("title"), StringComparison.Ordinal);
-        Assert.Equal("Kâr: maliyet eksik", kar.TextContent.Trim());
-        Assert.Contains("panel-soru-kar--eksik", kar.ClassName, StringComparison.Ordinal);
-        Assert.DoesNotContain(Bicim.Tl(-350m), e.Find("#panel-soru-satis").TextContent, StringComparison.Ordinal);
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kar")));
+        var kar = e.Find("#yildiz-bugun-kar");
+        // Maliyeti bilinmeyen satış varken rakam BASILMAZ (yanıltıcı olurdu); eksik olduğu söylenir (fail-closed).
+        Assert.Equal($"Kâr {Kuyumcu.Core.I18n.YildizBugunSozlugu.MaliyetEksik("tr")}", kar.TextContent.Trim());
+        Assert.DoesNotContain(Bicim.Tl(-350m), e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
         Assert.Equal("/raporlar/kar-zarar", kar.GetAttribute("href"));
     }
 
@@ -650,10 +633,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-kar")));
-        var kar = e.Find("#panel-soru-satis-kar");
-        Assert.Contains("panel-soru-kar--eksi", kar.ClassName, StringComparison.Ordinal);
-        Assert.Equal($"Kâr {Bicim.TlKurus(-350m)}", kar.TextContent.Trim());
+        // Maliyet tamsa zarar eksi işaretiyle YAZILIR (gizlenmez, sıfırlanmaz). Not: Bugün alt şeridinde renk ayrımı yok (tuval).
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kar")));
+        Assert.Equal($"Kâr {Bicim.Tl(-350m)}", e.Find("#yildiz-bugun-kar").TextContent.Trim());
+        Assert.Contains("−", e.Find("#yildiz-bugun-kar b").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -668,33 +651,29 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        // Kasalar TL 84.200 + banka TL 40.000 = 124.200 ₺ (pasif 999 ₺ ve 100 $ YOK).
-        Assert.Equal(Bicim.BelgePara(124200m, "TRY"), e.Find("#panel-soru-kasa-deger").TextContent.Trim());
-        Assert.Equal($"Nakit {Bicim.BelgePara(84200m, "TRY")}", e.Find("#panel-soru-kasa-grup").TextContent.Trim());
-        var banka = e.Find("#panel-soru-kasa-banka");
-        Assert.Equal($"Banka {Bicim.BelgePara(40000m, "TRY")}", banka.TextContent.Trim());
-        Assert.Equal("/banka", banka.GetAttribute("href"));
+        // Yıldız cümlesi "Kasada X nakit" — yalnız kasaların TL nakdi (84.200 ₺). Banka parası, pasif hesap ve
+        // döviz "nakit" diye kasaya EKLENMEZ (124.200 / 125.199 yazılmaz).
         Assert.Contains(Yollar(), y => y.EndsWith("/bankalar", StringComparison.Ordinal));
-        // Kasalar tek tek silinmedi: üzerine gelince okunur.
-        Assert.Contains("Nakit", e.Find("#panel-soru-kasa-grup").GetAttribute("title"), StringComparison.Ordinal);
+        var cumle = Cumle(e);
+        Assert.Contains(Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleKasa(Bicim.Tl(84200m), true, "tr"), cumle, StringComparison.Ordinal);
+        Assert.DoesNotContain("124.200", e.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("125.199", e.Markup, StringComparison.Ordinal);
     }
 
     [Fact]
     public void TP1_05_Banka_403_banka_bacagi_YAZILMAZ_500_ise_BANT()
     {
+        // Bugün'de banka bacağı YOK (tuval); banka ucunun 403/500'ü kasa cümlesini BOZMAZ, uydurma toplam üretmez.
         ozel["/bankalar"] = (HttpStatusCode.Forbidden, """{"hata":"yetki yok"}""");
         var e = Basit();
         Bekle(e);
-        Assert.Equal(Bicim.BelgePara(84200m, "TRY"), e.Find("#panel-soru-kasa-deger").TextContent.Trim());
-        Assert.Empty(e.FindAll("#panel-soru-kasa-banka"));
-        Assert.Empty(e.FindAll("#panel-soru-kasa-banka-hata"));
+        Assert.Contains(Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleKasa(Bicim.Tl(84200m), true, "tr"), Cumle(e), StringComparison.Ordinal);
 
         ozel["/bankalar"] = (HttpStatusCode.InternalServerError, """{"hata":"banka ucu cevap vermedi"}""");
         var e2 = Render<Kuyumcu.Web.Pages.Panel>();
-        e2.WaitForElement("#panel-sade");
         Bekle(e2);
-        Assert.NotNull(e2.Find("#panel-soru-kasa-banka-hata"));
-        Assert.Empty(e2.FindAll("#panel-soru-kasa-banka"));
+        Assert.Contains(Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleKasa(Bicim.Tl(84200m), true, "tr"), Cumle(e2), StringComparison.Ordinal);
+        Assert.DoesNotContain("banka ucu cevap vermedi", e2.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -712,12 +691,11 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        var sira = e.FindAll("#panel-soru-borclu-liste > li").Select(li => li.Id).ToList();
-        Assert.Equal(["panel-borclu-a1", "panel-borclu-a2", "panel-borclu-z2"], sira);
-        Assert.Equal("Tümü", e.Find("#panel-soru-borclu-tumu").FirstChild!.TextContent.Trim());
-        Assert.Contains("7 açık hesap", e.Find("#panel-soru-borclu-sayi").TextContent, StringComparison.Ordinal);
-        Assert.Contains("gorsel-gizli", e.Find("#panel-soru-borclu-sayi").ClassName, StringComparison.Ordinal);
-        Assert.Equal("7 açık hesap", e.Find("#panel-soru-borclu-tumu").GetAttribute("title"));
+        Assert.Equal(["yildiz-bekleyen-cari-a1", "yildiz-bekleyen-cari-a2", "yildiz-bekleyen-cari-z2"], CariSatirlari(e));
+        Assert.Equal("Tahsil et", e.Find("#yildiz-bekleyen-cari-a2-eylem").TextContent.Trim());
+        Assert.Equal("Öde", e.Find("#yildiz-bekleyen-cari-z2-eylem").TextContent.Trim());
+        // Gösterilmeyen satırlar toplamdan SİLİNMEZ: cümle 7 hesabın TL toplamını yazar (alacak 15.000, borç 1.600).
+        Assert.Contains(Kuyumcu.Core.I18n.YildizBugunSozlugu.CumleCari(Bicim.Tl(15000m), Bicim.Tl(1600m), "tr"), Cumle(e), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -725,12 +703,15 @@ public sealed class S31PanelSadeTestleri : BunitContext
     {
         ozel["/bildirimler"] = (HttpStatusCode.OK,
             BildirimVarsayilan.Replace("\"tur\":\"VADE_GECIKTI\"", "\"tur\":\"VADE_HATIRLATMA\"", StringComparison.Ordinal));
+        // Müşteri ayrıntısı (vade raporu) yoksa satırın durumu kaynak etiketidir.
+        ozel["/raporlar/vade-takibi"] = (HttpStatusCode.OK,
+            """{"ufukGun":7,"gecikenToplam":0,"yaklasanToplam":0,"vadesizToplam":0,"ufukOtesiToplam":0,"acikToplam":0,"cariler":[]}""");
         var e = Basit();
         Bekle(e);
 
-        Assert.Equal("Vade", e.Find("#panel-is-kaynak-b1").TextContent.Trim());
-        Assert.Equal("Bildirim", e.Find("#panel-is-kaynak-b2").TextContent.Trim());   // bilinmeyen kod uydurulmaz
-        var metin = e.Find("#panel-soru-bekleyen").TextContent;
+        Assert.Equal("Vade", e.Find("#yildiz-bekleyen-is-b1-durum").TextContent.Trim());
+        Assert.Equal("Bildirim", e.Find("#yildiz-bekleyen-is-b2-durum").TextContent.Trim());   // bilinmeyen kod uydurulmaz
+        var metin = e.Find("#yildiz-bugun-liste").OuterHtml;
         Assert.DoesNotContain("VADE_HATIRLATMA", metin, StringComparison.Ordinal);
         Assert.Equal("Uyum", Kuyumcu.Core.I18n.PanelTuvalSozlugu.Kaynak("MASAK_SIB_SURESI", "tr"));
         Assert.Equal("System", Kuyumcu.Core.I18n.PanelTuvalSozlugu.Kaynak("SAKLAMA_ONIZLEME", "en"));
@@ -743,13 +724,13 @@ public sealed class S31PanelSadeTestleri : BunitContext
         var e = Basit();
         Bekle(e);
 
-        var satir = e.Find("#panel-uyum-masak-gecti");
-        Assert.Equal("Acil", satir.QuerySelector(".panel-nokta")!.GetAttribute("aria-label"));
-        Assert.Contains("panel-nokta--acil", satir.QuerySelector(".panel-nokta")!.ClassName, StringComparison.Ordinal);
-        Assert.Equal("/uyum", e.Find("#panel-uyum-masak-gecti-git").GetAttribute("href"));
-        Assert.StartsWith("2 ", e.Find("#panel-uyum-masak-gecti-git").TextContent.Trim(), StringComparison.Ordinal);
-        Assert.Equal("Uyum", satir.QuerySelector(".panel-is-kaynak")!.TextContent.Trim());
-        var bekleyen = e.Find("#panel-soru-bekleyen").TextContent;
+        var satir = e.Find("#yildiz-bekleyen-masak-gecti");
+        Assert.Equal("Acil", satir.GetAttribute("title"));   // önem sade adla (ham "KRITIK" yok)
+        Assert.Contains("yildiz-bugun-sat-durum--kotu", e.Find("#yildiz-bekleyen-masak-gecti-durum").ClassName, StringComparison.Ordinal);
+        Assert.Equal("Uyum", e.Find("#yildiz-bekleyen-masak-gecti-durum").TextContent.Trim());
+        Assert.Equal("/uyum", e.Find("#yildiz-bekleyen-masak-gecti-eylem").GetAttribute("href"));
+        Assert.StartsWith("2 ", satir.QuerySelector(".yildiz-bugun-sat-metin")!.TextContent.Trim(), StringComparison.Ordinal);
+        var bekleyen = e.Find("#yildiz-bugun-liste").TextContent;
         Assert.DoesNotContain("⛔", bekleyen, StringComparison.Ordinal);
         Assert.DoesNotContain("⚠", bekleyen, StringComparison.Ordinal);
     }
@@ -761,55 +742,29 @@ public sealed class S31PanelSadeTestleri : BunitContext
             .Replace("\"cariBorcGram\":0", "\"cariBorcGram\":22.0", StringComparison.Ordinal)
             .Replace("\"hurdaGram\":0", "\"hurdaGram\":5.5", StringComparison.Ordinal));
         var e = Basit();
-        Bekle(e);
+        Bekle(e, pozisyon: true);
 
-        // MADEN-2 (ilke "tek has biçimi"): net pozisyon Bicim.Has ile AYNI — binlik + 4 ondalık.
-        Assert.Equal("+312,8000 has", e.Find("#pozisyon-net").TextContent.Trim());
-        Assert.Contains("Vitrin 298,4000 has", e.Find("#pozisyon-vitrin").TextContent, StringComparison.Ordinal);
-        Assert.Contains("Alacak 14,4000 has", e.Find("#pozisyon-alacak").TextContent, StringComparison.Ordinal);
-        // PAKET RAPOR-2 (tutarlılık): sıfır olmayan Borç ve Hurda sade yüzde de kırılımdadır — gösterilen
-        // kalemlerin toplamı ana değeri tutar (eskiden yalnız Vitrin + Alacak görünüyordu).
-        Assert.NotNull(e.Find("#pozisyon-borc"));
-        Assert.NotNull(e.Find("#pozisyon-hurda"));
-        Assert.Empty(e.FindAll("#pozisyon-donem"));
-        Assert.Empty(e.FindAll("#degismez-ipucu-AltinPozisyonu"));
-
-        var dugme = e.Find("#pozisyon-ayrinti");
-        Assert.Equal("false", dugme.GetAttribute("aria-expanded"));
-        Assert.Equal("Ayrıntı", dugme.TextContent.Trim());
-        dugme.Click();
-
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#pozisyon-donem")));
-        Assert.NotNull(e.Find("#pozisyon-borc"));
-        Assert.NotNull(e.Find("#pozisyon-hurda"));
-        Assert.NotNull(e.Find("#degismez-ipucu-AltinPozisyonu"));
-        Assert.Equal("true", e.Find("#pozisyon-ayrinti").GetAttribute("aria-expanded"));
-        Assert.Equal("Kapat", e.Find("#pozisyon-ayrinti").TextContent.Trim());
+        // Bugün alt şeridi pozisyonu tuval biçimiyle (bir ondalık, işaretli) ve ayrıntıya (Rapor merkezi) bağlantıyla yazar.
+        // Kartın "Ayrıntı" açılımı Bugün'de YOK (tuval); kartın kendisi AltinPozisyonuKartiTestleri'nde sınanıyor.
+        var poz = e.Find("#yildiz-bugun-pozisyon");
+        Assert.Equal($"Altın pozisyonu {YildizBugunHas(312.8m)}", poz.TextContent.Trim());
+        Assert.Equal("/raporlar", poz.GetAttribute("href"));
+        Assert.Equal("Vitrin 298,4 g", e.Find("#yildiz-bugun-vitrin").TextContent.Trim());
+        Assert.Empty(e.FindAll("#pozisyon-kart"));
     }
 
-    [Fact]
-    public void TP1_10_Hava_basit_yuzde_tuval_bicimi_derece_kisa_durum_titleda()
-    {
-        ozel["/hava"] = (HttpStatusCode.OK, """{"derece":21.4,"kod":0,"sehir":"İstanbul","kaynak":"Open-Meteo (CC BY 4.0)"}""");
-        var e = Basit();
-        Bekle(e);
+    private static string YildizBugunHas(decimal g) => Kuyumcu.Web.Bilesenler.Yildiz.YildizBugunBicim.HasKisa(g, "g has", true);
 
-        e.WaitForAssertion(() => Assert.Equal("21°", e.Find("#panel-hava-derece").TextContent.Trim()));
-        Assert.Equal("İstanbul", e.Find("#panel-hava-sehir").TextContent.Trim());
-        Assert.Empty(e.FindAll("#panel-hava-durum"));
-        Assert.Equal("Açık · Open-Meteo (CC BY 4.0)", e.Find("#panel-hava").GetAttribute("title"));
-        Assert.DoesNotContain("°C", e.Find("#panel-tarih").TextContent, StringComparison.Ordinal);
-    }
+    // TEMA TEMİZLİĞİ 17.10: TP1_10_Hava_basit_yuzde_tuval_bicimi_derece_kisa_durum_titleda kaldırıldı — hava/selam satırı Yıldız Bugün'de BİLEREK yok (tuvalde yok; YildizBugun başlık notu).
 
     [Fact]
     public void TP1_11_Yeni_satis_ARTI_isareti_CSS_ile_ikon_sikkesi_yok()
     {
         var e = Basit();
-        var dugme = e.Find("#panel-yeni-satis");
-        Assert.Empty(dugme.QuerySelectorAll("svg"));
+        var dugme = e.Find("#yildiz-bugun-yeni-satis");
+        Assert.Empty(dugme.QuerySelectorAll("svg, img"));
         Assert.Equal("Yeni satış", dugme.TextContent.Trim());
-        var css = CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "tuval-panel-musteri.css");
-        Assert.Matches(@"\.panel-yeni-satis::before\s*\{[^}]*linear-gradient\(currentColor", css);
+        // Not: eski .panel-yeni-satis::before artı işareti eski yüzle kalktı; Yıldız hapı tuval CSS'i Yildiz4ATestleri'nde.
     }
 
     [Fact]
@@ -850,26 +805,25 @@ public sealed class S31PanelSadeTestleri : BunitContext
     [Fact]
     public void TP1_14_Profil_ILK_cizimden_SONRA_gelirse_basit_yuz_yukleyicileri_YINE_acilir()
     {
-        // Tam sayfa yenileme: profil yokken yüz PROFESYONEL çizilir; profil BASIT
-        // gelince Mod.Degisti tetiklenmeden yeniden çizim olur. Kartlar iskelette KALMAZ.
+        // Tam sayfa yenileme: profil yokken çizilir; profil BASIT gelince Mod.Degisti tetiklenmeden yeniden
+        // çizim olur. Bugün'ün verisi (borçlu, banka) yüklenmiş olur, liste yükleniyor işaretinde KALMAZ.
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
+        e.WaitForElement("#yildiz-bugun");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
         e.Render();
-        e.WaitForElement("#panel-sade");
         Bekle(e);
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-borclu-c1")));
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bekleyen-cari-c1")));
         Assert.Contains(Yollar(), y => y.Contains("/raporlar/cari-yaslandirma", StringComparison.Ordinal));
         Assert.Contains(Yollar(), y => y.EndsWith("/bankalar", StringComparison.Ordinal));
-        Assert.Empty(e.FindAll("#panel-iskelet-soru-kasa"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-yukleniyor"));
     }
 
     /// <summary>
     /// PAKET YASAL-2 tur 3 (orkestratör 30.09 22:20 madde 3): nakit sınırı aşımı Panel'de TEK
-    /// kaynaktan — üstteki kırmızı şerit (GET /tevsik/ihlaller). Aynı olayın bildirimi
-    /// (ilgiliVarlikTuru=TevsikIhlali) "Bekleyen iş" listesinde İKİNCİ KEZ sayılmaz; diğer
+    /// kaynaktan — GET /tevsik/ihlaller (NakitSiniriPanelSatiri, Yıldız'da görünmez yükler). Aynı olayın
+    /// bildirimi (ilgiliVarlikTuru=TevsikIhlali) "Seni bekleyen" listesinde İKİNCİ KEZ sayılmaz; diğer
     /// bildirimler yerinde kalır.
     /// </summary>
     [Fact]
@@ -887,14 +841,15 @@ public sealed class S31PanelSadeTestleri : BunitContext
             """);
         var e = Basit();
         Bekle(e);
-        e.WaitForElement("#nsp-odeme");
-        Assert.StartsWith("1", e.Find("#nsp-odeme strong").TextContent.Trim(), StringComparison.Ordinal);   // şerit: 1 aşım
-        Assert.Empty(e.FindAll("#panel-is-tv1"));                                                              // bekleyen işte tekrar YOK
-        Assert.DoesNotContain("Nakit sınırı aşıldı", e.Find("#panel-soru-bekleyen").TextContent, StringComparison.Ordinal);
-        Assert.NotNull(e.Find("#panel-is-b1"));                                                               // diğer bildirim yerinde
+        e.WaitForAssertion(() => Assert.Contains(string.Format(Kuyumcu.Core.I18n.KarRaporSozlugu.Tr.IsNakitSiniri, 1),
+            e.Find("#yildiz-bekleyen-yasal-nakit").TextContent, StringComparison.Ordinal));   // tek kaynak: 1 aşım
+        Assert.Single(e.FindAll("#yildiz-bugun-liste > li[id='yildiz-bekleyen-yasal-nakit']"));
+        Assert.Empty(e.FindAll("#yildiz-bekleyen-is-tv1"));                                                     // bekleyen işte tekrar YOK
+        Assert.DoesNotContain("Nakit sınırı aşıldı", e.Find("#yildiz-bugun-liste").TextContent, StringComparison.Ordinal);
+        Assert.NotNull(e.Find("#yildiz-bekleyen-is-b1"));                                                      // diğer bildirim yerinde
     }
 
-    /// <summary>YASAL-2 tur 3 (PRO): "Bekleyen işler" kutucuğu şeritle AYNI kaynaktan — aşım varken "iş yok — temiz" demez.</summary>
+    /// <summary>YASAL-2 tur 3 (PRO): "Seni bekleyen" şeritle AYNI kaynaktan — aşım varken "iş yok" demez.</summary>
     [Fact]
     public void YASAL2_Tur3_PRO_bekleyen_kutucugu_serit_sayisini_okur_temiz_demez()
     {
@@ -902,22 +857,23 @@ public sealed class S31PanelSadeTestleri : BunitContext
             {"ihlaller":[{"id":"i1","tur":"GUNLUK_KUMULATIF","yon":"TAHSILAT","cariId":"c9","cariAd":"X","ihlalGunu":"2026-10-01","nakitToplamTl":36000,"hadTl":30000,"bildirimSonGunu":"2026-10-08","durum":"ACIK","kalanIsGunu":3,"kapatmaTarihi":null,"bildirimTarihi":null,"bildirimEvrakNo":null,"gec":false}],
              "kapanmamisSayisi":1,"sinir":200,"dahaVar":false,"bayramEksik":false}
             """);
+        // Öteki iş kaynakları boş: liste YALNIZ şeritteki aşımdan dolabilir.
+        ozel["/bildirimler"] = (HttpStatusCode.OK,
+            """{"durum":"ACIK","limit":5,"azamiLimit":100,"kapaliGosterimGun":7,"dahaFazlasiVar":false,"bildirimler":[]}""");
+        ozel["/raporlar/cari-yaslandirma"] = (HttpStatusCode.OK,
+            """{"yaslananCariler":[],"ozetTl":{},"toplamSatir":0,"ofset":0,"limit":500,"dahaFazlasiVar":false}""");
         OturumAc(ArayuzModuServisi.Profesyonel);
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
         Bekle(e);
-        e.WaitForElement("#nsp-tahsilat");
         e.WaitForAssertion(() =>
         {
-            var k = e.Find("#panel-kutucuk-bekleyen").TextContent;
-            Assert.DoesNotContain("temiz", k, StringComparison.Ordinal);
-            // PAKET RAPOR-3 (hasım YÜKSEK): "üstteki kırmızı kutuda" yönlendirmesi yerine iş kutucuğun KENDİ satırında.
-            Assert.Contains(string.Format(Kuyumcu.Core.I18n.KarRaporSozlugu.Tr.IsNakitSiniri, 1), e.Find("#panel-bekleyen-yasal-nakit").TextContent, StringComparison.Ordinal);
-            Assert.Empty(e.FindAll("#panel-kutucuk-bekleyen .bos-durum"));
+            Assert.Contains(string.Format(Kuyumcu.Core.I18n.KarRaporSozlugu.Tr.IsNakitSiniri, 1), e.Find("#yildiz-bekleyen-yasal-nakit").TextContent, StringComparison.Ordinal);
+            Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-bos"));
         });
+        Assert.DoesNotContain("Bekleyen iş yok", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
-    /// <summary>YASAL-2 tur 3: tek bildirim nakit aşımıysa "Bekleyen iş yok" DENMEZ — üstteki kutuya yönlendirir.</summary>
+    /// <summary>YASAL-2 tur 3: tek bildirim nakit aşımıysa "Bekleyen iş yok" DENMEZ — iş kendi satırında, ilgili ekrana bağlantıyla.</summary>
     [Fact]
     public void YASAL2_Tur3_yalniz_nakit_asimi_varken_bekleyen_is_YOK_demez_kutuya_yonlendirir()
     {
@@ -926,15 +882,16 @@ public sealed class S31PanelSadeTestleri : BunitContext
               {"id":"tv1","tur":"TEVSIK_KURTARMA","onem":"KRITIK","baslik":"Nakit sınırı aşıldı","govde":"x","hedefRota":"/uyum?sekme=nakit",
                "ilgiliVarlikTuru":"TevsikIhlali","ilgiliVarlikId":"i1","olusturuldu":"2026-09-23T07:00:00Z","kapatildi":null,"kapatanKullaniciId":null,"kapatmaNotu":null}]}
             """);
+        ozel["/raporlar/cari-yaslandirma"] = (HttpStatusCode.OK,
+            """{"yaslananCariler":[],"ozetTl":{},"toplamSatir":0,"ofset":0,"limit":500,"dahaFazlasiVar":false}""");
         var e = Basit();
         Bekle(e);
-        var metin = e.Find("#panel-soru-bekleyen").TextContent;
+        var metin = e.Find("#yildiz-bugun").TextContent;
         Assert.DoesNotContain("Bekleyen iş yok", metin, StringComparison.Ordinal);
-        // PAKET RAPOR-3 (hasım YÜKSEK): iş kartın KENDİ satırında, ilgili ekrana bağlantıyla (yönlendirme cümlesi yok).
-        Assert.Equal("/uyum?sekme=nakit", e.Find("#panel-soru-bekleyen-yasal-nakit-git").GetAttribute("href"));
+        Assert.Equal("/uyum?sekme=nakit", e.Find("#yildiz-bekleyen-yasal-nakit-eylem").GetAttribute("href"));
         Assert.DoesNotContain("üstteki", metin, StringComparison.Ordinal);
-        Assert.Empty(e.FindAll("#panel-soru-bekleyen .bos-durum"));
-        Assert.Empty(e.FindAll("#panel-is-tv1"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-bos"));
+        Assert.Empty(e.FindAll("#yildiz-bekleyen-is-tv1"));
     }
 
     // ── PAKET YASAL-4 — Y4-A (K-1) · Y4-B (K-8) ──────────────────────────────
@@ -945,14 +902,14 @@ public sealed class S31PanelSadeTestleri : BunitContext
         // Sunucu: 10 gün önce düzenlenmiş, iptal edilmemiş pusula → takip kümesi BOŞ.
         ozel["/gider-pusulalari/sure-takibi"] = (HttpStatusCode.OK,
             """{"sure":{"gun":7,"dayanak":"VUK md.234"},"gecikmisSayisi":0,"yaklasanSayisi":0,"gecikmis":[],"yaklasan":[],"uyarilar":[]}""");
-        // Uyum listesi ÇİZİLSİN diye başka bir sayaç dolu (MASAK) — pusula satırı yine YOK olmalı.
+        // Uyum satırları ÇİZİLSİN diye başka bir sayaç dolu (MASAK) — pusula satırı yine YOK olmalı.
         ozel["/masak/ozet"] = (HttpStatusCode.OK, """{"suresiGecmis":1,"yaklasan":0}""");
         var e = Basit();
         Bekle(e);
-        Assert.NotNull(e.Find("#panel-uyum-masak-gecti"));
-        Assert.Empty(e.FindAll("#panel-uyum-pusula"));
-        Assert.Empty(e.FindAll("#panel-uyum-pusula-yeniden"));
-        Assert.DoesNotContain("gider pusulasının 7 günlük düzenleme süresi", e.Find("#panel-soru-bekleyen").TextContent, StringComparison.Ordinal);
+        Assert.NotNull(e.Find("#yildiz-bekleyen-masak-gecti"));
+        Assert.Empty(e.FindAll("#yildiz-bekleyen-pusula"));
+        Assert.Empty(e.FindAll("#yildiz-bekleyen-pusula-yeniden"));
+        Assert.DoesNotContain("gider pusulasının 7 günlük düzenleme süresi", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -962,10 +919,11 @@ public sealed class S31PanelSadeTestleri : BunitContext
             """{"sure":{"gun":7,"dayanak":"VUK md.234"},"gecikmisSayisi":0,"yaklasanSayisi":1,"gecikmis":[],"yaklasan":[{"id":"p1","pusulaNo":"GP-2026-000001","hareketId":"h1","teslimTarihi":"2026-09-26T10:00:00Z","sonGun":"2026-10-03","kalanGun":2,"brutTutar":1000,"stopajTutar":0}],"enYakinSonGun":"2026-10-03","uyarilar":[]}""");
         var e = Basit();
         Bekle(e);
-        var satir = e.Find("#panel-uyum-pusula-yeniden");
+        var satir = e.Find("#yildiz-bekleyen-pusula-yeniden");
         Assert.Contains("03.10.2026", satir.TextContent, StringComparison.Ordinal);
-        Assert.Equal("/gider-pusulalari", e.Find("#panel-uyum-pusula-yeniden-git").GetAttribute("href"));
-        Assert.Empty(e.FindAll("#panel-uyum-pusula"));
+        Assert.Equal("/gider-pusulalari", e.Find("#yildiz-bekleyen-pusula-yeniden-eylem").GetAttribute("href"));
+        Assert.DoesNotContain("yildiz-bugun-sat-durum--kotu", e.Find("#yildiz-bekleyen-pusula-yeniden-durum").ClassName, StringComparison.Ordinal);   // UYARI, kritik değil
+        Assert.Empty(e.FindAll("#yildiz-bekleyen-pusula"));
     }
 
     [Fact]
@@ -975,17 +933,13 @@ public sealed class S31PanelSadeTestleri : BunitContext
             """{"buAy":"2026-10","buAyKesilenTl":240.00,"gecikmis":[{"donem":"2026-08","kesilenTl":1340.00,"odenenTl":0,"kalanTl":1340.00,"sonGun":"2026-09-26","sonGunTeyit":"TEYITSIZ","sonGunGecti":true,"pusulaSayisi":4,"odemeler":[]}],"yaklasan":[],"uyariGunu":5}""");
         var e = Basit();
         Bekle(e);
-        var satir = e.Find("#panel-uyum-stopaj-gecti-2026-08");
-        Assert.Contains("panel-nokta--acil", satir.QuerySelector(".panel-nokta")!.ClassName, StringComparison.Ordinal);
+        var satir = e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08");
+        Assert.Contains("yildiz-bugun-sat-durum--kotu", e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08-durum").ClassName, StringComparison.Ordinal);
         Assert.Contains("26.09.2026", satir.TextContent, StringComparison.Ordinal);
-        Assert.Equal("/gider-pusulalari?sekme=stopaj", e.Find("#panel-uyum-stopaj-gecti-2026-08-git").GetAttribute("href"));
-        // § 4.5 tek dokunuş: "Ödendi olarak kaydet" o dönemin ödeme çekmecesini açar (Panel POST etmez).
-        var ode = e.Find("#panel-uyum-stopaj-gecti-2026-08-ode");
-        Assert.Equal(Kuyumcu.Core.I18n.Yasal4Sozlugu.Tr.PanelStopajGit, ode.TextContent.Trim());
-        Assert.Equal("Ödendi olarak kaydet", ode.TextContent.Trim());
-        Assert.Equal("/gider-pusulalari?sekme=stopaj&ode=2026-08", ode.GetAttribute("href"));
-        // Kasa: bakiye değişmez, kesilen stopaj ayrıca "vergi dairesine ait" yazar.
-        Assert.Contains("vergi dairesine ait", e.Find("#panel-soru-kasa-stopaj").TextContent, StringComparison.Ordinal);
+        // § 4.5 tek dokunuş: satırın tek eylemi o dönemin ödeme çekmecesini açar (Panel POST etmez).
+        Assert.Equal("/gider-pusulalari?sekme=stopaj&ode=2026-08", e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08-eylem").GetAttribute("href"));
+        Assert.Single(satir.QuerySelectorAll("a, button"));
+        // Not: eski "Kasada ne var?" kartının "kesilen stopaj vergi dairesine ait" alt satırı Bugün tuvalinde yok (rapor: ÜRÜN BULGUSU değil, bilgi notu).
     }
 
     [Fact]
@@ -995,8 +949,10 @@ public sealed class S31PanelSadeTestleri : BunitContext
             """{"buAy":"2026-10","buAyKesilenTl":0,"gecikmis":[],"yaklasan":[],"uyariGunu":5}""");
         var e = Basit();
         Bekle(e);
-        Assert.Empty(e.FindAll("[id^='panel-uyum-stopaj-']"));
-        Assert.Empty(e.FindAll("#panel-soru-kasa-stopaj"));
+        Assert.Contains(Yollar(), y => y.Contains("/stopaj/ozet", StringComparison.Ordinal));
+        Assert.NotNull(e.Find("#yildiz-bugun-liste"));   // liste çizildi (boş DOM'da olumsuz iddia değil)
+        Assert.Empty(e.FindAll("[id^='yildiz-bekleyen-stopaj-']"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-stopaj-hata"));
     }
 
     [Fact]
@@ -1005,8 +961,8 @@ public sealed class S31PanelSadeTestleri : BunitContext
         ozel["/stopaj/ozet"] = (HttpStatusCode.InternalServerError, """{"message":"Sunucu hatası"}""");
         var e = Basit();
         Bekle(e);
-        Assert.Empty(e.FindAll("[id^='panel-uyum-stopaj-']"));
-        Assert.NotEmpty(e.FindAll("#panel-soru-stopaj-hata"));
+        Assert.Empty(e.FindAll("[id^='yildiz-bekleyen-stopaj-']"));
+        Assert.NotEmpty(e.FindAll("#yildiz-bugun-stopaj-hata"));
     }
 
     // ── PAKET YASAL-4 tur 4 (orkestratör 01.10 12:35): tam sayfa yükleme / girişten sonraki ilk Panel ──
@@ -1019,30 +975,38 @@ public sealed class S31PanelSadeTestleri : BunitContext
 
     private int StopajOzetIstegi() => Yollar().Count(y => y.Contains("/stopaj/ozet", StringComparison.Ordinal));
 
+    /// <summary>Öteki iş kaynakları boş — "Seni bekleyen" yalnız uyum/stopaj yükleyicisinin sonucuyla dolar.</summary>
+    private void YalnizUyumIsleri()
+    {
+        ozel["/bildirimler"] = (HttpStatusCode.OK,
+            """{"durum":"ACIK","limit":5,"azamiLimit":100,"kapaliGosterimGun":7,"dahaFazlasiVar":false,"bildirimler":[]}""");
+        ozel["/raporlar/cari-yaslandirma"] = (HttpStatusCode.OK,
+            """{"yaslananCariler":[],"ozetTl":{},"toplamSatir":0,"ofset":0,"limit":500,"dahaFazlasiVar":false}""");
+    }
+
     [Fact]
     public void Y4_Tur4_oturum_basta_null_sonra_SAHIP_BASIT_stopaj_KRITIK_satiri_gelir_is_yok_DENMEZ()
     {
         ozel["/stopaj/ozet"] = (HttpStatusCode.OK, StopajGecikmisOzet);
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
+        e.YukleyicilerBitsin();
         Assert.Equal(0, StopajOzetIstegi());                    // rol yokken istek YOK
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
         e.Render();
-        e.WaitForElement("#panel-sade");
         Bekle(e);
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-uyum-stopaj-gecti-2026-08")));
-        Assert.Contains("panel-nokta--acil", e.Find("#panel-uyum-stopaj-gecti-2026-08 .panel-nokta").ClassName, StringComparison.Ordinal);
-        Assert.Contains("vergi dairesine ait", e.Find("#panel-soru-kasa-stopaj").TextContent, StringComparison.Ordinal);
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08")));
+        Assert.Contains("yildiz-bugun-sat-durum--kotu", e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08-durum").ClassName, StringComparison.Ordinal);
         Assert.DoesNotContain(Kuyumcu.Core.I18n.PanelSadeSozlugu.Tr.BekleyenYok, e.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain(Kuyumcu.Core.I18n.Yasal3Sozlugu.Tr.PanelSeritte, e.Markup, StringComparison.Ordinal);
         Assert.Equal(1, StopajOzetIstegi());                    // BİR KEZ yüklenir
-        // Oturum sonradan yine değişirse (jeton yenileme, mod) yükleme TEKRARLANMAZ, iskelete dönmez.
+        // Oturum sonradan yine değişirse (jeton yenileme, mod) yükleme TEKRARLANMAZ, yükleniyora dönmez.
         var o = Services.GetRequiredService<OturumServisi>();
         o.KullaniciAta(o.Kullanici);
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-uyum-stopaj-gecti-2026-08")));
-        Assert.Empty(e.FindAll("#panel-iskelet-soru-bekleyen"));
+        Bekle(e);
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08")));
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-yukleniyor"));
         Assert.Equal(1, StopajOzetIstegi());
     }
 
@@ -1050,34 +1014,43 @@ public sealed class S31PanelSadeTestleri : BunitContext
     public async Task Y4_Tur4_oturum_var_profil_GELMEDEN_iskelet_kalir_MUHASEBE_gelince_PRO_stopaj_satiri()
     {
         ozel["/stopaj/ozet"] = (HttpStatusCode.OK, StopajGecikmisOzet);
+        YalnizUyumIsleri();
         var oturum = Services.GetRequiredService<OturumServisi>();
         await oturum.TokenKaydetAsync("erisim", "yenileme");    // F5: jeton depoda, profil (/auth/ben) henüz yok
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        Assert.NotNull(e.Find("#panel-iskelet-bekleyen"));      // "iş yok" / "rolünüz göremez" DENMEZ
-        Assert.Empty(e.FindAll("#panel-bekleyen-rol"));
-        Assert.DoesNotContain(Kuyumcu.Core.I18n.Sozlukler.Tr.Panel.BekleyenYok, e.Markup, StringComparison.Ordinal);
+        e.YukleyicilerBitsin();
+        // Öteki yükleyiciler BİTTİ ama profil yok: liste "yükleniyor"da kalır — "iş yok" DENMEZ.
+        Assert.NotNull(e.Find("#yildiz-bugun-bekleyen-yukleniyor"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-bos"));
+        Assert.DoesNotContain(Kuyumcu.Core.I18n.PanelSadeSozlugu.Tr.BekleyenYok, e.Markup, StringComparison.Ordinal);
         Assert.Equal(0, StopajOzetIstegi());
         oturum.KullaniciAta(new OturumKullanici("u2", "Mu", "Hasebe", "m@ornek.com", "MUHASEBE", "s1",
             ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-stopaj-gecti-2026-08")));
-        Assert.Empty(e.FindAll("#panel-iskelet-bekleyen"));
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08")));
+        Bekle(e);
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-yukleniyor"));
         Assert.Equal("/gider-pusulalari?sekme=stopaj&ode=2026-08",
-            e.Find("#panel-stopaj-gecti-2026-08 a").GetAttribute("href"));
+            e.Find("#yildiz-bekleyen-stopaj-gecti-2026-08-eylem").GetAttribute("href"));
         Assert.Equal(1, StopajOzetIstegi());
     }
 
     [Fact]
     public async Task Y4_Tur4_profil_TEZGAHTAR_gelirse_iskelet_kalkar_stopaj_istegi_YOK()
     {
+        ozel["/stopaj/ozet"] = (HttpStatusCode.OK, StopajGecikmisOzet);
+        YalnizUyumIsleri();
         var oturum = Services.GetRequiredService<OturumServisi>();
         await oturum.TokenKaydetAsync("erisim", "yenileme");
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-iskelet-bekleyen");
+        e.YukleyicilerBitsin();
+        Assert.NotNull(e.Find("#yildiz-bugun-bekleyen-yukleniyor"));
         oturum.KullaniciAta(new OturumKullanici("u3", "Tez", "Gahtar", "t@ornek.com", "TEZGAHTAR", "s1",
             ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-bekleyen-rol")));
-        Assert.Empty(e.FindAll("#panel-iskelet-bekleyen"));
+        // Yetkisiz rol: yükleniyor kalkar, gerçekten iş yok → boş durum; uyum/stopaj isteği ATILMAZ.
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-bekleyen-bos")));
+        Bekle(e);
+        Assert.Empty(e.FindAll("#yildiz-bugun-bekleyen-yukleniyor"));
+        Assert.Empty(e.FindAll("[id^='yildiz-bekleyen-stopaj-']"));
         Assert.Equal(0, StopajOzetIstegi());
     }
 }

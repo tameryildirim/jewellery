@@ -217,10 +217,10 @@ public static class MenuTanimi
             // PAKET EKSIK-KUCUK (B2-10): vitrin dükkân ekranı (tam ekran) — Vitrin
             // panosundaki "Dükkân ekranını aç" düğmesi götürür.
             ["/vitrin/ekran"] = "Vitrin.razor",
-            // PAKET S1-d: "Tüm ekranlar" karo sayfası. Kenar çubuğundaki
-            // "Tüm ekranlar (N)" bağlantısı götürür (grup öğesi DEĞİLDİR:
-            // 38 ekranın kendisini listeleyen sayfa kendini listelemez).
-            ["/ekranlar"] = "Layout/KenarCubugu.razor",
+            // PAKET S1-d: "Tüm ekranlar" karo sayfası. Üst menünün (Yıldız kabuğu)
+            // "Tüm ekranlar" sözcüğü götürür (YildizKabuk.UstMenu son öğesi; grup öğesi
+            // DEĞİLDİR: ekranların kendisini listeleyen sayfa kendini listelemez).
+            ["/ekranlar"] = "Bilesenler/Kabuk/YildizUstMenu.razor",
         };
 
     /// <summary>

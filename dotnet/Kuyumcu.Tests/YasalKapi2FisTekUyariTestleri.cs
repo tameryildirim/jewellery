@@ -17,9 +17,9 @@ namespace Kuyumcu.Tests;
 
 public sealed partial class SATIS3EkranTestleri
 {
-    /// <summary>Bileşenin TÜM metni (görünmez/ekran okuyucu kopyaları dahil; öznitelikler hariç).</summary>
-    private static string TumMetin(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
-        string.Concat(e.Nodes.Select(n => n.TextContent));
+    /// <summary>Bileşenin TÜM metni (görünmez/ekran okuyucu kopyaları dahil; öznitelikler hariç). TEMA TEMİZLİĞİ 17.10: Yıldız
+    /// tezgâhında display:none olan özgün parçalar (ekran okuyucu da okumaz) hariç — GA.TumMetin.</summary>
+    private static string TumMetin(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => GA.TumMetin(e);
 
     private static int Kac(string metin, string aranan)
     {
@@ -32,7 +32,7 @@ public sealed partial class SATIS3EkranTestleri
     {
         gereksinimOzel = _ => GereksinimKimlik;   // sunucu: kimlik gerekir
         var e = T24Fis(mod, had, kimlikEsigi: kimlikEsigi);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        GA.MusteriSec(e, "c1");
         return e;
     }
 
@@ -42,36 +42,36 @@ public sealed partial class SATIS3EkranTestleri
     public void YK3_F01_nakitte_kimlik_formu_ACILMAZ_kart_havale_acar_nakde_donunce_kapanir_uyari_TEK(string mod)
     {
         var e = Yk3MusteriliFis(mod, 5000m, 5000m);   // fiş 10.000: nakit kuralı + kimlik eşiği
-        Satis4Yardim.NakitElleSec(e);
+        GA.NakitSec(e);
         var cumle = string.Format(S3.NakitHaddiKilit, Bicim.Tl(5000m));     // "5.000 ₺ üstündeki fişte nakit kullanılamaz — …" (had sunucudan)
-        e.WaitForAssertion(() => Assert.Equal(cumle, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.Empty(e.FindComponents<MasakFormu>());
+        e.WaitForAssertion(() => Assert.Equal(cumle, GA.Kaydet(e).GetAttribute("title")), Bekle);
+        GA.KimlikFormuYok(e);
         Assert.Empty(e.FindAll("[id^=masak-]"));
         var metin = TumMetin(e);
         Assert.Equal(1, Kac(metin, cumle));                                  // tek cümle, görünmez kopya da yok
-        if (mod == ArayuzModuServisi.Basit) Assert.Equal(cumle, e.Find("#islem-yasal-kapi").TextContent.Trim());   // BASİT: tek yer üst bant
-        else Assert.Equal(cumle, e.Find("#islem-kaydet-kilit").TextContent.Trim());                              // PRO: tek yer Kaydet'in yanı
+        Assert.Equal(cumle, e.Find("#yildiz-tezgah-not").TextContent.Trim());   // TEMA TEMİZLİĞİ: iki modda tek yer tezgâhın not satırı (Kaydet'in yanı)
         Assert.Equal(0, Kac(metin, S3.KimlikVeNakitAl));                     // "kimlik bilgilerini girin" denmez
         Assert.Equal(0, Kac(metin, SatisAldimSozlugu.Tr.Neden));            // ikinci "Neden?" yok
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
 
         var ilk = true;
         foreach (var (tur, form) in new[] { ("KART", true), ("NAKIT", false), ("HAVALE", true), ("NAKIT", false) })
         {
-            SeciciYardim.Sec(e, "islem-odeme", tur);
+            GA.OdemeSec(e, tur);
             if (form)
             {
-                e.WaitForAssertion(() => Assert.NotEmpty(e.FindComponents<MasakFormu>()), Bekle);
+                GA.KimlikFormuAc(e);                                            // TEMA TEMİZLİĞİ: "+ Kimlik bilgisi" çekmecesi
+                Assert.NotEmpty(e.FindComponents<MasakFormu>());
                 Assert.Equal(0, Kac(TumMetin(e), cumle));                       // nakit hatası değişimde KALKAR
-                if (ilk) { Satis4Yardim.MasakBelgeNoSil(e); ilk = false; }      // kimlik eksik hâli: Kaydet kilitli
-                e.WaitForAssertion(() => Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled")), Bekle);
-                Assert.False(string.IsNullOrWhiteSpace(e.Find("#islem-kaydet").GetAttribute("title")));   // sebep düğmede (UX-S30)
-                PTezgahTurKimlikYardim.EksikKilit(e.Find("#islem-kaydet-kilit").TextContent.Trim());   // P-TEZGAH-TUR-KIMLIK K4: kilit satırı Kaydet'in yanında eksik alanın adını söyler
+                if (ilk) { GA.MasakBelgeNoSil(e); ilk = false; }      // kimlik eksik hâli: Kaydet kilitli
+                e.WaitForAssertion(() => Assert.True(GA.Kaydet(e).HasAttribute("disabled")), Bekle);
+                Assert.False(string.IsNullOrWhiteSpace(GA.Kaydet(e).GetAttribute("title")));   // sebep düğmede (UX-S30)
+                PTezgahTurKimlikYardim.EksikKilit(e.Find("#yildiz-tezgah-not").TextContent.Trim());   // P-TEZGAH-TUR-KIMLIK K4: kilit satırı Kaydet'in yanında eksik alanın adını söyler
                 Assert.Empty(e.FindAll("#islem-yasal-kapi"));                    // "gereken alanlar açıldı" bandı yok
             }
             else
             {
-                e.WaitForAssertion(() => Assert.Empty(e.FindComponents<MasakFormu>()), Bekle);
+                e.WaitForAssertion(() => GA.KimlikFormuYok(e), Bekle);
                 Assert.Equal(1, Kac(TumMetin(e), cumle));                       // nakde dönünce geri gelir, yine TEK
             }
         }
@@ -87,15 +87,16 @@ public sealed partial class SATIS3EkranTestleri
     {
         var had = decimal.Parse(hadMetin, System.Globalization.CultureInfo.InvariantCulture);
         var e = Yk3MusteriliFis(mod, had, 5000m);
-        if (e.FindAll("#islem-odeme").Count > 0) SeciciYardim.Sec(e, "islem-odeme", "NAKIT");   // BASİT'te serbest tutarda tür zaten Nakit (seçici yok)
+        GA.NakitSec(e);   // TEMA TEMİZLİĞİ 17.10: tezgâhta ödeme türü ödeme satırına dokunarak seçilir (iki modda)
         if (engel)
         {
-            e.WaitForAssertion(() => Assert.Equal(string.Format(S3.NakitHaddiKilit, Bicim.Tl(had)), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-            Assert.Empty(e.FindComponents<MasakFormu>());
+            e.WaitForAssertion(() => Assert.Equal(string.Format(S3.NakitHaddiKilit, Bicim.Tl(had)), GA.Kaydet(e).GetAttribute("title")), Bekle);
+            GA.KimlikFormuYok(e);
         }
         else
         {
-            e.WaitForAssertion(() => Assert.NotEmpty(e.FindComponents<MasakFormu>()), Bekle);   // nakit serbest → kimlik formu açılır
+            GA.KimlikFormuAc(e);   // nakit serbest → kimlik formu açılır ("+ Kimlik bilgisi" çekmecesi)
+            Assert.NotEmpty(e.FindComponents<MasakFormu>());
             Assert.DoesNotContain("nakit kullanılamaz", TumMetin(e), StringComparison.Ordinal);
         }
     }
@@ -106,7 +107,8 @@ public sealed partial class SATIS3EkranTestleri
     public void YK3_F03_Pesin_kart_otomatik_engel_TEK_otomatik_notu_ve_panel_notu_YOK(string mod)
     {
         var e = T24Fis(mod, 5000m);   // Peşin + fiş 10.000 > had → ödeme kendiliğinden kart, Peşin engeli
-        e.WaitForAssertion(() => Assert.Equal(YkgTevsik(5000m), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(YkgTevsik(5000m), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        GA.OdemeDuzenAc(e);   // TEMA TEMİZLİĞİ: otomatik ödeme notu tezgâhın ödeme düzeninde aranır (kapalı düzen yanlış yeşil vermez)
         var metin = TumMetin(e);
         Assert.Equal(1, Kac(metin, YkgTevsik(5000m)));
         Assert.Empty(e.FindAll("#islem-odeme-otomatik"));
@@ -118,11 +120,13 @@ public sealed partial class SATIS3EkranTestleri
     public void YK3_F04_PRO_panel_engel_fiste_soylenirken_KATLI_ic_not_YOK()
     {
         var e = Yk3MusteriliFis(ArayuzModuServisi.Profesyonel, 5000m, 5000m);
-        Satis4Yardim.NakitElleSec(e);
-        e.WaitForAssertion(() => Assert.Equal(string.Format(S3.NakitHaddiKilit, Bicim.Tl(5000m)), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        var ayrinti = e.Find("#islem-pro-yasal-ayrinti");
-        Assert.False(ayrinti.HasAttribute("open"));                        // kademe satırları tıklayınca
-        Assert.NotNull(ayrinti.QuerySelector("#islem-pro-nakit"));        // bilgi silinmedi
+        GA.NakitSec(e);
+        e.WaitForAssertion(() => Assert.Equal(string.Format(S3.NakitHaddiKilit, Bicim.Tl(5000m)), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        // TEMA TEMİZLİĞİ 17.10: PRO "Yasal kapılar" yan paneli (#islem-pro-yasal-ayrinti) satışta çizilmez — engel tezgâhın not
+        // satırında TEK kez söylenir; iç not ("teyit") ve teknik "tek kasa otomatik" notu ödeme düzeni açıkken de yok.
+        Assert.Empty(e.FindAll("#islem-pro-yasal-ayrinti"));
+        Assert.Equal(string.Format(S3.NakitHaddiKilit, Bicim.Tl(5000m)), e.Find("#yildiz-tezgah-not").TextContent.Trim());
+        GA.OdemeDuzenAc(e);
         Assert.DoesNotContain("teyit", TumMetin(e), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(Sozlukler.Tr.Islem.TekKasaOtomatik, TumMetin(e), StringComparison.Ordinal);
     }

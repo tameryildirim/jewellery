@@ -257,7 +257,7 @@ public sealed class VezneDetayEkranTestleri : BunitContext
     [Fact]
     public void KalemAdedi_TurkceVirgulBasar_NoktaOndalikIcermez() => NoktaOndalikDenetimi.EnUsIle(() =>
     {
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-sec-v1").Click();
 
         var satir = e.FindAll("#vz-detay-kalemler tbody tr").Single();

@@ -102,18 +102,15 @@
 //   Bu yüzden ayrı dosya değil, aynı dosyada üçüncü ad alanı.
 // ⚠ Beyaz liste dışı her değerde öznitelik KALDIRILIR (boş dizge YAZILMAZ —
 //   tema.js'in başındaki tuzağın aynısı).
-// ⚠ VARSAYILAN = "altin" / "yogun": öznitelik hiç yazılmaz, mevcut kiracının
-//   ekranı bu paketten sonra HİÇ değişmez.
+// ⚠ TEMA TEMİZLİĞİ (kurucu 17.10): TEK ŞEMA "yildiz". data-sema="yildiz"
+//   özniteliği KALICIDIR — ilk boyamadan önce yazılır ve sunucu ne derse
+//   desin (eski istemci/bozuk değer) değişmez; tema-yildiz.css'in kapsamlı
+//   seçicileri buna dayanır. Açık/koyu AYRI ad alanıdır (kuyumcuTema, data-tema).
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
     'use strict';
 
-    // ⚠ S1-a: 8 renk şeması (belirtecler.css'te tanımlı) + iki ESKİ kod.
-    //   "kurumsal" → Platin Mavi, "zumrut" → yeni Zümrüt: kiraci_ayarlari'ndaki
-    //   kayıtlı değerler geçersizleşmesin diye beyaz listede KALDILAR.
-    //   Beyaz liste dışı değer YAZILMAZ; öznitelik kaldırılır (varsayılan = Platin).
-    var SEMALAR = ['platin', 'zumrut', 'grafit', 'bordo', 'okyanus', 'menekse',
-                   'zeytin', 'fildisi', 'kurumsal', 'yildiz'];
+    var SEMA = 'yildiz';
     // ⚠ S1-a: "yogun" artık 16 px kademesini AÇIKÇA yazar (varsayılan 18 px);
     //   "okunakli" 20 px kademesidir. Eski kayıtlar çalışmaya devam eder.
     // ⚠ B-1: sunucu artık KANONİK punto kodu gönderir ('16' | '18' | '20') ve
@@ -130,30 +127,10 @@
         return n;
     }
 
-    // ⚠ PAKET YILDIZ-AMBLEM-3 (ekip oyu 10.10): GİRİŞ ÖNCESİ ŞEMA = BU CİHAZDA EN SON KULLANILAN ŞEMA.
-    //   Oturum yokken /gorunum okunamaz (kimlik ister) ve kiracı bilinmeden kiracının şeması bilinemez;
-    //   bu yüzden sunucudan gelen her şema uygulamasında (oturum açılınca / şema değişince) değer bu
-    //   cihaza 'mihenk-son-sema' olarak yazılır ve giriş sayfası ilk boyamadan önce onu okur (FOUC yok).
-    //   Yalnız GÖRÜNÜM ÖNBELLEĞİDİR — doğruluk kaynağı sunucudur; veri/yetki/güvenlik taşımaz.
-    //   Hiç giriş yapılmamış cihazda anahtar yoktur → varsayılan şema (Platin). Çıkışta anahtar KALIR.
-    //   Beyaz liste dışı değer ne yazılır ne uygulanır.
-    var SON_SEMA = 'mihenk-son-sema';
-
-    /** Bu cihazda en son kullanılan şema (beyaz listede değilse ya da yoksa ''). */
-    function sonSema() {
-        var d = null;
-        try { d = localStorage.getItem(SON_SEMA); } catch (e) { d = null; }   // özel sekme
-        d = (d || '').toString().toLowerCase();
-        return SEMALAR.indexOf(d) !== -1 ? d : '';
-    }
-
-    /** Renk şemasını uygular. Dönen değer GERÇEKTEN uygulanan şemadır. */
-    function sema(deger) {
-        var s = yaz('data-sema', deger, SEMALAR);
-        try {
-            if (s) localStorage.setItem(SON_SEMA, s); else localStorage.removeItem(SON_SEMA);
-        } catch (e) { /* özel sekme */ }
-        return s || 'altin';
+    /** Renk şemasını uygular — tek şema; gelen değer ne olursa olsun "yildiz" yazılır. */
+    function sema() {
+        document.documentElement.setAttribute('data-sema', SEMA);
+        return SEMA;
     }
 
     /**
@@ -179,12 +156,11 @@
     /** İkisini birden — sunucudan gelen görünüm kaydı. */
     function uygula(g) {
         g = g || {};
-        return { sema: sema(g.sema), olcek: olcek(g.yaziOlcegi) };
+        return { sema: sema(), olcek: olcek(g.yaziOlcegi) };
     }
 
-    window.kuyumcuGorunum = { uygula: uygula, sema: sema, olcek: olcek, sonSema: sonSema };
+    window.kuyumcuGorunum = { uygula: uygula, sema: sema, olcek: olcek };
 
-    // İlk boyamadan önce (YILDIZ-AMBLEM-3): son kullanılan şema köke yazılır — oturumsuz /giris o şemayla
-    // çizilir; oturum varsa sunucu yanıtı gelince kuyumcuGorunum.uygula aynı özniteliği yeniden yazar.
-    yaz('data-sema', sonSema(), SEMALAR);
+    // İlk boyamadan önce: tek şema köke yazılır — oturumsuz /giris de Yıldız ile çizilir (FOUC yok).
+    sema();
 })();

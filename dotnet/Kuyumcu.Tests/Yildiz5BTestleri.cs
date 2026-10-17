@@ -349,7 +349,7 @@ public sealed class Yildiz5BTestleri : BunitContext
     }
 
     [Fact]
-    public void Y5B_11_sayfa_dallari_oteki_semalarda_ozgun_ekran_aynen()
+    public void Y5B_11_sayfalar_Yildiz_yuzunu_kosulsuz_cizer_ozgun_govde_Tum_ayrintilar_arkasinda()
     {
         foreach (var (sayfa, bilesen) in new[] {
             ("Kasalar", "YildizOzet"), ("Kur", "YildizOzet"), ("Hurda", "YildizOzet"), ("KasaRaporu", "YildizOzet"),
@@ -357,15 +357,17 @@ public sealed class Yildiz5BTestleri : BunitContext
             ("Pos", "YildizBos"), ("Banka", "YildizBos"), ("EvrakTakvimi", "YildizTakvim"), ("Gider", "YildizForm") })
         {
             var razor = CssKaynak.Metin("Kuyumcu.Web", "Pages", sayfa + ".razor");
+            // Tema temizliği (17.10): şema koşulu kalktı — Yıldız yüzü KOŞULSUZ, özgün gövde "Tüm ayrıntılar" arkasında.
             Assert.Contains($"<Kuyumcu.Web.Bilesenler.Yildiz.{bilesen} B=", razor);
-            Assert.Contains("@if (YildizMi)", razor);
+            Assert.DoesNotContain("YildizMi", razor);
             Assert.Contains("@if (YildizOzgunCiz) {", razor);
+            Assert.True(razor.IndexOf($"<Kuyumcu.Web.Bilesenler.Yildiz.{bilesen} B=", StringComparison.Ordinal)
+                        < razor.IndexOf("@if (YildizOzgunCiz) {", StringComparison.Ordinal), sayfa + ": Yıldız yüzü özgün kökten sonra");
             Assert.Contains("data-yz-ozgun=\"@YildizOzgunIsaret\"", razor);
             var cs = CssKaynak.Metin("Kuyumcu.Web", "Pages", sayfa + ".Yildiz.cs");
-            // Yıldız dışında öznitelik YAZILMAZ (null) → öteki 8 şemada DOM birebir
-            Assert.Matches(@"private string\? YildizOzgunIsaret => YildizMi \?[^;]*: null;", cs);
-            Assert.Contains("private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);", cs);
-            Assert.Contains(sayfa == "Gider" ? "private bool YildizOzgunCiz => !YildizMi || YildizAyrintida;" : "private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;", cs);
+            Assert.Matches(@"private string\? YildizOzgunIsaret => ""[a-z-]+"";", cs);
+            Assert.DoesNotContain("YildizMi", cs);
+            Assert.Contains(sayfa == "Gider" ? "private bool YildizOzgunCiz => YildizAyrintida;" : "private bool YildizOzgunCiz => yildizAyrinti;", cs);
             // Yıldız yüzü İSTEK atmaz ya da yalnız OKUR (yazma uçlarına doğrudan istek yok)
             Assert.DoesNotMatch(@"Api\.(PostAsync|PatchAsync|PutAsync|DeleteAsync)", cs);
         }

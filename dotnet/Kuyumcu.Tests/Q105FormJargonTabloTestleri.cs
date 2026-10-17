@@ -339,7 +339,7 @@ public sealed class Q105FormJargonTabloTestleri : BunitContext
         AgacYanitlari();
         Oturum();
         Basit();
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Ön Vitrin", e.Markup));
         var tablo = e.FindAll("table").First(t => t.TextContent.Contains("Ön Vitrin"));
         Assert.Contains("q10-th-tek", tablo.ClassName);
@@ -352,7 +352,7 @@ public sealed class Q105FormJargonTabloTestleri : BunitContext
     {
         AgacYanitlari();
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Ön Vitrin", e.Markup));
         var tablo = e.FindAll("table").First(t => t.TextContent.Contains("Ön Vitrin"));
         Assert.Contains(Sozlukler.Tr.Cari.PasifeAl, tablo.TextContent);
@@ -411,11 +411,13 @@ public sealed class Q105FormJargonTabloTestleri : BunitContext
     public void Q105_C02_Sayim_listesi_mobil_yigin_ve_her_hucre_etiketli()
     {
         yanitlar["/sayim"] = """[{"id":"sy1","ad":"Eylül sayımı vitrin","kapsamTur":"TUMU","durum":"ACIK"}]""";
+        // TEMA TEMİZLİĞİ 17.10: Yıldız açık sayımı kendiliğinden açar — özgün listeye "Tüm ayrıntılar → ← Sayım" ile varılır.
+        yanitlar["/sayim/"] = """{"id":"sy1","ad":"Eylül sayımı vitrin","subeId":"sb1","kapsamTur":"TUMU","durum":"ACIK","toplamSatir":0,"sayilan":0,"sayilmayan":0,"farkli":0,"eksikAdet":0,"fazlaAdet":0,"netFarkHas":0,"hareketli":0,"satirlar":[]}""";
         yanitlar["/subeler"] = """[{"id":"sb1","ad":"Merkez Şube"}]""";
         yanitlar["/reyonlar"] = "[]";
         yanitlar["/urun-kategorileri/duz"] = "[]";
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-tablo tbody tr");
         var tablo = e.Find("#sy-tablo");
         // PAKET GOC-C: liste ortak ızgarada — 375 px kart kalıbı ızgaranın TEK kalıbıdır (izgara.css, data-etiket).

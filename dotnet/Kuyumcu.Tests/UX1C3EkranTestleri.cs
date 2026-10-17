@@ -85,7 +85,7 @@ public sealed class UX1C3EkranTestleri : BunitContext
     [Fact]
     public void C3_01_Gider_pusulalari_sayfa_basi_vardir()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForAssertion(() => SayfaBasiVar(c, "gider-pusulalari"));
     }
 
@@ -138,7 +138,7 @@ public sealed class UX1C3EkranTestleri : BunitContext
     [Fact]
     public void C3_10_Pusula_detayi_CEKMECEDE_acilir_ve_YANILTICI_Kaydet_YOKTUR()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
         c.FindAll("button").First(b => b.TextContent.Contains("Detay")).Click();
 
@@ -177,7 +177,7 @@ public sealed class UX1C3EkranTestleri : BunitContext
     [Fact]
     public void C3_11_Pusula_detayinda_DUZENLE_dugmesi_YOK_gerekce_VAR()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
         c.FindAll("button").First(b => b.TextContent.Contains("Detay")).Click();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#degismez-ipucu-GiderPusulasi")));
@@ -196,7 +196,7 @@ public sealed class UX1C3EkranTestleri : BunitContext
     [Fact]
     public void C3_12_Pusula_detayinda_HAM_KOD_basilmaz()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
         c.FindAll("button").First(b => b.TextContent.Contains("Detay")).Click();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#cekmece-gider-pusulasi-govde")));
@@ -209,7 +209,7 @@ public sealed class UX1C3EkranTestleri : BunitContext
     [Fact]
     public void C3_13_Stopaj_sifirken_listede_de_TUTAR_yazar()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
         // KESIF-P3 (#11): TCKN ayrı sütun değil (satıcının alt satırında) → hücre konumla değil
         // kendi etiketiyle (data-etiket = Stopaj) bulunur.

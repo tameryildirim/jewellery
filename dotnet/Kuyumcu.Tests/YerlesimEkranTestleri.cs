@@ -75,7 +75,7 @@ public sealed class YerlesimEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.UrunAgaci> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         istekler.Clear();
         return e;
     }
@@ -270,10 +270,12 @@ public sealed class YerlesimUyariEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> SatisEkrani()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı — müşteri "Değiştir" katmanından, kalem aynı giriş alanından.
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
         return e;
     }
 
@@ -287,17 +289,21 @@ public sealed class YerlesimUyariEkranTestleri : BunitContext
         // Oturumun şubesi bilinmediği için reyon seçici çıkmaz; gövdede reyon
         // gitmez ve sunucu uyarı döndürür.
         var e = SatisEkrani();
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        TemaTemizligiGDYardimcisi.KaydetAcikBekle(e);
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
 
         e.WaitForElement("#islem-yerlesim-uyari");
         Assert.Contains("A-VITRIN", e.Find("#islem-yerlesim-uyari").TextContent);
+        // Yıldız: aynı uyarı Fark bloğunun not satırında da görünür alanda (Uyarilar[0]).
+        Assert.Contains("A-VITRIN", e.Find("#yildiz-tezgah-uyari-0").TextContent);
     }
 
     /// <summary>Uyarı yoksa band HİÇ çizilmez (gereksiz gürültü yok).</summary>
     [Fact]
     public void Uyari_yoksa_band_cizilmez()
     {
-        var e = SatisEkrani();
+        var e = SatisEkrani();   // tezgâh + kalem çizildi (boş DOM değil)
         Assert.Empty(e.FindAll("#islem-yerlesim-uyari"));
+        Assert.DoesNotContain(e.FindAll("[id^='yildiz-tezgah-uyari-']"), u => u.TextContent.Contains("A-VITRIN"));   // Yıldız not satırında da yerleşim uyarısı yok
     }
 }

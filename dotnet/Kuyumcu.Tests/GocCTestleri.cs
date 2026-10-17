@@ -464,6 +464,8 @@ public sealed class GocCEkranTestleri : BunitContext
                 var y when y.Contains("/reyonlar") => "[]",
                 var y when y.Contains("/kur/pariteler") => """{"kaynak":"TEST","pariteler":[]}""",
                 var y when y.Contains("/kur/guncel") => """{"id":"kur-1","altinHasFiyati":6800,"usdTry":40,"kaynak":"MANUAL","olusturuldu":"2026-10-08T08:00:00Z","ayarFiyatlari":[]}""",
+                // TEMA TEMİZLİĞİ 17.10: Yıldız açık sayımı kendiliğinden açar — ayrıntı yanıtı gerekir.
+                var y when y.Contains("/sayim/o1") => """{"id":"o1","ad":"Ekim sayımı","subeId":"sb1","kapsamTur":"TUMU","durum":"ACIK","toplamSatir":0,"sayilan":0,"sayilmayan":0,"farkli":0,"eksikAdet":0,"fazlaAdet":0,"netFarkHas":0,"hareketli":0,"satirlar":[]}""",
                 var y when y.EndsWith("/sayim") && istek.Method == HttpMethod.Get => """[{"id":"o1","ad":"Ekim sayımı","kapsamTur":"TUMU","durum":"ACIK"}]""",
                 var y when y.Contains("/tercihler/benim") => """{"tercihler":{}}""",
                 _ => "{}",
@@ -483,7 +485,7 @@ public sealed class GocCEkranTestleri : BunitContext
     public void GCE01_Siparis_gecmis_soz_gunu_ve_kesirli_adet_alan_alti_Kaydet_kilitli_POST_YOK()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         e.WaitForElement("#sip-yeni-ac", Uzun).Click();
         e.WaitForElement("#sip-form", Uzun);
         SeciciYardim.Sec(e, "sip-f-cari", "c1");
@@ -509,7 +511,7 @@ public sealed class GocCEkranTestleri : BunitContext
     public void GCE02_Urun_yeni_form_PRO_zorunlu_once_tas_gram_alan_alti_kilit_barkod_siniri()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#urun-yeni-ac", Uzun).Click();
         // Devir: isteğe bağlı alanlar açılışta YOK (PRO dahil); "Daha fazla" ile açılır.
         Assert.Empty(e.FindAll("#u-tas"));
@@ -532,7 +534,7 @@ public sealed class GocCEkranTestleri : BunitContext
     public void GCE03_Sayim_oturum_listesi_ortak_izgarada_ham_girdi_yok()
     {
         Oturum();
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-tablo tbody tr", Uzun);
         Assert.Contains("izgara-tablo", e.Find("#sy-tablo").ClassName);
         Assert.NotNull(e.Find("#sy-tablo-sutunlar-ac"));

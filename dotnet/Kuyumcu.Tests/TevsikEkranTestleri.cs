@@ -77,6 +77,11 @@ public sealed class TevsikEkranTestleri : BunitContext
                 var y when y.Contains("/fiyat/listeler") => "[]",
                 var y when y.Contains("/cari/c1") && istek.Method == HttpMethod.Get =>
                     """{"id":"c1","ad":"Ayşe Demir","tur":"MUSTERI","telefon":null,"email":null,"vergiNo":null,"adres":null}""",
+                // TEMA TEMİZLİĞİ 17.10: Yıldız'da tahsilat kartın eylemidir — kart açılırken tam kart (GET /cari/{id}) çekilir.
+                // Kart, müşterinin IBAN listesini de çeker (M7a — CariIbanListesi): gerçekçi boş liste.
+                var y when y.EndsWith("/ibanlar") => "[]",
+                var y when y.EndsWith("/cari/c2") && istek.Method == HttpMethod.Get =>
+                    """{"id":"c2","ad":"Kemal Devirli","tur":"MUSTERI","telefon":null,"email":null,"vergiNo":null,"adres":null}""",
                 var y when y.Contains("/tahsilat") => """{"id":"c1"}""",
                 var y when y.Contains("/cari") => t.cariYaniti,
                 _ => "[]",
@@ -104,8 +109,7 @@ public sealed class TevsikEkranTestleri : BunitContext
     {
         Oturum();
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("button");
-        e.FindAll("button").First(b => b.TextContent.Contains("Tahsilat")).Click();
+        e.KartEylemi("c1", "tahsilat");   // TEMA TEMİZLİĞİ 17.10: satıra dokun → kart → Tahsilat
         e.WaitForElement("#th-tutar");
         return e;
     }
@@ -177,14 +181,13 @@ public sealed class TevsikEkranTestleri : BunitContext
         cariYaniti = """[{"id":"c1","ad":"Ayşe Demir","tur":"MUSTERI","tlBakiye":62000,"hasGramBakiye":0},{"id":"c2","ad":"Kemal Devirli","tur":"MUSTERI","tlBakiye":1000,"hasGramBakiye":0}]""";
         Oturum();
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-tahsilat-c1");
-        e.Find("#c-tahsilat-c1").Click();
+        e.KartEylemi("c1", "tahsilat");   // TEMA TEMİZLİĞİ 17.10: kartın eylemi
         e.WaitForElement("#th-taksit");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Vazgeç").Click();
         // Kasa önbelleği (10 sn) tarayıcıdaki gibi BAYAT: istek ağa gider ve beklenir.
         Services.GetRequiredService<ApiIstemci>().Onbellek.Simdi = () => DateTimeOffset.UtcNow.AddMinutes(5);
         kasaKapisi = new TaskCompletionSource();
-        e.Find("#c-tahsilat-c2").Click();
+        e.KartEylemi("c2", "tahsilat");
         e.WaitForElement("#th-tutar");
         Assert.Empty(e.FindAll("#th-taksit"));          // kasalar beklenirken eski kutu YOK
         kasaKapisi.SetResult();

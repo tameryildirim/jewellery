@@ -18,11 +18,11 @@ internal static class B1SahteGorunumYaniti
     /// <summary>Dükkân varsayılanını devralan (kullanıcı satırı boş) bir kullanıcı.</summary>
     public const string Govde =
         """
-        {"temaModu":"sistem","sema":"platin","yaziBoyutu":18,
+        {"temaModu":"sistem","sema":"yildiz","yaziBoyutu":18,
          "temaModuKaynagi":"sistem","semaKaynagi":"sistem","yaziBoyutuKaynagi":"sistem",
          "ozelTemaModu":null,"ozelSema":null,"ozelYaziBoyutu":null,
-         "kiraciTemaModu":"sistem","kiraciSema":"platin","kiraciYaziBoyutu":18,
-         "semalar":["platin","zumrut","grafit","bordo","okyanus","menekse","zeytin","fildisi"],
+         "kiraciTemaModu":"sistem","kiraciSema":"yildiz","kiraciYaziBoyutu":18,
+         "semalar":["yildiz"],
          "temaModlari":["sistem","aydinlik","karanlik"],"yaziBoyutlari":[16,18,20]}
         """;
 
@@ -32,5 +32,5 @@ internal static class B1SahteGorunumYaniti
 
     /// <summary>Dükkân görünüm varsayılanı (GET /gorunum) — aynı üçlünün kiracı tarafı.</summary>
     public const string Kiraci =
-        """{"sema":"platin","yaziOlcegi":"18","temaModu":"sistem"}""";
+        """{"sema":"yildiz","yaziOlcegi":"18","temaModu":"sistem"}""";
 }

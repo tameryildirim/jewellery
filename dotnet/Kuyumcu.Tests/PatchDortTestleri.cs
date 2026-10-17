@@ -370,7 +370,7 @@ public sealed class PatchDortUrunEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Urunler> DuzenleAc()
     {
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
         e.WaitForElement("#d-barkod");
         // BASİT modda gerçek milyem "Daha fazla" katında; PRO'da doğrudan görünür.

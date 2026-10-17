@@ -36,7 +36,7 @@
 @* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Kasalar (BİREBİR); özgün liste yalnız "Tüm ayrıntılar"
    görünümünde çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Çekmeceler (gün sonu, hareket, geçmiş) aşağıda ORTAK.
    Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
-@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizOzet B="@YildizBaglami" /> }
+<Kuyumcu.Web.Bilesenler.Yildiz.YildizOzet B="@YildizBaglami" />
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     <SayfaBasi Anahtar="kasalar" AciklamaKatli="true" Baslik="@Dil.T.Kasa.Baslik" Aciklama="@Dil.T.Kasa.SayfaAciklama">

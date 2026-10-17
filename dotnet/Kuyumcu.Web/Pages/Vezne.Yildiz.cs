@@ -16,9 +16,8 @@ public partial class Vezne
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "vezne" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "vezne";
     private bool yildizAyrinti;
 
     /// <summary>Fiş adı (saf): tuval "Satış · 2 ürün" · "Tahsilat" · "İşçilik".</summary>

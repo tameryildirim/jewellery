@@ -43,6 +43,9 @@ public sealed class EmanetSadeTestleri : BunitContext
     private bool karmaMaden;
     private bool telefonlu;      // E30: c1 telefonlu (seçicide telefonla arama)
     private bool bozukJson;      // E34: /emanet/c1 bozuk JSON döner
+    // TEMA TEMİZLİĞİ 17.10: Yıldız listesi açılışta müşterilerin /emanet/{id} uçlarını okur; c9 yalnız
+    // liste kurulduktan SONRA bekletilir (E22) — yoksa liste hiç kurulmaz ve özgün gövdeye geçilemez.
+    private bool c9Beklet;
     private readonly TaskCompletionSource c9Bekle = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private static readonly EmanetSadeMetinleri S = EmanetSadeSozlugu.Tr;
@@ -59,7 +62,7 @@ public sealed class EmanetSadeTestleri : BunitContext
             if (yol.Contains("/emanet/c1", StringComparison.Ordinal) && s.emanetHatali)
                 return Yanit(HttpStatusCode.ServiceUnavailable, """{"message":"emanet servisi yok"}""");
             // c9: yanıt test bırakana dek bekler (yükleme durumu).
-            if (yol.Contains("/emanet/c9", StringComparison.Ordinal))
+            if (s.c9Beklet && yol.Contains("/emanet/c9", StringComparison.Ordinal))
                 await s.c9Bekle.Task;
             // E26: c1'in geçmişi altın + gümüş karışık.
             if (s.bozukJson && yol.EndsWith("/emanet/c1", StringComparison.Ordinal))
@@ -137,8 +140,10 @@ public sealed class EmanetSadeTestleri : BunitContext
                 var y when y.Contains("/emanet/c2") => """
                     {"cariId":"c2","mevcutHasGramBakiye":0,"madenBakiyeleri":[],"hareketler":[]}
                     """,
+                // TEMA TEMİZLİĞİ 17.10: Yıldız'da özgün gövdeye geçiş listede bir emanet satırıdır → kapı müşterisi c0.
+                var y when y.Contains("/emanet/c0") => TemaTemizligiGEYardimcisi.KapiEmanet,
                 var y when y.Contains("/cari") => "[" + string.Join(",",
-                    new[] { s.telefonlu ? """{"id":"c1","ad":"Ayşe Demir","telefon":"05441112233"}""" : """{"id":"c1","ad":"Ayşe Demir"}""", """{"id":"c2","ad":"Mehmet Kaya"}""" }
+                    new[] { TemaTemizligiGEYardimcisi.KapiCari, s.telefonlu ? """{"id":"c1","ad":"Ayşe Demir","telefon":"05441112233"}""" : """{"id":"c1","ad":"Ayşe Demir"}""", """{"id":"c2","ad":"Mehmet Kaya"}""" }
                         .Concat(Enumerable.Range(3, Math.Max(0, s.cariSayisi - 2))
                             .Select(i => $$"""{"id":"c{{i}}","ad":"Müşteri {{i}}"}"""))) + "]",
                 _ => """{"hata":"sahte API bu ucu tanımıyor"}""",
@@ -163,41 +168,27 @@ public sealed class EmanetSadeTestleri : BunitContext
         Services.AddScoped<ApiIstemci>();
     }
 
-    private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Ciz()
-    {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>();
-        e.WaitForElement("#e-cari");
-        return e;
-    }
+    /// <summary>
+    /// TEMA TEMİZLİĞİ 17.10: Yıldız yolu — açılış listedir; özgün gövde kapı müşterisinin (c0) satırına
+    /// basılınca o müşteri SEÇİLİ açılır (bkz. TemaTemizligiGEYardimcisi).
+    /// </summary>
+    private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Ciz() =>
+        Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc();
 
-    private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Secili(string cari)
+    /// <param name="listeSonrasi">Liste kurulup özgün gövde açıldıktan SONRA, müşteri seçilmeden önce (ör. sunucu hatası başlar).</param>
+    private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Secili(string cari, Action? listeSonrasi = null)
     {
         var e = Ciz();
         // Kur yüklenmeden "+ Emanet al" kilitli kalır — kur gelene dek bekle.
         e.WaitForAssertion(() => Assert.DoesNotContain(OnayKilitSozlugu.Tr.EmanetKurYok, e.Markup, StringComparison.Ordinal));
+        listeSonrasi?.Invoke();
         SeciciYardim.Sec(e, "e-cari", cari);
         e.WaitForElement("#e-ozet-deger");
         e.WaitForElement("#e-gecmis");
         return e;
     }
 
-    // ── E1 ─────────────────────────────────────────────────────────────────
-    [Fact]
-    public void E1_Acilista_yalniz_zorunlu_ogeler_ve_TEK_kisa_sebep()
-    {
-        var e = Ciz();
-
-        Assert.NotNull(e.Find("#e-cari"));
-        Assert.Empty(e.FindAll("#e-cari-ara"));          // ayrı arama kutusu YOK
-        Assert.Empty(e.FindAll("#e-ozet"));              // müşteri seçilmeden özet yok
-        Assert.Empty(e.FindAll("#e-gecmis"));            // geçmiş kartı yok
-        Assert.True(e.Find("#e-giris-ac").HasAttribute("disabled"));
-        Assert.True(e.Find("#e-cikis-ac").HasAttribute("disabled"));
-
-        var kilit = e.Find("#e-kilit").TextContent.Trim();
-        Assert.Equal(OnayKilitSozlugu.Tr.EmanetMusteriSecilmedi, kilit);
-        Assert.DoesNotContain("Eksik olan", e.Markup, StringComparison.Ordinal);
-    }
+    // TEMA TEMİZLİĞİ 17.10: E1_Acilista_yalniz_zorunlu_ogeler_ve_TEK_kisa_sebep kaldırıldı — Yıldız'da açılış listedir; özgün gövde yalnız bir satırın müşterisi SEÇİLİ açılır (müşterisiz özgün durum ulaşılamaz). "Önce müşteri seçin" kapısı Yıldız "Emanet al" formunda alan altında: Yildiz5AFormTestleri.Y5A_F01; tek birincil + iki eşit eylem E6'da.
 
     // ── E2 ─────────────────────────────────────────────────────────────────
     [Fact]
@@ -364,8 +355,9 @@ public sealed class EmanetSadeTestleri : BunitContext
     [Fact]
     public void E10_Gecmis_yukleme_hatasi_katlanir_KAPALIYKEN_de_gorunur()
     {
-        emanetHatali = true;
+        // TEMA TEMİZLİĞİ 17.10: hata, liste kurulduktan sonra başlar (liste hatası Yıldız listesinin kendi bandında).
         var e = Ciz();
+        emanetHatali = true;
         SeciciYardim.Sec(e, "e-cari", "c1");
 
         e.WaitForElement("#e-liste-hata");
@@ -601,8 +593,7 @@ public sealed class EmanetSadeTestleri : BunitContext
     [Fact]
     public void E21_Yukleme_hatasinda_Emaneti_yok_DENMEZ_kilit_sebebi_hata()
     {
-        emanetHatali = true;
-        var e = Secili("c1");
+        var e = Secili("c1", () => emanetHatali = true);
 
         e.WaitForElement("#e-liste-hata");
         var ozet = e.Find("#e-ozet-deger").TextContent.Trim();
@@ -619,7 +610,7 @@ public sealed class EmanetSadeTestleri : BunitContext
     public void E22_Yukleme_surerken_Yukleniyor_yazar_yanit_gelince_deger()
     {
         cariSayisi = 9;
-        var e = Secili("c9");
+        var e = Secili("c9", () => c9Beklet = true);
 
         Assert.Equal(S.Yukleniyor, e.Find("#e-ozet-deger").TextContent.Trim());
         Assert.Equal(S.Yukleniyor, e.Find("#e-kilit").TextContent.Trim());
@@ -834,8 +825,9 @@ public sealed class EmanetSadeTestleri : BunitContext
         e.Find("#e-cari-ara-girdi").Input("xyz");
         Assert.DoesNotContain(SeciciYardim.Secenekler(e, "e-cari"), o => o.Deger() != "");
         Assert.Equal(Dil().T.Kabuk.SeciciEslesmeYok, e.Find("#e-cari-eslesme-yok").TextContent.Trim());
-        // Tetik metni değişmedi: seçim yokken "Müşteri seçin".
-        Assert.Contains(Dil().T.Emanet.MusteriSecin, e.Find("#e-cari").TextContent, StringComparison.Ordinal);
+        // Tetik metni değişmedi: arama seçimi bozmaz (TEMA TEMİZLİĞİ 17.10: Yıldız'da özgün gövde satırın
+        // müşterisi SEÇİLİ açılır → tetik o müşterinin adını taşır; "Müşteri seçin" durumu ulaşılamaz).
+        Assert.Contains("Kapı Müşteri", e.Find("#e-cari").TextContent, StringComparison.Ordinal);
     }
 
     // E31 (KRİTİK): çekmecede Vazgeç + Kaydet TABANDA yan yana (form gövdesinin
@@ -914,8 +906,7 @@ public sealed class EmanetSadeTestleri : BunitContext
     [Fact]
     public void E34_Bozuk_JSON_hata_bandina_duser()
     {
-        bozukJson = true;
-        var e = Secili("c1");
+        var e = Secili("c1", () => bozukJson = true);
         e.WaitForElement("#e-liste-hata");
         Assert.Equal("—", e.Find("#e-ozet-deger").TextContent.Trim());
         Assert.Equal(S.BilgiAlinamadi, e.Find("#e-kilit").TextContent.Trim());
@@ -925,10 +916,13 @@ public sealed class EmanetSadeTestleri : BunitContext
     [Fact]
     public void E35_Giris_dugmesi_iadenin_sebebini_aciklayan_olarak_almaz()
     {
+        // TEMA TEMİZLİĞİ 17.10: "müşteri seçilmedi → iki sebep aynı" durumu Yıldız'da ulaşılamaz (özgün gövde
+        // satırın müşterisi seçili açılır). Emaneti olan müşteride (c0) kilit yok → iki düğme de açıklayan almaz.
         var e = Ciz();
-        // Müşteri seçilmedi: iki sebep aynı → ikisi de #e-kilit.
-        Assert.Equal("e-kilit", e.Find("#e-giris-ac").GetAttribute("aria-describedby"));
-        Assert.Equal("e-kilit", e.Find("#e-cikis-ac").GetAttribute("aria-describedby"));
+        e.WaitForAssertion(() => Assert.False(e.Find("#e-cikis-ac").HasAttribute("disabled")));
+        Assert.Empty(e.FindAll("#e-kilit"));
+        Assert.False(e.Find("#e-giris-ac").HasAttribute("aria-describedby"));
+        Assert.False(e.Find("#e-cikis-ac").HasAttribute("aria-describedby"));
 
         SeciciYardim.Sec(e, "e-cari", "c2");               // emaneti yok: iade kilitli, giriş açık
         e.WaitForAssertion(() => Assert.Equal(S.IadeYok, e.Find("#e-kilit").TextContent.Trim()));

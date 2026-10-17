@@ -214,7 +214,15 @@ internal sealed class BelirtecTablosu
             yield return ("SEMA-" + ad.ToUpperInvariant(), birlesik);
         }
 
-        // PAKET S1-a — 8 şema × KARANLIK, iki kurulumda ayrı ayrı ölçülür.
+        // TEMA TEMİZLİĞİ (17.10): tek şema Yıldız. Ürünün TEK yüzü olduğu için her
+        // tema ölçütü (kontrast, hover/seçili merdiveni, vurgu metni, amber yasağı,
+        // semantik belirteç eksiksizliği) Yıldız'ın üç kurulumunda da koşar.
+        foreach (var y in YildizTablosu.Temalar(this))
+            yield return y;
+
+        // PAKET S1-a — şema × KARANLIK, iki kurulumda ayrı ayrı ölçülür (tema temizliğinden
+        // sonra belirtecler.css'te şema bloğu kalmadı; döngü boş döner ve
+        // Tek_sema_YILDIZ_… testi bunun BOŞ kaldığını kilitler).
         foreach (var (kaynak, etiket, taban) in new[]
                  {
                      (KaranlikMedyaSemalar, "KARANLIK-MEDYA-SEMA-", KaranlikMedya),
@@ -478,24 +486,11 @@ public sealed class TasarimBelirtecTestleri
             }
         }
 
-        // PAKET YILDIZ-1 — "Yıldız" ayrı tema dosyasında (css/tema-yildiz.css) yaşar;
-        // aynı ölçüt çiftleri açık + iki karanlık kurulumda da ölçülür.
-        foreach (var (tema, tablo) in YildizTablosu.Temalar(t))
-        {
-            foreach (var (metin, zemin, asgari) in Ciftler)
-            {
-                var m = t.Coz(metin, tablo);
-                var z = t.Coz(zemin, tablo);
-                if (m is null || z is null || !Kontrast.HexMi(m) || !Kontrast.HexMi(z))
-                {
-                    kirik.Add($"{tema}: {metin}/{zemin} → ölçülemedi ({m ?? "YOK"} / {z ?? "YOK"})");
-                    continue;
-                }
-                var oran = Kontrast.Oran(m, z);
-                if (oran + 1e-9 < asgari)
-                    kirik.Add($"{tema}: {metin}({m}) / {zemin}({z}) = {oran.ToString("F2", CultureInfo.InvariantCulture)}:1 — en az {asgari.ToString("F1", CultureInfo.InvariantCulture)}:1 olmalı");
-            }
-        }
+        // PAKET YILDIZ-1 → TEMA TEMİZLİĞİ: Yıldız'ın açık + iki karanlık kurulumu artık
+        // t.Temalar()'ın içindedir (yukarıdaki döngü ölçer; ikinci kez ölçülmez).
+        Assert.Contains(t.Temalar(), x => x.Ad == "YILDIZ-AYDINLIK");
+        Assert.Contains(t.Temalar(), x => x.Ad == "YILDIZ-KARANLIK-MEDYA");
+        Assert.Contains(t.Temalar(), x => x.Ad == "YILDIZ-KARANLIK-TERCIH");
 
         Assert.True(kirik.Count == 0, "WCAG 2.1 AA ihlali:\n  " + string.Join("\n  ", kirik));
     }
@@ -743,25 +738,23 @@ public sealed class TasarimBelirtecTestleri
     }
 
     [Fact]
-    public void Dar_ekranda_KENAR_CUBUGU_cekmeceye_doner_ve_icerik_tam_genislik_olur()
+    public void Dar_ekranda_icerik_tam_genislik_olur_ve_eski_kenar_cubugu_kurali_KALMADI()
     {
         // QA turu 1: 27 rotanın HEPSİNDE 375px'te yatay taşma (scrollWidth 499-1000).
-        // Tek sebep: .uygulama{display:flex} + .kenar-cubugu{width:240px}.
+        // Sebep .uygulama{display:flex} + sabit genişlikli kenar çubuğuydu. Tema temizliği (17.10):
+        // kenar çubuğu kabukla birlikte kalktı (Yıldız üst menü); dar ekranda içerik yine tam genişlik.
         var css = CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "app.css");
-        var dar = CssKaynak.Bildirimler(css)
-            .Where(x => x.AtKural.Contains("max-width: 768px", StringComparison.Ordinal)).ToList();
+        var hepsi = CssKaynak.Bildirimler(css).ToList();
+        var dar = hepsi.Where(x => x.AtKural.Contains("max-width: 768px", StringComparison.Ordinal)).ToList();
 
         Assert.Contains(dar, x => x.Secici == ".uygulama" && x.Ozellik == "display" && x.Deger == "block");
-        Assert.Contains(dar, x => x.Secici == ".kenar-cubugu" && x.Ozellik == "position" && x.Deger == "fixed");
-        Assert.Contains(dar, x => x.Secici == ".kenar-cubugu" && x.Ozellik == "transform" && x.Deger == "translateX(-100%)");
-        Assert.Contains(dar, x => x.Secici.Contains(".menu-acik .kenar-cubugu", StringComparison.Ordinal)
-                                  && x.Deger == "translateX(0)");
         Assert.Contains(dar, x => x.Secici == ".icerik-sutunu" && x.Ozellik == "width" && x.Deger == "100%");
         Assert.Contains(dar, x => x.Secici.Contains(".form-grid-2", StringComparison.Ordinal)
                                   && x.Ozellik == "grid-template-columns" && x.Deger == "1fr");
-        // Hamburger yalnız dar ekranda görünür
-        Assert.Contains(CssKaynak.Bildirimler(css),
-            x => x.Secici == ".kabuk-menu-dugme" && x.Ozellik == "display" && x.Deger == "none");
+        // Hamburger geniş ekranda gizli (Yıldız kabuğunda her genişlikte gizli: tema-yildiz.css)
+        Assert.Contains(hepsi, x => x.Secici == ".kabuk-menu-dugme" && x.Ozellik == "display" && x.Deger == "none");
+        // Eski kabuğun hiçbir kuralı kalmadı (ölü seçici yok).
+        Assert.DoesNotContain(hepsi, x => System.Text.RegularExpressions.Regex.IsMatch(x.Secici, @"[.#]kenar-[a-z]|\.menu-acik\b"));
     }
 
     [Fact]
@@ -890,28 +883,27 @@ public sealed class TasarimBelirtecTestleri
     // kurucunun onayladığı tasarım tuvali + sadelestirme/TEMA-SISTEMI-2026-09-23.md
     // ═════════════════════════════════════════════════════════════════════════
 
-    /// <summary>Ürünün sattığı 8 renk şeması (tuval + plan § 5A).</summary>
-    private static readonly string[] SekizSema =
-        ["platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi"];
+    /// <summary>Tema temizliği (17.10) öncesi satılan 8 renk şeması — artık HİÇBİRİNİN bloğu kalmamalı.</summary>
+    private static readonly string[] EskiSemalar =
+        ["platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi", "kurumsal"];
 
     [Fact]
-    public void Sekiz_sema_AYDINLIK_ve_KARANLIK_bloklariyla_TANIMLIDIR()
+    public void Tek_sema_YILDIZ_uc_blokla_tanimli_eski_sekiz_sema_bloku_YOK()
     {
+        // Kurucu 17.10: "tema sadece Yıldız, karanlık ve açık mod kalacak".
         var t = BelirtecTablosu.Yukle();
-        var eksik = new List<string>();
+        Assert.Empty(t.Semalar);
+        Assert.Empty(t.KaranlikMedyaSemalar);
+        Assert.Empty(t.KaranlikTercihSemalar);
+        var css = CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "belirtecler.css");
+        foreach (var sema in EskiSemalar)
+            Assert.DoesNotContain($"data-sema=\"{sema}\"", css, StringComparison.Ordinal);
 
-        foreach (var sema in SekizSema)
-        {
-            if (!t.Semalar.ContainsKey(sema)) eksik.Add($"{sema}: aydınlık blok YOK");
-            if (!t.KaranlikMedyaSemalar.ContainsKey(sema)) eksik.Add($"{sema}: karanlık (medya) blok YOK");
-            if (!t.KaranlikTercihSemalar.ContainsKey(sema)) eksik.Add($"{sema}: karanlık (tercih) blok YOK");
-        }
-
-        // ESKİ KOD GÖÇÜ: kiraci_ayarlari'nda kayıtlı "kurumsal" değeri
-        // geçersizleşmemeli (Platin Mavi'ye bağlandı).
-        if (!t.Semalar.ContainsKey("kurumsal")) eksik.Add("kurumsal: eski kod düşürülmüş");
-
-        Assert.True(eksik.Count == 0, "Şema blokları eksik:\n  " + string.Join("\n  ", eksik));
+        // Yıldız açık + sistem karanlık + kullanıcı karanlık blokları var ve yüzeyi tanımlar.
+        var y = YildizTablosu.Yukle();
+        Assert.True(y.Aydinlik.ContainsKey("--yuzey"), "Yıldız aydınlık bloğu yok");
+        Assert.True(y.KaranlikMedya.ContainsKey("--yuzey"), "Yıldız karanlık (medya) bloğu yok");
+        Assert.True(y.KaranlikTercih.ContainsKey("--yuzey"), "Yıldız karanlık (tercih) bloğu yok");
     }
 
     [Fact]
@@ -1025,26 +1017,16 @@ public sealed class TasarimBelirtecTestleri
     }
 
     [Fact]
-    public void Sema_beyaz_listesi_CSS_ile_AYNI_kodlari_tasir()
+    public void Tema_betigi_TEK_semayi_yazar_ve_CSS_karsiligi_VARDIR()
     {
-        // "Sunucu/istemci bir kodu tanıyor, CSS tanımıyor" = sessizce varsayılana
-        // düşen tema. tema.js beyaz listesindeki her kodun CSS karşılığı VAR.
+        // "İstemci bir kod yazıyor, CSS tanımıyor" = sessizce tabana düşen tema. Tema temizliği (17.10):
+        // tema.js yalnız 'yildiz' yazar (beyaz liste yok, kalıcı öznitelik), eski kodların hiçbiri betikte yok.
         var js = CssKaynak.YorumsuzKod(CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "js", "tema.js"));
-        var t = BelirtecTablosu.Yukle();
-
-        var bas = js.IndexOf("var SEMALAR", StringComparison.Ordinal);
-        Assert.True(bas >= 0, "tema.js'te SEMALAR beyaz listesi yok");
-        var liste = js[bas..js.IndexOf(';', bas)];
-
-        foreach (var sema in SekizSema)
-            Assert.Contains($"'{sema}'", liste);
-
-        foreach (System.Text.RegularExpressions.Match m in
-                 System.Text.RegularExpressions.Regex.Matches(liste, @"'([a-z-]+)'"))
-            Assert.True(t.Semalar.ContainsKey(m.Groups[1].Value)
-                        // YILDIZ-1: "yildiz" AYRI dosyada (tema-yildiz.css) tanımlıdır.
-                        || (m.Groups[1].Value == "yildiz" && YildizTablosu.Yukle().Aydinlik.ContainsKey("--yuzey")),
-                $"tema.js '{m.Groups[1].Value}' şemasını yazıyor ama belirtecler.css'te blok YOK");
+        Assert.Contains("var SEMA = 'yildiz';", js);
+        Assert.DoesNotContain("var SEMALAR", js);
+        foreach (var sema in EskiSemalar)
+            Assert.DoesNotContain($"'{sema}'", js);
+        Assert.True(YildizTablosu.Yukle().Aydinlik.ContainsKey("--yuzey"), "tema.js 'yildiz' yazıyor ama tema-yildiz.css'te blok YOK");
     }
 
     [Fact]
@@ -1058,11 +1040,11 @@ public sealed class TasarimBelirtecTestleri
         var css = CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "belirtecler.css");
         var eksik = new List<string>();
 
+        // Tema temizliği (17.10): sunulan TEK şema Yıldız'dır; bloğu tema-yildiz.css'tedir.
+        Assert.Equal(["yildiz"], Kuyumcu.Web.Servisler.GorunumServisi.Semalar);
         foreach (var kod in Kuyumcu.Web.Servisler.GorunumServisi.Semalar)
-            if (!t.Semalar.ContainsKey(kod)
-                && !string.Equals(kod, "platin", StringComparison.Ordinal)
-                && !string.Equals(kod, "yildiz", StringComparison.Ordinal))   // YILDIZ-1: ayrı dosya (Yildiz1Testleri)
-                eksik.Add($"sema '{kod}': belirtecler.css'te blok YOK");
+            if (!(kod == "yildiz" && YildizTablosu.Yukle().Aydinlik.ContainsKey("--yuzey")) && !t.Semalar.ContainsKey(kod))
+                eksik.Add($"sema '{kod}': CSS'te blok YOK");
 
         foreach (var kod in Kuyumcu.Web.Servisler.GorunumServisi.Olcekler)
             if (!css.Contains($"[data-yazi=\"{kod}\"]", StringComparison.Ordinal))

@@ -83,7 +83,7 @@ public sealed class S3cFormSaglamligiTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Fiyatlandirma> FiyatFormu()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         e.Find("#fl-duzenle-fl1").Click();
         e.WaitForElement("#fl-form");
@@ -252,7 +252,7 @@ public sealed class S3cFormSaglamligiTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> SayimOturumu()
     {
-        var e = Render<Kuyumcu.Web.Pages.Sayim>();
+        var e = Render<Kuyumcu.Web.Pages.Sayim>().SayimOzgunListe();
         e.WaitForElement("#sy-ac-o1");
         e.Find("#sy-ac-o1").Click();
         e.WaitForElement("#sy-satirlar tbody tr");

@@ -67,7 +67,7 @@ public sealed class PosEkranTestleri : BunitContext
     [Fact]
     public void PosEkrani_CihazListesiniGosterir()
     {
-        var sayfa = Render<Kuyumcu.Web.Pages.Pos>();
+        var sayfa = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
 
         var metin = sayfa.Markup;
         Assert.Contains("Garanti POS", metin);
@@ -81,7 +81,7 @@ public sealed class PosEkranTestleri : BunitContext
     [Fact]
     public void PosEkrani_YeniCihazModali_ZorunluAlanlar()
     {
-        var sayfa = Render<Kuyumcu.Web.Pages.Pos>();
+        var sayfa = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         sayfa.Find("#pos-yeni-ac").Click();
 
         // Boş formda kaydet KİLİTLİ ve sebebi EKRANDA (UX-S30).
@@ -96,7 +96,7 @@ public sealed class PosEkranTestleri : BunitContext
     public void PosEkrani_AcikAlacakliCihazda_PasifeAlDugmesi_KILITLI_VeSebepYazar()
     {
         // DoD/1: tıklanınca hiçbir şey olmayan düğme YOK — kilitli düğme sebebini söyler.
-        var sayfa = Render<Kuyumcu.Web.Pages.Pos>();
+        var sayfa = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         var dugme = sayfa.Find("#pos-pasif-p1");
 
         Assert.True(dugme.HasAttribute("disabled"));
@@ -107,7 +107,7 @@ public sealed class PosEkranTestleri : BunitContext
     [Fact]
     public void TahsilatEkrani_ValorTakviminiGosterir()
     {
-        var sayfa = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var sayfa = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
 
         var metin = sayfa.Markup;
         Assert.Contains("19.09.2026", metin);        // InvariantCulture tarih
@@ -119,7 +119,7 @@ public sealed class PosEkranTestleri : BunitContext
     [Fact]
     public void TahsilatEkrani_EslestirmeDugmesi_OneriYokken_KAPALI()
     {
-        var sayfa = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var sayfa = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
 
         var uygula = sayfa.Find("#pos-eslestir-uygula");
         Assert.True(uygula.HasAttribute("disabled"));
@@ -132,7 +132,7 @@ public sealed class PosEkranTestleri : BunitContext
     [Fact]
     public void TahsilatEkrani_IptalModali_KisaGerekcede_ONAY_KAPALI()
     {
-        var sayfa = Render<Kuyumcu.Web.Pages.PosTahsilatlar>();
+        var sayfa = Render<Kuyumcu.Web.Pages.PosTahsilatlar>().AyrintiAc();
         // ZO-ISLEM-A: defter kapalı akordeon — satır eylemi açınca görünür.
         sayfa.Find("#pos-t-defter-kart-ac").Click();
         sayfa.Find("#pos-t-iptal-t1").Click();

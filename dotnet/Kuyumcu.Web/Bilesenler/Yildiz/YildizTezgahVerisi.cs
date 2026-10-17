@@ -158,8 +158,11 @@ public static class YildizTezgahBicim
 {
     private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
 
-    /// <summary>Gram: iki hane ("1,75 g" — tuval). Has: dört hane ("1,6030 g has").</summary>
-    public static string Gram(decimal g) => FisHesap.GramYuvarla(g).ToString("N2", Tr);
+    /// <summary>
+    /// Gram: en az iki, en çok üç hane ("1,75 g" — tuval; "0,001 g" — P-57: küçük gram KAYBOLMAZ, eskiden N2 "0,00 g"
+    /// basıyordu — tema temizliği 17.10 GC bulgusu). Has: dört hane ("1,6030 g has").
+    /// </summary>
+    public static string Gram(decimal g) => FisHesap.GramSayi(g);
     public static string Has(decimal h) => FisHesap.HasYuvarla(h).ToString("N4", Tr);
     public static string Adet(decimal a) => a == decimal.Truncate(a) ? a.ToString("N0", Tr) : a.ToString("0.###", Tr);
 

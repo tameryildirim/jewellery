@@ -227,7 +227,7 @@ public sealed class Toplu7BKasalarEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kasalar> Ac()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-yeni");
         e.Find("#kasa-yeni").Click();
         e.WaitForElement("#kasa-ad");
@@ -428,7 +428,7 @@ public sealed class Toplu7BPusulaYonlendirmeTestleri : BunitContext
     [Fact]
     public void T7B11_Hurda_alimi_gir_satis_ekranina_degil_HURDA_ALIS_akisina_gider()
     {
-        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         e.WaitForElement("#gp-hurda-alimi");
         e.Find("#gp-hurda-alimi").Click();
         var nav = Services.GetRequiredService<NavigationManager>();

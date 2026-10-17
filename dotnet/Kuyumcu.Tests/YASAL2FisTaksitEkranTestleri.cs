@@ -72,18 +72,35 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
 
     private List<(string Metot, string Yol, string Govde)> Istekler() { lock (istekler) return [.. istekler]; }
 
-    /// <summary>Müşteri c1, tek kalem (10.000 TL), ödeme VERESİYE → Kaydet.</summary>
+    private const string KalanBorcBanka = "Bu fişin kalan borcu yalnız kartla ya da havaleyle alınabilir.";
+
+    /// <summary>
+    /// Müşteri c1, tek kalem (10.000 TL), ödeme VERESİYE → Kaydet.
+    /// TEMA TEMİZLİĞİ 17.10: satış hep Yıldız tezgâhı — müşteri "Değiştir" katmanında, ödeme türü ödeme satırına dokununca
+    /// açılan düzende (PRO: #islem-odeme), Kaydet #yildiz-tezgah-kaydet. Kayıt sonrası satır Fark bloğunun uyarı satırlarındadır
+    /// (#yildiz-tezgah-uyari-N — özgün #islem-taksit-uyari / #islem-taksit-hata Yıldız'da görünmez).
+    /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> VeresiyeSatisKaydet(string odeme = "VERESIYE")
     {
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        e.WaitForElement("#yildiz-tezgah", TimeSpan.FromSeconds(10));
+        e.GbYildizMusteriSec("c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        SeciciYardim.Sec(e, "islem-odeme", odeme);
+        e.WaitForAssertion(() => Assert.Equal(1, e.YildizKalemSayisi()));
+        e.YildizOdemeSec(odeme);
         if (e.FindAll("#islem-kasa").Count > 0 && odeme != "VERESIYE") SeciciYardim.Sec(e, "islem-kasa", "ks1");
-        e.FindAll("button").First(b => b.TextContent.Contains("Kaydet")).Click();
+        e.WaitForAssertion(() => Assert.False(e.GbYildizKaydet().HasAttribute("disabled"), e.GbYildizKaydet().GetAttribute("title")));
+        e.GbYildizKaydet().Click();
         e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Metot == "POST"));
         return e;
+    }
+
+    /// <summary>Fark bloğunun uyarı satırları (önce tezgâhın çizildiği doğrulanır — boş DOM'da yanlış yeşil yok).</summary>
+    private static List<string> Uyarilar(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        Assert.Single(e.FindAll("#yildiz-tezgah-fark"));
+        return [.. e.FindAll("#yildiz-tezgah-fark [id^='yildiz-tezgah-uyari-']").Select(x => x.TextContent.Trim())];
     }
 
     [Fact]
@@ -91,12 +108,11 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
     {
         asiliyor = true;
         var e = VeresiyeSatisKaydet();
-        e.WaitForElement("#islem-taksit-uyari");
-        Assert.Equal("Bu fişin kalan borcu yalnız kartla ya da havaleyle alınabilir.", e.Find("#islem-taksit-uyari").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.Single(Uyarilar(e), KalanBorcBanka));
         var sorgu = Istekler().Last(i => i.Yol.Contains("/tevsik/gunluk") && i.Yol.Contains("fisToplamTl="));
         Assert.Contains("cariId=c1", sorgu.Yol, StringComparison.Ordinal);
         Assert.Contains("fisToplamTl=10000", sorgu.Yol, StringComparison.Ordinal);   // InvariantCulture
-        Assert.Empty(e.FindAll("#islem-taksit-hata"));
+        Assert.DoesNotContain(Uyarilar(e), u => u.Contains("Kalan borcun nasıl alınacağı okunamadı", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -105,7 +121,8 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
         asiliyor = false;
         var e = VeresiyeSatisKaydet();
         e.WaitForAssertion(() => Assert.Contains(Istekler(), i => i.Yol.Contains("fisToplamTl=") && Istekler().Any(p => p.Metot == "POST")));
-        Assert.Empty(e.FindAll("#islem-taksit-uyari"));
+        Thread.Sleep(200);
+        Assert.DoesNotContain(KalanBorcBanka, Uyarilar(e));
     }
 
     [Fact]
@@ -115,7 +132,7 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
         var e = VeresiyeSatisKaydet("KART");
         var postSirasi = Istekler().FindIndex(i => i.Metot == "POST");
         Assert.DoesNotContain(Istekler().Skip(postSirasi + 1), i => i.Yol.Contains("/tevsik/gunluk"));
-        Assert.Empty(e.FindAll("#islem-taksit-uyari"));
+        Assert.DoesNotContain(KalanBorcBanka, Uyarilar(e));
     }
 
     [Fact]
@@ -123,8 +140,7 @@ public sealed class YASAL2FisTaksitEkranTestleri : BunitContext
     {
         gunlukKodu = 500;
         var e = VeresiyeSatisKaydet();
-        e.WaitForElement("#islem-taksit-hata");
-        Assert.Contains("Kalan borcun nasıl alınacağı okunamadı", e.Find("#islem-taksit-hata").TextContent, StringComparison.Ordinal);
-        Assert.Empty(e.FindAll("#islem-taksit-uyari"));
+        e.WaitForAssertion(() => Assert.Contains(Uyarilar(e), u => u.Contains("Kalan borcun nasıl alınacağı okunamadı", StringComparison.Ordinal)));
+        Assert.DoesNotContain(KalanBorcBanka, Uyarilar(e));
     }
 }

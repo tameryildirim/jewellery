@@ -104,7 +104,7 @@ public sealed class SATIS3T22KaporaNakitTestleri : BunitContext
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
         e.WaitForElement("#islem-tur-SATIS");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#islem-kaydet")));
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-tezgah-kaydet")));   // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhı
         e.Find($"#islem-diger-{tur.ToLowerInvariant()}").Click();
         e.WaitForElement("#islem-diger-panel");
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-kur-yok")));
@@ -117,7 +117,7 @@ public sealed class SATIS3T22KaporaNakitTestleri : BunitContext
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", null, ArayuzModuServisi.Profesyonel));
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
         e.WaitForElement("#islem-tur-SATIS");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#islem-kaydet")));
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-tezgah-kaydet")));   // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhı
         e.Find($"#islem-diger-{DigerTurleri.Avans.ToLowerInvariant()}").Click();
         e.WaitForElement("#islem-diger-panel");
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-kur-yok")));

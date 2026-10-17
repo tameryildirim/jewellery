@@ -13,15 +13,14 @@ namespace Kuyumcu.Web.Pages;
 // satıştaki fiyatla AYNI motordan okunur (GET /kur/guncel + GET /fiyat/teklifler — tezgâhın
 // kullandığı MEVCUT salt-okuma uçları; istemcide fiyat HESAPLANMAZ). Sekmeler ürün ağacının
 // kök gruplarıdır (sayfanın kategori süzgeci). Satır = MEVCUT düzenleme çekmecesi.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Urunler
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "urun" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "urun";
 
     /// <summary>/fiyat/teklifler tek istekte en çok 25 ürün (sunucu sabiti FiyatTopluTeklifController.EnFazlaUrun).</summary>
     public const int YildizTeklifParcasi = 25;
@@ -34,7 +33,7 @@ public partial class Urunler
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizAyrinti || yukleniyor || yildizFiyatOkunuyor || yildizFiyatHata is not null) return;
+        if (yildizAyrinti || yukleniyor || yildizFiyatOkunuyor || yildizFiyatHata is not null) return;
         var eksik = UrunListesi.Select(u => u.Id).Where(id => !yildizFiyatlar.ContainsKey(id)).Distinct().ToList();
         if (eksik.Count == 0) return;
         await YildizFiyatOku(eksik);

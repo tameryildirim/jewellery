@@ -136,7 +136,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Liste_ekrani_GET_evraklar_cagirir_ve_satirlari_basar()
     {
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.EndsWith("/evraklar"));
         Assert.NotNull(c.Find("#evrak-satir-e1"));
@@ -149,7 +149,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Vadesi_gecmis_satir_kirmizi_sinif_alir()
     {
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         Assert.Contains("satir-kirmizi", c.Find("#evrak-satir-e1").GetAttribute("class"));
         Assert.DoesNotContain("satir-kirmizi", c.Find("#evrak-satir-e2").GetAttribute("class") ?? "");
@@ -159,7 +159,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Bos_portfoyde_bos_durum_metni_SOZLUKTEN_gelir()
     {
         listeYaniti = BosListe;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         var sozlukMetni = Kuyumcu.Core.I18n.Sozlukler.Tr.Evrak.KayitYok;
         Assert.Contains(sozlukMetni, c.Markup);
@@ -171,7 +171,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     {
         // UX-S29: "dahaFazlasiVar" true iken sessiz kırpma YASAK.
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         Assert.NotNull(c.Find("#evrak-sinir-uyarisi"));
     }
 
@@ -184,7 +184,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     {
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => basit);
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         // ZO-BELGE: gerekçe açılışta değil, DEĞİŞTİRME DENENİNCE (Düzenle çekmecesi).
         Assert.Empty(c.FindAll("#degismez-ipucu-KiymetliEvrakTutar"));
         c.Find("#evrak-duzenle-e1").Click();
@@ -212,7 +212,7 @@ public sealed class EvrakEkranTestleri : BunitContext
         // BASİT'te jargonsuz "Kimden". Tam ad iki modda da title'da.
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => basit);
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         var d = Services.GetRequiredService<DilServisi>().T.Evrak;
         foreach (var (id, kisa, tam) in new[] { ("evrak-th-tur", "Tür", d.EvrakTuru),
                                                ("evrak-th-veren", veren, d.KaynakCari),
@@ -233,7 +233,7 @@ public sealed class EvrakEkranTestleri : BunitContext
         // 4. tur (doğrulayıcı ORTA): filtre yuvasının sütun kuralı düğme metnini kutunun
         // dibine itiyordu. Süzgeçler artık süzgeç kartındaki şeritte; yuvada düğme yok.
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         Assert.Empty(c.FindAll(".sayfa-basi-filtre button, .sayfa-basi-filtre a"));
         var serit = c.Find("#evrak-durum-seridi");
         var dugmeler = serit.QuerySelectorAll("button");
@@ -262,7 +262,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void CJ_11_Vade_hucresi_yerel_tarih_ve_tek_satir_ISO_basmaz()
     {
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         var vade = c.Find("#evrak-vade-e2");
         Assert.Equal("01.12.2026", vade.TextContent.Trim());
         Assert.Contains("hucre-tek-satir", vade.ClassList);
@@ -277,7 +277,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Tahsile_Ver_dugmesi_POST_atar_ve_govdede_bankaHesapId_vardir()
     {
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         c.Find("#evrak-tahsile-ver-e1").Click();
         SeciciYardim.Sec(c, "evrak-tahsile-hesap", "b1");
@@ -293,7 +293,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Karsiliksiz_20_karakterden_kisa_gerekceyle_istek_GONDERMEZ()
     {
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         c.Find("#evrak-karsiliksiz-e1").Click();
         c.Find("#evrak-karsiliksiz-gerekce").Input("kısa");
@@ -308,7 +308,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Karsiliksiz_yeterli_gerekceyle_POST_atar()
     {
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         c.Find("#evrak-karsiliksiz-e1").Click();
         c.Find("#evrak-karsiliksiz-gerekce").Input("Banka karşılıksız bildirdi, müşteri arandı.");
@@ -323,7 +323,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     {
         // DoD EK madde 1: her düğme ya istek atar ya disabled + sebep taşır.
         listeYaniti = SonDurumEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         Assert.NotNull(c.Find("#evrak-son-durum-e9"));
         Assert.True(c.Find("#evrak-duzenle-e9").HasAttribute("disabled"));
@@ -336,7 +336,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     {
         // Kurucunun bağlayıcı şartı: /evraklar için düzenlenemeyen kalem = 0.
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         var dugme = c.Find("#evrak-duzenle-e1");
         Assert.False(dugme.HasAttribute("disabled"));
@@ -354,7 +354,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Duzenleme_PATCH_atar_ve_tutar_gondermez()
     {
         listeYaniti = IkiEvrak;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         c.Find("#evrak-duzenle-e1").Click();
         c.Find("#evrak-form-no").Input("CEK-1-D");
@@ -370,7 +370,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     public void Yeni_evrak_formu_POST_atar()
     {
         listeYaniti = BosListe;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         c.Find("#evrak-yeni").Click();
         c.Find("#evrak-form-no").Input("CEK-YENI");
@@ -389,7 +389,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     {
         // DoD EK madde 3: boş/geçersiz gönderimde alan altı Türkçe mesaj çıkar.
         listeYaniti = BosListe;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
 
         c.Find("#evrak-yeni").Click();
         // Kaydet düğmesi KİLİTLİ (sebebi çekmece altında yazılı) → istek gitmez.
@@ -404,7 +404,7 @@ public sealed class EvrakEkranTestleri : BunitContext
         // PAKET P-65 (E49 · UX-S30): Kaydet kilidi yalnız "Bu alan zorunludur." demez —
         // EKSİK ALANLARIN ADINI sayar; alan doldukça listeden düşer.
         listeYaniti = BosListe;
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.Find("#evrak-yeni").Click();
 
         var tr = Kuyumcu.Core.I18n.Sozlukler.Tr.Evrak;
@@ -427,7 +427,7 @@ public sealed class EvrakEkranTestleri : BunitContext
     [Fact]
     public void Takvim_ekrani_GET_takvim_cagirir_ve_gun_hucrelerini_toplamla_basar()
     {
-        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>();
+        var c = Render<Kuyumcu.Web.Pages.EvrakTakvimi>().AyrintiAc();
 
         Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.EndsWith("/evraklar/takvim"));
         Assert.NotNull(c.Find("#evrak-takvim-gun-2026-09-20"));

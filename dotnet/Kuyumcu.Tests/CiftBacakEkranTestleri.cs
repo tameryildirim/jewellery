@@ -52,6 +52,9 @@ public sealed class CiftBacakEkranTestleri : BunitContext
                        {"id":"p2","tur":"EMANET_CIKIS","tarih":"2026-09-25T10:00:00Z","hasGrami":-5,
                         "aciklama":"Platin iade","stornoKaynakId":null,"fisId":null,"maden":"PLATIN"}]}
                     """,
+                // TEMA TEMİZLİĞİ 17.10: Yıldız emanet listesi her müşterinin emanetini okur — c2'nin GERÇEKÇİ boş yanıtı
+                // (404 olsaydı liste hatayla boş kalırdı ve satırdan özgün gövdeye geçilemezdi).
+                var y when y.Contains("/emanet/c2") => """{"cariId":"c2","mevcutHasGramBakiye":0,"madenBakiyeleri":[],"hareketler":[]}""",
                 var y when y.Contains("/cari") => """[{"id":"c1","ad":"Ayşe Demir"},{"id":"c2","ad":"Mehmet Kaya"}]""",
                 _ => """{"hata":"sahte API bu ucu tanımıyor"}""",
             };
@@ -76,7 +79,11 @@ public sealed class CiftBacakEkranTestleri : BunitContext
     [Fact]
     public void Iadesi_yapilmis_emanet_girisinin_geri_al_dugmesi_onceden_kilitli_ve_sebebini_soyler()
     {
+        // TEMA TEMİZLİĞİ 17.10: Emanet = Yıldız listesi (YildizListe "yildiz-emanet"); özgün ekran müşterinin satırına
+        // dokununca açılır (YildizMusteriAc: müşteri seçilir + özgün gövde) — Emanet'te "Tüm ayrıntılar" düğmesi yok.
         var e = Render<Kuyumcu.Web.Pages.Emanet>();
+        e.WaitForElement("#yildiz-emanet-musteri-g1", TimeSpan.FromSeconds(10)).Click();
+        e.WaitForElement(YildizAyrintiYardimcisi.OzgunGovde, TimeSpan.FromSeconds(5));
         e.WaitForElement("#e-cari");
         e.WaitForAssertion(() => Assert.DoesNotContain(OnayKilitSozlugu.Tr.EmanetKurYok, e.Markup, StringComparison.Ordinal));
         SeciciYardim.Sec(e, "e-cari", "c1");

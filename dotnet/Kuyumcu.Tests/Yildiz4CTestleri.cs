@@ -427,7 +427,7 @@ public sealed class Yildiz4CTestleri : BunitContext
         Assert.Empty(e.FindAll("#yildiz-musteri-bos"));
         Assert.DoesNotContain("Henüz müşteri yok", e.Markup);
         // süzgeç sekme satırında DEĞİL; YILDIZ-4D: "+ Süzgeç" tuvalde yok → hiç çizilmez (Yildiz4DTestleri)
-        Assert.Equal(3, e.FindAll("#cari-segment > *").Count);
+        Assert.Equal(3, e.FindAll("#cari-segment-serit > *").Count);
         Assert.Empty(e.FindAll("#cari-suzgec-daha"));
         Assert.Empty(cagri);
         var hic = new YildizMusteriBaglami { HicYok = true };
@@ -469,6 +469,8 @@ public sealed class Yildiz4CTestleri : BunitContext
         Assert.DoesNotContain("F2", yt);
     }
 
+    private const string Y4C22Beklenen = "Nakit=4.000|Kart=6.000|Havale=0";
+
     [Theory]
     [InlineData(ArayuzModuServisi.Basit)]
     [InlineData(ArayuzModuServisi.Profesyonel)]
@@ -487,26 +489,21 @@ public sealed class Yildiz4CTestleri : BunitContext
         var yildiz = string.Join("|", Enumerable.Range(0, 3).Select(i =>
             y.Find($"#islem-bacak-{i}-arac").TextContent.Trim() + "=" + y.Find($"#islem-bacak-{i}-tutar").GetAttribute("value")));
 
-        // Özgün (platin BASİT): "+ Başka ödeme ekle" (#islem-odeme-bol) → ikinci kez özgün #islem-bacak-ekle
-        y.Dispose();
-        var o = Satis(ArayuzModuServisi.Basit, "platin");
-        KalemEkle(o);
-        o.WaitForAssertion(() => Assert.False(o.Find("#islem-odeme-bol").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        o.Find("#islem-odeme-bol").Click();
-        o.WaitForAssertion(() => Assert.Equal(2, o.FindAll(".bacak-satiri").Count));
-        o.Find("#islem-bacak-0-tutar").Input("4000");
-        o.Find("#islem-bacak-0-tutar").Blur();
-        o.Find("#islem-bacak-ekle").Click();
-        o.WaitForAssertion(() => Assert.Equal(3, o.FindAll(".bacak-satiri").Count));
-        var ozgun = string.Join("|", Enumerable.Range(0, 3).Select(i =>
-            o.Find($"#islem-bacak-{i}-arac").TextContent.Trim() + "=" + o.Find($"#islem-bacak-{i}-tutar").GetAttribute("value")));
-        Assert.Equal(ozgun, yildiz);
+        // TEMA TEMİZLİĞİ 17.10: özgün (Platin BASİT) yüz kalktı; onun "+ Başka ödeme ekle" → "bacak ekle" yolunun
+        // ürettiği satırlar (Yıldız'la birebir olduğu bu testle kanıtlanmıştı) beklenen değer olarak SABİTLENDİ.
+        Assert.Equal(Y4C22Beklenen, yildiz);
     }
+
+    private static readonly Dictionary<string, string> Y4C23Beklenen = new()
+    {
+        [ArayuzModuServisi.Basit] = "{\"cariId\":\"c1\",\"kalemler\":[{\"urunId\":\"u1\",\"adet\":1,\"birimFiyatTl\":10000,\"hediye\":false,\"satirIskontoYuzde\":0}],\"odemeler\":[{\"arac\":\"NAKIT\",\"tutarTl\":9500,\"kasaId\":\"ks1\"}],\"kurSnapshotId\":\"kur-1\",\"aciklama\":null,\"masak\":null,\"personelId\":null,\"fisIskontoYuzde\":5,\"reyonId\":null,\"belgeTuru\":null}",
+        [ArayuzModuServisi.Profesyonel] = "{\"cariId\":\"c1\",\"kalemler\":[{\"urunId\":\"u1\",\"adet\":1,\"birimFiyatTl\":10000,\"hediye\":false,\"satirIskontoYuzde\":0}],\"odemeler\":[{\"arac\":\"NAKIT\",\"tutarTl\":9500,\"kasaId\":\"ks1\"}],\"vadeGun\":null,\"kurSnapshotId\":\"kur-1\",\"aciklama\":null,\"masak\":null,\"personelId\":null,\"fisIskontoYuzde\":5,\"reyonId\":null,\"belgeTuru\":null}",
+    };
 
     [Theory]
     [InlineData(ArayuzModuServisi.Basit)]
     [InlineData(ArayuzModuServisi.Profesyonel)]
-    public void Y4C_23_indirimli_ve_musteri_secilmis_satis_govdesi_platinle_birebir(string mod)
+    public void Y4C_23_indirimli_ve_musteri_secilmis_satis_govdesi_ozgun_govdeyle_birebir(string mod)
     {
         // Yıldız: "+ İndirim" %5 · "Değiştir" → Selin · Kaydet
         var y = Satis(mod);
@@ -523,26 +520,11 @@ public sealed class Yildiz4CTestleri : BunitContext
         y.WaitForAssertion(() => Assert.False(y.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
         y.Find("#yildiz-tezgah-kaydet").Click();
         var yildiz = Govde("/islemler/satis");
-        lock (istekler) istekler.Clear();
-
-        // Özgün (platin, aynı mod): İndirim karosu / alanı · müşteri seçicisi (#islem-cari) · Kaydet
-        y.Dispose();
-        var o = Satis(mod, "platin");
-        KalemEkle(o);
-        o.WaitForAssertion(() => Assert.NotEmpty(o.FindAll("#islem-kalem-tablo, #islem-kalem-pro")), TimeSpan.FromSeconds(5));
-        if (o.FindAll("#islem-fis-iskonto").Count == 0 && o.FindAll("#islem-indirim").Count > 0) o.Find("#islem-indirim").Click();
-        if (o.FindAll("#islem-fis-iskonto").Count == 0 && o.FindAll("#islem-pro-ayrinti-ac, [id$='ayrinti-ekle']").Count > 0)
-            o.FindAll("#islem-pro-ayrinti-ac, [id$='ayrinti-ekle']")[0].Click();
-        o.WaitForAssertion(() => Assert.Single(o.FindAll("#islem-fis-iskonto")), TimeSpan.FromSeconds(5));
-        o.Find("#islem-fis-iskonto").Input("5");
-        o.Find("#islem-fis-iskonto").Blur();
-        SeciciYardim.Sec(o, "islem-cari", "c1");
-        o.WaitForAssertion(() => Assert.False(o.Find("#islem-kaydet").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        o.Find("#islem-kaydet").Click();
-        var ozgun = Govde("/islemler/satis");
         Assert.Contains("\"cariId\":\"c1\"", yildiz);
         Assert.Contains("5", yildiz);
-        Assert.Equal(ozgun, yildiz);
+        // TEMA TEMİZLİĞİ 17.10: özgün (Platin, aynı mod) yüz kalktı; onun ürettiği gövde (Yıldız'la birebir olduğu bu
+        // testle kanıtlanmıştı) beklenen değer olarak SABİTLENDİ.
+        Assert.Equal(Y4C23Beklenen[mod], yildiz);
     }
 
     [Fact]
@@ -694,18 +676,8 @@ public sealed class Yildiz4CTestleri : BunitContext
         Assert.Empty(e2.FindAll("#yildiz-bugun-emanet-hata, [id^='yildiz-bekleyen-emanet-']"));
     }
 
-    [Fact]
-    public async Task Y4C_34_baska_semada_bugun_ek_istek_atilmaz()
-    {
-        sema = "platin";
-        Oturum(ArayuzModuServisi.Basit);
-        await Services.GetRequiredService<GorunumServisi>().YukleAsync();
-        await Services.GetRequiredService<YetkiServisi>().HazirlaAsync();
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade", TimeSpan.FromSeconds(10));
-        await Task.Delay(300);
-        lock (istekler) Assert.DoesNotContain(istekler, i => i.Yol.Contains("/raporlar/kasa-defteri") || i.Yol.Contains("/emanet/"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Y4C_34_baska_semada_bugun_ek_istek_atilmaz kaldırıldı — "başka şema" yok; Bugün'ün
+    // ek istekleri her zaman atılır (Y4C_3x testleri sınar).
 
     // ── CSS ──────────────────────────────────────────────────────────────────
 
@@ -838,19 +810,7 @@ public sealed class Yildiz4CTestleri : BunitContext
         }
         e.Find("#islem-bacak-sil-1").Click();
         e.WaitForAssertion(() => Assert.True(e.FindAll(".bacak-satiri").Count < 2));
-
-        // Öteki şema AYNEN: platin karmada özgün kart + ✕ (.btn)
-        e.Dispose();
-        var o = Satis(ArayuzModuServisi.Basit, "platin");
-        KalemEkle(o);
-        o.WaitForAssertion(() => Assert.False(o.Find("#islem-odeme-bol").HasAttribute("disabled")), TimeSpan.FromSeconds(5));
-        Assert.Contains("kart", o.Find(".islem-fis-kart").ClassList);
-        o.Find("#islem-odeme-bol").Click();
-        o.WaitForAssertion(() => Assert.Equal(2, o.FindAll(".bacak-satiri").Count));
-        Assert.Contains("fis-odeme-kart", o.Find("#islem-bacaklar").ClassList);
-        Assert.Contains("btn", o.Find("#islem-bacak-sil-0").ClassList);
-        Assert.Empty(o.FindAll("[id^='yildiz-bacak-']"));
-        Assert.Single(o.FindAll("#islem-satan-sar"));
+        // TEMA TEMİZLİĞİ 17.10: "öteki şema AYNEN" (Platin karması) yarısı kaldırıldı — başka şema yok.
     }
 
     [Fact]

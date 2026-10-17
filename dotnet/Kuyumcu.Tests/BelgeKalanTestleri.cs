@@ -561,7 +561,7 @@ public sealed class BelgeKalanPusulaEkranTestleri : BunitContext
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => m.BasitMi);
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1", mod, mod));
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("#gp-tablo tbody tr").Count == 1);
         c.Find("#gp-detay-gp1").Click();
         c.WaitForElement("#gp-detay-mal");

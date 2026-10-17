@@ -1,7 +1,7 @@
 namespace Kuyumcu.Core.I18n;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// PAKET B-1 — 8 ŞEMA · 3 TEMA MODU · 3 YAZI BOYUTU: TR + EN AD VE AÇIKLAMA
+// PAKET B-1 — ŞEMA (tema temizliği 17.10: yalnız Yıldız) · 3 TEMA MODU · 3 YAZI BOYUTU: TR + EN AD VE AÇIKLAMA
 //
 // ⚠ NEDEN AYRI DOSYA: Sozlukler.cs 9200+ satırlık ORTAK HUB'dır ve aynı dalgada
 //   başka şeritler de ona dokunuyor; ayrıca SozlukGorunum'un alanları `required`
@@ -31,34 +31,13 @@ public readonly record struct GorunumMetni(string AdTr, string AciklamaTr, strin
 /// <summary>Renk şeması / tema modu / yazı boyutu kodlarının iki dilli karşılığı.</summary>
 public static class GorunumSozlugu
 {
-    /// <summary>8 renk şeması — anahtar: sunucudaki kanonik slug.</summary>
+    /// <summary>
+    /// Renk şeması — anahtar: sunucudaki kanonik slug. Tema temizliği (kurucu 17.10):
+    /// tek şema Yıldız; açık/koyu <see cref="TemaModlari"/>'ndadır.
+    /// </summary>
     public static readonly IReadOnlyDictionary<string, GorunumMetni> Semalar =
         new Dictionary<string, GorunumMetni>(StringComparer.Ordinal)
         {
-            ["platin"] = new(
-                "Platin Mavi", "Sakin kurumsal mavi — en geniş kontrast payı; varsayılan şema.",
-                "Platinum Blue", "Calm corporate blue — the widest contrast margin; the default scheme."),
-            ["zumrut"] = new(
-                "Zümrüt", "Kuyum yeşili — vitrin yeşiline yakın, başarı yeşiline karışmaz.",
-                "Emerald", "Jewellery green — close to the display-case green, never confused with the success green."),
-            ["grafit"] = new(
-                "Grafit", "Renksiz profesyonel — vurgu neredeyse nötr; ekranda tek renk rakamlardır.",
-                "Graphite", "Colourless and professional — a near-neutral accent; only the figures carry colour."),
-            ["bordo"] = new(
-                "Bordo", "Kuyumcu kadifesi — şarap/mürdüm; sıcak ama tehlike kırmızısından ayrı.",
-                "Burgundy", "Jeweller's velvet — wine and plum; warm yet clearly apart from the danger red."),
-            ["okyanus"] = new(
-                "Okyanus", "Serin deniz mavi-yeşili — Zümrüt'ün soğuk kardeşi, bilgi mavisinden uzak.",
-                "Ocean", "Cool sea blue-green — Emerald's cold sibling, kept away from the information blue."),
-            ["menekse"] = new(
-                "Menekşe", "Modern mor — en genç dil; gradyansız, sakin bir SaaS tonu.",
-                "Violet", "Modern purple — the youngest voice; a calm, gradient-free SaaS tone."),
-            ["zeytin"] = new(
-                "Zeytin", "Zeytin yeşili/haki — sıcak ve alışılmadık; başarı yeşilinden ayrı tutuldu.",
-                "Olive", "Olive green and khaki — warm and unusual; kept apart from the success green."),
-            ["fildisi"] = new(
-                "Fildişi (açık menü)", "Açık menü — fildişi kâğıt zemin, bronz vurgu; koyu kenar çubuğu istemeyen işletme için.",
-                "Ivory (light menu)", "Light menu — an ivory paper background with a bronze accent, for shops that do not want a dark sidebar."),
             ["yildiz"] = new(
                 "Yıldız", "Siyah (ya da kırık beyaz) zemin, kartsız sade sayfa, tek yuvarlak birincil düğme; ince çizgiler ve büyük rakamlar.",
                 "Star", "A black (or off-white) ground, card-free pages and a single round primary button; hairline rules and large figures."),

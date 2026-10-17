@@ -96,11 +96,15 @@ public sealed class Yasal3EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Pos()
     {
         Oturum("TEZGAHTAR");
+        // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhıdır (#yildiz-tezgah; Kaydet #yildiz-tezgah-kaydet, Kaydet hatası
+        // #yildiz-tezgah-hata, Peşin art arda sorusu Fark bloğunda AYNI bileşen/kimliklerle — Y4C_26). Peşin Müşteri'nin
+        // yüklendiği an: tezgâhın üst satırı onun adını yazar (özgün #islem-pesin-notu satışta çizilmez).
         var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        e.WaitForElement("#islem-pesin-notu");
+        e.WaitForElement("#yildiz-tezgah");
+        e.WaitForAssertion(() => Assert.Contains("Peşin Müşteri", e.Find("#yildiz-tezgah-ust").TextContent));
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
+        e.WaitForAssertion(() => Assert.Single(e.FindAll(".yz-tezgah-kalem")));
         return e;
     }
 
@@ -114,10 +118,10 @@ public sealed class Yasal3EkranTestleri : BunitContext
     {
         satisIlkRed = """{"message":"Az önce bu kasada Peşin Müşteri ile işlem yapıldı. Bu, aynı müşteri mi?","alanlar":{"ayniKisiBeyani":["x"]},"kod":"PESIN_ART_ARDA_SORU","error":"Bad Request","statusCode":400}""";
         var e = Pos();
-        e.Find("#islem-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click();
         e.WaitForElement("#pesin-soru");
         Assert.Equal(Yasal3Sozlugu.Tr.SoruMetin, e.Find("#pesin-soru-metin").TextContent.Trim());
-        Assert.Empty(e.FindAll("#hata-bandi"));   // soru, hata bandının YERİNE
+        Assert.Empty(e.FindAll("#hata-bandi, #yildiz-tezgah-hata"));   // soru, hata bandının YERİNE (Yıldız: Kaydet hatası #yildiz-tezgah-hata)
         Assert.Contains("Dayanak", e.Find("#pesin-soru-neden summary").GetAttribute("title"), StringComparison.Ordinal);
         foreach (var kod in new[] { "5/1", "md.", "Yönetmeli" })
             Assert.DoesNotContain(kod, e.Find("#pesin-soru").TextContent, StringComparison.Ordinal);
@@ -136,7 +140,7 @@ public sealed class Yasal3EkranTestleri : BunitContext
     {
         satisIlkRed = """{"message":"Az önce…","alanlar":{"ayniKisiBeyani":["x"]},"kod":"PESIN_ART_ARDA_SORU","statusCode":400}""";
         var e = Pos();
-        e.Find("#islem-kaydet").Click();
+        e.Find("#yildiz-tezgah-kaydet").Click();
         e.WaitForElement("#pesin-soru");
         var once = istekler.Count(i => i.Metot == "POST");
         e.Find("#pesin-soru-evet").Click();
@@ -151,9 +155,9 @@ public sealed class Yasal3EkranTestleri : BunitContext
     {
         satisIlkRed = """{"message":"Bu kişiyle işlem yapılamaz (yasal liste). Yöneticinize haber verin.","alanlar":{"cariId":["x"]},"kod":"YAPTIRIM_ENGEL","statusCode":400}""";
         var e = Pos();
-        e.Find("#islem-kaydet").Click();
-        e.WaitForAssertion(() => Assert.Equal(Yasal3Sozlugu.Tr.EngelMetin, e.Find("#hata-bandi").TextContent.Trim()));
-        e.WaitForAssertion(() => Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled")));
+        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.WaitForAssertion(() => Assert.Equal(Yasal3Sozlugu.Tr.EngelMetin, e.Find("#yildiz-tezgah-hata").TextContent.Trim()));
+        e.WaitForAssertion(() => Assert.True(e.Find("#yildiz-tezgah-kaydet").HasAttribute("disabled")));
         Assert.Contains(Yasal3Sozlugu.Tr.EngelKilit, e.Markup, StringComparison.Ordinal);   // UX-S30: sebep yazılı
     }
 

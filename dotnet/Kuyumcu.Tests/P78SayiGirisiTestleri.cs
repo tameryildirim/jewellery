@@ -346,7 +346,7 @@ public sealed class PosOranTurkceTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Pos> Ac()
     {
-        var e = Render<Kuyumcu.Web.Pages.Pos>();
+        var e = Render<Kuyumcu.Web.Pages.Pos>().AyrintiAc();
         e.WaitForElement("#pos-duzenle-p1").Click();
         e.WaitForElement("#si-pos-taksit-oran-o1-ac");
         return e;

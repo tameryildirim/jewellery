@@ -74,119 +74,14 @@
    Selam/hava, kutucuk ızgarası, "Kutucukları düzenle" ve üstteki yasal bantlar bu şemada ÇİZİLMEZ
    (tuvalde yok). Yasal bilgi kaybolmaz: UyumYasalBantlari/NakitSiniriPanelSatiri veriyi yine yükler
    (Gorunmez) ve iş "Seni bekleyen" listesine SATIR olarak düşer; YasalDegisiklikBandi listenin başında
-   satır kalıbıyla durur. BASİT ve PROFESYONEL aynı tuval düzenindedir. Öteki 8 şemada aşağıdaki
-   `else` dalı AYNEN çalışır. *@
-@if (YildizMi)
-{
+   satır kalıbıyla durur. BASİT ve PROFESYONEL aynı tuval düzenindedir. (Tema temizliği 17.10: tek
+   şema Yıldız — eski karşılama + kutucuk ızgarası gövdesi kaldırıldı.) *@
     <GorunumRozeti Degisti="GorunumDegisti" />
     <NakitSiniriPanelSatiri SayiDegisti="@(n => nakitSeritSayisi = n)" Gorunmez="true" />
     <Kuyumcu.Web.Bilesenler.Uyum.UyumYasalBantlari SayiDegisti="@(n => yasalSeritSayisi = n)" OzetDegisti="@(o => yasalOzet = o)" Gorunmez="true" />
     <Kuyumcu.Web.Bilesenler.Yildiz.YildizBugun Veri="@YildizVerisi"><YasalDegisiklikBandi /></Kuyumcu.Web.Bilesenler.Yildiz.YildizBugun>
-}
-else
-{
-<text>
-<div class="karsilama-bas @(Mod.BasitMi ? "karsilama-bas--sade" : null)" id="panel-karsilama">
-    <div>
-        <p class="karsilama-selam" id="panel-selam">@Selam</p>
-        <p class="karsilama-tarih" id="panel-tarih">
-            @(Mod.BasitMi ? BugunSade : Bugun)
-            @if (Mod.BasitMi && hava is { } hs)
-            {
-                @* Basit yüz: hava selam satırının İÇİNDE, küçük (PLAN § 6 S-3, kurucu talimatı). *@
-                @* T-P1 (tuval birebir): "Çarşamba, 23 Eylül 2026 · İstanbul 21°" — gökyüzü
-                   durumu ve sağlayıcı SİLİNMEDİ, üzerine gelince (title) okunur. *@
-                <span class="karsilama-hava-sade" id="panel-hava" title="@($"{Kuyumcu.Core.I18n.HavaSozlugu.Durum(hs.Kod, Dil.Dil)} · {hs.Saglayici}")"><span class="panel-hava-ayrac">·</span><span id="panel-hava-sehir">@hs.Sehir</span> <span class="panel-hava-derece" id="panel-hava-derece">@DereceKisa(hs.Derece)</span></span>
-            }</p>
-    </div>
-    @if (Mod.BasitMi)
-    {
-        @* EKRANDAKİ TEK BİRİNCİL DÜĞME (PLAN § 5B kural 4). T-P1: tuvaldeki ince
-           çizgili "+" işareti .panel-yeni-satis::before ile çizilir (sprite'ta
-           "plus" sembolü yok; ikon.svg bu şeridin dosya alanı DIŞINDA). *@
-        <a class="dugme dugme-birincil panel-yeni-satis" id="panel-yeni-satis" href="/islemler">@S.YeniSatis</a>
-    }
-    else if (hava is { } h)
-    {
-        @* HAVA: yalnız veri GELDİYSE çizilir. Gelmezse kutucuk SESSİZCE yoktur —
-           hata bandı atılmaz, sayfa beklemez (HavaServisi 3 sn zaman aşımı). *@
-        <div class="karsilama-hava" id="panel-hava" title="@h.Saglayici">
-            <Ikon Ad="@Ikonlar.Saat" />
-            <span id="panel-hava-sehir">@h.Sehir</span>
-            <strong id="panel-hava-derece">@Derece(h.Derece)</strong>
-            <span id="panel-hava-durum">@Kuyumcu.Core.I18n.HavaSozlugu.Durum(h.Kod, Dil.Dil)</span>
-        </div>
-    }
-</div>
-
-@* ŞUBE-KAPSAM-B: hangi şubeye bakıldığı tek satırda; seçim değişince şubeli kartlar
-   (bugün özeti, kasa özeti, kâr, grafik, son işlemler) yeniden yüklenir. Tek şubede çizilmez. *@
-<GorunumRozeti Degisti="GorunumDegisti" />
-<YasalDegisiklikBandi />@* PAKET YASAL-1 (§ 4.5): yaklaşan yasal değişiklik + bayram eksik bandı — iki modda da *@
-<NakitSiniriPanelSatiri SayiDegisti="@(n => nakitSeritSayisi = n)" />@* PAKET YASAL-2 (TB-16): kapanmamış nakit sınırı aşımı KRİTİK satırı — iki modda da, SAHİP/MUHASEBE *@
-<Kuyumcu.Web.Bilesenler.Uyum.UyumYasalBantlari SayiDegisti="@(n => yasalSeritSayisi = n)" OzetDegisti="@(o => yasalOzet = o)" Gorunmez="@BasitYasalBantGizli" />@* PAKET YASAL-3: saklama (mavi) · yasal liste eski (sarı) · liste eşleşmesi (kırmızı) — yalnız SAHİP *@
-
-@if (Mod.BasitMi)
-{
-    @SadeGovde
-}
-else
-{
-<div class="karsilama-araclar mb-2">
-    <button type="button" @onclick="() => duzenModu = !duzenModu"
-            class="dugme dugme-kucuk dugme-ikincil" id="panel-duzen-modu">
-        @(duzenModu ? Dil.T.Panel.DuzenlemeyiBitir : Dil.T.Panel.DuzeniDuzenle)
-    </button>
-    @if (duzenModu)
-    {
-        <button type="button" @onclick="DuzeniSifirla"
-                class="dugme dugme-kucuk dugme-ikincil" id="panel-duzen-sifirla">@Dil.T.Panel.DuzeniSifirla</button>
-    }
-</div>
-<HataBandi Mesaj="@Tercih.Hata" Id="panel-duzen-hata" />
-
-<div class="karsilama-izgara" id="panel-izgara">
-    @foreach (var k in GorunenKutucuklar)
-    {
-        <section class="karsilama-kutucuk" data-sira-anahtar="@k.Kod"
-                 id="@($"panel-kutucuk-{k.Kod}")" tabindex="0"
-                 @onkeydown="@(e => KutucukTus(e, k.Kod))">
-            <header class="karsilama-kutucuk-bas">
-                <h3 id="@($"panel-kutucuk-{k.Kod}-baslik")">@k.Baslik(Dil.T)</h3>
-                @if (duzenModu)
-                {
-                    <div class="karsilama-araclar">
-                        <button type="button" @onclick="() => GizleDegistir(k.Kod)"
-                                id="@($"panel-gizle-{k.Kod}")"
-                                title="@Dil.T.Panel.KutucukGizle"><Ikon Ad="@Ikonlar.Kilit" /></button>
-                    </div>
-                }
-            </header>
-            @KutucukGovde(k.Kod)
-        </section>
-    }
-</div>
-
-    if (duzenModu && GizliKutucuklar.Count > 0)
-    {
-    <div class="kart mt-3" id="panel-gizli-liste">
-        <div class="kart-baslik"><h2>@Dil.T.Panel.GizliKutucuklar</h2></div>
-        <div class="kart-govde karsilama-araclar">
-            @foreach (var k in GizliKutucuklar)
-            {
-                <button type="button" @onclick="() => GizleDegistir(k.Kod)"
-                        class="dugme dugme-kucuk dugme-ikincil"
-                        id="@($"panel-goster-{k.Kod}")" title="@Dil.T.Panel.KutucukGoster">@k.Baslik(Dil.T)</button>
-            }
-        </div>
-    </div>
-    }
-}
-</text>
-}
 
 @code {
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);   // YILDIZ-4A: Yıldız'da gövde = YildizBugun (tuval Bugun4/4a)
 
     // ── PAKET YILDIZ-4A — Yıldız Bugün verisi ───────────────────────────────────────────────
     // YENİ İSTEK YOK: hepsi bu sayfanın mevcut yükleyicilerinden (ozet, nakit ayrımı, yaşlandırma,
@@ -1296,7 +1191,7 @@ else
     {
         YildizEkYukleBaslat();   // YILDIZ-4C: Bugün'ün iki tuval satırı (dünkü gün sonu · uzun duran emanet) — yalnız Yıldız (Panel.Yildiz.cs)
         // YILDIZ-4A: Yıldız'da BASİT ve PRO aynı tuval yüzünü çizer → sade yükleyiciler iki modda da açılır.
-        if ((Mod.BasitMi || YildizMi) && !sadeYuklendi)
+        if (!sadeYuklendi)
         {
             sadeYuklendi = true;
             Yuklemeler.AddRange([YukleBorclu(), YukleVade(), YukleBildirim(), YukleKar(), YukleBanka(), YukleNakitAyrimi()]);
@@ -1310,7 +1205,6 @@ else
 
     private void ModDegisti()
     {
-        if (Mod.BasitMi) suruklemeKuruldu = false;   // ızgara DOM'dan çıktı; geri gelince yeniden kurulur
         YuzeGoreYukle();
         Yenile();
     }
@@ -1344,10 +1238,6 @@ else
         d is null ? "" : d.Value.ToString("0", CultureInfo.InvariantCulture) + "°";
 
     // ── Düzen (kullanıcı bazlı) ──────────────────────────────────────────────
-    private bool duzenModu;
-    private bool suruklemeKuruldu;
-    private DotNetObjectReference<Panel>? benlik;
-
     private List<PanelKutucukTanimi> GorunenKutucuklar =>
         Tercih.PanelSirasi([.. PanelKutucuklari.Tumu.Where(k => !Tercih.KutucukGizli(k.Kod))], k => k.Kod);
 
@@ -1610,21 +1500,14 @@ else
         YuzeGoreYukle();
     }
 
-    protected override async Task OnAfterRenderAsync(bool ilk)
+    protected override void OnAfterRender(bool ilk)
     {
-        // S3-1: sürükleme yalnız profesyonel yüzün ızgarasında kurulur; basit
-        // yüzde ızgara yoktur, mod değişince ilk profesyonel çizimde kurulur.
+        // Tema temizliği (17.10): tek şema Yıldız — kutucuk ızgarası ve sürükleme yok (YILDIZ-4A).
         // T-P1 (gerçek tarayıcıda bulundu): tam sayfa yenilemede oturum profili İLK
         // çizimden SONRA gelir → etkin mod PROFESYONEL→BASIT döner ama Mod.Degisti
         // tetiklenmez; basit yüzün yükleyicileri hiç açılmıyor, kartlar iskelette
         // kalıyordu. Çizilen yüzün yükleyicisi açılmadıysa burada (bir kez) açılır.
-        if (((Mod.BasitMi || YildizMi) && !sadeYuklendi) || (!Mod.BasitMi && !proYuklendi)) YuzeGoreYukle();
-        if (suruklemeKuruldu || Mod.BasitMi || YildizMi) return;   // YILDIZ-4A: Yıldız'da ızgara yok
-        suruklemeKuruldu = true;
-        benlik = DotNetObjectReference.Create(this);
-        // JS yoksa (ön-render / bUnit) sürükleme olmaz; Alt+↑/↓ klavye yolu DURUR.
-        try { await JS.InvokeVoidAsync("kuyumcuSira.baslat", "panel-izgara", benlik); }
-        catch (Exception) { /* sürükleme yok; klavye yolu çalışmaya devam eder */ }
+        if (!sadeYuklendi || (!Mod.BasitMi && !proYuklendi)) YuzeGoreYukle();
     }
 
     /// <summary>Panel grafiği "Son 7 günlük satış": çizilen gün sayısı başlıkla aynı.</summary>
@@ -1695,6 +1578,5 @@ else
         Oturum.Degisti -= OturumDegisti;
         if (kiraciGorunumu is not null) kiraciGorunumu.Degisti -= SemaDegisti;
         if (benimGorunumu is not null) benimGorunumu.Degisti -= SemaDegisti;
-        benlik?.Dispose();
     }
 }

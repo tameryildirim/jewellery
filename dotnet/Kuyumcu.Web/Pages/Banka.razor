@@ -19,14 +19,10 @@
 
 @* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Banka (BİREBİR; boş durum) — dolu liste tuval liste
    kalıbında; özgün ekran (hareketler, dekont, ekstre, storno) yalnız "Hareketler" / "Tüm ayrıntılar"da (data-yz-ozgun). *@
-@if (YildizMi)
-{
     @if (YildizBosMu) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizBos B="@YildizBosBaglami" /> }
     else { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
-}
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
-    @if (!YildizMi) { <GelenOdemeKarari @ref="gelenKarar" Degisti="GelenKararSonrasi" /> }   @* M7a (17.10): Yıldız'da liste bantlarının altında (Banka.GelenOdeme.cs) *@
     @* ZO-ISLEM-A 28.09 (tasarım hakemi): başlık altı açıklama satırı YOK (tuvalde yok;
        metin tasarım notu kopyasıydı, BASİT'te "pasife" jargonu taşıyordu). *@
     <SayfaBasi Anahtar="banka" Baslik="@Dil.T.Banka.Baslik">

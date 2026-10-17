@@ -133,7 +133,7 @@ public sealed class SUBEKAPSAMBSinirTestleri : BunitContext
     public void S2a_Sube_secili_kasa_raporu_yalniz_o_subenin_kasasini_gosterir_buyuk_tutar_bozulmaz()
     {
         Hazirla("s2");
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#kr-ozet")), TimeSpan.FromSeconds(10));
         var metin = e.Find("#kr-ozet").TextContent;
         Assert.Contains("Şube 2 Kasası", metin, StringComparison.Ordinal);
@@ -146,7 +146,7 @@ public sealed class SUBEKAPSAMBSinirTestleri : BunitContext
     {
         Hazirla("s2");
         kasalarKodu = HttpStatusCode.InternalServerError;
-        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var e = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         e.WaitForAssertion(() =>
             Assert.Contains(getler, y => y.Contains("/raporlar/kasa-defteri", StringComparison.Ordinal)),
             TimeSpan.FromSeconds(10));

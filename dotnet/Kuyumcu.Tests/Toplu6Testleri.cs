@@ -385,7 +385,7 @@ public sealed class Toplu6KurTestleri : Toplu4Tabani
     public void T6_Kur_sayisal_sutun_basliklari_degerlerle_ayni_saga_hizali(string mod)
     {
         Oturum(mod);
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#kur-ayar-fiyat-tablo", TimeSpan.FromSeconds(10));
         var th = e.FindAll("#kur-ayar-fiyat-tablo thead th").ToList();
         Assert.Equal(3, th.Count);
@@ -399,7 +399,7 @@ public sealed class Toplu6KurTestleri : Toplu4Tabani
     public void T6_Kur_BASIT_alt_not_satir_degil_ipucunda()
     {
         Oturum(ArayuzModuServisi.Basit);
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#kur-pro-notu-ipucu", TimeSpan.FromSeconds(10));
         Assert.NotNull(e.Find("#kur-pro-notu-ipucu > #kur-pro-notu > #kur-pro-notu-bag"));
         Assert.False(e.Find("#kur-pro-notu-ipucu").HasAttribute("open"));
@@ -541,7 +541,7 @@ public sealed class Toplu6SiparisTestleri : Toplu4Tabani
     private IRenderedComponent<Kuyumcu.Web.Pages.Siparisler> FormAcik(string mod)
     {
         Oturum(mod);
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         var ac = e.WaitForElement("#sip-yeni-ac", TimeSpan.FromSeconds(10));
         Assert.StartsWith("+ ", ac.TextContent.Trim(), StringComparison.Ordinal);
         ac.Click();
@@ -591,7 +591,7 @@ public sealed class Toplu6GiderTestleri : Toplu4Tabani
         Yol("/virman", """{"satirlar":[],"toplam":0,"limit":50,"dahaFazlasiVar":false,"sinirNotu":"x"}""");
         Yol("/subeler", """[{"id":"s1","ad":"Merkez"}]""", son: false);
         Oturum(mod);
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-sekme-giderler", TimeSpan.FromSeconds(10));
         if (rota is not null) e.Find("#gd-sekme-virman").Click();
         GiderAkordeon.Ac(e); // SON-KALANLAR: geçmiş kayıtlar kapalı akordeon
@@ -673,7 +673,11 @@ public sealed class Toplu6GiderTestleri : Toplu4Tabani
         Assert.Equal(Toplu6Sozlugu.Tr.VirmanYapBasit, e.Find("#gd-v-kaydet").TextContent.Trim());
         Assert.Equal(Toplu6Sozlugu.Tr.SayfaAciklamaBasit, e.Find("#sayfa-basi-gider-aciklama").TextContent.Trim());
         var baslik = e.Find("#sayfa-basi-gider-baslik").TextContent;
-        var govde = string.Concat(e.Nodes.Select(n => n.TextContent)).Replace(baslik, "", StringComparison.Ordinal);
+        // TEMA TEMİZLİĞİ 17.10: Yıldız yüzünün başlığı (#yildiz-gider-baslik) da SAYFA BAŞLIĞIDIR — tuval birebir "Gider ve virman"
+        // (YildizListeBicim.EkranAdi, kurucu 09.10); sayfa başlığı hariç kuralı ona da uygulanır, gövde aynı sınanır.
+        var yildizBaslik = e.Find("#yildiz-gider-baslik").TextContent;
+        var govde = string.Concat(e.Nodes.Select(n => n.TextContent)).Replace(baslik, "", StringComparison.Ordinal)
+            .Replace(yildizBaslik, "", StringComparison.Ordinal);
         Assert.DoesNotContain("irman", govde, StringComparison.OrdinalIgnoreCase);
     }
 

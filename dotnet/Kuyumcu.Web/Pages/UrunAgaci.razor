@@ -22,7 +22,7 @@
 
 @* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) liste = tuval Y_Urunagaci (BİREBİR); özgün ekran yalnız "ayrıntı" görünümünde
    çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
-@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
+<Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" />
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     <div class="sayfa-baslik">
@@ -197,26 +197,26 @@
 @* ── Kategori ekle / düzenle — ÇEKMECE (DoD EK md.2: tek düzenleme kalıbı) ──
    İçteki alan id'leri AYNEN korundu (#k-ad, #k-ust, #k-sira). *@
 <Cekmece Acik="kategoriModalAcik" Varlik="kategori"
-         Baslik="@(kDuzenlenenId is null ? (YildizMi ? YildizAgacSozlugu.YeniGrup(Dil.Dil) : Dil.T.UrunAgaci.YeniKategori) : Dil.T.Ortak.Duzenle)"
+         Baslik="@(kDuzenlenenId is null ? (YildizAgacSozlugu.YeniGrup(Dil.Dil)) : Dil.T.Ortak.Duzenle)"
          Kapat="() => kategoriModalAcik = false" Kaydet="KategoriKaydet"
          Kaydediliyor="@kaydediliyor" KaydetAktif="@(!sayiKapisi.OnekleVar("k-"))"
          KilitSebebi="@sayiKapisi.Sebep(Dil.Dil, "k-")">
     <div class="form-dikey">
         @* YILDIZ-KATMAN (5A kalanı "Ürün ağacı başlık/düğme adı"): Yıldız'da düğme "Yeni grup" (tuval Y_Urunagaci
            "gruplar ve alt gruplar") — çekmece başlığı ve alan adları AYNI kavramı söyler (UX-S31). Öteki şemalar AYNEN. *@
-        <Metin ElemanId="k-ad" Etiket="@(YildizMi ? YildizKatmanSozlugu.GrupAdi(Dil.Dil) : Dil.T.UrunAgaci.KategoriAdi)" Zorunlu="true" EnFazla="@AlanSinirlari.UrunKategoriAdi"
+        <Metin ElemanId="k-ad" Etiket="@(YildizKatmanSozlugu.GrupAdi(Dil.Dil))" Zorunlu="true" EnFazla="@AlanSinirlari.UrunKategoriAdi"
                Deger="@kAd" DegerChanged="@(v => kAd = v ?? "")"
                Durum="form" HataAlani="k-ad" />
         <div class="form-grid-2">
             <div class="alan">
                 <Secici ElemanId="k-ust"
-                        Etiket="@(YildizMi ? YildizKatmanSozlugu.UstGrup(Dil.Dil) : Dil.T.UrunAgaci.UstKategori)"
+                        Etiket="@(YildizKatmanSozlugu.UstGrup(Dil.Dil))"
                         Secenekler="@(UstAdaylari.Select(d => new SecenekOgesi(d.Id, d.Etiket)).ToList())"
                         @bind-Deger="kUstId"
                         BosSecenekMetni="@Dil.T.UrunAgaci.KokSeviye" />
                 @* Döngü koruması sunucuda; burada aday listesinden düşürerek
                    kullanıcıyı hataya hiç sokmuyoruz. *@
-                <span class="metin-soluk metin-kucuk">@(YildizMi ? YildizKatmanSozlugu.DonguUyarisi(Dil.Dil) : Dil.T.UrunAgaci.DonguUyarisi)</span>
+                <span class="metin-soluk metin-kucuk">@(YildizKatmanSozlugu.DonguUyarisi(Dil.Dil))</span>
             </div>
             @* QA turu 2 DÜŞÜK: Sıra = -3 kabul ediliyordu. min=0 + alan altı mesaj. *@
             @* PAKET GOC-C (K17 tarzı tam sayı): 2,7 eskiden SESSİZCE 2'ye kırpılıyordu; int taşması 400 değil istisnaydı. *@

@@ -15,9 +15,8 @@ public partial class PosTahsilatlar
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "pos-tahsilatlar" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "pos-tahsilatlar";
     private bool yildizAyrinti;
 
     /// <summary>Bankaya geçmeyi bekleyen satır mı (saf).</summary>

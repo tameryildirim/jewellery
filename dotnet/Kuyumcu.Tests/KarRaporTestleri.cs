@@ -1003,6 +1003,7 @@ public sealed class KarRaporPanelEkranTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private sealed class SahteApi(Func<string> kar) : HttpMessageHandler
@@ -1039,6 +1040,10 @@ public sealed class KarRaporPanelEkranTestleri : BunitContext
                 var y when y.Contains("/tercihler/benim", StringComparison.Ordinal) => """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/", StringComparison.Ordinal) =>
                     """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün gün sonu / emanet satırlarının uçları gerçekçi.
+                var y when y.EndsWith("/raporlar/kasa-defteri", StringComparison.Ordinal) =>
+                    """{"baslangic":"2026-10-01","bitis":"2026-10-01","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari", StringComparison.Ordinal) => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             };
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -1048,25 +1053,30 @@ public sealed class KarRaporPanelEkranTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — eski "Bugün ne sattım?" kartının kâr satırı kaldırıldı; kâr Bugün
+    // alt şeridindeki "Kâr" öğesidir (#yildiz-bugun-kar, aynı uç: GET /raporlar/kar-zarar bugün..bugün). Kural: maliyeti
+    // eksik satış/iade varsa (ya da eski şekil yanıtta maliyetsiz adet) rakam BASILMAZ — "maliyet eksik" (fail-closed).
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Basit()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-kar")), TimeSpan.FromSeconds(10));
+        e.BugunBekle();
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kar")), TimeSpan.FromSeconds(10));
         return e;
     }
+
+    private static string MaliyetEksik => $"{YildizBugunSozlugu.Kar("tr")} {YildizBugunSozlugu.MaliyetEksik("tr")}";
 
     [Fact]
     public void KR40_Panel_kar_hesaplanamadi_der_rakam_basmaz()
     {
         var e = Basit();
-        var k = e.Find("#panel-soru-satis-kar");
-        Assert.Equal(KarRaporSozlugu.Tr.PanelKarHesaplanamadi, k.TextContent.Trim());
-        Assert.Contains("panel-soru-kar--eksik", k.ClassName, StringComparison.Ordinal);
+        var k = e.Find("#yildiz-bugun-kar");
+        Assert.Equal(MaliyetEksik, k.TextContent.Trim());
         Assert.Equal("/raporlar/kar-zarar", k.GetAttribute("href"));
+        Assert.Empty(e.FindAll("#yildiz-bugun-kar-hata"));
     }
 
     [Fact]
@@ -1076,10 +1086,9 @@ public sealed class KarRaporPanelEkranTestleri : BunitContext
             .Replace("\"karTl\":null", "\"karTl\":1100.00", StringComparison.Ordinal)
             .Replace("\"maliyetiEksikSatisAdedi\":3", "\"maliyetiEksikSatisAdedi\":1", StringComparison.Ordinal);
         var e = Basit();
-        // PAKET RAPOR-3 (hasım ORTA): kâr satırı kapsamını söyler — "(yalnız N satış) · 1 satışın maliyeti yok".
-        var metin = e.Find("#panel-soru-satis-kar").TextContent.Trim();
-        Assert.StartsWith($"Kâr {Bicim.TlKurus(1_100m)} (yalnız ", metin, StringComparison.Ordinal);
-        Assert.EndsWith("1\u00A0satışın\u00A0maliyeti\u00A0yok", metin, StringComparison.Ordinal);
+        // Bugün'de kısmi kâr günün kârı gibi okunmasın diye rakam YAZILMAZ; kapsam (yalnız N satış) Kâr-zarar'da.
+        Assert.Equal(MaliyetEksik, e.Find("#yildiz-bugun-kar").TextContent.Trim());
+        Assert.DoesNotContain("1.100", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1090,11 +1099,11 @@ public sealed class KarRaporPanelEkranTestleri : BunitContext
             .Replace("\"maliyetiEksikSatisAdedi\":3", "\"maliyetiEksikSatisAdedi\":0", StringComparison.Ordinal)
             .Replace("\"maliyetiBilinmeyenAdet\":3", "\"maliyetiBilinmeyenAdet\":0", StringComparison.Ordinal);
         var e = Basit();
-        Assert.Equal($"Kâr {Bicim.TlKurus(4_120m)}", e.Find("#panel-soru-satis-kar").TextContent.Trim());
+        Assert.Equal($"{YildizBugunSozlugu.Kar("tr")} {Bicim.Tl(4_120m)}", e.Find("#yildiz-bugun-kar").TextContent.Trim());
     }
 
     // KAR-RAPOR-2 (hasım DÜŞÜK): yeni şekil yanıtta (karDurumu var) kâr TAM ve eksik satış 0 iken
-    // yuvarlama artığı "maliyeti bilinmeyen adet" Panel'de eski "Kâr: maliyet eksik" yazdırmaz.
+    // yuvarlama artığı "maliyeti bilinmeyen adet" Panel'de "maliyet eksik" yazdırmaz.
     [Fact]
     public void KR43_Panel_TAM_yuvarlama_artigi_bilinmeyen_adet_eski_dali_acmaz()
     {
@@ -1104,7 +1113,7 @@ public sealed class KarRaporPanelEkranTestleri : BunitContext
             .Replace("\"maliyetiEksikSatisAdedi\":3", "\"maliyetiEksikSatisAdedi\":0", StringComparison.Ordinal)
             .Replace("\"maliyetiBilinmeyenAdet\":3", "\"maliyetiBilinmeyenAdet\":0.0004", StringComparison.Ordinal);
         var e = Basit();
-        Assert.Equal($"Kâr {Bicim.TlKurus(4_120m)}", e.Find("#panel-soru-satis-kar").TextContent.Trim());
+        Assert.Equal($"{YildizBugunSozlugu.Kar("tr")} {Bicim.Tl(4_120m)}", e.Find("#yildiz-bugun-kar").TextContent.Trim());
     }
 }
 

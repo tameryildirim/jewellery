@@ -110,7 +110,7 @@ public sealed class P20EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Hurda> Ekran()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Hurda>();
+        var e = Render<Kuyumcu.Web.Pages.Hurda>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/hurda/bakiye")));
         // ZO-ISLEM-A: isteğe bağlı alanlar "+ Detay ekle", defter kapalı akordeon
         // arkasında. Bu dosyanın testleri o alanların KURALLARINI sınar; açılış

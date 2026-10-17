@@ -146,7 +146,7 @@ public sealed class SiparisEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "sb1"));
-        return Render<Kuyumcu.Web.Pages.Siparisler>();
+        return Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
     }
 
     private IRenderedComponent<Kuyumcu.Web.Pages.SiparisDetay> Detay(string rol = "SAHIP", string id = "s1")

@@ -16,15 +16,14 @@ public sealed record YildizFiyatCari(string Id, string? FiyatListesiId = null, s
 // etkin ürün sayısı, "Kullanım" listeye bağlı müşteri sayısıdır (GET /urunler, GET /cari —
 // MEVCUT salt-okuma uçları). "Yeni liste", "Düzenle" ve satır (ürünlere etkisi) MEVCUT form
 // ve paneldir; kampanyalar ve pasife alma "Tüm ayrıntılar"da. Yeni yazma yolu YOK.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Fiyatlandirma
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "fiyat" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "fiyat";
 
     public const int YildizUrunSiniri = 500;
     public const int YildizCariSiniri = 200;
@@ -38,7 +37,7 @@ public partial class Fiyatlandirma
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizYuklendi || yildizYukleniyor) return;
+        if (yildizYuklendi || yildizYukleniyor) return;
         yildizYukleniyor = true;
         try
         {

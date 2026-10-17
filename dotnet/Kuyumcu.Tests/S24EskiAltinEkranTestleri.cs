@@ -108,25 +108,28 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Tezgâhtar", "t@ornek.com", "TEZGAHTAR", "s1", null, mod));
 
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı (BASİT de). Tek kapı "+ Başka ödeme" = tezgâhın hapı
+    // (#yildiz-tezgah-baska-odeme → sayfanın OdemeyiBol'u, eski #islem-odeme-bol ile AYNI yöntem); Kaydet
+    // #yildiz-tezgah-kaydet, kilit sebebi Fark bloğunun not satırında (#yildiz-tezgah-not) ve title'da.
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Ekran()
     {
         OturumAc(ArayuzModuServisi.Basit);
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-tur-SATIS");
-        return e;
+        return Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
     }
 
     /// <summary>Basit satış + 10.000 TL'lik bir kalem (elle satırından).</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> KalemliFis()
     {
         var e = Ekran();
-        e.WaitForAssertion(() => Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari")));
+        TemaTemizligiGDYardimcisi.MusteriBekle(e, "Peşin Müşteri");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForElement("#islem-kalem-liste-sar");
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
         return e;
     }
+
+    private const string BaskaOdeme = "#yildiz-tezgah-baska-odeme";
 
     /// <summary>Kalemli fiş + "Eski altın" tek dokunuşu → panel açık.</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> AltinAcik()
@@ -140,8 +143,7 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
     /// <summary>k2 (tasarım hakemi K19): TEK KAPI — "+ Başka ödeme ekle", açılan satırın ödeme türünden "Eski altın".</summary>
     private static void EskiAltinSec(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        e.Find("#islem-odeme-bol").Click();
-        e.WaitForElement("#islem-bacak-1-arac");
+        TemaTemizligiGDYardimcisi.KarmaAc(e);
         SeciciYardim.Sec(e, "islem-bacak-1-arac", "ALTIN");
         e.WaitForElement("#altin-bacagi");
     }
@@ -159,8 +161,15 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         e.Find("#altin-satici-adres").Input("Ulus, Ankara");
     }
 
-    private static bool KaydetKilitli(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
-        e.Find("#islem-kaydet").HasAttribute("disabled");
+    private static bool KaydetKilitli(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => TemaTemizligiGDYardimcisi.KaydetKilitli(e);
+
+    /// <summary>Kaydet'in kilit cümlesi — Yıldız'da Fark bloğunun not satırı (#yildiz-tezgah-not; title ile AYNI).</summary>
+    private static string KilitCumlesi(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        var not = e.Find("#yildiz-tezgah-not").TextContent.Trim();
+        Assert.Equal(e.Find(TemaTemizligiGDYardimcisi.Kaydet).GetAttribute("title"), not);
+        return not;
+    }
 
     // ── E-1 ───────────────────────────────────────────────────────────────
     [Fact]
@@ -170,7 +179,8 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         // Ödenecek bir şey yokken çizilmez (ilk bakış ≤ 12 düğme, S2-2); "Ödemeyi böl"
         // kilitli ve sebebini yazar — boşa tıklanan düğme doğmaz (DoD EK 1).
         Assert.Empty(e.FindAll("#islem-odeme-altin"));
-        Assert.True(e.Find("#islem-odeme-bol").HasAttribute("disabled"));
+        Assert.True(e.Find(BaskaOdeme).HasAttribute("disabled"));
+        Assert.False(string.IsNullOrWhiteSpace(e.Find(BaskaOdeme).GetAttribute("title")));   // kilit sebebini söyler
         // Aynı soru iki kontrolle sorulmaz (UX-S22): pro anahtarı basit modda yok.
         Assert.Empty(e.FindAll("#islem-karma"));
 
@@ -178,11 +188,11 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-birimfiyat")));
         e.Find("#islem-kalem-ekle").Click();
         // k2 (tasarım hakemi K19, 29.09): ayrı "Eski altın" düğmesi YOK (iki kapı iki sonuç veriyordu) — tek kapı
-        // "+ Başka ödeme ekle"; eski altın açılan satırın ödeme türü listesinde, taslaktaki adıyla.
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-odeme-bol").HasAttribute("disabled")));
+        // "+ Başka ödeme"; eski altın açılan satırın ödeme türü listesinde, taslaktaki adıyla.
+        e.WaitForAssertion(() => Assert.False(e.Find(BaskaOdeme).HasAttribute("disabled")));
         Assert.Empty(e.FindAll("#islem-odeme-altin"));
         Assert.Empty(e.FindAll("#islem-odeme-altin-not"));
-        e.Find("#islem-odeme-bol").Click();
+        e.Find(BaskaOdeme).Click();
         e.WaitForElement("#islem-bacak-1-arac");
         Assert.Contains(SeciciYardim.Secenekler(e, "islem-bacak-1-arac"),
             o => o.Deger() == "ALTIN" && o.TextContent.Trim() == E.EskiAltin);
@@ -249,7 +259,7 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         Assert.NotNull(e.Find("#altin-satici-tckn"));
         Assert.True(KaydetKilitli(e));
         var ilkEksik = e.Find("#altin-eksikler li").TextContent.Trim();
-        Assert.Equal(string.Format(E.KaydetKilit, ilkEksik), e.Find("#islem-kaydet-kilit").TextContent.Trim());
+        Assert.Equal(string.Format(E.KaydetKilit, ilkEksik), KilitCumlesi(e));
 
         AltinDoldur(e);   // satıcı dahil
         // SATIS-3 (KAYNAK 2 md.5): elle yazılmayan nakit bacağı kalanı OTOMATİK üstlenir (840);
@@ -258,7 +268,7 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         e.Find("#islem-bacak-0-tutar").Input("10000");
         // SATIS-3 t10 (hakem KRİTİK "fark üç yerde"): fark kilidi eski altının eksiği diye DEĞİL, fişin tek fark cümlesiyle söylenir.
         e.WaitForAssertion(() => Assert.Equal(
-            string.Format(Kuyumcu.Core.I18n.Satis3Sozlugu.Tr.FarkFazla, Kuyumcu.Web.Servisler.Bicim.Tl(9160m)), e.Find("#islem-kaydet-kilit").TextContent.Trim()));
+            string.Format(Kuyumcu.Core.I18n.Satis3Sozlugu.Tr.FarkFazla, Kuyumcu.Web.Servisler.Bicim.Tl(9160m)), KilitCumlesi(e)));
         Assert.True(KaydetKilitli(e));
     }
 
@@ -294,7 +304,7 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         // B4-33: FARK ≠ 0 → kilitli, tıklama POST ATMAZ.
         Assert.True(KaydetKilitli(e));
         lock (istekler) istekler.Clear();
-        e.Find("#islem-kaydet").Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
         lock (istekler) Assert.DoesNotContain(istekler, i => i.Metot == "POST");
 
         // "Kalanı ata" nakit bacağına 840 yazar (altına yazmaz) → FARK 0 → açık.
@@ -302,7 +312,7 @@ public sealed class S24EskiAltinEkranTestleri : BunitContext
         e.WaitForAssertion(() => Assert.False(KaydetKilitli(e)));
         Assert.Equal("9160", SeciciYardim.SeciliDeger(e, "altin-tl"));
 
-        e.Find("#islem-kaydet").Click();
+        e.Find(TemaTemizligiGDYardimcisi.Kaydet).Click();
         e.WaitForAssertion(() =>
         {
             List<(string Metot, string Yol, string Govde)> postlar;

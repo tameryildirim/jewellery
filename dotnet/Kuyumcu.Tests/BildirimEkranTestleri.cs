@@ -116,7 +116,7 @@ public sealed class BildirimEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1"));
-        return Render<Kuyumcu.Web.Pages.Bildirimler>();
+        return Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
     }
 
     // ── Yükleme ─────────────────────────────────────────────────────────────
@@ -191,8 +191,11 @@ public sealed class BildirimEkranTestleri : BunitContext
         bildirimYaniti = IkiBildirim;
         var e = Ciz();
 
-        var dugmeler = e.FindAll("button").Select(b => b.Id).Where(x => !string.IsNullOrEmpty(x)).ToList();
+        // TEMA TEMİZLİĞİ 17.10: "liste" = özgün bildirim ekranı ("Tüm ayrıntılar" arkasında, [data-yz-ozgun]). Yıldız başlığının
+        // "Listeye dön"ü (#yildiz-bildirim-listeye-don) istek atmaz, görünüm düğmesidir — etkisi ayrıca ölçülür: özgün kapanır.
+        var dugmeler = e.FindAll("[data-yz-ozgun] button").Select(b => b.Id).Where(x => !string.IsNullOrEmpty(x)).ToList();
         Assert.NotEmpty(dugmeler);
+        Assert.NotNull(e.Find("#yildiz-bildirim-listeye-don"));
 
         foreach (var id in dugmeler)
         {
@@ -234,6 +237,10 @@ public sealed class BildirimEkranTestleri : BunitContext
             // Sıradaki düğmeden önce uçuşan eylem bitsin (calisanIs bekçisi sıfırlansın).
             e.WaitForAssertion(() => Assert.Empty(e.FindAll("button[disabled]:not([title])")));
         }
+
+        // Yıldız "Listeye dön": görünür etki — özgün ekran kapanır, Yıldız listesi geri gelir.
+        e.Find("#yildiz-bildirim-listeye-don").Click();
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("[data-yz-ozgun]")));
     }
 
     // ── İş paneli ───────────────────────────────────────────────────────────

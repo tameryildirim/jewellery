@@ -675,15 +675,18 @@ public sealed class CariBakiyeEkranTestleri : BunitContext
     [Fact]
     public void Liste_emanetsiz_has_ve_ayri_Emanette_satiri_detayla_ayni()
     {
+        // TEMA TEMİZLİĞİ 17.10: liste = Yıldız satırı; has ve emanet satırın durum bölümünde AYRI parçalar
+        // (tuval "emanette 9,16 g has"; YildizMusteriBicim.Satir). Eski hücre kimlikleri (#cari-liste-emanette-*) yok.
         var e = Ciz();
-        e.WaitForElement("#cari-liste-emanette-c1");
-        Assert.Equal(string.Format(P2.ListeEmanette, H(9.16m)), e.Find("#cari-liste-emanette-c1").TextContent.Trim());
-        Assert.Empty(e.FindAll("#cari-liste-emanette-c2"));
-        var satir = e.Find("#cari-liste-emanette-c1").ParentElement!.TextContent;
-        Assert.Contains(H(2m), satir);
+        e.WaitForElement(TemaTemizligiGGYardimcisi.Satir("c1"));
+        var durum1 = e.Find("#yildiz-musteri-c1 .yz-musteri-durum").TextContent;
+        Assert.Contains(YildizMusteriSozlugu.HasBakiye("2,00", "tr"), durum1);          // emanetsiz has
+        Assert.Contains(YildizMusteriSozlugu.Emanette("9,16", "tr"), durum1);           // emanet AYRI parça
+        Assert.DoesNotContain("emanette", e.Find("#yildiz-musteri-c2 .yz-musteri-durum").TextContent);
         Assert.DoesNotContain(H(-7.16m), e.Markup);          // kayıtlı (emanet dahil) hiçbir yerde basılmaz
+        Assert.DoesNotContain("7,16", e.Markup);
 
-        e.Find("#c-detay-c1").Click();
+        e.KartEylemi("c1", "detay");
         e.WaitForElement("#cari-detay-hareketler");
         var kutular = e.Find("#cari-detay-bakiyeler").TextContent;
         Assert.Contains(H(2m), kutular);
@@ -695,13 +698,13 @@ public sealed class CariBakiyeEkranTestleri : BunitContext
     public void TL_uyusmazlik_bandi_yalniz_fark_varken_ve_dogru_metinle()
     {
         var e = Ciz();
-        e.Find("#c-detay-c1").Click();
+        e.KartEylemi("c1", "detay");   // TEMA TEMİZLİĞİ 17.10: kartın eylemi
         e.WaitForElement("#cari-detay-hareketler");
         Assert.Empty(e.FindAll("#cari-detay-uyusmazlik-tl"));
 
         ekstreYaniti = EkstreTemel.Replace("__TL__", "-71283.3").Replace("__SEBEP__", "null");
         var e2 = Ciz();
-        e2.Find("#c-detay-c1").Click();
+        e2.KartEylemi("c1", "detay");
         e2.WaitForElement("#cari-detay-uyusmazlik-tl");
         var bant = e2.Find("#cari-detay-uyusmazlik-tl");
         // TOPLU-1: TL ve altın farkı TEK uyarıda (bakiyenin yanında); TL farkı kimlikli parça olarak.
@@ -711,7 +714,7 @@ public sealed class CariBakiyeEkranTestleri : BunitContext
 
         ekstreYaniti = EkstreTemel.Replace("__TL__", "null").Replace("__SEBEP__", "\"KONSINYE_SAHIBI\"");
         var e3 = Ciz();
-        e3.Find("#c-detay-c1").Click();
+        e3.KartEylemi("c1", "detay");
         e3.WaitForElement("#cari-detay-hareketler");
         Assert.Empty(e3.FindAll("#cari-detay-uyusmazlik-tl"));
     }

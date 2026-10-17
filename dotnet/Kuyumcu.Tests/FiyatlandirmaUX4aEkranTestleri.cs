@@ -102,7 +102,7 @@ public sealed class FiyatlandirmaUX4aEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Fiyatlandirma> Ciz(string beklenen = "#fl-tablo tbody tr")
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement(beklenen);
         istekler.Clear();
         return e;
@@ -309,7 +309,7 @@ public sealed class FiyatlandirmaUX4aEkranTestleri : BunitContext
     public void Sunucu_hatasinda_HATA_bandi_cikar_BOS_DURUM_cikmaz()
     {
         sahte.SunucuHatasi = true;
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
 
         e.WaitForAssertion(() =>
         {

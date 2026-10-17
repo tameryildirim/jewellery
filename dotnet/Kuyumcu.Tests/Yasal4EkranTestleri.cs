@@ -123,7 +123,7 @@ public sealed class Yasal4PusulaEkranTestleri : BunitContext
     {
         if (sekme is not null)
             Services.GetRequiredService<NavigationManager>().NavigateTo($"/gider-pusulalari?sekme={sekme}{ek}");
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("#gp-tablo tbody tr").Count == 2);
         return c;
     }
@@ -308,7 +308,7 @@ public sealed class Yasal4UrunKmtsEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "sb1", mod, mod));
-        var c = Render<Kuyumcu.Web.Pages.Urunler>();
+        var c = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         c.WaitForElement("#urun-yeni-ac");
         c.WaitForAssertion(() => Assert.NotEmpty(c.FindAll("#urun-yeni-ac")));
         c.Find("#urun-yeni-ac").Click();

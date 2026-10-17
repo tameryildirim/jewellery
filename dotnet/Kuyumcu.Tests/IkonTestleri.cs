@@ -118,7 +118,16 @@ public sealed class IkonTestleri : BunitContext
         var sembol = Semboller();
         var hedefler = new List<string>();
 
-        foreach (var svg in KenarCubuguCiz().FindAll("use")) hedefler.Add(svg.GetAttribute("href")!);
+        // TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı. Kabukta sprite ikonu çizen yüzey artık üst
+        // barın paletidir (GlobalArama: açıcı düğme + kutu ikonu + EKRANLAR bölümünde her ekranın
+        // menü ikonu). Palet açılır ve her menü ekranını bulan bir sorgu yazılır.
+        var palet = PaletCiz();
+        foreach (var svg in palet.FindAll("use")) hedefler.Add(svg.GetAttribute("href")!);
+        // Paletteki ekran ikonları MenuOgesi.Ikon'dur; palet en çok 6 ekran gösterir — menünün
+        // TÜM ekran ikonları aynı Ikon bileşeniyle çizilip sınanır (sembol silinirse kırmızı).
+        foreach (var oge in MenuTanimi.Ogeler.Concat(MenuTanimi.AltBlok))
+            foreach (var svg in Render<Ikon>(p => p.Add(x => x.Ad, oge.Ikon)).FindAll("use"))
+                hedefler.Add(svg.GetAttribute("href")!);
         foreach (var svg in Render<BosDurum>(p => p.Add(x => x.Mesaj, "Kayıt yok")).FindAll("use"))
             hedefler.Add(svg.GetAttribute("href")!);
         foreach (var svg in Render<DegismezIpucu>(p => p
@@ -198,20 +207,16 @@ public sealed class IkonTestleri : BunitContext
     // ── 4) K4 — MENÜ KİMLİK/ROTA ENVANTERİ DEĞİŞMEZ ─────────────────────────
 
     [Fact]
-    public void KenarCubugu_menu_rotalari_ikon_gecisinden_SONRA_da_ayni()
+    public void Menu_rotalari_ikon_gecisinden_SONRA_da_ayni()
     {
-        // K4: yalnız EKLENEN id kabul; silinen/değişen = engel. Menüde id yok,
-        // kimliği ROTA taşır — bu yüzden sözleşme rota listesidir.
-        string[] beklenen =
+        // ESKİ: KenarCubugu_menu_rotalari_ikon_gecisinden_SONRA_da_ayni. TEMA TEMİZLİĞİ 17.10: kenar
+        // çubuğu kaldırıldı; kabuğun bağlantıları artık iki yüzeydedir — üst menü (YildizUstMenu:
+        // marka + beş sözcük + hesap menüsünün alt bloğu) ve "Tüm ekranlar" sayfasının kareleri.
+        // K4: yalnız EKLENEN id kabul; silinen/değişen = engel. Menüde id yok, kimliği ROTA taşır —
+        // bu yüzden sözleşme rota listesidir.
+        string[] kareler =
         [
-            // Paket P-14 (Y-9): sıra artık GRUPLUDUR (MenuTanimi.GrupSirasi).
-            // Rota kimlikleri DEĞİŞMEDİ — hiçbiri silinmedi/yeniden adlandırılmadı,
-            // yalnız grup sırasına göre yeniden dizildi (K4 "silinen/değişen = engel"
-            // kuralı rota kimliğine bakar, satır sırasına değil).
-            // ── PAKET S1-d: "Tüm ekranlar" girişi (aramanın altında, grupların
-            //    üstünde — tuval Panel.dc.html). S1-b'de KİLİTLİ DÜĞMEYDİ, S1-d
-            //    karo sayfasını açınca bağlantı oldu; menü öğesi DEĞİLDİR. ──
-            "/ekranlar",
+            // Paket P-14 (Y-9): sıra GRUPLUDUR (MenuTanimi.GrupSirasi). Rota kimlikleri DEĞİŞMEDİ.
             // ── Günlük İş ──
             "/", "/islemler", "/emanet", "/siparisler", "/bildirimler",
             // ── Müşteri ve Stok ──
@@ -228,54 +233,91 @@ public sealed class IkonTestleri : BunitContext
             // ── Yönetim ── (⚠ /isletme · /yetkiler · /denetim-izi · /kurulum ·
             //    /veri-disa-aktarim · /veri-ice-aktarim · /yedekler rol kapısında)
             "/kullanicilar",
-            // ── T-K2: kullanıcı kartının dişlisi (tuval: kartta → /ayarlar) ──
-            "/ayarlar",
-            // ── Alt blok (grup dışı, her modda) — T-K2: kart menüsünde ──
-            "/kilavuz", "/ayarlar",
         ];
-        var e = KenarCubuguCiz();
-        var rotalar = e.FindAll(".kenar-cubugu a").Select(a => a.GetAttribute("href")).ToArray();
-        Assert.Equal(beklenen, rotalar);
+        var e = TumEkranlarCiz();
+        Assert.Equal(kareler, e.FindAll("a.yz-kare").Select(a => a.GetAttribute("href")).ToArray());
 
-        // Her menü satırı ikon + METİN taşır (renk/ikon tek başına anlam taşımaz).
-        foreach (var a in e.FindAll(".kenar-nav a"))
+        // Her kare ikon + METİN taşır (renk/ikon tek başına anlam taşımaz).
+        foreach (var a in e.FindAll("a.yz-kare"))
         {
-            Assert.Single(a.QuerySelectorAll("svg.ikon"));
-            Assert.False(string.IsNullOrWhiteSpace(a.TextContent.Trim()));
+            var ikon = a.QuerySelectorAll("svg.yz-ik");
+            Assert.Single(ikon);
+            Assert.False(string.IsNullOrEmpty(ikon[0].QuerySelector("path")?.GetAttribute("d")), a.GetAttribute("href"));
+            Assert.False(string.IsNullOrWhiteSpace(a.QuerySelector(".yz-kad")?.TextContent), a.GetAttribute("href"));
         }
+
+        // Üst menü: marka (→ Bugün) · Bugün · Tezgâh · Müşteriler · Kasa · Tüm ekranlar · hesap menüsü
+        // (Kılavuz, Ayarlar). Kur şeridi bağlantısı yalnız kur okununca çıkar (bu fikstürde okunmaz).
+        string[] ust = ["/", "/", "/islemler", "/cariler", "/kasalar", "/ekranlar", "/kilavuz", "/ayarlar"];
+        var m = UstMenuCiz();
+        Assert.Equal(ust, m.FindAll("#yildiz-ust a").Select(a => a.GetAttribute("href")).ToArray());
     }
 
     // ── Yardımcılar ─────────────────────────────────────────────────────────
 
     private sealed class SahteYetkiApi : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage i, CancellationToken t) =>
-            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage i, CancellationToken t)
+        {
+            // TEMA TEMİZLİĞİ 17.10: palet /arama, "Tüm ekranlar" /tercihler/benim, hesap menüsü /subeler
+            // okur — her uca gerçekçi yanıt (bUnit sözleşmesi).
+            var yol = i.RequestUri!.AbsolutePath;
+            var govde = yol.EndsWith("/arama", StringComparison.Ordinal) ? """{"sonuclar":[],"limit":10,"dahaVar":false}"""
+                : yol.Contains("/tercihler/benim", StringComparison.Ordinal) ? """{"tercihler":{},"mesaj":"ok"}"""
+                : yol.EndsWith("/subeler", StringComparison.Ordinal) ? """[{"id":"s1","ad":"Merkez","aktif":true}]"""
+                : """{"moduller":["cari","urun","islem","kasa","banka","fatura","rapor","kullanici","emanet","sayim","uyum","gider","bildirim","siparis","denetim","yetki","isletme","fiyat","kur"]}""";
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
             {
-                Content = new StringContent(
-                    """{"moduller":["cari","urun","islem","kasa","banka","fatura","rapor","kullanici","emanet","sayim","uyum","gider","bildirim","siparis","denetim","yetki","isletme","fiyat","kur"]}""",
-                    System.Text.Encoding.UTF8, "application/json"),
+                Content = new StringContent(govde, System.Text.Encoding.UTF8, "application/json"),
             });
+        }
     }
 
-    private IRenderedComponent<KenarCubugu> KenarCubuguCiz()
+    private bool hazir;
+
+    /// <summary>Kabuk bileşenleri için servisler (bir kez; ilk Render'dan önce).</summary>
+    private void Hazirla()
     {
+        if (hazir) return;
+        hazir = true;
         JSInterop.Mode = JSRuntimeMode.Loose;
+        KayitSecici.BeklemeMs = 0;
         Services.AddScoped<DilServisi>();
         Services.AddScoped(_ => new HttpClient(new SahteYetkiApi()) { BaseAddress = new Uri("http://test.local/") });
         Services.AddScoped<OturumServisi>();
         Services.AddScoped<ApiIstemci>();
         Services.AddScoped<YetkiServisi>();
         Services.AddScoped<ArayuzModuServisi>();
-        // P-36b kapanışı (P-37 artığı): KenarCubugu favori/sıra tercihini bu
-        // servisten okur; Program.cs'te kayıtlıydı, fikstürlerde DEĞİLDİ →
-        // kabuk çizen her test DI hatasıyla kırmızıydı.
         Services.AddScoped<MenuTercihServisi>();
+        Services.AddScoped<CanliKurServisi>();   // YildizUstMenu (kur şeridi yalnız okunur)
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "PATRON", "s1", null, "profesyonel"));
+    }
 
-        var e = Render<KenarCubugu>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
+    /// <summary>Yetkiler yüklü; palet üst bar düğmesiyle açık ve her menü ekranını bulan sorgu yazılı.</summary>
+    private IRenderedComponent<GlobalArama> PaletCiz()
+    {
+        Hazirla();
+        var yetki = Services.GetRequiredService<YetkiServisi>();
+        var e = Render<GlobalArama>();
+        e.InvokeAsync(() => yetki.HazirlaAsync()).GetAwaiter().GetResult();
+        e.Find("#ust-kayit-ara").Click();
+        e.Find("#kabuk-arama-girdi").Input("rapor");
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#kabuk-arama-ekranlar use")));
+        return e;
+    }
+
+    private IRenderedComponent<Kuyumcu.Web.Pages.Ekranlar> TumEkranlarCiz()
+    {
+        Hazirla();
+        return Render<Kuyumcu.Web.Pages.Ekranlar>().KareleriBekle();
+    }
+
+    private IRenderedComponent<Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu> UstMenuCiz()
+    {
+        Hazirla();
+        var e = Render<Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu>();
+        e.WaitForAssertion(() => Assert.Equal(5, e.FindAll("#yildiz-menu a.yildiz-menu-oge").Count));
         return e;
     }
 

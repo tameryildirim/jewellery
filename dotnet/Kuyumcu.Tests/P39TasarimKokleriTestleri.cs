@@ -286,12 +286,12 @@ public sealed class P39TasarimKokleriTestleri : BunitContext
         Assert.True(i > 0);
         var blok = css[i..(css.IndexOf("/* ── K5", i, StringComparison.Ordinal))];
 
-        // Ölçülen beş kabuk düğmesi (Çıkış · Menüyü aç · ⟳ · Basit · Profesyonel)
-        // HER ekranda tekrar ediyordu; hepsi tek blokta kapanır.
+        // Ölçülen kabuk düğmeleri (Menüyü aç · ⟳ · Basit · Profesyonel) HER ekranda tekrar ediyordu; hepsi tek
+        // blokta kapanır. Tema temizliği (17.10): kenar çubuğunun alt düğmeleri (Çıkış) kabukla kalktı.
         Assert.Contains(".kabuk-menu-dugme", blok);
         Assert.Contains(".kur-guncelle-btn", blok);
         Assert.Contains(".mod-anahtar button", blok);
-        Assert.Contains(".kenar-alt-butonlar button", blok);
+        Assert.DoesNotContain(".kenar-alt-butonlar", blok);
         Assert.Contains("min-width: var(--dokunma-hedefi)", blok);
     }
 

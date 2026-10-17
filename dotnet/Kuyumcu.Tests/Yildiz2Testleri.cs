@@ -208,7 +208,7 @@ public sealed class Yildiz2Testleri : BunitContext
         var g = Services.GetRequiredService<GorunumServisi>();
         g.YukleAsync().GetAwaiter().GetResult();
         var e = Render<Ekranlar>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(sema == "yildiz" ? "a.yz-kare" : "a.ekran-karo")));   // YILDIZ-4B: Yıldız'da tuval Tum4 karesi
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("a.yz-kare")));   // YILDIZ-4B: tuval Tum4 karesi (tema temizliği 17.10: tek yüz)
         return e;
     }
 
@@ -243,30 +243,31 @@ public sealed class Yildiz2Testleri : BunitContext
     }
 
     [Fact]
-    public void Y2_22_baska_semada_karo_markup_AYNEN_eski_kalir()
+    public void Y2_22_sunucu_eski_sema_dese_de_Yildiz_karesi_eski_karo_markup_YOK()
     {
+        // Tema temizliği (17.10): eski koyu şeritli karo sayfası silindi. Sunucu (eski veri) "platin" dönse bile
+        // istemci tek şemaya çözer ve sayfa Yıldız karesini çizer.
         sema = "platin";
         var e = Karolar();
-        Assert.Empty(e.FindAll(".ekran-karo-aciklama"));
-        Assert.Empty(e.FindAll("#ekranlar-yildiz-ozet"));
-        Assert.Empty(e.FindAll(".ekranlar-grup-sayi"));
-        Assert.Equal(5, e.FindAll("a.ekran-karo .ikon").Count);   // yalnız Günlük iş ikonlu
+        Assert.Equal("yildiz", Services.GetRequiredService<GorunumServisi>().Sema);
+        Assert.Empty(e.FindAll("a.ekran-karo, #ekranlar-ust, .ekranlar-grup-sayi, #ekranlar-panele-don"));
+        Assert.Equal(41, e.FindAll("a.yz-kare").Count);
     }
 
     // ── Kabuk kaynağı: şema koşullu, varsayılan yol AYNEN ──────────────────
 
     [Fact]
-    public void Y2_30_AnaYerlesim_Yildiz_dali_ayrik_varsayilan_KenarCubugu_yolu_durur()
+    public void Y2_30_AnaYerlesim_tek_kabuk_YildizUstMenu_KenarCubugu_YOK()
     {
+        // Tema temizliği (17.10): şema koşullu iki kabuk yerine TEK kabuk; kenar çubuğu ve /ekranlar'ın
+        // tam ekran dalı kaldırıldı ("Tüm ekranlar" üst menünün altında çizilir).
         var s = File.ReadAllText(Path.Combine(CssKaynak.Kok(), "Kuyumcu.Web", "Layout", "AnaYerlesim.razor"));
-        Assert.Contains("else if (YildizMi)", s);
         Assert.Contains("<YildizUstMenu />", s);
-        Assert.Contains("<KenarCubugu BildirimSayisi=\"bildirimSayisi\" />", s);
-        Assert.Contains("else if (TamEkranda && !YildizMi)", s);
-        // Yıldız dalında kenar çubuğu çizilmez
-        var dal = s[s.IndexOf("else if (YildizMi)", StringComparison.Ordinal)..];
-        dal = dal[..dal.IndexOf("else\n{", StringComparison.Ordinal)];
-        Assert.DoesNotContain("<KenarCubugu", dal);
+        Assert.DoesNotContain("<KenarCubugu", s);
+        Assert.DoesNotContain("YildizMi", s);
+        Assert.DoesNotContain("TamEkranda", s);
+        Assert.Contains("yildiz-tum-ekranlar", s);
+        Assert.DoesNotContain("public static bool Mi(", File.ReadAllText(Path.Combine(CssKaynak.Kok(), "Kuyumcu.Web", "Layout", "YildizKabuk.cs")));
     }
 
     // ── CSS sözleşmesi ─────────────────────────────────────────────────────

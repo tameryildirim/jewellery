@@ -1,7 +1,8 @@
 using System.Net;
 using Bunit;
 using Kuyumcu.Web.Bilesenler;
-using Kuyumcu.Web.Layout;
+using Kuyumcu.Web.Bilesenler.Kabuk;
+using Kuyumcu.Web.Pages;
 using Kuyumcu.Web.Servisler;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -71,15 +72,33 @@ public sealed class P37RevizyonTestleri : BunitContext
         Services.AddScoped<YetkiServisi>();
         Services.AddScoped<ArayuzModuServisi>();
         Services.AddScoped<MenuTercihServisi>();
+        Services.AddScoped<CanliKurServisi>();   // YildizUstMenu (kur şeridi yalnız okunur)
         KabukServisi.Ortak.GorunumSubesiYerelAta(null);
     }
 
-    private IRenderedComponent<KenarCubugu> Menu(string rol = "SAHIP")
-    {
+    // TEMA TEMİZLİĞİ 17.10: kenar çubuğu kaldırıldı. Menü artık üst menüdür (YildizUstMenu);
+    // menüdeki ekran araması üst barın Ctrl/Cmd+K paletine (GlobalArama) ve "Tüm ekranlar"
+    // sayfasına (Ekranlar) taşındı. Aşağıdaki menü testleri bu üç yüzeyde sınanır.
+    private void OturumAc(string rol = "SAHIP") =>
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", rol, "s1", null,
                                 ArayuzModuServisi.Profesyonel));
-        return Render<KenarCubugu>();
+
+    private IRenderedComponent<YildizUstMenu> Menu(string rol = "SAHIP")
+    {
+        OturumAc(rol);
+        var e = Render<YildizUstMenu>();
+        e.WaitForAssertion(() => Assert.True(e.FindAll("#yildiz-menu a.yildiz-menu-oge").Count > 2));
+        return e;
+    }
+
+    /// <summary>Paleti üst bar düğmesiyle açar (gerçek kullanıcı yolu).</summary>
+    private IRenderedComponent<GlobalArama> Palet()
+    {
+        OturumAc();
+        var e = Render<GlobalArama>();
+        e.Find("#ust-kayit-ara").Click();
+        return e;
     }
 
     // ── (1) DROPDOWN'DA ARAMA HER ZAMAN VAR ─────────────────────────────────
@@ -138,116 +157,77 @@ public sealed class P37RevizyonTestleri : BunitContext
     [Fact]
     public void Menude_gorunur_ok_dugmesi_SIFIRDIR()
     {
-        // ÖNCE: 40 satır × 2 = 80 görünür ↑/↓ düğmesi.
+        // ÖNCE: 40 satır × 2 = 80 görünür ↑/↓ düğmesi. TEMA TEMİZLİĞİ 17.10: menü = üst menü
+        // (YildizUstMenu #yildiz-menu); içinde yalnız ekran bağlantıları durur, ok düğmesi yok.
         var e = Menu();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
+        var menu = e.Find("#yildiz-menu");
 
-        Assert.Empty(e.FindAll(".kenar-tasi"));
+        Assert.Empty(menu.QuerySelectorAll("button"));
+        Assert.Equal(menu.QuerySelectorAll("a").Length, menu.QuerySelectorAll("a.yildiz-menu-oge").Length);
         Assert.Empty(e.FindAll("[id^=kenar-yukari-]"));
         Assert.Empty(e.FindAll("[id^=kenar-asagi-]"));
-        Assert.DoesNotContain("↑", e.Find("#kenar-nav").TextContent, StringComparison.Ordinal);
-        Assert.DoesNotContain("↓", e.Find("#kenar-nav").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("↑", menu.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("↓", menu.TextContent, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Suruklenebilir_her_satir_KLAVYE_yolu_tasir_tutamac_ve_yildiz_GORUNMEZ()
-    {
-        // Ok düğmeleri kalktı ama erişilebilirlik KALKMADI: satır odaklanabilir
-        // ve Alt+↑/↓ sıralamayı hâlâ değiştirir.
-        // S1-g YENİDEN YAZIM — ESKİ: Suruklenebilir_her_satirda_tutamac_ve_KLAVYE_yolu_vardir
-        // (her satırda '⠿' .kenar-tutamac beklenirdi). YENİ: kurucunun tuvalinde
-        // (Panel.dc.html, Profesyonel.dc.html) menü satırında tutamaç ve yıldız
-        // YOKTUR; canlı ölçümde 38 + 38 görünüyordu. Sıralama ÖZELLİĞİ duruyor:
-        // satırın kendisi sürüklenir (data-sira-anahtar) + Alt+↑/↓.
-        var e = Menu();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
-
-        var satirlar = e.FindAll(".kenar-satir[data-sira-anahtar]");
-        Assert.NotEmpty(satirlar);
-        Assert.All(satirlar, s =>
-        {
-            Assert.Equal("0", s.GetAttribute("tabindex"));
-            Assert.False(string.IsNullOrEmpty(s.GetAttribute("data-sira-anahtar")));
-            Assert.Null(s.QuerySelector(".kenar-tutamac"));
-            Assert.Null(s.QuerySelector(".kenar-yildiz"));
-        });
-        Assert.DoesNotContain("⠿", e.Find("#kenar-nav").TextContent, StringComparison.Ordinal);
-    }
+    // TEMA TEMİZLİĞİ 17.10: Suruklenebilir_her_satir_KLAVYE_yolu_tasir_tutamac_ve_yildiz_GORUNMEZ kaldırıldı — menü sıralama (sürükle-bırak + Alt+↑/↓, data-sira-anahtar) kenar çubuğuyla birlikte kaldırıldı; üst menü tuvalin sabit beş sözcüğüdür (Yildiz2Testleri.Y2_01/Y2_10). Tutamaç ve yıldız da yok (yukarıdaki test: menüde düğme 0).
 
     // ── (4) MENÜDE KALICI PARAGRAF YOK ──────────────────────────────────────
 
     [Fact]
     public void Menude_kalici_paragraf_SIFIRDIR()
     {
-        // ÖNCE: menünün tepesinde "Yıldıza bastığın ekranlar…" 3 satırlık
-        // paragraf + altta kapsam kilidi paragrafı duruyordu.
+        // ÖNCE: menünün tepesinde "Yıldıza bastığın ekranlar…" 3 satırlık paragraf + altta kapsam
+        // kilidi paragrafı duruyordu. TEMA TEMİZLİĞİ 17.10: Yıldız üst menüsünde (hesap menüsü dahil)
+        // kalıcı paragraf yoktur; "Sırayı sıfırla" düğmesi de yoktur (menü sırası kaldırıldı).
         var e = Menu();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
 
-        Assert.Empty(e.FindAll("#kenar-nav p"));
+        Assert.NotEmpty(e.FindAll("#yildiz-ust a.yildiz-menu-oge"));   // menü çizildi (boş DOM'da yanlış yeşil yok)
+        Assert.Empty(e.FindAll("#yildiz-ust p"));
         Assert.Empty(e.FindAll(".kenar-grup-ipucu"));
-        // S1-g: "Sırayı sıfırla" yalnız KAYITLI sıra varken çizilir (tuvalde
-        // menüde düğme yok; silinecek şey yokken düğme etkisizdir). Kayıtlı sıra
-        // yokken düğme de yoktur; kural açıklaması düğmeyle birlikte gelir.
         Assert.Empty(e.FindAll("#kenar-sira-sifirla"));
     }
 
-    // ── (3) MENÜ ARAMASI YENİDEN TASARLANDI ─────────────────────────────────
+    // ── (3) EKRAN ARAMASI ───────────────────────────────────────────────────
 
-    // ⚠ S1-j (kurucu 24.09 14:40): kutu artık YALNIZ menüyü süzer; kimliği
-    //   #menu-arama-girdi. Kayıt araması (#kabuk-arama-girdi) üst bar paletine
-    //   taşındı (KabukAramaEkranTestleri). Kısayol rozeti menü kutusundan kalktı:
-    //   Ctrl+K artık KAYIT paletini açar, menü kutusunda göstermek yanıltırdı.
+    // ⚠ S1-j: kayıt araması (#kabuk-arama-girdi) üst bar paletindedir (KabukAramaEkranTestleri).
+    // TEMA TEMİZLİĞİ 17.10: menü kutusu (#menu-arama-girdi) kenar çubuğuyla kaldırıldı; paletin
+    // EKRANLAR bölümü aynı eşleşme kuralıyla ekran arar (S1jMenuAramaTestleri).
 
     [Fact]
-    public void Menu_aramasi_TEK_PARCA_alandir_ve_ikon_tasir()
+    public void Palet_aramasi_TEK_PARCA_alandir_ve_ikon_tasir()
     {
-        var e = Menu();
-        var satir = e.Find("#menu-arama .menu-arama-satir");
+        // ESKİ: Menu_aramasi_TEK_PARCA_alandir_ve_ikon_tasir (menü kutusu). Kutu tek satırdır:
+        // ikon + girdi aynı kapta, ayrı bir "Ara" düğmesi yok.
+        var e = Palet();
+        var satir = e.Find("#kabuk-arama-palet .menu-arama-satir");
 
         Assert.NotNull(satir.QuerySelector(".menu-arama-ikon"));
-        Assert.NotNull(satir.QuerySelector("#menu-arama-girdi"));
-        // Kayıt araması menü kutusunda DEĞİL (S1-j).
-        Assert.Null(satir.QuerySelector("#kabuk-arama-girdi"));
-        // T-K2 (tuval Panel.dc.html): yer tutucu "Ekran ara" — kayıt ifadesi YOK.
-        Assert.Equal("Ekran ara", e.Find("#menu-arama-girdi").GetAttribute("placeholder"));
+        Assert.NotNull(satir.QuerySelector("#kabuk-arama-girdi"));
+        Assert.Equal("search", e.Find("#kabuk-arama-girdi").GetAttribute("type"));
+        Assert.Empty(satir.QuerySelectorAll("button"));   // yazılmadan temizle düğmesi de yok
     }
 
     [Fact]
-    public void Menu_aramasinda_yazinca_TEMIZLE_dugmesi_cikar_ve_calisir()
+    public void Palet_aramasinda_yazinca_TEMIZLE_dugmesi_cikar_ve_calisir()
     {
-        var e = Menu();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
-        Assert.Empty(e.FindAll("#menu-arama-temizle"));
+        // ESKİ: Menu_aramasinda_yazinca_TEMIZLE_dugmesi_cikar_ve_calisir (menü kutusu).
+        var e = Palet();
+        Assert.Empty(e.FindAll("#kabuk-arama-temizle"));
 
-        e.Find("#menu-arama-girdi").Input("kasa");
-        // Değerin çizilmesi beklenir (statik KabukServisi olayı paralel sınıflardan
-        // yeniden çizim tetikleyebilir — tam süitte ölçülen kararsızlık).
-        var temizle = e.WaitForElement("#menu-arama-temizle");   // DoD EK md.1: gerçek iş yapar
-        Assert.NotEmpty(e.FindAll(".kenar-satir[hidden]"));
+        e.Find("#kabuk-arama-girdi").Input("kasa");
+        var temizle = e.WaitForElement("#kabuk-arama-temizle");   // DoD EK md.1: gerçek iş yapar
+        Assert.NotEmpty(e.FindAll("#kabuk-arama-paneli"));
 
         temizle.Click();
 
-        Assert.Empty(e.FindAll("#menu-arama-temizle"));
-        Assert.Equal("", e.Find("#menu-arama-girdi").GetAttribute("value") ?? "");
-    }
-
-    [Fact]
-    public void Menu_aramasi_menunun_DISINDA_pencere_ACMAZ()
-    {
-        // S1-j: sonuç menünün İÇİNDE süzülür; kutunun altında/üstünde ayrı
-        // sonuç paneli, "KAYITLAR" bölümü ve "En çok 10 kayıt" notu YOKTUR.
-        var e = Menu();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
-        e.Find("#menu-arama-girdi").Input("sat");
-        e.WaitForElement("#menu-arama-temizle");
-
+        Assert.Empty(e.FindAll("#kabuk-arama-temizle"));
         Assert.Empty(e.FindAll("#kabuk-arama-paneli"));
-        Assert.Empty(e.FindAll(".kabuk-arama-paneli"));
-        Assert.Empty(e.FindAll("#kabuk-arama-kayitlar"));
-        Assert.DoesNotContain("En çok", e.Markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("Kayıtlar", e.Markup, StringComparison.Ordinal);
+        Assert.Equal("", e.Find("#kabuk-arama-girdi").GetAttribute("value") ?? "");
+        Assert.NotNull(e.Find("#kabuk-arama-palet"));   // × yalnız metni siler, palet açık kalır
     }
+
+    // TEMA TEMİZLİĞİ 17.10: Menu_aramasi_menunun_DISINDA_pencere_ACMAZ kaldırıldı — sınadığı menü içi kutu kenar çubuğuyla kaldırıldı; ekran araması artık bilerek perdeli komut paletinde (KabukAramaEkranTestleri.K1_Palet_BAGLI_DEGIL_perdeli_komut_paleti_aria_modal) ve "Tüm ekranlar" sayfasında sayfa içinde süzülür (S1dEkranlarTestleri.Arama_TURKCE_KATLAR_sayim_Sayim_i_bulur).
 
     // ── YETKİ HATASI: MENÜ BOŞALMAZ (sessiz yutma kaldırıldı) ───────────────
 
@@ -255,21 +235,23 @@ public sealed class P37RevizyonTestleri : BunitContext
     public async Task Yetki_istegi_hata_verince_menu_BOSALMAZ_ve_bant_cikar()
     {
         // ÖLÇÜLEN KÖK SEBEP (21 Eylül): YetkiServisi.cs:30 `catch { moduller = []; }`
-        // → menü 36 bağlantıdan 1'e düşüyor, komut paleti hiçbir ekran bulamıyor
-        // ve TEK BİR UYARI bile çıkmıyordu.
-        // ⚠ DOĞRULAMA BULGUSU (21 Eylül): bu test ÖNCE hatayı İLK yüklemede
-        //   üretiyordu; "son bilinen liste" hiç dolmadığı için mutasyon
-        //   (catch'e `moduller = [];` geri konması) testi KIRMIYORDU. Artık
-        //   senaryo gerçeğe uygun: önce 200 ile menü DOLAR, sonra tazelemede
-        //   500 döner ve bağlantı sayısının DÜŞMEDİĞİ ölçülür.
+        // → menü 36 bağlantıdan 1'e düşüyordu ve TEK BİR UYARI bile çıkmıyordu.
+        // Senaryo: önce 200 ile menü DOLAR, sonra tazelemede 500 döner ve bağlantı sayısının
+        // DÜŞMEDİĞİ ölçülür. TEMA TEMİZLİĞİ 17.10: menünün bütünü = "Tüm ekranlar" sayfası
+        // (kenar çubuğu kaldırıldı); bant ve "yeniden dene" o sayfadadır. Üst menünün beş
+        // sözcüğü de AYNI son bilinen listeden süzülür (aşağıda ayrıca ölçülür).
         yetkiKodu = HttpStatusCode.OK;
-        var e = Menu("YONETICI");   // SAHIP DEĞİL: modül süzgeci gerçekten işlesin
+        OturumAc("YONETICI");   // SAHIP DEĞİL: modül süzgeci gerçekten işlesin
         var oturum = Services.GetRequiredService<OturumServisi>();
         var yetki = Services.GetRequiredService<YetkiServisi>();
+        var e = Render<Ekranlar>();
+        var ust = Render<YildizUstMenu>();
 
         e.WaitForAssertion(() => Assert.True(yetki.Yuklendi, "ilk yükleme 200 ile dolmalı"));
-        var doluSayi = e.FindAll(".kenar-nav a").Count;
-        Assert.True(doluSayi > 1, $"ön koşul: menü dolmalı (ölçülen {doluSayi})");
+        e.WaitForAssertion(() => Assert.True(e.FindAll("a.yz-kare").Count > 1));
+        var doluSayi = e.FindAll("a.yz-kare").Count;
+        var ustDolu = ust.FindAll("#yildiz-menu a.yildiz-menu-oge").Count;
+        Assert.True(ustDolu > 2, $"ön koşul: üst menü modül sözcüklerini taşımalı (ölçülen {ustDolu})");
 
         // Tazeleme: aynı oturum, BAŞKA kullanıcı → yetkiler yeniden çekilir ve 500 döner.
         yetkiKodu = HttpStatusCode.InternalServerError;
@@ -277,12 +259,14 @@ public sealed class P37RevizyonTestleri : BunitContext
             "YONETICI", "s1", null, ArayuzModuServisi.Profesyonel));
         await e.InvokeAsync(() => yetki.HazirlaAsync());
 
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#kenar-yetki-hatasi")));
-        Assert.NotNull(e.Find("#kenar-yetki-yeniden"));           // gerçek istek atan düğme
-        var hataSayi = e.FindAll(".kenar-nav a").Count;
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#ekranlar-yetki-hatasi")));
+        Assert.NotNull(e.Find("#ekranlar-yetki-yeniden"));           // gerçek istek atan düğme
+        var hataSayi = e.FindAll("a.yz-kare").Count;
         Assert.True(hataSayi >= doluSayi,
             $"yetki hatasında menü BOŞALMAMALI — son bilinen liste ayakta kalır " +
             $"(önce {doluSayi}, hatadan sonra {hataSayi})");
+        Assert.True(ust.FindAll("#yildiz-menu a.yildiz-menu-oge").Count >= ustDolu,
+            "yetki hatasında üst menü sözcükleri de düşmemeli");
     }
 
     [Fact]

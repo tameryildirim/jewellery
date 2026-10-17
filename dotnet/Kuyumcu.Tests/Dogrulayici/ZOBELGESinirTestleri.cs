@@ -152,7 +152,7 @@ public sealed class ZOBELGESinirTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.KasaRaporu> SayimAc()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-sayim-ks1");
         c.Find("#kr-sayim-ks1").Click();
         c.WaitForElement("#kr-sayim-tutar");
@@ -258,7 +258,7 @@ public sealed class ZOBELGESinirTestleri : BunitContext
     private string KasaBakiye(string bakiye, string fark = "null", string durum = "ACIK")
     {
         kasaDefteriOzel = KasaTek(bakiye, fark, durum);
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-bakiye-ks1");
         return c.Find("#kr-bakiye-ks1").TextContent.Trim().Replace('\u00a0', ' ');
     }
@@ -283,7 +283,7 @@ public sealed class ZOBELGESinirTestleri : BunitContext
     public void ZOBS18_kasa_ozet_eksi_sayim_farki_kirmizi_rozet_isaretli()
     {
         kasaDefteriOzel = KasaTek("1200", "-0.5", "KAPALI");
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-bugun-ks1");
         var e = c.Find("#kr-bugun-ks1");
         Assert.Contains("\u22120,50 ₺", e.TextContent.Replace('\u00a0', ' '));
@@ -294,7 +294,7 @@ public sealed class ZOBELGESinirTestleri : BunitContext
     public void ZOBS19_kasa_ozet_sifir_fark_kirmizi_DEGIL()
     {
         kasaDefteriOzel = KasaTek("1200", "0", "KAPALI");
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-bugun-ks1");
         Assert.DoesNotContain("rozet-kirmizi", c.Find("#kr-bugun-ks1").ParentElement!.ClassList);
     }
@@ -792,7 +792,7 @@ public sealed class ZOBELGESinirTestleriTur4 : BunitContext
 
     private string EvrakOzet(string id)
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#" + id);
         return c.Find("#" + id).TextContent.Replace("\u00A0", " ").Replace("\u202F", " ");
     }

@@ -17,9 +17,7 @@
    çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
 @* YILDIZ-5A tur 2 (tasarım hakemi KRİTİK): "Barkod okut" ve "Sayım başlat" eski ekrana GEÇMEZ — alanlar aşağıda
    Yıldız kalıbında (aynı kimlik, aynı FormDurumu, aynı Say/Ac/Kapat yolu); özgün ekran yalnız "+ … ürün daha / Tüm ayrıntılar". *@
-@if (YildizMi)
-{
-    if (YildizBaslatFormu && yeni is { } yy)
+@if (YildizBaslatFormu && yeni is { } yy)
     {
         <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizBaslatBaglami">
             <Metin ElemanId="sy-ad" Etiket="@Dil.T.Sayim.Ad" Zorunlu="true" EnFazla="@AlanSinirlari.SayimAdi"
@@ -67,7 +65,6 @@
             }
         </Kuyumcu.Web.Bilesenler.Yildiz.YildizSayim>
     }
-}
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     <SayfaBasi Anahtar="sayim" Baslik="@Dil.T.Sayim.Baslik" Aciklama="@Dil.T.Sayim.SayfaAciklama">

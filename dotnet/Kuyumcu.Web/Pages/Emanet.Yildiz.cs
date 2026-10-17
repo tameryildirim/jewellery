@@ -13,7 +13,7 @@ namespace Kuyumcu.Web.Pages;
 // Yalnız GÖRÜNÜM + OKUMA: liste, müşterilerin emanet satırlarından kurulur (GET /cari ve
 // GET /emanet/{id} — ekranın ve Bugün'ün kullandığı MEVCUT uçlar; yeni uç YOK). Emanet alma,
 // iade ve geri alma Emanet.razor'un MEVCUT çekmeceleri/yollarıdır (davranış değişmez).
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// <summary>GET /cari satırının Yıldız listesinin okuduğu üç alanı (yanıtta ZATEN var).</summary>
@@ -33,11 +33,10 @@ public partial class Emanet
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
     /// <summary>Etkin şema Yıldız mı (kabukla AYNI karar noktası)?</summary>
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
 
     /// <summary>Yıldız'da özgün ekran yalnız "ayrıntı" görünümünde çizilir (liste = tuval).</summary>
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "emanet" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "emanet";
 
     /// <summary>Listede okunacak en çok müşteri (her biri GET /emanet/{id}; Bugün'le aynı sınır).</summary>
     public const int YildizOkumaSiniri = YildizBugunBicim.EmanetOkumaSiniri;
@@ -53,7 +52,7 @@ public partial class Emanet
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizYuklendi || yildizYukleniyor) return;
+        if (yildizYuklendi || yildizYukleniyor) return;
         await YildizYukle();
         StateHasChanged();
     }

@@ -663,8 +663,7 @@ public sealed class Toplu1CariTestleri : BunitContext
                 EtkinArayuzModu: basit ? "BASIT" : "PROFESYONEL"));
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => basit);
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#c-detay-c1");
-        e.Find("#c-detay-c1").Click();
+        e.KartEylemi("c1", "detay");   // TEMA TEMİZLİĞİ 17.10: satıra dokun → kart → Detay
         e.WaitForElement("#cari-detay-hareketler");
         return e;
     }
@@ -792,7 +791,7 @@ public sealed class Toplu1VezneGiderTestleri : BunitContext
     public void Vezne_BASIT_notlar_ve_aciklama_katli_PRO_acik()
     {
         Oturum(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-yeni-ac").Click();
         e.WaitForElement("#vz-form");
         Assert.False(e.Find("#vz-f-tur-ipucu").HasAttribute("open"));
@@ -805,7 +804,7 @@ public sealed class Toplu1VezneGiderTestleri : BunitContext
     public void Vezne_PRO_notlar_ve_aciklama_acik()
     {
         Oturum(basit: false);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-yeni-ac").Click();
         e.WaitForElement("#vz-form");
         Assert.Empty(e.FindAll("#vz-f-tur-ipucu"));
@@ -818,7 +817,7 @@ public sealed class Toplu1VezneGiderTestleri : BunitContext
     public void Vezne_birim_fiyat_binlikli_toplam_belirgin_ve_govde_dogru()
     {
         Oturum(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.Find("#vz-yeni-ac").Click();
         e.WaitForElement("#vz-form");
         SeciciYardim.Sec(e, "vz-f-urun-0", "u-1");
@@ -842,7 +841,7 @@ public sealed class Toplu1VezneGiderTestleri : BunitContext
     public void Gider_tek_kategori_secici_gizli_otomatik_gonderilir()
     {
         Oturum(basit: false);
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-kategori-sabit");
         Assert.Empty(e.FindAll("#gd-kategori"));
         Assert.Equal("gk1", e.Find("#gd-kategori-sabit").GetAttribute("data-deger"));
@@ -860,7 +859,7 @@ public sealed class Toplu1VezneGiderTestleri : BunitContext
     {
         kategoriler = """{"kategoriler":[{"id":"gk1","ad":"Kira","aciklama":null,"aktif":true,"giderAdedi":0,"giderToplamTl":0},{"id":"gk2","ad":"Elektrik","aciklama":null,"aktif":true,"giderAdedi":0,"giderToplamTl":0}],"toplam":2}""";
         Oturum(basit: false);
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-kategori");
         Assert.Empty(e.FindAll("#gd-kategori-sabit"));
     }

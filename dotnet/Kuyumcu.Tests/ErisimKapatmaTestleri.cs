@@ -171,7 +171,7 @@ public sealed class KasaKapatmaTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kasalar> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         istekler.Clear();
         return e;
     }
@@ -257,7 +257,7 @@ public sealed class GunKapanisiEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Kasalar> Ac()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.Find("#kasa-gun-kapat-k1").Click();
         istekler.Clear();
         return e;
@@ -269,7 +269,7 @@ public sealed class GunKapanisiEkranTestleri : BunitContext
     [Fact]
     public void Her_aktif_kasada_GUN_KAPAT_dugmesi_vardir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         Assert.Single(e.FindAll("#kasa-gun-kapat-k1"));
     }
 

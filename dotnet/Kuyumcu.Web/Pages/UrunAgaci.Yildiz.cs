@@ -19,15 +19,14 @@ public sealed record YildizAgacToplam(int Urun, decimal Adet, decimal Has);
 // Adet · Has" sütunları MEVCUT salt-okuma uçlarından toplanır (GET /urunler + GET
 // /urunler/stok-adetleri — Ürünler ekranının kullandığı uçlar). Satır = MEVCUT grup çekmecesi;
 // "Yeni grup" = MEVCUT oluşturma çekmecesi. Reyonlar ve pasif/aktif "Tüm ayrıntılar"da.
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class UrunAgaci
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "agac" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "agac";
 
     /// <summary>Toplam için okunan en çok ürün (stok-adetleri ucunun tek istek sınırı, UrunStokOzetController.EnFazlaKimlik).</summary>
     public const int YildizUrunSiniri = 500;
@@ -45,7 +44,7 @@ public partial class UrunAgaci
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizYuklendi || yildizYukleniyor) return;
+        if (yildizYuklendi || yildizYukleniyor) return;
         await YildizYukle();
         StateHasChanged();
     }

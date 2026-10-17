@@ -841,15 +841,14 @@ Assert.Contains("min-width: 769px", adB.AtKural, StringComparison.Ordinal);
     [Fact]
     public void OL25_v12_ayarlar_secim_kartlari_secilince_buyumez()
     {
-        // Son doğrulama 28.09 gece (DÜŞÜK ×2): #gk-mod-* seçiliyken 68 ↔ 66 px (2 px ↔ 1 px kenarlık);
-        // #gk-sema-* seçili satırda 118 ↔ 114 px (3 px ↔ 1 px). Kenarlık her durumda 1 px, seçili
-        // kalınlık içe gölgeyle (boya katkısı yok).
+        // Son doğrulama 28.09 gece (DÜŞÜK ×2): #gk-mod-* seçiliyken 68 ↔ 66 px (2 px ↔ 1 px kenarlık).
+        // Kenarlık her durumda 1 px, seçili kalınlık içe gölgeyle (boya katkısı yok).
+        // Tema temizliği (17.10): şema karoları (#gk-sema-*) ve ızgarası kalktı; kuralları da silindi.
         var b = CssKaynak.Bildirimler(OlcekCss());
         var app = CssKaynak.Bildirimler(CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "css", "app.css"));
         foreach (var (kart, secili, golge, appSecili) in new[]
         {
             ("html[data-mod] .gk .gk-secenek", "html[data-mod] .gk .gk-secenek.secili", "inset 0 0 0 1px var(--vurgu)", ".gk-secenek.secili"),
-            ("html[data-mod] .gk .gk-sema", "html[data-mod] .gk .gk-sema.secili", "inset 0 0 0 2px var(--vurgu)", ".gk-sema.secili"),
         })
         {
             Assert.Equal("1px", SonDeger(b, kart, "border-width"));
@@ -861,8 +860,7 @@ Assert.Contains("min-width: 769px", adB.AtKural, StringComparison.Ordinal);
             Assert.Contains(app, x => x.Secici.Trim() == appSecili && x.Ozellik == "border");
             Assert.True(Ozgulluk(kart).CompareTo(Ozgulluk(appSecili)) > 0);
         }
-        // Tema ızgarası: seçili kartın rozet sarması satırı uzatmasın — tüm satırlar eşit boy.
-        Assert.Equal("1fr", SonDeger(b, "html[data-mod] .gk .gk-sema-izgara", "grid-auto-rows"));
+        Assert.DoesNotContain(b, x => x.Secici.Contains(".gk-sema", StringComparison.Ordinal) && !x.Secici.Contains(".gk-sema-alt", StringComparison.Ordinal));
     }
 
     // CSS özgüllüğü (id, sınıf/öznitelik/sözde-sınıf, öğe) — :where() 0 sayılır.

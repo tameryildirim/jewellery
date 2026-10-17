@@ -32,21 +32,17 @@ namespace Kuyumcu.Tests;
 /// <summary>Saf testler — veritabanı/HTTP gerekmez, liste ve göç haritası.</summary>
 public sealed class B1GorunumSecenekleriTestleri
 {
-    // ── B1-1) SEKİZ şema, ÜÇ punto, ÜÇ tema modu ────────────────────────────
+    // ── B1-1) TEK şema (tema temizliği 17.10), ÜÇ punto, ÜÇ tema modu ───────
     [Fact]
-    public void B1_1_Listeler_8_3_3_ve_varsayilanlar_dogrudur()
+    public void B1_1_Listeler_1_3_3_ve_varsayilanlar_dogrudur()
     {
-        Assert.Equal(9, GorunumSecenekleri.Semalar.Length);   // YILDIZ-1: 8 + "yildiz"
+        // Kurucu 17.10: "tema sadece Yıldız, karanlık ve açık mod kalacak".
+        Assert.Equal(["yildiz"], GorunumSecenekleri.Semalar);
         Assert.Equal(3, GorunumSecenekleri.Olcekler.Length);
         Assert.Equal(3, GorunumSecenekleri.TemaModlari.Length);
-
-        // TEMA-SISTEMI § 4'teki 8 slug — sıra ekrandaki sıradır.
-        Assert.Equal(
-            ["platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi", "yildiz"],
-            GorunumSecenekleri.Semalar);
         Assert.Equal(["16", "18", "20"], GorunumSecenekleri.Olcekler);
 
-        Assert.Equal("platin", GorunumSecenekleri.SemaVarsayilan);
+        Assert.Equal("yildiz", GorunumSecenekleri.SemaVarsayilan);
         Assert.Equal("18", GorunumSecenekleri.OlcekVarsayilan);
         Assert.Equal("sistem", GorunumSecenekleri.TemaModuVarsayilan);
 
@@ -57,12 +53,14 @@ public sealed class B1GorunumSecenekleriTestleri
 
     // ── B1-2) ESKİ DEĞER ÖLMEZ — göç haritası ───────────────────────────────
     [Fact]
-    public void B1_2_Eski_kodlar_yeni_slug_a_gocer()
+    public void B1_2_Eski_kodlar_yildiza_gocer()
     {
-        Assert.Equal("platin", GorunumSecenekleri.SemaNormalle("altin"));
-        Assert.Equal("platin", GorunumSecenekleri.SemaNormalle("kurumsal"));
-        Assert.Equal("platin", GorunumSecenekleri.SemaNormalle("platin-mavi"));
-        Assert.Equal("zumrut", GorunumSecenekleri.SemaNormalle("zumrut"));
+        // Tema temizliği (17.10): kaldırılan 8 şema + 3 eski kod → "yildiz" (migration TemaYildizTek ile AYNI liste).
+        foreach (var eski in new[] { "platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi",
+                                     "altin", "kurumsal", "platin-mavi" })
+            Assert.Equal("yildiz", GorunumSecenekleri.SemaNormalle(eski));
+        Assert.Equal("yildiz", GorunumSecenekleri.SemaNormalle("yildiz"));
+        Assert.Equal(11, GorunumSecenekleri.EskiSemalar.Count);
 
         Assert.Equal("16", GorunumSecenekleri.OlcekNormalle("yogun"));
         Assert.Equal("20", GorunumSecenekleri.OlcekNormalle("okunakli"));
@@ -189,7 +187,7 @@ public sealed class B1KullaniciGorunumHttpTestleri(HttpFikstur f)
         Assert.Equal(System.Text.Json.JsonValueKind.Null, g.GetProperty("ozelSema").ValueKind);
 
         // Seçenek listeleri SUNUCUDAN gelir — istemci kendi listesini uydurmaz.
-        Assert.Equal(9, g.GetProperty("semalar").GetArrayLength());   // YILDIZ-1: 8 + "yildiz"
+        Assert.Equal(1, g.GetProperty("semalar").GetArrayLength());   // tema temizliği 17.10: yalnız "yildiz"
         Assert.Equal(3, g.GetProperty("temaModlari").GetArrayLength());
         Assert.Equal(3, g.GetProperty("yaziBoyutlari").GetArrayLength());
     }
@@ -210,25 +208,26 @@ public sealed class B1KullaniciGorunumHttpTestleri(HttpFikstur f)
     }
 
     // ── B1H-4) ÜÇ KATMAN: kullanıcı satırı dükkân varsayılanını EZER ────────
+    //   Tema temizliği (17.10): şema tek olduğu için katman tema modunda sınanır (aynı çözüm yolu).
     [Fact]
     public async Task B1H4_Kullanici_satiri_dukkan_varsayilanini_ezer()
     {
         var k = YeniKiraci("PAKETB-1-TEST-katman");
         var sahip = f.Ortam.Istemci(k, "SAHIP");
 
-        await sahip.PatchAsJsonAsync("/api/v1/gorunum", new { sema = "zeytin" });
+        await sahip.PatchAsJsonAsync("/api/v1/gorunum", new { temaModu = "karanlik" });
 
-        // Dükkân "zeytin" derken kullanıcı kendi satırında "menekse" seçiyor.
-        var c = await sahip.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { sema = "menekse" });
+        // Dükkân "karanlik" derken kullanıcı kendi satırında "aydinlik" seçiyor.
+        var c = await sahip.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { temaModu = "aydinlik" });
         var g = await Oku(c);
 
-        Assert.Equal("menekse", g.GetProperty("sema").GetString());
-        Assert.Equal("kullanici", g.GetProperty("semaKaynagi").GetString());
-        Assert.Equal("zeytin", g.GetProperty("kiraciSema").GetString());   // dükkân DEĞİŞMEDİ
+        Assert.Equal("aydinlik", g.GetProperty("temaModu").GetString());
+        Assert.Equal("kullanici", g.GetProperty("temaModuKaynagi").GetString());
+        Assert.Equal("karanlik", g.GetProperty("kiraciTemaModu").GetString());   // dükkân DEĞİŞMEDİ
 
         using var db = f.Vt.Olustur(k.TenantId);
         var satir = await db.Kullanicilar.AsNoTracking().SingleAsync(x => x.Id == k.KullaniciId);
-        Assert.Equal("menekse", satir.Sema);
+        Assert.Equal("aydinlik", satir.TemaModu);
     }
 
     // ── B1H-5) PATCH SÖZLEŞMESİ: gövdede olmayan alan KORUNUR ───────────────
@@ -238,11 +237,11 @@ public sealed class B1KullaniciGorunumHttpTestleri(HttpFikstur f)
         var k = YeniKiraci("PAKETB-1-TEST-patch");
         var i = f.Ortam.Istemci(k, "SAHIP");
 
-        await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { sema = "okyanus" });
+        await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { temaModu = "karanlik" });
         var c = await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { yaziBoyutu = 20 });
 
         var g = await Oku(c);
-        Assert.Equal("okyanus", g.GetProperty("sema").GetString());   // ⚠ EZİLMEDİ
+        Assert.Equal("karanlik", g.GetProperty("temaModu").GetString());   // ⚠ EZİLMEDİ
         Assert.Equal(20, g.GetProperty("yaziBoyutu").GetInt32());
     }
 
@@ -254,19 +253,19 @@ public sealed class B1KullaniciGorunumHttpTestleri(HttpFikstur f)
         var k = YeniKiraci("PAKETB-1-TEST-devret");
         var i = f.Ortam.Istemci(k, "SAHIP");
 
-        await i.PatchAsJsonAsync("/api/v1/gorunum", new { sema = "grafit" });
-        await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { sema = "bordo" });
+        await i.PatchAsJsonAsync("/api/v1/gorunum", new { temaModu = "aydinlik" });
+        await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { temaModu = "karanlik" });
 
-        var c = await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { sema = (string?)null });
+        var c = await i.PatchAsJsonAsync("/api/v1/kullanici/gorunum", new { temaModu = (string?)null });
         var g = await Oku(c);
 
-        Assert.Equal("grafit", g.GetProperty("sema").GetString());          // dükkâna DÜŞTÜ
-        Assert.Equal("kiraci", g.GetProperty("semaKaynagi").GetString());
-        Assert.Equal(System.Text.Json.JsonValueKind.Null, g.GetProperty("ozelSema").ValueKind);
+        Assert.Equal("aydinlik", g.GetProperty("temaModu").GetString());          // dükkâna DÜŞTÜ
+        Assert.Equal("kiraci", g.GetProperty("temaModuKaynagi").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, g.GetProperty("ozelTemaModu").ValueKind);
 
         using var db = f.Vt.Olustur(k.TenantId);
         var satir = await db.Kullanicilar.AsNoTracking().SingleAsync(x => x.Id == k.KullaniciId);
-        Assert.Null(satir.Sema);
+        Assert.Null(satir.TemaModu);
     }
 
     // ── B1H-7) BEYAZ LİSTE: liste dışı değer 400 — sessizce düşürülmez ──────
@@ -365,7 +364,7 @@ public sealed class B1KullaniciGorunumHttpTestleri(HttpFikstur f)
 
         using var db = f.Vt.Olustur(k.TenantId);
         var satir = await db.Kullanicilar.AsNoTracking().SingleAsync(x => x.Id == k.KullaniciId);
-        Assert.Equal("platin", satir.Sema);          // ⚠ depoda ESKİ AD YAŞAMAZ
+        Assert.Equal("yildiz", satir.Sema);          // ⚠ depoda ESKİ AD YAŞAMAZ (tema temizliği 17.10: tek şema)
         Assert.Equal("sistem", satir.TemaModu);
     }
 }

@@ -321,7 +321,7 @@ public sealed class ParaDemo3KasaEkranTestleri : BunitContext
         if (dil == "en") await Services.GetRequiredService<DilServisi>().DegistirAsync("en");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-hareket-k1").Click();
         e.WaitForElement("#h-tutar");
         SeciciYardim.Sec(e, "h-tur", "CIKIS");
@@ -357,7 +357,7 @@ public sealed class ParaDemo3KasaEkranTestleri : BunitContext
         if (dil == "en") await Services.GetRequiredService<DilServisi>().DegistirAsync("en");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
             "u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", "BASIT", "BASIT"));
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForElement("#kasa-hareket-k1").Click();
         e.WaitForElement("#h-tutar");
         SeciciYardim.Sec(e, "h-tur", "CIKIS");
@@ -414,7 +414,7 @@ public sealed class ParaDemo3GiderEkranTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-kaydet");
         return e;
     }
@@ -687,7 +687,7 @@ public sealed class ParaDemo3Tur2GiderTestleri : BunitContext
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForElement("#gd-kasa-nakit");
         return e;
     }
@@ -850,8 +850,9 @@ public sealed class ParaDemo3OdemeAdiTutarlilikTestleri : BunitContext
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
 
         // Ekstre (Cariler › detay): her satırın ödeme adı ("· " önekiyle basılır).
+        // TEMA TEMİZLİĞİ 17.10: Yıldız Müşteriler listesi — eylemler müşterinin kartında (CariKartEylemi).
         var cari = Render<Kuyumcu.Web.Pages.Cariler>();
-        cari.WaitForElement("#c-detay-c1").Click();
+        cari.CariKartEylemi("c1", "c-detay");
         cari.WaitForElement("#cari-detay-odeme-h5");
         var ekstreAdlari = Satirlar.Select(s => cari.Find($"#cari-detay-odeme-{s.Id}").TextContent.Trim().TrimStart('·').Trim()).ToArray();
 

@@ -46,7 +46,7 @@
                İKİNCİL ÖNCE, BİRİNCİL SONDA. Çekmece buna çekildi; kimlikler
                (cekmece-*-kaydet / -iptal) DEĞİŞMEDİ, testler etkilenmez. *@
             <button type="button" class="dugme dugme-ikincil" id="@($"cekmece-{Varlik}-iptal")"
-                    @onclick="KapatIstegi">@(IptalMetni ?? (YildizMi ? Kuyumcu.Core.I18n.YildizKatmanSozlugu.Vazgec(Dil.Dil) : Dil.T.Ortak.Iptal))</button>
+                    @onclick="KapatIstegi">@(IptalMetni ?? (Kuyumcu.Core.I18n.YildizKatmanSozlugu.Vazgec(Dil.Dil)))</button>
             @if (KaydetGoster)
             {
                 <button type="button" class="dugme dugme-birincil" id="@(KaydetElemanId ?? $"cekmece-{Varlik}-kaydet")"
@@ -74,7 +74,6 @@
 
 @code {
     /// <summary>YILDIZ-KATMAN tur 2: Yıldız'da ikincil düğme metni tuval b2 "Vazgeç" (IptalMetni verilmediyse). Öteki şemalar "İptal" AYNEN.</summary>
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
     [Parameter] public bool Acik { get; set; }
     /// <summary>id gövdesi: cari, urun, fatura … (<c>#cekmece-{varlik}</c>).</summary>
     [Parameter, EditorRequired] public string Varlik { get; set; } = "";

@@ -11,7 +11,6 @@
 .gk .gk-isaret { flex: 0 0 auto; margin-inline-start: auto; display: inline-flex; align-items: center; }
 /* Şema kartındaki işaret de yalnız ✓'dir (rozet zemini yok — diğer kartlarla aynı görünüm);
    "Seçili" sözcüğü ekran okuyucu için DOM'da kalır (gorsel-gizli). */
-.gk .gk-isaret.gk-secili-rozet { padding: 0; background: none; }
 /* 960 px'te üç sütun ~150 px: "Profesyonel" + ✓ 16 px iç payla sığmıyordu (ölçüm K3 taşan 1). Orta
    genişlikte seçenek düğmesinin yatay iç payı 16 → 12 px (boy ve yazı aynı). */
 @media (min-width: 769px) and (max-width: 1099px) {

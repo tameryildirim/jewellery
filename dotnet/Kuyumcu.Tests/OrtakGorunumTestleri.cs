@@ -424,7 +424,7 @@ public sealed class OrtakGorunumEkranTestleri : BunitContext
     [Fact]
     public void F1_bos_reyon_notu_tek_satir_sinifi_tasir_id_ayni()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         var not = e.WaitForElement("#r-tasi-kilit-r2");
         Assert.Contains("hucre-not-tek-satir", not.GetAttribute("class") ?? "");
         Assert.Contains("mal yok", not.TextContent);
@@ -435,7 +435,7 @@ public sealed class OrtakGorunumEkranTestleri : BunitContext
     [Fact]
     public void P1_stopaj_hucresi_tek_satir()
     {
-        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var e = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("GP-2026-000001", e.Markup));
         var hucre = Assert.Single(e.FindAll("td.hucre-tek-satir"), td => td.TextContent.Contains('%'));
         Assert.Contains("%2", hucre.TextContent.Replace(" ", ""));
@@ -450,7 +450,7 @@ public sealed class OrtakGorunumEkranTestleri : BunitContext
     [Fact]
     public void A1_siparis_no_tek_satir_musteri_adi_hucresi_ad_sinifi_tasir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#sip-satir-s1")));
         var satir = e.Find("#sip-satir-s1");
         var no = satir.QuerySelector("td.hucre-tek-satir");
@@ -500,136 +500,9 @@ public sealed class OrtakGorunumEkranTestleri : BunitContext
     }
 }
 
-/// <summary>
-/// ORTAK-1 (B/E) — Panel (BASİT yüz): büyük değerler uzunluk kademesini taşır,
-/// "Kim borçlu?" adı KESİLMEZ (tam metin + title). Kurulum S31PanelSadeTestleri
-/// ile aynı uç şekilleridir (gerçekçi yanıt; '{}' varsayılanı yok).
-/// </summary>
-public sealed class OrtakGorunumPanelTestleri : BunitContext
-{
-    private const string Gunluk = """
-        {"tarih":"2026-09-25","satis":{"adet":12,"toplamTl":203149.08,"toplamHas":27.8},
-         "alis":{"adet":1,"toplamTl":3000.00,"toplamHas":1.0},
-         "hurda":{"toplamHas":0,"odenenTl":0},"netHasGramHareketi":9.4,"hareketSayisi":4,
-         "kasalar":[{"id":"k1","ad":"Ana Kasa","bakiye":7681959.97,"paraBirimi":"TRY"}]}
-        """;
-
-    private const string Yaslandirma = """
-        {"yaslananCariler":[
-           {"cariId":"c1","cariAd":"Anadolu Holding A.Ş.","cariTur":"MUSTERI","tlBakiye":102927.74,"hasGramBakiye":0,
-            "usdBakiye":0,"eurBakiye":0,"gbpBakiye":0,"dovizBakiyesiVar":false,"gunSayisi":1,"dilim":"0-30"}],
-         "ozetTl":{"0-30":102927.74,"31-60":0,"61-90":0,"90+":0,"BELIRSIZ":0},
-         "toplamSatir":1,"ofset":0,"limit":500,"dahaFazlasiVar":false}
-        """;
-
-    private const string Pozisyon = """
-        {"anaMaden":"ALTIN",
-         "altin":{"maden":"ALTIN","vitrinGram":145.3,"hurdaGram":0,"cariAlacakGram":9.9,"cariBorcGram":0,
-                  "netGram":155.2,"alacakliCariSayisi":1,"borcluOlduguCariSayisi":0,"konsinyeGram":0,"emanetGram":0},
-         "digerMadenler":[],"madenlerToplanmaz":false,"defterBakiyeFarki":0,
-         "hesaplanmaAni":"2026-09-25T09:00:00Z","donemdenBagimsiz":true}
-        """;
-
-    private sealed class SahteApi : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage istek, CancellationToken iptal)
-        {
-            var yol = istek.RequestUri!.AbsolutePath;
-            var cevap = yol switch
-            {
-                var y when y.EndsWith("/raporlar/gunluk") => Gunluk,
-                var y when y.EndsWith("/raporlar/cari-yaslandirma") => Yaslandirma,
-                var y when y.EndsWith("/raporlar/vade-takibi") => """
-                    {"ufukGun":7,"gecikenToplam":0,"yaklasanToplam":102927.74,"vadesizToplam":0,
-                     "ufukOtesiToplam":0,"acikToplam":102927.74,"cariler":[]}
-                    """,
-                var y when y.EndsWith("/raporlar/aylik") => """{"gunler":[]}""",
-                var y when y.Contains("/raporlar/islem-defteri") => """
-                    {"baslangic":"2026-09-25","bitis":"2026-09-25","toplamSatir":0,"ofset":0,"limit":5,
-                     "dahaFazlasiVar":false,"ozet":{"tlGiris":0,"tlCikis":0,"hasGiris":0,"hasCikis":0,"satirSayisi":0},
-                     "storno":{"adet":0,"tutarTl":0},"satirlar":[]}
-                    """,
-                var y when y.EndsWith("/bildirimler") => """
-                    {"durum":"ACIK","limit":5,"azamiLimit":100,"kapaliGosterimGun":7,"dahaFazlasiVar":false,"bildirimler":[]}
-                    """,
-                var y when y.EndsWith("/raporlar/kar-zarar") => """
-                    {"hasilatTl":203149.08,"maliyetTl":0,"karTl":0,"karMarjiYuzde":0,"hasilatHas":27.8,"maliyetHas":0,
-                     "karHas":0,"satisAdedi":12,"maliyetiBilinenAdet":0,"maliyetiBilinmeyenAdet":12,"guvenilirlik":"EKSIK","uyari":null}
-                    """,
-                var y when y.EndsWith("/bankalar") => """{"hesaplar":[]}""",
-                var y when y.EndsWith("/pozisyon") => Pozisyon,
-                var y when y.EndsWith("/kur/kaynaklar") =>
-                    """{"kaynaklar":["ALTINKAYNAK"],"secili":"ALTINKAYNAK","varsayilan":"ALTINKAYNAK"}""",
-                var y when y.Contains("/tercihler/benim") => """{"tercihler":{}}""",
-                var y when y.Contains("/uyum/") => """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
-                _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
-            };
-            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
-            {
-                Content = new StringContent(cevap, System.Text.Encoding.UTF8, "application/json"),
-            });
-        }
-    }
-
-    public OrtakGorunumPanelTestleri()
-    {
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddScoped<DilServisi>();
-        Services.AddScoped<OturumServisi>();
-        Services.AddScoped(_ => new HttpClient(new SahteApi()) { BaseAddress = new Uri("http://test.local/api/v1/") });
-        Services.AddScoped<ApiIstemci>();
-        Services.AddScoped<UyumServisi>();
-        Services.AddScoped<CanliKurServisi>();
-        Services.AddScoped<ArayuzModuServisi>();
-        Services.AddScoped<RaporServisi>();
-        Services.AddScoped<MenuTercihServisi>();
-        Services.AddScoped<Microsoft.Extensions.Configuration.IConfiguration>(
-            _ => new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
-        Services.AddScoped<HavaServisi>();
-        Services.GetRequiredService<OturumServisi>().KullaniciAta(new OturumKullanici(
-            "u1", "Demo", "Kuyumcu", "d@ornek.com", "SAHIP", "s1", ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
-    }
-
-    private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Ciz()
-    {
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() =>
-        {
-            Assert.Empty(e.FindAll(".karsilama-iskelet"));
-            Assert.Empty(e.FindAll(".yukleniyor-kutu"));
-        }, TimeSpan.FromSeconds(10));
-        return e;
-    }
-
-    [Fact]
-    public void PN1_buyuk_degerler_uzunluk_kademesi_tasir_deger_aynen()
-    {
-        var e = Ciz();
-        var satis = e.Find("#panel-soru-satis-deger");
-        Assert.Equal(Bicim.Tl(203149.08m), satis.TextContent.Trim());
-        // Hakem turu 28.09: beklenen kademe SABİT yazılır (üretim fonksiyonundan hesaplanmaz).
-        // "203.149,08 ₺" = 12 karakter → orta (10–12).
-        Assert.Equal("orta", satis.GetAttribute("data-deger-boy"));
-        var kasa = e.Find("#panel-soru-kasa-deger");
-        Assert.Equal(Bicim.Para(7681959.97m, "TRY"), kasa.TextContent.Trim());
-        // "7.681.959,97 ₺" = 14 karakter → uzun (13–15).
-        Assert.Equal("uzun", kasa.GetAttribute("data-deger-boy"));
-        var poz = e.Find("#pozisyon-net");
-        // MADEN-2 (ilke "tek has biçimi" — Bicim.Has N4): "+155,2000 has" = 13 karakter → uzun (13–15).
-        Assert.Equal("+155,2000 has", poz.TextContent.Trim());
-        Assert.Equal("uzun", poz.GetAttribute("data-deger-boy"));
-    }
-
-    [Fact]
-    public void PN2_kim_borclu_adi_tam_metin_ve_title()
-    {
-        var e = Ciz();
-        var ad = e.Find("#panel-borclu-c1 .panel-liste-ad");
-        Assert.Equal("Anadolu Holding A.Ş.", ad.TextContent.Trim());
-        Assert.Equal("Anadolu Holding A.Ş.", ad.GetAttribute("title"));
-    }
-}
+// TEMA TEMİZLİĞİ 17.10: OrtakGorunumPanelTestleri sınıfı (fikstürüyle) kaldırıldı — iki testi de Panel'in eski BASİT gövdesini (#panel-sade "sabahın beş sorusu" kartları) sınıyordu; o gövde bilerek kaldırıldı, Panel yalnız YildizBugun çizer:
+// TEMA TEMİZLİĞİ 17.10: PN1_buyuk_degerler_uzunluk_kademesi_tasir_deger_aynen kaldırıldı — #panel-soru-satis-deger / #panel-soru-kasa-deger / #pozisyon-net (data-deger-boy kademesi) Yıldız Bugün tuvalinde yok; Yıldız'ın büyük rakamı ve pozisyon satırı Yildiz4ATestleri'nde sınanır.
+// TEMA TEMİZLİĞİ 17.10: PN2_kim_borclu_adi_tam_metin_ve_title kaldırıldı — "Kim borçlu?" kartı (#panel-borclu-*) Yıldız Bugün tuvalinde yok (bekleyen iş satırları Yildiz4A/4C testlerinde).
 
 /// <summary>ORTAK-1 (D) — Çekmece sayfa konumunu ÇİZİMDEN ÖNCE sabitler.</summary>
 public sealed class OrtakGorunumCekmeceTestleri : BunitContext
@@ -765,7 +638,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Vezne> TumYuzeyleriAc()
     {
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         e.Find("#vz-veznele-v2").Click();          // başarı bandı
         e.WaitForElement("#vz-basari-bandi");
@@ -794,7 +667,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
     {
         var pro = Sozlukler.Getir("tr").Vezne;
         Mod(basit: false);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         Assert.Contains(pro.DurumVeznede, e.Find("#vz-satir-v1").TextContent);
         Assert.Equal(pro.VezneyeGonder, e.Find("#vz-veznele-v2").TextContent.Trim());
@@ -805,7 +678,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
     {
         // 28.09 canlı görüntü: #vz-yeni-ac sınıfsız çıplak <button> idi (gri kutu, yazı tipi/yarıçap yok).
         Mod(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         Assert.Equal("btn btn-birincil", e.Find("#vz-yeni-ac").GetAttribute("class"));
         e.Find("#vz-yeni-ac").Click();
@@ -819,7 +692,7 @@ public sealed class OrtakGorunumVezneTestleri : BunitContext
     {
         // 28.09 canlı görüntü: tablo sınıfsız (hücre boşluğu yok), kilit kutusu satırı ~300 px uzatıyordu.
         Mod(basit: true);
-        var e = Render<Kuyumcu.Web.Pages.Vezne>();
+        var e = Render<Kuyumcu.Web.Pages.Vezne>().AyrintiAc();
         e.WaitForElement("#vz-satir-v1");
         Assert.Contains("veri-tablosu", e.Find("#vz-liste").ClassList);
         var kilit = e.Find("#vz-kilit-v1");

@@ -33,9 +33,7 @@
    çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
 @* YILDIZ-5A tur 2 (tasarım hakemi KRİTİK): "Emanet al" Yıldız form kalıbında açılır (eski ekrana geçmez); alanlar özgün
    çekmecenin bileşenleri, aynı kimlik ve aynı kapılarla. *@
-@if (YildizMi)
-{
-    if (YildizGirisFormu)
+@if (YildizGirisFormu)
     {
         <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizGirisBaglami">
             <div class="alan">
@@ -74,7 +72,6 @@
     {
         <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" />
     }
-}
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk emanet-sade" id="emanet-sayfa">
     <div class="sayfa-baslik">

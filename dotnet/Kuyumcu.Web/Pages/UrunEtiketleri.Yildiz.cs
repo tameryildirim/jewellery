@@ -18,9 +18,8 @@ public partial class UrunEtiketleri
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
     /// <summary>Özgün kök işareti: Yıldız dışında YAZILMAZ (null); Yıldız'da "kapali" (ekranda gizli) / "acik".</summary>
-    private string? YildizEtiketIsaret => YildizMi ? (yildizAyrinti ? "acik" : "kapali") : null;
+    private string? YildizEtiketIsaret => (yildizAyrinti ? "acik" : "kapali");
 
     private bool yildizAyrinti;
 

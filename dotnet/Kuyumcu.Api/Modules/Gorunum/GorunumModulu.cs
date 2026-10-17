@@ -43,30 +43,17 @@ namespace Kuyumcu.Api.Modules.Gorunum;
 public static class GorunumSecenekleri
 {
     /// <summary>
-    /// Varsayılan şema: <b>Platin Mavi</b> (TEMA-SISTEMI § 7, ekip oyu).
-    /// Eski varsayılan "altin" KALDIRILDI — altın/amber objektif testten
-    /// geçemedi (§ 2); değeri <see cref="SemaTakmaAdlari"/> ile göç eder.
-    ///
-    /// ⚠ SLUG "platin", belgedeki "platin-mavi" DEĞİL — ÖLÇÜM KAZANIR:
-    ///   S-1 şeridi <c>belirtecler.css</c>'e 8 bloğu ZATEN indirdi ve seçiciyi
-    ///   <c>:root[data-sema="platin"], :root[data-sema="kurumsal"]</c> yazdı
-    ///   (266. satır). Sunucu belgedeki adı yazsaydı canlıda HİÇBİR CSS bloğu
-    ///   eşleşmezdi. Belgenin adı takma ad olarak kabul edilir.
+    /// TEK ŞEMA: <b>Yıldız</b> (kurucu kararı 17.10 — "tema sadece Yıldız, karanlık
+    /// ve açık mod kalacak; diğer temalar gidecek"). Eski sekiz şema
+    /// (platin/zumrut/grafit/bordo/okyanus/menekse/zeytin/fildisi) ve onların
+    /// eski kodları (altin/kurumsal/platin-mavi) <see cref="SemaTakmaAdlari"/>
+    /// ile "yildiz"e göç eder (migration TemaYildizTek + bu harita: eski istemci
+    /// 400 almaz, unutulmuş satır varsayılana değil Yıldız'a çözülür).
     /// </summary>
-    public const string SemaVarsayilan = "platin";
+    public const string SemaVarsayilan = "yildiz";
 
-    /// <summary>
-    /// Seçilebilir 8 renk şeması. ⚠ Listeye YALNIZ WCAG 2.1 AA (≥4,5:1 metin,
-    /// ≥3:1 etkileşimli kenar) ölçümünü GEÇEN şema konur; 8 × 2 tema × 31 çift
-    /// = 496 ölçümün tamamı TEMA-SISTEMI § 11'de tablolandı (496/496 geçti).
-    /// </summary>
-    public static readonly string[] Semalar =
-    [
-        SemaVarsayilan, "zumrut", "grafit", "bordo",
-        "okyanus", "menekse", "zeytin", "fildisi",
-        // PAKET YILDIZ-1 (kurucu 08.10): 9. şema, AYRI tema — css/tema-yildiz.css.
-        "yildiz",
-    ];
+    /// <summary>Seçilebilir şemalar — yalnız Yıldız (açık/koyu ayrı boyuttur: <see cref="TemaModlari"/>).</summary>
+    public static readonly string[] Semalar = [SemaVarsayilan];
 
     /// <summary>
     /// Varsayılan gövde puntosu: <b>18</b> px.
@@ -101,17 +88,19 @@ public static class GorunumSecenekleri
         new Dictionary<string, string>(StringComparer.Ordinal) { ["otomatik"] = TemaModuVarsayilan };
 
     /// <summary>
-    /// GÖÇ HARİTASI — eski şema kodu → yeni slug. Hem migration hem de bu
-    /// sınıfın <see cref="SemaNormalle"/> metodu AYNI haritayı kullanır ki
-    /// veritabanında unutulmuş bir satır 400'e düşmesin.
+    /// GÖÇ HARİTASI — eski şema kodu → "yildiz". Hem migration
+    /// (<c>TemaYildizTek</c>) hem de <see cref="SemaNormalle"/> AYNI listeyi
+    /// kullanır ki veritabanında unutulmuş bir satır 400'e düşmesin.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, string> SemaTakmaAdlari =
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["altin"] = SemaVarsayilan,        // altın/amber yasağı (§ 2)
-            ["kurumsal"] = SemaVarsayilan,     // "kurumsal mavi" → "Platin Mavi" (§ 13)
-            ["platin-mavi"] = SemaVarsayilan,  // belgedeki ad → canlı CSS slug'ı
-        };
+        EskiSemalar.ToDictionary(k => k, _ => SemaVarsayilan, StringComparer.Ordinal);
+
+    /// <summary>Kaldırılan şema kodlarının tamamı (17.10 öncesi 8 şema + daha eski 3 kod).</summary>
+    public static IReadOnlyList<string> EskiSemalar =>
+    [
+        "platin", "zumrut", "grafit", "bordo", "okyanus", "menekse", "zeytin", "fildisi",
+        "altin", "kurumsal", "platin-mavi",
+    ];
 
     /// <summary>GÖÇ HARİTASI — eski ölçek kodu → punto. yogun 14→16, okunakli 16→18.</summary>
     public static readonly IReadOnlyDictionary<string, string> OlcekTakmaAdlari =

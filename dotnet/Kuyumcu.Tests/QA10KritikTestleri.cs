@@ -81,7 +81,7 @@ public sealed class QA10KritikTestleri : BunitContext
             new OturumKullanici("u1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1", mod, mod));
         var modu = Services.GetRequiredService<ArayuzModuServisi>();
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => modu.BasitMi);
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         GiderAkordeon.Ac(e); // SON-KALANLAR: geçmiş kayıtlar kapalı akordeon
         e.WaitForAssertion(() => Assert.Contains("Ekim kirası", e.Markup));
         return e;

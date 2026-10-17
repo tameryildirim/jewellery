@@ -3248,7 +3248,9 @@ fi
 # yere götürmez. Üçü de sessizdir — sayaç engeller.
 # DİKKAT: betik BASH; ${=VAR} zsh sözdizimidir, burada DİZİ kullanılır.
 P14_MENU="$WEB/Layout/MenuTanimi.cs"
-P14_KENAR="$WEB/Layout/KenarCubugu.razor"
+# TEMA TEMİZLİĞİ (17.10): kenar çubuğu (KenarCubugu.razor) kabukla kalktı; menünün TAMAMINI MenuTanimi'nden
+# çizen ekran artık "Tüm ekranlar" yüzüdür (YildizEkranlar). Sayaçlar aynı kuralı orada ölçer.
+P14_KENAR="$WEB/Bilesenler/Yildiz/YildizEkranlar.razor"
 P14_BASIT="$WEB/Servisler/BasitMenu.cs"
 # PAKET S1-g: menü adları hub'dan (Sozlukler.cs Nav.*) AYRI sözlüğe taşındı
 # (Sozlukler.Menu.cs — MenuAdlari, tuvalle birebir). Sayaç artık oradan okur.
@@ -3388,11 +3390,11 @@ else
 fi
 
 # ── SAYAÇ 4 (destek): MENU_ELLE_BAGLANTI = 0 ───────────────────────────────
-# "Menü tek kaynaktan gelir" mekanizmasının kilidi: KenarCubugu.razor'a elle
+# "Menü tek kaynaktan gelir" mekanizmasının kilidi: menüyü çizen dosyaya (YildizEkranlar.razor) elle
 # yazılmış href kalırsa sayaçların hiçbiri o bağlantıyı GÖREMEZ.
 # Ayrıca grup başlığı çiziminin silinmediği doğrulanır (grup başlığı > 0).
 P14_ELLE=$(grep -cE 'href="/' "$P14_KENAR" || true)
-P14_BASLIK=$(grep -cE 'kenar-grup-baslik' "$P14_KENAR" || true)
+P14_BASLIK=$(grep -cE 'ekranlar-grup-baslik' "$P14_KENAR" || true)
 if [ "$P14_ELLE" -eq 0 ] && [ "$P14_BASLIK" -ge 1 ]; then
   printf "  ✓ %-46s elle href 0 · grup başlığı çizimi var\n" "P-14: MENU_ELLE_BAGLANTI"
 else
@@ -3409,11 +3411,13 @@ fi
 #   bUnit CSS uygulamadığı için testler yeşildi: kilit CSS DOSYASINDADIR.
 # SAYAÇLAR:
 #   HIDDEN_GENEL_KURAL  = 1 (app.css'te `[hidden] { display: none !important; }`)
-#   MENU_YILDIZ_TUTAMAC = 0 (KenarCubugu.razor'da görünür yıldız/tutamaç çizimi)
+#   MENU_YILDIZ_TUTAMAC = 0 (menüde görünür yıldız/tutamaç çizimi — tema temizliği 17.10'dan beri
+#                         menü = YildizUstMenu.razor + YildizEkranlar.razor; KenarCubugu kalktı)
 #   UST_BAR_METIN_IKON  = 0 (UstBar.razor'da '⟳' metin ikonu)
 S1G_CSS="$WEB/wwwroot/css/app.css"
 S1G_HIDDEN=$(grep -cE '^\[hidden\] \{ display: none !important; \}' "$S1G_CSS" 2>/dev/null | tr -d ' ')
-S1G_YILDIZ=$(grep -cE 'class="kenar-tutamac"|YildizDugmesi\(oge\)|>⠿<' "$WEB/Layout/KenarCubugu.razor" 2>/dev/null | tr -d ' ')
+S1G_YILDIZ=$(cat "$WEB/Bilesenler/Kabuk/YildizUstMenu.razor" "$WEB/Bilesenler/Yildiz/YildizEkranlar.razor" 2>/dev/null \
+  | grep -cE 'class="kenar-tutamac"|YildizDugmesi\(oge\)|>⠿<' | tr -d ' ')
 S1G_IKON=$(grep -c '>⟳<' "$WEB/Layout/UstBar.razor" 2>/dev/null | tr -d ' ')
 if [ "$S1G_HIDDEN" -ge 1 ] && [ "$S1G_YILDIZ" -eq 0 ] && [ "$S1G_IKON" -eq 0 ]; then
   printf "  ✓ %-46s [hidden] kuralı %s · menü yıldız/tutamaç %s · üst bar metin ikon %s\n" \
@@ -4726,27 +4730,32 @@ else
 fi
 
 # ── TEMA_KONTRAST_IHLALI = 0 ───────────────────────────────────────────────
-# Hazır renk şemalarının HEPSİ WCAG 2.1 AA geçmek ZORUNDA. Oran HESAPLANIR,
-# tahmin edilmez: TasarimBelirtecTestleri.Kontrast_AA_saglanir artık
-# BelirtecTablosu.Semalar üzerinden `:root[data-sema="…"]` bloklarını da ölçer.
+# Renk şemasının HER yüzü WCAG 2.1 AA geçmek ZORUNDA. Oran HESAPLANIR, tahmin
+# edilmez: TasarimBelirtecTestleri Yıldız'ın aydınlık + karanlık bloklarını ölçer.
+# ⚠ TEMA TEMİZLİĞİ (kurucu 17.10): "tema sadece Yıldız, karanlık ve açık mod kalacak".
+#   Eski 8 şema bloğu belirtecler.css'ten silindi; ölçülen şema blokları artık
+#   css/tema-yildiz.css'tedir. (a) eşiği "≥2 şema" yerine "Yıldız'ın ÜÇ yüzü"
+#   oldu: aydınlık + sistem karanlık + zorlanmış karanlık (tek şemada üç blok;
+#   gevşeme değil, ölçülen nesne değişti — biri silinirse kırmızı).
 # Kabuk burada ÖLÇÜMÜN KOŞULLARINI zorlar (kontrast hesabını değil):
-#   (a) en az 2 şema bloğu var,
-#   (b) test yükleyicisi data-sema'yı TANIYOR (tanımazsa şemalar sessizce
+#   (a) Yıldız'ın üç bloğu var,
+#   (b) test yükleyicisi data-sema'yı TANIYOR (tanımazsa şema sessizce
 #       ölçülmeden kalır — sayacın gerçek riski budur),
-#   (c) şema bloklarındaki her renk 6 haneli HEX (alfa/gradyan ölçülemez).
-# ÖLÇÜM: grep -c '^:root\[data-sema=' Kuyumcu.Web/wwwroot/css/belirtecler.css
-#        grep -c 'data-sema' Kuyumcu.Tests/TasarimBelirtecTestleri.cs
-#        şema bloklarında hex olmayan renk bildirimi sayısı
-P36B_CSS=Kuyumcu.Web/wwwroot/css/belirtecler.css
-P36B_SEMA=$(grep -c '^:root\[data-sema=' "$P36B_CSS" 2>/dev/null | tr -d ' ')
+#   (c) bloklardaki her RENK bildirimi 6 haneli HEX (alfa/gradyan ölçülemez;
+#       --golge-* ve --yazi-* renk değildir, sayılmaz).
+#   (d) belirtecler.css'te eski şema bloğu KALMADI (0).
+P36B_CSS=Kuyumcu.Web/wwwroot/css/tema-yildiz.css
+P36B_BLOK='^(:root\[data-sema="yildiz"\] \{|  :root:not\(\[data-tema="aydinlik"\]\)\[data-sema="yildiz"\] \{|:root\[data-tema="karanlik"\]\[data-sema="yildiz"\] \{)'
+P36B_SEMA=$(grep -cE "$P36B_BLOK" "$P36B_CSS" 2>/dev/null | tr -d ' ')
+P36B_ESKI=$(grep -cE '^ *:root(:not\([^)]*\))?(\[data-tema="karanlik"\])?\[data-sema=' Kuyumcu.Web/wwwroot/css/belirtecler.css 2>/dev/null | tr -d ' ')
 P36B_OLCULUYOR=$(grep -c 'data-sema' Kuyumcu.Tests/TasarimBelirtecTestleri.cs 2>/dev/null | tr -d ' ')
-P36B_HEXSIZ=$(awk '/^:root\[data-sema=/{i=1;next} i&&/^}/{i=0} i&&/^ *--/{ if ($0 !~ /#[0-9a-fA-F]{6};/) print }' \
+P36B_HEXSIZ=$(awk -v B="$P36B_BLOK" '$0 ~ B {i=1;next} i&&/^ *\}/{i=0} i&&/^ *--/&&!/^ *--(golge|yazi)/{ if ($0 !~ /#[0-9a-fA-F]{6};/) print }' \
   "$P36B_CSS" 2>/dev/null | wc -l | tr -d ' ')
-if [ "$P36B_SEMA" -ge 2 ] && [ "$P36B_OLCULUYOR" -ge 1 ] && [ "$P36B_HEXSIZ" = 0 ]; then
-  printf "  ✓ %-46s 0 (%s şema, hepsi ölçülüyor)\n" "P-36b: TEMA_KONTRAST_IHLALI" "$P36B_SEMA"
+if [ "$P36B_SEMA" -ge 3 ] && [ "$P36B_ESKI" = 0 ] && [ "$P36B_OLCULUYOR" -ge 1 ] && [ "$P36B_HEXSIZ" = 0 ]; then
+  printf "  ✓ %-46s 0 (Yıldız %s blok, hepsi ölçülüyor · eski şema bloğu 0)\n" "P-36b: TEMA_KONTRAST_IHLALI" "$P36B_SEMA"
 else
-  printf "  ✗ %-46s sema=%s olculuyor=%s hexsiz=%s\n" \
-    "P-36b: TEMA_KONTRAST_IHLALI" "$P36B_SEMA" "$P36B_OLCULUYOR" "$P36B_HEXSIZ"; HATA=1
+  printf "  ✗ %-46s yildiz_blok=%s (≥3) eski=%s (0) olculuyor=%s hexsiz=%s\n" \
+    "P-36b: TEMA_KONTRAST_IHLALI" "$P36B_SEMA" "$P36B_ESKI" "$P36B_OLCULUYOR" "$P36B_HEXSIZ"; HATA=1
 fi
 
 # ── SECICI_UZAK_KIP = 1 · KAYIT_SECICI_KULLANIM tavan 4 (yalnız azalır) ────
@@ -4789,7 +4798,9 @@ fi
 
 # ── MENU_OK_DUGMESI = 0 ───────────────────────────────────────────────────
 # "menüde ok işaretleri nedir saçma sapan, sürükle bırakla olacak dedim".
-P37_OK=$(grep -cE 'kenar-tasi|kenar-yukari-|kenar-asagi-' Kuyumcu.Web/Layout/KenarCubugu.razor 2>/dev/null | tr -d ' ')
+# TEMA TEMİZLİĞİ (17.10): menü = YildizUstMenu + YildizEkranlar (KenarCubugu kalktı).
+P37_MENU="Kuyumcu.Web/Bilesenler/Kabuk/YildizUstMenu.razor Kuyumcu.Web/Bilesenler/Yildiz/YildizEkranlar.razor"
+P37_OK=$(cat $P37_MENU 2>/dev/null | grep -cE 'kenar-tasi|kenar-yukari-|kenar-asagi-' | tr -d ' ')
 if [ "$P37_OK" = 0 ]; then
   printf "  ✓ %-46s 0 (sıralama sürükle-bırak + Alt+↑/↓)\n" "P-37: MENU_OK_DUGMESI"
 else
@@ -4798,7 +4809,7 @@ fi
 
 # ── MENU_KALICI_PARAGRAF = 0 ──────────────────────────────────────────────
 # Menüde kalıcı açıklama paragrafı OLMAZ; açıklama ipucuna (title) iner.
-P37_PARAGRAF=$(grep -cE '<p class="kenar-grup-ipucu"' Kuyumcu.Web/Layout/KenarCubugu.razor 2>/dev/null | tr -d ' ')
+P37_PARAGRAF=$(cat $P37_MENU 2>/dev/null | grep -cE '<p class="kenar-grup-ipucu"' | tr -d ' ')
 if [ "$P37_PARAGRAF" = 0 ]; then
   printf "  ✓ %-46s 0 (açıklama title ipucunda)\n" "P-37: MENU_KALICI_PARAGRAF"
 else
@@ -5022,7 +5033,10 @@ P37C_ACIK=$((P37C_TOPLAM - P37C_SERIT - P37C_MUAF))
 # PAKET T-K3 (orkestratör kararı 25.09 02:00): üçüncü YAZILI muafiyet Ayarlar.razor —
 #   kurucunun tuvali (Ayarlar.dc.html) başlığı ve sekmeleri ÜST BARA koyar; sayfa
 #   içi SayfaBasi tuvalle çelişir. Tavan 2 → 3; yeni muafiyet yine dosyada gerekçe ister.
-if [ "$P37C_ACIK" = 0 ] && [ "$P37C_MUAF" -le 3 ]; then
+# TEMA TEMİZLİĞİ (kurucu 17.10, tek şema Yıldız): dördüncü YAZILI muafiyet Cariler.razor — SayfaBasi yalnız silinen
+#   eski özgün listedeydi; tuval Musteri4 (YildizMusteriler) kendi başlığını taşır. Gerekçe dosyada; aynı istisna
+#   P37cPanelVeKapsamTestleri'nde "dosya YildizMusteriler çizmiyorsa kırılır" koşuluyla kilitli. Tavan 3 → 4.
+if [ "$P37C_ACIK" = 0 ] && [ "$P37C_MUAF" -le 4 ]; then
   printf "  ✓ %-46s %s/%s ekran (+%s yazılı muafiyet)\n" "P-37c: SAYFA_BASI_KAPSAM" \
     "$P37C_SERIT" "$((P37C_TOPLAM - P37C_MUAF))" "$P37C_MUAF"
 else
@@ -6576,7 +6590,7 @@ MOD = re.compile(r'html\[data-mod\s*=\s*["\']?(basit|profesyonel)["\']?\s*\]')
 BEL = ("--kontrol-yuksekligi", "--dokunma-hedefi", "--dugme-yuksekligi", "--bosluk-hucre", "--satir-yuksekligi", "--yazi-")
 # v5 (27.09): font-weight (kalınlık) da ölçüdür — spesifikasyon "kalınlık" farkını sayar.
 OZ = re.compile(r'^(height|min-height|max-height|padding(-(top|right|bottom|left|block|inline)(-(start|end))?)?|font-size|font|font-weight|line-height|border-radius|border-(top|bottom|start|end)-(left|right|start|end)-radius)$')
-BEYAZ = [("tuval-kabuk.css", 'html[data-mod="profesyonel"] .kenar-cubugu')]
+BEYAZ = []   # tema temizliği 17.10: tek istisna (tuval-kabuk.css PRO kenar menüsü) kabukla kalktı
 bs = lambda s: re.sub(r'\s+', ' ', s).strip()
 def bildirimler(css):
     css = re.sub(r'/\*.*?\*/', '', css, flags=re.S); y = []; buf = []; out = []

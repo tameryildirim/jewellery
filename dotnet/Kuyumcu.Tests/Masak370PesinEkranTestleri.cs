@@ -25,9 +25,9 @@ public sealed partial class SATIS3EkranTestleri
         tevsikJson = TevsikJson(50000m);                 // nakit haddi fişin üstü: tek engel MASAK
         masakEsikJson = Masak370OlcekliEsik;
         var e = TekKalemli(mod);
-        e.WaitForAssertion(() => Assert.Equal(YkgKimlik(5000m), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
-        Assert.Empty(e.FindComponents<MasakFormu>());   // Peşin'de kimlik kutusu yok; müşteri seçilmeli
+        e.WaitForAssertion(() => Assert.Equal(YkgKimlik(5000m), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
+        GA.KimlikFormuYok(e);   // Peşin'de kimlik kutusu yok; müşteri seçilmeli (TEMA TEMİZLİĞİ: tezgâhta "+ Kimlik bilgisi" de yok)
     }
 
     // Gereksinim ucu DÜŞERSE (masakHata) karar istemcinin bildiği tutara kalır: kimliğin FİİLEN istendiği tutar
@@ -42,8 +42,8 @@ public sealed partial class SATIS3EkranTestleri
         masakEsikJson = Masak370OlcekliEsik;
         gereksinimOzel = _ => "bozuk-yanit";               // uç bozuk yanıt → istemci masakHata
         var e = TekKalemli(mod);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        e.WaitForAssertion(() => Assert.Equal(S3.MasakGereksinimHata, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
+        GA.MusteriSec(e, "c1");
+        e.WaitForAssertion(() => Assert.Equal(S3.MasakGereksinimHata, GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
     }
 }

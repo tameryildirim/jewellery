@@ -5,6 +5,7 @@ using Bunit;
 using Kuyumcu.Api.Modules.Isler.Isler;
 using Kuyumcu.Api.Modules.Kur;
 using Kuyumcu.Core.I18n;
+using Kuyumcu.Web.Bilesenler.Kabuk;
 using Kuyumcu.Web.Layout;
 using Kuyumcu.Web.Servisler;
 using Microsoft.AspNetCore.Components;
@@ -143,13 +144,17 @@ public sealed class DilEkranTestleri : BunitContext
         Services.AddScoped<YetkiServisi>();
         Services.AddScoped<ArayuzModuServisi>();
         Services.AddScoped<MenuTercihServisi>();
+        Services.AddScoped<CanliKurServisi>();   // YildizUstMenu (kur şeridi yalnız okunur)
     }
 
     [Theory]
     [InlineData(ArayuzModuServisi.Basit)]
     [InlineData(ArayuzModuServisi.Profesyonel)]
-    public async Task Kenar_cubugu_EN_modda_iki_modda_da_Ingilizce_Turkce_harf_yok(string mod)
+    public async Task Ust_menu_ve_Tum_ekranlar_EN_modda_iki_modda_da_Ingilizce_Turkce_harf_yok(string mod)
     {
+        // ESKİ: Kenar_cubugu_EN_modda_iki_modda_da_Ingilizce_Turkce_harf_yok. TEMA TEMİZLİĞİ 17.10:
+        // kenar çubuğu kaldırıldı — menü artık üst menü (YildizUstMenu, hesap menüsü dahil) ve
+        // "Tüm ekranlar" sayfasıdır (grup başlıkları + ekran adları + açıklamalar). İkisi birlikte sınanır.
         var dil = Services.GetRequiredService<DilServisi>();
         // Program.cs'teki bağ: BASİT mod sözlük katmanı (kopya sözlük) devreye girsin.
         dil.BasitModuBagla(() => mod == ArayuzModuServisi.Basit);
@@ -157,18 +162,25 @@ public sealed class DilEkranTestleri : BunitContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("/");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Dil", "Test", "d@ornek.com", "SAHIP", "s1", null, mod));
-        var e = Render<KenarCubugu>();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kenar-nav a")));
+        var ust = Render<YildizUstMenu>();
+        ust.WaitForAssertion(() => Assert.Equal(5, ust.FindAll("#yildiz-menu a.yildiz-menu-oge").Count));
+        var tum = Render<Kuyumcu.Web.Pages.Ekranlar>();
+        tum.WaitForAssertion(() => Assert.Equal(MenuTanimi.Ogeler.Count, tum.FindAll("a.yz-kare").Count));
 
         Assert.Equal(mod == ArayuzModuServisi.Basit, dil.BasitMi);
-        // Görünen metin + title + aria-label: Türkçe harf 0 ("Merkez" gibi veri harfsizdir).
-        var gorunen = e.Find("#kenar-cubugu").TextContent;
-        var nitelikler = string.Join(" ", e.FindAll("[title],[aria-label]")
-            .SelectMany(x => new[] { x.GetAttribute("title"), x.GetAttribute("aria-label") }));
+        // Görünen metin + title + aria-label + placeholder: Türkçe harf 0 ("Merkez" gibi veri harfsizdir).
+        // Marka amblemi ("MİHENK") özel addır ve bilerek dilden bağımsızdır (YildizUstMenu.AmblemHarfleri,
+        // YildizAmblem2Testleri.YA2_04 iki dilde aynı): yalnız o düğüm metinden düşülür, gerisi sınanır.
+        var marka = ust.Find("#yildiz-marka").TextContent;
+        Assert.Equal(KabukTuvalSozlugu.MarkaYazimi.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("tr-TR")), marka.Trim());
+        var gorunen = ust.Find("#yildiz-ust").TextContent.Replace(marka, " ", StringComparison.Ordinal) + " " + tum.Find("#yildiz-tum").TextContent;
+        var nitelikler = string.Join(" ", ust.FindAll("[title],[aria-label]").Concat(tum.FindAll("[title],[aria-label],[placeholder]"))
+            .SelectMany(x => new[] { x.GetAttribute("title"), x.GetAttribute("aria-label"), x.GetAttribute("placeholder") }));
         Assert.False(TurkceHarf.IsMatch(gorunen), $"[{mod}] menü metni Türkçe harf taşıyor: {gorunen}");
         Assert.False(TurkceHarf.IsMatch(nitelikler), $"[{mod}] menü title/aria-label Türkçe harf taşıyor: {nitelikler}");
-        Assert.Contains("Daily work", e.Find("#kenar-cubugu").TextContent, StringComparison.Ordinal);
-        Assert.Contains("Sales", e.Find("#kenar-satir-islemler").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Daily work", tum.Find("#ekranlar-grup-baslik-gunluk").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Sales", tum.Find("#ekran-karo-islemler").TextContent, StringComparison.Ordinal);
+        Assert.Equal("Counter", ust.Find("#yildiz-menu-tezgah").TextContent.Trim());
     }
 
     // ── (4) SUNUCUDAN TÜRKÇE GELEN KATALOG ADLARI ───────────────────────────
@@ -260,7 +272,7 @@ public sealed class DilEkranTestleri : BunitContext
         await dil.DegistirAsync("en");
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Dil", "Test", "d@ornek.com", "SAHIP", "s1"));
-        var e = Render<Kuyumcu.Web.Pages.Bildirimler>();
+        var e = Render<Kuyumcu.Web.Pages.Bildirimler>().AyrintiAc();
         e.WaitForAssertion(() => Assert.Contains("Due date reminder", e.Markup, StringComparison.Ordinal));
         Assert.DoesNotContain("Vade hatırlatma", e.Markup, StringComparison.Ordinal);
 

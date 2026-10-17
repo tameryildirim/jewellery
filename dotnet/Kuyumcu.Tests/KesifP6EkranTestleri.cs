@@ -143,7 +143,7 @@ public sealed class KesifP6EkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Siparisler> SiparisFormu()
     {
-        var e = Render<Kuyumcu.Web.Pages.Siparisler>();
+        var e = Render<Kuyumcu.Web.Pages.Siparisler>().AyrintiAc();
         e.WaitForElement("#sip-yeni-ac", Uzun).Click();
         e.WaitForElement("#sip-form", Uzun);
         return e;
@@ -262,7 +262,7 @@ public sealed class KesifP6EkranTestleri : BunitContext
     public void Kur_parite_birim_sozlukten(string mod)
     {
         Oturum("SAHIP", mod);
-        var e = Render<Kuyumcu.Web.Pages.Kur>();
+        var e = Render<Kuyumcu.Web.Pages.Kur>().AyrintiAc();
         e.WaitForElement("#kur-sekme-pariteler", Uzun).Click();
         e.WaitForElement("#kur-parite-tablo", Uzun);
         var tablo = e.Find("#kur-parite-tablo");

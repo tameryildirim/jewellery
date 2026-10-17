@@ -15,16 +15,15 @@ public sealed record YildizSayimZaman(string Id, DateTime? Acildi = null);
 // Yalnız GÖRÜNÜM + OKUMA: rakam, cümle ve fark listesi sayfanın MEVCUT açık sayımıdır
 // (GET /sayim/{id}); "Sayımı bitir" MEVCUT Kapat yoludur (hareketli satır kararı gerekiyorsa
 // özgün ekranda sorulur), "Barkod okut" ve tüm düzeltmeler özgün ekrandadır ("ayrıntı").
-// Öteki 8 şemada bu dosyanın hiçbir üyesi çizime girmez (YildizMi = false).
+// Tema temizliği (17.10): tek şema Yıldız — bu yüz her zaman çizilir; özgün gövde "Tüm ayrıntılar" arkasındadır.
 // ═════════════════════════════════════════════════════════════════════════════
 public partial class Sayim
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
     [Inject] private OturumServisi YildizOturum { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "sayim" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "sayim";
 
     /// <summary>Sağdaki fark listesinde gösterilen en çok satır (tuval: 4); kalanı "+ N ürün daha" → özgün tam liste.</summary>
     public const int YildizSatirSiniri = 4;
@@ -41,7 +40,6 @@ public partial class Sayim
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi) return;
         // Tuval açılışı AÇIK sayımı gösterir: Yıldız'da bir kez, açık oturum varsa sayfanın Yukle yolu (salt okuma).
         if (!yildizOtoAcildi && aktif is null && oturumlar.FirstOrDefault(o => o.Durum == "ACIK") is { } acik)
         {

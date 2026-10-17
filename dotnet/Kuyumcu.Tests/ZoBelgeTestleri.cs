@@ -210,7 +210,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB01_Kasa_raporu_acilista_kasa_basina_ozet_satiri_tablo_ve_degismez_kapali()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-ozet-ks1");
 
         // Özet: ad + kasadaki para (kendi para birimiyle, UX-S32) + bugünün durumu.
@@ -240,7 +240,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     public void ZB02_Kasa_raporu_sayim_farki_tablo_KAPALIYKEN_de_ozette_kirmizi_yazar()
     {
         kasaDefteri = KasaDefteriBugunAcik(dunkuFark: -50m);
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-ozet-ks1");
 
         var uyari = c.Find("#kr-fark-uyari-ks1");
@@ -253,7 +253,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB03_Kasa_sayimi_BOS_gonderilemez_sifir_sayilmaz_alan_alti_mesaj()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-sayim-ks1");
         c.Find("#kr-sayim-ks1").Click();
         c.WaitForElement("#kr-sayim-tutar");
@@ -361,7 +361,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB08_Evraklar_iki_hizli_suzgec_digerleri_katlanirda_tek_ozet_Faz_B_yok()
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-satir-e1");
 
         Assert.NotNull(c.Find("#evrak-suzgec-tumu"));
@@ -392,7 +392,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB09_Evrak_formunda_ek_bilgiler_yenide_KAPALI_doluysa_ACIK()
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-yeni");
         c.Find("#evrak-yeni").Click();
         c.WaitForElement("#evrak-form-no");
@@ -498,7 +498,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     public void ZB16_Evrak_satirinda_TEK_birincil_eylem_karsiliksiz_pencerede_idler_ayni()
     {
         Mod(ArayuzModuServisi.Basit);
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-eylem-e1");
         // Satırda görünen: Düzenle + "⋯" (dar sütun, ortak SatirEylemleri).
         var satirda = c.FindAll("#evrak-eylem-e1 > button");
@@ -565,13 +565,13 @@ public sealed class ZoBelgeTestleri : BunitContext
         Assert.Equal(m.IslemDefteri.Ad, c.Find("#sayfa-basi-islem-defteri-baslik").TextContent.Trim());
         Assert.Equal("İşlem defteri", m.IslemDefteri.Ad);
 
-        var k = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var k = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         k.WaitForElement("#sayfa-basi-kasa-raporu-baslik");
         Assert.Equal(m.KasaRaporu.Ad, k.Find("#sayfa-basi-kasa-raporu-baslik").TextContent.Trim());
         Assert.Equal("Kasa raporu", m.KasaRaporu.Ad);
 
         // Aynı çelişki 28.09 tarayıcı ölçümünde iki ekranda daha çıktı (Evraklar, İçe aktarım).
-        var ev = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var ev = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         ev.WaitForElement("#sayfa-basi-evraklar-baslik");
         Assert.Equal(m.CekSenet.Ad, ev.Find("#sayfa-basi-evraklar-baslik").TextContent.Trim());
         var ia = Render<Kuyumcu.Web.Pages.VeriIceAktarim>();
@@ -633,7 +633,7 @@ public sealed class ZoBelgeTestleri : BunitContext
         }
         var f = Render<Kuyumcu.Web.Pages.Faturalar>(); f.WaitForElement("#sayfa-basi-faturalar-baslik"); Yok(f, "faturalar");
         Assert.DoesNotContain(T.Fatura.SayfaAciklama, f.Markup);
-        var e = Render<Kuyumcu.Web.Pages.Evraklar>(); e.WaitForElement("#evrak-ozet"); Yok(e, "evraklar");
+        var e = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc(); e.WaitForElement("#evrak-ozet"); Yok(e, "evraklar");
         Assert.DoesNotContain(T.Evrak.SayfaAciklama, e.Markup);
         // UX-S33 notu kaybolmadı: özet satırında değil, (i) ipucunun içinde.
         Assert.DoesNotContain(T.Evrak.DonemdenBagimsiz, e.Find("#evrak-ozet").TextContent.Replace(e.Find("#evrak-ozet-ipucu").TextContent, ""));
@@ -642,7 +642,7 @@ public sealed class ZoBelgeTestleri : BunitContext
         Yok(r, mod == "BASIT" ? "raporlar-bugun" : "raporlar");
         var i = Render<Kuyumcu.Web.Pages.IslemDefteri>(); i.WaitForElement("#sayfa-basi-islem-defteri-baslik"); Yok(i, "islem-defteri");
         Assert.DoesNotContain(ZB.IslemAciklama, i.Markup);
-        var k = Render<Kuyumcu.Web.Pages.KasaRaporu>(); k.WaitForElement("#kr-ozet"); Yok(k, "kasa-raporu");
+        var k = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc(); k.WaitForElement("#kr-ozet"); Yok(k, "kasa-raporu");
         Assert.DoesNotContain(ZB.KasaAciklama, k.Markup);
         foreach (var ad in k.FindAll(".zo-kasa-ad"))
         {
@@ -858,7 +858,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     public void ZB39_Evraklar_BASIT_banka_sutunu_YOK_cari_tek_etiket_zorunlu_tam_satir()
     {
         Mod("BASIT");
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-tablo");
         var T = Kuyumcu.Core.I18n.Sozlukler.Getir("tr");
         Assert.DoesNotContain(c.FindAll("#evrak-tablo td[data-etiket]"), t => t.GetAttribute("data-etiket") == T.Evrak.BankaAdi);
@@ -876,7 +876,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB40_Kasa_sayim_fark_gerekcesi_farka_gore_zorunlu_isaretli_celiskili_etiket_YOK()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-sayim-ks1");
         c.Find("#kr-sayim-ks1").Click();
         var alan = c.WaitForElement("#kr-sayim-aciklama");
@@ -992,7 +992,7 @@ public sealed class ZoBelgeTestleri : BunitContext
                  {"tarih":"{{Dun}}","devir":0,"giris":500.00,"cikis":0,"hareketSayisi":1,"kapanis":500.00,
                   "durum":"KAPALI","sayilanNakit":500.00,"kapanisDefterBakiye":500.00,"fark":0}]}]}
             """;
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-sayim-ks1");
         var ilkIstek = Say("/raporlar/kasa-defteri");
         Assert.Equal(1, ilkIstek);   // varsayılan süzgeçte özet ve tablo TEK yanıttan
@@ -1033,7 +1033,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB51_Kasa_gecmis_tablosunda_tarih_YEREL_ISO_basilmaz()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-gecmis-ac");
         c.Find("#kr-gecmis-ac").Click();
         c.WaitForElement("#kr-tablo-ks1");
@@ -1071,7 +1071,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     public void ZB53_Evraklar_PRO_banka_ayri_sutun_DEGIL_numaranin_altinda()
     {
         Mod(ArayuzModuServisi.Profesyonel);
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-tablo");
         var T = Sozlukler.Getir("tr");
         Assert.DoesNotContain(c.FindAll("#evrak-tablo thead th"), t => t.TextContent.Trim() == T.Evrak.BankaAdi);
@@ -1254,7 +1254,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB59_Kasa_gecmis_tablolarinda_TL_ve_doviz_AYNI_ondalik_kurali_iki_hane()
     {
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-bakiye-ks1");
         // Özet satırı ekranın genel biçimini korur (ZB01, doğrulayıcı ZOBS14): "1.200 ₺".
         Assert.Equal("1.200 ₺", c.Find("#kr-bakiye-ks1").TextContent.Trim().Replace('\u00a0', ' '));
@@ -1330,7 +1330,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB62c_Evrak_vade_araligi_degisince_istek_iki_ucla_gider()
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-ozet-portfoy");
         c.Find("#evrak-suzgec-ac").Click();
         c.Find("#evrak-vade-bas").Change("2026-10-01");
@@ -1391,7 +1391,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     [Fact]
     public void ZB69_Evrak_ozeti_div_ipucu_paragraf_icinde_degil()
     {
-        var c = Render<Kuyumcu.Web.Pages.Evraklar>();
+        var c = Render<Kuyumcu.Web.Pages.Evraklar>().AyrintiAc();
         c.WaitForElement("#evrak-ozet");
         Assert.Equal("DIV", c.Find("#evrak-ozet").TagName);
         Assert.Empty(c.FindAll("p details, p p, p div"));
@@ -1495,7 +1495,7 @@ public sealed class ZoBelgeTestleri : BunitContext
     {
         // İki kasa, her birinde DÜN AÇIK kalmış gün → eskiden her satırda aynı cümle.
         kasaDefteri = KasaDefteriBugunAcik().Replace("\"durum\":\"KAPALI\",\"sayilanNakit\":500", "\"durum\":\"ACIK\",\"sayilanNakit\":500");
-        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>();
+        var c = Render<Kuyumcu.Web.Pages.KasaRaporu>().AyrintiAc();
         c.WaitForElement("#kr-gecmis-ac");
         c.Find("#kr-gecmis-ac").Click();
         c.WaitForElement("#kr-tablo-ks1");

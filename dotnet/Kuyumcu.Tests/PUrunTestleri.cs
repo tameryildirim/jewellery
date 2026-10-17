@@ -265,8 +265,9 @@ public sealed class PUrunEkranTestleri : BunitContext
             new OturumKullanici("k1", "Test", "Kullanıcı", "t@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Profesyonel, ArayuzModuServisi.Profesyonel));
         var e = Render<Urunler>();
-        e.WaitForAssertion(() => Assert.Contains(e.FindAll("button"), b => b.TextContent.Contains("Düzenle")));
-        e.FindAll("button").First(b => b.TextContent.Contains("Düzenle")).Click();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız ürün listesinde satıra (ürün adına) dokunmak düzenleme formunu açar
+        // (Urunler.Yildiz.cs → MEVCUT DuzenleAc) — özgün listenin "Düzenle" düğmesiyle aynı yol.
+        e.WaitForElement("#yildiz-urun-ad-u1").Click();
         e.WaitForElement("#d-ad");
         Assert.Empty(e.FindAll("#d-ayar-celiski"));
         e.Find("#d-ad").Input("18 Ayar Burma Bilezik");

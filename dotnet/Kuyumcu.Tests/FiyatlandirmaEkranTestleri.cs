@@ -58,7 +58,7 @@ public sealed class FiyatlandirmaEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Fiyatlandirma> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         istekler.Clear();
         return e;
@@ -67,7 +67,7 @@ public sealed class FiyatlandirmaEkranTestleri : BunitContext
     [Fact]
     public void Acilista_listeler_ve_kampanyalar_cekilir_varsayilan_vurgulanir()
     {
-        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>();
+        var e = Render<Kuyumcu.Web.Pages.Fiyatlandirma>().AyrintiAc();
         e.WaitForElement("#fl-tablo tbody tr");
         Assert.Contains(istekler, i => i.Yol.EndsWith("/fiyat/listeler"));
         Assert.Contains(istekler, i => i.Yol.EndsWith("/fiyat/kampanyalar"));

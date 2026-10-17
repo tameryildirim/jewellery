@@ -6,7 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kuyumcu.Tests;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// TEMA SEÇİCİ — paket UX-2 Faz A1 (Aşkın K7 · Mehmet K1)
+// TEMA SERVİSİ — paket UX-2 Faz A1 (Aşkın K7 · Mehmet K1)
+//
+// ⚠ TEMA TEMİZLİĞİ (17.10): cihaza özel TemaSecici bileşeni (KESIF-P1'den beri hiçbir sayfada
+//   çizilmiyordu) kaldırıldı; aydınlık/karanlık seçimi Görünüm kartındadır (sunucu, kullanıcı satırı —
+//   S1fGorunumKartiTestleri). Aşağıdaki sözleşme TemaServisi'nin kendisini sınar (bileşensiz).
 //
 // ⚠ bUnit <html> çizmez → `data-tema` özniteliği DOM'dan OKUNAMAZ. Bu yüzden
 //   sınanan şey ÇAĞRININ KENDİSİ ve ARGÜMANIDIR:
@@ -30,7 +34,7 @@ public sealed class TemaEkranTestleri : BunitContext
         Services.AddScoped<TemaServisi>();
     }
 
-    private IRenderedComponent<TemaSecici> Ciz() => Render<TemaSecici>();
+    private TemaServisi Tema => Services.GetRequiredService<TemaServisi>();
 
     private IReadOnlyList<object?[]> Cagrilar() =>
         JSInterop.Invocations[Cagri].Select(i => i.Arguments.ToArray()).ToList();
@@ -38,72 +42,64 @@ public sealed class TemaEkranTestleri : BunitContext
     [Fact]
     public void Varsayilan_tema_SISTEM_dir_ve_hicbir_JS_cagrisi_yapilmaz()
     {
-        var e = Ciz();
-
-        Assert.Equal(TemaServisi.Sistem, Services.GetRequiredService<TemaServisi>().Mod);
-        Assert.Equal("true", e.Find("#tema-sistem").GetAttribute("aria-pressed"));
-        Assert.Equal("false", e.Find("#tema-karanlik").GetAttribute("aria-pressed"));
+        Assert.Equal(TemaServisi.Sistem, Tema.Mod);
         Assert.Empty(Cagrilar());   // sistem = öznitelik hiç yazılmaz
     }
 
     [Fact]
-    public void Karanlik_secilince_KARANLIK_argumaniyla_uygulanir()
+    public async Task Karanlik_secilince_KARANLIK_argumaniyla_uygulanir()
     {
-        var e = Ciz();
-        e.Find("#tema-karanlik").Click();
+        await Tema.DegistirAsync(TemaServisi.Karanlik);
 
         var cagrilar = Cagrilar();
         Assert.Single(cagrilar);
         Assert.Equal(TemaServisi.Karanlik, cagrilar[0][0]);
-        Assert.Equal(TemaServisi.Karanlik, Services.GetRequiredService<TemaServisi>().Mod);
-        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#tema-karanlik").GetAttribute("aria-pressed")));
+        Assert.Equal(TemaServisi.Karanlik, Tema.Mod);
     }
 
     [Fact]
-    public void Aydinlik_secilince_AYDINLIK_argumaniyla_uygulanir()
+    public async Task Aydinlik_secilince_AYDINLIK_argumaniyla_uygulanir()
     {
-        var e = Ciz();
-        e.Find("#tema-aydinlik").Click();
+        await Tema.DegistirAsync(TemaServisi.Aydinlik);
 
         var cagrilar = Cagrilar();
         Assert.Single(cagrilar);
         Assert.Equal(TemaServisi.Aydinlik, cagrilar[0][0]);
-        e.WaitForAssertion(() => Assert.Equal("true", e.Find("#tema-aydinlik").GetAttribute("aria-pressed")));
+        Assert.Equal(TemaServisi.Aydinlik, Tema.Mod);
     }
 
     [Fact]
-    public void Sisteme_donunce_SISTEM_argumani_gider_BOS_DIZGE_DEGIL()
+    public async Task Sisteme_donunce_SISTEM_argumani_gider_BOS_DIZGE_DEGIL()
     {
         // JS tarafı "sistem" görünce removeAttribute yapar. Boş dizge
         // gönderilirse data-tema="" yazılır ve medya sorgusu bastırılır.
-        var e = Ciz();
-        e.Find("#tema-karanlik").Click();
-        e.Find("#tema-sistem").Click();
+        await Tema.DegistirAsync(TemaServisi.Karanlik);
+        await Tema.DegistirAsync(TemaServisi.Sistem);
 
         var cagrilar = Cagrilar();
         Assert.Equal(2, cagrilar.Count);
         Assert.Equal(TemaServisi.Sistem, cagrilar[1][0]);
         Assert.NotEqual("", cagrilar[1][0] as string);
-        Assert.Equal(TemaServisi.Sistem, Services.GetRequiredService<TemaServisi>().Mod);
+        Assert.Equal(TemaServisi.Sistem, Tema.Mod);
     }
 
     [Fact]
     public async Task Beyaz_liste_disi_deger_SISTEME_duser()
     {
-        var tema = Services.GetRequiredService<TemaServisi>();
-        await tema.DegistirAsync("<script>alert(1)</script>");
+        await Tema.DegistirAsync("<script>alert(1)</script>");
 
-        Assert.Equal(TemaServisi.Sistem, tema.Mod);
+        Assert.Equal(TemaServisi.Sistem, Tema.Mod);
         Assert.Equal(TemaServisi.Sistem, Cagrilar()[0][0]);
     }
 
     [Fact]
-    public void Secici_uc_secenek_cizer_ve_id_sozlesmesine_uyar()
+    public void Uc_tema_kodu_ve_hicbir_sayfa_eski_cihaz_seciciyi_cizmez()
     {
-        var e = Ciz();
-        foreach (var id in new[] { "#tema-sistem", "#tema-aydinlik", "#tema-karanlik" })
-            Assert.NotNull(e.Find(id));
-        Assert.Equal(3, e.FindAll("button[id^=tema-]").Count);
+        // TemaSecici'nin id sözleşmesinin (#tema-sistem/-aydinlik/-karanlik) yerini Görünüm kartının
+        // #gk-tema-* düğmeleri aldı (AyarlarTemaEkranTestleri aşağıda kilitler). Kod listesi AYNI kalır.
+        Assert.Equal([TemaServisi.Sistem, TemaServisi.Aydinlik, TemaServisi.Karanlik], TemaServisi.Secenekler);
+        foreach (var f in Directory.GetFiles(Path.Combine(CssKaynak.Kok(), "Kuyumcu.Web"), "*.razor", SearchOption.AllDirectories))
+            Assert.DoesNotContain("<TemaSecici", File.ReadAllText(f), StringComparison.Ordinal);
     }
 }
 

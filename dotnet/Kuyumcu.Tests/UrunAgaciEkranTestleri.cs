@@ -69,7 +69,7 @@ public sealed class UrunAgaciEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.UrunAgaci> Ciz()
     {
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         istekler.Clear();
         return e;
     }
@@ -90,7 +90,7 @@ public sealed class UrunAgaciEkranTestleri : BunitContext
     [Fact]
     public void Acilista_agac_reyon_ve_subeler_cekilir()
     {
-        Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
 
         Assert.Contains(istekler, i => i.Yol.Contains("/urun-kategorileri"));
         Assert.Contains(istekler, i => i.Yol.Contains("/reyonlar"));
@@ -102,7 +102,7 @@ public sealed class UrunAgaciEkranTestleri : BunitContext
     {
         // sadeceAktif=false olmazsa, yanlışlıkla pasife alınan bir dal ekrandan
         // tümüyle kaybolur ve kullanıcı onu bir daha geri açamazdı.
-        Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
 
         Assert.Contains(istekler, i => i.Yol.Contains("/urun-kategorileri?sadeceAktif=false"));
     }

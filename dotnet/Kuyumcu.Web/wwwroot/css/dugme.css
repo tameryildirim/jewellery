@@ -78,18 +78,13 @@ html[data-mod] {
   --secili-dolgu-metin:  var(--kenar-metin-guclu);
   --secili-dolgu-kenar:  var(--kenar-yuzey);
 }
-html[data-mod][data-sema="fildisi"] {
-  --secili-dolgu:        var(--menu-aktif-yuzey);
-  --secili-dolgu-metin:  var(--menu-aktif-metin);
-  --secili-dolgu-kenar:  var(--menu-aktif-yuzey);
-}
 /* TOPLU-6 (tasarım kuyruğu, tekrar eden ORTA "koyu temada seçili sekme/segment soluk"): karanlıkta
    --kenar-yuzey (#090d16) kart yüzeyinden (#1a1e26) yalnız 1,04–1,16 ayrılıyordu — seçili sekme
    seçili değilmiş gibi okunuyordu (başsız Chrome ölçümü: /raporlar, /uyum, /gider, /evraklar, vade 7 gün).
    Karanlıkta aynı aile TERS çevrilir: seçili = açık dolgu + koyu yazı (aydınlıktaki lacivert hapın
    aynası). Dolgu/yüzey ≥ 3:1, yazı/dolgu ≥ 4,5:1; ana eylem mavisi (--vurgu) DEĞİL; kenar = dolgu
    (hap içinde hap yok). Üst çubuktaki Basit/Profesyonel anahtarı aynı belirteci kullanır (toplu6.css).
-   Fildişi bloğundan SONRA: karanlıkta her şemada bu eşleme geçerlidir. Toplu6Testleri ölçer. */
+   Karanlıkta bu eşleme geçerlidir. Toplu6Testleri ölçer. */
 @media (prefers-color-scheme: dark) {
   html[data-mod]:not([data-tema="aydinlik"]) {
     --secili-dolgu:        var(--kenar-metin-guclu);
@@ -145,8 +140,7 @@ html[data-mod] .ana-icerik .katlanir > .katlanir-h > .katlanir-baslik {
   margin: -1px;
   width: calc(100% + 2px);
 }
-/* Görünüm kartı şema örnekleri (Ayarlar #gk-sema-*) ve görünüm seçenekleri. */
-html[data-mod] .ana-icerik .gk-sema:not(.secili),
+/* Görünüm kartı seçenekleri (Ayarlar #gk-tema-*, #gk-yazi-*, #gk-mod-*). */
 html[data-mod] .ana-icerik .gk-secenek:not(.secili) {
   border-color: var(--dugme-kenar);
 }

@@ -32,7 +32,6 @@ public sealed class S1dEkranlarTestleri : BunitContext
     private readonly List<(string Metot, string Yol, string Govde)> istekler = [];
 
     private string moduller = """["cari","urun","islem","kasa","banka","fatura","rapor","kullanici","evrak","siparis","bildirim","kur"]""";
-    private bool yazmaPatlasin;
     private bool yetkiPatlasin;
 
     private sealed class SahteApi(
@@ -78,7 +77,7 @@ public sealed class S1dEkranlarTestleri : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddScoped<DilServisi>();
         Services.AddScoped(_ => new HttpClient(
-            new SahteApi(istekler, () => moduller, () => yazmaPatlasin, () => yetkiPatlasin))
+            new SahteApi(istekler, () => moduller, static () => false /* TEMA TEMİZLİĞİ 17.10: yazma hatası senaryosu (favori/katlama) kaldırıldı */, () => yetkiPatlasin))
         {
             BaseAddress = new Uri("http://test.local/api/v1/"),
         });
@@ -89,6 +88,9 @@ public sealed class S1dEkranlarTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
     }
 
+    // TEMA TEMİZLİĞİ 17.10: sayfa artık tuval Tum4 yüzüdür (Bilesenler/Yildiz/YildizEkranlar:
+    // a.yz-kare · .yz-kad · section.yz-tum-bolum · #ekranlar-yildiz-ozet). Eski koyu şeritli karo
+    // sayfası (a.ekran-karo, #ekranlar-ipucu, karo yıldızı, alt bağlantılar) kaldırıldı.
     private IRenderedComponent<Ekranlar> Ciz(string rol = "SAHIP", string? mod = null, bool karoBekle = true)
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
@@ -96,12 +98,11 @@ public sealed class S1dEkranlarTestleri : BunitContext
                                 mod ?? ArayuzModuServisi.Profesyonel));
         var e = Render<Ekranlar>();
         if (karoBekle)
-            e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("a.ekran-karo")));
+            e.KareleriBekle();
         return e;
     }
 
-    private static List<string> Hrefler(IRenderedComponent<Ekranlar> e) =>
-        [.. e.FindAll("a.ekran-karo").Select(a => a.GetAttribute("href")!)];
+    private static List<string> Hrefler(IRenderedComponent<Ekranlar> e) => e.KareYollari();
 
     // ── (1) KARO SAYISI ÜRETİLİR ────────────────────────────────────────────
 
@@ -111,58 +112,67 @@ public sealed class S1dEkranlarTestleri : BunitContext
         var e = Ciz();
 
         Assert.Equal(MenuTanimi.Ogeler.Select(o => o.Yol).ToList(), Hrefler(e));
-        // Tuval 38 ekran der; bugünkü tanım da 38'dir. Sayı elle yazılmadığı
-        // için yeni ekran eklenince bu satır kendiliğinden artar (sayım ÜRETİLİR).
-        Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.ekran-karo").Count);
-        // Id sözleşmesi: '<önek>-<alan>' — kenar çubuğuyla aynı slug.
+        // Sayı elle yazılmadığı için yeni ekran eklenince kendiliğinden artar (sayım ÜRETİLİR).
+        Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.yz-kare").Count);
+        // Id sözleşmesi: '<önek>-<alan>' — menü tanımıyla aynı slug.
         foreach (var oge in MenuTanimi.Ogeler)
             Assert.Single(e.FindAll($"#ekran-karo-{MenuTanimi.Slug(oge.Yol)}"));
     }
 
     [Fact]
-    public void Ipucundaki_sayi_KARO_SAYISIDIR_ve_tuval_metnini_tasir()
+    public void Ust_satirdaki_sayi_KARO_SAYISIDIR_ve_tuval_metnini_tasir()
     {
+        // ESKİ: Ipucundaki_sayi_KARO_SAYISIDIR_ve_tuval_metnini_tasir (#ekranlar-ipucu kaldırıldı;
+        // Yıldız'da sayı tuval Tum4 üst satırındadır: "41 ekran · 6 bölüm · hiçbiri gizli değil").
         var e = Ciz();
-        var adet = e.FindAll("a.ekran-karo").Count;
+        var adet = e.FindAll("a.yz-kare").Count;
 
-        Assert.Equal(EkranlarSozlugu.Ipucu("tr", adet), e.Find("#ekranlar-ipucu").TextContent.Trim());
-        Assert.Equal($"{adet} ekranın hepsi burada · yıldızla favorine ekle", EkranlarSozlugu.Ipucu("tr", adet));
+        Assert.Equal(YildizSozlugu.Ozet("tr", adet, MenuTanimi.GrupSirasi.Length, true),
+            e.Find("#ekranlar-yildiz-ozet").TextContent.Trim());
+        Assert.Equal($"{adet} ekran · 6 bölüm · hiçbiri gizli değil", YildizSozlugu.Ozet("tr", adet, 6, true));
     }
 
     [Fact]
     public void Alti_grup_basligi_TUVAL_SIRASIYLA_ve_sozlukten()
     {
         var e = Ciz();
-        var bolumler = e.FindAll("section.ekranlar-grup").Select(s => s.Id ?? "").ToList();
+        var bolumler = e.BolumKimlikleri();
 
         Assert.Equal(6, bolumler.Count);
         Assert.Equal(MenuTanimi.GrupSirasi.Select(g => $"ekranlar-grup-{MenuTanimi.GrupSlug(g)}").ToList(), bolumler);
         foreach (var g in MenuTanimi.GrupSirasi)
         {
             var slug = MenuTanimi.GrupSlug(g);
-            Assert.Equal(MenuTanimi.GrupEtiketi(g)(Sozlukler.Tr),
-                e.Find($"#ekranlar-grup-baslik-{slug}").TextContent.Trim());
-            // Karo grubunda, kenar çubuğundaki grubuyla AYNI öğeler durur.
             var beklenen = MenuTanimi.Ogeler.Where(o => o.Grup == g).Select(o => o.Yol).ToList();
-            var gercek = e.FindAll($"#ekranlar-grup-{slug} a.ekran-karo").Select(a => a.GetAttribute("href") ?? "").ToList();
+            // Başlık: sözlükteki grup adı + " · " + bölümdeki ekran sayısı (tuval Tum4 "Günlük iş · 5").
+            var baslik = e.Find($"#ekranlar-grup-baslik-{slug}").TextContent.Trim();
+            Assert.StartsWith(MenuTanimi.GrupEtiketi(g)(Sozlukler.Tr) + " ", baslik, StringComparison.Ordinal);
+            Assert.Equal(beklenen.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), baslik.Split('·').Last().Trim());
+            // Bölümde, menü tanımındaki grubuyla AYNI öğeler durur.
+            var gercek = e.FindAll($"#ekranlar-grup-{slug} a.yz-kare").Select(a => a.GetAttribute("href") ?? "").ToList();
             Assert.Equal(beklenen, gercek);
         }
     }
 
     [Fact]
-    public void Karo_adlari_KENAR_CUBUGUYLA_AYNI_kaynaktan_gelir()
+    public void Karo_adlari_MENU_TANIMIYLA_AYNI_kaynaktan_gelir()
     {
+        // ESKİ: Karo_adlari_KENAR_CUBUGUYLA_AYNI_kaynaktan_gelir (kenar çubuğu kaldırıldı; tek kaynak
+        // MenuOgesi.Etiket — tek bilinçli tuval sapması YildizEkranSozlugu.KareAdi: /gider "Gider ve virman").
         var e = Ciz();
         foreach (var oge in MenuTanimi.Ogeler)
-            Assert.Equal(oge.Etiket(Sozlukler.Tr),
-                e.Find($"#ekran-karo-{MenuTanimi.Slug(oge.Yol)} .ekran-karo-ad").TextContent.Trim());
+            Assert.Equal(YildizEkranSozlugu.KareAdi(oge.Yol, oge.Etiket(Sozlukler.Tr), "tr"),
+                e.Find($"#ekran-karo-{MenuTanimi.Slug(oge.Yol)} .yz-kad").TextContent.Trim());
+        // Sapma yalnız /gider'dedir; öteki her kare menü adının KENDİSİDİR.
+        Assert.Single(MenuTanimi.Ogeler, o => YildizEkranSozlugu.KareAdi(o.Yol, o.Etiket(Sozlukler.Tr), "tr") != o.Etiket(Sozlukler.Tr));
     }
 
     // ── (2) YETKİ ≠ MOD ─────────────────────────────────────────────────────
 
     [Fact]
-    public void Yetkisiz_ekranin_karosu_CIZILMEZ_ipucu_da_saymaz()
+    public void Yetkisiz_ekranin_karosu_CIZILMEZ_ust_satir_da_saymaz()
     {
+        // ESKİ: Yetkisiz_ekranin_karosu_CIZILMEZ_ipucu_da_saymaz (ipucu → üst satır; karo yıldızı kaldırıldı).
         moduller = """["cari","islem"]""";
         var e = Ciz(rol: "TEZGAHTAR");
         var hrefler = Hrefler(e);
@@ -176,9 +186,9 @@ public sealed class S1dEkranlarTestleri : BunitContext
         Assert.Contains("/islemler", hrefler);
         // Boş grup başlığı çizilmez (Belge ve Uyum: fatura modülü yok, iki rol kapılı).
         Assert.Empty(e.FindAll("#ekranlar-grup-belge-uyum"));
-        Assert.Equal(EkranlarSozlugu.Ipucu("tr", beklenen.Count), e.Find("#ekranlar-ipucu").TextContent.Trim());
-        // Yıldızı da çizilmez: favoriye eklenemez.
-        Assert.Empty(e.FindAll("#ekran-favori-gider"));
+        var ozet = e.Find("#ekranlar-yildiz-ozet").TextContent.Trim();
+        Assert.StartsWith($"{beklenen.Count} ekran ", ozet, StringComparison.Ordinal);
+        Assert.DoesNotContain("hiçbiri gizli değil", ozet, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -186,7 +196,7 @@ public sealed class S1dEkranlarTestleri : BunitContext
     {
         var e = Ciz(mod: ArayuzModuServisi.Basit);
 
-        Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.ekran-karo").Count);
+        Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.yz-kare").Count);
         Assert.True(MenuTanimi.Ogeler.Count > BasitMenu.Yollar.Length);
     }
 
@@ -199,10 +209,11 @@ public sealed class S1dEkranlarTestleri : BunitContext
         e.Find("#ekranlar-ara").Input("SAYIM");
 
         Assert.Equal(["/sayim"], Hrefler(e));
-        Assert.Equal(EkranlarSozlugu.SonucSayisi("tr", 1), e.Find("#ekranlar-sonuc-sayisi").TextContent.Trim());
-        // Başka grupların başlığı çizilmez; ipucu TOPLAMI söylemeye devam eder.
-        Assert.Single(e.FindAll("section.ekranlar-grup"));
-        Assert.Equal(EkranlarSozlugu.Ipucu("tr", MenuTanimi.Ogeler.Count), e.Find("#ekranlar-ipucu").TextContent.Trim());
+        // Başka grupların bölümü çizilmez; üst satır TOPLAMI söylemeye devam eder.
+        // (Eski #ekranlar-sonuc-sayisi satırı tuval Tum4'te yok — kaldırıldı.)
+        Assert.Single(e.FindAll("section.yz-tum-bolum"));
+        Assert.Equal(YildizSozlugu.Ozet("tr", MenuTanimi.Ogeler.Count, MenuTanimi.GrupSirasi.Length, true),
+            e.Find("#ekranlar-yildiz-ozet").TextContent.Trim());
     }
 
     [Fact]
@@ -211,13 +222,13 @@ public sealed class S1dEkranlarTestleri : BunitContext
         var e = Ciz();
         e.Find("#ekranlar-ara").Input("zzqq");
 
-        Assert.Empty(e.FindAll("a.ekran-karo"));
+        Assert.Empty(e.FindAll("a.yz-kare"));
         Assert.Contains(EkranlarSozlugu.SonucYok("tr", "zzqq"), e.Find("#ekranlar-bos").TextContent, StringComparison.Ordinal);
 
         e.Find("#ekranlar-aramayi-temizle").Click();
 
         Assert.Empty(e.FindAll("#ekranlar-bos"));
-        Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.ekran-karo").Count);
+        Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.yz-kare").Count);
         Assert.Equal("", e.Find("#ekranlar-ara").GetAttribute("value") ?? "");
     }
 
@@ -225,6 +236,7 @@ public sealed class S1dEkranlarTestleri : BunitContext
     public void Arama_bosken_BOS_DURUM_cizilmez()
     {
         var e = Ciz();
+        Assert.NotEmpty(e.FindAll("a.yz-kare"));   // sayfa çizildi (boş DOM'da yanlış yeşil yok)
         Assert.Empty(e.FindAll("#ekranlar-bos"));
     }
 
@@ -256,38 +268,8 @@ public sealed class S1dEkranlarTestleri : BunitContext
 
     // ── (4) HER DÜĞME İŞ YAPAR ──────────────────────────────────────────────
 
-    [Fact]
-    public void Yildiz_PATCH_atar_govde_favori_listesini_tasir()
-    {
-        var e = Ciz();
-        var yildiz = e.Find("#ekran-favori-cariler");
-        Assert.Equal("false", yildiz.GetAttribute("aria-pressed"));
-
-        yildiz.Click();
-
-        var patch = istekler.Last(i => i.Metot == "PATCH");
-        Assert.EndsWith("/tercihler/benim", patch.Yol, StringComparison.Ordinal);
-        using var j = JsonDocument.Parse(patch.Govde);
-        var deger = j.RootElement.GetProperty("tercihler").GetProperty(MenuTercihServisi.AnahtarFavoriler).GetString()!;
-        Assert.Equal(["/cariler"], JsonSerializer.Deserialize<string[]>(deger) ?? []);
-        e.WaitForAssertion(() =>
-            Assert.Equal("true", e.Find("#ekran-favori-cariler").GetAttribute("aria-pressed")));
-        Assert.Contains("dolu", e.Find("#ekran-favori-cariler").ClassList);
-    }
-
-    [Fact]
-    public void Yildiz_yazilamazsa_BANT_cizilir_ve_GERI_ALINIR()
-    {
-        var e = Ciz();
-        yazmaPatlasin = true;
-
-        e.Find("#ekran-favori-urunler").Click();
-
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#ekranlar-tercih-hatasi")));
-        Assert.StartsWith(EkranlarSozlugu.FavoriKaydedilemedi("tr", "").TrimEnd(),
-            e.Find("#ekranlar-tercih-hatasi").TextContent.Trim(), StringComparison.Ordinal);
-        Assert.Equal("false", e.Find("#ekran-favori-urunler").GetAttribute("aria-pressed"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Yildiz_PATCH_atar_govde_favori_listesini_tasir kaldırıldı — karo yıldızı (favori) tuval Tum4'te yok, Yıldız "Tüm ayrıntılar" sayfasında favori düğmesi çizilmez (favori PATCH sunucu ucu KATMAN2TercihHttpTestleri'nde).
+    // TEMA TEMİZLİĞİ 17.10: Yildiz_yazilamazsa_BANT_cizilir_ve_GERI_ALINIR kaldırıldı — favori düğmesi yok; sayfanın tercih okuma bandı (#ekranlar-tercih-hatasi) Yıldız'da aynen durur.
 
     [Fact]
     public void Yetki_okunamazsa_BANT_ve_yeniden_dene_GERCEK_istek_atar()
@@ -303,79 +285,47 @@ public sealed class S1dEkranlarTestleri : BunitContext
 
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#ekranlar-yetki-hatasi")));
         Assert.True(istekler.Count(i => i.Yol.EndsWith("/yetkiler/benim", StringComparison.Ordinal)) > once);
-        e.WaitForAssertion(() => Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.ekran-karo").Count));
+        e.WaitForAssertion(() => Assert.Equal(MenuTanimi.Ogeler.Count, e.FindAll("a.yz-kare").Count));
     }
 
     [Fact]
     public void Her_dugme_ya_istek_atar_ya_da_gorunur_is_yapar()
     {
-        // DoD EK md.1: sayfadaki düğme türleri — yıldız (PATCH), temizle (liste
-        // geri gelir, ayrı testte), yeniden dene (GET, ayrı testte). Başka düğme YOK.
+        // DoD EK md.1: Yıldız sayfasında düğme türleri — temizle (liste geri gelir) ve yeniden dene
+        // (GET) — ikisi de yalnız gerektiğinde çizilir ve ayrı testte iş yaptığı ölçülür.
+        // Olağan durumda (kareler çizili, arama boş, hata yok) sayfada HİÇ düğme yoktur: ölü düğme 0.
+        // (ESKİ: her karoda favori yıldızı düğmesi vardı — tuval Tum4'te yok, kaldırıldı.)
         var e = Ciz();
-        var dugmeler = e.FindAll("button").Select(b => b.Id).ToList();
+        Assert.NotEmpty(e.FindAll("a.yz-kare"));
+        Assert.Empty(e.FindAll("button"));
 
-        Assert.All(dugmeler, id => Assert.StartsWith("ekran-favori-", id, StringComparison.Ordinal));
-        Assert.Equal(MenuTanimi.Ogeler.Count, dugmeler.Count);
+        e.Find("#ekranlar-ara").Input("zzqq");
+        Assert.Equal(["ekranlar-aramayi-temizle"], e.FindAll("button").Select(b => b.Id).ToList());
         Assert.All(e.FindAll("button"), b => Assert.False(b.HasAttribute("disabled")));
     }
 
     // ── (5) TUVAL ───────────────────────────────────────────────────────────
 
-    [Fact]
-    public void TEK_birincil_karo_Satis_tir()
-    {
-        var e = Ciz();
-        var birincil = e.FindAll(".ekran-karo-birincil");
-
-        Assert.Single(birincil);
-        Assert.Equal(Ekranlar.BirincilKaroYolu, birincil[0].GetAttribute("href"));
-        Assert.Equal("/islemler", Ekranlar.BirincilKaroYolu);
-    }
+    // TEMA TEMİZLİĞİ 17.10: TEK_birincil_karo_Satis_tir kaldırıldı — tuval Tum4'te vurgu renkli birincil kare yok (kareler eşit; .ekran-karo-birincil Yıldız yüzünde çizilmez).
+    // TEMA TEMİZLİĞİ 17.10: Yalniz_Gunluk_is_karolari_IKON_tasir kaldırıldı — tuval Tum4'te HER karede çizgi ikon var (Yildiz2Testleri.Y2_20, Yildiz4BTestleri.Y4B_14).
 
     [Fact]
-    public void Yalniz_Gunluk_is_karolari_IKON_tasir()
+    public void Baslik_h1_ve_arama_yer_tutucusu_tuvalden()
     {
-        var e = Ciz();
-        foreach (var oge in MenuTanimi.Ogeler)
-        {
-            var ikon = e.FindAll($"#ekran-karo-{MenuTanimi.Slug(oge.Yol)} svg.ikon").Count;
-            Assert.Equal(oge.Grup == MenuGrubu.Gunluk ? 1 : 0, ikon);
-        }
-    }
-
-    [Fact]
-    public void Ust_serit_marka_PANELE_doner_baslik_h1_arama_yer_tutucusu_tuvalden()
-    {
+        // ESKİ: Ust_serit_marka_PANELE_doner_baslik_h1_arama_yer_tutucusu_tuvalden. Koyu üst şerit ve
+        // içindeki marka → panel bağlantısı kaldırıldı (sayfa artık üst menünün altında; marka → "/"
+        // üst menüde: YildizAmblem2Testleri.YA2_01). Başlık ve arama tuval Tum4 metnidir.
         var e = Ciz();
 
-        Assert.Equal("/", e.Find("#ekranlar-panele-don").GetAttribute("href"));
-        Assert.Equal(EkranlarSozlugu.PaneleDon("tr"), e.Find("#ekranlar-panele-don").GetAttribute("aria-label"));
-        Assert.Equal(KabukTuvalSozlugu.MarkaYazimi, e.Find("#ekranlar-panele-don .ekranlar-marka-ad").TextContent.Trim());
-        Assert.Equal("Tüm ekranlar", e.Find("h1#ekranlar-baslik").TextContent.Trim());
-        Assert.Equal("Ekran adı yaz: fatura, kasa, sayım…", e.Find("#ekranlar-ara").GetAttribute("placeholder"));
+        Assert.Equal("Tüm ekranlar", e.Find("h1#yildiz-tum-baslik").TextContent.Trim());
+        Assert.Single(e.FindAll("h1"));
+        Assert.Equal(YildizEkranSozlugu.Ara("tr"), e.Find("#ekranlar-ara").GetAttribute("placeholder"));
+        Assert.Equal("Ekran ara", YildizEkranSozlugu.Ara("tr"));
         Assert.Equal("search", e.Find("#ekranlar-ara").GetAttribute("type"));
     }
 
-    [Fact]
-    public void Alt_baglantilar_Kilavuz_Ayarlar_Vitrin_panosu()
-    {
-        var e = Ciz();
-        var alt = e.FindAll("#ekranlar-alt a").Select(a => a.GetAttribute("href")).ToList();
-
-        Assert.Equal(["/kilavuz", "/ayarlar", "/vitrin"], alt);
-        Assert.Equal(EkranlarGirisTuvalSozlugu.VitrinPanosu("tr"), e.Find("#ekranlar-alt-vitrin").TextContent.Trim());
-    }
-
-    [Fact]
-    public void Vitrin_panosu_KUR_yetkisi_yoksa_CIZILMEZ()
-    {
-        moduller = """["cari","islem"]""";
-        var e = Ciz(rol: "TEZGAHTAR");
-
-        Assert.Empty(e.FindAll("#ekranlar-alt-vitrin"));
-        Assert.NotEmpty(e.FindAll("#ekranlar-alt-kilavuz"));
-        Assert.NotEmpty(e.FindAll("#ekranlar-alt-ayarlar"));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Alt_baglantilar_Kilavuz_Ayarlar_Vitrin_panosu kaldırıldı — alt bağlantı satırı tuval Tum4'te yok; Kılavuz ve Ayarlar üst menünün hesap menüsünde (Yildiz2Testleri.Y2_13, BasitModMenuTestleri.Kilavuz_ve_Ayarlar_her_modda_alt_blokta_kalir), Vitrin panosu Kur ekranındaki #kur-vitrin-ac düğmesinden açılır (MenuTanimi.MenusuzRotalar["/vitrin"]).
+    // TEMA TEMİZLİĞİ 17.10: Vitrin_panosu_KUR_yetkisi_yoksa_CIZILMEZ kaldırıldı — #ekranlar-alt-vitrin yok (yukarıdaki gerekçe).
 
     [Fact]
     public async Task Ingilizce_dilde_metinler_EN_sozlukten()
@@ -383,10 +333,11 @@ public sealed class S1dEkranlarTestleri : BunitContext
         var e = Ciz();
         await e.InvokeAsync(() => Services.GetRequiredService<DilServisi>().DegistirAsync("en"));
 
-        e.WaitForAssertion(() => Assert.Equal("All screens", e.Find("#ekranlar-baslik").TextContent.Trim()));
-        // S1-g: karo adı MenuAdlari'ndan (tuval) — ESKİ beklenen Nav.Cariler ("Accounts").
-        Assert.Equal(MenuAdlari.En.Musteriler.Ad, e.Find("#ekran-karo-cariler .ekran-karo-ad").TextContent.Trim());
-        Assert.Equal(EkranlarSozlugu.AramaYerTutucu("en"), e.Find("#ekranlar-ara").GetAttribute("placeholder"));
+        e.WaitForAssertion(() => Assert.Equal("All screens", e.Find("#yildiz-tum-baslik").TextContent.Trim()));
+        // Karo adı MenuAdlari'ndan (tuval).
+        Assert.Equal(MenuAdlari.En.Musteriler.Ad, e.Find("#ekran-karo-cariler .yz-kad").TextContent.Trim());
+        Assert.Equal(YildizEkranSozlugu.Ara("en"), e.Find("#ekranlar-ara").GetAttribute("placeholder"));
+        Assert.StartsWith($"{MenuTanimi.Ogeler.Count} screens ", e.Find("#ekranlar-yildiz-ozet").TextContent.Trim(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -416,7 +367,9 @@ public sealed class S1dEkranlarTestleri : BunitContext
         Assert.Null(Kuyumcu.Core.Erisim.RotaModulleri.Harita["/ekranlar"]);
         // Kendini listelemez: karo menü bir menü ÖĞESİ değildir.
         Assert.DoesNotContain(MenuTanimi.Ogeler, o => o.Yol == "/ekranlar");
-        Assert.Equal("Layout/KenarCubugu.razor", MenuTanimi.MenusuzRotalar["/ekranlar"]);
+        // TEMA TEMİZLİĞİ 17.10: girişi artık üst menünün "Tüm ekranlar" sözcüğü verir (kenar çubuğu kaldırıldı).
+        Assert.Equal("Bilesenler/Kabuk/YildizUstMenu.razor", MenuTanimi.MenusuzRotalar["/ekranlar"]);
+        Assert.Contains(YildizKabuk.UstMenu, o => o.Yol == "/ekranlar");
     }
 
     [Theory]

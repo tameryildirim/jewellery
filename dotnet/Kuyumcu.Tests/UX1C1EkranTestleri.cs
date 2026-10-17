@@ -264,8 +264,11 @@ public sealed class UX1C1EkranTestleri : BunitContext
     [Fact]
     public void Giris_SAYFA_BASI_tasir_ve_baslik_bos_degil()
     {
+        // TEMA TEMİZLİĞİ 17.10: Yıldız giriş düzeninde (tuval Giris4) giriş sekmesinde SayfaBasi çizilmez; sayfanın
+        // başlığı amblem h1'idir (#giris-amblem) — "başlık boş olamaz" sözleşmesi oraya taşındı (erişilebilir ad + yazım).
         var e = Render<Kuyumcu.Web.Pages.Giris>();
-        var baslik = e.Find("#sayfa-basi-giris-baslik");
+        var baslik = e.Find("h1#giris-amblem");
+        Assert.False(string.IsNullOrWhiteSpace(baslik.GetAttribute("aria-label")));
         Assert.False(string.IsNullOrWhiteSpace(baslik.TextContent));
     }
 
@@ -303,56 +306,48 @@ public sealed class UX1C1EkranTestleri : BunitContext
     // / (Panel)
     // ═════════════════════════════════════════════════════════════════════════
 
-    [Fact]
-    public void Panel_KARSILAMA_BASLIGI_tasir_ve_baslik_bos_degil()
-    {
-        // ⚠ P-37b SAPMASI (gerekçeli): Panel artık ortak `SayfaBasi` şeridini
-        //   DEĞİL, karşılama başlığını (selam + tarih + hava) taşır. Kurucu
-        //   talimatı 20: "ilk sayfa … pencere pencere olan bir ekran karşılamalı,
-        //   en uygun yerlere hoş geldin kullanıcı ismi olmalı". Başlık yuvasının
-        //   "boş olamaz" sözleşmesi KORUNUR, yalnız elemanın kimliği değişti.
-        OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-selam");
-        Assert.False(string.IsNullOrWhiteSpace(e.Find("#panel-selam").TextContent));
-        Assert.False(string.IsNullOrWhiteSpace(e.Find("#panel-tarih").TextContent));
-    }
-
-    [Fact]
-    public void Panel_kasa_ozeti_DONEMDEN_BAGIMSIZ_oldugunu_yazar()
-    {
-        OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-selam");
-        // UX-S33 — kart, üstteki tarih seçiminden etkilenmediğini söyler.
-        // Kasa listesi boşsa kart hiç çizilmez; fikstürde kasa yok → not da yok.
-        Assert.DoesNotContain(e.FindAll("#panel-kasa-donem"), x => string.IsNullOrWhiteSpace(x.TextContent));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Panel_KARSILAMA_BASLIGI_tasir_ve_baslik_bos_degil kaldırıldı — eski karşılama gövdesi (selam #panel-selam + #panel-tarih) bilerek kaldırıldı, Panel yalnız YildizBugun; üst satırın (tarih · şube) dolu olduğu Yildiz4ATestleri'nde (#yildiz-bugun-ust-satir) sınanır.
+    // TEMA TEMİZLİĞİ 17.10: Panel_kasa_ozeti_DONEMDEN_BAGIMSIZ_oldugunu_yazar kaldırıldı — eski kutucuk ızgarasının kasa kartı (#panel-kasa-donem) bilerek kaldırıldı; Yıldız Bugün yüzünde (tuval) dönem seçicisi ve bu kart yok.
 
     // ═════════════════════════════════════════════════════════════════════════
     // /cariler — QA turu 2 KRİTİK: pasif cari "aktif" görünüyor, dönüşü yok
     // ═════════════════════════════════════════════════════════════════════════
 
-    private IRenderedComponent<Kuyumcu.Web.Pages.Cariler> CariEkrani()
+    // TEMA TEMİZLİĞİ 17.10: Cariler'in eski özgün listesi (SayfaBasi + tablo + satır eylemleri + süzgeç kutusu) bilerek
+    // kaldırıldı; liste artık YildizMusteriler (#yildiz-musteri). Satır eylemleri satıra dokununca açılan KARTTA aynı
+    // kimliklerle durur (YildizKartEylemleri: #c-aktife-al-{id}, #c-tahsilat-{id} …); tür/pasif süzgeci (#cari-tur-filtre,
+    // #cari-pasifleri-goster) bağlantıdan (?tur=, ?aktif=false) gelince görünen şerittedir. Testler bu yolları sürer.
+    private IRenderedComponent<Kuyumcu.Web.Pages.Cariler> CariEkrani(string? baglanti = null)
     {
         OturumAc();
+        if (baglanti is not null)
+            Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>().NavigateTo(baglanti);
         var e = Render<Kuyumcu.Web.Pages.Cariler>();
-        e.WaitForElement("#sayfa-basi-cariler-baslik");
+        e.WaitForElement("#yildiz-musteri-liste");
         return e;
+    }
+
+    /// <summary>Satıra dokunur → müşteri kartı (düzenleme çekmecesi + kart eylemleri) açılır.</summary>
+    private static void KartAc(IRenderedComponent<Kuyumcu.Web.Pages.Cariler> e, string cariId)
+    {
+        e.Find($"#yildiz-musteri-{cariId}").Click();
+        e.WaitForElement("#yildiz-kart-eylemler");
     }
 
     [Fact]
     public void Cariler_liste_VARSAYILAN_olarak_yalniz_AKTIFLERI_ister()
     {
         var e = CariEkrani();
-        Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.Contains("aktif=true"));
+        Assert.Contains(istekler, i => i.Metot == "GET" && i.Yol.Contains("/cari?") && i.Yol.Contains("aktif=true"));
         _ = e;
     }
 
     [Fact]
     public void Cariler_pasifleri_goster_anahtari_SUZGECI_KALDIRIR()
     {
-        var e = CariEkrani();
+        // Yıldız: süzgeç şeridi bağlantıdan gelen süzgeçle görünür (Cariler.Yildiz.cs YildizSuzgecEtkin).
+        var e = CariEkrani("/cariler?tur=MUSTERI");
+        e.WaitForElement("#yildiz-musteri-suzgec #cari-pasifleri-goster");
         istekler.Clear();
 
         e.Find("#cari-pasifleri-goster").Change(true);
@@ -369,6 +364,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     public void Cariler_pasif_satirda_AKTIFE_AL_dugmesi_PATCH_aktif_true_gonderir()
     {
         var e = CariEkrani();
+        KartAc(e, "c2");
         istekler.Clear();
 
         e.Find("#c-aktife-al-c2").Click();
@@ -417,25 +413,34 @@ public sealed class UX1C1EkranTestleri : BunitContext
     [Fact]
     public void Cariler_satir_ici_telefon_duzenlemesi_PATCH_telefon_gonderir()
     {
+        // TEMA TEMİZLİĞİ 17.10: eski listenin satır içi telefon hücresi (#si-cari-telefon-c1) bilerek kaldırıldı; telefonun
+        // Yıldız'daki düzeltme yolu satıra dokununca açılan karttır (#duz-telefon) — aynı uç, aynı PATCH sözleşmesi.
         var e = CariEkrani();
+        KartAc(e, "c1");
+        e.WaitForAssertion(() => Assert.False(e.Find("#duz-telefon").HasAttribute("disabled")));
         istekler.Clear();
 
-        e.Find("#si-cari-telefon-c1-ac").Click();
-        e.Find("#si-cari-telefon-c1").Input("05559998877");
-        e.Find("#si-cari-telefon-c1-kaydet").Click();
+        e.Find("#duz-telefon").Input("05559998877");
+        e.WaitForAssertion(() => Assert.False(e.Find("#cekmece-cari-kaydet").HasAttribute("disabled")));
+        e.Find("#cekmece-cari-kaydet").Click();
 
-        var istek = Assert.Single(istekler, i => i.Metot == "PATCH");
-        Assert.EndsWith("/cari/c1", istek.Yol);
-        Assert.Equal("05559998877", Alan(istek.Govde, "telefon"));
+        e.WaitForAssertion(() =>
+        {
+            var istek = Assert.Single(istekler, i => i.Metot == "PATCH");
+            Assert.EndsWith("/cari/c1", istek.Yol);
+            Assert.Equal(TelefonBicimi.Sunucuya("05559998877"), Alan(istek.Govde, "telefon"));
+        });
     }
 
     [Fact]
     public void Cariler_tur_sutunu_HAM_ENUM_basmaz_ve_suzgec_BES_turu_kapsar()
     {
-        var e = CariEkrani();
-        // UX-S31: "TEDARIKCI" ham kodu ekranda görünmez.
-        Assert.DoesNotContain("TEDARIKCI", e.Find("table").TextContent);
+        var e = CariEkrani("/cariler?tur=MUSTERI");
+        // UX-S31: "TEDARIKCI" ham kodu ekranda görünmez (fikstürde c2 TEDARIKCI — satırı çizilir).
+        Assert.NotNull(e.Find("#yildiz-musteri-c2"));
+        Assert.DoesNotContain("TEDARIKCI", e.Find("#yildiz-musteri-liste").TextContent);
         // Süzgeç: "Tümü" + beş tür.
+        e.WaitForElement("#yildiz-musteri-suzgec #cari-tur-filtre");
         Assert.Equal(6, SeciciYardim.Secenekler(e, "cari-tur-filtre").Count);
     }
 
@@ -446,7 +451,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Urunler> UrunEkrani()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Urunler>();
+        var e = Render<Kuyumcu.Web.Pages.Urunler>().AyrintiAc();
         e.WaitForElement("#sayfa-basi-urunler-baslik");
         return e;
     }
@@ -572,7 +577,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.UrunAgaci> AgacEkrani()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>();
+        var e = Render<Kuyumcu.Web.Pages.UrunAgaci>().AyrintiAc();
         e.WaitForElement("#sayfa-basi-urun-agaci-baslik");
         return e;
     }
@@ -662,7 +667,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     public void Etiketler_URUN_SECILIYKEN_adet_sifirsa_YAZDIR_kilitli_ve_SEBEBI_yazar()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>();
+        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>().AyrintiAc();
         e.WaitForElement("#et-adet");
 
         // Önce ürün SEÇİLİR: kilit yalnız seçimden gelmiyor olmalı.
@@ -680,7 +685,7 @@ public sealed class UX1C1EkranTestleri : BunitContext
     public void Etiketler_sunucu_SINIRINI_ekranda_soyler()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>();
+        var e = Render<Kuyumcu.Web.Pages.UrunEtiketleri>().AyrintiAc();
         e.WaitForElement("#et-sinir");
         // TOPLU-6: sınırın altında sınır sayacın ipucunda (title); sınıra değince metinde (UX-S29).
         Assert.Contains("500", e.Find("#et-sinir").InnerHtml);
@@ -821,31 +826,39 @@ public sealed class UX1C1EkranTestleri : BunitContext
     public void Pos_kilitli_KAYDET_dugmesi_SEBEBINI_soyler()
     {
         var e = PosEkrani();
-        // Boş formda Kaydet kilitli — ama artık NEDEN kilitli olduğu yazıyor.
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
-        Assert.False(string.IsNullOrWhiteSpace(e.Find("#islem-kaydet-kilit").TextContent));
+        // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhıdır — Kaydet #yildiz-tezgah-kaydet (özgün #islem-kaydet satışta yok).
+        // Boş formda Kaydet kilitli — ama artık NEDEN kilitli olduğu yazıyor (düğmenin title'ı = KaydetKilitSebebi; boş fişte
+        // kalem alanının "boş" cümlesi görünür).
+        var kaydet = e.WaitForElement("#yildiz-tezgah-kaydet");
+        Assert.True(kaydet.HasAttribute("disabled"));
+        Assert.False(string.IsNullOrWhiteSpace(kaydet.GetAttribute("title")));
+        Assert.False(string.IsNullOrWhiteSpace(e.Find("#yildiz-tezgah-bos").TextContent));
     }
 
     [Fact]
     public void Pos_kalem_satirinda_ADET_satir_ici_duzenlenir()
     {
+        // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhıdır — eski kalem tablosunun satır içi tetikleyicisi
+        // (#si-kalem-adet-u1-ac) satışta yok; kalem satırına dokununca (#yildiz-kalem-0) açılan düzenlemede (PRO) adet
+        // aynı satırda düzeltilir (YildizKalemYaz — FisKalemTablosu.AdetDegistir'in aynası; alan anahtarı si-kalem-adet-u1).
+        // Müşteri seçimi bu iddianın parçası değil (Yıldız'da "Değiştir" katmanında) — yalnız kalem girilir.
         var e = PosEkrani();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.WaitForAssertion(() => Assert.NotEqual("", e.Find("#islem-birimfiyat").GetAttribute("value")));
         e.Find("#islem-adet").Input("1");
         e.Find("#islem-kalem-ekle").Click();
 
-        // Satır içi düzenleme tetikleyicisi K6 sözleşmesindeki id'yi taşır.
         // Kalem ekleme asenkron: satır çizilmeden tetikleyici aranırsa paralel yük altında
         // yarış oluşur (doğrulama koşumu 2026-09-18). Satır beklenir, sonra tıklanır.
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#si-kalem-adet-u1-ac")));
-        var tetik = e.Find("#si-kalem-adet-u1-ac");
-        tetik.Click();
-        e.Find("#si-kalem-adet-u1").Input("3");
-        e.Find("#si-kalem-adet-u1-kaydet").Click();
+        e.WaitForElement("#yildiz-kalem-0").Click();
+        e.WaitForElement("#yildiz-kalem-0-adet").Change("3");
 
         e.WaitForAssertion(() =>
-            Assert.Contains("3", e.Find("#si-kalem-adet-u1-ac").TextContent));
+        {
+            Assert.StartsWith(Kuyumcu.Core.I18n.YildizTezgahSozlugu.Adet("3", "tr"),
+                e.Find("#yildiz-kalem-0 .yz-tezgah-ayrinti").TextContent.Trim());
+            Assert.Equal("3", e.Find("#yildiz-kalem-0-adet").GetAttribute("value"));
+        });
+        Assert.Empty(e.FindAll("#alan-hata-si-kalem-adet-u1"));
     }
 }

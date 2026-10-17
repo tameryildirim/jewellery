@@ -105,7 +105,7 @@ public sealed class P19VirmanBacagiEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Kasalar> KasaGecmisi()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Kasalar>();
+        var e = Render<Kuyumcu.Web.Pages.Kasalar>().AyrintiAc();
         e.WaitForAssertion(() => e.Find("#kasa-gecmis-ks1"));
         e.Find("#kasa-gecmis-ks1").Click();
         e.WaitForAssertion(() => e.Find("#kh-storno-kh1"));
@@ -115,7 +115,7 @@ public sealed class P19VirmanBacagiEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Banka> BankaHareketleri()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Banka>().HareketleriAc();   // ZO-ISLEM-A
+        var e = Render<Kuyumcu.Web.Pages.Banka>().AyrintiAc().HareketleriAc();   // ZO-ISLEM-A
         e.WaitForAssertion(() => e.Find("#bh-storno-bh1"));
         return e;
     }
@@ -200,7 +200,7 @@ public sealed class P19VirmanBacagiEkranTestleri : BunitContext
         // enjeksiyonu bu yolu sınamazdı).
         Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>()
             .NavigateTo("http://localhost/gider?sekme=virman");
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForAssertion(() => e.Find("#gd-sekme-virman"));
 
         // PAKET S1-i: şerit ortak Sekmeler bileşeninde — aria-selected WAI-ARIA
@@ -218,7 +218,7 @@ public sealed class P19VirmanBacagiEkranTestleri : BunitContext
         // PAKET S1-i: şerit ortak Sekmeler bileşeninde; seçim URL'ye yazılır ve
         // sayfanın kendi durumu (sekme) SeciliDegisti ile İZLER — panel boş kalmaz.
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForAssertion(() => e.Find("#gd-sekme-kategoriler"));
         Assert.Empty(e.FindAll("#gd-kat-ekle"));
         e.Find("#gd-sekme-kategoriler").Click();
@@ -232,7 +232,7 @@ public sealed class P19VirmanBacagiEkranTestleri : BunitContext
     public void Gider_ekrani_sorgu_YOKKEN_varsayilan_GIDER_sekmesinde_kalir()
     {
         OturumAc();
-        var e = Render<Kuyumcu.Web.Pages.Gider>();
+        var e = Render<Kuyumcu.Web.Pages.Gider>().AyrintiAc("#yildiz-gider-ekle");
         e.WaitForAssertion(() => e.Find("#gd-sekme-giderler"));
         Assert.Equal("true", e.Find("#gd-sekme-giderler").GetAttribute("aria-selected"));   // S1-i: ARIA değeri
         Assert.Equal("false", e.Find("#gd-sekme-virman").GetAttribute("aria-selected"));

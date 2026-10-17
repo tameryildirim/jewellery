@@ -57,14 +57,10 @@ public sealed partial class SATIS3EkranTestleri
         e.Find("#islem-kalem-ekle").Click();
     }
 
-    private static void YkgKalemSil(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, int ix)
-    {
-        if (e.FindAll($"#islem-kalem-sil-{ix}").Count == 0) e.Find($"#islem-kalem-duzenle-{ix}").Click();
-        e.WaitForElement($"#islem-kalem-sil-{ix}").Click();
-    }
+    /// <summary>TEMA TEMİZLİĞİ 17.10: tezgâhta kalem satıra dokunup "Çıkar"la silinir (sayfanın KalemSil'i — özgün ✕ ile AYNI).</summary>
+    private static void YkgKalemSil(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, int ix) => GA.KalemCikar(e, ix);
 
-    private static int YkgKalemSayisi(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) =>
-        e.FindAll("#islem-kalem-tablo tbody tr, #islem-kalem-pro tr.fis-pro-satir").Count;
+    private static int YkgKalemSayisi(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e) => GA.KalemSayisi(e);
 
     /// <summary>Gerçek müşteri c1 · u1 10.000 + u2 3.000 = 13.000 (eşik 15.000 altı) → Kaydet → sunucu MASAK reddi (bağlantılı toplam).</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> YkgReddedilenFis(string mod)
@@ -75,16 +71,16 @@ public sealed partial class SATIS3EkranTestleri
         var araIslemVar = false;
         gereksinimOzel = v => araIslemVar && YkgSorguTutari(v) >= 13000m ? GereksinimAmac : null;
         var e = TekKalemli(mod);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        GA.MusteriSec(e, "c1");
         YkgElleKalem(e, "3000");
         e.WaitForAssertion(() => Assert.Equal(2, YkgKalemSayisi(e)), Bekle);
         postRed = ("/islemler/satis", YkgMasakRed);
         araIslemVar = true;
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);   // red alanları açtı
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#hata-bandi")), Bekle);
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        GA.Kaydet(e).Click();
+        GA.KimlikFormuAc(e);   // red alanları açtı (TEMA TEMİZLİĞİ: tezgâhta "+ Kimlik bilgisi" çekmecesi)
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#yildiz-tezgah-hata")), Bekle);   // tezgâhın hata satırı (özgün #hata-bandi display:none)
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
         e.Find("#masak-aciklama").Input(YkgBeyan);
         return e;
     }
@@ -98,9 +94,9 @@ public sealed partial class SATIS3EkranTestleri
         Assert.NotEmpty(e.FindAll(".kart--masak"));   // YASAL-KAPI-3 tur 2: form açıkken "gereken alanlar açıldı" bandı yok — form başlığı söyler
         YkgKalemSil(e, 0);   // u1 (10.000) çıkar → fiş 3.000, bağlantılı toplam eşik altı
         e.WaitForAssertion(() => Assert.Equal(1, YkgKalemSayisi(e)), Bekle);
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll(".kart--masak")), Bekle);
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.Empty(e.FindAll("#hata-bandi"));
+        e.WaitForAssertion(() => GA.KimlikFormuYok(e), Bekle);
+        e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.Empty(e.FindAll("#hata-bandi, #yildiz-tezgah-hata"));
         Assert.Empty(e.FindAll("#islem-yasal-kapi"));
     }
 
@@ -117,13 +113,12 @@ public sealed partial class SATIS3EkranTestleri
     {
         // Kalem silmenin aksine iskonto hata bandına dokunmaz — ret bandını iz kuralı (YasalIzleriTazele) indirir.
         var e = YkgReddedilenFis(mod);
-        if (e.FindAll("#islem-fis-iskonto").Count == 0) e.Find("#islem-indirim").Click();
-        e.WaitForElement("#islem-fis-iskonto").Input("50");   // 13.000 → 6.500
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll(".kart--masak")), Bekle);
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#hata-bandi")), Bekle);
+        GA.IndirimAlani(e).Input("50");   // 13.000 → 6.500 (TEMA TEMİZLİĞİ: tezgâhın "+ İndirim" hapı — FisIskontoSatiri AYNI)
+        e.WaitForAssertion(() => GA.KimlikFormuYok(e), Bekle);
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#hata-bandi, #yildiz-tezgah-hata")), Bekle);
         Assert.Empty(e.FindAll("#islem-yasal-kapi"));
         e.Find("#islem-fis-iskonto").Input("");                // iskonto kalkar → 13.000: form geri, beyan yerinde
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
+        GA.KimlikFormuAc(e);
         Assert.Equal(YkgBeyan, e.Find("#masak-aciklama").GetAttribute("value"));
     }
 
@@ -134,13 +129,13 @@ public sealed partial class SATIS3EkranTestleri
     {
         var e = YkgReddedilenFis(mod);
         YkgKalemSil(e, 0);
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll(".kart--masak")), Bekle);
+        e.WaitForAssertion(() => GA.KimlikFormuYok(e), Bekle);
         SeciciYardim.Sec(e, "islem-urun", "u1");   // aynı tutara geri çık (13.000)
         e.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(SeciciYardim.SeciliDeger(e, "islem-birimfiyat"))));
         e.Find("#islem-kalem-ekle").Click();
-        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll(".kart--masak")), Bekle);
+        GA.KimlikFormuAc(e);
         Assert.Equal(YkgBeyan, e.Find("#masak-aciklama").GetAttribute("value"));
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));   // amaç hâlâ eksik → kilitli (sunucuyla aynı)
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));   // amaç hâlâ eksik → kilitli (sunucuyla aynı)
     }
 
     [Theory]
@@ -150,10 +145,10 @@ public sealed partial class SATIS3EkranTestleri
     {
         var e = YkgReddedilenFis(mod);
         YkgKalemSil(e, 0);
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
+        e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
         postRed = null;
         var once = istekler.Count(i => i.Metot == "POST");
-        e.Find("#islem-kaydet").Click();
+        GA.Kaydet(e).Click();
         e.WaitForAssertion(() => Assert.True(istekler.Count(i => i.Metot == "POST") > once), Bekle);
         var govde = SonPost("/islemler/satis").Govde;
         using var d = JsonDocument.Parse(govde);
@@ -172,8 +167,10 @@ public sealed partial class SATIS3EkranTestleri
         YkgElleKalem(e, "3000");
         e.WaitForAssertion(() => Assert.Equal(2, YkgKalemSayisi(e)), Bekle);
         postRed = ("/islemler/satis", """{"message":"Peşin Müşteri ile bu tutarda işlem yapılamaz: 13.000,00 TL, tevsik (459 s. VUK GT) eşiğine (12.000,00 TL) ulaşıyor.","alanlar":{"cariId":["gerçek müşteri"]},"statusCode":400}""");
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        e.Find("#islem-kaydet").Click();
+        e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        GA.Kaydet(e).Click();
+        e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#yildiz-tezgah-hata")), Bekle);   // TEMA TEMİZLİĞİ: red tezgâhın hata satırında
+        e.Find("#yildiz-tezgah-degistir").Click();             // "gerçek müşteri seçin" bandı tezgâhın müşteri katmanında (aynı id)
         e.WaitForElement("#islem-pesin-esik", Bekle);
         YkgKalemSil(e, 0);                                     // 13.000 → 3.000: reddin altı
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-pesin-esik")), Bekle);
@@ -190,15 +187,18 @@ public sealed partial class SATIS3EkranTestleri
         // toplamı düşürünce bayat "kural devrede" kalıyor, ödeme Kart'ta ve "sınırı aştığı için" notu ekranda kalıyordu.
         tevsikJson = """{"had":12000,"kuralEtkin":true,"kumulatifHesaplandi":true,"bugunkuNakitToplam":0,"kalanNakitHakki":12000,"islemTutariKuraliDevrede":true}""";
         var e = TekKalemli(ArayuzModuServisi.Basit);
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        GA.MusteriSec(e, "c1");
         YkgElleKalem(e, "5000");                                            // 15.000 > 12.000
+        GA.OdemeDuzenAc(e);                                                  // TEMA TEMİZLİĞİ: not tezgâhın ödeme düzeninde
         e.WaitForElement("#islem-odeme-otomatik", Bekle);                    // ödeme otomatik Kart
+        Assert.Contains(Sozlukler.Tr.Islem.OdemeKart, e.Find("#yildiz-odeme-0").TextContent);
         tevsikJson = """{"had":12000,"kuralEtkin":true,"kumulatifHesaplandi":true,"bugunkuNakitToplam":0,"kalanNakitHakki":12000,"islemTutariKuraliDevrede":false}""";
         var once = istekler.Count(i => i.Yol.Contains("/tevsik/gunluk"));
-        if (e.FindAll("#islem-fis-iskonto").Count == 0) e.Find("#islem-indirim").Click();
-        e.WaitForElement("#islem-fis-iskonto").Input("50");                // 7.500 < 12.000
+        GA.IndirimAlani(e).Input("50");                                     // 7.500 < 12.000
         e.WaitForAssertion(() => Assert.True(istekler.Count(i => i.Yol.Contains("/tevsik/gunluk")) > once), Bekle);   // yeni toplamla soruldu
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-odeme-otomatik")), Bekle);                            // Nakit'e döndü
+        Assert.NotEmpty(e.FindAll("#yildiz-tezgah-odeme-duzen"));                                                    // düzen açık — boş DOM değil
+        e.WaitForAssertion(() => Assert.Contains(Sozlukler.Tr.Islem.OdemeNakit, e.Find("#yildiz-odeme-0").TextContent), Bekle);
         Assert.Contains(istekler, i => i.Yol.Contains("/tevsik/gunluk") && i.Yol.Contains("fisToplamTl=7500"));
     }
 
@@ -224,16 +224,16 @@ public sealed partial class SATIS3EkranTestleri
         tevsikJson = TevsikJson(5000m);
         masakEsikJson = MasakEsik(15000m);
         var e = TekKalemli(mod);                 // 10.000 — tevsik üstü, kimlik altı
-        e.WaitForAssertion(() => Assert.Equal(YkgTevsik5000, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
+        e.WaitForAssertion(() => Assert.Equal(YkgTevsik5000, GA.Kaydet(e).GetAttribute("title")), Bekle);
         YkgElleKalem(e, "8000");                 // 18.000 — kimlik kademesi
-        e.WaitForAssertion(() => Assert.Equal(YkgKimlik15000, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        if (mod == ArayuzModuServisi.Basit) Assert.Equal(YkgKimlik15000, e.Find("#islem-yasal-kapi").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.Equal(YkgKimlik15000, GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.Equal(YkgKimlik15000, e.Find("#yildiz-tezgah-not").TextContent.Trim());   // TEMA TEMİZLİĞİ: tezgâhın not satırı (iki modda)
         YkgKalemSil(e, 1);                        // 10.000 — aşağı: cümle tevsike döner
-        e.WaitForAssertion(() => Assert.Equal(YkgTevsik5000, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        if (mod == ArayuzModuServisi.Basit) Assert.Equal(YkgTevsik5000, e.Find("#islem-yasal-kapi").TextContent.Trim());
+        e.WaitForAssertion(() => Assert.Equal(YkgTevsik5000, GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.Equal(YkgTevsik5000, e.Find("#yildiz-tezgah-not").TextContent.Trim());
         YkgElleKalem(e, "8000");                 // yukarı yine
-        e.WaitForAssertion(() => Assert.Equal(YkgKimlik15000, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.Empty(e.FindComponents<Kuyumcu.Web.Bilesenler.MasakFormu>());   // Peşin'de kimlik kutusu yok (değişmedi)
+        e.WaitForAssertion(() => Assert.Equal(YkgKimlik15000, GA.Kaydet(e).GetAttribute("title")), Bekle);
+        GA.KimlikFormuYok(e);   // Peşin'de kimlik kutusu yok (değişmedi) — tezgâhta "+ Kimlik bilgisi" de yok
     }
 
     [Theory]
@@ -251,13 +251,13 @@ public sealed partial class SATIS3EkranTestleri
         e.WaitForAssertion(() => Assert.Equal(1, YkgKalemSayisi(e)), Bekle);
         if (!kilitli)
         {
-            e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-            Assert.DoesNotContain("Peşin", e.Find("#islem-kaydet").GetAttribute("title") ?? "");
+            e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
+            Assert.DoesNotContain("Peşin", GA.Kaydet(e).GetAttribute("title") ?? "");
             return;
         }
         var beklenen = kimlik ? YkgKimlik15000 : YkgTevsik5000;
-        e.WaitForAssertion(() => Assert.Equal(beklenen, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.Equal(beklenen, GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
     }
 }
 

@@ -22,10 +22,11 @@ public sealed partial class SATIS3EkranTestleri
     public void DOG_T24_had_bir_kurus_ALTINDA_fis_ustte_Pesin_ve_nakit_engeli(string mod)
     {
         var e = T24Fis(mod, 9999.99m);   // 10.000,00 > 9.999,99 → sunucu reddeder
-        Satis4Yardim.NakitElleSec(e);   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
-        e.WaitForAssertion(() => Assert.Equal(PesinNakitTr, e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"));
+        GA.NakitSec(e);   // SATIS-4 (a): eşik üstünde varsayılan artık nakit dışı — bu test nakdi ELLE seçen kullanıcıyı sınar
+        e.WaitForAssertion(() => Assert.Equal(PesinNakitTr, GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.True(GA.Kaydet(e).HasAttribute("disabled"));
         Assert.Empty(e.FindAll("#islem-pesin-notu"));
+        Assert.Equal(PesinNakitTr, e.Find("#yildiz-tezgah-not").TextContent.Trim());   // TEMA TEMİZLİĞİ: tezgâhta Kaydet'in yanındaki tek cümle
     }
 
     [Theory]
@@ -34,8 +35,8 @@ public sealed partial class SATIS3EkranTestleri
     public void DOG_T24_MASAK_esigi_TAM_ESIT_Pesin_engeli_buyuk_esit(string mod)
     {
         var e = T24Fis(mod, 50000m, kimlikEsigi: 10000m);   // 10.000 >= 10.000 → kademe YalnizKimlik → sunucu reddeder
-        e.WaitForAssertion(() => Assert.Equal("10.000\u00a0\u20ba ve üstünde kimlik gerekir — Peşin Müşteri olmaz, müşteri seçin.", e.Find("#islem-kaydet").GetAttribute("title")), Bekle);   // YASAL-KAPI-GERI: kilit cümlesi tutan eşiği söyler
-        Assert.Empty(e.FindComponents<MasakFormu>());
+        e.WaitForAssertion(() => Assert.Equal("10.000\u00a0\u20ba ve üstünde kimlik gerekir — Peşin Müşteri olmaz, müşteri seçin.", GA.Kaydet(e).GetAttribute("title")), Bekle);   // YASAL-KAPI-GERI: kilit cümlesi tutan eşiği söyler
+        GA.KimlikFormuYok(e);   // TEMA TEMİZLİĞİ: tezgâhta "+ Kimlik bilgisi" de yok
     }
 
     [Theory]
@@ -44,8 +45,9 @@ public sealed partial class SATIS3EkranTestleri
     public void DOG_T24_MASAK_esigi_bir_kurus_USTUNDE_Pesin_serbest(string mod)
     {
         var e = T24Fis(mod, 50000m, kimlikEsigi: 10000.01m);   // 10.000 < 10.000,01 → kademe Yok
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.NotNull(e.Find("#islem-pesin-notu"));
+        e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        // TEMA TEMİZLİĞİ 17.10: "#islem-pesin-notu" (eski fiş üst satırının Peşin ipucu) tezgâhta çizilmez — engel yok: not satırı kötü değil.
+        Assert.DoesNotContain("yz-kotu", e.Find("#yildiz-tezgah-not").ClassName);
         Assert.Empty(e.FindAll("#islem-yasal-kapi"));
     }
 
@@ -55,8 +57,8 @@ public sealed partial class SATIS3EkranTestleri
     public void DOG_T24_cok_buyuk_had_999_999_999_99_Pesin_serbest(string mod)
     {
         var e = T24Fis(mod, 999_999_999.99m, kimlikEsigi: 999_999_999.99m);
-        e.WaitForAssertion(() => Assert.False(e.Find("#islem-kaydet").HasAttribute("disabled"), e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
-        Assert.NotNull(e.Find("#islem-pesin-notu"));
+        e.WaitForAssertion(() => Assert.False(GA.Kaydet(e).HasAttribute("disabled"), GA.Kaydet(e).GetAttribute("title")), Bekle);
+        Assert.DoesNotContain("yz-kotu", e.Find("#yildiz-tezgah-not").ClassName);   // TEMA TEMİZLİĞİ: #islem-pesin-notu tezgâhta yok
     }
 
     [Fact]
@@ -81,10 +83,10 @@ public sealed partial class SATIS3EkranTestleri
     {
         tevsikJson = TevsikJson(9000m);
         var e = TakasDolu(mod, "5000");
-        SeciciYardim.Sec(e, "islem-cari", "pm1");
+        GA.MusteriSec(e, "pm1");
         Assert.Equal("pm1", SeciciYardim.SeciliDeger(e, "islem-cari"));
-        if (e.FindAll("#islem-odeme").Count > 0) SeciciYardim.Sec(e, "islem-odeme", "KART");
-        e.WaitForAssertion(() => Assert.True(e.Find("#islem-kaydet").HasAttribute("disabled"),
-            "Kaydet ETKİN; title=" + e.Find("#islem-kaydet").GetAttribute("title")), Bekle);
+        if (e.FindAll("#islem-odeme").Count > 0) GA.OdemeSec(e, "KART");
+        e.WaitForAssertion(() => Assert.True(GA.Kaydet(e).HasAttribute("disabled"),
+            "Kaydet ETKİN; title=" + GA.Kaydet(e).GetAttribute("title")), Bekle);
     }
 }

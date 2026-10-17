@@ -84,29 +84,23 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
     private static System.Text.Json.JsonElement Govde(string g) =>
         System.Text.Json.JsonDocument.Parse(g).RootElement;
 
-    /// <summary>Ekranı çizer, bir kalem ekler (10.000 TL) ve karma kipini açar.</summary>
+
+    // TEMA TEMİZLİĞİ 17.10: SATIŞ fişi artık hep Yıldız tezgâhıdır — müşteri "Değiştir" katmanından, karma
+    // "+ Başka ödeme" hapından (#yildiz-tezgah-baska-odeme: tek ödeme İLK satır olur, ikinci satır açılır;
+    // karmada yeni satır ekler), Kaydet #yildiz-tezgah-kaydet. Gizli PRO anahtarı (#islem-karma) ve özgün
+    // "Ödeme ekle" düğmesi (#islem-bacak-ekle) Yıldız'da kullanıcıya görünmez → testler hapı sürer. Kapılar AYNI.
+
+    /// <summary>Ekranı çizer, gerçek müşteri seçer, kalem(ler) ekler (10.000 TL) ve karmaya geçer (iki satır).</summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> KarmaEkran(int kalemAdet = 1)
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        for (var i = 0; i < kalemAdet; i++)
-        {
-            SeciciYardim.Sec(e, "islem-urun", "u1");
-            e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        }
-        e.Find("#islem-karma").Change(true);
-        // ⚠ Anahtar EŞZAMANSIZ bir önizleme çağrısı tetikler (@bind:after).
-        // Yeniden çizim beklenmeden ilerlemek testi yük altında kırılgan yapar.
-        e.WaitForElement("#islem-bacak-ekle");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizHazir(null);   // sahte sunucu sistem carisi vermez
+        e.YildizMusteriSec("c1");
+        for (var i = 0; i < kalemAdet; i++) e.YildizKalemEkle();
+        e.YildizBol();
+        // ⚠ Hap EŞZAMANSIZ bir önizleme çağrısı tetikler (KarmaDegisti → TevsikOnizle); satırlar çizilene dek beklendi.
+        e.WaitForAssertion(() => Assert.Equal(2, e.FindAll(".bacak-satiri").Count), TemaTemizligiGCYardimcisi.Bekle);
         istekler.Clear();
         return e;
-    }
-
-    /// <summary>Bacak ekler ve satırının çizilmesini bekler.</summary>
-    private static void BacakEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e, int ix)
-    {
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement($"#islem-bacak-{ix}-arac");
     }
 
     private static void Bacak(
@@ -122,15 +116,18 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
 
     private static AngleSharp.Dom.IElement Kaydet(
         IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
-        => e.FindAll("button").First(b => b.TextContent.Contains("Kaydet"));
+        => e.Find("#yildiz-tezgah-kaydet");
 
     [Fact]
     public void Karma_kipi_kapaliyken_bacak_listesi_YOKTUR()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizHazir(null);
 
-        Assert.Empty(e.FindAll("#islem-bacak-ekle"));
-        Assert.Single(e.FindAll("#islem-odeme"));   // tek ödeme seçicisi yerinde
+        Assert.Empty(e.FindAll("#islem-bacaklar, .bacak-satiri, #islem-bacak-ekle"));
+        Assert.Single(e.FindAll("#yildiz-odeme-0"));   // tek ödeme satırı
+        e.YildizOdemeAc();
+        Assert.Single(e.FindAll("#islem-odeme"));   // tek ödeme seçicisi yerinde (ödeme düzeninde)
+        Assert.Empty(e.FindAll(".bacak-satiri"));
     }
 
     [Fact]
@@ -140,28 +137,36 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
         // belirsizleşir; sunucuya da ikisi birden gönderilemez.
         var e = KarmaEkran();
 
-        Assert.Empty(e.FindAll("#islem-odeme"));
-        Assert.Single(e.FindAll("#islem-bacak-ekle"));
+        Assert.Empty(e.FindAll("#islem-odeme, #islem-aldim-odeme, #yildiz-odeme-0"));
+        Assert.Equal(2, e.FindAll(".bacak-satiri").Count);
+        Assert.Single(e.FindAll("#yildiz-tezgah-baska-odeme"));
+        Assert.Single(e.FindAll("#yildiz-tezgah-tek-odeme"));
     }
 
     [Fact]
     public void Bacak_eklenince_KALAN_tutar_onerilir()
     {
-        // Tezgâhtar rakamı elle bölmek zorunda kalmamalı.
+        // Tezgâhtar rakamı elle bölmek zorunda kalmamalı: ilk satır fişin tamamını taşır,
+        // elle yazılmayan ikinci satır kalanı üstlenir, "+ Başka ödeme" kalan tutarla açılır.
         var e = KarmaEkran();
-        BacakEkle(e, 0);
-
         Assert.Equal("10000", SeciciYardim.SeciliDeger(e, "islem-bacak-0-tutar"));
+
+        e.Find("#islem-bacak-0-tutar").Input("6000");
+        e.WaitForAssertion(() => Assert.Equal("4000", SeciciYardim.SeciliDeger(e, "islem-bacak-1-tutar")));
+        e.Find("#islem-bacak-1-tutar").Input("3000");   // ikisi de elle → 1.000 kaldı
+        e.Find("#yildiz-tezgah-baska-odeme").Click();
+        e.WaitForElement("#islem-bacak-2-tutar");
+        Assert.Equal("1000", SeciciYardim.SeciliDeger(e, "islem-bacak-2-tutar"));
     }
 
     [Fact]
     public void Bacak_toplami_tutmuyorsa_KAYDET_KAPALI()
     {
         var e = KarmaEkran();
-        BacakEkle(e, 0);
-        Bacak(e, 0, "NAKIT", "9000");   // fiş 10.000, bacak 9.000
+        Bacak(e, 1, "KART", "0");      // ikinci satır elle 0 → kalanı üstlenmez
+        Bacak(e, 0, "NAKIT", "9000");   // fiş 10.000, ödemeler 9.000
 
-        Assert.True(Kaydet(e).HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.True(Kaydet(e).HasAttribute("disabled")));
         // SATIS-3 sade dil: kilit sebebi farkın YÖNÜNÜ ve tutarını söyler (eski uzun kural metni çizilmez).
         var beklenen = string.Format(Kuyumcu.Core.I18n.Satis3Sozlugu.Tr.FarkEksik, Bicim.Tl(1000m));
         Assert.Contains(beklenen, e.Markup);
@@ -169,24 +174,22 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
 
         // Fazla tarafı da aynı kapıdan geçer: 11.000 > 10.000 → Kaydet yine kapalı, sebep "Fazla".
         Bacak(e, 0, "NAKIT", "11000");
-        Assert.True(Kaydet(e).HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.True(Kaydet(e).HasAttribute("disabled")));
         Assert.Contains(string.Format(Kuyumcu.Core.I18n.Satis3Sozlugu.Tr.FarkFazla, Bicim.Tl(1000m)), e.Markup);
 
         // Tutunca kilit kalkar — kapıyı kapatan fark idi.
         Bacak(e, 0, "NAKIT", "10000");
-        Assert.False(Kaydet(e).HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
     }
 
     [Fact]
     public void Bacak_toplami_tuttugunda_KAYDET_ACILIR()
     {
         var e = KarmaEkran();
-        BacakEkle(e, 0);
         Bacak(e, 0, "NAKIT", "6000");
-        BacakEkle(e, 1);
         Bacak(e, 1, "KART", "4000");
 
-        Assert.False(Kaydet(e).HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
     }
 
     [Fact]
@@ -195,11 +198,9 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
         // Kalem başına POST atılsaydı bacaklar hangi kaleme ait olurdu belirsiz
         // kalır, kısmi başarısızlıkta fişin yarısı yazılırdı.
         var e = KarmaEkran(kalemAdet: 2);          // 2 × 10.000 = 20.000
-        BacakEkle(e, 0);
         Bacak(e, 0, "NAKIT", "12000");
-        BacakEkle(e, 1);
         Bacak(e, 1, "VERESIYE", "8000");
-        Kaydet(e).Click();
+        e.YildizKaydet();
 
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.EndsWith("/islemler/satis-fisi")));
@@ -229,17 +230,16 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
         // §4.1.2 — eşiğin kendisi sunucudan gelir (/tevsik/gunluk), ekrana gömülmez.
         nakitKapali = true;
         var e = KarmaEkran();
-        BacakEkle(e, 0);
         Bacak(e, 0, "NAKIT", "10000");
 
-        Assert.True(Kaydet(e).HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.True(Kaydet(e).HasAttribute("disabled")));
         // SATIS-3 sade dil: "bacak" jargonu, büyük harf vurgusu ve eşik sayısı metinde YOK.
         Assert.Contains(Kuyumcu.Core.I18n.Satis3Sozlugu.Tr.NakitAlinamaz, e.Markup);
         Assert.DoesNotContain("NAKİT bacak eklenemez", e.Markup);
 
         // Kilidi kapatan nakit kuralıdır: aynı tutar karta çevrilince Kaydet açılır.
         Bacak(e, 0, "KART", "10000");
-        Assert.False(Kaydet(e).HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
     }
 
     [Fact]
@@ -248,20 +248,19 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
         // Kural nakdi kapatır, satışı değil.
         nakitKapali = true;
         var e = KarmaEkran();
-        BacakEkle(e, 0);
         Bacak(e, 0, "KART", "10000");
 
-        Assert.False(Kaydet(e).HasAttribute("disabled"));
+        e.WaitForAssertion(() => Assert.False(Kaydet(e).HasAttribute("disabled")));
     }
 
     [Fact]
     public void Ekran_acilinca_tevsik_onizlemesi_SUNUCUDAN_sorulur()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        SeciciYardim.Sec(e, "islem-cari", "c1");
-        SeciciYardim.Sec(e, "islem-urun", "u1");
-        e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        e.Find("#islem-karma").Change(true);
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().YildizHazir(null);
+        e.YildizMusteriSec("c1");
+        e.YildizKalemEkle();
+        istekler.Clear();
+        e.YildizBol();
 
         e.WaitForAssertion(() =>
             Assert.Contains(istekler, i => i.Yol.Contains("/tevsik/gunluk")));
@@ -272,9 +271,14 @@ public sealed class KarmaOdemeEkranTestleri : BunitContext
     public void Satistan_alisa_gecince_karma_kipi_KAPANIR()
     {
         var e = KarmaEkran();
-        e.FindAll("button").First(b => b.TextContent.Contains("Alış")).Click();
+        e.Find("#yildiz-tur-HURDA_ALIS").Click();   // Yıldız'ın görünür "Alış" sekmesi
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#yildiz-tezgah")));
 
-        Assert.Empty(e.FindAll("#islem-bacak-ekle"));
+        Assert.Empty(e.FindAll("#islem-bacak-ekle, .bacak-satiri"));
         Assert.Empty(e.FindAll("#islem-karma"));
+        // satışa dönünce fiş tek ödemeyle açılır (karma kendiliğinden geri gelmez)
+        e.Find("#yildiz-tur-SATIS").Click();
+        e.WaitForElement("#yildiz-odeme-0");
+        Assert.Empty(e.FindAll(".bacak-satiri, #yildiz-tezgah-tek-odeme"));
     }
 }

@@ -106,16 +106,18 @@ public sealed class S26DigerIslemlerTestleri : BunitContext
         return e;
     }
 
+    // TEMA TEMİZLİĞİ 17.10: İşlemler SATIŞ'ta Yıldız tezgâhıyla açılır (Kaydet #yildiz-tezgah-kaydet). "Diğer" menüsü
+    // (FisDigerIslemler — #islem-diger-* AYNI) Yıldız'da tür sekmelerinin "Diğer"ine basınca görünür
+    // (#yildiz-tezgah-tur → .yz-turler-acik); testler kullanıcının bu yolunu izler.
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> Panel(string tur, string rol = "SAHIP")
     {
-        var e = Ekran(ArayuzModuServisi.Profesyonel, rol);
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#islem-kaydet")));   // kur + listeler yüklendi
+        var e = Ekran(ArayuzModuServisi.Profesyonel, rol).YildizHazir();   // kur + listeler yüklendi
+        e.YildizTurlerAc();
         e.Find($"#islem-diger-{tur.ToLowerInvariant()}").Click();
         e.WaitForElement("#islem-diger-panel");
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-kur-yok")));   // kur geldi → yazma düğmeleri açık
         return e;
     }
-
     private (string Metot, string Yol, JsonElement Govde) Son(string metot, string yol)
     {
         lock (istekler)
@@ -146,13 +148,16 @@ public sealed class S26DigerIslemlerTestleri : BunitContext
         Assert.Contains(M.MenuAc, e.Find("#islem-diger-ac").TextContent);
         foreach (var tur in DigerTurleri.Tumu)
             Assert.False(e.Find($"#islem-diger-{tur.ToLowerInvariant()}").HasAttribute("disabled"), $"{tur} SAHIP için kilitli");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#islem-kaydet")));
+        e.YildizHazir();   // TEMA TEMİZLİĞİ 17.10: satış fişi Yıldız tezgâhı
 
+        e.YildizTurlerAc();
         e.Find("#islem-diger-rezerv").Click();
         e.WaitForElement("#islem-diger-panel");
-        Assert.Empty(e.FindAll("#islem-kaydet"));   // tek ekran, tek birincil iş: fiş gizli
+        Assert.Empty(e.FindAll("#islem-kaydet, #yildiz-tezgah, #yildiz-tezgah-kaydet"));   // tek ekran, tek birincil iş: fiş gizli
 
-        e.Find("#islem-tur-ALIS").Click();          // sekmeye dönüş paneli kapatır
+        // sekmeye dönüş paneli kapatır (Yıldız: "Diğer" listesinden ürün alışı — PTezgahTurKimlikTestleri.TK_14)
+        if (!e.Find(".islem-sayfa").ClassList.Contains("yz-turler-acik")) e.Find("#yildiz-tur-diger").Click();
+        e.WaitForElement("#islem-tur-ALIS").Click();
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-panel")));
         Assert.NotNull(e.Find("#islem-kaydet"));
     }
@@ -163,7 +168,7 @@ public sealed class S26DigerIslemlerTestleri : BunitContext
         var e = Panel(DigerTurleri.Konsinye);
         e.Find("#islem-diger-kapat").Click();
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-diger-panel")));
-        Assert.NotNull(e.Find("#islem-kaydet"));
+        e.WaitForElement("#yildiz-tezgah-kaydet");   // satış fişine (Yıldız tezgâhı) dönüldü
     }
 
     [Fact]

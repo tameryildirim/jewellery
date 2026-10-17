@@ -203,6 +203,7 @@ public sealed class RaporUcEkranTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private readonly HashSet<string> hatali = new(StringComparer.Ordinal);
@@ -236,11 +237,12 @@ public sealed class RaporUcEkranTestleri : BunitContext
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1", mod, mod));
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (eski BASİT kartları ve PRO ızgarası kaldırıldı); "iki ekran aynı"
+    // güvenceleri Bugün'ün rakamı ve "Seni bekleyen" satırları üzerinde korunur.
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Panel()
     {
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#panel-iskelet-soru-bekleyen")), TimeSpan.FromSeconds(10));
+        e.BugunBekle();
         return e;
     }
 
@@ -260,7 +262,17 @@ public sealed class RaporUcEkranTestleri : BunitContext
     {
         ozel["/masak/uyum-ozet"] = ListeYok;
         Oturum();
-        YasalSatirlar(Panel(), "#panel-soru-bekleyen", "panel-soru-bekleyen");
+        // Panel (Bugün): aynı üç iş "Seni bekleyen" satırı olarak, aynı metin ve aynı hedefle; boş durum ve yönlendirme yok.
+        var p = Panel();
+        p.WaitForAssertion(() => Assert.NotNull(p.Find("#yildiz-bekleyen-yasal-saklama")));
+        Assert.Equal(KarRaporSozlugu.Tr.IsYasalListeYok, p.Find("#yildiz-bekleyen-yasal-liste-eski .yildiz-bugun-sat-metin").TextContent.Trim());
+        Assert.Equal("/uyum?sekme=risk", p.Find("#yildiz-bekleyen-yasal-liste-eski-eylem").GetAttribute("href"));
+        Assert.Equal(string.Format(KarRaporSozlugu.Tr.IsYasalEslesme, 1), p.Find("#yildiz-bekleyen-yasal-eslesme .yildiz-bugun-sat-metin").TextContent.Trim());
+        Assert.Equal("/uyum?sekme=risk", p.Find("#yildiz-bekleyen-yasal-eslesme-eylem").GetAttribute("href"));
+        Assert.Contains("yildiz-bugun-sat-durum--kotu", p.Find("#yildiz-bekleyen-yasal-eslesme-durum").ClassName, StringComparison.Ordinal);
+        Assert.Equal("/uyum?sekme=saklama", p.Find("#yildiz-bekleyen-yasal-saklama-eylem").GetAttribute("href"));
+        Assert.Empty(p.FindAll("#yildiz-bugun-bekleyen-bos"));
+        Assert.DoesNotContain("üstteki", p.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
         YasalSatirlar(Raporlar(), "#bugun-bekleyen", "bugun-bekleyen");
         var r = Raporlar();
         r.WaitForAssertion(() => Assert.NotNull(r.Find("#bugun-bekleyen-yasal-liste")));
@@ -292,14 +304,16 @@ public sealed class RaporUcEkranTestleri : BunitContext
     {
         Oturum();
         var p = Panel();
-        p.WaitForAssertion(() => Assert.Contains(PanelSadeSozlugu.Tr.BekleyenYok, p.Find("#panel-soru-bekleyen").TextContent, StringComparison.Ordinal));
-        Assert.Empty(p.FindAll("#panel-soru-bekleyen-yasal-liste"));
+        p.WaitForAssertion(() => Assert.Contains(PanelSadeSozlugu.Tr.BekleyenYok, p.Find("#yildiz-bugun-bekleyen-bos").TextContent, StringComparison.Ordinal));
+        Assert.Empty(p.FindAll("#yildiz-bugun-liste"));
+        Assert.Empty(p.FindAll("[id^='yildiz-bekleyen-yasal-']"));
         var r = Raporlar();
         r.WaitForAssertion(() => Assert.Contains(RaporBugunSozlugu.Tr.BekleyenYok, r.Find("#bugun-bekleyen").TextContent, StringComparison.Ordinal));
         Assert.Empty(r.FindAll("#bugun-bekleyen-yasal-liste"));
     }
 
-    // ── R3-22 · E2 (hasım ORTA): kâr satırı kapsamı söyler — "(yalnız 1 satış) · 12 satış ve 1 iadenin maliyeti yok" ──
+    // ── R3-22 · E2 (hasım ORTA): kâr kısmi hesaplanmışsa Panel yanıltmaz. TEMA TEMİZLİĞİ 17.10: Bugün alt şeridi
+    //   maliyeti eksik satış/iade varken kâr rakamını BASMAZ (fail-closed) — "maliyet eksik" der, kapsam Kâr-zarar'da. ──
     [Fact]
     public void R3_22_Panel_kar_satiri_kapsami_soyler()
     {
@@ -310,29 +324,28 @@ public sealed class RaporUcEkranTestleri : BunitContext
             """;
         Oturum();
         var p = Panel();
-        p.WaitForAssertion(() => Assert.NotNull(p.Find("#panel-soru-satis-kar")));
-        var metin = p.Find("#panel-soru-satis-kar").TextContent.Trim();
-        Assert.Equal($"Kâr {Bicim.TlKurus(1082.68m)} (yalnız 1 satış) · 12 satış ve 1 iadenin maliyeti yok", metin);
-        Assert.Contains("1.082,68 ₺", metin, StringComparison.Ordinal);       // tutar ile birim arası bölünmez
-        Assert.DoesNotContain("eksik:", metin, StringComparison.Ordinal);
+        p.WaitForAssertion(() => Assert.NotNull(p.Find("#yildiz-bugun-kar")));
+        Assert.Equal($"{YildizBugunSozlugu.Kar("tr")} {YildizBugunSozlugu.MaliyetEksik("tr")}", p.Find("#yildiz-bugun-kar").TextContent.Trim());
+        Assert.DoesNotContain("1.082", p.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);   // kısmi kâr günün kârı gibi okunmaz
+        Assert.Equal("/raporlar/kar-zarar", p.Find("#yildiz-bugun-kar").GetAttribute("href"));
     }
 
-    // ── R3-23 · E3 (hasım ORTA ×2): PRO "Bugün satılan altın" = BASİT has sayısı (net); "Paralel defter" / NET HAS GRAM yok;
-    //   kur başlığı gövdede ikinci kez yok ──
+    // ── R3-23 · E3 (hasım ORTA ×2): PRO'da "Paralel defter" / NET HAS GRAM (günün TÜM has hareketi) satış gibi okunmaz.
+    //   TEMA TEMİZLİĞİ 17.10: PRO stat kartları kaldırıldı — PRO'da da Bugün çizilir: dev rakam NET satış TL'sidir,
+    //   netHasGramHareketi (193,6992) ve jargon etiketleri hiçbir yerde yazılmaz. ──
     [Fact]
     public void R3_23_Panel_PRO_bugun_satilan_altin_BASIT_ile_ayni_sayi()
     {
         ozel["/raporlar/gunluk"] = RaporIkiTutarlilikTestleri.GunlukIadeli.Replace("\"netHasGramHareketi\":36.234", "\"netHasGramHareketi\":193.6992", StringComparison.Ordinal);
         Oturum(ArayuzModuServisi.Profesyonel);
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        e.WaitForAssertion(() => Assert.Contains(KarRaporSozlugu.Tr.BugunSatilanAltin, e.Markup, StringComparison.Ordinal), TimeSpan.FromSeconds(10));
-        var kart = e.FindAll(".stat-izgara .stat-kart").Single(k => k.TextContent.Contains(KarRaporSozlugu.Tr.BugunSatilanAltin, StringComparison.Ordinal));
-        Assert.Equal(Bicim.Has(36.234m), kart.QuerySelector(".stat-deger")!.TextContent.Trim());
-        Assert.DoesNotContain(Bicim.Has(193.6992m), e.Find("#panel-izgara").TextContent, StringComparison.Ordinal);
+        e.BugunBekle();
+        Assert.Equal(Bicim.TlKurus(252277.99m), e.Find("#yildiz-bugun-rakam").TextContent.Trim());   // BASİT ile aynı net sayı
+        var metin = e.Find("#yildiz-bugun").TextContent;
+        Assert.DoesNotContain(Bicim.Has(193.6992m), metin, StringComparison.Ordinal);
+        Assert.DoesNotContain("193,", metin, StringComparison.Ordinal);
         Assert.DoesNotContain(Dil(e).T.Panel.ParalelDefter, e.Markup, StringComparison.Ordinal);
-        Assert.DoesNotContain(Dil(e).T.Panel.NetHasGram, e.Find("#panel-izgara").TextContent, StringComparison.Ordinal);
-        Assert.Single(Regex.Matches(e.Find("#panel-izgara").TextContent, Regex.Escape(Dil(e).T.Panel.Kur24k)));
+        Assert.DoesNotContain(Dil(e).T.Panel.NetHasGram, metin, StringComparison.Ordinal);
     }
 
     private DilServisi Dil(IRenderedComponent<Kuyumcu.Web.Pages.Panel> _) => Services.GetRequiredService<DilServisi>();
@@ -359,7 +372,7 @@ public sealed class RaporUcEkranTestleri : BunitContext
             .Replace("\"toplamTl\":252277.99", "\"toplamTl\":180000", StringComparison.Ordinal);
         Oturum();
         var p = Panel();
-        p.WaitForAssertion(() => Assert.Equal("180.000,00 ₺", p.Find("#panel-soru-satis-deger").TextContent.Trim()));
+        p.WaitForAssertion(() => Assert.Equal("180.000,00 ₺", p.Find("#yildiz-bugun-rakam").TextContent.Trim()));
         var r = Raporlar();
         r.WaitForAssertion(() => Assert.Equal("180.000,00 ₺", r.Find("#bugun-satis-deger").TextContent.Trim()));
     }
@@ -385,62 +398,9 @@ public sealed class RaporUcEkranTestleri : BunitContext
         Assert.Equal($"({KarRaporSozlugu.Tr.GunSonuIadeDusulmeden})", r.Find("#bugun-fark-kapsam").TextContent.Trim());
     }
 
-    // ── R3-27 · E6 + V2: Panel PRO alan grafiği — eksen yazıları SVG DIŞINDA (ezilmez); seri NET satış ──
-    [Fact]
-    public void R3_27_Panel_grafik_eksen_svg_disinda_seri_net()
-    {
-        // Gün 1: brüt 10.000 net 2.000 · Gün 2: brüt 5.000 net 5.000 → net seride gün 1 y = 12 + 0,6 × 204 = 134,4
-        // (brüt seride gün 1 tepe = 12,0 olurdu).
-        ozel["/raporlar/aylik"] = """{"gunler":[{"tarih":"2026-10-01","satisTl":10000,"netSatisTl":2000},{"tarih":"2026-10-02","satisTl":5000,"netSatisTl":5000}]}""";
-        sorguOzel[OncekiAySorgu()] = """{"gunler":[]}""";   // tur 2: ayın ilk günlerinde önceki ay da istenir
-        Oturum(ArayuzModuServisi.Profesyonel);
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find(".grafik-sar polyline")), TimeSpan.FromSeconds(10));
-        Assert.StartsWith("0.0,134.4 ", e.Find(".grafik-sar polyline").GetAttribute("points"), StringComparison.Ordinal);
-        Assert.Empty(e.FindAll(".grafik-sar svg text"));
-        Assert.Equal(2, e.FindAll(".grafik-sar .grafik-eksen .grafik-eksen-etiket").Count);
-    }
-
-    // ── R3-28 · E6 + tur 2 (hasım DÜŞÜK "Son 7 günlük satış ayın tüm günlerini çiziyor"): 8 günlük ayda grafik
-    //    SON 7 günü çizer; en çok 5 yazı, son gün (bugün) HER ZAMAN yazılır ──
-    [Fact]
-    public void R3_28_Panel_grafik_son_7_gun_en_cok_bes_yazi_son_gun_yazili()
-    {
-        var gunler = string.Join(",", Enumerable.Range(1, 8).Select(i => $$"""{"tarih":"2026-10-0{{i}}","satisTl":{{i * 1000}},"netSatisTl":{{i * 1000}}}"""));
-        ozel["/raporlar/aylik"] = "{\"gunler\":[" + gunler + "]}";
-        Oturum(ArayuzModuServisi.Profesyonel);
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find(".grafik-sar polyline")), TimeSpan.FromSeconds(10));
-        Assert.Equal(7, e.Find(".grafik-sar polyline").GetAttribute("points")!.Split(' ').Length);   // 7 nokta
-        var et = e.FindAll(".grafik-eksen-etiket").Select(x => x.TextContent.Trim()).ToList();
-        Assert.Equal(["02.10", "04.10", "06.10", "08.10"], et);
-    }
-
-    // ── R3-29 · tur 2: ayın ilk günlerinde (3 gün) "Son 7 gün" önceki ayın son günlerini de çizer ──
-    [Fact]
-    public void R3_29_Panel_grafik_ay_basinda_onceki_aydan_tamamlar()
-    {
-        ozel["/raporlar/aylik"] = """{"gunler":[{"tarih":"2026-10-01","satisTl":1,"netSatisTl":1},{"tarih":"2026-10-02","satisTl":2,"netSatisTl":2},{"tarih":"2026-10-03","satisTl":3,"netSatisTl":3}]}""";
-        var eylul = string.Join(",", Enumerable.Range(1, 30).Select(i => $$"""{"tarih":"2026-09-{{i:00}}","satisTl":{{i}},"netSatisTl":{{i}}}"""));
-        sorguOzel[OncekiAySorgu()] = "{\"gunler\":[" + eylul + "]}";
-        Oturum(ArayuzModuServisi.Profesyonel);
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-izgara");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find(".grafik-sar polyline")), TimeSpan.FromSeconds(10));
-        Assert.Equal(7, e.Find(".grafik-sar polyline").GetAttribute("points")!.Split(' ').Length);
-        var et = e.FindAll(".grafik-eksen-etiket").Select(x => x.TextContent.Trim()).ToList();
-        Assert.Equal("27.09", et[0]);
-        Assert.Equal("03.10", et[^1]);
-    }
-
-    /// <summary>Panel'in önceki ay isteğinin sorgu eki (bugünden).</summary>
-    private static string OncekiAySorgu()
-    {
-        var once = DateTime.Today.AddMonths(-1);
-        return $"/raporlar/aylik?yil={once.Year}&ay={once.Month}";
-    }
+    // TEMA TEMİZLİĞİ 17.10: R3_27_Panel_grafik_eksen_svg_disinda_seri_net kaldırıldı — PRO "Son 7 günlük satış" grafik kutucuğu Bugün tuvalinde BİLEREK yok; AlanGrafik bileşeninin eksen/konum kuralları RaporUcAlanGrafikTestleri'nde.
+    // TEMA TEMİZLİĞİ 17.10: R3_28_Panel_grafik_son_7_gun_en_cok_bes_yazi_son_gun_yazili kaldırıldı — aynı gerekçe (Panel'de grafik yok); yazı seçimi RaporUcAlanGrafikTestleri'nde.
+    // TEMA TEMİZLİĞİ 17.10: R3_29_Panel_grafik_ay_basinda_onceki_aydan_tamamlar kaldırıldı — aynı gerekçe (Panel'de grafik yok).
 
     // ── R3-33 · tur 2 (hasım ORTA "dövizli kasa"): Gün sonu dövizli girişi TL kırılımına KATMAZ, para birimiyle ayrı
     //    yazar — BASİT kırılım satırı + PRO ayrı satır ──

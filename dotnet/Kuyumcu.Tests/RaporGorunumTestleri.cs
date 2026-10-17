@@ -423,6 +423,7 @@ public sealed class RaporGorunumPanelEkranTestleri : BunitContext
         Services.AddScoped<MenuTercihServisi>();
         Services.AddScoped<IConfiguration>(_ => new ConfigurationBuilder().Build());
         Services.AddScoped<HavaServisi>();
+        Services.BugunServisleri();   // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün (YetkiServisi)
     }
 
     private sealed class SahteApi : HttpMessageHandler
@@ -467,6 +468,10 @@ public sealed class RaporGorunumPanelEkranTestleri : BunitContext
                 var y when y.Contains("/tercihler/benim", StringComparison.Ordinal) => """{"tercihler":{}}""",
                 var y when y.Contains("/uyum/", StringComparison.Ordinal) =>
                     """{"suresiGecmis":0,"yaklasan":0,"gecikmisSayisi":0,"yuksek":0}""",
+                // TEMA TEMİZLİĞİ 17.10 (YILDIZ-4C): Bugün'ün gün sonu / emanet satırlarının uçları gerçekçi.
+                var y when y.EndsWith("/raporlar/kasa-defteri", StringComparison.Ordinal) =>
+                    """{"baslangic":"2026-10-01","bitis":"2026-10-01","saatDilimi":"Europe/Istanbul","utcOfsetSaat":3,"yazSaatiRiski":false,"toplamSatir":0,"kasalar":[]}""",
+                var y when y.EndsWith("/cari", StringComparison.Ordinal) => "[]",
                 _ => """{"sonuclar":[],"limit":10,"dahaVar":false}""",
             };
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -476,38 +481,38 @@ public sealed class RaporGorunumPanelEkranTestleri : BunitContext
         }
     }
 
+    // TEMA TEMİZLİĞİ 17.10: Panel = Yıldız Bugün — "Bugün ne sattım" kartının has satırı Bugün tuvalinde YOK (bilerek;
+    // has dili Rapor merkezinde RG20). Panel'de kalan has metni "Seni bekleyen" müşteri satırıdır: Rapor merkeziyle
+    // AYNI tek has biçimi (Bicim.HasIsaretli, N4, birim sözlükten).
     private IRenderedComponent<Kuyumcu.Web.Pages.Panel> Basit()
     {
         Services.GetRequiredService<OturumServisi>().KullaniciAta(
             new OturumKullanici("u1", "Ramazan", "Akkocan", "r@ornek.com", "SAHIP", "s1",
                 ArayuzModuServisi.Basit, ArayuzModuServisi.Basit));
         var e = Render<Kuyumcu.Web.Pages.Panel>();
-        e.WaitForElement("#panel-sade");
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-has")), TimeSpan.FromSeconds(10));
+        e.BugunBekle(pozisyon: true);
         return e;
     }
 
-    // Veri (a): Panel "Bugün ne sattım" = Rapor merkezi Bugün kartı (RG20) — "26,1 g has" DEĞİL.
+    // Veri (a): Panel has dili = Rapor merkezi (RG20) — "26,1 g has" gibi ikinci bir dil DEĞİL.
     [Fact]
     public void RG30_Panel_bugun_has_Rapor_merkeziyle_ayni_metin()
     {
         var e = Basit();
-        Assert.Equal("26,0588 has", e.Find("#panel-soru-satis-has").TextContent.Trim());
-        Assert.DoesNotContain(" g has", e.Find("#panel-soru-satis").TextContent, StringComparison.Ordinal);
-        // Kim borçlu has satırı da aynı dil.
-        e.WaitForAssertion(() => Assert.Contains("−22,0000 has", e.Find("#panel-borclu-tutar-c3").TextContent, StringComparison.Ordinal));
+        Assert.Equal("−22,0000 has", e.Find("#yildiz-bekleyen-cari-c3-durum").TextContent.Trim());
+        Assert.DoesNotContain(" g has", e.Find("#yildiz-bugun-liste").TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("26,1 g", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
-    // Görünüm: "9 satış ve 1 iade" öbeği bölünmez — "iade" tek başına alt satıra düşmez.
+    // Görünüm: kâr satırı tek kısa öbek. TEMA TEMİZLİĞİ 17.10: Bugün alt şeridinde maliyeti eksik satış/iade varken
+    // rakam ve uzun "9 satış ve 1 iadenin maliyeti yok" öbeği YOK — yalnız "Kâr maliyet eksik" (fail-closed).
     [Fact]
     public void RG31_Panel_kar_satiri_eksik_obegi_bolunmez()
     {
         var e = Basit();
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-soru-satis-kar")));
-        var metin = e.Find("#panel-soru-satis-kar").TextContent;
-        // PAKET RAPOR-2: kısa öbek "9 satış, 1 iade", "eksik:" ile birlikte bölünmez.
-        // PAKET RAPOR-3: öbek "9 satış ve 1 iadenin maliyeti yok" — yine bölünmez.
-        Assert.Contains("9\u00A0satış\u00A0ve\u00A01\u00A0iadenin\u00A0maliyeti\u00A0yok", metin, StringComparison.Ordinal);
+        e.WaitForAssertion(() => Assert.NotNull(e.Find("#yildiz-bugun-kar")));
+        Assert.Equal($"{YildizBugunSozlugu.Kar("tr")} {YildizBugunSozlugu.MaliyetEksik("tr")}", e.Find("#yildiz-bugun-kar").TextContent.Trim());
+        Assert.DoesNotContain(Bicim.Tl(5000m), e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 
     // Tur 2 (hasım DÜŞÜK): EN arayüzde has birimi sözlükten ("fine") — Türkçe "has" sabiti basılmaz.
@@ -516,8 +521,9 @@ public sealed class RaporGorunumPanelEkranTestleri : BunitContext
     {
         await Services.GetRequiredService<DilServisi>().DegistirAsync("en");
         var e = Basit();
-        Assert.Equal("26,0588 fine", e.Find("#panel-soru-satis-has").TextContent.Trim());
-        e.WaitForAssertion(() => Assert.Contains("−22,0000 fine", e.Find("#panel-borclu-tutar-c3").TextContent, StringComparison.Ordinal));
+        e.WaitForAssertion(() => Assert.Equal("−22,0000 fine", e.Find("#yildiz-bekleyen-cari-c3-durum").TextContent.Trim()));
+        Assert.EndsWith(YildizBugunSozlugu.GramHas("en"), e.Find("#yildiz-bugun-pozisyon b").TextContent.Trim(), StringComparison.Ordinal);
+        Assert.DoesNotContain(" has", e.Find("#yildiz-bugun").TextContent, StringComparison.Ordinal);
     }
 }
 

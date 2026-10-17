@@ -96,21 +96,31 @@ public sealed class B4AltinBacagiFisEkranTestleri : BunitContext
         }
     }
 
-    /// <summary>Bir kalemli (10.000 TL) satış, karma açık, ilk bacak ALTIN seçilmiş.</summary>
+    /// <summary>
+    /// Bir kalemli (10.000 TL) satış, karma açık, ilk satır ALTIN seçilmiş.
+    /// TEMA TEMİZLİĞİ 17.10: SATIŞ = Yıldız tezgâhı. Müşteri "Değiştir" katmanından; karma "+ Başka ödeme" ile açılır
+    /// (sayfanın OdemeyiBol'u: tek ödeme İLK satır + ikinci satır). İlk satır ALTIN'a çevrilir; ikinci satır (kalan için
+    /// nakit) AYNI ekranda hazırdır — eski "+ Başka ödeme ekle" düğmesinin (#islem-bacak-ekle) Yıldız karşılığı tezgâhın hapı.
+    /// </summary>
     private IRenderedComponent<Kuyumcu.Web.Pages.Islemler> AltinBacagiAc()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
-        e.WaitForElement("#islem-cari");
-        SeciciYardim.Sec(e, "islem-cari", "c1");
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.MusteriSec(e, "c1");
         SeciciYardim.Sec(e, "islem-urun", "u1");
         e.FindAll("button").First(b => b.TextContent.Trim() == "Ekle").Click();
-        e.Find("#islem-karma").Change(true);
-        e.WaitForElement("#islem-bacak-ekle");
-        e.Find("#islem-bacak-ekle").Click();
-        e.WaitForElement("#islem-bacak-0-arac");
+        TemaTemizligiGDYardimcisi.KalemSayisiBekle(e, 1);
+        TemaTemizligiGDYardimcisi.KarmaAc(e);
         SeciciYardim.Sec(e, "islem-bacak-0-arac", "ALTIN");
         e.WaitForElement("#altin-bacagi");
         return e;
+    }
+
+    /// <summary>Yalnız ALTIN satırı kalsın: ikinci satır "Çıkar" ile kaldırılır (ALTIN tek ödemeye inmez — karma kalır).</summary>
+    private static void YalnizAltin(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
+    {
+        e.Find("#islem-bacak-sil-1").Click();
+        e.WaitForAssertion(() => Assert.Empty(e.FindAll("#islem-bacak-1-arac")));
+        Assert.Equal("ALTIN", SeciciYardim.SeciliDeger(e, "islem-bacak-0-arac"));
     }
 
     /// <summary>K22 · 5 g · 2.000 TL/has-g → has 4,58 · net 9.160,00 (nihai tüketici, kesinti 0).</summary>
@@ -126,21 +136,23 @@ public sealed class B4AltinBacagiFisEkranTestleri : BunitContext
         e.Find("#altin-satici-adres").Input("Ulus, Ankara");
     }
 
-    /// <summary>Kalan 840 TL için NAKIT bacağı (tek TL kasası otomatik atanır).</summary>
+    /// <summary>Kalan 840 TL için NAKIT satırı (tek TL kasası otomatik atanır): Yıldız'da ikinci satır "+ Başka ödeme"
+    /// ile zaten açıldı — aracı NAKİT yapılır, tutarı fişin kuralı (OtoDengele) yazar.</summary>
     private static void NakitBacakEkle(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
     {
-        e.Find("#islem-bacak-ekle").Click();
         e.WaitForElement("#islem-bacak-1-arac");
+        if (SeciciYardim.SeciliDeger(e, "islem-bacak-1-arac") != "NAKIT") SeciciYardim.Sec(e, "islem-bacak-1-arac", "NAKIT");
     }
 
     private static AngleSharp.Dom.IElement Kaydet(IRenderedComponent<Kuyumcu.Web.Pages.Islemler> e)
-        => e.FindAll("button").First(b => b.TextContent.Contains("Kaydet"));
+        => e.Find(TemaTemizligiGDYardimcisi.Kaydet);
 
     // ── W-1 ───────────────────────────────────────────────────────────────
     [Fact]
     public void AltinBacagi_Tek_Odeme_Listesinde_ALTIN_Yok_Ipucu_Var()
     {
-        var e = Render<Kuyumcu.Web.Pages.Islemler>();
+        var e = Render<Kuyumcu.Web.Pages.Islemler>().TezgahBekle();
+        TemaTemizligiGDYardimcisi.OdemeAc(e);   // Yıldız: ödeme satırına dokun → özgün tek ödeme seçicisi
         e.WaitForElement("#islem-odeme");
 
         var degerler = SeciciYardim.Secenekler(e, "islem-odeme").Select(o => o.Deger()).ToList();
@@ -247,10 +259,13 @@ public sealed class B4AltinBacagiFisEkranTestleri : BunitContext
     public void AltinBacagi_Kalani_Ata_Altin_Bacagina_Yazmaz()
     {
         var e = AltinBacagiAc();
+        YalnizAltin(e);
         AltinDoldur(e);
         // Tek bacak ALTIN (9.160) → kalan 840; hedef yok → düğme KİLİTLİ (tıklanınca boşa gitmez).
         e.WaitForAssertion(() => Assert.True(e.Find("#islem-bacak-kalan-ata").HasAttribute("disabled")));
 
+        // Yıldız: "+ Başka ödeme" karmada yeni satır ekler (FisOdemeBacaklari.BacakEkle aynası); aracı NAKİT.
+        e.Find("#yildiz-tezgah-baska-odeme").Click();
         NakitBacakEkle(e);
         SeciciYardim.Sec(e, "islem-bacak-1-tutar", "500");   // kalan 340
         e.WaitForAssertion(() => Assert.False(e.Find("#islem-bacak-kalan-ata").HasAttribute("disabled")));

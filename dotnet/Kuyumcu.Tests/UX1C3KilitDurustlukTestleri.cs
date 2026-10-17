@@ -74,7 +74,7 @@ public sealed class UX1C3KilitDurustlukTestleri : BunitContext
         Assert.Equal(GerekceAnahtarlari.Pusula,
             DuzeltmePolitikasi.Varliklar["GiderPusulasi"].GerekceAnahtari);
 
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
         c.FindAll("button").First(b => b.TextContent.Contains("Detay")).Click();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#degismez-ipucu-GiderPusulasi")));
@@ -94,7 +94,7 @@ public sealed class UX1C3KilitDurustlukTestleri : BunitContext
     [Fact]
     public void C3_D2_Pusula_kilit_sebebi_YERINDE_duzenlemenin_olmadigini_soyler()
     {
-        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>();
+        var c = Render<Kuyumcu.Web.Pages.GiderPusulalari>().AyrintiAc();
         c.WaitForState(() => c.FindAll("table tbody tr").Count > 0);
         c.FindAll("button").First(b => b.TextContent.Contains("Detay")).Click();
         c.WaitForAssertion(() => Assert.NotNull(c.Find("#degismez-ipucu-GiderPusulasi")));
