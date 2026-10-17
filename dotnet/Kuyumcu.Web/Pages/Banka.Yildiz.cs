@@ -65,7 +65,7 @@ public partial class Banka
                 new YildizEylem(YildizBankaSozlugu.Hareketler(dil), $"yildiz-banka-hareket-{h.Id}", EventCallback.Factory.Create(this, () => YildizHareketler(h.Id))),
                 Soluk: !h.Aktif))],
                 Yukleniyor = yukleniyor,
-                Bantlar = YildizBant.Ciz(listeHata, basari, basariJeton, 3000),
+                Bantlar = YildizBantlari,
                 AyrintiAc = EventCallback.Factory.Create(this, () => yildizAyrinti = true),
                 AyrintiAcik = yildizAyrinti,
                 AyrintiKapat = EventCallback.Factory.Create(this, () => yildizAyrinti = false),

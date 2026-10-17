@@ -24,6 +24,7 @@ public static class ModulKayit
         s.AddSingleton<Kur.KurKaynakDefteri>();   // kur kaynağı adaptör defteri
         s.AddScoped<Kur.KurServisi>();
         s.AddScoped<Cari.CariServisi>();
+        s.AddScoped<Cari.CariIbanServisi>();   // M7a
         s.AddScoped<Urun.UrunServisi>();
         s.AddScoped<Urun.UrunKuraliServisi>();   // M4 — ürün kuralları
         s.AddScoped<Satis.SatisServisi>();
@@ -41,6 +42,7 @@ public static class ModulKayit
         // YAPMAZ; BankaServisi'ni DI ile alır ve satır başına HareketEkleIc
         // çağırır (K4-OK-2 / denetim.sh "BankaHareketleri.Add" sayacı).
         s.AddScoped<Banka.EkstreServisi>();
+        s.AddScoped<Banka.GelenOdemeServisi>();   // M7a
         s.AddScoped<Fatura.FaturaServisi>();
         s.AddScoped<Rapor.RaporServisi>();
         // ── Paket 34 Faz A — rapor seti (salt okur; deftere YAZMAZ) ─────────

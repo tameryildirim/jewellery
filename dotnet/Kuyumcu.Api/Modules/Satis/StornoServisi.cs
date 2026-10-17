@@ -288,6 +288,16 @@ public sealed class StornoServisi(
             await Common.CariBakiyeYazici.Uygula(db, islem.TenantId, cari.Id, -cariTl, -cariHas, now);
         }
 
+        // M7a (17.10): bu TAHSILAT bir banka ödemesinin "borcundan düş" kararından doğduysa karar
+        // AYNI işlemde boşalır — dekont yeniden "karar bekliyor" listesine düşer (borç geri geldi).
+        if (kaynak.Tur == "TAHSILAT")
+        {
+            var kararli = await db.BankaHareketleri
+                .Where(b => b.TenantId == islem.TenantId && b.KararHareketId == kaynak.Id)
+                .Take(1).ToListAsync();
+            foreach (var b in kararli) { b.CariKarari = null; b.KararHareketId = null; }
+        }
+
         // Gerekçeli denetim izi — AYNI transaction, SaveChanges'tan ÖNCE.
         denetim.YazmaKaydet(islem, "Storno", stornoId,
             $"{kaynak.Tur} stornosu (kaynak {kaynak.Id})"
@@ -562,6 +572,11 @@ public sealed class StornoServisi(
             await BankaReddet(islem, kaynak.Id, gerekce, "faturalanmış dekont",
                 "Bu dekont bir faturaya dönüştürülmüştür; ters kayıt faturayı dayanaksız bırakır. "
                 + "Önce faturayı iptal edin, sonra dekontu stornolayın.");
+
+        // M7a (17.10): borcundan düşülmüş ödeme önce geri alınır; yoksa müşterinin borcu düşük kalır.
+        if (kaynak.CariKarari == Modules.Banka.CariKarari.Borc)
+            await BankaReddet(islem, kaynak.Id, gerekce, "borçtan düşülmüş ödeme",
+                "Bu ödeme müşterinin borcundan düşüldü. Önce 'Borçtan düşmeyi geri al' deyin, sonra dekontu stornolayın.");
 
         if (kaynak.EkstreSatirId is not null)
             await BankaReddet(islem, kaynak.Id, gerekce, "ekstreden gelen dekont",

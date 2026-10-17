@@ -26,6 +26,7 @@
 }
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
+    @if (!YildizMi) { <GelenOdemeKarari @ref="gelenKarar" Degisti="GelenKararSonrasi" /> }   @* M7a (17.10): Yıldız'da liste bantlarının altında (Banka.GelenOdeme.cs) *@
     @* ZO-ISLEM-A 28.09 (tasarım hakemi): başlık altı açıklama satırı YOK (tuvalde yok;
        metin tasarım notu kopyasıydı, BASİT'te "pasife" jargonu taşıyordu). *@
     <SayfaBasi Anahtar="banka" Baslik="@Dil.T.Banka.Baslik">
@@ -361,6 +362,7 @@
             @* PAKET GOC-A: karşı taraf ortak Unvan (K20) + sunucu sınırı 150; açıklama sınırı sunucu POST'uyla AYNI sabit. *@
             <Unvan ElemanId="dekont-karsi" Etiket="@Dil.T.Banka.KarsiTaraf" EnFazla="@AlanSinirlari.HesapSahibi"
                    Deger="@dekontKarsiTaraf" DegerChanged="@(v => dekontKarsiTaraf = v ?? "")" />
+            @if (dekontYon == "GELEN" && string.IsNullOrEmpty(dekontCariId)) { <Iban ElemanId="dekont-iban" Etiket="@GelenOdemeSozlugu.KarsiIban(Dil.Dil)" Zorunlu="false" Deger="@dekontKarsiIban" DegerChanged="@(v => dekontKarsiIban = v ?? "")" /><TcknVeyaVkn ElemanId="dekont-kimlik" Etiket="@GelenOdemeSozlugu.KimlikNo(Dil.Dil)" Ipucu="@GelenOdemeSozlugu.BulmaIpucu(Dil.Dil)" Deger="@dekontKimlikNo" DegerChanged="@(v => dekontKimlikNo = v ?? "")" /> }   @* M7a *@
             <Metin ElemanId="dekont-aciklama" Etiket="@Dil.T.Ortak.Aciklama" EnFazla="@AlanSinirlari.DekontAciklama"
                    Deger="@dekontAciklama" DegerChanged="@(v => dekontAciklama = v ?? "")" />
             </div>
@@ -1180,7 +1182,7 @@
     private bool DekontDetayGorunur =>
         dekontDetayAcik || MasakGerekli
         || !string.IsNullOrEmpty(dekontCariId) || !string.IsNullOrEmpty(dekontKarsiTaraf)
-        || !string.IsNullOrEmpty(dekontAciklama)
+        || !string.IsNullOrEmpty(dekontAciklama) || !string.IsNullOrEmpty(dekontKarsiIban) || !string.IsNullOrEmpty(dekontKimlikNo)
         || (dekontTarih is { } dt && dt != Bugun) || dekontTarih is null
         || dekontForm.Mesaj("dekont-tarih") is { Length: > 0 };
 
@@ -1479,6 +1481,7 @@
         dekontKarsiTaraf = "";
         dekontAciklama = "";
         dekontCariId = "";
+        dekontKarsiIban = dekontKimlikNo = "";   // M7a
         dekontTarih = Bugun;          // PAKET Q9-1: varsayılan bugün
         dekontDetayAcik = false;
         dekontForm.Temizle();
@@ -1528,8 +1531,9 @@
         kaydediliyor = true;
         try
         {
-            await Api.PostAsync($"/bankalar/{AktifHesapId}/hareket", new
+            var dekontYanit = await Api.PostAsync<JsonElement>($"/bankalar/{AktifHesapId}/hareket", new
             {
+                karsiIban = DekontIbanGovde, karsiKimlikNo = DekontKimlikGovde,   // M7a: müşteriyi bul / yoksa aç
                 yon = dekontYon,
                 tutar = DekontTutarTl,
                 karsiTarafAd = string.IsNullOrWhiteSpace(dekontKarsiTaraf) ? null : dekontKarsiTaraf,
@@ -1543,7 +1547,8 @@
                 masak = MasakGerekli ? masak : null,
             });
             dekontModalAcik = false;
-            BasariGoster(Dil.T.Banka.HareketEklendi);
+            BasariGoster(DekontSonucMetni(dekontYanit) ?? Dil.T.Banka.HareketEklendi);
+            if (gelenKarar is not null) await gelenKarar.Yenile();
             await HesaplariYukle();
             await HareketleriYukle();
         }

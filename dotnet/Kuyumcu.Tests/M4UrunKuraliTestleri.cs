@@ -119,8 +119,8 @@ public sealed class M4UrunKuraliVtTestleri(TestVeritabani vt)
         Assert.Equal(2, o.GetProperty("uyanSayisi").GetInt32());
         Assert.Equal(2, o.GetProperty("degisecekSayisi").GetInt32());
 
-        var r = J(await new UrunKuraliServisi(db).Uygula(id, true, k.Islem));
-        Assert.Equal(2, r.GetProperty("degisenSayisi").GetInt32());
+        var r = await new UrunKuraliServisi(db).Uygula(id, true, k.Islem);
+        Assert.Equal(2, r.DegisenSayisi);
         var u = await db.Urunler.AsNoTracking().Where(x => x.TenantId == k.TenantId).ToDictionaryAsync(x => x.Kod);
         Assert.Equal(1m, u["E1"].KdvMatrahBinde);
         Assert.Equal(1m, u["E2"].KdvMatrahBinde);

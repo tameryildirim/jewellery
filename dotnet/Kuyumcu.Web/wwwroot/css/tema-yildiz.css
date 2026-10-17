@@ -3861,3 +3861,35 @@ html:root[data-sema="yildiz"] body #uk-onizleme > #uk-uygula:not(#_) { order: 9;
 html:root[data-sema="yildiz"] body #yildiz-belge:not(#_) { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 16px; row-gap: 4px; margin: 16px 0 4px; }
 html:root[data-sema="yildiz"] body #yildiz-belge .yz-tur-sekme:disabled:not(#_) { cursor: not-allowed; opacity: .45; }
 html:root[data-sema="yildiz"] body #yildiz-belge-not:not(#_) { margin: 0; color: var(--metin-soluk); font-size: 14px; }
+
+/* ── M7a (17.10): gelen ödeme karar kutusu + müşteri IBAN listesi ─────────────── */
+html:root[data-sema="yildiz"] body #gelen-odeme-karari:not(#_) { margin-bottom: 16px; }
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-baslik:not(#_) { font-size: 1.05rem; font-weight: 600; margin: 0; }
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-satir:not(#_) {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--kenarlik);
+}
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-ust:not(#_) { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-uyari:not(#_) {
+  margin: 0; padding: 8px 12px; border: 1px solid var(--uyari-kenar); background: var(--uyari-yuzey); color: var(--uyari); border-radius: 8px;
+}
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .satir:not(#_) { display: flex; gap: 8px; flex-wrap: wrap; }
+html:root[data-sema="yildiz"] body #cari-iban:not(#_) { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+html:root[data-sema="yildiz"] body #cari-iban-liste > .cari-iban-satir:not(#_) {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--kenarlik);
+}
+html:root[data-sema="yildiz"] body #cari-iban-liste .cari-iban-no:not(#_) { font-variant-numeric: tabular-nums; flex: 1 1 auto; overflow-wrap: anywhere; }
+html:root[data-sema="yildiz"] body #cari-iban .cari-iban-ekle:not(#_) { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+/* M7a: çekmece .yz dışında — "+ IBAN ekle" ortak ekle bağlantısıyla aynı görünür; "Kaldır" kart eylemi gibi altı çizili metin. */
+html:root[data-sema="yildiz"] body #cari-iban .yz-ekle:not(#_) {
+  display: inline-flex; align-items: center; gap: 10px; align-self: flex-start; margin: 0; padding: 8px 0;
+  border: 0; border-radius: 0; background: transparent; color: var(--metin-soluk); font: inherit; font-size: 15px;
+  letter-spacing: .04em; cursor: pointer; width: auto;
+}
+html:root[data-sema="yildiz"] body #cari-iban .yz-ekle:hover:not(#_) { color: var(--metin); }
+html:root[data-sema="yildiz"] body #cari-iban .yz-ekle:focus-visible:not(#_) { outline: 1px solid var(--odak-halka); outline-offset: 4px; }
+html:root[data-sema="yildiz"] body #cari-iban .yz-ik:not(#_) { fill: none; stroke: currentColor; stroke-width: 1.5; }
+html:root[data-sema="yildiz"] body #cari-iban-liste .btn:not(#_) {
+  background: transparent; border: 0; border-bottom: 1px solid var(--kenarlik); border-radius: 0;
+  padding: 2px 2px; min-height: 0; color: var(--metin); font-size: 15px;
+}
+html:root[data-sema="yildiz"] body #go-bilgi:not(#_) { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

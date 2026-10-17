@@ -805,8 +805,8 @@ public sealed class ZOISLEMASinir11EkranTestleri : Bunit.BunitContext
         Gir(e, "#hrd-has", "1,5");
         // ISLEM-BANT-2: fiyat ramat satış bandının (kur 6.800 → %80–%120) dışında; Kaydet artık bant dışında kilitli —
         // SAHİP/MÜDÜR "Fiyat doğru, yine de kaydet" + 20+ karakter gerekçe ile açar (sunucu kuralıyla aynı).
-        e.Find("#hrd-bant-onay").Change(true);
-        e.Find("#hrd-bant-gerekce").Input("Ramatçı ile sözleşmeli fiyat, teyit edildi.");
+        e.WaitForElement("#hrd-bant-onay").Change(true);
+        e.WaitForElement("#hrd-bant-gerekce").Input("Ramatçı ile sözleşmeli fiyat, teyit edildi.");
         e.WaitForAssertion(() => Assert.Contains("67.500", e.Find("#hrd-tutar").TextContent));
         var g = Gonder(e);
         Assert.Equal(45000m, g.GetProperty("birimFiyatTlHasGram").GetDecimal());
@@ -1858,8 +1858,10 @@ public sealed partial class ZOISLEMASinirHurdaOnayKayitTestleri
         Gir(e, "#hrd-has", "0,000001");
         // ISLEM-BANT-2: fiyat ramat satış bandının (kur 6.800 → %80–%120) dışında; Kaydet artık bant dışında kilitli —
         // SAHİP/MÜDÜR "Fiyat doğru, yine de kaydet" + 20+ karakter gerekçe ile açar (sunucu kuralıyla aynı).
-        e.Find("#hrd-bant-onay").Change(true);
-        e.Find("#hrd-bant-gerekce").Input("Ramatçı ile sözleşmeli fiyat, teyit edildi.");
+        // Bant onayı/gerekçe kutusu fiyat girişinin render'ından SONRA çizilir — yük altında Find erken
+        // koşup bulamıyordu (17.10 tam koşuda tek seferlik kırmızı); bekleyerek bulunur.
+        e.WaitForElement("#hrd-bant-onay").Change(true);
+        e.WaitForElement("#hrd-bant-gerekce").Input("Ramatçı ile sözleşmeli fiyat, teyit edildi.");
         OnaydakiKaydedilir(e, 0.01m);
     }
 

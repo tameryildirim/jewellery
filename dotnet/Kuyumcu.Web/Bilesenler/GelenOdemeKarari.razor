@@ -1,0 +1,108 @@
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ M7a (kurucu 17.10) — "borcu vardır ama ekstra bir altın daha almıştır… borçtan düşülsün mü
+   diye müşteri karar versin". Müşteriye bağlanmış, kararı verilmemiş gelen ödemeler kuyumcunun ÖNÜNE
+   düşer; borç varsa uyarı. Liste boşsa hiçbir şey çizilmez (zorunlu önce). Yetkisiz rolde (403) gizli. ═══ *@
+@if (gorunur && (satirlar.Count > 0 || hata is not null || bilgi is not null))
+{
+    <section class="kart go-kutu" id="gelen-odeme-karari" aria-label="@GelenOdemeSozlugu.Baslik(Dil.Dil)">
+        <div class="kart-govde form-dikey">
+            <h2 class="go-baslik">@GelenOdemeSozlugu.Baslik(Dil.Dil)</h2>
+            @if (hata is { } h) { <div class="bant bant-hata" role="alert" id="go-hata">@h</div> }
+            @if (bilgi is { } b)
+            {
+                <div class="bant bant-basari" role="status" id="go-bilgi">
+                    @b
+                    @if (sonKararId is { } sk)
+                    {
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="go-geri-al" disabled="@calisiyor" @onclick="() => GeriAl(sk)">@GelenOdemeSozlugu.GeriAl(Dil.Dil)</button>
+                    }
+                </div>
+            }
+            @foreach (var s in satirlar)
+            {
+                <div class="go-satir" id="@($"go-{s.Id}")">
+                    <div class="go-ust">
+                        <strong>@GelenOdemeSozlugu.Geldi(s.CariAd ?? s.KarsiTarafAd ?? "—", Bicim.Tl(s.Tutar), Dil.Dil)</strong>
+                        <span class="metin-soluk metin-kucuk">@Bicim.Gun(s.Tarih)</span>
+                    </div>
+                    @if (s.BorcTl > 0m)
+                    {
+                        <p class="go-uyari" id="@($"go-uyari-{s.Id}")" role="status">@GelenOdemeSozlugu.BorcuVar(Bicim.Tl(s.BorcTl), Dil.Dil)</p>
+                    }
+                    else
+                    {
+                        <p class="metin-soluk" id="@($"go-bilgi-{s.Id}")">@GelenOdemeSozlugu.BorcuYok(Dil.Dil)</p>
+                    }
+                    <div class="satir">
+                        <button type="button" class="btn btn-birincil btn-kucuk" id="@($"go-borc-{s.Id}")" disabled="@calisiyor"
+                                @onclick="() => Karar(s, KararBorc)">@(s.BorcTl > 0m ? GelenOdemeSozlugu.BorcundanDus(Dil.Dil) : GelenOdemeSozlugu.AlacakYaz(Dil.Dil))</button>
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"go-satis-{s.Id}")" disabled="@calisiyor"
+                                @onclick="() => Karar(s, KararSatis)">@GelenOdemeSozlugu.YeniAlisveris(Dil.Dil)</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private const string KararBorc = "BORC";
+    private const string KararSatis = "SATIS";
+
+    /// <summary>Karar verilince (sayfa bakiye/hareket listesini tazelesin diye).</summary>
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private List<GelenOdemeSatiri> satirlar = [];
+    private bool gorunur = true, calisiyor;
+    private string? hata, bilgi, sonKararId;
+
+    protected override Task OnInitializedAsync() => Yenile();
+
+    /// <summary>Sayfa yeni dekont girince çağırır.</summary>
+    public async Task Yenile()
+    {
+        try
+        {
+            satirlar = await Api.TazeGetAsync<List<GelenOdemeSatiri>>("/bankalar/karar-bekleyen");
+            hata = null;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { gorunur = false; }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }   // P-11: liste KORUNUR
+        StateHasChanged();
+    }
+
+    private async Task Karar(GelenOdemeSatiri s, string karar)
+    {
+        calisiyor = true; hata = bilgi = null; sonKararId = null;
+        try
+        {
+            await Api.PostAsync<JsonElement>($"/bankalar/hareketler/{s.Id}/karar", new { karar });
+            bilgi = karar == KararBorc
+                ? GelenOdemeSozlugu.Dusuldu(s.CariAd ?? "", Dil.Dil)
+                : GelenOdemeSozlugu.SatisSayildi(Dil.Dil);
+            sonKararId = s.Id;
+            await Yenile();
+            await Degisti.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task GeriAl(string id)
+    {
+        calisiyor = true; hata = null;
+        try
+        {
+            await Api.PostAsync<JsonElement>($"/bankalar/hareketler/{id}/karar/geri-al");
+            bilgi = GelenOdemeSozlugu.GeriAlindi(Dil.Dil);
+            sonKararId = null;
+            await Yenile();
+            await Degisti.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+}

@@ -534,6 +534,7 @@
             }
         </div>
         }
+        @if (duzenleCari is { SistemCarisi: false } ibanCari) { <CariIbanListesi CariId="@ibanCari.Id" /> }   @* M7a (17.10): müşterinin IBAN listesi *@
         @* T-M1 — tuval: panelin dibinde "Son değişiklik: Ayşe Y., dün 16:20 · Kim ne yaptı".
            Zaman listedeki `guncellendi` alanından; KİM bilgisi yalnız SAHİP'te denetim
            kaydından okunur (uç SAHİP'e açık — diğer rollerde yalnız zaman yazılır,

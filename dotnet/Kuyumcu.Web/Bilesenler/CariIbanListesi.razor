@@ -1,0 +1,84 @@
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ M7a (kurucu 17.10) — "müşteri bilgilerine bir IBAN listesi gelsin, birden fazla IBAN'la işlem
+   yapabilir". Listedeki IBAN'dan gelen ödeme kendiliğinden bu müşteriye bağlanır. Ekleme alanı yalnız
+   "+ IBAN ekle" ile açılır (zorunlu önce). Bir IBAN tek müşteriye — sunucu 409 ve sahibinin adı. ═══ *@
+<div class="alan cari-iban" id="cari-iban">
+    <span class="alan-etiket">@GelenOdemeSozlugu.Ibanlar(Dil.Dil)</span>
+    @if (hata is { } h) { <div class="bant bant-hata" role="alert" id="cari-iban-hata">@h</div> }
+    @if (liste.Count == 0 && !yukleniyor)
+    {
+        <p class="metin-soluk metin-kucuk" id="cari-iban-bos">@GelenOdemeSozlugu.IbanYok(Dil.Dil)</p>
+    }
+    <ul class="liste-sade" id="cari-iban-liste">
+        @foreach (var i in liste)
+        {
+            <li class="cari-iban-satir" id="@($"cari-iban-{i.Id}")">
+                <span class="cari-iban-no">@Bicimle(i.Iban)</span>
+                @if (i.Kaynak == "OGRENILDI") { <span class="metin-soluk metin-kucuk">@GelenOdemeSozlugu.Ogrenildi(Dil.Dil)</span> }
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"cari-iban-kaldir-{i.Id}")" disabled="@calisiyor"
+                        @onclick="() => Kaldir(i.Id)">@GelenOdemeSozlugu.Kaldir(Dil.Dil)</button>
+            </li>
+        }
+    </ul>
+    @if (ekleAcik)
+    {
+        <div class="satir cari-iban-ekle">
+            <Iban ElemanId="cari-iban-yeni" Etiket="@GelenOdemeSozlugu.IbanEkle(Dil.Dil)" Zorunlu="false"
+                  Deger="@yeni" DegerChanged="@(v => yeni = v ?? "")" />
+            <button type="button" class="btn btn-birincil btn-kucuk" id="cari-iban-kaydet"
+                    disabled="@(calisiyor || string.IsNullOrWhiteSpace(yeni))" @onclick="Ekle">@GelenOdemeSozlugu.Ekle(Dil.Dil)</button>
+        </div>
+    }
+    else
+    {
+        <button type="button" class="yz-ekle" id="cari-iban-ac" @onclick="() => ekleAcik = true">
+            <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@GelenOdemeSozlugu.IbanEkle(Dil.Dil)
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string CariId { get; set; } = "";
+
+    private List<CariIbanSatiri> liste = [];
+    private string yeni = "";
+    private bool ekleAcik, yukleniyor, calisiyor;
+    private string? hata, oncekiCari;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CariId == oncekiCari) return;
+        oncekiCari = CariId; ekleAcik = false; yeni = ""; hata = null;
+        yukleniyor = true;
+        try { liste = await Api.TazeGetAsync<List<CariIbanSatiri>>($"/cari/{CariId}/ibanlar"); }
+        catch (Exception ex) when (ex is ApiHata or JsonException) { hata = ex.Message; }   // P-11
+        finally { yukleniyor = false; }
+    }
+
+    private async Task Ekle()
+    {
+        calisiyor = true; hata = null;
+        try
+        {
+            liste = await Api.PostAsync<List<CariIbanSatiri>>($"/cari/{CariId}/ibanlar", new { iban = yeni });
+            yeni = ""; ekleAcik = false;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task Kaldir(string id)
+    {
+        calisiyor = true; hata = null;
+        try { liste = await Api.DeleteAsync<List<CariIbanSatiri>>($"/cari/{CariId}/ibanlar/{id}"); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    /// <summary>TR00 0000 … 4'lü gruplar (okunur; kayıt biçimi boşluksuz kalır).</summary>
+    private static string Bicimle(string iban) =>
+        string.Join(' ', Enumerable.Range(0, (iban.Length + 3) / 4).Select(i => iban.Substring(i * 4, Math.Min(4, iban.Length - i * 4))));
+}

@@ -77,13 +77,14 @@ public sealed class UX4dHttpTestleri(HttpFikstur f)
 
         var mesajlar = govde.GetProperty("message").EnumerateArray()
             .Select(x => x.GetString()!).ToList();
-        Assert.Contains(mesajlar, m => m.Contains("E-posta"));
+        // Metin ekranla TEK kaynaktan (GirdiSozlugu.EpostaBicim: "Geçerli bir e-posta yazın…") — büyük/küçük harf bağımsız.
+        Assert.Contains(mesajlar, m => m.Contains("e-posta", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(mesajlar, m => m.Contains("field is not a valid"));
 
         // Ekran alan altına yazabilsin diye alan→mesaj sözlüğü.
         var alanlar = govde.GetProperty("alanlar");
         Assert.True(alanlar.TryGetProperty("email", out var email));
-        Assert.Contains("E-posta", email[0].GetString());
+        Assert.Contains("e-posta", email[0].GetString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

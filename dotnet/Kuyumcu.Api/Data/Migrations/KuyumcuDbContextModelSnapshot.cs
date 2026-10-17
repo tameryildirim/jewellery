@@ -136,6 +136,11 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(36)")
                         .HasColumnName("cari_id");
 
+                    b.Property<string>("CariKarari")
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("cari_karari");
+
                     b.Property<string>("DedupeAnahtar")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
@@ -161,6 +166,11 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")
                         .HasColumnName("hareket_id");
+
+                    b.Property<string>("KararHareketId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("karar_hareket_id");
 
                     b.Property<string>("KarsiBacakId")
                         .HasMaxLength(36)
@@ -213,6 +223,8 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnName("yon");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "KararHareketId");
 
                     b.HasIndex("TenantId", "KarsiBacakId");
 

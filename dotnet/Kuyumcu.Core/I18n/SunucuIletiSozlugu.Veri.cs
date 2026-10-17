@@ -1280,5 +1280,22 @@ public static partial class SunucuIletiSozlugu
         ("İade için ayar ve gram birlikte gönderilmelidir.", "Karat and weight must be sent together for a return."),
         ("Ayar ({}) ile maden ({}) uyuşmuyor.", "Karat ({}) does not match the metal ({})."),
         ("Has gram ayar ve gramla uyuşmuyor. Beklenen: {}, gönderilen: {}", "Fine gold weight does not match karat and weight. Expected: {}, sent: {}"),
+        // ── M7a (17.10): gelen ödeme kararı + müşteri IBAN listesi ──
+        ("Karar zorunludur", "A decision is required"),
+        ("Karar BORC ya da SATIS olmalıdır", "Decision must be BORC (deduct from debt) or SATIS (new purchase)"),
+        ("Bu dekont stornolanmıştır; karar verilemez.", "This bank entry has been reversed; no decision can be made."),
+        ("Bu ödeme zaten borcundan düşüldü.", "This payment has already been deducted from the debt."),
+        ("Önce güncel kur alınmalı (kur ekranı).", "Fetch current rates first (rates screen)."),
+        ("Bu ödeme için verilmiş bir karar yok.", "No decision has been made for this payment."),
+        ("Yalnız gelen ödeme için karar verilir.", "Decisions are made only for incoming payments."),
+        ("Önce ödemeyi bir müşteriyle eşleştirin.", "Link the payment to a customer first."),
+        ("Bu satır için karar verilemez (storno ya da virman bacağı).", "No decision for this line (reversal or transfer leg)."),
+        ("Döviz hesabına gelen ödeme müşterinin döviz tahsilatından girilir.", "A payment into a foreign-currency account is entered as the customer's currency collection."),
+        ("Bu dekont için karar verilemez (durum: {}).", "No decision can be made for this bank entry (status: {})."),
+        ("Bu ödeme müşterinin borcundan düşüldü. Önce 'Borçtan düşmeyi geri al' deyin, sonra dekontu stornolayın.", "This payment was deducted from the customer's debt. Undo the deduction first, then reverse the bank entry."),
+        ("Peşin Müşteri kartına IBAN eklenmez.", "An IBAN cannot be added to the Walk-in Customer card."),
+        ("Bu IBAN zaten bu müşteride kayıtlı.", "This IBAN is already saved for this customer."),
+        ("Bu IBAN başka bir müşteride kayıtlı: {}. Bir IBAN tek müşteriye bağlanır.", "This IBAN is saved for another customer: {}. An IBAN belongs to one customer only."),
+        ("IBAN bulunamadı", "IBAN not found"),
     ];
 }

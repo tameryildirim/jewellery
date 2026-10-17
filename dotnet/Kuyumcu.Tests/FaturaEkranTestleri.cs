@@ -311,8 +311,11 @@ public sealed class FaturaEkranTestleri : BunitContext
         Services.GetRequiredService<DilServisi>().BasitModuBagla(() => basit);
         var e = EkranAc();
         e.WaitForElement("#fk-ozel-matrah-rozet");
+        // Görünen METİN taranır (işaretleme değil): Blazor'un rastgele GUID öznitelikleri "805" içerebiliyordu
+        // (17.10 tam koşuda tek seferlik kırmızı — kimlik değeri ekranda görünen dil değildir).
+        var gorunen = System.Text.RegularExpressions.Regex.Replace(e.Markup, "<[^>]*>", " ");
         foreach (var yasak in new[] { "Kdv:OzelMatrahKodu", "K-10", "805", "yapılandırma" })
-            Assert.DoesNotContain(yasak, e.Markup);
+            Assert.DoesNotContain(yasak, gorunen);
     }
 
     [Fact]

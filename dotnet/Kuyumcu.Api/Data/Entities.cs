@@ -1242,6 +1242,21 @@ public class BankaHareket : IKiraciVarlik, IBacakliHareket
     [Column("durum"), MaxLength(15)] public string Durum { get; set; } = "BEKLIYOR";
 
     /// <summary>
+    /// M7a (kurucu 17.10: "borcu vardır ama ekstra bir altın daha almıştır… borçtan düşülsün mü
+    /// diye müşteri karar versin") — GELEN ve müşteriye bağlı dekontta kuyumcunun kararı:
+    /// <c>null</c> = karar bekliyor · <c>BORC</c> = borcundan düşüldü (TAHSILAT satırı
+    /// <see cref="KararHareketId"/>) · <c>SATIS</c> = yeni alışverişin ödemesi (borca dokunulmadı).
+    /// </summary>
+    [Column("cari_karari"), MaxLength(10)] public string? CariKarari { get; set; }
+
+    /// <summary>
+    /// BORC kararında doğan TAHSILAT defter satırı. ⚠ <see cref="HareketId"/> DEĞİL: o kolon
+    /// MASAK kümülatifinden dışlama süzgecidir; para MASAK'a dekontun günüyle burada sayılmaya
+    /// devam eder, TAHSILAT satırı ise MasakOlcuTl = 0 ile çift sayımdan çıkar.
+    /// </summary>
+    [Column("karar_hareket_id"), MaxLength(36)] public string? KararHareketId { get; set; }
+
+    /// <summary>
     /// PAKET P-12 (B-42) — bu satır bir BAŞKA banka dekontunu hükümsüz kılan
     /// ters kayıtsa, kaynağın kimliği.
     /// <para>

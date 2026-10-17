@@ -478,6 +478,13 @@ public sealed class CariServisi(
             "dogumTarihi");
 
     public async Task<object> Olustur(CariOlusturDto dto, AktifKullanici islem)
+        => await Getir(await OlusturId(dto, islem), islem);
+
+    /// <summary>
+    /// Kartı açar, kimliğini döner (M7a: bankadan gelen ödemeyle otomatik açılış AYNI kapılardan
+    /// geçer — TCKN/VKN kuralı, benzersizlik, yaptırım taraması). Dış işlem varsa ona katılır.
+    /// </summary>
+    public async Task<string> OlusturId(CariOlusturDto dto, AktifKullanici islem)
     {
         var id = Kimlik.Ulid();
         var now = DateTime.UtcNow;
@@ -555,7 +562,7 @@ public sealed class CariServisi(
         // PAKET YASAL-3 (§ 4.4 nokta 2): kayıt AÇILIR; kimlik no yasal listedeyse cari kilitlenir.
         await Masak.YaptirimServisi.CariTara(db, islem.TenantId, id, vergiNo, dto.Ad, islem);
 
-        return await Getir(id, islem);
+        return id;
     }
 
     // ─── Liste ────────────────────────────────────────────────────────────────

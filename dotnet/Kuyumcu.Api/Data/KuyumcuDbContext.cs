@@ -506,6 +506,8 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<CariIban>().HasIndex(c => new { c.TenantId, c.IbanHash }).IsUnique();
         // (g) Cari kartından "bu müşterinin IBAN'ları".
         mb.Entity<CariIban>().HasIndex(c => new { c.TenantId, c.CariId });
+        // M7a: TAHSILAT stornosu kararı boşaltırken banka satırını bu kolondan bulur.
+        mb.Entity<BankaHareket>().HasIndex(b => new { b.TenantId, b.KararHareketId });
         // (h) Ekstre satırının IBAN'ı da aranır (otomatik eşleşme yolu).
         mb.Entity<EkstreSatiri>().HasIndex(s2 => new { s2.TenantId, s2.KarsiIbanHash });
         mb.Entity<KurSnapshot>().HasIndex(k => new { k.TenantId, k.Olusturuldu });

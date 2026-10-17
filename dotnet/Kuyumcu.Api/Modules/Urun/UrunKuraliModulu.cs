@@ -181,7 +181,7 @@ public sealed class UrunKuraliServisi(KuyumcuDbContext db, DenetimServisi? denet
         return new { kuralId = k.Id, uyanSayisi = uyanlar.Count, degisecekSayisi = degisecek, satirlar };
     }
 
-    public async Task<object> Uygula(string id, bool yalnizBos, AktifKullanici islem)
+    public async Task<Kuyumcu.Contracts.Sayfalar.Urunler.UrunKuraliUygulama> Uygula(string id, bool yalnizBos, AktifKullanici islem)
     {
         var (k, uyanlar) = await Uyanlari(id, islem, izle: true);
         var degisen = 0;
@@ -195,7 +195,7 @@ public sealed class UrunKuraliServisi(KuyumcuDbContext db, DenetimServisi? denet
                 hassas: false);
             await db.SaveChangesAsync();
         }
-        return new { kuralId = k.Id, uyanSayisi = uyanlar.Count, degisenSayisi = degisen };
+        return new(k.Id, uyanlar.Count, degisen);   // sözleşme tipi (istemciyle derleyici kilidi)
     }
 }
 
@@ -223,5 +223,5 @@ public sealed class UrunKuraliController(UrunKuraliServisi servis) : ControllerB
 
     [HttpPost("{id}/uygula")]
     [RolGerekli("SAHIP", "MUDUR")]
-    public Task<object> Uygula(string id, [FromQuery] bool yalnizBos = true) => servis.Uygula(id, yalnizBos, Islem);
+    public Task<Kuyumcu.Contracts.Sayfalar.Urunler.UrunKuraliUygulama> Uygula(string id, [FromQuery] bool yalnizBos = true) => servis.Uygula(id, yalnizBos, Islem);
 }

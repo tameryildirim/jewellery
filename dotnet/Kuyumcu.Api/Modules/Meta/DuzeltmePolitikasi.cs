@@ -247,10 +247,12 @@ public static class DuzeltmePolitikasi
         // atlamayı geri al). Onaylandıktan SONRA sunucu 409 döner; o aşamada
         // doğru yol, üretilen banka hareketinin storno/düzeltme fişidir.
         D("EkstreSatiri", "api/v1/bankalar/ekstre/satir/{id}"),
-        // Cari-IBAN bağı: ekstre satırının cari bağı değiştirilerek yönetilir.
-        // Doğrudan bir CRUD ucu AÇILMADI — ikinci bir "IBAN yönetimi" yüzeyi
-        // açmak, "bir IBAN tek cariye" kuralını iki yerden korumak demekti.
-        S("CariIban", GerekceAnahtarlari.IceAktarim, "api/v1/bankalar/ekstre/satir/{id}"),
+        // Cari-IBAN bağı — M7a (kurucu 17.10: "müşteri bilgilerine bir IBAN listesi gelsin"): müşteri
+        // kartından eklenir/kaldırılır. "Bir IBAN tek cariye" kuralı TEK yerde: (tenant, iban_hash)
+        // benzersiz indeksi; uç da ekstre öğrenmesi de aynı hash'e bakar.
+        D("CariIban", "api/v1/cari/{id}/ibanlar/{ibanId}"),
+        // M4 (16.10) ürün kuralı: kuyumcunun ayarı, serbestçe düzenlenir (pasife alma = Aktif).
+        D("UrunKurali", "api/v1/urun-kurallari/{id}"),
         S("GunKapanisi", GerekceAnahtarlari.Kapanis),
         S("SayimOturumu", GerekceAnahtarlari.Sayim),
         S("SayimSatiri", GerekceAnahtarlari.Sayim),

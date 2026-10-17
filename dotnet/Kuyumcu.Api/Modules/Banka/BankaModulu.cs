@@ -90,6 +90,13 @@ public sealed class HareketEkleDto
     [StringLength(36, MinimumLength = 26)]
     public string? CariId { get; set; }
 
+    /// <summary>
+    /// M7a — gönderenin TCKN/VKN'si (dekontta varsa). Yalnız müşteriyi BULMAK ve yoksa açmak için
+    /// kullanılır; dekont satırına yazılmaz (kişisel veri asgarisi).
+    /// </summary>
+    [StringLength(11)]
+    public string? KarsiKimlikNo { get; set; }
+
     /// <summary>ISO tarih; verilmezse şimdi</summary>
     public string? Tarih { get; set; }
 
@@ -853,6 +860,9 @@ public sealed class BankaServisi(
         var eski = h.Durum;
         h.CariId = dto.CariId;
         h.Durum = "ESLESTI";
+        // M7a: elle eşleştirilen ödemenin IBAN'ı müşterinin IBAN listesine öğrenilir (sonraki ödeme kendiliğinden bulunur).
+        if (!string.IsNullOrWhiteSpace(h.KarsiIban))
+            await GelenOdemeServisi.IbanOgretSessiz(db, dto.CariId, h.KarsiIban, h.KarsiTarafAd, islem);
         denetim?.YazmaKaydet(islem, "BankaHareketiEslestirme", h.Id,
             $"banka dekontu müşteriyle eşleştirildi · durum: {eski} → ESLESTI · cari: {dto.CariId}");
         await db.SaveChangesAsync();
@@ -909,7 +919,7 @@ public sealed class BankaServisi(
 [Authorize]
 [Route("api/v1/bankalar")]
 [Yetki.ModulYetkisi("banka")]
-public sealed class BankaController(BankaServisi servis, Satis.StornoServisi storno) : ControllerBase
+public sealed class BankaController(BankaServisi servis, Satis.StornoServisi storno, GelenOdemeServisi gelen) : ControllerBase
 {
     private AktifKullanici Islem => AktifKullanici.FromClaims(User);
 
@@ -951,7 +961,7 @@ public sealed class BankaController(BankaServisi servis, Satis.StornoServisi sto
     [HttpPost("{id}/hareket")]
     [RolGerekli("SAHIP", "MUDUR", "MUHASEBE")]
     public Task<object> HareketEkle(string id, [FromBody] HareketEkleDto dto)
-        => servis.HareketEkle(id, dto, Islem);
+        => gelen.HareketEkle(id, dto, Islem);   // M7a: müşteriyi bul / yoksa aç, IBAN'ı öğret
 
     /// <summary>
     /// PATCH /api/v1/bankalar/{id}/hareketler/{hareketId} — PAKET P-12 (B-42).
