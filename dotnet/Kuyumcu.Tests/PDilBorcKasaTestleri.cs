@@ -279,6 +279,9 @@ public sealed class PDilBorcKasaCariEkranTestleri : BunitContext
     {
         Toplu5Ortak.Oturum(this, mod);
         var e = Render<Cariler>();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız müşteri listesinde satır eylemi yok — eylemler (CariEylemleri, TEK kaynak)
+        // satıra basınca açılan kartta (YildizKartEylemleri).
+        e.WaitForElement("#yildiz-musteri-c1", TimeSpan.FromSeconds(5)).Click();
         e.WaitForState(() => e.FindAll("#c-doviz-veresiye-c1").Count > 0);
         return e;
     }
@@ -291,7 +294,9 @@ public sealed class PDilBorcKasaCariEkranTestleri : BunitContext
         Assert.Equal(BorcDiliSozlugu.DovizleVeresiye("tr"), b.FindAll("#c-doviz-veresiye-c1")[0].TextContent.Trim());
         Assert.Equal(BorcDiliSozlugu.DovizleTahsilat("tr"), b.FindAll("#c-doviz-tahsilat-c1")[0].TextContent.Trim());
         // Kart: eksi bakiye = biz borçluyuz (dükkân bakışı) — "alacak" sözü yok.
-        Assert.Contains(BorcDiliSozlugu.BizBorcluyuzEtiket("tr"), b.Markup);
+        // TEMA TEMİZLİĞİ 17.10: eski özgün listenin rozeti (BizBorcluyuzEtiket) liste ile birlikte kaldırıldı; Yıldız
+        // müşteri satırı aynı kuralı aynı tek kaynağın kısa kalıbıyla yazar (YildizMusteriBicim.Satir → KisaBizBorcluyuz).
+        Assert.Contains(BorcDiliSozlugu.KisaBizBorcluyuz("tr"), b.Find("#yildiz-musteri-c1").TextContent);
     }
 
     [Fact]
@@ -530,7 +535,8 @@ public sealed class PDilBorcKasaEmanetEkranTestleri : BunitContext
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> Ciz(string mod)
     {
         Toplu5Ortak.Oturum(this, mod);
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız yolu — listede müşterinin satırına bas (özgün gövde), seçicide c1.
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc("h1");
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForAssertion(() => Assert.Matches("(g|has)$", e.Find("#e-ozet-deger").TextContent.Trim()));
         return e;

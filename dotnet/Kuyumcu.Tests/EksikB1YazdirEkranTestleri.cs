@@ -88,6 +88,8 @@ public sealed class EksikB1CarilerEkranTestleri : BunitContext
         {
             EksikB1Ortak.Oturum(this, mod);
             var e = Render<Kuyumcu.Web.Pages.Cariler>();
+            // TEMA TEMİZLİĞİ 17.10: Yıldız'da "Detay" satıra basınca açılan kartın eylemidir (YildizKartEylemleri).
+            e.WaitForElement("#yildiz-musteri-c1").Click();
             e.WaitForElement("#c-detay-c1").Click();
             var dugme = e.WaitForElement("#cari-detay-ekstre-yazdir");
             Assert.Equal("/cikti/CARI_EKSTRE/c1", dugme.GetAttribute("href"));
@@ -119,6 +121,8 @@ public sealed class EksikB1EmanetEkranTestleri : BunitContext
                      "hareketler":[{"id":"h1","tur":"EMANET_GIRIS","tarih":"2026-09-10T10:00:00Z","hasGrami":12.5,
                         "aciklama":"Bilezik 2 adet","stornoKaynakId":null,"fisId":null,"maden":"ALTIN"}]}
                     """,
+                // TEMA TEMİZLİĞİ 17.10: Yıldız listesi açılışta müşterilerin emanet uçlarını okur (c2: emaneti yok).
+                var y when y.EndsWith("/emanet/c2") => """{"cariId":"c2","mevcutHasGramBakiye":0,"madenBakiyeleri":[],"hareketler":[]}""",
                 var y when y.EndsWith("/cari") => """[{"id":"c1","ad":"Ayşe Demir"},{"id":"c2","ad":"Mehmet Kaya"}]""",
                 _ => null,
             };
@@ -136,8 +140,8 @@ public sealed class EksikB1EmanetEkranTestleri : BunitContext
         foreach (var mod in EksikB1Ortak.Modlar)
         {
             EksikB1Ortak.Oturum(this, mod);
-            var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
-            e.WaitForElement("#e-cari");
+            // TEMA TEMİZLİĞİ 17.10: Yıldız yolu — listede müşterinin satırına bas (özgün gövde), seçicide c1.
+            var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc("h1");
             SeciciYardim.Sec(e, "e-cari", "c1");
             e.WaitForElement("#e-gecmis-ac").Click();
 

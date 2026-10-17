@@ -367,7 +367,8 @@ public sealed class S35EmanetEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Emanet> MusteriSecili()
     {
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        // TEMA TEMİZLİĞİ 17.10: Yıldız yolu — listede müşterinin satırına bas (özgün gövde), seçicide c1.
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc("h1");
         SeciciYardim.Sec(e, "e-cari", "c1");
         // PAKET EMANET-1: geçmiş "Eski kayıtlar" katlanırında KAPALI gelir; açılır.
         e.WaitForElement("#e-gecmis-ac").Click();

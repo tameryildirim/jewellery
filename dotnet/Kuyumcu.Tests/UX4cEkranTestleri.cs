@@ -98,7 +98,12 @@ public sealed class UX4cEkranTestleri : BunitContext
                     """,
                 var y when y.EndsWith("/kur/guncel") =>
                     """{"id":"kur-1","altinHasFiyati":6800,"gramAltinFiyati":6850,"usdTry":34.0,"eurTry":37.0,"gbpTry":43.5,"kaynak":"ALTINKAYNAK","olusturuldu":"2026-09-16T09:00:00Z","ayarFiyatlari":[]}""",
-                var y when y.Contains("/emanet/") => """{"cariId":"c1","mevcutHasGramBakiye":12.5,"hareketler":[]}""",
+                // TEMA TEMİZLİĞİ 17.10: Yıldız'da özgün emanet gövdesine geçiş listedeki bir emanet satırıdır → bir giriş (h1).
+                var y when y.Contains("/emanet/") => """
+                    {"cariId":"c1","mevcutHasGramBakiye":12.5,
+                     "hareketler":[{"id":"h1","tur":"EMANET_GIRIS","tarih":"2026-09-10T10:00:00Z","hasGrami":12.5,
+                                    "aciklama":null,"stornoKaynakId":null,"fisId":null,"maden":"ALTIN"}]}
+                    """,
                 var y when y.Contains("/raporlar/gunluk") =>
                     """{"satisTl":1000,"alisTl":200,"hurdaTl":100,"netHasGram":5,"kasalar":[]}""",
                 var y when y.Contains("/raporlar/aylik") => """{"gunler":[]}""",
@@ -328,7 +333,7 @@ public sealed class UX4cEkranTestleri : BunitContext
         // ESKİDEN: "/cari" limitsiz çağrılıyordu, sunucu varsayılanı 50'ydi →
         // 51. müşterinin emaneti bu ekrandan HİÇ alınamıyordu.
         AltmisCari();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc("h1");   // TEMA TEMİZLİĞİ 17.10: Yıldız yolu (satıra bas)
 
         // Sayfa açılışında 51 listede YOK (sunucu sınırı).
         e.WaitForAssertion(() => Assert.DoesNotContain("Müşteri 51", SeciciYardim.ListeMetni(e, "e-cari")));
@@ -350,7 +355,7 @@ public sealed class UX4cEkranTestleri : BunitContext
     {
         // UX-S29 — sessiz kırpma yok.
         AltmisCari();
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc("h1");   // TEMA TEMİZLİĞİ 17.10: Yıldız yolu (satıra bas)
 
         // EMANET-1 (doğrulayıcı 28.09): teknik "sunucu sınırı (50 kayıt)" dili sade metne döndü;
         // sözleşme aynı — sınır söylenir ("tüm müşteriler görünmüyor") + daraltma yolu ("adını yazıp arayın").
@@ -363,7 +368,7 @@ public sealed class UX4cEkranTestleri : BunitContext
     public void M10_Cikista_22_ayar_10_gram_govdeye_9_16_HAS_GRAM_olarak_gider()
     {
         // UX-S21 — dönüşümü sistem biliyor; kuyumcudan kafadan has çevirisi istenmez.
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc("h1");   // TEMA TEMİZLİĞİ 17.10: Yıldız yolu (satıra bas)
         SeciciYardim.Sec(e, "e-cari", "c1");
         e.WaitForAssertion(() => Assert.Contains("12,5000", e.Markup));   // P-57: ekran tr-TR
 
@@ -395,7 +400,7 @@ public sealed class UX4cEkranTestleri : BunitContext
             Assert.DoesNotContain("[\"K8\", \"K14\"", kaynak);
         }
 
-        var e = Render<Kuyumcu.Web.Pages.Emanet>().AyrintiAc();
+        var e = Render<Kuyumcu.Web.Pages.Emanet>().EmanetSatiriAc("h1");   // TEMA TEMİZLİĞİ 17.10: Yıldız yolu (satıra bas)
         e.Find("#e-giris-ac").Click();   // EMANET-1: metin "Emanet al"; id aynı
         // PAKET S3-5 · UX-S31: seçeneğin DEĞERİ ayar kodudur (K995 · G999 —
         // gövdeye kod gider), GÖRÜNEN metni tek kaynaktaki ayar adıdır.
@@ -416,7 +421,10 @@ public sealed class UX4cEkranTestleri : BunitContext
 
     private IRenderedComponent<Kuyumcu.Web.Pages.Sayim> AcikOturum()
     {
+        // TEMA TEMİZLİĞİ 17.10: Yıldız açık sayımı kendiliğinden açar (sy1); "Tüm ayrıntılar" özgün gövdeyi o sayımla
+        // açar → "← Sayım" (sy-listeye-don) oturum listesine döner (#sy-yeni ve "→" düğmeleri orada).
         var e = Render<Kuyumcu.Web.Pages.Sayim>().AyrintiAc();
+        e.WaitForElement("#sy-listeye-don").Click();
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#sy-yeni")));
         return e;
     }
@@ -596,23 +604,6 @@ public sealed class UX4cEkranTestleri : BunitContext
     // Q4 — Panel kartı (mühürlü karar: A)
     // ═════════════════════════════════════════════════════════════════════════
 
-    [Fact]
-    public void Q4_Panel_karti_NE_OLDUGUNU_soyler()
-    {
-        // "Net Kasa" gerçek kasa bakiyesi değil, istemcide türetilmiş bir gün
-        // farkıydı ve hemen yanında GERÇEK kasa bakiyeleri duruyordu.
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-
-        e.WaitForAssertion(() => Assert.Contains("Günün nakit akışı", e.Markup));
-        Assert.Contains("(satış − alış − hurda)", e.Markup);
-    }
-
-    [Fact]
-    public void Q4_Panel_grafigi_veri_yok_ile_UC_CEVAP_VERMEDI_yi_ayirir()
-    {
-        hataliYolParcasi = "/raporlar/aylik";
-        var e = Render<Kuyumcu.Web.Pages.Panel>();
-
-        e.WaitForAssertion(() => Assert.NotNull(e.Find("#panel-grafik-hata")));
-    }
+    // TEMA TEMİZLİĞİ 17.10: Q4_Panel_karti_NE_OLDUGUNU_soyler kaldırıldı — Panel'in eski karşılama + kutucuk ızgarası gövdesi (StatKart "Günün nakit akışı" + formül) bilerek kaldırıldı; Panel artık yalnız YildizBugun (tuvalde bu kart yok).
+    // TEMA TEMİZLİĞİ 17.10: Q4_Panel_grafigi_veri_yok_ile_UC_CEVAP_VERMEDI_yi_ayirir kaldırıldı — aylık grafik kutucuğu (#panel-grafik-hata) eski kutucuk ızgarasıyla birlikte kaldırıldı; Panel artık yalnız YildizBugun.
 }
