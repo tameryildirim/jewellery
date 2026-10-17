@@ -21,7 +21,9 @@
    tuvalde panelin altında kalan sütunlar (Has, eylemler) gizlenir, hiçbir yazı
    panelin altına girmez (sikisma-olc K9). *@
 <div class="musteri-sayfa @(Sade ? "musteri-sade" : null) @(Sade && duzenleCari is not null ? "musteri-sade--panel-acik" : null)">
-@* PAKET YILDIZ-4B: liste = tuval Musteri4/Musteri4a (YildizMusteriler), BASİT + PRO. Tema temizliği (17.10): eski özgün liste kaldırıldı. *@
+@* PAKET YILDIZ-4B: liste = tuval Musteri4/Musteri4a (YildizMusteriler), BASİT + PRO. Tema temizliği (17.10): eski özgün liste kaldırıldı.
+   SAYFA_BASI_MUAFIYETI: ortak şerit (SayfaBasi) yalnız eski özgün listede çiziliyordu; tuval Musteri4 kendi başlığını
+   (YildizMusteriler #yildiz-musteri-baslik, tek h1) ve arama/segment/yeni müşteri satırını taşır — ikinci başlık şeridi tuvalle çelişir. *@
  <Kuyumcu.Web.Bilesenler.Yildiz.YildizMusteriler B="@YildizBaglami" /> 
 </div>
 

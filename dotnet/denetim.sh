@@ -5029,7 +5029,10 @@ P37C_ACIK=$((P37C_TOPLAM - P37C_SERIT - P37C_MUAF))
 # PAKET T-K3 (orkestratör kararı 25.09 02:00): üçüncü YAZILI muafiyet Ayarlar.razor —
 #   kurucunun tuvali (Ayarlar.dc.html) başlığı ve sekmeleri ÜST BARA koyar; sayfa
 #   içi SayfaBasi tuvalle çelişir. Tavan 2 → 3; yeni muafiyet yine dosyada gerekçe ister.
-if [ "$P37C_ACIK" = 0 ] && [ "$P37C_MUAF" -le 3 ]; then
+# TEMA TEMİZLİĞİ (kurucu 17.10, tek şema Yıldız): dördüncü YAZILI muafiyet Cariler.razor — SayfaBasi yalnız silinen
+#   eski özgün listedeydi; tuval Musteri4 (YildizMusteriler) kendi başlığını taşır. Gerekçe dosyada; aynı istisna
+#   P37cPanelVeKapsamTestleri'nde "dosya YildizMusteriler çizmiyorsa kırılır" koşuluyla kilitli. Tavan 3 → 4.
+if [ "$P37C_ACIK" = 0 ] && [ "$P37C_MUAF" -le 4 ]; then
   printf "  ✓ %-46s %s/%s ekran (+%s yazılı muafiyet)\n" "P-37c: SAYFA_BASI_KAPSAM" \
     "$P37C_SERIT" "$((P37C_TOPLAM - P37C_MUAF))" "$P37C_MUAF"
 else
