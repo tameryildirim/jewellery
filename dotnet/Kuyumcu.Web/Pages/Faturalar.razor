@@ -786,6 +786,11 @@
                     <span>@Y4F.FaturaKdvMatrahi</span>
                     <span class="sayi" id="fd-kdv-matrahi-tutar">@Bicim.TlKurus(kalemYanit.Kalemler.Sum(k => k.KdvMatrah))</span>
                 </div>
+                @* 18.10: özet matrahta kalıyordu; faturanın KDV tutarı her iki modda (BASİT'te satır sütunu yok). *@
+                <div class="satir-arasi" id="fd-kdv-tutari">
+                    <span>@Dil.T.Fatura.KdvTutar</span>
+                    <span class="sayi" id="fd-kdv-tutari-tutar">@Bicim.TlKurus(kalemYanit.Kalemler.Sum(k => k.KdvTutar))</span>
+                </div>
             }
             @* P-22 / B-3: TASLAK kalemi DÜZENLENEBİLİR (tek alanlı → SatirIciDuzenle).
                Kesilmiş belgenin kalemi değişmez; ipucu yalnız o durumda çizilir. *@
@@ -1023,10 +1028,10 @@
                 // çeviremezsin"): ürünün GRAMI ana değer, has gramı yalnız altında ek bilgi.
                 new() { Anahtar = "gram", Baslik = Dil.T.Urun.Gram, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi",
                         Deger = k => k.GramAgirlik,
-                        Hucre = k => @<text><span class="hucre-tek-satir" id="@($"fd-kalem-gram-{k.Id}")">@(k.GramAgirlik is { } g ? Bicim.Gram(g) : "—")</span>
+                        Hucre = k => @<text><div class="hucre-tek-satir" id="@($"fd-kalem-gram-{k.Id}")">@(k.GramAgirlik is { } g ? Bicim.Gram(g) : "—")</div>
                         @if (k.HasGrami is { } h && h > 0m)
                         {
-                            <span class="metin-kucuk metin-soluk hucre-tek-satir" id="@($"fd-kalem-has-{k.Id}")">@Bicim.Has(h)</span>
+                            <div class="metin-kucuk metin-soluk hucre-tek-satir" id="@($"fd-kalem-has-{k.Id}")">@Bicim.Has(h)</div>
                         }</text> },
                 new() { Anahtar = "fiyat", Baslik = Dil.T.Fatura.BirimFiyat, ZorunluGorunur = true, HucreSinif = _ => "sayi", HucreOznitelikleri = KalemDuzenlenebilir ? DuzenlenebilirOznitelik : null,
                         Hucre = k => @<text>@if (KalemDuzenlenebilir)

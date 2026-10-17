@@ -338,6 +338,7 @@ public sealed class FaturaEkranTestleri : BunitContext
             e.Find("#fd-has-kdv-disi span").TextContent.Trim());
         Assert.Equal(Bicim.TlKurus(62538.73m), e.Find("#fd-has-kdv-disi-tutar").TextContent.Trim());
         Assert.Equal(Bicim.TlKurus(9551.06m), e.Find("#fd-kdv-matrahi-tutar").TextContent.Trim());
+        Assert.Equal(Bicim.TlKurus(1910.21m), e.Find("#fd-kdv-tutari-tutar").TextContent.Trim());   // 18.10: özette KDV
     }
 
     [Fact]
