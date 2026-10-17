@@ -97,3 +97,16 @@ Sonraki adım (kurucu sırası): mimari onayından sonra **mevcut projede ne eks
 2. **Tek borç + tam tutar:** varsayılan SOR; kuyumcu ayarla "kendiliğinden düş"ü açabilir (Geri al'lı).
 3. **Havaleden fatura:** Faturalog gibi her havaleye — § 4 bekçileriyle.
 4. **MASAK eşiği:** güncel (370.000 TL, RG 07.10.2026/33393 birincil metin okundu); belge düzeltildi.
+
+## 8. Kurucu kararları (17.10, ikinci tur — eksik/fazla incelemesinden sonra)
+
+1. **Havaleden satış (Faturalog gibi):** hesaba para gelince **listeye düşer**; **tezgâhtar ne sattıysa kendisi seçer** ve
+   fatura **doğrudan kesilir** (kesim kipini kullanıcı belirler — Faturalog nasılsa öyle). Aynı anda **arka planda satış
+   fişine de dönüşür** (stok, satış hareketi, banka bacağı); kullanıcı fişi görmez, isterse ekrana gidip bakar.
+   "Kullanıcıyı yormamak lazım." → Eski "Faturaya dönüştür" yolu (`BankaServisi.FaturayaDonustur`) bu akışla değişir.
+   Not: tezgâhtar bu listeyi görür (önceki "yalnız SAHIP/MUDUR/MUHASEBE" kısıtı bu akış için gevşer; satır yalnız
+   tarih · gönderen · tutar gösterir).
+2. **Borçlu satışlardan seçim:** fatura/karar ekranında müşterinin **borcu olan satışları liste olarak gelir**, oradan seçilir.
+   Gelen para seçilen satışları **tam karşılamıyorsa** (kısmi/fazla) nasıl işleneceği **araştırılarak** belirlenecek
+   (mahsup/kısmi tahsilat — araştırma işi açıldı).
+3. **P0'daki 9 sorun çözülecek** (EKSIK-FAZLA § 1). **Tema:** yalnız Yıldız, açık + koyu mod; diğerleri kaldırılır.
