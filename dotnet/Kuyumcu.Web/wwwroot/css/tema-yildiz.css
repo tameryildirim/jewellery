@@ -3850,8 +3850,8 @@ html:root[data-sema="yildiz"] body #uk-onizleme > #uk-uygula:not(#_) { order: 9;
 html:root[data-sema="yildiz"] body #yildiz-belge:not(#_) { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 16px; row-gap: 4px; margin: 16px 0 4px; }
 html:root[data-sema="yildiz"] body #yildiz-belge .yz-tur-sekme:disabled:not(#_) { cursor: not-allowed; opacity: .45; }
 html:root[data-sema="yildiz"] body #yildiz-belge-not:not(#_) { margin: 0; color: var(--metin-soluk); font-size: 14px; }
-/* 17.10 fatura sorusu: metin üstte, Evet | Hayır yan yana (dar ekranda alt alta sarar). */
-html:root[data-sema="yildiz"] body #yildiz-belge-soru:not(#_) { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin: 8px 0 0; }
+/* 17.10 fatura sorusu: metin ve Evet | Hayır tek satırda (alt blok az büyür); dar ekranda sarar. */
+html:root[data-sema="yildiz"] body #yildiz-belge-soru:not(#_) { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 8px 0 0; }
 html:root[data-sema="yildiz"] body #yildiz-belge-soru p:not(#_) { margin: 0; }
 html:root[data-sema="yildiz"] body #yildiz-belge-soru .yz-belge-soru-dugmeler:not(#_) { display: flex; flex-wrap: wrap; gap: 12px; }
 /* 17.10 havaleden satış: bekleyen havaleler belge satırının altında tam genişlik, madde imsiz liste. */
