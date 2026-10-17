@@ -110,3 +110,17 @@ Sonraki adım (kurucu sırası): mimari onayından sonra **mevcut projede ne eks
    Gelen para seçilen satışları **tam karşılamıyorsa** (kısmi/fazla) nasıl işleneceği **araştırılarak** belirlenecek
    (mahsup/kısmi tahsilat — araştırma işi açıldı).
 3. **P0'daki 9 sorun çözülecek** (EKSIK-FAZLA § 1). **Tema:** yalnız Yıldız, açık + koyu mod; diğerleri kaldırılır.
+
+## 9. Kurucu kararları (17.10, üçüncü tur — kur kaynakları, binde, kısmi ödeme)
+
+1. **Harem:** belgesiz uç ile bağlanılır; "şu an ticari kullanımda değiliz, satıştan sonra izin başvurusu yapılacak"
+   (kurucu). Hukuki risk araştırmada (`KUR-KAYNAKLARI-ARASTIRMASI-2026-10-17.md` § 6) kayıtlı; kaynak sözleşmesiz kapısının
+   arkasında durur, izin başvurusu satış sonrası işi olarak açık.
+2. **Döviz:** TCMB EVDS'ye geçilir; ayrıca Ayarlar'dan **döviz kaynağı ayrı seçilir** (Harem, Altınkaynak, Truncgil, TCMB…).
+3. **Has bedeli (KDVK 23/e):** varsayılan Borsa İstanbul; Harem (ve diğerleri) seçilebilir. **Her faturaya kullanılan kaynağın
+   kodu yazılır.**
+4. **"Binde" yöntemi açık kalır:** "müşteri ne derse o; seçen, yazan o, sorumluluk onun." Ekranda kuyumcu beyanı olarak işaretlenir.
+5. **Kısmi ödeme:** araştırmanın önerisi uygulanır (`KISMI-ODEME-ARASTIRMASI-2026-10-17.md` § 5): borçlu satış listesi, TBK 102
+   sıralı öneri, kalan açık kalır, fazla müşterinin alacağı, borçlu satış seçimi fatura KESMEZ (VUK 231/5); en küçük
+   `cari_mahsuplar` tablosu.
+6. Hepsi **kullanım kılavuzuna** yazılır.
