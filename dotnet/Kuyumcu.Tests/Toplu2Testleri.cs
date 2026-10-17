@@ -126,19 +126,7 @@ public sealed class Toplu2SafTestleri
         Assert.Contains("text-align: start", blok);
     }
 
-    // ── (7) Menü vurgusu: daha uzun menü öğesi uyuyorsa üst öğe tam eşleşir ──
-    [Theory]
-    [InlineData("/raporlar", "/raporlar/islem-defteri", true)]
-    [InlineData("/raporlar", "/raporlar/kasa", true)]
-    [InlineData("/pos", "/pos/tahsilatlar", true)]
-    [InlineData("/urunler", "/urunler/agac", true)]
-    [InlineData("/raporlar", "/raporlar", false)]
-    [InlineData("/siparisler", "/siparisler/s-123", false)]   // detay menüde yok → üst öğe vurgulu kalır
-    [InlineData("/urunler", "/urunler", false)]
-    public void T2_Menu_tek_vurgu_en_uzun_eslesme(string oge, string yol, bool beklenen)
-    {
-        Assert.Equal(beklenen, KenarCubugu.DahaUzunOgeVar(oge, yol));
-    }
+    // ── (7) Menü vurgusu: kenar çubuğuyla kalktı (tema temizliği 17.10; Yıldız: YildizKabuk.SeciliKimlik) ──
 
     // ── (8) Basılı ekstre: resmî ad, taraf etiketi, sade sınır metni ──
     [Fact]

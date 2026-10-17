@@ -31,7 +31,7 @@
 @* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Etiketler (BİREBİR, YildizEtiketler). Özgün kök DOM'da
    kalır (basılan kâğıt .urun-etiket-sayfa buradadır); Yıldız'da ekranda yalnız "Tüm ayrıntılar"da görünür (data-yz-etiket;
    Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
-@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizEtiketler B="@YildizBaglami" /> }
+<Kuyumcu.Web.Bilesenler.Yildiz.YildizEtiketler B="@YildizBaglami" />
 <div data-yz-etiket="@YildizEtiketIsaret" class="sayfa">
     <div class="sayfa-baslik yazdirma-gizle">
         <SayfaBasi Anahtar="etiketler" Baslik="@Dil.T.Etiket.Baslik" UstBardaGizle="true" Aciklama="@Dil.T.Etiket.Aciklama">

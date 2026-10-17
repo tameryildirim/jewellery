@@ -22,13 +22,13 @@ public partial class Islemler
 {
     /// <summary>Tur 2 (doğrulayıcı DÜŞÜK, UX-S31): Yıldız'da alanın etiketi "Müşteri" — kilit cümlesi de "Müşteri seçin" der
     /// (PRO'da "Cari seçin" jargonu Yıldız tezgâhına sızmaz). Platin PRO'da muhasebe dili (D10) AYNEN.</summary>
-    private string CariSecinKilit => YildizMi ? BasitDilSozlugu.Al(Dil.Dil).Islem_CariSecin : Dil.T.Islem.CariSecin;
+    private string CariSecinKilit => BasitDilSozlugu.Al(Dil.Dil).Islem_CariSecin;
 
     /// <summary>Kimlik çekmecesinde "Tamam" eksik formla basıldı → MasakFormu boş/kısa zorunlu alanların altına yazar.</summary>
     private bool masakEksikGoster;
 
     /// <summary>Yıldız şemasında Satış yüzü DIŞINDAKİ fiş (Alış, İade, Takas, Hurda alış …): türler sekmesi başta, form tuval dilinde.</summary>
-    internal bool YildizTurYuzu => YildizMi && !YildizTezgahMi && !yukleniyor;
+    internal bool YildizTurYuzu => !YildizTezgahMi && !yukleniyor;
 
     /// <summary>Öteki türlerin sayfa sınıfı (CSS: eski ızgara/şerit yalnız "Diğer" açıkken; form tuval dilinde).</summary>
     private string YildizTurSinif => !YildizTurYuzu ? ""

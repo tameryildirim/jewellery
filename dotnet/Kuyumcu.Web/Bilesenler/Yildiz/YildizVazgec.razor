@@ -6,4 +6,4 @@
    ═══════════════════════════════════════════════════════════════════════════ *@
 @inject DilServisi Dil
 @inject IServiceProvider Hizmetler
-@(Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler) ? Kuyumcu.Core.I18n.YildizKatmanSozlugu.Vazgec(Dil.Dil) : Dil.T.Ortak.Iptal)
+@Kuyumcu.Core.I18n.YildizKatmanSozlugu.Vazgec(Dil.Dil)

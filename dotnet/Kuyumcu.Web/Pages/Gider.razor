@@ -33,8 +33,6 @@
 @* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Gidervevirman (BİREBİR). Alanlar AŞAĞIDAKİ özgün gider
    formunun bileşenleridir (aynı kimlik, kapı ve kilit; özgün form bu görünümde çizilmediği için kimlik tek). Virman,
    geçmiş, kategoriler ve storno yalnız "Virman" / "Ayrıntı ekle" görünümünde (data-yz-ozgun). Öteki 8 şemada AYNEN. *@
-@if (YildizMi)
-{
     <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizBaglami">
         @if (kasalar.Count > 1)
         {
@@ -65,7 +63,6 @@
         <Metin ElemanId="gd-aciklama" Etiket="@YildizGiderSozlugu.NeIcin(Dil.Dil)" EnFazla="@AlanSinirlari.HareketAciklama"
                @bind-Deger="giderAciklama" />
     </Kuyumcu.Web.Bilesenler.Yildiz.YildizForm>
-}
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     <SayfaBasi Anahtar="gider" AciklamaKatli="true" Baslik="@Dil.T.Gider.Baslik" Aciklama="@(Dil.BasitMi ? T6.SayfaAciklamaBasit : Dil.T.Gider.SayfaAciklama)" />

@@ -56,8 +56,7 @@
    · --h→--ayrac · --p→--kenarlik · birincil düğme --vurgu=--m, --vurgu-metin=--z.
    Renk yalnız DURUM içindir: iyi yeşil, kötü kırmızı; uyarı sarısı YOK (uyarı
    metinle söylenir → --uyari nötr). Mavi/altın vurgu YOK. */
-:root[data-sema="yildiz"],
-.gorunum-sema-onizleme[data-sema="yildiz"] {
+:root[data-sema="yildiz"] {
   --yuzey:                #F5F4F1;
   --yuzey-2:              #EDECE8;
   --yuzey-3:              #E6E4DF;
@@ -285,8 +284,7 @@ html:root[data-sema="yildiz"] .tuval-tezgah .tuval-karo-izgara > .ekran-karo { p
 html:root[data-sema="yildiz"] body :is(.metin-kucuk, .rozet, label, th, small, kbd, summary, button, .dugme, .btn, .ipucu, .gk-kaynak,
                                   .stat-etiket, .stat-alt, .katlanir-sayi, .alan-etiket, .form-etiket, .menu-baslik,
                                   .musteri-baglanti, .pozisyon-ayrinti, .pozisyon-kirilim-oge, .panel-soru-baslik,
-                                  .panel-soru-alt-oge, .panel-soru-kar, .panel-liste-ad, .panel-liste-durum, .panel-is-kaynak,
-                                  .kenar-kisayol, .kenar-grup-onizleme, .kullanici-rol, .karsilama-tarih, .sayfa-basi-aciklama,
+                                  .panel-soru-alt-oge, .panel-soru-kar, .panel-liste-ad, .panel-liste-durum, .panel-is-kaynak, .kullanici-rol, .karsilama-tarih, .sayfa-basi-aciklama,
                                   .islem-diger-ozet, .fis-pro-toplam-etiket, .fis-pro-odeme-ozet, .grafik-eksen-etiket,
                                   .etiket, .deger) {
   font-weight: 500;
@@ -517,15 +515,6 @@ html:root[data-sema="yildiz"] .ana-icerik :is(.girdi, .secim):not(.girdi-cok-sat
     transition: none;
     animation: none;
   }
-}
-
-/* ÖNİZLEME (Ayarlar › Görünüm kartı): kart, vurgu ve menü şemanın kendi
-   belirtecinden boyanır; kart dili Yıldız'da çizgilidir. */
-.gorunum-sema-onizleme[data-sema="yildiz"] .gk-onizleme-kart {
-  border: 0;
-  border-bottom: 1px solid var(--ayrac);
-  border-radius: 0;
-  background: transparent;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

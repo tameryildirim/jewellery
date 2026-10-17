@@ -24,11 +24,8 @@
     <ChildContent>
 @* PAKET YILDIZ-5B: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_POScihazlari (BİREBİR; boş durum) — dolu liste tuval
    liste kalıbında; özgün ekran (taksit oranları, kasa göçü, pasife alma) yalnız "Tüm ayrıntılar"da (data-yz-ozgun). *@
-@if (YildizMi)
-{
     @if (YildizBosMu) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizBos B="@YildizBosBaglami" /> }
     else { <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" /> }
-}
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     @* PAKET SADE-1 (göz #63): basit yüzde "valör günü … YOKTUR" jargonu yerine tek sade

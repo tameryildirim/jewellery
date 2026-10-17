@@ -22,9 +22,8 @@ public partial class Fiyatlandirma
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "fiyat" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "fiyat";
 
     public const int YildizUrunSiniri = 500;
     public const int YildizCariSiniri = 200;
@@ -38,7 +37,7 @@ public partial class Fiyatlandirma
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizYuklendi || yildizYukleniyor) return;
+        if (yildizYuklendi || yildizYukleniyor) return;
         yildizYukleniyor = true;
         try
         {

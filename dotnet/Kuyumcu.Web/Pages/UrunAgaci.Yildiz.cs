@@ -25,9 +25,8 @@ public partial class UrunAgaci
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "agac" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "agac";
 
     /// <summary>Toplam için okunan en çok ürün (stok-adetleri ucunun tek istek sınırı, UrunStokOzetController.EnFazlaKimlik).</summary>
     public const int YildizUrunSiniri = 500;
@@ -45,7 +44,7 @@ public partial class UrunAgaci
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizYuklendi || yildizYukleniyor) return;
+        if (yildizYuklendi || yildizYukleniyor) return;
         await YildizYukle();
         StateHasChanged();
     }

@@ -8,8 +8,8 @@
    ⚠ KARAR SUNUCUNUNDUR: seçili durum, kaynak rozeti ve etkin değerler
      /api/v1/kullanici/gorunum yanıtından okunur; kart çözümü TEKRARLAMAZ.
    ⚠ Kart ApiIstemci ENJEKTE ETMEZ; istekler servislerden geçer (Aşkın K2).
-   ⚠ Satır içi style YOK, sabit renk YOK: şema önizlemesi tokenları
-     `.gorunum-sema-onizleme[data-sema]` üzerinden belirtecler.css'ten alır.
+   ⚠ TEMA TEMİZLİĞİ (kurucu 17.10): tek şema Yıldız — şema seçici (9 önizleme
+     karosu) kaldırıldı; kart açık/koyu · yazı boyutu · ekran modu seçer.
    ═════════════════════════════════════════════════════════════════════════ *@
 @inject DilServisi Dil
 @inject OturumServisi Oturum
@@ -19,50 +19,6 @@
 @implements IDisposable
 
 <div class="gk" id="ayar-gorunum-karti">
-
-    <section class="gk-bolum" aria-labelledby="gk-tema-baslik">
-        <div class="gk-bolum-bas">
-            <h2 class="gk-bolum-baslik" id="gk-tema-baslik">@M.TemaBaslik</h2>
-            <span class="gk-kaynak" id="gk-sema-kaynak">@Kaynak(Durum?.SemaKaynagi)</span>
-            <span class="gk-bosluk"></span>
-            <span class="gk-bolum-alt" id="gk-tema-alt">@M.TemaAltMetin</span>
-        </div>
-        <div class="gk-sema-izgara">
-            @foreach (var kod in GorunumServisi.Semalar)
-            {
-                var secili = Durum?.Sema == kod;
-                <button type="button" id="@($"gk-sema-{kod}")" class="gk-sema @(secili ? "secili" : null)"
-                        aria-pressed="@(secili ? "true" : "false")" disabled="@Kilitli" aria-describedby="@Aciklayan(null)"
-                        title="@GorunumSozlugu.Aciklama(GorunumSozlugu.Semalar, kod, Dil.Dil)"
-                        @onclick="() => SemaSec(kod)">
-                    <span class="gk-onizleme gorunum-sema-onizleme" data-sema="@kod" aria-hidden="true">
-                        <span class="gk-onizleme-menu"></span>
-                        <span class="gk-onizleme-govde">
-                            <span class="gk-onizleme-kart"></span>
-                            <span class="gk-onizleme-vurgu"></span>
-                        </span>
-                    </span>
-                    <span class="gk-sema-alt">
-                        @* KESIF-P1 (#44): 960 px'te "Fildişi (açık menü)" kelime ortasından kırılıyordu.
-                           Kartta ADI yazar; parantezli niteleyici ("açık menü") adın ALTINDA kendi
-                           satırındadır (aşağıda) — ad hiçbir genişlikte bölünmez. *@
-                        <span class="gk-sema-ad">@AdParcalari(GorunumSozlugu.Ad(GorunumSozlugu.Semalar, kod, Dil.Dil))[0]</span>
-                        @* Tur 3 (orkestratör 18:10) TEK İŞARET KALIBI: seçili işaret her kartta başlık
-                           satırının SAĞINDA ayrı öğedir (gk-sema-alt = flex, space-between, gap 8 px);
-                           her kartta yalnız ✓ ("Seçili" sözcüğü ekran okuyucu için gorsel-gizli; kesif-p1.css). *@
-                        @if (secili)
-                        {
-                            <span class="gk-secili-rozet gk-isaret"><Ikon Ad="@Ikonlar.Onay" Sinif="gk-tik" /><span class="gorsel-gizli">@M.Secili</span></span>
-                        }
-                    </span>
-                    @if (AdParcalari(GorunumSozlugu.Ad(GorunumSozlugu.Semalar, kod, Dil.Dil)) is [_, var nitel])
-                    {
-                        <span class="metin-kucuk metin-soluk" id="@($"gk-sema-{kod}-nitel")">@nitel</span>
-                    }
-                </button>
-            }
-        </div>
-    </section>
 
     <div class="gk-uclu">
         <section class="gk-bolum" aria-labelledby="gk-tema-modu-baslik">
@@ -191,13 +147,6 @@
 
     private GorunumKartiMetinleri M => GorunumKartiSozlugu.Al(Dil.Dil);
 
-    /// <summary>KESIF-P1 (#44): "Fildişi (açık menü)" → ["Fildişi", "(açık menü)"]; parantezsiz ad tek parça.</summary>
-    public static IReadOnlyList<string> AdParcalari(string ad)
-    {
-        var i = ad.IndexOf(" (", StringComparison.Ordinal);
-        return i > 0 ? [ad[..i], ad[(i + 1)..]] : [ad];
-    }
-
     private Kuyumcu.Contracts.Sayfalar.Gorunum.KullaniciGorunumAyari? Durum => BenimGorunum.Durum;
 
     /// <summary>Tuvaldeki sıra: Aydınlık · Karanlık · Bilgisayara uy.</summary>
@@ -213,9 +162,12 @@
         : BenimGorunum.OkumaDenendi ? Dil.T.Gorunum.Yuklenmedi
         : M.Okunuyor;
 
-    /// <summary>Kullanıcının kendi satırında EN AZ BİR seçim var mı? Yoksa "dön" düğmesi işsizdir.</summary>
+    /// <summary>
+    /// Kullanıcının kendi satırında EN AZ BİR seçim var mı? Yoksa "dön" düğmesi işsizdir.
+    /// Tema temizliği (17.10): şema seçilemez (tek şema) → kullanıcı satırındaki "yildiz" sayılmaz.
+    /// </summary>
     private bool KendiGorunumuVar =>
-        Durum is { } d && (d.OzelSema is not null || d.OzelTemaModu is not null || d.OzelYaziBoyutu is not null);
+        Durum is { } d && (d.OzelTemaModu is not null || d.OzelYaziBoyutu is not null);
 
     private bool KendiSecimiVar => KendiGorunumuVar || Modu.KullaniciModu is not null;
 
@@ -244,7 +196,6 @@
         kaynak is null ? "" : GorunumSozlugu.Ad(GorunumSozlugu.Kaynaklar, kaynak, Dil.Dil);
 
     // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
-    private Task SemaSec(string kod) => Kaydet(() => BenimGorunum.SemaSecAsync(kod), null);
     private Task TemaSec(string kod) => Kaydet(() => BenimGorunum.TemaModuSecAsync(kod), null);
     private Task YaziSec(int punto) => Kaydet(() => BenimGorunum.YaziBoyutuSecAsync(punto), null);
     // Mod: DAR "kendi modum" ucu (PATCH /kullanicilar/ben/arayuz-modu) — her rol
@@ -275,7 +226,7 @@
     }
 
     /// <summary>
-    /// SAHİP: kullanıcının ETKİN üç görünüm seçimi TEK PATCH ile (/gorunum),
+    /// SAHİP: kullanıcının ETKİN görünüm seçimi (şema · punto · açık/koyu) TEK PATCH ile (/gorunum),
     /// etkin modu da /admin/tenant ile dükkân varsayılanı olur. Bant sunucunun
     /// YAZDIĞI değerleri söyler (UX-S27); ikinci adım düşerse ayrı söylenir.
     /// </summary>
@@ -308,7 +259,6 @@
     {
         var parcalar = new List<string>(4)
         {
-            GorunumSozlugu.Ad(GorunumSozlugu.Semalar, g.Sema, Dil.Dil),
             GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, g.YaziOlcegi, Dil.Dil),
         };
         if (g.TemaModu is not null) parcalar.Add(GorunumSozlugu.Ad(GorunumSozlugu.TemaModlari, g.TemaModu, Dil.Dil));

@@ -29,9 +29,7 @@
    çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
 @* YILDIZ-5A tur 2 (tasarım hakemi KRİTİK): "Yeni liste"/"Düzenle" Yıldız form kalıbında açılır (eski ekrana geçmez);
    alanlar özgün formun bileşenleri, aynı kimlik ve aynı kapılarla. *@
-@if (YildizMi)
-{
-    if (YildizListeFormu && yeniListe is { } yf)
+@if (YildizListeFormu && yeniListe is { } yf)
     {
         <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizListeFormBaglami">
             <Metin ElemanId="fl-ad" Etiket="@YildizFiyatSozlugu.Liste(Dil.Dil)" Zorunlu="true" EnFazla="@AlanSinirlari.FiyatListesiAdi"
@@ -81,7 +79,6 @@
     {
         <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" />
     }
-}
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     @* UX-1-C2: sayfanın TEK başlığı ve TEK birincil eylemi. Mevcut kart

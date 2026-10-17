@@ -30,9 +30,3 @@
   border-color: var(--vurgu-kenar);
   color: var(--metin);
 }
-
-/* Kenar menüsü şube seçicisi: içerik boyuna göre daralıp ortalanmasın — "Tüm
-   şubeler" ile bir şube arasında genişlik zıplamaz (app.css .sube-secici
-   align-items:center kalıtımı kenar menüsünde geçersiz kılınır). */
-.kenar-kullanici-menu .sube-secici { align-items: stretch; }
-.kenar-kullanici-menu .sube-secici .secici-alan { width: 100%; }

@@ -66,13 +66,9 @@ public sealed class KullaniciGorunumServisi(IJSRuntime js, IServiceProvider kaps
     public Task TemaModuDevretAsync() => Gonder(new TemaGovde(null));
 
     /// <inheritdoc cref="TemaModuDevretAsync"/>
-    public Task SemaDevretAsync() => Gonder(new SemaGovde(null));
-
-    /// <inheritdoc cref="TemaModuDevretAsync"/>
     public Task YaziBoyutuDevretAsync() => Gonder(new YaziGovde(null));
 
     public Task TemaModuSecAsync(string mod) => Gonder(new TemaGovde(mod));
-    public Task SemaSecAsync(string sema) => Gonder(new SemaGovde(sema));
     public Task YaziBoyutuSecAsync(int punto) => Gonder(new YaziGovde(punto));
 
     /// <summary>
@@ -121,7 +117,6 @@ public sealed class KullaniciGorunumServisi(IJSRuntime js, IServiceProvider kaps
     // ⚠ Gövdeler AYRI tiptir: PATCH sözleşmesi gereği yalnız DEĞİŞEN alan
     //   serileştirilir; anonim tipte null alanın atlanması ayara bağlı olurdu.
     private sealed record TemaGovde(string? TemaModu);
-    private sealed record SemaGovde(string? Sema);
     private sealed record YaziGovde(int? YaziBoyutu);
     private sealed record HepsiGovde(string? TemaModu, string? Sema, int? YaziBoyutu);
 }

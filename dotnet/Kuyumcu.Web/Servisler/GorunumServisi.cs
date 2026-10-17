@@ -24,20 +24,15 @@ namespace Kuyumcu.Web.Servisler;
 /// </summary>
 public sealed class GorunumServisi(IJSRuntime js, IServiceProvider kapsam)
 {
-    // ⚠ PAKET B-1: liste 3→8 şema, 2→3 punto oldu. Bu iki dizi sunucudaki
+    // ⚠ TEMA TEMİZLİĞİ (kurucu 17.10): tek şema Yıldız. Bu iki dizi sunucudaki
     //   GorunumSecenekleri'nin AYNADAKİ karşılığıdır ve eşitlikleri
     //   GorunumEkranTestleri.GE8 ile KİLİTLİDİR — biri değişirse öteki de
     //   değişmek ZORUNDADIR, yoksa test kırmızı döner.
-    public const string SemaVarsayilan = "platin";
+    public const string SemaVarsayilan = "yildiz";
     public const string OlcekVarsayilan = "18";
 
-    /// <summary>Ekranda gösterilecek sıra — sunucudaki GorunumSecenekleri ile AYNI.</summary>
-    public static readonly string[] Semalar =
-    [
-        SemaVarsayilan, "zumrut", "grafit", "bordo",
-        "okyanus", "menekse", "zeytin", "fildisi",
-        "yildiz",   // PAKET YILDIZ-1 — sunucudaki GorunumSecenekleri ile AYNI sıra
-    ];
+    /// <summary>Tek şema — sunucudaki GorunumSecenekleri.Semalar ile AYNI.</summary>
+    public static readonly string[] Semalar = [SemaVarsayilan];
     public static readonly string[] Olcekler = ["16", OlcekVarsayilan, "20"];
 
     public string Sema { get; private set; } = SemaVarsayilan;
@@ -80,15 +75,14 @@ public sealed class GorunumServisi(IJSRuntime js, IServiceProvider kapsam)
     }
 
     /// <summary>
-    /// Görünümü değiştirir: PATCH /gorunum → SUNUCU otoritedir, dönen değer
-    /// uygulanır. Gönderilmeyen alan sunucuda KORUNUR (PATCH sözleşmesi).
+    /// Dükkân yazı boyutunu değiştirir: PATCH /gorunum → SUNUCU otoritedir, dönen
+    /// değer uygulanır. Gönderilmeyen alan sunucuda KORUNUR (PATCH sözleşmesi).
+    /// Tema temizliği (17.10): şema seçilemez (tek şema Yıldız) — yalnız punto gider.
     /// </summary>
-    public async Task DegistirAsync(string? sema, string? yaziOlcegi)
+    public async Task DegistirAsync(string yaziOlcegi)
     {
         var api = (ApiIstemci)kapsam.GetService(typeof(ApiIstemci))!;
-        var govde = sema is not null
-            ? (object)new { sema }
-            : new { yaziOlcegi };
+        var govde = new { yaziOlcegi };
         var cevap = await api.PatchAsync<GorunumSarmal>("/gorunum", govde);
         await Uygula(cevap.Gorunum.Sema, cevap.Gorunum.YaziOlcegi);
         Yuklendi = true;

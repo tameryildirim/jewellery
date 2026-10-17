@@ -18,9 +18,8 @@ public partial class Bildirimler
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "bildirim" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "bildirim";
 
     private bool yildizAyrinti;
     private bool yildizIlkSekme;
@@ -28,7 +27,7 @@ public partial class Bildirimler
     /// <summary>Tuval açılışı "Hepsi" seçili: Yıldız'da ilk çizimden sonra bir kez sayfanın TUMU sekmesine geçilir.</summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizIlkSekme || yukleniyor) return;
+        if (yildizIlkSekme || yukleniyor) return;
         yildizIlkSekme = true;
         if (durum == "ACIK") { await SekmeTumu(); StateHasChanged(); }
     }

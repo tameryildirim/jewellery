@@ -21,156 +21,8 @@
    tuvalde panelin altında kalan sütunlar (Has, eylemler) gizlenir, hiçbir yazı
    panelin altına girmez (sikisma-olc K9). *@
 <div class="musteri-sayfa @(Sade ? "musteri-sade" : null) @(Sade && duzenleCari is not null ? "musteri-sade--panel-acik" : null)">
-@* PAKET YILDIZ-4B: Yıldız şemasında (BASİT + PRO) liste = tuval Musteri4/Musteri4a (YildizMusteriler); öteki 8 şemada aşağıdaki özgün liste AYNEN. *@
-@if (YildizMi) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizMusteriler B="@YildizBaglami" /> } else {
-<div class="dikey-bosluk">
-    @* ── Sayfa başı: başlık + araç çubuğu yuvası + TEK birincil eylem ──
-       Mevcut arama/süzgeç DOM'u kaldırılmadı, SayfaBasi'nın Filtreler yuvasına
-       taşındı; id'ler değişmedi (K4).
-       T-M1: BASİT yüzde başlık üst çubukta zaten yazılı (tuval) → sayfa başlığı
-       görsel olarak gizlenir ama DOM'da kalır (ekran okuyucu, başlık sırası);
-       açıklama cümlesi tuvalde yok → BASİT'te çizilmez, PRO'da aynen. *@
-    @* TOPLU-5 (hakem ORTA "PRO /cariler sayfa adı iki kez"): üst bar "Müşteriler", şerit "Cariler" yazıyordu —
-       aynı kavram, farklı sözcük. UstBardaGizle: şerit başlığı DOM'da kalır (id, h2 sırası), görsel gizlenir. *@
-    <SayfaBasi Anahtar="cariler" Baslik="@Dil.T.Cari.Baslik" Aciklama="@(Sade ? null : Dil.T.Cari.Aciklama)" UstBardaGizle="true">
-        <Filtreler>
-            @if (Sade)
-            {
-                @* Tuval: büyüteç ikonlu tek kutu "Ad ya da telefon" (460 px) + segmentli seçim. *@
-                <div class="musteri-ara" id="cari-arama-kutu">
-                    <Ikon Ad="@Ikonlar.Arama" Sinif="musteri-ara-ikon" />
-                    <Arama ElemanId="cari-arama" Etiket="@T.AramaYerTutucu" YerTutucu="@T.AramaYerTutucu"
-                           Deger="@arama" DegerChanged="@(async v => { arama = v ?? ""; await Yukle(); })" />
-                </div>
-                <div class="musteri-segment" id="cari-segment" role="group" aria-label="@T.SegmentEtiketi">
-                    @foreach (var (kod, etiket) in Segmentler3)
-                    {
-                        <button type="button" id="@($"cari-segment-{kod}")"
-                                class="musteri-segment-oge @(segment == kod ? "musteri-segment-oge--secili" : null)"
-                                aria-pressed="@(segment == kod ? "true" : "false")"
-                                @onclick="() => segment = kod">@etiket</button>
-                    }
-                </div>
-            }
-            else
-            {
-            <Arama ElemanId="cari-arama" Etiket="@Dil.T.Cari.AraPlaceholder"
-                   Deger="@arama" DegerChanged="@(async v => { arama = v ?? ""; await Yukle(); })" />
-            }
-            @* T-M1: Tür süzgeci ve "pasifleri göster" tuvalde YOK — SİLİNMEDİ:
-               PRO'da hep, BASİT'te "Diğer süzgeçler" açılınca ya da süzgeç
-               ETKİNKEN (derin bağlantı dahil) görünür; görünmez süzgeç olmaz. *@
-            @if (!Sade || digerSuzgecAcik || !string.IsNullOrEmpty(turFiltre) || pasifleriGoster)
-            {
-            @* UX-S31 — tür listesi TEK kaynaktan (CariTurleri); süzgeç formda
-               sunulan beş türün hepsini kapsar. QA turu 2: süzgeç üç, form beş
-               tür sunuyordu; ATOLYE/SARRAF/HER_IKISI hiç süzülemiyordu. *@
-               <Secici ElemanId="cari-tur-filtre"
-                       Etiket="@Dil.T.Cari.Tur"
-                       Secenekler="@(CariTurleri.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
-                       @bind-Deger="turFiltre"
-                       @bind-Deger:after="Yukle"
-                       BosSecenekMetni="@Dil.T.Ortak.Tumu" />
-            @* QA turu 2 KRİTİK: pasife alınan cari listede AKTİF gibi duruyordu.
-               Liste artık varsayılan olarak AKTİFLERİ gösterir; pasifler bilinçli
-               bir anahtarla açılır ve rozetle ayrılır. *@
-            <Onay ElemanId="cari-pasifleri-goster" Etiket="@Dil.T.Kabuk.PasifleriGoster"
-                  Deger="@pasifleriGoster"
-                  DegerChanged="@(async v => { pasifleriGoster = v; await Yukle(); })" />
-            }
-            @* ── PAKET P-15 (B-29) — DERİN BAĞLANTI SÖZLEŞMESİ ───────────────
-               Sorgu dizesindeki süzgeç UYGULANIR (yukarıdaki kutulara YAZILIR)
-               ve buradan geldiği SÖYLENİR. Önce sessizce yok sayılıyordu:
-               /cariler?cariId=… ile gelen kullanıcı tüm listeyi görüyordu. *@
-            @if (suzgecBaglantidan)
-            {
-                <span class="metin-kucuk" id="cari-suzgec-baglanti">
-                    <Rozet Renk="mavi">@Dil.T.Kabuk.BaglantidanSuzgec</Rozet>
-                    <button type="button" @onclick="BaglantiSuzgeciniTemizle"
-                            class="dugme dugme-kucuk dugme-ikincil" id="cari-suzgec-temizle"
-                            >@Dil.T.Kabuk.BaglantiSuzgeciniTemizle</button>
-                </span>
-            }
-        </Filtreler>
-        <Eylem>
-            @if (Sade)
-            {
-                @* Tuval: ince çizgili "+" (sprite'ta "plus" yok → ::before ile çizilir, T-P1 deseni). *@
-                <button class="btn btn-birincil musteri-yeni" id="cari-yeni-ac" @onclick="YeniModalAc">@Dil.T.Cari.YeniCari</button>
-            }
-            else
-            {
-            <button class="btn btn-birincil" id="cari-yeni-ac" @onclick="YeniModalAc">+ @Dil.T.Cari.YeniCari</button>
-            }
-        </Eylem>
-    </SayfaBasi>
-
-    <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
-    <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
-    @* UX-S29 — sunucu sınırı ekranda söylenir. T-M1: BASİT yüzde sayaç satırı
-       ("N müşteri · M gösteriliyor") listenin ALTINDADIR; sınır cümlesi orada,
-       yalnız sınıra DEĞİLDİĞİNDE yazılır (değmediyse liste eksiksizdir, sayı gerçektir). *@
-    @* TOPLU-5 (hakem ORTA "liste ekranlarında 12 px 'En çok 100 kayıt' notu"): PRO da BASİT gibi sınır
-       cümlesini YALNIZ sınıra değince yazar (değmediyse liste eksiksizdir; UX-S29 sessiz kırpma yok). *@
-    @if (CariListesi.Count >= Sinir)
-    {
-        <p class="metin-kucuk metin-soluk" id="cari-sinir">@string.Format(Dil.T.Kabuk.SinirUyarisi, Sinir)</p>
-        <p class="metin-kucuk metin-amber" id="cari-sinir-asildi" role="status">@Dil.T.Kabuk.SinirAsildi</p>
-    }
-
-    @* ── Liste ── *@
-    @* PAKET ISTEK-1 (GOZ #46): süzgeç değişince ya da istek hata verince
-       ELDEKİ LİSTE SİLİNMEZ; halka yalnız henüz liste yokken çıkar. *@
-    @if (yukleniyor && CariListesi.Count == 0)
-    {
-        <Yukleniyor />
-    }
-    else if (listeHata is null && CariListesi.Count == 0)
-    {
-        @* UX-S28: boş durum YALNIZ istek başarılıyken çıkar. *@
-        <div class="kart">
-            <BosDurum Mesaj="@Dil.T.Cari.CariBulunamadi" />
-        </div>
-    }
-    else if (Sade && listeHata is null && GorunenListe.Count == 0)
-    {
-        @* T-M1: segment süzgecinde kimse yoksa boş durum SÜZGEÇ adına söylenir
-           (liste başarılı, sonuç gerçekten boş — UX-S28). *@
-        <div class="kart musteri-tablo-kart">
-            <BosDurum Mesaj="@T.SegmentBos" />
-        </div>
-    }
-    else
-    {
-        <div class="kart @(Sade ? "musteri-tablo-kart" : null)">
-            @* PAKET GRID-1 — liste ORTAK IZGARADA (Bilesenler/Grid/Izgara.razor): sütun sırası
-               (sürükle + klavye), göster/gizle, SUNUCU sıralaması, kullanıcıya özel kalıcı düzen,
-               "Varsayılana dön". Hücre içerikleri, satır/hücre id ve sınıfları AYNEN korundu
-               (CariHucre* render yöntemleri, @code); KartListe id'si "cari-liste" → #cari-liste-sar. *@
-            <Kuyumcu.Web.Bilesenler.Grid.Izgara T="CariVeri" Ekran="cariler" GridId="cari-liste"
-                    Kolonlar="@CariKolonlari" Ogeler="@GorunenListe"
-                    SatirId="@CariSatirId" SatirSinif="@CariSatirSinifi"
-                    TabloSinif="@(Sade ? "tablo-sik tablo-sik--kimlik musteri-tablo" : "tablo-sik tablo-sik--kimlik")"
-                    Baslik="@Dil.T.Cari.Baslik" YapiskanIlkSutun="@(!Sade)"
-                    SiralamaDegisti="@CariSiralamaDegisti" GecerliSiralama="@cariSiralama"
-                    TercihIstemcisi="@CariTercih" />
-        </div>
-    }
-    @if (Sade && !yukleniyor && listeHata is null)
-    {
-        @* T-M1 — tuval: "184 müşteri · 5 gösteriliyor". N = sunucudan gelen (sınıra
-           değdiyse "100+"), M = segment süzgecinden geçen. "Diğer süzgeçler" tuvalde
-           yok: tür ve pasif süzgecini BASİT'te de ulaşılır tutar (özellik silinmez). *@
-        <p class="musteri-sayac" id="cari-sayac">
-            <span id="cari-sayac-metin">@string.Format(T.Sayac, ToplamMetni, GorunenListe.Count)</span>
-            <span aria-hidden="true"> · </span>
-            <button type="button" class="musteri-baglanti" id="cari-suzgec-daha"
-                    aria-expanded="@(digerSuzgecAcik ? "true" : "false")"
-                    @onclick="() => digerSuzgecAcik = !digerSuzgecAcik">@(digerSuzgecAcik ? T.DigerSuzgeclerKapat : T.DigerSuzgecler)</button>
-        </p>
-    }
-</div>
-}
+@* PAKET YILDIZ-4B: liste = tuval Musteri4/Musteri4a (YildizMusteriler), BASİT + PRO. Tema temizliği (17.10): eski özgün liste kaldırıldı. *@
+ <Kuyumcu.Web.Bilesenler.Yildiz.YildizMusteriler B="@YildizBaglami" /> 
 </div>
 
 @* ── Yeni cari modalı ── *@
@@ -326,7 +178,7 @@
          KaydetAktif="@(!DuzKilitli && !string.IsNullOrWhiteSpace(duzAd) && PepGecerli && !sayiKapisi.OnekleVar("duz-") && !UyrukGecersiz(duzUyruk, yuklenenUyruk) && TcknAnindaHata(duzVergiNo, duzKimlikTuru) is null)"
          KilitSebebi="@(sayiKapisi.Sebep(Dil.Dil, "duz-") ?? TcknAnindaHata(duzVergiNo, duzKimlikTuru) ?? DuzKilitSebebi)">
     <div class="form-dikey @(Sade ? "musteri-panel-form" : null)">
-        @if (YildizMi && duzenleCari is { } ykart) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizKartEylemleri Eylemler="@YildizKartEylemleri(ykart)" /> }   @* YILDIZ-4B: tuval "kart açılır: tahsilat, ekstre, düzenleme" — listede satır eylemi yok, yollar kartta *@
+        @if (duzenleCari is { } ykart) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizKartEylemleri Eylemler="@YildizKartEylemleri(ykart)" /> }   @* YILDIZ-4B: tuval "kart açılır: tahsilat, ekstre, düzenleme" — listede satır eylemi yok, yollar kartta *@
         @* T-M1 — tuval uyarı bandı: vadesi geçmiş borç varsa panelin başında KIRMIZI
            bant ve para alma yolu. "Tahsilat" gerçek düğmedir (tahsilat penceresini
            açar) — tuvalde "listedeki" düğmeye yönlendiriyordu; panel listeyi
@@ -1483,7 +1335,6 @@
     /// <summary>Segment kodları — TEK kaynak (düğmeler ve süzgeç aynı diziden).</summary>
     public const string SegHepsi = "hepsi", SegBorclu = "borclu", SegToptanci = "toptanci";
     private string segment = SegHepsi;
-    private bool digerSuzgecAcik;
 
     private IReadOnlyList<(string Kod, string Etiket)> Segmentler3 =>
         [(SegHepsi, T.Hepsi), (SegBorclu, T.Borclu), (SegToptanci, T.Toptanci)];
@@ -1526,7 +1377,7 @@
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool ilk)
     {
-        await CekmeceKimlikKaydir(); if ((Sade || YildizMi) && !vadeIstendi && !yukleniyor)   // YASAL-KAPI-3 tur 2: kimlik formu görünür · YILDIZ-4B: Yıldız satırı "· N gün" yazar (iki modda)
+        await CekmeceKimlikKaydir(); if (!vadeIstendi && !yukleniyor)   // YASAL-KAPI-3 tur 2: kimlik formu görünür · YILDIZ-4B: Yıldız satırı "· N gün" yazar (iki modda)
         {
             vadeIstendi = true;
             await VadeYukle();
@@ -1707,7 +1558,7 @@
     private void ModDegisti() => InvokeAsync(async () =>
     {
         // T-M1: BASİT'e geçildiyse vade rozetleri O AN yüklenir (PRO bunu çizmez).
-        if ((Sade || YildizMi) && !yukleniyor) { vadeIstendi = true; await VadeYukle(); }
+        if (!yukleniyor) { vadeIstendi = true; await VadeYukle(); }
         StateHasChanged();
     });
 
@@ -2314,7 +2165,7 @@
             if (cariSiralama is not null) sorgu.Add(cariSiralama.Sorgu);
             CariListesi = await Api.GetAsync<List<CariVeri>>($"/cari?{string.Join("&", sorgu)}");
             // T-M1: "Vade geçti" rozeti ve panel bandı — yalnız BASİT yüz çizer.
-            if (Sade || YildizMi) { vadeIstendi = true; await VadeYukle(); }
+            vadeIstendi = true; await VadeYukle();
         }
         catch (ApiHata ex)
         {

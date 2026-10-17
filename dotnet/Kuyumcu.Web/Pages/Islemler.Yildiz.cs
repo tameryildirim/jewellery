@@ -26,10 +26,9 @@ public partial class Islemler
     private bool yildizTurlerAcik;
 
     /// <summary>Etkin şema Yıldız mı (kabukla AYNI karar noktası)?</summary>
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
 
     /// <summary>Yıldız tuval yüzü bu çizimde mi? Yalnız SATIŞ fişi (tuvalde yalnız satış çizildi); diğer türler özgün düzende.</summary>
-    internal bool YildizTezgahMi => YildizMi && tur == "SATIS" && !DigerAcik && !yukleniyor;
+    internal bool YildizTezgahMi => tur == "SATIS" && !DigerAcik && !yukleniyor;
 
     /// <summary>Sayfa kabının ek sınıfları (CSS: tuvalde olmayan özgün parçalar gizli; müşteri/tür açılınca görünür).</summary>
     private string YildizSinif => !YildizTezgahMi ? YildizTurSinif   // P-TEZGAH-TUR-KIMLIK: öteki türler (Islemler.TurKimlik.cs)

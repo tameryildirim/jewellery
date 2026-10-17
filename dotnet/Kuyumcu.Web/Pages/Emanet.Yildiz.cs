@@ -33,11 +33,10 @@ public partial class Emanet
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
     /// <summary>Etkin şema Yıldız mı (kabukla AYNI karar noktası)?</summary>
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
 
     /// <summary>Yıldız'da özgün ekran yalnız "ayrıntı" görünümünde çizilir (liste = tuval).</summary>
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "emanet" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "emanet";
 
     /// <summary>Listede okunacak en çok müşteri (her biri GET /emanet/{id}; Bugün'le aynı sınır).</summary>
     public const int YildizOkumaSiniri = YildizBugunBicim.EmanetOkumaSiniri;
@@ -53,7 +52,7 @@ public partial class Emanet
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || yildizYuklendi || yildizYukleniyor) return;
+        if (yildizYuklendi || yildizYukleniyor) return;
         await YildizYukle();
         StateHasChanged();
     }

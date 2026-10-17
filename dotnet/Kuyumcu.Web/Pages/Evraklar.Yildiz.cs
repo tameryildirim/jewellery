@@ -17,9 +17,8 @@ public partial class Evraklar
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "evraklar" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "evraklar";
     private bool yildizAyrinti;
     private string? yildizArama;
     private string yildizSekme = "";

@@ -33,9 +33,7 @@
    çizilir (data-yz-ozgun; Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
 @* YILDIZ-5A tur 2 (tasarım hakemi KRİTİK): "Yeni iş" Yıldız form kalıbında açılır (eski ekrana geçmez); alanlar özgün
    formun bileşenleri, aynı kimlik ve aynı kapıyla (formKapisi). *@
-@if (YildizMi)
-{
-    if (YildizIsFormu)
+@if (YildizIsFormu)
     {
         var k0 = kalemler[0];
         <CascadingValue Value="formKapisi" IsFixed="true">
@@ -97,7 +95,6 @@
     {
         <Kuyumcu.Web.Bilesenler.Yildiz.YildizListe B="@YildizBaglami" />
     }
-}
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
     @* P-37c — ORTAK ARAÇ ŞERİDİ: durum süzgeci + geciken kutucuğu + yenile

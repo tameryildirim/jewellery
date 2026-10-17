@@ -16,9 +16,8 @@ public partial class Banka
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "banka" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "banka";
     private bool yildizAyrinti;
 
     private bool YildizBosMu => !yildizAyrinti && !yukleniyor && listeHata is null && hesaplar.Count == 0;

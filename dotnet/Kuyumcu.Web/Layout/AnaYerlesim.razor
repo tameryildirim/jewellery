@@ -28,58 +28,18 @@ else if (VitrinEkraninda)
         <KabukHatasi><YetkiKapisi ProfilDenendi="@profilDenendi">@Body</YetkiKapisi></KabukHatasi>
     </div>
 }
-else if (TamEkranda && !YildizMi)
+else
 {
-    @* PAKET S1-d — "Tüm ekranlar" karo sayfası TAM EKRANDIR: kurucunun tuvali
-       (Ekranlar.dc.html, 1440×900) kenar çubuğu ve üst bar çizmez; kendi koyu
-       başlık şeridini (marka → panel, başlık, arama) taşır. Pusula'nın karo
-       ana menüsünün karşılığıdır (tuval notu n2). Oturum kapısı YUKARIDA
-       aynen işler; hata sınırı aynen sarar. *@
-    <div class="uygulama-tam-ekran" id="uygulama-tam-ekran">
-        <KabukHatasi>@Body</KabukHatasi>
-    </div>
-}
-else if (YildizMi)
-{
-    @* ── PAKET YILDIZ-2 — "YILDIZ" KABUĞU (yalnız data-sema="yildiz") ──────────
+    @* ── PAKET YILDIZ-2 — "YILDIZ" KABUĞU (tek kabuk; tema temizliği 17.10) ────
        Sol menü YOK: üst 5 kelime menü (YildizUstMenu) + sağda kur/saat/kullanıcı.
-       "Tüm ekranlar" bu şemada tam ekran DEĞİLDİR; üst menünün altında çizilir.
-       Sayfa gövdesi (hata sınırı + yetki kapısı + üst bar) varsayılan kabukla
-       AYNIDIR; öteki 8 şemada bu dal HİÇ çalışmaz. *@
+       "Tüm ekranlar" tam ekran DEĞİLDİR; üst menünün altında çizilir.
+       Eski kenar çubuklu kabuk (KenarCubugu) kaldırıldı. *@
     <CascadingValue Value="sekmeYuvasi" IsFixed="true">
     <div class="@($"uygulama yildiz-kabuk{(TamEkranRotasi(new Uri(Nav.Uri).AbsolutePath) ? " yildiz-tum-ekranlar" : "")}")" id="yildiz-kabuk">
         <div class="icerik-sutunu">
             <YildizUstMenu />
-            <UstBar BildirimSayisiDegisti="BildirimSayisiGeldi" />
+            <UstBar />
             <main class="ana-icerik">
-                <KabukHatasi><YetkiKapisi ProfilDenendi="@profilDenendi">@Body</YetkiKapisi></KabukHatasi>
-            </main>
-        </div>
-    </div>
-    </CascadingValue>
-}
-else
-{
-    <CascadingValue Value="sekmeYuvasi" IsFixed="true">
-    <div class="uygulama @(Kabuk.MenuAcik ? "menu-acik" : null)">
-        @* T-K2: açık bildirim sayısı üst bardan kenar çubuğuna (tuval: menüdeki
-           "Bildirimler" satırının kırmızı hapı). Yoklama TEK: UstBar. *@
-        <KenarCubugu BildirimSayisi="bildirimSayisi" />
-        @* Dar ekran çekmecesi açıkken arkaplan örtüsü: tıklayınca kapanır
-           (UX-2 A2 · KABUK). Geniş ekranda hiç çizilmez. *@
-        @if (Kabuk.MenuAcik)
-        {
-            <button type="button" class="kenar-ortu" id="kenar-ortu"
-                    aria-label="@Dil.T.Kabuk.MenuKapat" @onclick="MenuyuKapat"></button>
-        }
-        <div class="icerik-sutunu">
-            <UstBar BildirimSayisiDegisti="BildirimSayisiGeldi" />
-            <main class="ana-icerik">
-                @* PAKET S-3a — SAYFA KÖKÜ HATA SINIRI. Sayfa ağacı çökse bile
-                   kenar çubuğu ve üst bar ayakta kalır; kullanıcı boş ekran
-                   yerine hata bandı + yeniden deneme yolu görür. *@
-                @* KESIF-P1 (#72): rol kapısı — yetkisiz rolde sayfa ÇİZİLMEZ, tek durum
-                   gösterilir (sonsuz "Yükleniyor" yok). Harita MenuTanimi'nden okunur. *@
                 <KabukHatasi><YetkiKapisi ProfilDenendi="@profilDenendi">@Body</YetkiKapisi></KabukHatasi>
             </main>
         </div>
@@ -103,11 +63,13 @@ else
 
     private bool GirisOncesiSayfada => GirisOncesiRota(new Uri(Nav.Uri).AbsolutePath);
 
-    /// <summary>S1-d: kabuksuz (tam ekran) çizilen rotalar — yalnız karo menü.</summary>
+    /// <summary>
+    /// S1-d: "Tüm ekranlar" rotası. Tema temizliği (17.10) sonrası tam ekran DEĞİLDİR
+    /// (Yıldız kabuğu üst menünün altında çizer); kabuk kökü bu rotada
+    /// <c>yildiz-tum-ekranlar</c> sınıfını taşır.
+    /// </summary>
     public static bool TamEkranRotasi(string mutlakYol) =>
         mutlakYol.TrimEnd('/') is "/ekranlar";
-
-    private bool TamEkranda => TamEkranRotasi(new Uri(Nav.Uri).AbsolutePath);
 
     /// <summary>PAKET EKSIK-KUCUK (B2-10): kabuksuz çizilen vitrin dükkân ekranı.</summary>
     public static bool VitrinEkranRotasi(string mutlakYol) =>
@@ -115,8 +77,6 @@ else
 
     private bool VitrinEkraninda => VitrinEkranRotasi(new Uri(Nav.Uri).AbsolutePath);
 
-    /// <summary>PAKET YILDIZ-2: etkin şema Yıldız mı (üst menü kabuğu)?</summary>
-    private bool YildizMi => YildizKabuk.Mi(Hizmetler);
     private GorunumServisi? kiraciGorunumu;
     private KullaniciGorunumServisi? benimGorunumu;
 
@@ -170,15 +130,8 @@ else
             Nav.NavigateTo("/");
     }
 
-    private void MenuyuKapat() => Kabuk.Kapat();
-
     /// <summary>T-K2: sayfaların üst bara sekme koyduğu yuva (UstBar + sayfa, cascade).</summary>
     private readonly UstBarSekmeYuvasi sekmeYuvasi = new();
-
-    /// <summary>T-K2: üst barın yokladığı açık bildirim sayısı (kenar çubuğuna geçer).</summary>
-    private int bildirimSayisi;
-
-    private void BildirimSayisiGeldi(int sayi) => bildirimSayisi = sayi;
 
     // ── html[data-mod] yazıcısı (UX-2 A2) ───────────────────────────────────
     // Mod SUNUCUDAN gelir (etkinArayuzModu); JS yalnız BEYAZ LİSTELİ değeri

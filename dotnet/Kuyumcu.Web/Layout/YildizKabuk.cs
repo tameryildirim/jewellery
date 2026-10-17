@@ -8,14 +8,9 @@ namespace Kuyumcu.Web.Layout;
 /// PAKET YILDIZ-2 — "Yıldız" kabuğunun karar ve veri noktası (tek yer).
 ///
 /// <para>
-/// ⚠ ŞEMA KOŞULLU: yalnız etkin şema <c>yildiz</c> iken kabuk üst menü + "Tüm
-/// ekranlar" karelerini çizer; başka şemada AnaYerlesim/KenarCubugu AYNEN
-/// çalışır (8 şemada piksel farkı 0 — Yildiz2 testleri + ölçüm kilitler).
-/// </para>
-/// <para>
-/// ⚠ Etkin şema = kullanıcının çözülmüş görünümü (okunduysa), değilse dükkân
-/// görünümü: <c>kuyumcuGorunum.uygula</c>'yı en son çağıran servisin değeri.
-/// Servisler kapsamdan O AN çözülür (kayıtlı olmayan bUnit kurulumları kırılmaz).
+/// ⚠ TEK KABUK (tema temizliği, kurucu 17.10): Yıldız tek şemadır; eski "Mi()"
+/// şema sorusu ve kenar çubuklu kabuk (KenarCubugu) kaldırıldı. AnaYerlesim
+/// her oturumlu ekranı üst menü kabuğuyla çizer.
 /// </para>
 /// </summary>
 public static class YildizKabuk
@@ -32,15 +27,6 @@ public static class YildizKabuk
         new("/kasalar", "kasa", false, YildizSozlugu.Kasa),
         new(MenuTanimi.TumEkranlarYolu, "tum-ekranlar", true, YildizSozlugu.TumEkranlar),
     ];
-
-    /// <summary>Etkin şema Yıldız mı? Servis yoksa / okunmadıysa false (varsayılan kabuk).</summary>
-    public static bool Mi(IServiceProvider hizmetler)
-    {
-        var benim = hizmetler.GetService(typeof(KullaniciGorunumServisi)) as KullaniciGorunumServisi;
-        if (benim is { Yuklendi: true, Durum: { } d }) return d.Sema == YildizSozlugu.SemaKodu;
-        var kiraci = hizmetler.GetService(typeof(GorunumServisi)) as GorunumServisi;
-        return kiraci?.Sema == YildizSozlugu.SemaKodu;
-    }
 
     /// <summary>
     /// Öğe bu kullanıcıya görünür mü? "Tüm ekranlar" her zaman; öteki dördü

@@ -18,8 +18,6 @@ namespace Kuyumcu.Core.I18n;
 /// <summary>Görünüm kartının bir dildeki metinleri.</summary>
 public sealed class GorunumKartiMetinleri
 {
-    public required string TemaBaslik { get; init; }
-    public required string TemaAltMetin { get; init; }
     public required string Secili { get; init; }
     public required string AydinlikKaranlikBaslik { get; init; }
     public required string KagitNotu { get; init; }
@@ -51,8 +49,6 @@ public static class GorunumKartiSozlugu
 {
     public static readonly GorunumKartiMetinleri Tr = new()
     {
-        TemaBaslik = "Renk teması",
-        TemaAltMetin = "8 tema · herkes kendi seçer · işletme varsayılanını sahip belirler",
         Secili = "Seçili",
         AydinlikKaranlikBaslik = "Aydınlık / karanlık",
         KagitNotu = "Fiş ve etiket kâğıdı her zaman beyaz basılır.",
@@ -78,8 +74,6 @@ public static class GorunumKartiSozlugu
 
     public static readonly GorunumKartiMetinleri En = new()
     {
-        TemaBaslik = "Colour theme",
-        TemaAltMetin = "8 themes · everyone picks their own · the owner sets the shop default",
         Secili = "Selected",
         AydinlikKaranlikBaslik = "Light / dark",
         KagitNotu = "Receipt and label paper is always printed white.",

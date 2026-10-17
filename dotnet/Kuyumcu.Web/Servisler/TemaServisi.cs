@@ -22,7 +22,7 @@ public sealed class TemaServisi(IJSRuntime js)
     public const string Aydinlik = "aydinlik";
     public const string Karanlik = "karanlik";
 
-    /// <summary>Ekranda gösterilecek sıra — TemaSecici bu listeyi çizer.</summary>
+    /// <summary>Ekranda gösterilecek sıra — Görünüm kartı (GorunumKarti) bu kodları kullanır.</summary>
     public static readonly string[] Secenekler = [Sistem, Aydinlik, Karanlik];
 
     private static readonly string[] Yazilabilir = [Aydinlik, Karanlik];

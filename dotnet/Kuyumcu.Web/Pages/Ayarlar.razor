@@ -109,13 +109,7 @@
                             </div>
                         }
 
-                        <Secim ElemanId="benim-sema" Etiket="@Dil.T.Gorunum.RenkSemasi"
-                               Secenekler="@BenimSemaSecenekleri" Deger="@BenimSemaDegeri"
-                               DegerChanged="BenimSemaSec"
-                               Devredisi="@BenimKilitli" DevredisiSebebi="@BenimKilitSebebi"
-                               KaynakRozeti="@BenimRozet(BenimGorunum.Durum?.SemaKaynagi)"
-                               Ipucu="@Dil.T.Gorunum.KontrastNotu" />
-
+                        @* Tema temizliği (17.10): tek şema Yıldız — renk şeması seçicisi kaldırıldı. *@
                         @* KESIF-P1 · TEMA-TEK: tema radyosu burada DEĞİL — tek seçici üstteki
                            Görünüm kartıdır; yeri tek cümleyle söylenir. *@
                         <p class="metin-soluk metin-kucuk" id="benim-tema-notu">@KesifP1Sozlugu.Al(Dil.Dil).BenimTemaNotu</p>
@@ -192,12 +186,7 @@
                             </div>
                         }
 
-                        <Secim ElemanId="gorunum-sema" Etiket="@Dil.T.Gorunum.RenkSemasi"
-                               Secenekler="@SemaSecenekleri" Deger="@Gorunum.Sema"
-                               DegerChanged="SemaSec"
-                               Devredisi="@GorunumKilitli" DevredisiSebebi="@GorunumKilitSebebi"
-                               Ipucu="@Dil.T.Gorunum.KontrastNotu" />
-
+                        @* Tema temizliği (17.10): tek şema Yıldız — renk şeması seçicisi kaldırıldı. *@
                         <Secim ElemanId="gorunum-olcek" Etiket="@Dil.T.Gorunum.YaziOlcegi"
                                Secenekler="@OlcekSecenekleri" Deger="@Gorunum.YaziOlcegi"
                                DegerChanged="OlcekSec"
@@ -870,23 +859,14 @@
         : null;
 
     /// <summary>
-    /// UX-S26 / UX-S31 — seçenek listeleri TEK diziden üretilir
-    /// (GorunumServisi.Semalar); ham kod ekrana basılmaz, sözlükten çevrilir.
+    /// UX-S26 / UX-S31 — seçenek listesi TEK diziden üretilir
+    /// (GorunumServisi.Olcekler); ham kod ekrana basılmaz, sözlükten çevrilir.
     /// </summary>
-    private IReadOnlyList<SecenekOgesi> SemaSecenekleri =>
-        GorunumServisi.Semalar.Select(k => new SecenekOgesi(k, SemaAdi(k), SemaAciklamasi(k))).ToList();
-
     private IReadOnlyList<SecenekOgesi> OlcekSecenekleri =>
         GorunumServisi.Olcekler.Select(k => new SecenekOgesi(k, OlcekAdi(k), OlcekAciklamasi(k))).ToList();
 
-    // ⚠ B-1: liste 3→8 şema, 2→3 punto oldu. Adlar Sozlukler.cs'e DEĞİL,
-    //   Kuyumcu.Core/I18n/GorunumSozlugu.cs'e yazıldı (9200 satırlık ortak hub
-    //   aynı dalgada başka şeritlerin elinde). Ham kod ekrana BASILMAZ: sözlükte
-    //   karşılığı olmayan kod BOŞ döner (UX-S31).
-    private string SemaAdi(string k) => GorunumSozlugu.Ad(GorunumSozlugu.Semalar, k, Dil.Dil);
-
-    private string SemaAciklamasi(string k) => GorunumSozlugu.Aciklama(GorunumSozlugu.Semalar, k, Dil.Dil);
-
+    // ⚠ B-1: adlar Sozlukler.cs'e DEĞİL, Kuyumcu.Core/I18n/GorunumSozlugu.cs'e yazıldı.
+    //   Ham kod ekrana BASILMAZ: sözlükte karşılığı olmayan kod BOŞ döner (UX-S31).
     private string OlcekAdi(string k) => GorunumSozlugu.Ad(GorunumSozlugu.YaziBoyutlari, k, Dil.Dil);
 
     private string OlcekAciklamasi(string k) => GorunumSozlugu.Aciklama(GorunumSozlugu.YaziBoyutlari, k, Dil.Dil);
@@ -919,7 +899,7 @@
 
     private string BenimBaslik => Dil.Dil == "en" ? "My appearance" : "Benim görünümüm";
 
-    // KESIF-P1 · TEMA-TEK: kartta artık İKİ seçim var (şema + yazı boyutu).
+    // KESIF-P1 · TEMA-TEK + tema temizliği (17.10): kartta tek seçim var (yazı boyutu).
     private string BenimAciklama => KesifP1Sozlugu.Al(Dil.Dil).BenimAciklama;
 
     private string DukkanKapsamNotu => Dil.Dil == "en"
@@ -939,17 +919,6 @@
     private SecenekOgesi DevralOgesi(string kiraciKodu, IReadOnlyDictionary<string, GorunumMetni> sozluk) =>
         new(Devral, DevralAdi, GorunumSozlugu.Ad(sozluk, kiraciKodu, Dil.Dil));
 
-    private IReadOnlyList<SecenekOgesi> BenimSemaSecenekleri
-    {
-        get
-        {
-            var d = BenimGorunum.Durum;
-            List<SecenekOgesi> liste = [DevralOgesi(d?.KiraciSema ?? GorunumServisi.SemaVarsayilan, GorunumSozlugu.Semalar)];
-            liste.AddRange(GorunumServisi.Semalar.Select(k => new SecenekOgesi(k, SemaAdi(k), SemaAciklamasi(k))));
-            return liste;
-        }
-    }
-
     private IReadOnlyList<SecenekOgesi> BenimYaziSecenekleri
     {
         get
@@ -962,16 +931,11 @@
         }
     }
 
-    private string BenimSemaDegeri => BenimGorunum.Durum?.OzelSema ?? Devral;
-
     private string BenimYaziDegeri => BenimGorunum.Durum?.OzelYaziBoyutu is { } p
         ? p.ToString(System.Globalization.CultureInfo.InvariantCulture)
         : Devral;
 
     // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
-    private Task BenimSemaSec(string? kod) => BenimKaydet(() =>
-        string.IsNullOrEmpty(kod) ? BenimGorunum.SemaDevretAsync() : BenimGorunum.SemaSecAsync(kod));
-
     private Task BenimYaziSec(string? kod) => BenimKaydet(() =>
         string.IsNullOrEmpty(kod) || !int.TryParse(kod, System.Globalization.NumberStyles.Integer,
             System.Globalization.CultureInfo.InvariantCulture, out var p)
@@ -1004,21 +968,20 @@
     }
 
     // ⚠ Razor özniteliğinde bloklu lambda derlenmez — adlandırılmış metot (UX-S19).
-    private Task SemaSec(string? kod) => GorunumKaydet(kod, null);
-    private Task OlcekSec(string? kod) => GorunumKaydet(null, kod);
+    private Task OlcekSec(string? kod) => GorunumKaydet(kod);
 
     /// <summary>
     /// UX-S27 — kaydet sonrası sonuç GÖRÜNÜR: sunucunun döndürdüğü görünüm
     /// uygulanır ve başarı bandı yazılır. POST/PATCH yanıtı okunmadan atılmaz.
     /// </summary>
-    private async Task GorunumKaydet(string? sema, string? olcek)
+    private async Task GorunumKaydet(string? olcek)
     {
         if (GorunumKilitli) return;              // kilitli düğme istek atmaz
-        if (sema is null && olcek is null) return;
+        if (olcek is null) return;
         gorunumHata = null;
         try
         {
-            await Gorunum.DegistirAsync(sema, olcek);
+            await Gorunum.DegistirAsync(olcek);
             gorunumBasari = Dil.T.Gorunum.Kaydedildi;
             gorunumJeton++;
         }

@@ -16,11 +16,10 @@ public partial class Gider
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || YildizAyrintida;
+    private bool YildizOzgunCiz => YildizAyrintida;
     /// <summary>Özgün ekran açık mı: "Ayrıntı ekle" ya da gider dışı bir sekme (bağlantıdan ?sekme=virman gelmiş olabilir).</summary>
     private bool YildizAyrintida => yildizAyrinti || sekme != "GIDER";
-    private string? YildizOzgunIsaret => YildizMi ? "gider" : null;
+    private string? YildizOzgunIsaret => "gider";
     private bool yildizAyrinti;
 
     private void YildizVazgec()

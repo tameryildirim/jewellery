@@ -63,45 +63,6 @@ table { border-collapse: collapse; width: 100%; }
 /* ── Uygulama yerleşimi ────────────────────────────────────────────────── */
 .uygulama { display: flex; min-height: 100vh; }
 
-.kenar-cubugu {
-  width: 240px; flex-shrink: 0; min-height: 100vh;
-  background: var(--kenar-yuzey); color: var(--slate-100);
-  display: flex; flex-direction: column;
-}
-.kenar-logo {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1.25rem; border-bottom: 1px solid var(--kenar-ayrac);
-}
-.kenar-logo .marka { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.1rem; color: var(--kenar-metin-guclu); }
-.kenar-nav { flex: 1; padding: 1rem .75rem; display: flex; flex-direction: column; gap: .25rem; }
-.kenar-nav a {
-  display: flex; align-items: center; gap: .75rem;
-  padding: .5rem .75rem; border-radius: var(--radius-md);
-  font-size: .875rem; font-weight: 500; color: var(--kenar-metin);
-  transition: background .15s, color .15s;
-}
-.kenar-nav a:hover { background: var(--kenar-yuzey-2); color: var(--kenar-metin-guclu); }
-.kenar-nav a.aktif { background: var(--amber-700); color: var(--kenar-metin-guclu); }
-/* Paket P-14 (Y-9) — kenar çubuğu grup başlığı. Sabit renk YOK, yalnız belirteç. */
-.kenar-grup-baslik {
-  margin: .75rem .75rem .25rem; padding: 0;
-  font-size: .6875rem; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--kenar-metin);
-  opacity: .72;
-}
-.kenar-nav > .kenar-grup-baslik:first-child { margin-top: 0; }
-.kenar-alt { border-top: 1px solid var(--kenar-ayrac); padding: .75rem 1rem; }
-.kenar-alt .kullanici-ad { font-size: .75rem; font-weight: 600; color: var(--kenar-metin-guclu); }
-.kenar-alt .kullanici-rol { font-size: .75rem; color: var(--kenar-metin); }
-.kenar-alt-butonlar { display: flex; gap: .5rem; margin-top: .5rem; }
-.kenar-alt-butonlar a, .kenar-alt-butonlar button {
-  flex: 1; display: flex; align-items: center; gap: .25rem; justify-content: center;
-  font-size: .75rem; color: var(--kenar-metin); background: none; border: 0;
-  padding: .25rem .5rem; border-radius: var(--yaricap-sm);
-}
-.kenar-alt-butonlar a:hover { background: var(--kenar-yuzey-2); color: var(--kenar-metin-guclu); }
-.kenar-alt-butonlar button:hover { background: var(--kenar-yuzey-2); color: var(--kenar-tehlike); }
-
 .icerik-sutunu { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .ust-bar {
   background: var(--yuzey); border-bottom: 1px solid var(--ayrac);
@@ -570,8 +531,8 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
 .urun-etiket-kod { font-size: 6pt; text-align: right; color: #555; }
 
 @media print {
-    /* Uygulama kabuğu kâğıda çıkmaz: menü, kenar çubuğu, düğmeler. */
-    .kenar-cubugu, .ust-bar, .yazdirma-gizle, nav, .modal-arka { display: none !important; }
+    /* Uygulama kabuğu kâğıda çıkmaz: menü, üst bar, düğmeler. */
+    .ust-bar, .yazdirma-gizle, nav, .modal-arka { display: none !important; }
 
     body, .ana-icerik, .belge-sayfa { margin: 0; padding: 0; max-width: none; background: #fff; }
     .belge { border: none; padding: 0; }
@@ -747,7 +708,6 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
 .girdi:focus-visible,
 .secim:focus-visible,
 .sekme:focus-visible,
-.kenar-nav a:focus-visible,
 .dil-secici button:focus-visible,
 .mod-anahtar button:focus-visible,
 .kabuk-menu-dugme:focus-visible,
@@ -968,24 +928,10 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
     cursor: pointer;
   }
   .uygulama { display: block; }
-  .kenar-cubugu {
-    position: fixed;
-    inset-block: 0;
-    inset-inline-start: 0;
-    z-index: 51;
-    transform: translateX(-100%);
-    transition: transform var(--gecis) var(--egri-cikis);
-  }
-  .uygulama.menu-acik .kenar-cubugu { transform: translateX(0); }
-  .kenar-ortu { position: fixed; inset: 0; z-index: 50; border: none; background: rgb(15 23 42 / .45); }
   .icerik-sutunu { width: 100%; min-width: 0; }
   .ana-icerik { padding: var(--bosluk-3); }
   .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
   .veri-tablosu { min-width: max-content; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kenar-cubugu { transition: none; }
 }
 
 /* ═══ paket UX-1-C2 — satır içi style'ın yerini alan sınıflar ═══════════════
@@ -1303,8 +1249,6 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
   .sube-secici { flex-wrap: wrap; row-gap: var(--bosluk-1); max-width: 100%; }
   .sube-secici .secim { max-width: 100%; }
   .mod-anahtar { flex-wrap: wrap; }
-  /* Kenar çubuğu çekmecesi 375 px'te ekranı taşırmasın (P-15 çekmecesi). */
-  .kenar-cubugu { max-width: 88vw; }
 }
 
 /* 375 px: mod anahtarı ve arama düğmesi metinsiz (ikon + title) çalışır. */
@@ -1597,64 +1541,7 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
   overflow: auto;
   overscroll-behavior: contain;
 }
-
-/* ── Sürükleme tutamacı: YALNIZ hover / odakta görünür (görünür ok düğmesi 0) */
-.kenar-tutamac {
-  flex: 0 0 auto;
-  color: var(--kenar-metin);
-  opacity: 0;
-  cursor: grab;
-  user-select: none;
-  transition: opacity .12s ease;
-}
-.kenar-satir:hover .kenar-tutamac,
-.kenar-satir:focus-within .kenar-tutamac,
-.kenar-satir:focus .kenar-tutamac { opacity: .8; }
-
-/* ── Yetki / sıra hatası bandı (sessiz yutma kaldırıldı) ─────────────────── */
-.kenar-uyari {
-  margin: var(--bosluk-2) var(--bosluk-3);
-  padding: var(--bosluk-2);
-  border: 1px solid var(--tehlike-kenar);
-  background: var(--tehlike-yuzey);
-  color: var(--tehlike-vurgu);
-  border-radius: var(--yaricap-sm);
-  font-size: var(--yazi-xs);
-  display: flex;
-  flex-direction: column;
-  gap: var(--bosluk-2);
-}
-
-/* ── Menü satırı: bağlantı + taşı düğmeleri + yıldız ─────────────────────── */
-.kenar-satir { display: flex; align-items: center; gap: var(--bosluk-1); }
-.kenar-satir > a { flex: 1 1 auto; min-width: 0; }
-.kenar-tasi,
-.kenar-yildiz {
-  flex: 0 0 auto;
-  min-width: var(--dokunma-hedefi);
-  min-height: var(--dokunma-hedefi);
-  background: none;
-  border: 0;
-  color: var(--kenar-metin);
-  cursor: pointer;
-  border-radius: var(--yaricap-sm);
-}
-.kenar-tasi:hover,
-.kenar-yildiz:hover { color: var(--kenar-metin-guclu); background: var(--kenar-yuzey-2); }
-.kenar-tasi:disabled { opacity: .4; cursor: not-allowed; }
-/* P-36b kapanışı (P-37 artığı): favori yıldızı artık ★/☆ emojisi DEĞİL, sprite
-   sembolüdür (ikon-star). Dolu/boş ayrımı ikinci bir sembolle değil, konturun
-   içini doldurarak yapılır — sprite büyümedi, renk temadan gelir. */
-.kenar-yildiz.dolu { color: var(--amber-400); }
-.kenar-yildiz.dolu .ikon { fill: currentColor; }
-.kenar-grup-ipucu {
-  font-size: var(--yazi-xs);
-  color: var(--kenar-metin);
-  padding: 0 var(--bosluk-3);
-  margin: var(--bosluk-1) 0;
-}
 .sira-suruklemede { cursor: grabbing; user-select: none; }
-.sira-suruklemede .kenar-satir { opacity: .85; }
 
 /* ── Karşılama ekranı: "pencere pencere" kutucuk ızgarası ────────────────── */
 .karsilama-bas {
@@ -1998,7 +1885,6 @@ body.pencere-acik { overflow-y: hidden; }
      2,75rem'dir (belirtecler.css `@media (max-width:480px)` bloğu). */
   .dugme, .dugme-benzeri, .sekme, .btn, .pill,
   .kabuk-menu-dugme, .kur-guncelle-btn, .mod-anahtar button,
-  .kenar-alt-butonlar a, .kenar-alt-butonlar button,
   /* ⚠ ÇIPLAK `button`: canlı ölçümde `.dil-secici` düğmeleri (TR/EN 32×22)
      tür niteliği taşımadığı için `button[type=…]` seçicisinden KAÇMIŞTI.
      Telefonda taban kural türe bakmaz — eylem eylemdir. */
@@ -2054,90 +1940,7 @@ input[type="file"].girdi { max-width: 100%; }
    (Razor'daki `hidden` yalnız katlamayı sürdürür, düzen bozulmaz).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Tuvalde aktif satır menü mavisidir; app.css'te kalan --amber-700 P-14
-   öncesinden artmış tek ham vurgudur ve şema değiştiğinde menüyle
-   çelişiyordu (fildişi şemasında kehribar satır). */
-.kenar-nav a.aktif { background: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin); }
-/* Marka adı tuvalde Sora'dır (S1-b'de vendored). Gövde Manrope'tur ve
-   --yazi-ailesi üzerinden BÜTÜN ekranlara tek yerden iner. */
-.kenar-logo .marka { font-family: var(--yazi-marka); }
-.kenar-nav a { font-size: 17px; }
 
-/* ── "Tüm ekranlar (38)" — aramanın hemen altı ────────────────────────────
-   S1-d'ye kadar KİLİTLİ: sebebi title + aria-describedby ile yazılıdır
-   (DoD EK md.1 + UX-S30). Kilitli hâli SOLUK ama okunur kalır. */
-.kenar-tum-ekranlar {
-  display: flex; align-items: center; gap: var(--bosluk-2);
-  width: calc(100% - 1.5rem); margin: 0 .75rem;
-  padding: var(--bosluk-2) var(--bosluk-3);
-  border: 0; border-radius: var(--yaricap);
-  background: transparent; color: var(--menu-baslik);
-  font: inherit; font-size: 16px; text-align: left;
-}
-.kenar-tum-ekranlar:disabled { cursor: not-allowed; opacity: .75; }
-.kenar-tum-ekranlar:not(:disabled):hover {
-  background: var(--kenar-yuzey-2); color: var(--kenar-metin-guclu);
-}
-
-/* ── Katlanır grup başlığı ────────────────────────────────────────────────
-   <h2> kabı DURUYOR (id sözleşmesi: #kenar-grup-<slug> değişmedi);
-   tıklanabilir yüzey içindeki <button>'dır. */
-.kenar-grup-baslik { padding: 0; }
-.kenar-grup-dugme {
-  display: flex; flex-direction: column; align-items: stretch; gap: 2px;
-  width: 100%; padding: var(--bosluk-2) var(--bosluk-3);
-  border: 0; border-radius: var(--yaricap);
-  background: transparent; color: var(--kenar-metin);
-  font: inherit; text-align: left; cursor: pointer;
-}
-.kenar-grup-dugme:hover { background: var(--kenar-yuzey-2); }
-.kenar-grup-satir { display: flex; justify-content: space-between; align-items: center; gap: var(--bosluk-2); }
-.kenar-grup-ad { font-size: 15px; font-weight: var(--kalin); }
-.kenar-grup-sayi {
-  display: inline-flex; align-items: center; gap: var(--bosluk-1);
-  color: var(--menu-baslik); font-size: var(--yazi-sm);
-}
-/* Kapalı grubun ekran adları: TEK SATIR, taşarsa "…" ile kırpılır.
-   Metin DOM'da tamdır — kırpma yalnız görseldir (ekran okuyucu tamamını okur). */
-.kenar-grup-onizleme {
-  display: block; font-size: var(--yazi-sm); color: var(--menu-baslik);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* ── Kullanıcı kartı (menünün en altı) ────────────────────────────────── */
-.kenar-kullanici {
-  display: flex; align-items: center; gap: var(--bosluk-2);
-  padding: var(--bosluk-2) var(--bosluk-3);
-  border-radius: var(--yaricap-lg); background: var(--kenar-yuzey-2);
-}
-.kenar-avatar {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 2.25rem; height: 2.25rem; flex: 0 0 auto;
-  border-radius: var(--yaricap-tam);
-  background: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin);
-  font-size: var(--yazi-sm); font-weight: var(--kalin);
-}
-.kenar-kullanici-metin { display: flex; flex-direction: column; min-width: 0; }
-.kenar-kullanici-metin .kullanici-ad,
-.kenar-kullanici-metin .kullanici-rol {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-
-/* ── S1-b (devir turu) — tuvalle birebir kalan üç ayrıntı ─────────────────
-   (1) Menü genişliği tuvalde 268 px'tir (plan § 5A "240 px" yazıyordu; ÜSTÜN
-       kaynak tuvaldir). Dar ekranda 88vw tavanı (satır ~1266) geçerli kalır.
-   (2) AÇIK grubun başlığı tuvalde küçük, BÜYÜK HARF, soluk bir etikettir
-       ("GÜNLÜK İŞ ▾"); KAPALI grubun başlığı ise 17 px kalın satırdır ve
-       altında önizleme durur. Türkçe büyük harf (i → İ) <html lang="tr">
-       sayesinde doğru çevrilir.
-   (3) Marka satırı Sora 21 px (tuval). */
-.kenar-cubugu { width: 268px; }
-.kenar-grup-dugme[aria-expanded="false"] .kenar-grup-ad { font-size: 17px; }
-.kenar-grup-dugme[aria-expanded="true"] .kenar-grup-ad {
-  font-size: 15px; text-transform: uppercase; letter-spacing: .04em;
-  color: var(--menu-baslik);
-}
-.kenar-logo .marka { font-size: 21px; font-weight: var(--kalin); letter-spacing: -.01em; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    S1-c — ÜST BAR: KUR ŞERİDİ + YARDIM + BASİT/PROFESYONEL (2026-09-23)
@@ -2207,11 +2010,6 @@ input[type="file"].girdi { max-width: 100%; }
 }
 .ust-bar .mod-anahtar button.secili {
   background: var(--kenar-yuzey); color: var(--kenar-metin-guclu); font-weight: 500;
-}
-/* Fildişi (açık menü) şemasında menü zemini krem, yazısı koyudur; beyaz bar
-   üstünde seçili hap ayırt edilemiyordu → koyu aktif satır belirteci. */
-:root[data-sema="fildisi"] .ust-bar .mod-anahtar button.secili {
-  background: var(--menu-aktif-yuzey); color: var(--menu-aktif-metin);
 }
 @media (min-width: 769px) {
   .ust-bar { padding: var(--bosluk-2) 28px; }
@@ -2528,8 +2326,8 @@ a.kenar-tum-ekranlar.aktif {
    S1-f — AYARLAR → GÖRÜNÜM KARTI · tuval Ayarlar.dc.html (artboard 7, 1440×900)
    Geri dönüş: bu bloğu kaldır (eski dört kart "Ayrıntılı görünüm ayarları"
    altında yaşıyor, hiçbiri silinmedi). Renkler YALNIZ belirteç; ölçüler
-   tuvalden. Şema önizlemesi renklerini `.gorunum-sema-onizleme[data-sema]`
-   üzerinden belirtecler.css'teki şema bloklarından alır. KÂĞIT: bu blokta
+   tuvalden. Tema temizliği (17.10): şema önizleme karoları kaldırıldı (tek
+   şema Yıldız). KÂĞIT: bu blokta
    yazdırma kuralı yoktur; kâğıt muafiyeti (@media print, .belge*) aynen durur.
    ═══════════════════════════════════════════════════════════════════════════ */
 .gk { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
@@ -2541,7 +2339,6 @@ a.kenar-tum-ekranlar.aktif {
 }
 .gk-bolum-bas { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; }
 .gk-bolum-baslik { margin: 0; font-size: 20px; font-weight: 600; color: var(--metin); }
-.gk-bolum-alt { font-size: 15px; color: var(--metin-soluk); }
 .gk-bosluk { flex-grow: 1; }
 .gk-kaynak {
   padding: 2px 10px; border-radius: var(--yaricap-tam);
@@ -2549,33 +2346,9 @@ a.kenar-tum-ekranlar.aktif {
 }
 .gk-kaynak:empty { display: none; }
 
-/* 8 tema karosu — 4 sütun, 12 px aralık */
-.gk-sema-izgara { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.gk-sema {
-  display: flex; flex-direction: column; gap: 8px; padding: 10px;
-  border: 1px solid var(--ayrac); border-radius: 12px;
-  background: var(--yuzey); color: var(--metin); font: inherit; text-align: left; cursor: pointer;
-}
-.gk-sema.secili { border: 3px solid var(--vurgu); }
-.gk-sema:focus-visible, .gk-secenek:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
-.gk-sema:disabled, .gk-secenek:disabled { cursor: not-allowed; opacity: .6; }
-.gk-onizleme {
-  height: 60px; border-radius: 8px; display: flex;
-  border: 1px solid var(--ayrac); contain: paint;
-}
-.gk-onizleme-menu { width: 34%; background: var(--kenar-yuzey); }
-.gk-onizleme-govde {
-  flex-grow: 1; background: var(--yuzey-govde);
-  display: flex; flex-direction: column; gap: 6px; padding: 9px;
-}
-.gk-onizleme-kart { height: 9px; width: 60%; border-radius: 3px; background: var(--yuzey); border: 1px solid var(--ayrac); }
-.gk-onizleme-vurgu { height: 9px; width: 40%; border-radius: 3px; background: var(--vurgu); }
+.gk-secenek:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+.gk-secenek:disabled { cursor: not-allowed; opacity: .6; }
 .gk-sema-alt { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.gk-sema-ad { font-weight: 600; font-size: 16px; }
-.gk-secili-rozet {
-  padding: 2px 10px; border-radius: var(--yaricap-tam);
-  background: var(--vurgu-yuzey); color: var(--vurgu); font-size: 13px; font-weight: 500;
-}
 
 /* Aydınlık/karanlık · Yazı boyutu · Ekran modu — 3 eşit sütun, 20 px aralık */
 .gk-uclu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
@@ -2614,7 +2387,6 @@ a.kenar-tum-ekranlar.aktif {
 
 @media (max-width: 768px) {
   .gk-uclu { grid-template-columns: minmax(0, 1fr); }
-  .gk-sema-izgara { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gk-bolum { padding: 16px; }
   .gk-alt-dugme { width: 100%; }
 }
@@ -2753,17 +2525,7 @@ a.panel-soru-sayi:hover { color: var(--vurgu); }
    GERİ DÖNÜŞ: blok tek parçadır (genel [hidden] kuralı dosyanın başındadır).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* (1) Grup başlıkları CÜMLE DÜZENİ ("Günlük iş", "Müşteri ve stok") — tuval
-       Profesyonel.dc.html; BÜYÜK HARF dönüşümü kaldırıldı (S1-b açık grubu
-       büyük harf yapıyordu, favori başlığı da P-14'ten beri büyük harfti). */
-.kenar-grup-baslik,
-.kenar-grup-dugme[aria-expanded="true"] .kenar-grup-ad {
-  text-transform: none;
-  letter-spacing: normal;
-}
 
-/* (2) Kullanıcı kartı: rol satırındaki şube adı ("Sahip · Merkez şube"). */
-.kenar-kullanici-metin .sube-sabit { color: inherit; }
 
 /* (3) Üst bar: saat = "kuru şimdi sor" düğmesi (yetkili). Tuvalde saat düz
        metindir; düğme görünümü taşımaz, üstüne gelince vurgulanır. Metin
@@ -2867,10 +2629,8 @@ a.panel-soru-sayi:hover { color: var(--vurgu); }
 @media (max-width: 900px) {
   .ayar-ikili { grid-template-columns: minmax(0, 1fr); }
 }
-/* Görünüm kartı: ad ile "Seçili" rozeti binmez; ad kelime sınırında kalır */
+/* Görünüm kartı: ad ile seçili işareti binmez */
 .gk-sema-alt { flex-wrap: wrap; row-gap: 4px; }
-.gk-sema-ad { word-break: normal; }
-.gk-secili-rozet { white-space: nowrap; }
 .gk-bolum-baslik { white-space: nowrap; }
 .gk-piksel { white-space: nowrap; }
 .gk-mod-ad { white-space: nowrap; }
@@ -2913,11 +2673,7 @@ a.panel-soru-sayi:hover { color: var(--vurgu); }
 
 /* (5) Telefon (375 px) ölçümünün bulguları */
 @media (max-width: 600px) {
-  /* "Fildişi (açık menü)" iki sütunlu tema ızgarasında tek satır kalır */
   .gk-bolum { padding-left: 12px; padding-right: 12px; }
-  .gk-sema-izgara { gap: 8px; }
-  .gk-sema { padding-left: 8px; padding-right: 8px; }
-  .gk-sema-ad { font-size: 14px; }
 }
 /* Künye makine satırı (sürüm=… · derleme=…) kısa etiket DEĞİLDİR: dar ekranda
    kutudan taşmak yerine herhangi bir noktada satır atlar. */
@@ -3205,28 +2961,7 @@ button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed
    Sabit renk yok (yalnız belirteç), satır içi style yok.
    ═════════════════════════════════════════════════════════════════════════ */
 
-/* Klavyeyle (↑/↓) seçili menü satırı: aktif sayfa rengiyle karışmasın diye
-   yalnız zemin + odak halkası. */
-.kenar-satir.secili > a,
-.kenar-alt-butonlar a.secili {
-  background: var(--kenar-yuzey-2);
-  color: var(--kenar-metin-guclu);
-  outline: var(--odak-halka-kalinlik) solid var(--odak-halka);
-  outline-offset: calc(-1 * var(--odak-halka-kalinlik));
-}
 
-/* Arama sürerken grup başlığı düğme değil, düz başlıktır (katlanmaz). */
-.kenar-grup-baslik-arama .kenar-grup-satir {
-  padding: var(--bosluk-2) var(--bosluk-3) var(--bosluk-1);
-  color: var(--kenar-metin);
-}
-
-/* Eşleşme yoksa menünün içindeki TEK satır. */
-.kenar-arama-yok {
-  padding: var(--bosluk-2) var(--bosluk-3);
-  color: var(--kenar-metin);
-  font-size: var(--yazi-sm);
-}
 
 /* ── Üst bar: kayıt araması düğmesi (GÖRÜNÜR YAZILI) ─────────────────────── */
 .kayit-arama { position: relative; min-width: 0; }

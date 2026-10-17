@@ -17,7 +17,6 @@ public partial class Cariler
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
     /// <summary>Etkin şema Yıldız mı (kabukla AYNI karar noktası)?</summary>
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
 
     /// <summary>Vadeye kalan gün (aynı /raporlar/vade-takibi yanıtından; yeni istek YOK).</summary>
     private Dictionary<string, int> yildizKalanlar = [];

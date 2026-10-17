@@ -18,9 +18,8 @@ public partial class Kasalar
 {
     [Inject] private IServiceProvider Hizmetler { get; set; } = default!;
 
-    private bool YildizMi => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler);
-    private bool YildizOzgunCiz => !YildizMi || yildizAyrinti;
-    private string? YildizOzgunIsaret => YildizMi ? "kasalar" : null;
+    private bool YildizOzgunCiz => yildizAyrinti;
+    private string? YildizOzgunIsaret => "kasalar";
 
     /// <summary>Okunan hareket sınırı (UX-S29: değdiyse sayı "1000+" yazılır).</summary>
     public const int YildizHareketSiniri = 1000;
@@ -37,7 +36,7 @@ public partial class Kasalar
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!YildizMi || YildizKasa is not { } k) return;
+        if (YildizKasa is not { } k) return;
         var anahtar = $"{k.Id}|{k.Bakiye}|{BugunKapali(k)}";
         if (anahtar == yildizAnahtar) return;
         yildizAnahtar = anahtar;

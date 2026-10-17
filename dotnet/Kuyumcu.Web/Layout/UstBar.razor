@@ -26,9 +26,9 @@
     }
     else if (YildizUst is { } yzUst)
     {
-        @* PAKET YILDIZ-KATMAN (denetim Y17/O16) — YALNIZ data-sema="yildiz" ve kendi Yıldız yüzü olmayan
-           ekranda: tuvalin sayfa başlığı (üst satır "Grup · ne işe yarar" + ince başlık 64/200 ya da özet
-           kalıbında 40/300). Başlık öğesi AYNI <h1> (tek başlık); öteki 8 şemada bu dal çizilmez. *@
+        @* PAKET YILDIZ-KATMAN (denetim Y17/O16) — kendi Yıldız yüzü olmayan ekranda: tuvalin sayfa
+           başlığı (üst satır "Grup · ne işe yarar" + ince başlık 64/200 ya da özet kalıbında 40/300).
+           Başlık öğesi AYNI <h1> (tek başlık). *@
         <div class="yz-sayfa-baslik" id="ust-bar-yz-baslik" data-boy="@Kuyumcu.Web.Layout.YildizKabuk.BaslikBoyu(MutlakYol)">
             <p class="yz-sayfa-baslik-ust" id="ust-bar-yz-ust">@yzUst</p>
             <h1>@(YildizSayfaBasligiSozlugu.Baslik(MutlakYol, Dil.Dil) ?? SayfaBasligi)</h1>
@@ -399,7 +399,7 @@
     /// </summary>
     private string MutlakYol => new Uri(Nav.Uri).AbsolutePath.TrimEnd('/') is { Length: > 0 } y ? y : "/";
     /// <summary>YILDIZ-KATMAN: Yıldız sayfa başlığının üst satırı; Yıldız değilse ya da rota listede yoksa null.</summary>
-    private string? YildizUst => Kuyumcu.Web.Layout.YildizKabuk.Mi(Hizmetler) ? YildizSayfaBasligiSozlugu.Ust(MutlakYol, Dil.Dil) : null;
+    private string? YildizUst => YildizSayfaBasligiSozlugu.Ust(MutlakYol, Dil.Dil);
 
     public static bool BelgeSayfasi(string mutlakYol)
     {

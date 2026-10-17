@@ -223,14 +223,6 @@ public sealed class KesifP1AyarlarTestleri : BunitContext
             Assert.DoesNotContain("<TemaSecici", File.ReadAllText(f), StringComparison.Ordinal);
     }
 
-    /// <summary>#44: kartta ad niteleyiciden ayrılır; ad parçası tek birimdir.</summary>
-    [Fact]
-    public void GorunumKarti_ad_parcalari()
-    {
-        Assert.Equal(["Fildişi", "(açık menü)"], GorunumKarti.AdParcalari("Fildişi (açık menü)"));
-        Assert.Equal(["Grafit"], GorunumKarti.AdParcalari("Grafit"));
-    }
-
     /// <summary>
     /// Tur 3 (orkestratör 18:10): Görünüm kartında seçili işaret TEK KALIP — her seçili kartta tam bir
     /// ✓ (.gk-isaret, svg), satırının SON öğesi (sağda ayrı öğe), satırı ya düğmenin kendisi ya da

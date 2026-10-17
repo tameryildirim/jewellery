@@ -25,7 +25,7 @@ public partial class Panel
     /// <summary>YuzeGoreYukle'den bir kez (yalnız Yıldız).</summary>
     private void YildizEkYukleBaslat()
     {
-        if (!YildizMi || yildizEkYuklendi) return;
+        if (yildizEkYuklendi) return;
         yildizEkYuklendi = true;
         Yuklemeler.AddRange([YildizGunSonuYukle(), YildizEmanetYukle()]);
     }
