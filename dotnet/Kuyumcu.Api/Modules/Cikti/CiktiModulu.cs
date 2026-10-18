@@ -718,7 +718,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.Irsaliye => "İRSALİYE",   // yön belgede ayrıntılanır (SEVK / MAL KABUL)
         BelgeTurleri.Fatura => "FATURA",       // D1-01; alış faturası belgede "ALIŞ FATURASI"
         BelgeTurleri.CariMutabakat => "CARİ HESAP MUTABAKAT FORMU",
-        BelgeTurleri.KvkkAydinlatma => "KİŞİSEL VERİLERİN KORUNMASI — AYDINLATMA METNİ",
+        BelgeTurleri.KvkkAydinlatma => "KVKK AYDINLATMA FORMU",   // tek satır (uzun ad kayıt koduna taşıyordu — ölçüldü)
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
