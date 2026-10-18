@@ -31,6 +31,9 @@
 @* PAKET YILDIZ-5A: Yıldız şemasında (BASİT + PRO) ekran = tuval Y_Etiketler (BİREBİR, YildizEtiketler). Özgün kök DOM'da
    kalır (basılan kâğıt .urun-etiket-sayfa buradadır); Yıldız'da ekranda yalnız "Tüm ayrıntılar"da görünür (data-yz-etiket;
    Yıldız dışında öznitelik YAZILMAZ). Öteki 8 şemada aşağıdaki özgün ekran AYNEN. *@
+@* D1-02: şablon çekmecesi kabuk dışında — Yıldız'da özgün kök gizliyken de açılır. *@
+<Kuyumcu.Web.Bilesenler.EtiketSablonuCekmecesi Acik="sablonCekmeceAcik" Sablon="sablon" Yazabilir="SablonYazabilir"
+    Kapandi="() => sablonCekmeceAcik = false" Kaydedildi="SablonKaydedildi" />
 <Kuyumcu.Web.Bilesenler.Yildiz.YildizEtiketler B="@YildizBaglami" />
 <div data-yz-etiket="@YildizEtiketIsaret" class="sayfa">
     <div class="sayfa-baslik yazdirma-gizle">
@@ -48,6 +51,15 @@
         {
             <span class="metin-kucuk metin-soluk" id="et-yazdir-kilit">@YazdirKilitSebebi</span>
         }
+    </div>
+
+    @* D1-02: etiket şablonu özeti · düzenle · Zebra (ZPL) — ikincil eylemler (tek birincil Yazdır kalır). *@
+    <div class="et-sablon-satiri yazdirma-gizle" id="et-sablon">
+        <span class="metin-kucuk" id="et-sablon-ozet">@($"{sablon.GenislikMm} × {sablon.YukseklikMm} mm · {SablonOzeti}")</span>
+        <button type="button" class="btn btn-ikincil btn-kucuk" id="et-sablon-duzenle" @onclick="() => sablonCekmeceAcik = true">@D1.SablonuDuzenle</button>
+        <button type="button" class="btn btn-ikincil btn-kucuk" id="et-zpl" disabled="@(!Yazdirilabilir)" @onclick="ZplIndir">@D1.ZplIndir</button>
+        <HataBandi Mesaj="@fiyatHata" Id="et-fiyat-hata" />
+        <HataBandi Mesaj="@sablonHata" Id="et-sablon-hata" />
     </div>
 
     <div class="kart yazdirma-gizle">
@@ -161,42 +173,62 @@
         {
             @for (var i = 0; i < kopya; i++)
             {
-                <div class="urun-etiket" @key="u.Id + '-' + i">
-                    <div class="urun-etiket-ad">@u.Ad</div>
-
-                    @* md.11/(e): ibare etikette AÇIKÇA yer alır — gizlenemez, küçültülmez. *@
-                    @if (Ibare(u).Length > 0)
+                <div class="@($"urun-etiket {EtiketBoyuSinifi}")" @key="u.Id + '-' + i">
+                    @* D1-02: alanlar işletmenin şablon sırasıyla (EtiketSablonu); ibare (md.11/e) şablondan çıkarılamaz. *@
+                    @foreach (var alan in sablon.Alanlar)
                     {
-                        <div class="urun-etiket-ibare">@TurkceMetin.Buyut(Ibare(u))</div>
+                        switch (alan)
+                        {
+                            case EtiketSablonu.Ad:
+                                <div class="urun-etiket-ad">@u.Ad</div>
+                                break;
+                            case EtiketSablonu.Ibare:
+                                @* md.11/(e): ibare etikette AÇIKÇA yer alır — gizlenemez, küçültülmez. *@
+                                @if (Ibare(u).Length > 0)
+                                {
+                                    <div class="urun-etiket-ibare">@TurkceMetin.Buyut(Ibare(u))</div>
+                                }
+                                @if (u.RodyumKaplama && etiketPolitikasi.RodyumIbaresiGoster)
+                                {
+                                    <div class="urun-etiket-ibare">@etiketPolitikasi.RodyumIbaresi</div>
+                                }
+                                break;
+                            case EtiketSablonu.Maden:
+                                @* PAKET 20 — maden + milyem ibaresi ("Platin 950"). *@
+                                <div class="urun-etiket-maden">@MadenIbaresi(u)</div>
+                                break;
+                            case EtiketSablonu.Satir:
+                                <div class="urun-etiket-satir">
+                                    <span>@KurKaynakAdi.AyarAdi(u.AyarId)</span>
+                                    <span>@Bicim.Gram(u.GramAgirlik)</span>
+                                    <span>@Bicim.Has(u.HasGrami)</span>
+                                </div>
+                                break;
+                            case EtiketSablonu.Barkod:
+                                @if (!string.IsNullOrEmpty(u.Barkod))
+                                {
+                                    <div class="urun-etiket-barkod">@((MarkupString)BarkodSvg(u.Barkod))</div>
+                                    <div class="urun-etiket-barkod-metin">@u.Barkod</div>
+                                }
+                                else
+                                {
+                                    <div class="urun-etiket-barkod-metin metin-soluk">@Dil.T.Etiket.BarkodYok</div>
+                                }
+                                break;
+                            case EtiketSablonu.Qr:
+                                <div class="urun-etiket-qr">@((MarkupString)QrSvg(u))</div>
+                                break;
+                            case EtiketSablonu.Kod:
+                                <div class="urun-etiket-kod">@u.Kod</div>
+                                break;
+                            case EtiketSablonu.Fiyat:
+                                @if (FiyatMetni(u) is { } fm)
+                                {
+                                    <div class="urun-etiket-fiyat">@fm</div>
+                                }
+                                break;
+                        }
                     }
-
-                    @* PAKET 20 — maden + milyem ibaresi ("Platin 950"). Ayar kodu
-                       (PT950) kuyumcunun kodudur; müşterinin okuduğu ibare budur. *@
-                    <div class="urun-etiket-maden">@MadenIbaresi(u)</div>
-                    @if (u.RodyumKaplama && etiketPolitikasi.RodyumIbaresiGoster)
-                    {
-                        @* İbarenin ZORUNLU olduğu doğrulanmadı — varsayılan KAPALI,
-                           yapılandırmadan açılır (ADR-0005). *@
-                        <div class="urun-etiket-ibare">@etiketPolitikasi.RodyumIbaresi</div>
-                    }
-
-                    <div class="urun-etiket-satir">
-                        <span>@KurKaynakAdi.AyarAdi(u.AyarId)</span>
-                        <span>@Bicim.Gram(u.GramAgirlik)</span>
-                        <span>@Bicim.Has(u.HasGrami)</span>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(u.Barkod))
-                    {
-                        <div class="urun-etiket-barkod">@((MarkupString)BarkodSvg(u.Barkod))</div>
-                        <div class="urun-etiket-barkod-metin">@u.Barkod</div>
-                    }
-                    else
-                    {
-                        <div class="urun-etiket-barkod-metin metin-soluk">@Dil.T.Etiket.BarkodYok</div>
-                    }
-
-                    <div class="urun-etiket-kod">@u.Kod</div>
                 </div>
             }
         }
@@ -242,6 +274,7 @@
             // boşaltılmaz, ibare varsayılan KAPALI kalır.
             var m = await Api.GetAsync<Kuyumcu.Core.Sozlesmeler.MadenTablosuYaniti>("/urunler/madenler");
             if (m.Etiket is not null) etiketPolitikasi = m.Etiket;
+            await SablonYukle();   // D1-02
         }
         catch (ApiHata ex) { hata = ex.Message; }
         // P-66 — taslak YALNIZ liste başarıyla geldiyse geri yüklenir: liste
@@ -359,6 +392,8 @@
                 catch { /* JS yoksa mesaj yine görünür */ }
             return;
         }
+        if (!await FiyatlariHazirla()) return;   // D1-02: fiyat alanı açıksa basım anı fiyatı; okunamazsa basılmaz
+        if (sablon.Alanlar.Contains(EtiketSablonu.Fiyat)) { StateHasChanged(); await Task.Yield(); }   // fiyat kâğıda çizilsin
         await JS.InvokeVoidAsync("window.print");
         // P-66 — yazdırma çağrısı hatasız döndü: kayıtlı taslak temizlenir.
         // Ekrandaki seçim KORUNUR (iptal edilen baskı hemen yinelenebilsin);

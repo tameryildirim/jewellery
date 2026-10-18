@@ -35,6 +35,13 @@ public sealed class YildizEtiketBaglami
     public bool AyrintiAcik { get; init; }
     public EventCallback AyrintiAc { get; init; }
     public EventCallback AyrintiKapat { get; init; }
+    /// <summary>D1-02 — şablon: boy ("50 × 30 mm"), alanlar özeti, fiyat alanı açık mı, eylemler.</summary>
+    public string? BoyMetni { get; init; }
+    public string? IcerikMetni { get; init; }
+    public bool FiyatVar { get; init; }
+    public string? FiyatHata { get; init; }
+    public EventCallback SablonAc { get; init; }
+    public EventCallback ZplIndir { get; init; }
 }
 
 /// <summary>

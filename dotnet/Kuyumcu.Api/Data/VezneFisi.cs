@@ -257,12 +257,14 @@ public static class KiraciAyarAnahtari
     public const string OnayZararina = "satis_onay_zararina";
     /// <summary>D1-05 — mesai başlangıcı "SS:dd"; ikisi de varsa mesai dışı satış patrona bildirilir.</summary>
     public const string MesaiBaslangic = "mesai_baslangic";
+    /// <summary>D1-02 — etiket şablonu ("50x30|AD,IBARE,…" — Kuyumcu.Core.Domain.EtiketSablonu). Yoksa varsayılan.</summary>
+    public const string EtiketSablonu = "etiket_sablonu";
     /// <summary>D1-05 — mesai bitişi "SS:dd".</summary>
     public const string MesaiBitis = "mesai_bitis";
 
     public static readonly string[] Tumu =
         [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi, SatisBelgeVarsayilan, KasaKorSayim,
-         OnayIskontoYuzde, OnayTutarTl, OnayZararina, MesaiBaslangic, MesaiBitis];
+         OnayIskontoYuzde, OnayTutarTl, OnayZararina, MesaiBaslangic, MesaiBitis, EtiketSablonu];
 }
 
 /// <summary>

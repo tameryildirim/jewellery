@@ -54,6 +54,13 @@ public partial class UrunEtiketleri
                 AyrintiAcik = yildizAyrinti,
                 AyrintiAc = EventCallback.Factory.Create(this, () => yildizAyrinti = true),
                 AyrintiKapat = EventCallback.Factory.Create(this, () => yildizAyrinti = false),
+                // D1-02 — şablon özeti ve eylemleri
+                BoyMetni = $"{sablon.GenislikMm} × {sablon.YukseklikMm} mm",
+                IcerikMetni = SablonOzeti,
+                FiyatVar = sablon.Alanlar.Contains(Kuyumcu.Core.Domain.EtiketSablonu.Fiyat),
+                FiyatHata = fiyatHata,
+                SablonAc = EventCallback.Factory.Create(this, () => sablonCekmeceAcik = true),
+                ZplIndir = EventCallback.Factory.Create(this, ZplIndir),
             };
         }
     }

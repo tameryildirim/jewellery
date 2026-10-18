@@ -1,0 +1,127 @@
+@using Kuyumcu.Core.Domain
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-02 (18.10) — etiket şablonu: hazır boy + alanlar (sürükle-bırak ya da ↑↓ ile sıra; kutuyla aç/kapa).
+   Taş kökeni ibaresi yasaldır (md.11/e) — kapatılamaz. PUT /urunler/etiket-sablonu (sahip/müdür; diğerleri görür).
+   Sürükleme ortak js/siralistesi.js (fare + dokunmatik; karar .NET'te).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<Cekmece Acik="Acik" Varlik="etiket-sablonu" Baslik="@M.EtiketSablonu" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetGoster="@Yazabilir" KaydetElemanId="es-kaydet">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="es-hata">@h</div>
+    }
+    <div class="form-dikey">
+        <Secici ElemanId="es-boy" Etiket="@M.EtiketBoyuEtiket" Secenekler="@BoySecenekleri" Deger="@boy" DegerChanged="@(v => boy = v ?? "50x30")" />
+        <ul class="es-alanlar" id="es-alanlar">
+            @for (var i = 0; i < alanlar.Count; i++)
+            {
+                var ix = i; var a = alanlar[i];
+                <li class="es-alan" id="@($"es-alan-{a.Kod}")" data-sira-anahtar="@a.Kod">
+                    <span class="es-tutamac" aria-hidden="true">⋮⋮</span>
+                    <Onay ElemanId="@($"es-acik-{a.Kod}")" Etiket="@AlanAdi(a.Kod, M)" Deger="@a.Acik" DegerChanged="@((bool v) => a.Acik = v)"
+                          Devredisi="@(a.Kod == EtiketSablonu.Ibare || !Yazabilir)" DevredisiSebebi="@(a.Kod == EtiketSablonu.Ibare ? M.IbareZorunlu : null)" />
+                    <span class="es-sira">
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"es-yukari-{a.Kod}")" disabled="@(ix == 0 || !Yazabilir)" aria-label="@M.Yukari" @onclick="() => Tasi(ix, -1)">↑</button>
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"es-asagi-{a.Kod}")" disabled="@(ix == alanlar.Count - 1 || !Yazabilir)" aria-label="@M.Asagi" @onclick="() => Tasi(ix, 1)">↓</button>
+                    </span>
+                </li>
+            }
+        </ul>
+        @if (alanlar.Any(a => a.Kod == EtiketSablonu.Fiyat && a.Acik))
+        {
+            <p class="metin-soluk metin-kucuk" id="es-fiyat-notu">@M.EtiketFiyatNotu</p>
+        }
+    </div>
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EtiketSablonu Sablon { get; set; } = EtiketSablonu.Varsayilan;
+    [Parameter] public bool Yazabilir { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+    [Parameter] public EventCallback<EtiketSablonu> Kaydedildi { get; set; }
+
+    private sealed class Satir(string kod, bool acik) { public string Kod { get; } = kod; public bool Acik { get; set; } = acik; }
+    private List<Satir> alanlar = [];
+    private string boy = "50x30";
+    private string? hata;
+    private bool kaydediliyor, acikti, suruklemeBagli;
+    private DotNetObjectReference<EtiketSablonuCekmecesi>? benlik;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<SecenekOgesi> BoySecenekleri => [.. EtiketSablonu.Boylar.Select(b => new SecenekOgesi($"{b.G}x{b.Y}", $"{b.G} × {b.Y} mm"))];
+
+    public static string AlanAdi(string kod, D1Metinleri m) => kod switch
+    {
+        EtiketSablonu.Ad => m.EtiketAlanAd, EtiketSablonu.Ibare => m.EtiketAlanIbare, EtiketSablonu.Maden => m.EtiketAlanMaden,
+        EtiketSablonu.Satir => m.EtiketAlanSatir, EtiketSablonu.Barkod => m.EtiketAlanBarkod, EtiketSablonu.Qr => m.EtiketAlanQr,
+        EtiketSablonu.Kod => m.EtiketAlanKod, EtiketSablonu.Fiyat => m.EtiketAlanFiyat, _ => kod,
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Acik && !acikti)
+        {
+            hata = null;
+            boy = $"{Sablon.GenislikMm}x{Sablon.YukseklikMm}";
+            alanlar = [.. Sablon.Alanlar.Select(a => new Satir(a, true)),
+                       .. EtiketSablonu.TumAlanlar.Where(a => !Sablon.Alanlar.Contains(a)).Select(a => new Satir(a, false))];
+            suruklemeBagli = false;
+        }
+        acikti = Acik;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (!Acik || suruklemeBagli || !Yazabilir) return;
+        suruklemeBagli = true;
+        benlik ??= DotNetObjectReference.Create(this);
+        try { await JS.InvokeVoidAsync("kuyumcuSira.baslat", "es-alanlar", benlik); }
+        catch (JSException) { /* sürükleme yoksa ↑↓ düğmeleri aynı işi görür */ }
+    }
+
+    [JSInvokable]
+    public Task Birak(string kaynak, string hedef) => InvokeAsync(() =>
+    {
+        var k = alanlar.FindIndex(a => a.Kod == kaynak);
+        var h = alanlar.FindIndex(a => a.Kod == hedef);
+        if (k < 0 || h < 0 || k == h) return;
+        var s = alanlar[k]; alanlar.RemoveAt(k); alanlar.Insert(h, s);
+        StateHasChanged();
+    });
+
+    private void Tasi(int i, int yon)
+    {
+        var j = i + yon;
+        if (j < 0 || j >= alanlar.Count) return;
+        (alanlar[i], alanlar[j]) = (alanlar[j], alanlar[i]);
+    }
+
+    private async Task Kaydet()
+    {
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var p = boy.Split('x');
+            var s = await Api.PutAsync<EtiketSablonu>("/urunler/etiket-sablonu", new
+            {
+                genislikMm = int.Parse(p[0]), yukseklikMm = int.Parse(p[1]),
+                alanlar = alanlar.Where(a => a.Acik || a.Kod == EtiketSablonu.Ibare).Select(a => a.Kod).ToList(),
+            });
+            await Kaydedildi.InvokeAsync(s);
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private Task Kapat() => Kapandi.InvokeAsync();
+
+    public void Dispose() => benlik?.Dispose();
+}

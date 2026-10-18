@@ -78,15 +78,24 @@
                 </div>
                 <div class="yz-k">
                     <p class="yz-k-etiket">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.EtiketBoyu(Dil.Dil), Dil.Dil)</p>
-                    <div class="yz-k-deger"><span id="yildiz-etiket-boy">@YildizEtiketSozlugu.Boy(Dil.Dil)</span></div>
+                    <div class="yz-k-deger"><span id="yildiz-etiket-boy">@(B.BoyMetni ?? YildizEtiketSozlugu.Boy(Dil.Dil))</span></div>
                 </div>
                 <div class="yz-k">
                     <p class="yz-k-etiket">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.NeYazsin(Dil.Dil), Dil.Dil)</p>
-                    <div class="yz-k-deger"><span id="yildiz-etiket-icerik">@YildizEtiketSozlugu.Icerik(Dil.Dil)</span></div>
+                    <div class="yz-k-deger"><span id="yildiz-etiket-icerik">@(B.IcerikMetni ?? YildizEtiketSozlugu.Icerik(Dil.Dil))</span></div>
                 </div>
                 <div class="yz-k">
                     <p class="yz-k-etiket">@YildizListeBicim.Buyuk(YildizEtiketSozlugu.FiyatYazilsin(Dil.Dil), Dil.Dil) <span class="yz-etiket-istege">@YildizEtiketSozlugu.IstegeBagli(Dil.Dil)</span></p>
-                    <div class="yz-k-deger"><span id="yildiz-etiket-fiyat">@YildizEtiketSozlugu.Hayir(Dil.Dil)</span><span class="yz-s yz-k-ek">@YildizEtiketSozlugu.KurEskir(Dil.Dil)</span></div>
+                    <div class="yz-k-deger"><span id="yildiz-etiket-fiyat">@(B.FiyatVar ? Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).Evet : YildizEtiketSozlugu.Hayir(Dil.Dil))</span><span class="yz-s yz-k-ek">@YildizEtiketSozlugu.KurEskir(Dil.Dil)</span></div>
+                    @if (B.FiyatHata is { } fh)
+                    {
+                        <p class="yz-kotu yz-k-ek" id="yildiz-etiket-fiyat-hata" role="alert">@fh</p>
+                    }
+                </div>
+                @* D1-02: şablonu düzenle · Zebra (ZPL) — ikincil eylemler (b2). *@
+                <div class="yz-etiket-sablon" id="yildiz-etiket-sablon">
+                    <button type="button" class="yz-b2" id="yildiz-etiket-sablon-duzenle" @onclick="B.SablonAc">@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).SablonuDuzenle</button>
+                    <button type="button" class="yz-b2" id="yildiz-etiket-zpl" disabled="@(B.YazdirKilit is not null)" @onclick="B.ZplIndir">@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).ZplIndir</button>
                 </div>
             </div>
 

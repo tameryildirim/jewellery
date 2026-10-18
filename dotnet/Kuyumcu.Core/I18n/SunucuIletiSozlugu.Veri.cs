@@ -867,6 +867,8 @@ public static partial class SunucuIletiSozlugu
         ("Kilit süresi 5 dakika ile 30 gün arasında olmalıdır", "Lock duration must be between 5 minutes and 30 days"),
         ("Not en çok 200 karakter olabilir", "Note can be at most 200 characters"),
         ("Kur seçilmedi", "No rate selected"),
+        ("Etiket boyu hazır boylardan biri olmalıdır", "Label size must be one of the preset sizes"),
+        ("Bilinmeyen etiket alanı", "Unknown label field"),
         ("Bu müşteriye veresiye yazılamaz (kara listede) — peşin ödeme alın", "Credit cannot be given to this customer (blacklisted) — take payment now"),
         ("Peşin Müşteri'ye altınla tahsilat yazılmaz — müşteri seçin", "Gold payment cannot be recorded for the walk-in customer — choose a customer"),
         ("Geçersiz ayar", "Invalid purity"),

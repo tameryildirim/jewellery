@@ -560,6 +560,20 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
 .urun-etiket-barkod svg { width: 100%; height: 8mm; }
 .urun-etiket-barkod-metin { font-family: ui-monospace, monospace; font-size: 6pt; text-align: center; letter-spacing: .08em; }
 .urun-etiket-kod { font-size: 6pt; text-align: right; color: #555; }
+/* D1-02: işletmenin şablon boyları (EtiketSablonu.Boylar) — hazır boylar; satır içi ölçü yok. */
+.urun-etiket--58x40 { width: 58mm; height: 40mm; }
+.urun-etiket--40x25 { width: 40mm; height: 25mm; }
+.urun-etiket--35x22 { width: 35mm; height: 22mm; }
+.urun-etiket-qr { line-height: 0; align-self: flex-end; }
+.urun-etiket-qr svg { width: 11mm; height: 11mm; }
+.urun-etiket--35x22 .urun-etiket-qr svg, .urun-etiket--40x25 .urun-etiket-qr svg { width: 9mm; height: 9mm; }
+.urun-etiket-fiyat { font-weight: 700; font-size: 8pt; }
+.et-sablon-satiri { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
+.es-alanlar { list-style: none; margin: 0; padding: 0; }
+.es-alan { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--kenarlik); touch-action: none; }
+.es-alan .alan { flex: 1 1 auto; margin: 0; }
+.es-tutamac { cursor: grab; opacity: .5; user-select: none; }
+.es-sira { display: flex; gap: 4px; }
 
 @media print {
     /* Uygulama kabuğu kâğıda çıkmaz: menü, üst bar, düğmeler. */
@@ -580,6 +594,9 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
     /* Etiket: kesim çizgisi kalmasın, etiket sayfa ortasından BÖLÜNMESİN. */
     .urun-etiket { border: none; page-break-inside: avoid; break-inside: avoid; }
     .urun-etiket-sayfa { gap: 0; grid-template-columns: repeat(4, 50mm); }
+    .urun-etiket-sayfa:has(.urun-etiket--58x40) { grid-template-columns: repeat(3, 58mm); }
+    .urun-etiket-sayfa:has(.urun-etiket--40x25) { grid-template-columns: repeat(4, 40mm); }
+    .urun-etiket-sayfa:has(.urun-etiket--35x22) { grid-template-columns: repeat(5, 35mm); }
     @page { size: A4; margin: 8mm; }
 }
 

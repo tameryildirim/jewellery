@@ -173,7 +173,24 @@ public sealed record D1Metinleri(
     string KaraListeSebepEtiket,
     string RiskYuksek,
     string RiskOrta,
-    string VeresiyeKapali);
+    string VeresiyeKapali,
+    string EtiketSablonu,
+    string EtiketBoyuEtiket,
+    string EtiketAlanAd,
+    string EtiketAlanIbare,
+    string EtiketAlanMaden,
+    string EtiketAlanSatir,
+    string EtiketAlanBarkod,
+    string EtiketAlanQr,
+    string EtiketAlanKod,
+    string EtiketAlanFiyat,
+    string IbareZorunlu,
+    string Yukari,
+    string Asagi,
+    string EtiketFiyatNotu,
+    string SablonuDuzenle,
+    string ZplIndir,
+    string Evet);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -343,7 +360,24 @@ public static class D1Sozlugu
         KaraListeSebepEtiket: "Sebep",
         RiskYuksek: "Riskli müşteri",
         RiskOrta: "Dikkat",
-        VeresiyeKapali: "veresiye kapalı");
+        VeresiyeKapali: "veresiye kapalı",
+        EtiketSablonu: "Etiket şablonu",
+        EtiketBoyuEtiket: "Etiket boyu",
+        EtiketAlanAd: "Ad",
+        EtiketAlanIbare: "Taş kökeni ibaresi",
+        EtiketAlanMaden: "Maden · milyem",
+        EtiketAlanSatir: "Ayar · gram · has",
+        EtiketAlanBarkod: "Barkod",
+        EtiketAlanQr: "QR kod",
+        EtiketAlanKod: "Ürün kodu",
+        EtiketAlanFiyat: "Fiyat (basım anı)",
+        IbareZorunlu: "Yasal ibare — kaldırılamaz",
+        Yukari: "Yukarı",
+        Asagi: "Aşağı",
+        EtiketFiyatNotu: "Fiyat basım anındaki kurla yazılır; kur değişince eskir.",
+        SablonuDuzenle: "Şablonu düzenle",
+        ZplIndir: "Zebra (ZPL) indir",
+        Evet: "Evet");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -510,7 +544,24 @@ public static class D1Sozlugu
         KaraListeSebepEtiket: "Reason",
         RiskYuksek: "High-risk customer",
         RiskOrta: "Watch",
-        VeresiyeKapali: "credit closed");
+        VeresiyeKapali: "credit closed",
+        EtiketSablonu: "Label template",
+        EtiketBoyuEtiket: "Label size",
+        EtiketAlanAd: "Name",
+        EtiketAlanIbare: "Stone origin statement",
+        EtiketAlanMaden: "Metal · fineness",
+        EtiketAlanSatir: "Purity · grams · fine",
+        EtiketAlanBarkod: "Barcode",
+        EtiketAlanQr: "QR code",
+        EtiketAlanKod: "Product code",
+        EtiketAlanFiyat: "Price (at print time)",
+        IbareZorunlu: "Legal statement — cannot be removed",
+        Yukari: "Up",
+        Asagi: "Down",
+        EtiketFiyatNotu: "Price is printed at the current rate; it goes stale when the rate changes.",
+        SablonuDuzenle: "Edit template",
+        ZplIndir: "Download Zebra (ZPL)",
+        Evet: "Yes");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;
