@@ -59,6 +59,24 @@ public sealed class FaturaAraToplamKurusTestleri(HttpFikstur f)
         Assert.Equal(fatura.Toplam, fatura.AraToplam + fatura.KdvTutar);
     }
 
+    /// <summary>18.10 — taslağın toplamı başlıktan güncellenince de ara + KDV == toplam (eski PATCH 833,33 + 166,67 = 1.000,00 yazıyordu).</summary>
+    [Fact]
+    public async Task Taslak_toplami_guncellenince_ARA_arti_KDV_TOPLAMA_esittir()
+    {
+        var k = YeniKiraci("ZO-BELGE kurus patch");
+        var s = f.Ortam.Istemci(k, "SAHIP");
+        var olustur = await s.PostAsJsonAsync("/api/v1/faturalar", new { cariId = k.CariId, tur = "SATIS", toplam = 500m, kdvOran = 0.20m, kdvTuru = "STANDART" });
+        Assert.Equal(HttpStatusCode.OK, olustur.StatusCode);
+        var id = (await olustur.Content.ReadFromJsonAsync<JsonElement>()).EnumerateObject().Single(p => p.Name.Equals("id", StringComparison.OrdinalIgnoreCase)).Value.GetString();
+        var r = await s.PatchAsJsonAsync($"/api/v1/faturalar/{id}", new { toplam = 999.99m });
+        Assert.True(r.IsSuccessStatusCode, await r.Content.ReadAsStringAsync());
+        using var db = f.Vt.OlusturSistem();
+        var fatura = db.Faturalar.Single(x => x.TenantId == k.TenantId);
+        Assert.Equal(833.32m, fatura.AraToplam);
+        Assert.Equal(166.67m, fatura.KdvTutar);
+        Assert.Equal(fatura.Toplam, fatura.AraToplam + fatura.KdvTutar);
+    }
+
     /// <summary>
     /// Aynı kapı KUYUM (ELLE has) yolunda: 10.999,99 − 10.000 has = 999,99 matrah
     /// (KDV dahil) → KDV 166,67; eski kalıp ara toplamı 10.833,33 yazıp toplamı

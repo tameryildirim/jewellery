@@ -1073,6 +1073,7 @@ public sealed partial class SatisServisi(
         var subeId = SubeBelirle(islem, "Alış için şube seçimi gerekli");
 
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
+        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 18.10: alış fişi/hurda satışı da bayat kurla yazmaz (P0-3 açığı)
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
 
         // Kalemler: ürün + tutar (kalem başına 2 haneye — tek kalemli uçla aynı yuvarlama).
@@ -1452,6 +1453,7 @@ public sealed partial class SatisServisi(
             throw new BadRequestException("Hurda satışında birim fiyat negatif olamaz.");
 
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
+        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 18.10: alış fişi/hurda satışı da bayat kurla yazmaz (P0-3 açığı)
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
 
         // ── K-13 KAPISI: fire / ramat farkı bu sürümde YAZILMAZ ─────────────

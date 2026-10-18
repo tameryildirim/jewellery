@@ -111,6 +111,19 @@ public sealed class L1bAlisFisiHttpTestleri(HttpFikstur f)
     // ═══ KABUL — bölme kapandı: Peşin + 2 kalem NAKİT, toplam had üstü ════════
 
     [Fact]
+    public async Task Bayat_kurla_alis_fisi_yazilmaz_P0_3_acigi()
+    {
+        Kiraci k;
+        using (var db = f.Vt.OlusturSistem()) k = TestKurulum.KiraciKur(db, "L1b-bayat");
+        using (var db = f.Vt.OlusturSistem())
+            await db.KurSnapshots.Where(x => x.Id == k.KurId).ExecuteUpdateAsync(x => x.SetProperty(y => y.Olusturuldu, DateTime.UtcNow.AddDays(-1)));
+        var r = await FisGonder(k, Fis(k, k.CariId, "NAKIT", [(k.UrunId, 100m)]));
+        Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
+        Assert.Contains("önceki güne", JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement.GetProperty("message").GetString());
+        Assert.Empty(Alislar(k));
+    }
+
+    [Fact]
     public async Task L1bH_01_Pesin_iki_kalem_NAKIT_toplam_had_ustu_400_tevsik_cariId_SQL_0_hareket_stok_kasa_degismez()
     {
         var k = YeniKiraci("pesin-nakit");

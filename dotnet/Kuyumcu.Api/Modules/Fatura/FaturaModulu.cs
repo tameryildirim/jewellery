@@ -1422,7 +1422,7 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             var kdvTutar = yeniToplam - yeniToplam / (1m + fatura.KdvOran);
             fatura.Toplam = OzelMatrahMotoru.Yuvarla2(yeniToplam);
             fatura.KdvTutar = OzelMatrahMotoru.Yuvarla2(kdvTutar);
-            fatura.AraToplam = OzelMatrahMotoru.Yuvarla2(yeniToplam - kdvTutar);
+            fatura.AraToplam = fatura.Toplam - fatura.KdvTutar;   // 18.10 ZO-BELGE devri: oluşturmayla aynı kalıp (ara + kdv == toplam)
         }
 
         fatura.Guncellendi = DateTime.UtcNow;

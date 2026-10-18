@@ -128,7 +128,11 @@ public sealed class IsCalistirici(
             ? i.CalismaAnahtari(yerelGun)
             : IsAnahtarlari.Elle(anUtc);
 
-        // (a) HAK TALEBİ — kazananı veritabanı seçer.
+        // (a) HAK TALEBİ — kazananı veritabanı seçer. 18.10: önce okunur — zamanlayıcı her turda aynı günün
+        // anahtarını yeniden denediği için EF her denemede "Duplicate entry" hatasını günlüğe basıyordu
+        // (günde binlerce satır gürültü). Benzersiz anahtar yarış koruması olarak aynen kalır.
+        if (await db.IsCalismalari.AsNoTracking().AnyAsync(c => c.TenantId == tenantId && c.IsKodu == i.Kod && c.CalismaAnahtari == anahtar, iptal))
+            return new IsKosumSonucu(i.Kod, anahtar, IsDurum.Basarili, true, 0, 0, 0, 0, null, null);
         var calisma = new IsCalismasi
         {
             Id = Kimlik.Ulid(),
