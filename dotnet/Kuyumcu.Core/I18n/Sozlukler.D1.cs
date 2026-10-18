@@ -455,7 +455,7 @@ public static class D1Sozlugu
         ToplamAlisveris: "Toplam alışveriş",
         GunOnce: "{0} gün önce",
         BolumOkunamadi: "Bu bölüm şu an okunamadı; sayfayı yenileyin.",
-        Uykuda: "Uykuda");
+        Uykuda: "UYKUDA");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -678,7 +678,7 @@ public static class D1Sozlugu
         ToplamAlisveris: "Total purchases",
         GunOnce: "{0} days ago",
         BolumOkunamadi: "This section could not be read; refresh the page.",
-        Uykuda: "Dormant");
+        Uykuda: "DORMANT");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;
