@@ -55,7 +55,7 @@
         get
         {
             if (Cari is null || gram is not > 0m || Ayarlar.Bul(ayarId) is not { } a) return null;
-            var has = gram.Value * a.Milyem;
+            var has = HasHesap.ToHasGram(gram.Value, a);   // sunucuyla AYNI fonksiyon (milyem binde)
             var borc = Math.Max(0m, Cari.HasGramBakiye);
             var kapanan = Math.Min(has, borc);
             var fazla = has - kapanan;
