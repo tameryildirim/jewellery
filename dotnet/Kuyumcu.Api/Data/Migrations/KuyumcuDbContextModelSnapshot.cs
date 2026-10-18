@@ -6266,6 +6266,11 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(30)")
                         .HasColumnName("tas_kokeni");
 
+                    b.Property<string>("TedarikciBarkodu")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("tedarikci_barkodu");
+
                     b.Property<string>("TedarikciId")
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")
@@ -6302,6 +6307,8 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.HasIndex("TenantId", "Konsinye");
 
                     b.HasIndex("TenantId", "ReyonId");
+
+                    b.HasIndex("TenantId", "TedarikciBarkodu");
 
                     b.ToTable("urunler");
                 });
@@ -6419,6 +6426,91 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.HasIndex("TenantId", "Aktif", "Sira");
 
                     b.ToTable("urun_kurallari");
+                });
+
+            modelBuilder.Entity("Kuyumcu.Api.Data.UrunSeti", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Ad")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("ad");
+
+                    b.Property<bool>("Aktif")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("aktif");
+
+                    b.Property<string>("Barkod")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("barkod");
+
+                    b.Property<DateTime>("Guncellendi")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("guncellendi");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Barkod")
+                        .IsUnique();
+
+                    b.ToTable("urun_setleri");
+                });
+
+            modelBuilder.Entity("Kuyumcu.Api.Data.UrunSetiKalemi", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Adet")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("adet");
+
+                    b.Property<string>("SetId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("set_id");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int")
+                        .HasColumnName("sira");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("UrunId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("urun_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "SetId");
+
+                    b.ToTable("urun_seti_kalemleri");
                 });
 
             modelBuilder.Entity("Kuyumcu.Api.Data.VezneFisKalemi", b =>

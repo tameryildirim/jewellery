@@ -1004,7 +1004,7 @@
         }
         catch (ApiHata ex)
         {
-            giris.BarkodHata = ex.StatusCode != 404 ? ex.Message : adla.Sayi > 1 ? string.Format(ST.AdlaCokEslesme, adla.Sayi) : Dil.T.Urun.BarkodBulunamadi;
+            if (ex.StatusCode == 404 && await SetOkut(kod)) return; giris.BarkodHata = ex.StatusCode != 404 ? ex.Message : adla.Sayi > 1 ? string.Format(ST.AdlaCokEslesme, adla.Sayi) : Dil.T.Urun.BarkodBulunamadi;
         }
     }
 

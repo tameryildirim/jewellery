@@ -167,6 +167,8 @@ public static class AlanSinirlari
     public const int IscilikBelgeNo = 50;
     /// <summary>D1-19 — KVKK aydınlatma metni (sunucu KvkkMetni.EnFazlaKarakter ile AYNI).</summary>
     public const int KvkkMetni = 20_000;
+    /// <summary>D1-16 — ürün seti adı (sunucu UrunSetiDto/urun_setleri.ad ile AYNI).</summary>
+    public const int UrunSetiAdi = 200;
     /// <summary>M7: demo bankası havale açıklaması (sahte_banka_hareketleri.aciklama).</summary>
     public const int SahteHavaleAciklama = 200;
     /// <summary>Ürün açıklaması (urunler.aciklama varchar(1000)).</summary>

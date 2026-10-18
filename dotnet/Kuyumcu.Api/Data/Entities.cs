@@ -711,6 +711,11 @@ public class Urun : IKiraciVarlik
 
     [Column("kmts_kodu"), MaxLength(100)] public string? KmtsKodu { get; set; }
     [Column("barkod"), MaxLength(50)] public string? Barkod { get; set; }
+    /// <summary>
+    /// D1-16 (18.10, rakip eşitleme: "toptancı barkodunu koruma") — ürünün üstünde toptancıdan gelen barkod.
+    /// Tezgâh ve sayım okutmasında <see cref="Barkod"/> ile birlikte aranır; ikisi de kiracıda tekildir.
+    /// </summary>
+    [Column("tedarikci_barkodu"), MaxLength(50)] public string? TedarikciBarkodu { get; set; }
     [Column("rfid"), MaxLength(100)] public string? Rfid { get; set; }
     [Column("gorsel_url"), MaxLength(500)] public string? GorselUrl { get; set; }
     [Column("aktif")] public bool Aktif { get; set; } = true;

@@ -132,6 +132,12 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@ek
                 </button>
             }
+            @if (B.Ek2Etiket is { Length: > 0 } ek2)
+            {
+                <button type="button" class="yz-ekle" id="@B.Ek2Id" @onclick="B.Ek2Tikla">
+                    <svg width="16" height="16" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>@ek2
+                </button>
+            }
             @if (B.AyrintiAc.HasDelegate)
             {
                 <button type="button" class="yz-ekle" id="@($"{B.Kok}-ayrinti")" @onclick="B.AyrintiAc">

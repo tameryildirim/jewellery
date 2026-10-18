@@ -51,6 +51,7 @@ public static class ModulKayit
         s.AddScoped<Satis.BekleyenFisServisi>();     // D1-03 işlem bekletme
         s.AddScoped<Cari.KvkkServisi>();             // D1-19 KVKK aydınlatma / rıza
         s.AddScoped<Cari.HesapDonusturServisi>();    // D1-09 hesap dönüştürme
+        s.AddScoped<Urun.UrunSetiServisi>();         // D1-16 ürün setleri
         s.AddScoped<Fatura.FaturaServisi>();
         s.AddScoped<Rapor.RaporServisi>();
         // ── Paket 34 Faz A — rapor seti (salt okur; deftere YAZMAZ) ─────────

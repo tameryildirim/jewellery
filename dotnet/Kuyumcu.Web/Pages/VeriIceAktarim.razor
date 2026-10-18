@@ -152,6 +152,12 @@
             @* GOC-47B — SÜTUN EŞLEŞTİRME: kullanıcı kendi başlıklarını bizim alanlara eşler
                (otomatik tahmin yok). Hepsi adıyla eşleştiyse KAPALI gelir (zorunlu önce);
                eksik zorunlu varsa AÇIK gelir ve kilit sebebi düğmenin yanında yazar (UX-S30). *@
+            @if (dosyaBasliklari.Count > 0 && sablon is not null && TaninanKolonlar.Count > 0)
+            {
+                @* D1-16: başlık adlarından önerilenler katlanırın DIŞINDA açıkça yazılır (eşleme tamsa katlanır kapalı gelir) —
+                   kullanıcı görür, "Sütun eşleştirme"yi açıp değiştirebilir. *@
+                <p class="metin-kucuk" id="ia-taninan">@string.Format(D1Sozlugu.Al(Dil.Dil).KolonTanindi, string.Join(" · ", TaninanKolonlar))</p>
+            }
             @if (dosyaBasliklari.Count > 0 && sablon is not null)
             {
                 <Katlanir @key="@($"{dosyaAdi}|{kaynak}")" Id="ia-eslestirme" Sinif="zo-ice-ayar"
@@ -752,11 +758,21 @@
     private IReadOnlyList<SecenekOgesi> EslestirmeSecenekleri =>
         [new SecenekOgesi("", G.EslestirmeYok), .. dosyaBasliklari.Select(b => new SecenekOgesi(b, b))];
 
-    /// <summary>Seçim yoksa aynı adlı başlık varsayılır (tahmin değil, birebir ad eşleşmesi).</summary>
+    /// <summary>
+    /// Seçim yoksa önce birebir ad, sonra D1-16 yerel ÖNERİ (KolonTanima — sabit eş anlamlı listesi, dış servis yok).
+    /// Öneri yalnız seçili gelir; kullanıcı görür ve değiştirir ("Başlıklarından tanındı" satırı hangilerinin önerildiğini söyler).
+    /// </summary>
     private string EslesenBaslik(string kolon) =>
-        esleme.TryGetValue(kolon, out var s)
-            ? s
-            : dosyaBasliklari.FirstOrDefault(b => b.Equals(kolon, StringComparison.OrdinalIgnoreCase)) ?? "";
+        esleme.TryGetValue(kolon, out var s) ? s : Oneriler.GetValueOrDefault(kolon) ?? "";
+
+    /// <summary>D1-16 — dosya başlıklarından öneriler (zorunlu kolonlar önce; bir başlık tek kolona).</summary>
+    private Dictionary<string, string> Oneriler =>
+        Kuyumcu.Core.Domain.Girdi.KolonTanima.OnerHepsi(KaynakKolonlari.Select(k => (k.Ad, k.Zorunlu)), dosyaBasliklari);
+
+    /// <summary>Kullanıcının seçmediği ve adı FARKLI olduğu hâlde önerilen kolonlar (ekranda adıyla söylenir).</summary>
+    private IReadOnlyList<string> TaninanKolonlar =>
+        [.. Oneriler.Where(o => !esleme.ContainsKey(o.Key) && !o.Value.Equals(o.Key, StringComparison.OrdinalIgnoreCase))
+            .Select(o => $"{G.KolonEtiketi(o.Key)} ← {o.Value}")];
 
     private int EksikZorunluEslesme =>
         dosyaBasliklari.Count == 0 ? 0 : KaynakKolonlari.Count(k => k.Zorunlu && EslesenBaslik(k.Ad) == "");

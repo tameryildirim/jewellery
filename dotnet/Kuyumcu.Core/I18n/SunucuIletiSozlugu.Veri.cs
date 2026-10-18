@@ -1428,5 +1428,15 @@ public static partial class SunucuIletiSozlugu
         ("Peşin Müşteri'nin hesabı dönüştürülmez", "The Walk-in Customer's account cannot be converted"),
         ("Kaynak hesapta bakiye yok", "The source account has no balance"),
         ("Çevrilecek miktar bakiyeden büyük olamaz", "The amount to convert cannot exceed the balance"),
+        ("'{}' barkodlu set bulunamadı", "No set with barcode '{}' was found"),
+        ("Adet 0,001 ile 100000 arasında olmalıdır", "Quantity must be between 0.001 and 100000"),
+        ("Aynı ürün sette iki kez olamaz", "The same product cannot be in a set twice"),
+        ("Set adı en çok 200 karakter olabilir", "Set name can be at most 200 characters"),
+        ("Set adı zorunludur", "Set name is required"),
+        ("Set barkodu zorunludur", "Set barcode is required"),
+        ("Set bulunamadı", "Set not found"),
+        ("Sette en az iki parça olmalıdır", "A set must have at least two items"),
+        ("Sette en çok 20 parça olabilir", "A set can have at most 20 items"),
+        ("Setteki bir ürün bulunamadı ya da pasif", "A product in the set was not found or is inactive"),
     ];
 }

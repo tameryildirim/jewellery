@@ -166,6 +166,8 @@ public sealed class UrunOlusturDto
     // PAKET GOC-C: barkod 60/50 açığı — ekran BarkodAlani ile AYNI Core kuralı (K18: ASCII 32–126, 1–50).
     // Uzunluk da BarkodKurali'nda (1–50, AlanSinirlari.Barkod) — ayrı MaxLength ikinci (farklı) ileti üretiyordu.
     [Barkod] public string? Barkod { get; set; }
+    /// <summary>D1-16 — toptancının barkodu (isteğe bağlı; okutmada kendi barkodumuzla birlikte aranır).</summary>
+    [Barkod] public string? TedarikciBarkodu { get; set; }
     [MaxLength(100)] public string? Rfid { get; set; }
     [MaxLength(500)] public string? GorselUrl { get; set; }
 
@@ -407,6 +409,11 @@ public sealed class UrunGuncelleDto
     [Barkod]   // PAKET GOC-C: K18 (uzunluk dahil) — POST ile aynı tek ileti
     public string? Barkod { get => _barkod; set { _barkod = value; BarkodVerildi = true; } }
     [JsonIgnore] public bool BarkodVerildi { get; private set; }
+    private string? _tedarikciBarkodu;
+    /// <summary>D1-16 — toptancı barkodu; gövdede yok → koru · null/"" → sil · değer → tekillik denetimiyle yaz.</summary>
+    [Barkod]
+    public string? TedarikciBarkodu { get => _tedarikciBarkodu; set { _tedarikciBarkodu = value; TedarikciBarkoduVerildi = true; } }
+    [JsonIgnore] public bool TedarikciBarkoduVerildi { get; private set; }
     private string? _rfid;
     [MaxLength(100)]
     public string? Rfid { get => _rfid; set { _rfid = value; RfidVerildi = true; } }
@@ -661,10 +668,16 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
         var id            = Kimlik.Ulid();
 
         // Elle girilen barkod başka bir ürüne aitse okuyucu yanlış ürünü getirir.
+        // D1-16: iki alan (kendi barkodumuz · toptancı barkodu) TEK ad alanıdır — biri ötekiyle de çakışamaz.
+        var tedarikciBarkodu = string.IsNullOrWhiteSpace(dto.TedarikciBarkodu) ? null : dto.TedarikciBarkodu.Trim();
+        if (tedarikciBarkodu is not null)
+        {
+            if (tedarikciBarkodu == dto.Barkod?.Trim() || await BarkodKullanimda(tedarikciBarkodu, islem.TenantId, null))
+                throw new AlanCakismasiException("tedarikciBarkodu", $"'{tedarikciBarkodu}' barkodu zaten kullanımda");
+        }
         if (!string.IsNullOrWhiteSpace(dto.Barkod))
         {
-            var barkodCakisan = await db.Urunler.AnyAsync(u =>
-                u.TenantId == islem.TenantId && u.Barkod == dto.Barkod.Trim());
+            var barkodCakisan = await BarkodKullanimda(dto.Barkod.Trim(), islem.TenantId, null);
             if (barkodCakisan)
                 // P-05 (Y-2): aynı cümle, artık ALAN ALTI — hangi alanı düzelteceği belli.
                 throw new AlanCakismasiException("barkod", $"'{dto.Barkod.Trim()}' barkodu zaten kullanımda");
@@ -698,6 +711,7 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
             Id          = id,
             TenantId    = islem.TenantId,
             Tip         = dto.Tip,
+            TedarikciBarkodu = tedarikciBarkodu,   // D1-16
             Kod         = dto.Kod,
             Ad          = dto.Ad,
             Aciklama    = GorselKapisi.Bosla(dto.Aciklama),
@@ -1120,10 +1134,16 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
         if (dto.BarkodVerildi && dto.Barkod != mevcut.Barkod)
         {
             var yeni = (dto.Barkod ?? "").Trim();
-            if (yeni.Length > 0 && await db.Urunler.AnyAsync(u =>
-                    u.TenantId == islem.TenantId && u.Barkod == yeni && u.Id != id))
+            if (yeni.Length > 0 && (yeni == mevcut.TedarikciBarkodu || await BarkodKullanimda(yeni, islem.TenantId, id)))
                 throw new AlanCakismasiException("barkod", $"'{yeni}' barkodu zaten kullanımda");
             mevcut.Barkod = yeni.Length == 0 ? null : yeni;
+        }
+        if (dto.TedarikciBarkoduVerildi && dto.TedarikciBarkodu != mevcut.TedarikciBarkodu)
+        {
+            var yeni = (dto.TedarikciBarkodu ?? "").Trim();
+            if (yeni.Length > 0 && (yeni == mevcut.Barkod || await BarkodKullanimda(yeni, islem.TenantId, id)))
+                throw new AlanCakismasiException("tedarikciBarkodu", $"'{yeni}' barkodu zaten kullanımda");
+            mevcut.TedarikciBarkodu = yeni.Length == 0 ? null : yeni;
         }
         if (dto.RfidVerildi)      mevcut.Rfid = GorselKapisi.Bosla(dto.Rfid);
         if (dto.GorselUrlVerildi) mevcut.GorselUrl = GorselKapisi.Dogrula(dto.GorselUrl);
@@ -1455,14 +1475,21 @@ public sealed class UrunServisi(KuyumcuDbContext db, DenetimServisi? denetim = n
 
     public async Task<object> BarkodBul(string barkod, AktifKullanici islem)
     {
+        // D1-16: kendi barkodumuz ÖNCE, sonra toptancı barkodu (ikisi kiracıda tekil — çakışma yok).
         var urun = await db.Urunler.AsNoTracking()
-            .FirstOrDefaultAsync(u =>
-                u.TenantId == islem.TenantId && u.Barkod == barkod && u.Aktif)
+            .Where(u => u.TenantId == islem.TenantId && u.Aktif && (u.Barkod == barkod || u.TedarikciBarkodu == barkod))
+            .OrderBy(u => u.Barkod == barkod ? 0 : 1)
+            .FirstOrDefaultAsync()
             ?? throw new NotFoundException($"'{barkod}' barkodlu ürün bulunamadı");
         return urun;
     }
 
     // ─── Dahili yardımcı ──────────────────────────────────────────────────────
+
+    /// <summary>D1-16 — barkod (kendi ya da toptancı) başka bir üründe kullanımda mı?</summary>
+    private async Task<bool> BarkodKullanimda(string barkod, string tenantId, string? haricId) =>
+        await db.Urunler.AnyAsync(u => u.TenantId == tenantId && u.Id != haricId && (u.Barkod == barkod || u.TedarikciBarkodu == barkod))
+        || await db.UrunSetleri.AnyAsync(s => s.TenantId == tenantId && s.Barkod == barkod);   // set barkodu da aynı okutma ad alanında
 
     internal async Task<Data.Urun> TenantUrunuBul(string id, string tenantId) =>
         await db.Urunler.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId)

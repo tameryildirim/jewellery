@@ -1,0 +1,133 @@
+@using Kuyumcu.Contracts.Sayfalar.Urunler
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-16 (18.10, rakip eşitleme: "set") — ürün setleri: tek barkodla birden çok ürün (takım).
+   Liste → "+ Yeni set" ya da "Düzenle" → ad, barkod, satışta mı, parçalar (ürün + adet; en az 2).
+   Tezgâhta set barkodu okutulunca parçalar kendi fiyatlarıyla fişe eklenir (Islemler.Set.cs).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<Cekmece Acik="Acik" Varlik="urun-seti" Baslik="@M.Setler" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetGoster="@(form is not null)" KaydetElemanId="us-kaydet">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="us-hata">@h</div>
+    }
+    @if (bilgi is { } b)
+    {
+        <div class="bant bant-basari" role="status" id="us-bilgi">@b</div>
+    }
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (form is null)
+    {
+        @if (setler.Count == 0)
+        {
+            <p class="metin-soluk" id="us-bos">@M.SetYok</p>
+        }
+        <ul class="dosya-listesi" id="us-liste">
+            @foreach (var s in setler)
+            {
+                <li class="dosya-satiri" id="@($"us-set-{s.Id}")">
+                    <span class="dosya-ad">@s.Ad</span>
+                    <span class="dosya-tur">@s.Barkod · @string.Format(M.SetParcaSay, s.Kalemler.Count)@(s.Aktif ? "" : $" · {Dil.T.Ortak.Pasif}")</span>
+                    <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"us-duzenle-{s.Id}")" @onclick="() => FormAc(s)">@Dil.T.Ortak.Duzenle</button>
+                </li>
+            }
+        </ul>
+        <button type="button" class="yz-ekle" id="us-yeni" @onclick="() => FormAc(null)">@M.YeniSet</button>
+    }
+    else
+    {
+        <div class="form-dikey">
+            <Metin ElemanId="us-ad" Etiket="@M.SetAdi" Zorunlu="true" EnFazla="@AlanSinirlari.UrunSetiAdi" Deger="@form.Ad" DegerChanged="@(v => form.Ad = v ?? "")" />
+            <BarkodAlani ElemanId="us-barkod" Etiket="@M.SetBarkodu" Zorunlu="true" Deger="@form.Barkod" DegerChanged="@(v => form.Barkod = v ?? "")" />
+            <Onay ElemanId="us-aktif" Etiket="@M.SetAktif" @bind-Deger="form.Aktif" />
+            @for (var i = 0; i < form.Parcalar.Count; i++)
+            {
+                var ix = i;
+                <div class="form-grid-2" id="@($"us-parca-{ix}")">
+                    <Secici ElemanId="@($"us-parca-urun-{ix}")" Etiket="@M.SetParca" Secenekler="@UrunSecenekleri"
+                            Deger="@form.Parcalar[ix].UrunId" DegerChanged="@(v => form.Parcalar[ix].UrunId = v ?? "")" />
+                    <Sayi ElemanId="@($"us-parca-adet-{ix}")" Etiket="@M.SetAdet" EnAz="0" EnCok="100000" EnCokOndalik="3"
+                          Deger="@form.Parcalar[ix].Adet" DegerChanged="@(v => form.Parcalar[ix].Adet = v ?? 0m)" />
+                </div>
+            }
+            @if (form.Parcalar.Count < 20)
+            {
+                <button type="button" class="yz-ekle" id="us-parca-ekle" @onclick="() => form.Parcalar.Add(new())">@M.SetParcaEkle</button>
+            }
+        </div>
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapat { get; set; }
+    /// <summary>Parçalar için seçilebilecek ürünler (sayfanın aktif ürün listesi).</summary>
+    [Parameter] public IReadOnlyList<SecenekOgesi> UrunSecenekleri { get; set; } = [];
+
+    private sealed class Parca { public string UrunId { get; set; } = ""; public decimal? Adet { get; set; } = 1m; }
+    private sealed class Form
+    {
+        public string? Id { get; set; }
+        public string Ad { get; set; } = "";
+        public string Barkod { get; set; } = "";
+        public bool Aktif { get; set; } = true;
+        public List<Parca> Parcalar { get; set; } = [new(), new()];
+    }
+
+    private List<UrunSetiVeri> setler = [];
+    private Form? form;
+    private bool yukleniyor, kaydediliyor, acikti;
+    private string? hata, bilgi;
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !acikti) { acikti = true; form = null; hata = bilgi = null; await Yukle(); }
+        else if (!Acik) acikti = false;
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try { setler = await Api.GetAsync<List<UrunSetiVeri>>("/urun-setleri") ?? []; }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        finally { yukleniyor = false; }
+    }
+
+    private void FormAc(UrunSetiVeri? s)
+    {
+        hata = bilgi = null;
+        form = s is null ? new Form() : new Form
+        {
+            Id = s.Id, Ad = s.Ad, Barkod = s.Barkod, Aktif = s.Aktif,
+            Parcalar = [.. s.Kalemler.Select(k => new Parca { UrunId = k.UrunId, Adet = k.Adet })],
+        };
+    }
+
+    private async Task Kaydet()
+    {
+        if (form is null) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var govde = new
+            {
+                ad = form.Ad, barkod = form.Barkod, aktif = form.Aktif,
+                kalemler = form.Parcalar.Where(p => p.UrunId.Length > 0).Select(p => new { urunId = p.UrunId, adet = p.Adet ?? 0m }).ToList(),
+            };
+            if (form.Id is null) await Api.PostAsync<UrunSetiVeri>("/urun-setleri", govde);
+            else await Api.PutAsync<UrunSetiVeri>($"/urun-setleri/{Uri.EscapeDataString(form.Id)}", govde);
+            form = null; bilgi = M.SetKaydedildi;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

@@ -85,7 +85,21 @@ public sealed record D1Metinleri(
     string HdFazla,
     string HdKarsilikGir,
     string HdKurYok,
-    string HdKaydedildi);
+    string HdKaydedildi,
+    string KolonTanindi,
+    string TedarikciBarkodu,
+    string SetFiyatYok,
+    string Setler,
+    string YeniSet,
+    string SetAdi,
+    string SetBarkodu,
+    string SetParca,
+    string SetParcaEkle,
+    string SetAdet,
+    string SetAktif,
+    string SetKaydedildi,
+    string SetYok,
+    string SetParcaSay);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -167,7 +181,21 @@ public static class D1Sozlugu
         HdFazla: "Miktar bakiyeden büyük olamaz",
         HdKarsilikGir: "Karşılığını yazın",
         HdKurYok: "Güncel kur okunamadı",
-        HdKaydedildi: "Hesap dönüştürüldü");
+        HdKaydedildi: "Hesap dönüştürüldü",
+        KolonTanindi: "Başlıklarından tanındı, kontrol edin: {0}",
+        TedarikciBarkodu: "Toptancı barkodu",
+        SetFiyatYok: "Setteki \"{0}\" parçasının fiyatı hesaplanamadı: {1}",
+        Setler: "Setler",
+        YeniSet: "+ Yeni set",
+        SetAdi: "Set adı",
+        SetBarkodu: "Set barkodu",
+        SetParca: "Parça",
+        SetParcaEkle: "+ Parça ekle",
+        SetAdet: "Adet",
+        SetAktif: "Satışta",
+        SetKaydedildi: "Set kaydedildi",
+        SetYok: "Henüz set tanımlanmadı",
+        SetParcaSay: "{0} parça");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -246,7 +274,21 @@ public static class D1Sozlugu
         HdFazla: "The amount cannot exceed the balance",
         HdKarsilikGir: "Enter the equivalent",
         HdKurYok: "Current rate could not be read",
-        HdKaydedildi: "Balance converted");
+        HdKaydedildi: "Balance converted",
+        KolonTanindi: "Recognised from the headers, please check: {0}",
+        TedarikciBarkodu: "Supplier barcode",
+        SetFiyatYok: "Price could not be calculated for set item \"{0}\": {1}",
+        Setler: "Sets",
+        YeniSet: "+ New set",
+        SetAdi: "Set name",
+        SetBarkodu: "Set barcode",
+        SetParca: "Item",
+        SetParcaEkle: "+ Add item",
+        SetAdet: "Quantity",
+        SetAktif: "On sale",
+        SetKaydedildi: "Set saved",
+        SetYok: "No sets defined yet",
+        SetParcaSay: "{0} items");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

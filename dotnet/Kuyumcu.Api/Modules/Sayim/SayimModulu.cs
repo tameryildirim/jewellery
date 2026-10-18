@@ -129,7 +129,7 @@ public sealed class SayimServisi(KuyumcuDbContext db, Urun.UrunServisi urun)
         if (!string.IsNullOrEmpty(dto.UrunId)) urunId = dto.UrunId;
         else if (!string.IsNullOrEmpty(dto.Barkod))
             urunId = await db.Urunler.AsNoTracking()
-                .Where(u => u.TenantId == islem.TenantId && u.Barkod == dto.Barkod).Select(u => u.Id).FirstOrDefaultAsync()
+                .Where(u => u.TenantId == islem.TenantId && (u.Barkod == dto.Barkod || u.TedarikciBarkodu == dto.Barkod)).Select(u => u.Id).FirstOrDefaultAsync()
                 ?? throw new NotFoundException($"Barkod bulunamadı: {dto.Barkod}");
         else throw new BadRequestException("Ürün ya da barkod verilmelidir");
 

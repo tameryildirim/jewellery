@@ -28,8 +28,16 @@ public sealed class D1BekleyenEkranTestleri : BunitContext
             if (yol.Contains("/bekleyen-fisler") && yol.EndsWith("/sil"))
                 return new HttpResponseMessage(System.Net.HttpStatusCode.NoContent);
             if (yol.EndsWith("/al") && istek.Method == HttpMethod.Post) t.bekleyenVar = false;
+            // D1-16: set okutması — ürün barkodu yok (404), set barkodu iki parça döner.
+            if (yol.Contains("/urunler/barkod/SET-1"))
+                return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound)
+                { Content = new StringContent("""{"message":"bulunamadı"}""", System.Text.Encoding.UTF8, "application/json") };
             var y = yol switch
             {
+                var v when v.Contains("/urun-setleri/barkod/SET-1") =>
+                    """{"id":"set1","ad":"Takım","barkod":"SET-1","aktif":true,"kalemler":[{"urunId":"u1","urunAdi":"Gram altın","urunKodu":"G1","adet":1},{"urunId":"u2","urunAdi":"Küpe","urunKodu":"K1","adet":2}]}""",
+                var v when v.EndsWith("/urunler/u2") =>
+                    """{"id":"u2","ad":"Küpe","ayarId":"K24","ayar":"24","hasGrami":0.995,"iscilikTl":0,"satisFiyati":10000,"birim":"ADET","milyem":995,"gramAgirlik":1,"tip":"ZIYNET","kod":"K1","tasAgirlik":0,"aktif":true}""",
                 var v when v.Contains("/bekleyen-fisler") && v.EndsWith("/al") =>
                     """{"cariId":"c1","kalemler":[{"urunId":"u1","urunAdi":"Gram altın","adet":2,"birimFiyat":10000,"hediye":false,"satirIskontoYuzde":0}],"fisIskontoYuzde":null,"aciklama":null}""",
                 var v when v.Contains("/bekleyen-fisler") && istek.Method == HttpMethod.Post =>
@@ -107,6 +115,19 @@ public sealed class D1BekleyenEkranTestleri : BunitContext
         Assert.Contains("tezgâha alındı", e.Find("#yildiz-tezgah-bekleyen-not").TextContent);
         Assert.Empty(e.FindAll("#yildiz-tezgah-bekleyenler"));            // fiş doldu → liste düğmesi gizli
         Assert.NotNull(e.Find("#yildiz-tezgah-beklet"));
+    }
+
+    [Fact]
+    public void D1_16_set_barkodu_okutulunca_parcalar_kendi_adetleriyle_fise_eklenir()
+    {
+        bekleyenVar = false;
+        var e = Satis();
+        e.Find("#islem-barkod").Input("SET-1");
+        e.Find("#islem-barkod").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+        e.WaitForAssertion(() => Assert.Equal(2, e.FindAll("button.yz-tezgah-kalem").Count), TimeSpan.FromSeconds(5));
+        Assert.Contains("Gram altın", e.Find("#yildiz-kalem-0").TextContent);
+        Assert.Contains("Küpe", e.Find("#yildiz-kalem-1").TextContent);
+        Assert.Contains("2 adet", e.Find("#yildiz-kalem-1").TextContent);
     }
 
     [Fact]

@@ -117,6 +117,10 @@ public partial class Urunler
                 EkEtiket = UrunKuraliSozlugu.Ac(dil),
                 EkId = "urun-kurallar-ac",
                 EkTikla = EventCallback.Factory.Create(this, () => kuralAcik = true),
+                // D1-16 — "+ Setler" (takım: tek barkodla birden çok ürün).
+                Ek2Etiket = D1Sozlugu.Al(dil).Setler,
+                Ek2Id = "urun-setler-ac",
+                Ek2Tikla = EventCallback.Factory.Create(this, () => setAcik = true),
                 SekmelerId = "yildiz-urun-sekmeler",
                 Sekmeler =
                 [

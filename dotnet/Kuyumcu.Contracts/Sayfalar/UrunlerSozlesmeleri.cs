@@ -13,7 +13,9 @@ public sealed record UrunVeri(
     // yanıtı varlığın tamamıdır (UrunModulu.Listele → List<Data.Urun>).
     string? GorselUrl = null,
     // S3-3: stok adedi sütunu birimi (ADET/GRAM) — sunucunun ZATEN döndürdüğü alan.
-    string? Birim = null);
+    string? Birim = null,
+    // D1-16 — toptancı barkodu (okutmada kendi barkodumuzla birlikte aranır).
+    string? TedarikciBarkodu = null);
 // S3-3: stok penceresinde ham şube kimliği yerine ŞUBE ADI (GET /subeler).
 public sealed record UrunSubeVeri(string Id, string Ad);
 // Adet SUNUCUDA decimal(12,3) (Entities.cs:305: [Column("adet", TypeName = "decimal(12,3)")]).
@@ -86,10 +88,15 @@ public sealed record UrunTamKart(
     // M1 (16.10) — satış milyemi + fiyat ofseti (GET /urunler/{id} varlığın tamamını döner).
     decimal? SatisMilyemi = null, decimal? FiyatOfsetTl = null,
     // M1b · M2b (16.10) — alış (maliyet) milyemi + KDV'ye giren pay (binde).
-    decimal? AlisMilyemi = null, decimal? KdvMatrahBinde = null);
+    decimal? AlisMilyemi = null, decimal? KdvMatrahBinde = null,
+    string? TedarikciBarkodu = null);   // D1-16
 // ── M4 (16.10) — ürün kuralları ──
 public sealed record UrunKuraliVeri(string Id, string Ad, string? AdIcerir, string? KategoriId,
     decimal? AlisMilyemi, decimal? SatisMilyemi, decimal? KdvMatrahBinde, decimal? KdvOrani, int Sira, bool Aktif);
 public sealed record UrunKuraliOnizlemeSatiri(string Id, string Kod, string Ad, List<string> DegisenAlanlar);
 public sealed record UrunKuraliOnizleme(string KuralId, int UyanSayisi, int DegisecekSayisi, List<UrunKuraliOnizlemeSatiri> Satirlar);
 public sealed record UrunKuraliUygulama(string KuralId, int UyanSayisi, int DegisenSayisi);
+
+// ── D1-16 (18.10) — ürün seti (takım): tek barkodla birden çok ürün ───────────
+public sealed record UrunSetiKalemVeri(string UrunId, string UrunAdi, string UrunKodu, decimal Adet);
+public sealed record UrunSetiVeri(string Id, string Ad, string Barkod, bool Aktif, List<UrunSetiKalemVeri> Kalemler);

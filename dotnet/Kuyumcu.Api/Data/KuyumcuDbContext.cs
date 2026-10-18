@@ -126,6 +126,8 @@ public class KuyumcuDbContext : DbContext
     public DbSet<BekleyenFis> BekleyenFisler => Set<BekleyenFis>();   // D1-03
     public DbSet<KvkkMetni> KvkkMetinleri => Set<KvkkMetni>();       // D1-19
     public DbSet<KvkkKaydi> KvkkKayitlari => Set<KvkkKaydi>();       // D1-19
+    public DbSet<UrunSeti> UrunSetleri => Set<UrunSeti>();           // D1-16
+    public DbSet<UrunSetiKalemi> UrunSetiKalemleri => Set<UrunSetiKalemi>();   // D1-16
     public DbSet<SahteBankaHareketi> DemoHavaleleri => Set<SahteBankaHareketi>();   // M7 demo bankası
     public DbSet<CariMahsup> CariMahsuplar => Set<CariMahsup>();   // 17.10 kısmi ödeme / borçlu satış seçimi
     public DbSet<Fatura> Faturalar => Set<Fatura>();
@@ -522,6 +524,9 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<BekleyenFis>().HasIndex(b => new { b.TenantId, b.Olusturuldu });
         mb.Entity<KvkkMetni>().HasIndex(m => new { m.TenantId, m.Surum }).IsUnique();
         mb.Entity<KvkkKaydi>().HasIndex(k => new { k.TenantId, k.CariId, k.Tarih });
+        mb.Entity<UrunSeti>().HasIndex(s => new { s.TenantId, s.Barkod }).IsUnique();
+        mb.Entity<UrunSetiKalemi>().HasIndex(k => new { k.TenantId, k.SetId });
+        mb.Entity<Urun>().HasIndex(u => new { u.TenantId, u.TedarikciBarkodu });   // D1-16 okutma araması
         // M7: çekici aynı sağlayıcı hareketini iki kez yazamaz (NULL'lar — elle/ekstre — kısıtlanmaz).
         mb.Entity<BankaHareket>().HasIndex(b => new { b.TenantId, b.BankaHesapId, b.SaglayiciReferans }).IsUnique();
         mb.Entity<SahteBankaHareketi>().HasIndex(s => new { s.TenantId, s.BankaHesapId, s.Olusturuldu });

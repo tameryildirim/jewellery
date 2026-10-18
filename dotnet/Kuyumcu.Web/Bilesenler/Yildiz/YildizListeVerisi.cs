@@ -104,6 +104,10 @@ public sealed class YildizListeBaglami
     public string? EkEtiket { get; init; }
     public string EkId { get; init; } = "";
     public EventCallback EkTikla { get; init; }
+    /// <summary>D1-16 — ikinci isteğe bağlı ek eylem (ör. Ürünler'de "Setler"); null = çizilmez.</summary>
+    public string? Ek2Etiket { get; init; }
+    public string Ek2Id { get; init; } = "";
+    public EventCallback Ek2Tikla { get; init; }
 }
 
 /// <summary>PAKET YILDIZ-5A — liste ekranlarının ortak yazımı (saf).</summary>

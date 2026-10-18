@@ -822,9 +822,9 @@ public sealed class Goc47BEkranTestleri : BunitContext
     {
         var e = Ciz();
         Sec(e, "ia-kaynak", "acilis-stok");
-        // Dosya başlıkları BİZİMKİ DEĞİL — kullanıcı eşler.
+        // Dosya başlıkları BİZİMKİ DEĞİL ve tanınabilir de değil (D1-16 önerisi çıkmaz) — kullanıcı eşler.
         e.FindComponent<InputFile>().UploadFiles(
-            InputFileContent.CreateFromText("Stok Kodu,Miktar\nBLZ-1,3\n", "vitrin.csv"));
+            InputFileContent.CreateFromText("Sutun A,Sutun B\nBLZ-1,3\n", "vitrin.csv"));
         e.Find("#ia-gerekce").Input("Eski programdan vitrin stoğu taşınıyor");
 
         e.WaitForAssertion(() => Assert.NotNull(e.Find("#ia-esle-kod")));
@@ -836,8 +836,8 @@ public sealed class Goc47BEkranTestleri : BunitContext
         Assert.Contains(string.Format(Kuyumcu.Core.I18n.Goc47BSozlugu.Tr.EslestirmeEksik, 2),
             e.Find("#ia-kilit-sebep").TextContent);
 
-        Sec(e, "ia-esle-kod", "Stok Kodu");
-        Sec(e, "ia-esle-adet", "Miktar");
+        Sec(e, "ia-esle-kod", "Sutun A");
+        Sec(e, "ia-esle-adet", "Sutun B");
         e.WaitForAssertion(() => Assert.False(e.Find("#ia-prova").HasAttribute("disabled")));
 
         e.Find("#ia-prova").Click();
@@ -845,9 +845,28 @@ public sealed class Goc47BEkranTestleri : BunitContext
         var govde = istekler.First(i => i.Yol.EndsWith("/ice-aktarim/prova")).Govde;
         using var j = JsonDocument.Parse(govde);
         var es = j.RootElement.GetProperty("kolonEslemesi");
-        Assert.Equal("Stok Kodu", es.GetProperty("kod").GetString());
-        Assert.Equal("Miktar", es.GetProperty("adet").GetString());
+        Assert.Equal("Sutun A", es.GetProperty("kod").GetString());
+        Assert.Equal("Sutun B", es.GetProperty("adet").GetString());
         Assert.Equal("acilis-stok", j.RootElement.GetProperty("kaynak").GetString());
+    }
+
+
+    [Fact]
+    public void D1_16_yaygin_basliklar_kendiliginden_onerilir_yazili_soylenir_ve_govdeye_gider()
+    {
+        var e = Ciz();
+        Sec(e, "ia-kaynak", "acilis-stok");
+        e.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("Stok Kodu,Miktar\nBLZ-1,3\n", "vitrin.csv"));
+        e.Find("#ia-gerekce").Input("Eski programdan vitrin stoğu taşınıyor");
+        e.WaitForAssertion(() => Assert.False(e.Find("#ia-prova").HasAttribute("disabled")));   // eşleme önerildi
+        Assert.Contains("Stok Kodu", e.Find("#ia-taninan").TextContent);
+        Assert.Contains("Miktar", e.Find("#ia-taninan").TextContent);
+        e.Find("#ia-prova").Click();
+        e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.EndsWith("/ice-aktarim/prova")));
+        using var j = JsonDocument.Parse(istekler.First(i => i.Yol.EndsWith("/ice-aktarim/prova")).Govde);
+        Assert.Equal("Stok Kodu", j.RootElement.GetProperty("kolonEslemesi").GetProperty("kod").GetString());
+        Assert.Equal("Miktar", j.RootElement.GetProperty("kolonEslemesi").GetProperty("adet").GetString());
     }
 
     [Fact]

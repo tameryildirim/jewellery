@@ -262,6 +262,9 @@ public static class DuzeltmePolitikasi
         D("KvkkMetni", "api/v1/kvkk/metin"),
         // D1-19: müşteri KVKK beyanı — eklenerek tutulur; geri alma yeni satırdır (ispat yükü).
         S("KvkkKaydi", GerekceAnahtarlari.Denetim, "api/v1/cari/{cariId}/kvkk"),
+        // D1-16: ürün seti — PUT setin tamamını yazar (parçalar dahil); pasife alma Aktif=false.
+        D("UrunSeti", "api/v1/urun-setleri/{id}"),
+        D("UrunSetiKalemi", "api/v1/urun-setleri/{id}"),
         // M7: demo bankasının gelen havalesi — sağlayıcı kaydıdır; düzeltme banka hareketinin stornosuyla.
         S("SahteBankaHareketi", GerekceAnahtarlari.Sistem),
         // 17.10 mahsup (ödemenin hangi borçlu satışa sayıldığı): append-only; düzeltme = ödemenin stornosu.
