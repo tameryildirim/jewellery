@@ -467,7 +467,7 @@ public sealed class CiktiServisi(
             new("Altın bakiyesi", ["Hesap", "Durum", "Has gram"], has,
                 emanetEtkisi != 0m ? "Emanetteki altın bu bakiyeye dâhil değildir." : null,
                 [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Has]),
-            new("Cevabınız", ["", ""], [
+            new("Cevabınız", ["Cevap", "Bakiye"], [
                 new CiktiSatir([MutabakatMutabikiz, ""]),
                 new CiktiSatir([MutabakatMutabikDegiliz, "………………………………"]),
             ], null, [SutunBicimi.Metin, SutunBicimi.Metin]),

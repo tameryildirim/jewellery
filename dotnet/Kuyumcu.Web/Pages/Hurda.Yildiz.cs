@@ -55,7 +55,12 @@ public partial class Hurda
                     new("—", YildizHucreTuru.Deger),
                     new("—", YildizHucreTuru.Deger),
                     new(YildizListeBicim.HasIki(d.HasGrami, dil), YildizHucreTuru.Deger, $"yildiz-hurda-has-{d.Id}"),
-                ]))],
+                ],
+                // D1-12 (18.10): hurda alımının fotoğrafı (telefonda kamera) — tam defterdeki "Fotoğraf" ile aynı pencere.
+                Eylem: d.Tur == "HURDA_ALIS"
+                    ? new YildizEylem(D1Sozlugu.Al(dil).HurdaFoto, $"yildiz-hurda-foto-{d.Id}", EventCallback.Factory.Create(this, () => fotoHareketId = d.Id))
+                    : null))],
+                EylemSutunu = true,
                 BosMetni = veriGeldi && hata is null ? YildizHurdaSozlugu.AlimYok(dil) : null,
                 Bilgi = veriGeldi ?
                 [
