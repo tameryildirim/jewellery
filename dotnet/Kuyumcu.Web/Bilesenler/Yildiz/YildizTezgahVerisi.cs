@@ -171,7 +171,24 @@ public sealed class YildizTezgahBaglami
     public bool ProUstAcikZorunlu { get; init; }
     /// <summary>Peşin Müşteri art arda sorusu (sayfanın PesinArtArdaSoru'su — aynı geri çağrılar); null = sorulmuyor.</summary>
     public RenderFragment? PesinSoru { get; init; }
+
+    // ── D1-03 (18.10) — işlem bekletme ──────────────────────────────────────────
+    /// <summary>"Beklet" görünür mü (satış fişinde kalem var).</summary>
+    public bool BekletGorunur { get; init; }
+    public EventCallback Beklet { get; init; }
+    /// <summary>İşletmenin bekleyen fişleri (yeniden eskiye).</summary>
+    public IReadOnlyList<YildizBekleyenOgesi> Bekleyenler { get; init; } = [];
+    public bool BekleyenlerAcik { get; init; }
+    public EventCallback BekleyenlerAcKapa { get; init; }
+    public EventCallback<string> BekleyenAl { get; init; }
+    public EventCallback<string> BekleyenSil { get; init; }
+    /// <summary>Bekletme sonucu ya da hatası (tek satır).</summary>
+    public string? BekleyenNot { get; init; }
+    public bool BekleyenNotKotu { get; init; }
 }
+
+/// <summary>D1-03 — bekleyen fiş satırı (etiket · "3 kalem · 12.500,00 ₺ · 14:20 · Hakan").</summary>
+public sealed record YildizBekleyenOgesi(string Id, string Etiket, string Ayrinti);
 
 /// <summary>PAKET YILDIZ-4B — Tezgâh yazımı (saf; tuval Tezgah4 sayı dili).</summary>
 public static class YildizTezgahBicim

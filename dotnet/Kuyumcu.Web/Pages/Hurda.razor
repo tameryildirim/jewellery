@@ -490,6 +490,14 @@
 </div>
 }
 
+@* D1-12 (18.10): hurda alımı fotoğrafı — ortak belge deposu (sahip HURDA_ALIS), yalnız JPEG/PNG. *@
+<ModalPencere Acik="fotoHareketId is not null" Baslik="@D1Sozlugu.Al(Dil.Dil).HurdaFotoBaslik" Kapat="() => fotoHareketId = null">
+    @if (fotoHareketId is { } fh)
+    {
+        <BelgeYukleyici SahipTuru="HURDA_ALIS" SahipId="@fh" Turler="@(["FOTOGRAF"])" Kamera="true" Onek="hrd-foto" />
+    }
+</ModalPencere>
+
 @code {
     /// <summary>
     /// Q10-2 (doğrulayıcı KRİTİK 1-2) — has/gram YUVARLANMADAN gösterilir: en az 3,
@@ -899,6 +907,9 @@
                 Hucre = kv => @<text>@HassasGram(kv.Value.HasGram)</text> },
     ];
 
+    /// <summary>D1-12: fotoğraf penceresi açık olan hurda alımı (null = kapalı).</summary>
+    private string? fotoHareketId;
+
     private IzgaraTercihIstemcisi? hrdTercih;
     private IzgaraTercihIstemcisi HrdTercih => hrdTercih ??= new IzgaraTercihIstemcisi(Api);
     private IzgaraSiralama? defterSira, subeSira;
@@ -936,6 +947,12 @@
                 {
                     <button type="button" @onclick="() => DuzeltmeAc(d)" class="dugme dugme-ikincil dugme-kucuk"
                             id="@($"hrd-duzelt-{d.Id}")">@Dil.T.Hurda.Duzelt</button>
+                }
+                else if (d.Tur == "HURDA_ALIS" && !d.StornoSatiri)
+                {
+                    @* D1-12 (18.10): hurda alımının fotoğrafı (telefonda kamera) — defter satırı değişmez. *@
+                    <button type="button" @onclick="() => fotoHareketId = d.Id" class="dugme dugme-ikincil dugme-kucuk"
+                            id="@($"hrd-foto-{d.Id}")">@D1Sozlugu.Al(Dil.Dil).HurdaFoto</button>
                 }</text> },
     ];
 

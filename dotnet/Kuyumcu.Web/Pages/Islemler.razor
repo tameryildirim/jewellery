@@ -149,7 +149,7 @@
                    POST yanıtı okunmadan atılmaz (QA turu 2 KRİTİK). *@
                 <BasariBandi Mesaj="@(basarili ? BasariMetni : null)"
                              Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
-                <FisYazdirBaglantisi Idler="yazdirIdler" Hata="@yazdirHata" FisNo="@SonFisNoGorunen" OtomatikAcildi="otoYazdirAcildi" />   @* PAKET S2-5 (PLAN 2.7): Kaydet → Yazdır *@@if (fisTaksitUyari is { } ftu) { <div class="bant bant-uyari" id="islem-taksit-uyari" role="status">@ftu</div> }<HataBandi Mesaj="@fisTaksitHata" Id="islem-taksit-hata" />@* YASAL-2 t3: kalan borç yalnız kart/havale (Islemler.Taksit.cs) *@
+                <FisYazdirBaglantisi Idler="yazdirIdler" Hata="@yazdirHata" FisNo="@SonFisNoGorunen" OtomatikAcildi="otoYazdirAcildi" FotoSahipId="@(tur == "HURDA_ALIS" && yazdirIdler.Count == 1 ? yazdirIdler[0] : null)" />   @* PAKET S2-5 (PLAN 2.7): Kaydet → Yazdır *@@if (fisTaksitUyari is { } ftu) { <div class="bant bant-uyari" id="islem-taksit-uyari" role="status">@ftu</div> }<HataBandi Mesaj="@fisTaksitHata" Id="islem-taksit-hata" />@* YASAL-2 t3: kalan borç yalnız kart/havale (Islemler.Taksit.cs) *@
                 @* PAKET 25 · UX-S28: sunucunun döndürdüğü yerleşim uyarısı
                    YUTULMAZ — süreli değildir, kullanıcı okuyana kadar durur. *@
                 @if (yerlesimUyarisi is not null)
@@ -869,7 +869,7 @@
             urunler = await Api.GetAsync<List<UrunVeri>>("/urunler?aktif=true&limit=200");
             subeler = (await Api.GetAsync<List<SubeVeri>>("/subeler")).Where(s => s.Aktif).ToList();
             masakEsik = await Api.GetAsync<Esikler>("/masak/esikler");   // kişisel veri yok, tüm roller
-            await KasalariYukle();
+            await KasalariYukle(); await BekleyenleriYukle();   // D1-03: bekleyenler yardımcı veri (kendi hatasını not satırına yazar)
             await Canli.BaslatAsync();   // SignalR push + ilk kur değeri
             KurYansit();
             if (TezgahFisi || ProSatis) await TevsikOnizle(yalnizHad: true); await FiyatListeleriYukle();   // T-S1: nakit uyarısının eşiği İLK AÇILIŞTA sunucudan (istemcide rakam yok)

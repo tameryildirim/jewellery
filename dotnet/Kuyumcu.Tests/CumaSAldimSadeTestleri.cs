@@ -69,6 +69,7 @@ public sealed class CumaSAldimSadeTestleri : BunitContext
                 var v when v.Contains("/iade-adaylari") => "[]",
                 var v when v.Contains("/reyon") => "[]",
                 var v when v.Contains("/pos/cihazlar") => "[]",
+                var v when v.Contains("/bekleyen-fisler") => "[]",   // D1-03: sunucu liste döner
                 _ => "{}",
             };
             return Yanit(System.Net.HttpStatusCode.OK, y);

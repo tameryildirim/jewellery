@@ -103,6 +103,13 @@ public sealed class BelgeServisi(KuyumcuDbContext db, BelgeAyarlari? ayarlar = n
                 throw new BadRequestException(
                     "Gider pusulası eki ayrı karara bağlandı (ADR-0008 blob karşılığı) — henüz açık değil");
 
+            case BelgeSahipTuru.HurdaAlis:
+                // D1-12 (18.10, rakip eşitleme): hurda alımına fotoğraf. Sahip AYNI KİRACIDAKİ HURDA_ALIS satırıdır;
+                // başka tür ya da başka kiracı 404 (varlık sızdırılmaz). Defter satırı DEĞİŞMEZ — fotoğraf yanındadır.
+                if (!await db.Hareketler.AnyAsync(h => h.Id == sahipId && h.TenantId == islem.TenantId && h.Tur == "HURDA_ALIS"))
+                    throw new NotFoundException("Hurda alımı bulunamadı");
+                return;
+
             default:
                 throw new BadRequestException($"Geçersiz sahip türü: {sahipTuru}");
         }

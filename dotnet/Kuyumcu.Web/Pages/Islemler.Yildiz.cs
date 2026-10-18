@@ -221,6 +221,16 @@ public partial class Islemler
                 // YILDIZ-4C: Peşin Müşteri art arda sorusu (YASAL-3) — özgün yerinde (fişin altında) Yıldız'da ekran dışındaydı;
                 // AYNI bileşen, AYNI geri çağrılar Fark bloğunda çizilir (özgün yer Yıldız'da çizilmez — id tekrarı yok).
                 PesinSoru = pesinSoruAcik ? YildizPesinSoru : null,
+                // D1-03 işlem bekletme
+                BekletGorunur = BekletGorunur,
+                Beklet = EventCallback.Factory.Create(this, Beklet),
+                Bekleyenler = YildizBekleyenler,
+                BekleyenlerAcik = bekleyenlerAcik,
+                BekleyenlerAcKapa = EventCallback.Factory.Create(this, () => bekleyenlerAcik = !bekleyenlerAcik),
+                BekleyenAl = EventCallback.Factory.Create<string>(this, BekleyenAl),
+                BekleyenSil = EventCallback.Factory.Create<string>(this, BekleyenSil),
+                BekleyenNot = bekleyenNot,
+                BekleyenNotKotu = bekleyenNotKotu,
             };
         }
     }

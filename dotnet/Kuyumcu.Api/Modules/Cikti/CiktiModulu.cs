@@ -51,6 +51,7 @@ public sealed class CiktiServisi(
         // D1-01: fatura dökümü "fatura" modülündedir; tezgâhtar da (yetki matrisi izin veriyorsa)
         // müşteriye kesilen faturanın kâğıdını verebilir — satış fişiyle aynı mantık.
         BelgeTurleri.Fatura => "fatura",
+        BelgeTurleri.CariMutabakat => "cari",   // D1-10: ekstreyle aynı kapı
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -74,6 +75,7 @@ public sealed class CiktiServisi(
             BelgeTurleri.CariEkstre => await Ekstre(id, islem, iptal),
             BelgeTurleri.Irsaliye => await IrsaliyeBelgesi(id, islem, iptal),
             BelgeTurleri.Fatura => await FaturaBelgesi(id, islem, iptal),
+            BelgeTurleri.CariMutabakat => await MutabakatBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -418,6 +420,75 @@ public sealed class CiktiServisi(
             BelgeNoKayitKimligi: false);
     }
 
+    // ── D1-10 (18.10) — cari hesap mutabakat formu ─────────────────────────
+
+    public const string MutabakatMetni =
+        "Kayıtlarımıza göre bu tarih itibarıyla hesabınızın bakiyesi yukarıdadır. Mutabık olup olmadığınızı aşağıda işaretleyip imzalayarak bildirmenizi rica ederiz.";
+    public const string MutabakatBizeBorclu = "Bize borçlu";
+    public const string MutabakatBizBorcluyuz = "Size borçluyuz";
+    public const string MutabakatBorcYok = "Borç yok";
+    public const string MutabakatMutabikiz = "☐ Mutabıkız";
+    public const string MutabakatMutabikDegiliz = "☐ Mutabık değiliz — bizim kayıtlarımıza göre bakiye:";
+
+    /// <summary>
+    /// Bakiyeler EKRANDAKİ ile aynı kaynaktan (CariBakiyeler; has emanetsiz — CariBakiyeKurali). Yön "bize borçlu /
+    /// size borçluyuz" yazılır, tutar işaretsiz basılır (artı = müşteri bize borçlu; BorcDili kuralı).
+    /// </summary>
+    private async Task<OrtakBelge> MutabakatBelgesi(string cariId, AktifKullanici islem, CancellationToken iptal)
+    {
+        var c = await db.Cariler.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == cariId && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Cari bulunamadı");
+        if (c.SistemCarisi) throw new BadRequestException("Peşin Müşteri için mutabakat formu düzenlenmez");
+        var bakiye = await db.CariBakiyeler.AsNoTracking().FirstOrDefaultAsync(b => b.CariId == cariId, iptal);
+        var emanetEtkisi = bakiye is null ? 0m : await CariBakiyeKurali.EmanetEtkisi(db, bakiye.TenantId, cariId);
+
+        static string Yon(decimal d, int hane) => Math.Round(d, hane) switch
+        {
+            > 0m => MutabakatBizeBorclu, < 0m => MutabakatBizBorcluyuz, _ => MutabakatBorcYok,
+        };
+        var satirlar = new List<CiktiSatir>();
+        void Ekle(string ad, decimal deger, string birim, int hane, bool zorunlu)
+        {
+            if (!zorunlu && Math.Round(deger, hane) == 0m) return;
+            satirlar.Add(new CiktiSatir([ad, Yon(deger, hane), Sayi(Math.Abs(deger), hane)], ParaBirimi: birim == "HAS" ? null : birim));
+        }
+        Ekle("Türk lirası", bakiye?.TlBakiye ?? 0m, "TRY", 2, zorunlu: true);
+        Ekle("Has altın (gram)", CariBakiyeKurali.EmanetsizHas(bakiye?.HasGramBakiye ?? 0m, emanetEtkisi), "HAS", 4, zorunlu: true);
+        Ekle("ABD doları", bakiye?.UsdBakiye ?? 0m, "USD", 2, zorunlu: false);
+        Ekle("Euro", bakiye?.EurBakiye ?? 0m, "EUR", 2, zorunlu: false);
+        Ekle("İngiliz sterlini", bakiye?.GbpBakiye ?? 0m, "GBP", 2, zorunlu: false);
+        // Has satırı HAS biçimiyle, para satırları PARA biçimiyle basılsın diye iki bölüm: biçim sütun başınadır.
+        var para = satirlar.Where(x => x.ParaBirimi is not null).ToList();
+        var has = satirlar.Where(x => x.ParaBirimi is null).ToList();
+        var bolumler = new List<CiktiBolum>
+        {
+            new("Para bakiyesi", ["Hesap", "Durum", "Tutar"], para, null, [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Para]),
+            new("Altın bakiyesi", ["Hesap", "Durum", "Has gram"], has,
+                emanetEtkisi != 0m ? "Emanetteki altın bu bakiyeye dâhil değildir." : null,
+                [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Has]),
+            new("Cevabınız", ["", ""], [
+                new CiktiSatir([MutabakatMutabikiz, ""]),
+                new CiktiSatir([MutabakatMutabikDegiliz, "………………………………"]),
+            ], null, [SutunBicimi.Metin, SutunBicimi.Metin]),
+        };
+
+        return new OrtakBelge(
+            Tur: BelgeTurleri.CariMutabakat,
+            BelgeAdi: BelgeAdi(BelgeTurleri.CariMutabakat),
+            BelgeNo: c.Id,
+            Dayanak: null,
+            DuzenlemeTarihi: DateTime.UtcNow,
+            Duzenleyen: await Kimlik(islem.TenantId, islem.SubeId, iptal),
+            Karsi: new CiktiTaraf(CariTarafEtiketi(c.Tur), c.Ad, c.VergiNo, c.Adres, c.Telefon),
+            Bolumler: bolumler,
+            Tutarlar: [],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.CariMutabakat),
+            Not: MutabakatMetni,
+            Uyari: null,
+            BelgeNoKayitKimligi: true);
+    }
+
     // ── D1-01 (18.10) — fatura dökümü ───────────────────────────────────────
 
     /// <summary>
@@ -603,6 +674,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.CariEkstre => "CARİ HESAP EKSTRESİ", // TOPLU-2: KESIF karar 1 — resmî belge adı
         BelgeTurleri.Irsaliye => "İRSALİYE",   // yön belgede ayrıntılanır (SEVK / MAL KABUL)
         BelgeTurleri.Fatura => "FATURA",       // D1-01; alış faturası belgede "ALIŞ FATURASI"
+        BelgeTurleri.CariMutabakat => "CARİ HESAP MUTABAKAT FORMU",
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -614,6 +686,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.CariEkstre => ["Düzenleyen"],
         BelgeTurleri.Irsaliye => ["Teslim eden", "Teslim alan"],
         BelgeTurleri.Fatura => ["Düzenleyen", "Teslim alan"],
+        BelgeTurleri.CariMutabakat => ["Düzenleyen (kaşe / imza)", "Müşteri (kaşe / imza)"],
         _ => [],
     };
 

@@ -37,8 +37,13 @@ public static class BelgeTurleri
     /// e-Fatura/e-Arşiv entegratörü bağlanana dek "bilgi amaçlı döküm" uyarısı basılır.
     /// </summary>
     public const string Fatura = "FATURA";
+    /// <summary>
+    /// D1-10 (18.10, rakip eşitleme) — cari hesap mutabakat formu: bugünkü bakiyeler (TL · has · döviz),
+    /// yönleri yazılı; müşteri "mutabıkız / değiliz" işaretleyip imzalar.
+    /// </summary>
+    public const string CariMutabakat = "CARI_MUTABAKAT";
 
-    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura];
+    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat];
 
     public static bool Gecerli(string? tur) =>
         tur is not null && Array.IndexOf(Tumu, tur) >= 0;

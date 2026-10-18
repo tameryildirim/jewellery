@@ -255,6 +255,9 @@ public static class DuzeltmePolitikasi
         D("UrunKurali", "api/v1/urun-kurallari/{id}"),
         // M9: alış işçilik belgesi — alışı değiştirmez, belge bilgisi düzeltilebilir.
         D("AlisIscilikBelgesi", "api/v1/alis-iscilik/{alisHareketId}"),
+        // D1-03: bekleyen fiş — yerinde düzenlenmez; tezgâha geri alınır (…/{id}/al), orada düzeltilip
+        // kaydedilir ya da yeniden bekletilir. Atmak için …/{id}/sil.
+        S("BekleyenFis", GerekceAnahtarlari.Sistem, "api/v1/bekleyen-fisler/{id}/al"),
         // M7: demo bankasının gelen havalesi — sağlayıcı kaydıdır; düzeltme banka hareketinin stornosuyla.
         S("SahteBankaHareketi", GerekceAnahtarlari.Sistem),
         // 17.10 mahsup (ödemenin hangi borçlu satışa sayıldığı): append-only; düzeltme = ödemenin stornosu.

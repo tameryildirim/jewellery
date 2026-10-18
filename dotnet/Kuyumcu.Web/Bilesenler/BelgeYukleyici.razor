@@ -32,7 +32,15 @@
            Girdi görsel olarak GİZLİ (.gorunmez — erişilebilir, klavyeyle odaklanır);
            görünen yüz etiketli İKİNCİL düğme + seçilen dosya adı satırı. *@
         <div class="alan">
-            <InputFile id="belge-sec" class="gorunmez" OnChange="DosyaSecildi" />
+            @if (Kamera)
+            {
+                @* D1-12: telefonda arka kamerayı açar (masaüstünde dosya seçimi); yalnız JPEG/PNG. *@
+                <InputFile id="belge-sec" class="gorunmez" OnChange="DosyaSecildi" accept="image/jpeg,image/png" capture="environment" />
+            }
+            else
+            {
+                <InputFile id="belge-sec" class="gorunmez" OnChange="DosyaSecildi" />
+            }
             <label for="belge-sec" id="belge-sec-dugme" class="btn btn-ikincil">@Dil.T.Belge.DosyaSec</label>
             <p class="dosya-onizleme" id="belge-sec-ad">@(secilenAd is null ? P4.DosyaSecilmedi : $"{secilenAd} — {Kb(secilenBoyut)}")</p>
         </div>
@@ -82,6 +90,8 @@
 
     /// <summary>Element id öneki — aynı sayfada iki yükleyici olursa id çakışmasın.</summary>
     [Parameter] public string Onek { get; set; } = "belge";
+    /// <summary>D1-12: fotoğraf kipi — dosya seçici telefonda kamerayı açar, yalnız JPEG/PNG kabul eder.</summary>
+    [Parameter] public bool Kamera { get; set; }
 
 
     private KesifP4Metinleri P4 => KesifP4Sozlugu.Al(Dil.Dil);

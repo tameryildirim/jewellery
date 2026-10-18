@@ -852,6 +852,12 @@
             <div class="satir yazdirma-gizle">
                 <NavLink id="cari-detay-ekstre-yazdir" class="btn btn-ikincil btn-kucuk"
                          href="@($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.CariEkstre}/{detayCari.Id}")">@EB1.EkstreYazdir</NavLink>
+                @if (!detayCari.SistemCarisi)
+                {
+                    @* D1-10 (18.10): cari hesap mutabakat formu — bugünkü bakiyeler + "mutabıkız / değiliz" + imza. *@
+                    <NavLink id="cari-detay-mutabakat" class="btn btn-ikincil btn-kucuk"
+                             href="@($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.CariMutabakat}/{detayCari.Id}?donus=/cariler")">@D1Sozlugu.Al(Dil.Dil).MutabakatYazdir</NavLink>
+                }
             </div>
 
             <div>

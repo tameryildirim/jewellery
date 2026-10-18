@@ -280,7 +280,34 @@
                     }
                 }
             </div>
+            @* D1-03 (18.10): işlem bekletme — bekleyen fişler listesi (fiş boşken açılır) ve sonuç satırı. *@
+            @if (B.BekleyenNot is { } bn)
+            {
+                <span class="yz-s yz-tezgah-not @(B.BekleyenNotKotu ? "yz-kotu" : null)" id="yildiz-tezgah-bekleyen-not" role="status">@bn</span>
+            }
+            @if (B.Bekleyenler.Count > 0 && !B.FisDolu)
+            {
+                <button type="button" class="yz-b3 yz-tezgah-acik-hesap" id="yildiz-tezgah-bekleyenler" aria-expanded="@(B.BekleyenlerAcik ? "true" : "false")"
+                        aria-controls="yildiz-tezgah-bekleyen-liste" @onclick="B.BekleyenlerAcKapa">@string.Format(D1Sozlugu.Al(Dil.Dil).BekleyenlerSayi, B.Bekleyenler.Count)</button>
+                @if (B.BekleyenlerAcik)
+                {
+                    <ul class="yz-bekleyen-liste" id="yildiz-tezgah-bekleyen-liste">
+                        @foreach (var bf in B.Bekleyenler)
+                        {
+                            <li class="yz-bekleyen-satir" id="@($"yildiz-bekleyen-{bf.Id}")">
+                                <span class="yz-bekleyen-metin"><span class="yz-bekleyen-ad">@bf.Etiket</span><span class="yz-s">@bf.Ayrinti</span></span>
+                                <button type="button" class="yz-b2" id="@($"yildiz-bekleyen-al-{bf.Id}")" @onclick="() => B.BekleyenAl.InvokeAsync(bf.Id)">@D1Sozlugu.Al(Dil.Dil).BekleyenAl</button>
+                                <button type="button" class="yz-b2 yz-kotu" id="@($"yildiz-bekleyen-sil-{bf.Id}")" @onclick="() => B.BekleyenSil.InvokeAsync(bf.Id)">@D1Sozlugu.Al(Dil.Dil).BekleyenSil</button>
+                            </li>
+                        }
+                    </ul>
+                }
+            }
             <div class="yz-tezgah-eylemler">
+                @if (B.BekletGorunur)
+                {
+                    <button type="button" class="yz-b2" id="yildiz-tezgah-beklet" disabled="@B.Kaydediliyor" @onclick="B.Beklet">@D1Sozlugu.Al(Dil.Dil).Beklet</button>
+                }
                 @if (B.FisDolu)
                 {
                     <button type="button" class="yz-b2" id="yildiz-tezgah-vazgec" disabled="@B.Kaydediliyor" @onclick="B.Vazgec">@YildizTezgahSozlugu.Vazgec(Dil.Dil)</button>

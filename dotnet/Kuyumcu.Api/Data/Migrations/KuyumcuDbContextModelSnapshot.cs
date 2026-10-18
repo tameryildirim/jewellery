@@ -387,6 +387,60 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.ToTable("banka_hesaplari");
                 });
 
+            modelBuilder.Entity("Kuyumcu.Api.Data.BekleyenFis", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CariId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("cari_id");
+
+                    b.Property<string>("Etiket")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("varchar(120)")
+                        .HasColumnName("etiket");
+
+                    b.Property<string>("Icerik")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("icerik");
+
+                    b.Property<int>("KalemSayisi")
+                        .HasColumnType("int")
+                        .HasColumnName("kalem_sayisi");
+
+                    b.Property<string>("KullaniciId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kullanici_id");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("ToplamTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("toplam_tl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Olusturuldu");
+
+                    b.ToTable("bekleyen_fisler");
+                });
+
             modelBuilder.Entity("Kuyumcu.Api.Data.Belge", b =>
                 {
                     b.Property<string>("Id")

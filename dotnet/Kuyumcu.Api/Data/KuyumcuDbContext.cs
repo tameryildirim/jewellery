@@ -123,6 +123,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<EkstreSatiri> EkstreSatirlari => Set<EkstreSatiri>();
     public DbSet<CariIban> CariIbanlari => Set<CariIban>();
     public DbSet<AlisIscilikBelgesi> AlisIscilikBelgeleri => Set<AlisIscilikBelgesi>();   // M9
+    public DbSet<BekleyenFis> BekleyenFisler => Set<BekleyenFis>();   // D1-03
     public DbSet<SahteBankaHareketi> DemoHavaleleri => Set<SahteBankaHareketi>();   // M7 demo bankası
     public DbSet<CariMahsup> CariMahsuplar => Set<CariMahsup>();   // 17.10 kısmi ödeme / borçlu satış seçimi
     public DbSet<Fatura> Faturalar => Set<Fatura>();
@@ -516,6 +517,7 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<CariIban>().HasIndex(c => new { c.TenantId, c.CariId });
         // M9: bir alışın TEK işçilik belgesi kaydı.
         mb.Entity<AlisIscilikBelgesi>().HasIndex(b => new { b.TenantId, b.AlisHareketId }).IsUnique();
+        mb.Entity<BekleyenFis>().HasIndex(b => new { b.TenantId, b.Olusturuldu });
         // M7: çekici aynı sağlayıcı hareketini iki kez yazamaz (NULL'lar — elle/ekstre — kısıtlanmaz).
         mb.Entity<BankaHareket>().HasIndex(b => new { b.TenantId, b.BankaHesapId, b.SaglayiciReferans }).IsUnique();
         mb.Entity<SahteBankaHareketi>().HasIndex(s => new { s.TenantId, s.BankaHesapId, s.Olusturuldu });

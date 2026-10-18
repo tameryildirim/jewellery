@@ -1923,6 +1923,11 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-not { font-size: 15px; }
 html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-acik-hesap { align-self: flex-start; margin-top: 8px; }
 html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-eylemler { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-kaydet { flex-grow: 1; }
+/* D1-03 (18.10) — bekleyen fişler: tuval satır dili (ad · soluk ayrıntı · Al / Sil), kutu yok, ince ayraç. */
+html:root[data-sema="yildiz"] .yz-tezgah .yz-bekleyen-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-bekleyen-satir { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--kenarlik); }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-bekleyen-metin { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-bekleyen-ad { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── TEZGÂH tur 2 (tasarım hakemi KRİTİK) ─────────────────────────────────────
    (1) Kaydet sonucu: özgün bantlar (hata, başarı, yazdır, yerleşim/taksit uyarısı, yasal kapı) fişin

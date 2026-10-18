@@ -68,8 +68,10 @@ public static class BelgeSahipTuru
     public const string Siparis = "SIPARIS";
     public const string GiderPusulasi = "GIDER_PUSULASI";
     public const string Isletme = "ISLETME";
+    /// <summary>D1-12 (18.10): hurda alımının fotoğrafı — sahip HURDA_ALIS türündeki defter satırıdır.</summary>
+    public const string HurdaAlis = "HURDA_ALIS";
 
-    public static readonly string[] Tumu = [Urun, Siparis, GiderPusulasi, Isletme];
+    public static readonly string[] Tumu = [Urun, Siparis, GiderPusulasi, Isletme, HurdaAlis];
 }
 
 /// <summary>Belge türü — KAPALI liste (fail-closed).</summary>

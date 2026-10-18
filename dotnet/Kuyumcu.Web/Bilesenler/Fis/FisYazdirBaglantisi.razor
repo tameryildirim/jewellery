@@ -35,6 +35,11 @@
         {
             <span class="metin-kucuk metin-soluk" id="islem-yazdir-ipucu">@M.FisYazdirIpucu</span>
         }
+        @if (FotoSahipId is not null)
+        {
+            @* D1-12 (18.10): hurda alımı kaydedildi → fotoğrafı hemen eklenir (telefonda kamera). *@
+            <button type="button" class="btn btn-ikincil" id="islem-hurda-foto" @onclick="() => fotoAcik = true">@D1Sozlugu.Al(Dil.Dil).HurdaFotoEkle</button>
+        }
         @if (OtomatikAcildi && Idler.Count == 1)
         {
             @* T-S1: "Kaydet ve yazdır" sayfayı kendiliğinden açtı; açılmadıysa yol bu bağlantıdır. *@
@@ -42,6 +47,12 @@
         }
     </div>
     <HataBandi Mesaj="@(Hata is null ? null : string.Format(M.YazdirHata, Hata))" Id="islem-yazdir-hata" />
+}
+@if (FotoSahipId is { } fid)
+{
+    <ModalPencere Acik="fotoAcik" Baslik="@D1Sozlugu.Al(Dil.Dil).HurdaFotoBaslik" Kapat="() => fotoAcik = false">
+        <BelgeYukleyici SahipTuru="HURDA_ALIS" SahipId="@fid" Turler="@(["FOTOGRAF"])" Kamera="true" Onek="islem-hurda-foto" />
+    </ModalPencere>
 }
 
 @code {
@@ -58,4 +69,9 @@
     [Parameter] public bool OtomatikAcildi { get; set; }
 
     private FisYazdirMetinleri M => FisYazdirSozlugu.Al(Dil.Dil);
+
+    /// <summary>D1-12: son kayıt hurda alımıysa onun defter satırı — "Fotoğraf ekle" görünür; null = düğme yok.</summary>
+    [Parameter] public string? FotoSahipId { get; set; }
+
+    private bool fotoAcik;
 }
