@@ -3084,3 +3084,11 @@ button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed
 .onay-eylem { display: flex; gap: 8px; }
 .satis-onay-bandi { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .satis-onay-metin { flex: 1 1 220px; min-width: 0; }
+/* D1-06: ödeme planı çekmecesi */
+.op-plan { padding: 12px 0; border-top: 1px solid var(--kenarlik); }
+.op-plan-bas { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.op-plan-ad { font-weight: 500; }
+.op-taksitler { list-style: none; margin: 8px 0; padding: 0; }
+.op-taksit { display: grid; grid-template-columns: 28px 96px minmax(0, 1fr) auto; gap: 8px; padding: 4px 0; align-items: baseline; }
+.op-tutar { font-variant-numeric: tabular-nums; text-align: right; }
+.op-plan-eylem { display: flex; gap: 8px; flex-wrap: wrap; }

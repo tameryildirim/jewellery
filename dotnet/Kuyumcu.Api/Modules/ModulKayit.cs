@@ -52,6 +52,7 @@ public static class ModulKayit
         s.AddScoped<Kur.KurKilidiServisi>();         // D1-04 kur kilidi
         s.AddScoped<Satis.SatisOnayServisi>();       // D1-05 satış onayı
         s.AddScoped<Satis.PersonelUyariServisi>();   // D1-05 personel uyarıları
+        s.AddScoped<Cari.OdemePlaniServisi>();       // D1-06 ödeme planı
         s.AddScoped<Cari.KvkkServisi>();             // D1-19 KVKK aydınlatma / rıza
         s.AddScoped<Cari.HesapDonusturServisi>();    // D1-09 hesap dönüştürme
         s.AddScoped<Urun.UrunSetiServisi>();         // D1-16 ürün setleri
@@ -123,6 +124,7 @@ public static class ModulKayit
         s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.TevsikKurtarmaIsi>(); s.AddScoped<Tevsik.TevsikIhlalServisi>();   // PAKET YASAL-2 (TB-16)
         s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.StopajHatirlatmaIsi>(); s.AddScoped<Hurda.StopajServisi>();   // PAKET YASAL-4 (Y4-B)
         s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.StokEsikIsi>(); s.AddScoped<Hurda.HurdaAnalizServisi>();   // D1-15
+        s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.TaksitHatirlatmaIsi>();   // D1-06
         s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.KasaKapanisHatirlatmaIsi>();   // D1-11
 
         // ── Paket 3 Faz A — sipariş çatısı (deftere YAZMAZ) ────────────────

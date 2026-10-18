@@ -287,7 +287,7 @@ public sealed class EvrakServisi(
         var evrakId = Kimlik.Ulid();
         var hareketId = Kimlik.Ulid();
 
-        await using var tx = await db.Database.BeginTransactionAsync();
+        await using var tx = await db.Database.IsBaslatVeyaDevral();   // D1-06: ödeme planı senetleri plan işlemine katılır
 
         HareketFabrikasi.Ekle(db,
             OdemeIzi.VeresiyeKapanisi(dto.Tutar),
@@ -343,7 +343,7 @@ public sealed class EvrakServisi(
             $"evrak girişi · {dto.EvrakTuru} {dto.EvrakNo} · {dto.Tutar:0.00} TL · vade {vade:yyyy-MM-dd}");
 
         await db.SaveChangesAsync();
-        await tx.CommitAsync();
+        if (tx is not null) await tx.CommitAsync();
 
         logger.LogInformation("[{TenantId}] Evrak girişi: {Id} tur={Tur} tutar={Tutar}",
             islem.TenantId, evrakId, dto.EvrakTuru, dto.Tutar);

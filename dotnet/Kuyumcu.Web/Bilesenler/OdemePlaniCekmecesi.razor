@@ -1,0 +1,181 @@
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@using Kuyumcu.Contracts.Cikti
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-06 (18.10, rakip eşitleme: "taksitli / senetli satış") — müşterinin ödeme planları (taksit takvimi + durum,
+   Yazdır, senetsiz planda İptal) ve "+ Yeni plan": açık veresiye satış · taksit sayısı · ilk vade · kaç ayda bir ·
+   senetli mi. Vade farkı eklenmez. GET/POST /odeme-planlari (oluşturma/iptal sahip · müdür · muhasebe).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<Cekmece Acik="@(Cari is not null)" Varlik="odeme-plani" Baslik="@M.OdemePlani" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetGoster="@(form is not null)" KaydetElemanId="op-kaydet">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="op-hata">@h</div>
+    }
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (form is null)
+    {
+        @if (planlar.Count == 0)
+        {
+            <p class="metin-soluk" id="op-bos">@M.OdemePlaniYok</p>
+        }
+        @foreach (var p in planlar)
+        {
+            <section class="op-plan" id="@($"op-plan-{p.Id}")">
+                <div class="op-plan-bas">
+                    <span class="op-plan-ad">@string.Format(M.OdemePlaniOzet, p.Taksitler.Count, Bicim.TlKurus(p.ToplamTl), Bicim.TlKurus(p.OdenenTl))@(p.Senetli ? $" · {M.Senetli}" : "")</span>
+                    <span class="metin-soluk metin-kucuk" id="@($"op-durum-{p.Id}")">@DurumAdi(p.Durum)</span>
+                </div>
+                <ul class="op-taksitler">
+                    @foreach (var t in p.Taksitler)
+                    {
+                        <li class="op-taksit" id="@($"op-taksit-{p.Id}-{t.Sira}")">
+                            <span>@t.Sira</span>
+                            <span>@Bicim.Gun(t.Vade)</span>
+                            <span class="op-tutar">@Bicim.TlKurus(t.TutarTl)</span>
+                            <span class="@(t.Durum is "GECIKTI" or "KARSILIKSIZ" ? "metin-kirmizi" : "metin-soluk") metin-kucuk">@DurumAdi(t.Durum)</span>
+                        </li>
+                    }
+                </ul>
+                <div class="op-plan-eylem">
+                    <a class="btn btn-ikincil btn-kucuk" id="@($"op-yazdir-{p.Id}")" href="@($"/cikti/{BelgeTurleri.OdemePlani}/{p.Id}")" target="_blank" rel="noopener">@M.Yazdir</a>
+                    @if (Yonetebilir && !p.Senetli && p.Durum == "AKTIF")
+                    {
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"op-iptal-{p.Id}")" disabled="@kaydediliyor" @onclick="() => Iptal(p.Id)">@M.PlaniKaldir</button>
+                    }
+                </div>
+            </section>
+        }
+        @if (Yonetebilir && adaylar.Count > 0)
+        {
+            <button type="button" class="dugme dugme-ikincil" id="op-yeni" @onclick="FormAc">@M.YeniOdemePlani</button>
+        }
+    }
+    else
+    {
+        <div class="form-dikey">
+            <Secici ElemanId="op-satis" Etiket="@M.TaksitlenecekSatis" Zorunlu="true"
+                    Secenekler="@(adaylar.Select(a => new SecenekOgesi(a.HareketId, $"{Bicim.TarihSaat(a.Tarih)} · {Bicim.TlKurus(a.AcikTutar)}")).ToList())"
+                    Deger="@form.HareketId" DegerChanged="@(v => form.HareketId = v ?? "")" />
+            <div class="form-grid-2">
+                <Sayi ElemanId="op-sayi" Etiket="@M.TaksitSayisi" Zorunlu="true" EnAz="2" EnCok="36" TamSayi="true"
+                      Deger="@form.Sayi" DegerChanged="@(v => form.Sayi = v)" />
+                <Sayi ElemanId="op-aralik" Etiket="@M.KacAydaBir" Zorunlu="true" EnAz="1" EnCok="12" TamSayi="true"
+                      Deger="@form.Aralik" DegerChanged="@(v => form.Aralik = v)" />
+            </div>
+            <Tarih ElemanId="op-ilk-vade" Etiket="@M.IlkTaksitTarihi" Zorunlu="true" EnErken="@Bugun" Deger="@form.IlkVade" DegerChanged="@(v => form.IlkVade = v)" />
+            <Onay ElemanId="op-senetli" Etiket="@M.HerTaksitIcinSenet" @bind-Deger="form.Senetli" />
+            @if (Onizleme is { } o)
+            {
+                <p class="metin-soluk metin-kucuk" id="op-onizleme">@o</p>
+            }
+        </div>
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public CariVeri? Cari { get; set; }
+    [Parameter] public bool Yonetebilir { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+
+    private sealed class Form
+    {
+        public string HareketId { get; set; } = "";
+        public decimal? Sayi { get; set; } = 3;
+        public decimal? Aralik { get; set; } = 1;
+        public DateOnly? IlkVade { get; set; }
+        public bool Senetli { get; set; }
+    }
+
+    private List<OdemePlaniOzet> planlar = [];
+    private List<OdemePlaniAdayi> adaylar = [];
+    private Form? form;
+    private string? hata;
+    private bool yukleniyor, kaydediliyor;
+    private string? yuklenenCari;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+    private static DateOnly Bugun => DateOnly.FromDateTime(Bicim.IsletmeZamani(DateTime.UtcNow));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Cari is null) { yuklenenCari = null; form = null; return; }
+        if (yuklenenCari == Cari.Id) return;
+        yuklenenCari = Cari.Id; form = null; hata = null;
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        if (Cari is null) return;
+        yukleniyor = true;
+        try
+        {
+            var id = Uri.EscapeDataString(Cari.Id);
+            planlar = await Api.GetAsync<List<OdemePlaniOzet>>($"/odeme-planlari?cariId={id}") ?? [];
+            adaylar = await Api.GetAsync<List<OdemePlaniAdayi>>($"/odeme-planlari/adaylar?cariId={id}") ?? [];
+        }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        finally { yukleniyor = false; }
+    }
+
+    private void FormAc()
+    {
+        hata = null;
+        form = new Form { HareketId = adaylar.Count == 1 ? adaylar[0].HareketId : "", IlkVade = Bugun.AddMonths(1) };
+    }
+
+    private string? Onizleme
+    {
+        get
+        {
+            if (form is null || adaylar.FirstOrDefault(a => a.HareketId == form.HareketId) is not { } a || form.Sayi is not { } n || n < 2) return null;
+            var taksit = Math.Floor(a.AcikTutar / n * 100m) / 100m;
+            return string.Format(M.TaksitOnizleme, (int)n, Bicim.TlKurus(taksit), Bicim.TlKurus(a.AcikTutar));
+        }
+    }
+
+    private async Task Kaydet()
+    {
+        if (form is null || Cari is null) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            await Api.PostAsync<OdemePlaniOzet>("/odeme-planlari", new
+            {
+                cariId = Cari.Id, kaynakHareketId = form.HareketId, taksitSayisi = (int)(form.Sayi ?? 0),
+                ilkVade = form.IlkVade, aralikAy = (int)(form.Aralik ?? 1), senetli = form.Senetli,
+            });
+            form = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task Iptal(string id)
+    {
+        kaydediliyor = true; hata = null;
+        try { await Api.PostAsync<OdemePlaniOzet>($"/odeme-planlari/{Uri.EscapeDataString(id)}/iptal"); await Yukle(); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private Task Kapat()
+    {
+        if (form is not null) { form = null; return Task.CompletedTask; }
+        return Kapandi.InvokeAsync();
+    }
+
+    private string DurumAdi(string d) => d switch
+    {
+        "ODENDI" => M.TaksitOdendi, "KISMI" => M.TaksitKismi, "GECIKTI" => M.TaksitGecikti, "KARSILIKSIZ" => M.TaksitKarsiliksiz,
+        "BEKLIYOR" => M.TaksitBekliyor, "TAMAMLANDI" => M.PlanTamamlandi, "IPTAL" => M.PlanKaldirildi, _ => M.PlanAktif,
+    };
+}

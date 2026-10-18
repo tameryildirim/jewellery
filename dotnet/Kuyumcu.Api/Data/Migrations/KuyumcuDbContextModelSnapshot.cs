@@ -4210,6 +4210,112 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.ToTable("odeme_kalemleri");
                 });
 
+            modelBuilder.Entity("Kuyumcu.Api.Data.OdemePlani", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CariId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("cari_id");
+
+                    b.Property<string>("Durum")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("durum");
+
+                    b.Property<DateTime?>("IptalZamani")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("iptal_zamani");
+
+                    b.Property<string>("KaynakHareketId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kaynak_hareket_id");
+
+                    b.Property<string>("OlusturanId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<bool>("Senetli")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("senetli");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("ToplamTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("toplam_tl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CariId");
+
+                    b.HasIndex("TenantId", "KaynakHareketId");
+
+                    b.ToTable("odeme_planlari");
+                });
+
+            modelBuilder.Entity("Kuyumcu.Api.Data.OdemePlaniTaksiti", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("EvrakId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("evrak_id");
+
+                    b.Property<string>("PlanId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("plan_id");
+
+                    b.Property<int>("Sira")
+                        .HasColumnType("int")
+                        .HasColumnName("sira");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<decimal>("TutarTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("tutar_tl");
+
+                    b.Property<DateOnly>("Vade")
+                        .HasColumnType("date")
+                        .HasColumnName("vade");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "PlanId", "Sira")
+                        .IsUnique();
+
+                    b.ToTable("odeme_plani_taksitleri");
+                });
+
             modelBuilder.Entity("Kuyumcu.Api.Data.OnayTalebi", b =>
                 {
                     b.Property<string>("Id")

@@ -69,11 +69,16 @@ public sealed class VadeHatirlatmaIsi : IZamanlanmisIs
             ], borcluCariler.Count);
         }
 
+        // D1-06: ödeme planına bağlı satış borcu vade hatırlatmasına girmez — taksitleri TAKSIT_HATIRLATMA izler.
+        var planli = (await db.OdemePlanlari.AsNoTracking()
+            .Where(p => p.TenantId == baglam.TenantId && p.Durum == OdemePlani.Aktif)
+            .Select(p => p.KaynakHareketId).Take(5000).ToListAsync(iptal)).ToHashSet();
         var taslaklar = new List<BildirimTaslagi>();
         foreach (var cariId in borcluCariler)
         {
             iptal.ThrowIfCancellationRequested();
-            var (borclar, _) = await VadeKapisi.AcikBorclar(db, baglam.TenantId, cariId, baglam.AnUtc);
+            var (tumBorclar, _) = await VadeKapisi.AcikBorclar(db, baglam.TenantId, cariId, baglam.AnUtc);
+            var borclar = tumBorclar.Where(b => !planli.Contains(b.HareketId)).ToList();
 
             var geciken = borclar.Where(b => b.GecikmeGun > 0).ToList();
             var yaklasan = borclar.Where(b => b.GecikmeGun <= 0 && -b.GecikmeGun <= ufukGun).ToList();

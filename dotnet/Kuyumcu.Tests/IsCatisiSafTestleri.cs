@@ -92,7 +92,7 @@ public sealed class IsCatisiSafTestleri
         var tipler = s.Where(d => d.ServiceType == typeof(IZamanlanmisIs))
             .Select(d => d.ImplementationType!.Name).OrderBy(x => x, StringComparer.Ordinal).ToArray();
 
-        Assert.Equal(["KasaKapanisHatirlatmaIsi", "MasakSibSuresiIsi", "SaklamaOnizlemeIsi", "SaklamaUygulaIsi", "StokEsikIsi", "StopajHatirlatmaIsi", "TevsikKurtarmaIsi", "VadeHatirlatmaIsi"], tipler);   // YASAL-3: SAKLAMA_UYGULA · YASAL-4: STOPAJ_HATIRLATMA · D1-15: STOK_ESIK · D1-11: KASA_KAPANIS
+        Assert.Equal(["KasaKapanisHatirlatmaIsi", "MasakSibSuresiIsi", "SaklamaOnizlemeIsi", "SaklamaUygulaIsi", "StokEsikIsi", "StopajHatirlatmaIsi", "TaksitHatirlatmaIsi", "TevsikKurtarmaIsi", "VadeHatirlatmaIsi"], tipler);   // YASAL-3: SAKLAMA_UYGULA · YASAL-4: STOPAJ_HATIRLATMA · D1-15: STOK_ESIK · D1-11: KASA_KAPANIS
     }
 
     // ── Kaynak taraması (denetim.sh'ın test tarafı ikizi) ────────────────────

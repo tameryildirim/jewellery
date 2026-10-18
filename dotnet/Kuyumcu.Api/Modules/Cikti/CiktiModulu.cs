@@ -56,6 +56,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.KvkkAydinlatma => "cari",  // D1-19
         BelgeTurleri.KimlikTespit => "uyum",    // D1-13 — + rol kapısı (MASAK kimlik ucuyla AYNI)
         BelgeTurleri.GarantiKarti => "islem",   // D1-13 — satış fişiyle aynı kapı
+        BelgeTurleri.OdemePlani => "cari",      // D1-06 — ödeme planı ucuyla aynı kapı
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -85,6 +86,7 @@ public sealed class CiktiServisi(
             BelgeTurleri.KvkkAydinlatma => await KvkkBelgesi(id, islem, iptal),
             BelgeTurleri.KimlikTespit => await KimlikTespitBelgesi(id, islem, iptal),
             BelgeTurleri.GarantiKarti => await GarantiKartiBelgesi(id, islem, iptal),
+            BelgeTurleri.OdemePlani => await OdemePlaniBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -443,6 +445,41 @@ public sealed class CiktiServisi(
     /// Bakiyeler EKRANDAKİ ile aynı kaynaktan (CariBakiyeler; has emanetsiz — CariBakiyeKurali). Yön "bize borçlu /
     /// size borçluyuz" yazılır, tutar işaretsiz basılır (artı = müşteri bize borçlu; BorcDili kuralı).
     /// </summary>
+    /// <summary>D1-06 — ödeme planı: taksit no · vade · tutar (+ senetli planda senet no); vade farkı yok.</summary>
+    private async Task<OrtakBelge> OdemePlaniBelgesi(string planId, AktifKullanici islem, CancellationToken iptal)
+    {
+        var p = await db.OdemePlanlari.AsNoTracking().FirstOrDefaultAsync(x => x.Id == planId && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Ödeme planı bulunamadı");
+        var c = await db.Cariler.AsNoTracking().FirstAsync(x => x.Id == p.CariId && x.TenantId == islem.TenantId, iptal);
+        var taksitler = await db.OdemePlaniTaksitleri.AsNoTracking().Where(t => t.PlanId == p.Id && t.TenantId == islem.TenantId)
+            .OrderBy(t => t.Sira).Take(36).ToListAsync(iptal);
+        var evrakIdler = taksitler.Where(t => t.EvrakId != null).Select(t => t.EvrakId!).ToList();
+        var senetNo = await db.KiymetliEvraklar.AsNoTracking().Where(e => e.TenantId == islem.TenantId && evrakIdler.Contains(e.Id))
+            .Take(evrakIdler.Count + 1).ToDictionaryAsync(e => e.Id, e => e.EvrakNo, iptal);
+        var satirlar = taksitler.Select(t => new CiktiSatir(p.Senetli
+            ? [$"{t.Sira}", t.Vade.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), t.EvrakId is null ? "" : senetNo.GetValueOrDefault(t.EvrakId) ?? "", Sayi(t.TutarTl, 2)]
+            : [$"{t.Sira}", t.Vade.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture), Sayi(t.TutarTl, 2)], ParaBirimi: "TRY")).ToList();
+        var bolum = p.Senetli
+            ? new CiktiBolum("Taksitler", ["No", "Vade", "Senet no", "Tutar"], satirlar, null, [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Para])
+            : new CiktiBolum("Taksitler", ["No", "Vade", "Tutar"], satirlar, null, [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Para]);
+        return new OrtakBelge(
+            Tur: BelgeTurleri.OdemePlani,
+            BelgeAdi: BelgeAdi(BelgeTurleri.OdemePlani),
+            BelgeNo: p.Id,
+            Dayanak: null,
+            DuzenlemeTarihi: p.Olusturuldu,
+            Duzenleyen: await Kimlik(islem.TenantId, islem.SubeId, iptal),
+            Karsi: new CiktiTaraf(CariTarafEtiketi(c.Tur), c.Ad, c.VergiNo, c.Adres, c.Telefon),
+            Bolumler: [bolum],
+            Tutarlar: [new CiktiTutar("Toplam borç", p.ToplamTl, "TRY", Toplam: true)],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.OdemePlani),
+            Not: OdemePlaniMetni,
+            Uyari: null,
+            BelgeNoKayitKimligi: true);
+    }
+
+    private const string OdemePlaniMetni = "Yukarıdaki taksitleri vadelerinde ödemeyi kabul ederim. Bu plana vade farkı uygulanmamıştır.";
+
     private async Task<OrtakBelge> MutabakatBelgesi(string cariId, AktifKullanici islem, CancellationToken iptal)
     {
         var c = await db.Cariler.AsNoTracking()
@@ -850,6 +887,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.KvkkAydinlatma => "KVKK AYDINLATMA FORMU",   // tek satır (uzun ad kayıt koduna taşıyordu — ölçüldü)
         BelgeTurleri.KimlikTespit => "KİMLİK TESPİT FORMU",
         BelgeTurleri.GarantiKarti => "ÜRÜN BELGESİ",
+        BelgeTurleri.OdemePlani => "ÖDEME PLANI",
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -865,6 +903,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.KvkkAydinlatma => ["Müşteri (ad soyad / imza)"],
         BelgeTurleri.KimlikTespit => ["Müşteri (imza)", "Tespit eden"],
         BelgeTurleri.GarantiKarti => ["Müşteri (imza)", "Satıcı (kaşe / imza)"],
+        BelgeTurleri.OdemePlani => ["Müşteri (ad soyad / imza)", "Satıcı (kaşe / imza)"],
         _ => [],
     };
 

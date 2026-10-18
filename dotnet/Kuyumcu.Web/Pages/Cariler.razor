@@ -645,6 +645,7 @@
 @* D1-09: hesap dönüştürme çekmecesi (ayrı bileşen). *@
 <div class="musteri-panel-kap t5-cekmece-kap">
 <HesapDonusturCekmecesi Cari="donusturCari" Kapandi="() => donusturCari = null" Kaydedildi="HesapDonusturuldu" />
+<OdemePlaniCekmecesi Cari="odemePlaniCari" Yonetebilir="@DuzeltmeGorebilir" Kapandi="async () => { odemePlaniCari = null; await Yukle(); }" />
 </div>
 <div class="musteri-panel-kap t5-cekmece-kap">
 <Cekmece Acik="@(dovizVeresiyeCari is not null)" Varlik="doviz-veresiye" IptalMetni="@Vazgec"
@@ -1500,6 +1501,7 @@
 
     // ── D1-09 hesap dönüştürme ──
     private CariVeri? donusturCari;
+    private CariVeri? odemePlaniCari;   // D1-06
     private async Task HesapDonusturuldu() { donusturCari = null; Basarili(D1Sozlugu.Al(Dil.Dil).HdKaydedildi); await Yukle(); }
     private string DovizTahsilatAdi => Sade ? BorcDiliSozlugu.DovizleTahsilat(Dil.Dil) : Dil.T.Cari.DovizTahsilat;
     private string DovizVeresiyeAdi => Sade ? BorcDiliSozlugu.DovizleVeresiye(Dil.Dil) : Dil.T.Cari.DovizVeresiye;
@@ -1530,6 +1532,8 @@
         // D1-09: hesap dönüştürme — düzeltmeyle AYNI rol kapısı (API de SAHİP/MÜDÜR/MUHASEBE).
         if (DuzeltmeGorebilir && !c.SistemCarisi)
             l.Add(new($"c-hesap-donustur-{c.Id}", D1Sozlugu.Al(Dil.Dil).HesapDonustur, Cb(() => donusturCari = c)));
+        if (!c.SistemCarisi)   // D1-06: herkes görür; plan açma/kaldırma çekmecede rol kapısıyla
+            l.Add(new($"c-odeme-plani-{c.Id}", D1Sozlugu.Al(Dil.Dil).OdemePlani, Cb(() => odemePlaniCari = c)));
         // Paket 27 — döviz defteri; UX-S30: kur yoksa KİLİTLİ ve sebebi yazılı (MenuEk).
         l.Add(new($"c-doviz-tahsilat-{c.Id}", DovizTahsilatAdi, Cb(() => DovizTahsilatAc(c)),
                   kilitli: !DovizYapilabilir, kilitNedeni: Dil.T.Cari.KurYokDovizYapilamaz));
