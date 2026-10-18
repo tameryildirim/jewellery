@@ -867,6 +867,8 @@ public static partial class SunucuIletiSozlugu
         ("Kilit süresi 5 dakika ile 30 gün arasında olmalıdır", "Lock duration must be between 5 minutes and 30 days"),
         ("Not en çok 200 karakter olabilir", "Note can be at most 200 characters"),
         ("Kur seçilmedi", "No rate selected"),
+        ("Prim yüzdesi 0 ile 100 arasında olmalıdır", "Commission rate must be between 0 and 100"),
+        ("Aylık hedef sıfır ya da daha büyük olmalıdır", "Monthly target must be zero or greater"),
         ("BM Güvenlik Konseyi Birleşik Listesi", "UN Security Council Consolidated List"),
         ("Gizlilik (5549 sayılı Kanun md.4/2): bildirim yapıldığı, işleme taraf olanlar dahil hiç kimseye açıklanamaz.", "Confidentiality (Law 5549 art. 4/2): the fact that a report was filed may not be disclosed to anyone, including the parties to the transaction."),
         ("Şüpheli işlem bildirimleri gizlidir; yalnız okuma hesabı bu kayıtları göremez.", "Suspicious transaction reports are confidential; read-only accounts cannot see them."),

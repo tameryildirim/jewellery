@@ -3292,6 +3292,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(12)")
                         .HasColumnName("arayuz_modu");
 
+                    b.Property<decimal?>("AylikHedefTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("aylik_hedef_tl");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(254)
@@ -3309,6 +3313,10 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.Property<DateTime>("Olusturuldu")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("olusturuldu");
+
+                    b.Property<decimal?>("PrimYuzde")
+                        .HasColumnType("decimal(5,2)")
+                        .HasColumnName("prim_yuzde");
 
                     b.Property<string>("Rol")
                         .IsRequired()

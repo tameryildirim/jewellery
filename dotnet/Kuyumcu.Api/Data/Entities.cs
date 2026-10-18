@@ -305,6 +305,10 @@ public class Kullanici : IKiraciVarlik
     /// </summary>
     /// <summary>D1-05 — çalışanın kişisel iskonto sınırı (yüzde, liste fiyatına göre). Boş = sınır yok.</summary>
     [Column("iskonto_siniri_yuzde", TypeName = "decimal(5,2)")] public decimal? IskontoSiniriYuzde { get; set; }
+    /// <summary>D1-20 — satış primi yüzdesi (net satış üzerinden). Boş = prim yok.</summary>
+    [Column("prim_yuzde", TypeName = "decimal(5,2)")] public decimal? PrimYuzde { get; set; }
+    /// <summary>D1-20 — aylık satış hedefi (TL). Boş = hedef yok.</summary>
+    [Column("aylik_hedef_tl", TypeName = "decimal(15,2)")] public decimal? AylikHedefTl { get; set; }
     [Column("salt_okunur")] public bool SaltOkunur { get; set; }
     /// <summary>
     /// Kullanıcının arayüz tercihi: BASIT | PROFESYONEL.

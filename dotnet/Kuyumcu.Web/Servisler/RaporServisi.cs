@@ -32,6 +32,12 @@ public sealed class RaporServisi(ApiIstemci api)
             ("baslangic", Bicim.Makine(baslangic)),
             ("bitis", Bicim.Makine(bitis)), ("subeId", subeId)));
 
+    /// <summary>D1-20 — satan bazlı prim ve hedef.</summary>
+    public Task<Kuyumcu.Contracts.Sayfalar.Raporlar.PrimRaporYaniti> Prim(DateOnly baslangic, DateOnly bitis, string? subeId = null)
+        => api.GetAsync<Kuyumcu.Contracts.Sayfalar.Raporlar.PrimRaporYaniti>("/raporlar/prim" + Sorgu(
+            ("baslangic", Bicim.Makine(baslangic)),
+            ("bitis", Bicim.Makine(bitis)), ("subeId", subeId)));
+
     public Task<PersonelYaniti> Personel(DateOnly baslangic, DateOnly bitis, string? subeId = null)
         => api.GetAsync<PersonelYaniti>("/raporlar/personel" + Sorgu(
             ("baslangic", Bicim.Makine(baslangic)),

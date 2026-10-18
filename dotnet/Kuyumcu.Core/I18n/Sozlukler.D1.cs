@@ -199,7 +199,17 @@ public sealed record D1Metinleri(
     string KopyalanamadiElle,
     string SibGizlilik,
     string UyumRaporu,
-    string CsvIndir);
+    string CsvIndir,
+    string PrimYuzdeEtiket,
+    string AylikHedefEtiket,
+    string PrimHedef,
+    string PrimToplam,
+    string Satan,
+    string SatanBilinmiyor,
+    string NetSatis,
+    string Hedef,
+    string Gerceklesme,
+    string Prim);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -395,7 +405,17 @@ public static class D1Sozlugu
         KopyalanamadiElle: "Pano kullanılamadı — metni seçip elle kopyalayın",
         SibGizlilik: "Gizlilik (5549 sayılı Kanun md.4/2): bildirim yapıldığı, işleme taraf olanlar dahil hiç kimseye açıklanamaz.",
         UyumRaporu: "Uyum raporu (bu yıl)",
-        CsvIndir: "CSV indir");
+        CsvIndir: "CSV indir",
+        PrimYuzdeEtiket: "Satış primi (%)",
+        AylikHedefEtiket: "Aylık satış hedefi",
+        PrimHedef: "Prim ve hedef",
+        PrimToplam: "Toplam prim: {0}",
+        Satan: "Satan",
+        SatanBilinmiyor: "Satanı seçilmemiş satış",
+        NetSatis: "Net satış",
+        Hedef: "Hedef",
+        Gerceklesme: "Gerçekleşme",
+        Prim: "Prim");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -588,7 +608,17 @@ public static class D1Sozlugu
         KopyalanamadiElle: "Clipboard unavailable — select and copy manually",
         SibGizlilik: "Confidential: the fact that a report was filed may not be told to anyone, including the parties (Law 5549 art. 4/2).",
         UyumRaporu: "Compliance report (this year)",
-        CsvIndir: "Download CSV");
+        CsvIndir: "Download CSV",
+        PrimYuzdeEtiket: "Sales commission (%)",
+        AylikHedefEtiket: "Monthly sales target",
+        PrimHedef: "Commission and target",
+        PrimToplam: "Total commission: {0}",
+        Satan: "Seller",
+        SatanBilinmiyor: "Sales without a seller",
+        NetSatis: "Net sales",
+        Hedef: "Target",
+        Gerceklesme: "Achieved",
+        Prim: "Commission");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

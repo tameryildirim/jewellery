@@ -136,6 +136,26 @@
             }
         }
     }
+    else if (sekme == "prim")
+    {
+        @* D1-20: SATAN bazlı prim ve hedef (hareketler.personel_id — kaydeden değil). *@
+        @if (prim is { } pr)
+        {
+            @if (pr.Satirlar.Count == 0)
+            {
+                <BosDurum Mesaj="@Dil.T.RaporSeti.BosDurum" />
+            }
+            else
+            {
+                <div class="kart">
+                    <Izgara T="Kuyumcu.Contracts.Sayfalar.Raporlar.PrimSatiri" Ekran="satis-analizi" GridId="sa-prim" TabloId="sa-prim-tablo"
+                            Kolonlar="@PrimKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(pr.Satirlar.ToList(), primSira, PrimKolonlari)"
+                            Baslik="@D1.PrimHedef" SiralamaDegisti="@(x => primSira = x)" GecerliSiralama="@primSira" />
+                    <p class="metin-kucuk" id="sa-prim-toplam">@string.Format(D1.PrimToplam, Bicim.Tl(pr.ToplamPrimTl))</p>
+                </div>
+            }
+        }
+    }
     else
     {
         @if (sube is { } sk)
@@ -176,6 +196,19 @@
 @code {
     private OdemeAraciYaniti? odeme;
     private PersonelYaniti? personel;
+    private Kuyumcu.Contracts.Sayfalar.Raporlar.PrimRaporYaniti? prim;   // D1-20
+    private IzgaraSiralama? primSira;
+    private Kuyumcu.Core.I18n.D1Metinleri D1 => Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<IzgaraKolonu<Kuyumcu.Contracts.Sayfalar.Raporlar.PrimSatiri>> PrimKolonlari =>
+    [
+        new() { Anahtar = "satan", Baslik = D1.Satan, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu", Deger = r => r.Ad ?? D1.SatanBilinmiyor },
+        new() { Anahtar = "net", Baslik = D1.NetSatis, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.NetTl, Hucre = r => @<text>@Bicim.Tl(r.NetTl)</text> },
+        new() { Anahtar = "iade", Baslik = Dil.T.RaporSeti.IadeAdet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.IadeTl, Hucre = r => @<text>@Bicim.Tl(r.IadeTl)</text> },
+        new() { Anahtar = "hedef", Baslik = D1.Hedef, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.HedefTl, Hucre = r => @<text>@(r.HedefTl is { } h ? Bicim.Tl(h) : "—")</text> },
+        new() { Anahtar = "gerceklesme", Baslik = D1.Gerceklesme, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.GerceklesmeYuzde, Hucre = r => @<text>@(r.GerceklesmeYuzde is { } g ? Bicim.Yuzde(g) : "—")</text> },
+        new() { Anahtar = "prim", Baslik = D1.Prim, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.PrimTl, Hucre = r => @<text>@(r.PrimYuzde is { } py ? $"{Bicim.Tl(r.PrimTl)} (%{Bicim.Oran(py)})" : "—")</text> },
+    ];
     private SubeKarsilastirmaYaniti? sube;
 
     private string sekme = "odeme";
@@ -256,6 +289,7 @@
     [
         new("odeme", Dil.T.RaporSeti.AdOdemeAraci),
         new("personel", Dil.T.RaporSeti.AdPersonel),
+        new("prim", D1.PrimHedef),   // D1-20
         new("sube", Dil.T.RaporSeti.AdSubeKarsilastirma),
     ];
 
@@ -294,6 +328,7 @@
             {
                 case "odeme": odeme = await Rapor.OdemeAraci(bas, bit); break;
                 case "personel": personel = await Rapor.Personel(bas, bit); break;
+                case "prim": prim = await Rapor.Prim(bas, bit); break;   // D1-20
                 default: sube = await Rapor.SubeKarsilastirma(bas, bit); break;
             }
         }

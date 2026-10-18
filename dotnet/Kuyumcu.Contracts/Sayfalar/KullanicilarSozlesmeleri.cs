@@ -12,5 +12,7 @@ public sealed record KullaniciVeri(
     // D1-14 — salt okunur (mali müşavir) hesap.
     bool SaltOkunur = false,
     // D1-05 — kişisel iskonto sınırı (yüzde); boş = sınır yok.
-    decimal? IskontoSiniriYuzde = null);
+    decimal? IskontoSiniriYuzde = null,
+    // D1-20 — prim yüzdesi ve aylık hedef.
+    decimal? PrimYuzde = null, decimal? AylikHedefTl = null);
 public sealed record SubeOzet(string Id, string Ad);

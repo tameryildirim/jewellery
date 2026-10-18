@@ -52,6 +52,9 @@ public sealed class KullaniciOlusturDto
     public bool SaltOkunur { get; set; }
     /// <summary>D1-05 — kişisel iskonto sınırı (yüzde); boş = sınır yok.</summary>
     [Range(0, 100, ErrorMessage = "İskonto sınırı 0 ile 100 arasında olmalıdır")] public decimal? IskontoSiniriYuzde { get; set; }
+    /// <summary>D1-20 — prim yüzdesi ve aylık hedef; boş = yok.</summary>
+    [Range(0, 100, ErrorMessage = "Prim yüzdesi 0 ile 100 arasında olmalıdır")] public decimal? PrimYuzde { get; set; }
+    [Range(0, 1_000_000_000, ErrorMessage = "Aylık hedef sıfır ya da daha büyük olmalıdır")] public decimal? AylikHedefTl { get; set; }
 }
 
 public sealed class KullaniciGuncelleDto
@@ -151,6 +154,9 @@ public sealed class RolDegistirDto
     public bool SaltOkunur { get; set; }
     /// <summary>D1-05 — kişisel iskonto sınırı (yüzde); boş = sınır yok. Her istekte gönderilir.</summary>
     [Range(0, 100, ErrorMessage = "İskonto sınırı 0 ile 100 arasında olmalıdır")] public decimal? IskontoSiniriYuzde { get; set; }
+    /// <summary>D1-20 — prim yüzdesi ve aylık hedef; boş = yok.</summary>
+    [Range(0, 100, ErrorMessage = "Prim yüzdesi 0 ile 100 arasında olmalıdır")] public decimal? PrimYuzde { get; set; }
+    [Range(0, 1_000_000_000, ErrorMessage = "Aylık hedef sıfır ya da daha büyük olmalıdır")] public decimal? AylikHedefTl { get; set; }
 }
 
 // ── Servis ───────────────────────────────────────────────────────────────────
@@ -193,6 +199,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
             Rol = dto.Rol,
             SaltOkunur = SaltOkunurDogrula(dto.Rol, dto.SaltOkunur),   // D1-14
             IskontoSiniriYuzde = dto.IskontoSiniriYuzde,   // D1-05
+            PrimYuzde = dto.PrimYuzde, AylikHedefTl = dto.AylikHedefTl,   // D1-20
             ArayuzModu = OlusturmaModu(dto.ArayuzModu),
             Aktif = true,
             Olusturuldu = now,
@@ -371,6 +378,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         hedef.Rol = dto.Rol;
         hedef.SaltOkunur = SaltOkunurDogrula(dto.Rol, dto.SaltOkunur);   // D1-14
         hedef.IskontoSiniriYuzde = dto.IskontoSiniriYuzde;   // D1-05 (boş = sınır yok)
+        hedef.PrimYuzde = dto.PrimYuzde; hedef.AylikHedefTl = dto.AylikHedefTl;   // D1-20
         hedef.Guncellendi = DateTime.UtcNow;
         denetim.YazmaKaydet(islem, nameof(Data.Kullanici), hedef.Id,
             $"kullanici-rol-degisti: {eskiRol} → {dto.Rol}{(hedef.SaltOkunur ? " (salt okunur)" : "")}");
@@ -599,6 +607,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         rol = k.Rol,
         saltOkunur = k.SaltOkunur,   // D1-14
         iskontoSiniriYuzde = k.IskontoSiniriYuzde,   // D1-05
+        primYuzde = k.PrimYuzde, aylikHedefTl = k.AylikHedefTl,   // D1-20
         arayuzModu = k.ArayuzModu,
         aktif = k.Aktif,
         sonGiris = k.SonGiris,

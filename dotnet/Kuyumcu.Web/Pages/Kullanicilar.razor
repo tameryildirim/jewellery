@@ -119,6 +119,14 @@
                     <Sayi ElemanId="k-iskonto-siniri" Etiket="@D1Sozlugu.Al(Dil.Dil).IskontoSiniriEtiket" EnAz="0" EnCok="100" EnCokOndalik="2" Birim="%"
                           Deger="@yeniIskontoSiniri" DegerChanged="@(v => yeniIskontoSiniri = v)" />
                 }
+                @if (yeniRol != "SAHIP")
+                {
+                    @* D1-20: satış primi ve aylık hedef (boş = yok). *@
+                    <Sayi ElemanId="k-prim-yuzde" Etiket="@D1Sozlugu.Al(Dil.Dil).PrimYuzdeEtiket" EnAz="0" EnCok="100" EnCokOndalik="2" Birim="%"
+                          Deger="@yeniPrimYuzde" DegerChanged="@(v => yeniPrimYuzde = v)" />
+                    <Para ElemanId="k-aylik-hedef" Etiket="@D1Sozlugu.Al(Dil.Dil).AylikHedefEtiket" ParaBirimi="TRY"
+                          Deger="@yeniAylikHedef" DegerChanged="@(v => yeniAylikHedef = v)" />
+                }
             </div>
             <Sifre ElemanId="k-sifre" Etiket="@Dil.T.Kullanici.Sifre" Zorunlu="true"
                    YerTutucu="@Dil.T.Kullanici.SifreIpucu" OtoTamamla="new-password"
@@ -234,6 +242,13 @@
                         {
                             <Sayi ElemanId="d-iskonto-siniri" Etiket="@D1Sozlugu.Al(Dil.Dil).IskontoSiniriEtiket" EnAz="0" EnCok="100" EnCokOndalik="2" Birim="%"
                                   Deger="@dIskontoSiniri" DegerChanged="@(v => dIskontoSiniri = v)" />
+                        }
+                        @if (dRol != "SAHIP")
+                        {
+                            <Sayi ElemanId="d-prim-yuzde" Etiket="@D1Sozlugu.Al(Dil.Dil).PrimYuzdeEtiket" EnAz="0" EnCok="100" EnCokOndalik="2" Birim="%"
+                                  Deger="@dPrimYuzde" DegerChanged="@(v => dPrimYuzde = v)" />
+                            <Para ElemanId="d-aylik-hedef" Etiket="@D1Sozlugu.Al(Dil.Dil).AylikHedefEtiket" ParaBirimi="TRY"
+                                  Deger="@dAylikHedef" DegerChanged="@(v => dAylikHedef = v)" />
                         }
                     </div>
                     <div class="alan">
@@ -398,6 +413,7 @@
     private string yeniRol = "TEZGAHTAR";
     private bool yeniSaltOkunur, dSaltOkunur;   // D1-14
     private decimal? yeniIskontoSiniri, dIskontoSiniri;   // D1-05
+    private decimal? yeniPrimYuzde, dPrimYuzde, yeniAylikHedef, dAylikHedef;   // D1-20
     private string yeniArayuzModu = "";
     private string yeniSubeId = "";
 
@@ -716,7 +732,7 @@
         yeniArayuzModu = "";
         yeniSubeId = subeler.Count == 1 ? subeler[0].Id : "";
         yeniRol = AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR";
-        yeniSaltOkunur = false; yeniIskontoSiniri = null;
+        yeniSaltOkunur = false; yeniIskontoSiniri = null; yeniPrimYuzde = null; yeniAylikHedef = null;
         yeniModalAcik = true;
     }
 
@@ -735,6 +751,7 @@
                 rol = yeniRol,
                 saltOkunur = yeniRol == "MUHASEBE" && yeniSaltOkunur,   // D1-14
                 iskontoSiniriYuzde = yeniRol is "TEZGAHTAR" or "MUHASEBE" ? yeniIskontoSiniri : null,   // D1-05
+                primYuzde = yeniRol != "SAHIP" ? yeniPrimYuzde : null, aylikHedefTl = yeniRol != "SAHIP" ? yeniAylikHedef : null,   // D1-20
                 arayuzModu = Bos(yeniArayuzModu),
                 subeId = SubeGovde(yeniSubeId),
             });
@@ -757,6 +774,7 @@
         dRol = AtanabilirRoller.Contains(k.Rol) ? k.Rol : (AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR");
         dSaltOkunur = k.SaltOkunur;   // D1-14
         dIskontoSiniri = k.IskontoSiniriYuzde;   // D1-05
+        dPrimYuzde = k.PrimYuzde; dAylikHedef = k.AylikHedefTl;   // D1-20
         dAktif = k.Aktif ? "true" : "false";
         dArayuzModu = k.ArayuzModu ?? "";
         dSubeId = k.SubeId ?? (subeler.Count == 1 ? subeler[0].Id : "");
@@ -795,8 +813,10 @@
                 });
                 var yeniSalt = dRol == "MUHASEBE" && dSaltOkunur;   // D1-14: muhasebe dışında salt okunur kapanır
                 var yeniSinir = dRol is "TEZGAHTAR" or "MUHASEBE" ? dIskontoSiniri : null;   // D1-05: yönetici rollerinde sınır yok
-                if (dRol != eskiRol || yeniSalt != duzenleHedef.SaltOkunur || yeniSinir != duzenleHedef.IskontoSiniriYuzde)
-                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol, saltOkunur = yeniSalt, iskontoSiniriYuzde = yeniSinir });
+                var yeniPrim = dRol != "SAHIP" ? dPrimYuzde : null; var yeniHedef = dRol != "SAHIP" ? dAylikHedef : null;   // D1-20
+                if (dRol != eskiRol || yeniSalt != duzenleHedef.SaltOkunur || yeniSinir != duzenleHedef.IskontoSiniriYuzde
+                    || yeniPrim != duzenleHedef.PrimYuzde || yeniHedef != duzenleHedef.AylikHedefTl)
+                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol, saltOkunur = yeniSalt, iskontoSiniriYuzde = yeniSinir, primYuzde = yeniPrim, aylikHedefTl = yeniHedef });
             }
             duzenleHedef = null;
             await Yukle();

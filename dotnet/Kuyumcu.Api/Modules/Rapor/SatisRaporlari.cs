@@ -534,6 +534,13 @@ public sealed class SatisRaporController(SatisRaporServisi servis, KuyumcuDbCont
         [FromQuery] DateOnly? baslangic, [FromQuery] DateOnly? bitis, [FromQuery] string? subeId)
         => await servis.Personel(Islem, baslangic, bitis, await GorunumSubesi.Coz(db, Islem, subeId));
 
+    /// <summary>GET /api/v1/raporlar/prim — D1-20 SATAN bazlı prim ve hedef (sahip/müdür/muhasebe)</summary>
+    [HttpGet("prim")]
+    public async Task<PrimRaporYaniti> Prim(
+        [FromQuery] DateOnly? baslangic, [FromQuery] DateOnly? bitis, [FromQuery] string? subeId,
+        [FromServices] DenetimServisi denetim)
+        => await PrimRaporu.Hesapla(db, denetim, Islem, baslangic, bitis, await GorunumSubesi.Coz(db, Islem, subeId));
+
     /// <summary>GET /api/v1/raporlar/sube-karsilastirma — R14 şube bazlı karşılaştırma</summary>
     [HttpGet("sube-karsilastirma")]
     public Task<object> SubeKarsilastirma(
