@@ -20,6 +20,7 @@ public partial class Isletme
     // D2-12 — sadakat puanı ayarı
     private Kuyumcu.Contracts.Sayfalar.Cariler.SadakatAyari? sadakat;
     private bool sadakatCekmeceAcik;
+    private bool disApiAcik;   // D3-11
 
     private async Task SadakatYukle()
     {

@@ -43,6 +43,8 @@ namespace Kuyumcu.Api.Data;
 //  12. BankaCekici (M7) → kiracı başına sağlayıcı çekimi                              [Kiraci(id)]
 //  13. BmYaptirimGuncelleyici (D1-18) → kiracı-üstü yaptırım listesi (BM, günlük) — sistem ucu
 //      /sistem/yaptirim-listesi ile AYNI çekirdek (YaptirimServisi.ListeGuncelle)                [Sistem]
+//  14. DisApiAnahtar.Dogrula (D3-11) → API anahtarını önek + özetle bulmak (kimlik-öncesi, JWT yok)  [Sistem]
+//  15. DisApiController (D3-11) → anahtarın kiracısına SABİT okuma kapsamı                       [Kiraci(id)]
 //   `AuthServisi.Ben` dahil JWT-SONRASI her şey istek bağlamında kalır.
 //
 // ⚠ 7-8 (paket F-2-min, mühürlü koşul): bu iki kullanım YAPILANDIRMA SIRRI ile

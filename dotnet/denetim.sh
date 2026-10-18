@@ -439,7 +439,7 @@ fi
 # D1-03 (18.10): Data/BekleyenFis.cs (bekleyen_fisler — işlem bekletme) 81 -> 82
 # D1-19 (18.10): Data/KvkkKayitlari.cs (kvkk_metinleri + kvkk_kayitlari) 82 -> 84
 # D1-16 (18.10): Data/UrunSeti.cs (urun_setleri + urun_seti_kalemleri) 84 -> 86
-BEKLENEN_VARLIK=92
+BEKLENEN_VARLIK=93
 VARLIK=$(grep -c ": IKiraciVarlik" "$API/Data/Entities.cs" || true)
 EK=$(grep -rl ": IKiraciVarlik" "$API/Data" --include='*.cs' | grep -v Entities.cs | xargs grep -c ": IKiraciVarlik" 2>/dev/null | awk -F: '{t+=$2} END{print t+0}')
 MODUL_VARLIK=$(grep -rn ": IKiraciVarlik" "$API/Modules" --include='*.cs' 2>/dev/null | grep -v '/obj/\|/bin/' | wc -l | tr -d ' ')

@@ -5,6 +5,7 @@
 @inject ApiIstemci Api
 @inject DilServisi Dil
 @inject ArayuzModuServisi Modu
+@inject OturumServisi Oturum
 @implements IDisposable
 
 @* ═══════════════════════════════════════════════════════════════════════════
@@ -410,6 +411,15 @@
                                 }
                             </div>
                             <SadakatAyarCekmecesi Acik="sadakatCekmeceAcik" Kapandi="() => sadakatCekmeceAcik = false" Kaydedildi="SadakatKaydedildi" />
+                            @if (Oturum.Kullanici?.Rol == "SAHIP")
+                            {
+                                @* D3-11 (19.10): dış API anahtarları (web sitesi, vitrin ekranı) — yalnız sahip. *@
+                                <div class="alan" id="i-dis-api">
+                                    <span class="alan-etiket">@D1Sozlugu.Al(Dil.Dil).DisApi</span>
+                                    <button type="button" class="btn btn-ikincil btn-kucuk" id="i-dis-api-ac" @onclick="() => disApiAcik = true">@D1Sozlugu.Al(Dil.Dil).AnahtarlariYonet</button>
+                                </div>
+                                <DisApiCekmecesi Acik="disApiAcik" Kapandi="() => disApiAcik = false" />
+                            }
                             @* ── PAKET P-13 · B-47 ────────────────────────────────────────
                                Kur kaynağı ve maliyet yöntemi SALT OKUNUR satırdı ve yanında
                                "bu ayar türetilir" gerekçesi yazıyordu. İkisi de doğru değildi:

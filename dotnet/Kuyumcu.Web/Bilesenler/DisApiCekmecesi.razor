@@ -1,0 +1,118 @@
+@using Kuyumcu.Contracts.Sayfalar.Isletme
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D3-11 (19.10) — İşletme › dış API anahtarları (yalnız sahip): liste · yeni (ad + KUR/URUN) · iptal.
+   Tam anahtar YALNIZ oluşturulunca bir kez gösterilir (sunucu saklamaz). Kullanım adresleri çekmecede yazılı.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<Cekmece Acik="Acik" Varlik="dis-api" Baslik="@M.DisApi" Kapat="Kapat" Kaydet="Olustur" Kaydediliyor="@calisiyor"
+         KaydetGoster="@formAcik" KaydetElemanId="da-kaydet" KaydetAktif="@(!string.IsNullOrWhiteSpace(ad) && (kur || urun))">
+    <HataBandi Mesaj="@hata" Id="da-hata" />
+    @if (yeniAnahtar is { } y)
+    {
+        <div class="bant bant-uyari" role="status" id="da-yeni">
+            <p>@M.AnahtarBirKez</p>
+            <code class="da-anahtar" id="da-anahtar">@y</code>
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="da-kopyala" @onclick="Kopyala">@(kopyalandi ? M.Kopyalandi : M.Kopyala)</button>
+        </div>
+    }
+    @if (formAcik)
+    {
+        <div class="form-dikey">
+            <Metin ElemanId="da-ad" Etiket="@M.AnahtarAdi" Zorunlu="true" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.ApiAnahtariAdi" YerTutucu="@M.AnahtarAdiOrnek" Deger="@ad" DegerChanged="@(v => ad = v)" />
+            <Onay ElemanId="da-kur" Etiket="@M.KapsamKur" @bind-Deger="kur" />
+            <Onay ElemanId="da-urun" Etiket="@M.KapsamUrun" @bind-Deger="urun" />
+        </div>
+    }
+    else
+    {
+        <ul class="da-liste" id="da-liste">
+            @foreach (var a in anahtarlar)
+            {
+                <li class="@(a.Iptal ? "da-satir metin-soluk" : "da-satir")" id="@($"da-{a.Id}")">
+                    <span><strong>@a.Ad</strong> · <code>mhk_@(a.Onek)…</code> · @string.Join(", ", a.Kapsamlar)
+                        <span class="metin-kucuk metin-soluk"> · @(a.SonKullanim is { } sk ? string.Format(M.SonKullanimMetni, Bicim.TarihSaat(sk)) : M.HicKullanilmadi)@(a.Iptal ? $" · {M.Iptal}" : "")</span></span>
+                    @if (!a.Iptal)
+                    {
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"da-iptal-{a.Id}")" disabled="@calisiyor" @onclick="() => IptalEt(a.Id)">@M.IptalEt</button>
+                    }
+                </li>
+            }
+        </ul>
+        <button type="button" class="dugme dugme-ikincil" id="da-yeni-ac" @onclick="() => { formAcik = true; yeniAnahtar = null; }">@M.YeniAnahtar</button>
+        <div class="metin-kucuk metin-soluk da-kullanim" id="da-kullanim">
+            <p>@M.KullanimBaslik</p>
+            <code>GET @(Kok)api/disa/v1/kur</code><br />
+            <code>GET @(Kok)api/disa/v1/urunler?limit=100</code><br />
+            <code>@(Kok)hubs/disa-kur?anahtar=…</code> (SignalR · "KurGuncellendi")
+            <p>@M.BaslikNotu</p>
+        </div>
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+
+    private List<ApiAnahtariOzet> anahtarlar = [];
+    private string? ad, hata, yeniAnahtar;
+    private bool kur = true, urun, formAcik, calisiyor, acikti, kopyalandi;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+    private string Kok => Nav.BaseUri;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !acikti) { formAcik = false; yeniAnahtar = null; await Yukle(); }
+        acikti = Acik;
+    }
+
+    private async Task Yukle()
+    {
+        hata = null;
+        try { anahtarlar = await Api.GetAsync<List<ApiAnahtariOzet>>("/api-anahtarlari") ?? []; }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch (System.Text.Json.JsonException) { hata = M.BolumOkunamadi; }
+    }
+
+    private async Task Olustur()
+    {
+        calisiyor = true; hata = null;
+        try
+        {
+            var kapsamlar = new List<string>();
+            if (kur) kapsamlar.Add("KUR");
+            if (urun) kapsamlar.Add("URUN");
+            var y = await Api.PostAsync<YeniApiAnahtari>("/api-anahtarlari", new { ad, kapsamlar });
+            yeniAnahtar = y.Anahtar; kopyalandi = false; formAcik = false; ad = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task IptalEt(string id)
+    {
+        calisiyor = true; hata = null;
+        try { await Api.PostAsync<ApiAnahtariOzet>($"/api-anahtarlari/{Uri.EscapeDataString(id)}/iptal"); await Yukle(); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task Kopyala()
+    {
+        try { kopyalandi = yeniAnahtar is not null && await JS.InvokeAsync<bool>("kuyumcuPanoyaKopyala", yeniAnahtar); if (!kopyalandi) hata = M.KopyalanamadiElle; }
+        catch (JSException) { hata = M.KopyalanamadiElle; }
+    }
+
+    private Task Kapat()
+    {
+        if (formAcik) { formAcik = false; return Task.CompletedTask; }
+        yeniAnahtar = null;   // anahtar çekmece kapanınca ekrandan da silinir
+        return Kapandi.InvokeAsync();
+    }
+}

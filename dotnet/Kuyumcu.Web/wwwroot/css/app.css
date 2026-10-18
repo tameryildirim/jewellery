@@ -3127,3 +3127,8 @@ button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed
 .uyk-satir { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; border-top: 1px solid var(--kenarlik); }
 .uyk-tutar { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .uyk-satir { grid-template-columns: minmax(0, 1fr) auto; } }
+/* D3-11: dış API anahtarları */
+.da-liste { list-style: none; margin: 0 0 12px; padding: 0; }
+.da-satir { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--kenarlik); }
+.da-anahtar { display: block; word-wrap: break-word; margin: 6px 0; user-select: all; }
+.da-kullanim { margin-top: 12px; word-wrap: break-word; }

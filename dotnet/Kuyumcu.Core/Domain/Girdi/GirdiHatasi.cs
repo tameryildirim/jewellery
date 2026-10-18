@@ -179,6 +179,8 @@ public static class AlanSinirlari
     public const int CariYuzukOlcusu = 20;
     /// <summary>D2-12 — dilek/puan açıklaması.</summary>
     public const int MusteriNotu = 300;
+    /// <summary>D3-11 — API anahtarı adı (api_anahtarlari.ad ile AYNI).</summary>
+    public const int ApiAnahtariAdi = 100;
     /// <summary>M7: demo bankası havale açıklaması (sahte_banka_hareketleri.aciklama).</summary>
     public const int SahteHavaleAciklama = 200;
     /// <summary>Ürün açıklaması (urunler.aciklama varchar(1000)).</summary>

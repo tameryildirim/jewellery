@@ -229,7 +229,21 @@ public sealed record D1Metinleri(
     string ToplamAlisveris,
     string GunOnce,
     string BolumOkunamadi,
-    string Uykuda);
+    string Uykuda,
+    string DisApi,
+    string AnahtarlariYonet,
+    string AnahtarBirKez,
+    string AnahtarAdi,
+    string AnahtarAdiOrnek,
+    string KapsamKur,
+    string KapsamUrun,
+    string SonKullanimMetni,
+    string HicKullanilmadi,
+    string Iptal,
+    string IptalEt,
+    string YeniAnahtar,
+    string KullanimBaslik,
+    string BaslikNotu);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -455,7 +469,21 @@ public static class D1Sozlugu
         ToplamAlisveris: "Toplam alışveriş",
         GunOnce: "{0} gün önce",
         BolumOkunamadi: "Bu bölüm şu an okunamadı; sayfayı yenileyin.",
-        Uykuda: "UYKUDA");
+        Uykuda: "UYKUDA",
+        DisApi: "Dış bağlantı anahtarları (API)",
+        AnahtarlariYonet: "Anahtarları yönet",
+        AnahtarBirKez: "Bu anahtar yalnız şimdi gösteriliyor — kopyalayıp güvenli yere koyun. Kaybolursa iptal edip yenisini açın.",
+        AnahtarAdi: "Ne için",
+        AnahtarAdiOrnek: "Web sitesi, vitrin ekranı…",
+        KapsamKur: "Güncel kur ve canlı kur yayını",
+        KapsamUrun: "Ürünler, stok ve liste fiyatı",
+        SonKullanimMetni: "son kullanım {0}",
+        HicKullanilmadi: "henüz kullanılmadı",
+        Iptal: "iptal",
+        IptalEt: "İptal et",
+        YeniAnahtar: "+ Yeni anahtar",
+        KullanimBaslik: "Kullanım (yalnız okuma):",
+        BaslikNotu: "Anahtar X-Api-Anahtari başlığında gönderilir.");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -678,7 +706,21 @@ public static class D1Sozlugu
         ToplamAlisveris: "Total purchases",
         GunOnce: "{0} days ago",
         BolumOkunamadi: "This section could not be read; refresh the page.",
-        Uykuda: "DORMANT");
+        Uykuda: "DORMANT",
+        DisApi: "External API keys",
+        AnahtarlariYonet: "Manage keys",
+        AnahtarBirKez: "This key is shown only now — copy it somewhere safe. If lost, revoke it and create a new one.",
+        AnahtarAdi: "Used for",
+        AnahtarAdiOrnek: "Website, display screen…",
+        KapsamKur: "Current rates and live rate feed",
+        KapsamUrun: "Products, stock and list price",
+        SonKullanimMetni: "last used {0}",
+        HicKullanilmadi: "not used yet",
+        Iptal: "revoked",
+        IptalEt: "Revoke",
+        YeniAnahtar: "+ New key",
+        KullanimBaslik: "Usage (read-only):",
+        BaslikNotu: "Send the key in the X-Api-Anahtari header.");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

@@ -838,7 +838,7 @@ public sealed class KurKaynakDefteri
 public sealed class KurServisi(
     KuyumcuDbContext db, ILogger<KurServisi> logger,
     IHubContext<KurHub> kurHub, KurKaynakDefteri kaynakDefteri,
-    DenetimServisi denetim)
+    DenetimServisi denetim, IHubContext<DisApi.DisaKurHub>? disaHub = null)
 {
     /// <summary>Seçilebilir kaynak kodları + kiracının seçili kaynağı.</summary>
     public async Task<object> Kaynaklar(string tenantId) => new
@@ -1437,7 +1437,11 @@ public sealed class KurServisi(
 
         var cevap = SnapshotZenginlestir(snapshot);
         // Canlı push: yalnız bu tenant'ın bağlı istemcilerine (yoklama yerine)
-        try { await kurHub.Clients.Group(tenantId).SendAsync("KurGuncellendi", cevap); }
+        try
+        {
+            await kurHub.Clients.Group(tenantId).SendAsync("KurGuncellendi", cevap);
+            if (disaHub is not null) await disaHub.Clients.Group(DisApi.DisaKurHub.Grup(tenantId)).SendAsync("KurGuncellendi", cevap);   // D3-11
+        }
         catch (Exception ex) { logger.LogWarning(ex, "Kur push gönderilemedi (bağlı istemci yok olabilir)"); }
         return cevap;
     }

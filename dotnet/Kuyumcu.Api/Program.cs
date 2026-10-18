@@ -609,6 +609,7 @@ app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<Kuyumcu.Api.Modules.Kur.KurHub>("/hubs/kur");   // canlı kur push
 app.MapHub<Kuyumcu.Api.Modules.Banka.BankaHub>("/hubs/banka");   // M7: canlı banka hareketi
+app.MapHub<Kuyumcu.Api.Modules.DisApi.DisaKurHub>("/hubs/disa-kur");   // D3-11: dış canlı kur (API anahtarı)
 // ⚠ PAKET UX-4d madde 7 (Mehmet — API yüzeyi HTML sızdırmaz):
 // /api/** altındaki BİLİNMEYEN bir yol SPA geri dönüşüne düşüp 200 + index.html
 // döndürüyordu. Bir API istemcisi için bu sessiz bir yalandır: yanlış yazılmış
