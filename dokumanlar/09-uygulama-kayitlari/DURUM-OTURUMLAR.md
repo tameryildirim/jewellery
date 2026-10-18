@@ -40,11 +40,10 @@ Başkasının satırını değiştirme/silme yok.
 6. Kurucu kuralları geçerli: eksik/ertelenmiş iş yok; tarayıcıda gerçek veriyle kanıt; hata gizlenmez.
 
 ## Sıradaki işler (18.10 — kurucu: "Tüm eksikleri tamamla")
-15.10 rakip eşitleme planının ilk dalgası (`RAKIP-OZELLIK-ESITLEME-PLANI-2026-10-15.md` § 5 D1). Bitti: D1-01, 03, 10, 12, 15, 19
-(D1-17 zaten vardı). Kalan: D1-02 etiket tasarımcısı/QR/ZPL · 04 kur kilidi · 05 eşikli onay/iskonto sınırı · 06 taksitli satış ·
-07 veresiyenin altınla kapanması/kara liste · 08 eritme/fire/takoz · 09 hesap dönüştürme · 11 kör sayım/çalışan kasası/kapanış
-hatırlatması · 13 garanti kartı/kimlik tespit baskısı/imza · 14 mali müşavir rolü + Luca/Logo dökümü · 16 akıllı içe aktarım/set ·
-18 MASAK gönderim yardımcısı/yaptırım listesi/denetim raporu · 20 prim/komisyon/hedef.
+15.10 rakip eşitleme planının ilk dalgası (`RAKIP-OZELLIK-ESITLEME-PLANI-2026-10-15.md` § 5 D1). Bitti: D1-01, 03, 09, 10, 11, 12,
+13, 14, 15, 16, 19 (D1-17 zaten vardı). Kalan: D1-02 etiket tasarımcısı/QR/ZPL · 04 kur kilidi · 05 eşikli onay/iskonto sınırı ·
+06 taksitli satış · 07 veresiyenin altınla kapanması/kara liste · 08 eritme/fire/takoz · 18 MASAK gönderim yardımcısı/yaptırım
+listesi/denetim raporu · 20 prim/komisyon/hedef. D1-14'ün Luca/Logo dökümü dış bağımlılıkta (mali müşavirden örnek dosya).
 
 ## Sıradaki işler (17.10 gece — tarihî)
 - **FORK**: M6b (Tezgâh'ta TC yazılınca müşteri bul/aç — `CariServisi.OlusturId` + `GelenOdemeServisi.Coz` hazır),
@@ -77,6 +76,11 @@ hatırlatması · 13 garanti kartı/kimlik tespit baskısı/imza · 14 mali mü�
 | 18.10 15:35 | TEK | 008d868 · 9835b7e | D1-03 işlem bekletme · D1-10 mutabakat formu · D1-12 hurda fotoğrafı | 12656/0 | d1-12b |
 | 18.10 16:00 | TEK | 86cddc8 · 3c8a8dd | D1-19 KVKK (sürümlü metin, müşteri beyanı, form; /kvkk ekranı, kılavuz) | 12659/0 | d1-19b |
 | 18.10 16:25 | TEK | eb037cb · 346a8cf | D1-15 eşik altı stok bildirimi (STOK_ESIK) + hurda analizi | 12660/0 | d1-12f |
+| 18.10 17:30 | TEK | 047bc67 · 8d93f83 · 317a859 | D1-11 kör sayım · çalışan kasası · kapanış hatırlatması (19:00) | 12665/0 | d1-11 |
+| 18.10 18:10 | TEK | 017f55c · 175907d | D1-13 kimlik tespit formu · garanti kartı · ekranda imza | 12668/0 | d1-13 |
+| 18.10 18:40 | TEK | 4cdd044 · 621df9f | D1-09 hesap dönüştürme (TL ↔ has ↔ döviz) | 12670/0 | d1-09 |
+| 18.10 19:30 | TEK | cca5cb5 · 16c3c6d | D1-16 akıllı içe aktarım · toptancı barkodu · ürün seti | 12674/0 | d1-16 |
+| 18.10 20:15 | TEK | 64d54d5 · cfd724f | D1-14 mali müşavir salt okunur hesabı (sunucu kapısı, bant, rozet) | 12676/0 · denetim yalnız P-30 | d1-14b |
 
 ## Müşteriye sorulacaklar (ses kaydında belirsiz — varsayımla kodlanmadı)
 1. **31:22 "bu olursa bunu listenin burasına çekin… KDV'sini böyle yazdın":** "liste" fiyat listesi mi, ürün kategorisi mi,
