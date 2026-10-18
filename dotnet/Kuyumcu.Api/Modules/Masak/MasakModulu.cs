@@ -447,7 +447,11 @@ public sealed class MasakController(MasakServisi servis, SaklamaSuresiIsi saklam
     /// <summary>GET /api/v1/masak/supheli?durum= — MUHASEBE+</summary>
     [HttpGet("supheli")]
     [RolGerekli("SAHIP", "MUDUR", "MUHASEBE")]
-    public Task<object> Supheliler([FromQuery] string? durum) => servis.SupheliListele(Islem, durum);
+    public Task<object> Supheliler([FromQuery] string? durum)
+    {
+        SibGizlilik.SaltOkunurReddet(User);   // D1-18: 5549 md.4/2 — dışarıdan bakan salt okunur hesap ŞİB görmez
+        return servis.SupheliListele(Islem, durum);
+    }
 
     /// <summary>PATCH /api/v1/masak/supheli/{id}/gonderildi — MASAK'a gönderildi, referans no — MUDUR+</summary>
     [HttpPatch("supheli/{id}/gonderildi")]

@@ -54,6 +54,7 @@ public static class ModulKayit
         s.AddScoped<Satis.PersonelUyariServisi>();   // D1-05 personel uyarıları
         s.AddScoped<Cari.OdemePlaniServisi>();       // D1-06 ödeme planı
         s.AddScoped<Cari.CariD1Servisi>();           // D1-07 altınla öde · kara liste
+        s.AddScoped<Masak.SibHazirlikServisi>();     // D1-18 ŞİB hazırlık
         s.AddScoped<Cari.KvkkServisi>();             // D1-19 KVKK aydınlatma / rıza
         s.AddScoped<Cari.HesapDonusturServisi>();    // D1-09 hesap dönüştürme
         s.AddScoped<Urun.UrunSetiServisi>();         // D1-16 ürün setleri

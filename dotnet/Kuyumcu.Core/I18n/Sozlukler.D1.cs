@@ -190,7 +190,16 @@ public sealed record D1Metinleri(
     string EtiketFiyatNotu,
     string SablonuDuzenle,
     string ZplIndir,
-    string Evet);
+    string Evet,
+    string SibHazirlik,
+    string SibHazirla,
+    string MasakOnlineAc,
+    string Kopyala,
+    string Kopyalandi,
+    string KopyalanamadiElle,
+    string SibGizlilik,
+    string UyumRaporu,
+    string CsvIndir);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -377,7 +386,16 @@ public static class D1Sozlugu
         EtiketFiyatNotu: "Fiyat basım anındaki kurla yazılır; kur değişince eskir.",
         SablonuDuzenle: "Şablonu düzenle",
         ZplIndir: "Zebra (ZPL) indir",
-        Evet: "Evet");
+        Evet: "Evet",
+        SibHazirlik: "MASAK'a gönderime hazırlık",
+        SibHazirla: "Gönderime hazırla",
+        MasakOnlineAc: "MASAK Online 2.0'ı aç (e-Devlet ile giriş)",
+        Kopyala: "Kopyala",
+        Kopyalandi: "Kopyalandı",
+        KopyalanamadiElle: "Pano kullanılamadı — metni seçip elle kopyalayın",
+        SibGizlilik: "Gizlilik: bildirim yapıldığı, işleme taraf olanlar dahil hiç kimseye söylenemez (5549 sayılı Kanun md.4/2).",
+        UyumRaporu: "Uyum raporu (bu yıl)",
+        CsvIndir: "CSV indir");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -561,7 +579,16 @@ public static class D1Sozlugu
         EtiketFiyatNotu: "Price is printed at the current rate; it goes stale when the rate changes.",
         SablonuDuzenle: "Edit template",
         ZplIndir: "Download Zebra (ZPL)",
-        Evet: "Yes");
+        Evet: "Yes",
+        SibHazirlik: "Prepare for MASAK submission",
+        SibHazirla: "Prepare to submit",
+        MasakOnlineAc: "Open MASAK Online 2.0 (e-Government login)",
+        Kopyala: "Copy",
+        Kopyalandi: "Copied",
+        KopyalanamadiElle: "Clipboard unavailable — select and copy manually",
+        SibGizlilik: "Confidential: the fact that a report was filed may not be told to anyone, including the parties (Law 5549 art. 4/2).",
+        UyumRaporu: "Compliance report (this year)",
+        CsvIndir: "Download CSV");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

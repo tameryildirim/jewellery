@@ -3109,3 +3109,8 @@ button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed
 .op-taksit { display: grid; grid-template-columns: 28px 96px minmax(0, 1fr) auto; gap: 8px; padding: 4px 0; align-items: baseline; }
 .op-tutar { font-variant-numeric: tabular-nums; text-align: right; }
 .op-plan-eylem { display: flex; gap: 8px; flex-wrap: wrap; }
+/* D1-18: ŞİB hazırlık çekmecesi */
+.sh-adim { padding: 10px 0; border-top: 1px solid var(--kenarlik); }
+.sh-adim-baslik { font-size: 1rem; margin: 0 0 6px; }
+.sh-alan { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 3px 0; }
+.sh-deger { white-space: pre-wrap; word-break: break-word; }

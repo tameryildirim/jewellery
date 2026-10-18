@@ -4,6 +4,7 @@
 @using Kuyumcu.Web.Bilesenler.Grid
 @inject ApiIstemci Api
 @inject DilServisi Dil
+@inject IJSRuntime JS
 @implements IDisposable
 
 @* ═══════════════════════════════════════════════════════════════════════════
@@ -30,6 +31,8 @@
     <SayfaBasi Anahtar="denetim-izi" Baslik="@SayfaAdi" />
 
     <HataBandi Mesaj="@hata" />
+    @* D1-18: seçili süzgeçle denetim izi dışa aktarımı (CSV; denetim/inceleme için). *@
+    <div class="dugme-satir"><button type="button" class="btn btn-ikincil btn-kucuk" id="dz-csv" disabled="@csvIniyor" @onclick="CsvIndir">@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).CsvIndir</button></div>
 
     <Katlanir Id="dz-suzgec" Baslik="@SuzgecBasligi" Sayi="@(AktifSuzgecSayisi > 0 ? AktifSuzgecSayisi : null)"
               Sinif="zo-suzgec">
@@ -245,6 +248,19 @@
     private string? hata;
 
     private DateTime? baslangic;
+    private bool csvIniyor;   // D1-18
+
+    private async Task CsvIndir()
+    {
+        csvIniyor = true; hata = null;
+        try
+        {
+            var (veri, _) = await Api.GetBaytAsync($"/denetim/disa-aktar{OzetSorgu()}");
+            await JS.InvokeVoidAsync("kuyumcuIndir", "denetim-izi.csv", Convert.ToBase64String(veri), "text/csv");
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { csvIniyor = false; }
+    }
     private DateTime? bitis;
     private string eylem = "";
     private string varlikTuru = "";

@@ -87,8 +87,8 @@ public sealed class P17SafTestleri
     [Fact]
     public void Dort_belge_turu_vardir_ve_hepsinin_modul_kapisi_yazilidir()
     {
-        // 4 → 5: PAKET EKSIK-B1-SATINALMA irsaliye dökümü (IRSALIYE) eklendi. 5 → 6: D1-01 fatura dökümü (FATURA). 6 → 7: D1-10 mutabakat formu. 7 → 8: D1-19 KVKK formu. 8 → 10: D1-13 kimlik tespit formu + ürün belgesi. 10 → 11: D1-06 ödeme planı.
-        Assert.Equal(11, BelgeTurleri.Tumu.Length);
+        // 4 → 5: PAKET EKSIK-B1-SATINALMA irsaliye dökümü (IRSALIYE) eklendi. 5 → 6: D1-01 fatura dökümü (FATURA). 6 → 7: D1-10 mutabakat formu. 7 → 8: D1-19 KVKK formu. 8 → 10: D1-13 kimlik tespit formu + ürün belgesi. 10 → 11: D1-06 ödeme planı. 11 → 12: D1-18 uyum raporu.
+        Assert.Equal(12, BelgeTurleri.Tumu.Length);
         foreach (var t in BelgeTurleri.Tumu)
         {
             Assert.True(BelgeTurleri.Gecerli(t));

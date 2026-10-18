@@ -57,6 +57,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.KimlikTespit => "uyum",    // D1-13 — + rol kapısı (MASAK kimlik ucuyla AYNI)
         BelgeTurleri.GarantiKarti => "islem",   // D1-13 — satış fişiyle aynı kapı
         BelgeTurleri.OdemePlani => "cari",      // D1-06 — ödeme planı ucuyla aynı kapı
+        BelgeTurleri.UyumRaporu => "uyum",      // D1-18 — + rol kapısı (sahip/müdür)
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -72,6 +73,8 @@ public sealed class CiktiServisi(
         var modul = Modul(tur);
         if (tur == BelgeTurleri.Irsaliye && !IrsaliyeRolleri.Contains(islem.Rol))
             throw new ForbiddenException("Bu belgeyi görüntüleme yetkiniz yok (irsaliye)");
+        if (tur == BelgeTurleri.UyumRaporu && islem.Rol is not ("SAHIP" or "MUDUR"))
+            throw new ForbiddenException("Bu belgeyi görüntüleme yetkiniz yok (uyum raporu)");
         if (tur == BelgeTurleri.KimlikTespit && !IrsaliyeRolleri.Contains(islem.Rol))
             throw new ForbiddenException("Bu belgeyi görüntüleme yetkiniz yok (kimlik tespiti)");
         if (!await yetki.ErisebilirMi(islem.TenantId, islem.Rol, modul))
@@ -87,6 +90,7 @@ public sealed class CiktiServisi(
             BelgeTurleri.KimlikTespit => await KimlikTespitBelgesi(id, islem, iptal),
             BelgeTurleri.GarantiKarti => await GarantiKartiBelgesi(id, islem, iptal),
             BelgeTurleri.OdemePlani => await OdemePlaniBelgesi(id, islem, iptal),
+            BelgeTurleri.UyumRaporu => await UyumRaporuBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -477,6 +481,63 @@ public sealed class CiktiServisi(
             Uyari: null,
             BelgeNoKayitKimligi: true);
     }
+
+    /// <summary>D1-18 — dönemlik uyum raporu: kimlik tespiti, ŞİB, yaptırım listesi, hassas kayıt erişimi (yalnız sayılar).</summary>
+    private async Task<OrtakBelge> UyumRaporuBelgesi(string id, AktifKullanici islem, CancellationToken iptal)
+    {
+        var p = id.Split('_');
+        if (p.Length != 2 || !DateOnly.TryParseExact(p[0], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var bas)
+            || !DateOnly.TryParseExact(p[1], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var bit) || bit < bas || bit.DayNumber - bas.DayNumber > 400)
+            throw new BadRequestException("Dönem yyyy-MM-dd_yyyy-MM-dd biçiminde ve en çok 400 gün olmalıdır");
+        var (b0, _) = Zaman.YerelGunAraligiUtc(bas);
+        var (_, b1) = Zaman.YerelGunAraligiUtc(bit);
+        var t = islem.TenantId;
+        var simdi = DateTime.UtcNow;
+        var tespit = await db.MasakKimlikTespitleri.AsNoTracking().CountAsync(x => x.TenantId == t && x.Tarih >= b0 && x.Tarih < b1, iptal);
+        var sibYeni = await db.MasakSupheliBildirimler.AsNoTracking().CountAsync(x => x.TenantId == t && x.TespitTarihi >= b0 && x.TespitTarihi < b1, iptal);
+        var sibGonderilen = await db.MasakSupheliBildirimler.AsNoTracking().CountAsync(x => x.TenantId == t && x.GonderimTarihi >= b0 && x.GonderimTarihi < b1, iptal);
+        var sibAcik = await db.MasakSupheliBildirimler.AsNoTracking().CountAsync(x => x.TenantId == t && x.Durum == Kuyumcu.Api.Data.SupheliDurum.Acik, iptal);
+        var sibGecmis = await db.MasakSupheliBildirimler.AsNoTracking().CountAsync(x => x.TenantId == t && x.Durum == Kuyumcu.Api.Data.SupheliDurum.Acik && x.SonBildirimTarihi < simdi, iptal);
+        var eslesme = await db.YaptirimEslesmeleri.AsNoTracking().CountAsync(x => x.TenantId == t && x.Olusturuldu >= b0 && x.Olusturuldu < b1, iptal);
+        var listeTarihi = await db.YaptirimKayitlari.AsNoTracking().Where(y => y.Kaldirildi == null)
+            .Select(y => (DateOnly?)y.ListeTarihi).MaxAsync(iptal);
+        var hassasOkuma = await db.DenetimKayitlari.AsNoTracking()
+            .CountAsync(x => x.TenantId == t && x.Hassas && x.Eylem == DenetimEylemi.Okuma && x.Tarih >= b0 && x.Tarih < b1, iptal);
+        static CiktiSatir S(string a, string d) => new([a, d]);
+        string N(int n) => n.ToString(CultureInfo.InvariantCulture);
+        var bolumler = new List<CiktiBolum>
+        {
+            new("Kimlik tespiti", ["Kalem", "Sayı"], [S("Dönemde yapılan kimlik tespiti", N(tespit))], null, [SutunBicimi.Metin, SutunBicimi.Metin]),
+            new("Şüpheli işlem bildirimi", ["Kalem", "Sayı"],
+            [
+                S("Dönemde tespit edilen", N(sibYeni)), S("Dönemde MASAK'a gönderilen", N(sibGonderilen)),
+                S("Bugün açık (gönderilmemiş)", N(sibAcik)), new CiktiSatir(["Süresi geçmiş açık bildirim", N(sibGecmis)], Vurgu: sibGecmis > 0),
+            ], null, [SutunBicimi.Metin, SutunBicimi.Metin]),
+            new("Yaptırım listesi", ["Kalem", "Değer"],
+            [
+                S("Son liste tarihi", listeTarihi?.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture) ?? "liste yüklenmemiş"),
+                S("Dönemde liste eşleşmesi", N(eslesme)),
+            ], null, [SutunBicimi.Metin, SutunBicimi.Metin]),
+            new("Hassas kayıt erişimi", ["Kalem", "Sayı"], [S("Dönemde hassas kayıt görüntüleme (denetim izi)", N(hassasOkuma))], null, [SutunBicimi.Metin, SutunBicimi.Metin]),
+        };
+        return new OrtakBelge(
+            Tur: BelgeTurleri.UyumRaporu,
+            BelgeAdi: BelgeAdi(BelgeTurleri.UyumRaporu),
+            BelgeNo: id,
+            Dayanak: $"{bas:dd.MM.yyyy} – {bit:dd.MM.yyyy}",
+            DuzenlemeTarihi: simdi,
+            Duzenleyen: await Kimlik(islem.TenantId, islem.SubeId, iptal),
+            Karsi: null,
+            Bolumler: bolumler,
+            Tutarlar: [],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.UyumRaporu),
+            Not: UyumRaporuMetni,
+            Uyari: sibGecmis > 0 ? UyumRaporuGecmisUyari : null,
+            BelgeNoKayitKimligi: false);
+    }
+
+    private const string UyumRaporuMetni = "Bu rapor kişisel veri içermez; şüpheli işlem bildirimlerinin varlığı ve sayısı gizlidir (5549 sayılı Kanun md.4/2).";
+    private const string UyumRaporuGecmisUyari = "Süresi geçmiş şüpheli işlem bildirimi var — derhal MASAK'a gönderin.";
 
     private const string OdemePlaniMetni = "Yukarıdaki taksitleri vadelerinde ödemeyi kabul ederim. Bu plana vade farkı uygulanmamıştır.";
 
@@ -888,6 +949,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.KimlikTespit => "KİMLİK TESPİT FORMU",
         BelgeTurleri.GarantiKarti => "ÜRÜN BELGESİ",
         BelgeTurleri.OdemePlani => "ÖDEME PLANI",
+        BelgeTurleri.UyumRaporu => "UYUM RAPORU",
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -904,6 +966,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.KimlikTespit => ["Müşteri (imza)", "Tespit eden"],
         BelgeTurleri.GarantiKarti => ["Müşteri (imza)", "Satıcı (kaşe / imza)"],
         BelgeTurleri.OdemePlani => ["Müşteri (ad soyad / imza)", "Satıcı (kaşe / imza)"],
+        BelgeTurleri.UyumRaporu => ["Düzenleyen (kaşe / imza)"],
         _ => [],
     };
 

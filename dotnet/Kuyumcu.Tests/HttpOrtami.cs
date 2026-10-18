@@ -56,7 +56,8 @@ public sealed class HttpOrtami : WebApplicationFactory<Program>
     {
         Environment.SetEnvironmentVariable("ConnectionStrings__Kuyumcu", baglanti);
         Environment.SetEnvironmentVariable("Jwt__Secret", TestSirri);
-        Environment.SetEnvironmentVariable("Banka__CekimEtkin", "false");   // M7: testler çekimi kendisi tetikler (zamanlama yarışı yok)
+        Environment.SetEnvironmentVariable("Banka__CekimEtkin", "false");
+        Environment.SetEnvironmentVariable("Yaptirim__BmOtomatik", "false");   // D1-18: testler ağa çıkmaz   // M7: testler çekimi kendisi tetikler (zamanlama yarışı yok)
         Environment.SetEnvironmentVariable("Jwt__AccessDakika", "15");
         Environment.SetEnvironmentVariable("Jwt__RefreshGun", "7");
         // TestVeritabani.TestSifreleyici ile AYNI anahtar: HTTP yoluyla yazılan

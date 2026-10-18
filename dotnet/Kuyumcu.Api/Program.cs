@@ -397,6 +397,8 @@ builder.Services.AddHostedService<Kuyumcu.Api.Modules.Kur.KurZamanlayici>();
 // Paket 6 Faz A — zamanlanmış iş turu (iş MANTIĞI IsCalistirici'dedir).
 builder.Services.AddHostedService<Kuyumcu.Api.Modules.Isler.IsZamanlayici>();
 builder.Services.AddHostedService<Kuyumcu.Api.Modules.Banka.BankaCekici>();   // M7: banka sağlayıcı çekicisi
+builder.Services.AddSingleton<Kuyumcu.Api.Modules.Masak.BmYaptirimGuncelleyici>();   // D1-18: BM yaptırım listesi (günlük)
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Kuyumcu.Api.Modules.Masak.BmYaptirimGuncelleyici>());
 // PAKET P-28 (F-4 · R-2): bellekteki kiracı etiketli sayaçları periyodik yazar.
 // ⚠ HttpOrtami tüm IHostedService'leri kaldırır → HTTP testinde KOŞMAZ; döngü
 //   canlı doğrulamayla ölçülür, yazma MANTIĞI TelemetriYazici testleriyle kapanır.

@@ -1,0 +1,75 @@
+@using Kuyumcu.Contracts.Sayfalar.Uyum
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-18 (18.10) — ŞİB gönderime hazırlık: MASAK Online 2.0 formunun adım sırasıyla alanlar + "Kopyala".
+   Yazılım MASAK'a gönderemez (yol yok; giriş kişinin e-Devlet hesabıyla) — kuyumcu formu kendisi doldurur,
+   referans noyu "Gönderildi"ye yazar. Gizlilik uyarısı (5549 md.4/2) en üstte. GET /masak/supheli/{id}/hazirlik.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<Cekmece Acik="@(Id is not null)" Varlik="sib-hazirlik" Baslik="@M.SibHazirlik" Kapat="Kapat" KaydetGoster="false">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="sh-hata">@h</div>
+    }
+    @if (veri is { } v)
+    {
+        <div class="bant bant-uyari" role="note" id="sh-gizlilik">@v.GizlilikNotu</div>
+        <p class="metin-kucuk"><a href="@v.Adres" target="_blank" rel="noopener noreferrer" id="sh-adres">@M.MasakOnlineAc</a></p>
+        @foreach (var a in v.Adimlar)
+        {
+            <section class="sh-adim" id="@($"sh-adim-{a.No}")">
+                <h3 class="sh-adim-baslik">@a.No. @a.Baslik</h3>
+                @foreach (var (alan, i) in a.Alanlar.Select((x, i) => (x, i)))
+                {
+                    var kimlik = $"sh-{a.No}-{i}";
+                    <div class="sh-alan" id="@kimlik">
+                        <span class="metin-soluk metin-kucuk">@alan.Etiket</span>
+                        <span class="sh-deger">@alan.Deger</span>
+                        @if (alan.Deger != "—")
+                        {
+                            <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"{kimlik}-kopyala")" @onclick="() => Kopyala(kimlik, alan.Deger)">@(kopyalanan == kimlik ? M.Kopyalandi : M.Kopyala)</button>
+                        }
+                    </div>
+                }
+                @if (a.Not is { } n)
+                {
+                    <p class="metin-soluk metin-kucuk">@n</p>
+                }
+            </section>
+        }
+    }
+    else if (hata is null && Id is not null)
+    {
+        <Yukleniyor />
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+
+    private SibHazirlik? veri;
+    private string? hata, yuklenen, kopyalanan;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id is null) { yuklenen = null; veri = null; return; }
+        if (yuklenen == Id) return;
+        yuklenen = Id; veri = null; hata = null; kopyalanan = null;
+        try { veri = await Api.GetAsync<SibHazirlik>($"/masak/supheli/{Uri.EscapeDataString(Id)}/hazirlik"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    private async Task Kopyala(string kimlik, string deger)
+    {
+        try { if (await JS.InvokeAsync<bool>("kuyumcuPanoyaKopyala", deger)) kopyalanan = kimlik; }
+        catch (JSException) { hata = M.KopyalanamadiElle; }
+    }
+
+    private Task Kapat() => Kapandi.InvokeAsync();
+}

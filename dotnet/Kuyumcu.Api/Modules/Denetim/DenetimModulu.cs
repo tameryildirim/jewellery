@@ -217,6 +217,31 @@ public sealed class DenetimOkumaServisi(KuyumcuDbContext db, DenetimServisi dene
     /// çağrılar (testler dâhil) kırılmasın — UX-S4 ruhu.
     /// </para>
     /// </summary>
+    /// <summary>D1-18 — denetim izi dışa aktarımı (CSV, ; ayraçlı, UTF-8 BOM — Excel'de Türkçe açılır). En çok 20.000 satır;
+    /// sınır aşılırsa son satır bunu SÖYLER (sessiz kırpma yok). Dışa aktarım da hassas liste okuması olarak izlenir.</summary>
+    public async Task<byte[]> DisaAktar(AktifKullanici islem, DateTime? baslangic, DateTime? bitis, string? eylem, string? varlikTuru,
+        bool? hassas, string? kullaniciId)
+    {
+        const int Tavan = 20_000;
+        AralikDogrula(baslangic, bitis, eylem, varlikTuru);
+        var sorgu = new DenetimSuzgeci(islem.TenantId, baslangic, bitis, eylem, varlikTuru, null, hassas, kullaniciId, null, null, false).Uygula(db);
+        var liste = await sorgu.OrderByDescending(d => d.Tarih).Take(Tavan + 1).ToListAsync();
+        var kisiIdler = liste.Where(d => d.KullaniciId != null).Select(d => d.KullaniciId!).Distinct().ToList();
+        var adlar = await db.Kullanicilar.AsNoTracking().Where(k => k.TenantId == islem.TenantId && kisiIdler.Contains(k.Id))
+            .Take(kisiIdler.Count + 1).ToDictionaryAsync(k => k.Id, k => (k.Ad + " " + k.Soyad).Trim());
+        static string H(string? s) => s is null ? "" : "\"" + s.Replace("\"", "\"\"").Replace('\n', ' ').Replace('\r', ' ') + "\"";
+        var sb = new System.Text.StringBuilder();
+        sb.Append("Tarih;Kullanıcı;Eylem;Varlık;Varlık kimliği;Hassas;Detay;IP\r\n");
+        foreach (var d in liste.Take(Tavan))
+            sb.Append(H(Zaman.UtcdenYerele(d.Tarih).ToString("dd.MM.yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture))).Append(';')
+              .Append(H(d.KullaniciId is null ? "sistem" : adlar.GetValueOrDefault(d.KullaniciId, "(silinmiş kullanıcı)"))).Append(';')
+              .Append(H(d.Eylem)).Append(';').Append(H(d.VarlikTuru)).Append(';').Append(H(d.VarlikId)).Append(';')
+              .Append(d.Hassas ? "evet" : "hayır").Append(';').Append(H(d.Detay)).Append(';').Append(H(d.IpAdresi)).Append("\r\n");
+        if (liste.Count > Tavan) sb.Append(H($"İlk {Tavan:N0} satır verildi; tarih aralığını daraltın.")).Append("\r\n");
+        await denetim.ListeOkumaKaydet(islem, nameof(DenetimKaydi), Math.Min(liste.Count, Tavan), "denetim izi dışa aktarıldı (CSV)");
+        return [.. System.Text.Encoding.UTF8.GetPreamble(), .. System.Text.Encoding.UTF8.GetBytes(sb.ToString())];
+    }
+
     public async Task<object> Ozet(
         AktifKullanici islem, DateTime? baslangic, DateTime? bitis,
         string? eylem = null, string? varlikTuru = null, string? varlikId = null,
@@ -303,6 +328,13 @@ public sealed class DenetimController(DenetimOkumaServisi servis) : ControllerBa
         [FromQuery] bool sistemHaric = false)
         => servis.Listele(Islem, baslangic, bitis, eylem, varlikTuru, varlikId,
                           hassas, kullaniciId, limit, offset, subeId, kasaId, sistemHaric);
+
+    /// <summary>GET /api/v1/denetim/disa-aktar — CSV (D1-18; denetim/inceleme için) — YALNIZ SAHİP.</summary>
+    [HttpGet("disa-aktar")]
+    public async Task<IActionResult> DisaAktar(
+        [FromQuery] DateTime? baslangic, [FromQuery] DateTime? bitis,
+        [FromQuery] string? eylem, [FromQuery] string? varlikTuru, [FromQuery] bool? hassas, [FromQuery] string? kullaniciId)
+        => File(await servis.DisaAktar(Islem, baslangic, bitis, eylem, varlikTuru, hassas, kullaniciId), "text/csv; charset=utf-8", "denetim-izi.csv");
 
     /// <summary>
     /// GET /api/v1/denetim/ozet — eylem ve varlık kırılımı — YALNIZ SAHİP.

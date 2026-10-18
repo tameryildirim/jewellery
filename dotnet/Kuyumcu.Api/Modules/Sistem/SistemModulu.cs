@@ -594,6 +594,15 @@ public sealed class SistemController(SistemServisi servis) : ControllerBase
         return await Kuyumcu.Api.Modules.Masak.YaptirimServisi.ListeGuncelle(sdb, denetim, dto, Operator);
     }
 
+    /// <summary>D1-18 — POST /api/v1/sistem/yaptirim-listesi/bm-cek: BM listesini şimdi çek (günlük turu beklemeden).</summary>
+    [HttpPost("yaptirim-listesi/bm-cek")]
+    public async Task<object> BmYaptirimCek([FromServices] Kuyumcu.Api.Modules.Masak.BmYaptirimGuncelleyici guncelleyici, CancellationToken iptal)
+    {
+        if (string.IsNullOrWhiteSpace(Operator) || Operator.Length < SistemAnahtariKapisi.OperatorAsgariUzunluk)
+            throw new BadRequestException($"{SistemAnahtariKapisi.OperatorBasligi} başlığı zorunludur");
+        return await guncelleyici.Tur(iptal);
+    }
+
     /// <summary>
     /// PAKET YASAL-1 — GET /api/v1/sistem/yasal-parametreler/saglik: önbellek ile
     /// veritabanı aynı mı (satır sayısı). Çok örnekli kurulumda ayrışmayı ölçer.

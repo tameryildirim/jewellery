@@ -138,6 +138,12 @@
                         @onclick="YeniBildirimAc">
                     + @Dil.T.Uyum.YeniBildirim
                 </button>
+                @if (Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR")
+                {
+                    @* D1-18: dönemlik uyum raporu (sayılar; kişisel veri yok) — bu yılın başından bugüne. *@
+                    <a class="dugme dugme-ikincil" id="uy-uyum-raporu" target="_blank" rel="noopener"
+                       href="@UyumRaporuAdresi">@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).UyumRaporu</a>
+                }
                 <Secici ElemanId="uy-supheli-durum"
                         Etiket="@Dil.T.Ortak.Durum"
                         Secenekler="@SupheliDurumSecenekleri"
@@ -145,6 +151,9 @@
                         @bind-Deger:after="Yukle"
                         BosSecenekMetni="@Dil.T.Uyum.TumDurumlar" />
             </div>
+            @* D1-18: bildirim gizliliği (5549 s. Kanun md.4/2) — ekranda her zaman görünür. *@
+            <p class="bant bant-uyari" id="uy-gizlilik" role="note">@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).SibGizlilik</p>
+            <Kuyumcu.Web.Bilesenler.Uyum.SibHazirlikCekmecesi Id="@sibHazirlikId" Kapandi="() => sibHazirlikId = null" />
 
             @if (supheliler.Count == 0)
             {
@@ -736,6 +745,11 @@
     /// <summary>Şüpheli bildirim satır eylemleri (eski tablo hücresi birebir; id'ler korunur).</summary>
     private RenderFragment<SupheliSatir> SupheliEylemleri => s => @<text>@if (s.Durum == "ACIK")
         {
+            @if (Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR")
+            {
+                @* D1-18: MASAK Online formuna kopyalanacak alanlar (yazılım gönderemez — yol yok). *@
+                <button id="@($"uy-hazirla-{s.Id}")" class="dugme dugme-kucuk dugme-ikincil" @onclick="() => sibHazirlikId = s.Id">@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).SibHazirla</button>
+            }
             <button id="@($"uy-gonderildi-{s.Id}")" class="dugme dugme-kucuk" @onclick="() => GonderimAc(s)">@Dil.T.Uyum.GonderildiIsaretle</button>
             <button id="@($"uy-kapat-{s.Id}")" class="dugme dugme-kucuk dugme-ikincil" @onclick="() => KapatmaAc(s)">@Dil.T.Uyum.Kapat</button>
         }
@@ -842,6 +856,16 @@
 
     /// <summary>KESIF-P6: saklama yönetimi yalnız SAHİP'in (sunucu kapısıyla aynı rol).</summary>
     private bool SahipMi => Oturum.Kullanici?.Rol == "SAHIP";
+    private string? sibHazirlikId;   // D1-18
+    /// <summary>D1-18 — bu yılın başından bugüne (işletme saati) uyum raporu.</summary>
+    private static string UyumRaporuAdresi
+    {
+        get
+        {
+            var bugun = DateOnly.FromDateTime(Bicim.IsletmeZamani(DateTime.UtcNow));
+            return $"/cikti/UYUM_RAPORU/{Bicim.Makine(new DateOnly(bugun.Year, 1, 1))}_{Bicim.Makine(bugun)}";
+        }
+    }
 
     private static Sekme Durum(string kod) => kod switch
     {

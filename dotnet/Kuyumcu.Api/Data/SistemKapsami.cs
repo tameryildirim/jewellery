@@ -41,6 +41,8 @@ namespace Kuyumcu.Api.Data;
 //      P-04 süzgeci kümülatifi şubeye bölüyordu → kapı delinebiliyordu.     [Kiraci(id)]
 //  11. BankaCekici (M7) → sağlayıcılı hesabı olan aktif kiracı listesi (yalnız kimlik)   [Sistem]
 //  12. BankaCekici (M7) → kiracı başına sağlayıcı çekimi                              [Kiraci(id)]
+//  13. BmYaptirimGuncelleyici (D1-18) → kiracı-üstü yaptırım listesi (BM, günlük) — sistem ucu
+//      /sistem/yaptirim-listesi ile AYNI çekirdek (YaptirimServisi.ListeGuncelle)                [Sistem]
 //   `AuthServisi.Ben` dahil JWT-SONRASI her şey istek bağlamında kalır.
 //
 // ⚠ 7-8 (paket F-2-min, mühürlü koşul): bu iki kullanım YAPILANDIRMA SIRRI ile
