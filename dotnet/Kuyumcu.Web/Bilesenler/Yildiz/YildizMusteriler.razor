@@ -73,7 +73,7 @@
                 {
                     <a href="@($"/cariler?cariId={Uri.EscapeDataString(r.Id)}")" class="yz-sat yz-musteri-sat" id="@($"yildiz-musteri-{r.Id}")"
                        @onclick="() => B.SatirAc.InvokeAsync(r.Id)" @onclick:preventDefault="true">
-                        <span class="yz-musteri-ad">@r.Ad</span>
+                        <span class="yz-musteri-ad">@if (r.Risk is { } rk) {<span class="@($"yz-risk yz-risk-{rk}")" id="@($"yildiz-musteri-risk-{r.Id}")" role="img" aria-label="@(rk == "kirmizi" ? Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).RiskYuksek : Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).RiskOrta)" title="@(rk == "kirmizi" ? Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).RiskYuksek : Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).RiskOrta)"></span>}@r.Ad</span>
                         <span class="yz-s yz-musteri-alt">@r.Alt</span>
                         <span class="@(r.Borc ? "yz-musteri-tutar yz-kotu" : "yz-musteri-tutar")">@r.Tutar</span>
                         <span class="yz-s yz-musteri-durum">@r.Durum</span>

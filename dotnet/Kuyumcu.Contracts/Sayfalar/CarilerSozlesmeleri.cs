@@ -31,7 +31,9 @@ public sealed record CariVeri(
     decimal EmanetteHas = 0m,
     // P-DIL-BORC-KASA (Y18): altın emanetinin bırakıldığı gibi kalanı ("22 ayar · 12,50 g").
     // null = bilinmiyor (eski satır) → ekran has gösterir; boş = emanet yok.
-    IReadOnlyList<Kuyumcu.Core.Domain.EmanetAyarSatiri>? EmanetBirakildigi = null);
+    IReadOnlyList<Kuyumcu.Core.Domain.EmanetAyarSatiri>? EmanetBirakildigi = null,
+    // D1-07 — kara liste (veresiye engeli) ve risk rengi için kredi limiti.
+    bool VeresiyeEngeli = false, string? VeresiyeEngelSebebi = null, decimal? KrediLimitiTl = null);
 public sealed record BakiyeVeri(
     decimal TlBakiye, decimal HasGramBakiye,
     decimal UsdBakiye = 0m, decimal EurBakiye = 0m, decimal GbpBakiye = 0m,
@@ -54,7 +56,9 @@ public sealed record CariDetayVeri(
     // ═══ PAKET P-26 (Y-37) — MUHASEBE HESAP KODU ═══════════════════════════
     // UX-S26 / denetim.sh DTO_FORM_ESLESMEZ: sunucu bu alanı oluşturmada DA
     // düzenlemede DE kabul eder; istemci tipi sunucuyla birebir (string?).
-    string? HesapKodu = null);
+    string? HesapKodu = null,
+    // D1-07 — kara liste (veresiye engeli).
+    bool VeresiyeEngeli = false, string? VeresiyeEngelSebebi = null);
 public sealed record FiyatListesiOzet(string Id, string Ad, string Tur, bool Aktif);
 // KESIF-P2 (#8): yeni tip AÇILMADI — sunucunun (CariServisi.Ekstre) döndürdüğü satır başına
 // cari has etkisi ve sayfa dışı etki mevcut iki tipe eklendi. Satır has'ı (HasGrami) DEFTER

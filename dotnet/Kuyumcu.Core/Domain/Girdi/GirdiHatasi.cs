@@ -173,6 +173,8 @@ public static class AlanSinirlari
     public const int KurKilidiNotu = 200;
     /// <summary>D1-05 — mesai saati "SS:dd" (sunucu SatisOnayAyarDto deseniyle AYNI).</summary>
     public const int MesaiSaati = 5;
+    /// <summary>D1-07 — kara liste sebebi (cariler.veresiye_engel_sebebi ile AYNI).</summary>
+    public const int VeresiyeEngelSebebi = 200;
     /// <summary>M7: demo bankası havale açıklaması (sahte_banka_hareketleri.aciklama).</summary>
     public const int SahteHavaleAciklama = 200;
     /// <summary>Ürün açıklaması (urunler.aciklama varchar(1000)).</summary>

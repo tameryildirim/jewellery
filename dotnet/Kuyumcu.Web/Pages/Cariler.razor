@@ -180,7 +180,7 @@
          KaydetAktif="@(!DuzKilitli && !string.IsNullOrWhiteSpace(duzAd) && PepGecerli && !sayiKapisi.OnekleVar("duz-") && !UyrukGecersiz(duzUyruk, yuklenenUyruk) && TcknAnindaHata(duzVergiNo, duzKimlikTuru) is null)"
          KilitSebebi="@(sayiKapisi.Sebep(Dil.Dil, "duz-") ?? TcknAnindaHata(duzVergiNo, duzKimlikTuru) ?? DuzKilitSebebi)">
     <div class="form-dikey @(Sade ? "musteri-panel-form" : null)">
-        @if (duzenleCari is { } ykart) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizKartEylemleri Eylemler="@YildizKartEylemleri(ykart)" /> }   @* YILDIZ-4B: tuval "kart açılır: tahsilat, ekstre, düzenleme" — listede satır eylemi yok, yollar kartta *@
+        @if (duzenleCari is { } ykart) { <Kuyumcu.Web.Bilesenler.Yildiz.YildizKartEylemleri Eylemler="@YildizKartEylemleri(ykart)" /> }@if (duzenleCari is { VeresiyeEngeli: true } kl) { <div class="bant bant-hata" id="cari-kara-liste-bant" role="status">@string.Format(D1Sozlugu.Al(Dil.Dil).KaraListeSebebi, kl.VeresiyeEngelSebebi)</div> }   @* YILDIZ-4B: tuval "kart açılır: tahsilat, ekstre, düzenleme" — listede satır eylemi yok, yollar kartta *@
         @* T-M1 — tuval uyarı bandı: vadesi geçmiş borç varsa panelin başında KIRMIZI
            bant ve para alma yolu. "Tahsilat" gerçek düğmedir (tahsilat penceresini
            açar) — tuvalde "listedeki" düğmeye yönlendiriyordu; panel listeyi
@@ -645,6 +645,8 @@
 @* D1-09: hesap dönüştürme çekmecesi (ayrı bileşen). *@
 <div class="musteri-panel-kap t5-cekmece-kap">
 <HesapDonusturCekmecesi Cari="donusturCari" Kapandi="() => donusturCari = null" Kaydedildi="HesapDonusturuldu" />
+<AltinOdeCekmecesi Cari="altinOdeCari" Kapandi="() => altinOdeCari = null" Kaydedildi="async () => { altinOdeCari = null; Basarili(D1Sozlugu.Al(Dil.Dil).AltinOdendi); await Yukle(); }" />
+<KaraListeCekmecesi Cari="karaListeCari" Kapandi="() => karaListeCari = null" Kaydedildi="async () => { karaListeCari = null; duzenleCari = null; await Yukle(); }" />
 <OdemePlaniCekmecesi Cari="odemePlaniCari" Yonetebilir="@DuzeltmeGorebilir" Kapandi="async () => { odemePlaniCari = null; await Yukle(); }" />
 </div>
 <div class="musteri-panel-kap t5-cekmece-kap">
@@ -1502,6 +1504,7 @@
     // ── D1-09 hesap dönüştürme ──
     private CariVeri? donusturCari;
     private CariVeri? odemePlaniCari;   // D1-06
+    private CariVeri? altinOdeCari, karaListeCari;   // D1-07
     private async Task HesapDonusturuldu() { donusturCari = null; Basarili(D1Sozlugu.Al(Dil.Dil).HdKaydedildi); await Yukle(); }
     private string DovizTahsilatAdi => Sade ? BorcDiliSozlugu.DovizleTahsilat(Dil.Dil) : Dil.T.Cari.DovizTahsilat;
     private string DovizVeresiyeAdi => Sade ? BorcDiliSozlugu.DovizleVeresiye(Dil.Dil) : Dil.T.Cari.DovizVeresiye;
@@ -1534,6 +1537,11 @@
             l.Add(new($"c-hesap-donustur-{c.Id}", D1Sozlugu.Al(Dil.Dil).HesapDonustur, Cb(() => donusturCari = c)));
         if (!c.SistemCarisi)   // D1-06: herkes görür; plan açma/kaldırma çekmecede rol kapısıyla
             l.Add(new($"c-odeme-plani-{c.Id}", D1Sozlugu.Al(Dil.Dil).OdemePlani, Cb(() => odemePlaniCari = c)));
+        if (!c.SistemCarisi)   // D1-07: altınla öde (tahsilatla aynı kapı) · kara liste (sahip/müdür; API de kapalı)
+            l.Add(new($"c-altin-ode-{c.Id}", D1Sozlugu.Al(Dil.Dil).AltinlaOde, Cb(() => altinOdeCari = c)));
+        if (!c.SistemCarisi && Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR")
+            l.Add(new($"c-kara-liste-{c.Id}", c.VeresiyeEngeli ? D1Sozlugu.Al(Dil.Dil).KaraListedenCikar : D1Sozlugu.Al(Dil.Dil).KaraListeyeAl,
+                      Cb(() => karaListeCari = c), tehlike: !c.VeresiyeEngeli));
         // Paket 27 — döviz defteri; UX-S30: kur yoksa KİLİTLİ ve sebebi yazılı (MenuEk).
         l.Add(new($"c-doviz-tahsilat-{c.Id}", DovizTahsilatAdi, Cb(() => DovizTahsilatAc(c)),
                   kilitli: !DovizYapilabilir, kilitNedeni: Dil.T.Cari.KurYokDovizYapilamaz));

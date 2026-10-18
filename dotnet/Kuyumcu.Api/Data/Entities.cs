@@ -401,6 +401,9 @@ public class Cari : IKiraciVarlik
     [Column("adres"), MaxLength(500)] public string? Adres { get; set; }
     [Column("notlar"), MaxLength(1000)] public string? Notlar { get; set; }
     [Column("kredi_limiti_tl", TypeName = "decimal(15,2)")] public decimal? KrediLimitiTl { get; set; }
+    /// <summary>D1-07 — kara liste: bu müşteriye veresiye (TL ya da has) yazılamaz. Sahip/müdür koyar, kaldırır.</summary>
+    [Column("veresiye_engeli")] public bool VeresiyeEngeli { get; set; }
+    [Column("veresiye_engel_sebebi"), MaxLength(200)] public string? VeresiyeEngelSebebi { get; set; }
     /// <summary>
     /// Bu cariye veresiye satışta varsayılan vade — GÜN. <c>null</c> = vade
     /// tanınmamış; borç doğduğu gün muaccel sayılır (peşin beklenir).

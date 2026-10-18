@@ -13,7 +13,9 @@ namespace Kuyumcu.Web.Bilesenler.Yildiz;
 /// <param name="Tutar">TL bakiyesi (<see cref="Bicim.Tl"/>: "−3.840 ₺", "10.480,06 ₺", "0 ₺").</param>
 /// <param name="Borc">Biz borçluyuz (eksi bakiye) → tutar kırmızı (tuval --kotu).</param>
 /// <param name="Durum">Sağdaki soluk durum ("biz borçluyuz", "bize borçlu · 15 gün", "emanette 9,16 g has").</param>
-public sealed record YildizMusteriSatiri(string Id, string Ad, string Alt, string Tutar, bool Borc, string Durum);
+/// <param name="Risk">D1-07 — risk rengi: "kirmizi" (kara liste ya da 30 günden çok gecikme) · "sari" (gecikme ya da
+/// kredi limitinin %80'i) · null.</param>
+public sealed record YildizMusteriSatiri(string Id, string Ad, string Alt, string Tutar, bool Borc, string Durum, string? Risk = null);
 
 /// <summary>Süzgeç sekmesi (tuval HEPSİ / BORÇLU / TOPTANCI).</summary>
 public sealed record YildizSekme(string Kod, string Etiket, bool Secili);
@@ -85,7 +87,17 @@ public static class YildizMusteriBicim
                 ? EmanetDiliSozlugu.EmanetteDuz(bg, dil)
                 : YildizMusteriSozlugu.Emanette(c.EmanetteHas.ToString("N2", Tr), dil));
 
-        return new(c.Id, c.Ad, string.Join(" · ", alt), Bicim.Tl(c.TlBakiye), tl < 0m, string.Join(" · ", durum));
+        if (c.VeresiyeEngeli) durum.Insert(0, Kuyumcu.Core.I18n.D1Sozlugu.Al(dil).VeresiyeKapali);
+        return new(c.Id, c.Ad, string.Join(" · ", alt), Bicim.Tl(c.TlBakiye), tl < 0m, string.Join(" · ", durum), Risk(c, gecikmeGun));
+    }
+
+    /// <summary>D1-07 — risk rengi (saf). Kara liste ya da 30+ gün gecikme kırmızı; gecikme ya da limitin %80'i sarı.</summary>
+    public static string? Risk(CariVeri c, int? gecikmeGun)
+    {
+        if (c.VeresiyeEngeli || gecikmeGun is > 30) return "kirmizi";
+        if (gecikmeGun is > 0) return "sari";
+        if (c.KrediLimitiTl is > 0m and var limit && c.TlBakiye >= limit * 0.8m) return "sari";
+        return null;
     }
 
     /// <summary>Üst satır sayıları: alacak = TL bakiyesi artı (bize borçlu), borç = eksi (biz borçluyuz).</summary>

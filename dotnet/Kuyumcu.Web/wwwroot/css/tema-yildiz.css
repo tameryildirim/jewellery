@@ -3955,3 +3955,8 @@ html:root[data-sema="yildiz"] body .yz-kilit-sureler:not(#_) { display: flex; fl
 /* D1-05: patronun onay paneli — Yıldız sayfa hizasında, kartsız. */
 html:root[data-sema="yildiz"] body .onay-paneli:not(#_) { margin: 24px 64px 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
 @media (max-width: 760px) { html:root[data-sema="yildiz"] body .onay-paneli:not(#_) { margin: 16px 16px 0; } }
+/* D1-07: müşteri risk noktası (adın solunda; renk + ekran okuyucu etiketi). */
+html:root[data-sema="yildiz"] body .yz-risk:not(#_) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 10px; vertical-align: middle; }
+html:root[data-sema="yildiz"] body .yz-risk-kirmizi:not(#_) { background: var(--tehlike); }
+/* Tema tek renkli (yalnız kırmızı/yeşil): "dikkat" içi boş halka, "riskli" dolu nokta — sarı renk uydurulmaz. */
+html:root[data-sema="yildiz"] body .yz-risk-sari:not(#_) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--tehlike); }

@@ -746,6 +746,15 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("int")
                         .HasColumnName("varsayilan_vade_gun");
 
+                    b.Property<string>("VeresiyeEngelSebebi")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("veresiye_engel_sebebi");
+
+                    b.Property<bool>("VeresiyeEngeli")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("veresiye_engeli");
+
                     b.Property<string>("VergiNo")
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)")

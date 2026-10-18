@@ -1,0 +1,80 @@
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@using Kuyumcu.Core.Domain
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-07 (18.10, rakip eşitleme: "veresiyenin altınla kapanması") — müşteri altın getirir: ayar + gram.
+   Has karşılığı önce has borcunu kapatır, fazlası aynı ayarla emanete girer (sunucu tek işlemde; ekran yalnız ön
+   izleme yazar). POST /cari/{id}/altin-tahsilat.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<Cekmece Acik="@(Cari is not null)" Varlik="altin-ode" Baslik="@M.AltinlaOde" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetElemanId="ao-kaydet" KaydetAktif="@(gram > 0m && kurId is not null)" KilitSebebi="@(kurId is null ? M.HdKurYok : null)">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="ao-hata">@h</div>
+    }
+    <div class="form-dikey">
+        <Secici ElemanId="ao-ayar" Etiket="@M.AyarEtiket" Zorunlu="true" Secenekler="@AyarSecenekleri" Deger="@ayarId" DegerChanged="@(v => ayarId = v ?? "K22")" />
+        <Gram ElemanId="ao-gram" Etiket="@M.GramEtiket" Zorunlu="true" Deger="@gram" DegerChanged="@(v => gram = v)" />
+        @if (Onizleme is { } o)
+        {
+            <p class="metin-soluk metin-kucuk" id="ao-onizleme">@o</p>
+        }
+    </div>
+</Cekmece>
+
+@code {
+    [Parameter] public CariVeri? Cari { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+    [Parameter] public EventCallback Kaydedildi { get; set; }
+
+    private string ayarId = "K22";
+    private decimal? gram;
+    private string? kurId, hata, acikCari;
+    private bool kaydediliyor;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    private IReadOnlyList<SecenekOgesi> AyarSecenekleri => [.. Ayarlar.Tumu.Values
+        .Where(a => a.Maden == Maden.Altin && a.Kiymetli).OrderByDescending(a => a.Milyem).Select(a => new SecenekOgesi(a.Id, a.Ad))];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Cari is null) { acikCari = null; return; }
+        if (acikCari == Cari.Id) return;
+        acikCari = Cari.Id; gram = null; hata = null; kurId = null;
+        try { kurId = (await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Kur.KurVeri>("/kur/guncel"))?.Id; }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    /// <summary>Ön izleme (ekran): has = gram × milyem; borç kadarı kapanır, fazlası emanete. Kesin hesap sunucuda.</summary>
+    private string? Onizleme
+    {
+        get
+        {
+            if (Cari is null || gram is not > 0m || Ayarlar.Bul(ayarId) is not { } a) return null;
+            var has = gram.Value * a.Milyem;
+            var borc = Math.Max(0m, Cari.HasGramBakiye);
+            var kapanan = Math.Min(has, borc);
+            var fazla = has - kapanan;
+            return string.Format(M.AltinOnizleme, Bicim.Has(has), Bicim.Has(kapanan), Bicim.Has(fazla));
+        }
+    }
+
+    private async Task Kaydet()
+    {
+        if (Cari is null || gram is not > 0m || kurId is null) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            await Api.PostAsync<object>($"/cari/{Uri.EscapeDataString(Cari.Id)}/altin-tahsilat", new { ayarId, gramAgirlik = gram, kurSnapshotId = kurId });
+            await Kaydedildi.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private Task Kapat() => Kapandi.InvokeAsync();
+}

@@ -682,6 +682,7 @@ public sealed class CariServisi(
                 // PAKET B-3 (D2): "Peşin Müşteri" kartı — ekran silme/pasife alma
                 // yerine gerekçe gösterir (UX-S25). Ek alan; mevcut alan değişmedi.
                 sistemCarisi = c.SistemCarisi,
+                veresiyeEngeli = c.VeresiyeEngeli, veresiyeEngelSebebi = c.VeresiyeEngelSebebi,   // D1-07
             };
         }).ToList();
     }
@@ -738,6 +739,7 @@ public sealed class CariServisi(
             hesapKodu = cari.HesapKodu,
             // PAKET B-3 (D2) — ek alan.
             sistemCarisi = cari.SistemCarisi,
+            veresiyeEngeli = cari.VeresiyeEngeli, veresiyeEngelSebebi = cari.VeresiyeEngelSebebi,   // D1-07
             olusturuldu = cari.Olusturuldu,
             guncellendi = cari.Guncellendi,
             bakiye = bakiye is null ? null : BakiyeFormat(bakiye, emanetEtkisi),
@@ -1011,6 +1013,8 @@ public sealed class CariServisi(
         // Kredi limiti + vade — tek kapı (VadeKapisi). Limit metni buradan taşındı;
         // artık veresiye satış ve takas/işçilik farkı da AYNI kontrolden geçiyor.
         await Vade.VadeKapisi.KrediLimitiDogrula(db, cari, dto.TlTutari, dto.KurSnapshotId);
+        if (cari.VeresiyeEngeli && dto.HasGrami > 0m)   // D1-07: altın veresiyesi de kara listeye takılır
+            throw new BadRequestException(Vade.VadeKapisi.VeresiyeEngelMetni).AlanIle("cariId");
 
         if (islem.SubeId is null)
             throw new BadRequestException("Hareket kaydı için şube seçimi gerekli");

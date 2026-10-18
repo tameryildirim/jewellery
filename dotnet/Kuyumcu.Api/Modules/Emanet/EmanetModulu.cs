@@ -212,7 +212,7 @@ public sealed class EmanetServisi(
                 $"{Maden.Ad(maden)} emaneti bu ekrandan alınamaz: bu madenin has gramı " +
                 "hesaplanmaz ve emanet bakiyesi has gram üzerinden izlenir.");
 
-        await using var tx = await db.Database.BeginTransactionAsync();
+        await using var tx = await db.Database.IsBaslatVeyaDevral();   // D1-07: altınla tahsilatın fazlası aynı işlemde emanete girer
         HareketFabrikasi.Ekle(db,
             OdemeIzi.Yok,
             new Hareket
@@ -244,7 +244,7 @@ public sealed class EmanetServisi(
         if (EmanetKurali.CariHasKolonunaGirer(maden))
             await BakiyeGuncelle(dto.CariId, islem.TenantId, 0m, EmanetKurali.CariHasEtkisi(maden, hasGrami), now);
         await db.SaveChangesAsync();
-        await tx.CommitAsync();
+        if (tx is not null) await tx.CommitAsync();
 
         logger.LogInformation(
             "[{TenantId}] EMANET_GIRIS: cari={CariId} {Gram}g {AyarId} = {Has} has",
@@ -276,6 +276,9 @@ public sealed class EmanetServisi(
     /// emanet modülü tek çağrı yeri olarak kalır).
     /// </summary>
     private static decimal EmanetHas(decimal netGram, Ayar ayar) => HasHesap.ToHasGram(netGram, ayar);
+
+    /// <summary>D1-07 — altınla ödemenin has hesabı emanetle AYNI fonksiyondan (tek tanım; beyaz liste büyümez).</summary>
+    public static decimal HasGrami(decimal netGram, Ayar ayar) => EmanetHas(netGram, ayar);
 
     /// <summary>P-DIL-BORC-KASA (Y18): ayar·gramdan hesaplanan has ile gövdedeki has arasındaki en büyük fark.</summary>
     public const decimal IadeHasToleransi = 0.001m;

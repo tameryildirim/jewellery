@@ -1,0 +1,50 @@
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* D1-07 (18.10) — kara liste: veresiye engeli koy (sebep zorunlu) ya da kaldır. PUT /cari/{id}/veresiye-engeli (sahip/müdür). *@
+<Cekmece Acik="@(Cari is not null)" Varlik="kara-liste" Baslik="@(Cari?.VeresiyeEngeli == true ? M.KaraListedenCikar : M.KaraListeyeAl)"
+         Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor" KaydetElemanId="kl-kaydet"
+         KaydetAktif="@(Cari?.VeresiyeEngeli == true || !string.IsNullOrWhiteSpace(sebep))">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="kl-hata">@h</div>
+    }
+    @if (Cari?.VeresiyeEngeli == true)
+    {
+        <p id="kl-mevcut">@string.Format(M.KaraListeSebebi, Cari.VeresiyeEngelSebebi)</p>
+    }
+    else
+    {
+        <Metin ElemanId="kl-sebep" Etiket="@M.KaraListeSebepEtiket" Zorunlu="true" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.VeresiyeEngelSebebi" Deger="@sebep" DegerChanged="@(v => sebep = v)" />
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public CariVeri? Cari { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+    [Parameter] public EventCallback Kaydedildi { get; set; }
+
+    private string? sebep, hata;
+    private bool kaydediliyor;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    private async Task Kaydet()
+    {
+        if (Cari is null) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var engelli = !Cari.VeresiyeEngeli;
+            await Api.PutAsync<object>($"/cari/{Uri.EscapeDataString(Cari.Id)}/veresiye-engeli", new { engelli, sebep = engelli ? sebep : null });
+            sebep = null;
+            await Kaydedildi.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private Task Kapat() { sebep = null; return Kapandi.InvokeAsync(); }
+}

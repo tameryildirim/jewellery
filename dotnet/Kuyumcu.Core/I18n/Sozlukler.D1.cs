@@ -161,7 +161,19 @@ public sealed record D1Metinleri(
     string TaksitBekliyor,
     string PlanTamamlandi,
     string PlanKaldirildi,
-    string PlanAktif);
+    string PlanAktif,
+    string AltinlaOde,
+    string AyarEtiket,
+    string GramEtiket,
+    string AltinOnizleme,
+    string AltinOdendi,
+    string KaraListeyeAl,
+    string KaraListedenCikar,
+    string KaraListeSebebi,
+    string KaraListeSebepEtiket,
+    string RiskYuksek,
+    string RiskOrta,
+    string VeresiyeKapali);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -319,7 +331,19 @@ public static class D1Sozlugu
         TaksitBekliyor: "bekliyor",
         PlanTamamlandi: "tamamlandı",
         PlanKaldirildi: "kaldırıldı",
-        PlanAktif: "sürüyor");
+        PlanAktif: "sürüyor",
+        AltinlaOde: "Altınla öde",
+        AyarEtiket: "Ayar",
+        GramEtiket: "Gram",
+        AltinOnizleme: "{0} has · borçtan düşen {1} · emanete giren {2}",
+        AltinOdendi: "Altın alındı: borç düştü, artanı emanete girdi",
+        KaraListeyeAl: "Kara listeye al",
+        KaraListedenCikar: "Kara listeden çıkar",
+        KaraListeSebebi: "Veresiye kapalı (kara liste): {0}",
+        KaraListeSebepEtiket: "Sebep",
+        RiskYuksek: "Riskli müşteri",
+        RiskOrta: "Dikkat",
+        VeresiyeKapali: "veresiye kapalı");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -474,7 +498,19 @@ public static class D1Sozlugu
         TaksitBekliyor: "due",
         PlanTamamlandi: "completed",
         PlanKaldirildi: "removed",
-        PlanAktif: "active");
+        PlanAktif: "active",
+        AltinlaOde: "Pay with gold",
+        AyarEtiket: "Purity",
+        GramEtiket: "Grams",
+        AltinOnizleme: "{0} fine · off the debt {1} · into custody {2}",
+        AltinOdendi: "Gold received: debt reduced, the rest kept in custody",
+        KaraListeyeAl: "Blacklist",
+        KaraListedenCikar: "Remove from blacklist",
+        KaraListeSebebi: "Credit closed (blacklist): {0}",
+        KaraListeSebepEtiket: "Reason",
+        RiskYuksek: "High-risk customer",
+        RiskOrta: "Watch",
+        VeresiyeKapali: "credit closed");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

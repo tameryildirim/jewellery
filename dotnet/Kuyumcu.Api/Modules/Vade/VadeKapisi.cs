@@ -78,9 +78,14 @@ public static class VadeKapisi
     /// <b>Varsayılanı YOKTUR ve bu bilinçlidir</b>: her çağıran, elindeki kur
     /// kaydını vermeyi ya da (döviz bakiyesi varsa) reddedilmeyi açıkça seçer.
     /// </param>
+    /// <summary>D1-07 — kara listedeki müşteriye veresiye reddi (sebep ekranda kartta yazılı).</summary>
+    public static string VeresiyeEngelMetni => Kuyumcu.Core.I18n.SunucuIletiSozlugu.Cevir("Bu müşteriye veresiye yazılamaz (kara listede) — peşin ödeme alın");
+
     public static async Task KrediLimitiDogrula(
         KuyumcuDbContext db, Data.Cari cari, decimal eklenecekTl, string? kurSnapshotId)
     {
+        if (cari.VeresiyeEngeli && eklenecekTl > 0m)   // D1-07: kara liste — tüm veresiye yolları bu kapıdan geçer
+            throw new BadRequestException(VeresiyeEngelMetni).AlanIle("cariId");
         if (cari.KrediLimitiTl is not { } limit || eklenecekTl <= 0m) return;
 
         var bakiye = await db.CariBakiyeler.AsNoTracking()
