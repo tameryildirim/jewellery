@@ -3724,6 +3724,20 @@ html:root[data-sema="yildiz"] #kasa-liste > .kart > .kart-govde > .stat-deger { 
   html:root[data-sema="yildiz"] #kasa-liste > .kart > .kart-govde > p[id^="kasa-buyuk-etiket-"],
   html:root[data-sema="yildiz"] #kasa-liste > .kart > .kart-govde > .stat-deger { text-align: left; }
 }
+/* 18.10 (tarayıcı ölçümü, 1280): "Tüm ayrıntılar"da iki kasa yan yana (kart ~568 px) dizilince üç sütunlu ızgarada
+   ayrım satırı ("Kart … · Havale …") büyük rakamın altına girip ÜST ÜSTE biniyordu. Kart dar ise (≤ 760 px) satırlar
+   alt alta: ad · etiket · rakam · ayrım · eylemler. Geniş kartta düzen AYNEN. */
+html:root[data-sema="yildiz"] #kasa-liste > .kart { container-type: inline-size; }
+@container (max-width: 760px) {
+  html:root[data-sema="yildiz"] #kasa-liste > .kart > .kart-govde {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "ad" "etiket" "bakiye" "ayrim" "eylem";
+    row-gap: 6px;
+  }
+  html:root[data-sema="yildiz"] #kasa-liste > .kart > .kart-govde > p[id^="kasa-buyuk-etiket-"],
+  html:root[data-sema="yildiz"] #kasa-liste > .kart > .kart-govde > .stat-deger { text-align: left; }
+  html:root[data-sema="yildiz"] #kasa-liste > .kart > .kart-govde > .satir-eylemler { justify-content: flex-start; }
+}
 /* P-DIL-BORC-KASA tur 2: Müşteriler üst satırının her parçası ("1 biz borçluyuz") tek blok — sayı etiketinden ayrılmaz. */
 html:root[data-sema="yildiz"] .yz-musteri #yildiz-musteri-ust .yz-ust-parca { white-space: nowrap; }
 /* P-DIL-BORC-KASA sonu */
