@@ -867,6 +867,7 @@
             hata = SubeYok && e.StatusCode is 400 or 403 ? SubeYokMetni : FormDurumu.SunucuMesaji(e, Dil);
         }
         finally { yukleniyor = false; }
+        await AnalizYukle();   // D1-15: yardımcı veri — kendi hatasını yazar (Hurda.Yildiz.cs)
     }
 
     private List<HurdaBakiyeVeri> SatilabilirMadenler => formBakiyeler.Where(b => b.HasGram > 0m).ToList();

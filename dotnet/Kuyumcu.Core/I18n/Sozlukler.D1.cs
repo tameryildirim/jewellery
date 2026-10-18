@@ -44,7 +44,13 @@ public sealed record D1Metinleri(
     string KvkkIzinVerdi,
     string KvkkIzinGeriAldi,
     string KvkkFormYazdir,
-    string KvkkDuzenle);
+    string KvkkDuzenle,
+    string HurdaAnaliz,
+    string HurdaAnalizAlinan,
+    string HurdaAnalizGonderilen,
+    string HurdaOrtalama,
+    string HurdaHasBasinaFark,
+    string HurdaTahlilFarki);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -85,7 +91,13 @@ public static class D1Sozlugu
         KvkkIzinVerdi: "İzin verdi",
         KvkkIzinGeriAldi: "İzni geri aldı",
         KvkkFormYazdir: "KVKK formu",
-        KvkkDuzenle: "Metni düzenle");
+        KvkkDuzenle: "Metni düzenle",
+        HurdaAnaliz: "Son 90 gün",
+        HurdaAnalizAlinan: "90 günde alınan",
+        HurdaAnalizGonderilen: "90 günde gönderilen",
+        HurdaOrtalama: "has gramı {0}",
+        HurdaHasBasinaFark: "Has gramı başına fark",
+        HurdaTahlilFarki: "Tahlil farkı");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -123,7 +135,13 @@ public static class D1Sozlugu
         KvkkIzinVerdi: "Gave consent",
         KvkkIzinGeriAldi: "Withdrew consent",
         KvkkFormYazdir: "Privacy form",
-        KvkkDuzenle: "Edit text");
+        KvkkDuzenle: "Edit text",
+        HurdaAnaliz: "Last 90 days",
+        HurdaAnalizAlinan: "Bought in 90 days",
+        HurdaAnalizGonderilen: "Sent in 90 days",
+        HurdaOrtalama: "{0} per fine gram",
+        HurdaHasBasinaFark: "Margin per fine gram",
+        HurdaTahlilFarki: "Assay difference");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

@@ -69,6 +69,7 @@ public static class DilEkranSozlugu
         ["SAKLAMA_ONIZLEME"] = "Retention period preview",
         ["SAKLAMA_UYGULA"] = "Masking of identity data past retention",
         ["STOPAJ_HATIRLATMA"] = "Withholding tax payment reminder",
+        ["STOK_ESIK"] = "Below minimum stock",
         ["TEVSIK_KURTARMA"] = "Cash limit breach scan",
         ["VADE_HATIRLATMA"] = "Due date reminder",
     };

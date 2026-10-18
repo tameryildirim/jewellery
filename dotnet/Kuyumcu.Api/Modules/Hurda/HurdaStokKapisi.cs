@@ -146,6 +146,13 @@ public static class HurdaStokKapisi
     /// doluysa kırılım YALNIZ o şubenin satırlarıdır (GorunumSubesi.Daralt — tek
     /// `SubeId ==` yeri); boşsa bugünkü kiracı geneli davranış AYNEN.
     /// </para>
+    /// <summary>
+    /// D1-15 — kiracının hurda defter satırları (HurdaTurleri; tür listesi YALNIZ bu dosyada okunur — denetim P-20 (b)).
+    /// Hurda analizi bu sorguyu süzer; kendi tür listesini yazmaz.
+    /// </summary>
+    public static IQueryable<Hareket> HurdaSatirlari(KuyumcuDbContext db, string tenantId) =>
+        db.Hareketler.AsNoTracking().Where(h => h.TenantId == tenantId && HurdaTurleri.Contains(h.Tur));
+
     public static async Task<List<Rapor.HareketKirilimi>> KiraciKirilimi(
         KuyumcuDbContext db, string tenantId, string? gorunumSubesi = null)
     {

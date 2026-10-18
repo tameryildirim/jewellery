@@ -117,6 +117,7 @@ public static class ModulKayit
         s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.SaklamaUygulaIsi>();   // PAKET YASAL-3 (§ 4.3)
         s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.TevsikKurtarmaIsi>(); s.AddScoped<Tevsik.TevsikIhlalServisi>();   // PAKET YASAL-2 (TB-16)
         s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.StopajHatirlatmaIsi>(); s.AddScoped<Hurda.StopajServisi>();   // PAKET YASAL-4 (Y4-B)
+        s.AddSingleton<Isler.IZamanlanmisIs, Isler.Isler.StokEsikIsi>(); s.AddScoped<Hurda.HurdaAnalizServisi>();   // D1-15
 
         // ── Paket 3 Faz A — sipariş çatısı (deftere YAZMAZ) ────────────────
         s.AddScoped<Siparis.SiparisServisi>();

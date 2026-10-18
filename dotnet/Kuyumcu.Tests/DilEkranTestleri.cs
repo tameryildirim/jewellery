@@ -213,6 +213,7 @@ public sealed class DilEkranTestleri : BunitContext
             (SaklamaOnizlemeIsi.IsKodu, Ad<SaklamaOnizlemeIsi>(x => x.Ad)),
             (SaklamaUygulaIsi.IsKodu, Ad<SaklamaUygulaIsi>(x => x.Ad)),
             (StopajHatirlatmaIsi.IsKodu, Ad<StopajHatirlatmaIsi>(x => x.Ad)),
+            (StokEsikIsi.IsKodu, Ad<StokEsikIsi>(x => x.Ad)),   // D1-15
             (TevsikKurtarmaIsi.IsKodu, Ad<TevsikKurtarmaIsi>(x => x.Ad)),
             (VadeHatirlatmaIsi.IsKodu, Ad<VadeHatirlatmaIsi>(x => x.Ad)),
         ];

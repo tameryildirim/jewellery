@@ -104,3 +104,15 @@ public sealed record HurdaSatisIstegi(
     object? Masak = null,
     // PAKET ISLEM-BANT: bant dışı has fiyatının SAHİP/MÜDÜR onayı (sunucu HurdaSatisDto.BantOnay/BantGerekce).
     bool? BantOnay = null, string? BantGerekce = null);
+
+/// <summary>
+/// D1-15 (18.10, rakip eşitleme) — hurda analizi: son N günde alınan / rafineriye gönderilen has ve TL,
+/// ortalama has fiyatları, has başına fark ve tahlil farkı. Maden başına bir satır (defterde ayar tutulmaz).
+/// Ortalama, işlem yoksa null (sıfır UYDURULMAZ).
+/// </summary>
+public sealed record HurdaAnalizMaden(
+    string Maden, int AlisAdet, decimal AlisHas, decimal AlisTl, decimal? AlisOrtHasFiyati,
+    int SatisAdet, decimal SatisHas, decimal SatisTl, decimal? SatisOrtHasFiyati,
+    decimal? HasBasinaFark, decimal TahlilFarkiHas);
+
+public sealed record HurdaAnalizi(int Gun, List<HurdaAnalizMaden> Madenler);

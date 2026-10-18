@@ -28,6 +28,36 @@ public partial class Hurda
     public static bool YildizGirisMi(HurdaDefterSatiri d) =>
         d.Tur is not ("HURDA_SATIS" or "TAHLIL_FARKI") && !d.StornoSatiri && !d.Stornolandi;
 
+    // ── D1-15 (18.10) — hurda analizi (son 90 gün): yalnız SAHİP/MÜDÜR/MUHASEBE (uç rol kapısıyla AYNI). ──
+    private HurdaAnalizi? analiz;
+    private string? analizHata;
+    private bool AnalizGorebilir => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR" or "MUHASEBE";
+
+    private async Task AnalizYukle()
+    {
+        if (!AnalizGorebilir) return;
+        try { analiz = await Api.GetAsync<HurdaAnalizi>("/hurda/analiz?gun=90"); analizHata = null; }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { analiz = null; analizHata = ex.Message; }
+    }
+
+    /// <summary>Analiz satırları (altın önce); has başına fark yalnız iki ortalama da varsa yazılır.</summary>
+    private IEnumerable<(string, string)> AnalizBilgi(string dil)
+    {
+        var d1 = D1Sozlugu.Al(dil);
+        if (analizHata is { } h) { yield return (d1.HurdaAnaliz, h); yield break; }
+        if (analiz is null) yield break;
+        foreach (var m in analiz.Madenler ?? [])   // eksik yanıtta liste yoksa satır yazılmaz
+        {
+            var ad = Kuyumcu.Web.Bilesenler.KurKaynakAdi.MadenAdi(m.Maden);
+            yield return ($"{d1.HurdaAnalizAlinan} · {ad}", m.AlisAdet == 0 ? "—"
+                : $"{YildizListeBicim.HasIki(m.AlisHas, dil)} · {Bicim.Tl(m.AlisTl)}{(m.AlisOrtHasFiyati is { } a ? $" · {string.Format(d1.HurdaOrtalama, Bicim.Tl(a))}" : "")}");
+            yield return ($"{d1.HurdaAnalizGonderilen} · {ad}", m.SatisAdet == 0 ? "—"
+                : $"{YildizListeBicim.HasIki(m.SatisHas, dil)} · {Bicim.Tl(m.SatisTl)}{(m.SatisOrtHasFiyati is { } s ? $" · {string.Format(d1.HurdaOrtalama, Bicim.Tl(s))}" : "")}");
+            if (m.HasBasinaFark is { } f) yield return ($"{d1.HurdaHasBasinaFark} · {ad}", Bicim.Tl(f));
+            if (m.TahlilFarkiHas != 0m) yield return ($"{d1.HurdaTahlilFarki} · {ad}", YildizListeBicim.HasIki(m.TahlilFarkiHas, dil));
+        }
+    }
+
     private YildizOzetBaglami YildizBaglami
     {
         get
@@ -66,6 +96,7 @@ public partial class Hurda
                 [
                     (YildizHurdaSozlugu.BekleyenRamat(dil), YildizParaSozlugu.Yok(dil)),
                     (YildizHurdaSozlugu.SonGonderim(dil), sonGonderim is null ? "—" : YildizListeBicim.KisaGun(Bicim.IsletmeGunu(sonGonderim.Tarih), bugun, dil)),
+                    .. AnalizBilgi(dil),   // D1-15
                 ] : [],
                 Yukleniyor = yukleniyor,
                 Bantlar = YildizBant.Ciz(hata, basari, basariJeton, hataId: "hrd-hata", basariId: "hrd-basari"),
