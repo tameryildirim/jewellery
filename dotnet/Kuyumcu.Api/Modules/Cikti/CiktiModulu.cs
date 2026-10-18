@@ -33,7 +33,8 @@ namespace Kuyumcu.Api.Modules.Cikti;
 public sealed class CiktiServisi(
     KuyumcuDbContext db,
     Yetki.YetkiServisi yetki,
-    DenetimServisi denetim)
+    DenetimServisi denetim,
+    Cari.KvkkServisi? kvkk = null)
 {
     /// <summary>Cari ekstresine basılacak en fazla satır — UX-S29: sınır ekranda yazar.</summary>
     public const int EkstreSatirTavani = 200;
@@ -52,6 +53,7 @@ public sealed class CiktiServisi(
         // müşteriye kesilen faturanın kâğıdını verebilir — satış fişiyle aynı mantık.
         BelgeTurleri.Fatura => "fatura",
         BelgeTurleri.CariMutabakat => "cari",   // D1-10: ekstreyle aynı kapı
+        BelgeTurleri.KvkkAydinlatma => "cari",  // D1-19
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -76,6 +78,7 @@ public sealed class CiktiServisi(
             BelgeTurleri.Irsaliye => await IrsaliyeBelgesi(id, islem, iptal),
             BelgeTurleri.Fatura => await FaturaBelgesi(id, islem, iptal),
             BelgeTurleri.CariMutabakat => await MutabakatBelgesi(id, islem, iptal),
+            BelgeTurleri.KvkkAydinlatma => await KvkkBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -489,6 +492,46 @@ public sealed class CiktiServisi(
             BelgeNoKayitKimligi: true);
     }
 
+    // ── D1-19 (18.10) — KVKK aydınlatma formu ───────────────────────────────
+
+    public const string KvkkOkudum = "☐ Aydınlatma metnini okudum, bilgilendirildim.";
+    public const string KvkkPazarlama = "☐ Kampanya ve bilgilendirme iletileri (SMS / e-posta / telefon) almak için açık rıza veriyorum.";
+    public const string KvkkMetinYok = "İşletmenin aydınlatma metni girilmemiş — KVKK ekranından girin";
+
+    /// <summary>
+    /// Metin İŞLETMENİNDİR (KvkkMetni'nin geçerli sürümü) — sistem metin yazmaz; yoksa 400. Sürüm numarası kâğıtta
+    /// yazar: imzalı form hangi metnin okunduğunu ispatlar.
+    /// </summary>
+    private async Task<OrtakBelge> KvkkBelgesi(string cariId, AktifKullanici islem, CancellationToken iptal)
+    {
+        var c = await db.Cariler.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == cariId && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Cari bulunamadı");
+        if (c.SistemCarisi) throw new BadRequestException("Peşin Müşteri için KVKK beyanı alınmaz");
+        var m = kvkk is null ? null : await kvkk.GuncelMetin(islem.TenantId);
+        if (m is null) throw new BadRequestException(KvkkMetinYok);
+        var paragraflar = m.Metin.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(p => new CiktiSatir([p])).ToList();
+        return new OrtakBelge(
+            Tur: BelgeTurleri.KvkkAydinlatma,
+            BelgeAdi: BelgeAdi(BelgeTurleri.KvkkAydinlatma),
+            BelgeNo: c.Id,
+            Dayanak: $"Metin sürümü {m.Surum} · {m.Olusturuldu.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture)}",
+            DuzenlemeTarihi: DateTime.UtcNow,
+            Duzenleyen: await Kimlik(islem.TenantId, islem.SubeId, iptal),
+            Karsi: new CiktiTaraf("İlgili kişi", c.Ad, c.VergiNo, c.Adres, c.Telefon),
+            Bolumler:
+            [
+                new("Aydınlatma metni", [""], paragraflar, null, [SutunBicimi.Metin]),
+                new("Beyan", [""], [new CiktiSatir([KvkkOkudum]), new CiktiSatir([KvkkPazarlama])], null, [SutunBicimi.Metin]),
+            ],
+            Tutarlar: [],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.KvkkAydinlatma),
+            Not: null,
+            Uyari: null,
+            BelgeNoKayitKimligi: true);
+    }
+
     // ── D1-01 (18.10) — fatura dökümü ───────────────────────────────────────
 
     /// <summary>
@@ -675,6 +718,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.Irsaliye => "İRSALİYE",   // yön belgede ayrıntılanır (SEVK / MAL KABUL)
         BelgeTurleri.Fatura => "FATURA",       // D1-01; alış faturası belgede "ALIŞ FATURASI"
         BelgeTurleri.CariMutabakat => "CARİ HESAP MUTABAKAT FORMU",
+        BelgeTurleri.KvkkAydinlatma => "KİŞİSEL VERİLERİN KORUNMASI — AYDINLATMA METNİ",
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -687,6 +731,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.Irsaliye => ["Teslim eden", "Teslim alan"],
         BelgeTurleri.Fatura => ["Düzenleyen", "Teslim alan"],
         BelgeTurleri.CariMutabakat => ["Düzenleyen (kaşe / imza)", "Müşteri (kaşe / imza)"],
+        BelgeTurleri.KvkkAydinlatma => ["Müşteri (ad soyad / imza)"],
         _ => [],
     };
 

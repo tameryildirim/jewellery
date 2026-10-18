@@ -1,0 +1,85 @@
+@page "/kvkk"
+@using Kuyumcu.Contracts.Sayfalar.Kvkk
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-19 (18.10, rakip eşitleme) — KVKK: işletmenin aydınlatma metni (hukukçusundan aldığı metin; sistem
+   metin YAZMAZ) + müşteri izinleri özeti. Her kayıt yeni SÜRÜMDÜR; eski sürüm silinmez (hangi müşteriye
+   hangi metnin okunduğu ispatı). Müşteri beyanı müşteri kartından alınır, form oradan basılır.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<PageTitle>@Marka.SayfaBasligi(MenuAdlari.Icin(Dil.T).Kvkk.Ad)</PageTitle>
+
+<SayfaBasi Anahtar="kvkk" Baslik="@MenuAdlari.Icin(Dil.T).Kvkk.Ad" Aciklama="@K.KvkkAciklama" />
+
+<HataBandi Mesaj="@hata" Id="kvkk-hata" />
+<BasariBandi Mesaj="@basari" />
+
+@if (durum is null && hata is null)
+{
+    <Yukleniyor />
+}
+else if (durum is { } d)
+{
+    <section class="kart kart-govde form-dikey" id="kvkk-ozet">
+        <p id="kvkk-surum">@(d.Surum is { } s ? string.Format(K.KvkkSurum, s, Bicim.TarihSaat(d.Tarih!.Value)) : K.KvkkMetinYok)</p>
+        <p class="metin-soluk" id="kvkk-sayilar">@string.Format(K.KvkkSayilar, d.AydinlatilanMusteri, d.PazarlamaIzniOlan)</p>
+    </section>
+
+    <section class="kart kart-govde form-dikey" id="kvkk-metin-bolumu">
+        @if (d.Metin is { Length: > 0 } m)
+        {
+            <div class="kvkk-metin" id="kvkk-metin-okunur">
+                @foreach (var p in m.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    <p>@p</p>
+                }
+            </div>
+        }
+        <div class="satir">
+            <button type="button" class="btn btn-ikincil" id="kvkk-duzenle" disabled="@(!Yazabilir)"
+                    title="@(Yazabilir ? null : K.KvkkYalnizSahip)" @onclick="DuzenleAc">@K.KvkkDuzenle</button>
+        </div>
+    </section>
+}
+
+@* P-06: düzenleme TEK KALIP — Cekmece (metin + Kaydet); her kayıt yeni sürüm. *@
+<Cekmece Acik="duzenleniyor" Varlik="kvkk-metin" Baslik="@K.KvkkMetinEtiket" Kapat="() => duzenleniyor = false"
+         Kaydet="Kaydet" Kaydediliyor="kaydediliyor"
+         KaydetAktif="@(!string.IsNullOrWhiteSpace(metin) && metin?.Trim() != durum?.Metin)" KaydetElemanId="kvkk-kaydet">
+    <CokSatir ElemanId="kvkk-metin" Etiket="@K.KvkkMetinEtiket" Satir="16" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.KvkkMetni"
+              Deger="@metin" DegerChanged="@(v => metin = v)" Ipucu="@K.KvkkMetinIpucu" />
+</Cekmece>
+
+@code {
+    private KvkkMetinDurumu? durum;
+    private string? metin, hata, basari;
+    private bool kaydediliyor, duzenleniyor;
+
+    private void DuzenleAc() { metin = durum?.Metin; duzenleniyor = true; }
+
+    private D1Metinleri K => D1Sozlugu.Al(Dil.Dil);
+    private bool Yazabilir => Oturum.Kullanici?.Rol is "SAHIP" or "MUDUR";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { durum = await Api.GetAsync<KvkkMetinDurumu>("/kvkk/metin"); metin = durum.Metin; }
+        catch (ApiHata ex) { hata = ex.Message; }
+    }
+
+    private async Task Kaydet()
+    {
+        kaydediliyor = true; hata = null; basari = null;
+        try
+        {
+            durum = await Api.PutAsync<KvkkMetinDurumu>("/kvkk/metin", new { metin });
+            metin = durum.Metin;
+            basari = string.Format(K.KvkkKaydedildi, durum.Surum);
+            duzenleniyor = false;
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

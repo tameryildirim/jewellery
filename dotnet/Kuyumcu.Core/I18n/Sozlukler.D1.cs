@@ -24,7 +24,27 @@ public sealed record D1Metinleri(
     string MutabakatYazdir,
     string HurdaFotoEkle,
     string HurdaFoto,
-    string HurdaFotoBaslik);
+    string HurdaFotoBaslik,
+    string KvkkAciklama,
+    string KvkkSurum,
+    string KvkkMetinYok,
+    string KvkkSayilar,
+    string KvkkMetinEtiket,
+    string KvkkMetinIpucu,
+    string KvkkYalnizSahip,
+    string KvkkKaydet,
+    string KvkkKaydedildi,
+    string KvkkBaslik,
+    string KvkkAydinlatildi,
+    string KvkkAydinlatilmadi,
+    string KvkkEskiSurum,
+    string KvkkPazarlamaVar,
+    string KvkkPazarlamaYok,
+    string KvkkAydinlatmaYapildi,
+    string KvkkIzinVerdi,
+    string KvkkIzinGeriAldi,
+    string KvkkFormYazdir,
+    string KvkkDuzenle);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -45,7 +65,27 @@ public static class D1Sozlugu
         MutabakatYazdir: "Mutabakat formu",
         HurdaFotoEkle: "Fotoğraf ekle",
         HurdaFoto: "Fotoğraf",
-        HurdaFotoBaslik: "Hurda fotoğrafı");
+        HurdaFotoBaslik: "Hurda fotoğrafı",
+        KvkkAciklama: "Müşterilere okunacak aydınlatma metni ve verdikleri izinler.",
+        KvkkSurum: "Geçerli metin: sürüm {0} · {1}",
+        KvkkMetinYok: "Aydınlatma metni henüz girilmedi. Hukukçunuzdan aldığınız metni aşağıya yapıştırın.",
+        KvkkSayilar: "Aydınlatılan müşteri: {0} · Pazarlama izni veren: {1}",
+        KvkkMetinEtiket: "Aydınlatma metni",
+        KvkkMetinIpucu: "Paragrafları boş satırla ayırın. Her kayıt yeni sürüm olur; eski sürüm silinmez.",
+        KvkkYalnizSahip: "Metni yalnız işletme sahibi ya da müdür değiştirebilir",
+        KvkkKaydet: "Kaydet",
+        KvkkKaydedildi: "Aydınlatma metni kaydedildi (sürüm {0})",
+        KvkkBaslik: "KVKK",
+        KvkkAydinlatildi: "Aydınlatıldı: {0} (sürüm {1})",
+        KvkkAydinlatilmadi: "Aydınlatma yapılmadı",
+        KvkkEskiSurum: "Metin değişti — yeniden aydınlatın",
+        KvkkPazarlamaVar: "Pazarlama izni var",
+        KvkkPazarlamaYok: "Pazarlama izni yok",
+        KvkkAydinlatmaYapildi: "Aydınlatma yapıldı",
+        KvkkIzinVerdi: "İzin verdi",
+        KvkkIzinGeriAldi: "İzni geri aldı",
+        KvkkFormYazdir: "KVKK formu",
+        KvkkDuzenle: "Metni düzenle");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -63,7 +103,27 @@ public static class D1Sozlugu
         MutabakatYazdir: "Reconciliation form",
         HurdaFotoEkle: "Add photo",
         HurdaFoto: "Photo",
-        HurdaFotoBaslik: "Scrap photo");
+        HurdaFotoBaslik: "Scrap photo",
+        KvkkAciklama: "The privacy notice read to customers and the consents they gave.",
+        KvkkSurum: "Current text: version {0} · {1}",
+        KvkkMetinYok: "No privacy notice yet. Paste the text you received from your lawyer below.",
+        KvkkSayilar: "Customers informed: {0} · Marketing consent: {1}",
+        KvkkMetinEtiket: "Privacy notice",
+        KvkkMetinIpucu: "Separate paragraphs with a blank line. Each save is a new version; old versions are kept.",
+        KvkkYalnizSahip: "Only the owner or a manager can change the text",
+        KvkkKaydet: "Save",
+        KvkkKaydedildi: "Privacy notice saved (version {0})",
+        KvkkBaslik: "Data protection",
+        KvkkAydinlatildi: "Informed: {0} (version {1})",
+        KvkkAydinlatilmadi: "Not informed yet",
+        KvkkEskiSurum: "Text changed — inform again",
+        KvkkPazarlamaVar: "Marketing consent given",
+        KvkkPazarlamaYok: "No marketing consent",
+        KvkkAydinlatmaYapildi: "Informed",
+        KvkkIzinVerdi: "Gave consent",
+        KvkkIzinGeriAldi: "Withdrew consent",
+        KvkkFormYazdir: "Privacy form",
+        KvkkDuzenle: "Edit text");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

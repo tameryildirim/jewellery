@@ -122,7 +122,7 @@ public sealed class S1gMenuTuvalTestleri : BunitContext
         ("/pos/tahsilatlar", "POS alacakları"), ("/banka", "Banka"), ("/evraklar", "Çek ve senet"),
         ("/evraklar/takvim", "Vade takvimi"), ("/kur", "Kur"), ("/gider", "Gider ve para aktarımı"),
         ("/hurda", "Hurda ve ramat"),
-        ("/faturalar", "Faturalar"), ("/gider-pusulalari", "Gider pusulaları"), ("/uyum", "Uyum (MASAK)"),
+        ("/faturalar", "Faturalar"), ("/gider-pusulalari", "Gider pusulaları"), ("/uyum", "Uyum (MASAK)"), ("/kvkk", "KVKK"),   // D1-19
         // PAKET YASAL-1 tur 2 (tasarım hakemi KRİTİK): tuvalde olmayan YENİ ekran — şartname § 4.5 adı.
         ("/yasal-sinirlar", "Yasal sınırlar"),
         ("/raporlar", "Rapor merkezi"), ("/raporlar/kar-zarar", "Kâr-zarar"),

@@ -151,6 +151,8 @@ public static class MenuTanimi
         // GÖRMEZ. API de RolGerekli ile kapalıdır.
         new(MenuGrubu.BelgeUyum, "/gider-pusulalari", null, ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.GiderPusulalari, m => m.GiderPusulalari),
         new(MenuGrubu.BelgeUyum, "/uyum", null, ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.Uyum, m => m.Uyum),
+        // D1-19 (18.10): KVKK aydınlatma metni + müşteri izinleri özeti. Metni SAHİP/MÜDÜR girer (PUT rol kapısı).
+        new(MenuGrubu.BelgeUyum, "/kvkk", "cari", ["SAHIP", "MUDUR"], Ikonlar.Uyum, m => m.Kvkk),
         // PAKET YASAL-1 tur 2 (tasarım hakemi KRİTİK): salt okunur yasal sınırlar —
         // sunucu kapısı [RolGerekli] SAHIP/MUDUR/MUHASEBE ile AYNI rol süzgeci.
         // "Tüm ekranlar" karosu bu satırdan üretilir (şartname § 4.5).

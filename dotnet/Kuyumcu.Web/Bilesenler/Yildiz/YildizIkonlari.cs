@@ -36,6 +36,7 @@ public static class YildizIkonlari
         ["/faturalar"] = "M6 3h9l3 3v15l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5zM9 9h6M9 13h6",   // Faturalar
         ["/gider-pusulalari"] = "M6 3h12v18H6zM9 7h6M9 11h6M9 15h3M14 16l1.5 1.5L18 15",   // Gider pusulaları
         ["/uyum"] = "M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6zM9 12l2 2 4-4",   // Uyum (MASAK)
+        ["/kvkk"] = "M6 11V8a6 6 0 0 1 12 0v3M5 11h14v10H5zM12 15v2",   // KVKK (kilit)
         ["/yasal-sinirlar"] = "M12 4v16M5 8h14M5 8l-2 6h4zM19 8l-2 6h4zM8 20h8",   // Yasal sınırlar
         ["/raporlar"] = "M4 20V10M10 20V4M16 20v-7M2 20h20",   // Rapor merkezi
         ["/raporlar/kar-zarar"] = "M4 4v16h16M8 14l3-3 3 3 5-6",   // Kâr-zarar

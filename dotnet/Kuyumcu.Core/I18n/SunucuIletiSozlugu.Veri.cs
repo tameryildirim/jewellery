@@ -1402,5 +1402,15 @@ public static partial class SunucuIletiSozlugu
         ("☐ Mutabık değiliz — bizim kayıtlarımıza göre bakiye:", "☐ We do not agree — balance per our records:"),
         ("Peşin Müşteri için mutabakat formu düzenlenmez", "No reconciliation form for the Walk-in Customer"),
         ("Hurda alımı bulunamadı", "Scrap purchase not found"),
+        ("Aydınlatma geri alınamaz; yalnız yapıldı olarak kaydedilir", "Informing cannot be withdrawn; it can only be recorded as done"),
+        ("Aydınlatma metni en çok 20000 karakter olabilir", "The privacy notice can be at most 20000 characters"),
+        ("Aydınlatma metni zorunludur", "The privacy notice is required"),
+        ("KVKK beyan türü AYDINLATMA ya da PAZARLAMA_IZNI olmalıdır", "Data protection record type must be AYDINLATMA or PAZARLAMA_IZNI"),
+        ("Kanal TEZGAH ya da IMZALI_FORM olmalıdır", "Channel must be TEZGAH or IMZALI_FORM"),
+        ("Peşin Müşteri için KVKK beyanı alınmaz", "No data protection record for the Walk-in Customer"),
+        ("Önce KVKK ekranından işletmenin aydınlatma metnini girin", "First enter the business privacy notice on the Data protection screen"),
+        ("İşletmenin aydınlatma metni girilmemiş — KVKK ekranından girin", "The business privacy notice has not been entered — enter it on the Data protection screen"),
+        ("☐ Aydınlatma metnini okudum, bilgilendirildim.", "☐ I have read the privacy notice and been informed."),
+        ("☐ Kampanya ve bilgilendirme iletileri (SMS / e-posta / telefon) almak için açık rıza veriyorum.", "☐ I give explicit consent to receive campaign and information messages (SMS / e-mail / phone)."),
     ];
 }

@@ -1,0 +1,68 @@
+@using Kuyumcu.Contracts.Sayfalar.Kvkk
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-19 (18.10) — müşteri kartında KVKK: aydınlatma durumu (hangi metin sürümü) + pazarlama izni.
+   Beyan EKLENİR (POST /cari/{id}/kvkk); geri alma da yeni kayıttır. Form /cikti/KVKK_AYDINLATMA'dan basılır.
+   Metin hiç girilmediyse sunucu aydınlatmayı reddeder ve sebebi hata satırında yazar.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<section class="form-dikey kvkk-bolum" id="cari-kvkk">
+    <h3 class="metin-soluk metin-kucuk mb-1">@K.KvkkBaslik</h3>
+    @if (durum is { } d)
+    {
+        <p id="cari-kvkk-aydinlatma">
+            @(d.AydinlatmaTarihi is { } t ? string.Format(K.KvkkAydinlatildi, Bicim.Tarih(t, Dil.Dil), d.AydinlatmaSurumu) : K.KvkkAydinlatilmadi)
+            @if (d.AydinlatmaSurumu is { } s && d.GuncelSurum is { } g && s < g)
+            {
+                <span class="metin-kirmizi" id="cari-kvkk-eski"> · @K.KvkkEskiSurum</span>
+            }
+        </p>
+        <p id="cari-kvkk-pazarlama">@(d.PazarlamaIzni ? K.KvkkPazarlamaVar : K.KvkkPazarlamaYok)</p>
+        <div class="satir">
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="cari-kvkk-aydinlat" disabled="@kaydediliyor"
+                    @onclick="@(() => Ekle("AYDINLATMA", true))">@K.KvkkAydinlatmaYapildi</button>
+            @if (d.PazarlamaIzni)
+            {
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="cari-kvkk-izin-geri" disabled="@kaydediliyor"
+                        @onclick="@(() => Ekle("PAZARLAMA_IZNI", false))">@K.KvkkIzinGeriAldi</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="cari-kvkk-izin" disabled="@kaydediliyor"
+                        @onclick="@(() => Ekle("PAZARLAMA_IZNI", true))">@K.KvkkIzinVerdi</button>
+            }
+            <NavLink id="cari-kvkk-form" class="btn btn-ikincil btn-kucuk"
+                     href="@($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.KvkkAydinlatma}/{CariId}?donus=/cariler")">@K.KvkkFormYazdir</NavLink>
+        </div>
+    }
+    <HataBandi Mesaj="@hata" Id="cari-kvkk-hata" />
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string CariId { get; set; } = "";
+
+    private KvkkCariDurumu? durum;
+    private string? hata;
+    private bool kaydediliyor;
+    private string? yuklenen;
+
+    private D1Metinleri K => D1Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CariId == yuklenen) return;
+        yuklenen = CariId; durum = null; hata = null;
+        try { durum = await Api.GetAsync<KvkkCariDurumu>($"/cari/{Uri.EscapeDataString(CariId)}/kvkk"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    private async Task Ekle(string tur, bool deger)
+    {
+        kaydediliyor = true; hata = null;
+        try { durum = await Api.PostAsync<KvkkCariDurumu>($"/cari/{Uri.EscapeDataString(CariId)}/kvkk", new { tur, deger }); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

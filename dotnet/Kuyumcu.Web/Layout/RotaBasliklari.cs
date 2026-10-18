@@ -77,6 +77,7 @@ public static class RotaBasliklari
             ["/ayarlar"] = t => MenuAdlari.Icin(t).Ayarlar.Ad,
             ["/kilavuz"] = t => MenuAdlari.Icin(t).Kilavuz.Ad,
             ["/uyum"] = t => MenuAdlari.Icin(t).Uyum.Ad,
+            ["/kvkk"] = t => MenuAdlari.Icin(t).Kvkk.Ad,
             ["/denetim-izi"] = t => MenuAdlari.Icin(t).KimNeYapti.Ad,
             ["/veri-disa-aktarim"] = t => MenuAdlari.Icin(t).VeriDisaAktar.Ad,
             ["/veri-ice-aktarim"] = t => MenuAdlari.Icin(t).VeriIceAktar.Ad,

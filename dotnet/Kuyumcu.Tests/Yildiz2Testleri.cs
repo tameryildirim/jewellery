@@ -101,7 +101,8 @@ public sealed class Yildiz2Testleri : BunitContext
     public void Y2_02_her_menu_ekraninin_TR_ve_EN_aciklamasi_vardir_ve_sayi_39dur()
     {
         // 39 → 41: PAKET EKSIK-B1-SATINALMA (/satin-alma + /irsaliyeler; TR+EN açıklama eklendi).
-        Assert.Equal(41, MenuTanimi.Ogeler.Count);
+        // 41 → 42: D1-19 /kvkk (TR+EN açıklama eklendi).
+        Assert.Equal(42, MenuTanimi.Ogeler.Count);
         foreach (var o in MenuTanimi.Ogeler)
         {
             Assert.False(string.IsNullOrWhiteSpace(YildizSozlugu.Aciklama(o.Yol, "tr")), o.Yol);
@@ -218,11 +219,11 @@ public sealed class Yildiz2Testleri : BunitContext
         var e = Karolar();
         // YILDIZ-4B (kurucu 09.10 "tuval birebir"): Yıldız'da sayfa = tuval Tum4 (YildizEkranlar: a.yz-kare · svg ikon · .yz-kac).
         // 39 → 41: PAKET EKSIK-B1-SATINALMA (/satin-alma + /irsaliyeler menüye girdi).
-        Assert.Equal(41, e.FindAll("a.yz-kare").Count);
-        Assert.Equal(41, e.FindAll("a.yz-kare svg.yz-ik").Count);
-        Assert.Equal(41, e.FindAll("a.yz-kare .yz-kac").Count);
+        Assert.Equal(42, e.FindAll("a.yz-kare").Count);   // D1-19: /kvkk
+        Assert.Equal(42, e.FindAll("a.yz-kare svg.yz-ik").Count);
+        Assert.Equal(42, e.FindAll("a.yz-kare .yz-kac").Count);
         Assert.Equal(YildizSozlugu.Aciklama("/kasalar", "tr"), e.Find("#ekran-aciklama-kasalar").TextContent);
-        Assert.Equal("41 ekran · 6 bölüm · hiçbiri gizli değil", e.Find("#ekranlar-yildiz-ozet").TextContent.Trim());
+        Assert.Equal("42 ekran · 6 bölüm · hiçbiri gizli değil", e.Find("#ekranlar-yildiz-ozet").TextContent.Trim());
         Assert.Equal(6, e.FindAll(".yz-tum-nokta").Count);
     }
 
@@ -251,7 +252,7 @@ public sealed class Yildiz2Testleri : BunitContext
         var e = Karolar();
         Assert.Equal("yildiz", Services.GetRequiredService<GorunumServisi>().Sema);
         Assert.Empty(e.FindAll("a.ekran-karo, #ekranlar-ust, .ekranlar-grup-sayi, #ekranlar-panele-don"));
-        Assert.Equal(41, e.FindAll("a.yz-kare").Count);
+        Assert.Equal(42, e.FindAll("a.yz-kare").Count);
     }
 
     // ── Kabuk kaynağı: şema koşullu, varsayılan yol AYNEN ──────────────────

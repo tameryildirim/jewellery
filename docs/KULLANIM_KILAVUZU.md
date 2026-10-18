@@ -178,10 +178,12 @@ Girişten sonra açılan ana ekrandır. Günün satış ve alış toplamları, h
 
 > [!IPUCU] Tek kasanız varsa kasa seçici hiç görünmez; kasa kendiliğinden kullanılır. Kart ile ödemede POS cihazı ve komisyon alanı açılır.
 
+**Fişi bekletme:** müşteri karar verirken sıradaki müşteriye geçmek için **Beklet**'e basın; fiş kaydedilmeden kenara alınır, tezgâh boşalır. Bekletme stok, kasa ve cariye hiçbir şey yazmaz. Fiş boşken **Bekleyen fişler (sayı)** düğmesi görünür; listeden **Al** ile fiş kalemleri ve müşterisiyle tezgâha geri gelir (başka bir kasadan da alınabilir), **Sil** ile atılır. Geri alınan fiş normal **Kaydet** ile kaydedilir.
+
 ### Alış, hurda alışı ve işçilik {#alis}
 
 - **Alış:** müşteriden eski altın alımı. Ayar ve gram girilir, tutar has fiyatından hesaplanır. Tedarikçiden gelen ürünü stoğa almak için **Satın alma** ekranındaki **Mal geldi** düğmesini kullanın (bkz. [Satın alma](#satinalma)).
-- **Hurda alışı:** müşteriden hurda altın alımı. Ayar ve gram girilir; hurda has gram olarak deftere ve hurda stoğuna işlenir. Vergi mükellefi olmayan kişiden alımda gider pusulası kendiliğinden düzenlenir (bkz. [Gider Pusulaları](#giderpusulasi)).
+- **Hurda alışı:** müşteriden hurda altın alımı. Ayar ve gram girilir; hurda has gram olarak deftere ve hurda stoğuna işlenir. Vergi mükellefi olmayan kişiden alımda gider pusulası kendiliğinden düzenlenir (bkz. [Gider Pusulaları](#giderpusulasi)). Kaydettikten sonra **Fotoğraf ekle** ile hurdanın fotoğrafı eklenir; telefonda kamera açılır.
 - **İşçilik:** yalnız işçilik bedeli tahsil edilir, stok hareketi olmaz.
 
 ### Takas {#takas}
@@ -260,7 +262,7 @@ Müşteri, tedarikçi ve atölye hesaplarının tutulduğu ekrandır. Her cari i
 
 ### Cari ayrıntısı, ekstre ve tahsilat
 
-Listedeki bir cariye basınca bütün hareketleri TL ve has gram olarak listelenir. Buradan tahsilat alabilir, cari ekstresini yazdırabilirsiniz. Cari bilgileri satırdaki **Düzenle** ile değiştirilir; kullanılmayan cari silinmez, **Pasife al** ile kapatılır ve istenirse geri açılır.
+Listedeki bir cariye basınca bütün hareketleri TL ve has gram olarak listelenir. Buradan tahsilat alabilir, cari ekstresini ve **Mutabakat formu**nu yazdırabilirsiniz. Mutabakat formunda bugünkü TL, has ve döviz bakiyesi "bize borçlu / size borçluyuz" diye yazar; müşteri "mutabıkız" ya da "mutabık değiliz" kutusunu işaretleyip imzalar. Kartın **KVKK** bölümünde aydınlatmanın yapıldığı ve pazarlama izni kaydedilir (bkz. [KVKK](#kvkk)). Cari bilgileri satırdaki **Düzenle** ile değiştirilir; kullanılmayan cari silinmez, **Pasife al** ile kapatılır ve istenirse geri açılır.
 
 ### IBAN listesi {#cari-iban}
 
@@ -429,7 +431,7 @@ Hangi gün ne kadar evrak vadesi olduğunu takvim üzerinde gösterir. Bir güne
 
 <!-- ekran: /hurda -->
 
-İşletmede biriken hurdanın has bakiyesi ve rafineriye (ramatçıya) çıkışı burada izlenir. Bakiye ayrı bir sayıdan değil, hurda alış ve hurda satış kayıtlarından hesaplanır; bu yüzden elle değiştirilmez. Rafineriden gelen tahlil sonucu beklenenden farklıysa fark ayrıca kaydedilir.
+İşletmede biriken hurdanın has bakiyesi ve rafineriye (ramatçıya) çıkışı burada izlenir. Bakiye ayrı bir sayıdan değil, hurda alış ve hurda satış kayıtlarından hesaplanır; bu yüzden elle değiştirilmez. Rafineriden gelen tahlil sonucu beklenenden farklıysa fark ayrıca kaydedilir. Hurda alımı satırındaki **Fotoğraf** ile alımın fotoğrafı eklenir ya da görülür.
 
 <!-- grup: Belge ve Uyum -->
 
@@ -445,6 +447,7 @@ Kesilen ve taslak faturalar burada listelenir.
 - **Fatura sınırı:** kuyumcu fatura sınırının (2026'da 36.000 TL) üstündeki satış fişle yapılamaz, faturalı kesilir ve müşterinin geçerli TC kimlik ya da vergi numarası gerekir. Fatura kesilemezse satış da kaydedilmez; sebep ekranda yazar.
 - **Kuyum faturası:** yalnız satış kaydından ya da has gramı bilinen kalemlerden kesilir; has bedeli elle yazılamaz.
 - **Alıcı bilgisi:** fatura kesildiği anda müşterinin adı/unvanı, kimlik numarası ve adresi faturaya yazılır; müşteri kartı sonradan düzeltilse de kesilmiş fatura değişmez.
+- **Yazdırma:** satırdaki **Yazdır** faturayı açar; üstte **A4** ya da **80 mm fiş** seçilir (fiş yazıcısı için). Kâğıtta "bilgi amaçlı döküm" uyarısı yazar; taslak ve iptal edilmiş faturada bu durum da basılır.
 
 > [!BILGI] Program faturayı kendi içinde üretir ve yazdırır; Gelir İdaresi'ne elektronik iletim bu sürümde yoktur (bkz. [Bu sürümde olmayanlar](#haric)).
 
@@ -489,6 +492,18 @@ Yasal yükümlülüklerin izlendiği ekrandır: kimlik tespitleri, şüpheli iş
 - **Şüpheli işlem bildirimi:** kaydedildikten sonra tutarı ve gerekçesi değiştirilemez; gönderilmemiş bildirim kapatılabilir.
 
 > [!UYARI] Eşik tutarları ve süreler mevzuata bağlıdır ve programın yapılandırmasından okunur; bu kılavuz rakam yazmaz. Kesin kural için mali müşavirinize danışın.
+
+## KVKK {#kvkk}
+
+<!-- ekran: /kvkk -->
+
+Kişisel verilerle ilgili aydınlatma metni ve müşterilerin verdiği izinler burada izlenir. Ekranı Sahip ve Müdür görür.
+
+- **Aydınlatma metni:** hukukçunuzdan aldığınız metni buraya yapıştırıp **Kaydet**'e basın; program metin yazmaz. Her kayıt yeni bir sürüm olur, eski sürüm silinmez. Paragrafları boş satırla ayırın.
+- **Müşteri kartında:** **Aydınlatma yapıldı** ile müşteriye metnin okunduğu (hangi sürüm olduğu da) kaydedilir. **İzin verdi** / **İzni geri aldı** ile kampanya ve bilgilendirme iletileri için izin tutulur; geri alma da kayıt olarak eklenir, geçmiş silinmez. Metin değiştiyse kartta "yeniden aydınlatın" yazar.
+- **KVKK formu:** müşteri kartındaki bağlantı, işletmenin metnini ve iki işaret kutusunu (okudum · izin veriyorum) imza satırıyla basar.
+
+> [!BILGI] Peşin Müşteri için KVKK kaydı tutulmaz. Metnin içeriği hukuki bir konudur; uygunluğunu hukukçunuza teyit ettirin.
 
 <!-- grup: Dökümler -->
 

@@ -258,6 +258,10 @@ public static class DuzeltmePolitikasi
         // D1-03: bekleyen fiş — yerinde düzenlenmez; tezgâha geri alınır (…/{id}/al), orada düzeltilip
         // kaydedilir ya da yeniden bekletilir. Atmak için …/{id}/sil.
         S("BekleyenFis", GerekceAnahtarlari.Sistem, "api/v1/bekleyen-fisler/{id}/al"),
+        // D1-19: KVKK aydınlatma metni — PUT yeni sürüm yazar (eski sürüm ispat için kalır).
+        D("KvkkMetni", "api/v1/kvkk/metin"),
+        // D1-19: müşteri KVKK beyanı — eklenerek tutulur; geri alma yeni satırdır (ispat yükü).
+        S("KvkkKaydi", GerekceAnahtarlari.Denetim, "api/v1/cari/{cariId}/kvkk"),
         // M7: demo bankasının gelen havalesi — sağlayıcı kaydıdır; düzeltme banka hareketinin stornosuyla.
         S("SahteBankaHareketi", GerekceAnahtarlari.Sistem),
         // 17.10 mahsup (ödemenin hangi borçlu satışa sayıldığı): append-only; düzeltme = ödemenin stornosu.

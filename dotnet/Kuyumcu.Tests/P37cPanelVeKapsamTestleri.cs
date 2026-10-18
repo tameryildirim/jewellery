@@ -173,7 +173,8 @@ public sealed class P37cPanelVeKapsamTestleri : BunitContext
         // 48 → 49: PAKET AUTH-SIFIRLA SifreSifirla.razor (SayfaBasi kullanır, muaf DEĞİL).
         // 49 → 51: PAKET EKSIK-B1-SATINALMA SatinAlma.razor + Irsaliyeler.razor (ikisi de SayfaBasi kullanır, muaf DEĞİL).
         // 51 → 52: PAKET EKSIK-KUCUK VitrinEkrani.razor (/vitrin/ekran; SayfaBasi kullanır, muaf DEĞİL).
-        Assert.Equal(52, sayfalar.Length);
+        // 52 → 53: D1-19 Kvkk.razor (/kvkk; SayfaBasi kullanır, muaf DEĞİL).
+        Assert.Equal(53, sayfalar.Length);
 
         var eksik = sayfalar
             .Where(y => !Muaflar.Contains(Path.GetFileName(y)))
@@ -184,7 +185,7 @@ public sealed class P37cPanelVeKapsamTestleri : BunitContext
             .ToArray();
 
         Assert.Empty(eksik);
-        Assert.Equal(49, sayfalar.Length - Muaflar.Length);   // AUTH-SIFIRLA: 45 → 46 · EKSIK-B1-SATINALMA: 46 → 48 · EKSIK-KUCUK: 48 → 49
+        Assert.Equal(50, sayfalar.Length - Muaflar.Length);   // AUTH-SIFIRLA: 45 → 46 · EKSIK-B1-SATINALMA: 46 → 48 · EKSIK-KUCUK: 48 → 49 · D1-19 /kvkk: 49 → 50
     }
 
     [Fact]

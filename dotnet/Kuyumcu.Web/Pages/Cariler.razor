@@ -859,6 +859,7 @@
                              href="@($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.CariMutabakat}/{detayCari.Id}?donus=/cariler")">@D1Sozlugu.Al(Dil.Dil).MutabakatYazdir</NavLink>
                 }
             </div>
+            @if (!detayCari.SistemCarisi) { <KvkkCariBolumu CariId="@detayCari.Id" /> }   @* D1-19 KVKK *@
 
             <div>
                 <h3 class="metin-soluk metin-kucuk mb-1">@P2.HareketlerBaslik</h3>

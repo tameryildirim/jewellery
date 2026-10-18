@@ -97,6 +97,9 @@
                    sütunlar aynen, sütun dizinleri aynı — Hucre/Bicimi aynı dizinle okur). *@
                 var bosSutun = BosSutunlar(bolum);
                 <table class="belge-tablo">
+                    @* D1-19: başlıkların hepsi boşsa (düz metin bölümü — KVKK paragrafları, beyan kutuları) başlık satırı çizilmez. *@
+                    @if (bolum.SutunBasliklari.Any(b => !string.IsNullOrWhiteSpace(b)))
+                    {
                     <thead>
                         <tr>
                             @for (var i = 0; i < bolum.SutunBasliklari.Length; i++)
@@ -106,6 +109,7 @@
                             }
                         </tr>
                     </thead>
+                    }
                     <tbody>
                         @foreach (var s in bolum.Satirlar)
                         {

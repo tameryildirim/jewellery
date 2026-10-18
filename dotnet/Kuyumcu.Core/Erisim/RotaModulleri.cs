@@ -71,6 +71,7 @@ public static class RotaModulleri
             ["/ayarlar"] = null,                        // kendi hesabın
             ["/kilavuz"] = null,                        // yardım metni
             ["/uyum"] = "uyum",
+            ["/kvkk"] = "cari",                         // D1-19 KVKK aydınlatma / rıza
             ["/denetim-izi"] = "denetim-izi",
             ["/veri-disa-aktarim"] = "veri-aktarim",
             ["/veri-ice-aktarim"] = "veri-aktarim",

@@ -69,6 +69,7 @@ public sealed record MenuAdlariMetinleri(
     MenuAdi Faturalar,
     MenuAdi GiderPusulalari,
     MenuAdi Uyum,
+    MenuAdi Kvkk,   // D1-19
     MenuAdi YasalSinirlar,
     // ── Raporlar ──
     MenuAdi RaporMerkezi,
@@ -130,6 +131,7 @@ public static class MenuAdlari
         Faturalar: new("Faturalar", "Faturalar"),
         GiderPusulalari: new("Gider pusulaları", "Gider pusulaları"),
         Uyum: new("Uyum (MASAK)", "Uyum (MASAK)", "Uyum"),
+        Kvkk: new("KVKK", "KVKK", "Kişisel veriler"),
         YasalSinirlar: new("Yasal sınırlar", "Yasal sınırlar"),
         RaporMerkezi: new("Rapor merkezi", "Rapor merkezi", "Raporlar Dökümler"),
         KarZarar: new("Kâr-zarar", "Kâr-zarar"),
@@ -183,6 +185,7 @@ public static class MenuAdlari
         Faturalar: new("Invoices", "Invoices"),
         GiderPusulalari: new("Expense vouchers", "Expense vouchers"),
         Uyum: new("Compliance", "Compliance", "MASAK"),
+        Kvkk: new("Data protection", "Data protection", "KVKK"),
         YasalSinirlar: new("Legal limits", "Legal limits"),
         RaporMerkezi: new("Report centre", "Report centre", "Reports Listings"),
         KarZarar: new("Profit and loss", "Profit and loss"),

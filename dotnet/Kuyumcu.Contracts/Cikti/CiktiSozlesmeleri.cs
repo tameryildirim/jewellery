@@ -42,8 +42,10 @@ public static class BelgeTurleri
     /// yönleri yazılı; müşteri "mutabıkız / değiliz" işaretleyip imzalar.
     /// </summary>
     public const string CariMutabakat = "CARI_MUTABAKAT";
+    /// <summary>D1-19 (18.10) — KVKK aydınlatma formu: işletmenin metni + pazarlama izni kutusu + imza.</summary>
+    public const string KvkkAydinlatma = "KVKK_AYDINLATMA";
 
-    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat];
+    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat, KvkkAydinlatma];
 
     public static bool Gecerli(string? tur) =>
         tur is not null && Array.IndexOf(Tumu, tur) >= 0;

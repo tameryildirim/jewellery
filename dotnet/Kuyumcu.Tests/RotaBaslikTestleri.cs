@@ -103,7 +103,8 @@ public sealed class RotaBaslikTestleri : BunitContext
         // 48 → 49: PAKET AUTH-SIFIRLA /sifre-sifirla ("Parolamı unuttum", kimlik öncesi).
         // 49 → 51: PAKET EKSIK-B1-SATINALMA /satin-alma + /irsaliyeler (B1-1 · B1-2).
         // 51 → 52: PAKET EKSIK-KUCUK /vitrin/ekran (B2-10 kabuksuz dükkân ekranı).
-        Assert.Equal(52, rotalar.Count);
+        // 52 → 53: D1-19 /kvkk.
+        Assert.Equal(53, rotalar.Count);
     }
 
     [Theory]

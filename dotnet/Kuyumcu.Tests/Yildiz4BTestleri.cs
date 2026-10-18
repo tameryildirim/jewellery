@@ -345,10 +345,11 @@ public sealed class Yildiz4BTestleri : BunitContext
             .Add(x => x.Ogeler, MenuTanimi.Ogeler)
             .Add(x => x.Ozet, YildizSozlugu.Ozet("tr", MenuTanimi.Ogeler.Count, 6, true)));
         // 39 → 41: PAKET EKSIK-B1-SATINALMA — /satin-alma (Müşteri ve stok 6 → 7) + /irsaliyeler (Belge ve uyum 4 → 5).
-        Assert.Equal(41, e.FindAll(".yz-kare").Count);
+        // 41 → 42: D1-19 /kvkk (Belge ve uyum 5 → 6).
+        Assert.Equal(42, e.FindAll(".yz-kare").Count);
         Assert.Equal(6, e.FindAll(".yz-tum-bolum").Count);
-        Assert.Equal("41 ekran · 6 bölüm · hiçbiri gizli değil", e.Find("#ekranlar-yildiz-ozet").TextContent);
-        Assert.Equal(["5", "7", "10", "5", "6", "8"],
+        Assert.Equal("42 ekran · 6 bölüm · hiçbiri gizli değil", e.Find("#ekranlar-yildiz-ozet").TextContent);
+        Assert.Equal(["5", "7", "10", "6", "6", "8"],   // D1-19: Belge ve uyum 5 → 6
             e.FindAll(".yz-tum-bolum > .yz-ust").Select(h => h.TextContent.Split('·').Last().Trim()));
         Assert.Equal("Gider ve virman", e.Find("#ekran-karo-gider .yz-kad").TextContent);
         Assert.All(e.FindAll(".yz-kare svg path"), p => Assert.False(string.IsNullOrEmpty(p.GetAttribute("d"))));

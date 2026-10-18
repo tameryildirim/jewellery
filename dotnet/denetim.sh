@@ -437,7 +437,8 @@ fi
 # M9 (17.10): Data/AlisIscilikBelgesi.cs (alis_iscilik_belgeleri) 79 -> 80
 # M7 (17.10): Data/SahteBankaHareketi.cs (sahte_banka_hareketleri — demo bankası) 80 -> 81
 # D1-03 (18.10): Data/BekleyenFis.cs (bekleyen_fisler — işlem bekletme) 81 -> 82
-BEKLENEN_VARLIK=82
+# D1-19 (18.10): Data/KvkkKayitlari.cs (kvkk_metinleri + kvkk_kayitlari) 82 -> 84
+BEKLENEN_VARLIK=84
 VARLIK=$(grep -c ": IKiraciVarlik" "$API/Data/Entities.cs" || true)
 EK=$(grep -rl ": IKiraciVarlik" "$API/Data" --include='*.cs' | grep -v Entities.cs | xargs grep -c ": IKiraciVarlik" 2>/dev/null | awk -F: '{t+=$2} END{print t+0}')
 MODUL_VARLIK=$(grep -rn ": IKiraciVarlik" "$API/Modules" --include='*.cs' 2>/dev/null | grep -v '/obj/\|/bin/' | wc -l | tr -d ' ')
@@ -763,7 +764,9 @@ SAYFA_SAYISI=$(ls "$WEB"/Pages/*.razor 2>/dev/null | wc -l | tr -d ' ')
 # kabuksuz (/ekranlar kalıbı)" der (EKSIK-OZELLIK-DENETIMI B2 satır 10). Vitrin.razor'un sekmesi OLAMAZ:
 # /vitrin yönetim ekranıdır (marj ayarı, MUDUR+), dükkân ekranı ise müşteriye dönük kabuksuz TV sayfasıdır
 # (P-17 gerekçesiyle aynı: "vitrindeki TV'de tam ekran durur; aynı sayfada yaşayamazlar").
-cirkir "Pages/*.razor dosya sayısı" "$SAYFA_SAYISI" 52
+# D1-19 (18.10): Kvkk.razor eklendi (52 -> 53) — işletmenin aydınlatma metni + izin özeti; mevcut bir
+# ekranın sekmesi OLAMAZ: Uyum (MASAK) farklı rol/veri, İşletme sayfası 1400 satır tavanında.
+cirkir "Pages/*.razor dosya sayısı" "$SAYFA_SAYISI" 53
 
 # 8) DoD/4 — SESSİZ FORM YASAĞI: EditForm kullanan sayfada ValidationMessage
 #    (ya da alan altı hata metni) bulunmalı. Bugün Pages/ altında EditForm
@@ -1535,7 +1538,8 @@ echo "═══ P-02 ölçüm kapısı ═══"
 #   grep -rhE '^@page' Kuyumcu.Web/Pages --include='*.razor' | wc -l  → 51
 # PAKET EKSIK-KUCUK: 51 → 52 (/vitrin/ekran — kabuksuz dükkân ekranı) — taze ölçüldü:
 #   grep -rhE '^@page' Kuyumcu.Web/Pages --include='*.razor' | wc -l  → 52
-P02_ROTA_BEKLENEN=52
+# D1-19 (18.10): 52 → 53 (/kvkk — KVKK aydınlatma metni ve izinler)
+P02_ROTA_BEKLENEN=53
 P02_ROTA=$(grep -rhE '^@page' "$WEB/Pages" --include='*.razor' 2>/dev/null | wc -l | tr -d ' ')
 P02_HARITA=$(grep -cE '^[[:space:]]*\["/' "$WEB/Layout/RotaBasliklari.cs" 2>/dev/null || true)
 if [ "$P02_ROTA" -eq "$P02_ROTA_BEKLENEN" ] && [ "$P02_HARITA" -eq "$P02_ROTA_BEKLENEN" ]; then
