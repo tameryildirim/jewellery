@@ -312,7 +312,7 @@ public sealed class Yildiz5BTestleri : BunitContext
         Assert.Contains(".yz-ozet .yz-ozet-bilgi { display: flex; flex-wrap: wrap; gap: 40px; font-size: 14px; letter-spacing: .06em; }", c);
         Assert.Contains(".yz-ozet--kasalar .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 100px 170px 140px; }", c);
         Assert.Contains(".yz-ozet--kur .yz-liste-sat { grid-template-columns: minmax(0, 1fr) 160px 160px; }", c);
-        Assert.Contains(".yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 90px 110px 120px auto; }", c);   // D1-12: Fotoğraf sütunu
+        Assert.Contains(".yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 90px 110px 120px 120px; }", c);   // D1-12: Fotoğraf sütunu
         Assert.Contains(".yz-ozet--kasarapor .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 90px 170px; }", c);
         Assert.Contains(".yz-liste--vezne .yz-liste-sat { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 160px 140px 140px; }", c);
         Assert.Contains(".yz-liste--posalacak .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px 150px; }", c);
