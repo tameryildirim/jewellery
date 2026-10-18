@@ -1,0 +1,51 @@
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* D2-12 (18.10) — uykuda müşteriler: son alışverişi seçilen günden eski (en uzun uyuyan önce). GET /cari/uykuda?gun=. *@
+<div class="kart" id="uyk-kart">
+    <div class="kart-baslik uyk-baslik">
+        <h2>@M.UykudaMusteriler</h2>
+        <Secici ElemanId="uyk-gun" Etiket="@M.UykudaGun" Secenekler="@Secenekler" Deger="@gun.ToString()" DegerChanged="GunDegisti" />
+    </div>
+    <HataBandi Mesaj="@hata" Id="uyk-hata" />
+    @if (liste is { Count: 0 })
+    {
+        <p class="metin-soluk" id="uyk-bos">—</p>
+    }
+    else if (liste is { } l)
+    {
+        <ul class="uyk-liste" id="uyk-liste">
+            @foreach (var m in l)
+            {
+                <li class="uyk-satir" id="@($"uyk-{m.CariId}")">
+                    <a href="@($"/cariler?cariId={Uri.EscapeDataString(m.CariId)}")" class="uyk-ad">@m.Ad</a>
+                    <span class="metin-soluk">@(m.Telefon ?? "")</span>
+                    <span>@string.Format(M.GunOnce, m.GecenGun)</span>
+                    <span class="uyk-tutar">@Bicim.Tl(m.ToplamAlisverisTl)</span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private int gun = 180;
+    private List<UykudaMusteri>? liste;
+    private string? hata;
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+    private static readonly IReadOnlyList<SecenekOgesi> Secenekler = [new("90", "90"), new("180", "180"), new("365", "365"), new("730", "730")];
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task GunDegisti(string? v) { if (int.TryParse(v, out var g)) { gun = g; await Yukle(); } }
+
+    private async Task Yukle()
+    {
+        hata = null;
+        try { liste = [.. (await Api.GetAsync<List<UykudaMusteri>>($"/cari/uykuda?gun={gun}") ?? []).Where(m => !string.IsNullOrEmpty(m.CariId))]; }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch (System.Text.Json.JsonException) { hata = M.BolumOkunamadi; }
+    }
+}

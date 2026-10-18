@@ -88,6 +88,9 @@ public sealed class CariOlusturDto
         ErrorMessage = "Segment geçersiz — kabul edilen değerler: BIREYSEL, KURUMSAL, TOPTAN, VIP")]
     public string? Segment { get; set; }
 
+    /// <summary>D2-12 — yüzük ölçüsü (serbest metin).</summary>
+    [MaxLength(GS.CariYuzukOlcusu)] public string? YuzukOlcusu { get; set; }
+
     /// <summary>
     /// PAKET P-26 (Y-37) — muhasebe hesap kodu (ör. 120.01.0001 / 320.01.0001).
     /// UX-S26: oluşturma formu düzenleme formuyla AYNI alan kümesini taşır —
@@ -223,6 +226,12 @@ public sealed class CariGuncelleDto
         ErrorMessage = "Segment geçersiz — kabul edilen değerler: BIREYSEL, KURUMSAL, TOPTAN, VIP")]
     public string? Segment { get => _segment; set { _segment = value; SegmentVerildi = true; } }
     [JsonIgnore] public bool SegmentVerildi { get; private set; }
+
+    private string? _yuzukOlcusu;
+    /// <summary>D2-12 — yüzük ölçüsü; gönderilmedi = koru, boş = sil.</summary>
+    [MaxLength(GS.CariYuzukOlcusu)]
+    public string? YuzukOlcusu { get => _yuzukOlcusu; set { _yuzukOlcusu = value; YuzukOlcusuVerildi = true; } }
+    [JsonIgnore] public bool YuzukOlcusuVerildi { get; private set; }
 
     private string? _hesapKodu;
     /// <summary>PAKET P-26 (Y-37) — ÜÇ DURUMLU: gönderilmedi = koru, "" / null = sil.</summary>
@@ -550,6 +559,7 @@ public sealed class CariServisi(
             IskontoYuzde = dto.IskontoYuzde,
             Segment = dto.Segment,
             HesapKodu = string.IsNullOrWhiteSpace(dto.HesapKodu) ? null : dto.HesapKodu.Trim(),
+            YuzukOlcusu = string.IsNullOrWhiteSpace(dto.YuzukOlcusu) ? null : dto.YuzukOlcusu.Trim(),   // D2-12
             Aktif = true,
             Olusturuldu = now,
             Guncellendi = now,
@@ -683,6 +693,7 @@ public sealed class CariServisi(
                 // yerine gerekçe gösterir (UX-S25). Ek alan; mevcut alan değişmedi.
                 sistemCarisi = c.SistemCarisi,
                 veresiyeEngeli = c.VeresiyeEngeli, veresiyeEngelSebebi = c.VeresiyeEngelSebebi,   // D1-07
+                yuzukOlcusu = c.YuzukOlcusu,   // D2-12
             };
         }).ToList();
     }
@@ -740,6 +751,7 @@ public sealed class CariServisi(
             // PAKET B-3 (D2) — ek alan.
             sistemCarisi = cari.SistemCarisi,
             veresiyeEngeli = cari.VeresiyeEngeli, veresiyeEngelSebebi = cari.VeresiyeEngelSebebi,   // D1-07
+            yuzukOlcusu = cari.YuzukOlcusu,   // D2-12
             olusturuldu = cari.Olusturuldu,
             guncellendi = cari.Guncellendi,
             bakiye = bakiye is null ? null : BakiyeFormat(bakiye, emanetEtkisi),
@@ -845,6 +857,7 @@ public sealed class CariServisi(
         if (dto.UyrukVerildi) cari.Uyruk = UyrukNormalle(dto.Uyruk, mevcut: cari.Uyruk);
         if (dto.IskontoYuzdeVerildi) cari.IskontoYuzde = dto.IskontoYuzde;
         if (dto.SegmentVerildi) cari.Segment = string.IsNullOrEmpty(dto.Segment) ? null : dto.Segment;
+        if (dto.YuzukOlcusuVerildi) cari.YuzukOlcusu = string.IsNullOrWhiteSpace(dto.YuzukOlcusu) ? null : dto.YuzukOlcusu.Trim();   // D2-12
         if (dto.HesapKoduVerildi)
             cari.HesapKodu = string.IsNullOrWhiteSpace(dto.HesapKodu) ? null : dto.HesapKodu.Trim();
 

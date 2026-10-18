@@ -128,6 +128,8 @@ public class KuyumcuDbContext : DbContext
     public DbSet<OnayTalebi> OnayTalepleri => Set<OnayTalebi>();   // D1-05
     public DbSet<OdemePlani> OdemePlanlari => Set<OdemePlani>();   // D1-06
     public DbSet<OdemePlaniTaksiti> OdemePlaniTaksitleri => Set<OdemePlaniTaksiti>();   // D1-06
+    public DbSet<CariDilek> CariDilekleri => Set<CariDilek>();   // D2-12
+    public DbSet<SadakatPuanKullanimi> SadakatPuanKullanimlari => Set<SadakatPuanKullanimi>();   // D2-12
     public DbSet<KvkkMetni> KvkkMetinleri => Set<KvkkMetni>();       // D1-19
     public DbSet<KvkkKaydi> KvkkKayitlari => Set<KvkkKaydi>();       // D1-19
     public DbSet<UrunSeti> UrunSetleri => Set<UrunSeti>();           // D1-16
@@ -531,6 +533,8 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<OdemePlani>().HasIndex(p => new { p.TenantId, p.CariId });
         mb.Entity<OdemePlani>().HasIndex(p => new { p.TenantId, p.KaynakHareketId });
         mb.Entity<OdemePlaniTaksiti>().HasIndex(t => new { t.TenantId, t.PlanId, t.Sira }).IsUnique();
+        mb.Entity<CariDilek>().HasIndex(d => new { d.TenantId, d.CariId });
+        mb.Entity<SadakatPuanKullanimi>().HasIndex(p => new { p.TenantId, p.CariId });
         mb.Entity<KvkkMetni>().HasIndex(m => new { m.TenantId, m.Surum }).IsUnique();
         mb.Entity<KvkkKaydi>().HasIndex(k => new { k.TenantId, k.CariId, k.Tarih });
         mb.Entity<UrunSeti>().HasIndex(s => new { s.TenantId, s.Barkod }).IsUnique();

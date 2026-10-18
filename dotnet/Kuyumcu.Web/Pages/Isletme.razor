@@ -400,6 +400,16 @@
                                 <HataBandi Mesaj="@satisOnayHata" Id="i-satis-onayi-hata" />
                             </div>
                             <SatisOnayAyarCekmecesi Acik="satisOnayCekmeceAcik" Kapandi="() => satisOnayCekmeceAcik = false" Kaydedildi="SatisOnayKaydedildi" />
+                            @* D2-12 (18.10): sadakat puanı — özet satırı, düzenleme çekmecede. *@
+                            <div class="alan" id="i-sadakat">
+                                <span class="alan-etiket">@D1Sozlugu.Al(Dil.Dil).SadakatAyari</span>
+                                <span class="metin-kucuk" id="i-sadakat-ozet">@SadakatOzeti</span>
+                                @if (!SaltOkunur)
+                                {
+                                    <button type="button" class="btn btn-ikincil btn-kucuk" id="i-sadakat-duzenle" @onclick="() => sadakatCekmeceAcik = true">@D1Sozlugu.Al(Dil.Dil).OnayKurallariDuzenle</button>
+                                }
+                            </div>
+                            <SadakatAyarCekmecesi Acik="sadakatCekmeceAcik" Kapandi="() => sadakatCekmeceAcik = false" Kaydedildi="SadakatKaydedildi" />
                             @* ── PAKET P-13 · B-47 ────────────────────────────────────────
                                Kur kaynağı ve maliyet yöntemi SALT OKUNUR satırdı ve yanında
                                "bu ayar türetilir" gerekçesi yazıyordu. İkisi de doğru değildi:
@@ -1028,7 +1038,7 @@
     {
         Dil.Degisti += Yenile;
         await Task.WhenAll(
-            TenantYukle(), SubeYukle(), VezneYukle(), KurKaynaklariYukle(), AbonelikYukle(), KmtsYukle(), SatisBelgeYukle(), KorSayimYukle(), SatisOnayYukle());   // M6 · D1-11 · D1-05
+            TenantYukle(), SubeYukle(), VezneYukle(), KurKaynaklariYukle(), AbonelikYukle(), KmtsYukle(), SatisBelgeYukle(), KorSayimYukle(), SatisOnayYukle(), SadakatYukle());   // M6 · D1-11 · D1-05
     }
 
     // ── PAKET YASAL-4 / Y4-C — KMTS alanı ayarı ──────────────────────────────

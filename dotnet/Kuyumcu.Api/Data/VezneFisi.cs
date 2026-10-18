@@ -259,12 +259,16 @@ public static class KiraciAyarAnahtari
     public const string MesaiBaslangic = "mesai_baslangic";
     /// <summary>D1-02 — etiket şablonu ("50x30|AD,IBARE,…" — Kuyumcu.Core.Domain.EtiketSablonu). Yoksa varsayılan.</summary>
     public const string EtiketSablonu = "etiket_sablonu";
+    /// <summary>D2-12 — sadakat: kaç TL net alışveriş 1 puan. Boş = kapalı.</summary>
+    public const string SadakatTlBasina = "sadakat_tl_basina";
+    /// <summary>D2-12 — sadakat başlangıç günü (yyyy-MM-dd); puan bu günden itibaren kazanılır.</summary>
+    public const string SadakatBaslangic = "sadakat_baslangic";
     /// <summary>D1-05 — mesai bitişi "SS:dd".</summary>
     public const string MesaiBitis = "mesai_bitis";
 
     public static readonly string[] Tumu =
         [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi, SatisBelgeVarsayilan, KasaKorSayim,
-         OnayIskontoYuzde, OnayTutarTl, OnayZararina, MesaiBaslangic, MesaiBitis, EtiketSablonu];
+         OnayIskontoYuzde, OnayTutarTl, OnayZararina, MesaiBaslangic, MesaiBitis, EtiketSablonu, SadakatTlBasina, SadakatBaslangic];
 }
 
 /// <summary>

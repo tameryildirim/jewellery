@@ -105,6 +105,9 @@
                         @bind-Deger="yeniSegment"
                         BosSecenekMetni="@Dil.T.Cari.SegmentSecilmedi" />
             </div>
+            @* D2-12: yüzük ölçüsü (serbest metin; sunucu create/patch AYNI alan). *@
+            <Metin ElemanId="cari-yuzuk-olcusu" Etiket="@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).YuzukOlcusu" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.CariYuzukOlcusu"
+                   Deger="@yeniYuzukOlcusu" DegerChanged="@(v => yeniYuzukOlcusu = v ?? "")" />
             @* PAKET P-26 (Y-37) · UX-S26 — sunucunun OLUŞTURMADA kabul ettiği
                hesap kodu "sonra düzenlemeden gir" diye ertelenmez. *@
             <Metin ElemanId="cari-hesap-kodu" Etiket="@Dil.T.Cari.HesapKodu" EnFazla="@AlanSinirlari.HesapKodu"
@@ -280,6 +283,8 @@
                         Secenekler="@(Segmentler.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
                         @bind-Deger="duzSegment"
                         BosSecenekMetni="@Dil.T.Cari.SegmentSecilmedi" />
+                <Metin ElemanId="duz-yuzuk-olcusu" Devredisi="@DuzKilitli" Etiket="@Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).YuzukOlcusu" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.CariYuzukOlcusu"
+                       Deger="@duzYuzukOlcusu" DegerChanged="@(v => duzYuzukOlcusu = v ?? "")" />
             </div>
             @* P-26 (Y-37): oluşturma formuyla AYNI alan kümesi.
                KESIF-P2 (#20 · K7): hesap kodu Segment hücresinin İÇİNDEYDİ — o hücre iki alan
@@ -867,6 +872,7 @@
                 }
             </div>
             @if (!detayCari.SistemCarisi) { <KvkkCariBolumu CariId="@detayCari.Id" /> }   @* D1-19 KVKK *@
+            @if (!detayCari.SistemCarisi) { <MusteriBagliligiBolumu CariId="@detayCari.Id" /> }   @* D2-12 sadakat · dilek *@
 
             <div>
                 <h3 class="metin-soluk metin-kucuk mb-1">@P2.HareketlerBaslik</h3>
@@ -1738,6 +1744,7 @@
 
     // ── yeni cari: P-16 alanları ──
     private string yeniKimlikTuru = "", yeniUnvan = "", yeniUyruk = "", yeniSegment = "";
+    private string yeniYuzukOlcusu = "", duzYuzukOlcusu = "";   // D2-12
     private string yeniHesapKodu = "";
     private DateOnly? yeniDogumTarihi;
     private decimal? yeniIskonto;
@@ -2218,7 +2225,7 @@
         yeniEmail = "";
         yeniAdres = "";
         yeniVergiNo = "";
-        yeniKimlikTuru = ""; yeniUnvan = ""; yeniUyruk = ""; yeniSegment = "";
+        yeniKimlikTuru = ""; yeniUnvan = ""; yeniUyruk = ""; yeniSegment = ""; yeniYuzukOlcusu = "";
         yeniHesapKodu = "";
         yeniDogumTarihi = null; yeniIskonto = null;
         yeniKrediLimiti = null;
@@ -2285,6 +2292,7 @@
                 uyruk = BosIseNull(yeniUyruk),
                 iskontoYuzde = yeniIskonto,
                 segment = BosIseNull(yeniSegment),
+                yuzukOlcusu = BosIseNull(yeniYuzukOlcusu),   // D2-12
                 hesapKodu = BosIseNull(yeniHesapKodu),
             });
             yeniModalAcik = false;
@@ -2366,7 +2374,7 @@
         duzAd = ""; duzTur = "MUSTERI"; duzTelefon = ""; duzTelefonKayitli = null; duzEmail = "";
         duzVergiNo = ""; duzAdres = "";
         duzKimlikTuru = ""; duzUnvan = ""; duzDogumTarihi = null; duzUyruk = "";
-        duzIskonto = null; duzSegment = ""; duzHesapKodu = "";
+        duzIskonto = null; duzSegment = ""; duzHesapKodu = ""; duzYuzukOlcusu = "";
         duzKrediLimiti = null; duzVadeGun = null; duzFiyatListesiId = "";
         duzVadeKesirli = null; sayiKapisi.Bildir("duz-vade-tam", "", false);
         duzUyrukDiger = false; yuklenenUyruk = null;
@@ -2400,7 +2408,7 @@
             // ── PAKET P-16 (Y-27) ──
             duzKimlikTuru = tam.KimlikTuru ?? ""; duzUnvan = tam.Unvan ?? "";
             duzDogumTarihi = tam.DogumTarihi; duzUyruk = tam.Uyruk ?? ""; yuklenenUyruk = tam.Uyruk;
-            duzIskonto = tam.IskontoYuzde; duzSegment = tam.Segment ?? "";
+            duzIskonto = tam.IskontoYuzde; duzSegment = tam.Segment ?? ""; duzYuzukOlcusu = tam.YuzukOlcusu ?? "";
             duzHesapKodu = tam.HesapKodu ?? "";
             duzKrediLimiti = tam.KrediLimitiTl; duzVadeGun = tam.VarsayilanVadeGun;
             duzFiyatListesiId = tam.FiyatListesiId ?? "";
@@ -2471,6 +2479,7 @@
                 uyruk = BosIseNull(duzUyruk),
                 iskontoYuzde = duzIskonto,
                 segment = BosIseNull(duzSegment),
+                yuzukOlcusu = BosIseNull(duzYuzukOlcusu),   // D2-12
                 hesapKodu = BosIseNull(duzHesapKodu),
             });
 

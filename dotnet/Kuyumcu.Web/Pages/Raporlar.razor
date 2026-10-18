@@ -302,6 +302,8 @@ else
             }
             else if (rpKod == "cari")
             {
+            @* D2-12: uykuda müşteriler (son alışverişi N günden eski) — yaşlandırmadan bağımsız kart. *@
+            <UykudaMusterilerBolumu />
             @* ŞUBE-KAPSAM-B tur 2: cari yaşlandırma şubeye BÖLÜNMEZ (müşteri hesabı kiracı
                geneli) — sayfa rozeti şube derken sekme bunu kendisi söyler. *@
             <GorunumRozeti KiraciGeneli="true" Id="yas-kapsam-rozeti" />

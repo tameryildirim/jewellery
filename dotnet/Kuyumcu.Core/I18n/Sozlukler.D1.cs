@@ -210,7 +210,25 @@ public sealed record D1Metinleri(
     string Hedef,
     string Gerceklesme,
     string Prim,
-    string IadeTutari);
+    string IadeTutari,
+    string YuzukOlcusu,
+    string SadakatVeDilekler,
+    string PuanDurumu,
+    string KullanilacakPuan,
+    string NeVerildi,
+    string PuanKullan,
+    string Karsilandi,
+    string YeniDilek,
+    string Ekle,
+    string SadakatAyari,
+    string SadakatEtiket,
+    string SadakatOzet,
+    string UykudaMusteriler,
+    string UykudaGun,
+    string SonAlisveris,
+    string ToplamAlisveris,
+    string GunOnce,
+    string BolumOkunamadi);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -417,7 +435,25 @@ public static class D1Sozlugu
         Hedef: "Hedef",
         Gerceklesme: "Gerçekleşme",
         Prim: "Prim",
-        IadeTutari: "İade tutarı");
+        IadeTutari: "İade tutarı",
+        YuzukOlcusu: "Yüzük ölçüsü",
+        SadakatVeDilekler: "Sadakat ve dilekler",
+        PuanDurumu: "Puan: {0} (kazanılan {1} · kullanılan {2})",
+        KullanilacakPuan: "Kullanılacak puan",
+        NeVerildi: "Karşılığında ne verildi",
+        PuanKullan: "Puanı kullan",
+        Karsilandi: "Karşılandı",
+        YeniDilek: "Müşterinin dileği",
+        Ekle: "Ekle",
+        SadakatAyari: "Sadakat puanı",
+        SadakatEtiket: "Kaç TL alışveriş 1 puan (boş = kapalı)",
+        SadakatOzet: "{0} TL = 1 puan · {1} tarihinden",
+        UykudaMusteriler: "Uykuda müşteriler",
+        UykudaGun: "Son alışverişten bu yana (gün)",
+        SonAlisveris: "Son alışveriş",
+        ToplamAlisveris: "Toplam alışveriş",
+        GunOnce: "{0} gün önce",
+        BolumOkunamadi: "Bu bölüm şu an okunamadı; sayfayı yenileyin.");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -621,7 +657,25 @@ public static class D1Sozlugu
         Hedef: "Target",
         Gerceklesme: "Achieved",
         Prim: "Commission",
-        IadeTutari: "Refunds");
+        IadeTutari: "Refunds",
+        YuzukOlcusu: "Ring size",
+        SadakatVeDilekler: "Loyalty and wishes",
+        PuanDurumu: "Points: {0} (earned {1} · used {2})",
+        KullanilacakPuan: "Points to use",
+        NeVerildi: "What was given",
+        PuanKullan: "Use points",
+        Karsilandi: "Fulfilled",
+        YeniDilek: "Customer's wish",
+        Ekle: "Add",
+        SadakatAyari: "Loyalty points",
+        SadakatEtiket: "TL of purchases per point (empty = off)",
+        SadakatOzet: "{0} TL = 1 point · since {1}",
+        UykudaMusteriler: "Dormant customers",
+        UykudaGun: "Days since last purchase",
+        SonAlisveris: "Last purchase",
+        ToplamAlisveris: "Total purchases",
+        GunOnce: "{0} days ago",
+        BolumOkunamadi: "This section could not be read; refresh the page.");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

@@ -162,8 +162,11 @@ public sealed class MasakServisTestleri(TestVeritabani vt)
         Assert.Equal(SupheliDurum.Acik, s.GetProperty("Durum").GetString());
         var tespit = s.GetProperty("TespitTarihi").GetDateTime();
         var son = s.GetProperty("SonBildirimTarihi").GetDateTime();
+        // 19.10.2026: sayaç resmî tatilleri de atlar (29 Ekim) — test de AYNI takvimle sayar (yalnız hafta sonu
+        // dışlamak tatil haftasında 12 görünüp düşüyordu; sunucu doğruydu).
+        var tatiller = Kuyumcu.Api.Common.ResmiTatiller.Aralik(tespit.Year, 2, null);
         var isGunu = 0; for (var g = tespit.Date.AddDays(1); g <= son.Date; g = g.AddDays(1))
-            if (g.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)) isGunu++;
+            if (g.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday) && !tatiller.Contains(DateOnly.FromDateTime(g))) isGunu++;
         Assert.InRange(isGunu, 10, 11);   // yerel/UTC gün sınırına göre 10 ya da 11 görünebilir; 10 iş günü hedefi
         Assert.True(s.GetProperty("kalanSaat").GetDouble() > 0);
     }

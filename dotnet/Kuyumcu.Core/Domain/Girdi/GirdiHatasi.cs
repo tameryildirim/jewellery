@@ -175,6 +175,10 @@ public static class AlanSinirlari
     public const int MesaiSaati = 5;
     /// <summary>D1-07 — kara liste sebebi (cariler.veresiye_engel_sebebi ile AYNI).</summary>
     public const int VeresiyeEngelSebebi = 200;
+    /// <summary>D2-12 — müşterinin yüzük ölçüsü (cariler.yuzuk_olcusu ile AYNI).</summary>
+    public const int CariYuzukOlcusu = 20;
+    /// <summary>D2-12 — dilek/puan açıklaması.</summary>
+    public const int MusteriNotu = 300;
     /// <summary>M7: demo bankası havale açıklaması (sahte_banka_hareketleri.aciklama).</summary>
     public const int SahteHavaleAciklama = 200;
     /// <summary>Ürün açıklaması (urunler.aciklama varchar(1000)).</summary>

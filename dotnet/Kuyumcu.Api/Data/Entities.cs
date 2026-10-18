@@ -407,6 +407,8 @@ public class Cari : IKiraciVarlik
     [Column("kredi_limiti_tl", TypeName = "decimal(15,2)")] public decimal? KrediLimitiTl { get; set; }
     /// <summary>D1-07 — kara liste: bu müşteriye veresiye (TL ya da has) yazılamaz. Sahip/müdür koyar, kaldırır.</summary>
     [Column("veresiye_engeli")] public bool VeresiyeEngeli { get; set; }
+    /// <summary>D2-12 — müşterinin yüzük ölçüsü (serbest metin: "16", "54", "16,5").</summary>
+    [Column("yuzuk_olcusu"), MaxLength(20)] public string? YuzukOlcusu { get; set; }
     [Column("veresiye_engel_sebebi"), MaxLength(200)] public string? VeresiyeEngelSebebi { get; set; }
     /// <summary>
     /// Bu cariye veresiye satışta varsayılan vade — GÜN. <c>null</c> = vade

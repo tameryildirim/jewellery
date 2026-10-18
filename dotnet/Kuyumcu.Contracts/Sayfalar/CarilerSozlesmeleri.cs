@@ -33,7 +33,8 @@ public sealed record CariVeri(
     // null = bilinmiyor (eski satır) → ekran has gösterir; boş = emanet yok.
     IReadOnlyList<Kuyumcu.Core.Domain.EmanetAyarSatiri>? EmanetBirakildigi = null,
     // D1-07 — kara liste (veresiye engeli) ve risk rengi için kredi limiti.
-    bool VeresiyeEngeli = false, string? VeresiyeEngelSebebi = null, decimal? KrediLimitiTl = null);
+    bool VeresiyeEngeli = false, string? VeresiyeEngelSebebi = null, decimal? KrediLimitiTl = null,
+    string? YuzukOlcusu = null);
 public sealed record BakiyeVeri(
     decimal TlBakiye, decimal HasGramBakiye,
     decimal UsdBakiye = 0m, decimal EurBakiye = 0m, decimal GbpBakiye = 0m,
@@ -58,7 +59,9 @@ public sealed record CariDetayVeri(
     // düzenlemede DE kabul eder; istemci tipi sunucuyla birebir (string?).
     string? HesapKodu = null,
     // D1-07 — kara liste (veresiye engeli).
-    bool VeresiyeEngeli = false, string? VeresiyeEngelSebebi = null);
+    bool VeresiyeEngeli = false, string? VeresiyeEngelSebebi = null,
+    // D2-12 — yüzük ölçüsü.
+    string? YuzukOlcusu = null);
 public sealed record FiyatListesiOzet(string Id, string Ad, string Tur, bool Aktif);
 // KESIF-P2 (#8): yeni tip AÇILMADI — sunucunun (CariServisi.Ekstre) döndürdüğü satır başına
 // cari has etkisi ve sayfa dışı etki mevcut iki tipe eklendi. Satır has'ı (HasGrami) DEFTER

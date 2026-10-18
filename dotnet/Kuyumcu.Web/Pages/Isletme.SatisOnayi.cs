@@ -17,6 +17,22 @@ public partial class Isletme
         catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { satisOnayHata = ex.Message; }
     }
 
+    // D2-12 — sadakat puanı ayarı
+    private Kuyumcu.Contracts.Sayfalar.Cariler.SadakatAyari? sadakat;
+    private bool sadakatCekmeceAcik;
+
+    private async Task SadakatYukle()
+    {
+        try { sadakat = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Cariler.SadakatAyari>("/sadakat/ayar"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { satisOnayHata ??= ex.Message; }
+    }
+
+    private void SadakatKaydedildi(Kuyumcu.Contracts.Sayfalar.Cariler.SadakatAyari a) { sadakat = a; sadakatCekmeceAcik = false; }
+
+    private string SadakatOzeti => sadakat is { TlBasina: { } t, Baslangic: { } b }
+        ? string.Format(D1Sozlugu.Al(Dil.Dil).SadakatOzet, Bicim.Oran(t), Bicim.Gun(b))
+        : D1Sozlugu.Al(Dil.Dil).Kapali;
+
     private void SatisOnayKaydedildi(SatisOnayAyarlari a)
     {
         satisOnay = a; satisOnayCekmeceAcik = false;

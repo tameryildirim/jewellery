@@ -261,7 +261,9 @@ public static class DuzeltmePolitikasi
         S("KurKilidi", GerekceAnahtarlari.Sistem, "api/v1/kur-kilitleri/{id}/kaldir"),
         S("OnayTalebi", GerekceAnahtarlari.Sistem, "api/v1/satis-onayi/talepler/{id}/onayla"),
         S("OdemePlani", GerekceAnahtarlari.Sistem, "api/v1/odeme-planlari/{id}/iptal"),   // D1-06: plan düzenlenmez; kaldırılır, yenisi açılır
-        S("OdemePlaniTaksiti", GerekceAnahtarlari.Sistem, "api/v1/odeme-planlari/{id}/iptal"),   // D1-05: talep düzenlenmez; karar verilir, yenisi açılır   // D1-04: kilit düzenlenmez; kaldırılır, yenisi açılır
+        S("OdemePlaniTaksiti", GerekceAnahtarlari.Sistem, "api/v1/odeme-planlari/{id}/iptal"),
+        S("CariDilek", GerekceAnahtarlari.Sistem, "api/v1/cari/dilekler/{id}/kapat"),   // D2-12: dilek düzenlenmez; karşılanınca kapatılır
+        S("SadakatPuanKullanimi", GerekceAnahtarlari.Sistem, "api/v1/cari/{id}/sadakat/kullan"),   // D2-12: kullanım düzenlenmez   // D1-05: talep düzenlenmez; karar verilir, yenisi açılır   // D1-04: kilit düzenlenmez; kaldırılır, yenisi açılır
         // D1-19: KVKK aydınlatma metni — PUT yeni sürüm yazar (eski sürüm ispat için kalır).
         D("KvkkMetni", "api/v1/kvkk/metin"),
         // D1-19: müşteri KVKK beyanı — eklenerek tutulur; geri alma yeni satırdır (ispat yükü).

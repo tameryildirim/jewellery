@@ -1,0 +1,88 @@
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D2-12 (18.10) — müşteri detayında sadakat puanı (bakiye + kullan) ve dilek listesi (ekle / karşılandı).
+   Puan kullanımı mali kayıt değildir — karşılığı tezgâhta iskonto/hediye olarak işlenir. İstekler bu bileşende.
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<section class="mb-bolum" id="mb-bolum" aria-labelledby="mb-baslik">
+    <h3 id="mb-baslik" class="mb-baslik">@M.SadakatVeDilekler</h3>
+    <HataBandi Mesaj="@hata" Id="mb-hata" />
+    @if (sadakat is { Etkin: true } s)
+    {
+        <p id="mb-puan" class="mb-puan">@string.Format(M.PuanDurumu, s.Bakiye, s.Kazanilan, s.Kullanilan)</p>
+        <div class="mb-satir">
+            <Sayi ElemanId="mb-kullan-puan" Etiket="@M.KullanilacakPuan" EnAz="1" EnCok="@s.Bakiye" TamSayi="true" Deger="@kullanPuan" DegerChanged="@(v => kullanPuan = v)" />
+            <Metin ElemanId="mb-kullan-aciklama" Etiket="@M.NeVerildi" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.MusteriNotu" Deger="@kullanAciklama" DegerChanged="@(v => kullanAciklama = v)" />
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="mb-kullan" disabled="@(calisiyor || kullanPuan is not > 0 || string.IsNullOrWhiteSpace(kullanAciklama))" @onclick="PuanKullan">@M.PuanKullan</button>
+        </div>
+    }
+    <ul class="mb-dilekler" id="mb-dilekler">
+        @foreach (var d in dilekler)
+        {
+            <li class="@(d.Kapali ? "mb-dilek metin-soluk" : "mb-dilek")" id="@($"mb-dilek-{d.Id}")">
+                <span>@d.Aciklama@if (d.UrunAd is { } ua) {<span class="metin-soluk"> · @ua</span>} <span class="metin-soluk metin-kucuk"> · @Bicim.TarihSaat(d.Olusturuldu)</span></span>
+                @if (!d.Kapali)
+                {
+                    <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"mb-dilek-kapat-{d.Id}")" disabled="@calisiyor" @onclick="() => DilekKapat(d.Id)">@M.Karsilandi</button>
+                }
+            </li>
+        }
+    </ul>
+    <div class="mb-satir">
+        <Metin ElemanId="mb-dilek-yeni" Etiket="@M.YeniDilek" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.MusteriNotu" Deger="@yeniDilek" DegerChanged="@(v => yeniDilek = v)" />
+        <button type="button" class="btn btn-ikincil btn-kucuk" id="mb-dilek-ekle" disabled="@(calisiyor || string.IsNullOrWhiteSpace(yeniDilek))" @onclick="DilekEkle">@M.Ekle</button>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string CariId { get; set; } = "";
+
+    private SadakatDurumu? sadakat;
+    private List<CariDilekOzet> dilekler = [];
+    private decimal? kullanPuan;
+    private string? kullanAciklama, yeniDilek, hata, yuklenen;
+    private bool calisiyor;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+    private string Yol => Uri.EscapeDataString(CariId);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (yuklenen == CariId) return;
+        yuklenen = CariId; hata = null;
+        try
+        {
+            sadakat = await Api.GetAsync<SadakatDurumu>($"/cari/{Yol}/sadakat");
+            dilekler = await Api.GetAsync<List<CariDilekOzet>>($"/cari/{Yol}/dilekler") ?? [];
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch (System.Text.Json.JsonException) { hata = M.BolumOkunamadi; }   // ham çözümleyici iletisi ekrana yazılmaz
+    }
+
+    private async Task PuanKullan()
+    {
+        calisiyor = true; hata = null;
+        try { sadakat = await Api.PostAsync<SadakatDurumu>($"/cari/{Yol}/sadakat/kullan", new { puan = (int)(kullanPuan ?? 0), aciklama = kullanAciklama }); kullanPuan = null; kullanAciklama = null; }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task DilekEkle()
+    {
+        calisiyor = true; hata = null;
+        try { dilekler = await Api.PostAsync<List<CariDilekOzet>>($"/cari/{Yol}/dilekler", new { aciklama = yeniDilek }) ?? []; yeniDilek = null; }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task DilekKapat(string id)
+    {
+        calisiyor = true; hata = null;
+        try { dilekler = await Api.PostAsync<List<CariDilekOzet>>($"/cari/dilekler/{Uri.EscapeDataString(id)}/kapat") ?? []; }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+}

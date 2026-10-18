@@ -1,0 +1,47 @@
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* D2-12 (18.10) — İşletme › sadakat puanı: kaç TL net alışveriş 1 puan (boş = kapalı) ve başlangıç günü. PUT /sadakat/ayar. *@
+<Cekmece Acik="Acik" Varlik="sadakat" Baslik="@M.SadakatAyari" Kapat="() => Kapandi.InvokeAsync()" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor" KaydetElemanId="sa-kaydet">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="sa-hata">@h</div>
+    }
+    <div class="form-dikey">
+        <Para ElemanId="sa-tl-basina" Etiket="@M.SadakatEtiket" ParaBirimi="TRY" Deger="@tlBasina" DegerChanged="@(v => tlBasina = v)" />
+        <Tarih ElemanId="sa-baslangic" Etiket="@Dil.T.Denetim.Baslangic" Deger="@baslangic" DegerChanged="@(v => baslangic = v)" />
+    </div>
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+    [Parameter] public EventCallback<SadakatAyari> Kaydedildi { get; set; }
+
+    private decimal? tlBasina;
+    private DateOnly? baslangic;
+    private string? hata;
+    private bool kaydediliyor, acikti;
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !acikti)
+        {
+            hata = null;
+            try { var a = await Api.GetAsync<SadakatAyari>("/sadakat/ayar"); tlBasina = a.TlBasina; baslangic = a.Baslangic; }
+            catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        }
+        acikti = Acik;
+    }
+
+    private async Task Kaydet()
+    {
+        kaydediliyor = true; hata = null;
+        try { await Kaydedildi.InvokeAsync(await Api.PutAsync<SadakatAyari>("/sadakat/ayar", new { tlBasina, baslangic })); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

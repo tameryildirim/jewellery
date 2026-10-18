@@ -3114,3 +3114,16 @@ button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed
 .sh-adim-baslik { font-size: 1rem; margin: 0 0 6px; }
 .sh-alan { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 3px 0; }
 .sh-deger { white-space: pre-wrap; word-break: break-word; }
+/* D2-12: müşteri detayında sadakat ve dilekler */
+.mb-bolum { padding: 12px 0; border-top: 1px solid var(--kenarlik); }
+.mb-baslik { font-size: 1rem; margin: 0 0 8px; }
+.mb-satir { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.mb-satir .alan { flex: 1 1 160px; margin: 0; }
+.mb-dilekler { list-style: none; margin: 8px 0; padding: 0; }
+.mb-dilek { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; }
+/* D2-12: uykuda müşteriler */
+.uyk-baslik { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px 16px; }
+.uyk-liste { list-style: none; margin: 0; padding: 0; }
+.uyk-satir { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; border-top: 1px solid var(--kenarlik); }
+.uyk-tutar { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .uyk-satir { grid-template-columns: minmax(0, 1fr) auto; } }
