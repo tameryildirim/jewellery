@@ -1,0 +1,108 @@
+@using Kuyumcu.Contracts.Sayfalar.Cariler
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-09 (18.10, rakip eşitleme: "hesap dönüştürme döviz ↔ has ↔ TL") — müşterinin bir hesabındaki
+   bakiyeyi başka birime çevirir. Hedef tutar güncel kurdan ÖNERİLİR (kurdan geldi rozeti); kuyumcu
+   anlaştığı tutarı yazabilir — oran varsayılmaz, sunucu iki tutarı gerekçeye yazar (POST /cari/{id}/hesap-donustur).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<Cekmece Acik="@(Cari is not null)" Varlik="hesap-donustur" IptalMetni="@M.HdVazgec"
+         Baslik="@($"{M.HesapDonustur} — {Cari?.Ad}")" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetAktif="@(Kilit is null)" KilitSebebi="@Kilit">
+    <div class="form-dikey">
+        <div class="alan">
+            <Secici ElemanId="hd-kaynak" Etiket="@M.HdKaynak" Secenekler="@Secenekler" Deger="@kaynak"
+                    DegerChanged="@(v => { kaynak = v ?? "HAS"; Oner(); })" />
+        </div>
+        <p class="metin-soluk metin-kucuk" id="hd-bakiye">@BakiyeSatiri</p>
+        <Para ElemanId="hd-kaynak-miktar" Etiket="@M.HdMiktar" Zorunlu="true" ParaBirimi="@(kaynak == "HAS" ? null : kaynak)"
+              Deger="@kaynakMiktar" DegerChanged="@(v => { kaynakMiktar = v; Oner(); })" />
+        <div class="alan">
+            <Secici ElemanId="hd-hedef" Etiket="@M.HdHedef" Secenekler="@Secenekler" Deger="@hedef"
+                    DegerChanged="@(v => { hedef = v ?? "TRY"; Oner(); })" />
+        </div>
+        <Para ElemanId="hd-hedef-miktar" Etiket="@M.HdKarsilik" Zorunlu="true" ParaBirimi="@(hedef == "HAS" ? null : hedef)"
+              Deger="@hedefMiktar" DegerChanged="@(v => { hedefMiktar = v; onerildi = false; })"
+              KaynakRozeti="@(onerildi ? Dil.T.Islem.KurdanGeldi : null)" />
+        <HataBandi Mesaj="@hata" Id="hd-hata" />
+    </div>
+</Cekmece>
+
+@code {
+    [Parameter] public CariVeri? Cari { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+    [Parameter] public EventCallback Kaydedildi { get; set; }
+
+    private string kaynak = "HAS", hedef = "TRY";
+    private decimal? kaynakMiktar, hedefMiktar;
+    private bool onerildi, kaydediliyor;
+    private string? hata;
+    private Kuyumcu.Contracts.Sayfalar.Kur.KurVeri? kur;
+    private string? acilanId;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+    private static readonly string[] Birimler = ["TRY", "HAS", "USD", "EUR", "GBP"];
+    private IReadOnlyList<SecenekOgesi> Secenekler => [.. Birimler.Select(b => new SecenekOgesi(b, BirimAdi(b)))];
+    private string BirimAdi(string b) => b switch { "TRY" => M.HdTl, "HAS" => M.HdHas, _ => b };
+
+    private decimal Bakiye(string b) => Cari is null ? 0m : b switch
+    {
+        "TRY" => Cari.TlBakiye, "HAS" => Cari.HasGramBakiye, "USD" => Cari.UsdBakiye, "EUR" => Cari.EurBakiye, "GBP" => Cari.GbpBakiye, _ => 0m,
+    };
+
+    private string BakiyeSatiri => Bakiye(kaynak) is var v && v == 0m ? M.HdBakiyeYok
+        : BorcDiliSozlugu.Durum(v, kaynak == "HAS" ? 4 : 2, x => kaynak == "HAS" ? Bicim.Has(x) : Bicim.Para(x, kaynak), Dil.Dil);
+
+    /// <summary>1 birimin TL karşılığı (güncel kur); bilinmiyorsa null — öneri yapılmaz.</summary>
+    private decimal? TlDegeri(string b) => b switch
+    {
+        "TRY" => 1m, "HAS" => kur?.AltinHasFiyati is > 0m ? kur.AltinHasFiyati : null,
+        "USD" => kur?.UsdTry, "EUR" => kur?.EurTry, "GBP" => kur?.GbpTry, _ => null,
+    };
+
+    private void Oner()
+    {
+        if (kaynakMiktar is not { } km || km <= 0m || TlDegeri(kaynak) is not { } kt || TlDegeri(hedef) is not { } ht || ht <= 0m) return;
+        hedefMiktar = Math.Round(km * kt / ht, hedef == "HAS" ? 4 : 2, MidpointRounding.AwayFromZero);
+        onerildi = true;
+    }
+
+    private string? Kilit =>
+        kaynak == hedef ? M.HdAyni
+        : Bakiye(kaynak) == 0m ? M.HdBakiyeYok
+        : kaynakMiktar is not > 0m ? M.HdMiktarGir
+        : kaynakMiktar > Math.Abs(Bakiye(kaynak)) ? M.HdFazla
+        : hedefMiktar is not > 0m ? M.HdKarsilikGir
+        : kur is null ? M.HdKurYok
+        : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Cari is null || Cari.Id == acilanId) return;
+        acilanId = Cari.Id; hata = null; kaynakMiktar = hedefMiktar = null; onerildi = false;
+        kaynak = Cari.HasGramBakiye != 0m ? "HAS" : Cari.TlBakiye != 0m ? "TRY" : "HAS";
+        hedef = kaynak == "TRY" ? "HAS" : "TRY";
+        kur = null;   // yeni açılış: önceki müşterinin kuru taşınmaz; okunamazsa Kaydet kilitli ve sebep bantta
+        try { kur = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.Kur.KurVeri>("/kur/guncel"); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    private async Task Kapat() { acilanId = null; await Kapandi.InvokeAsync(); }
+
+    private async Task Kaydet()
+    {
+        if (Cari is null || Kilit is not null) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            await Api.PostAsync($"/cari/{Uri.EscapeDataString(Cari.Id)}/hesap-donustur",
+                new { kaynak, hedef, kaynakMiktar, hedefMiktar, kurSnapshotId = kur!.Id });
+            acilanId = null;
+            await Kaydedildi.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

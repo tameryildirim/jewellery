@@ -70,7 +70,22 @@ public sealed record D1Metinleri(
     string ImzaBaslik,
     string ImzaKaydedildi,
     string KimlikFormu,
-    string UrunBelgesi);
+    string UrunBelgesi,
+    string HesapDonustur,
+    string HdVazgec,
+    string HdKaynak,
+    string HdHedef,
+    string HdMiktar,
+    string HdKarsilik,
+    string HdTl,
+    string HdHas,
+    string HdBakiyeYok,
+    string HdAyni,
+    string HdMiktarGir,
+    string HdFazla,
+    string HdKarsilikGir,
+    string HdKurYok,
+    string HdKaydedildi);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -137,7 +152,22 @@ public static class D1Sozlugu
         ImzaBaslik: "Müşteri imzası",
         ImzaKaydedildi: "İmza kaydedildi",
         KimlikFormu: "Form",
-        UrunBelgesi: "Ürün belgesi");
+        UrunBelgesi: "Ürün belgesi",
+        HesapDonustur: "Hesap dönüştür",
+        HdVazgec: "Vazgeç",
+        HdKaynak: "Çevrilecek hesap",
+        HdHedef: "Çevrileceği hesap",
+        HdMiktar: "Çevrilecek miktar",
+        HdKarsilik: "Karşılığı",
+        HdTl: "Türk lirası",
+        HdHas: "Has altın (gram)",
+        HdBakiyeYok: "Bu hesapta bakiye yok",
+        HdAyni: "İki hesap aynı olamaz",
+        HdMiktarGir: "Çevrilecek miktarı yazın",
+        HdFazla: "Miktar bakiyeden büyük olamaz",
+        HdKarsilikGir: "Karşılığını yazın",
+        HdKurYok: "Güncel kur okunamadı",
+        HdKaydedildi: "Hesap dönüştürüldü");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -201,7 +231,22 @@ public static class D1Sozlugu
         ImzaBaslik: "Customer signature",
         ImzaKaydedildi: "Signature saved",
         KimlikFormu: "Form",
-        UrunBelgesi: "Product certificate");
+        UrunBelgesi: "Product certificate",
+        HesapDonustur: "Convert balance",
+        HdVazgec: "Cancel",
+        HdKaynak: "Convert from",
+        HdHedef: "Convert to",
+        HdMiktar: "Amount to convert",
+        HdKarsilik: "Equivalent",
+        HdTl: "Turkish lira",
+        HdHas: "Fine gold (grams)",
+        HdBakiyeYok: "This account has no balance",
+        HdAyni: "The two accounts cannot be the same",
+        HdMiktarGir: "Enter the amount to convert",
+        HdFazla: "The amount cannot exceed the balance",
+        HdKarsilikGir: "Enter the equivalent",
+        HdKurYok: "Current rate could not be read",
+        HdKaydedildi: "Balance converted");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

@@ -1420,5 +1420,13 @@ public static partial class SunucuIletiSozlugu
         ("Bu satışta ürünlü kalem yok", "This sale has no product lines"),
         ("İmza yalnız PNG olabilir", "The signature must be a PNG"),
         ("Satış bulunamadı", "Sale not found"),
+        ("Kaynak hesap TRY, HAS, USD, EUR ya da GBP olmalıdır", "Source account must be TRY, HAS, USD, EUR or GBP"),
+        ("Hedef hesap TRY, HAS, USD, EUR ya da GBP olmalıdır", "Target account must be TRY, HAS, USD, EUR or GBP"),
+        ("Kaynak ve hedef hesap aynı olamaz", "Source and target accounts cannot be the same"),
+        ("Çevrilecek miktar sıfırdan büyük olmalıdır", "The amount to convert must be greater than zero"),
+        ("Karşılık miktarı sıfırdan büyük olmalıdır", "The equivalent amount must be greater than zero"),
+        ("Peşin Müşteri'nin hesabı dönüştürülmez", "The Walk-in Customer's account cannot be converted"),
+        ("Kaynak hesapta bakiye yok", "The source account has no balance"),
+        ("Çevrilecek miktar bakiyeden büyük olamaz", "The amount to convert cannot exceed the balance"),
     ];
 }

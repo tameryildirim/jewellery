@@ -642,6 +642,10 @@
 @* TOPLU-5 (hakem ORTA "/cariler iki farklı çekmece kalıbı"): döviz çekmeceleri müşteri düzenleme çekmecesiyle
    AYNI tuval kalıbında (440 px, aynı dolgu/başlık/etiket/alt şerit — toplu5.css .t5-cekmece-kap). Cekmece ortak
    bileşendir ve DEĞİŞMEDİ; sarmalayıcı yalnız çizim sınıfı taşır. *@
+@* D1-09: hesap dönüştürme çekmecesi (ayrı bileşen). *@
+<div class="musteri-panel-kap t5-cekmece-kap">
+<HesapDonusturCekmecesi Cari="donusturCari" Kapandi="() => donusturCari = null" Kaydedildi="HesapDonusturuldu" />
+</div>
 <div class="musteri-panel-kap t5-cekmece-kap">
 <Cekmece Acik="@(dovizVeresiyeCari is not null)" Varlik="doviz-veresiye" IptalMetni="@Vazgec"
          Baslik="@($"{DovizVeresiyeAdi} — {dovizVeresiyeCari?.Ad}")"
@@ -1493,6 +1497,10 @@
 
     /// <summary>P-DIL-BORC-KASA (O21): BASİT modda "Düzeltme Fişi" yerine düz karşılık.</summary>
     private string DuzeltmeAdi => Sade ? BorcDiliSozlugu.BakiyeDuzelt(Dil.Dil) : Dil.T.Cari.Duzeltme;
+
+    // ── D1-09 hesap dönüştürme ──
+    private CariVeri? donusturCari;
+    private async Task HesapDonusturuldu() { donusturCari = null; Basarili(D1Sozlugu.Al(Dil.Dil).HdKaydedildi); await Yukle(); }
     private string DovizTahsilatAdi => Sade ? BorcDiliSozlugu.DovizleTahsilat(Dil.Dil) : Dil.T.Cari.DovizTahsilat;
     private string DovizVeresiyeAdi => Sade ? BorcDiliSozlugu.DovizleVeresiye(Dil.Dil) : Dil.T.Cari.DovizVeresiye;
 
@@ -1519,6 +1527,9 @@
         if (DuzeltmeGorebilir)
             l.Add(new($"c-duzeltme-{c.Id}", DuzeltmeAdi, Cb(() => DuzeltmeAc(c)),
                       ariaEtiket: $"{c.Ad} — {DuzeltmeAdi}"));
+        // D1-09: hesap dönüştürme — düzeltmeyle AYNI rol kapısı (API de SAHİP/MÜDÜR/MUHASEBE).
+        if (DuzeltmeGorebilir && !c.SistemCarisi)
+            l.Add(new($"c-hesap-donustur-{c.Id}", D1Sozlugu.Al(Dil.Dil).HesapDonustur, Cb(() => donusturCari = c)));
         // Paket 27 — döviz defteri; UX-S30: kur yoksa KİLİTLİ ve sebebi yazılı (MenuEk).
         l.Add(new($"c-doviz-tahsilat-{c.Id}", DovizTahsilatAdi, Cb(() => DovizTahsilatAc(c)),
                   kilitli: !DovizYapilabilir, kilitNedeni: Dil.T.Cari.KurYokDovizYapilamaz));
