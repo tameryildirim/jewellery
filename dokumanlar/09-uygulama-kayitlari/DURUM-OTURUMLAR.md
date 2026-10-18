@@ -40,9 +40,8 @@ Başkasının satırını değiştirme/silme yok.
 6. Kurucu kuralları geçerli: eksik/ertelenmiş iş yok; tarayıcıda gerçek veriyle kanıt; hata gizlenmez.
 
 ## Sıradaki işler (18.10 — kurucu: "Tüm eksikleri tamamla")
-15.10 rakip eşitleme planının ilk dalgası (`RAKIP-OZELLIK-ESITLEME-PLANI-2026-10-15.md` § 5 D1). Bitti: D1-01, 03, 04, 05, 06, 07,
-09, 10, 11, 12, 13, 14, 15, 16, 19 (D1-17 zaten vardı). Kalan: D1-02 etiket tasarımcısı/QR/ZPL ·
-08 eritme/fire/takoz · 18 MASAK gönderim yardımcısı/yaptırım
+15.10 rakip eşitleme planının ilk dalgası (`RAKIP-OZELLIK-ESITLEME-PLANI-2026-10-15.md` § 5 D1). Bitti: D1-01, 02, 03, 04, 05, 06,
+07, 09, 10, 11, 12, 13, 14, 15, 16, 19 (D1-17 zaten vardı). Kalan: 08 eritme/fire/takoz (K-13 kurucu kararı bekliyor) · 18 MASAK gönderim yardımcısı/yaptırım
 listesi/denetim raporu · 20 prim/komisyon/hedef. D1-14'ün Luca/Logo dökümü dış bağımlılıkta (mali müşavirden örnek dosya).
 
 ## Sıradaki işler (17.10 gece — tarihî)
@@ -86,6 +85,7 @@ listesi/denetim raporu · 20 prim/komisyon/hedef. D1-14'ün Luca/Logo dökümü 
 | 18.10 21:48 | TEK | 3f8c31c · 52ea975 | D1-05 satış onayı (eşikler + kişisel iskonto sınırı, tezgâhta onay bandı, Bildirimler'de Onayla/Reddet) · mesai dışı satış / peş peşe iade bildirimi | 12686/0 · denetim yalnız P-30 · mutasyon yakalandı | d1-05b |
 | 18.10 22:12 | TEK | 891f544 | D1-06 taksitli/senetli satış (ödeme planı, senet, gecikmiş taksit bildirimi, imzalı çıktı) | 12689/0 (+2 ekran testi ayrı koşuldu, yeşil) · denetim yalnız P-30 · mutasyon yakalandı | d1-06 |
 | 18.10 22:41 | TEK | 8361d19 · 76658a5 | D1-07 altınla öde (borç kapanır, fazlası emanete) · kara liste · risk noktası | 12695/0 (+1 ekran testi ayrı) · denetim yalnız P-30 · mutasyon yakalandı | d1-07b |
+| 18.10 23:05 | TEK | cf67bb9 | D1-02 etiket şablonu (boy, alan sırası sürükle-bırak) · QR (ISO 18004, dış kütüphanesiz; tarayıcıda 6/6 + canlı etiket çözüldü) · basım anı fiyatı · Zebra ZPL | 12700/0 · denetim yalnız P-30 | d1-02 |
 
 ## Müşteriye sorulacaklar (ses kaydında belirsiz — varsayımla kodlanmadı)
 1. **31:22 "bu olursa bunu listenin burasına çekin… KDV'sini böyle yazdın":** "liste" fiyat listesi mi, ürün kategorisi mi,
