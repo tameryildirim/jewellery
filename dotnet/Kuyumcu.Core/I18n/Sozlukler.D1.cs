@@ -228,7 +228,8 @@ public sealed record D1Metinleri(
     string SonAlisveris,
     string ToplamAlisveris,
     string GunOnce,
-    string BolumOkunamadi);
+    string BolumOkunamadi,
+    string Uykuda);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -453,7 +454,8 @@ public static class D1Sozlugu
         SonAlisveris: "Son alışveriş",
         ToplamAlisveris: "Toplam alışveriş",
         GunOnce: "{0} gün önce",
-        BolumOkunamadi: "Bu bölüm şu an okunamadı; sayfayı yenileyin.");
+        BolumOkunamadi: "Bu bölüm şu an okunamadı; sayfayı yenileyin.",
+        Uykuda: "Uykuda");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -675,7 +677,8 @@ public static class D1Sozlugu
         SonAlisveris: "Last purchase",
         ToplamAlisveris: "Total purchases",
         GunOnce: "{0} days ago",
-        BolumOkunamadi: "This section could not be read; refresh the page.");
+        BolumOkunamadi: "This section could not be read; refresh the page.",
+        Uykuda: "Dormant");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

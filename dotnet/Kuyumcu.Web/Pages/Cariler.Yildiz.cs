@@ -46,13 +46,30 @@ public partial class Cariler
         new(SegHepsi, YildizMusteriSozlugu.Hepsi(Dil.Dil), segment == SegHepsi),
         new(SegBorclu, YildizMusteriSozlugu.Borclu(Dil.Dil), segment == SegBorclu),
         new(SegToptanci, YildizMusteriSozlugu.Toptanci(Dil.Dil), segment == SegToptanci),
+        new(SegUykuda, Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).Uykuda, segment == SegUykuda),   // D2-12
     ];
+
+    /// <summary>D2-12 — "Uykuda" sekmesi: son alışverişi 180 günden eski müşteriler (sunucu listesi; ilk seçimde çekilir).</summary>
+    public const string SegUykuda = "uykuda";
+    private HashSet<string>? uykudaIdler;
+    private string? uykudaHata;
+
+    private async Task YildizSekmeSec(string k)
+    {
+        segment = k;
+        if (k != SegUykuda || uykudaIdler is not null) return;
+        try { uykudaIdler = [.. (await Api.GetAsync<List<Kuyumcu.Contracts.Sayfalar.Cariler.UykudaMusteri>>("/cari/uykuda?gun=180") ?? []).Select(u => u.CariId)]; uykudaHata = null; }
+        catch (Kuyumcu.Web.Servisler.ApiHata ex) { uykudaIdler = []; uykudaHata = ex.Message; }
+        catch (System.Text.Json.JsonException) { uykudaIdler = []; uykudaHata = Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).BolumOkunamadi; }
+    }
 
     private YildizMusteriBaglami YildizBaglami
     {
         get
         {
-            var gorunen = YildizGorunen(CariListesi, segment);
+            var gorunen = segment == SegUykuda
+                ? [.. CariListesi.Where(c => !c.SistemCarisi && uykudaIdler?.Contains(c.Id) == true)]
+                : YildizGorunen(CariListesi, segment);
             var (alacak, borc) = YildizMusteriBicim.Sayilar(CariListesi);
             var sinirda = CariListesi.Count >= Sinir;
             return new YildizMusteriBaglami
@@ -70,9 +87,9 @@ public partial class Cariler
                 AramaBos = !yukleniyor && listeHata is null && CariListesi.Count == 0 && YildizAramaSuzgeci,
                 SuzgecBos = !yukleniyor && listeHata is null && CariListesi.Count > 0 && gorunen.Count == 0,
                 SuzgecEtkin = YildizSuzgecEtkin(turFiltre, pasifleriGoster, yildizAramaPasif),
-                SinirNotu = sinirda ? $"{string.Format(Dil.T.Kabuk.SinirUyarisi, Sinir)} {Dil.T.Kabuk.SinirAsildi}" : null,
+                SinirNotu = uykudaHata ?? (sinirda ? $"{string.Format(Dil.T.Kabuk.SinirUyarisi, Sinir)} {Dil.T.Kabuk.SinirAsildi}" : null),   // D2-12: uykuda listesi okunamazsa sebebi
                 AramaDegisti = EventCallback.Factory.Create<string?>(this, YildizAramaDegisti),
-                SekmeSec = EventCallback.Factory.Create<string>(this, k => segment = k),
+                SekmeSec = EventCallback.Factory.Create<string>(this, YildizSekmeSec),
                 SatirAc = EventCallback.Factory.Create<string>(this, YildizSatirAc),
                 YeniMusteri = EventCallback.Factory.Create(this, YeniModalAc),
                 Bantlar = YildizBantlar,
