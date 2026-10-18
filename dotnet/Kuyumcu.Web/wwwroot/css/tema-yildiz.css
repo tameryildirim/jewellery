@@ -3228,7 +3228,7 @@ html:root[data-sema="yildiz"] .yz-form .yz-form-sol > .yz-ekle { align-self: str
 /* 1001–1360 px: iki sütunlu özet sağ sütunu daralır → sabit sütunlar kısalır ki ad sütunu taşmasın (1440'ta tuval AYNEN). */
 @media (min-width: 1001px) and (max-width: 1360px) {
   html:root[data-sema="yildiz"] .yz-ozet--kasalar .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 70px 150px auto; }
-  html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 60px 80px 100px 110px; }
+  html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 44px 56px 84px 100px; gap: 12px; }
 }
 /* ≤480 px: büyük rakam ve eki tek satır (kuruş ve ₺ rakamdan kopmaz). */
 @media (max-width: 480px) {
