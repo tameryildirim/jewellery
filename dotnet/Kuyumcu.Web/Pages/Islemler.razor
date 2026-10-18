@@ -144,7 +144,7 @@
                     </div>
                 }
 
-                @if (!YildizTezgahMi) { <PesinArtArdaSoru Goster="pesinSoruAcik" Calisiyor="kaydediliyor" Evet="PesinSoruEvet" Hayir="PesinSoruHayir" /> }<HataBandi Mesaj="@hata" Id="hata-bandi" />@if (SunucuAyrinti is { } hamRed) { <details class="fis-bilgi" id="hata-ayrinti"><summary class="metin-kucuk">@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).BilgiIpucu</summary><span class="metin-kucuk metin-soluk">@hamRed</span></details> }   @* t10: dayanak (i) içinde *@
+                @if (!YildizTezgahMi) { @OnayBandi }@if (!YildizTezgahMi) { <PesinArtArdaSoru Goster="pesinSoruAcik" Calisiyor="kaydediliyor" Evet="PesinSoruEvet" Hayir="PesinSoruHayir" /> }<HataBandi Mesaj="@hata" Id="hata-bandi" />@if (SunucuAyrinti is { } hamRed) { <details class="fis-bilgi" id="hata-ayrinti"><summary class="metin-kucuk">@Kuyumcu.Core.I18n.Satis3Sozlugu.Al(Dil.Dil).BilgiIpucu</summary><span class="metin-kucuk metin-soluk">@hamRed</span></details> }   @* t10: dayanak (i) içinde *@
                 @* UX-4c md.13: 3 sn gizleme BasariBandi'nde. UX-S27: sunucunun FİŞ/HAREKET NO'su banda yazılır —
                    POST yanıtı okunmadan atılmaz (QA turu 2 KRİTİK). *@
                 <BasariBandi Mesaj="@(basarili ? BasariMetni : null)"
@@ -555,7 +555,7 @@
     private async Task Vazgec()
     {
         kalemler.Clear(); fisIskontoYuzde = null; indirimAcik = false; aciklama = ""; hata = null; masakSunucudanGerekli = false;
-        cariId = ""; PesinOnSec(); giris.Sifirla(); form.Temizle(); belgeTuru = null; belgeSorusuAcik = belgeSinirUyarisi = false; KilitBirak();   // 17.10: fatura cevabı fişe özgü
+        cariId = ""; PesinOnSec(); giris.Sifirla(); form.Temizle(); belgeTuru = null; belgeSorusuAcik = belgeSinirUyarisi = false; KilitBirak(); OnayBirak();   // 17.10: fatura cevabı fişe özgü
         if (karmaOdeme) await TekOdemeyeDon();
         await TevsikOnizle();
     }
@@ -577,7 +577,7 @@
         if (Modu.BasitMi)
             foreach (var alan in BasitPos.GovdedenCikan)
                 d.Remove(alan);
-        if (tur == "SATIS" && SaticiGovde is { } sp) d["personelId"] = sp; KilitGovdeye(d);   // S2-5b · D1-04 kur kilidi
+        if (tur == "SATIS" && SaticiGovde is { } sp) d["personelId"] = sp; KilitGovdeye(d); OnayGovdeye(d);   // S2-5b · D1-04 kur kilidi
 
         return d;
     }
@@ -1023,7 +1023,7 @@
     // ── etkileşim ──
     private void TurSec(string yeni)
     {
-        tur = yeni; if (!KilitTurunde) KilitBirak();   // D1-04: kilit yalnız satış/sipariş teslimi
+        tur = yeni; if (!KilitTurunde) KilitBirak(); OnayBirak();   // D1-04: kilit yalnız satış/sipariş teslimi
         kalemler.Clear();
         // PAKET P-16: iskonto SATIŞA aittir; tür değişince taşınmaz.
         fisIskontoYuzde = null;
@@ -1329,11 +1329,11 @@
             // hâlde neyi düzelteceğini göremezdi.
             hata = SunucuMesaji(ex); masakSunucudanGerekli |= MasakReddi(ex);   // t10: BASİT'te kısa cümle · MASAK alanları açılır
             kapiSunucudanAcildi = true;
-            pesinKimlikGerekli = ex.StatusCode == 400 && ex.Alanlar.ContainsKey("cariId") && cariId == pesinCariId; Yasal3Yakala(ex); MusteriKimlikYakala(ex);   // YASAL-3 · 18.10 eksik TC
+            pesinKimlikGerekli = ex.StatusCode == 400 && ex.Alanlar.ContainsKey("cariId") && cariId == pesinCariId; Yasal3Yakala(ex); MusteriKimlikYakala(ex); OnayYakala(ex);   // YASAL-3 · D1-05 · 18.10 eksik TC
         }
         kaydediliyor = false;
         if (!kaydedildi) return;
-        masak = new(); masakSunucudanGerekli = false; Yasal3Sifirla(); KilitBirak();   // D1-04 · kişisel veri formda kalmaz · YASAL-3: beyan fişe özgü
+        masak = new(); masakSunucudanGerekli = false; Yasal3Sifirla(); KilitBirak(); OnayBirak();   // D1-04 · D1-05 · kişisel veri formda kalmaz · YASAL-3: beyan fişe özgü
 
         // başarı: formu sıfırla, kasa bakiyelerini tazele, bandı 3 sn göster
         var taksitSorgu = FisTaksitSorgusu(); SonKaydiTut(); kalemler.Clear();   // T-S1 (QA-10): kaydedilenin özeti bir sonraki Kaydet'e kadar görünür
@@ -1394,6 +1394,6 @@
     {
         Dil.Degisti -= Yenile; YildizAboneliktenCik();
         Canli.Degisti -= KurYansit;
-        Modu.Degisti -= ModDegisti;
+        Modu.Degisti -= ModDegisti; onayIptal?.Cancel();
     }
 }

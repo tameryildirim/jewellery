@@ -389,6 +389,17 @@
                                 <span class="metin-soluk metin-kucuk" id="i-kor-sayim-aciklama">@D1Sozlugu.Al(Dil.Dil).KorSayimAciklama</span>
                                 <HataBandi Mesaj="@korSayimHata" Id="i-kor-sayim-hata" />
                             </div>
+                            @* D1-05 (18.10): satış onayı kuralları + mesai — özet satırı, düzenleme çekmecede (SatisOnayAyarCekmecesi). *@
+                            <div class="alan" id="i-satis-onayi">
+                                <span class="alan-etiket">@D1Sozlugu.Al(Dil.Dil).OnayKurallari</span>
+                                <span class="metin-kucuk" id="i-satis-onayi-ozet">@SatisOnayOzeti</span>
+                                @if (!SaltOkunur)
+                                {
+                                    <button type="button" class="btn btn-ikincil btn-kucuk" id="i-satis-onayi-duzenle" @onclick="() => satisOnayCekmeceAcik = true">@D1Sozlugu.Al(Dil.Dil).OnayKurallariDuzenle</button>
+                                }
+                                <HataBandi Mesaj="@satisOnayHata" Id="i-satis-onayi-hata" />
+                            </div>
+                            <SatisOnayAyarCekmecesi Acik="satisOnayCekmeceAcik" Kapandi="() => satisOnayCekmeceAcik = false" Kaydedildi="SatisOnayKaydedildi" />
                             @* ── PAKET P-13 · B-47 ────────────────────────────────────────
                                Kur kaynağı ve maliyet yöntemi SALT OKUNUR satırdı ve yanında
                                "bu ayar türetilir" gerekçesi yazıyordu. İkisi de doğru değildi:
@@ -1017,7 +1028,7 @@
     {
         Dil.Degisti += Yenile;
         await Task.WhenAll(
-            TenantYukle(), SubeYukle(), VezneYukle(), KurKaynaklariYukle(), AbonelikYukle(), KmtsYukle(), SatisBelgeYukle(), KorSayimYukle());   // M6 · D1-11
+            TenantYukle(), SubeYukle(), VezneYukle(), KurKaynaklariYukle(), AbonelikYukle(), KmtsYukle(), SatisBelgeYukle(), KorSayimYukle(), SatisOnayYukle());   // M6 · D1-11 · D1-05
     }
 
     // ── PAKET YASAL-4 / Y4-C — KMTS alanı ayarı ──────────────────────────────

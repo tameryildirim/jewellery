@@ -78,6 +78,8 @@ public sealed class SatisOlusturDto
     [Required] public string KurSnapshotId { get; set; } = null!;
     /// <summary>D1-04 — kilitli kurla satış (tazelik yerine kilit kapısı).</summary>
     [MaxLength(36)] public string? KurKilidiId { get; set; }
+    /// <summary>D1-05 — patronun onayladığı talep (eşik aşan satış).</summary>
+    [MaxLength(36)] public string? OnayTalebiId { get; set; }
 
     /// <summary>MASAK bloğu — eşik altında boş. Kimlik eşiğinde (işlem gününün yasal_parametreler değeri; 07.10.2026'dan itibaren 370.000 TL) ve amaç beyanı kademesinde (200.000 TL, TEYİTSİZ) kapı zorunlu kılar.</summary>
     public MasakBilgiDto? Masak { get; set; }
@@ -481,6 +483,10 @@ public sealed class SatisFisiDto
     [Required] public string KurSnapshotId { get; set; } = null!;
     /// <summary>D1-04 — kilitli kurla satış (tazelik yerine kilit kapısı).</summary>
     [MaxLength(36)] public string? KurKilidiId { get; set; }
+    /// <summary>D1-05 — patronun onayladığı talep (eşik aşan satış).</summary>
+    [MaxLength(36)] public string? OnayTalebiId { get; set; }
+    /// <summary>D1-05 — sipariş teslimi (iç çağrı): onay kapısı uygulanmaz; istemciden gelemez.</summary>
+    [System.Text.Json.Serialization.JsonIgnore] internal bool OnaySiz { get; set; }
 
     /// <summary>MASAK blogu - esik FISIN TOPLAMINA uygulanir, bacak basina degil.</summary>
     public MasakBilgiDto? Masak { get; set; }
@@ -832,6 +838,8 @@ public sealed partial class SatisServisi(
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
         await IslemDogrulayici.KurTazeVeyaKilitDogrula(db, dto.KurSnapshotId, dto.KurKilidiId, dto.CariId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3 · D1-04 kilitli kur
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
+        await SatisOnayKapisi.Denetle(db, fiyat, islem, dto.CariId, dto.KurSnapshotId, 0m,
+            [new OnayKalemi(dto.UrunId, dto.Adet, dto.BirimFiyatTl, dto.IscilikTl, null, false)], dto.OnayTalebiId);   // D1-05
         // PAKET P-16 (B-31): SATIŞ carisi ayrıca AKTİF olmalı — ekran pasif
         // cariyi listeden gizler, sunucu gizlemeye GÜVENMEZ (fail-closed).
         await IslemDogrulayici.CariAktifDogrula(db, dto.CariId, islem.TenantId);
@@ -1684,6 +1692,9 @@ public sealed partial class SatisServisi(
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
         await IslemDogrulayici.KurTazeVeyaKilitDogrula(db, dto.KurSnapshotId, dto.KurKilidiId, dto.CariId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3 · D1-04 kilitli kur
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
+        if (!dto.OnaySiz)   // D1-05: eşik/kişisel iskonto sınırı aşan satış patron onayı ister (sipariş teslimi hariç: fiyat siparişte kararlaştı)
+            await SatisOnayKapisi.Denetle(db, fiyat, islem, dto.CariId, dto.KurSnapshotId, dto.FisIskontoYuzde,
+                [.. dto.Kalemler.Select(k => new OnayKalemi(k.UrunId, k.Adet, k.BirimFiyatTl, k.IscilikTl, k.SatirIskontoYuzde, k.Hediye))], dto.OnayTalebiId);
         // PAKET P-16 (B-31): SATIŞ carisi ayrıca AKTİF olmalı — ekran pasif
         // cariyi listeden gizler, sunucu gizlemeye GÜVENMEZ (fail-closed).
         await IslemDogrulayici.CariAktifDogrula(db, dto.CariId, islem.TenantId);
@@ -3120,13 +3131,18 @@ public sealed partial class SatisServisi(
 [Route("api/v1/islemler")]
 [Yetki.ModulYetkisi("islem")]
 public sealed class SatisController(SatisServisi servis, StornoServisi storno,
-    Kuyumcu.Api.Modules.Fatura.FaturaServisi? fatura = null, KuyumcuDbContext? db = null) : ControllerBase
+    Kuyumcu.Api.Modules.Fatura.FaturaServisi? fatura = null, KuyumcuDbContext? db = null, PersonelUyariServisi? uyari = null) : ControllerBase
 {
     private AktifKullanici Islem => AktifKullanici.FromClaims(User);
 
     /// <summary>POST /api/v1/islemler/satis — Ürün satışı: stok düşer, kasa/cari güncellenir, deftere yazılır</summary>
     [HttpPost("satis")]
-    public Task<object> Satis([FromBody] SatisOlusturDto dto) => servis.Satis(dto, Islem);
+    public async Task<object> Satis([FromBody] SatisOlusturDto dto)
+    {
+        var r = await servis.Satis(dto, Islem);
+        if (uyari is not null) await uyari.SatisSonrasi(Islem);   // D1-05: mesai dışı satış bildirimi (engel değil)
+        return r;
+    }
 
     /// <summary>POST /api/v1/islemler/alis — Ürün alışı: stok artar, kasa/cari güncellenir — MUHASEBE+</summary>
     [HttpPost("alis")]
@@ -3168,6 +3184,13 @@ public sealed class SatisController(SatisServisi servis, StornoServisi storno,
     /// </summary>
     [HttpPost("satis-fisi")]
     public async Task<object> SatisFisi([FromBody] SatisFisiDto dto)
+    {
+        var r = await SatisFisiYaz(dto);
+        if (uyari is not null) await uyari.SatisSonrasi(Islem);   // D1-05: mesai dışı satış bildirimi (engel değil)
+        return r;
+    }
+
+    private async Task<object> SatisFisiYaz(SatisFisiDto dto)
     {
         if (dto.BelgeTuru != "FATURA") return await servis.SatisFisi(dto, Islem);   // FİŞ: yanıt AYNEN eskisi
 
@@ -3259,7 +3282,12 @@ public sealed class SatisController(SatisServisi servis, StornoServisi storno,
 
     /// <summary>POST /api/v1/islemler/satis-iade — Müşteri malı geri getirdi</summary>
     [HttpPost("satis-iade")]
-    public Task<object> SatisIade([FromBody] IadeDto dto) => servis.SatisIade(dto, Islem);
+    public async Task<object> SatisIade([FromBody] IadeDto dto)
+    {
+        var r = await servis.SatisIade(dto, Islem);
+        if (uyari is not null) await uyari.IadeSonrasi(Islem);   // D1-05: saatte 3+ iade bildirimi (engel değil)
+        return r;
+    }
 
     /// <summary>POST /api/v1/islemler/alis-iade — Malı tedarikçiye geri verdik — MUHASEBE+</summary>
     [HttpPost("alis-iade")]

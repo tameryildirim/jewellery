@@ -189,6 +189,8 @@ public sealed class YildizTezgahBaglami
     public bool BekleyenNotKotu { get; init; }
     /// <summary>D1-04 — kur kilidi satırı.</summary>
     public YildizKurKilidiBaglami? KurKilidi { get; init; }
+    /// <summary>D1-05 — satış onayı bandı (gerekli/bekliyor/onaylandı); yoksa null.</summary>
+    public RenderFragment? OnayBandi { get; init; }
 }
 
 /// <summary>D1-03 — bekleyen fiş satırı (etiket · "3 kalem · 12.500,00 ₺ · 14:20 · Hakan").</summary>

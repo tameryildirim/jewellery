@@ -239,6 +239,10 @@
                         }
                     </div>
                 }
+                @if (B.OnayBandi is not null)
+                {
+                    <div class="yz-duzen yz-tezgah-onay" id="yildiz-tezgah-onay">@B.OnayBandi</div>
+                }
                 @if (B.PesinSoru is not null)
                 {
                     @* YILDIZ-4C: sunucunun "aynı müşteri mi?" sorusu görünür alanda (özgün yerinde ekran dışındaydı). *@

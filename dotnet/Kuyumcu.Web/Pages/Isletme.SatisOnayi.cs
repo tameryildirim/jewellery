@@ -1,0 +1,39 @@
+using Kuyumcu.Contracts.Sayfalar.Islemler;
+using Kuyumcu.Core.I18n;
+using Kuyumcu.Web.Servisler;
+
+namespace Kuyumcu.Web.Pages;
+
+// D1-05 (18.10) — satış onayı kuralları özeti; düzenleme SatisOnayAyarCekmecesi'nde. Okunamazsa sebep bantta (UX-S28).
+public partial class Isletme
+{
+    private SatisOnayAyarlari? satisOnay;
+    private string? satisOnayHata;
+    private bool satisOnayCekmeceAcik;
+
+    private async Task SatisOnayYukle()
+    {
+        try { satisOnay = await Api.GetAsync<SatisOnayAyarlari>("/satis-onayi/ayarlar"); satisOnayHata = null; }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { satisOnayHata = ex.Message; }
+    }
+
+    private void SatisOnayKaydedildi(SatisOnayAyarlari a)
+    {
+        satisOnay = a; satisOnayCekmeceAcik = false;
+        BasariGoster(D1Sozlugu.Al(Dil.Dil).OnayKurallariKaydedildi);
+    }
+
+    private string SatisOnayOzeti
+    {
+        get
+        {
+            var m = D1Sozlugu.Al(Dil.Dil);
+            if (satisOnay is not { } a) return "—";
+            return string.Format(m.OnayKurallariOzet,
+                a.IskontoYuzde is { } i ? $"%{Bicim.Oran(i)}" : m.Kapali,
+                a.TutarTl is { } t ? Bicim.TlKurus(t) : m.Kapali,
+                a.Zararina ? m.Acik : m.Kapali,
+                a.MesaiBaslangic is { } b && a.MesaiBitis is { } e ? $"{b}–{e}" : m.Kapali);
+        }
+    }
+}

@@ -1,0 +1,74 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-05 (18.10) — patronun onay paneli (Bildirimler üstünde; yalnız sahip/müdür çizer). Karar bekleyen satışlar:
+   kim · müşteri · tutar · indirim (liste) · sebep · saat + Onayla / Reddet. 15 sn'de bir tazelenir; boşsa hiç çizilmez.
+   GET /satis-onayi/talepler · POST /satis-onayi/talepler/{id}/onayla|reddet
+   ═══════════════════════════════════════════════════════════════════════════ *@
+@if (talepler.Count > 0 || hata is not null)
+{
+    <section class="kart onay-paneli" id="onay-paneli" aria-labelledby="onay-paneli-baslik">
+        <h2 class="onay-paneli-baslik" id="onay-paneli-baslik">@M.OnayBekleyenler</h2>
+        <HataBandi Mesaj="@hata" Id="onay-paneli-hata" />
+        <ul class="onay-liste" id="onay-liste">
+            @foreach (var t in talepler)
+            {
+                <li class="onay-satir" id="@($"onay-{t.Id}")">
+                    <span class="onay-metin">
+                        <span class="onay-ad">@string.Join(" · ", new[] { t.IsteyenAd, t.CariAd }.Where(x => !string.IsNullOrWhiteSpace(x)))</span>
+                        <span class="onay-tutar">@Bicim.TlKurus(t.ToplamTl)</span>
+                        <span class="metin-soluk metin-kucuk">@Ayrinti(t)</span>
+                    </span>
+                    <span class="onay-eylem">
+                        <button type="button" class="btn btn-birincil btn-kucuk" id="@($"onay-onayla-{t.Id}")" disabled="@(calisan == t.Id)" @onclick="() => Karar(t.Id, true)">@M.Onayla</button>
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"onay-reddet-{t.Id}")" disabled="@(calisan == t.Id)" @onclick="() => Karar(t.Id, false)">@M.Reddet</button>
+                    </span>
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@code {
+    private List<OnayTalebiOzet> talepler = [];
+    private string? hata;
+    private string? calisan;
+    private System.Threading.Timer? zamanlayici;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Yukle();
+        zamanlayici = new System.Threading.Timer(_ => InvokeAsync(async () => { await Yukle(); StateHasChanged(); }), null, 15000, 15000);
+    }
+
+    private async Task Yukle()
+    {
+        try { talepler = await Api.GetAsync<List<OnayTalebiOzet>>("/satis-onayi/talepler") ?? []; hata = null; }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+    }
+
+    private async Task Karar(string id, bool onay)
+    {
+        calisan = id;
+        try { await Api.PostAsync<OnayTalebiOzet>($"/satis-onayi/talepler/{Uri.EscapeDataString(id)}/{(onay ? "onayla" : "reddet")}", new { }); hata = null; }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisan = null; }
+        await Yukle();
+    }
+
+    private string Ayrinti(OnayTalebiOzet t) => string.Join(" · ", new[]
+    {
+        t.IndirimYuzde > 0m ? string.Format(M.OnaySebepIskonto, Bicim.Oran(t.IndirimYuzde)) + $" ({string.Format(M.OnayListe, Bicim.TlKurus(t.ListeTl))})" : null,
+        t.Sebepler.Contains("ZARARINA") ? M.OnaySebepZararina : null,
+        t.Sebepler.Contains("KISISEL") ? string.Format(M.OnaySebepKisisel, Bicim.Oran(t.IndirimYuzde)) : null,
+        Bicim.Saat(Bicim.IsletmeZamani(t.Olusturuldu)),
+    }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+    public void Dispose() => zamanlayici?.Dispose();
+}

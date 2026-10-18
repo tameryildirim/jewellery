@@ -113,6 +113,12 @@
                     @* D1-14: mali müşavir — muhasebenin gördüğünü görür, kayıt değiştiremez. *@
                     <Onay ElemanId="k-salt-okunur" Etiket="@D1Sozlugu.Al(Dil.Dil).SaltOkunurEtiket" @bind-Deger="yeniSaltOkunur" />
                 }
+                @if (yeniRol is "TEZGAHTAR" or "MUHASEBE")
+                {
+                    @* D1-05: kişisel iskonto sınırı — aşan satış patron onayı ister (boş = sınır yok). *@
+                    <Sayi ElemanId="k-iskonto-siniri" Etiket="@D1Sozlugu.Al(Dil.Dil).IskontoSiniriEtiket" EnAz="0" EnCok="100" EnCokOndalik="2" Birim="%"
+                          Deger="@yeniIskontoSiniri" DegerChanged="@(v => yeniIskontoSiniri = v)" />
+                }
             </div>
             <Sifre ElemanId="k-sifre" Etiket="@Dil.T.Kullanici.Sifre" Zorunlu="true"
                    YerTutucu="@Dil.T.Kullanici.SifreIpucu" OtoTamamla="new-password"
@@ -223,6 +229,11 @@
                         @if (dRol == "MUHASEBE")
                         {
                             <Onay ElemanId="d-salt-okunur" Etiket="@D1Sozlugu.Al(Dil.Dil).SaltOkunurEtiket" @bind-Deger="dSaltOkunur" />
+                        }
+                        @if (dRol is "TEZGAHTAR" or "MUHASEBE")
+                        {
+                            <Sayi ElemanId="d-iskonto-siniri" Etiket="@D1Sozlugu.Al(Dil.Dil).IskontoSiniriEtiket" EnAz="0" EnCok="100" EnCokOndalik="2" Birim="%"
+                                  Deger="@dIskontoSiniri" DegerChanged="@(v => dIskontoSiniri = v)" />
                         }
                     </div>
                     <div class="alan">
@@ -386,6 +397,7 @@
     private string yeniSifre = "";
     private string yeniRol = "TEZGAHTAR";
     private bool yeniSaltOkunur, dSaltOkunur;   // D1-14
+    private decimal? yeniIskontoSiniri, dIskontoSiniri;   // D1-05
     private string yeniArayuzModu = "";
     private string yeniSubeId = "";
 
@@ -704,7 +716,7 @@
         yeniArayuzModu = "";
         yeniSubeId = subeler.Count == 1 ? subeler[0].Id : "";
         yeniRol = AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR";
-        yeniSaltOkunur = false;
+        yeniSaltOkunur = false; yeniIskontoSiniri = null;
         yeniModalAcik = true;
     }
 
@@ -722,6 +734,7 @@
                 sifre = yeniSifre,
                 rol = yeniRol,
                 saltOkunur = yeniRol == "MUHASEBE" && yeniSaltOkunur,   // D1-14
+                iskontoSiniriYuzde = yeniRol is "TEZGAHTAR" or "MUHASEBE" ? yeniIskontoSiniri : null,   // D1-05
                 arayuzModu = Bos(yeniArayuzModu),
                 subeId = SubeGovde(yeniSubeId),
             });
@@ -743,6 +756,7 @@
         dEmail = k.Email;
         dRol = AtanabilirRoller.Contains(k.Rol) ? k.Rol : (AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR");
         dSaltOkunur = k.SaltOkunur;   // D1-14
+        dIskontoSiniri = k.IskontoSiniriYuzde;   // D1-05
         dAktif = k.Aktif ? "true" : "false";
         dArayuzModu = k.ArayuzModu ?? "";
         dSubeId = k.SubeId ?? (subeler.Count == 1 ? subeler[0].Id : "");
@@ -780,8 +794,9 @@
                     subeId = SubeGovde(dSubeId),
                 });
                 var yeniSalt = dRol == "MUHASEBE" && dSaltOkunur;   // D1-14: muhasebe dışında salt okunur kapanır
-                if (dRol != eskiRol || yeniSalt != duzenleHedef.SaltOkunur)
-                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol, saltOkunur = yeniSalt });
+                var yeniSinir = dRol is "TEZGAHTAR" or "MUHASEBE" ? dIskontoSiniri : null;   // D1-05: yönetici rollerinde sınır yok
+                if (dRol != eskiRol || yeniSalt != duzenleHedef.SaltOkunur || yeniSinir != duzenleHedef.IskontoSiniriYuzde)
+                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol, saltOkunur = yeniSalt, iskontoSiniriYuzde = yeniSinir });
             }
             duzenleHedef = null;
             await Yukle();

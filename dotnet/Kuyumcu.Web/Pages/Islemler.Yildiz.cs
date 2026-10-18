@@ -234,6 +234,7 @@ public partial class Islemler
                 BekleyenNot = bekleyenNot,
                 BekleyenNotKotu = bekleyenNotKotu,
                 KurKilidi = YildizKilit,   // D1-04
+                OnayBandi = OnayBandi,     // D1-05
             };
         }
     }

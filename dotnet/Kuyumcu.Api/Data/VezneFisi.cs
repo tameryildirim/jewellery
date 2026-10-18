@@ -249,8 +249,20 @@ public static class KiraciAyarAnahtari
     /// </summary>
     public const string KasaKorSayim = "kasa_kor_sayim";
 
+    /// <summary>D1-05 — bu yüzdeyi aşan indirim (liste fiyatına göre) patron onayı ister. Yoksa KAPALI.</summary>
+    public const string OnayIskontoYuzde = "satis_onay_iskonto_yuzde";
+    /// <summary>D1-05 — bu tutarı aşan satış fişi patron onayı ister (TL). Yoksa KAPALI.</summary>
+    public const string OnayTutarTl = "satis_onay_tutar_tl";
+    /// <summary>D1-05 — has değerinin altındaki (zararına) satış patron onayı ister. "true"/"false"; yoksa KAPALI.</summary>
+    public const string OnayZararina = "satis_onay_zararina";
+    /// <summary>D1-05 — mesai başlangıcı "SS:dd"; ikisi de varsa mesai dışı satış patrona bildirilir.</summary>
+    public const string MesaiBaslangic = "mesai_baslangic";
+    /// <summary>D1-05 — mesai bitişi "SS:dd".</summary>
+    public const string MesaiBitis = "mesai_bitis";
+
     public static readonly string[] Tumu =
-        [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi, SatisBelgeVarsayilan, KasaKorSayim];
+        [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi, SatisBelgeVarsayilan, KasaKorSayim,
+         OnayIskontoYuzde, OnayTutarTl, OnayZararina, MesaiBaslangic, MesaiBitis];
 }
 
 /// <summary>

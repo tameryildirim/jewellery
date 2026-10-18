@@ -1,0 +1,74 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Core.Domain.Girdi
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-05 (18.10) — İşletme › satış onayı kuralları: indirim eşiği (%), fiş tutarı eşiği, zararına satış onayı,
+   mesai saatleri (mesai dışı satış patrona bildirilir). Boş alan = kural kapalı. PUT /satis-onayi/ayarlar (sahip/müdür).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+<Cekmece Acik="Acik" Varlik="satis-onayi" Baslik="@M.OnayKurallari" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
+         KaydetElemanId="so-kaydet">
+    @if (hata is { } h)
+    {
+        <div class="bant bant-hata" role="alert" id="so-hata">@h</div>
+    }
+    <div class="form-dikey">
+        <Sayi ElemanId="so-iskonto" Etiket="@M.OnayIskontoEtiket" EnAz="0.01m" EnCok="100" EnCokOndalik="2" Birim="%"
+              Deger="@iskonto" DegerChanged="@(v => iskonto = v)" />
+        <Para ElemanId="so-tutar" Etiket="@M.OnayTutarEtiket" ParaBirimi="TRY" Deger="@tutar" DegerChanged="@(v => tutar = v)" />
+        <Onay ElemanId="so-zararina" Etiket="@M.OnayZararinaEtiket" @bind-Deger="zararina" />
+        <div class="form-grid-2">
+            <Metin ElemanId="so-mesai-bas" Etiket="@M.MesaiBaslangicEtiket" EnFazla="@AlanSinirlari.MesaiSaati" YerTutucu="09:00" Deger="@mesaiBas" DegerChanged="@(v => mesaiBas = v)" />
+            <Metin ElemanId="so-mesai-bit" Etiket="@M.MesaiBitisEtiket" EnFazla="@AlanSinirlari.MesaiSaati" YerTutucu="19:00" Deger="@mesaiBit" DegerChanged="@(v => mesaiBit = v)" />
+        </div>
+    </div>
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+    [Parameter] public EventCallback<SatisOnayAyarlari> Kaydedildi { get; set; }
+
+    private decimal? iskonto, tutar;
+    private bool zararina;
+    private string? mesaiBas, mesaiBit, hata;
+    private bool kaydediliyor, acikti;
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !acikti)
+        {
+            hata = null;
+            try
+            {
+                var a = await Api.GetAsync<SatisOnayAyarlari>("/satis-onayi/ayarlar");
+                iskonto = a.IskontoYuzde; tutar = a.TutarTl; zararina = a.Zararina; mesaiBas = a.MesaiBaslangic; mesaiBit = a.MesaiBitis;
+            }
+            catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }
+        }
+        acikti = Acik;
+    }
+
+    private async Task Kaydet()
+    {
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var a = await Api.PutAsync<SatisOnayAyarlari>("/satis-onayi/ayarlar", new
+            {
+                iskontoYuzde = iskonto, tutarTl = tutar, zararina,
+                mesaiBaslangic = string.IsNullOrWhiteSpace(mesaiBas) ? null : mesaiBas.Trim(),
+                mesaiBitis = string.IsNullOrWhiteSpace(mesaiBit) ? null : mesaiBit.Trim(),
+            });
+            await Kaydedildi.InvokeAsync(a);
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private Task Kapat() => Kapandi.InvokeAsync();
+}

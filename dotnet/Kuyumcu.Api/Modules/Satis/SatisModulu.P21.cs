@@ -957,6 +957,7 @@ public sealed partial class SatisServisi
             CariId        = siparis.CariId,
             KurSnapshotId = dto.KurSnapshotId,
             KurKilidiId   = dto.KurKilidiId,   // D1-04
+            OnaySiz       = true,              // D1-05: fiyat siparişte kararlaştı
             VadeGun       = dto.VadeGun,
             Aciklama      = dto.Aciklama ?? $"Sipariş {siparis.No} teslimi",
             Masak         = dto.Masak,

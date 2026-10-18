@@ -3074,3 +3074,13 @@ button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed
 }
 .menu-arama-satir input.girdi-arama::placeholder { color: var(--kenar-metin); opacity: 1; }
 .menu-arama-satir input.girdi-arama::-webkit-search-cancel-button { display: none; }
+/* D1-05: patronun onay paneli ve tezgâh onay bandı */
+.onay-paneli { padding: 16px 20px; margin-bottom: 16px; }
+.onay-paneli-baslik { font-size: 1.05rem; margin: 0 0 8px; }
+.onay-liste { list-style: none; margin: 0; padding: 0; }
+.onay-satir { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-top: 1px solid var(--kenarlik); }
+.onay-metin { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 240px; }
+.onay-tutar { font-variant-numeric: tabular-nums; font-size: 1.1rem; }
+.onay-eylem { display: flex; gap: 8px; }
+.satis-onay-bandi { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.satis-onay-metin { flex: 1 1 220px; min-width: 0; }

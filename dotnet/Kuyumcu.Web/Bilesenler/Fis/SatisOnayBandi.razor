@@ -1,0 +1,43 @@
+@using Kuyumcu.Contracts.Sayfalar.Islemler
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* D1-05 (18.10) — tezgâhta satış onayı bandı: gerekli → "Onay iste"; bekliyor → bekleme; onaylandı → "Kaydet'e basın";
+   reddedildi / süresi doldu → sebep + "Yeniden iste". İstek ATMAZ — Islemler.SatisOnayi.cs atar. *@
+<div class="bant @BantSinifi satis-onay-bandi" id="satis-onay-bandi" role="status">
+    <span class="satis-onay-metin" id="satis-onay-metin">@AnaMetin@if (SebepMetni is { } sm) {<span class="metin-soluk" id="satis-onay-sebep"> · @sm</span>}</span>
+    @if (Talep is null || Talep.Durum is "REDDEDILDI" or "SURESI_DOLDU" or "KULLANILDI")
+    {
+        <button type="button" class="btn btn-ikincil btn-kucuk" id="satis-onay-iste" disabled="@Calisiyor" @onclick="Iste">@(Talep is null ? M.OnayIste : M.OnayYenidenIste)</button>
+    }
+    @if (Hata is { } h)
+    {
+        <span class="metin-kirmizi metin-kucuk" id="satis-onay-hata">@h</span>
+    }
+</div>
+
+@code {
+    [Parameter] public OnayTalebiOzet? Talep { get; set; }
+    [Parameter] public string? SebepMetni { get; set; }
+    [Parameter] public string? Hata { get; set; }
+    [Parameter] public bool Calisiyor { get; set; }
+    [Parameter] public EventCallback Iste { get; set; }
+
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    private string BantSinifi => Talep?.Durum switch
+    {
+        "ONAYLANDI" => "bant-basari",
+        "REDDEDILDI" => "bant-hata",
+        _ => "bant-uyari",
+    };
+
+    private string AnaMetin => Talep?.Durum switch
+    {
+        null => M.OnayGerekli,
+        "BEKLIYOR" => M.OnayBekleniyor,
+        "ONAYLANDI" => M.OnayVerildi,
+        "REDDEDILDI" => Talep.KararNotu is { } n ? $"{M.OnayReddedildi}: {n}" : M.OnayReddedildi,
+        _ => M.OnaySuresiDoldu,
+    };
+}

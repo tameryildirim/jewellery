@@ -50,6 +50,8 @@ public sealed class KullaniciOlusturDto
 
     /// <summary>D1-14 — salt okunur (mali müşavir) hesap; yalnız MUHASEBE rolüyle verilebilir.</summary>
     public bool SaltOkunur { get; set; }
+    /// <summary>D1-05 — kişisel iskonto sınırı (yüzde); boş = sınır yok.</summary>
+    [Range(0, 100, ErrorMessage = "İskonto sınırı 0 ile 100 arasında olmalıdır")] public decimal? IskontoSiniriYuzde { get; set; }
 }
 
 public sealed class KullaniciGuncelleDto
@@ -147,6 +149,8 @@ public sealed class RolDegistirDto
     public string Rol { get; set; } = null!;
     /// <summary>D1-14 — salt okunur (mali müşavir); yalnız MUHASEBE rolüyle. Gönderilmezse kapanır.</summary>
     public bool SaltOkunur { get; set; }
+    /// <summary>D1-05 — kişisel iskonto sınırı (yüzde); boş = sınır yok. Her istekte gönderilir.</summary>
+    [Range(0, 100, ErrorMessage = "İskonto sınırı 0 ile 100 arasında olmalıdır")] public decimal? IskontoSiniriYuzde { get; set; }
 }
 
 // ── Servis ───────────────────────────────────────────────────────────────────
@@ -188,6 +192,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
             SifreHash = sifreHash,
             Rol = dto.Rol,
             SaltOkunur = SaltOkunurDogrula(dto.Rol, dto.SaltOkunur),   // D1-14
+            IskontoSiniriYuzde = dto.IskontoSiniriYuzde,   // D1-05
             ArayuzModu = OlusturmaModu(dto.ArayuzModu),
             Aktif = true,
             Olusturuldu = now,
@@ -365,6 +370,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         var eskiRol = hedef.Rol;
         hedef.Rol = dto.Rol;
         hedef.SaltOkunur = SaltOkunurDogrula(dto.Rol, dto.SaltOkunur);   // D1-14
+        hedef.IskontoSiniriYuzde = dto.IskontoSiniriYuzde;   // D1-05 (boş = sınır yok)
         hedef.Guncellendi = DateTime.UtcNow;
         denetim.YazmaKaydet(islem, nameof(Data.Kullanici), hedef.Id,
             $"kullanici-rol-degisti: {eskiRol} → {dto.Rol}{(hedef.SaltOkunur ? " (salt okunur)" : "")}");
@@ -592,6 +598,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         email = k.Email,
         rol = k.Rol,
         saltOkunur = k.SaltOkunur,   // D1-14
+        iskontoSiniriYuzde = k.IskontoSiniriYuzde,   // D1-05
         arayuzModu = k.ArayuzModu,
         aktif = k.Aktif,
         sonGiris = k.SonGiris,

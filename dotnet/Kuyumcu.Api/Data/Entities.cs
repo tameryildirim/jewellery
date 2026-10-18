@@ -303,6 +303,8 @@ public class Kullanici : IKiraciVarlik
     /// D1-14 (18.10, rakip eşitleme: "mali müşavir rolü — yalnız okuma"). Yalnız MUHASEBE rolünde anlamlıdır:
     /// hesap muhasebenin gördüğü her şeyi görür, hiçbir yazma isteği yapamaz (SaltOkunurKapisi, tek kapı).
     /// </summary>
+    /// <summary>D1-05 — çalışanın kişisel iskonto sınırı (yüzde, liste fiyatına göre). Boş = sınır yok.</summary>
+    [Column("iskonto_siniri_yuzde", TypeName = "decimal(5,2)")] public decimal? IskontoSiniriYuzde { get; set; }
     [Column("salt_okunur")] public bool SaltOkunur { get; set; }
     /// <summary>
     /// Kullanıcının arayüz tercihi: BASIT | PROFESYONEL.

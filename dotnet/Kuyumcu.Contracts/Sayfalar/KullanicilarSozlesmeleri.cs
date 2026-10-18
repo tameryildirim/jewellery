@@ -10,5 +10,7 @@ public sealed record KullaniciVeri(
     // 45-UI: liste ucu bu bayrağı döndürür; tekil uçlarda null (bilinmiyor).
     bool? MfaEtkin = null,
     // D1-14 — salt okunur (mali müşavir) hesap.
-    bool SaltOkunur = false);
+    bool SaltOkunur = false,
+    // D1-05 — kişisel iskonto sınırı (yüzde); boş = sınır yok.
+    decimal? IskontoSiniriYuzde = null);
 public sealed record SubeOzet(string Id, string Ad);
