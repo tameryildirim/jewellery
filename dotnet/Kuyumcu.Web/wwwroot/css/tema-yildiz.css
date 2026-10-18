@@ -3939,3 +3939,11 @@ html:root[data-sema="yildiz"] body #ft-liste > .ft-satir:not(#_) {
 html:root[data-sema="yildiz"] body #ft-liste .ft-sol:not(#_) { display: flex; align-items: flex-start; gap: 10px; min-width: 0; cursor: pointer; }
 html:root[data-sema="yildiz"] body #ft-liste .ft-sol input:not(#_) { margin-top: 4px; flex: none; }
 html:root[data-sema="yildiz"] body #ft-liste .ft-satir > :nth-child(n+3):not(#_) { grid-column: 1 / -1; padding-left: 28px; }
+/* D1-14: salt okunur (mali müşavir) bandı — içerik hizasında, sakin tek satır. */
+html:root[data-sema="yildiz"] body #salt-okunur-bant:not(#_) {
+  margin: 16px 64px 0; padding: 10px 14px; border: 1px solid var(--kenarlik); border-left-width: 1px; border-radius: 10px;
+  font-size: 14px; color: var(--metin-soluk, inherit); background: transparent;
+}
+@media (max-width: 760px) {
+  html:root[data-sema="yildiz"] body #salt-okunur-bant:not(#_) { margin: 12px 16px 0; }
+}
