@@ -49,10 +49,8 @@ window.kuyumcuImza = (function () {
     function png(id) {
         const t = document.getElementById(id);
         if (!t || bosMu(id)) return null;
-        // Beyaz zemin: kâğıda basılan imza saydam arka planla koyu temada kaybolmasın.
-        const k = document.createElement('canvas'); k.width = t.width; k.height = t.height;
-        const c = k.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, k.width, k.height); c.drawImage(t, 0, 0);
-        return k.toDataURL('image/png').split(',')[1];
+        // Saydam zemin: kâğıtta imza çizgisinin ÜSTÜNE basılır, çizgiyi kesmez (mürekkep koyu, kâğıt hep beyaz).
+        return t.toDataURL('image/png').split(',')[1];
     }
 
     return { baslat, temizle, bosMu, png };
