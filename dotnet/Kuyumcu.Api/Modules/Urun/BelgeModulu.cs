@@ -103,6 +103,18 @@ public sealed class BelgeServisi(KuyumcuDbContext db, BelgeAyarlari? ayarlar = n
                 throw new BadRequestException(
                     "Gider pusulası eki ayrı karara bağlandı (ADR-0008 blob karşılığı) — henüz açık değil");
 
+            case BelgeSahipTuru.KimlikTespit:
+                // D1-13: kimlik tespit formuna ekranda imza — sahip AYNI KİRACIDAKİ tespit kaydı.
+                if (!await db.MasakKimlikTespitleri.AnyAsync(m => m.Id == sahipId && m.TenantId == islem.TenantId))
+                    throw new NotFoundException("Kimlik tespiti bulunamadı");
+                return;
+
+            case BelgeSahipTuru.Satis:
+                // D1-13: garanti kartına ekranda imza — sahip AYNI KİRACIDAKİ SATIS satırı.
+                if (!await db.Hareketler.AnyAsync(h => h.Id == sahipId && h.TenantId == islem.TenantId && h.Tur == "SATIS"))
+                    throw new NotFoundException("Satış bulunamadı");
+                return;
+
             case BelgeSahipTuru.HurdaAlis:
                 // D1-12 (18.10, rakip eşitleme): hurda alımına fotoğraf. Sahip AYNI KİRACIDAKİ HURDA_ALIS satırıdır;
                 // başka tür ya da başka kiracı 404 (varlık sızdırılmaz). Defter satırı DEĞİŞMEZ — fotoğraf yanındadır.

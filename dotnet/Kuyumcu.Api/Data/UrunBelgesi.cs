@@ -70,8 +70,12 @@ public static class BelgeSahipTuru
     public const string Isletme = "ISLETME";
     /// <summary>D1-12 (18.10): hurda alımının fotoğrafı — sahip HURDA_ALIS türündeki defter satırıdır.</summary>
     public const string HurdaAlis = "HURDA_ALIS";
+    /// <summary>D1-13: kimlik tespit formunun imzası — sahip MASAK kimlik tespiti kaydı.</summary>
+    public const string KimlikTespit = "KIMLIK_TESPIT";
+    /// <summary>D1-13: garanti kartının imzası — sahip SATIS türündeki defter satırı.</summary>
+    public const string Satis = "SATIS";
 
-    public static readonly string[] Tumu = [Urun, Siparis, GiderPusulasi, Isletme, HurdaAlis];
+    public static readonly string[] Tumu = [Urun, Siparis, GiderPusulasi, Isletme, HurdaAlis, KimlikTespit, Satis];
 }
 
 /// <summary>Belge türü — KAPALI liste (fail-closed).</summary>
@@ -81,6 +85,8 @@ public static class BelgeTuru
     public const string Gorsel = "GORSEL";
     public const string Fotograf = "FOTOGRAF";
     public const string Ek = "EK";
+    /// <summary>D1-13 (18.10): ekranda atılan imza — yalnız PNG (tuval çıktısı).</summary>
+    public const string Imza = "IMZA";
 
-    public static readonly string[] Tumu = [Sertifika, Gorsel, Fotograf, Ek];
+    public static readonly string[] Tumu = [Sertifika, Gorsel, Fotograf, Ek, Imza];
 }

@@ -60,7 +60,17 @@ public sealed record D1Metinleri(
     string KorSayimKapandi,
     string SorumluCalisan,
     string SorumluYok,
-    string SorumluSatir);
+    string SorumluSatir,
+    string ImzaIpucu,
+    string ImzaTuval,
+    string ImzaTemizle,
+    string ImzaKaydet,
+    string ImzaBos,
+    string ImzaAl,
+    string ImzaBaslik,
+    string ImzaKaydedildi,
+    string KimlikFormu,
+    string UrunBelgesi);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -117,7 +127,17 @@ public static class D1Sozlugu
         KorSayimKapandi: "Kör sayım kapatıldı",
         SorumluCalisan: "Sorumlu çalışan",
         SorumluYok: "— (sorumlu yok)",
-        SorumluSatir: "Sorumlu: {0}");
+        SorumluSatir: "Sorumlu: {0}",
+        ImzaIpucu: "Müşteri aşağıdaki alana parmağıyla ya da kalemle imzalasın.",
+        ImzaTuval: "İmza alanı",
+        ImzaTemizle: "Temizle",
+        ImzaKaydet: "İmzayı kaydet",
+        ImzaBos: "İmza alanı boş — önce imza atılmalı",
+        ImzaAl: "Ekranda imzalat",
+        ImzaBaslik: "Müşteri imzası",
+        ImzaKaydedildi: "İmza kaydedildi",
+        KimlikFormu: "Form",
+        UrunBelgesi: "Ürün belgesi");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -171,7 +191,17 @@ public static class D1Sozlugu
         KorSayimKapandi: "Blind count turned off",
         SorumluCalisan: "Responsible staff member",
         SorumluYok: "— (none)",
-        SorumluSatir: "Responsible: {0}");
+        SorumluSatir: "Responsible: {0}",
+        ImzaIpucu: "Ask the customer to sign in the area below with a finger or stylus.",
+        ImzaTuval: "Signature area",
+        ImzaTemizle: "Clear",
+        ImzaKaydet: "Save signature",
+        ImzaBos: "The signature area is empty — sign first",
+        ImzaAl: "Sign on screen",
+        ImzaBaslik: "Customer signature",
+        ImzaKaydedildi: "Signature saved",
+        KimlikFormu: "Form",
+        UrunBelgesi: "Product certificate");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

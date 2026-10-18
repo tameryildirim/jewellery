@@ -1,0 +1,64 @@
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime Js
+
+@* ═══════════════════════════════════════════════════════════════════════════
+   D1-13 (18.10, rakip eşitleme: "ekranda imza") — müşteri parmağıyla / kalemle tuvale imza atar
+   (js/imza.js), PNG ortak belge deposuna IMZA türüyle kaydedilir (POST /belgeler; sahip KIMLIK_TESPIT
+   ya da SATIS). Belge yeniden açılınca imza kâğıttaki imza satırına basılır.
+   ⚠ Boş tuval kaydedilmez (sebep yazılı); hata bantta (UX-S28).
+   ═══════════════════════════════════════════════════════════════════════════ *@
+
+<div class="form-dikey imza-alani" id="imza-alani">
+    <p class="metin-soluk metin-kucuk" id="imza-ipucu">@M.ImzaIpucu</p>
+    <canvas id="imza-tuval" class="imza-tuval" aria-label="@M.ImzaTuval"></canvas>
+    <div class="satir">
+        <button type="button" class="btn btn-ikincil" id="imza-temizle" @onclick="Temizle">@M.ImzaTemizle</button>
+        <button type="button" class="btn btn-birincil" id="imza-kaydet" disabled="@kaydediliyor" @onclick="Kaydet">@M.ImzaKaydet</button>
+    </div>
+    <HataBandi Mesaj="@hata" Id="imza-hata" />
+</div>
+
+@code {
+    /// <summary>Belge deposundaki sahip türü (KIMLIK_TESPIT · SATIS).</summary>
+    [Parameter, EditorRequired] public string SahipTuru { get; set; } = "";
+    [Parameter, EditorRequired] public string SahipId { get; set; } = "";
+    [Parameter] public EventCallback Kaydedildi { get; set; }
+
+    private string? hata;
+    private bool kaydediliyor;
+    private D1Metinleri M => D1Sozlugu.Al(Dil.Dil);
+
+    protected override async Task OnAfterRenderAsync(bool ilk)
+    {
+        if (ilk)
+        {
+            try { await Js.InvokeAsync<bool>("kuyumcuImza.baslat", "imza-tuval"); }
+            catch (JSException ex) { hata = ex.Message; StateHasChanged(); }
+        }
+    }
+
+    private async Task Temizle()
+    {
+        hata = null;
+        try { await Js.InvokeVoidAsync("kuyumcuImza.temizle", "imza-tuval"); }
+        catch (JSException ex) { hata = ex.Message; }
+    }
+
+    private async Task Kaydet()
+    {
+        hata = null;
+        string? png;
+        try { png = await Js.InvokeAsync<string?>("kuyumcuImza.png", "imza-tuval"); }
+        catch (JSException ex) { hata = ex.Message; return; }
+        if (string.IsNullOrEmpty(png)) { hata = M.ImzaBos; return; }
+        kaydediliyor = true;
+        try
+        {
+            await Api.PostAsync("/belgeler", new { sahipTuru = SahipTuru, sahipId = SahipId, tur = "IMZA", ad = "imza.png", icerikBase64 = png });
+            await Kaydedildi.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+}

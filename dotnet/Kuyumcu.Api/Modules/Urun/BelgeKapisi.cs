@@ -105,6 +105,11 @@ public static class BelgeKapisi
         {
             throw new BadRequestException($"{tur} türü yalnız JPEG/PNG kabul eder (dosya imzası: PDF)");
         }
+        else if (tur == BelgeTuru.Imza && taninan != MimePng)
+        {
+            // D1-13: ekran imzası tuvalden PNG olarak gelir; başka biçim imza sayılmaz.
+            throw new BadRequestException("İmza yalnız PNG olabilir");
+        }
 
         mime = taninan!;
 

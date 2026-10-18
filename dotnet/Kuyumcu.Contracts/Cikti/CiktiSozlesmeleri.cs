@@ -44,8 +44,15 @@ public static class BelgeTurleri
     public const string CariMutabakat = "CARI_MUTABAKAT";
     /// <summary>D1-19 (18.10) — KVKK aydınlatma formu: işletmenin metni + pazarlama izni kutusu + imza.</summary>
     public const string KvkkAydinlatma = "KVKK_AYDINLATMA";
+    /// <summary>D1-13 (18.10) — MASAK kimlik tespit formu (tam kimlik; müşteri ve tespit eden imzası).</summary>
+    public const string KimlikTespit = "KIMLIK_TESPIT";
+    /// <summary>D1-13 (18.10) — ürün belgesi / garanti kartı: satılan ürünlerin satış anındaki özellikleri.</summary>
+    public const string GarantiKarti = "GARANTI_KARTI";
 
-    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat, KvkkAydinlatma];
+    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat, KvkkAydinlatma, KimlikTespit, GarantiKarti];
+
+    /// <summary>D1-13 — ekranda imza alınabilen belge türleri (imza ortak belge deposunda saklanır).</summary>
+    public static readonly string[] Imzali = [KimlikTespit, GarantiKarti];
 
     public static bool Gecerli(string? tur) =>
         tur is not null && Array.IndexOf(Tumu, tur) >= 0;
@@ -133,4 +140,6 @@ public sealed record OrtakBelge(
     /// PAKET Q9-4 — <see cref="BelgeNo"/> okunur bir sıra numarası DEĞİL, kaydın
     /// sistem kimliğidir (hareket/fiş/cari). Ekran bunu söyler; numara UYDURULMAZ.
     /// </summary>
-    bool BelgeNoKayitKimligi = false);
+    bool BelgeNoKayitKimligi = false,
+    /// <summary>D1-13 — ekranda atılmış müşteri imzası (PNG, base64); yoksa null ve imza satırı boş basılır.</summary>
+    string? ImzaGorseli = null);

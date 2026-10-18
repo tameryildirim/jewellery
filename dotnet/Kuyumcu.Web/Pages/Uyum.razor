@@ -681,7 +681,7 @@
                 Deger = t => t.SaklamaBitis, Hucre = t => @<text>@Bicim.TarihTam(t.SaklamaBitis)</text> },
         new() { Anahtar = "eylem", Baslik = Dil.T.Uyum.Goruntule, BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
                 Tur = IzgaraHucreTuru.Eylem,
-                Hucre = t => @<button class="dugme dugme-kucuk" id="@($"uy-tespit-ac-{t.Id}")" @onclick="() => TespitAc(t.Id)">@Dil.T.Uyum.Goruntule</button> },
+                Hucre = t => @<span class="satir-eylemler"><button class="dugme dugme-kucuk" id="@($"uy-tespit-ac-{t.Id}")" @onclick="() => TespitAc(t.Id)">@Dil.T.Uyum.Goruntule</button>@* D1-13: imzalatılacak kimlik tespit formu *@<a class="dugme dugme-kucuk dugme-ikincil" id="@($"uy-tespit-form-{t.Id}")" href="@($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.KimlikTespit}/{t.Id}?donus=/uyum")">@D1Sozlugu.Al(Dil.Dil).KimlikFormu</a></span> },
     ];
 
     private IReadOnlyList<IzgaraKolonu<SupheliSatir>> SupheliKolonlari =>

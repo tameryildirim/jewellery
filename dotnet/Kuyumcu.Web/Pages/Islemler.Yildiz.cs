@@ -191,6 +191,8 @@ public partial class Islemler
                 HavalelerAcKapa = EventCallback.Factory.Create(this, () => havalelerAcik = !havalelerAcik),
                 HavaleSec = EventCallback.Factory.Create<string>(this, HavaleSec), HavaleBirak = EventCallback.Factory.Create(this, HavaleBirak),
                 YazdirAdresleri = [.. yazdirIdler.Select(FisYazdir.YazdirAdresi).OfType<string>()],
+                UrunBelgesiAdresi = tur == "SATIS" && yazdirIdler.Count > 0
+                    ? $"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.GarantiKarti}/{Uri.EscapeDataString(yazdirIdler[0])}" : null,   // D1-13
                 YazdirHata = yazdirHata is null ? null : string.Format(FisYazdirSozlugu.Al(Dil.Dil).YazdirHata, yazdirHata),
                 Uyarilar = [.. new[] { yerlesimUyarisi, fisTaksitUyari }.OfType<string>(), .. new[] { fisTaksitHata, reyonHata, YildizMusteriGorunur ? null : pesinHata }.OfType<string>()],   // tur 3: katman kapalıyken Peşin yükleme hatası da görünür   // YILDIZ-4C: reyon yükleme uyarısı da (özgün bant Yıldız'da ekran dışında kalıyordu)
                 // ── YILDIZ-4C — etkileşim hâlleri tuval dilinde ──

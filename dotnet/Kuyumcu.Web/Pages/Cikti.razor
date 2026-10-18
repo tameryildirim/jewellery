@@ -26,6 +26,16 @@
 
 <PageTitle>@Marka.SayfaBasligi(belge?.BelgeAdi ?? Dil.T.Cikti.Baslik)</PageTitle>
 
+@if (ImzaSahibi is { } imzaSahibi)
+{
+    <ModalPencere Acik="imzaAcik" Baslik="@D1.ImzaBaslik" Kapat="() => imzaAcik = false">
+        @if (imzaAcik)
+        {
+            <ImzaAlani SahipTuru="@imzaSahibi" SahipId="@ImzaSahipId" Kaydedildi="ImzaKaydedildi" />
+        }
+    </ModalPencere>
+}
+
 <div class="belge-sayfa">
     <div class="belge-arac yazdirma-gizle">
         @* PAKET Q9-4 (QA turu 9): şerit başlığı eskiden belge adını ("SATIŞ FİŞİ")
@@ -49,6 +59,11 @@
             </Filtreler>
             <Eylem>
                 @* UX-S30 + DoD EK md.1: düğme ya istek atar ya disabled + sebep. *@
+                @* D1-13: imza alınabilen belgede (kimlik tespit formu · ürün belgesi) "Ekranda imzalat" — ikincil; birincil Yazdır. *@
+                @if (ImzaSahibi is not null && belge is not null)
+                {
+                    <button type="button" class="dugme dugme-ikincil" id="cikti-imza-al" @onclick="() => imzaAcik = true">@D1.ImzaAl</button>
+                }
                 <YazdirDugmesi Id="cikti-yazdir" Kilit="@YazdirKilidi" HataOlustu="HataYaz"
                                Otomatik="OtomatikYazdir" />
             </Eylem>
@@ -119,6 +134,27 @@
     private bool Fis80 => KagitSorgusu == "80";
 
     private D1Metinleri D1 => D1Sozlugu.Al(Dil.Dil);
+
+    // ── D1-13 — ekranda imza ───────────────────────────────────────────────────
+    private bool imzaAcik;
+
+    /// <summary>Bu belgenin imzası hangi kaydın yanında saklanır (belge deposu sahip türü); imzasız türde null.</summary>
+    private string? ImzaSahibi => Tur switch
+    {
+        BelgeTurleri.KimlikTespit => "KIMLIK_TESPIT",
+        BelgeTurleri.GarantiKarti => "SATIS",
+        _ => null,
+    };
+
+    /// <summary>Sahip kimliği: kimlik formunda kaydın kendisi; ürün belgesinde açılan satış satırı.</summary>
+    private string ImzaSahipId => Id;
+
+    private async Task ImzaKaydedildi()
+    {
+        imzaAcik = false;
+        try { belge = await Api.GetAsync<OrtakBelge>($"/cikti/{Tur}/{Id}"); }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { hata = ex.Message; }
+    }
 
     private void KagitSec(string? kagit) =>
         Nav.NavigateTo(Nav.GetUriWithQueryParameter("kagit", kagit), replace: true);

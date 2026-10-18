@@ -54,6 +54,8 @@ public sealed class CiktiServisi(
         BelgeTurleri.Fatura => "fatura",
         BelgeTurleri.CariMutabakat => "cari",   // D1-10: ekstreyle aynı kapı
         BelgeTurleri.KvkkAydinlatma => "cari",  // D1-19
+        BelgeTurleri.KimlikTespit => "uyum",    // D1-13 — + rol kapısı (MASAK kimlik ucuyla AYNI)
+        BelgeTurleri.GarantiKarti => "islem",   // D1-13 — satış fişiyle aynı kapı
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -69,6 +71,8 @@ public sealed class CiktiServisi(
         var modul = Modul(tur);
         if (tur == BelgeTurleri.Irsaliye && !IrsaliyeRolleri.Contains(islem.Rol))
             throw new ForbiddenException("Bu belgeyi görüntüleme yetkiniz yok (irsaliye)");
+        if (tur == BelgeTurleri.KimlikTespit && !IrsaliyeRolleri.Contains(islem.Rol))
+            throw new ForbiddenException("Bu belgeyi görüntüleme yetkiniz yok (kimlik tespiti)");
         if (!await yetki.ErisebilirMi(islem.TenantId, islem.Rol, modul))
             throw new ForbiddenException($"Bu belgeyi görüntüleme yetkiniz yok ({modul})");
 
@@ -79,6 +83,8 @@ public sealed class CiktiServisi(
             BelgeTurleri.Fatura => await FaturaBelgesi(id, islem, iptal),
             BelgeTurleri.CariMutabakat => await MutabakatBelgesi(id, islem, iptal),
             BelgeTurleri.KvkkAydinlatma => await KvkkBelgesi(id, islem, iptal),
+            BelgeTurleri.KimlikTespit => await KimlikTespitBelgesi(id, islem, iptal),
+            BelgeTurleri.GarantiKarti => await GarantiKartiBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -492,6 +498,129 @@ public sealed class CiktiServisi(
             BelgeNoKayitKimligi: true);
     }
 
+    // ── D1-13 (18.10) — kimlik tespit formu · ürün belgesi (garanti kartı) · ekran imzası ──────────
+
+    public const string GarantiNotu = "Bu belge ürünün satış anındaki özelliklerini gösterir. Garanti koşulları için işletmeye başvurunuz.";
+
+    /// <summary>Kaydın EN SON aktif ekran imzası (PNG base64); yoksa null.</summary>
+    private Task<string?> ImzaGorseli(string sahipTuru, string sahipId, string tenantId, CancellationToken iptal) =>
+        ImzaGorseli(sahipTuru, [sahipId], tenantId, iptal);
+
+    /// <summary>Sahip kümesinden (ör. fişin bütün satış satırları) en son aktif imza — belge hangi satırdan açılırsa açılsın aynı imza.</summary>
+    private async Task<string?> ImzaGorseli(string sahipTuru, IReadOnlyCollection<string> sahipIdler, string tenantId, CancellationToken iptal)
+    {
+        var icerik = await db.Belgeler.AsNoTracking()
+            .Where(b => b.TenantId == tenantId && b.SahipTuru == sahipTuru && sahipIdler.Contains(b.SahipId) && b.Tur == BelgeTuru.Imza && b.Aktif)
+            .OrderByDescending(b => b.Olusturuldu).Select(b => b.Icerik).FirstOrDefaultAsync(iptal);
+        return icerik is null ? null : Convert.ToBase64String(icerik);
+    }
+
+    /// <summary>
+    /// MASAK kimlik tespit kaydının imzalanacak formu. Tam kimlik basılır (form müşteriye imzalatılır, dosyada saklanır);
+    /// okuma izi Belge() içinde düşer (KVKK md.12), rol kapısı MASAK kimlik ucuyla AYNI.
+    /// </summary>
+    private async Task<OrtakBelge> KimlikTespitBelgesi(string id, AktifKullanici islem, CancellationToken iptal)
+    {
+        var m = await db.MasakKimlikTespitleri.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Kimlik tespiti bulunamadı");
+        var beyan = await db.MasakBeyanlari.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.KimlikTespitiId == m.Id && b.TenantId == islem.TenantId, iptal);
+        var tespitEden = await db.Kullanicilar.AsNoTracking()
+            .Where(k => k.Id == m.TespitEdenKullaniciId && k.TenantId == islem.TenantId)
+            .Select(k => k.Ad).FirstOrDefaultAsync(iptal);
+        var satirlar = new List<CiktiSatir>
+        {
+            new(["Ad soyad", m.AdSoyad]),
+            new(["Belge türü", m.BelgeTuru]),
+            new(["Belge numarası", m.BelgeNo]),
+        };
+        if (m.DogumTarihi is { } dt) satirlar.Add(new(["Doğum tarihi", dt.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture)]));
+        if (!string.IsNullOrWhiteSpace(m.Uyruk)) satirlar.Add(new(["Uyruk", m.Uyruk]));
+        if (!string.IsNullOrWhiteSpace(m.Adres)) satirlar.Add(new(["Adres", m.Adres]));
+        var islemSatirlari = new List<CiktiSatir>
+        {
+            new(["İşlem tutarı", Sayi(m.IslemTutariTl, 2)], ParaBirimi: "TRY"),
+            new(["Tespit tarihi", m.Tarih.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture)]),
+        };
+        if (!string.IsNullOrWhiteSpace(tespitEden)) islemSatirlari.Add(new(["Tespit eden", tespitEden]));
+        if (beyan is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(beyan.IslemAmaci)) islemSatirlari.Add(new(["İşlemin amacı", beyan.IslemAmaci]));
+            if (!string.IsNullOrWhiteSpace(beyan.FonKaynagi)) islemSatirlari.Add(new(["Fon kaynağı", beyan.FonKaynagi]));
+        }
+        return new OrtakBelge(
+            Tur: BelgeTurleri.KimlikTespit,
+            BelgeAdi: BelgeAdi(BelgeTurleri.KimlikTespit),
+            BelgeNo: m.Id,
+            Dayanak: "MASAK — müşterinin tanınması",
+            DuzenlemeTarihi: DateTime.UtcNow,
+            Duzenleyen: await Kimlik(islem.TenantId, islem.SubeId, iptal),
+            Karsi: null,
+            Bolumler:
+            [
+                new("Kimlik bilgileri", ["Alan", "Değer"], satirlar, null, [SutunBicimi.Metin, SutunBicimi.Metin]),
+                new("İşlem", ["Alan", "Değer"], islemSatirlari, null, [SutunBicimi.Metin, SutunBicimi.Metin]),
+            ],
+            Tutarlar: [],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.KimlikTespit),
+            Not: null,
+            Uyari: null,
+            BelgeNoKayitKimligi: true,
+            ImzaGorseli: await ImzaGorseli(BelgeSahipTuru.KimlikTespit, m.Id, islem.TenantId, iptal));
+    }
+
+    /// <summary>
+    /// Ürün belgesi (garanti kartı): satış fişinin ÜRÜNLÜ kalemleri — ad, kod, ayar (milyem), gram, has, taş ibaresi.
+    /// Garanti KOŞULU yazılmaz (işletmenin kararıdır, uydurulmaz); not satırı bunu söyler.
+    /// </summary>
+    private async Task<OrtakBelge> GarantiKartiBelgesi(string hareketId, AktifKullanici islem, CancellationToken iptal)
+    {
+        var h = await db.Hareketler.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == hareketId && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Hareket bulunamadı");
+        if (h.Tur != "SATIS") throw new BadRequestException("Ürün belgesi yalnız satış için düzenlenir");
+        var bacaklar = h.FisId is null ? [h]
+            : await db.Hareketler.AsNoTracking()
+                .Where(x => x.FisId == h.FisId && x.TenantId == islem.TenantId && x.Tur == "SATIS" && x.UrunId != null)
+                .OrderBy(x => x.Tarih).ThenBy(x => x.Id).ToListAsync(iptal);
+        var urunIdler = bacaklar.Where(b => b.UrunId != null).Select(b => b.UrunId!).Distinct().ToList();
+        var urunler = await db.Urunler.AsNoTracking()
+            .Where(u => u.TenantId == islem.TenantId && urunIdler.Contains(u.Id))
+            .Select(u => new { u.Id, u.Ad, u.Kod, u.AyarId, u.GramAgirlik, u.Birim, u.TasIbaresi })
+            .Take(urunIdler.Count + 1).ToDictionaryAsync(u => u.Id, iptal);
+        var satirlar = bacaklar.Where(b => b.UrunId != null && urunler.ContainsKey(b.UrunId)).Select(b =>
+        {
+            var u = urunler[b.UrunId!];
+            var adet = Math.Abs(b.Adet ?? 1m);
+            var ayar = u.AyarId is null ? null : Kuyumcu.Core.Domain.Ayarlar.Bul(u.AyarId);
+            return new CiktiSatir([
+                string.IsNullOrWhiteSpace(u.TasIbaresi) ? u.Ad : $"{u.Ad} ({u.TasIbaresi})",
+                u.Kod,
+                ayar is null ? (u.AyarId ?? "—") : $"{ayar.Ad} · {ayar.Milyem.ToString("0", CultureInfo.InvariantCulture)}",
+                u.Birim == "GRAM" ? Sayi(adet, 3) : Sayi(u.GramAgirlik * adet, 3),
+                Sayi(Math.Abs(b.HasGrami), 4),
+            ]);
+        }).ToList();
+        if (satirlar.Count == 0) throw new BadRequestException("Bu satışta ürünlü kalem yok");
+        return new OrtakBelge(
+            Tur: BelgeTurleri.GarantiKarti,
+            BelgeAdi: BelgeAdi(BelgeTurleri.GarantiKarti),
+            BelgeNo: h.FisId ?? h.Id,
+            Dayanak: "Garanti kartı",
+            DuzenlemeTarihi: h.Tarih,
+            Duzenleyen: await Kimlik(islem.TenantId, h.SubeId, iptal),
+            Karsi: await Taraf(h.CariId, islem.TenantId, "Müşteri", iptal),
+            Bolumler: [new("Ürünler", ["Ürün", "Kod", "Ayar", "Gram", "Has gram"], satirlar, null,
+                [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Gram, SutunBicimi.Has])],
+            Tutarlar: [],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.GarantiKarti),
+            Not: GarantiNotu,
+            Uyari: h.StornoKaynakId is not null ? "BU SATIŞ STORNO EDİLMİŞTİR — geçerli bir belge değildir." : null,
+            BelgeNoKayitKimligi: true,
+            ImzaGorseli: await ImzaGorseli(BelgeSahipTuru.Satis, [h.Id, .. bacaklar.Select(b => b.Id)], islem.TenantId, iptal));
+    }
+
     // ── D1-19 (18.10) — KVKK aydınlatma formu ───────────────────────────────
 
     public const string KvkkOkudum = "☐ Aydınlatma metnini okudum, bilgilendirildim.";
@@ -719,6 +848,8 @@ public sealed class CiktiServisi(
         BelgeTurleri.Fatura => "FATURA",       // D1-01; alış faturası belgede "ALIŞ FATURASI"
         BelgeTurleri.CariMutabakat => "CARİ HESAP MUTABAKAT FORMU",
         BelgeTurleri.KvkkAydinlatma => "KVKK AYDINLATMA FORMU",   // tek satır (uzun ad kayıt koduna taşıyordu — ölçüldü)
+        BelgeTurleri.KimlikTespit => "KİMLİK TESPİT FORMU",
+        BelgeTurleri.GarantiKarti => "ÜRÜN BELGESİ",
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -732,6 +863,8 @@ public sealed class CiktiServisi(
         BelgeTurleri.Fatura => ["Düzenleyen", "Teslim alan"],
         BelgeTurleri.CariMutabakat => ["Düzenleyen (kaşe / imza)", "Müşteri (kaşe / imza)"],
         BelgeTurleri.KvkkAydinlatma => ["Müşteri (ad soyad / imza)"],
+        BelgeTurleri.KimlikTespit => ["Müşteri (imza)", "Tespit eden"],
+        BelgeTurleri.GarantiKarti => ["Müşteri (imza)", "Satıcı (kaşe / imza)"],
         _ => [],
     };
 

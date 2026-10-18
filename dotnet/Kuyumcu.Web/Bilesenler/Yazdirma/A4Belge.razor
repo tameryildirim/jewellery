@@ -163,9 +163,15 @@
     @if (Belge.ImzaBasliklari.Length > 0)
     {
         <section class="belge-imza">
-            @foreach (var i in Belge.ImzaBasliklari)
+            @for (var ix = 0; ix < Belge.ImzaBasliklari.Length; ix++)
             {
+                var i = Belge.ImzaBasliklari[ix];
                 <div>
+                    @* D1-13: ekranda atılmış müşteri imzası İLK imza kutusunun (müşteri) çizgisinin üstüne basılır. *@
+                    @if (ix == 0 && !string.IsNullOrEmpty(Belge.ImzaGorseli))
+                    {
+                        <img class="belge-imza-gorsel" id="@($"{Onek}-imza-gorsel")" src="@($"data:image/png;base64,{Belge.ImzaGorseli}")" alt="@i" />
+                    }
                     <div class="imza-cizgi"></div>
                     <p>@i</p>
                 </div>

@@ -624,11 +624,14 @@ fi
 #    GIRDI-AILESI-2: 10 → 11 — js/girdi-maske.js. GEREKÇE: kurucu 08.10 "telefon gibi alanlara harf
 #    yazılamaz (tuş anında + yapıştırma temizliği), tarih 08102026 → 08.10.2026" — tuş/yapıştırma
 #    olayını tarayıcıda kesmek ister; belge düzeyinde tek dinleyici, kendi kökümüzden, eval yok, CSP istisnası yok.
+#    D1-13 (18.10): 11 → 12 — js/imza.js. GEREKÇE: müşteri imzası ekranda (parmak/kalem) alınır; tuvale çizim
+#    işaretçi olaylarını (Pointer Events) tarayıcıda yakalamayı ister, Blazor WASM bunu tek başına taşıyamaz.
+#    Kendi kökümüzden, eval yok, satır içi yok, CSP istisnası yok (imza görseli data: — img-src zaten izinli).
 BETIK=$(grep -c "<script " "$WEB/wwwroot/index.html" | tr -d ' ')
-if [ "$BETIK" = 11 ]; then
-  printf "  ✓ %-46s %s\n" "index.html <script> sayısı (sabit 11)" "$BETIK"
+if [ "$BETIK" = 12 ]; then
+  printf "  ✓ %-46s %s\n" "index.html <script> sayısı (sabit 12)" "$BETIK"
 else
-  printf "  ✗ %-46s %s (beklenen 11)\n" "index.html <script> sayısı (sabit 11)" "$BETIK"; HATA=1
+  printf "  ✗ %-46s %s (beklenen 12)\n" "index.html <script> sayısı (sabit 12)" "$BETIK"; HATA=1
 fi
 # Satır içi <script> BLOĞU hiç olamaz (CSP'de 'unsafe-inline' yok).
 INLINE_BETIK=$(grep -cE "^[[:space:]]*<script>" "$WEB/wwwroot/index.html" | tr -d ' ')

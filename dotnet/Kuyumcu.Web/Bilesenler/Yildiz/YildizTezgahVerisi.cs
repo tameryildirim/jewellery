@@ -125,6 +125,8 @@ public sealed class YildizTezgahBaglami
     public string? SonFis { get; init; }
     /// <summary>Yazdırma adresleri (sayfanın yazdirIdler'i, FisYazdir.YazdirAdresi ile).</summary>
     public IReadOnlyList<string> YazdirAdresleri { get; init; } = [];
+    /// <summary>D1-13: son satışın ürün belgesi (garanti kartı) adresi; satış değilse null.</summary>
+    public string? UrunBelgesiAdresi { get; init; }
     /// <summary>Yazdırma bağlantısı kurulamadıysa sebebi (UX-S28).</summary>
     public string? YazdirHata { get; init; }
     /// <summary>Kayıttan sonra sunucunun söylediği uyarılar (yerleşim, taksit) — soluk not satırı.</summary>

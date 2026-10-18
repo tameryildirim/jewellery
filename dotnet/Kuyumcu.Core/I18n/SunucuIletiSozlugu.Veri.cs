@@ -1414,5 +1414,11 @@ public static partial class SunucuIletiSozlugu
         ("☐ Kampanya ve bilgilendirme iletileri (SMS / e-posta / telefon) almak için açık rıza veriyorum.", "☐ I give explicit consent to receive campaign and information messages (SMS / e-mail / phone)."),
         ("Sayım defterle tutmadı. Farkın nedenini yazıp yeniden kaydedin; fark kapanıştan sonra görünür.", "The count does not match the ledger. Write the reason for the difference and save again; the difference is shown after closing."),
         ("Sorumlu çalışan bulunamadı ya da pasif", "Responsible staff member not found or inactive"),
+        ("Bu belgeyi görüntüleme yetkiniz yok (kimlik tespiti)", "You are not authorised to view this document (identity verification)"),
+        ("Bu belge ürünün satış anındaki özelliklerini gösterir. Garanti koşulları için işletmeye başvurunuz.", "This document shows the product's properties at the time of sale. Contact the business for warranty terms."),
+        ("Ürün belgesi yalnız satış için düzenlenir", "A product certificate is issued only for a sale"),
+        ("Bu satışta ürünlü kalem yok", "This sale has no product lines"),
+        ("İmza yalnız PNG olabilir", "The signature must be a PNG"),
+        ("Satış bulunamadı", "Sale not found"),
     ];
 }

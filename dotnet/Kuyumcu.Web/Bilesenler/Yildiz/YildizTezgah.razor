@@ -278,6 +278,11 @@
                         <a class="yz-b2 yz-tezgah-yazdir" id="@(i == 0 ? "yildiz-tezgah-yazdir" : $"yildiz-tezgah-yazdir-{i + 1}")" href="@B.YazdirAdresleri[i]" target="_blank" rel="noopener"
                            title="@FisYazdirSozlugu.Al(Dil.Dil).FisYazdirIpucu">@(B.YazdirAdresleri.Count == 1 ? FisYazdirSozlugu.Al(Dil.Dil).FisYazdir : string.Format(FisYazdirSozlugu.Al(Dil.Dil).FisYazdirSira, i + 1, B.YazdirAdresleri.Count))</a>
                     }
+                    @if (B.UrunBelgesiAdresi is { } ub)
+                    {
+                        @* D1-13: ürün belgesi (garanti kartı) — müşteriye ekranda imzalatılabilir. *@
+                        <a class="yz-b2 yz-tezgah-urun-belgesi" id="yildiz-tezgah-urun-belgesi" href="@ub" target="_blank" rel="noopener">@D1Sozlugu.Al(Dil.Dil).UrunBelgesi</a>
+                    }
                 }
             </div>
             @* D1-03 (18.10): işlem bekletme — bekleyen fişler listesi (fiş boşken açılır) ve sonuç satırı. *@
