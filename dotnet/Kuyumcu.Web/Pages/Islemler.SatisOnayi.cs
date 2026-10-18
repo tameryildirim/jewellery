@@ -34,7 +34,7 @@ public partial class Islemler
     private void OnayYakala(ApiHata ex)
     {
         if (ex.Kod != "ONAY_GEREKLI") return;
-        onayGerekli = true; hata = null;
+        onayGerekli = true; hata = null; kapiSunucudanAcildi = false;   // onay reddi yasal kapı değildir: ek alan açılmaz
         if (onayTalebi is { Durum: not "BEKLIYOR" }) { onayTalebi = null; onayHata = D1.OnayGecersiz; }
     }
 

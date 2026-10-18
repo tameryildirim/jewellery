@@ -3952,3 +3952,6 @@ html:root[data-sema="yildiz"] body .yz-kilit:not(#_) { display: flex; flex-wrap:
 html:root[data-sema="yildiz"] body .yz-kilit-durum:not(#_) { flex: 1 1 260px; min-width: 0; }
 html:root[data-sema="yildiz"] body .yz-kilit-baslik:not(#_) { font-weight: 500; }
 html:root[data-sema="yildiz"] body .yz-kilit-sureler:not(#_) { display: flex; flex-wrap: wrap; gap: 8px 16px; flex-basis: 100%; }
+/* D1-05: patronun onay paneli — Yıldız sayfa hizasında, kartsız. */
+html:root[data-sema="yildiz"] body .onay-paneli:not(#_) { margin: 24px 64px 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
+@media (max-width: 760px) { html:root[data-sema="yildiz"] body .onay-paneli:not(#_) { margin: 16px 16px 0; } }
