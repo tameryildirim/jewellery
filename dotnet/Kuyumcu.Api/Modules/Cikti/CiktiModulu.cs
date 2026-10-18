@@ -602,6 +602,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.EmanetTeslim => "EMANET TESLİM BELGESİ",
         BelgeTurleri.CariEkstre => "CARİ HESAP EKSTRESİ", // TOPLU-2: KESIF karar 1 — resmî belge adı
         BelgeTurleri.Irsaliye => "İRSALİYE",   // yön belgede ayrıntılanır (SEVK / MAL KABUL)
+        BelgeTurleri.Fatura => "FATURA",       // D1-01; alış faturası belgede "ALIŞ FATURASI"
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 

@@ -485,7 +485,7 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
 /* ── D1-01 (18.10) — 80 mm termal fiş düzeni ───────────────────────────────
    Aynı OrtakBelge, dar kâğıt: başlık alt alta, taraflar tek sütun, kalem tablosu satır başına
    "etiket … değer" listesi, tutarlar iki uçlu satır. Kâğıt muafiyeti korunur (belirteç yok). */
-.kagit-secimi { display: inline-flex; gap: .25rem; }
+.kagit-secimi { display: inline-flex; gap: .25rem; flex-wrap: nowrap; align-items: center; }
 .belge-80 { max-width: 80mm; margin: 0 auto; }
 .belge-80 .belge:not(#_) { padding: 4mm 3mm; font-size: 8.5pt; line-height: 1.35; }
 .belge-80 .belge h1:not(#_) { font-size: 12pt; }
@@ -500,9 +500,10 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
 .belge-80 .belge-tablo td[data-etiket]::before { content: attr(data-etiket); text-align: left; color: color-mix(in srgb, currentColor 62%, transparent); }
 .belge-80 .belge-tablo:not(:has(thead)) tr { display: flex; justify-content: space-between; gap: 8px; }
 .belge-80 .belge-toplam td:not(#_) { font-size: 10pt; }
-@page fis80 { size: 80mm auto; margin: 3mm; }
+/* Kâğıt boyutu (@page 80 mm) Cikti.razor'da yalnız 80 mm seçiliyken basılan <style> ile verilir:
+   genel kuraldaki A4 @page'i ondan sonra gelip ezer. Adlı sayfa (page: fis80) Chrome'da ilk sayfaya uygulanmıyordu (ölçüldü). */
 @media print {
-    .belge-80 { page: fis80; max-width: none; }
+    .belge-80 { max-width: none; }
 }
 
 /* ── Kâr-zarar ekranı ─────────────────────────────────────────────────────── */

@@ -38,11 +38,12 @@
                 <button type="button" class="dugme dugme-ikincil" id="cikti-geri" @onclick="Geri">
                     ← @Dil.T.Ortak.Geri
                 </button>
-                @* D1-01 (18.10): kâğıt seçimi — A4 ya da 80 mm termal fiş. Aynı veri, yalnız düzen değişir. *@
+                @* D1-01 (18.10): kâğıt seçimi — A4 ya da 80 mm termal fiş. Aynı veri, yalnız düzen değişir.
+                   İki düğme de ikincil (ekranın tek birincili Yazdır); seçili olan aria-pressed ile dolgu alır (dugme.css 3b). *@
                 <div class="kagit-secimi" role="group" aria-label="@D1.KagitSecimi" id="cikti-kagit">
-                    <button type="button" class="dugme dugme-kucuk @(Fis80 ? "dugme-ikincil" : "dugme-birincil")" id="cikti-kagit-a4"
+                    <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="cikti-kagit-a4"
                             aria-pressed="@(Fis80 ? "false" : "true")" @onclick="@(() => KagitSec(null))">@D1.KagitA4</button>
-                    <button type="button" class="dugme dugme-kucuk @(Fis80 ? "dugme-birincil" : "dugme-ikincil")" id="cikti-kagit-80"
+                    <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="cikti-kagit-80"
                             aria-pressed="@(Fis80 ? "true" : "false")" @onclick="@(() => KagitSec("80"))">@D1.Kagit80</button>
                 </div>
             </Filtreler>
@@ -77,6 +78,11 @@
                     @Dil.T.SayfaDuzeltme.IsletmeKartinaGit
                 </button>
             </div>
+        }
+        @if (Fis80)
+        {
+            @* 80 mm rulo: genişlik 80 mm; boy, POS yazıcı sürücülerinin varsayılan rulo sayfası (80 × 297 mm). *@
+            <style>@@media print { @@page { size: 80mm 297mm; margin: 3mm; } }</style>
         }
         <div class="@(Fis80 ? "belge-80" : null)" id="cikti-kagit-kap">
             <A4Belge Belge="b" Onek="cikti" />

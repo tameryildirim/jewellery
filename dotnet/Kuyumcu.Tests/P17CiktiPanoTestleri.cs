@@ -87,8 +87,8 @@ public sealed class P17SafTestleri
     [Fact]
     public void Dort_belge_turu_vardir_ve_hepsinin_modul_kapisi_yazilidir()
     {
-        // 4 → 5: PAKET EKSIK-B1-SATINALMA irsaliye dökümü (IRSALIYE) eklendi.
-        Assert.Equal(5, BelgeTurleri.Tumu.Length);
+        // 4 → 5: PAKET EKSIK-B1-SATINALMA irsaliye dökümü (IRSALIYE) eklendi. 5 → 6: D1-01 fatura dökümü (FATURA).
+        Assert.Equal(6, BelgeTurleri.Tumu.Length);
         foreach (var t in BelgeTurleri.Tumu)
         {
             Assert.True(BelgeTurleri.Gecerli(t));
@@ -108,6 +108,7 @@ public sealed class P17SafTestleri
         Assert.Equal("emanet", MCikti.CiktiServisi.Modul(BelgeTurleri.EmanetTeslim));
         Assert.Equal("cari", MCikti.CiktiServisi.Modul(BelgeTurleri.CariEkstre));
         Assert.Equal("fatura", MCikti.CiktiServisi.Modul(BelgeTurleri.Irsaliye));   // + rol kapısı (EKSIK-B1-SATINALMA)
+        Assert.Equal("fatura", MCikti.CiktiServisi.Modul(BelgeTurleri.Fatura));     // D1-01
     }
 
     [Fact]
