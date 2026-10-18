@@ -3136,7 +3136,7 @@ html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-bilgi b { color: var(--metin); f
 html:root[data-sema="yildiz"] .yz-ozet .yz-liste-ana { display: flex; flex-direction: column; gap: 32px; padding: 48px 64px 32px; }
 html:root[data-sema="yildiz"] .yz-ozet--kasalar .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 100px 170px 140px; }
 html:root[data-sema="yildiz"] .yz-ozet--kur .yz-liste-sat { grid-template-columns: minmax(0, 1fr) 160px 160px; }
-html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 90px 110px 120px; }
+html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 90px 110px 120px auto; }   /* D1-12: son sütun "Fotoğraf" */
 html:root[data-sema="yildiz"] .yz-ozet--kasarapor .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 90px 170px; }
 
 /* ── BOŞ DURUM (tuval: ortada 1×80 çizgi · 40 px ince cümle · 18 px/300 açıklama ≤520 · hap 16 px üst dolgu) ── */
@@ -3228,7 +3228,7 @@ html:root[data-sema="yildiz"] .yz-form .yz-form-sol > .yz-ekle { align-self: str
 /* 1001–1360 px: iki sütunlu özet sağ sütunu daralır → sabit sütunlar kısalır ki ad sütunu taşmasın (1440'ta tuval AYNEN). */
 @media (min-width: 1001px) and (max-width: 1360px) {
   html:root[data-sema="yildiz"] .yz-ozet--kasalar .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 70px 150px auto; }
-  html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 60px 80px 100px; }
+  html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 60px 80px 100px auto; }
 }
 /* ≤480 px: büyük rakam ve eki tek satır (kuruş ve ₺ rakamdan kopmaz). */
 @media (max-width: 480px) {
