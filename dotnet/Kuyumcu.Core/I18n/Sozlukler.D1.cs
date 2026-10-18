@@ -209,7 +209,8 @@ public sealed record D1Metinleri(
     string NetSatis,
     string Hedef,
     string Gerceklesme,
-    string Prim);
+    string Prim,
+    string IadeTutari);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -415,7 +416,8 @@ public static class D1Sozlugu
         NetSatis: "Net satış",
         Hedef: "Hedef",
         Gerceklesme: "Gerçekleşme",
-        Prim: "Prim");
+        Prim: "Prim",
+        IadeTutari: "İade tutarı");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -618,7 +620,8 @@ public static class D1Sozlugu
         NetSatis: "Net sales",
         Hedef: "Target",
         Gerceklesme: "Achieved",
-        Prim: "Commission");
+        Prim: "Commission",
+        IadeTutari: "Refunds");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;
