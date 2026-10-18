@@ -106,6 +106,27 @@ public sealed class P17CiktiEkranTestleri : BunitContext
     }
 
     [Fact]
+    public void D1_01_kagit_secimi_80mm_fis_duzenine_gecer_A4_geri_doner()
+    {
+        var nav = Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+        var e = Ekran();
+        e.WaitForElement("#cikti-belge");
+        Assert.DoesNotContain("belge-80", e.Find("#cikti-kagit-kap").ClassName ?? "");
+        Assert.Equal("true", e.Find("#cikti-kagit-a4").GetAttribute("aria-pressed"));
+
+        e.Find("#cikti-kagit-80").Click();
+        Assert.Contains("kagit=80", nav.Uri, StringComparison.Ordinal);
+
+        // ?kagit=80 ile açılan sayfa 80 mm düzenindedir; A4 düğmesi sorguyu kaldırır.
+        var e80 = Ekran();
+        e80.WaitForElement("#cikti-belge");
+        Assert.Contains("belge-80", e80.Find("#cikti-kagit-kap").ClassName ?? "");
+        Assert.Equal("true", e80.Find("#cikti-kagit-80").GetAttribute("aria-pressed"));
+        e80.Find("#cikti-kagit-a4").Click();
+        Assert.DoesNotContain("kagit=", nav.Uri, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Has_gram_tutari_HAM_KOD_ile_BASILMAZ()
     {
         var e = Ekran();

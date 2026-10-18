@@ -850,7 +850,8 @@ public sealed class FaturaEkranTestleri : BunitContext
         var gorunen = e.Find("#fk-eylem-f53").QuerySelectorAll("button").Select(b => b.Id).ToList();
         Assert.Equal(["fk-duzenle-f53", "fk-menu-ac-f53"], gorunen);
         var menu = e.Find("#fk-menu-f53");
-        Assert.Equal(["fk-goster-0", "fk-kes-f53", "fk-iptal-f53", "fk-menu-kapat-f53"],
+        // D1-01 (18.10): "Yazdır" menüde, yıkıcı "İptal"den önce.
+        Assert.Equal(["fk-goster-0", "fk-kes-f53", "fk-yazdir-f53", "fk-iptal-f53", "fk-menu-kapat-f53"],
                      menu.QuerySelectorAll("button").Select(b => b.Id));
         // Taslakta numara YOK: açıklama sarabilir (sütunu şişirmez); tarih tek satır.
         Assert.DoesNotContain("hucre-tek-satir", e.Find("#fk-no-yok-f53").Closest("td")!.ClassList);

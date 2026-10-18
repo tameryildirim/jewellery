@@ -32,8 +32,13 @@ public static class BelgeTurleri
     /// "bilgi amaçlı döküm" uyarısı basılır: anlaşmalı matbaa seri-sıra no ya da e-İrsaliye değildir.
     /// </summary>
     public const string Irsaliye = "IRSALIYE";
+    /// <summary>
+    /// D1-01 (18.10, rakip eşitleme) — kesilmiş faturanın kâğıt dökümü (A4 ya da 80 mm fiş).
+    /// e-Fatura/e-Arşiv entegratörü bağlanana dek "bilgi amaçlı döküm" uyarısı basılır.
+    /// </summary>
+    public const string Fatura = "FATURA";
 
-    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye];
+    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura];
 
     public static bool Gecerli(string? tur) =>
         tur is not null && Array.IndexOf(Tumu, tur) >= 0;

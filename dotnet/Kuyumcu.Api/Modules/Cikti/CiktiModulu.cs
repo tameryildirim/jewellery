@@ -48,6 +48,9 @@ public sealed class CiktiServisi(
         // PAKET EKSIK-B1-SATINALMA: irsaliye belge ailesindendir ("fatura" modülü) VE ayrıca
         // IrsaliyeController ile AYNI rol kapısından geçer (IrsaliyeRolleri) — tezgâhtar 403.
         BelgeTurleri.Irsaliye => "fatura",
+        // D1-01: fatura dökümü "fatura" modülündedir; tezgâhtar da (yetki matrisi izin veriyorsa)
+        // müşteriye kesilen faturanın kâğıdını verebilir — satış fişiyle aynı mantık.
+        BelgeTurleri.Fatura => "fatura",
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -70,6 +73,7 @@ public sealed class CiktiServisi(
         {
             BelgeTurleri.CariEkstre => await Ekstre(id, islem, iptal),
             BelgeTurleri.Irsaliye => await IrsaliyeBelgesi(id, islem, iptal),
+            BelgeTurleri.Fatura => await FaturaBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -414,6 +418,102 @@ public sealed class CiktiServisi(
             BelgeNoKayitKimligi: false);
     }
 
+    // ── D1-01 (18.10) — fatura dökümü ───────────────────────────────────────
+
+    /// <summary>
+    /// Entegratör bağlanana dek her fatura kâğıdına basılan uyarı. Sistem e-Fatura/e-Arşiv
+    /// göndermiyor; kâğıt döküm müşteriye bilgi verir, yasal belge yerine geçmez (uydurma yok).
+    /// </summary>
+    public const string FaturaYasalUyari =
+        "BİLGİ AMAÇLI DÖKÜMDÜR — e-Fatura / e-Arşiv fatura ya da matbaa basımlı fatura yerine geçmez.";
+
+    public const string FaturaIptalUyari = "BU FATURA İPTAL EDİLMİŞTİR — geçerli bir belge değildir.";
+    public const string FaturaTaslakUyari = "TASLAKTIR — fatura henüz kesilmedi.";
+
+    private async Task<OrtakBelge> FaturaBelgesi(string id, AktifKullanici islem, CancellationToken iptal)
+    {
+        var f = await db.Faturalar.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Fatura bulunamadı");
+        var kalemler = await db.FaturaKalemleri.AsNoTracking()
+            .Where(k => k.FaturaId == id && k.TenantId == islem.TenantId)
+            .OrderBy(k => k.Sira).Take(500).ToListAsync(iptal);
+
+        var alis = f.Tur == "ALIS";
+        var cari = await db.Cariler.AsNoTracking()
+            .Where(c => c.Id == f.CariId && c.TenantId == islem.TenantId)
+            .Select(c => new { c.Ad, c.Unvan, c.VergiNo, c.Adres, c.Telefon })
+            .FirstOrDefaultAsync(iptal);
+        // Kesilmiş faturada alıcı bilgisi faturanın KENDİ kopyasıdır (P0-8); taslakta kart okunur.
+        var karsi = new CiktiTaraf(
+            alis ? "Satıcı" : "Alıcı",
+            f.AliciUnvan ?? (string.IsNullOrWhiteSpace(cari?.Unvan) ? cari?.Ad : cari.Unvan) ?? "—",
+            f.AliciVergiNo ?? cari?.VergiNo,
+            f.AliciAdres ?? cari?.Adres,
+            cari?.Telefon);
+
+        var kuyum = kalemler.Count > 0 ? kalemler.Any(k => k.KdvTuru == "KUYUM") : f.KdvTuru == "KUYUM";
+        var satirlar = kalemler.Select(k => new CiktiSatir([
+            k.Sira.ToString(CultureInfo.InvariantCulture),
+            string.IsNullOrWhiteSpace(k.TasIbaresi) ? k.Aciklama : $"{k.Aciklama} ({k.TasIbaresi})",
+            k.Birim == "GRAM" ? k.Miktar.ToString("N3", TrKultur) + " g" : k.Miktar.ToString("0.###", TrKultur) + " adet",
+            KalemGrami(k) is { } g && g > 0m ? Sayi(g, 3) : "",
+            k.HasGrami is { } h && h != 0m ? Sayi(Math.Abs(h), 4) : "",
+            Sayi(k.BirimFiyat, 2),
+            "%" + (k.KdvOran * 100m).ToString("0.##", TrKultur),
+            Sayi(k.SatirToplam, 2),
+        ], ParaBirimi: f.ParaBirimi)).ToList();
+
+        var bolumler = new List<CiktiBolum>();
+        if (satirlar.Count > 0)
+            bolumler.Add(new CiktiBolum("Kalemler",
+                ["Sıra", "Açıklama", "Miktar", "Gram", "Has gram", "Birim fiyat", "KDV", "Tutar"], satirlar,
+                $"{satirlar.Count} kalem",
+                SutunBicimleri: [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Gram, SutunBicimi.Has,
+                                 SutunBicimi.Para, SutunBicimi.Metin, SutunBicimi.Para]));
+
+        // Toplamlar: kalemli faturada kalemlerin toplamı (fatura ekranındaki "fd-*" satırlarıyla AYNI kaynak);
+        // kalemsiz (BASLIK) eski faturada başlık alanları. Yeni formül yok.
+        var hasBedeli = kalemler.Count > 0 ? kalemler.Where(k => k.KdvTuru == "KUYUM").Sum(k => k.HasDeger) : f.HasDeger;
+        var matrah = kalemler.Count > 0 ? kalemler.Sum(k => k.KdvMatrah) : f.AraToplam - (kuyum ? f.HasDeger : 0m);
+        var kdv = kalemler.Count > 0 ? kalemler.Sum(k => k.KdvTutar) : f.KdvTutar;
+        var toplam = kalemler.Count > 0 ? kalemler.Sum(k => k.SatirToplam) : f.Toplam;
+        var tutarlar = new List<CiktiTutar>();
+        if (kuyum && hasBedeli != 0m) tutarlar.Add(new("Has altın bedeli (KDV dışı)", hasBedeli, f.ParaBirimi));
+        tutarlar.Add(new("KDV matrahı", matrah, f.ParaBirimi));
+        tutarlar.Add(new("KDV", kdv, f.ParaBirimi));
+        tutarlar.Add(new("Genel toplam", toplam, f.ParaBirimi, Toplam: true));
+
+        var uyari = f.Durum switch
+        {
+            "IPTAL" => $"{FaturaIptalUyari} {FaturaYasalUyari}",
+            "TASLAK" => $"{FaturaTaslakUyari} {FaturaYasalUyari}",
+            _ => FaturaYasalUyari,
+        };
+        var dayanak = kuyum && !string.IsNullOrWhiteSpace(f.OzelMatrahKodu)
+            ? $"KDV özel matrah (KDVK md.23) · kod {f.OzelMatrahKodu}"
+            : null;
+
+        return new OrtakBelge(
+            Tur: BelgeTurleri.Fatura,
+            BelgeAdi: alis ? "ALIŞ FATURASI" : "FATURA",
+            BelgeNo: f.FaturaNo ?? f.Id,
+            Dayanak: dayanak,
+            DuzenlemeTarihi: f.Tarih,
+            Duzenleyen: await Kimlik(islem.TenantId, null, iptal),
+            Karsi: karsi,
+            Bolumler: bolumler,
+            Tutarlar: tutarlar,
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.Fatura),
+            Not: string.IsNullOrWhiteSpace(f.Aciklama) ? null : f.Aciklama.Trim(),
+            Uyari: uyari,
+            BelgeNoKayitKimligi: f.FaturaNo is null);
+    }
+
+    /// <summary>Kalemin tartı gramı: gram birimli kalemde miktarın kendisi, adetlide kart gramı × adet (M5).</summary>
+    private static decimal? KalemGrami(Data.FaturaKalemi k) =>
+        k.Birim == "GRAM" ? k.Miktar : k.GramAgirlik is { } g ? g * k.Miktar : null;
+
     /// <summary>Miktar hücresi: tr-TR, ADET tam sayı · GRAM 3 hane (kâğıt; ekstre has hücresiyle aynı yol).</summary>
     internal static string IrsaliyeMiktar(decimal adet, string? birim) =>
         birim == "GRAM"
@@ -512,6 +612,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.EmanetTeslim => ["Teslim eden", "Teslim alan"],
         BelgeTurleri.CariEkstre => ["Düzenleyen"],
         BelgeTurleri.Irsaliye => ["Teslim eden", "Teslim alan"],
+        BelgeTurleri.Fatura => ["Düzenleyen", "Teslim alan"],
         _ => [],
     };
 

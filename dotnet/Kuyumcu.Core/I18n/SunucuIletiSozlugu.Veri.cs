@@ -1380,5 +1380,8 @@ public static partial class SunucuIletiSozlugu
         ("Peşin Müşteri'ye fatura kesilmez — fişe müşteri bağlayın", "No invoice for the Walk-in Customer — link a customer to the receipt"),
         ("Fatura sınırı üstünde müşterinin TC / vergi numarası yok", "Above the invoice limit the customer has no ID / tax number"),
         ("Bu fiş faturalanabilir değil (faturası var ya da bulunamadı)", "This receipt cannot be invoiced (already invoiced or not found)"),
+        ("BİLGİ AMAÇLI DÖKÜMDÜR — e-Fatura / e-Arşiv fatura ya da matbaa basımlı fatura yerine geçmez.", "FOR INFORMATION ONLY — does not replace an e-invoice / e-archive invoice or a printed invoice from an authorised printer."),
+        ("BU FATURA İPTAL EDİLMİŞTİR — geçerli bir belge değildir.", "THIS INVOICE HAS BEEN CANCELLED — it is not a valid document."),
+        ("TASLAKTIR — fatura henüz kesilmedi.", "DRAFT — the invoice has not been issued yet."),
     ];
 }

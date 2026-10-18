@@ -7,6 +7,7 @@
 @inject ApiIstemci Api
 @inject DilServisi Dil
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @implements IDisposable
 
 @* Kaynak: apps/web/src/pages/FaturaPage.tsx — Kasalar.razor desenini izler. *@
@@ -1915,6 +1916,9 @@
         {
             l.Add(goster);
         }
+        // D1-01 (18.10): fatura kâğıdı — A4 ya da 80 mm fiş (/cikti/FATURA). Taslakta da açılır, kâğıtta "TASLAKTIR" basılır.
+        l.Add(new($"fk-yazdir-{f.Id}", D1Sozlugu.Al(Dil.Dil).FaturaYazdir,
+                  Cb(() => Nav.NavigateTo($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.Fatura}/{f.Id}?donus=/faturalar"))));
         // ODENDI → IPTAL sunucuda İZİNLİDİR (GecerliGecisler) — QA turu 2 YÜKSEK: geri dönüş yolu.
         // Yıkıcı eylem pencerede; önce onay modalı (DoD EK 4).
         if (f.Durum is "TASLAK" or "KESILDI" or "ODENDI")

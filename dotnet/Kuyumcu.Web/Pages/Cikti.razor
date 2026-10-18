@@ -38,6 +38,13 @@
                 <button type="button" class="dugme dugme-ikincil" id="cikti-geri" @onclick="Geri">
                     ← @Dil.T.Ortak.Geri
                 </button>
+                @* D1-01 (18.10): kâğıt seçimi — A4 ya da 80 mm termal fiş. Aynı veri, yalnız düzen değişir. *@
+                <div class="kagit-secimi" role="group" aria-label="@D1.KagitSecimi" id="cikti-kagit">
+                    <button type="button" class="dugme dugme-kucuk @(Fis80 ? "dugme-ikincil" : "dugme-birincil")" id="cikti-kagit-a4"
+                            aria-pressed="@(Fis80 ? "false" : "true")" @onclick="@(() => KagitSec(null))">@D1.KagitA4</button>
+                    <button type="button" class="dugme dugme-kucuk @(Fis80 ? "dugme-birincil" : "dugme-ikincil")" id="cikti-kagit-80"
+                            aria-pressed="@(Fis80 ? "true" : "false")" @onclick="@(() => KagitSec("80"))">@D1.Kagit80</button>
+                </div>
             </Filtreler>
             <Eylem>
                 @* UX-S30 + DoD EK md.1: düğme ya istek atar ya disabled + sebep. *@
@@ -71,7 +78,9 @@
                 </button>
             </div>
         }
-        <A4Belge Belge="b" Onek="cikti" />
+        <div class="@(Fis80 ? "belge-80" : null)" id="cikti-kagit-kap">
+            <A4Belge Belge="b" Onek="cikti" />
+        </div>
 
         <div class="yazdirma-gizle t4-degismez-satir" id="cikti-degismez-satir">
             @* UX-S25: türetilmiş çıktıda düzenleme YOKTUR; gerekçesi yazılır. TOPLU-5: kutu TEK satır,
@@ -97,6 +106,16 @@
     [SupplyParameterFromQuery(Name = "yazdir")] public string? YazdirSorgusu { get; set; }
 
     private bool OtomatikYazdir => YazdirSorgusu == "1";
+
+    /// <summary>D1-01 — "?kagit=80": 80 mm termal fiş düzeni. Sorgusuz açılış A4 (eski davranış).</summary>
+    [SupplyParameterFromQuery(Name = "kagit")] public string? KagitSorgusu { get; set; }
+
+    private bool Fis80 => KagitSorgusu == "80";
+
+    private D1Metinleri D1 => D1Sozlugu.Al(Dil.Dil);
+
+    private void KagitSec(string? kagit) =>
+        Nav.NavigateTo(Nav.GetUriWithQueryParameter("kagit", kagit), replace: true);
 
     private OrtakBelge? belge;
     private string? hata;

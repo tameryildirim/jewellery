@@ -482,6 +482,29 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
     .belge .belge-taraflar:not(#_), .belge .belge-imza:not(#_) { grid-template-columns: 1fr 1fr; }
 }
 
+/* ── D1-01 (18.10) — 80 mm termal fiş düzeni ───────────────────────────────
+   Aynı OrtakBelge, dar kâğıt: başlık alt alta, taraflar tek sütun, kalem tablosu satır başına
+   "etiket … değer" listesi, tutarlar iki uçlu satır. Kâğıt muafiyeti korunur (belirteç yok). */
+.kagit-secimi { display: inline-flex; gap: .25rem; }
+.belge-80 { max-width: 80mm; margin: 0 auto; }
+.belge-80 .belge:not(#_) { padding: 4mm 3mm; font-size: 8.5pt; line-height: 1.35; }
+.belge-80 .belge h1:not(#_) { font-size: 12pt; }
+.belge-80 .belge-ust { flex-direction: column; align-items: flex-start; gap: 4px; }
+.belge-80 .belge-no { text-align: left; }
+.belge-80 .belge .belge-taraflar:not(#_), .belge-80 .belge .belge-imza:not(#_) { grid-template-columns: 1fr; gap: 8px; }
+.belge-80 .belge .belge-imza:not(#_) { margin-top: 20px; }
+.belge-80 .belge h2:not(#_) { margin: 10px 0 2px; }
+.belge-80 .belge-tablo thead { display: none; }
+.belge-80 .belge-tablo tr { display: block; padding: 3px 0; border-bottom: 1px dashed color-mix(in srgb, currentColor 30%, transparent); }
+.belge-80 .belge-tablo :is(th, td):not(#_) { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; border: 0; text-align: right; }
+.belge-80 .belge-tablo td[data-etiket]::before { content: attr(data-etiket); text-align: left; color: color-mix(in srgb, currentColor 62%, transparent); }
+.belge-80 .belge-tablo:not(:has(thead)) tr { display: flex; justify-content: space-between; gap: 8px; }
+.belge-80 .belge-toplam td:not(#_) { font-size: 10pt; }
+@page fis80 { size: 80mm auto; margin: 3mm; }
+@media print {
+    .belge-80 { page: fis80; max-width: none; }
+}
+
 /* ── Kâr-zarar ekranı ─────────────────────────────────────────────────────── */
 .bolum-baslik { font-size: 1.05rem; font-weight: 600; margin: 1.75rem 0 .75rem; color: var(--metin-guclu); }
 .rozet-satir { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
