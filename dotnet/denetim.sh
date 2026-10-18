@@ -765,7 +765,8 @@ SAYFA_SAYISI=$(ls "$WEB"/Pages/*.razor 2>/dev/null | wc -l | tr -d ' ')
 # /vitrin yönetim ekranıdır (marj ayarı, MUDUR+), dükkân ekranı ise müşteriye dönük kabuksuz TV sayfasıdır
 # (P-17 gerekçesiyle aynı: "vitrindeki TV'de tam ekran durur; aynı sayfada yaşayamazlar").
 # D1-19 (18.10): Kvkk.razor eklendi (52 -> 53) — işletmenin aydınlatma metni + izin özeti; mevcut bir
-# ekranın sekmesi OLAMAZ: Uyum (MASAK) farklı rol/veri, İşletme sayfası 1400 satır tavanında.
+# ekranın sekmesi OLAMAZ: Uyum (MASAK) farklı rol/veri; İşletme ayar sayfası tek kayıtlık işletme kartıdır,
+# sürümlü uzun metin ve müşteri izin özeti oraya ait değildir.
 cirkir "Pages/*.razor dosya sayısı" "$SAYFA_SAYISI" 53
 
 # 8) DoD/4 — SESSİZ FORM YASAĞI: EditForm kullanan sayfada ValidationMessage

@@ -32,7 +32,8 @@ public sealed record UrunVeri(
     string? Barkod = null, string? Kod = null);
 /// <summary>SATIS-3 t6: SubeId — /kasalar yanıtının ZATEN taşıdığı alan; varsayılan kasa oturumun şubesinden seçilir
 /// (başka şubenin kasasına nakit yazılmasın). Eski gövdelerde yoksa null = bilinmiyor.</summary>
-public sealed record KasaVeri(string Id, string Ad, string ParaBirimi, bool Aktif, string? SubeId = null);
+/// <param name="SorumluKullaniciId">D1-11: kasanın sorumlu çalışanı — tezgâhta o çalışanın varsayılan kasası.</param>
+public sealed record KasaVeri(string Id, string Ad, string ParaBirimi, bool Aktif, string? SubeId = null, string? SorumluKullaniciId = null);
 public sealed record SubeVeri(string Id, string Ad, bool Aktif);
 /// <summary>Sunucu fiyat teklifi — kırılımıyla. Formül EKRANDA YOK (PANO-KARAR §88).</summary>
 public sealed record Teklif(bool TeklifVar, string? Sebep, decimal? ListeFiyati, decimal? HasDegeri,

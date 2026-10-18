@@ -415,9 +415,14 @@ public static class FisHesap
     /// null → ekran seçiciyi BASİT'te de gösterir (fail-closed). Şubesiz oturumda (ör. patron) kasalar birden çok
     /// şubeye dağılmışsa yine null; tek şubedeyse ilk kasa.
     /// </summary>
-    public static string? VarsayilanKasa(IReadOnlyList<KasaVeri> kasalar, string? oturumSubeId)
+    public static string? VarsayilanKasa(IReadOnlyList<KasaVeri> kasalar, string? oturumSubeId, string? kullaniciId = null)
     {
         if (kasalar.Count == 0) return null;
+        // D1-11 (18.10) çalışan kasası: oturumdaki çalışanın SORUMLU olduğu kasa (şubesi uyuyorsa) önce gelir.
+        if (!string.IsNullOrEmpty(kullaniciId)
+            && kasalar.FirstOrDefault(k => k.SorumluKullaniciId == kullaniciId
+                && (string.IsNullOrEmpty(oturumSubeId) || string.IsNullOrEmpty(k.SubeId) || k.SubeId == oturumSubeId)) is { } benim)
+            return benim.Id;
         if (!string.IsNullOrEmpty(oturumSubeId))
             return kasalar.FirstOrDefault(k => string.IsNullOrEmpty(k.SubeId) || k.SubeId == oturumSubeId)?.Id;
         var subeler = kasalar.Select(k => k.SubeId).Where(s => !string.IsNullOrEmpty(s)).Distinct().Count();

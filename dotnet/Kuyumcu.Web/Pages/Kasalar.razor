@@ -251,6 +251,12 @@
         {
             <p class="metin-kucuk metin-soluk" id="kasa-sube-tek">@string.Format(M.SubeOtomatik, subeler[0].Ad)</p>
         }
+        @* D1-11: sorumlu çalışan — düzenlemedekiyle aynı alan (UX-S26: oluşturmada yutulmaz). *@
+        <div class="alan">
+            <Secici ElemanId="kasa-sorumlu" Etiket="@D1Sozlugu.Al(Dil.Dil).SorumluCalisan"
+                    Secenekler="@SorumluSecenekleri" @bind-Deger="yeniSorumlu"
+                    BosSecenekMetni="@D1Sozlugu.Al(Dil.Dil).SorumluYok" />
+        </div>
         <HataBandi Mesaj="@modalHata" />
     </div>
     </ChildContent>
@@ -297,6 +303,14 @@
                     BosSecenekMetni="—"
                     Devredisi="@DegisimKilitli" />
             <AlanHatasi Alan="d-sube" Durum="duzenleForm" />
+        </div>
+        @* D1-11 (18.10): çalışan kasası — sorumlu çalışan; tezgâhta o çalışanın varsayılan kasası olur. *@
+        <div class="alan">
+            <Secici ElemanId="d-sorumlu" Etiket="@D1Sozlugu.Al(Dil.Dil).SorumluCalisan"
+                    Secenekler="@SorumluSecenekleri" @bind-Deger="duzenleSorumlu"
+                    BosSecenekMetni="@D1Sozlugu.Al(Dil.Dil).SorumluYok" />
+            <AlanHatasi Alan="d-sorumlu" Durum="duzenleForm" />
+            <HataBandi Mesaj="@personelHata" Id="d-sorumlu-hata" />
         </div>
         @if (DegisimKilitli && !kilitYukleniyor)
         {
@@ -473,6 +487,11 @@
         {
             <Yukleniyor />
         }
+        else if (Kor)
+        {
+            @* D1-11 KÖR SAYIM: sunucu beklenen tutarı göndermedi — ekran rakam yazmaz, kuralı söyler. *@
+            <p class="metin-soluk" id="gun-kor-not">@D1Sozlugu.Al(Dil.Dil).KorSayimNotu</p>
+        }
         else if (gunOnizleme.KartToplam != 0m || gunOnizleme.HavaleToplam != 0m)
         {
             <div class="satir-arasi" id="gun-toplam-satir">
@@ -511,10 +530,10 @@
         @* PAKET GOC-A (envanter C · gun-sayilan "eksi sayım ekranda kabul edilir"): K9a sıfır olabilir — eksi yazılamaz,
            2 ondalık; sunucu AYNI kural (KasaRaporu kr-sayim-tutar ile iki ekran tutarlı). *@
         <Para ElemanId="gun-sayilan" Etiket="@Dil.T.Kasa.SayilanNakit" Tur="TutarTuru.SifirOlabilir" Zorunlu="true"
-              ParaBirimi="@gunKasa?.ParaBirimi"
+              ParaBirimi="@gunKasa?.ParaBirimi" Devredisi="korGerekce" DevredisiSebebi="@(korGerekce ? D1Sozlugu.Al(Dil.Dil).KorSayimKilit : null)"
               Deger="@gunSayilan" DegerChanged="@(v => gunSayilan = v)"
               Durum="gunForm" HataAlani="gun-sayilan" />
-        @if (gunSayilan is not null && gunOnizleme is not null)
+        @if (gunSayilan is not null && gunOnizleme is not null && !Kor)
         {
         <div class="satir-arasi" id="gun-fark-satir">
             <span class="metin-soluk">@Dil.T.Kasa.Fark</span>
@@ -526,7 +545,7 @@
         </div>
         }
         @* Fark varsa gerekçe ZORUNLU — sunucu da reddeder. *@
-        @if (gunSayilan is not null && gunOnizleme is not null && GunFark != 0m)
+        @if ((gunSayilan is not null && gunOnizleme is not null && !Kor && GunFark != 0m) || korGerekce)
         {
             @* PAKET GOC-A (envanter C · gun-aciklama "tek harfle geçer; ekran 500 / sunucu 1000"): K30 en az 20, en çok
                1000 (gün açma ve storno ile AYNI kural); alan altı sözlük metni, Kaydet kilidi aynı cümle (GunKilitSebebi). *@
@@ -640,6 +659,8 @@
         yeniForm.Temizle();
         yeniAd = "";
         yeniDoviz = "TRY";
+        yeniSorumlu = "";   // D1-11
+        _ = InvokeAsync(async () => { await PersonelleriYukle(); StateHasChanged(); });
         // ŞUBE-KAPSAM-B: yeni kasanın şubesi varsayılan olarak BAKILAN şubedir
         // (görünüm "Merkez" iken açılan kasa Merkez'e düşer); yoksa ilk şube.
         var gorunen = SubeliSorgu.Sube(Oturum);
@@ -841,7 +862,7 @@
             var subeId = string.IsNullOrEmpty(yeniSube)
                 ? (subeler.Count > 0 ? subeler[0].Id : null)
                 : yeniSube;
-            await Api.PostAsync("/kasalar", new { ad = yeniAd.Trim(), subeId, paraBirimi = yeniDoviz });
+            await Api.PostAsync("/kasalar", new { ad = yeniAd.Trim(), subeId, paraBirimi = yeniDoviz, sorumluKullaniciId = string.IsNullOrEmpty(yeniSorumlu) ? null : yeniSorumlu });
             yeniModalAcik = false;
             yeniAd = "";
             BasariGoster(Dil.T.Kasa.KasaKaydedildi);
@@ -884,9 +905,16 @@
         : gunOnizleme is null ? PD2.GunOnizlemeYukleniyor
         : sayiKapisi.OnekleVar("gun-") ? null
         : gunSayilan is null ? PD2.GunSayimBekleniyor
-        : GunFark != 0m && string.IsNullOrWhiteSpace(gunAciklama) ? Dil.T.Kasa.FarkGerekcesiZorunlu
-        : GunFark != 0m && GunGerekceHatasi is { } gerekceHatasi ? gerekceHatasi
+        : GerekceGerekli && string.IsNullOrWhiteSpace(gunAciklama) ? Dil.T.Kasa.FarkGerekcesiZorunlu
+        : GerekceGerekli && GunGerekceHatasi is { } gerekceHatasi ? gerekceHatasi
         : null;
+
+    /// <summary>D1-11 — kör sayım: sunucu beklenen tutarı göndermedi (fark ekranda HESAPLANMAZ).</summary>
+    private bool Kor => gunOnizleme?.Gizli == true;
+    /// <summary>D1-11 — kör sayımda sunucu "tutmadı" dedi: gerekçe alanı açılır, sayılan alanı kilitlenir.</summary>
+    private bool korGerekce;
+    /// <summary>Gerekçe gerekli mi: açık sayımda fark ≠ 0; kör sayımda sunucunun reddinden sonra.</summary>
+    private bool GerekceGerekli => Kor ? korGerekce : GunFark != 0m;
 
     /// <summary>PARA-DEMO — sunucunun gün kapanışı önizlemesi (sayılacak nakit ve sayıma girmeyenler).</summary>
     private GunKapanisiOnizleme? gunOnizleme;
@@ -903,6 +931,7 @@
         gunAciklama = "";
         gunOnizleme = null;
         gunOnizlemeHata = null;
+        korGerekce = false;
         // UX-S28: hata "0 TL nakit"e çevrilmez — bant + kilitli düğme.
         try { gunOnizleme = await Api.GetAsync<GunKapanisiOnizleme>($"/kasalar/{k.Id}/gun-kapanisi/onizleme"); }
         catch (ApiHata ex) { gunOnizlemeHata = ex.Message; }
@@ -917,20 +946,34 @@
         kaydediliyor = true;
         try
         {
-            await Api.PostAsync($"/kasalar/{gunKasa!.Id}/gun-kapanisi", new
+            var y = await Api.PostAsync($"/kasalar/{gunKasa!.Id}/gun-kapanisi", new
             {
                 sayilanNakit = gunSayilan,
                 aciklama = string.IsNullOrWhiteSpace(gunAciklama) ? null : gunAciklama.Trim(),
             });
+            var paraBirimi = gunKasa.ParaBirimi;
             gunKasa = null;
-            BasariGoster(Dil.T.Kasa.GunKapatildi);
+            // D1-11: kör sayımda fark ancak kapanıştan SONRA söylenir (sunucu yanıtındaki fark).
+            BasariGoster(Kor && KapanisFarki(y) is { } kf
+                ? string.Format(D1Sozlugu.Al(Dil.Dil).KorSayimSonuc, Dil.T.Kasa.GunKapatildi, Bicim.Para(kf, paraBirimi))
+                : Dil.T.Kasa.GunKapatildi);
             await Yukle();
         }
         // SON-KALANLAR: alan hatası (sayilanNakit / aciklama) alanın ALTINDA, bantta tekrar edilmez. Gerekçe alanı
         // yalnız ekranda farkı varken çizilir — çizili değilse (önizleme eskimiş) mesaj bantta kalır (UX-S28).
-        catch (ApiHata ex) { gunHata = gunForm.SunucuHatasi(ex, Dil, GunEsleme); }
+        catch (ApiHata ex)
+        {
+            if (Kor && ex.StatusCode == 400) korGerekce = true;   // D1-11: sayım tutmadı → gerekçe alanı açılır (eşleme onu görür)
+            gunHata = gunForm.SunucuHatasi(ex, Dil, GunEsleme);
+        }
         kaydediliyor = false;
     }
+
+    /// <summary>D1-11 — kapanış yanıtındaki fark (yoksa null; uydurulmaz).</summary>
+    private static decimal? KapanisFarki(System.Text.Json.JsonElement y) =>
+        y.ValueKind == System.Text.Json.JsonValueKind.Object
+        && (y.TryGetProperty("fark", out var f) || y.TryGetProperty("Fark", out f))
+        && f.ValueKind == System.Text.Json.JsonValueKind.Number ? f.GetDecimal() : null;
 
     /// <summary>SON-KALANLAR — Gün Kapat formunun alan defteri (sunucu 400 alanları).</summary>
     private readonly FormDurumu gunForm = new();
@@ -941,7 +984,7 @@
         get
         {
             var e = new Dictionary<string, string> { ["SayilanNakit"] = "gun-sayilan" };
-            if (gunSayilan is not null && gunOnizleme is not null && GunFark != 0m) e["Aciklama"] = "gun-aciklama";
+            if ((gunSayilan is not null && gunOnizleme is not null && !Kor && GunFark != 0m) || korGerekce) e["Aciklama"] = "gun-aciklama";
             return e;
         }
     }
@@ -989,7 +1032,9 @@
         duzenleEskiAd = k.Ad;
         duzenleDoviz = k.ParaBirimi;
         duzenleSube = k.SubeId ?? "";
+        duzenleSorumlu = k.SorumluKullaniciId ?? "";   // D1-11
         duzenleKasaId = k.Id;
+        await PersonelleriYukle();
         // PAKET Q9-5: kilit KAYDETMEDEN önce okunur (UX-S30). Okunamazsa alanlar
         // kilitli kalır ve sebep "okunamadı" yazar — hata "serbest"e çevrilmez.
         kilitSebebi = null;
@@ -1025,6 +1070,7 @@
         // Q9-5: kilitli kasada döviz/şube gövdeye KONMAZ (alan zaten kilitli).
         if (!DegisimKilitli && kasa is not null && duzenleDoviz != kasa.ParaBirimi) govde["paraBirimi"] = duzenleDoviz;
         if (!DegisimKilitli && kasa is not null && duzenleSube != (kasa.SubeId ?? "")) govde["subeId"] = duzenleSube;
+        if (kasa is not null && (duzenleSorumlu ?? "") != (kasa.SorumluKullaniciId ?? "")) govde["sorumluKullaniciId"] = duzenleSorumlu ?? "";   // D1-11: "" = kaldır
         if (govde.Count == 0) { modalHata = Dil.T.Kabuk.DegisiklikYok; return; }
 
         modalHata = null;
@@ -1041,7 +1087,7 @@
             // TOPLU-7B: aynı ret alan altında TAM, bantta kısa genel cümle (tek yazım).
             modalHata = duzenleForm.SunucuHatasiTek(ex, Dil, new Dictionary<string, string>
             {
-                ["Ad"] = "d-ad", ["ParaBirimi"] = "d-doviz", ["SubeId"] = "d-sube",
+                ["Ad"] = "d-ad", ["ParaBirimi"] = "d-doviz", ["SubeId"] = "d-sube", ["SorumluKullaniciId"] = "d-sorumlu",
             });
         }
         kaydediliyor = false;

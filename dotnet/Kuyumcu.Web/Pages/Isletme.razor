@@ -381,6 +381,14 @@
                                 <span class="metin-soluk metin-kucuk" id="i-satis-belge-aciklama">@SatisBelgeSozlugu.VarsayilanAciklama(Dil.Dil)</span>
                                 <HataBandi Mesaj="@satisBelgeHata" Id="i-satis-belge-hata" />
                             </div>
+                            @* D1-11 (18.10): kör sayım — gün sonunda beklenen nakit SAHİP dışına gösterilmez; PUT /kasalar/kor-sayim SAHİP/MÜDÜR. *@
+                            <div class="alan">
+                                <Onay ElemanId="i-kor-sayim" Etiket="@D1Sozlugu.Al(Dil.Dil).KorSayimEtiket"
+                                      Deger="@korSayim" DegerChanged="@((bool v) => KorSayimDegistir(v))"
+                                      Devredisi="@(SaltOkunur || !korSayimOkundu)" DevredisiSebebi="@P1.IsletmeYalnizSahip" />
+                                <span class="metin-soluk metin-kucuk" id="i-kor-sayim-aciklama">@D1Sozlugu.Al(Dil.Dil).KorSayimAciklama</span>
+                                <HataBandi Mesaj="@korSayimHata" Id="i-kor-sayim-hata" />
+                            </div>
                             @* ── PAKET P-13 · B-47 ────────────────────────────────────────
                                Kur kaynağı ve maliyet yöntemi SALT OKUNUR satırdı ve yanında
                                "bu ayar türetilir" gerekçesi yazıyordu. İkisi de doğru değildi:
@@ -1009,7 +1017,7 @@
     {
         Dil.Degisti += Yenile;
         await Task.WhenAll(
-            TenantYukle(), SubeYukle(), VezneYukle(), KurKaynaklariYukle(), AbonelikYukle(), KmtsYukle(), SatisBelgeYukle());   // M6
+            TenantYukle(), SubeYukle(), VezneYukle(), KurKaynaklariYukle(), AbonelikYukle(), KmtsYukle(), SatisBelgeYukle(), KorSayimYukle());   // M6 · D1-11
     }
 
     // ── PAKET YASAL-4 / Y4-C — KMTS alanı ayarı ──────────────────────────────

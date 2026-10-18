@@ -243,8 +243,14 @@ public static class KiraciAyarAnahtari
     /// </summary>
     public const string SatisBelgeVarsayilan = "satis_belge_varsayilan";
 
+    /// <summary>
+    /// D1-11 (18.10) — KÖR SAYIM: açıkken gün kapanışında beklenen nakit SAHİP dışındaki rollere gösterilmez
+    /// (sunucu göndermez); fark kapanıştan sonra görünür. Değer "true"/"false"; yoksa KAPALI.
+    /// </summary>
+    public const string KasaKorSayim = "kasa_kor_sayim";
+
     public static readonly string[] Tumu =
-        [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi, SatisBelgeVarsayilan];
+        [VezneZorunlu, GorunumSemasi, GorunumYaziOlcegi, GorunumTemaModu, KmtsKullanimi, SatisBelgeVarsayilan, KasaKorSayim];
 }
 
 /// <summary>

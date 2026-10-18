@@ -950,7 +950,7 @@
     private bool AnaKasaTek => AnaKasalar.Count == 1;
 
     /// <summary>SATIS-3 t6 — oturumun şubesine göre varsayılan TL kasası (FisHesap.VarsayilanKasa).</summary>
-    private string? VarsayilanKasaId => FisHesap.VarsayilanKasa(AnaKasalar, Oturum.Kullanici?.SubeId);
+    private string? VarsayilanKasaId => FisHesap.VarsayilanKasa(AnaKasalar, Oturum.Kullanici?.SubeId, Oturum.Kullanici?.Id);   // D1-11: çalışanın kasası önce
 
     // Canlı kur servisinden kurSnapshotId + has fiyatını yansıt (push geldiğinde de çağrılır)
     private void KurYansit()

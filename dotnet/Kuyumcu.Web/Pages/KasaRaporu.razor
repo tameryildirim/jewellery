@@ -228,6 +228,11 @@
                 {
                     <Yukleniyor />
                 }
+                else if (sayimOnizleme.Gizli)
+                {
+                    @* D1-11 KÖR SAYIM: sunucu beklenen tutarı göndermedi — rakam yazılmaz; fark kayıttan sonra bantta. *@
+                    <p class="metin-kucuk metin-soluk" id="kr-sayim-kor">@D1Sozlugu.Al(Dil.Dil).KorSayimNotu</p>
+                }
                 else
                 {
                     <p class="metin-kucuk metin-soluk" id="kr-sayim-defter">
@@ -405,7 +410,7 @@
     private bool GecmisAcikGun(KasaGunu gun) => gun.Durum != "KAPALI" && gun.Tarih != BugunAnahtar;
 
     private bool SayimFarkVar(KasaDefteriSatiri sk) =>
-        sayimTutar is { } t && sayimOnizleme is { } o
+        sayimTutar is { } t && sayimOnizleme is { } o && !o.Gizli   // D1-11: kör sayımda fark ekranda hesaplanmaz
         && Math.Round(t - o.NakitDefter, 2, MidpointRounding.AwayFromZero) != 0m;
 
     // ── PAKET PARA-DEMO (madde 1): sayılacak NAKİT defteri sunucudan ──

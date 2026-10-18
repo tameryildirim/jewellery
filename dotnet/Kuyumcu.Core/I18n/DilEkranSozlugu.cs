@@ -70,6 +70,7 @@ public static class DilEkranSozlugu
         ["SAKLAMA_UYGULA"] = "Masking of identity data past retention",
         ["STOPAJ_HATIRLATMA"] = "Withholding tax payment reminder",
         ["STOK_ESIK"] = "Below minimum stock",
+        ["KASA_KAPANIS"] = "Day-end closing reminder",
         ["TEVSIK_KURTARMA"] = "Cash limit breach scan",
         ["VADE_HATIRLATMA"] = "Due date reminder",
     };

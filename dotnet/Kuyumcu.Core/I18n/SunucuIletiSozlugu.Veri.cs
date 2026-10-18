@@ -1412,5 +1412,7 @@ public static partial class SunucuIletiSozlugu
         ("İşletmenin aydınlatma metni girilmemiş — KVKK ekranından girin", "The business privacy notice has not been entered — enter it on the Data protection screen"),
         ("☐ Aydınlatma metnini okudum, bilgilendirildim.", "☐ I have read the privacy notice and been informed."),
         ("☐ Kampanya ve bilgilendirme iletileri (SMS / e-posta / telefon) almak için açık rıza veriyorum.", "☐ I give explicit consent to receive campaign and information messages (SMS / e-mail / phone)."),
+        ("Sayım defterle tutmadı. Farkın nedenini yazıp yeniden kaydedin; fark kapanıştan sonra görünür.", "The count does not match the ledger. Write the reason for the difference and save again; the difference is shown after closing."),
+        ("Sorumlu çalışan bulunamadı ya da pasif", "Responsible staff member not found or inactive"),
     ];
 }

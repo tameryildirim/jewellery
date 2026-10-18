@@ -1093,6 +1093,11 @@ public class Kasa : IKiraciVarlik, ISubeVarlik
     [Column("ad"), MaxLength(100)] public string Ad { get; set; } = null!;
     [Column("para_birimi"), MaxLength(5)] public string ParaBirimi { get; set; } = "TRY";
     [Column("bakiye", TypeName = "decimal(15,2)")] public decimal Bakiye { get; set; }
+    /// <summary>
+    /// D1-11 (18.10, rakip eşitleme: "çalışan kasası") — kasanın sorumlu çalışanı. Tezgâhta bu çalışanın
+    /// varsayılan kasası budur; boşsa eski davranış (şubenin ilk TL kasası).
+    /// </summary>
+    [Column("sorumlu_kullanici_id"), MaxLength(36)] public string? SorumluKullaniciId { get; set; }
     [Column("aktif")] public bool Aktif { get; set; } = true;
     [Column("guncellendi")] public DateTime Guncellendi { get; set; }
 }

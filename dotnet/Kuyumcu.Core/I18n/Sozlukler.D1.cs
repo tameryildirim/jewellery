@@ -50,7 +50,17 @@ public sealed record D1Metinleri(
     string HurdaAnalizGonderilen,
     string HurdaOrtalama,
     string HurdaHasBasinaFark,
-    string HurdaTahlilFarki);
+    string HurdaTahlilFarki,
+    string KorSayimNotu,
+    string KorSayimSonuc,
+    string KorSayimKilit,
+    string KorSayimEtiket,
+    string KorSayimAciklama,
+    string KorSayimAcildi,
+    string KorSayimKapandi,
+    string SorumluCalisan,
+    string SorumluYok,
+    string SorumluSatir);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -97,7 +107,17 @@ public static class D1Sozlugu
         HurdaAnalizGonderilen: "90 günde gönderilen",
         HurdaOrtalama: "has gramı {0}",
         HurdaHasBasinaFark: "Has gramı başına fark",
-        HurdaTahlilFarki: "Tahlil farkı");
+        HurdaTahlilFarki: "Tahlil farkı",
+        KorSayimNotu: "Kör sayım açık: çekmecedeki nakdi sayıp yazın. Beklenen tutar ve fark kapanıştan sonra görünür.",
+        KorSayimSonuc: "{0} · fark: {1}",
+        KorSayimKilit: "Sayım kaydedildi; farkın nedenini yazın",
+        KorSayimEtiket: "Kör sayım (gün sonunda beklenen nakit gösterilmez)",
+        KorSayimAciklama: "Açıkken kasiyer ve müdür gün sonunda yalnız saydığı tutarı yazar; beklenen tutar ve fark kapanıştan sonra görünür. İşletme sahibi her zaman görür.",
+        KorSayimAcildi: "Kör sayım açıldı",
+        KorSayimKapandi: "Kör sayım kapatıldı",
+        SorumluCalisan: "Sorumlu çalışan",
+        SorumluYok: "— (sorumlu yok)",
+        SorumluSatir: "Sorumlu: {0}");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -141,7 +161,17 @@ public static class D1Sozlugu
         HurdaAnalizGonderilen: "Sent in 90 days",
         HurdaOrtalama: "{0} per fine gram",
         HurdaHasBasinaFark: "Margin per fine gram",
-        HurdaTahlilFarki: "Assay difference");
+        HurdaTahlilFarki: "Assay difference",
+        KorSayimNotu: "Blind count is on: count the cash in the drawer and enter it. The expected amount and difference appear after closing.",
+        KorSayimSonuc: "{0} · difference: {1}",
+        KorSayimKilit: "Count recorded; write the reason for the difference",
+        KorSayimEtiket: "Blind count (expected cash hidden at day end)",
+        KorSayimAciklama: "When on, cashiers and managers enter only what they counted at day end; the expected amount and difference appear after closing. The owner always sees them.",
+        KorSayimAcildi: "Blind count turned on",
+        KorSayimKapandi: "Blind count turned off",
+        SorumluCalisan: "Responsible staff member",
+        SorumluYok: "— (none)",
+        SorumluSatir: "Responsible: {0}");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

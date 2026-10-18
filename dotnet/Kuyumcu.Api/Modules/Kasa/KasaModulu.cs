@@ -29,6 +29,14 @@ public sealed class KasaOlusturDto
     [Required] public string Ad { get; set; } = null!;
     [Required] public string SubeId { get; set; } = null!;
     public string? ParaBirimi { get; set; }
+    /// <summary>D1-11 — kasanın sorumlu çalışanı (isteğe bağlı; aynı işletmenin aktif kullanıcısı).</summary>
+    [MaxLength(36)] public string? SorumluKullaniciId { get; set; }
+}
+
+/// <summary>D1-11 — kör sayım ayarı.</summary>
+public sealed class KorSayimDto
+{
+    public bool Etkin { get; set; }
 }
 
 public sealed class KasaGuncelleDto
@@ -66,6 +74,12 @@ public sealed class KasaGuncelleDto
     /// Gönderilmezse dokunulmaz (PATCH sözleşmesi).
     /// </summary>
     public bool? Aktif { get; set; }
+
+    /// <summary>
+    /// D1-11 — kasanın sorumlu çalışanı. Gönderilmezse (null) dokunulmaz; "" sorumluyu kaldırır;
+    /// kimlik verilirse aynı işletmenin AKTİF kullanıcısı olmalıdır.
+    /// </summary>
+    [MaxLength(36)] public string? SorumluKullaniciId { get; set; }
 }
 
 public sealed class GunKapanisiDto
@@ -155,6 +169,33 @@ public static class KasaDegisimKilidi
 
 public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger, DenetimServisi? denetimServisi = null)
 {
+    /// <summary>D1-11 — kör sayımda tutarsız kapanış iletisi (tutar YAZMAZ).</summary>
+    public const string KorSayimFarkIletisi = "Sayım defterle tutmadı. Farkın nedenini yazıp yeniden kaydedin; fark kapanıştan sonra görünür.";
+
+    /// <summary>D1-11 — kör sayım açık mı (kiracı ayarı; yoksa KAPALI).</summary>
+    public async Task<bool> KorSayimEtkin(string tenantId) =>
+        await db.KiraciAyarlari.AsNoTracking()
+            .AnyAsync(a => a.TenantId == tenantId && a.Anahtar == KiraciAyarAnahtari.KasaKorSayim && a.Deger == "true");
+
+    /// <summary>Kör sayım bu kullanıcıdan tutarı gizler mi? SAHİP her zaman görür.</summary>
+    private async Task<bool> KorSayimGizler(AktifKullanici islem) => islem.Rol != "SAHIP" && await KorSayimEtkin(islem.TenantId);
+
+    /// <summary>D1-11 — kör sayım ayarını yazar (SAHİP/MÜDÜR); denetim izine düşer.</summary>
+    public async Task<bool> KorSayimYaz(bool etkin, AktifKullanici islem)
+    {
+        var a = await db.KiraciAyarlari.FirstOrDefaultAsync(x => x.TenantId == islem.TenantId && x.Anahtar == KiraciAyarAnahtari.KasaKorSayim);
+        if (a is null)
+        {
+            a = new KiraciAyari { Id = Kimlik.Ulid(), TenantId = islem.TenantId, Anahtar = KiraciAyarAnahtari.KasaKorSayim, Deger = "false" };
+            db.KiraciAyarlari.Add(a);
+        }
+        a.Deger = etkin ? "true" : "false";
+        a.Guncellendi = DateTime.UtcNow;
+        denetimServisi?.YazmaKaydet(islem, nameof(KiraciAyari), a.Id, $"kör sayım {(etkin ? "açıldı" : "kapatıldı")}", hassas: false);
+        await db.SaveChangesAsync();
+        return etkin;
+    }
+
     /// <summary>
     /// PAKET DIL-SUNUCU: kapanış farkı iletisi — DÖRT TAM cümle (parça birleştirme YOK); her biri
     /// SunucuIletiSozlugu'nda tam şablon olarak durur ve istek diline göre seçilir.
@@ -197,12 +238,18 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
             k.TenantId == islem.TenantId && k.SubeId == dto.SubeId && k.Ad == dto.Ad);
         if (mevcutAd) throw new ConflictException($"'{dto.Ad}' adlı kasa bu şubede zaten mevcut");
 
+        // D1-11: sorumlu çalışan oluşturmada da verilebilir (güncellemeyle AYNI kural — UX-S26).
+        var sorumlu = string.IsNullOrWhiteSpace(dto.SorumluKullaniciId) ? null : dto.SorumluKullaniciId.Trim();
+        if (sorumlu is not null && !await db.Kullanicilar.AnyAsync(k => k.Id == sorumlu && k.TenantId == islem.TenantId && k.Aktif))
+            throw new BadRequestException("Sorumlu çalışan bulunamadı ya da pasif").AlanIle("sorumluKullaniciId");
+
         var kasa = new Data.Kasa
         {
             Id = Kimlik.Ulid(),
             TenantId = islem.TenantId,
             SubeId = dto.SubeId,
             Ad = dto.Ad,
+            SorumluKullaniciId = sorumlu,
             ParaBirimi = dto.ParaBirimi ?? "TRY",
             Bakiye = 0m,
             Aktif = true,
@@ -269,6 +316,15 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
                 degisen.Add("sube_id");
             }
             if (paraBirimiDegisiyor) { kasa.ParaBirimi = dto.ParaBirimi!; degisen.Add("para_birimi"); }
+        }
+
+        // D1-11: sorumlu çalışan (null = koru · "" = kaldır · kimlik = aynı işletmenin aktif kullanıcısı).
+        if (dto.SorumluKullaniciId is { } sorumlu)
+        {
+            var yeni = sorumlu.Trim().Length == 0 ? null : sorumlu.Trim();
+            if (yeni is not null && !await db.Kullanicilar.AnyAsync(k => k.Id == yeni && k.TenantId == islem.TenantId && k.Aktif))
+                throw new BadRequestException("Sorumlu çalışan bulunamadı ya da pasif").AlanIle("sorumluKullaniciId");
+            if (yeni != kasa.SorumluKullaniciId) { kasa.SorumluKullaniciId = yeni; degisen.Add("sorumlu_kullanici_id"); }
         }
 
         // UX-4d madde 13: aktif/pasif geçişi. Pasife alma kapısı DeaktifEt ile
@@ -470,6 +526,15 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
 
         // PAKET SON-KALANLAR (hasım DÜŞÜK): red gerekçe ALANINA bağlı (alan altı mesaj, DoD EK md.3);
         // ileti sade: büyük harf yok, "TL" yerine kasanın para simgesi, farkın YÖNÜ yazılı (fazla/eksik).
+        // D1-11 KÖR SAYIM: fark var, gerekçe yok → tutar SÖYLENMEZ; deneme denetim izine yazılır (sayımı değiştirip
+        // yeniden deneyen görünür kalır).
+        if (fark != 0m && string.IsNullOrWhiteSpace(dto.Aciklama) && await KorSayimGizler(islem))
+        {
+            denetimServisi?.YazmaKaydet(islem, nameof(GunKapanisi), kasa.Id,
+                FormattableString.Invariant($"kör sayım denemesi · sayılan {sayilan:0.00} · tutmadı"), hassas: false, kasaId: kasa.Id);
+            await db.SaveChangesAsync();
+            throw new BadRequestException(KorSayimFarkIletisi).AlanIle("aciklama");
+        }
         if (fark != 0m && string.IsNullOrWhiteSpace(dto.Aciklama))
             throw new BadRequestException(KapanisFarkIletisi(
                 GunKapanisiKapisi.Para(Math.Abs(fark), kasa.ParaBirimi), fark > 0m,
@@ -538,6 +603,9 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
     public async Task<Kuyumcu.Contracts.Sayfalar.Kasalar.GunKapanisiOnizleme> GunKapanisiOnizleme(string id, AktifKullanici islem)
     {
         var kasa = await TenantKasasiBul(id, islem.TenantId);
+        // D1-11 KÖR SAYIM: SAHİP dışındaki rol beklenen tutarı GÖRMEZ — sunucu tutar GÖNDERMEZ (ekranda gizlemek yetmez).
+        if (await KorSayimGizler(islem))
+            return new Kuyumcu.Contracts.Sayfalar.Kasalar.GunKapanisiOnizleme(0m, 0m, 0m, 0m, Gizli: true);
         var ayrim = await KasaNakitAyrimi.Hesapla(db, islem.TenantId, kasa);
         // TEK TİP (SozlesmeKapsam): ekranın okuduğu record'un AYNISI döner.
         return new Kuyumcu.Contracts.Sayfalar.Kasalar.GunKapanisiOnizleme(
@@ -845,6 +913,16 @@ public sealed class KasaController(KasaServisi servis, Satis.StornoServisi storn
     [RolGerekli("SAHIP", "MUDUR", "MUHASEBE")]
     public Task<object> GunKapat(string id, [FromBody] GunKapanisiDto dto)
         => servis.GunKapat(id, dto, Islem);
+
+    /// <summary>GET /api/v1/kasalar/kor-sayim — D1-11 kör sayım ayarı (tezgâh ve kasa ekranı okur).</summary>
+    [HttpGet("kor-sayim")]
+    [RolGerekli("SAHIP", "MUDUR", "MUHASEBE", "TEZGAHTAR")]
+    public async Task<object> KorSayim() => new { etkin = await servis.KorSayimEtkin(Islem.TenantId) };
+
+    /// <summary>PUT /api/v1/kasalar/kor-sayim — D1-11 kör sayımı aç / kapat (SAHİP/MÜDÜR).</summary>
+    [HttpPut("kor-sayim")]
+    [RolGerekli("SAHIP", "MUDUR")]
+    public async Task<object> KorSayimYaz([FromBody] KorSayimDto dto) => new { etkin = await servis.KorSayimYaz(dto.Etkin, Islem) };
 
     /// <summary>
     /// GET /api/v1/kasalar/{id}/gun-kapanisi/onizleme — PAKET PARA-DEMO. Sayılacak nakit

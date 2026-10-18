@@ -4,7 +4,8 @@
 
 namespace Kuyumcu.Contracts.Sayfalar.Kasalar;
 // ── veri modelleri (sayfaya özel, JSON camelCase otomatik eşleşir) ──
-public sealed record KasaVeri(string Id, string Ad, string ParaBirimi, decimal Bakiye, bool Aktif, string? SubeId);
+/// <param name="SorumluKullaniciId">D1-11: kasanın sorumlu çalışanı (tezgâhta o çalışanın varsayılan kasası).</param>
+public sealed record KasaVeri(string Id, string Ad, string ParaBirimi, decimal Bakiye, bool Aktif, string? SubeId, string? SorumluKullaniciId = null);
 // UX-1-C2: hareketId defter bağıdır — storno YALNIZ bu bağ varken üretilebilir.
 // PAKET S-3b — alan adı VE tipi sunucuyla doğrulandı:
 //   Data/Entities.cs KasaHareket: Tutar decimal · Aciklama string? · StornoKaynakId string?
@@ -23,7 +24,8 @@ public sealed record HareketYaniti(List<HareketVeri> Hareketler);
 // (istemci sayfalarına yeni record yazılmaz — denetim P-10). Sayım NAKİT defterle karşılaştırılır;
 // kasaya yazılmış kart ve havale ayrı satırda "sayıma girmez".
 /// <summary>Gün sonu sayımı önizlemesi: toplam = nakit defteri + kart + havale.</summary>
-public sealed record GunKapanisiOnizleme(decimal ToplamBakiye, decimal KartToplam, decimal HavaleToplam, decimal NakitDefter);
+/// <param name="Gizli">D1-11 kör sayım: true ise tutarlar GÖNDERİLMEDİ (0) — ekran beklenen tutarı yazmaz.</param>
+public sealed record GunKapanisiOnizleme(decimal ToplamBakiye, decimal KartToplam, decimal HavaleToplam, decimal NakitDefter, bool Gizli = false);
 
 // PAKET PARA-DEMO-2 (madde 4) — kasa kartı / "Kasada ne var?" alt satırı: "Nakit X · Kart/Havale Y".
 /// <summary>Bir kasanın nakit / kart / havale ayrımı (toplam = nakit + kart + havale; sunucu KasaNakitAyrimi).</summary>
