@@ -856,6 +856,8 @@ public static partial class SunucuIletiSozlugu
         ("Şifre 8-72 karakter olmalıdır", "The password must be 8-72 characters"),
         ("Şifre başarıyla güncellendi", "Password updated successfully"),
         ("Şifre başarıyla sıfırlandı", "Password reset successfully"),
+        ("Bu hesap yalnız okuma içindir (mali müşavir) — kayıt değiştirilemez", "This account is read only (accountant) — records cannot be changed"),
+        ("Salt okunur hesap yalnız muhasebe rolünde olabilir", "A read-only account must have the accounting role"),
         ("Şifre en az bir harf ve bir rakam içermelidir", "The password must contain at least one letter and one digit"),
         ("Şifre hatalı", "Wrong password"),
         ("Şifre ve doğrulama kodu zorunludur", "The password and the verification code are required"),

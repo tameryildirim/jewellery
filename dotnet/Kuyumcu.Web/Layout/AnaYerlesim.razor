@@ -40,6 +40,11 @@ else
             <YildizUstMenu />
             <UstBar />
             <main class="ana-icerik">
+                @if (Oturum.Kullanici?.SaltOkunur == true)
+                {
+                    @* D1-14: mali müşavir hesabı — her ekranda kayıt değiştirilemeyeceği söylenir (sunucu da reddeder). *@
+                    <div class="bant bant-bilgi" id="salt-okunur-bant" role="status">@D1Sozlugu.Al(Dil.Dil).SaltOkunurBant</div>
+                }
                 <KabukHatasi><YetkiKapisi ProfilDenendi="@profilDenendi">@Body</YetkiKapisi></KabukHatasi>
             </main>
         </div>
@@ -111,7 +116,8 @@ else
                     ben.TryGetProperty("arayuzModu", out var am) && am.ValueKind == JsonValueKind.String
                         ? am.GetString() : null,
                     ben.TryGetProperty("etkinArayuzModu", out var em) && em.ValueKind == JsonValueKind.String
-                        ? em.GetString()! : "PROFESYONEL"));
+                        ? em.GetString()! : "PROFESYONEL",
+                    ben.TryGetProperty("saltOkunur", out var so) && so.ValueKind == JsonValueKind.True));
             }
             catch { /* 401 ise ApiIstemci zaten girişe yönlendirir */ }
         }

@@ -108,6 +108,11 @@
                         Etiket="@Dil.T.Kullanici.Rol"
                         Secenekler="@(AtanabilirRoller.Select(r => new SecenekOgesi(r, RolEtiket(r))).ToList())"
                         @bind-Deger="yeniRol" />
+                @if (yeniRol == "MUHASEBE")
+                {
+                    @* D1-14: mali müşavir — muhasebenin gördüğünü görür, kayıt değiştiremez. *@
+                    <Onay ElemanId="k-salt-okunur" Etiket="@D1Sozlugu.Al(Dil.Dil).SaltOkunurEtiket" @bind-Deger="yeniSaltOkunur" />
+                }
             </div>
             <Sifre ElemanId="k-sifre" Etiket="@Dil.T.Kullanici.Sifre" Zorunlu="true"
                    YerTutucu="@Dil.T.Kullanici.SifreIpucu" OtoTamamla="new-password"
@@ -215,6 +220,10 @@
                                 Etiket="@Dil.T.Kullanici.Rol"
                                 Secenekler="@(AtanabilirRoller.Select(r => new SecenekOgesi(r, RolEtiket(r))).ToList())"
                                 @bind-Deger="dRol" />
+                        @if (dRol == "MUHASEBE")
+                        {
+                            <Onay ElemanId="d-salt-okunur" Etiket="@D1Sozlugu.Al(Dil.Dil).SaltOkunurEtiket" @bind-Deger="dSaltOkunur" />
+                        }
                     </div>
                     <div class="alan">
                         <Secici ElemanId="d-durum"
@@ -376,6 +385,7 @@
     private string yeniEmail = "";
     private string yeniSifre = "";
     private string yeniRol = "TEZGAHTAR";
+    private bool yeniSaltOkunur, dSaltOkunur;   // D1-14
     private string yeniArayuzModu = "";
     private string yeniSubeId = "";
 
@@ -579,7 +589,7 @@
                     }</span>
                     <span class="k-satir-eposta metin-soluk metin-kucuk" title="@k.Email">@k.Email</span></text> },
         new() { Anahtar = "rol", Baslik = Dil.T.Kullanici.Rol, ZorunluGorunur = true, SunucuSiralamaAdi = "rol",
-                Deger = k => RolEtiket(k.Rol), Hucre = k => @<Rozet Renk="@RolRengi(k.Rol)">@RolEtiket(k.Rol)</Rozet> },
+                Deger = k => RolEtiket(k.Rol), Hucre = k => @<span><Rozet Renk="@RolRengi(k.Rol)">@RolEtiket(k.Rol)</Rozet>@if (k.SaltOkunur) { <Rozet Renk="gri">@D1Sozlugu.Al(Dil.Dil).SaltOkunurRozet</Rozet> }</span> },
         new() { Anahtar = "sube", Baslik = Dil.T.Kullanici.Sube, SunucuSiralamaAdi = "sube",
                 HucreSinif = _ => "metin-soluk hucre-tek-satir", Deger = k => SubeAd(k.SubeId) },
         new() { Anahtar = "durum", Baslik = Dil.T.Kullanici.Durum, ZorunluGorunur = true, SunucuSiralamaAdi = "durum",
@@ -694,6 +704,7 @@
         yeniArayuzModu = "";
         yeniSubeId = subeler.Count == 1 ? subeler[0].Id : "";
         yeniRol = AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR";
+        yeniSaltOkunur = false;
         yeniModalAcik = true;
     }
 
@@ -710,6 +721,7 @@
                 email = yeniEmail.Trim(),
                 sifre = yeniSifre,
                 rol = yeniRol,
+                saltOkunur = yeniRol == "MUHASEBE" && yeniSaltOkunur,   // D1-14
                 arayuzModu = Bos(yeniArayuzModu),
                 subeId = SubeGovde(yeniSubeId),
             });
@@ -730,6 +742,7 @@
         dSoyad = k.Soyad;
         dEmail = k.Email;
         dRol = AtanabilirRoller.Contains(k.Rol) ? k.Rol : (AtanabilirRoller.LastOrDefault() ?? "TEZGAHTAR");
+        dSaltOkunur = k.SaltOkunur;   // D1-14
         dAktif = k.Aktif ? "true" : "false";
         dArayuzModu = k.ArayuzModu ?? "";
         dSubeId = k.SubeId ?? (subeler.Count == 1 ? subeler[0].Id : "");
@@ -766,8 +779,9 @@
                     arayuzModu = Bos(dArayuzModu),
                     subeId = SubeGovde(dSubeId),
                 });
-                if (dRol != eskiRol)
-                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol });
+                var yeniSalt = dRol == "MUHASEBE" && dSaltOkunur;   // D1-14: muhasebe dışında salt okunur kapanır
+                if (dRol != eskiRol || yeniSalt != duzenleHedef.SaltOkunur)
+                    await Api.PatchAsync($"/kullanicilar/{duzenleHedef.Id}/rol", new { rol = dRol, saltOkunur = yeniSalt });
             }
             duzenleHedef = null;
             await Yukle();

@@ -47,6 +47,9 @@ public sealed class KullaniciOlusturDto
     /// </summary>
     [RegularExpression("BASIT|PROFESYONEL", ErrorMessage = "Geçersiz arayüz modu")]
     public string? ArayuzModu { get; set; }
+
+    /// <summary>D1-14 — salt okunur (mali müşavir) hesap; yalnız MUHASEBE rolüyle verilebilir.</summary>
+    public bool SaltOkunur { get; set; }
 }
 
 public sealed class KullaniciGuncelleDto
@@ -142,6 +145,8 @@ public sealed class RolDegistirDto
 {
     [Required, RegularExpression("SAHIP|MUDUR|TEZGAHTAR|MUHASEBE", ErrorMessage = "Geçersiz rol")]
     public string Rol { get; set; } = null!;
+    /// <summary>D1-14 — salt okunur (mali müşavir); yalnız MUHASEBE rolüyle. Gönderilmezse kapanır.</summary>
+    public bool SaltOkunur { get; set; }
 }
 
 // ── Servis ───────────────────────────────────────────────────────────────────
@@ -182,6 +187,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
             Email = dto.Email,
             SifreHash = sifreHash,
             Rol = dto.Rol,
+            SaltOkunur = SaltOkunurDogrula(dto.Rol, dto.SaltOkunur),   // D1-14
             ArayuzModu = OlusturmaModu(dto.ArayuzModu),
             Aktif = true,
             Olusturuldu = now,
@@ -336,6 +342,14 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         };
     }
 
+    /// <summary>D1-14 — salt okunur yalnız MUHASEBE rolünde (mali müşavir); başka rolde 400.</summary>
+    private static bool SaltOkunurDogrula(string rol, bool saltOkunur)
+    {
+        if (saltOkunur && rol != "MUHASEBE")
+            throw new BadRequestException("Salt okunur hesap yalnız muhasebe rolünde olabilir").AlanIle("saltOkunur");
+        return saltOkunur;
+    }
+
     // ─── Rol değiştir ─────────────────────────────────────────────────────────
 
     public async Task<object> RolDegistir(string id, RolDegistirDto dto, AktifKullanici islem)
@@ -350,9 +364,10 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
 
         var eskiRol = hedef.Rol;
         hedef.Rol = dto.Rol;
+        hedef.SaltOkunur = SaltOkunurDogrula(dto.Rol, dto.SaltOkunur);   // D1-14
         hedef.Guncellendi = DateTime.UtcNow;
         denetim.YazmaKaydet(islem, nameof(Data.Kullanici), hedef.Id,
-            $"kullanici-rol-degisti: {eskiRol} → {dto.Rol}");
+            $"kullanici-rol-degisti: {eskiRol} → {dto.Rol}{(hedef.SaltOkunur ? " (salt okunur)" : "")}");
         await db.SaveChangesAsync();
 
         return await Getir(id, islem);
@@ -576,6 +591,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         soyad = k.Soyad,
         email = k.Email,
         rol = k.Rol,
+        saltOkunur = k.SaltOkunur,   // D1-14
         arayuzModu = k.ArayuzModu,
         aktif = k.Aktif,
         sonGiris = k.SonGiris,

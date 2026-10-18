@@ -99,7 +99,10 @@ public sealed record D1Metinleri(
     string SetAktif,
     string SetKaydedildi,
     string SetYok,
-    string SetParcaSay);
+    string SetParcaSay,
+    string SaltOkunurEtiket,
+    string SaltOkunurBant,
+    string SaltOkunurRozet);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -195,7 +198,10 @@ public static class D1Sozlugu
         SetAktif: "Satışta",
         SetKaydedildi: "Set kaydedildi",
         SetYok: "Henüz set tanımlanmadı",
-        SetParcaSay: "{0} parça");
+        SetParcaSay: "{0} parça",
+        SaltOkunurEtiket: "Yalnız okuma (mali müşavir)",
+        SaltOkunurBant: "Bu hesap yalnız okuma içindir (mali müşavir): kayıtları görebilirsiniz, değiştiremezsiniz.",
+        SaltOkunurRozet: "Yalnız okuma");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -288,7 +294,10 @@ public static class D1Sozlugu
         SetAktif: "On sale",
         SetKaydedildi: "Set saved",
         SetYok: "No sets defined yet",
-        SetParcaSay: "{0} items");
+        SetParcaSay: "{0} items",
+        SaltOkunurEtiket: "Read only (accountant)",
+        SaltOkunurBant: "This account is read only (accountant): you can view records but not change them.",
+        SaltOkunurRozet: "Read only");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

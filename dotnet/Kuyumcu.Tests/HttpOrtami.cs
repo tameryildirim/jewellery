@@ -164,14 +164,14 @@ public sealed class HttpOrtami : WebApplicationFactory<Program>
     public HttpClient Istemci(Kiraci kiraci, string rol = "SAHIP")
         => Istemci(kiraci.KullaniciId, kiraci.TenantId, kiraci.SubeId, rol);
 
-    public HttpClient Istemci(string kullaniciId, string tenantId, string? subeId, string rol)
+    public HttpClient Istemci(string kullaniciId, string tenantId, string? subeId, string rol, bool saltOkunur = false)
     {
         var token = new TokenServisi(new JwtAyarlar
         {
             Secret = TestSirri,
             AccessDakika = 15,
             RefreshGun = 7,
-        }).AccessUret(kullaniciId, tenantId, subeId, rol);
+        }).AccessUret(kullaniciId, tenantId, subeId, rol, saltOkunur);
 
         var c = CreateClient();
         c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);

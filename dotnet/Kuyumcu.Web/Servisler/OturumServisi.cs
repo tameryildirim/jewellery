@@ -11,7 +11,8 @@ namespace Kuyumcu.Web.Servisler;
 /// </summary>
 public sealed record OturumKullanici(
     string Id, string Ad, string Soyad, string Email, string Rol, string? SubeId,
-    string? ArayuzModu = null, string EtkinArayuzModu = "PROFESYONEL");
+    string? ArayuzModu = null, string EtkinArayuzModu = "PROFESYONEL",
+    bool SaltOkunur = false);   // D1-14: salt okunur (mali müşavir) oturum — kabukta bant
 
 /// <summary>
 /// Token + kullanıcı durumu. Zustand auth.store karşılığı:

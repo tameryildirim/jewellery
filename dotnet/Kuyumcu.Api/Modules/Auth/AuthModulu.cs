@@ -311,7 +311,7 @@ public sealed class AuthServisi(
             };
 
         var accessToken = tokenServisi.AccessUret(
-            kullanici.Id, kullanici.TenantId, kullanici.SubeId, kullanici.Rol);
+            kullanici.Id, kullanici.TenantId, kullanici.SubeId, kullanici.Rol, kullanici.SaltOkunur);
         var refreshToken = await RefreshUretVeKaydet(
             db, kullanici.Id, kullanici.TenantId, ipAdresi, userAgent);
 
@@ -380,7 +380,7 @@ public sealed class AuthServisi(
         await db.SaveChangesAsync();
 
         var accessToken = tokenServisi.AccessUret(
-            kullanici.Id, kullanici.TenantId, kullanici.SubeId, kullanici.Rol);
+            kullanici.Id, kullanici.TenantId, kullanici.SubeId, kullanici.Rol, kullanici.SaltOkunur);
         var refreshToken = await RefreshUretVeKaydet(
             db, kullanici.Id, kullanici.TenantId, ipAdresi, userAgent);
 
@@ -448,7 +448,7 @@ public sealed class AuthServisi(
             throw new UnauthorizedException("Kullanıcı aktif değil");
 
         var accessToken = tokenServisi.AccessUret(
-            kullanici.Id, kullanici.TenantId, kullanici.SubeId, kullanici.Rol);
+            kullanici.Id, kullanici.TenantId, kullanici.SubeId, kullanici.Rol, kullanici.SaltOkunur);
         var refreshToken = await RefreshUretVeKaydet(
             db, kullanici.Id, kullanici.TenantId, ipAdresi, userAgent);
 
@@ -545,6 +545,7 @@ public sealed class AuthServisi(
         soyad = k.Soyad,
         email = k.Email,
         rol = k.Rol,
+        saltOkunur = k.SaltOkunur,   // D1-14
         arayuzModu = k.ArayuzModu,
         etkinArayuzModu,
         aktif = k.Aktif,

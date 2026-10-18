@@ -591,6 +591,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<Kuyumcu.Api.Auth.SaltOkunurKapisi>();   // D1-14: salt okunur (mali müşavir) hesap yazamaz — tek kapı
 
 // ── PAKET P-28 (F-4 · R-2) — KİRACI ETİKETLİ TELEMETRİ ───────────────────────
 // UseAuthentication'dan SONRA: kiracı etiketi (tenantId claim'i) çözülmüş

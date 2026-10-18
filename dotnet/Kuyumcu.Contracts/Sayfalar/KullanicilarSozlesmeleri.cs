@@ -8,5 +8,7 @@ public sealed record KullaniciVeri(
     string Id, string Ad, string Soyad, string Email, string Rol,
     bool Aktif, DateTime? SonGiris, string? ArayuzModu = null, string? SubeId = null,
     // 45-UI: liste ucu bu bayrağı döndürür; tekil uçlarda null (bilinmiyor).
-    bool? MfaEtkin = null);
+    bool? MfaEtkin = null,
+    // D1-14 — salt okunur (mali müşavir) hesap.
+    bool SaltOkunur = false);
 public sealed record SubeOzet(string Id, string Ad);

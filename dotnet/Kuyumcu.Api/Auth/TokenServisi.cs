@@ -30,7 +30,7 @@ public static class Jetonlar
 /// <summary>Access token üretimi + refresh token üretim/hash (SHA-256).</summary>
 public sealed class TokenServisi(JwtAyarlar ayarlar)
 {
-    public string AccessUret(string kullaniciId, string tenantId, string? subeId, string rol)
+    public string AccessUret(string kullaniciId, string tenantId, string? subeId, string rol, bool saltOkunur = false)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ayarlar.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -41,6 +41,8 @@ public sealed class TokenServisi(JwtAyarlar ayarlar)
             new("subeId", subeId ?? ""),
             new("rol", rol),
         };
+        // D1-14: salt okunur (mali müşavir) hesap — SaltOkunurKapisi yazma isteklerini bu işaretle reddeder.
+        if (saltOkunur) claims.Add(new(SaltOkunurKapisi.Claim, "1"));
         var token = new JwtSecurityToken(
             audience: Jetonlar.ApiAudience,
             claims: claims,

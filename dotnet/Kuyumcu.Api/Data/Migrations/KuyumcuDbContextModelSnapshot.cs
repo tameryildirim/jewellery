@@ -3303,6 +3303,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(20)")
                         .HasColumnName("rol");
 
+                    b.Property<bool>("SaltOkunur")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("salt_okunur");
+
                     b.Property<string>("Sema")
                         .HasMaxLength(24)
                         .HasColumnType("varchar(24)")

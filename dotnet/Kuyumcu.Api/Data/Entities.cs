@@ -300,6 +300,11 @@ public class Kullanici : IKiraciVarlik
     [Column("sifre_hash"), MaxLength(255)] public string SifreHash { get; set; } = null!;
     [Column("rol"), MaxLength(20)] public string Rol { get; set; } = "TEZGAHTAR";
     /// <summary>
+    /// D1-14 (18.10, rakip eşitleme: "mali müşavir rolü — yalnız okuma"). Yalnız MUHASEBE rolünde anlamlıdır:
+    /// hesap muhasebenin gördüğü her şeyi görür, hiçbir yazma isteği yapamaz (SaltOkunurKapisi, tek kapı).
+    /// </summary>
+    [Column("salt_okunur")] public bool SaltOkunur { get; set; }
+    /// <summary>
     /// Kullanıcının arayüz tercihi: BASIT | PROFESYONEL.
     /// <b>NULL = "bilinmiyor" DEĞİL, "kiracı varsayılanını devral" demektir</b>
     /// (tenants.varsayilan_arayuz_modu). Çözüm tek yerdedir: ArayuzModu.Coz.
