@@ -102,7 +102,17 @@ public sealed record D1Metinleri(
     string SetParcaSay,
     string SaltOkunurEtiket,
     string SaltOkunurBant,
-    string SaltOkunurRozet);
+    string SaltOkunurRozet,
+    string KuruKilitle,
+    string KurKilitli,
+    string KilitliKurVar,
+    string KilidiKullan,
+    string KilidiKaldir,
+    string KilitBitis,
+    string HasKisa,
+    string DakikaKisa,
+    string SaatKisa,
+    string GunKisa);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -201,7 +211,17 @@ public static class D1Sozlugu
         SetParcaSay: "{0} parça",
         SaltOkunurEtiket: "Yalnız okuma (mali müşavir)",
         SaltOkunurBant: "Bu hesap yalnız okuma içindir (mali müşavir): kayıtları görebilirsiniz, değiştiremezsiniz.",
-        SaltOkunurRozet: "Yalnız okuma");
+        SaltOkunurRozet: "Yalnız okuma",
+        KuruKilitle: "Kuru kilitle",
+        KurKilitli: "Kur kilitli",
+        KilitliKurVar: "Kilitli kur var",
+        KilidiKullan: "Kullan",
+        KilidiKaldir: "Kilidi kaldır",
+        KilitBitis: "bitiş {0}",
+        HasKisa: "Has",
+        DakikaKisa: "{0} dk",
+        SaatKisa: "{0} saat",
+        GunKisa: "{0} gün");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -297,7 +317,17 @@ public static class D1Sozlugu
         SetParcaSay: "{0} items",
         SaltOkunurEtiket: "Read only (accountant)",
         SaltOkunurBant: "This account is read only (accountant): you can view records but not change them.",
-        SaltOkunurRozet: "Read only");
+        SaltOkunurRozet: "Read only",
+        KuruKilitle: "Lock the rate",
+        KurKilitli: "Rate locked",
+        KilitliKurVar: "Locked rate available",
+        KilidiKullan: "Use",
+        KilidiKaldir: "Remove lock",
+        KilitBitis: "until {0}",
+        HasKisa: "Fine gold",
+        DakikaKisa: "{0} min",
+        SaatKisa: "{0} h",
+        GunKisa: "{0} days");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

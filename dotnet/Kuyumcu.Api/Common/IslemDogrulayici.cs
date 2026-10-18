@@ -32,6 +32,14 @@ public static class IslemDogrulayici
     /// </list>
     /// Yol her durumda söylenir: Kur ekranından güncel kuru alın ya da elle girin.
     /// </summary>
+    /// <summary>D1-04 — kur kilidi verildiyse kilit kapısı, verilmediyse tazelik kapısı (ikisinden biri MUTLAKA çalışır).</summary>
+    public static Task KurTazeVeyaKilitDogrula(
+        KuyumcuDbContext db, string kurSnapshotId, string? kurKilidiId, string? cariId, string tenantId,
+        Modules.Kur.KurKaynakDefteri? defter, DateTime simdi)
+        => string.IsNullOrEmpty(kurKilidiId)
+            ? KurTazeDogrula(db, kurSnapshotId, tenantId, defter, simdi)
+            : Modules.Kur.KurKilidiKapisi.Dogrula(db, kurKilidiId, kurSnapshotId, cariId, tenantId, simdi);
+
     public static async Task KurTazeDogrula(
         KuyumcuDbContext db, string kurSnapshotId, string tenantId,
         Modules.Kur.KurKaynakDefteri? defter, DateTime simdi)

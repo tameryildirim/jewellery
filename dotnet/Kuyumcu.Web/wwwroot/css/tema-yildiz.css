@@ -3947,3 +3947,8 @@ html:root[data-sema="yildiz"] body #salt-okunur-bant:not(#_) {
 @media (max-width: 760px) {
   html:root[data-sema="yildiz"] body #salt-okunur-bant:not(#_) { margin: 12px 16px 0; }
 }
+/* D1-04: kur kilidi satırı — durum metni solda, eylemler yanında; dar ekranda alt alta akar. */
+html:root[data-sema="yildiz"] body .yz-kilit:not(#_) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+html:root[data-sema="yildiz"] body .yz-kilit-durum:not(#_) { flex: 1 1 260px; min-width: 0; }
+html:root[data-sema="yildiz"] body .yz-kilit-baslik:not(#_) { font-weight: 500; }
+html:root[data-sema="yildiz"] body .yz-kilit-sureler:not(#_) { display: flex; flex-wrap: wrap; gap: 8px 16px; flex-basis: 100%; }

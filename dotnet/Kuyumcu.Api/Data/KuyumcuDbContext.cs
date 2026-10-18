@@ -124,6 +124,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<CariIban> CariIbanlari => Set<CariIban>();
     public DbSet<AlisIscilikBelgesi> AlisIscilikBelgeleri => Set<AlisIscilikBelgesi>();   // M9
     public DbSet<BekleyenFis> BekleyenFisler => Set<BekleyenFis>();   // D1-03
+    public DbSet<KurKilidi> KurKilitleri => Set<KurKilidi>();   // D1-04
     public DbSet<KvkkMetni> KvkkMetinleri => Set<KvkkMetni>();       // D1-19
     public DbSet<KvkkKaydi> KvkkKayitlari => Set<KvkkKaydi>();       // D1-19
     public DbSet<UrunSeti> UrunSetleri => Set<UrunSeti>();           // D1-16
@@ -522,6 +523,7 @@ public class KuyumcuDbContext : DbContext
         // M9: bir alışın TEK işçilik belgesi kaydı.
         mb.Entity<AlisIscilikBelgesi>().HasIndex(b => new { b.TenantId, b.AlisHareketId }).IsUnique();
         mb.Entity<BekleyenFis>().HasIndex(b => new { b.TenantId, b.Olusturuldu });
+        mb.Entity<KurKilidi>().HasIndex(k => new { k.TenantId, k.Bitis });
         mb.Entity<KvkkMetni>().HasIndex(m => new { m.TenantId, m.Surum }).IsUnique();
         mb.Entity<KvkkKaydi>().HasIndex(k => new { k.TenantId, k.CariId, k.Tarih });
         mb.Entity<UrunSeti>().HasIndex(s => new { s.TenantId, s.Barkod }).IsUnique();

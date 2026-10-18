@@ -290,7 +290,7 @@ public partial class Islemler
                 {
                     kalemler = (sp.Kalemler ?? []).Select(k => new { siparisKalemId = k.Id, birimFiyatTl = s.Fiyat.GetValueOrDefault(k.Id) }).ToList(),
                     odemeler = new[] { new { arac = s.Arac, tutarTl = s.Toplam, kasaId = s.Arac == "VERESIYE" ? null : kasa } },
-                    kurSnapshotId = kurId,
+                    kurSnapshotId = kurId, kurKilidiId = KilitliKurId,   // D1-04: kilitli kurla teslim
                     avansMahsupTl = s.AvansMahsup is > 0m ? s.AvansMahsup : null,
                     masak = s.Masak?.Govde,   // YASAL-KAPI-2: yalnız kapı açıkken (eşik altında gövdede beyan yok)
                 });

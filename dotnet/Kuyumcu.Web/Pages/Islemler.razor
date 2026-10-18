@@ -256,7 +256,7 @@
     // PAKET S2-3 — sunucu Peşin Müşteri'yi MÜŞTERİ ALANINDA reddetti (400 + alanlar.cariId):
     // fiş üst satırında "gerçek müşteri seçin" bandı. Eşik sayısı istemcide YOK.
     // pesinKimlikGerekli: YASAL-KAPI-GERI — reddin izi (Islemler.YasalKapiGeri.cs)
-    private async Task MusteriDegisti() { pesinKimlikGerekli = false; hata = null; masakSunucudanGerekli = false; Yasal3Sifirla(); await TevsikOnizle(); await ListeFarkiniDenetle(); }   // EKSIK-KUCUK B2-12: liste farkı SORULUR (sessiz değil)   // t10: önceki müşterinin reddi yeni müşteride kalmaz
+    private async Task MusteriDegisti() { pesinKimlikGerekli = false; hata = null; masakSunucudanGerekli = false; Yasal3Sifirla(); KilitMusteriyeGore(); await TevsikOnizle(); await ListeFarkiniDenetle(); }   // EKSIK-KUCUK B2-12: liste farkı SORULUR (sessiz değil)   // t10: önceki müşterinin reddi yeni müşteride kalmaz
     private void GercekMusteriSec() { cariId = ""; pesinKimlikGerekli = false; }
     /// <summary>PAKET S2-3: kayıttan sonra bakiye rozeti TAZE veriden okunur (açık hesap bakiyeyi değiştirir).</summary>
     private async Task CarileriTazele()
@@ -555,7 +555,7 @@
     private async Task Vazgec()
     {
         kalemler.Clear(); fisIskontoYuzde = null; indirimAcik = false; aciklama = ""; hata = null; masakSunucudanGerekli = false;
-        cariId = ""; PesinOnSec(); giris.Sifirla(); form.Temizle(); belgeTuru = null; belgeSorusuAcik = belgeSinirUyarisi = false;   // 17.10: fatura cevabı fişe özgü
+        cariId = ""; PesinOnSec(); giris.Sifirla(); form.Temizle(); belgeTuru = null; belgeSorusuAcik = belgeSinirUyarisi = false; KilitBirak();   // 17.10: fatura cevabı fişe özgü
         if (karmaOdeme) await TekOdemeyeDon();
         await TevsikOnizle();
     }
@@ -577,7 +577,7 @@
         if (Modu.BasitMi)
             foreach (var alan in BasitPos.GovdedenCikan)
                 d.Remove(alan);
-        if (tur == "SATIS" && SaticiGovde is { } sp) d["personelId"] = sp;   // S2-5b
+        if (tur == "SATIS" && SaticiGovde is { } sp) d["personelId"] = sp; KilitGovdeye(d);   // S2-5b · D1-04 kur kilidi
 
         return d;
     }
@@ -869,7 +869,7 @@
             urunler = await Api.GetAsync<List<UrunVeri>>("/urunler?aktif=true&limit=200");
             subeler = (await Api.GetAsync<List<SubeVeri>>("/subeler")).Where(s => s.Aktif).ToList();
             masakEsik = await Api.GetAsync<Esikler>("/masak/esikler");   // kişisel veri yok, tüm roller
-            await KasalariYukle(); await BekleyenleriYukle();   // D1-03: bekleyenler yardımcı veri (kendi hatasını not satırına yazar)
+            await KasalariYukle(); await BekleyenleriYukle(); await KilitleriYukle();   // D1-03: bekleyenler yardımcı veri (kendi hatasını not satırına yazar)
             await Canli.BaslatAsync();   // SignalR push + ilk kur değeri
             KurYansit();
             if (TezgahFisi || ProSatis) await TevsikOnizle(yalnizHad: true); await FiyatListeleriYukle();   // T-S1: nakit uyarısının eşiği İLK AÇILIŞTA sunucudan (istemcide rakam yok)
@@ -955,8 +955,8 @@
     // Canlı kur servisinden kurSnapshotId + has fiyatını yansıt (push geldiğinde de çağrılır)
     private void KurYansit()
     {
-        kurId = Canli.Son?.Id;
-        hasFiyati = Canli.Son?.AltinHasFiyati ?? 0m;
+        kurId = KilitliKurId is not null ? kurKilidi!.KurSnapshotId : Canli.Son?.Id;   // D1-04: kilitliyken kilidin kuru
+        hasFiyati = KilitliKurId is not null ? kurKilidi!.AltinHasFiyati : Canli.Son?.AltinHasFiyati ?? 0m;
         // UX-S21 — sistemin bildiği has gram fiyatı boş bırakılmaz. Elle girilmiş
         // değerin ÜZERİNE YAZILMAZ: rozet hangi kaynağın geçerli olduğunu söyler.
         if (!hurda.FiyatElle && hasFiyati > 0m) hurda.Fiyat = hasFiyati;
@@ -1023,7 +1023,7 @@
     // ── etkileşim ──
     private void TurSec(string yeni)
     {
-        tur = yeni;
+        tur = yeni; if (!KilitTurunde) KilitBirak();   // D1-04: kilit yalnız satış/sipariş teslimi
         kalemler.Clear();
         // PAKET P-16: iskonto SATIŞA aittir; tür değişince taşınmaz.
         fisIskontoYuzde = null;
@@ -1333,7 +1333,7 @@
         }
         kaydediliyor = false;
         if (!kaydedildi) return;
-        masak = new(); masakSunucudanGerekli = false; Yasal3Sifirla();   // kişisel veri formda kalmaz · YASAL-3: beyan fişe özgü
+        masak = new(); masakSunucudanGerekli = false; Yasal3Sifirla(); KilitBirak();   // D1-04 · kişisel veri formda kalmaz · YASAL-3: beyan fişe özgü
 
         // başarı: formu sıfırla, kasa bakiyelerini tazele, bandı 3 sn göster
         var taksitSorgu = FisTaksitSorgusu(); SonKaydiTut(); kalemler.Clear();   // T-S1 (QA-10): kaydedilenin özeti bir sonraki Kaydet'e kadar görünür

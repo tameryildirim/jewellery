@@ -3477,6 +3477,60 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.ToTable("kullanici_tercihleri");
                 });
 
+            modelBuilder.Entity("Kuyumcu.Api.Data.KurKilidi", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("Bitis")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("bitis");
+
+                    b.Property<string>("CariId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("cari_id");
+
+                    b.Property<DateTime?>("Kaldirildi")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("kaldirildi");
+
+                    b.Property<string>("KurSnapshotId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kur_snapshot_id");
+
+                    b.Property<string>("Not")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("not_metni");
+
+                    b.Property<string>("OlusturanId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Bitis");
+
+                    b.ToTable("kur_kilitleri");
+                });
+
             modelBuilder.Entity("Kuyumcu.Api.Data.KurSnapshot", b =>
                 {
                     b.Property<string>("Id")

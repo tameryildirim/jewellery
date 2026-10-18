@@ -285,6 +285,40 @@
                     }
                 }
             </div>
+            @if (B.KurKilidi is { Gorunur: true } kk)
+            {
+                @* D1-04 (18.10): kur kilidi — kilitliyken tek satır özet + Kaldır; değilse "Kuru kilitle" (süre seçenekleri) ve müşteriye uyan kilitler. *@
+                <div class="yz-kilit" id="yildiz-kur-kilidi">
+                    @if (kk.Etkin is { } etkin)
+                    {
+                        <span class="yz-kilit-durum" id="yildiz-kur-kilidi-etkin" role="status"><span class="yz-kilit-baslik">@D1Sozlugu.Al(Dil.Dil).KurKilitli</span> <span class="yz-s">@etkin</span></span>
+                        <button type="button" class="yz-b2" id="yildiz-kur-kilidi-kaldir" @onclick="kk.Kaldir">@D1Sozlugu.Al(Dil.Dil).KilidiKaldir</button>
+                    }
+                    else
+                    {
+                        @foreach (var u in kk.Uygunlar)
+                        {
+                            <span class="yz-kilit-durum" id="@($"yildiz-kur-kilidi-uygun-{u.Id}")"><span class="yz-kilit-baslik">@D1Sozlugu.Al(Dil.Dil).KilitliKurVar</span> <span class="yz-s">@u.Metin</span></span>
+                            <button type="button" class="yz-b2" id="@($"yildiz-kur-kilidi-kullan-{u.Id}")" @onclick="() => kk.Kullan.InvokeAsync(u.Id)">@D1Sozlugu.Al(Dil.Dil).KilidiKullan</button>
+                        }
+                        <button type="button" class="yz-b3 yz-tezgah-acik-hesap" id="yildiz-kur-kilitle" aria-expanded="@(kk.SecenekAcik ? "true" : "false")"
+                                aria-controls="yildiz-kur-kilidi-sureler" @onclick="kk.AcKapa">@D1Sozlugu.Al(Dil.Dil).KuruKilitle</button>
+                        @if (kk.SecenekAcik)
+                        {
+                            <span class="yz-kilit-sureler" id="yildiz-kur-kilidi-sureler">
+                                @foreach (var s in kk.Sureler)
+                                {
+                                    <button type="button" class="yz-b2" id="@($"yildiz-kur-kilitle-{s.Dakika}")" disabled="@kk.Calisiyor" @onclick="() => kk.Kilitle.InvokeAsync(s.Dakika)">@s.Metin</button>
+                                }
+                            </span>
+                        }
+                    }
+                    @if (kk.Not is { } kn)
+                    {
+                        <span class="yz-s yz-tezgah-not @(kk.NotKotu ? "yz-kotu" : null)" id="yildiz-kur-kilidi-not" role="status">@kn</span>
+                    }
+                </div>
+            }
             @* D1-03 (18.10): işlem bekletme — bekleyen fişler listesi (fiş boşken açılır) ve sonuç satırı. *@
             @if (B.BekleyenNot is { } bn)
             {

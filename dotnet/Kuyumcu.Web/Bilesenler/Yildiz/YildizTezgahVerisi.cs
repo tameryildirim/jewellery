@@ -187,6 +187,8 @@ public sealed class YildizTezgahBaglami
     /// <summary>Bekletme sonucu ya da hatası (tek satır).</summary>
     public string? BekleyenNot { get; init; }
     public bool BekleyenNotKotu { get; init; }
+    /// <summary>D1-04 — kur kilidi satırı.</summary>
+    public YildizKurKilidiBaglami? KurKilidi { get; init; }
 }
 
 /// <summary>D1-03 — bekleyen fiş satırı (etiket · "3 kalem · 12.500,00 ₺ · 14:20 · Hakan").</summary>
@@ -252,3 +254,22 @@ public static class YildizTezgahBicim
 
 /// <summary>17.10 — tezgâhtaki bekleyen havale satırı (ad · tutar · tarih; IBAN yok).</summary>
 public sealed record YildizHavaleOgesi(string Id, string Ad, string Tutar, string Tarih);
+
+/// <summary>D1-04 — tezgâhta kur kilidi satırı (görünüm verisi; istekleri Islemler atar).</summary>
+public sealed class YildizKurKilidiBaglami
+{
+    public bool Gorunur { get; init; }
+    /// <summary>Tezgâhta kullanılan kilidin özeti ("Has 3.012,50 ₺ · bitiş 15:42 · Kemal Ardıç"); yoksa null.</summary>
+    public string? Etkin { get; init; }
+    public bool SecenekAcik { get; init; }
+    public IReadOnlyList<(int Dakika, string Metin)> Sureler { get; init; } = [];
+    /// <summary>Seçili müşteriye uyan, kullanılmayan kilitler.</summary>
+    public IReadOnlyList<(string Id, string Metin)> Uygunlar { get; init; } = [];
+    public string? Not { get; init; }
+    public bool NotKotu { get; init; }
+    public bool Calisiyor { get; init; }
+    public EventCallback AcKapa { get; init; }
+    public EventCallback<int> Kilitle { get; init; }
+    public EventCallback<string> Kullan { get; init; }
+    public EventCallback Kaldir { get; init; }
+}

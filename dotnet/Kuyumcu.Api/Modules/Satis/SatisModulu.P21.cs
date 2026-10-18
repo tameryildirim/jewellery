@@ -149,6 +149,8 @@ public sealed class SiparisSatisaCevirDto
     [Required, MinLength(1)] public List<OdemeBacagiDto> Odemeler { get; set; } = [];
 
     [Required] public string KurSnapshotId { get; set; } = null!;
+    /// <summary>D1-04 — kapora/siparişte kilitlenen kurla teslim.</summary>
+    [MaxLength(36)] public string? KurKilidiId { get; set; }
     [Range(0, 3650)] public int? VadeGun { get; set; }
 
     /// <summary>
@@ -954,6 +956,7 @@ public sealed partial class SatisServisi
         {
             CariId        = siparis.CariId,
             KurSnapshotId = dto.KurSnapshotId,
+            KurKilidiId   = dto.KurKilidiId,   // D1-04
             VadeGun       = dto.VadeGun,
             Aciklama      = dto.Aciklama ?? $"Sipariş {siparis.No} teslimi",
             Masak         = dto.Masak,

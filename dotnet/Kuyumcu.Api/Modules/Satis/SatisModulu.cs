@@ -76,6 +76,8 @@ public sealed class SatisOlusturDto
 
     /// <summary>İşlem anındaki kur snapshot ID</summary>
     [Required] public string KurSnapshotId { get; set; } = null!;
+    /// <summary>D1-04 — kilitli kurla satış (tazelik yerine kilit kapısı).</summary>
+    [MaxLength(36)] public string? KurKilidiId { get; set; }
 
     /// <summary>MASAK bloğu — eşik altında boş. Kimlik eşiğinde (işlem gününün yasal_parametreler değeri; 07.10.2026'dan itibaren 370.000 TL) ve amaç beyanı kademesinde (200.000 TL, TEYİTSİZ) kapı zorunlu kılar.</summary>
     public MasakBilgiDto? Masak { get; set; }
@@ -477,6 +479,8 @@ public sealed class SatisFisiDto
     [MaxLength(500)] public string? Aciklama { get; set; }
 
     [Required] public string KurSnapshotId { get; set; } = null!;
+    /// <summary>D1-04 — kilitli kurla satış (tazelik yerine kilit kapısı).</summary>
+    [MaxLength(36)] public string? KurKilidiId { get; set; }
 
     /// <summary>MASAK blogu - esik FISIN TOPLAMINA uygulanir, bacak basina degil.</summary>
     public MasakBilgiDto? Masak { get; set; }
@@ -826,7 +830,7 @@ public sealed partial class SatisServisi(
 
         // K1: yabancı kimlikler transaction açılmadan önce doğrulanır
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
-        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3: bayat/iptal/dünkü elle kur ile satış-alış yok
+        await IslemDogrulayici.KurTazeVeyaKilitDogrula(db, dto.KurSnapshotId, dto.KurKilidiId, dto.CariId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3 · D1-04 kilitli kur
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
         // PAKET P-16 (B-31): SATIŞ carisi ayrıca AKTİF olmalı — ekran pasif
         // cariyi listeden gizler, sunucu gizlemeye GÜVENMEZ (fail-closed).
@@ -1676,7 +1680,7 @@ public sealed partial class SatisServisi(
         var subeId = SubeBelirle(islem, "Satış için şube seçimi gerekli");
 
         await IslemDogrulayici.KurDogrula(db, dto.KurSnapshotId, islem.TenantId);
-        await IslemDogrulayici.KurTazeDogrula(db, dto.KurSnapshotId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3: bayat/iptal/dünkü elle kur ile satış-alış yok
+        await IslemDogrulayici.KurTazeVeyaKilitDogrula(db, dto.KurSnapshotId, dto.KurKilidiId, dto.CariId, islem.TenantId, kurDefteri, DateTime.UtcNow);   // 17.10 P0-3 · D1-04 kilitli kur
         await IslemDogrulayici.CariDogrula(db, dto.CariId, islem.TenantId);
         // PAKET P-16 (B-31): SATIŞ carisi ayrıca AKTİF olmalı — ekran pasif
         // cariyi listeden gizler, sunucu gizlemeye GÜVENMEZ (fail-closed).

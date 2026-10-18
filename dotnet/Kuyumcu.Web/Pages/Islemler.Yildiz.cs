@@ -233,6 +233,7 @@ public partial class Islemler
                 BekleyenSil = EventCallback.Factory.Create<string>(this, BekleyenSil),
                 BekleyenNot = bekleyenNot,
                 BekleyenNotKotu = bekleyenNotKotu,
+                KurKilidi = YildizKilit,   // D1-04
             };
         }
     }
