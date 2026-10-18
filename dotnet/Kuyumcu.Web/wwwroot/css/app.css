@@ -485,7 +485,7 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
 /* ── D1-01 (18.10) — 80 mm termal fiş düzeni ───────────────────────────────
    Aynı OrtakBelge, dar kâğıt: başlık alt alta, taraflar tek sütun, kalem tablosu satır başına
    "etiket … değer" listesi, tutarlar iki uçlu satır. Kâğıt muafiyeti korunur (belirteç yok). */
-.kagit-secimi { display: inline-flex; gap: .25rem; flex-wrap: nowrap; align-items: center; }
+.ana-icerik .kagit-secimi:not(#_) { display: inline-flex; flex-direction: row; gap: 24px; flex-wrap: nowrap; align-items: center; }
 .belge-80 { max-width: 80mm; margin: 0 auto; }
 .belge-80 .belge:not(#_) { padding: 4mm 3mm; font-size: 8.5pt; line-height: 1.35; }
 .belge-80 .belge h1:not(#_) { font-size: 12pt; }

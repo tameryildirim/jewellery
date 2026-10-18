@@ -39,11 +39,11 @@
                     ← @Dil.T.Ortak.Geri
                 </button>
                 @* D1-01 (18.10): kâğıt seçimi — A4 ya da 80 mm termal fiş. Aynı veri, yalnız düzen değişir.
-                   İki düğme de ikincil (ekranın tek birincili Yazdır); seçili olan aria-pressed ile dolgu alır (dugme.css 3b). *@
+                   Segment dili (musteri-segment-oge): ekranın tek birincili Yazdır; seçili olan aria-pressed ile işaretlenir (tema-yildiz). *@
                 <div class="kagit-secimi" role="group" aria-label="@D1.KagitSecimi" id="cikti-kagit">
-                    <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="cikti-kagit-a4"
+                    <button type="button" class="musteri-segment-oge" id="cikti-kagit-a4"
                             aria-pressed="@(Fis80 ? "false" : "true")" @onclick="@(() => KagitSec(null))">@D1.KagitA4</button>
-                    <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="cikti-kagit-80"
+                    <button type="button" class="musteri-segment-oge" id="cikti-kagit-80"
                             aria-pressed="@(Fis80 ? "true" : "false")" @onclick="@(() => KagitSec("80"))">@D1.Kagit80</button>
                 </div>
             </Filtreler>
