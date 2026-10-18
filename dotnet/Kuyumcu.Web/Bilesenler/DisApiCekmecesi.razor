@@ -10,7 +10,7 @@
    Tam anahtar YALNIZ oluşturulunca bir kez gösterilir (sunucu saklamaz). Kullanım adresleri çekmecede yazılı.
    ═══════════════════════════════════════════════════════════════════════════ *@
 <Cekmece Acik="Acik" Varlik="dis-api" Baslik="@M.DisApi" Kapat="Kapat" Kaydet="Olustur" Kaydediliyor="@calisiyor"
-         KaydetGoster="@formAcik" KaydetElemanId="da-kaydet" KaydetAktif="@(!string.IsNullOrWhiteSpace(ad) && (kur || urun))">
+         KaydetGoster="@formAcik" KaydetElemanId="da-kaydet" KaydetAktif="@(!formAcik || (!string.IsNullOrWhiteSpace(ad) && (kur || urun)))" KilitSebebi="@M.ZorunluAlaniDoldurun">
     <HataBandi Mesaj="@hata" Id="da-hata" />
     @if (yeniAnahtar is { } y)
     {

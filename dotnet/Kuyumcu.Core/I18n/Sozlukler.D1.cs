@@ -243,7 +243,8 @@ public sealed record D1Metinleri(
     string IptalEt,
     string YeniAnahtar,
     string KullanimBaslik,
-    string BaslikNotu);
+    string BaslikNotu,
+    string ZorunluAlaniDoldurun);
 
 /// <summary>D1 metinleri — TR + EN.</summary>
 public static class D1Sozlugu
@@ -483,7 +484,8 @@ public static class D1Sozlugu
         IptalEt: "İptal et",
         YeniAnahtar: "+ Yeni anahtar",
         KullanimBaslik: "Kullanım (yalnız okuma):",
-        BaslikNotu: "Anahtar X-Api-Anahtari başlığında gönderilir.");
+        BaslikNotu: "Anahtar X-Api-Anahtari başlığında gönderilir.",
+        ZorunluAlaniDoldurun: "Yıldızlı alanı doldurun");
 
     public static readonly D1Metinleri En = new(
         KagitSecimi: "Paper",
@@ -720,7 +722,8 @@ public static class D1Sozlugu
         IptalEt: "Revoke",
         YeniAnahtar: "+ New key",
         KullanimBaslik: "Usage (read-only):",
-        BaslikNotu: "Send the key in the X-Api-Anahtari header.");
+        BaslikNotu: "Send the key in the X-Api-Anahtari header.",
+        ZorunluAlaniDoldurun: "Fill in the starred field");
 
     /// <summary>Dil koduna göre metinler; bilinmeyen dil Türkçeye düşer.</summary>
     public static D1Metinleri Al(string dil) => dil == "en" ? En : Tr;

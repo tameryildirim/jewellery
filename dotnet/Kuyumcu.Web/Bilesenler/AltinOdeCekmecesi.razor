@@ -10,7 +10,7 @@
    izleme yazar). POST /cari/{id}/altin-tahsilat.
    ═══════════════════════════════════════════════════════════════════════════ *@
 <Cekmece Acik="@(Cari is not null)" Varlik="altin-ode" Baslik="@M.AltinlaOde" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor"
-         KaydetElemanId="ao-kaydet" KaydetAktif="@(gram > 0m && kurId is not null)" KilitSebebi="@(kurId is null ? M.HdKurYok : null)">
+         KaydetElemanId="ao-kaydet" KaydetAktif="@(gram > 0m && kurId is not null)" KilitSebebi="@(kurId is null ? M.HdKurYok : M.ZorunluAlaniDoldurun)">
     @if (hata is { } h)
     {
         <div class="bant bant-hata" role="alert" id="ao-hata">@h</div>

@@ -6,7 +6,7 @@
 @* D1-07 (18.10) — kara liste: veresiye engeli koy (sebep zorunlu) ya da kaldır. PUT /cari/{id}/veresiye-engeli (sahip/müdür). *@
 <Cekmece Acik="@(Cari is not null)" Varlik="kara-liste" Baslik="@(Cari?.VeresiyeEngeli == true ? M.KaraListedenCikar : M.KaraListeyeAl)"
          Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@kaydediliyor" KaydetElemanId="kl-kaydet"
-         KaydetAktif="@(Cari?.VeresiyeEngeli == true || !string.IsNullOrWhiteSpace(sebep))">
+         KaydetAktif="@(Cari?.VeresiyeEngeli == true || !string.IsNullOrWhiteSpace(sebep))" KilitSebebi="@M.ZorunluAlaniDoldurun">
     @if (hata is { } h)
     {
         <div class="bant bant-hata" role="alert" id="kl-hata">@h</div>
