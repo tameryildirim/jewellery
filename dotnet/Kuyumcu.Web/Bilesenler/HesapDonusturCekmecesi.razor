@@ -17,15 +17,33 @@
                     DegerChanged="@(v => { kaynak = v ?? "HAS"; Oner(); })" />
         </div>
         <p class="metin-soluk metin-kucuk" id="hd-bakiye">@BakiyeSatiri</p>
-        <Para ElemanId="hd-kaynak-miktar" Etiket="@M.HdMiktar" Zorunlu="true" ParaBirimi="@(kaynak == "HAS" ? null : kaynak)"
-              Deger="@kaynakMiktar" DegerChanged="@(v => { kaynakMiktar = v; Oner(); })" />
+        @* Has bir para birimi değildir: has hesabında ağırlık alanı (Gram · Has, 6 hane), diğerlerinde para alanı. *@
+        @if (kaynak == "HAS")
+        {
+            <Gram ElemanId="hd-kaynak-miktar" Etiket="@M.HdMiktar" Zorunlu="true" Tur="Kuyumcu.Core.Domain.Girdi.AgirlikTuru.Has"
+                  Deger="@kaynakMiktar" DegerChanged="@(v => { kaynakMiktar = v; Oner(); })" />
+        }
+        else
+        {
+            <Para ElemanId="hd-kaynak-miktar" Etiket="@M.HdMiktar" Zorunlu="true" ParaBirimi="@kaynak"
+                  Deger="@kaynakMiktar" DegerChanged="@(v => { kaynakMiktar = v; Oner(); })" />
+        }
         <div class="alan">
             <Secici ElemanId="hd-hedef" Etiket="@M.HdHedef" Secenekler="@Secenekler" Deger="@hedef"
                     DegerChanged="@(v => { hedef = v ?? "TRY"; Oner(); })" />
         </div>
-        <Para ElemanId="hd-hedef-miktar" Etiket="@M.HdKarsilik" Zorunlu="true" ParaBirimi="@(hedef == "HAS" ? null : hedef)"
-              Deger="@hedefMiktar" DegerChanged="@(v => { hedefMiktar = v; onerildi = false; })"
-              KaynakRozeti="@(onerildi ? Dil.T.Islem.KurdanGeldi : null)" />
+        @if (hedef == "HAS")
+        {
+            <Gram ElemanId="hd-hedef-miktar" Etiket="@M.HdKarsilik" Zorunlu="true" Tur="Kuyumcu.Core.Domain.Girdi.AgirlikTuru.Has"
+                  Deger="@hedefMiktar" DegerChanged="@(v => { hedefMiktar = v; onerildi = false; })"
+                  KaynakRozeti="@(onerildi ? Dil.T.Islem.KurdanGeldi : null)" />
+        }
+        else
+        {
+            <Para ElemanId="hd-hedef-miktar" Etiket="@M.HdKarsilik" Zorunlu="true" ParaBirimi="@hedef"
+                  Deger="@hedefMiktar" DegerChanged="@(v => { hedefMiktar = v; onerildi = false; })"
+                  KaynakRozeti="@(onerildi ? Dil.T.Islem.KurdanGeldi : null)" />
+        }
         <HataBandi Mesaj="@hata" Id="hd-hata" />
     </div>
 </Cekmece>
