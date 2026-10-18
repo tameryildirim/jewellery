@@ -393,7 +393,7 @@ public static class D1Sozlugu
         Kopyala: "Kopyala",
         Kopyalandi: "Kopyalandı",
         KopyalanamadiElle: "Pano kullanılamadı — metni seçip elle kopyalayın",
-        SibGizlilik: "Gizlilik: bildirim yapıldığı, işleme taraf olanlar dahil hiç kimseye söylenemez (5549 sayılı Kanun md.4/2).",
+        SibGizlilik: "Gizlilik (5549 sayılı Kanun md.4/2): bildirim yapıldığı, işleme taraf olanlar dahil hiç kimseye açıklanamaz.",
         UyumRaporu: "Uyum raporu (bu yıl)",
         CsvIndir: "CSV indir");
 

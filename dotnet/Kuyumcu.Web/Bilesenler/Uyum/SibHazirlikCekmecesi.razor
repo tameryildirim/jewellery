@@ -67,7 +67,11 @@
 
     private async Task Kopyala(string kimlik, string deger)
     {
-        try { if (await JS.InvokeAsync<bool>("kuyumcuPanoyaKopyala", deger)) kopyalanan = kimlik; }
+        try
+        {
+            if (await JS.InvokeAsync<bool>("kuyumcuPanoyaKopyala", deger)) { kopyalanan = kimlik; hata = null; }
+            else hata = M.KopyalanamadiElle;   // pano izni yok: sessiz kalınmaz
+        }
         catch (JSException) { hata = M.KopyalanamadiElle; }
     }
 
