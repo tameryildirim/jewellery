@@ -39,7 +39,7 @@
                 </li>
             }
         </ul>
-        <button type="button" class="yz-ekle" id="us-yeni" @onclick="() => FormAc(null)">@M.YeniSet</button>
+        <button type="button" class="dugme dugme-ikincil" id="us-yeni" @onclick="() => FormAc(null)">@M.YeniSet</button>
     }
     else
     {
@@ -53,13 +53,13 @@
                 <div class="form-grid-2" id="@($"us-parca-{ix}")">
                     <Secici ElemanId="@($"us-parca-urun-{ix}")" Etiket="@M.SetParca" Secenekler="@UrunSecenekleri"
                             Deger="@form.Parcalar[ix].UrunId" DegerChanged="@(v => form.Parcalar[ix].UrunId = v ?? "")" />
-                    <Sayi ElemanId="@($"us-parca-adet-{ix}")" Etiket="@M.SetAdet" EnAz="0" EnCok="100000" EnCokOndalik="3"
+                    <Sayi ElemanId="@($"us-parca-adet-{ix}")" Etiket="@M.SetAdet" Zorunlu="true" EnAz="0" EnCok="100000" EnCokOndalik="3"
                           Deger="@form.Parcalar[ix].Adet" DegerChanged="@(v => form.Parcalar[ix].Adet = v ?? 0m)" />
                 </div>
             }
             @if (form.Parcalar.Count < 20)
             {
-                <button type="button" class="yz-ekle" id="us-parca-ekle" @onclick="() => form.Parcalar.Add(new())">@M.SetParcaEkle</button>
+                <button type="button" class="dugme dugme-ikincil dugme-kucuk" id="us-parca-ekle" @onclick="() => form.Parcalar.Add(new())">@M.SetParcaEkle</button>
             }
         </div>
     }
