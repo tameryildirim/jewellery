@@ -51,7 +51,7 @@ public partial class Islemler
         // düğme tür adı TAŞIMAZ ("Kaydet"); PRO'da sekme adı = düğmedeki ad (aynı kaynak FisTurleri).
         // PARA-DEMO-2 (madde 8): Değişim/Takas düğmesi iki modda AYNI yazı ("Kaydet") — karo/sekme adı zaten başlıkta.
         !SatisTuvali ? (Modu.BasitMi || tur == "TAKAS" ? ST.KaydetTek : $"{TurEtiket(tur)} {Dil.T.Islem.Kaydet}")
-        : TekBelge ? ST.KaydetYazdir : ST.KaydetTek;
+        : TekBelge && !FaturaSecili ? ST.KaydetYazdir : ST.KaydetTek;   // 19.10 kurucu: faturalı satış yazdırma vaat etmez
 
     /// <summary>Başarılı kayıttan sonra: etiket yazdırma vaat ettiyse ve tek belge çıktıysa yazdırma sayfasını açar.</summary>
     private async Task OtomatikYazdir()

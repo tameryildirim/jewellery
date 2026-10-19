@@ -42,6 +42,10 @@ public sealed class FaturaSorusuEkranTestleri : BunitContext
                 var v when v.Contains("/masak/gereksinim") => """{"kademe":"YOK","kimlikGerekli":false,"amacGerekli":false,"beyanFormuGerekli":false,"ekBelgeGerekli":false,"asgariAciklamaUzunlugu":20}""",
                 var v when v.Contains("/masak/esikler") => """{"kimlikEsigi":185000,"amacBeyaniEsigi":185000,"beyanFormuEsigi":185000,"ekBelgeEsigi":185000,"asgariAciklamaUzunlugu":20,"belgeTurleri":["TC_KIMLIK","PASAPORT"]}""",
                 var v when v.Contains("/pos/cihazlar") => "[]",
+                // Faturalı satış fiş ucuna gider (gerçek yanıt biçimi: { satis, fatura }); fiş kalemi yazdırma için okunur.
+                var v when v.Contains("/islemler/satis-fisi") && istek.Method == HttpMethod.Post =>
+                    """{"satis":{"fisNo":"F-0002","fisId":"f2"},"fatura":{"faturaNo":"FTR-2026-000001"},"faturaHata":null}""",
+                var v when v.Contains("/islemler/fis/") => """{"fisNo":"F-0002","kalemler":[{"id":"h2","tur":"SATIS"}]}""",
                 var v when v.Contains("/islemler/satis") && istek.Method == HttpMethod.Post => """{"id":"h1","hareketId":"h1","fisNo":"F-0001","fisId":"f1"}""",
                 _ => "{}",
             };
@@ -148,5 +152,26 @@ public sealed class FaturaSorusuEkranTestleri : BunitContext
         e.WaitForElement("#yildiz-belge-geri");
         e.Find("#yildiz-belge-evet").Click();                                   // "Evet, fatura kes"
         Assert.Equal("FATURA", (string?)SonSatis()["belgeTuru"]);
+    }
+
+    // 19.10 kurucu: "Evet dediğimde çıktı geliyor, öyle olmaması lazım; satış fişini kaydetsin, fatura arka planda gitsin".
+    private int AcilanPencere() => JSInterop.Invocations.Count(i => i.Identifier == "open");
+
+    [Fact]
+    public void FS_05_Evet_faturali_satista_yazdirma_penceresi_ACILMAZ_Hayirda_fis_yazdirilir()
+    {
+        var e = Tezgah("c1");
+        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.WaitForElement("#yildiz-belge-evet").Click();
+        Assert.Equal("FATURA", (string?)SonSatis()["belgeTuru"]);
+        e.WaitForAssertion(() => Assert.True(e.Instance is not null));
+        Thread.Sleep(300);
+        Assert.Equal(0, AcilanPencere());
+
+        var h = Tezgah("c1");
+        h.Find("#yildiz-tezgah-kaydet").Click();
+        h.WaitForElement("#yildiz-belge-hayir").Click();
+        Assert.Null((string?)SonSatis()["belgeTuru"]);
+        h.WaitForAssertion(() => Assert.Equal(1, AcilanPencere()), TimeSpan.FromSeconds(5));
     }
 }

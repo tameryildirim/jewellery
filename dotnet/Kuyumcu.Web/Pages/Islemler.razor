@@ -1096,7 +1096,7 @@
         // sorun çözüldükten sonra kalıcı olarak açık kalmaz.
         kapiSunucudanAcildi = false;
         basarili = false;
-        sonFisNo = null; yazdirHata = null; yazdirIdler.Clear(); otoYazdir = SatisTuvali && TekBelge; otoYazdirAcildi = false;   // T-S1: etiket "ve yazdır" diyorsa yazdırma KAYITTAN SONRA açılır
+        sonFisNo = null; yazdirHata = null; yazdirIdler.Clear(); otoYazdir = SatisTuvali && TekBelge && !FaturaSecili; otoYazdirAcildi = false;   // T-S1: etiket "ve yazdır" diyorsa yazdırma KAYITTAN SONRA açılır · 19.10 kurucu: faturalı satışta çıktı AÇILMAZ (fatura elektronik gider)
         sonIskontoNotu = null; sonFaturaNotu = null;   // M6
         yerlesimUyarisi = null; fisTaksitUyari = null; fisTaksitHata = null;   // YASAL-2 t3
         form.Temizle();
