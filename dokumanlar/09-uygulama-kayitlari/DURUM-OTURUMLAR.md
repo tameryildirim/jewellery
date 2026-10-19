@@ -102,6 +102,13 @@ Başkasının satırını değiştirme/silme yok.
 3. **24:11–24:25 "10 milyonluk ciro… binde 15'ini ver":** bu KDV mi, başka bir vergi/götürü mü? (mali müşavir teyidi)
 
 ## Kurucu kararı / dış bağımlılık bekleyenler
-- e-Fatura/e-Arşiv entegratörü (GİB'e gönderim, gelen e-fatura, mükellef sorgusu) · gerçek banka bağlantısı (banka sözleşmesi/API)
+- e-Fatura/e-Arşiv entegratörü (GİB'e gönderim, gelen e-fatura, mükellef sorgusu)
+- **Banka (19.10 D2-05b, c62beb8 + a20b27e):** 8 hazır bağlayıcı kodlandı (Ziraat, İş, Garanti, Akbank, VakıfBank, QNB, Kuveyt Türk,
+  Albaraka); şifreli kimlik, kaydet+dene, sade hata, 120 sn çekim aralığı. 12.723 test 0 başarısız, denetim yalnız P-30.
+  Tarayıcı: 1280/375 · açık/koyu ölçüldü (taşma 0). **Canlı bankada denenmedi** — açık kalanlar: (1) pilot işletmenin servis
+  kullanıcısıyla her bankada ilk çekim (Ziraat/İş KISMEN: tarih biçimi + uç; QNB yön işareti; Albaraka ad alanı);
+  (2) Garanti geliştirici portalına Mihenk uygulaması kaydı (kurucu yapar; client id/secret → ortam Banka__GARANTI__clientId/clientSecret);
+  (3) sunucunun sabit çıkış IP'si (Banka__CikisIp; Akbank zorunlu); (4) HBH/6493 hukuki görüş (TEYİTSİZ).
+  Yapı Kredi, Halkbank, DenizBank, Enpara: uç nokta/kimlik herkese açık değil → ekstre dosyasıyla (mevcut).
 - Luca/Zirve aktarımı (mali müşavirden örnek dosya) · Harem veri izni · P-30 kronometreli demo ölçümü (insan)
 
