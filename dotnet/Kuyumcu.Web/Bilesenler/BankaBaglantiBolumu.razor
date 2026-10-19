@@ -1,0 +1,178 @@
+@using Kuyumcu.Contracts.Sayfalar
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ D2-05b (19.10, kurucu: "bankaları önceden bağlayalım") — hesap çekmecesi › banka bağlantısı.
+   Açılışta yalnız durum satırı (bağlı / bağlı değil); form "Bankaya bağla" ile açılır (zorunlu önce).
+   Gizli alan (şifre, secret) bir daha ekrana dönmez; yeniden kayıtta boş bırakılırsa eski değer kalır.
+   Kaydet = kaydet + hemen dene; sonuç aynı yerde sade dille. Yalnız SAHİP/MÜDÜR görür (sunucu kapısı). ═══ *@
+@if (yetkiYok) { return; }
+<div class="alan bb-bolum" id="bb-bolum">
+    <span class="alan-etiket">@BankaBaglantiSozlugu.Baslik(Dil.Dil)</span>
+    @if (yukleniyor)
+    {
+        <Yukleniyor />
+    }
+    else if (formAcik && katalog is not null)
+    {
+        <div class="form-dikey" id="bb-form">
+            <div class="bant bant-uyari metin-kucuk" id="bb-sifre-uyari">@BankaBaglantiSozlugu.SifreUyari(Dil.Dil)</div>
+            <Secim ElemanId="bb-banka" Etiket="@BankaBaglantiSozlugu.Banka(Dil.Dil)" Zorunlu="true"
+                   Secenekler="@BankaSecenekleri" Deger="@secilenKod" DegerChanged="BankaDegisti" />
+            @if (Secilen is { } t)
+            {
+                <details class="metin-kucuk" id="bb-nasil">
+                    <summary>@BankaBaglantiSozlugu.NasilAlinir(Dil.Dil)</summary>
+                    <p>@t.BasvuruYolu</p>
+                    @if (t.IpKisitli)
+                    {
+                        <p id="bb-ip">@(katalog.CikisIp is { Length: > 0 } ip ? BankaBaglantiSozlugu.SunucuAdresi(ip, Dil.Dil) : BankaBaglantiSozlugu.SunucuAdresiYok(Dil.Dil))</p>
+                    }
+                </details>
+                @foreach (var a in t.Alanlar)
+                {
+                    var ad = a.Ad;
+                    var kayitliGizli = a.Gizli && durum?.Kod == t.Kod;
+                    if (a.Gizli)
+                    {
+                        <Sifre ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@(a.Zorunlu && !kayitliGizli)" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
+                               OtoTamamla="new-password" YerTutucu="@(kayitliGizli ? BankaBaglantiSozlugu.GizliKayitli(Dil.Dil) : null)" Ipucu="@a.Ipucu"
+                               Deger="@Deger(ad)" DegerChanged="@(v => alanlar[ad] = v)" />
+                    }
+                    else
+                    {
+                        <Metin ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@a.Zorunlu" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
+                               Ipucu="@a.Ipucu" Deger="@Deger(ad)" DegerChanged="@(v => alanlar[ad] = v)" />
+                    }
+                }
+            }
+            @if (hata is { } h) { <div class="metin-kirmizi metin-kucuk" role="alert" id="bb-hata">@h</div> }
+            <div class="bb-dugmeler">
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="bb-kaydet" disabled="@(calisiyor || !FormTamam)" @onclick="Kaydet">@BankaBaglantiSozlugu.BaglanVeDene(Dil.Dil)</button>
+                <button type="button" class="btn btn-metin btn-kucuk" id="bb-vazgec" disabled="@calisiyor" @onclick="() => { formAcik = false; hata = null; }">@BankaBaglantiSozlugu.Vazgec(Dil.Dil)</button>
+            </div>
+        </div>
+    }
+    else if (durum?.Kod is null)
+    {
+        <span class="metin-kucuk metin-soluk" id="bb-durum">@BankaBaglantiSozlugu.BagliDegil(Dil.Dil)</span>
+        @if (katalog is { Bankalar.Count: > 0 })
+        {
+            <button type="button" class="btn btn-ikincil btn-kucuk" id="bb-ac" @onclick="FormAc">@BankaBaglantiSozlugu.Bagla(Dil.Dil)</button>
+        }
+        @if (hata is { } h) { <div class="metin-kirmizi metin-kucuk" role="alert" id="bb-hata">@h</div> }
+    }
+    else
+    {
+        <span class="metin-kucuk" id="bb-durum">
+            <strong>@BankaBaglantiSozlugu.Bagli(durum.BankaAdi ?? durum.Kod, Dil.Dil)</strong>
+            @if (durum.Ozet is { } o) { <span class="metin-soluk"> · @o</span> }
+            <span class="metin-soluk"> · @(durum.SonBasari is { } sb ? BankaBaglantiSozlugu.SonAlis(Bicim.TarihSaat(sb), Dil.Dil) : BankaBaglantiSozlugu.HenuzDenenmedi(Dil.Dil))</span>
+        </span>
+        @if (durum.SonHata is { } sh) { <div class="metin-kirmizi metin-kucuk" role="alert" id="bb-son-hata">@sh</div> }
+        @if (basari is { } b) { <div class="metin-yesil metin-kucuk" role="status" id="bb-basari">@b</div> }
+        @if (hata is { } h) { <div class="metin-kirmizi metin-kucuk" role="alert" id="bb-hata">@h</div> }
+        @if (kaldirOnay)
+        {
+            <div class="bb-dugmeler" id="bb-kaldir-onay">
+                <span class="metin-kucuk">@BankaBaglantiSozlugu.KaldirOnay(Dil.Dil)</span>
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="bb-kaldir-evet" disabled="@calisiyor" @onclick="Kaldir">@BankaBaglantiSozlugu.EvetKaldir(Dil.Dil)</button>
+                <button type="button" class="btn btn-metin btn-kucuk" id="bb-kaldir-vazgec" @onclick="() => kaldirOnay = false">@BankaBaglantiSozlugu.Vazgec(Dil.Dil)</button>
+            </div>
+        }
+        else
+        {
+            <div class="bb-dugmeler">
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="bb-dene" disabled="@calisiyor" @onclick="Dene">@BankaBaglantiSozlugu.SimdiDene(Dil.Dil)</button>
+                <button type="button" class="btn btn-metin btn-kucuk" id="bb-degistir" disabled="@calisiyor" @onclick="FormAc">@BankaBaglantiSozlugu.BilgileriDegistir(Dil.Dil)</button>
+                <button type="button" class="btn btn-metin btn-kucuk" id="bb-kaldir" disabled="@calisiyor" @onclick="() => kaldirOnay = true">@BankaBaglantiSozlugu.Kaldir(Dil.Dil)</button>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string HesapId { get; set; } = "";
+    [Parameter] public EventCallback Degisti { get; set; }
+
+    private BankaBaglayiciKatalogOzet? katalog;
+    private BankaBaglantiOzet? durum;
+    private Dictionary<string, string?> alanlar = [];
+    private string? secilenKod, hata, basari, oncekiHesap;
+    private bool yukleniyor, formAcik, calisiyor, kaldirOnay, yetkiYok;
+
+    private BankaBaglayiciOzet? Secilen => katalog?.Bankalar.FirstOrDefault(b => b.Kod == secilenKod);
+    private IReadOnlyList<SecenekOgesi> BankaSecenekleri =>
+        katalog?.Bankalar.Select(b => new SecenekOgesi(b.Kod, b.BankaAdi)).ToList() ?? [];
+    private string? Deger(string ad) => alanlar.TryGetValue(ad, out var d) ? d : null;
+    private bool FormTamam => Secilen is { } t && t.Alanlar.All(a =>
+        !a.Zorunlu || (a.Gizli && durum?.Kod == t.Kod) || !string.IsNullOrWhiteSpace(Deger(a.Ad)));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (HesapId == oncekiHesap) return;
+        oncekiHesap = HesapId;
+        formAcik = false; kaldirOnay = false; hata = null; basari = null; yetkiYok = false;
+        yukleniyor = true;
+        try
+        {
+            katalog = await Api.GetAsync<BankaBaglayiciKatalogOzet>("/bankalar/baglayicilar");
+            durum = await Api.GetAsync<BankaBaglantiOzet>($"/bankalar/{Uri.EscapeDataString(HesapId)}/baglanti");
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403) { yetkiYok = true; }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch (System.Text.Json.JsonException) { hata = D1Sozlugu.Al(Dil.Dil).BolumOkunamadi; }
+        finally { yukleniyor = false; }
+    }
+
+    private void FormAc()
+    {
+        formAcik = true; hata = null; basari = null;
+        secilenKod = durum?.Kod ?? secilenKod;
+        alanlar = [];
+    }
+
+    private void BankaDegisti(string? kod) { secilenKod = kod; alanlar = []; hata = null; }
+
+    private async Task Kaydet()
+    {
+        calisiyor = true; hata = null; basari = null;
+        try
+        {
+            var s = await Api.PutAsync<BankaBaglantiKayitSonucu>($"/bankalar/{Uri.EscapeDataString(HesapId)}/baglanti", new { kod = secilenKod, alanlar });
+            durum = s.Baglanti; alanlar = []; formAcik = false;
+            if (s.Deneme.Basarili) basari = BankaBaglantiSozlugu.DenemeBasarili(s.Deneme.HareketSayisi, Dil.Dil);
+            await Degisti.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task Dene()
+    {
+        calisiyor = true; hata = null; basari = null;
+        try
+        {
+            var s = await Api.PostAsync<BankaBaglantiDeneSonucu>($"/bankalar/{Uri.EscapeDataString(HesapId)}/baglanti/dene");
+            durum = s.Baglanti;
+            if (durum.SonHata is null) basari = BankaBaglantiSozlugu.DenemeBasarili(s.Yeni, Dil.Dil);
+            await Degisti.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task Kaldir()
+    {
+        calisiyor = true; hata = null; basari = null;
+        try
+        {
+            durum = await Api.DeleteAsync<BankaBaglantiOzet>($"/bankalar/{Uri.EscapeDataString(HesapId)}/baglanti");
+            kaldirOnay = false;
+            await Degisti.InvokeAsync();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+}

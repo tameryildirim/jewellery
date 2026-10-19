@@ -37,6 +37,7 @@ public interface IBankaSaglayici
 public static class BankaSaglayicilari
 {
     public const string Sahte = "SAHTE";
+    /// <summary>Elle seçilebilen kodlar: demo + hazır banka bağlayıcıları (D2-05b; gerçek bankayı yalnız bağlantı kaydı açar).</summary>
     public static readonly string[] Tumu = [Sahte];
 
     public static IBankaSaglayici? Bul(string? kod) => kod switch
@@ -68,7 +69,7 @@ public sealed record CekimSonucu(int Yeni, int Hatali);
 
 public sealed class BankaCekimServisi(
     KuyumcuDbContext db, GelenOdemeServisi gelen, ILogger<BankaCekimServisi> gunluk,
-    IHubContext<BankaHub> hub)
+    IHubContext<BankaHub> hub, BankaBaglantiCekici gercek)
 {
     /// <summary>Kiracının sağlayıcılı TÜM hesaplarını çeker; yeni hareket varsa ekrana haber verir.</summary>
     public async Task<CekimSonucu> Cek(string tenantId, CancellationToken iptal = default, string? yalnizHesapId = null)
@@ -82,9 +83,16 @@ public sealed class BankaCekimServisi(
         var islem = new AktifKullanici("", tenantId, null, "SAHIP");   // arka plan: SaklamaUygulaIsi ile aynı kalıp
         foreach (var hesap in hesaplar)
         {
-            var saglayici = BankaSaglayicilari.Bul(hesap.SaglayiciKodu);
-            if (saglayici is null) continue;
-            var hareketler = await saglayici.Cek(db, hesap, iptal);
+            IReadOnlyList<SaglayiciHareketi> hareketler;
+            if (BankaSaglayicilari.Bul(hesap.SaglayiciKodu) is { } saglayici)
+                hareketler = await saglayici.Cek(db, hesap, iptal);
+            else
+            {
+                // D2-05b gerçek banka: kimlik çözülür, banka servisi çağrılır; hata bağlantı kaydına sade dille yazılır.
+                var gelenler = await gercek.Cek(hesap, zorla: yalnizHesapId is not null, iptal);
+                if (gelenler is null) continue;
+                hareketler = gelenler;
+            }
             var refs = hareketler.Select(h => h.Referans).ToList();
             var mevcut = (await db.BankaHareketleri.AsNoTracking()
                 .Where(b => b.TenantId == tenantId && b.BankaHesapId == hesap.Id && b.SaglayiciReferans != null && refs.Contains(b.SaglayiciReferans))

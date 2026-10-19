@@ -62,6 +62,8 @@ public static partial class SunucuIletiSozlugu
         ("Banka adı zorunludur", "The bank name is required"),
         ("Banka hareketi bulunamadı", "Bank movement not found"),
         ("Banka hesabı bulunamadı", "Bank account not found"),
+        ("Banka seçin", "Choose a bank"),
+        ("Bu hesabın banka bağlantısı yok", "This account has no bank connection"),
         ("Banka hesabı pasife alındı", "Bank account deactivated"),
         ("Banka hesabı zorunludur", "The bank account is required"),
         ("Banka tahsili için hesap seçimi gerekli", "Choosing an account is required for bank collection"),

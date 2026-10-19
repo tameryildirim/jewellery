@@ -269,7 +269,11 @@
             <Iban ElemanId="d-iban" Etiket="@Dil.T.Banka.Iban" Zorunlu="true"
                    Deger="@dIban" DegerChanged="@(v => dIban = v ?? "")"
                    Durum="duzenleForm" HataAlani="d-iban" />
-            <BankaSaglayiciAyari HesapId="@duzenleHesap.Id" Kod="@duzenleHesap.SaglayiciKodu" SonCekim="@duzenleHesap.SonCekim" Degisti="HesaplariYukle" />   @* M7 *@
+            @if (duzenleHesap.SaglayiciKodu is null or "SAHTE")
+            {
+                <BankaSaglayiciAyari HesapId="@duzenleHesap.Id" Kod="@duzenleHesap.SaglayiciKodu" SonCekim="@duzenleHesap.SonCekim" Degisti="HesaplariYukle" />   @* M7 *@
+            }
+            <BankaBaglantiBolumu HesapId="@duzenleHesap.Id" Degisti="HesaplariYukle" />   @* D2-05b gerçek banka *@
             @* 28.09: oluşturma formuyla AYNI bileşen ve AYNI dizi (UX-S26). *@
             @* SON-KALANLAR tur 2 (tasarım hakemi KRİTİK): bakiyesi ya da hareketi olan hesapta sunucu para
                birimi değişimini 409 alan:paraBirimi ile reddeder. Eskiden bu ret ekranda HİÇBİR YERDE

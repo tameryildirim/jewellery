@@ -138,6 +138,7 @@ public static class DuzeltmePolitikasi
         D("Stok", "api/v1/urunler/{id}/stok/{subeId}"),
         D("Kasa", "api/v1/kasalar/{id}"),
         D("BankaHesap", "api/v1/bankalar/{id}"),
+        D("BankaBaglantisi", "api/v1/bankalar/{id}/baglanti"),   // D2-05b: banka servis kimliği yeniden girilir / kaldırılır
         // PAKET P-19 (Y-12): gider kategorisi DÜZENLENEBİLİR (PATCH + pasife alma
         // + aktife alma). Hard DELETE YOKTUR: geçmiş gider satırlarının sınıfı
         // yerinde kalmalıdır.
