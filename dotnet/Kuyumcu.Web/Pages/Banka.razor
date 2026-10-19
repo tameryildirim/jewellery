@@ -254,9 +254,12 @@
 </ModalPencere>
 
 @* ── Hesap düzenleme ÇEKMECESİ (K6; eski modal kabuğu çevrildi, iç id'ler AYNEN) ── *@
+@* D2-05b: banka bağlantı formu açıkken birincil düğme "Kaydet ve dene" (bağlantıyı kaydeder), Vazgeç formu kapatır. *@
 <Cekmece Acik="duzenleHesap is not null" Varlik="banka-hesap" Baslik="@Dil.T.Banka.HesabiDuzenle"
-         Kapat="() => duzenleHesap = null" Kaydet="HesapGuncelle" Kaydediliyor="@kaydediliyor"
-         KaydetAktif="@(!sayiKapisi.OnekleVar("d-"))" KilitSebebi="@sayiKapisi.Sebep(Dil.Dil, "d-")">
+         Kapat="CekmeceKapat" Kaydet="CekmeceKaydet" Kaydediliyor="@(BbFormAcik ? bbBolum!.Calisiyor : kaydediliyor)"
+         KaydetMetni="@(BbFormAcik ? bbBolum!.KaydetMetni : null)"
+         KaydetAktif="@(BbFormAcik ? bbBolum!.KaydetHazir : !sayiKapisi.OnekleVar("d-"))"
+         KilitSebebi="@(BbFormAcik ? D1Sozlugu.Al(Dil.Dil).ZorunluAlaniDoldurun : sayiKapisi.Sebep(Dil.Dil, "d-"))">
     @if (duzenleHesap is not null)
     {
         <div class="form-dikey">
@@ -273,7 +276,7 @@
             {
                 <BankaSaglayiciAyari HesapId="@duzenleHesap.Id" Kod="@duzenleHesap.SaglayiciKodu" SonCekim="@duzenleHesap.SonCekim" Degisti="HesaplariYukle" />   @* M7 *@
             }
-            <BankaBaglantiBolumu HesapId="@duzenleHesap.Id" Degisti="HesaplariYukle" />   @* D2-05b gerçek banka *@
+            <BankaBaglantiBolumu @ref="bbBolum" HesapId="@duzenleHesap.Id" Degisti="HesaplariYukle" FormDurumuDegisti="StateHasChanged" />   @* D2-05b gerçek banka *@
             @* 28.09: oluşturma formuyla AYNI bileşen ve AYNI dizi (UX-S26). *@
             @* SON-KALANLAR tur 2 (tasarım hakemi KRİTİK): bakiyesi ya da hareketi olan hesapta sunucu para
                birimi değişimini 409 alan:paraBirimi ile reddeder. Eskiden bu ret ekranda HİÇBİR YERDE

@@ -6,7 +6,9 @@
 @* ═══ D2-05b (19.10, kurucu: "bankaları önceden bağlayalım") — hesap çekmecesi › banka bağlantısı.
    Açılışta yalnız durum satırı (bağlı / bağlı değil); form "Bankaya bağla" ile açılır (zorunlu önce).
    Gizli alan (şifre, secret) bir daha ekrana dönmez; yeniden kayıtta boş bırakılırsa eski değer kalır.
-   Kaydet = kaydet + hemen dene; sonuç aynı yerde sade dille. Yalnız SAHİP/MÜDÜR görür (sunucu kapısı). ═══ *@
+   Kaydet = kaydet + hemen dene; sonuç aynı yerde sade dille. Yalnız SAHİP/MÜDÜR görür (sunucu kapısı).
+   Form açıkken çekmecenin TEK birincil düğmesi "Kaydet ve dene" olur (Banka.razor @ref ile bağlar),
+   "Vazgeç" formu kapatır — hesabın Kaydet'i banka bilgisini kaydediyor sanılmasın. ═══ *@
 @if (yetkiYok) { return; }
 <div class="alan bb-bolum" id="bb-bolum">
     <span class="alan-etiket">@BankaBaglantiSozlugu.Baslik(Dil.Dil)</span>
@@ -22,7 +24,7 @@
                    Secenekler="@BankaSecenekleri" Deger="@secilenKod" DegerChanged="BankaDegisti" />
             @if (Secilen is { } t)
             {
-                <details class="metin-kucuk" id="bb-nasil">
+                <details class="metin-kucuk bb-nasil" id="bb-nasil">
                     <summary>@BankaBaglantiSozlugu.NasilAlinir(Dil.Dil)</summary>
                     <p>@t.BasvuruYolu</p>
                     @if (t.IpKisitli)
@@ -38,20 +40,16 @@
                     {
                         <Sifre ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@(a.Zorunlu && !kayitliGizli)" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
                                OtoTamamla="new-password" YerTutucu="@(kayitliGizli ? BankaBaglantiSozlugu.GizliKayitli(Dil.Dil) : null)" Ipucu="@a.Ipucu"
-                               Deger="@Deger(ad)" DegerChanged="@(v => alanlar[ad] = v)" />
+                               Deger="@Deger(ad)" DegerChanged="@(v => AlanDegisti(ad, v))" />
                     }
                     else
                     {
                         <Metin ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@a.Zorunlu" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
-                               Ipucu="@a.Ipucu" Deger="@Deger(ad)" DegerChanged="@(v => alanlar[ad] = v)" />
+                               Ipucu="@a.Ipucu" Deger="@Deger(ad)" DegerChanged="@(v => AlanDegisti(ad, v))" />
                     }
                 }
             }
             @if (hata is { } h) { <div class="metin-kirmizi metin-kucuk" role="alert" id="bb-hata">@h</div> }
-            <div class="bb-dugmeler">
-                <button type="button" class="btn btn-ikincil btn-kucuk" id="bb-kaydet" disabled="@(calisiyor || !FormTamam)" @onclick="Kaydet">@BankaBaglantiSozlugu.BaglanVeDene(Dil.Dil)</button>
-                <button type="button" class="btn btn-metin btn-kucuk" id="bb-vazgec" disabled="@calisiyor" @onclick="() => { formAcik = false; hata = null; }">@BankaBaglantiSozlugu.Vazgec(Dil.Dil)</button>
-            </div>
         </div>
     }
     else if (durum?.Kod is null)
@@ -95,6 +93,13 @@
 @code {
     [Parameter, EditorRequired] public string HesapId { get; set; } = "";
     [Parameter] public EventCallback Degisti { get; set; }
+    /// <summary>Form açıldı/kapandı ya da alan değişti → çekmece birincil düğmesini yeniden çizer.</summary>
+    [Parameter] public EventCallback FormDurumuDegisti { get; set; }
+
+    public bool FormAcik => formAcik;
+    public bool KaydetHazir => formAcik && !calisiyor && FormTamam;
+    public bool Calisiyor => calisiyor;
+    public string KaydetMetni => BankaBaglantiSozlugu.BaglanVeDene(Dil.Dil);
 
     private BankaBaglayiciKatalogOzet? katalog;
     private BankaBaglantiOzet? durum;
@@ -126,16 +131,26 @@
         finally { yukleniyor = false; }
     }
 
-    private void FormAc()
+    private async Task FormAc()
     {
         formAcik = true; hata = null; basari = null;
         secilenKod = durum?.Kod ?? secilenKod;
         alanlar = [];
+        await FormDurumuDegisti.InvokeAsync();
     }
 
-    private void BankaDegisti(string? kod) { secilenKod = kod; alanlar = []; hata = null; }
+    public async Task FormKapat()
+    {
+        formAcik = false; hata = null; alanlar = [];
+        StateHasChanged();
+        await FormDurumuDegisti.InvokeAsync();
+    }
 
-    private async Task Kaydet()
+    private async Task AlanDegisti(string ad, string? v) { alanlar[ad] = v; await FormDurumuDegisti.InvokeAsync(); }
+
+    private async Task BankaDegisti(string? kod) { secilenKod = kod; alanlar = []; hata = null; await FormDurumuDegisti.InvokeAsync(); }
+
+    public async Task Kaydet()
     {
         calisiyor = true; hata = null; basari = null;
         try
@@ -146,7 +161,7 @@
             await Degisti.InvokeAsync();
         }
         catch (ApiHata ex) { hata = ex.Message; }
-        finally { calisiyor = false; }
+        finally { calisiyor = false; StateHasChanged(); await FormDurumuDegisti.InvokeAsync(); }
     }
 
     private async Task Dene()

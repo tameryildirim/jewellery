@@ -34,7 +34,7 @@ public static class BankaBaglayiciKatalogu
         new("ZIRAAT", "Ziraat Bankası", [new("kullanici", "Kurum kodu", false), Sifre, MusteriNo, new("ekNo", "Hesap ek numarası", false)], Sube, false),
         new("ISBANK", "İş Bankası", [Kullanici, Sifre], Sube, false),
         new("GARANTI", "Garanti BBVA",
-            [new("consentId", "Onay numarası", false, Ipucu: "Garanti internet şubesi › Başvur › Elektronik Hesap Özeti ekranında oluşur"),
+            [new("consentId", "Onay numarası", false),
              new("clientId", "Uygulama kimliği", false, Zorunlu: false, Ipucu: "Boş bırakılırsa Mihenk'in kaydı kullanılır"),
              new("clientSecret", "Uygulama şifresi", true, Zorunlu: false)],
             "Garanti internet şubesinde Başvur › Elektronik Hesap Özeti ekranında Mihenk'in uygulama kimliğini girip hesabı seçin; çıkan onay numarasını buraya yazın.", false),
