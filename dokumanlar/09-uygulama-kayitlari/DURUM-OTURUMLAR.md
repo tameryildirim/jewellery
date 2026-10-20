@@ -134,5 +134,17 @@ Başkasının satırını değiştirme/silme yok.
   Sayfa1 başlıkları, kütüphanesiz .xlsx — openpyxl ile açılıp doğrulandı). Hesap kodu / VKN eksik fatura dosyaya girmez, OKUBENI'de
   listelenir. Kaynak: ARASTIRMA-LUCA-ZIRVE-AKTARIM-2026-10-20.md. **Dış bağımlılık:** mali müşavirin bir kez yüklemesi (Luca kodlaması
   ve Zirve .xlsx kabulü TEYİTSİZ); 600/391 alt hesapları yapılandırmadan.
+- **Raporsuz paket kontrolü (20.10, 5dd6ef7 + c3167ab):** KONTROL-RAPORSUZ-PAKETLER-2026-10-20.md ile 17 paket kod/test/canlıya
+  karşı tarandı; bulunan boşluklar iki partide kapandı. 1. parti: siparişe belge eki, hurda alışına fiş kimliği, işletme logosu
+  çıktıda, cariden WhatsApp bağlantısı, zekât hesaplayıcı. 2. parti: PWA kabuğu (service worker yalnız yayında, /api dışarıda; yeni
+  sürüm bandı; çevrimdışı göstergesi; Ayarlar › Uygulama › Ana ekrana ekle), e-belge olay izi (ebelge_olaylari, append-only) +
+  resmi XML + /e-belgeler giden kutusu (ortak ızgara, kılavuz bölümü), sipariş özeti ucu, POS–fatura mutabakatında kalem toplamı
+  kontrolü. 12.780 test 0 başarısız · denetim yalnız P-30 · 54 rota / 13 betik / 97 varlık. Yedek: kuyumcu_net-20261020-16xx-
+  ebelge-olay-oncesi.sql.gz. **Kalan boşluklar (sırada):** PAKET-46 roller (KASIYER/CIRAK, kullanıcı yetkileri, maliyet görme kapısı),
+  PAKET-37 kasa+banka döviz bazlı net varlık, PAKET-42 sevk durum makinesi, PAKET-36 /patron paneli, PAKET-05 sayım tutanağı +
+  gün kapanış fişi, PAKET-04 POS kalem görseli, PAKET-39 has defteri L, doğum günü listesi, PDF katalog, D1-20 prim simülasyonu.
+- **Ses kaydı 2. dinleme + rakip eğitim/belge taraması (20.10):** ses kaydında yeni madde yok (musteri-gorusmesi § J). Rakip
+  taraması RAKIP-EGITIM-VE-BELGE-TARAMASI-2026-10-20.md: § 4.1 "hemen yapılabilir" 18 kalem (gişe zimmeti, günlük servet özeti,
+  banka PDF/Excel ekstre okuma, hurda pazarlık payı, fiyat teklif fişi, kasa sayım kuralları, canlı fiyat QR…) → kapatma planı sırada.
 - Harem veri izni · P-30 kronometreli demo ölçümü (insan)
 

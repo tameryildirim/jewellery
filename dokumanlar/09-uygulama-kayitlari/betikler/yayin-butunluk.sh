@@ -181,6 +181,13 @@ dogrula() {
     while IFS= read -r d; do
       [ -n "$d" ] || continue
       ad="${d##*/}"
+      # PAKET-44 / PWA-1 (20.10): service-worker.published.js yalnız KAYNAKTA durur — Blazor yayında
+      # onu service-worker.js'in YERİNE yazar (csproj <ServiceWorker PublishedContent>). Yayında aynı adla
+      # bulunmaması doğaldır; yayındaki service-worker.js envanterde ayrıca aranır (tek istisna, ad sabit).
+      if [ "$ad" = "service-worker.published.js" ]; then
+        grep -q " wwwroot/service-worker.js " "$ENVANTER" || { echo "YAYINDA OLMAYAN KAYNAK DOSYASI: wwwroot/service-worker.js (PublishedContent yazılmamış)"; HATA=1; }
+        continue
+      fi
       KAYNAK_SAYISI=$((KAYNAK_SAYISI+1))
       if ! grep -q " wwwroot/$ad " "$ENVANTER"; then
         echo "YAYINDA OLMAYAN KAYNAK DOSYASI: wwwroot/$ad"
