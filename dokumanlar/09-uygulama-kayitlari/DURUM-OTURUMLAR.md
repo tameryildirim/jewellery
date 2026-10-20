@@ -228,6 +228,19 @@ Başkasının satırını değiştirme/silme yok.
   "Gişe kapandı; 500 ₺ Ana Kasa kasasına devredildi", Ana Kasa bakiyesi 904.389,07 ₺'ye geri döndü, Gişe 1 = 0; 375 px taşma yok
   (scrollWidth 375), geçmiş kartı. Sunucu kapısı canlıda görüldü: "Şube stoğu yetersiz: BLZ-22-015 için 0 var, 2 zimmetlenemez" (alan altı).
   Demo kalıntısı: Gişe 1 kasası + 1 kapanmış zimmet (Emre Duman).
+- **Y-01 eğitim videoları (21.10, rakip Hasfiyat/Pusula/KuyumSmart):** ekran başına 9 sesli video (satış 1:10 · hurda 0:53 · emanet 0:48 ·
+  banka 0:44 · fatura 0:50 · MASAK 0:47 · kasa kapanışı 0:51 · etiket 0:41 · rapor 0:53; toplam 7,9 dk, 9,4 MB) — onaylı ses (Chatterbox v3,
+  02.10 ayarı; 80 cümle), 1440×900 ekran kaydı, bölüm işaretleri gömülü. Yayın: wwwroot/video/egitim-<id>.mp4 (SW ön belleğine girmez);
+  Kılavuz ekranında (/kilavuz) oynatıcı + bölüm düğmeleri (tıklanınca o saniyeye atlar; EgitimVideolari.cs üretilmiş liste); kılavuz md
+  "Eğitim videoları" bölümü + 9 ekran bölümüne tek satır (üretici dış bağlantıya izin vermediği için iç çıpa). Hat: egitim-videolari-2026-10-21/
+  (README; plan.py → seslendir.sh → egitim-kaydet.mjs → uret-egitim.py → kilavuz-bolum.py). Yalıtılmış ortam: kuyumcu_egitim şeması
+  (20.10 23:47 yedeği), API 5192 (Masak__PesinPencereDakika=0), vekil 5181; canlı demoya dokunulmadı; kayıt sonrası kapatıldı.
+  Commitler b48b381 (paket; kök *.mp4 kuralı videoları dışarıda bırakmıştı → /video 404) + cbeabab4 (istisna + mp4'ler). Yayın y01b 02:0x.
+  Tarayıcı bulgusu ve düzeltmesi: tezgâh alt düğme satırı (Beklet · Fiyat teklifi ver · Vazgeç · Kaydet) 1280/1440'ta sağdan taşıyordu
+  (Kaydet sağ kenarı 1348 > 1280) → tema-yildiz.css sarma; 1280'de ölçüm: sağ kenar 1216, satır iki sıra. Testler: Y01EgitimVideolariTestleri
+  (liste 9 · süre 30–180 sn · mp4 var/boyut · SW mp4 içermez · Kılavuz oynatıcı/bölüm düğmesi JS çağrısı); ortak.css sabit renk testi
+  (O7) kırmızıya düştü → var(--metin). 12.811 test. Tarayıcı kanıtı 5179: /kilavuz 9 oynatıcı + bölümler; "0:28 Ödeme" düğmesi videoyu
+  28. saniyeden oynatıyor (paused=false); 375 px taşma yok.
   Mutasyon: avans düşülmezse test kırmızı. Maaş alanı yok (sistemde maaş tutulmuyor) — "maaş+prim−avans tek fiş" kapsam dışı.
 - **Tarayıcı kanıtı (20.10 23:00, 5199):** Y-14 İşletme › Dış API › "Canlı fiyat bağlantısı oluştur" → bağlantı üretildi → 5199'da
   oturumsuz /fiyat/{anahtar} açıldı (demo işçilik ibaresi seçmediği için fail-closed uyarısı; 1280 + 375). Sayım Yıldız "Yazdır" →
