@@ -143,6 +143,12 @@ Başkasının satırını değiştirme/silme yok.
   ebelge-olay-oncesi.sql.gz. **Kalan boşluklar (sırada):** PAKET-46 roller (KASIYER/CIRAK, kullanıcı yetkileri, maliyet görme kapısı),
   PAKET-37 kasa+banka döviz bazlı net varlık, PAKET-42 sevk durum makinesi, PAKET-36 /patron paneli, PAKET-05 sayım tutanağı +
   gün kapanış fişi, PAKET-04 POS kalem görseli, PAKET-39 has defteri L, doğum günü listesi, PDF katalog, D1-20 prim simülasyonu.
+  **Yayın + tarayıcı kanıtı (20.10 20:10):** yayin-temiz raporsuz-2 → 5199 @ 283a8f1 (bütünlük kapısına service-worker.published.js
+  gerekçeli istisnası eklendi; Blazor yayında onu service-worker.js yerine yazar). /e-belgeler demo kiracısında (inceleme vekili 5179)
+  1280 açık/koyu + 375 açık ölçüldü: taşma yok, boş durum + 6 sayaç; satır çizimi EBelgelerEkranTestleri (sahte API) ile — gerçek
+  gönderim Nilvera test hesabına bağlı (dış). Service worker: uygulama içi tarayıcı paneli SW kaydını reddediyor ("unknown error",
+  panel kısıtı); gerçek Chrome (headless, CDP) ile 5199'da kayıt activated, önbellek mihenk-kabuk-… oluştu — ÇALIŞIYOR. Tema
+  Karanlık'a alınıp geri Aydınlık'a döndürüldü. Vekil WebSocket (hubs/kur) taşımıyor — bilinen vekil kısıtı.
 - **Ses kaydı 2. dinleme + rakip eğitim/belge taraması (20.10):** ses kaydında yeni madde yok (musteri-gorusmesi § J). Rakip
   taraması RAKIP-EGITIM-VE-BELGE-TARAMASI-2026-10-20.md: § 4.1 "hemen yapılabilir" 18 kalem (gişe zimmeti, günlük servet özeti,
   banka PDF/Excel ekstre okuma, hurda pazarlık payı, fiyat teklif fişi, kasa sayım kuralları, canlı fiyat QR…) → kapatma planı sırada.
