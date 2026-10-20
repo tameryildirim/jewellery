@@ -255,3 +255,24 @@ Amaç: kayıttaki her talebin **zayıf yanını** önceden görmek. Talepler red
 6. **KDV payı maliyetin üstüne:** "binde bir gir… 60 lira da KDV'ye, bunun üzerine ekle, fiyatın içinde onu ekle" (04:59–05:07).
 
 **Düzeltme (M1b):** M1'in "satış milyemi − ayar milyemi = işçilik" ayrımı bu farkı gelir gibi gösterir — yanlış. Doğru model: **maliyet = gram × alış (maliyet) milyemi × has; satış = maliyet + eklenen + KDV payı; kâr = satış − maliyet.** Has değeri hiçbir ekranda maliyet/kâr gibi görünmez. Ürüne alış milyemi alanı; satış milyemi boşsa satış = alış milyemi (kârsız bilezik). Tezgâh fiyat kırılımı "maliyet · eklenen · KDV payı" olur.
+
+## J. İkinci dinleme (20.10.2026 — kurucu: "ses kaydını tekrar dinle, tekrar yorumla")
+
+Kayıt yerel Whisper (large-v3-turbo) ile yeniden yazıya çevrildi (1.179 parça; ham döküm yine depoya alınmadı) ve baştan sona
+A–I bölümleriyle karşılaştırıldı. **Yeni gereksinim çıkmadı.** Teyit edilen ve 16–20.10'da kapanan maddeler:
+
+| Dakika | Söz | Durum |
+|---|---|---|
+| 00:00–00:20 | "Tek noktadan çekmeyecek… ya da sabit fiyat… 1 gram buradan, 5 gram oradan" | Ürün başına kaynak/sabit/ofset: M1·M3 var. **Külçe ağırlık kademesi (1 g / 5 g…) yalnız Harem gibi kademeli kaynakla** — M10, kurucunun yazılı veri izni (dış). |
+| 00:28–00:50 | "Evrak götürdük… Kuveyt Türk direkt yaptı, Vakıf bu evrağı istiyor" | Banka: 8 hazır bağlayıcı (Kuveyt Türk ve VakıfBank dahil), D2-05b. |
+| 01:10 | "Düştü mü, hemen şak ekranda" | M7 canlı yenileme. |
+| 02:33 | "30 bin geçince isim" | D1-17 (eşik ve had yasal parametre). |
+| 04:27–05:10, 22:11–23:07 | KDV yalnız işçilik/kâr kısmına; ürün başına "binde X" | Paket 38 özel matrah + M2/M4 (binde X yalnız uyarı). |
+| 07:13–08:30 | "Hepsini has'tan çeviremezsin; eski çeyrek, Reşat ayrı tanımlanacak" | M3: parite kodları CEYREK_ESKI/YENI, YARIM, TAM, ATA, HAMIT, RESAT, GREMSE. |
+| 09:26–09:56 | "Manuel müdahale; otomatik ise en ucuz kaynak (Harem/Nadir)" | Elle ofset ve milyem var; **çoklu kaynak karşılaştırma M10 (dış izin)**. |
+| 17:28–18:06 | "Bileziğin 10 çeşidi, her birinin milyemi ayrı" | M1 ürün satış milyemi. |
+| 25:59–26:50 | "Ayarlar: içinde bilezik geçiyorsa binde bir; çeyrek seçince oran oradan" | M4 ürün kuralları (kategori birincil, ad kuralı öneri). |
+| 31:22 | "Bu olursa bunu listenin burasına çekin, KDV'sini böyle" | Hâlâ belirsiz (H-1 sorusu) — kural motoru zaten koşula göre dolduruyor. |
+| 34:43–35:04 | "Fişe gerek yok; TC'yi yazıp girdiğim anda fatura kessin **göndersin**" | M6 + M6b + **e-Fatura/e-Arşiv arka plan gönderimi (20.10)** — tam karşılandı. |
+
+**Açık kalan tek ürün sorusu:** külçe ağırlık kademeleri ve çoklu kaynak karşılaştırması → Harem/İKO veri izni (M10).
