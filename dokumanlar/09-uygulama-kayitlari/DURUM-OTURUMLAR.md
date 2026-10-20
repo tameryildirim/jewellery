@@ -210,6 +210,8 @@ Başkasının satırını değiştirme/silme yok.
 - **Y-05 personel avansı (20.10):** kasa_hareketleri.personel_id (geçiş KasaHareketPersonel; yedek kuyumcu_net-20261020-2303-personel-
   avans-oncesi.sql.gz); gider kaydında isteğe bağlı personel (aktif kullanıcı; yabancı 400), listede "avans · Ad"; prim raporunda
   AvansTl ve NetOdemeTl (prim − avans), Satış analizi prim sekmesinde Avans · Net ödenecek sütunları; Yıldız gider formunda seçici.
+  Commit db65b28, yayın y05 (23:28). Tarayıcı kanıtı 5179: /gider formunda "Personel avansı (isteğe bağlı)" seçici personel listesini
+  açıyor; /raporlar/satis-analizi?sekme=prim tablosunda Avans · Net ödenecek sütunları; 375 px taşma yok (scrollWidth 375).
   Mutasyon: avans düşülmezse test kırmızı. Maaş alanı yok (sistemde maaş tutulmuyor) — "maaş+prim−avans tek fiş" kapsam dışı.
 - **Tarayıcı kanıtı (20.10 23:00, 5199):** Y-14 İşletme › Dış API › "Canlı fiyat bağlantısı oluştur" → bağlantı üretildi → 5199'da
   oturumsuz /fiyat/{anahtar} açıldı (demo işçilik ibaresi seçmediği için fail-closed uyarısı; 1280 + 375). Sayım Yıldız "Yazdır" →
