@@ -123,5 +123,10 @@ Başkasının satırını değiştirme/silme yok.
   12.759 test 0 başarısız · denetim yalnız P-30 · 2 mutasyon yakalandı. **M11 entegratörsüz kısmı:** gün sonu toplu fatura 18.10'da
   vardı (FaturaToplu), kesilen fatura artık e-belgeye kendiliğinden gider → kapandı; Luca/Zirve biçimi örnek dosya bekliyor (dış).
   **Tezgâh Basit ≤12 düğme:** S22 testi kilitliyor → kapalı. **Kodlanabilir iş kalmadı;** kalanlar dış bağımlılık/kurucu kararı.
+- **Tarayıcı kanıtı açığı (20.10):** e-Fatura çekmecesi ve fatura listesindeki e-belge durumu için 5199'da oturum yok; QA-TEST-1
+  kiracısına test kullanıcısı ekleme denemesi izin kapısında reddedildi (hiçbir şey yazılmadı). Kurucu panelde giriş yapınca
+  1280/375 · açık/koyu ölçülecek. Canlı rotalar ayakta: /api/v1/ebelge/* ve /bankalar/baglayicilar yetkisiz istekte 401.
+  Günlük: "Banka çekici turu hatası" 1 kez, Docker kapalıyken MySQL'e ulaşılamadığından; sonrasında yok. Luca/Zirve herkese açık
+  biçim araştırması başlatıldı (ARASTIRMA-LUCA-ZIRVE-AKTARIM-2026-10-20.md).
 - Luca/Zirve aktarımı (mali müşavirden örnek dosya) · Harem veri izni · P-30 kronometreli demo ölçümü (insan)
 
