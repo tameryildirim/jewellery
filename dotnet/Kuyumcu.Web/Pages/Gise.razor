@@ -290,7 +290,9 @@ else if (liste is { } l)
                 Hucre = z => @<text><Rozet Renk="@DurumRenk(z.Durum)">@GiseSozlugu.DurumAdi(z.Durum, Dil.Dil)</Rozet>@if (z.BekleyenTakviye > 0) { <span class="metin-kucuk metin-amber"> · @z.BekleyenTakviye</span> }</text> },
         new() { Anahtar = "acilis", Baslik = GiseSozlugu.AcilisNakdi(Dil.Dil), Tur = IzgaraHucreTuru.Para, ParaBirimi = z => z.ParaBirimi, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = z => z.AcilisNakit },
         new() { Anahtar = "urun", Baslik = GiseSozlugu.Urun(Dil.Dil), Tur = IzgaraHucreTuru.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = z => z.UrunSayisi },
-        new() { Anahtar = "tarih", Baslik = GiseSozlugu.Tarih(Dil.Dil), Tur = IzgaraHucreTuru.Tarih, Deger = z => z.Olusturuldu },
+        // Olusturuldu sunucu anıdır (UTC): hücre işletme saatiyle yazılır (tarayıcı bulgusu: 00:21 TSİ satırı "20.10" görünüyordu).
+        new() { Anahtar = "tarih", Baslik = GiseSozlugu.Tarih(Dil.Dil), Tur = IzgaraHucreTuru.Tarih, Deger = z => z.Olusturuldu,
+                Hucre = z => @<text>@Bicim.TarihSaat(z.Olusturuldu)</text> },
         new() { Anahtar = "eylem", Baslik = GiseSozlugu.Ac(Dil.Dil), BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
                 Hucre = z => @<button type="button" class="btn btn-metin btn-kucuk" id="@($"gs-ac-{z.Id}")" @onclick="() => Ac(z.Id)">@GiseSozlugu.Ac(Dil.Dil)</button> },
     ];
