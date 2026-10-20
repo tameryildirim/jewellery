@@ -207,6 +207,13 @@ Başkasının satırını değiştirme/silme yok.
   oncesi.sql.gz); gün kapanışı PozisyonServisi.ServetAnlikGoruntuKaydet çağırır (hata kapanışı düşürmez); NetVarlikOzeti OncekiGun/
   OncekiNetTl/OncekiAltinNetHasGram; kartta "Son gün kapanışına göre (gg.aa.yyyy) fark: ±TL · has ±g". "Dünle fark" yerine dürüst
   "son kapanışla fark" (kapanış yoksa satır yok). Mutasyon: kapanışta görüntü yazılmazsa test kırmızı.
+- **Y-05 personel avansı (20.10):** kasa_hareketleri.personel_id (geçiş KasaHareketPersonel; yedek kuyumcu_net-20261020-2303-personel-
+  avans-oncesi.sql.gz); gider kaydında isteğe bağlı personel (aktif kullanıcı; yabancı 400), listede "avans · Ad"; prim raporunda
+  AvansTl ve NetOdemeTl (prim − avans), Satış analizi prim sekmesinde Avans · Net ödenecek sütunları; Yıldız gider formunda seçici.
+  Mutasyon: avans düşülmezse test kırmızı. Maaş alanı yok (sistemde maaş tutulmuyor) — "maaş+prim−avans tek fiş" kapsam dışı.
+- **Tarayıcı kanıtı (20.10 23:00, 5199):** Y-14 İşletme › Dış API › "Canlı fiyat bağlantısı oluştur" → bağlantı üretildi → 5199'da
+  oturumsuz /fiyat/{anahtar} açıldı (demo işçilik ibaresi seçmediği için fail-closed uyarısı; 1280 + 375). Sayım Yıldız "Yazdır" →
+  SAYIM TUTANAĞI dökümü. Gider Yıldız formu: Belge/yükleyici artık bant altında (yeniden yayınla doğrulanacak).
 - **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
   zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
   müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım

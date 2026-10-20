@@ -449,6 +449,8 @@ Hangi gün ne kadar evrak vadesi olduğunu takvim üzerinde gösterir. Bir güne
 
 **Fiş fotoğrafı:** gider kaydedilince altta **Fiş fotoğrafı ekle** bölümü açılır; telefonla çekilen fotoğraf o giderin yanında saklanır. Geçmiş giderlerde satırdaki **Belge** düğmesi aynı pencereyi açar. Fotoğraf kasa satırını değiştirmez.
 
+**Personel avansı:** gider girerken **Personel avansı** seçicisinden kişiyi seçerseniz ödeme o kişinin avansı olarak kaydedilir; Satış analizi › Prim ve hedef sekmesinde dönemin avansı düşülür ve **Net ödenecek** yazar.
+
 ## Hurda ve Ramat {#hurda}
 
 <!-- ekran: /hurda -->

@@ -15,7 +15,7 @@ public sealed record GiderKategoriYaniti(List<GiderKategoriVeri> Kategoriler, in
 public sealed record GiderSatiri(
     string Id, string KasaId, string? KasaAdi, string? KategoriId, string? KategoriAdi,
     decimal Tutar, string ParaBirimi, string? Aciklama, DateTime Tarih,
-    bool StornoSatiri, bool Stornolandi);
+    bool StornoSatiri, bool Stornolandi, string? PersonelAd = null);   // Y-05: avans ise personel
 
 /// <summary>
 /// PAKET Q10-1 — sunucunun hesapladığı NET gider toplamı (para birimi başına).

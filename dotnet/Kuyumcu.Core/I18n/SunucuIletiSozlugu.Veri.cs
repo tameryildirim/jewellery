@@ -842,6 +842,7 @@ public static partial class SunucuIletiSozlugu
         ("Prim oranı 0 ile 100 arasında olmalıdır", "Commission rate must be between 0 and 100"),
         ("Teklifin süresi doldu; fiyat artık geçerli değil. Güncel kurla yeni teklif verin.", "The quote has expired; the price is no longer valid. Issue a new quote at the current rate."),
         ("Fiyat teklifi bulunamadı", "Price quote not found"),
+        ("Avans verilecek personel bulunamadı ya da pasif", "Staff member for the advance not found or inactive"),
         ("Geçerlilik 1 ile 365 gün arasında olmalıdır", "Validity must be between 1 and 365 days"),
         ("Gider kaydı bulunamadı", "Expense record not found"),
         ("Gün kapanışı bulunamadı", "Day close not found"),

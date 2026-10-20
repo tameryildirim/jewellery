@@ -1149,6 +1149,8 @@ public class KasaHareket : IKiraciVarlik, IBacakliHareket
     /// girilmiş kasa hareketinin düzeltmesi de ters satırın VARLIĞINDAN okunur.
     /// </summary>
     [Column("storno_kaynak_id"), MaxLength(36)] public string? StornoKaynakId { get; set; }
+    /// <summary>Y-05 (20.10): gider bir personele avans olarak ödendiyse kişi (kullanıcı) — prim raporunda düşülür.</summary>
+    [Column("personel_id"), MaxLength(36)] public string? PersonelId { get; set; }
 
     /// <summary>
     /// PAKET P-19 (Y-12) — bu nakit çıkışının GİDER KATEGORİSİ.

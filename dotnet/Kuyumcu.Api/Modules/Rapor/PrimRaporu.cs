@@ -36,7 +36,14 @@ public static class PrimRaporu
                              group i by s.PersonelId into g
                              select new { PersonelId = g.Key, Tl = g.Sum(x => (decimal?)x.TlTutari) ?? 0m }).ToListAsync();
 
-        var kisiIdler = satislar.Select(s => s.PersonelId).Concat(iadeler.Select(i => i.PersonelId)).Where(x => x != null).Select(x => x!).Distinct().ToList();
+        // Y-05: dönemde personele ödenen avanslar (gider satırı, storno çiftleri dışarıda) — prim − avans = net ödenecek.
+        var avanslar = await db.KasaHareketleri.AsNoTracking()
+            .Where(h => h.TenantId == islem.TenantId && h.PersonelId != null && h.GiderKategoriId != null && h.StornoKaynakId == null
+                     && h.Tarih >= d.Bas && h.Tarih < d.Bit
+                     && !db.KasaHareketleri.Any(s => s.TenantId == islem.TenantId && s.StornoKaynakId == h.Id))
+            .GroupBy(h => h.PersonelId!).Select(g => new { PersonelId = g.Key, Tl = g.Sum(x => -x.Tutar) }).ToListAsync();
+        var kisiIdler = satislar.Select(s => s.PersonelId).Concat(iadeler.Select(i => i.PersonelId)).Concat(avanslar.Select(a => a.PersonelId))
+            .Where(x => x != null).Select(x => x!).Distinct().ToList();
         var kisiler = await db.Kullanicilar.AsNoTracking().Where(u => u.TenantId == islem.TenantId && kisiIdler.Contains(u.Id))
             .Take(kisiIdler.Count + 1)
             .ToDictionaryAsync(u => u.Id, u => new { Ad = (u.Ad + " " + u.Soyad).Trim(), u.PrimYuzde, u.AylikHedefTl });
@@ -53,7 +60,8 @@ public static class PrimRaporu
         {
             var s = satislar.FirstOrDefault(x => x.PersonelId == id);
             var i = iadeler.FirstOrDefault(x => x.PersonelId == id);
-            if (s is null && i is null) continue;
+            var av = id is null ? null : avanslar.FirstOrDefault(x => x.PersonelId == id);
+            if (s is null && i is null && av is null) continue;
             var satisTl = Math.Round(Math.Abs(s?.Tl ?? 0m), 2);
             var iadeTl = Math.Round(Math.Abs(i?.Tl ?? 0m), 2);
             var net = satisTl - iadeTl;
@@ -61,8 +69,10 @@ public static class PrimRaporu
             var hedef = k?.AylikHedefTl is { } ah && ah > 0m ? Orantili(ah) : (decimal?)null;
             var yuzde = id is null ? null : simulasyonOran ?? k?.PrimYuzde;
             var prim = yuzde is { } py && net > 0m ? Math.Round(net * py / 100m, 2, MidpointRounding.AwayFromZero) : 0m;
+            var avans = Math.Round(Math.Abs(av?.Tl ?? 0m), 2);
             satirlar.Add(new PrimSatiri(id, k?.Ad, s?.Adet ?? 0, satisTl, iadeTl, net, hedef,
-                hedef is > 0m ? Math.Round(net / hedef.Value * 100m, 1, MidpointRounding.AwayFromZero) : null, yuzde, prim));
+                hedef is > 0m ? Math.Round(net / hedef.Value * 100m, 1, MidpointRounding.AwayFromZero) : null, yuzde, prim,
+                avans, Math.Round(prim - avans, 2)));
         }
         await denetim.ListeOkumaKaydet(islem, "PrimRaporu", satirlar.Count, simulasyonOran is { } so ? $"prim simülasyonu görüntülendi (%{so})" : "prim raporu görüntülendi");
         return new PrimRaporYaniti(d.YerelBas, d.YerelBit, [.. satirlar.OrderBy(x => x.PersonelId is null).ThenByDescending(x => x.NetTl)],

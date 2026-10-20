@@ -1,5 +1,6 @@
 @page "/gider"
 @using Kuyumcu.Contracts.Sayfalar.Gider
+@using Kuyumcu.Core.I18n
 @using KasaSz = Kuyumcu.Contracts.Sayfalar.Kasalar
 @using BankaSz = Kuyumcu.Contracts.Sayfalar.Banka
 @using Kuyumcu.Web.Bilesenler.Grid
@@ -62,6 +63,15 @@
         @if (GiderKilitAlani == "tutar") { @GiderKilitMesaji }
         <Metin ElemanId="gd-aciklama" Etiket="@YildizGiderSozlugu.NeIcin(Dil.Dil)" EnFazla="@AlanSinirlari.HareketAciklama"
                @bind-Deger="giderAciklama" />
+        @* Y-05 (20.10): personel avansı — isteğe bağlı kişi; prim raporunda düşülür. *@
+        @if (personeller.Count > 0)
+        {
+            <Secici ElemanId="gd-personel" Etiket="@PersonelAvansSozlugu.Personel(Dil.Dil)"
+                    Secenekler="@(personeller.Select(p => new SecenekOgesi(p.Id, $"{p.Ad} {p.Soyad}".Trim())).ToList())"
+                    @bind-Deger="giderPersonelId" BosSecenekMetni="—" />
+            <p class="metin-kucuk metin-soluk" id="gd-personel-ipucu">@PersonelAvansSozlugu.Ipucu(Dil.Dil)</p>
+        }
+        else if (personelHata is { } ph) { <p class="metin-kucuk metin-kirmizi" id="gd-personel-hata">@ph</p> }
     </Kuyumcu.Web.Bilesenler.Yildiz.YildizForm>
 @if (YildizOzgunCiz) {
 <div data-yz-ozgun="@YildizOzgunIsaret" class="dikey-bosluk">
@@ -581,7 +591,7 @@
         new() { Anahtar = "kasa", Baslik = Dil.T.Gider.Kasa, SunucuSiralamaAdi = GiderSiraAdi("kasa"),
                 HucreSinif = _ => "metin-kucuk hucre-ad", Deger = g => g.KasaAdi ?? "—" },
         new() { Anahtar = "aciklama", Baslik = Dil.T.Ortak.Aciklama, HucreSinif = _ => "metin-kucuk hucre-ad",
-                Deger = g => StornoOnekiSozlugu.Goster(g.Aciklama, Dil.Dil, Dil.BasitMi) ?? "—" },
+                Deger = g => StornoOnekiSozlugu.Goster(g.Aciklama, Dil.Dil, Dil.BasitMi) is { } ac ? ac + AvansEki(g.PersonelAd) : "—" + AvansEki(g.PersonelAd) },   // Y-05: avans eki
         new() { Anahtar = "tutar", Baslik = Dil.T.Ortak.Tutar, ZorunluGorunur = true, SunucuSiralamaAdi = GiderSiraAdi("tutar"),
                 Tur = IzgaraHucreTuru.Para, ParaBirimi = g => g.ParaBirimi, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = g => g.Tutar },
         new() { Anahtar = "eylem", Baslik = Dil.T.Ortak.Eylemler, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
@@ -652,6 +662,9 @@
     private string? giderKategoriId;
     private decimal? giderTutar;
     private string? giderAciklama;
+    private string? giderPersonelId, personelHata;   // Y-05
+    private string AvansEki(string? personelAd) => personelAd is null ? "" : " · " + PersonelAvansSozlugu.AvansEtiketi(personelAd, Dil.Dil);   // Y-05
+    private List<Kuyumcu.Contracts.Sayfalar.SaticiPersonel.SaticiPersonelSatiri> personeller = [];   // Y-05: /islemler/personeller (satış "Satan" seçicisiyle aynı kaynak)
     private readonly FormDurumu giderForm = new();
 
     private string? yeniKategoriAd;
@@ -950,6 +963,9 @@
             //   BOŞALTILMAZ; hata bandı gösterilir ve ekrandaki veri kalır.
             var katYanit = await Api.GetAsync<GiderKategoriYaniti>("/gider-kategorileri");
             kategoriler = katYanit.Kategoriler ?? [];
+            // Y-05: yardımcı veri — okunamazsa seçici çizilmez, sebebi küçük notta yazar (UX-S28: sessiz yutma yok).
+            try { personeller = (await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.SaticiPersonel.SaticiPersonelListesi>("/islemler/personeller")).Personeller ?? []; personelHata = null; }
+            catch (ApiHata ex) { personelHata = ex.Message; }
 
             var giderYanit = await Api.GetAsync<GiderYaniti>("/giderler?limit=100");
             giderler = giderYanit.Satirlar ?? [];
@@ -990,12 +1006,13 @@
                 giderKategoriId = kategoriId,
                 tutar = giderTutar!.Value,
                 aciklama = giderAciklama,
+                personelId = string.IsNullOrEmpty(giderPersonelId) ? null : giderPersonelId,   // Y-05
             });
             // UX-S27: sunucunun DÖNDÜRDÜĞÜ sonuç banda yazılır (yeni bakiye dâhil).
             basari = $"{Dil.T.Gider.GiderKaydedildi}: {s.KategoriAdi} · "
                    + $"{Bicim.Para(s.Tutar, s.ParaBirimi)} · {s.KasaAdi} → {Bicim.Para(s.KasaBakiyesi, s.ParaBirimi)}";
             basariJeton++;
-            giderTutar = null; giderAciklama = null; giderNotAcik = false;
+            giderTutar = null; giderAciklama = null; giderNotAcik = false; giderPersonelId = null;
             sonGiderId = s.Id;   // Y-17
             await Yukle();
         }

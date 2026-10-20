@@ -3335,6 +3335,11 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(5)")
                         .HasColumnName("para_birimi");
 
+                    b.Property<string>("PersonelId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("personel_id");
+
                     b.Property<string>("StornoKaynakId")
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")

@@ -73,6 +73,8 @@ public sealed class GiderKaydetDto
 
     [Required(ErrorMessage = "Gider kategorisi seçilmelidir")]
     [MaxLength(36)] public string GiderKategoriId { get; set; } = null!;
+    /// <summary>Y-05: personel avansı — ödeme bu kişiye yapıldı (aktif kullanıcı); prim raporunda düşülür.</summary>
+    [MaxLength(36)] public string? PersonelId { get; set; }
 
     // SON-KALANLAR tur 2 (doğrulayıcı DÜŞÜK): alt sınır TEK kapıda — servis KolonTavani.PozitifTutar
     // (önce 2 haneye yuvarla, sonra en az 0,01); DTO [Range(0.01)] kaldırıldı (uçlar arası tutarsızlık).
@@ -100,7 +102,7 @@ public sealed record GiderKategoriListesi(List<GiderKategoriCiktisi> Kategoriler
 public sealed record GiderSatirCiktisi(
     string Id, string KasaId, string? KasaAdi, string? KategoriId, string? KategoriAdi,
     decimal Tutar, string ParaBirimi, string? Aciklama, DateTime Tarih,
-    bool StornoSatiri, bool Stornolandi);
+    bool StornoSatiri, bool Stornolandi, string? PersonelAd = null);   // Y-05: avans ise personel
 
 /// <summary>
 /// PAKET Q10-1 — gider toplamının PARA BİRİMİ başına NET (işaretli) değeri.
@@ -351,11 +353,16 @@ public sealed class GiderServisi(
         kasa.Guncellendi = now;
 
         var satirId = Kimlik.Ulid();
+        // Y-05: personel avansı — kişi aynı kiracının AKTİF kullanıcısı olmalı (yabancı/pasif 400).
+        string? personelId = string.IsNullOrWhiteSpace(dto.PersonelId) ? null : dto.PersonelId.Trim();
+        if (personelId is not null && !await db.Kullanicilar.AsNoTracking().AnyAsync(u => u.Id == personelId && u.TenantId == islem.TenantId && u.Aktif))
+            throw new BadRequestException("Avans verilecek personel bulunamadı ya da pasif").AlanIle("personelId");
         var satir = new KasaHareket
         {
             Id = satirId,
             TenantId = islem.TenantId,
             KasaId = kasa.Id,
+            PersonelId = personelId,
             HareketId = null,
             Tutar = -tutar,                 // ÇIKIŞ: işaret NEGATİF
             ParaBirimi = kasa.ParaBirimi,
@@ -423,9 +430,13 @@ public sealed class GiderServisi(
             .Select(h => new
             {
                 h.Id, h.KasaId, h.GiderKategoriId, h.Tutar, h.ParaBirimi,
-                h.Aciklama, h.Tarih, h.StornoKaynakId,
+                h.Aciklama, h.Tarih, h.StornoKaynakId, h.PersonelId,
             })
             .ToListAsync();
+        var personelIdler = satirlar.Where(h => h.PersonelId != null).Select(h => h.PersonelId!).Distinct().ToList();
+        var personelAdlari = personelIdler.Count == 0 ? new Dictionary<string, string>() : await db.Kullanicilar.AsNoTracking()
+            .Where(u => u.TenantId == islem.TenantId && personelIdler.Contains(u.Id)).Take(personelIdler.Count + 1)
+            .ToDictionaryAsync(u => u.Id, u => (u.Ad + " " + u.Soyad).Trim());
 
         var kategoriAdlari = await db.GiderKategorileri.AsNoTracking()
             .Where(g => g.TenantId == islem.TenantId)
@@ -452,7 +463,8 @@ public sealed class GiderServisi(
                 h.Aciklama,
                 h.Tarih,
                 h.StornoKaynakId is not null,
-                stornoKumesi.Contains(h.Id)))],
+                stornoKumesi.Contains(h.Id),
+                h.PersonelId is { } pid && personelAdlari.TryGetValue(pid, out var pad) ? pad : null))],
             toplamAdet,
             limit,
             toplamAdet > satirlar.Count,

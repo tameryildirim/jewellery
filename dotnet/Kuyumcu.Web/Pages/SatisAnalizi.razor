@@ -1,4 +1,5 @@
 @page "/raporlar/satis-analizi"
+@using Kuyumcu.Core.I18n
 @using System.Globalization
 @using Kuyumcu.Core.Sozlesmeler
 @using Kuyumcu.Core.Domain.Girdi
@@ -219,6 +220,8 @@
         new() { Anahtar = "hedef", Baslik = D1.Hedef, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.HedefTl, Hucre = r => @<text>@(r.HedefTl is { } h ? Bicim.Tl(h) : "—")</text> },
         new() { Anahtar = "gerceklesme", Baslik = D1.Gerceklesme, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.GerceklesmeYuzde, Hucre = r => @<text>@(r.GerceklesmeYuzde is { } g ? Bicim.Yuzde(g) : "—")</text> },
         new() { Anahtar = "prim", Baslik = D1.Prim, ZorunluGorunur = true, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.PrimTl, Hucre = r => @<text>@(r.PrimYuzde is { } py ? $"{Bicim.Tl(r.PrimTl)} (%{Bicim.Oran(py)})" : "—")</text> },
+        new() { Anahtar = "avans", Baslik = PersonelAvansSozlugu.Avans(Dil.Dil), Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = r => r.AvansTl },   // Y-05
+        new() { Anahtar = "net-odeme", Baslik = PersonelAvansSozlugu.NetOdeme(Dil.Dil), ZorunluGorunur = true, Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", BaslikSinif = "sayi", HucreSinif = _ => "sayi hucre-vurgu", Deger = r => r.NetOdemeTl },
     ];
     private SubeKarsilastirmaYaniti? sube;
 
