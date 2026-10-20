@@ -141,8 +141,12 @@ else if (detay is { } d)
                                         Deger="@devirKasaId" DegerChanged="@(v => devirKasaId = v)" BosSecenekMetni="—" Hata="@kapatForm.Mesaj("gs-devir-kasa")" /></div>
                             }
                         </div>
-                        <GerekceAlani Id="gs-gerekce" Etiket="@GiseSozlugu.Gerekce(Dil.Dil)" Deger="@gerekce" DegerChanged="@(v => gerekce = v)" />
-                        <AlanHatasi Alan="gs-gerekce" Durum="kapatForm" />
+                        @* Zorunlu-önce: gerekçe yalnız sayım beklenenle TUTMUYORSA (ya da kör sayımda beklenen bilinmiyorsa) sorulur; sunucu aynı kuralı uygular. *@
+                        @if (GerekceGerekli(d))
+                        {
+                            <GerekceAlani Id="gs-gerekce" Etiket="@GiseSozlugu.Gerekce(Dil.Dil)" Deger="@gerekce" DegerChanged="@(v => gerekce = v)" />
+                            <AlanHatasi Alan="gs-gerekce" Durum="kapatForm" />
+                        }
                         <div class="satir-eylem"><button type="button" class="btn btn-birincil" id="gs-kapat" disabled="@kaydediliyor" @onclick="Kapat">@GiseSozlugu.Kapat(Dil.Dil)</button></div>
                     </Katlanir>
                 }
@@ -382,6 +386,12 @@ else if (liste is { } l)
             GiseSozlugu.TalepGonderildi(Dil.Dil), takviyeForm);
         if (ok) { tkUrunId = tkUrunAd = null; tkAdet = tkNakit = null; }
     }
+
+    /// <summary>Ekranın bildiği kadarıyla fark var mı: ürün sayımı beklenenden sapıyor ya da nakit sapıyor; kör sayımda beklenen gizli → sorulur.</summary>
+    private bool GerekceGerekli(GiseZimmetDetay d) =>
+        d.NakitGizli
+        || d.Urunler.Any(u => sayilanlar.GetValueOrDefault(u.UrunId) is { } s && s != u.Beklenen)
+        || (sayilanNakit is { } n && n != d.BeklenenNakit);
 
     private async Task Kapat()
     {
