@@ -60,6 +60,10 @@ public sealed class LucaFisKaynagi(string satisHesabi = "600", string kdvHesabi 
     /// <summary>Fişler (her biri 3 satır) ve eksik listesi — saf dönüşüm Satir() içinde.</summary>
     public async Task<(List<string[][]> Fisler, List<string> Eksik)> Fisler(KuyumcuDbContext db, string tenantId)
     {
+        // Y-15: kiracının hesap planı kodları (Ayarlar); boşsa kurucu varsayılanı (600 / 391).
+        var (etkinSatis, etkinKdv) = await MuhasebeHesapKapisi.Oku(db, tenantId);
+        if (etkinSatis == MuhasebeHesapKapisi.VarsayilanSatis) etkinSatis = satisHesabi;
+        if (etkinKdv == MuhasebeHesapKapisi.VarsayilanKdv) etkinKdv = kdvHesabi;
         var faturalar = await (
             from f in db.Faturalar.AsNoTracking().Where(x => x.TenantId == tenantId && x.Tur == "SATIS" && (x.Durum == "KESILDI" || x.Durum == "ODENDI"))
             join c in db.Cariler.AsNoTracking().Where(x => x.TenantId == tenantId) on f.CariId equals c.Id into cg
@@ -74,7 +78,7 @@ public sealed class LucaFisKaynagi(string satisHesabi = "600", string kdvHesabi 
         {
             if (string.IsNullOrWhiteSpace(r.f.FaturaNo)) { eksik.Add($"{r.f.Id}: fatura numarası yok"); continue; }
             if (string.IsNullOrWhiteSpace(r.hesapKodu)) { eksik.Add($"{r.f.FaturaNo}: müşterinin muhasebe hesap kodu tanımsız ({r.f.AliciUnvan ?? r.cariAd})"); continue; }
-            fisler.Add(Fis(++no, r.f, r.hesapKodu!.Trim(), satisHesabi, kdvHesabi));
+            fisler.Add(Fis(++no, r.f, r.hesapKodu!.Trim(), etkinSatis, etkinKdv));
         }
         return (fisler, eksik);
     }
@@ -105,6 +109,7 @@ public sealed class LucaFisKaynagi(string satisHesabi = "600", string kdvHesabi 
     public async IAsyncEnumerable<(string DosyaAdi, byte[] Icerik, int SatirSayisi)> Dosyalar(KuyumcuDbContext db, string tenantId)
     {
         var (fisler, eksik) = await Fisler(db, tenantId);
+        var (notSatis, notKdv) = await MuhasebeHesapKapisi.Oku(db, tenantId);   // Y-15: OKUBENI etkin kodları yazar
         var utf8 = new UTF8Encoding(true);
         var tr1254 = Encoding.GetEncoding(1254);
         var parca = 0;
@@ -118,7 +123,7 @@ public sealed class LucaFisKaynagi(string satisHesabi = "600", string kdvHesabi 
         }
         var not = new StringBuilder()
             .AppendLine("LUCA — Muhasebe > Fiş İşlemleri > Excel Veri Aktarımı · ayraç \"; (Türkçe)\".")
-            .AppendLine($"Fatura başına 1 mahsup fişi: müşteri hesabı borç · {satisHesabi} alacak (KDV hariç) · {kdvHesabi} alacak (KDV). En çok {FisSiniri} fiş/dosya.")
+            .AppendLine($"Fatura başına 1 mahsup fişi: müşteri hesabı borç · {notSatis} alacak (KDV hariç) · {notKdv} alacak (KDV). En çok {FisSiniri} fiş/dosya.")
             .AppendLine("Aynı içerik iki kodlamayla verildi (utf8 / 1254): Türkçe harfler bozuk görünürse öbür dosyayı yükleyin.")
             .AppendLine($"Fiş sayısı: {fisler.Count} · dosya: {parca}.");
         if (eksik.Count > 0)

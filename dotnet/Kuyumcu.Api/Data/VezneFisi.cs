@@ -243,6 +243,10 @@ public static class KiraciAyarAnahtari
     /// </summary>
     public const string SatisBelgeVarsayilan = "satis_belge_varsayilan";
 
+    /// <summary>Y-15 (20.10) — mali müşavir hesap planı: Luca fişinde satış (varsayılan 600) ve KDV (varsayılan 391) hesabı.</summary>
+    public const string MuhasebeSatisHesabi = "muhasebe_satis_hesabi";
+    public const string MuhasebeKdvHesabi = "muhasebe_kdv_hesabi";
+
     /// <summary>
     /// D1-11 (18.10) — KÖR SAYIM: açıkken gün kapanışında beklenen nakit SAHİP dışındaki rollere gösterilmez
     /// (sunucu göndermez); fark kapanıştan sonra görünür. Değer "true"/"false"; yoksa KAPALI.

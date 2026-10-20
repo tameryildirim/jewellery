@@ -180,6 +180,8 @@ public sealed class YildizTezgahBaglami
     public EventCallback Beklet { get; init; }
     /// <summary>Y-11 — "Fiyat teklifi ver" (Beklet ile aynı görünürlük; kur kilidi yoksa sayfa kilit ister).</summary>
     public EventCallback TeklifVer { get; init; }
+    /// <summary>Y-02 — kısayol yardımı satırı (yalnız Profesyonel mod; Yıldız'da fiş kartının başlığı gizli olduğundan burada çizilir).</summary>
+    public bool KisayolYardimi { get; init; }
     /// <summary>İşletmenin bekleyen fişleri (yeniden eskiye).</summary>
     public IReadOnlyList<YildizBekleyenOgesi> Bekleyenler { get; init; } = [];
     public bool BekleyenlerAcik { get; init; }

@@ -502,7 +502,7 @@ public sealed class IrsaliyeServisi(
             .Select(h => new IrsaliyesizSevkSatiri(h.Id, h.Tarih, h.CariId,
                 db.Cariler.Where(c => c.Id == h.CariId && c.TenantId == t).Select(c => c.Ad).FirstOrDefault(),
                 db.Urunler.Where(u => u.Id == h.UrunId && u.TenantId == t).Select(u => u.Ad).FirstOrDefault(),
-                h.HasGrami, h.TlTutari)).ToListAsync();
+                Math.Abs(h.HasGrami), Math.Abs(h.TlTutari))).ToListAsync();   // mal çıkışı: işaretsiz (ekranda "-1,0000 has" kafa karıştırıyordu)
         await denetim.ListeOkumaKaydet(islem, Varlik, satirlar.Count, "irsaliyesiz sevk listesi");
         return new IrsaliyesizSevkListesi(satirlar, toplam, g, toplam > satirlar.Count);
     }

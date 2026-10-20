@@ -218,6 +218,11 @@ public sealed class CiktiServisi(
         var stornolu = await db.Hareketler.AsNoTracking()
             .AnyAsync(x => x.StornoKaynakId == h.Id, iptal);
 
+        // Y-10 (20.10, rakip taraması): müşteri fişinde İŞLEM ÖNCESİ / SONRASI bakiye (TL; has varsa has). Ekstreyle
+        // AYNI yürüyen-bakiye kuralı: kayıtlı bakiyeden bu fişten SONRAKİ hareketlerin etkisi geri alınır → "yeni",
+        // fişin kendi etkisi de geri alınır → "önceki". Peşin (sistem) müşteride ve transferde satır yok.
+        tutarlar.AddRange(await BakiyeSatirlari(h, bacaklar, islem.TenantId, iptal));
+
         return new OrtakBelge(
             Tur: tur,
             BelgeAdi: BelgeAdi(tur),
@@ -450,6 +455,49 @@ public sealed class CiktiServisi(
                 ? "BU İRSALİYE İPTAL EDİLMİŞTİR — geçerli bir belge değildir. " + IrsaliyeYasalUyari
                 : IrsaliyeYasalUyari,
             BelgeNoKayitKimligi: false);
+    }
+
+    private async Task<List<CiktiTutar>> BakiyeSatirlari(Hareket h, List<Hareket> bacaklar, string tenantId, CancellationToken iptal)
+    {
+        var sonuc = new List<CiktiTutar>();
+        if (h.CariId is null) return sonuc;
+        var cari = await db.Cariler.AsNoTracking().Where(c => c.Id == h.CariId && c.TenantId == tenantId)
+            .Select(c => new { c.SistemCarisi }).FirstOrDefaultAsync(iptal);
+        if (cari is null || cari.SistemCarisi) return sonuc;
+        var bakiye = await db.CariBakiyeler.AsNoTracking().FirstOrDefaultAsync(b => b.CariId == h.CariId && b.TenantId == tenantId, iptal);
+        if (bakiye is null) return sonuc;
+        var son = bacaklar.OrderBy(b => b.Tarih).ThenBy(b => b.Id).Last();
+        var sonrakiler = await db.Hareketler.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && x.CariId == h.CariId
+                     && (x.Tarih > son.Tarih || (x.Tarih == son.Tarih && string.Compare(x.Id, son.Id) > 0)))
+            .Select(x => new { x.Tur, x.TlTutari, x.VeresiyeTutar, x.HasGrami, x.Maden, Storno = x.StornoKaynakId != null })
+            .Take(5000).ToListAsync(iptal);
+        decimal? yeniTl = bakiye.TlBakiye, yeniHas = bakiye.HasGramBakiye;
+        foreach (var s in sonrakiler)
+        {
+            var e = CariBakiyeKurali.TlEtkisi(s.Tur, s.TlTutari, s.VeresiyeTutar, s.Storno);
+            yeniTl = yeniTl is { } y && e is { } ee ? y - ee : null;
+            yeniHas = yeniHas is { } yh ? yh - Modules.Cari.CariServisi.BakiyeHasEtkisi(s.Tur, s.HasGrami, s.Maden, s.Storno) : null;
+        }
+        decimal? fisTl = 0m; decimal fisHas = 0m;
+        foreach (var b in bacaklar)
+        {
+            var e = CariBakiyeKurali.TlEtkisi(b.Tur, b.TlTutari, b.VeresiyeTutar, b.StornoKaynakId is not null);
+            fisTl = fisTl is { } f && e is { } ee ? f + ee : null;
+            fisHas += Modules.Cari.CariServisi.BakiyeHasEtkisi(b.Tur, b.HasGrami, b.Maden, b.StornoKaynakId is not null);
+        }
+        // Fişin bakiyeye etkisi yoksa (peşin ödenmiş satış, has yok) satır basılmaz — "0 → 0" kâğıt kalabalığıdır.
+        if (yeniTl is { } yt && fisTl is { } ft && ft != 0m)
+        {
+            sonuc.Add(new CiktiTutar("Önceki bakiye", yt - ft, "TRY"));
+            sonuc.Add(new CiktiTutar("Yeni bakiye", yt, "TRY"));
+        }
+        if (yeniHas is { } yhs && fisHas != 0m)
+        {
+            sonuc.Add(new CiktiTutar("Önceki has bakiyesi", yhs - fisHas, "HAS_GRAM"));
+            sonuc.Add(new CiktiTutar("Yeni has bakiyesi", yhs, "HAS_GRAM"));
+        }
+        return sonuc;
     }
 
     // ── D1-10 (18.10) — cari hesap mutabakat formu ─────────────────────────

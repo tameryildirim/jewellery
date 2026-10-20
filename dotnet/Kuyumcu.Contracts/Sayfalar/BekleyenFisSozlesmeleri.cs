@@ -19,3 +19,6 @@ public sealed record BekleyenFisIcerik(
 public sealed record BekleyenFisOzet(
     string Id, string Etiket, string? CariAd, int KalemSayisi, decimal ToplamTl, string? KullaniciAd, DateTime Olusturuldu,
     string? TeklifNo = null, DateTime? TeklifBitis = null);   // Y-11: fiyat teklifi ise numara + geçerlilik
+
+/// <summary>Y-15 (20.10) — mali müşavir hesap kodları (GET/PUT /muhasebe-hesaplari).</summary>
+public sealed record MuhasebeHesapOzet(string SatisHesabi, string KdvHesabi, string VarsayilanSatisHesabi, string VarsayilanKdvHesabi);

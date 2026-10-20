@@ -6,4 +6,5 @@ public sealed record PrimSatiri(
     decimal? HedefTl, decimal? GerceklesmeYuzde, decimal? PrimYuzde, decimal PrimTl);
 
 /// <summary>D1-20 — dönemin prim raporu.</summary>
-public sealed record PrimRaporYaniti(DateOnly Baslangic, DateOnly Bitis, IReadOnlyList<PrimSatiri> Satirlar, decimal ToplamPrimTl);
+public sealed record PrimRaporYaniti(DateOnly Baslangic, DateOnly Bitis, IReadOnlyList<PrimSatiri> Satirlar, decimal ToplamPrimTl,
+    decimal? SimulasyonOran = null);   // D1-20 "dene-gör" (20.10): doluysa prim bu oranla hesaplandı (kayıtlı yüzde yerine)

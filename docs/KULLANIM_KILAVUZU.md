@@ -182,6 +182,8 @@ Girişten sonra açılan ana ekrandır. Günün satış ve alış toplamları, h
 
 **Fiyat teklifi:** müşteri "düşüneyim" derse **Fiyat teklifi ver**'e basın. Önce kur kilitlenir (teklif, kilit süresi boyunca geçerlidir; tezgâhtar en çok 1 saat, sahip/müdür 30 güne kadar); program numaralı **Fiyat teklifi** dökümünü açar, müşteriye verilir. Teklif satış değildir, stok ayrılmaz. Müşteri dönünce bekleyen fişlerden **Al** ile tezgâha alınır; aynı kilitli kur kullanılır. Süresi dolan teklif tezgâha alınmaz; yeni teklif verilir.
 
+**Fişte bakiye:** kayıtlı müşterinin satış fişinde ve tahsilat makbuzunda **Önceki bakiye → Yeni bakiye** satırı yazar (TL; has varsa has). Peşin Müşteri fişinde yazmaz.
+
 **Kısayol tuşları (Profesyonel mod):** fiş kartının başlığındaki **Kısayollar** satırı açılınca listelenir.
 
 | Tuş | Ne yapar |
@@ -625,6 +627,8 @@ Hangi rolün hangi ekranı görebileceğini belirleyen matristir. Son sözü her
 <!-- ekran: /isletme -->
 
 İşletmenizin kimliği (ünvan, vergi bilgileri, adres), abonelik planı ve şubeleri. Kimlik alanları fiş, fatura ve pusulalarda satıcı bilgisi olarak basılır. Şubeler buradan eklenir, adları değiştirilir, kapanan şube pasife alınır.
+
+**Mali müşavirin hesap kodları:** Ayarlar sekmesindeki **Mali müşavirin hesap kodları** bölümüne satış hesabı (boşsa 600) ve KDV hesabı (boşsa 391) bir kez yazılır; Luca fiş dosyası bu kodlarla çıkar. Müşteri hesap kodu (120.xxx) her müşterinin kartındadır.
 
 ## Kurulum {#kurulum}
 

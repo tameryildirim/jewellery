@@ -152,8 +152,16 @@
                             Kolonlar="@PrimKolonlari" Ogeler="@IzgaraYerelSiralama.Uygula(pr.Satirlar.ToList(), primSira, PrimKolonlari)"
                             Baslik="@D1.PrimHedef" SiralamaDegisti="@(x => primSira = x)" GecerliSiralama="@primSira" />
                     <p class="metin-kucuk" id="sa-prim-toplam">@string.Format(D1.PrimToplam, Bicim.Tl(pr.ToplamPrimTl))</p>
+                    @if (pr.SimulasyonOran is { } so) { <p class="bant bant-bilgi metin-kucuk" id="sa-prim-simulasyon-not" role="status">@PrimSimSozlugu.Not(Bicim.Yuzde(so), Dil.Dil)</p> }
                 </div>
             }
+            @* D1-20 "dene-gör" (20.10): "bu oranla bu dönemde ne öderdim?" — hiçbir şey yazılmaz, rapor o oranla yeniden hesaplanır. *@
+            <Katlanir Id="sa-prim-dene" Baslik="@PrimSimSozlugu.Baslik(Dil.Dil)">
+                <Sayi ElemanId="sa-prim-oran" Etiket="@PrimSimSozlugu.Oran(Dil.Dil)" EnAz="0" EnCok="100" EnCokOndalik="2" Birim="%"
+                      Deger="@simOran" DegerChanged="@(v => simOran = v)" />
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="sa-prim-dene-hesapla" @onclick="PrimSimule" disabled="@(simOran is null || yukleniyor)">@PrimSimSozlugu.Hesapla(Dil.Dil)</button>
+                @if (pr.SimulasyonOran is not null) { <button type="button" class="btn btn-metin btn-kucuk" id="sa-prim-dene-geri" @onclick="PrimSimGeri">@PrimSimSozlugu.Geri(Dil.Dil)</button> }
+            </Katlanir>
         }
     }
     else
@@ -198,6 +206,9 @@
     private PersonelYaniti? personel;
     private Kuyumcu.Contracts.Sayfalar.Raporlar.PrimRaporYaniti? prim;   // D1-20
     private IzgaraSiralama? primSira;
+    private decimal? simOran;   // D1-20 dene-gör
+    private async Task PrimSimule() { if (simOran is { } o) { yukleniyor = true; try { prim = await Rapor.Prim(baslangic!.Value, bitis!.Value, null, o); } catch (ApiHata ex) { hata = ex.Message; } yukleniyor = false; } }
+    private async Task PrimSimGeri() { yukleniyor = true; try { prim = await Rapor.Prim(baslangic!.Value, bitis!.Value); } catch (ApiHata ex) { hata = ex.Message; } yukleniyor = false; }
     private Kuyumcu.Core.I18n.D1Metinleri D1 => Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil);
 
     private IReadOnlyList<IzgaraKolonu<Kuyumcu.Contracts.Sayfalar.Raporlar.PrimSatiri>> PrimKolonlari =>

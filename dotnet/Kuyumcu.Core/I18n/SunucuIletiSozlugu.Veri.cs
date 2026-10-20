@@ -838,6 +838,8 @@ public static partial class SunucuIletiSozlugu
         ("İptal edilmiş gider pusulası düzenlenemez. Aynı alış için 'Yeniden düzenle' ile doğru bilgilerle yeni pusula düzenleyin; yeni hurda alışı GİRMEYİN.", "A cancelled expense voucher cannot be edited. Issue a new voucher with the correct details for the same purchase using 'Reissue'; do NOT enter a new scrap purchase."),
         // Y-11 (20.10): fiyat teklif fişi
         ("Fiyat teklifi için önce kuru kilitleyin", "Lock the rate before issuing a price quote"),
+        ("Hesap kodu 600 ya da 600.01 biçiminde olmalıdır (rakam ve nokta)", "Account code must look like 600 or 600.01 (digits and dots)"),
+        ("Prim oranı 0 ile 100 arasında olmalıdır", "Commission rate must be between 0 and 100"),
         ("Teklifin süresi doldu; fiyat artık geçerli değil. Güncel kurla yeni teklif verin.", "The quote has expired; the price is no longer valid. Issue a new quote at the current rate."),
         ("Fiyat teklifi bulunamadı", "Price quote not found"),
         ("Teklif içeriği okunamadı", "Quote content could not be read"),

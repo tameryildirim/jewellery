@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 6bb136c3a6308ce666d0662d83d9a52629d000fc78786eb18da62f9b304180e4 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 5ea443259a876422e5bab7763da64ec2d9f1bad7dcf813f788263a4574722ec6 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -360,6 +360,7 @@
       <div class="kutu ipucu"><p>Tek kasanız varsa kasa seçici hiç görünmez; kasa kendiliğinden kullanılır. Kart ile ödemede POS cihazı ve komisyon alanı açılır.</p></div>
       <p><strong>Fişi bekletme:</strong> müşteri karar verirken sıradaki müşteriye geçmek için <strong>Beklet</strong>'e basın; fiş kaydedilmeden kenara alınır, tezgâh boşalır. Bekletme stok, kasa ve cariye hiçbir şey yazmaz. Fiş boşken <strong>Bekleyen fişler (sayı)</strong> düğmesi görünür; listeden <strong>Al</strong> ile fiş kalemleri ve müşterisiyle tezgâha geri gelir (başka bir kasadan da alınabilir), <strong>Sil</strong> ile atılır. Geri alınan fiş normal <strong>Kaydet</strong> ile kaydedilir.</p>
       <p><strong>Fiyat teklifi:</strong> müşteri &quot;düşüneyim&quot; derse <strong>Fiyat teklifi ver</strong>'e basın. Önce kur kilitlenir (teklif, kilit süresi boyunca geçerlidir; tezgâhtar en çok 1 saat, sahip/müdür 30 güne kadar); program numaralı <strong>Fiyat teklifi</strong> dökümünü açar, müşteriye verilir. Teklif satış değildir, stok ayrılmaz. Müşteri dönünce bekleyen fişlerden <strong>Al</strong> ile tezgâha alınır; aynı kilitli kur kullanılır. Süresi dolan teklif tezgâha alınmaz; yeni teklif verilir.</p>
+      <p><strong>Fişte bakiye:</strong> kayıtlı müşterinin satış fişinde ve tahsilat makbuzunda <strong>Önceki bakiye → Yeni bakiye</strong> satırı yazar (TL; has varsa has). Peşin Müşteri fişinde yazmaz.</p>
       <p><strong>Kısayol tuşları (Profesyonel mod):</strong> fiş kartının başlığındaki <strong>Kısayollar</strong> satırı açılınca listelenir.</p>
       <div class="tablo-sar"><table class="tablo">
         <thead><tr><th>Tuş</th><th>Ne yapar</th></tr></thead>
@@ -768,6 +769,7 @@
       <h2><span class="no">43</span> İşletme</h2>
       <span class="ekran-capa" id="e-isletme"></span>
       <p>İşletmenizin kimliği (ünvan, vergi bilgileri, adres), abonelik planı ve şubeleri. Kimlik alanları fiş, fatura ve pusulalarda satıcı bilgisi olarak basılır. Şubeler buradan eklenir, adları değiştirilir, kapanan şube pasife alınır.</p>
+      <p><strong>Mali müşavirin hesap kodları:</strong> Ayarlar sekmesindeki <strong>Mali müşavirin hesap kodları</strong> bölümüne satış hesabı (boşsa 600) ve KDV hesabı (boşsa 391) bir kez yazılır; Luca fiş dosyası bu kodlarla çıkar. Müşteri hesap kodu (120.xxx) her müşterinin kartındadır.</p>
     </section>
 
     <section id="kurulum">

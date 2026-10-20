@@ -18,8 +18,11 @@ namespace Kuyumcu.Api.Modules.Rapor;
 public static class PrimRaporu
 {
     public static async Task<PrimRaporYaniti> Hesapla(KuyumcuDbContext db, DenetimServisi denetim, AktifKullanici islem,
-        DateOnly? baslangic, DateOnly? bitis, string? subeId)
+        DateOnly? baslangic, DateOnly? bitis, string? subeId, decimal? simulasyonOran = null)
     {
+        // D1-20 "dene-gör" (20.10, rakip Dezy): "bu oranla geçen ay ne öderdim?" — kayıtlı yüzde yerine verilen oranla hesaplanır;
+        // hiçbir şey yazılmaz, yanıt SimulasyonOran taşır (ekran bunu açıkça söyler).
+        if (simulasyonOran is < 0m or > 100m) throw new BadRequestException("Prim oranı 0 ile 100 arasında olmalıdır").AlanIle("oran");
         var d = RaporAraligi.Coz(baslangic, bitis);
         var temel = db.Hareketler.AsNoTracking()
             .Where(h => h.TenantId == islem.TenantId && h.Tarih >= d.Bas && h.Tarih < d.Bit).Daralt(subeId)
@@ -56,12 +59,13 @@ public static class PrimRaporu
             var net = satisTl - iadeTl;
             var k = id is null ? null : kisiler.GetValueOrDefault(id);
             var hedef = k?.AylikHedefTl is { } ah && ah > 0m ? Orantili(ah) : (decimal?)null;
-            var prim = id is not null && k?.PrimYuzde is { } py && net > 0m ? Math.Round(net * py / 100m, 2, MidpointRounding.AwayFromZero) : 0m;
+            var yuzde = id is null ? null : simulasyonOran ?? k?.PrimYuzde;
+            var prim = yuzde is { } py && net > 0m ? Math.Round(net * py / 100m, 2, MidpointRounding.AwayFromZero) : 0m;
             satirlar.Add(new PrimSatiri(id, k?.Ad, s?.Adet ?? 0, satisTl, iadeTl, net, hedef,
-                hedef is > 0m ? Math.Round(net / hedef.Value * 100m, 1, MidpointRounding.AwayFromZero) : null, k?.PrimYuzde, prim));
+                hedef is > 0m ? Math.Round(net / hedef.Value * 100m, 1, MidpointRounding.AwayFromZero) : null, yuzde, prim));
         }
-        await denetim.ListeOkumaKaydet(islem, "PrimRaporu", satirlar.Count, "prim raporu görüntülendi");
+        await denetim.ListeOkumaKaydet(islem, "PrimRaporu", satirlar.Count, simulasyonOran is { } so ? $"prim simülasyonu görüntülendi (%{so})" : "prim raporu görüntülendi");
         return new PrimRaporYaniti(d.YerelBas, d.YerelBit, [.. satirlar.OrderBy(x => x.PersonelId is null).ThenByDescending(x => x.NetTl)],
-            satirlar.Sum(x => x.PrimTl));
+            satirlar.Sum(x => x.PrimTl), simulasyonOran);
     }
 }

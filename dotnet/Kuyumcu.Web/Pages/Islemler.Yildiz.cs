@@ -227,6 +227,7 @@ public partial class Islemler
                 BekletGorunur = BekletGorunur,
                 Beklet = EventCallback.Factory.Create(this, Beklet),
                 TeklifVer = EventCallback.Factory.Create(this, TeklifVer),   // Y-11
+                KisayolYardimi = Modu.ProfesyonelMi,                           // Y-02
                 Bekleyenler = YildizBekleyenler,
                 BekleyenlerAcik = bekleyenlerAcik,
                 BekleyenlerAcKapa = EventCallback.Factory.Create(this, () => bekleyenlerAcik = !bekleyenlerAcik),

@@ -169,6 +169,17 @@ Başkasının satırını değiştirme/silme yok.
   Bekleyen listesinde teklif satırı geçerlilik/doldu + "Teklifi yazdır"; "Al" aynı kur kilidini tezgâha bağlar; süresi dolan teklif
   alınmaz (409), dökümde "SÜRESİ DOLMUŞTUR". bekleyen_fisler +3 kolon (geçiş BekleyenFisTeklif). Mutasyon kanıtı: süre kapısı kalkınca
   test kırmızı. Belge türü 12 → 13.
+- **Y-10 (20.10):** müşteri fişinde (satış fişi / tahsilat makbuzu) "Önceki bakiye → Yeni bakiye" (TL; has varsa has) — ekstreyle
+  AYNI yürüyen-bakiye kuralı (kayıtlı bakiyeden sonraki hareketler geri alınır); Peşin müşteride ve etkisiz fişte satır yok.
+- **Y-15 (20.10):** İşletme › Ayarlar › "Mali müşavirin hesap kodları" (satış 600 / KDV 391, alt kırılım 600.01); GET/PUT
+  /muhasebe-hesaplari; Luca fişi ve OKUBENI etkin kodları kullanır; biçim kapısı (rakam+nokta) 400.
+- **Tarayıcı kanıtı (20.10 21:15, 5199 @ 9f72145):** /irsaliyeler IRS-2026-00004 (demo, Derya Yıldızlı) → "Yola çıktı" paneli →
+  Sevk: Yola çıktı · Aras Kargo · 34ABC123 → Teslim paneli; "İrsaliyesiz satışlar" 21 satır. Tezgâh (pro): "Fiyat teklifi ver"
+  düğmesi, kilitsizde "Önce kuru kilitleyin…" + süre seçici (15 dk…30 gün). Kısayol satırı Yıldız'da gizli başlıkta kalmıştı →
+  Yıldız eylem satırına taşındı (bu commit); arayüz modu Basit'e geri alındı. İrsaliyesiz listede has/tutar artık işaretsiz.
+- **D1-20 dene-gör (20.10):** Satış analizi › Prim sekmesinde "Deneyin: bu oranla ne öderdim?" — GET /raporlar/prim?oran=X, dönemin
+  primi herkes için o oranla hesaplanır, yanıt SimulasyonOran taşır, ekranda "Deneme — hiçbir şey kaydedilmedi" bandı; kayıtlı
+  yüzde değişmez (test). Mutasyon kanıtı: oran yok sayılınca 1000 ≠ 400. Y-10/Y-15 mutasyonları da yakalandı. 12.794 test 0 başarısız.
 - **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
   zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
   müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım
