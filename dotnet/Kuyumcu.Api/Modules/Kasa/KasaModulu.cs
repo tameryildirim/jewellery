@@ -167,7 +167,7 @@ public static class KasaDegisimKilidi
     public const string GunKapanisi = "GUN_KAPANISI";
 }
 
-public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger, DenetimServisi? denetimServisi = null)
+public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger, DenetimServisi? denetimServisi = null, Pozisyon.PozisyonServisi? pozisyon = null)
 {
     /// <summary>D1-11 — kör sayımda tutarsız kapanış iletisi (tutar YAZMAZ).</summary>
     public const string KorSayimFarkIletisi = "Sayım defterle tutmadı. Farkın nedenini yazıp yeniden kaydedin; fark kapanıştan sonra görünür.";
@@ -584,6 +584,12 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
         }
 
         await db.SaveChangesAsync();
+        // Y-04: gün kapanışı = servet anlık görüntüsü (dünle fark için). Kapanışı düşürmez; yazılamazsa günlüğe düşer.
+        if (pozisyon is not null)
+        {
+            try { await pozisyon.ServetAnlikGoruntuKaydet(islem); }
+            catch (Exception ex) { logger.LogWarning(ex, "[{TenantId}] servet anlık görüntüsü yazılamadı", islem.TenantId); }
+        }
         logger.LogInformation(
             "[{TenantId}] GUN_KAPANIS: kasa={KasaId} gun={Gun} sayilan={Sayilan} defter={Defter} fark={Fark}",
             islem.TenantId, id, yerelGun, sayilan, nakitDefter, fark);

@@ -17,6 +17,8 @@ public static class NetVarlikSozlugu
     public static string Not(string dil) => En(dil)
         ? "Informational — gold at fine value (not cost); not an accounting equity figure."
         : "Bilgi amaçlıdır — altın has değeriyle (maliyet değil); muhasebe öz sermayesi değildir.";
+    public static string SonKapanis(string gun, string dil) => En(dil) ? $"Change since last day close ({gun})" : $"Son gün kapanışına göre ({gun}) fark";
+    public static string HasFarki(string dil) => En(dil) ? "fine gold" : "has";
     public static string HesaplanamadiBaslik(string dil) => En(dil) ? "Total could not be calculated:" : "Toplam hesaplanamadı:";
     public static string Eksik(string kod, string dil) => kod switch
     {

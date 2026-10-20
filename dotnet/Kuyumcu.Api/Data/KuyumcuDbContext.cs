@@ -107,6 +107,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<Kasa> Kasalar => Set<Kasa>();
     public DbSet<KasaHareket> KasaHareketleri => Set<KasaHareket>();
     public DbSet<GunKapanisi> GunKapanislari => Set<GunKapanisi>();
+    public DbSet<ServetSnapshot> ServetGunluk => Set<ServetSnapshot>();   // Y-04
     /// <summary>KUR KAYNAKLARI (17.10) — has bedeli (KDVK 23/e) gün kapanışları. IKiraciVarlik (süzgeç otomatik).</summary>
     public DbSet<OzelMatrahKapanisi> OzelMatrahKapanislari => Set<OzelMatrahKapanisi>();
     public DbSet<FiyatListesi> FiyatListeleri => Set<FiyatListesi>();
@@ -355,6 +356,8 @@ public class KuyumcuDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.Entity<ServetSnapshot>().HasIndex(x => new { x.TenantId, x.Gun }).IsUnique();   // Y-04: kiracı × gün tek satır
+
         mb.Entity<Kullanici>().HasIndex(k => new { k.Email, k.TenantId }).IsUnique();
         mb.Entity<Fatura>().HasIndex(f => new { f.FaturaNo, f.TenantId }).IsUnique();
         mb.Entity<RolYetki>().HasIndex(y => new { y.TenantId, y.Rol, y.Modul }).IsUnique();

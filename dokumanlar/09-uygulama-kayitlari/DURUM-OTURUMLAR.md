@@ -203,6 +203,10 @@ Başkasının satırını değiştirme/silme yok.
   yasağı; bağlantı kopyalanır). Mutasyon: süre kontrolü kalkınca test kırmızı.
 - **Ertelenen (tuval dışı öğe, kurucu görsel onayı):** PAKET-04 fiş kaleminde ürün görseli (Yıldız tezgâh kalem satırında görsel
   yuvası yok); Y-09 stok durumları (rezerve/tamirde/yolda — stok modeline durum kolonu, M).
+- **Y-04 servet farkı (20.10):** servet_gunluk tablosu (kiracı × gün; geçiş ServetGunluk, yedek kuyumcu_net-20261020-2243-servet-gunluk-
+  oncesi.sql.gz); gün kapanışı PozisyonServisi.ServetAnlikGoruntuKaydet çağırır (hata kapanışı düşürmez); NetVarlikOzeti OncekiGun/
+  OncekiNetTl/OncekiAltinNetHasGram; kartta "Son gün kapanışına göre (gg.aa.yyyy) fark: ±TL · has ±g". "Dünle fark" yerine dürüst
+  "son kapanışla fark" (kapanış yoksa satır yok). Mutasyon: kapanışta görüntü yazılmazsa test kırmızı.
 - **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
   zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
   müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım

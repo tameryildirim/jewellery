@@ -212,10 +212,31 @@ public sealed class PozisyonServisi(KuyumcuDbContext db, DenetimServisi denetim)
         }
 
         decimal? net = nakitTl is { } n && altinTl is { } a && cariTl is { } c ? Para2(n + a + c) : null;
-        return new NetVarlikOzeti(liste, nakitTl is { } nn ? Para2(nn) : null, Y6(altinNetHas), altinTl, cariTl is { } cc ? Para2(cc) : null, net, hasFiyati, eksikler);
+        // Y-04: son gün kapanışındaki anlık görüntü (bugünden önceki en yeni gün) — fark ekranda yazılır.
+        var bugun = Zaman.YerelBugun();
+        var onceki = await db.ServetGunluk.AsNoTracking().Where(x => x.TenantId == tenantId && x.Gun < bugun)
+            .OrderByDescending(x => x.Gun).Select(x => new { x.Gun, x.NetTl, x.AltinNetHasGram }).FirstOrDefaultAsync();
+        return new NetVarlikOzeti(liste, nakitTl is { } nn ? Para2(nn) : null, Y6(altinNetHas), altinTl, cariTl is { } cc ? Para2(cc) : null, net, hasFiyati, eksikler,
+            onceki?.Gun, onceki?.NetTl, onceki?.AltinNetHasGram);
     }
 
     private static decimal Para2(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
+
+    /// <summary>
+    /// Y-04 — gün kapanışında servet anlık görüntüsü (kiracı × yerel gün; aynı gün ikinci kapanış üzerine yazar).
+    /// Çağıran kasa kapanışıdır; hata kapanışı DÜŞÜRMEZ (çağıran yakalar), satır yazılmazsa fark gösterilmez.
+    /// </summary>
+    public async Task ServetAnlikGoruntuKaydet(AktifKullanici islem)
+    {
+        var p = await Hesapla(islem);
+        var nv = p.NetVarlik ?? throw new InvalidOperationException("Net varlık hesaplanamadı");
+        var gun = Zaman.YerelBugun();
+        var satir = await db.ServetGunluk.FirstOrDefaultAsync(x => x.TenantId == islem.TenantId && x.Gun == gun);
+        if (satir is null) { satir = new ServetSnapshot { Id = Kimlik.Ulid(), TenantId = islem.TenantId, Gun = gun }; db.ServetGunluk.Add(satir); }
+        satir.NakitTl = nv.NakitTl; satir.AltinTl = nv.AltinTl; satir.CariTl = nv.CariTl; satir.NetTl = nv.NetVarlikTl;
+        satir.AltinNetHasGram = nv.AltinNetHasGram; satir.HasFiyati = nv.HasFiyati; satir.Olusturuldu = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+    }
 
     /// <summary>Nisap 80,18 g has (Diyanet). TL karşılığı yalnız kiracının güncel kur kaydı varsa; yoksa null (uydurulmaz).</summary>
     public const decimal ZekatNisapGram = 80.18m;

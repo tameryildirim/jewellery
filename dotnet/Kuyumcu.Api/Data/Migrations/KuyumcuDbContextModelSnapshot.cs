@@ -6032,6 +6032,59 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.ToTable("sayim_satirlari");
                 });
 
+            modelBuilder.Entity("Kuyumcu.Api.Data.ServetSnapshot", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("AltinNetHasGram")
+                        .HasColumnType("decimal(15,6)")
+                        .HasColumnName("altin_net_has");
+
+                    b.Property<decimal?>("AltinTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("altin_tl");
+
+                    b.Property<decimal?>("CariTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("cari_tl");
+
+                    b.Property<DateOnly>("Gun")
+                        .HasColumnType("date")
+                        .HasColumnName("gun");
+
+                    b.Property<decimal?>("HasFiyati")
+                        .HasColumnType("decimal(15,4)")
+                        .HasColumnName("has_fiyati");
+
+                    b.Property<decimal?>("NakitTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("nakit_tl");
+
+                    b.Property<decimal?>("NetTl")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("net_tl");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Gun")
+                        .IsUnique();
+
+                    b.ToTable("servet_gunluk");
+                });
+
             modelBuilder.Entity("Kuyumcu.Api.Data.Siparis", b =>
                 {
                     b.Property<string>("Id")

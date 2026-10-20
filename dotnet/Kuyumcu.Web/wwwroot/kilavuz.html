@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 841cf34c521e2be21824910ed1aa339e4530d7cfa049f8197d3c83ff0d81285f · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 691b19f13156a353ddf33efd201eab481e314e5bd9c43e3240cad4ce110d2de9 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -700,6 +700,7 @@
       <h2><span class="no">32</span> Rapor merkezi</h2>
       <span class="ekran-capa" id="e-raporlar"></span>
       <p>İşletmenin durumunu özetleyen rapor merkezidir: aylık özet, gün sonu mutabakatı, cari yaşlandırma ve stok değeri. Dönem seçicisi üsttedir; seçilen dönemden etkilenmeyen kartlar bunu alt metinlerinde yazar. Her raporun kartına basınca ilgili ayrıntılı döküm açılır.</p>
+      <p><strong>Bugünkü servet:</strong> altın pozisyonu kartının ayrıntısında kasa+banka, altın (has değeri) ve müşteri bakiyeleri toplanır; gün kapanışı yapıldıkça o günün serveti saklanır ve kart <strong>son gün kapanışına göre fark</strong>ı (TL ve has) yazar. Kapanış yapılmayan gün için fark hesaplanmaz; uydurulmaz.</p>
     </section>
 
     <section id="kar-zarar">

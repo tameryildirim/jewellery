@@ -151,6 +151,14 @@
                             <dt><strong>@NetVarlikSozlugu.Toplam(Dil.Dil)</strong></dt>
                             <dd id="pozisyon-servet-toplam"><strong>@(nv.NetVarlikTl is { } tot ? Bicim.Tl(tot) : "—")</strong></dd>
                         </dl>
+                        @if (nv.OncekiGun is { } og)
+                        {
+                            <p class="metin-kucuk" id="pozisyon-servet-fark">
+                                @NetVarlikSozlugu.SonKapanis(Bicim.Gun(og), Dil.Dil):
+                                @(nv.NetVarlikTl is { } nt && nv.OncekiNetTl is { } ot ? IsaretliTl(nt - ot) : "—")
+                                @if (nv.OncekiAltinNetHasGram is { } oh) { <span class="metin-soluk"> · @NetVarlikSozlugu.HasFarki(Dil.Dil) @IsaretliHas(nv.AltinNetHasGram - oh)</span> }
+                            </p>
+                        }
                         @if (nv.Eksikler.Count > 0)
                         {
                             <p class="metin-kucuk metin-kirmizi" id="pozisyon-servet-eksik">@NetVarlikSozlugu.HesaplanamadiBaslik(Dil.Dil) @string.Join("; ", nv.Eksikler.Select(e => NetVarlikSozlugu.Eksik(e, Dil.Dil)))</p>
@@ -251,6 +259,8 @@
     private bool ayrintiAcik;
     /// <summary>Tam çizim: sade değilse daima; sadeyse "Ayrıntı" açıkken.</summary>
     private bool Tam => !Sade || ayrintiAcik;
+    private static string IsaretliTl(decimal fark) => (fark > 0m ? "+" : "") + Bicim.Tl(fark);   // Y-04: eksi işareti Bicim'den (U+2212)
+    private string IsaretliHas(decimal fark) => (fark > 0m ? "+" : "") + HasMiktar(fark);
     private void AyrintiDegistir() => ayrintiAcik = !ayrintiAcik;
     private CultureInfo Kultur => Dil.Dil == "en" ? CultureInfo.GetCultureInfo("en-US") : CultureInfo.GetCultureInfo("tr-TR");
 

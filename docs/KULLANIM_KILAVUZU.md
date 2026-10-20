@@ -562,6 +562,8 @@ Devletin belirlediği tutar sınırlarını ve süreleri (nakitte günlük sın�
 
 İşletmenin durumunu özetleyen rapor merkezidir: aylık özet, gün sonu mutabakatı, cari yaşlandırma ve stok değeri. Dönem seçicisi üsttedir; seçilen dönemden etkilenmeyen kartlar bunu alt metinlerinde yazar. Her raporun kartına basınca ilgili ayrıntılı döküm açılır.
 
+**Bugünkü servet:** altın pozisyonu kartının ayrıntısında kasa+banka, altın (has değeri) ve müşteri bakiyeleri toplanır; gün kapanışı yapıldıkça o günün serveti saklanır ve kart **son gün kapanışına göre fark**ı (TL ve has) yazar. Kapanış yapılmayan gün için fark hesaplanmaz; uydurulmaz.
+
 ## Kâr-Zarar {#kar-zarar}
 
 <!-- ekran: /raporlar/kar-zarar -->

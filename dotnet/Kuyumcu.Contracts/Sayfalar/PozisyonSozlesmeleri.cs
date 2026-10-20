@@ -83,7 +83,9 @@ public sealed record NetVarlikOzeti(
     decimal? CariTl,
     decimal? NetVarlikTl,
     decimal? HasFiyati,
-    IReadOnlyList<string> Eksikler);
+    IReadOnlyList<string> Eksikler,
+    // Y-04 (20.10): son gün kapanışındaki servet (varsa) — "dünle fark" yerine dürüst "son kapanışla fark".
+    DateOnly? OncekiGun = null, decimal? OncekiNetTl = null, decimal? OncekiAltinNetHasGram = null);
 
 public sealed record ZekatOzeti(decimal NisapGram, decimal MatrahHasGram, bool NisapUstu, decimal ZekatHasGram, decimal? ZekatTl, decimal? HasFiyati);
 
