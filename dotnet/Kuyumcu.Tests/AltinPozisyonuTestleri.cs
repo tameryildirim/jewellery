@@ -322,4 +322,54 @@ public sealed class AltinPozisyonuTestleri(TestVeritabani vt)
         Assert.Equal(0, p.Altin.AlacakliCariSayisi);
         Assert.Equal(VarsayilanVitrin, p.Altin.NetGram);
     }
+
+    // ── PAKET-37 (20.10): TL net varlık — kasa+banka para birimi bazında, altın has değeri, cari TL ──
+    [Fact]
+    public async Task NetVarlik_kasa_banka_para_birimi_bazinda_toplanir_ve_TL_servet_sunucuda_hesaplanir()
+    {
+        var k = TestKurulum.KiraciKur(vt.OlusturSistem(), "P37-net-varlik");
+        using var db = vt.Olustur(k);
+        var now = DateTime.UtcNow;
+        db.Kasalar.Add(new Kasa { Id = Kimlik.Ulid(), TenantId = k.TenantId, SubeId = k.SubeId, Ad = "Döviz kasası", ParaBirimi = "USD", Bakiye = 1_000m, Aktif = true, Guncellendi = now });
+        db.Kasalar.Add(new Kasa { Id = Kimlik.Ulid(), TenantId = k.TenantId, SubeId = k.SubeId, Ad = "Kapalı kasa", ParaBirimi = "TRY", Bakiye = 99_999m, Aktif = false, Guncellendi = now });   // pasif: sayılmaz
+        db.BankaHesaplari.Add(new BankaHesap { Id = Kimlik.Ulid(), TenantId = k.TenantId, BankaAdi = "Ziraat", HesapAdi = "Vadesiz", Iban = TestIban.Tamamla(new string('1', 22)), ParaBirimi = "TRY", Bakiye = 50_000m, Aktif = true, Olusturuldu = now, Guncellendi = now });
+        db.BankaHesaplari.Add(new BankaHesap { Id = Kimlik.Ulid(), TenantId = k.TenantId, BankaAdi = "Ziraat", HesapAdi = "USD", Iban = TestIban.Tamamla(new string('2', 22)), ParaBirimi = "USD", Bakiye = 200m, Aktif = true, Olusturuldu = now, Guncellendi = now });
+        var kur = await db.KurSnapshots.SingleAsync(x => x.Id == k.KurId);
+        kur.UsdTry = 35m;
+        (await db.CariBakiyeler.SingleAsync(x => x.CariId == k.CariId)).TlBakiye = 1_500m;   // müşteri bize 1.500 TL borçlu
+        await db.SaveChangesAsync();
+
+        var p = await Servis(db).Hesapla(k.Islem);
+        var nv = p.NetVarlik!;
+
+        var kasaTry = await db.Kasalar.Where(x => x.TenantId == k.TenantId && x.Aktif && x.ParaBirimi == "TRY").SumAsync(x => x.Bakiye);
+        var usd = Assert.Single(nv.ParaBirimleri, x => x.ParaBirimi == "USD");
+        Assert.Equal(1_000m, usd.Kasa); Assert.Equal(200m, usd.Banka); Assert.Equal(1_200m, usd.Toplam); Assert.Equal(35m, usd.Kur); Assert.Equal(42_000m, usd.TlKarsiligi);
+        var tr = Assert.Single(nv.ParaBirimleri, x => x.ParaBirimi == "TRY");
+        Assert.Equal(kasaTry, tr.Kasa); Assert.Equal(50_000m, tr.Banka);
+        Assert.Equal(kasaTry + 50_000m + 42_000m, nv.NakitTl);
+        Assert.Equal(6_827.20m, nv.HasFiyati);
+        Assert.Equal(Math.Round(p.Altin.NetGram * 6_827.20m, 2, MidpointRounding.AwayFromZero), nv.AltinTl);
+        var cariTl = await db.CariBakiyeler.Where(x => x.TenantId == k.TenantId).SumAsync(x => x.TlBakiye);
+        Assert.Equal(1_500m, cariTl);
+        Assert.Equal(cariTl, nv.CariTl);
+        Assert.Equal(nv.NakitTl + nv.AltinTl + nv.CariTl, nv.NetVarlikTl);
+        Assert.Empty(nv.Eksikler);
+    }
+
+    [Fact]
+    public async Task NetVarlik_kuru_olmayan_para_birimi_toplami_NULL_yapar_ve_sebebi_yazar()
+    {
+        var k = TestKurulum.KiraciKur(vt.OlusturSistem(), "P37-kursuz");
+        using var db = vt.Olustur(k);
+        db.Kasalar.Add(new Kasa { Id = Kimlik.Ulid(), TenantId = k.TenantId, SubeId = k.SubeId, Ad = "Sterlin", ParaBirimi = "GBP", Bakiye = 10m, Aktif = true, Guncellendi = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var nv = (await Servis(db).Hesapla(k.Islem)).NetVarlik!;
+        var gbp = Assert.Single(nv.ParaBirimleri, x => x.ParaBirimi == "GBP");
+        Assert.Null(gbp.Kur); Assert.Null(gbp.TlKarsiligi);
+        Assert.Null(nv.NakitTl); Assert.Null(nv.NetVarlikTl);
+        Assert.Contains("KUR_GBP", nv.Eksikler);
+        Assert.NotNull(nv.AltinTl);   // has fiyatı var: altın kalemi yine hesaplanır
+    }
 }

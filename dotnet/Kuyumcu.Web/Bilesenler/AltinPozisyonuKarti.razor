@@ -1,5 +1,6 @@
 @using System.Globalization
 @using Kuyumcu.Contracts.Sayfalar.Pozisyon
+@using Kuyumcu.Core.I18n
 @inject ApiIstemci Api
 @inject DilServisi Dil
 @inject OturumServisi Oturum
@@ -128,6 +129,34 @@
                             : Kuyumcu.Core.I18n.EBelgeSozlugu.ZekatNisapAlti(Bicim.Gram(z.NisapGram), Dil.Dil))
                         · @Kuyumcu.Core.I18n.EBelgeSozlugu.ZekatNot(Dil.Dil)
                     </p>
+                }
+                @* PAKET-37 (20.10) bugünkü servet: yalnız ayrıntı açıkken; her sayı sunucudan, ekran toplamaz (UX-S21). *@
+                @if (Tam && veri.NetVarlik is { } nv)
+                {
+                    <div class="pozisyon-servet" id="pozisyon-servet">
+                        <h3 class="metin-kucuk">@NetVarlikSozlugu.Baslik(Dil.Dil)</h3>
+                        <dl class="tanim-liste metin-kucuk">
+                            <dt>@NetVarlikSozlugu.Nakit(Dil.Dil)</dt>
+                            <dd id="pozisyon-servet-nakit">
+                                @(nv.NakitTl is { } ntl ? Bicim.Tl(ntl) : "—")
+                                @foreach (var pb in nv.ParaBirimleri)
+                                {
+                                    <span class="metin-soluk" id="@($"pozisyon-servet-pb-{pb.ParaBirimi}")"> · @pb.ParaBirimi @Bicim.Para(pb.Toplam, pb.ParaBirimi) (@NetVarlikSozlugu.KasaKisa(Dil.Dil) @Bicim.Para(pb.Kasa, pb.ParaBirimi), @NetVarlikSozlugu.BankaKisa(Dil.Dil) @Bicim.Para(pb.Banka, pb.ParaBirimi))</span>
+                                }
+                            </dd>
+                            <dt>@NetVarlikSozlugu.AltinDegeri(Dil.Dil)</dt>
+                            <dd id="pozisyon-servet-altin">@(nv.AltinTl is { } atl ? Bicim.Tl(atl) : "—") <span class="metin-soluk">· @HasMiktar(nv.AltinNetHasGram)@(nv.HasFiyati is { } hf ? " · " + NetVarlikSozlugu.HasFiyatiNotu(Bicim.Tl(hf), Dil.Dil) : "")</span></dd>
+                            <dt>@NetVarlikSozlugu.CariBakiye(Dil.Dil)</dt>
+                            <dd id="pozisyon-servet-cari">@(nv.CariTl is { } ctl ? Bicim.Tl(ctl) : "—")</dd>
+                            <dt><strong>@NetVarlikSozlugu.Toplam(Dil.Dil)</strong></dt>
+                            <dd id="pozisyon-servet-toplam"><strong>@(nv.NetVarlikTl is { } tot ? Bicim.Tl(tot) : "—")</strong></dd>
+                        </dl>
+                        @if (nv.Eksikler.Count > 0)
+                        {
+                            <p class="metin-kucuk metin-kirmizi" id="pozisyon-servet-eksik">@NetVarlikSozlugu.HesaplanamadiBaslik(Dil.Dil) @string.Join("; ", nv.Eksikler.Select(e => NetVarlikSozlugu.Eksik(e, Dil.Dil)))</p>
+                        }
+                        <p class="metin-soluk metin-kucuk">@NetVarlikSozlugu.Not(Dil.Dil)</p>
+                    </div>
                 }
                 @if (veri.DefterBakiyeFarki != 0m)
                 {

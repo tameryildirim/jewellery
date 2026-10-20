@@ -57,12 +57,34 @@ public sealed record AltinPozisyonuYaniti(
     bool DonemdenBagimsiz,
     string Kapsam = "TUM_SUBELER",
     string CariKapsam = "KIRACI_GENELI",
-    ZekatOzeti? Zekat = null);
+    ZekatOzeti? Zekat = null,
+    NetVarlikOzeti? NetVarlik = null);
 
 /// <summary>
 /// 20.10 — zekât hesaplayıcı (BİLGİ AMAÇLI; dinî/mali danışmana teyit). Nisap: 80,18 g has altın (Diyanet İşleri
 /// Başkanlığı). Oran 1/40. Matrah: altın NET pozisyonu (vitrin + hurda + alacak − borç; emanet ve konsinye dışarıda).
 /// </summary>
+/// <summary>PAKET-37 (20.10) — bir para birimindeki nakit varlık: aktif kasalar + aktif banka hesapları.</summary>
+/// <param name="Kur">TL karşılığı için kullanılan kur (TRY için 1); kiracının güncel kur kaydında yoksa null.</param>
+/// <param name="TlKarsiligi">Toplam × Kur; kur yoksa null (uydurulmaz).</param>
+public sealed record ParaBirimiVarligi(string ParaBirimi, decimal Kasa, decimal Banka, decimal Toplam, decimal? Kur, decimal? TlKarsiligi);
+
+/// <summary>
+/// PAKET-37 — TL NET VARLIK (servet) özeti: nakit (kasa+banka, para birimi bazında) + altın net pozisyonunun has değeri +
+/// cari TL/döviz bakiyeleri. Her kalem sunucuda; bir girdi (kur, has fiyatı) yoksa o kalem ve toplam null döner ve
+/// <paramref name="Eksikler"/> sebebini kodla söyler (KUR_USD, KUR_EUR, KUR_GBP, KUR_xxx, HAS_FIYATI). Bilgi amaçlıdır:
+/// stok maliyeti değil has değeri; vergi/muhasebe öz sermayesi değildir.
+/// </summary>
+public sealed record NetVarlikOzeti(
+    IReadOnlyList<ParaBirimiVarligi> ParaBirimleri,
+    decimal? NakitTl,
+    decimal AltinNetHasGram,
+    decimal? AltinTl,
+    decimal? CariTl,
+    decimal? NetVarlikTl,
+    decimal? HasFiyati,
+    IReadOnlyList<string> Eksikler);
+
 public sealed record ZekatOzeti(decimal NisapGram, decimal MatrahHasGram, bool NisapUstu, decimal ZekatHasGram, decimal? ZekatTl, decimal? HasFiyati);
 
 /// <summary>Kırılım satırı — bir carinin tek madendeki has bakiyesi (+ bize borçlu, − biz borçluyuz).</summary>

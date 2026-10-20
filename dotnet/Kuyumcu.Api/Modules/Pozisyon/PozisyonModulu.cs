@@ -149,8 +149,73 @@ public sealed class PozisyonServisi(KuyumcuDbContext db, DenetimServisi denetim)
 
         return new AltinPozisyonuYaniti(
             Maden.Altin, altin, digerleri, digerleri.Count > 0, fark, DateTime.UtcNow, true,
-            GorunumSubesi.Kapsam(gorunumSubesi), GorunumSubesi.KiraciGeneli, await Zekat(t, altin.NetGram));
+            GorunumSubesi.Kapsam(gorunumSubesi), GorunumSubesi.KiraciGeneli, await Zekat(t, altin.NetGram),
+            await NetVarlik(t, altin.NetGram, gorunumSubesi));
     }
+
+    /// <summary>
+    /// PAKET-37 (20.10) — TL net varlık: kasa+banka (para birimi bazında; kasa seçili şubeye daralır, banka kiracı geneli),
+    /// altın net pozisyonunun has değeri (güncel has fiyatı), cari TL/USD/EUR bakiyeleri. Kur ya da has fiyatı yoksa ilgili
+    /// kalem ve toplam NULL + Eksikler kodu (uydurma yok, Anayasa md.1).
+    /// </summary>
+    public async Task<NetVarlikOzeti> NetVarlik(string tenantId, decimal altinNetHas, string? gorunumSubesi = null)
+    {
+        var kur = await db.KurSnapshots.AsNoTracking()
+            .Where(k => k.TenantId == tenantId && !k.IptalEdildi)
+            .OrderByDescending(k => k.Olusturuldu)
+            .Select(k => new { k.AltinHasFiyati, k.UsdTry, k.EurTry, k.GbpTry })
+            .FirstOrDefaultAsync();
+        decimal? KurBul(string pb) => pb switch
+        {
+            "TRY" => 1m,
+            "USD" => kur?.UsdTry is > 0m ? kur.UsdTry : null,
+            "EUR" => kur?.EurTry is > 0m ? kur.EurTry : null,
+            "GBP" => kur?.GbpTry is > 0m ? kur.GbpTry : null,
+            _ => null,
+        };
+
+        var kasalar = await db.Kasalar.AsNoTracking().Where(k => k.TenantId == tenantId && k.Aktif).Daralt(gorunumSubesi)
+            .GroupBy(k => k.ParaBirimi).Select(g => new { Pb = g.Key, Toplam = g.Sum(x => x.Bakiye) }).ToListAsync();
+        var bankalar = await db.BankaHesaplari.AsNoTracking().Where(b => b.TenantId == tenantId && b.Aktif)
+            .GroupBy(b => b.ParaBirimi).Select(g => new { Pb = g.Key, Toplam = g.Sum(x => x.Bakiye) }).ToListAsync();
+        var eksikler = new List<string>();
+        var pbler = kasalar.Select(x => x.Pb).Concat(bankalar.Select(x => x.Pb)).Distinct().OrderBy(x => x == "TRY" ? "" : x, StringComparer.Ordinal).ToList();
+        if (pbler.Count == 0) pbler.Add("TRY");
+        var liste = new List<ParaBirimiVarligi>();
+        decimal? nakitTl = 0m;
+        foreach (var pb in pbler)
+        {
+            var kasa = kasalar.FirstOrDefault(x => x.Pb == pb)?.Toplam ?? 0m;
+            var banka = bankalar.FirstOrDefault(x => x.Pb == pb)?.Toplam ?? 0m;
+            var toplam = kasa + banka;
+            var k = KurBul(pb);
+            var tl = k is { } kk ? Para2(toplam * kk) : (decimal?)null;
+            if (tl is null && toplam != 0m) { eksikler.Add("KUR_" + pb); nakitTl = null; }
+            else if (nakitTl is not null && tl is not null) nakitTl += tl;
+            liste.Add(new ParaBirimiVarligi(pb, kasa, banka, toplam, k, tl));
+        }
+
+        decimal? hasFiyati = kur?.AltinHasFiyati is > 0m ? kur.AltinHasFiyati : null;
+        decimal? altinTl = hasFiyati is { } hf ? Para2(altinNetHas * hf) : null;
+        if (altinTl is null) eksikler.Add("HAS_FIYATI");
+
+        var cari = await db.CariBakiyeler.AsNoTracking().Where(b => b.TenantId == tenantId)
+            .GroupBy(_ => 1).Select(g => new { Tl = g.Sum(x => x.TlBakiye), Usd = g.Sum(x => x.UsdBakiye), Eur = g.Sum(x => x.EurBakiye) })
+            .FirstOrDefaultAsync();
+        decimal? cariTl = cari?.Tl ?? 0m;
+        foreach (var (pb, tutar) in new[] { ("USD", cari?.Usd ?? 0m), ("EUR", cari?.Eur ?? 0m) })
+        {
+            if (tutar == 0m) continue;
+            var k = KurBul(pb);
+            if (k is null) { cariTl = null; if (!eksikler.Contains("KUR_" + pb)) eksikler.Add("KUR_" + pb); }
+            else if (cariTl is not null) cariTl += Para2(tutar * k.Value);
+        }
+
+        decimal? net = nakitTl is { } n && altinTl is { } a && cariTl is { } c ? Para2(n + a + c) : null;
+        return new NetVarlikOzeti(liste, nakitTl is { } nn ? Para2(nn) : null, Y6(altinNetHas), altinTl, cariTl is { } cc ? Para2(cc) : null, net, hasFiyati, eksikler);
+    }
+
+    private static decimal Para2(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
 
     /// <summary>Nisap 80,18 g has (Diyanet). TL karşılığı yalnız kiracının güncel kur kaydı varsa; yoksa null (uydurulmaz).</summary>
     public const decimal ZekatNisapGram = 80.18m;
