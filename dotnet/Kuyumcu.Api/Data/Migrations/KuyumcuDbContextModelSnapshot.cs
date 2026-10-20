@@ -187,6 +187,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("ad");
 
+                    b.Property<DateTime?>("Bitis")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("bitis");
+
                     b.Property<DateTime?>("IptalZamani")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("iptal_zamani");

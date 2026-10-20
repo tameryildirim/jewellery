@@ -97,6 +97,7 @@ public static class RotaBasliklari
             ["/vitrin"] = t => t.Pano.Baslik,
             // PAKET EKSIK-KUCUK (B2-10) — vitrin dükkân ekranı (tam ekran).
             ["/vitrin/ekran"] = t => Kuyumcu.Core.I18n.EksikKucukSozlugu.Al(t.DilKodu).TamEkranRotaBaslik,
+            ["/fiyat/{Anahtar}"] = t => Kuyumcu.Core.I18n.CanliFiyatSozlugu.Baslik(t.DilKodu),   // Y-14
             // PAKET S1-d — karo sayfası; başlık kapalı sözlükten (Sozlukler.cs
             // ortak hub'ına dokunulmadı). Dil, sözlük nesnesinin kimliğinden okunur.
             ["/ekranlar"] = t => EkranlarSozlugu.Baslik(t.DilKodu),

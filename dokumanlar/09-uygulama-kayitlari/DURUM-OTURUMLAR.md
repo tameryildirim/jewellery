@@ -196,6 +196,13 @@ Başkasının satırını değiştirme/silme yok.
   süzgeci kalkınca test kırmızı. Sayım tutanağı bağlantısı Yıldız sayım bilgi satırına da kondu (klasik başlık Yıldız'da yok).
   **Kapsandı sayılanlar:** Y-07 kur kaynağı seçimi (ALTINKAYNAK/ANKARA/TRUNCGIL/MANUAL + has/döviz kaynağı), Y-08 hurda
   pazarlık payı (IslemFiyatKapisi: bant dışı → SAHİP/MÜDÜR onayı + gerekçe), Y-12, Y-13.
+- **Y-14 canlı fiyat bağlantısı (20.10):** dış API anahtarına süre (bitis; geçiş ApiAnahtariBitis, yedek
+  kuyumcu_net-20261020-2223-api-anahtari-bitis-oncesi.sql.gz), GET /api/disa/v1/pano?anahtar= (KUR kapsamı; süresi dolan 401,
+  kapsam dışı 403), oturumsuz kabuksuz /fiyat/{Anahtar} ekranı (vitrin panosu; ibare seçilmemişse fiyat yok; 60 sn yenileme),
+  İşletme › Dış API çekmecesinde "Canlı fiyat bağlantısı oluştur (30 gün)" + kopyala. Rota 54 → 55. QR üretimi YOK (kütüphane/CDN
+  yasağı; bağlantı kopyalanır). Mutasyon: süre kontrolü kalkınca test kırmızı.
+- **Ertelenen (tuval dışı öğe, kurucu görsel onayı):** PAKET-04 fiş kaleminde ürün görseli (Yıldız tezgâh kalem satırında görsel
+  yuvası yok); Y-09 stok durumları (rezerve/tamirde/yolda — stok modeline durum kolonu, M).
 - **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
   zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
   müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım

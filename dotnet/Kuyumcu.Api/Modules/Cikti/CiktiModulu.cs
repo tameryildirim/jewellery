@@ -564,16 +564,18 @@ public sealed class CiktiServisi(
         var ciktiSatirlari = sirali.Select((x, i) =>
         {
             var fark = x.s.SayilanAdet is { } sy ? sy - x.s.SistemAdet : (decimal?)null;
-            return new CiktiSatir([$"{i + 1}", $"{x.u?.Kod ?? "—"} · {x.u?.Ad ?? "Bilinmiyor"}", Sayi(x.s.SistemAdet, 3),
-                x.s.SayilanAdet is { } s2 ? Sayi(s2, 3) : "sayılmadı", fark is { } f ? Sayi(f, 3) : "—"], Vurgu: fark is { } ff && ff != 0m);
+            return new CiktiSatir([$"{i + 1}", $"{x.u?.Kod ?? "—"} · {x.u?.Ad ?? "Bilinmiyor"}", Adet(x.s.SistemAdet),
+                x.s.SayilanAdet is { } s2 ? Adet(s2) : "sayılmadı", fark is { } f ? Adet(f) : "—"], Vurgu: fark is { } ff && ff != 0m);
         }).ToList();
+        // Adet: tam sayıysa "3", kesirliyse "3,5" (tr) — "3.000" üç bin gibi okunuyordu (canlı tutanak 20.10).
+        static string Adet(decimal d) => d % 1m == 0m ? d.ToString("0", CultureInfo.InvariantCulture) : d.ToString("0.###", new CultureInfo("tr-TR"));
         var sayilan = satirlar.Count(s => s.SayilanAdet != null);
         var farkli = satirlar.Count(s => s.SayilanAdet is { } sy && sy != s.SistemAdet);
         var eksik = satirlar.Where(s => s.SayilanAdet is { } sy && sy < s.SistemAdet).Sum(s => s.SistemAdet - s.SayilanAdet!.Value);
         var fazla = satirlar.Where(s => s.SayilanAdet is { } sy && sy > s.SistemAdet).Sum(s => s.SayilanAdet!.Value - s.SistemAdet);
         var netHas = satirlar.Where(s => s.SayilanAdet != null).Sum(s => (s.SayilanAdet!.Value - s.SistemAdet) * (urunler.GetValueOrDefault(s.UrunId)?.HasGrami ?? 0m));
         var durum = o.Durum switch { "KAPANDI" => "kapandı", "IPTAL" => "iptal edildi", _ => "açık" };
-        var not = $"Durum: {durum} · Kapsam: {o.KapsamTur} · Sayılan: {sayilan}/{satirlar.Count} · Farklı satır: {farkli} · Eksik: {Sayi(eksik, 3)} · Fazla: {Sayi(fazla, 3)} · Net has farkı: {Sayi(Math.Round(netHas, 4), 4)} g"
+        var not = $"Durum: {durum} · Kapsam: {o.KapsamTur} · Sayılan: {sayilan}/{satirlar.Count} · Farklı satır: {farkli} · Eksik: {Adet(eksik)} · Fazla: {Adet(fazla)} · Net has farkı: {Sayi(Math.Round(netHas, 4), 4)} g"
             + (string.IsNullOrWhiteSpace(o.Notlar) ? "" : " · " + o.Notlar.Trim())
             + " · Sayılmayan satır bilinmeyendir; sıfır sayılmaz.";
         return new OrtakBelge(

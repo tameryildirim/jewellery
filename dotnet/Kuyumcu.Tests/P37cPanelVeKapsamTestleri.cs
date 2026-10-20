@@ -175,7 +175,8 @@ public sealed class P37cPanelVeKapsamTestleri : BunitContext
         // 51 → 52: PAKET EKSIK-KUCUK VitrinEkrani.razor (/vitrin/ekran; SayfaBasi kullanır, muaf DEĞİL).
         // 52 → 53: D1-19 Kvkk.razor (/kvkk; SayfaBasi kullanır, muaf DEĞİL).
         // 53 → 54: 20.10 PAKET-E-BELGE EBelgeler.razor (/e-belgeler; SayfaBasi kullanır, muaf DEĞİL).
-        Assert.Equal(54, sayfalar.Length);
+        // 54 → 55: 20.10 Y-14 CanliFiyat.razor (/fiyat/{Anahtar}; SayfaBasi kullanır)
+        Assert.Equal(55, sayfalar.Length);
 
         var eksik = sayfalar
             .Where(y => !Muaflar.Contains(Path.GetFileName(y)))
@@ -186,7 +187,7 @@ public sealed class P37cPanelVeKapsamTestleri : BunitContext
             .ToArray();
 
         Assert.Empty(eksik);
-        Assert.Equal(51, sayfalar.Length - Muaflar.Length);   // AUTH-SIFIRLA: 45 → 46 · EKSIK-B1-SATINALMA: 46 → 48 · EKSIK-KUCUK: 48 → 49 · D1-19 /kvkk: 49 → 50 · E-BELGE /e-belgeler: 50 → 51
+        Assert.Equal(52, sayfalar.Length - Muaflar.Length);   // Y-14 /fiyat 51 → 52 · AUTH-SIFIRLA: 45 → 46 · EKSIK-B1-SATINALMA: 46 → 48 · EKSIK-KUCUK: 48 → 49 · D1-19 /kvkk: 49 → 50 · E-BELGE /e-belgeler: 50 → 51
     }
 
     [Fact]

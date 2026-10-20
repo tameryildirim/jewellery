@@ -65,7 +65,8 @@ else
     /// atılmaz (e-postadaki bağlantı her durumda çalışır).
     /// </summary>
     public static bool GirisOncesiRota(string mutlakYol) =>
-        mutlakYol.TrimEnd('/') is "/giris" or "/sifre-sifirla";
+        mutlakYol.TrimEnd('/') is "/giris" or "/sifre-sifirla"
+        || mutlakYol.StartsWith("/fiyat/", StringComparison.Ordinal);   // Y-14: oturumsuz canlı fiyat ekranı
 
     private bool GirisOncesiSayfada => GirisOncesiRota(new Uri(Nav.Uri).AbsolutePath);
 

@@ -1,0 +1,87 @@
+@page "/fiyat/{Anahtar}"
+@using Kuyumcu.Contracts.Pano
+@using Kuyumcu.Core.I18n
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DilServisi Dil
+@implements IDisposable
+
+@* ═══ Y-14 (20.10, rakip taraması) — OTURUMSUZ CANLI FİYAT BAĞLANTISI.
+   İşletme › Dış API çekmecesinde üretilen süreli anahtarla açılır; kabuksuz (AnaYerlesim.GirisOncesiRota), oturum istemez.
+   Veri: GET /api/disa/v1/pano?anahtar= (sunucu anahtarı, süresini ve KUR kapsamını denetler). Yalnız müşteriye dönük
+   kalemler; işçilik ibaresi seçilmemişse fiyat gösterilmez (fail-closed, vitrin ekranıyla aynı). 60 sn'de bir yenilenir. ═══ *@
+<PageTitle>@Marka.SayfaBasligi(CanliFiyatSozlugu.Baslik(Dil.Dil))</PageTitle>
+
+<div class="vtam canli-fiyat" id="canli-fiyat">
+    <SayfaBasi Anahtar="canli-fiyat" Baslik="@CanliFiyatSozlugu.Baslik(Dil.Dil)" />
+    <HataBandi Mesaj="@hata" Id="canli-fiyat-hata" />
+    @if (yukleniyor && pano is null) { <Yukleniyor /> }
+    else if (pano is { } p)
+    {
+        @if (p.IscilikIbaresi is null)
+        {
+            <p class="bant bant-uyari vtam-kilitli" id="canli-fiyat-kilitli" role="alert">@E.IbareSecilmedi</p>
+        }
+        else if (p.Satirlar.Count == 0) { <BosDurum Mesaj="@Dil.T.Pano.BosDurum" /> }
+        else
+        {
+            <div class="vtam-tablo" id="canli-fiyat-tablo" role="table" aria-label="@CanliFiyatSozlugu.Baslik(Dil.Dil)">
+                <div class="vtam-satir vtam-basliklar" role="row">
+                    <span role="columnheader">@Dil.T.Pano.Kalem</span>
+                    <span role="columnheader" class="sayi">@Dil.T.Pano.Alis</span>
+                    <span role="columnheader" class="sayi">@Dil.T.Pano.Satis</span>
+                </div>
+                @foreach (var s in p.Satirlar)
+                {
+                    <div class="vtam-satir" role="row" id="@($"canli-fiyat-satir-{s.Kod}")">
+                        <span class="vtam-kalem" role="cell">@s.Etiket</span>
+                        <span class="vtam-fiyat sayi" role="cell">@Fiyat(s.Alis)</span>
+                        <span class="vtam-fiyat vtam-satis sayi" role="cell">@Fiyat(s.Satis)</span>
+                    </div>
+                }
+            </div>
+            <p class="vtam-ibare" id="canli-fiyat-ibare">@VitrinEkrani.IbareMetni(p.IscilikIbaresi, E)</p>
+            <p class="vtam-alt metin-soluk" id="canli-fiyat-zaman">@CanliFiyatSozlugu.Guncelleme(Bicim.TarihSaat(p.Zaman), Dil.Dil)</p>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Anahtar { get; set; } = "";
+    private EksikKucukMetinleri E => EksikKucukSozlugu.Al(Dil.Dil);
+    private PanoGorunum? pano;
+    private string? hata;
+    private bool yukleniyor = true;
+    private Timer? zamanlayici;
+    public const int YenilemeSaniye = 60;
+
+    private static string Fiyat(decimal? d) => d is { } v ? Bicim.Tl(v) : "—";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Yukle();
+        zamanlayici = new Timer(_ => InvokeAsync(async () => { await Yukle(); StateHasChanged(); }),
+            null, TimeSpan.FromSeconds(YenilemeSaniye), TimeSpan.FromSeconds(YenilemeSaniye));
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true;
+        try
+        {
+            using var yanit = await Http.GetAsync($"{Nav.BaseUri}api/disa/v1/pano?anahtar={Uri.EscapeDataString(Anahtar)}");
+            if (yanit.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            { hata = CanliFiyatSozlugu.Gecersiz(Dil.Dil); pano = null; }
+            else if (!yanit.IsSuccessStatusCode) { hata = $"{(int)yanit.StatusCode}"; }
+            else
+            {
+                pano = await yanit.Content.ReadFromJsonAsync<PanoGorunum>(new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+                hata = null;
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException) { hata = ex.Message; }   // UX-S28: "kayıt yok"a çevrilmez
+        yukleniyor = false;
+    }
+
+    public void Dispose() => zamanlayici?.Dispose();
+}

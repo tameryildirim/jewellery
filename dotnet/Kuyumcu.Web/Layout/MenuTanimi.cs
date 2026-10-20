@@ -219,6 +219,8 @@ public static class MenuTanimi
             // PAKET EKSIK-KUCUK (B2-10): vitrin dükkân ekranı (tam ekran) — Vitrin
             // panosundaki "Dükkân ekranını aç" düğmesi götürür.
             ["/vitrin/ekran"] = "Vitrin.razor",
+            // Y-14 (20.10): oturumsuz canlı fiyat bağlantısı — İşletme › Dış API çekmecesi üretir; menüye konmaz (müşteriye verilir).
+            ["/fiyat/{Anahtar}"] = "Bilesenler/DisApiCekmecesi.razor",
             // PAKET-E-BELGE (20.10): e-belge giden kutusu — Faturalar ekranındaki "E-belgeler" düğmesi götürür;
             // menüye konmadı (faturanın türevi; kenar çubuğu şişmez).
             ["/e-belgeler"] = "Faturalar.razor",

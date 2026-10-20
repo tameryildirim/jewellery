@@ -62,7 +62,7 @@ public partial class Gider
                 B2Tikla = EventCallback.Factory.Create(this, YildizVazgec),
                 NotBaslik = YildizGiderSozlugu.Not(dil),
                 Not = YildizGiderSozlugu.NotMetni(dil),
-                Bantlar = YildizBant.Ciz(hata ?? sunucuYetersiz?.Metin, basari, basariJeton, hataId: "gd-hata", basariId: "gd-basari"),
+                Bantlar = b => { YildizBant.Ciz(hata ?? sunucuYetersiz?.Metin, basari, basariJeton, hataId: "gd-hata", basariId: "gd-basari")?.Invoke(b); GiderBelgeParcasi(b); },   // Y-17: bantların altında fiş fotoğrafı
                 AyrintiAcik = YildizAyrintida,
                 AyrintiKapat = EventCallback.Factory.Create(this, () => { yildizAyrinti = false; sekme = "GIDER"; }),
                 DonEtiketi = YildizParaSozlugu.EkranaDon(dil),

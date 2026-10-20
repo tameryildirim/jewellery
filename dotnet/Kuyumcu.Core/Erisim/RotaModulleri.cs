@@ -72,6 +72,7 @@ public static class RotaModulleri
             ["/isletme"] = null,                        // SAHİP rol kapısı (AdminController)
             ["/ayarlar"] = null,                        // kendi hesabın
             ["/kilavuz"] = null,                        // yardım metni
+            ["/fiyat/{Anahtar}"] = null,                // Y-14: oturumsuz canlı fiyat bağlantısı (anahtar sorguda; modül kapısı sunucuda KUR)
             ["/uyum"] = "uyum",
             ["/kvkk"] = "cari",                         // D1-19 KVKK aydınlatma / rıza
             ["/denetim-izi"] = "denetim-izi",

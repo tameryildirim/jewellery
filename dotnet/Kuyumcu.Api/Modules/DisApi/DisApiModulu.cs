@@ -26,6 +26,8 @@ public sealed class ApiAnahtariDto
 {
     [Required(ErrorMessage = "Ad zorunludur"), MaxLength(Kuyumcu.Core.Domain.Girdi.AlanSinirlari.ApiAnahtariAdi)] public string Ad { get; set; } = null!;
     [Required, MinLength(1, ErrorMessage = "En az bir kapsam seçin")] public List<string> Kapsamlar { get; set; } = [];
+    /// <summary>Y-14: kaç gün geçerli (1–365); boş = süresiz. Canlı fiyat bağlantısı için varsayılan 30.</summary>
+    [Range(1, 365, ErrorMessage = "Geçerlilik 1 ile 365 gün arasında olmalıdır")] public int? GecerlilikGun { get; set; }
 }
 
 public static class DisApiAnahtar
@@ -51,6 +53,7 @@ public static class DisApiAnahtar
         var adaylar = await db.ApiAnahtarlari.Where(a => a.Onek == onek && a.IptalZamani == null).Take(5).ToListAsync();
         var a = adaylar.FirstOrDefault(x => CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(x.Ozet), Encoding.ASCII.GetBytes(ozet)));
         if (a is null) return null;
+        if (a.Bitis is { } b && b <= DateTime.UtcNow) return null;   // Y-14: süresi dolmuş anahtar/bağlantı
         if (a.SonKullanim is null || a.SonKullanim < DateTime.UtcNow.AddMinutes(-5)) { a.SonKullanim = DateTime.UtcNow; await db.SaveChangesAsync(); }
         return (a.TenantId, a.Kapsamlar.Split(',', StringSplitOptions.RemoveEmptyEntries));
     }
@@ -75,6 +78,7 @@ public sealed class ApiAnahtariServisi(KuyumcuDbContext db, DenetimServisi denet
         {
             Id = Kimlik.Ulid(), TenantId = islem.TenantId, Ad = dto.Ad.Trim(), Onek = DisApiAnahtar.Onek(anahtar), Ozet = DisApiAnahtar.Ozet(anahtar),
             Kapsamlar = string.Join(',', kapsamlar), OlusturanId = islem.Id, Olusturuldu = DateTime.UtcNow,
+            Bitis = dto.GecerlilikGun is { } gg ? DateTime.UtcNow.AddDays(gg) : null,   // Y-14
         };
         db.ApiAnahtarlari.Add(a);
         denetim.YazmaKaydet(islem, nameof(ApiAnahtari), a.Id, $"dış API anahtarı oluşturuldu · {a.Ad} · {a.Kapsamlar}", hassas: true);
@@ -96,7 +100,7 @@ public sealed class ApiAnahtariServisi(KuyumcuDbContext db, DenetimServisi denet
     }
 
     private static ApiAnahtariOzet Ozetle(ApiAnahtari a) =>
-        new(a.Id, a.Ad, a.Onek, a.Kapsamlar.Split(',', StringSplitOptions.RemoveEmptyEntries), a.Olusturuldu, a.SonKullanim, a.IptalZamani is not null);
+        new(a.Id, a.Ad, a.Onek, a.Kapsamlar.Split(',', StringSplitOptions.RemoveEmptyEntries), a.Olusturuldu, a.SonKullanim, a.IptalZamani is not null, a.Bitis);
 }
 
 [ApiController]
@@ -124,7 +128,9 @@ public sealed class DisApiController(SistemKapsami kapsam) : ControllerBase
 {
     private async Task<string> Kiraci(string gereken)
     {
-        var d = await DisApiAnahtar.Dogrula(kapsam, Request.Headers[DisApiAnahtar.Baslik].FirstOrDefault())
+        // Y-14: anahtar başlıkta ya da (bağlantıdan açılan fiyat ekranı için) ?anahtar= sorgusunda gelir.
+        var ham = Request.Headers[DisApiAnahtar.Baslik].FirstOrDefault() ?? Request.Query["anahtar"].FirstOrDefault();
+        var d = await DisApiAnahtar.Dogrula(kapsam, ham)
             ?? throw new UnauthorizedException(DisApiAnahtar.Gecersiz);
         if (!d.Kapsamlar.Contains(gereken)) throw new ForbiddenException(DisApiAnahtar.KapsamDisi);
         return d.TenantId;
@@ -138,6 +144,15 @@ public sealed class DisApiController(SistemKapsami kapsam) : ControllerBase
         // SistemKapsami izinli kullanım 15: kiracıya SABİT kapsam (dış API okuması).
         await using var k = kapsam.Kiraci(t);
         return await k.ServiceProvider.GetRequiredService<Kur.KurServisi>().GuncelKur(t);
+    }
+
+    /// <summary>GET /api/disa/v1/pano?anahtar= — Y-14: canlı fiyat bağlantısı; vitrin panosu (müşteriye dönük: kalem, alış, satış, işçilik ibaresi).</summary>
+    [HttpGet("pano")]
+    public async Task<Kuyumcu.Contracts.Pano.PanoGorunum> Pano(CancellationToken iptal)
+    {
+        var t = await Kiraci(ApiAnahtari.KapsamKur);
+        await using var k = kapsam.Kiraci(t);
+        return await k.ServiceProvider.GetRequiredService<Pano.PanoAyarServisi>().Gorunum(t, iptal);
     }
 
     /// <summary>GET /api/disa/v1/urunler?limit=&amp;offset= — aktif ürünler, toplam stok ve güncel liste fiyatı (varsa).</summary>

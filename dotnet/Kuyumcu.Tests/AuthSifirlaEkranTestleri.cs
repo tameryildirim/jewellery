@@ -358,6 +358,8 @@ public sealed class AuthSifirlaEkranTestleri : BunitContext
     [InlineData("/sifre-sifirla/", true)]
     [InlineData("/", false)]
     [InlineData("/kullanicilar", false)]
+    [InlineData("/fiyat/mhk_abc", true)]   // Y-14: oturumsuz canlı fiyat ekranı
+    [InlineData("/fiyat", false)]
     public void Kabuk_GIRIS_ONCESI_rotalar(string yol, bool beklenen) =>
         Assert.Equal(beklenen, AnaYerlesim.GirisOncesiRota(yol));
 

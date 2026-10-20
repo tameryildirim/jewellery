@@ -592,6 +592,12 @@ Seçilen dönemdeki satışları özetler ve karşılaştırır; hangi ürünler
 
 Seçilen kasanın seçilen dönemdeki bütün giriş ve çıkışlarını, açılış ve kapanış bakiyesiyle birlikte gösterir. Gün sonu kasa sayımında elinizdeki parayla karşılaştırmak için kullanılır.
 
+## Canlı fiyatlar {#canli-fiyat}
+
+<!-- ekran: /fiyat/{Anahtar} -->
+
+Müşteriye verdiğiniz bağlantıyla açılan, oturum istemeyen vitrin fiyat ekranıdır. Bağlantı **İşletme › Ayarlar › Dış API anahtarları › Canlı fiyat bağlantısı oluştur** ile üretilir; 30 gün sonra kendiliğinden kapanır, listeden istediğiniz an iptal edilir. Ekranda yalnız müşteriye dönük kalemler (alış · satış) ve işçilik ibaresi görünür; ibare seçilmemişse fiyat gösterilmez.
+
 ## Belge çıktısı {#cikti}
 
 <!-- ekran: /cikti/{Tur}/{Id} -->

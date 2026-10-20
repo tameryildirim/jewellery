@@ -23,4 +23,6 @@ public class ApiAnahtari : IKiraciVarlik
     [Column("olusturuldu")] public DateTime Olusturuldu { get; set; }
     [Column("son_kullanim")] public DateTime? SonKullanim { get; set; }
     [Column("iptal_zamani")] public DateTime? IptalZamani { get; set; }
+    /// <summary>Y-14 (20.10): süreli anahtar/bağlantı — bu andan sonra geçersiz; null = süresiz.</summary>
+    [Column("bitis")] public DateTime? Bitis { get; set; }
 }

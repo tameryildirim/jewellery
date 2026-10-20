@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 5e4d6678e42dc4eca6cbe98b8f6a0c67885215c9231a62670c3d8da0a012917c · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 841cf34c521e2be21824910ed1aa339e4530d7cfa049f8197d3c83ff0d81285f · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -189,6 +189,7 @@
       <a href="#islem-defteri">İşlem defteri</a>
       <a href="#satis-analizi">Satış Analizi</a>
       <a href="#kasa-raporu">Kasa raporu</a>
+      <a href="#canli-fiyat">Canlı fiyatlar</a>
       <a href="#cikti">Belge çıktısı</a>
       <a href="#vitrin">Vitrin Panosu</a>
       <a href="#vitrin-ekran">İşletme ekranı</a>
@@ -731,14 +732,20 @@
       <p>Seçilen kasanın seçilen dönemdeki bütün giriş ve çıkışlarını, açılış ve kapanış bakiyesiyle birlikte gösterir. Gün sonu kasa sayımında elinizdeki parayla karşılaştırmak için kullanılır.</p>
     </section>
 
+    <section id="canli-fiyat">
+      <h2><span class="no">38</span> Canlı fiyatlar</h2>
+      <span class="ekran-capa" id="e-fiyat-kayit"></span>
+      <p>Müşteriye verdiğiniz bağlantıyla açılan, oturum istemeyen vitrin fiyat ekranıdır. Bağlantı <strong>İşletme › Ayarlar › Dış API anahtarları › Canlı fiyat bağlantısı oluştur</strong> ile üretilir; 30 gün sonra kendiliğinden kapanır, listeden istediğiniz an iptal edilir. Ekranda yalnız müşteriye dönük kalemler (alış · satış) ve işçilik ibaresi görünür; ibare seçilmemişse fiyat gösterilmez.</p>
+    </section>
+
     <section id="cikti">
-      <h2><span class="no">38</span> Belge çıktısı</h2>
+      <h2><span class="no">39</span> Belge çıktısı</h2>
       <span class="ekran-capa" id="e-cikti-kayit-kayit"></span>
       <p>Satış fişi, tahsilat makbuzu, emanet teslim belgesi ve cari ekstresi tek bir A4 şablonundan basılır. İlgili ekrandaki <strong>Yazdır</strong> düğmesi bu belge sayfasını açar; tarayıcının yazdır komutuyla basarsınız. Belgedeki işletme bilgileri <strong>İşletme</strong> ekranından gelir.</p>
     </section>
 
     <section id="vitrin">
-      <h2><span class="no">39</span> Vitrin Panosu</h2>
+      <h2><span class="no">40</span> Vitrin Panosu</h2>
       <span class="ekran-capa" id="e-vitrin"></span>
       <p>Müşteriye dönük alış ve satış fiyatlarını gösteren panodur. Kâr payı yalnız bu ekranın yönetim bölümünde görünür, müşterinin gördüğü panoya inmez.</p>
       <ul>
@@ -747,13 +754,13 @@
     </section>
 
     <section id="vitrin-ekran">
-      <h2><span class="no">40</span> İşletme ekranı</h2>
+      <h2><span class="no">41</span> İşletme ekranı</h2>
       <span class="ekran-capa" id="e-vitrin-ekran"></span>
       <p>Vitrin panosundaki <strong>İşletme ekranını aç</strong> düğmesi panoyu menüsüz, büyük yazılı tam ekran olarak açar; işletmedeki bir ekrana ya da televizyona açık bırakılır. Fiyatlar dakikada bir kendiliğinden yenilenir ve seçilen işçilik ibaresi fiyatların altında yazar; sayfa yazdırılırsa ibare kâğıtta da çıkar. <strong>Tam ekran</strong> düğmesi tarayıcı çubuklarını da gizler, <strong>Panoya dön</strong> geri getirir. İşçilik ibaresi seçilmeden işletme ekranı fiyat göstermez; düğme kilitli kalır ve sebebi panoda yazar.</p>
     </section>
 
     <section id="kullanicilar">
-      <h2><span class="no">41</span> Kullanıcılar</h2>
+      <h2><span class="no">42</span> Kullanıcılar</h2>
       <span class="ekran-capa" id="e-kullanicilar"></span>
       <p>Çalışan hesapları, rolleri ve erişim durumları. Roller yetki sırasıyla: Sahip, Müdür, Muhasebe, Tezgâhtar.</p>
       <ul>
@@ -764,20 +771,20 @@
     </section>
 
     <section id="yetkiler">
-      <h2><span class="no">42</span> Yetkiler</h2>
+      <h2><span class="no">43</span> Yetkiler</h2>
       <span class="ekran-capa" id="e-yetkiler"></span>
       <p>Hangi rolün hangi ekranı görebileceğini belirleyen matristir. Son sözü her zaman sunucu söyler: yetkisi olmayan kullanıcı adresi elle yazsa bile ekranı açamaz.</p>
     </section>
 
     <section id="isletme">
-      <h2><span class="no">43</span> İşletme</h2>
+      <h2><span class="no">44</span> İşletme</h2>
       <span class="ekran-capa" id="e-isletme"></span>
       <p>İşletmenizin kimliği (ünvan, vergi bilgileri, adres), abonelik planı ve şubeleri. Kimlik alanları fiş, fatura ve pusulalarda satıcı bilgisi olarak basılır. Şubeler buradan eklenir, adları değiştirilir, kapanan şube pasife alınır.</p>
       <p><strong>Mali müşavirin hesap kodları:</strong> Ayarlar sekmesindeki <strong>Mali müşavirin hesap kodları</strong> bölümüne satış hesabı (boşsa 600) ve KDV hesabı (boşsa 391) bir kez yazılır; Luca fiş dosyası bu kodlarla çıkar. Müşteri hesap kodu (120.xxx) her müşterinin kartındadır.</p>
     </section>
 
     <section id="kurulum">
-      <h2><span class="no">44</span> Kurulum</h2>
+      <h2><span class="no">45</span> Kurulum</h2>
       <span class="ekran-capa" id="e-kurulum"></span>
       <p>İşletmenin ilk gününü buradan kurarsınız: işletme ve şube, kullanıcılar, güncel kur, kasa ve banka açılış bakiyeleri ve müşteri açılış bakiyeleri.</p>
       <ol class="adimlar">
@@ -789,13 +796,13 @@
     </section>
 
     <section id="denetim-izi">
-      <h2><span class="no">45</span> Kim ne yaptı</h2>
+      <h2><span class="no">46</span> Kim ne yaptı</h2>
       <span class="ekran-capa" id="e-denetim-izi"></span>
       <p>Kim, ne zaman, hangi kaydı gördü ya da değiştirdi — burada listelenir. Bu kayıt silinemez ve değiştirilemez. Kişi, tarih ve kayıt türüne göre süzülür. Yalnız Sahip rolü görür.</p>
     </section>
 
     <section id="veriaktarim">
-      <h2><span class="no">46</span> Veri aktarımı</h2>
+      <h2><span class="no">47</span> Veri aktarımı</h2>
       <p>Eski programınızdaki kayıtları içeri almak ve kendi verinizi dışarı almak için iki ekran vardır.</p>
       <h3 id="veri-ice-aktarim">Veri içe aktar</h3>
       <span class="ekran-capa" id="e-veri-ice-aktarim"></span>
@@ -813,7 +820,7 @@
     </section>
 
     <section id="yedekler">
-      <h2><span class="no">47</span> Yedekler</h2>
+      <h2><span class="no">48</span> Yedekler</h2>
       <span class="ekran-capa" id="e-yedekler"></span>
       <p>Verinizin düzenli kopyası (yedek) alınır ve kopyanın gerçekten geri yüklenebildiği bir tatbikatla denenir. Bu ekran ikisini de gösterir. Ekran yalnız Sahip rolüne ve profesyonel modda görünür.</p>
       <ul>
@@ -827,7 +834,7 @@
     </section>
 
     <section id="ayarlar">
-      <h2><span class="no">48</span> Ayarlar</h2>
+      <h2><span class="no">49</span> Ayarlar</h2>
       <span class="ekran-capa" id="e-ayarlar"></span>
       <p>Kendi hesabınızın dili, teması (aydınlık ya da karanlık), arayüz modu (basit ya da profesyonel), şifresi ve iki aşamalı girişi.</p>
       <ul>
@@ -839,13 +846,13 @@
     </section>
 
     <section id="kilavuz">
-      <h2><span class="no">49</span> Kılavuz</h2>
+      <h2><span class="no">50</span> Kılavuz</h2>
       <span class="ekran-capa" id="e-kilavuz"></span>
       <p>Menüdeki <strong>Kılavuz</strong> ekranı bu kılavuzu yeni sekmede açar ve programdaki her ekranın bölümüne doğrudan bağlantı verir. Kılavuz ayrı bir sekmede açılır; böylece tezgâhta yarım kalmış bir işlem kılavuza baktınız diye kaybolmaz.</p>
     </section>
 
     <section id="haric">
-      <h2><span class="no">50</span> Bu sürümde olmayanlar</h2>
+      <h2><span class="no">51</span> Bu sürümde olmayanlar</h2>
       <p>Aşağıdaki liste ürünün kısıt beyanının tek kaynağından (HARİÇ listesi) alınır; kılavuz kendi cümlesini yazmaz.</p>
       <div class="tablo-sar"><table class="tablo">
         <thead><tr><th>Kalem</th><th>Bu sürümde</th></tr></thead>
@@ -863,7 +870,7 @@
     </section>
 
     <section id="sozluk">
-      <h2><span class="no">51</span> Kavramlar sözlüğü</h2>
+      <h2><span class="no">52</span> Kavramlar sözlüğü</h2>
       <div class="tablo-sar"><table class="tablo">
         <thead><tr><th>Kavram</th><th>Anlamı</th></tr></thead>
         <tbody>
@@ -881,7 +888,7 @@
     </section>
 
     <section id="sss">
-      <h2><span class="no">52</span> Sık sorulanlar</h2>
+      <h2><span class="no">53</span> Sık sorulanlar</h2>
       <h3>Kur çubuğundaki rakamlar eski görünüyor, ne yapmalıyım?</h3>
       <p>Sahip ya da Müdür rolündeyseniz kur çubuğundaki yenileme düğmesiyle kuru hemen çektirin. Kaynağa ulaşılamıyorsa yetkili kullanıcı kuru elle girebilir.</p>
       <h3>Satışta birim fiyat neden kendiliğinden doldu?</h3>

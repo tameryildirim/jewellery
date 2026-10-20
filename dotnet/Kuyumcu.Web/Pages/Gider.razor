@@ -214,13 +214,7 @@
                     </div>
                 }
                 @* Y-17 (20.10): son kaydedilen giderin fiş fotoğrafı — kapalı katlanır (zorunlu önce); belge deposu GIDER dalı. *@
-                @if (sonGiderId is { } sgId)
-                {
-                    <Katlanir Id="gd-belge" Baslik="@GiderBelgeSozlugu.Ekle(Dil.Dil)">
-                        <p class="metin-kucuk metin-soluk" id="gd-belge-aciklama">@GiderBelgeSozlugu.Aciklama(Dil.Dil)</p>
-                        <BelgeYukleyici SahipTuru="GIDER" SahipId="@sgId" Turler="@(new[] { "FOTOGRAF", "EK" })" Onek="gd-belge" Kamera="true" Ikincil="true" />
-                    </Katlanir>
-                }
+                @GiderBelgeParcasi
             </div>
         </div>
 
@@ -540,6 +534,14 @@
     private string? hata;
     private string? basari;
     private string? sonGiderId;        // Y-17: son kaydedilen giderin fotoğrafı için
+    /// <summary>Y-17: son kaydedilen giderin fiş fotoğrafı — klasik kartta ve Yıldız formunun bant alanında AYNI parça.</summary>
+    private RenderFragment GiderBelgeParcasi => @<text>@if (sonGiderId is { } sgId)
+        {
+            <Katlanir Id="gd-belge" Baslik="@GiderBelgeSozlugu.Ekle(Dil.Dil)">
+                <p class="metin-kucuk metin-soluk" id="gd-belge-aciklama">@GiderBelgeSozlugu.Aciklama(Dil.Dil)</p>
+                <BelgeYukleyici SahipTuru="GIDER" SahipId="@sgId" Turler="@(new[] { "FOTOGRAF", "EK" })" Onek="gd-belge" Kamera="true" Ikincil="true" />
+            </Katlanir>
+        }</text>;
     private GiderSatiri? belgeGider;   // Y-17: satırdan açılan belge çekmecesi
     private int basariJeton;
     private string? modalHata;

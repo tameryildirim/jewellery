@@ -44,6 +44,16 @@
             }
         </ul>
         <button type="button" class="dugme dugme-ikincil" id="da-yeni-ac" @onclick="() => { formAcik = true; yeniAnahtar = null; }">@M.YeniAnahtar</button>
+        @* Y-14 (20.10): müşteriye verilecek oturumsuz canlı fiyat bağlantısı (30 gün, yalnız KUR kapsamı). *@
+        <button type="button" class="dugme dugme-ikincil" id="da-baglanti-olustur" disabled="@calisiyor" @onclick="BaglantiOlustur">@Kuyumcu.Core.I18n.CanliFiyatSozlugu.BaglantiOlustur(Dil.Dil)</button>
+        @if (yeniBaglanti is { } yb)
+        {
+            <div class="bant bant-bilgi" role="status" id="da-baglanti">
+                <p class="metin-kucuk">@Kuyumcu.Core.I18n.CanliFiyatSozlugu.BaglantiAciklama(Dil.Dil)</p>
+                <code class="da-anahtar" id="da-baglanti-adres">@yb</code>
+                <button type="button" class="btn btn-ikincil btn-kucuk" id="da-baglanti-kopyala" @onclick="BaglantiKopyala">@(baglantiKopyalandi ? M.Kopyalandi : Kuyumcu.Core.I18n.CanliFiyatSozlugu.BaglantiKopyala(Dil.Dil))</button>
+            </div>
+        }
         <div class="metin-kucuk metin-soluk da-kullanim" id="da-kullanim">
             <p>@M.KullanimBaslik</p>
             <code>GET @(Kok)api/disa/v1/kur</code><br />
@@ -95,6 +105,27 @@
         finally { calisiyor = false; }
     }
 
+    // ── Y-14: canlı fiyat bağlantısı ──
+    private string? yeniBaglanti;
+    private bool baglantiKopyalandi;
+    private async Task BaglantiOlustur()
+    {
+        calisiyor = true; hata = null;
+        try
+        {
+            var y = await Api.PostAsync<YeniApiAnahtari>("/api-anahtarlari", new { ad = Kuyumcu.Core.I18n.CanliFiyatSozlugu.BaglantiAdi(Dil.Dil), kapsamlar = new[] { "KUR" }, gecerlilikGun = 30 });
+            yeniBaglanti = $"{Kok}fiyat/{y.Anahtar}"; baglantiKopyalandi = false; yeniAnahtar = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+    private async Task BaglantiKopyala()
+    {
+        if (yeniBaglanti is null) return;
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", yeniBaglanti); baglantiKopyalandi = true; }
+        catch (JSException) { baglantiKopyalandi = false; }
+    }
     private async Task IptalEt(string id)
     {
         calisiyor = true; hata = null;
