@@ -4,6 +4,7 @@
 @using Kuyumcu.Core.I18n
 @using Kuyumcu.Web.Bilesenler.Grid
 @using KasaSz = Kuyumcu.Contracts.Sayfalar.Kasalar
+@using Kuyumcu.Contracts.Sayfalar
 @inject ApiIstemci Api
 @inject DilServisi Dil
 @inject OturumServisi Oturum
@@ -115,7 +116,7 @@ else if (detay is { } d)
                 <Katlanir Id="gs-takviye-form" Baslik="@GiseSozlugu.TakviyeIste(Dil.Dil)">
                     <div class="form-grid-3">
                         <div class="alan"><Secici ElemanId="gs-tk-urun" Etiket="@GiseSozlugu.Urun(Dil.Dil)" UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Urun"
-                                UzakSeciliAd="@tkUrunAd" Deger="@tkUrunId" DegerChanged="@(v => tkUrunId = v)" BosSecenekMetni="—" Hata="@takviyeForm.Mesaj("gs-tk-urun")" /></div>
+                                UzakSeciliAd="@tkUrunAd" Deger="@tkUrunId" DegerChanged="TakviyeUrunSecildi" BosSecenekMetni="—" Hata="@takviyeForm.Mesaj("gs-tk-urun")" /></div>
                         <Sayi ElemanId="gs-tk-adet" Etiket="@GiseSozlugu.Adet(Dil.Dil)" EnAz="0" EnCokOndalik="3" Deger="@tkAdet" DegerChanged="@(v => tkAdet = v)" Durum="takviyeForm" HataAlani="gs-tk-adet" />
                         <Para ElemanId="gs-tk-nakit" Etiket="@GiseSozlugu.TakviyeNakit(Dil.Dil)" Tur="TutarTuru.Pozitif" ParaBirimi="@o.ParaBirimi" Deger="@tkNakit" DegerChanged="@(v => tkNakit = v)" Durum="takviyeForm" HataAlani="gs-tk-nakit" />
                     </div>
@@ -311,7 +312,16 @@ else if (liste is { } l)
     }
 
     // ── yeni zimmet ──
-    private void UrunSecildi(string? id) { yUrunId = id; }
+    private async Task UrunSecildi(string? id) { yUrunId = id; yUrunAd = await UrunAdi(id); }
+    private async Task TakviyeUrunSecildi(string? id) { tkUrunId = id; tkUrunAd = await UrunAdi(id); }
+
+    /// <summary>Uzak seçici yalnız kimliği verir; listede ve seçicide ad görünsün diye ürün kartı okunur (okunamazsa kimlik kalır).</summary>
+    private async Task<string?> UrunAdi(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        try { var u = await Api.GetAsync<UrunVeri>($"/urunler/{Uri.EscapeDataString(id)}"); return $"{u.Kod} · {u.Ad}"; }
+        catch (ApiHata e) { hata = FormDurumu.SunucuMesaji(e, Dil); return id; }   // P-11: ad okunamadı, sebebi bantta
+    }
 
     private void UrunEkle()
     {
