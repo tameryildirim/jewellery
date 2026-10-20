@@ -59,6 +59,8 @@ public sealed class CiktiServisi(
         BelgeTurleri.OdemePlani => "cari",      // D1-06 — ödeme planı ucuyla aynı kapı
         BelgeTurleri.UyumRaporu => "uyum",      // D1-18 — + rol kapısı (sahip/müdür)
         BelgeTurleri.Teklif => "islem",         // Y-11 — tezgâhın bekletme ucuyla aynı kapı
+        BelgeTurleri.SayimTutanagi => "urun",   // PAKET-05 — sayım ekranıyla aynı kapı (sayim → urun)
+        BelgeTurleri.GunKapanisi => "kasa",     // PAKET-05 — kasa ekranıyla aynı kapı
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -93,6 +95,8 @@ public sealed class CiktiServisi(
             BelgeTurleri.OdemePlani => await OdemePlaniBelgesi(id, islem, iptal),
             BelgeTurleri.UyumRaporu => await UyumRaporuBelgesi(id, islem, iptal),
             BelgeTurleri.Teklif => await TeklifBelgesi(id, islem, iptal),
+            BelgeTurleri.SayimTutanagi => await SayimTutanagiBelgesi(id, islem, iptal),
+            BelgeTurleri.GunKapanisi => await GunKapanisiBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -543,6 +547,79 @@ public sealed class CiktiServisi(
             Tutarlar: [new CiktiTutar("Toplam borç", p.ToplamTl, "TRY", Toplam: true)],
             ImzaBasliklari: ImzaBasliklari(BelgeTurleri.OdemePlani),
             Not: OdemePlaniMetni,
+            Uyari: null,
+            BelgeNoKayitKimligi: true);
+    }
+
+    // ── PAKET-05 (20.10) — sayım tutanağı ve gün sonu kasa fişi ───────────────────────────────────────────
+    private async Task<OrtakBelge> SayimTutanagiBelgesi(string id, AktifKullanici islem, CancellationToken iptal)
+    {
+        var o = await db.SayimOturumlari.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Sayım oturumu bulunamadı");
+        var satirlar = await db.SayimSatirlari.AsNoTracking().Where(s => s.OturumId == o.Id && s.TenantId == islem.TenantId).Take(5000).ToListAsync(iptal);
+        var urunIdler = satirlar.Select(s => s.UrunId).Distinct().ToList();
+        var urunler = await db.Urunler.AsNoTracking().Where(u => u.TenantId == islem.TenantId && urunIdler.Contains(u.Id))
+            .Select(u => new { u.Id, u.Kod, u.Ad, u.Birim, u.HasGrami }).Take(urunIdler.Count + 1).ToDictionaryAsync(u => u.Id, iptal);
+        var sirali = satirlar.Select(s => (s, u: urunler.GetValueOrDefault(s.UrunId))).OrderBy(x => x.u?.Ad ?? "").ToList();
+        var ciktiSatirlari = sirali.Select((x, i) =>
+        {
+            var fark = x.s.SayilanAdet is { } sy ? sy - x.s.SistemAdet : (decimal?)null;
+            return new CiktiSatir([$"{i + 1}", $"{x.u?.Kod ?? "—"} · {x.u?.Ad ?? "Bilinmiyor"}", Sayi(x.s.SistemAdet, 3),
+                x.s.SayilanAdet is { } s2 ? Sayi(s2, 3) : "sayılmadı", fark is { } f ? Sayi(f, 3) : "—"], Vurgu: fark is { } ff && ff != 0m);
+        }).ToList();
+        var sayilan = satirlar.Count(s => s.SayilanAdet != null);
+        var farkli = satirlar.Count(s => s.SayilanAdet is { } sy && sy != s.SistemAdet);
+        var eksik = satirlar.Where(s => s.SayilanAdet is { } sy && sy < s.SistemAdet).Sum(s => s.SistemAdet - s.SayilanAdet!.Value);
+        var fazla = satirlar.Where(s => s.SayilanAdet is { } sy && sy > s.SistemAdet).Sum(s => s.SayilanAdet!.Value - s.SistemAdet);
+        var netHas = satirlar.Where(s => s.SayilanAdet != null).Sum(s => (s.SayilanAdet!.Value - s.SistemAdet) * (urunler.GetValueOrDefault(s.UrunId)?.HasGrami ?? 0m));
+        var durum = o.Durum switch { "KAPANDI" => "kapandı", "IPTAL" => "iptal edildi", _ => "açık" };
+        var not = $"Durum: {durum} · Kapsam: {o.KapsamTur} · Sayılan: {sayilan}/{satirlar.Count} · Farklı satır: {farkli} · Eksik: {Sayi(eksik, 3)} · Fazla: {Sayi(fazla, 3)} · Net has farkı: {Sayi(Math.Round(netHas, 4), 4)} g"
+            + (string.IsNullOrWhiteSpace(o.Notlar) ? "" : " · " + o.Notlar.Trim())
+            + " · Sayılmayan satır bilinmeyendir; sıfır sayılmaz.";
+        return new OrtakBelge(
+            Tur: BelgeTurleri.SayimTutanagi,
+            BelgeAdi: BelgeAdi(BelgeTurleri.SayimTutanagi),
+            BelgeNo: o.Id,
+            Dayanak: o.Ad,
+            DuzenlemeTarihi: o.Kapandi ?? o.Acildi,
+            Duzenleyen: await Kimlik(islem.TenantId, o.SubeId, iptal),
+            Karsi: null,
+            Bolumler: [new CiktiBolum("Sayım satırları", ["Sıra", "Ürün", "Sistem", "Sayılan", "Fark"], ciktiSatirlari,
+                $"{satirlar.Count} satır · {o.Acildi:dd.MM.yyyy} açıldı" + (o.Kapandi is { } k ? $" · {k:dd.MM.yyyy HH:mm} kapandı" : ""),
+                [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin])],
+            Tutarlar: [],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.SayimTutanagi),
+            Not: not,
+            Uyari: o.Durum == "ACIK" ? "ARA TUTANAK — oturum henüz kapanmadı; rakamlar kapanışta değişebilir." : o.Durum == "IPTAL" ? "BU SAYIM İPTAL EDİLMİŞTİR — deftere yazılmadı." : null,
+            BelgeNoKayitKimligi: true);
+    }
+
+    private async Task<OrtakBelge> GunKapanisiBelgesi(string id, AktifKullanici islem, CancellationToken iptal)
+    {
+        var g = await db.GunKapanislari.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.TenantId == islem.TenantId, iptal)
+            ?? throw new NotFoundException("Gün kapanışı bulunamadı");
+        var kasa = await db.Kasalar.AsNoTracking().Where(k => k.Id == g.KasaId && k.TenantId == islem.TenantId).Select(k => new { k.Ad, k.ParaBirimi }).FirstOrDefaultAsync(iptal);
+        var kapatan = await db.Kullanicilar.AsNoTracking().Where(u => u.Id == g.KapatanKullaniciId && u.TenantId == islem.TenantId)
+            .Select(u => (u.Ad + " " + u.Soyad).Trim()).FirstOrDefaultAsync(iptal);
+        var pb = kasa?.ParaBirimi ?? "TRY";
+        var satir = new CiktiSatir([kasa?.Ad ?? "—", g.YerelGun.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture),
+            Zaman.UtcdenYerele(g.KapanisZamani).ToString("HH:mm", CultureInfo.InvariantCulture), kapatan ?? "—"]);
+        var not = (string.IsNullOrWhiteSpace(g.Aciklama) ? "" : g.Aciklama.Trim() + " · ")
+            + (g.Fark == 0m ? "Sayım defterle tuttu." : g.Fark > 0m ? "Kasada defterden FAZLA nakit sayıldı." : "Kasada defterden EKSİK nakit sayıldı.")
+            + (g.AcilisZamani is not null ? " · Gün yeniden açılmıştı." : "");
+        return new OrtakBelge(
+            Tur: BelgeTurleri.GunKapanisi,
+            BelgeAdi: BelgeAdi(BelgeTurleri.GunKapanisi),
+            BelgeNo: g.Id,
+            Dayanak: null,
+            DuzenlemeTarihi: g.KapanisZamani,
+            Duzenleyen: await Kimlik(islem.TenantId, g.SubeId, iptal),
+            Karsi: null,
+            Bolumler: [new CiktiBolum("Kapanış", ["Kasa", "Gün", "Saat", "Kapatan"], [satir], null,
+                [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin])],
+            Tutarlar: [new CiktiTutar("Defter nakit", g.DefterBakiye, pb), new CiktiTutar("Sayılan nakit", g.SayilanNakit, pb), new CiktiTutar("Fark", g.Fark, pb, Toplam: true)],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.GunKapanisi),
+            Not: not,
             Uyari: null,
             BelgeNoKayitKimligi: true);
     }
@@ -1070,6 +1147,8 @@ public sealed class CiktiServisi(
         BelgeTurleri.OdemePlani => "ÖDEME PLANI",
         BelgeTurleri.UyumRaporu => "UYUM RAPORU",
         BelgeTurleri.Teklif => "FİYAT TEKLİFİ",   // Y-11
+        BelgeTurleri.SayimTutanagi => "SAYIM TUTANAĞI",   // PAKET-05
+        BelgeTurleri.GunKapanisi => "GÜN SONU KASA FİŞİ",   // PAKET-05
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -1081,6 +1160,8 @@ public sealed class CiktiServisi(
         BelgeTurleri.CariEkstre => ["Düzenleyen"],
         BelgeTurleri.Irsaliye => ["Teslim eden", "Teslim alan"],
         BelgeTurleri.Teklif => ["Teklifi veren", "Müşteri"],   // Y-11
+        BelgeTurleri.SayimTutanagi => ["Sayan", "Onaylayan"],   // PAKET-05
+        BelgeTurleri.GunKapanisi => ["Kapatan", "Onaylayan"],   // PAKET-05
         BelgeTurleri.Fatura => ["Düzenleyen", "Teslim alan"],
         BelgeTurleri.CariMutabakat => ["Düzenleyen (kaşe / imza)", "Müşteri (kaşe / imza)"],
         BelgeTurleri.KvkkAydinlatma => ["Müşteri (ad soyad / imza)"],

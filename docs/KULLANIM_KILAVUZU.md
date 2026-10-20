@@ -329,6 +329,8 @@ Stok sayımı, kayıttaki adet ile rafta duran adedi karşılaştırır ve fark�
 
 > [!BILGI] Oturumun adı, kapsamı ve şubesi açıldıktan sonra değiştirilemez, çünkü sayılacak satırları belirler. Yanlış açtıysanız oturumu gerekçeyle iptal edip yenisini açın.
 
+**Tutanak:** oturum başlığındaki **Yazdır** sayım tutanağını açar (sistem / sayılan / fark, eksik-fazla toplamı, imza alanları). Oturum açıkken "ara tutanak" uyarısı taşır; kapanınca kesin tutanaktır.
+
 ## Satın alma {#satinalma}
 
 <!-- ekran: /satin-alma -->
@@ -364,6 +366,8 @@ Nakit ve döviz kasalarınız. Her kasanın para birimi ve bakiyesi ayrı tutulu
 - **Düzenleme:** kasa adı ve bilgileri satırdaki **Düzenle** ile değiştirilir. Kullanılmayan kasa pasife alınır, gerekirse geri açılır.
 
 > [!BILGI] Kaydedilmiş kasa hareketi silinmez; yanlış hareket ters kayıtla düzeltilir.
+
+**Gün sonu kasa fişi:** gün kapatılınca sayfanın üstünde **Yazdır — Gün kapanışı** bağlantısı çıkar; fişte defter nakit, sayılan nakit, fark, kapatan ve açıklama yazar; kapatan ve onaylayan imzalar.
 
 ## Kasa kuyruğu (vezne) {#vezne}
 

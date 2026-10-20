@@ -49,6 +49,7 @@
 
     <HataBandi Mesaj="@listeHata" Id="hata-bandi" />
     <BasariBandi Mesaj="@basari" Jeton="@basariJeton" SureliMs="3000" Id="basari-bandi" />
+    @if (sonKapanisId is { } skId) { <p class="metin-kucuk" id="kasa-kapanis-yazdir-satir"><a class="btn btn-metin btn-kucuk" id="kasa-kapanis-yazdir" href="@($"/cikti/GUN_KAPANISI/{skId}?donus=/kasalar")">@Dil.T.Cikti.Yazdir — @Dil.T.Kasa.GunKapanisi</a></p> }   @* PAKET-05: gün sonu kasa fişi *@
 
     @if (yukleniyor)
     {
@@ -623,6 +624,7 @@
     private readonly FormDurumu duzenleForm = new();
     private readonly FormDurumu hareketForm = new();
     private string? basari;
+    private string? sonKapanisId;   // PAKET-05: son kapanışın fiş dökümü
     private int basariJeton;
 
     private static readonly string[] Dovizler = ["TRY", "USD", "EUR", "GBP"];
@@ -953,6 +955,7 @@
             });
             var paraBirimi = gunKasa.ParaBirimi;
             gunKasa = null;
+            sonKapanisId = y.ValueKind == System.Text.Json.JsonValueKind.Object && y.TryGetProperty("kapanisId", out var kid) ? kid.GetString() : null;   // PAKET-05
             // D1-11: kör sayımda fark ancak kapanıştan SONRA söylenir (sunucu yanıtındaki fark).
             BasariGoster(Kor && KapanisFarki(y) is { } kf
                 ? string.Format(D1Sozlugu.Al(Dil.Dil).KorSayimSonuc, Dil.T.Kasa.GunKapatildi, Bicim.Para(kf, paraBirimi))

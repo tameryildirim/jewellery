@@ -176,6 +176,8 @@
                                          Kaydedildi="AdKaydet" />
                     }
                     <span class="metin-kucuk metin-soluk">@KapsamEtiketi(a.KapsamTur) · @DurumEtiketi(a.Durum)</span>
+                    @* PAKET-05 (20.10): sayım tutanağı dökümü (açıkken ara tutanak, kapanınca kesin). *@
+                    <a class="btn btn-metin btn-kucuk" id="sy-yazdir" href="@($"/cikti/SAYIM_TUTANAGI/{a.Id}?donus=/sayim")">@Dil.T.Cikti.Yazdir</a>
                 </h2>
             </div>
             <div class="stat-izgara">

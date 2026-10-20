@@ -510,6 +510,7 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
         var now = DateTime.UtcNow;
         var yerelGun = DateOnly.FromDateTime(Zaman.UtcdenYerele(now));
 
+        string kapanisId;   // PAKET-05: fiş dökümü için (GUN_KAPANISI)
         var mevcut = await db.GunKapanislari
             .FirstOrDefaultAsync(g => g.TenantId == islem.TenantId
                                    && g.KasaId == id && g.YerelGun == yerelGun);
@@ -560,12 +561,14 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
             mevcut.AcanKullaniciId = null;
             mevcut.AcilisZamani = null;
             mevcut.AcilisGerekcesi = null;
+            kapanisId = mevcut.Id;
         }
         else
         {
+            kapanisId = Kimlik.Ulid();
             db.GunKapanislari.Add(new GunKapanisi
             {
-                Id = Kimlik.Ulid(),
+                Id = kapanisId,
                 TenantId = islem.TenantId,
                 KasaId = id,
                 SubeId = kasa.SubeId,
@@ -592,6 +595,7 @@ public sealed class KasaServisi(KuyumcuDbContext db, ILogger<KasaServisi> logger
             defterBakiye = nakitDefter, toplamBakiye = ayrim.ToplamBakiye,
             kartToplam = ayrim.Kart, havaleToplam = ayrim.Havale,
             fark, aciklama = dto.Aciklama, kilitli = true,
+            kapanisId,   // PAKET-05: /cikti/GUN_KAPANISI/{kapanisId}
         };
     }
 

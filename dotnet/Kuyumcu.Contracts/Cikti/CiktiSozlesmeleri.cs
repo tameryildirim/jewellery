@@ -56,8 +56,12 @@ public static class BelgeTurleri
     public const string UyumRaporu = "UYUM_RAPORU";
     /// <summary>Y-11 (20.10, rakip taraması): fiyat teklif fişi — bekletilen fişin kur kilidiyle süreli teklif dökümü.</summary>
     public const string Teklif = "TEKLIF";
+    /// <summary>PAKET-05 (20.10): stok sayım tutanağı — sayım oturumunun sistem/sayılan/fark dökümü, imza alanlı.</summary>
+    public const string SayimTutanagi = "SAYIM_TUTANAGI";
+    /// <summary>PAKET-05 (20.10): gün sonu kasa fişi — defter/sayılan/fark, kapatan, açıklama.</summary>
+    public const string GunKapanisi = "GUN_KAPANISI";
 
-    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat, KvkkAydinlatma, KimlikTespit, GarantiKarti, OdemePlani, UyumRaporu, Teklif];
+    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat, KvkkAydinlatma, KimlikTespit, GarantiKarti, OdemePlani, UyumRaporu, Teklif, SayimTutanagi, GunKapanisi];
 
     /// <summary>D1-13 — ekranda imza alınabilen belge türleri (imza ortak belge deposunda saklanır).</summary>
     public static readonly string[] Imzali = [KimlikTespit, GarantiKarti];

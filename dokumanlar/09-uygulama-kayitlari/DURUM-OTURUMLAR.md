@@ -187,6 +187,10 @@ Başkasının satırını değiştirme/silme yok.
 - **Tarayıcı kanıtı (20.10 21:45, 5199 @ 5e8ca25):** İşletme › Ayarlar › "Mali müşavirin hesap kodları" paneli DOM'da (etiket "Satış
   hesabı (boşsa 600)"), ekran görüntüsü sekme kaydırmasında yakalanamadı — yeniden alınacak; Satış analizi › Prim ve hedef › "Deneyin: bu
   oranla ne öderdim?" %5 → Toplam prim 46.648,88 ₺ + "Deneme — … hiçbir şey kaydedilmedi" bandı (görüntü alındı).
+- **PAKET-05 kalanı (20.10):** /cikti/SAYIM_TUTANAGI/{oturum} (sistem/sayılan/fark, eksik-fazla, net has farkı, "sayılmadı
+  bilinmeyendir", ara tutanak/iptal uyarısı; Sayım başlığında Yazdır) ve /cikti/GUN_KAPANISI/{kapanış} (defter/sayılan/fark,
+  kapatan, açıklama; gün kapanış yanıtı kapanisId taşır, Kasalar'da "Yazdır — Gün kapanışı"). Belge türü 13 → 15. Mutasyon:
+  kapanisId düşünce test kırmızı. Müşteriler ekranı DG-1 katlanırı canlıda görüldü (demo: "Bu dönemde doğum günü yok.").
 - **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
   zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
   müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım

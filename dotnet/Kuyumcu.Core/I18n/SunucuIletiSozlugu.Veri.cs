@@ -842,6 +842,7 @@ public static partial class SunucuIletiSozlugu
         ("Prim oranı 0 ile 100 arasında olmalıdır", "Commission rate must be between 0 and 100"),
         ("Teklifin süresi doldu; fiyat artık geçerli değil. Güncel kurla yeni teklif verin.", "The quote has expired; the price is no longer valid. Issue a new quote at the current rate."),
         ("Fiyat teklifi bulunamadı", "Price quote not found"),
+        ("Gün kapanışı bulunamadı", "Day close not found"),
         ("Teklif içeriği okunamadı", "Quote content could not be read"),
         ("Bu teklif yukarıdaki tarihe kadar, yazılı has fiyatıyla geçerlidir; süre dolunca fiyat güncel kurla yeniden hesaplanır. Teklif satış değildir; stok ayrılmaz.", "This quote is valid until the date above at the stated fine gold price; after that the price is recalculated at the current rate. A quote is not a sale; no stock is reserved."),
         // PAKET-42 (20.10): sevk durum makinesi
