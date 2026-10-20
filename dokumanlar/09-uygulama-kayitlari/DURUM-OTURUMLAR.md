@@ -212,6 +212,22 @@ Başkasının satırını değiştirme/silme yok.
   AvansTl ve NetOdemeTl (prim − avans), Satış analizi prim sekmesinde Avans · Net ödenecek sütunları; Yıldız gider formunda seçici.
   Commit db65b28, yayın y05 (23:28). Tarayıcı kanıtı 5179: /gider formunda "Personel avansı (isteğe bağlı)" seçici personel listesini
   açıyor; /raporlar/satis-analizi?sekme=prim tablosunda Avans · Net ödenecek sütunları; 375 px taşma yok (scrollWidth 375).
+- **Y-03 gişe zimmeti (21.10, rakip Ariyen "Gişe Kasam" 7 adım):** gise_zimmetleri + gise_zimmet_kalemleri (geçiş GiseZimmeti; yedek
+  kuyumcu_net-20261020-2347-gise-zimmeti-oncesi.sql.gz); /api/v1/gise: zimmetle (SAHIP/MUDUR; kendine veremez; şube stoğu kapısı; kasa ve
+  personel başına tek açık zimmet 409) → tezgâhtar kabul (403 başkası; açılış nakdi kaynak kasadan gişeye VirmanServisi) → takviye talebi
+  (ürün ya da nakit; karar SAHIP/MUDUR ve isteyen ≠ karar veren 403) → kapat (ürün başına sayılan zorunlu; beklenen = zimmet + takviye −
+  tezgâhtarın SATIS−SATIS_IADE defteri; nakit beklenen KasaNakitAyrimi; fark varsa K30 gerekçe; nakit farkı gişeye sayım farkı hareketi;
+  sayılan nakit devir kasasına virman; SAYIM satırları dondurulur) → iptal yalnız TEKLIF'te. Kör sayımda tezgâhtar beklenen nakdi görmez.
+  /gise ekranı (menü Para ve banka 43, rota 56, varlık 100, ölçüm tabanı güncellendi); tezgâhtara açılışta kendi zimmeti doğrudan gelir;
+  takviye ve akşam sayımı kapalı katlanır; Yıldız açıklama/ikon; kılavuz "Gişe zimmeti" bölümü. Commitler 4b3e215 (paket), c531073 +
+  5586acc (uzak ürün seçicisi ad: ürün kartından okunur; ilk düzeltme derlenmeden yayınlandı → 5199 ~5 dk düştü, ders: hafıza
+  yayin-oncesi-derle), 0ac733d (gerekçe alanı yalnız fark varsa), a3e2741 (liste tarihi işletme saati). Yayın y03e 00:3x.
+  Mutasyon: satılan düşülmezse (beklenen 5≠3) ve kendi-talebi kapısı kalkarsa (403→200) Y03 testi kırmızı. 12.808 test.
+  Tarayıcı kanıtı 5179 (sahip) + 5180 (tezgâhtar Emre Duman vekili): Gişe 1 kasası açıldı (demo kalıntısı, bakiye 0); zimmet
+  KLY-14-004 × 2 + 500 ₺ → "Tezgâhtar onayı bekliyor" → tezgâhtar kabul "Gişede · Beklenen nakit 500 ₺" → akşam sayımı 2 / 500 ₺ →
+  "Gişe kapandı; 500 ₺ Ana Kasa kasasına devredildi", Ana Kasa bakiyesi 904.389,07 ₺'ye geri döndü, Gişe 1 = 0; 375 px taşma yok
+  (scrollWidth 375), geçmiş kartı. Sunucu kapısı canlıda görüldü: "Şube stoğu yetersiz: BLZ-22-015 için 0 var, 2 zimmetlenemez" (alan altı).
+  Demo kalıntısı: Gişe 1 kasası + 1 kapanmış zimmet (Emre Duman).
   Mutasyon: avans düşülmezse test kırmızı. Maaş alanı yok (sistemde maaş tutulmuyor) — "maaş+prim−avans tek fiş" kapsam dışı.
 - **Tarayıcı kanıtı (20.10 23:00, 5199):** Y-14 İşletme › Dış API › "Canlı fiyat bağlantısı oluştur" → bağlantı üretildi → 5199'da
   oturumsuz /fiyat/{anahtar} açıldı (demo işçilik ibaresi seçmediği için fail-closed uyarısı; 1280 + 375). Sayım Yıldız "Yazdır" →
