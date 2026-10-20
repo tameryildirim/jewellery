@@ -128,5 +128,11 @@ Başkasının satırını değiştirme/silme yok.
   1280/375 · açık/koyu ölçülecek. Canlı rotalar ayakta: /api/v1/ebelge/* ve /bankalar/baglayicilar yetkisiz istekte 401.
   Günlük: "Banka çekici turu hatası" 1 kez, Docker kapalıyken MySQL'e ulaşılamadığından; sonrasında yok. Luca/Zirve herkese açık
   biçim araştırması başlatıldı (ARASTIRMA-LUCA-ZIRVE-AKTARIM-2026-10-20.md).
-- Luca/Zirve aktarımı (mali müşavirden örnek dosya) · Harem veri izni · P-30 kronometreli demo ölçümü (insan)
+- **Luca/Zirve aktarımı (20.10 — KODLANDI, resmi herkese açık biçimlerden):** Veri dışa aktarımına iki kaynak: `luca-fis`
+  (Luca "Excel Veri Aktarımı" şablonu birebir: Fiş No;Fiş Tarihi;Hesap Kodu;Evrak No;Evrak Tarihi;Açıklama;Borç;Alacak;Miktar;Döviz;Kur;
+  fatura başına 1 mahsup fişi 120/600/391; ≤50 fiş/dosya; UTF-8 BOM + Windows-1254 kopyaları) ve `zirve-fatura` (Zirve "Fatura Excel"
+  Sayfa1 başlıkları, kütüphanesiz .xlsx — openpyxl ile açılıp doğrulandı). Hesap kodu / VKN eksik fatura dosyaya girmez, OKUBENI'de
+  listelenir. Kaynak: ARASTIRMA-LUCA-ZIRVE-AKTARIM-2026-10-20.md. **Dış bağımlılık:** mali müşavirin bir kez yüklemesi (Luca kodlaması
+  ve Zirve .xlsx kabulü TEYİTSİZ); 600/391 alt hesapları yapılandırmadan.
+- Harem veri izni · P-30 kronometreli demo ölçümü (insan)
 

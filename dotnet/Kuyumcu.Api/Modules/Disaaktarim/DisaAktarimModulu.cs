@@ -212,6 +212,19 @@ public sealed class DisaAktarimServisi(
             var kaynak = Kaynaklar.Bul(ad);
             if (kaynak is null) continue;   // kayıt yazıldıktan sonra kaynak kaldırılmışsa
 
+            // 20.10: kendi dosyasını üreten kaynak (Luca CSV parçaları, Zirve xlsx) — CSV yolu değişmedi.
+            if (kaynak is IDosyaUreten uretici)
+            {
+                await foreach (var (dosyaAdi, icerik, satirSayisi) in uretici.Dosyalar(db, talep.TenantId))
+                {
+                    zip.PutNextEntry(new ZipEntry(dosyaAdi) { DateTime = DateTime.UtcNow, AESKeySize = 256 });
+                    await zip.WriteAsync(icerik);
+                    zip.CloseEntry();
+                    toplam += satirSayisi;
+                }
+                continue;
+            }
+
             var giris = new ZipEntry($"{ad}.csv")
             {
                 DateTime = DateTime.UtcNow,

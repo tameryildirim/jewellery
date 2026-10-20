@@ -502,6 +502,8 @@ public static class Kaynaklar
         new PosCihazKaynagi(), new PosTahsilatKaynagi(), new PosEslesmeKaynagi(),
         // PAKET P-26 — tedarik zinciri + muhasebe köprüsü (Y-34 · Y-35 · Y-37).
         new SatinalmaKaynagi(), new IrsaliyeKaynagi(), new MuhasebeFisiKaynagi(),
+        // 20.10 — mali müşavir programları (M11/D1-14): Luca fiş CSV, Zirve fatura xlsx (MuhasebeAktarimlari.cs).
+        new LucaFisKaynagi(), new ZirveFaturaKaynagi(),
     ];
 
     public static IDisaAktarilabilir? Bul(string ad) =>

@@ -453,7 +453,14 @@ public sealed class DisaAktarimServisTestleri(TestVeritabani vt)
         var dosyalar = await Ac(s, talep, parola);
 
         foreach (var ad in Kaynaklar.Adlar)
-            Assert.True(dosyalar.ContainsKey($"{ad}.csv"), $"{ad}.csv arşivde yok");
+        {
+            // 20.10: kendi dosyasını üreten kaynaklar (Luca CSV parçaları, Zirve xlsx) ad.csv yerine kendi adlarıyla girer.
+            if (Kaynaklar.Bul(ad) is Kuyumcu.Api.Modules.Disaaktarim.IDosyaUreten)
+                Assert.True(dosyalar.ContainsKey($"{ad}-OKUBENI.txt"), $"{ad}-OKUBENI.txt arşivde yok");
+            else
+                Assert.True(dosyalar.ContainsKey($"{ad}.csv"), $"{ad}.csv arşivde yok");
+        }
+        Assert.Contains("zirve-fatura.xlsx", dosyalar.Keys);
 
         Assert.Contains("OKUBENI.txt", dosyalar.Keys);
         Assert.Contains("Gerekçe", dosyalar["OKUBENI.txt"]);
@@ -670,7 +677,8 @@ public sealed class DisaAktarimHttpTestleri(HttpFikstur f)
         // 6 → 9: paket 31, ADR-0014 kapsamına pos-cihazlari · pos-tahsilatlari
         // · pos-eslesmeleri kaynaklarını ekledi (kişisel veri YOK, maskeleme gerekmez).
         // 9 → 12: PAKET P-26 (Y-34/Y-35/Y-37) satinalma · irsaliye · muhasebe-fisi.
-        Assert.Equal(12, r.GetArrayLength());
+        // 12 → 14: 20.10 mali müşavir programları luca-fis · zirve-fatura.
+        Assert.Equal(14, r.GetArrayLength());
         var cari = r.EnumerateArray().Single(x => x.GetProperty("ad").GetString() == "cari");
         Assert.True(cari.GetProperty("kisiselVeri").GetBoolean());
     }
