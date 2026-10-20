@@ -110,5 +110,13 @@ Başkasının satırını değiştirme/silme yok.
   (2) Garanti geliştirici portalına Mihenk uygulaması kaydı (kurucu yapar; client id/secret → ortam Banka__GARANTI__clientId/clientSecret);
   (3) sunucunun sabit çıkış IP'si (Banka__CikisIp; Akbank zorunlu); (4) HBH/6493 hukuki görüş (TEYİTSİZ).
   Yapı Kredi, Halkbank, DenizBank, Enpara: uç nokta/kimlik herkese açık değil → ekstre dosyasıyla (mevcut).
+- **e-Fatura / e-Arşiv (20.10, ddfd465 + 320edd8):** faturalı satışta çıktı açılmaz; kesilen satış faturası arka planda
+  entegratöre gider (katman entegratörden bağımsız, ilk bağlayıcı Nilvera — uçlar developer.nilvera.com OpenAPI'sinden).
+  e-Fatura/e-Arşiv otomatik seçimi, yeniden deneme, GİB sonucu, resmi PDF, 8 günlük e-Arşiv iptali; İşletme › e-Fatura bağlantısı.
+  12.737 test 0 başarısız, denetim yalnız P-30. **Açık:** (1) Nilvera test hesabı (kurucu açar) → test ortamında uçtan uca;
+  (2) özel matrah kodu (Kdv:OzelMatrahKodu, K-10 mali müşavir teyidi) — tanımsızken kuyum faturası GÖNDERİLMEZ, sebep ekranda;
+  (3) tarayıcı ekran görüntüsü: panelde oturum yok (5199 Production, davet anahtarı tanımsız) — kurucu giriş yapınca alınacak.
+  Not: 20.10'da Docker durmuştu (MySQL + 5199 düşmüş); Docker açıldı, servis kickstart edildi. Boş yedek dosyası
+  yedekler/kuyumcu_net-20261020-1039-ebelge-oncesi.sql.gz (20 bayt, Docker kapalıyken) geçersiz — geçerli yedek: …-ebelge-oncesi-2.sql.gz.
 - Luca/Zirve aktarımı (mali müşavirden örnek dosya) · Harem veri izni · P-30 kronometreli demo ölçümü (insan)
 
