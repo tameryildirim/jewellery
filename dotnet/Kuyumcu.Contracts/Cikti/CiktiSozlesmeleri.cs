@@ -54,8 +54,10 @@ public static class BelgeTurleri
 
     /// <summary>D1-18 (18.10) — dönemlik uyum (MASAK) raporu: sayılar, kişisel veri yok. Kimlik: "yyyy-MM-dd_yyyy-MM-dd".</summary>
     public const string UyumRaporu = "UYUM_RAPORU";
+    /// <summary>Y-11 (20.10, rakip taraması): fiyat teklif fişi — bekletilen fişin kur kilidiyle süreli teklif dökümü.</summary>
+    public const string Teklif = "TEKLIF";
 
-    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat, KvkkAydinlatma, KimlikTespit, GarantiKarti, OdemePlani, UyumRaporu];
+    public static readonly string[] Tumu = [SatisFisi, TahsilatMakbuzu, EmanetTeslim, CariEkstre, Irsaliye, Fatura, CariMutabakat, KvkkAydinlatma, KimlikTespit, GarantiKarti, OdemePlani, UyumRaporu, Teklif];
 
     /// <summary>D1-13 — ekranda imza alınabilen belge türleri (imza ortak belge deposunda saklanır).</summary>
     public static readonly string[] Imzali = [KimlikTespit, GarantiKarti];

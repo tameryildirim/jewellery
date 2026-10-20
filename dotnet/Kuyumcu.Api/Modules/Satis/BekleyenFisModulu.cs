@@ -21,6 +21,9 @@ namespace Kuyumcu.Api.Modules.Satis;
 public sealed class BekleyenFisDto
 {
     [Required] public BekleyenFisIcerik Icerik { get; set; } = null!;
+    /// <summary>Y-11: fiyat teklifi olarak beklet — kur kilidi ZORUNLU, geçerlilik = kilidin bitişi, numara TKL-….</summary>
+    public bool Teklif { get; set; }
+    [MaxLength(36)] public string? KurKilidiId { get; set; }
 }
 
 public sealed class BekleyenFisServisi(KuyumcuDbContext db, DenetimServisi denetim)
@@ -48,7 +51,7 @@ public sealed class BekleyenFisServisi(KuyumcuDbContext db, DenetimServisi denet
         {
             var c = b.CariId is null ? null : cariler.GetValueOrDefault(b.CariId);
             return new BekleyenFisOzet(b.Id, b.Etiket, c is null || c.SistemCarisi ? null : c.Ad, b.KalemSayisi, b.ToplamTl,
-                kullanicilar.GetValueOrDefault(b.KullaniciId), b.Olusturuldu);
+                kullanicilar.GetValueOrDefault(b.KullaniciId), b.Olusturuldu, b.TeklifNo, b.TeklifBitis);
         })];
     }
 
@@ -86,25 +89,41 @@ public sealed class BekleyenFisServisi(KuyumcuDbContext db, DenetimServisi denet
             throw new ConflictException("En çok 50 fiş bekletilebilir — önce bekleyenlerden birini alın ya da silin");
 
         // Ürün adı SUNUCUDAN (istemcinin yazdığı ad saklanmaz); tutar liste içindir.
+        // Y-11: teklif = kur kilidi zorunlu (müşteriye söylenen fiyat kilit süresince geçerli); kilit kiracının, kaldırılmamış, dolmamış.
+        string? teklifNo = null; DateTime? teklifBitis = null; string? kilitId = null;
+        if (dto.Teklif)
+        {
+            if (string.IsNullOrWhiteSpace(dto.KurKilidiId)) throw new BadRequestException("Fiyat teklifi için önce kuru kilitleyin").AlanIle("kurKilidiId");
+            var kilit = await db.KurKilitleri.AsNoTracking().FirstOrDefaultAsync(k => k.Id == dto.KurKilidiId && k.TenantId == islem.TenantId)
+                ?? throw new NotFoundException(Kur.KurKilidiKapisi.Bulunamadi);
+            if (kilit.Kaldirildi is not null) throw new ConflictException(Kur.KurKilidiKapisi.Kaldirildi);
+            if (kilit.Bitis <= DateTime.UtcNow) throw new ConflictException(Kur.KurKilidiKapisi.Doldu);
+            if (kilit.CariId is not null && kilit.CariId != ic.CariId) throw new BadRequestException(Kur.KurKilidiKapisi.BaskaMusteri).AlanIle("kurKilidiId");
+            kilitId = kilit.Id; teklifBitis = kilit.Bitis;
+            teklifNo = "TKL-" + Kimlik.Ulid()[^8..];   // benzersiz, kısa; sıra iddia edilmez (geri alınan teklif silinir)
+        }
         var temiz = new BekleyenFisIcerik(string.IsNullOrEmpty(ic.CariId) ? null : ic.CariId,
             [.. kalemler.Select(k => k with { UrunAdi = urunler[k.UrunId] })], ic.FisIskontoYuzde,
-            string.IsNullOrWhiteSpace(ic.Aciklama) ? null : ic.Aciklama.Trim());
+            string.IsNullOrWhiteSpace(ic.Aciklama) ? null : ic.Aciklama.Trim(), kilitId);
         var ara = temiz.Kalemler.Sum(k => k.Hediye ? 0m : k.Adet * k.BirimFiyat * (1m - k.SatirIskontoYuzde / 100m));
         var toplam = Math.Round(ara * (1m - (temiz.FisIskontoYuzde ?? 0m) / 100m), 2, MidpointRounding.AwayFromZero);
         var ilk = temiz.Kalemler[0].UrunAdi;
         var etiket = cariAd ?? (temiz.Kalemler.Count == 1 ? ilk : $"{ilk} +{temiz.Kalemler.Count - 1}");
+        if (teklifNo is not null) etiket = $"{teklifNo} · {etiket}";
 
         var b = new BekleyenFis
         {
             Id = Kimlik.Ulid(), TenantId = islem.TenantId, KullaniciId = islem.Id, CariId = temiz.CariId,
             Etiket = etiket.Length > 120 ? etiket[..120] : etiket,
             Icerik = JsonSerializer.Serialize(temiz, Json), KalemSayisi = temiz.Kalemler.Count, ToplamTl = toplam,
-            Olusturuldu = DateTime.UtcNow,
+            Olusturuldu = DateTime.UtcNow, TeklifNo = teklifNo, TeklifBitis = teklifBitis, KurKilidiId = kilitId,
         };
         db.BekleyenFisler.Add(b);
-        denetim.YazmaKaydet(islem, nameof(BekleyenFis), b.Id, $"fiş bekletildi · {b.KalemSayisi} kalem · {toplam:0.00} TL", hassas: false);
+        denetim.YazmaKaydet(islem, nameof(BekleyenFis), b.Id, teklifNo is null
+            ? $"fiş bekletildi · {b.KalemSayisi} kalem · {toplam:0.00} TL"
+            : $"fiyat teklifi {teklifNo} verildi · {b.KalemSayisi} kalem · {toplam:0.00} TL · geçerli {teklifBitis:yyyy-MM-dd HH:mm} UTC", hassas: false);
         await db.SaveChangesAsync();
-        return new BekleyenFisOzet(b.Id, b.Etiket, cariAd, b.KalemSayisi, b.ToplamTl, null, b.Olusturuldu);
+        return new BekleyenFisOzet(b.Id, b.Etiket, cariAd, b.KalemSayisi, b.ToplamTl, null, b.Olusturuldu, b.TeklifNo, b.TeklifBitis);
     }
 
     /// <summary>
@@ -113,7 +132,12 @@ public sealed class BekleyenFisServisi(KuyumcuDbContext db, DenetimServisi denet
     /// </summary>
     public async Task<BekleyenFisIcerik> Al(string id, AktifKullanici islem)
     {
-        var b = await Kaldir(id, islem, "bekleyen fiş geri alındı");
+        // Y-11: süresi dolmuş teklif tezgâha alınmaz — fiyat artık geçersiz; yeni teklif verilir (kayıt silinmez, "Sil" ile atılır).
+        var on = await db.BekleyenFisler.AsNoTracking().Where(x => x.Id == id && x.TenantId == islem.TenantId)
+            .Select(x => new { x.TeklifNo, x.TeklifBitis }).FirstOrDefaultAsync() ?? throw new NotFoundException(BulunamadiMetni);
+        if (on.TeklifNo is not null && on.TeklifBitis <= DateTime.UtcNow)
+            throw new ConflictException("Teklifin süresi doldu; fiyat artık geçerli değil. Güncel kurla yeni teklif verin.");
+        var b = await Kaldir(id, islem, on.TeklifNo is null ? "bekleyen fiş geri alındı" : $"fiyat teklifi {on.TeklifNo} tezgâha alındı");
         return JsonSerializer.Deserialize<BekleyenFisIcerik>(b.Icerik, Json)
             ?? throw new BadRequestException("Bekleyen fiş okunamadı");
     }

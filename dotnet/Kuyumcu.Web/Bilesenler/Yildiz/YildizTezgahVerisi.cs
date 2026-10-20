@@ -178,6 +178,8 @@ public sealed class YildizTezgahBaglami
     /// <summary>"Beklet" görünür mü (satış fişinde kalem var).</summary>
     public bool BekletGorunur { get; init; }
     public EventCallback Beklet { get; init; }
+    /// <summary>Y-11 — "Fiyat teklifi ver" (Beklet ile aynı görünürlük; kur kilidi yoksa sayfa kilit ister).</summary>
+    public EventCallback TeklifVer { get; init; }
     /// <summary>İşletmenin bekleyen fişleri (yeniden eskiye).</summary>
     public IReadOnlyList<YildizBekleyenOgesi> Bekleyenler { get; init; } = [];
     public bool BekleyenlerAcik { get; init; }
@@ -194,7 +196,7 @@ public sealed class YildizTezgahBaglami
 }
 
 /// <summary>D1-03 — bekleyen fiş satırı (etiket · "3 kalem · 12.500,00 ₺ · 14:20 · Hakan").</summary>
-public sealed record YildizBekleyenOgesi(string Id, string Etiket, string Ayrinti);
+public sealed record YildizBekleyenOgesi(string Id, string Etiket, string Ayrinti, string? TeklifId = null);   // Y-11: teklif ise yazdır bağlantısı
 
 /// <summary>PAKET YILDIZ-4B — Tezgâh yazımı (saf; tuval Tezgah4 sayı dili).</summary>
 public static class YildizTezgahBicim

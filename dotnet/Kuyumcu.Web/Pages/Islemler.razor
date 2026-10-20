@@ -45,7 +45,7 @@
     {
         <div class="@(YildizTezgahMi ? "islem-fis-kart" : "kart islem-fis-kart")">   @* YILDIZ-4C tur 3: Yıldız'da eski .kart sınıfı yok (görünüm zaten şeffaftı) *@
             <div class="kart-baslik">
-                <h2>@SeciliTurAdi @Dil.T.Islem.Formu</h2>
+                <h2>@SeciliTurAdi @Dil.T.Islem.Formu</h2>@if (Modu.ProfesyonelMi) { <Kuyumcu.Web.Bilesenler.Fis.FisKisayollari /> }   @* Y-02: kısayol yardımı (pro) *@
             </div>
             <div class="kart-govde form-dikey">
                 @if (Modu.BasitMi) { <BasitSatisAkisi KapiAcik="@BasitBantKapiAcik" Mesaj="@BasitBantMesaji" /> }   @* t3: tetiklenen kural adıyla TEK bant; tezgâh satışında ALDIM durum satırı söyler *@   @* UX-3 Faz B yasal kapı bandı (T-S1: adım şeridi tuvalde yok) *@

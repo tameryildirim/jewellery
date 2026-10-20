@@ -27,4 +27,8 @@ public class BekleyenFis : IKiraciVarlik
     /// <summary>Kalemlerden hesaplanan yaklaşık TL (liste için); satışın tutarı Kaydet'te yeniden hesaplanır.</summary>
     [Column("toplam_tl", TypeName = "decimal(15,2)")] public decimal ToplamTl { get; set; }
     [Column("olusturuldu")] public DateTime Olusturuldu { get; set; }
+    // ── Y-11 (20.10): fiyat teklif fişi — bekletilen fiş + kur kilidi + numara + geçerlilik. Teklif değilse üçü de null.
+    [Column("teklif_no"), MaxLength(30)] public string? TeklifNo { get; set; }
+    [Column("teklif_bitis")] public DateTime? TeklifBitis { get; set; }
+    [Column("kur_kilidi_id"), MaxLength(36)] public string? KurKilidiId { get; set; }
 }

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MİHENK — Kullanım Kılavuzu</title>
-<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 1294bb933b829f0360a2ecdfa26b8250e0e5267ad3a7b252997aa7e747885cf3 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
+<!-- ÜRETİLDİ — ELLE DÜZENLEMEYİN. kaynak: docs/KULLANIM_KILAVUZU.md · kaynak-sha256: 6bb136c3a6308ce666d0662d83d9a52629d000fc78786eb18da62f9b304180e4 · haric-sha256: dca3bc1589acb2a9bd149c5dad86415d5a731b0ba47e379278237c2bfbef2508 · sablon-sha256: e6a467ae25f828cc96738ced71420d6f84289054822dd3e14be2612705f74239 · üretici: dotnet/kilavuz-uret.sh -->
 <!-- ════════════════════════════════════════════════════════════════════════
      KILAVUZ ŞABLONU — PAKET P-33 (B-11). YALNIZ SUNUM: içerik bu dosyada
      DEĞİLDİR. İçeriğin TEK KAYNAĞI docs/KULLANIM_KILAVUZU.md'dir; üretici
@@ -359,6 +359,18 @@
       </ul>
       <div class="kutu ipucu"><p>Tek kasanız varsa kasa seçici hiç görünmez; kasa kendiliğinden kullanılır. Kart ile ödemede POS cihazı ve komisyon alanı açılır.</p></div>
       <p><strong>Fişi bekletme:</strong> müşteri karar verirken sıradaki müşteriye geçmek için <strong>Beklet</strong>'e basın; fiş kaydedilmeden kenara alınır, tezgâh boşalır. Bekletme stok, kasa ve cariye hiçbir şey yazmaz. Fiş boşken <strong>Bekleyen fişler (sayı)</strong> düğmesi görünür; listeden <strong>Al</strong> ile fiş kalemleri ve müşterisiyle tezgâha geri gelir (başka bir kasadan da alınabilir), <strong>Sil</strong> ile atılır. Geri alınan fiş normal <strong>Kaydet</strong> ile kaydedilir.</p>
+      <p><strong>Fiyat teklifi:</strong> müşteri &quot;düşüneyim&quot; derse <strong>Fiyat teklifi ver</strong>'e basın. Önce kur kilitlenir (teklif, kilit süresi boyunca geçerlidir; tezgâhtar en çok 1 saat, sahip/müdür 30 güne kadar); program numaralı <strong>Fiyat teklifi</strong> dökümünü açar, müşteriye verilir. Teklif satış değildir, stok ayrılmaz. Müşteri dönünce bekleyen fişlerden <strong>Al</strong> ile tezgâha alınır; aynı kilitli kur kullanılır. Süresi dolan teklif tezgâha alınmaz; yeni teklif verilir.</p>
+      <p><strong>Kısayol tuşları (Profesyonel mod):</strong> fiş kartının başlığındaki <strong>Kısayollar</strong> satırı açılınca listelenir.</p>
+      <div class="tablo-sar"><table class="tablo">
+        <thead><tr><th>Tuş</th><th>Ne yapar</th></tr></thead>
+        <tbody>
+          <tr><td><strong>F2</strong></td><td>Ürün / barkod kutusuna gider ve ürün listesini açar</td></tr>
+          <tr><td><strong>F4</strong></td><td>Müşteri kutusuna gider</td></tr>
+          <tr><td><strong>F8</strong></td><td>Ödeme türüne gider (parçalı ödemede &quot;Tek ödemeye dön&quot;)</td></tr>
+          <tr><td><strong>F9</strong></td><td>Kaydet (fiş kilitliyse hiçbir şey göndermez; kilit sebebi düğmenin altında yazar)</td></tr>
+          <tr><td><strong>Ctrl K</strong></td><td>Üst çubuktaki aramaya gider</td></tr>
+        </tbody>
+      </table></div>
       <h3 id="alis">Alış, hurda alışı ve işçilik</h3>
       <ul>
         <li><strong>Alış:</strong> müşteriden eski altın alımı. Ayar ve gram girilir, tutar has fiyatından hesaplanır. Tedarikçiden gelen ürünü stoğa almak için <strong>Satın alma</strong> ekranındaki <strong>Mal geldi</strong> düğmesini kullanın (bkz. <a class="ic" href="#satinalma">Satın alma</a>).</li>

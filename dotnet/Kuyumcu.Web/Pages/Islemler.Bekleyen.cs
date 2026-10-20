@@ -73,6 +73,14 @@ public partial class Islemler
                 cariId = ic.CariId;
             }
             else { cariId = ""; PesinOnSec(); }
+            // Y-11: teklif geri alınınca aynı kur kilidi kullanılır (fiyat sözü tutulur); kilit yoksa güncel kur + not.
+            if (!string.IsNullOrEmpty(ic.KurKilidiId))
+            {
+                await KilitleriYukle();
+                var k = kurKilitleri.FirstOrDefault(x => x.Id == ic.KurKilidiId && x.Bitis > DateTime.UtcNow);
+                if (k is not null) { kurKilidi = k; kilitNot = null; KurYansit(); }
+                else { kilitNot = TeklifSozlugu.KilitYok(Dil.Dil); kilitNotKotu = true; }
+            }
             bekleyenlerAcik = false;
             bekleyenNot = string.Format(D1.BekleyenAlindi, etiket); bekleyenNotKotu = false;
             await TevsikOnizle();
@@ -89,6 +97,35 @@ public partial class Islemler
     }
 
     private IReadOnlyList<YildizBekleyenOgesi> YildizBekleyenler => [.. bekleyenler.Select(b => new YildizBekleyenOgesi(b.Id, b.Etiket,
-        string.Join(" · ", new[] { string.Format(D1.KalemSayi, b.KalemSayisi), Bicim.TlKurus(b.ToplamTl), Bicim.TarihSaat(b.Olusturuldu), b.KullaniciAd }
-            .Where(p => !string.IsNullOrWhiteSpace(p)))))];
+        string.Join(" · ", new[] { string.Format(D1.KalemSayi, b.KalemSayisi), Bicim.TlKurus(b.ToplamTl), Bicim.TarihSaat(b.Olusturuldu), b.KullaniciAd,
+                // Y-11: teklif satırında geçerlilik (dolduysa açıkça yazar)
+                b.TeklifBitis is { } tb ? (tb > DateTime.UtcNow ? TeklifSozlugu.Gecerli(Bicim.TarihSaat(tb), Dil.Dil) : TeklifSozlugu.SuresiDoldu(Dil.Dil)) : null }
+            .Where(p => !string.IsNullOrWhiteSpace(p))), b.TeklifNo is null ? null : b.Id))];
+
+    // ── Y-11 (20.10) — fiyat teklif fişi: bekletme + kur kilidi → numaralı, süreli döküm (/cikti/TEKLIF/{id}) ──
+    private async Task TeklifVer()
+    {
+        if (!BekletGorunur || bekletiliyor) return;
+        if (KilitliKurId is null)
+        {
+            // Kilit yoksa teklif verilmez: süre seçici açılır, sebep not satırına yazılır (uydurma süre yok).
+            kilitSecenekAcik = true; bekleyenNot = TeklifSozlugu.OnceKilit(Dil.Dil); bekleyenNotKotu = true;
+            return;
+        }
+        bekletiliyor = true;
+        try
+        {
+            var icerik = new BekleyenFisIcerik(
+                string.IsNullOrEmpty(cariId) || cariId == pesinCariId ? null : cariId,
+                [.. kalemler.Select(k => new BekleyenFisKalem(k.UrunId, k.UrunAdi, k.Adet, k.BirimFiyat, k.Hediye, k.SatirIskontoYuzde))],
+                fisIskontoYuzde, Bos(aciklama));
+            var ozet = await Api.PostAsync<BekleyenFisOzet>("/bekleyen-fisler", new { icerik, teklif = true, kurKilidiId = KilitliKurId });
+            await Vazgec();
+            bekleyenNot = TeklifSozlugu.Verildi(ozet.TeklifNo ?? ozet.Etiket, Dil.Dil); bekleyenNotKotu = false;
+            await BekleyenleriYukle();
+            Nav.NavigateTo($"/cikti/TEKLIF/{Uri.EscapeDataString(ozet.Id)}?donus=/islemler");
+        }
+        catch (ApiHata ex) { bekleyenNot = ex.Message; bekleyenNotKotu = true; }
+        finally { bekletiliyor = false; }
+    }
 }

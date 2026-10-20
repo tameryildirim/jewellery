@@ -61,6 +61,20 @@ public static class IrsaliyeYonu
 }
 
 /// <summary>İrsaliye durumu — KAPALI liste.</summary>
+/// <summary>PAKET-42 — sevk durum makinesi TASLAK → SEVK_EDILDI → TESLIM_EDILDI (her durumdan IPTAL; IPTAL'den çıkış yok).</summary>
+public static class IrsaliyeSevkDurumu
+{
+    public const string Taslak = "TASLAK";
+    public const string SevkEdildi = "SEVK_EDILDI";
+    public const string TeslimEdildi = "TESLIM_EDILDI";
+
+    /// <summary>GELEN (mal kabul) irsaliyesinde sevk makinesi yoktur → null.</summary>
+    public static string? Hesapla(Irsaliye i) => i.Yon != IrsaliyeYonu.Giden ? null
+        : i.TeslimTarihi is not null ? TeslimEdildi
+        : i.FiiliSevkTarihi is not null ? SevkEdildi
+        : Taslak;
+}
+
 public static class IrsaliyeDurumu
 {
     /// <summary>Faturası kesilmemiş. <b>Bağsız irsaliye raporunda görünür.</b></summary>
@@ -199,6 +213,15 @@ public class Irsaliye : IKiraciVarlik, ISubeVarlik
     [Column("olusturuldu")] public DateTime Olusturuldu { get; set; }
     [Column("guncellendi")] public DateTime Guncellendi { get; set; }
     [Column("iptal_gerekce"), MaxLength(500)] public string? IptalGerekce { get; set; }
+
+    // ── PAKET-42 (20.10) — VUK sevk alanları: taşıyan, plaka, fiili sevk zamanı, teslim alan ve teslim zamanı.
+    //    Sevk durumu KOLON DEĞİL, bu alanlardan türetilir (IrsaliyeSevkDurumu.Hesapla): teslim_tarihi dolu →
+    //    TESLIM_EDILDI, fiili_sevk_tarihi dolu → SEVK_EDILDI, ikisi de boş → TASLAK. Yalnız GIDEN irsaliyede anlamlıdır.
+    [Column("tasiyan_ad"), MaxLength(100)] public string? TasiyanAd { get; set; }
+    [Column("plaka"), MaxLength(20)] public string? Plaka { get; set; }
+    [Column("fiili_sevk_tarihi")] public DateTime? FiiliSevkTarihi { get; set; }
+    [Column("teslim_alan_ad"), MaxLength(150)] public string? TeslimAlanAd { get; set; }
+    [Column("teslim_tarihi")] public DateTime? TeslimTarihi { get; set; }
 
     public const int AzamiLimit = 200;
     public const int VarsayilanLimit = 50;

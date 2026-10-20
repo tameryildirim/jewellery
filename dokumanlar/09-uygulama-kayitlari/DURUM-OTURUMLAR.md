@@ -152,5 +152,26 @@ Başkasının satırını değiştirme/silme yok.
 - **Ses kaydı 2. dinleme + rakip eğitim/belge taraması (20.10):** ses kaydında yeni madde yok (musteri-gorusmesi § J). Rakip
   taraması RAKIP-EGITIM-VE-BELGE-TARAMASI-2026-10-20.md: § 4.1 "hemen yapılabilir" 18 kalem (gişe zimmeti, günlük servet özeti,
   banka PDF/Excel ekstre okuma, hurda pazarlık payı, fiyat teklif fişi, kasa sayım kuralları, canlı fiyat QR…) → kapatma planı sırada.
+- **PAKET-37 (20.10, 8803ce2):** altın pozisyonu kartında "Bugünkü servet" — kasa+banka para birimi bazında (kur: güncel kur
+  kaydı USD/EUR/GBP), altın net pozisyonu × has fiyatı, cari TL/USD/EUR bakiyeleri; kur ya da has fiyatı yoksa ilgili kalem ve
+  toplam NULL + sebep kodu (uydurma yok). Mutasyon kanıtı: cari kalemi toplamdan düşünce test kırmızı. 12.785 test · denetim P-30.
+- **PAKET-42 (20.10):** sevk irsaliyesi VUK alanları (taşıyan, plaka, fiili sevk, teslim alan/zaman — irsaliyeler tablosuna 5 kolon,
+  geçiş IrsaliyeSevkAlanlari; yedek kuyumcu_net-20261020-2024-kdv-zorla-oncesi.sql.gz) + durum makinesi TASLAK→SEVK_EDILDI→
+  TESLIM_EDILDI (atlama 400, sevk sonrası başlık 409, tekrar 409), kâğıt çıktıda sevk satırı, /irsaliyeler detayında "Yola çıktı" /
+  "Teslim edildi" katlanırları, "İrsaliyesiz satışlar" katlanırı (SATIS hareketi ↔ irsaliye satırı hareket bağı; kalemde hareketId).
+  Mutasyon kanıtı: "önce sevk" kapısı kalkınca test kırmızı. SUBE_TRANSFER/ATOLYE türleri ve satıştan "irsaliye oluştur" kısayolu
+  (Faz B) kapsam dışı bırakıldı — ihtiyaç çıkınca.
+- **Y-02 (20.10, rakip taraması):** tezgâh Profesyonel modda "Kısayollar" katlanır satırı (F2/F4/F8/F9/Ctrl K) + kılavuzda tablo.
+  Islemler.razor 1400 satır tavanı için ayrı bileşen (Bilesenler/Fis/FisKisayollari.razor).
+- **Y-11 (20.10, rakip taraması — fiyat teklif fişi):** tezgâhta "Fiyat teklifi ver" = bekletme + KUR KİLİDİ (zorunlu; teklif kilit
+  süresince geçerli, tezgâhtar 60 dk, sahip/müdür 30 güne kadar) → numara TKL-xxxxxxxx (ULID sonu; sıra iddiası yok), geçerlilik =
+  kilit bitişi, döküm /cikti/TEKLIF/{id} ("FİYAT TEKLİFİ", kalemler, kilitli has fiyatı, geçerlilik, "satış değildir; stok ayrılmaz").
+  Bekleyen listesinde teklif satırı geçerlilik/doldu + "Teklifi yazdır"; "Al" aynı kur kilidini tezgâha bağlar; süresi dolan teklif
+  alınmaz (409), dökümde "SÜRESİ DOLMUŞTUR". bekleyen_fisler +3 kolon (geçiş BekleyenFisTeklif). Mutasyon kanıtı: süre kapısı kalkınca
+  test kırmızı. Belge türü 12 → 13.
+- **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
+  zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
+  müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım
+  eşleşmesinde liste adı tezgâhtara gösterilmez) ZATEN SAĞLANIYOR — kapatıldı.
 - Harem veri izni · P-30 kronometreli demo ölçümü (insan)
 

@@ -3,6 +3,7 @@
 @using Kuyumcu.Contracts.Cikti
 @using Kuyumcu.Web.Bilesenler.Grid
 @using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Core.I18n
 @inject ApiIstemci Api
 @inject DilServisi Dil
 @inject OturumServisi Oturum
@@ -86,6 +87,25 @@
             }
         </Katlanir>
     }
+    @* PAKET-42 (20.10): irsaliyesiz satışlar — kapalı gelir (geçmiş kayıtlar katlanır); hata bandı içeride (UX-S28). *@
+    @if (irsaliyesiz is not null || irsaliyesizHata is not null)
+    {
+        <Katlanir Id="irs-irsaliyesiz" Baslik="@SevkSozlugu.IrsaliyesizBaslik(Dil.Dil)" Sayi="@irsaliyesiz?.Toplam">
+            <HataBandi Mesaj="@irsaliyesizHata" Id="irs-irsaliyesiz-hata" />
+            @if (irsaliyesiz is { } iz)
+            {
+                <p class="metin-kucuk metin-soluk" id="irs-irsaliyesiz-aciklama">@SevkSozlugu.IrsaliyesizAciklama(iz.Gun, Dil.Dil)</p>
+                @if (iz.Satirlar.Count == 0) { <BosDurum Mesaj="@SevkSozlugu.IrsaliyesizYok(Dil.Dil)" /> }
+                else
+                {
+                    <Izgara T="IrsaliyesizSevkSatiri" Ekran="irsaliyeler" GridId="irs-irsaliyesiz-liste" Kolonlar="@IrsaliyesizKolonlari"
+                            Ogeler="@iz.Satirlar" SatirId="@(s => $"irs-irsaliyesiz-{s.HareketId}")" Baslik="@SevkSozlugu.IrsaliyesizBaslik(Dil.Dil)"
+                            YapiskanIlkSutun="false" TabloSinif="q10-th-tek" />
+                    @if (iz.SinirDegdi) { <p class="metin-kucuk metin-soluk" id="irs-irsaliyesiz-sinir">@SevkSozlugu.SinirNotu(iz.Satirlar.Count, iz.Toplam, Dil.Dil)</p> }
+                }
+            }
+        </Katlanir>
+    }
 </div>
 
 @* ── Yeni sevk irsaliyesi (çok alanlı form → Cekmece) ── *@
@@ -161,6 +181,15 @@
                 <dt>@M.Yon</dt><dd id="irs-detay-yon">@YonAdi(d.Yon)</dd>
                 <dt>@M.Cari</dt><dd id="irs-detay-cari">@(d.CariAdi ?? "—")</dd>
                 <dt>@M.Durum</dt><dd id="irs-detay-durum"><Rozet Renk="@DurumRengi(d.Durum)">@DurumAdi(d.Durum)</Rozet></dd>
+                @if (d.SevkDurumu is { } sd)
+                {
+                    <dt>@SevkSozlugu.SevkDurumu(Dil.Dil)</dt>
+                    <dd id="irs-detay-sevk">
+                        <Rozet Renk="@SevkRengi(sd)">@SevkSozlugu.DurumAdi(sd, Dil.Dil)</Rozet>
+                        @if (d.FiiliSevkTarihi is { } fst) { <span class="metin-kucuk metin-soluk"> · @Bicim.TarihSaat(fst)@(d.TasiyanAd is { } ta ? " · " + ta : "")@(d.Plaka is { } pl ? " · " + pl : "")</span> }
+                        @if (d.TeslimAlanAd is { } tal) { <span class="metin-kucuk metin-soluk"> · @SevkSozlugu.TeslimAlan(Dil.Dil): @tal@(d.TeslimTarihi is { } tt ? " (" + Bicim.TarihSaat(tt) + ")" : "")</span> }
+                    </dd>
+                }
                 @if (!string.IsNullOrWhiteSpace(d.IptalGerekce))
                 {
                     <dt>@M.IptalGerekce</dt><dd id="irs-detay-iptal-gerekce">@d.IptalGerekce</dd>
@@ -176,6 +205,30 @@
             <Katlanir Id="irs-detay-bilgi" Baslik="@M.BilgiBasligi">
                 <p class="metin-kucuk metin-soluk" id="irs-detay-yasal">@M.YasalNot</p>
             </Katlanir>
+
+            @* PAKET-42: sevk durum makinesi — TASLAK'ta "Yola çıktı", SEVK_EDILDI'de "Teslim edildi"; tek birincil düğme çekmecenin Kaydet'i,
+               bu ikisi ikincil. Tezgâhtar da işaretleyebilir (sunucu [RolGerekli] ile aynı). *@
+            @if (d.Durum != "IPTAL" && d.SevkDurumu == "TASLAK")
+            {
+                <Katlanir Id="irs-sevk" Baslik="@SevkSozlugu.SevkEtBaslik(Dil.Dil)">
+                    <Metin ElemanId="irs-sevk-tasiyan" Etiket="@SevkSozlugu.Tasiyan(Dil.Dil)" EnFazla="@AlanSinirlari.IrsaliyeTasiyanAd"
+                           Deger="@sevkTasiyan" DegerChanged="@(v => sevkTasiyan = v)" />
+                    <Metin ElemanId="irs-sevk-plaka" Etiket="@SevkSozlugu.Plaka(Dil.Dil)" EnFazla="@AlanSinirlari.IrsaliyePlaka"
+                           Deger="@sevkPlaka" DegerChanged="@(v => sevkPlaka = v)" />
+                    <button type="button" class="dugme dugme-ikincil" id="irs-sevk-et" @onclick="SevkEt" disabled="@kaydediliyor">@SevkSozlugu.SevkEt(Dil.Dil)</button>
+                </Katlanir>
+            }
+            else if (d.Durum != "IPTAL" && d.SevkDurumu == "SEVK_EDILDI")
+            {
+                <Katlanir Id="irs-teslim" Baslik="@SevkSozlugu.TeslimEtBaslik(Dil.Dil)">
+                    <Metin ElemanId="irs-teslim-alan" Etiket="@SevkSozlugu.TeslimAlan(Dil.Dil)" EnFazla="@AlanSinirlari.IrsaliyeTeslimAlanAd" Zorunlu="true"
+                           Deger="@teslimAlan" DegerChanged="@(v => teslimAlan = v)" />
+                    <button type="button" class="dugme dugme-ikincil" id="irs-teslim-et" @onclick="TeslimEt"
+                            disabled="@(string.IsNullOrWhiteSpace(teslimAlan) || kaydediliyor)"
+                            aria-disabled="@(string.IsNullOrWhiteSpace(teslimAlan) ? "true" : "false")"
+                            title="@(string.IsNullOrWhiteSpace(teslimAlan) ? SevkSozlugu.TeslimAlanGerekli(Dil.Dil) : null)">@SevkSozlugu.TeslimEt(Dil.Dil)</button>
+                </Katlanir>
+            }
 
             @if (d.Durum != "IPTAL" && YazabilirMi)
             {
@@ -335,7 +388,54 @@
         // UX-S28: hata "kayıt yok"a çevrilmez.
         catch (Exception ex) when (ex is ApiHata or HttpRequestException) { hata = ex.Message; }
         yukleniyor = false;
+        // PAKET-42: irsaliyesiz satışlar ayrı istek; hatası kendi bandında (liste korunur, P-11).
+        irsaliyesizHata = null;
+        try { irsaliyesiz = await Api.GetAsync<IrsaliyesizSevkListesi>("/irsaliyeler/irsaliyesiz-sevk?gun=30"); }
+        catch (Exception ex) when (ex is ApiHata or HttpRequestException) { irsaliyesizHata = ex.Message; }
     }
+
+    // ═══ PAKET-42 — sevk durum makinesi ═══════════════════════════════════
+    private IrsaliyesizSevkListesi? irsaliyesiz;
+    private string? irsaliyesizHata, sevkTasiyan, sevkPlaka, teslimAlan;
+
+    private static string SevkRengi(string d) => d switch { "TESLIM_EDILDI" => "yesil", "SEVK_EDILDI" => "amber", _ => "gri" };
+
+    private async Task SevkEt()
+    {
+        if (detay is not { } d || kaydediliyor) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            DetayKur(await Api.PostAsync<IrsaliyeDetay>($"/irsaliyeler/{d.Id}/sevk-et", new { tasiyanAd = Bos(sevkTasiyan), plaka = Bos(sevkPlaka) }));
+            sevkTasiyan = null; sevkPlaka = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { detayHata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task TeslimEt()
+    {
+        if (detay is not { } d || string.IsNullOrWhiteSpace(teslimAlan) || kaydediliyor) return;
+        kaydediliyor = true; detayHata = null;
+        try
+        {
+            DetayKur(await Api.PostAsync<IrsaliyeDetay>($"/irsaliyeler/{d.Id}/teslim-edildi", new { teslimAlanAd = teslimAlan!.Trim() }));
+            teslimAlan = null;
+            await Yukle();
+        }
+        catch (ApiHata ex) { detayHata = ex.Message; }
+        finally { kaydediliyor = false; }
+    }
+
+    private IReadOnlyList<IzgaraKolonu<IrsaliyesizSevkSatiri>> IrsaliyesizKolonlari =>
+    [
+        new() { Anahtar = "tarih", Baslik = M.Tarih, ZorunluGorunur = true, Deger = s => Bicim.TarihSaat(s.Tarih) },
+        new() { Anahtar = "musteri", Baslik = SevkSozlugu.Musteri(Dil.Dil), ZorunluGorunur = true, Deger = s => s.CariAdi ?? "—" },
+        new() { Anahtar = "urun", Baslik = SevkSozlugu.Urun(Dil.Dil), Deger = s => s.UrunAdi ?? "—" },
+        new() { Anahtar = "has", Baslik = SevkSozlugu.Has(Dil.Dil), Tur = IzgaraHucreTuru.Has, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = s => s.HasGrami },
+        new() { Anahtar = "tutar", Baslik = Dil.T.Ortak.Tutar, Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY", BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = s => s.TlTutari },
+    ];
 
     // ═══ YENİ SEVK ═══════════════════════════════════════════════════════════
     private bool formAcik, formDenendi;

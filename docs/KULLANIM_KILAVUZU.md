@@ -180,6 +180,18 @@ Girişten sonra açılan ana ekrandır. Günün satış ve alış toplamları, h
 
 **Fişi bekletme:** müşteri karar verirken sıradaki müşteriye geçmek için **Beklet**'e basın; fiş kaydedilmeden kenara alınır, tezgâh boşalır. Bekletme stok, kasa ve cariye hiçbir şey yazmaz. Fiş boşken **Bekleyen fişler (sayı)** düğmesi görünür; listeden **Al** ile fiş kalemleri ve müşterisiyle tezgâha geri gelir (başka bir kasadan da alınabilir), **Sil** ile atılır. Geri alınan fiş normal **Kaydet** ile kaydedilir.
 
+**Fiyat teklifi:** müşteri "düşüneyim" derse **Fiyat teklifi ver**'e basın. Önce kur kilitlenir (teklif, kilit süresi boyunca geçerlidir; tezgâhtar en çok 1 saat, sahip/müdür 30 güne kadar); program numaralı **Fiyat teklifi** dökümünü açar, müşteriye verilir. Teklif satış değildir, stok ayrılmaz. Müşteri dönünce bekleyen fişlerden **Al** ile tezgâha alınır; aynı kilitli kur kullanılır. Süresi dolan teklif tezgâha alınmaz; yeni teklif verilir.
+
+**Kısayol tuşları (Profesyonel mod):** fiş kartının başlığındaki **Kısayollar** satırı açılınca listelenir.
+
+| Tuş | Ne yapar |
+|---|---|
+| **F2** | Ürün / barkod kutusuna gider ve ürün listesini açar |
+| **F4** | Müşteri kutusuna gider |
+| **F8** | Ödeme türüne gider (parçalı ödemede "Tek ödemeye dön") |
+| **F9** | Kaydet (fiş kilitliyse hiçbir şey göndermez; kilit sebebi düğmenin altında yazar) |
+| **Ctrl K** | Üst çubuktaki aramaya gider |
+
 ### Alış, hurda alışı ve işçilik {#alis}
 
 - **Alış:** müşteriden eski altın alımı. Ayar ve gram girilir, tutar has fiyatından hesaplanır. Tedarikçiden gelen ürünü stoğa almak için **Satın alma** ekranındaki **Mal geldi** düğmesini kullanın (bkz. [Satın alma](#satinalma)).

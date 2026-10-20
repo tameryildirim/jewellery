@@ -215,6 +215,12 @@ public static class AlanSinirlari
     public const int TedarikAciklama = 500;
     /// <summary>PAKET EKSIK-B1-SATINALMA: sipariş / irsaliye kalem tanımı (varchar(200)).</summary>
     public const int TedarikKalemTanim = 200;
+    /// <summary>PAKET-42: sevk irsaliyesi taşıyan adı (irsaliyeler.tasiyan_ad varchar(100)).</summary>
+    public const int IrsaliyeTasiyanAd = 100;
+    /// <summary>PAKET-42: araç plakası (irsaliyeler.plaka varchar(20)).</summary>
+    public const int IrsaliyePlaka = 20;
+    /// <summary>PAKET-42: teslim alan adı (irsaliyeler.teslim_alan_ad varchar(150)).</summary>
+    public const int IrsaliyeTeslimAlanAd = 150;
     /// <summary>Panoda ürün etiketi (PanoAyarPatchDto 40).</summary>
     public const int PanoEtiket = 40;
     /// <summary>Satış/fiş/diğer işlem açıklaması (DTO MaxLength 500).</summary>

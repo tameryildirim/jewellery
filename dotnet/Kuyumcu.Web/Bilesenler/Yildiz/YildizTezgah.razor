@@ -339,6 +339,10 @@
                         {
                             <li class="yz-bekleyen-satir" id="@($"yildiz-bekleyen-{bf.Id}")">
                                 <span class="yz-bekleyen-metin"><span class="yz-bekleyen-ad">@bf.Etiket</span><span class="yz-s">@bf.Ayrinti</span></span>
+                                @if (bf.TeklifId is { } tid)
+                                {
+                                    <a class="yz-b2" id="@($"yildiz-bekleyen-yazdir-{bf.Id}")" href="@($"/cikti/TEKLIF/{tid}?donus=/islemler")">@TeklifSozlugu.Yazdir(Dil.Dil)</a>
+                                }
                                 <button type="button" class="yz-b2" id="@($"yildiz-bekleyen-al-{bf.Id}")" @onclick="() => B.BekleyenAl.InvokeAsync(bf.Id)">@D1Sozlugu.Al(Dil.Dil).BekleyenAl</button>
                                 <button type="button" class="yz-b2 yz-kotu" id="@($"yildiz-bekleyen-sil-{bf.Id}")" @onclick="() => B.BekleyenSil.InvokeAsync(bf.Id)">@D1Sozlugu.Al(Dil.Dil).BekleyenSil</button>
                             </li>
@@ -350,6 +354,8 @@
                 @if (B.BekletGorunur)
                 {
                     <button type="button" class="yz-b2" id="yildiz-tezgah-beklet" disabled="@B.Kaydediliyor" @onclick="B.Beklet">@D1Sozlugu.Al(Dil.Dil).Beklet</button>
+                    @* Y-11: fiyat teklifi — kur kilidiyle süreli, numaralı döküm *@
+                    <button type="button" class="yz-b2" id="yildiz-tezgah-teklif" disabled="@B.Kaydediliyor" @onclick="B.TeklifVer">@TeklifSozlugu.TeklifVer(Dil.Dil)</button>
                 }
                 @if (B.FisDolu)
                 {

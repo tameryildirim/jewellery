@@ -38,7 +38,7 @@ public sealed record MalKabulSonucu(
 public sealed record IrsaliyeSatiri(
     string Id, string No, string Yon, string Durum, string CariId, string? CariAdi, string SubeId,
     DateTime Tarih, string? FaturaId, string? SatinalmaSiparisId, string? Aciklama, string? HesapKodu,
-    bool Bagsiz, int KalemSayisi);
+    bool Bagsiz, int KalemSayisi, string? SevkDurumu = null);
 
 public sealed record IrsaliyeListesi(
     List<IrsaliyeSatiri> Satirlar, int Toplam, int BagsizToplam, int Limit, int AzamiLimit, bool SinirDegdi);
@@ -50,7 +50,14 @@ public sealed record IrsaliyeDetay(
     string Id, string No, string Yon, string Durum, string CariId, string? CariAdi, string SubeId, DateTime Tarih,
     string? SatinalmaSiparisId, string? FaturaId, string? Aciklama, string? HesapKodu, string? IptalGerekce,
     DateTime Olusturuldu, DateTime Guncellendi, List<IrsaliyeKalemVeri> Kalemler,
-    bool Bagsiz, bool Duzenlenebilir, string? KilitSebebi);
+    bool Bagsiz, bool Duzenlenebilir, string? KilitSebebi,
+    // PAKET-42 (20.10): sevk alanları — yalnız GIDEN'de; SevkDurumu TASLAK | SEVK_EDILDI | TESLIM_EDILDI (GELEN'de null).
+    string? SevkDurumu = null, string? TasiyanAd = null, string? Plaka = null, DateTime? FiiliSevkTarihi = null,
+    string? TeslimAlanAd = null, DateTime? TeslimTarihi = null);
+
+/// <summary>PAKET-42 — irsaliyesiz sevk: son N günde mal çıkışı doğuran SATIS hareketi, hiçbir irsaliye satırına bağlı değil.</summary>
+public sealed record IrsaliyesizSevkSatiri(string HareketId, DateTime Tarih, string? CariId, string? CariAdi, string? UrunAdi, decimal HasGrami, decimal TlTutari);
+public sealed record IrsaliyesizSevkListesi(List<IrsaliyesizSevkSatiri> Satirlar, int Toplam, int Gun, bool SinirDegdi);
 
 /// <summary>
 /// Sipariş / sevk formunun bir satırı (ekranda düzenlenen DEĞİŞKEN model — sunucuya

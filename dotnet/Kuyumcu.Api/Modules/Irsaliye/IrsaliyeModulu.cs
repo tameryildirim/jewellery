@@ -5,6 +5,7 @@ using Kuyumcu.Api.Data;
 using Kuyumcu.Api.Modules.Satinalma;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Kuyumcu.Contracts.Sayfalar.SatinAlma;
 using Microsoft.EntityFrameworkCore;
 using IrsaliyeVarligi = Kuyumcu.Api.Data.Irsaliye;
 
@@ -34,6 +35,8 @@ public sealed class IrsaliyeKalemDto
     public string? UrunId { get; set; }
     public string? Tanim { get; set; }
     public decimal? Adet { get; set; }
+    /// <summary>PAKET-42: satırın dayandığı SATIS hareketi (isteğe bağlı) — "irsaliyesiz sevk" listesi bu bağla düşer.</summary>
+    public string? HareketId { get; set; }
 }
 
 public sealed class IrsaliyeOlusturDto
@@ -47,6 +50,22 @@ public sealed class IrsaliyeOlusturDto
     public string? Aciklama { get; set; }
     public string? HesapKodu { get; set; }
     public List<IrsaliyeKalemDto>? Kalemler { get; set; }
+}
+
+/// <summary>PAKET-42 — POST /irsaliyeler/{id}/sevk-et gövdesi (TASLAK → SEVK_EDILDI).</summary>
+public sealed class IrsaliyeSevkDto
+{
+    public string? TasiyanAd { get; set; }
+    public string? Plaka { get; set; }
+    /// <summary>Boşsa şimdi.</summary>
+    public DateTime? FiiliSevkTarihi { get; set; }
+}
+
+/// <summary>PAKET-42 — POST /irsaliyeler/{id}/teslim-edildi gövdesi (SEVK_EDILDI → TESLIM_EDILDI).</summary>
+public sealed class IrsaliyeTeslimDto
+{
+    public string? TeslimAlanAd { get; set; }
+    public DateTime? TeslimTarihi { get; set; }
 }
 
 public sealed class IrsaliyeFaturaBagiDto
@@ -115,7 +134,12 @@ public sealed class IrsaliyeServisi(
                     .Where(u => u.Id == urunId && u.TenantId == islem.TenantId).Select(u => u.Birim).FirstOrDefaultAsync();
                 Urun.UrunAdetKapisi.Dogrula(birim, adet, "kalemler", $"Kalem {i + 1}");
             }
-            hazir.Add(new IrsaliyeKalemi { UrunId = urunId, Tanim = tanim, Adet = adet, Sira = i });
+            // PAKET-42: satır bir SATIS hareketine bağlanabilir (irsaliyesiz sevk listesi bu bağla düşer); yabancı/olmayan hareket 400.
+            string? hareketId = string.IsNullOrWhiteSpace(k.HareketId) ? null : k.HareketId.Trim();
+            if (hareketId is not null && !await db.Hareketler.AsNoTracking()
+                    .AnyAsync(h => h.Id == hareketId && h.TenantId == islem.TenantId && h.Tur == "SATIS"))
+                throw new BadRequestException($"Kalem {i + 1}: satış hareketi bulunamadı").AlanIle("kalemler");
+            hazir.Add(new IrsaliyeKalemi { UrunId = urunId, Tanim = tanim, Adet = adet, Sira = i, HareketId = hareketId });
         }
 
         var now = DateTime.UtcNow;
@@ -153,7 +177,7 @@ public sealed class IrsaliyeServisi(
                         TenantId = islem.TenantId,
                         IrsaliyeId = id,
                         UrunId = k.UrunId, Tanim = k.Tanim, Adet = k.Adet,
-                        HareketId = null, Sira = k.Sira, Olusturuldu = now,
+                        HareketId = k.HareketId, Sira = k.Sira, Olusturuldu = now,
                     });
 
                 denetim.YazmaKaydet(islem, Varlik, id, $"sevk irsaliyesi {no} açıldı · {hazir.Count} kalem");
@@ -206,6 +230,10 @@ public sealed class IrsaliyeServisi(
                 i.FaturaId, i.SatinalmaSiparisId, i.Aciklama, i.HesapKodu,
                 bagsiz = i.FaturaId == null && i.Durum == IrsaliyeDurumu.Acik,
                 kalemSayisi = db.IrsaliyeKalemleri.Count(k => k.IrsaliyeId == i.Id),
+                // PAKET-42: sevk durumu türetilir (SQL'e çevrilebilir üçlü); GELEN'de null.
+                sevkDurumu = i.Yon != IrsaliyeYonu.Giden ? null
+                    : i.TeslimTarihi != null ? IrsaliyeSevkDurumu.TeslimEdildi
+                    : i.FiiliSevkTarihi != null ? IrsaliyeSevkDurumu.SevkEdildi : IrsaliyeSevkDurumu.Taslak,
                 // PAKET EKSIK-B1-SATINALMA (UX-S21): ad sunucudan — ekran kimlik basmaz, ikinci istek atmaz.
                 cariAdi = db.Cariler.Where(c => c.Id == i.CariId && c.TenantId == i.TenantId).Select(c => c.Ad).FirstOrDefault(),
             })
@@ -254,10 +282,12 @@ public sealed class IrsaliyeServisi(
             i.IptalGerekce, i.Olusturuldu, i.Guncellendi,
             kalemler,
             bagsiz = i.FaturaId is null && i.Durum == IrsaliyeDurumu.Acik,
-            duzenlenebilir = i.Durum == IrsaliyeDurumu.Acik,
+            duzenlenebilir = i.Durum == IrsaliyeDurumu.Acik && !SevkEdilmis(i),
+            // PAKET-42
+            sevkDurumu = IrsaliyeSevkDurumu.Hesapla(i), i.TasiyanAd, i.Plaka, i.FiiliSevkTarihi, i.TeslimAlanAd, i.TeslimTarihi,
             kilitSebebi = i.Durum switch
             {
-                IrsaliyeDurumu.Acik => null,
+                IrsaliyeDurumu.Acik when SevkEdilmis(i) => SevkKilidi,
                 IrsaliyeDurumu.Faturalandi =>
                     "İrsaliye bir faturaya bağlı; açıklama/hesap kodu dışında değişiklik için önce bağı kaldırın.",
                 _ => "İrsaliye iptal edildi; düzenlenemez. «İrsaliyeyi aktife al» ile yeniden açın ya da yeni irsaliye açın.",
@@ -273,6 +303,7 @@ public sealed class IrsaliyeServisi(
         var i = await Bul(id, islem.TenantId);
         if (i.Durum == IrsaliyeDurumu.Iptal)
             throw new ConflictException("İptal edilmiş irsaliye düzenlenemez. Yeni irsaliye açın.");
+        if (SevkEdilmis(i)) throw new ConflictException(SevkKilidi);   // PAKET-42: belge basıldı, başlık değişmez
 
         var degisenler = new List<string>();
 
@@ -414,6 +445,68 @@ public sealed class IrsaliyeServisi(
 
     // ─── Bağsız irsaliye raporu (DoD) ────────────────────────────────────────
 
+    // ─── PAKET-42 (20.10): sevk durum makinesi ───────────────────────────────
+    private const string SevkKilidi = "İrsaliye sevk edildi; belge basıldığı için başlık ve kalemler değişmez. Düzeltme = gerekçeli iptal + yeni irsaliye.";
+    private static bool SevkEdilmis(Data.Irsaliye i) => i.Yon == IrsaliyeYonu.Giden && i.FiiliSevkTarihi is not null;
+
+    /// <summary>TASLAK → SEVK_EDILDI: taşıyan/plaka/fiili sevk zamanı yazılır; yalnız GIDEN ve iptal olmayan irsaliye.</summary>
+    public async Task<object> SevkEt(string id, IrsaliyeSevkDto? dto, AktifKullanici islem)
+    {
+        var i = await Bul(id, islem.TenantId);
+        if (i.Yon != IrsaliyeYonu.Giden) throw new BadRequestException("Mal kabul irsaliyesi sevk edilmez; sevk yalnız giden irsaliyede.");
+        if (i.Durum == IrsaliyeDurumu.Iptal) throw new ConflictException("İptal edilmiş irsaliye sevk edilemez.");
+        if (i.FiiliSevkTarihi is not null) throw new ConflictException("İrsaliye zaten sevk edildi.");
+        var sevk = dto?.FiiliSevkTarihi ?? DateTime.UtcNow;
+        if (sevk > DateTime.UtcNow.AddMinutes(5)) throw new BadRequestException("Fiili sevk zamanı gelecekte olamaz").AlanIle("fiiliSevkTarihi");
+        i.TasiyanAd = SatinalmaServisi.Kirp(dto?.TasiyanAd, Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IrsaliyeTasiyanAd, "tasiyanAd");
+        i.Plaka = SatinalmaServisi.Kirp(dto?.Plaka, Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IrsaliyePlaka, "plaka")?.ToUpperInvariant().Replace(" ", "");
+        i.FiiliSevkTarihi = sevk;
+        i.Guncellendi = DateTime.UtcNow;
+        denetim.YazmaKaydet(islem, Varlik, i.Id, $"irsaliye {i.No} sevk edildi · taşıyan {i.TasiyanAd ?? "—"} · plaka {i.Plaka ?? "—"}");
+        await db.SaveChangesAsync();
+        return await Detay(id, islem);
+    }
+
+    /// <summary>SEVK_EDILDI → TESLIM_EDILDI: teslim alan adı zorunlu; TASLAK'tan doğrudan teslim 400 (makine atlanmaz).</summary>
+    public async Task<object> TeslimEdildi(string id, IrsaliyeTeslimDto? dto, AktifKullanici islem)
+    {
+        var i = await Bul(id, islem.TenantId);
+        if (i.Durum == IrsaliyeDurumu.Iptal) throw new ConflictException("İptal edilmiş irsaliye teslim edilemez.");
+        if (!SevkEdilmis(i)) throw new BadRequestException("Önce «Sevk edildi» işaretlenir; taslak irsaliye doğrudan teslim edilemez.");
+        if (i.TeslimTarihi is not null) throw new ConflictException("İrsaliye zaten teslim edildi.");
+        var ad = SatinalmaServisi.Kirp(dto?.TeslimAlanAd, Kuyumcu.Core.Domain.Girdi.AlanSinirlari.IrsaliyeTeslimAlanAd, "teslimAlanAd");
+        if (string.IsNullOrWhiteSpace(ad)) throw new BadRequestException("Teslim alanın adı yazılmalı").AlanIle("teslimAlanAd");
+        var teslim = dto?.TeslimTarihi ?? DateTime.UtcNow;
+        if (teslim < i.FiiliSevkTarihi) throw new BadRequestException("Teslim zamanı sevk zamanından önce olamaz").AlanIle("teslimTarihi");
+        i.TeslimAlanAd = ad; i.TeslimTarihi = teslim; i.Guncellendi = DateTime.UtcNow;
+        denetim.YazmaKaydet(islem, Varlik, i.Id, $"irsaliye {i.No} teslim edildi · teslim alan {ad}");
+        await db.SaveChangesAsync();
+        return await Detay(id, islem);
+    }
+
+    /// <summary>
+    /// İrsaliyesiz sevk: son <paramref name="gun"/> günde mal çıkışı doğuran SATIS hareketleri içinde hiçbir irsaliye
+    /// satırına (irsaliye_kalemleri.hareket_id) bağlı olmayanlar. Storno ve stornolanmış satırlar dışarıda. En çok 200.
+    /// </summary>
+    public async Task<IrsaliyesizSevkListesi> IrsaliyesizSevk(int? gun, AktifKullanici islem)
+    {
+        var g = Math.Clamp(gun ?? 30, 1, 365);
+        var baslangic = DateTime.UtcNow.AddDays(-g);
+        var t = islem.TenantId;
+        var sorgu = db.Hareketler.AsNoTracking()
+            .Where(h => h.TenantId == t && h.Tur == "SATIS" && h.Tarih >= baslangic && h.StornoKaynakId == null
+                     && !db.Hareketler.Any(s => s.TenantId == t && s.StornoKaynakId == h.Id)
+                     && !db.IrsaliyeKalemleri.Any(k => k.TenantId == t && k.HareketId == h.Id));
+        var toplam = await sorgu.CountAsync();
+        var satirlar = await sorgu.OrderByDescending(h => h.Tarih).Take(200)
+            .Select(h => new IrsaliyesizSevkSatiri(h.Id, h.Tarih, h.CariId,
+                db.Cariler.Where(c => c.Id == h.CariId && c.TenantId == t).Select(c => c.Ad).FirstOrDefault(),
+                db.Urunler.Where(u => u.Id == h.UrunId && u.TenantId == t).Select(u => u.Ad).FirstOrDefault(),
+                h.HasGrami, h.TlTutari)).ToListAsync();
+        await denetim.ListeOkumaKaydet(islem, Varlik, satirlar.Count, "irsaliyesiz sevk listesi");
+        return new IrsaliyesizSevkListesi(satirlar, toplam, g, toplam > satirlar.Count);
+    }
+
     public async Task<object> Bagsiz(int? gunEsigi, AktifKullanici islem)
     {
         var esik = Math.Clamp(gunEsigi ?? 0, 0, 3650);
@@ -513,6 +606,20 @@ public sealed class IrsaliyeController(IrsaliyeServisi servis) : ControllerBase
     [HttpPost("{id}/fatura-bagini-kaldir")]
     [RolGerekli("SAHIP", "MUDUR")]
     public Task<object> BagiKaldir(string id) => servis.BagiKaldir(id, Islem);
+
+    /// <summary>GET /api/v1/irsaliyeler/irsaliyesiz-sevk?gun=30 — PAKET-42: irsaliyesiz satış çıkışları</summary>
+    [HttpGet("irsaliyesiz-sevk")]
+    public Task<IrsaliyesizSevkListesi> IrsaliyesizSevk([FromQuery] int? gun) => servis.IrsaliyesizSevk(gun, Islem);
+
+    /// <summary>POST /api/v1/irsaliyeler/{id}/sevk-et — PAKET-42: TASLAK → SEVK_EDILDI (tezgâhtar da işaretler)</summary>
+    [HttpPost("{id}/sevk-et")]
+    [RolGerekli("SAHIP", "MUDUR", "MUHASEBE", "TEZGAHTAR")]
+    public Task<object> SevkEt(string id, [FromBody] IrsaliyeSevkDto? dto) => servis.SevkEt(id, dto, Islem);
+
+    /// <summary>POST /api/v1/irsaliyeler/{id}/teslim-edildi — PAKET-42: SEVK_EDILDI → TESLIM_EDILDI</summary>
+    [HttpPost("{id}/teslim-edildi")]
+    [RolGerekli("SAHIP", "MUDUR", "MUHASEBE", "TEZGAHTAR")]
+    public Task<object> TeslimEdildi(string id, [FromBody] IrsaliyeTeslimDto? dto) => servis.TeslimEdildi(id, dto, Islem);
 
     /// <summary>POST /api/v1/irsaliyeler/{id}/aktife-al — iptalden geri dönüş</summary>
     [HttpPost("{id}/aktife-al")]

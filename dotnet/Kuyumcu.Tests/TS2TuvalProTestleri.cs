@@ -579,4 +579,32 @@ public sealed class TS2TuvalProTestleri : BunitContext
         var e = Ekran();
         Assert.Equal(FisDigerSozlugu.Tr.MenuAc + " ▾", e.Find("#islem-diger-ac .islem-diger-etiket").TextContent.Trim());
     }
+
+    // ── Y-02 (20.10): ekranda kısayol yardımı — pro modda katlanır kapalı, basit modda yok; eşleme KisayolHedefi ile aynı ──
+    [Fact]
+    public void Kisayol_yardimi_pro_modda_katlanir_gelir_basit_modda_cizilmez()
+    {
+        var e = Ekran();
+        var d = e.Find("#islem-kisayollar");
+        Assert.False(d.HasAttribute("open"));                       // zorunlu önce: kapalı gelir
+        var liste = e.Find("#islem-kisayollar-liste").TextContent;
+        foreach (var tus in new[] { "F2", "F4", "F8", "F9", "Ctrl K" }) Assert.Contains(tus, liste);
+        Assert.Contains("kaydet", liste);
+
+        var basit = Ekran(ArayuzModuServisi.Basit);
+        Assert.Empty(basit.FindAll("#islem-kisayollar"));
+    }
+
+    // ── Y-11 (20.10): fiyat teklifi — kur kilidi yokken teklif verilmez (POST yok), süre seçici açılır ──
+    [Fact]
+    public void Teklif_ver_kur_kilidi_yokken_POST_atmaz_kilit_ister()
+    {
+        var e = KalemliPro();
+        e.WaitForElement("#yildiz-tezgah-teklif");
+        e.Find("#yildiz-tezgah-teklif").Click();
+        e.WaitForAssertion(() => Assert.Contains("kilit", e.Find("#yildiz-tezgah-bekleyen-not").TextContent, StringComparison.OrdinalIgnoreCase));
+        Assert.False(Istendi("/bekleyen-fisler?teklif"));
+        lock (istekler) Assert.DoesNotContain(istekler, i => i.Metot == "POST" && i.Yol.Contains("/bekleyen-fisler"));
+        Assert.NotEmpty(e.FindAll("#yildiz-kur-kilidi-sureler"));   // süre seçici açıldı
+    }
 }

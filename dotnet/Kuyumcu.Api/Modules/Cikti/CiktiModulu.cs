@@ -58,6 +58,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.GarantiKarti => "islem",   // D1-13 — satış fişiyle aynı kapı
         BelgeTurleri.OdemePlani => "cari",      // D1-06 — ödeme planı ucuyla aynı kapı
         BelgeTurleri.UyumRaporu => "uyum",      // D1-18 — + rol kapısı (sahip/müdür)
+        BelgeTurleri.Teklif => "islem",         // Y-11 — tezgâhın bekletme ucuyla aynı kapı
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -91,6 +92,7 @@ public sealed class CiktiServisi(
             BelgeTurleri.GarantiKarti => await GarantiKartiBelgesi(id, islem, iptal),
             BelgeTurleri.OdemePlani => await OdemePlaniBelgesi(id, islem, iptal),
             BelgeTurleri.UyumRaporu => await UyumRaporuBelgesi(id, islem, iptal),
+            BelgeTurleri.Teklif => await TeklifBelgesi(id, islem, iptal),
             _ => await HareketBelgesi(tur, id, islem, iptal),
         };
 
@@ -418,7 +420,18 @@ public sealed class CiktiServisi(
         var teslimAdresi = gelen ? duzenleyen.Adres : cari?.Adres;
         // SATINALMA-EKRAN-2: adres yoksa satır HİÇ basılmaz (kâğıda yönerge cümlesi yazılmaz).
         var adresNotu = string.IsNullOrWhiteSpace(teslimAdresi) ? null : "Teslim adresi: " + teslimAdresi.Trim();
-        var not = string.Join(" · ", new[] { adresNotu, i.Aciklama, faturaNotu }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        // PAKET-42: VUK sevk bilgileri kâğıda — yalnız dolu olanlar (boş alan için yönerge cümlesi yazılmaz).
+        string? sevkNotu = null;
+        if (!gelen)
+        {
+            var parcalar = new List<string>();
+            if (!string.IsNullOrWhiteSpace(i.TasiyanAd)) parcalar.Add("Taşıyan: " + i.TasiyanAd);
+            if (!string.IsNullOrWhiteSpace(i.Plaka)) parcalar.Add("Plaka: " + i.Plaka);
+            if (i.FiiliSevkTarihi is { } fst) parcalar.Add("Fiili sevk: " + Zaman.UtcdenYerele(fst).ToString("dd.MM.yyyy HH:mm"));
+            if (!string.IsNullOrWhiteSpace(i.TeslimAlanAd)) parcalar.Add("Teslim alan: " + i.TeslimAlanAd + (i.TeslimTarihi is { } tt ? " (" + Zaman.UtcdenYerele(tt).ToString("dd.MM.yyyy HH:mm") + ")" : ""));
+            if (parcalar.Count > 0) sevkNotu = string.Join(" · ", parcalar);
+        }
+        var not = string.Join(" · ", new[] { adresNotu, sevkNotu, i.Aciklama, faturaNotu }.Where(x => !string.IsNullOrWhiteSpace(x)));
         return new OrtakBelge(
             Tur: BelgeTurleri.Irsaliye,
             BelgeAdi: gelen ? "MAL KABUL İRSALİYESİ" : "SEVK İRSALİYESİ",
@@ -484,6 +497,49 @@ public sealed class CiktiServisi(
             Not: OdemePlaniMetni,
             Uyari: null,
             BelgeNoKayitKimligi: true);
+    }
+
+    // ── Y-11 (20.10) — fiyat teklif fişi: bekletilen fişin kur kilidiyle süreli dökümü ──────────────────
+    public const string TeklifMetni = "Bu teklif yukarıdaki tarihe kadar, yazılı has fiyatıyla geçerlidir; süre dolunca fiyat güncel kurla yeniden hesaplanır. Teklif satış değildir; stok ayrılmaz.";
+
+    private async Task<OrtakBelge> TeklifBelgesi(string id, AktifKullanici islem, CancellationToken iptal)
+    {
+        var b = await db.BekleyenFisler.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.TenantId == islem.TenantId && x.TeklifNo != null, iptal)
+            ?? throw new NotFoundException("Fiyat teklifi bulunamadı");
+        var ic = System.Text.Json.JsonSerializer.Deserialize<Kuyumcu.Contracts.Sayfalar.Islemler.BekleyenFisIcerik>(b.Icerik, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))
+            ?? throw new BadRequestException("Teklif içeriği okunamadı");
+        var cari = b.CariId is null ? null : await db.Cariler.AsNoTracking().FirstOrDefaultAsync(c => c.Id == b.CariId && c.TenantId == islem.TenantId, iptal);
+        decimal? hasFiyati = b.KurKilidiId is null ? null : await (
+            from k in db.KurKilitleri.AsNoTracking().Where(k => k.Id == b.KurKilidiId && k.TenantId == islem.TenantId)
+            join s in db.KurSnapshots.AsNoTracking() on k.KurSnapshotId equals s.Id
+            select (decimal?)s.AltinHasFiyati).FirstOrDefaultAsync(iptal);
+        var satirlar = ic.Kalemler.Select((k, i) =>
+        {
+            var brut = Math.Round(k.Adet * k.BirimFiyat, 2, MidpointRounding.AwayFromZero);
+            var net = k.Hediye ? 0m : Math.Round(brut * (1m - k.SatirIskontoYuzde / 100m), 2, MidpointRounding.AwayFromZero);
+            return new CiktiSatir([$"{i + 1}", k.UrunAdi + (k.Hediye ? " (hediye)" : ""), Sayi(k.Adet, 3), Sayi(k.BirimFiyat, 2),
+                k.SatirIskontoYuzde > 0m ? "%" + Sayi(k.SatirIskontoYuzde, 2) : "", Sayi(net, 2)], ParaBirimi: "TRY");
+        }).ToList();
+        var not = $"Geçerlilik: {Zaman.UtcdenYerele(b.TeklifBitis!.Value):dd.MM.yyyy HH:mm}"
+            + (hasFiyati is { } hf ? $" · Has fiyatı (kilitli): {Sayi(hf, 2)} TL/g" : "")
+            + (ic.FisIskontoYuzde is > 0m ? $" · Fiş indirimi %{Sayi(ic.FisIskontoYuzde.Value, 2)}" : "")
+            + (string.IsNullOrWhiteSpace(ic.Aciklama) ? "" : " · " + ic.Aciklama)
+            + " · " + TeklifMetni;
+        return new OrtakBelge(
+            Tur: BelgeTurleri.Teklif,
+            BelgeAdi: BelgeAdi(BelgeTurleri.Teklif),
+            BelgeNo: b.TeklifNo!,
+            Dayanak: null,
+            DuzenlemeTarihi: b.Olusturuldu,
+            Duzenleyen: await Kimlik(islem.TenantId, islem.SubeId, iptal),
+            Karsi: cari is null ? null : new CiktiTaraf(CariTarafEtiketi(cari.Tur), cari.Ad, cari.VergiNo, cari.Adres, cari.Telefon),
+            Bolumler: [new CiktiBolum("Kalemler", ["Sıra", "Ürün", "Adet", "Birim fiyat", "İndirim", "Tutar"], satirlar, null,
+                [SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Metin, SutunBicimi.Para, SutunBicimi.Metin, SutunBicimi.Para])],
+            Tutarlar: [new CiktiTutar("Teklif toplamı", b.ToplamTl, "TRY", Toplam: true)],
+            ImzaBasliklari: ImzaBasliklari(BelgeTurleri.Teklif),
+            Not: not,
+            Uyari: b.TeklifBitis <= DateTime.UtcNow ? "BU TEKLİFİN SÜRESİ DOLMUŞTUR — fiyatlar geçerli değildir." : null,
+            BelgeNoKayitKimligi: false);
     }
 
     /// <summary>D1-18 — dönemlik uyum raporu: kimlik tespiti, ŞİB, yaptırım listesi, hassas kayıt erişimi (yalnız sayılar).</summary>
@@ -965,6 +1021,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.GarantiKarti => "ÜRÜN BELGESİ",
         BelgeTurleri.OdemePlani => "ÖDEME PLANI",
         BelgeTurleri.UyumRaporu => "UYUM RAPORU",
+        BelgeTurleri.Teklif => "FİYAT TEKLİFİ",   // Y-11
         _ => throw new BadRequestException($"Bilinmeyen belge türü: {tur}"),
     };
 
@@ -975,6 +1032,7 @@ public sealed class CiktiServisi(
         BelgeTurleri.EmanetTeslim => ["Teslim eden", "Teslim alan"],
         BelgeTurleri.CariEkstre => ["Düzenleyen"],
         BelgeTurleri.Irsaliye => ["Teslim eden", "Teslim alan"],
+        BelgeTurleri.Teklif => ["Teklifi veren", "Müşteri"],   // Y-11
         BelgeTurleri.Fatura => ["Düzenleyen", "Teslim alan"],
         BelgeTurleri.CariMutabakat => ["Düzenleyen (kaşe / imza)", "Müşteri (kaşe / imza)"],
         BelgeTurleri.KvkkAydinlatma => ["Müşteri (ad soyad / imza)"],

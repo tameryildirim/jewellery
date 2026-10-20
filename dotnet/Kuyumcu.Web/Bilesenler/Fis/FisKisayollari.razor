@@ -1,0 +1,10 @@
+@using Kuyumcu.Core.I18n
+@inject DilServisi Dil
+
+@* Y-02 (20.10, rakip taraması): tezgâh kısayol yardımı — Profesyonel modda fiş kartının başlığında katlanır KAPALI satır
+   (zorunlu önce). Tuş eşlemesi Islemler.Pro.cs KisayolHedefi ile AYNI; burada yalnız METİN durur. Islemler.razor'un
+   1400 satır tavanı için ayrı bileşen. *@
+<details class="islem-kisayollar metin-kucuk metin-soluk" id="islem-kisayollar">
+    <summary id="islem-kisayollar-ac">@KisayolSozlugu.Baslik(Dil.Dil)</summary>
+    <span id="islem-kisayollar-liste"><kbd>F2</kbd> @KisayolSozlugu.F2(Dil.Dil) · <kbd>F4</kbd> @KisayolSozlugu.F4(Dil.Dil) · <kbd>F8</kbd> @KisayolSozlugu.F8(Dil.Dil) · <kbd>F9</kbd> @KisayolSozlugu.F9(Dil.Dil) · <kbd>@Dil.T.Kabuk.MenuAramaKisayol</kbd> @KisayolSozlugu.CtrlK(Dil.Dil)</span>
+</details>

@@ -547,9 +547,23 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(36)")
                         .HasColumnName("kullanici_id");
 
+                    b.Property<string>("KurKilidiId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kur_kilidi_id");
+
                     b.Property<DateTime>("Olusturuldu")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("olusturuldu");
+
+                    b.Property<DateTime?>("TeklifBitis")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("teklif_bitis");
+
+                    b.Property<string>("TeklifNo")
+                        .HasMaxLength(30)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("teklif_no");
 
                     b.Property<string>("TenantId")
                         .IsRequired()
@@ -2916,6 +2930,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(36)")
                         .HasColumnName("fatura_id");
 
+                    b.Property<DateTime?>("FiiliSevkTarihi")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("fiili_sevk_tarihi");
+
                     b.Property<DateTime>("Guncellendi")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("guncellendi");
@@ -2946,6 +2964,11 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("olusturuldu");
 
+                    b.Property<string>("Plaka")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("plaka");
+
                     b.Property<string>("SatinalmaSiparisId")
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")
@@ -2961,11 +2984,25 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("tarih");
 
+                    b.Property<string>("TasiyanAd")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("tasiyan_ad");
+
                     b.Property<string>("TenantId")
                         .IsRequired()
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")
                         .HasColumnName("tenant_id");
+
+                    b.Property<string>("TeslimAlanAd")
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
+                        .HasColumnName("teslim_alan_ad");
+
+                    b.Property<DateTime?>("TeslimTarihi")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("teslim_tarihi");
 
                     b.Property<string>("Yon")
                         .IsRequired()

@@ -226,6 +226,7 @@ public partial class Islemler
                 // D1-03 işlem bekletme
                 BekletGorunur = BekletGorunur,
                 Beklet = EventCallback.Factory.Create(this, Beklet),
+                TeklifVer = EventCallback.Factory.Create(this, TeklifVer),   // Y-11
                 Bekleyenler = YildizBekleyenler,
                 BekleyenlerAcik = bekleyenlerAcik,
                 BekleyenlerAcKapa = EventCallback.Factory.Create(this, () => bekleyenlerAcik = !bekleyenlerAcik),
