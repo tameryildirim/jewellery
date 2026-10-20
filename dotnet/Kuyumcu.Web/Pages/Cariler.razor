@@ -1138,7 +1138,14 @@
     private void CariHucreTelefonSade(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
     {
                                     <span class="cari-telefon-metin" id="@($"c-telefon-{c.Id}")">@TelefonGoster(c.Telefon)</span>
+                                    @WhatsAppBaglanti(c)
     }
+
+    @* PAKET-06 Faz B (20.10): cep numarasıysa WhatsApp'ı o müşteriyle açan bağlantı (program mesaj göndermez). *@
+    private RenderFragment WhatsAppBaglanti(CariVeri c) => @<text>@if (Kuyumcu.Core.Domain.WhatsAppBaglantisi.Adres(c.Telefon) is { } wa)
+        {
+            <a class="btn btn-metin btn-kucuk cari-whatsapp" id="@($"c-wa-{c.Id}")" href="@wa" target="_blank" rel="noopener" title="WhatsApp" @onclick:stopPropagation="true">WhatsApp</a>
+        }</text>;
 
     private void CariHucreTelefonPro(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)
     {
@@ -1148,6 +1155,7 @@
                                                      Kaydediliyor="@(satirKaydedilen == c.Id)"
                                                      Kaydedildi="@(yeni => TelefonKaydet(c, yeni))" />
                                     <AlanHatasi Alan="@($"si-telefon-{c.Id}")" Durum="form" />
+                                    @WhatsAppBaglanti(c)
     }
 
     private void CariHucreTl(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder, CariVeri c)

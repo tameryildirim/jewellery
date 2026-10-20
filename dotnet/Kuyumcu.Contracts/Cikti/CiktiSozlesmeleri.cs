@@ -69,9 +69,10 @@ public static class BelgeTurleri
 /// Boş alanlar <c>null</c> gelir; ekran UYDURMAZ (Anayasa md.1), işletme
 /// kartına götüren ipucunu gösterir.
 /// </summary>
+/// <param name="LogoBelgeId">PAKET-04 Faz B (20.10): işletme logosu (belgeler · sahip ISLETME · tür GORSEL, en yenisi); yoksa null.</param>
 public sealed record CiktiKimlik(
     string? Unvan, string? Sube, string? Adres,
-    string? VergiDairesi, string? VergiNo, string? Telefon);
+    string? VergiDairesi, string? VergiNo, string? Telefon, string? LogoBelgeId = null);
 
 /// <summary>Belgenin KARŞI tarafı (müşteri / tedarikçi). Belge türüne göre null olabilir.</summary>
 public sealed record CiktiTaraf(

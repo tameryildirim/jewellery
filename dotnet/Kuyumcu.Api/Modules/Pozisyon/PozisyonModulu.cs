@@ -149,7 +149,21 @@ public sealed class PozisyonServisi(KuyumcuDbContext db, DenetimServisi denetim)
 
         return new AltinPozisyonuYaniti(
             Maden.Altin, altin, digerleri, digerleri.Count > 0, fark, DateTime.UtcNow, true,
-            GorunumSubesi.Kapsam(gorunumSubesi), GorunumSubesi.KiraciGeneli);
+            GorunumSubesi.Kapsam(gorunumSubesi), GorunumSubesi.KiraciGeneli, await Zekat(t, altin.NetGram));
+    }
+
+    /// <summary>Nisap 80,18 g has (Diyanet). TL karşılığı yalnız kiracının güncel kur kaydı varsa; yoksa null (uydurulmaz).</summary>
+    public const decimal ZekatNisapGram = 80.18m;
+
+    private async Task<ZekatOzeti> Zekat(string tenantId, decimal netHas)
+    {
+        var fiyat = await db.KurSnapshots.AsNoTracking()
+            .Where(k => k.TenantId == tenantId && !k.IptalEdildi)
+            .OrderByDescending(k => k.Olusturuldu).Select(k => (decimal?)k.AltinHasFiyati).FirstOrDefaultAsync();
+        var ustu = netHas >= ZekatNisapGram;
+        var zekatHas = ustu ? Y6(netHas / 40m) : 0m;
+        return new ZekatOzeti(ZekatNisapGram, Y6(netHas), ustu, zekatHas,
+            fiyat is > 0m ? Math.Round(zekatHas * fiyat.Value, 2, MidpointRounding.AwayFromZero) : null, fiyat);
     }
 
     /// <summary>

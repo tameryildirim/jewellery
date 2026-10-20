@@ -33,6 +33,18 @@ public static class EBelgeSozlugu
         ? "Sign a contract with the provider and get an e-seal (company) or e-signature (sole proprietor). Create an API key in its panel and paste it here. From then on every sale invoice is sent in the background."
         : "Entegratörle sözleşme yapın, mali mühür (şirket) ya da e-imza (şahıs) alın. Panelinden API anahtarı üretip buraya yapıştırın. Bundan sonra her satış faturası arka planda gönderilir.";
 
+    // ── İşletme logosu (PAKET-04) ──
+    public static string Logo(string dil) => En(dil) ? "Business logo" : "İşletme logosu";
+    public static string LogoIpucu(string dil) => En(dil)
+        ? "Printed on slips, invoice copies and statements. The newest image is used." : "Fiş, fatura dökümü ve ekstrelerde basılır. En yeni görsel geçerlidir.";
+
+    // ── Zekât (pozisyon kartı) ──
+    public static string ZekatBaslik(string dil) => En(dil) ? "Zakat (for information)" : "Zekât (bilgi amaçlı)";
+    public static string ZekatNisapAlti(string nisap, string dil) => En(dil) ? $"Net gold is below the nisab ({nisap} g fine)." : $"Net altın nisabın altında ({nisap} g has).";
+    public static string ZekatTutar(string has, string? tl, string dil) => En(dil)
+        ? $"1/40 of net gold: {has} fine" + (tl is null ? "" : $" ≈ {tl}") : $"Net altının 1/40'ı: {has} has" + (tl is null ? "" : $" ≈ {tl}");
+    public static string ZekatNot(string dil) => En(dil) ? "Confirm with your religious/financial adviser." : "Dinî/mali danışmanınıza teyit ettirin.";
+
     // ── Faturalar listesi ──
     public static string Durum(string durum, string? senaryo, string dil)
     {

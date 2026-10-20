@@ -134,12 +134,13 @@ public sealed class BelgeDeposuTestleri(TestVeritabani vt)
     /// fark edilmezdi.
     /// </summary>
     [Fact]
-    public async Task SIPARIS_dali_ACIKCA_reddeder_siparis_modulu_henuz_yok()
+    public async Task SIPARIS_dali_olmayan_siparisi_404_ile_reddeder()
     {
+        // PAKET-03 Faz B (20.10): sipariş modülü var; sahip AYNI KİRACIDA bulunmalı (yetim belge yazılmaz).
         var k = TestKurulum.KiraciKur(vt.OlusturSistem(), "Belge siparis");
         using var db = vt.Olustur(k.TenantId);
-        Assert.Contains("Sipariş modülü henüz yok",
-            (await Assert.ThrowsAsync<BadRequestException>(
+        Assert.Contains("Sipariş bulunamadı",
+            (await Assert.ThrowsAsync<NotFoundException>(
                 () => new BelgeServisi(db).Ekle(Dto("SIPARIS", "S-1", "EK", PdfB64()), k.Islem))).Message);
     }
 

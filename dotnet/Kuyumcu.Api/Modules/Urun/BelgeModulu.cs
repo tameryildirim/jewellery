@@ -91,9 +91,10 @@ public sealed class BelgeServisi(KuyumcuDbContext db, BelgeAyarlari? ayarlar = n
                 return;
 
             case BelgeSahipTuru.Siparis:
-                // ⚠ Bertan'ın koşulu: dal BOŞ BIRAKILMAZ. Sipariş modülü (paket 3)
-                // gelene kadar açıkça reddedilir; varsayım yapılmaz.
-                throw new BadRequestException("Sipariş modülü henüz yok — SIPARIS sahibine belge bağlanamaz");
+                // PAKET-03 Faz B (20.10): sipariş modülü var — sahip AYNI KİRACIDAKİ sipariş (yetim kayıt yazılmaz).
+                if (!await db.Siparisler.AnyAsync(x => x.Id == sahipId && x.TenantId == islem.TenantId))
+                    throw new NotFoundException("Sipariş bulunamadı");
+                return;
 
             case BelgeSahipTuru.GiderPusulasi:
                 // ⚠ Mehmet K4-3 (VETO koşulu): imzalı pusula fotoğrafı satıcının

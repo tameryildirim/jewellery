@@ -118,6 +118,17 @@
                     </p>
                 }
 
+                @* 20.10 zekât hesaplayıcı: yalnız ayrıntı açıkken (zorunlu önce); sunucu hesaplar, ekran yazar. *@
+                @if (Tam && veri.Zekat is { } z)
+                {
+                    <p class="metin-soluk metin-kucuk pozisyon-zekat" id="pozisyon-zekat">
+                        <strong>@Kuyumcu.Core.I18n.EBelgeSozlugu.ZekatBaslik(Dil.Dil):</strong>
+                        @(z.NisapUstu
+                            ? Kuyumcu.Core.I18n.EBelgeSozlugu.ZekatTutar(HasMiktar(z.ZekatHasGram), z.ZekatTl is { } tl ? Bicim.Tl(tl) : null, Dil.Dil)
+                            : Kuyumcu.Core.I18n.EBelgeSozlugu.ZekatNisapAlti(Bicim.Gram(z.NisapGram), Dil.Dil))
+                        · @Kuyumcu.Core.I18n.EBelgeSozlugu.ZekatNot(Dil.Dil)
+                    </p>
+                }
                 @if (veri.DefterBakiyeFarki != 0m)
                 {
                     <div class="bant bant-uyari" role="alert" id="pozisyon-defter-farki">

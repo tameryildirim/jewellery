@@ -190,6 +190,15 @@
                                 </div>
                             </dl>
                             <p class="metin-soluk metin-kucuk">@Dil.T.Yonetim.KimlikAciklama</p>
+                            @* PAKET-04 Faz B (20.10): işletme logosu — belgelerde (fiş, fatura dökümü, mutabakat) basılır; en yeni görsel geçerli. *@
+                            @if (tenant is not null && !SaltOkunur)
+                            {
+                                <div class="alan" id="i-logo">
+                                    <span class="alan-etiket">@EBelgeSozlugu.Logo(Dil.Dil)</span>
+                                    <span class="metin-kucuk metin-soluk">@EBelgeSozlugu.LogoIpucu(Dil.Dil)</span>
+                                    <BelgeYukleyici SahipTuru="ISLETME" SahipId="@tenant.Id" Turler="@(new[] { "GORSEL" })" Onek="i-logo" Ikincil="true" />
+                                </div>
+                            }
                         }
                         else if (isKod == GorselSigmaSozlugu.IsAbonelik)
                         {

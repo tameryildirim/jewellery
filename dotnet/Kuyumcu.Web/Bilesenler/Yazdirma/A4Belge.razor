@@ -49,6 +49,11 @@
     <section class="belge-taraflar">
         <div>
             <h2>@Dil.T.Cikti.Duzenleyen</h2>
+            @* PAKET-04 Faz B: işletme logosu (Cikti.razor yükler, data: URL — içerik ucu yetki ister). *@
+            @if (!string.IsNullOrEmpty(LogoKaynak))
+            {
+                <img class="belge-logo" id="@($"{Onek}-logo")" src="@LogoKaynak" alt="" />
+            }
             <p><strong id="@($"{Onek}-duzenleyen")">@(Belge.Duzenleyen.Unvan ?? Dil.T.Cikti.KimlikEksik)</strong></p>
             @if (!string.IsNullOrEmpty(Belge.Duzenleyen.Sube)) { <p>@Belge.Duzenleyen.Sube</p> }
             @if (!string.IsNullOrEmpty(Belge.Duzenleyen.Adres)) { <p>@Belge.Duzenleyen.Adres</p> }
@@ -186,6 +191,8 @@
 
     /// <summary>Element kimliği öneki ('<önek>-belge', '<önek>-no', ...).</summary>
     [Parameter, EditorRequired] public string Onek { get; set; } = "";
+    /// <summary>İşletme logosu (data: URL). Boş = basılmaz.</summary>
+    [Parameter] public string? LogoKaynak { get; set; }
 
     private System.Globalization.CultureInfo Kultur => new(Dil.Locale);
 

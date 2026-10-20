@@ -50,7 +50,8 @@
     <BasariBandi Mesaj="@basari" />
 
     <div class="satir">
-        <button id="belge-yukle" class="btn btn-birincil" type="button"
+        @* 20.10: sayfanın tek birincil düğmesi başka bir eylemse (İşletme "Düzenle", sipariş "Geçiş") yükleme İKİNCİLDİR. *@
+        <button id="belge-yukle" class="@(Ikincil ? "btn btn-ikincil" : "btn btn-birincil")" type="button"
                 disabled="@(yukleniyor || secilenIcerik is null)"
                 @onclick="Yukle">@Dil.T.Belge.Yukle</button>
     </div>
@@ -90,6 +91,8 @@
 
     /// <summary>Element id öneki — aynı sayfada iki yükleyici olursa id çakışmasın.</summary>
     [Parameter] public string Onek { get; set; } = "belge";
+    /// <summary>Yükle düğmesi ikincil (sayfanın birincil eylemi başka).</summary>
+    [Parameter] public bool Ikincil { get; set; }
     /// <summary>D1-12: fotoğraf kipi — dosya seçici telefonda kamerayı açar, yalnız JPEG/PNG kabul eder.</summary>
     [Parameter] public bool Kamera { get; set; }
 

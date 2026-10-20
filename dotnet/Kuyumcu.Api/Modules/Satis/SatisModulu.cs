@@ -1366,6 +1366,8 @@ public sealed partial class SatisServisi(
             KmtsKodu      = kmtsKodu,   // YASAL-4 Y4-C: tek doğrulama yeri (yukarıda)
             FaturaNo      = dto.Satici!.TedarikciFaturaNo?.Trim(),
             Tur           = "HURDA_ALIS",
+            // PAKET-01 Faz B-2 (20.10): hurda alışı da fiş çatısında — tek hareketli fiş; GET /islemler/fis/{fisId} okur.
+            FisId         = Kimlik.Ulid(),
             Tarih         = now,
             // P-08 / Y-14 — ADET BİLİNMİYOR ve UYDURULMAZ: hurda GRAMLA alınır
             // (HurdaAlisDto'da adet alanı YOKTUR). "1 parça" yazmak bir iddia

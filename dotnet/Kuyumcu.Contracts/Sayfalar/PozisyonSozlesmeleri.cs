@@ -56,7 +56,14 @@ public sealed record AltinPozisyonuYaniti(
     DateTime HesaplanmaAni,
     bool DonemdenBagimsiz,
     string Kapsam = "TUM_SUBELER",
-    string CariKapsam = "KIRACI_GENELI");
+    string CariKapsam = "KIRACI_GENELI",
+    ZekatOzeti? Zekat = null);
+
+/// <summary>
+/// 20.10 — zekât hesaplayıcı (BİLGİ AMAÇLI; dinî/mali danışmana teyit). Nisap: 80,18 g has altın (Diyanet İşleri
+/// Başkanlığı). Oran 1/40. Matrah: altın NET pozisyonu (vitrin + hurda + alacak − borç; emanet ve konsinye dışarıda).
+/// </summary>
+public sealed record ZekatOzeti(decimal NisapGram, decimal MatrahHasGram, bool NisapUstu, decimal ZekatHasGram, decimal? ZekatTl, decimal? HasFiyati);
 
 /// <summary>Kırılım satırı — bir carinin tek madendeki has bakiyesi (+ bize borçlu, − biz borçluyuz).</summary>
 public sealed record PozisyonCariSatiri(string CariId, string CariAd, decimal HasGram);

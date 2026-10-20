@@ -401,6 +401,12 @@
         }
 
         @* ── Durum geçişleri ─────────────────────────────────────────────── *@
+        @* PAKET-03 Faz B (20.10): siparişe belge/fotoğraf (tasarım, müşteri çizimi, teslim fotoğrafı). *@
+        <div class="kart" id="sipd-belgeler">
+            <div class="kart-govde">
+                <BelgeYukleyici SahipTuru="SIPARIS" SahipId="@Id" Turler="@(new[] { "GORSEL", "FOTOGRAF", "EK" })" Onek="sip-belge" Kamera="true" Ikincil="true" />
+            </div>
+        </div>
         <div class="kart" id="sipd-gecis-paneli">
             <div class="kart-baslik"><h3>@Dil.T.Siparis.GecisYap</h3></div>
             <div class="kart-govde rozet-satir">

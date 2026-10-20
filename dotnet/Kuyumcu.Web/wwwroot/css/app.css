@@ -3132,3 +3132,6 @@ button.ikincil:not(.dugme):not(.btn):disabled { opacity: .6; cursor: not-allowed
 .da-satir { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--kenarlik); }
 .da-anahtar { display: block; word-wrap: break-word; margin: 6px 0; user-select: all; }
 .da-kullanim { margin-top: 12px; word-wrap: break-word; }
+
+/* PAKET-04 Faz B (20.10): belge başlığında işletme logosu — en çok 18 mm yükseklik, orantı korunur */
+.belge-logo { display: block; max-height: 18mm; max-width: 60mm; object-fit: contain; margin-bottom: 2mm; }

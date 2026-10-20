@@ -100,7 +100,7 @@
             <style>@@media print { @@page { size: 80mm 297mm; margin: 3mm; } }</style>
         }
         <div class="@(Fis80 ? "belge-80" : null)" id="cikti-kagit-kap">
-            <A4Belge Belge="b" Onek="cikti" />
+            <A4Belge Belge="b" Onek="cikti" LogoKaynak="@logoKaynak" />
         </div>
 
         <div class="yazdirma-gizle t4-degismez-satir" id="cikti-degismez-satir">
@@ -116,6 +116,21 @@
 </div>
 
 @code {
+    private string? logoKaynak;
+
+    /// <summary>PAKET-04 Faz B: logo belgesi yetkili uçtan okunur, data: URL olarak basılır; okunamazsa logo basılmaz (belge yine açılır).</summary>
+    private async Task LogoYukle()
+    {
+        logoKaynak = null;
+        if (belge?.Duzenleyen.LogoBelgeId is not { } id) return;
+        try
+        {
+            var (veri, _) = await Api.GetBaytAsync($"/belgeler/{Uri.EscapeDataString(id)}/icerik");
+            if (veri.Length > 0) logoKaynak = "data:image/*;base64," + Convert.ToBase64String(veri);
+        }
+        catch (ApiHata) { }
+    }
+
     [Parameter] public string Tur { get; set; } = "";
     [Parameter] public string Id { get; set; } = "";
 
@@ -152,7 +167,7 @@
     private async Task ImzaKaydedildi()
     {
         imzaAcik = false;
-        try { belge = await Api.GetAsync<OrtakBelge>($"/cikti/{Tur}/{Id}"); }
+        try { belge = await Api.GetAsync<OrtakBelge>($"/cikti/{Tur}/{Id}"); await LogoYukle(); }
         catch (Exception ex) when (ex is ApiHata or HttpRequestException) { hata = ex.Message; }
     }
 
@@ -182,7 +197,7 @@
 
         try
         {
-            belge = await Api.GetAsync<OrtakBelge>($"/cikti/{Tur}/{Id}");
+            belge = await Api.GetAsync<OrtakBelge>($"/cikti/{Tur}/{Id}"); await LogoYukle();
         }
         catch (Exception ex) when (ex is ApiHata or HttpRequestException)
         {

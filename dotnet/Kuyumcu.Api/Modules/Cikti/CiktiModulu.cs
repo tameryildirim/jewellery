@@ -112,7 +112,11 @@ public sealed class CiktiServisi(
 
         // ⚠ Boş alanlar UYDURULMAZ (Anayasa md.1): null döner, ekran
         //   "işletme kartından doldurun" ipucunu gösterir.
-        return new CiktiKimlik(t?.Ad, sube, t?.Adres, t?.VergiDairesi, t?.VergiNo, t?.Telefon);
+        // PAKET-04 Faz B: işletme logosu — İşletme ekranından yüklenen en yeni GORSEL (yoksa null, uydurulmaz).
+        var logo = await db.Belgeler.AsNoTracking()
+            .Where(b => b.TenantId == tenantId && b.SahipTuru == BelgeSahipTuru.Isletme && b.Tur == BelgeTuru.Gorsel && b.Aktif)
+            .OrderByDescending(b => b.Olusturuldu).Select(b => b.Id).FirstOrDefaultAsync(iptal);
+        return new CiktiKimlik(t?.Ad, sube, t?.Adres, t?.VergiDairesi, t?.VergiNo, t?.Telefon, logo);
     }
 
     private async Task<CiktiTaraf?> Taraf(string? cariId, string tenantId, string baslik, CancellationToken iptal)
