@@ -140,7 +140,7 @@ const ICLOUD_ACIK = args.icloud_acik !== false
 // eklendikce geride kaliyordu. Artik liste @page direktiflerinden URETILIR:
 // yeni bir sayfa eklendigi anda tura girer, kimse listeyi guncellemeyi
 // unutamaz. Kapsam 42 degilse TUR BASLAMAZ (fail-closed, Anayasa md.1).
-const ROTA_KAPSAM_BEKLENEN = 53   // D1-19: /kvkk (52 → 53) · PAKET EKSIK-KUCUK: /vitrin/ekran (51 → 52) · PAKET EKSIK-B1-SATINALMA: /satin-alma + /irsaliyeler (49 → 51) · PAKET AUTH-SIFIRLA: /sifre-sifirla (48 → 49) · PAKET YASAL-1: /yasal-sinirlar (47 → 48) · PAKET S1-d: /ekranlar eklendi (46 → 47) · P-20: /hurda (45 → 46)
+const ROTA_KAPSAM_BEKLENEN = 54   // D1-19: /kvkk (52 → 53) · PAKET EKSIK-KUCUK: /vitrin/ekran (51 → 52) · PAKET EKSIK-B1-SATINALMA: /satin-alma + /irsaliyeler (49 → 51) · PAKET AUTH-SIFIRLA: /sifre-sifirla (48 → 49) · PAKET YASAL-1: /yasal-sinirlar (47 → 48) · PAKET S1-d: /ekranlar eklendi (46 → 47) · P-20: /hurda (45 → 46)
 // Liste hâlâ ELLE YAZILMAZ: orkestratör turu başlatmadan önce
 //   grep -rhE '^@page' dotnet/Kuyumcu.Web/Pages --include='*.razor'
 // çıktısını args.rotalar olarak geçirir; aşağıdaki sayı kapısı fail-closed durur.

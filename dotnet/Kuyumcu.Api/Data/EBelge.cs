@@ -58,3 +58,22 @@ public class EBelgeGonderimi : IKiraciVarlik
     [Column("olusturuldu")] public DateTime Olusturuldu { get; set; }
     [Column("guncellendi")] public DateTime Guncellendi { get; set; }
 }
+
+/// <summary>
+/// E-belge olay izi (PAKET-E-BELGE: e_belge_olaylari) — APPEND-ONLY durum geçmişi; PATCH/DELETE ucu YOK.
+/// Kaynak: KUYRUK (kuyruğa alma) · ISTEK (gönderim) · SORGU (GİB durum sorgusu) · KULLANICI (yeniden dene / iptal).
+/// Kişisel veri taşımaz: yalnız durumlar, kod ve sade ileti.
+/// </summary>
+[Table("ebelge_olaylari")]
+public class EBelgeOlayi : IKiraciVarlik
+{
+    [Key, Column("id"), MaxLength(36)] public string Id { get; set; } = null!;
+    [Column("tenant_id"), MaxLength(36)] public string TenantId { get; set; } = null!;
+    [Column("gonderim_id"), MaxLength(36)] public string GonderimId { get; set; } = null!;
+    [Column("eski_durum"), MaxLength(12)] public string? EskiDurum { get; set; }
+    [Column("yeni_durum"), MaxLength(12)] public string YeniDurum { get; set; } = null!;
+    [Column("kaynak"), MaxLength(10)] public string Kaynak { get; set; } = null!;
+    [Column("mesaj"), MaxLength(500)] public string? Mesaj { get; set; }
+    [Column("kullanici_id"), MaxLength(36)] public string? KullaniciId { get; set; }
+    [Column("olusturuldu")] public DateTime Olusturuldu { get; set; }
+}

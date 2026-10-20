@@ -104,7 +104,8 @@ public sealed class RotaBaslikTestleri : BunitContext
         // 49 → 51: PAKET EKSIK-B1-SATINALMA /satin-alma + /irsaliyeler (B1-1 · B1-2).
         // 51 → 52: PAKET EKSIK-KUCUK /vitrin/ekran (B2-10 kabuksuz dükkân ekranı).
         // 52 → 53: D1-19 /kvkk.
-        Assert.Equal(53, rotalar.Count);
+        // 53 → 54: 20.10 /e-belgeler (e-Fatura giden kutusu).
+        Assert.Equal(54, rotalar.Count);
     }
 
     [Theory]

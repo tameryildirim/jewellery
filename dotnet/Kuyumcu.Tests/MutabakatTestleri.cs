@@ -308,4 +308,37 @@ public sealed class MutabakatTestleri(TestVeritabani vt)
 
         Assert.Equal(await db.YedekKayitlari.CountAsync(), Sayi(ozet, "saklananKosu"));
     }
+
+    // ── PAKET RAPORSUZ-2 (20.10): sipariş özeti (açık / geciken / bugün teslim / durum kırılımı) ──
+    [Fact]
+    public async Task Mutabakat_Siparis_ozet_kirilim_toplami_ve_acik_sayisi_KAYITLARLA_ESITTIR()
+    {
+        var k = TestKurulum.KiraciKur(vt.OlusturSistem(), "P24 siparis ozet");
+        using var db = vt.Olustur(k);
+        var bugun = Zaman.YerelBugun();
+
+        Siparis Yap(string no, string durum, DateOnly? gun) => new()
+        {
+            Id = Kimlik.Ulid(), TenantId = k.TenantId, No = no, Tur = SiparisTuru.MusteriSiparisi, Durum = durum,
+            CariId = k.CariId, SubeId = k.SubeId, OlusturanKullaniciId = k.KullaniciId, SozVerilenGun = gun,
+            Olusturuldu = DateTime.UtcNow, Guncellendi = DateTime.UtcNow,
+        };
+        db.Siparisler.AddRange(
+            Yap("S-1", SiparisDurumu.Onaylandi, bugun.AddDays(-2)),   // açık + geciken
+            Yap("S-2", SiparisDurumu.Atolyede, bugun),                // açık + bugün teslim
+            Yap("S-3", SiparisDurumu.TeslimEdildi, bugun.AddDays(-5)), // kapalı: gecikmez
+            Yap("S-4", SiparisDurumu.Iptal, bugun));                  // kapalı: bugün teslim sayılmaz
+        await db.SaveChangesAsync();
+
+        var ozet = await new Kuyumcu.Api.Modules.Siparis.SiparisServisi(db,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Kuyumcu.Api.Modules.Siparis.SiparisServisi>.Instance).Ozet(k.Islem);
+
+        var toplamKayit = await db.Siparisler.CountAsync(s => s.TenantId == k.TenantId);
+        var acikKayit = await db.Siparisler.CountAsync(s => s.TenantId == k.TenantId && SiparisDurumu.Acik.Contains(s.Durum));
+
+        Assert.Equal(toplamKayit, KirilimToplami(Alan(ozet, "durumKirilimi")));   // kırılım hiçbir durumu düşürmez
+        Assert.Equal(acikKayit, Sayi(ozet, "acik"));
+        Assert.Equal(1, Sayi(ozet, "geciken"));
+        Assert.Equal(1, Sayi(ozet, "bugunTeslim"));
+    }
 }

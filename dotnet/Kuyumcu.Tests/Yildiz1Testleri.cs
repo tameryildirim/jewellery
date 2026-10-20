@@ -294,7 +294,7 @@ public sealed class Yildiz1Testleri
         Assert.True(yildiz < olcek, "tema-yildiz.css olcek.css'ten ÖNCE (DUGME-2/O1 zinciri)");
         Assert.Equal("css/ortak.css", linkler[^1]);
         // Betik sayısı sabit (denetim.sh): bu paket <script> eklemez.
-        Assert.Equal(12, Regex.Matches(html, "<script ").Count);   // D1-13: js/imza.js
+        Assert.Equal(13, Regex.Matches(html, "<script ").Count);   // D1-13: js/imza.js · PAKET-44: js/pwa.js
     }
 
     // ── Y1-09) INTER vendor: yerel dosya, OFL lisansı, dış kaynak YOK ───────

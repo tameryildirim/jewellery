@@ -276,7 +276,8 @@ public static class DuzeltmePolitikasi
         D("UrunSetiKalemi", "api/v1/urun-setleri/{id}"),
         // M7: demo bankasının gelen havalesi — sağlayıcı kaydıdır; düzeltme banka hareketinin stornosuyla.
         S("SahteBankaHareketi", GerekceAnahtarlari.Sistem),
-        S("EBelgeGonderimi", GerekceAnahtarlari.Sistem, "api/v1/ebelge/faturalar/{id}/yeniden-dene"),   // giden kutusu kaydı düzenlenmez; hatalı belge yeniden denenir
+        S("EBelgeGonderimi", GerekceAnahtarlari.Sistem, "api/v1/ebelge/faturalar/{id}/yeniden-dene"),
+        S("EBelgeOlayi", GerekceAnahtarlari.Sistem),   // append-only olay izi: düzenlenmez, silinmez   // giden kutusu kaydı düzenlenmez; hatalı belge yeniden denenir
         // 17.10 mahsup (ödemenin hangi borçlu satışa sayıldığı): append-only; düzeltme = ödemenin stornosu.
         S("CariMahsup", GerekceAnahtarlari.Defter, "api/v1/bankalar/hareketler/{hareketId}/karar/geri-al"),
         S("GunKapanisi", GerekceAnahtarlari.Kapanis),

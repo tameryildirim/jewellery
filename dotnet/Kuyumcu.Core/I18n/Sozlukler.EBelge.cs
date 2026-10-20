@@ -61,5 +61,36 @@ public static class EBelgeSozlugu
         };
     }
     public static string YenidenDene(string dil) => En(dil) ? "Retry" : "Yeniden dene";
+
+    // ── Giden kutusu sayfası (/e-belgeler) ──
+    public static string KutuBaslik(string dil) => En(dil) ? "e-Invoice outbox" : "e-Fatura giden kutusu";
+    public static string KutuBos(string dil) => En(dil) ? "No invoice has been sent yet." : "Henüz gönderilen fatura yok.";
+    public static string Alici(string dil) => En(dil) ? "Customer" : "Müşteri";
+    public static string Durum(string dil) => En(dil) ? "Status" : "Durum";
+    public static string BelgeNo(string dil) => En(dil) ? "Document no" : "Belge no";
+    public static string Tumu(string dil) => En(dil) ? "All" : "Tümü";
+    public static string OlayIzi(string dil) => En(dil) ? "History" : "Geçmiş";
+    public static string DegismezGerekce(string dil) => En(dil)
+        ? "Sent documents are a legal record and cannot be edited; retry a failed one, or cancel the invoice (within 8 days) / issue a return invoice."
+        : "Gönderilen belge yasal izdir, düzenlenmez; gönderilemeyeni yeniden deneyin ya da faturayı iptal edin (8 gün) / iade faturası kesin.";
+    public static string DahaFazla(int toplam, string dil) => En(dil) ? $"Showing the latest 200 of {toplam}." : $"{toplam} kayıttan en yeni 200'ü gösteriliyor.";
+    public static string DurumAdi(string durum, string dil) => durum switch
+    {
+        "KUYRUKTA" => En(dil) ? "queued" : "sırada",
+        "GONDERILDI" => En(dil) ? "sent" : "gönderildi",
+        "KABUL" => En(dil) ? "accepted" : "onaylandı",
+        "HATA" => En(dil) ? "not sent" : "gönderilemedi",
+        "RET" => En(dil) ? "rejected" : "reddedildi",
+        "IPTAL" => En(dil) ? "cancelled" : "iptal",
+        _ => durum,
+    };
+    public static string Kaynak(string k, string dil) => k switch
+    {
+        "KUYRUK" => En(dil) ? "automatic" : "kendiliğinden",
+        "ISTEK" => En(dil) ? "sending" : "gönderim",
+        "SORGU" => En(dil) ? "GİB status" : "GİB sorgusu",
+        "KULLANICI" => En(dil) ? "user" : "kullanıcı",
+        _ => k,
+    };
     public static string Pdf(string dil) => En(dil) ? "e-Invoice PDF" : "e-Fatura PDF";
 }

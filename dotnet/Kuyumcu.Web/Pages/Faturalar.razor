@@ -33,6 +33,7 @@
             @* PAKET CUMA-J (K7): "Fişten fatura kes" bir EYLEMDİR, filtre değil; id aynı. *@
             <button class="btn btn-ikincil btn-kucuk" id="ff-ac" @onclick="FistenModalAc">@Dil.T.Fatura.FistenKes</button>
             <button class="btn btn-ikincil btn-kucuk" id="ft-ac" @onclick="() => topluAcik = true">@Kuyumcu.Core.I18n.FaturaTopluSozlugu.Ac(Dil.Dil)</button>   @* 18.10 toplu fatura *@
+            <a class="btn btn-ikincil btn-kucuk" id="fk-ebelgeler" href="/e-belgeler">@Kuyumcu.Core.I18n.EBelgeSozlugu.KutuBaslik(Dil.Dil)</a>   @* 20.10 giden kutusu *@
             <button class="btn btn-birincil btn-kucuk" id="fk-yeni" @onclick="YeniModalAc">+ @Dil.T.Fatura.YeniFatura</button>
         </Eylem>
     </SayfaBasi>

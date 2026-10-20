@@ -108,6 +108,22 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
             .OrderByDescending(g => g.Olusturuldu).Take(Math.Clamp(limit, 1, 500)).ToListAsync())
         .Select(GOzet).ToList();
 
+    /// <summary>Giden kutusu sayfası: gönderim + faturanın no/alıcı/toplam/tarih bilgisi, durum sayaçları (sınır 200, UX-S29).</summary>
+    public async Task<EBelgeKutuYaniti> Kutu(AktifKullanici islem, string? durum = null, int limit = 200)
+    {
+        var etkin = Math.Clamp(limit, 1, 500);
+        var q = db.EBelgeGonderimleri.AsNoTracking().Where(g => g.TenantId == islem.TenantId);
+        var sayaclar = await q.GroupBy(g => g.Durum).Select(g => new { g.Key, Adet = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Adet);
+        if (!string.IsNullOrWhiteSpace(durum)) q = q.Where(g => g.Durum == durum);
+        var toplam = await q.CountAsync();
+        var satirlar = await q.OrderByDescending(g => g.Olusturuldu).Take(etkin)
+            .Join(db.Faturalar.AsNoTracking().Where(f => f.TenantId == islem.TenantId), g => g.FaturaId, f => f.Id,
+                (g, f) => new { g, f.FaturaNo, f.AliciUnvan, f.Toplam, f.Tarih })
+            .ToListAsync();
+        return new(satirlar.Select(x => new EBelgeKutuSatiri(GOzet(x.g), x.FaturaNo, x.AliciUnvan, x.Toplam, x.Tarih)).ToList(),
+            sayaclar, toplam, toplam > satirlar.Count);
+    }
+
     public async Task<EBelgeGonderimOzet?> FaturaDurumu(string faturaId, AktifKullanici islem)
     {
         var g = await db.EBelgeGonderimleri.AsNoTracking().FirstOrDefaultAsync(x => x.TenantId == islem.TenantId && x.FaturaId == faturaId);
@@ -126,6 +142,7 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
             ?? throw new NotFoundException("Bu faturanın e-belge kaydı yok");
         if (g.Durum is not (EBelgeDurumlari.Hata or EBelgeDurumlari.Kuyrukta))
             throw new ConflictException("Bu belge zaten gönderildi; yeniden gönderilmez");
+        Olay(g, EBelgeDurumlari.Kuyrukta, "KULLANICI", "yeniden dene", islem.Id);
         g.Durum = EBelgeDurumlari.Kuyrukta; g.DenemeSayisi = 0; g.SonrakiDeneme = DateTime.UtcNow; g.Guncellendi = DateTime.UtcNow;
         await db.SaveChangesAsync();
         await Isle(g, default);
@@ -143,6 +160,27 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
         catch (EBelgeHatasi ex) { throw new ConflictException(ex.Message); }
     }
 
+    public async Task<(byte[] Xml, string Ad)> Xml(string faturaId, AktifKullanici islem)
+    {
+        var g = await db.EBelgeGonderimleri.AsNoTracking().FirstOrDefaultAsync(x => x.TenantId == islem.TenantId && x.FaturaId == faturaId)
+            ?? throw new NotFoundException("Bu faturanın e-belge kaydı yok");
+        if (g.Senaryo is null || g.Gonderildi is null) throw new ConflictException("Belge henüz entegratöre ulaşmadı");
+        var a = await db.EBelgeAyarlari.AsNoTracking().FirstOrDefaultAsync(x => x.TenantId == islem.TenantId)
+            ?? throw new ConflictException("e-Fatura bağlantısı yok");
+        try { return (await EBelgeSaglayicilari.Bul(g.Saglayici)!.Xml(Http(), Baglam(a), g.Senaryo, g.Ettn, default), $"{g.BelgeNo ?? g.Ettn.ToString()}.xml"); }
+        catch (EBelgeHatasi ex) { throw new ConflictException(ex.Message); }
+    }
+
+    /// <summary>Olay izi (son 50, yeniden eskiye) — PATCH/DELETE yok.</summary>
+    public async Task<List<EBelgeOlayOzet>> Olaylar(string faturaId, AktifKullanici islem)
+    {
+        var g = await db.EBelgeGonderimleri.AsNoTracking().FirstOrDefaultAsync(x => x.TenantId == islem.TenantId && x.FaturaId == faturaId)
+            ?? throw new NotFoundException("Bu faturanın e-belge kaydı yok");
+        return (await db.EBelgeOlaylari.AsNoTracking().Where(o => o.TenantId == islem.TenantId && o.GonderimId == g.Id)
+                .OrderByDescending(o => o.Olusturuldu).Take(50).ToListAsync())
+            .Select(o => new EBelgeOlayOzet(o.Olusturuldu, o.EskiDurum, o.YeniDurum, o.Kaynak, o.Mesaj)).ToList();
+    }
+
     /// <summary>Arka plan turu (kiracıya SABİT kapsamda): yeni faturaları kuyruğa al, zamanı gelenleri işle.</summary>
     public async Task Tur(string tenantId, CancellationToken iptal)
     {
@@ -157,11 +195,16 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
                 .OrderBy(f => f.Olusturuldu).Select(f => f.Id).Take(50).ToListAsync(iptal);
             var simdi = DateTime.UtcNow;
             foreach (var id in yeni)
-                db.EBelgeGonderimleri.Add(new EBelgeGonderimi
+            {
+                var g = new EBelgeGonderimi
                 {
                     Id = Kimlik.Ulid(), TenantId = tenantId, FaturaId = id, Ettn = Guid.NewGuid(), Saglayici = a.Saglayici,
                     Durum = EBelgeDurumlari.Kuyrukta, SonrakiDeneme = simdi, Olusturuldu = simdi, Guncellendi = simdi,
-                });
+                };
+                db.EBelgeGonderimleri.Add(g);
+                db.EBelgeOlaylari.Add(new EBelgeOlayi { Id = Kimlik.Ulid(), TenantId = tenantId, GonderimId = g.Id, EskiDurum = null,
+                    YeniDurum = EBelgeDurumlari.Kuyrukta, Kaynak = "KUYRUK", Mesaj = "kesilen fatura kuyruğa alındı", Olusturuldu = simdi });
+            }
             if (yeni.Count > 0)
             {
                 try { await db.SaveChangesAsync(iptal); }
@@ -201,6 +244,7 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
                 var model = await EBelgeKurucu.Kur(db, f, g.Ettn, senaryo, m.Etiket, a.SeriOnEki, iptal, EBelgeSablonu.Yapilandirmadan(yapilandirma));
                 g.Senaryo = senaryo;
                 g.BelgeNo = await saglayici.Gonder(http, b, model, iptal) ?? g.BelgeNo;
+                Olay(g, EBelgeDurumlari.Gonderildi, "ISTEK", g.BelgeNo is null ? $"{senaryo} gönderildi" : $"{senaryo} gönderildi · {g.BelgeNo}");
                 g.Durum = EBelgeDurumlari.Gonderildi; g.Gonderildi ??= simdi; g.SonHata = null; g.DenemeSayisi = 0;
                 g.SonrakiDeneme = simdi.AddSeconds(30);
             }
@@ -221,13 +265,13 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
         catch (EBelgeHatasi ex) when (ex.Gecici)
         {
             g.DenemeSayisi++; g.SonHata = Kisalt(ex.Message);
-            if (g.Durum == EBelgeDurumlari.Kuyrukta && g.DenemeSayisi >= EnCokDeneme) Bitir(g, EBelgeDurumlari.Hata, ex.Message);
-            else g.SonrakiDeneme = simdi.Add(Aralik(g.DenemeSayisi));
+            if (g.Durum == EBelgeDurumlari.Kuyrukta && g.DenemeSayisi >= EnCokDeneme) Bitir(g, EBelgeDurumlari.Hata, ex.Message, "ISTEK");
+            else { Olay(g, g.Durum, g.Durum == EBelgeDurumlari.Kuyrukta ? "ISTEK" : "SORGU", $"geçici hata, deneme {g.DenemeSayisi}: {ex.Message}"); g.SonrakiDeneme = simdi.Add(Aralik(g.DenemeSayisi)); }
         }
         catch (EBelgeHatasi ex)
         {
-            if (g.Durum == EBelgeDurumlari.Kuyrukta) Bitir(g, EBelgeDurumlari.Hata, ex.Message);
-            else { g.SonHata = Kisalt(ex.Message); g.DenemeSayisi++; g.SonrakiDeneme = simdi.Add(Aralik(g.DenemeSayisi)); }
+            if (g.Durum == EBelgeDurumlari.Kuyrukta) Bitir(g, EBelgeDurumlari.Hata, ex.Message, "ISTEK");
+            else { Olay(g, g.Durum, "SORGU", ex.Message); g.SonHata = Kisalt(ex.Message); g.DenemeSayisi++; g.SonrakiDeneme = simdi.Add(Aralik(g.DenemeSayisi)); }
         }
         // Anahtar ve belge içeriği günlüğe yazılmaz; yalnız durum.
         gunluk.LogInformation("[{TenantId}] e-belge {FaturaId}: {Durum}", g.TenantId, g.FaturaId, g.Durum);
@@ -241,11 +285,20 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
         <= 1 => 1, 2 => 2, 3 => 5, 4 => 10, 5 => 20, 6 => 30, 7 => 60, _ => 120,
     });
 
-    private static void Bitir(EBelgeGonderimi g, string durum, string? aciklama)
+    private void Bitir(EBelgeGonderimi g, string durum, string? aciklama, string kaynak = "SORGU", string? kullaniciId = null)
     {
+        Olay(g, durum, kaynak, aciklama, kullaniciId);
         g.Durum = durum; g.SonHata = aciklama is null ? null : Kisalt(aciklama); g.SonrakiDeneme = null;
         if (durum is not EBelgeDurumlari.Hata) g.Sonuclandi = DateTime.UtcNow;
     }
+
+    /// <summary>Olay izi (append-only): her durum geçişi ve her başarısız deneme bir satır. Kişisel veri yok.</summary>
+    private void Olay(EBelgeGonderimi g, string yeniDurum, string kaynak, string? mesaj, string? kullaniciId = null) =>
+        db.EBelgeOlaylari.Add(new EBelgeOlayi
+        {
+            Id = Kimlik.Ulid(), TenantId = g.TenantId, GonderimId = g.Id, EskiDurum = g.Durum, YeniDurum = yeniDurum,
+            Kaynak = kaynak, Mesaj = mesaj is null ? null : Kisalt(mesaj), KullaniciId = kullaniciId, Olusturuldu = DateTime.UtcNow,
+        });
 
     private static string Kisalt(string s) => s.Length > 500 ? s[..500] : s;
 
@@ -261,7 +314,7 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
         if (g is null || g.Durum is EBelgeDurumlari.Iptal) return;
         if (g.Durum is EBelgeDurumlari.Kuyrukta or EBelgeDurumlari.Hata or EBelgeDurumlari.Ret)
         {
-            Bitir(g, EBelgeDurumlari.Iptal, null); g.Guncellendi = DateTime.UtcNow;
+            Bitir(g, EBelgeDurumlari.Iptal, "fatura iptal edildi (belge GİB'e ulaşmamıştı)", "KULLANICI"); g.Guncellendi = DateTime.UtcNow;
             return;
         }
         if (g.Senaryo == EBelgeSenaryolari.EFatura)
@@ -272,7 +325,7 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
             ?? throw new ConflictException("e-Fatura bağlantısı yok; gönderilmiş belge iptal edilemedi");
         try { await EBelgeSaglayicilari.Bul(g.Saglayici)!.Iptal(Http(), Baglam(a), g.Senaryo!, g.Ettn, default); }
         catch (EBelgeHatasi ex) { throw new ConflictException(ex.Message).KodIle("EBELGE_IPTAL_HATA"); }
-        Bitir(g, EBelgeDurumlari.Iptal, null); g.Guncellendi = DateTime.UtcNow;
+        Bitir(g, EBelgeDurumlari.Iptal, "e-Arşiv entegratörden iptal edildi", "KULLANICI"); g.Guncellendi = DateTime.UtcNow;
     }
 }
 
@@ -357,6 +410,22 @@ public sealed class EBelgeController(EBelgeServisi servis) : ControllerBase
     [HttpPost("faturalar/{id}/yeniden-dene")]
     [RolGerekli("SAHIP", "MUDUR", "MUHASEBE")]
     public Task<EBelgeGonderimOzet> YenidenDene(string id) => servis.YenidenDene(id, Islem);
+
+    /// <summary>GET /api/v1/ebelge/kutu?durum=&limit= — giden kutusu (fatura bilgisiyle, sayaçlarla).</summary>
+    [HttpGet("kutu")]
+    public Task<EBelgeKutuYaniti> Kutu([FromQuery] string? durum, [FromQuery] int limit = 200) => servis.Kutu(Islem, durum, limit);
+
+    /// <summary>GET /api/v1/ebelge/faturalar/{id}/olaylar — olay izi (append-only).</summary>
+    [HttpGet("faturalar/{id}/olaylar")]
+    public Task<List<EBelgeOlayOzet>> Olaylar(string id) => servis.Olaylar(id, Islem);
+
+    /// <summary>GET /api/v1/ebelge/faturalar/{id}/xml — imzalı UBL-TR XML (yasal asıl).</summary>
+    [HttpGet("faturalar/{id}/xml")]
+    public async Task<IActionResult> Xml(string id)
+    {
+        var (xml, ad) = await servis.Xml(id, Islem);
+        return File(xml, "application/xml", ad);
+    }
 
     /// <summary>GET /api/v1/ebelge/faturalar/{id}/pdf — entegratörün resmi PDF'i.</summary>
     [HttpGet("faturalar/{id}/pdf")]

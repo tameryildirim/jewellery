@@ -632,6 +632,16 @@ public sealed class RaporServisi(
 
         var faturali = satislar.Where(h => faturaBagi.ContainsKey(h.Id)).ToList();
         var faturasiz = satislar.Except(faturali).ToList();
+        // PAKET-01 Faz B-3 (20.10): KALEM kaynaklı faturada Σ satır toplamı = fatura toplamı olmalı (kuruş farkı dahil
+        // sapan belge uyarıya düşer; sessiz geçilmez). Yalnız o günün satış faturaları, sayfa sınırı içinde.
+        var kalemliIdler = satisFaturalari.Where(f => f.KalemKaynagi == "KALEM").Select(f => f.Id).ToList();
+        var kalemToplamlari = kalemliIdler.Count == 0 ? new Dictionary<string, decimal>() : await db.FaturaKalemleri.AsNoTracking()
+            .Where(k => k.TenantId == islem.TenantId && kalemliIdler.Contains(k.FaturaId))
+            .GroupBy(k => k.FaturaId).Select(g => new { g.Key, Toplam = g.Sum(x => x.SatirToplam) })
+            .ToDictionaryAsync(x => x.Key, x => x.Toplam);
+        var kalemUyumsuz = satisFaturalari.Where(f => f.KalemKaynagi == "KALEM"
+                && (!kalemToplamlari.TryGetValue(f.Id, out var kt) || Yuvarla2(kt) != Yuvarla2(f.Toplam)))
+            .Select(f => f.FaturaNo ?? f.Id).ToList();
         // PARA-DEMO-3 (hakem ORTA): gün sonu "Karışık" değil bacak türleri ("Kart + Havale") — CariModulu ekstresiyle aynı sorgu.
         var faturasizKarmaFis = faturasiz.Where(h => h.OdemeTuru == "KARMA").Select(h => h.FisId ?? h.Id)
             .Distinct(StringComparer.Ordinal).ToList();
@@ -679,6 +689,8 @@ public sealed class RaporServisi(
         var belgesizHurda = hurdaDurumlari.Where(x => x.Durum == Hurda.PusulaBelgeDurumu.Belgesiz).Select(x => x.Hareket).ToList();
 
         var uyarilar = new List<string>();
+        if (kalemUyumsuz.Count > 0)
+            uyarilar.Add($"{kalemUyumsuz.Count} faturanın satır toplamı belge toplamıyla tutmuyor: {string.Join(", ", kalemUyumsuz.Take(5))}");
         if (belgesizHurda.Count > 0)
             uyarilar.Add($"{belgesizHurda.Count} hurda alımının belgesi yok (ne geçerli gider pusulası ne tedarikçi faturası)");
 

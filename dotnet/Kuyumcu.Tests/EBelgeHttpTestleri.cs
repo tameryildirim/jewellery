@@ -39,6 +39,7 @@ public sealed class EBelgeHttpTestleri(HttpFikstur f)
             if (yol.EndsWith("/Send/Model"))
                 return GonderYaniti?.Invoke() ?? Json("""{"UUID":"x","InvoiceNumber":"MHK2026000000001"}""");
             if (yol.EndsWith("/Status")) return Json(DurumJson);
+            if (yol.EndsWith("/xml")) return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<?xml version=\"1.0\"?><Invoice/>", System.Text.Encoding.UTF8, "application/xml") };
             if (yol.EndsWith("/Cancel")) return Json("""["iptal edildi"]""");
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
@@ -139,6 +140,16 @@ public sealed class EBelgeHttpTestleri(HttpFikstur f)
 
         await Tur(o, k.TenantId, zamaniGetir: true);
         Assert.Equal(EBelgeDurumlari.Kabul, Gonderim(fid).Durum);
+        // Olay izi (append-only): kuyruk → gönderildi → GİB kabul; XML yasal aslı indirilebilir.
+        var olaylar = await s.GetFromJsonAsync<JsonElement>($"/api/v1/ebelge/faturalar/{fid}/olaylar");
+        var yeniDurumlar = olaylar.EnumerateArray().Select(x => x.GetProperty("yeniDurum").GetString()).ToList();
+        Assert.Equal(["KABUL", "GONDERILDI", "KUYRUKTA"], yeniDurumlar);   // yeniden eskiye
+        var xml = await s.GetAsync($"/api/v1/ebelge/faturalar/{fid}/xml");
+        Assert.True(xml.IsSuccessStatusCode, await xml.Content.ReadAsStringAsync());
+        Assert.StartsWith("<?xml", await xml.Content.ReadAsStringAsync());
+        var kutu = await s.GetFromJsonAsync<JsonElement>("/api/v1/ebelge/kutu");
+        Assert.Equal(1, kutu.GetProperty("sayaclar").GetProperty("KABUL").GetInt32());
+        Assert.Single(kutu.GetProperty("satirlar").EnumerateArray());
         var durum = await s.GetFromJsonAsync<JsonElement>($"/api/v1/ebelge/faturalar/{fid}");
         Assert.True(durum.GetProperty("iptalEdilebilir").GetBoolean());
 

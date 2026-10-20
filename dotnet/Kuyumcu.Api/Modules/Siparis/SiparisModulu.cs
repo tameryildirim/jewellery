@@ -242,6 +242,18 @@ public sealed class SiparisServisi(
 
     // ─── Liste ────────────────────────────────────────────────────────────────
 
+    /// <summary>PAKET-03 Faz B (20.10): sipariş özeti — açık / geciken / bugün sözü verilen; kiracı geneli.</summary>
+    public async Task<object> Ozet(AktifKullanici islem)
+    {
+        var bugun = Zaman.YerelBugun();
+        var q = db.Siparisler.AsNoTracking().Where(s => s.TenantId == islem.TenantId);
+        var kirilim = await q.GroupBy(s => s.Durum).Select(g => new { durum = g.Key, adet = g.Count() }).ToListAsync();
+        var acik = await q.CountAsync(s => SiparisDurumu.Acik.Contains(s.Durum));
+        var geciken = await q.CountAsync(s => s.SozVerilenGun != null && s.SozVerilenGun < bugun && SiparisDurumu.Acik.Contains(s.Durum));
+        var bugunTeslim = await q.CountAsync(s => s.SozVerilenGun == bugun && SiparisDurumu.Acik.Contains(s.Durum));
+        return new { acik, geciken, bugunTeslim, durumKirilimi = kirilim, hesaplanmaAni = DateTime.UtcNow };
+    }
+
     public async Task<object> Listele(
         string? tur, string? durum, string? cariId, string? subeId, bool? geciken, int? limit,
         AktifKullanici islem)
@@ -1163,6 +1175,10 @@ public sealed class SiparisController(SiparisServisi servis, Satis.SatisServisi 
         => servis.Listele(tur, durum, cariId, subeId, geciken, limit, Islem);
 
     /// <summary>GET /api/v1/siparisler/{id} — Tam kart</summary>
+    /// <summary>GET /api/v1/siparisler/ozet — PAKET-03 Faz B: açık/geciken/bugün teslim sayıları ve durum kırılımı.</summary>
+    [HttpGet("ozet")]
+    public Task<object> Ozet() => servis.Ozet(Islem);
+
     [HttpGet("{id}")]
     public Task<object> Detay(string id) => servis.Detay(id, Islem);
 

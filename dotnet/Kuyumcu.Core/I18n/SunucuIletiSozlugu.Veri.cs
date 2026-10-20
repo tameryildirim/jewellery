@@ -1279,6 +1279,7 @@ public static partial class SunucuIletiSozlugu
         ("{} gün geçti (son gün {}); bu alış için artık gider pusulası düzenlenemez. Mali müşavirinize danışın.", "{} days have passed (last day {}); an expense voucher can no longer be issued for this purchase. Consult your accountant."),
         ("{} günü bu kasa için zaten kapatılmış.", "The {} day has already been closed for this cash desk."),
         ("{} günü kapatılmıştır ({} gün); kapalı günün kasa hareketleri tarih olarak taşınamaz. Önce günü yeniden açın (SAHİP) ya da hareketi STORNO edip doğru tarihle yeniden girin.", "The {} day has been closed ({} day); the cash desk movements of a closed day cannot be moved by date. Reopen the day first (OWNER) or REVERSE the movement and re-enter it with the right date."),
+        ("{} faturanın satır toplamı belge toplamıyla tutmuyor: {}", "{} invoices have line totals that do not match the document total: {}"),
         ("{} hurda alımının belgesi yok (ne geçerli gider pusulası ne tedarikçi faturası)", "{} scrap purchases have no document (neither a valid expense voucher nor a supplier invoice)"),
         ("{} ile bakiye kaydedilebilecek en büyük değeri aşıyor", "{} exceeds the largest value a balance can be saved with"),
         ("{} iptal edilmiş gider pusulası yeniden düzenlenmeli (7 günlük süre bitmeden)", "{} cancelled expense vouchers must be reissued (before the 7-day period ends)"),

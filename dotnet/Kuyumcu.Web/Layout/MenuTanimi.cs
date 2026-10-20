@@ -219,6 +219,9 @@ public static class MenuTanimi
             // PAKET EKSIK-KUCUK (B2-10): vitrin dükkân ekranı (tam ekran) — Vitrin
             // panosundaki "Dükkân ekranını aç" düğmesi götürür.
             ["/vitrin/ekran"] = "Vitrin.razor",
+            // PAKET-E-BELGE (20.10): e-belge giden kutusu — Faturalar ekranındaki "E-belgeler" düğmesi götürür;
+            // menüye konmadı (faturanın türevi; kenar çubuğu şişmez).
+            ["/e-belgeler"] = "Faturalar.razor",
             // PAKET S1-d: "Tüm ekranlar" karo sayfası. Üst menünün (Yıldız kabuğu)
             // "Tüm ekranlar" sözcüğü götürür (YildizKabuk.UstMenu son öğesi; grup öğesi
             // DEĞİLDİR: ekranların kendisini listeleyen sayfa kendini listelemez).

@@ -796,7 +796,9 @@ public sealed class TasarimBelirtecTestleri
         // GIRDI-AILESI-2 (kurucu 08.10 "harf yazılamaz, tuş anında + yapıştırma temizliği"): 10 → 11,
         // js/girdi-maske.js. Ortak girdi bileşenlerinin tuş/yapıştırma maskesi; belge düzeyinde tek
         // dinleyici. Kendi kökümüzden, eval yok, satır içi yok, CSP istisnası yok.
-        Assert.Equal(12, System.Text.RegularExpressions.Regex.Matches(html, "<script ").Count);   // D1-13: js/imza.js
+        // PAKET-44 / PWA-1 (20.10): 12 → 13, js/pwa.js. Service worker kaydı, "yeni sürüm hazır" bandı, çevrimdışı
+        // göstergesi ve ana ekrana ekle köprüsü. Kendi kökümüzden, eval yok, satır içi yok, CSP istisnası yok.
+        Assert.Equal(13, System.Text.RegularExpressions.Regex.Matches(html, "<script ").Count);   // D1-13: js/imza.js · PAKET-44: js/pwa.js
         Assert.DoesNotContain("<script>", html);
     }
 

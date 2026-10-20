@@ -68,6 +68,8 @@ public interface IEBelgeSaglayici
     Task<string?> Gonder(HttpClient http, EBelgeBaglami b, EBelgeModeli belge, CancellationToken iptal);
     Task<EBelgeDurumSonucu> Durum(HttpClient http, EBelgeBaglami b, string senaryo, Guid ettn, CancellationToken iptal);
     Task<byte[]> Pdf(HttpClient http, EBelgeBaglami b, string senaryo, Guid ettn, CancellationToken iptal);
+    /// <summary>İmzalı UBL-TR XML (yasal asıl) — e-Fatura: /einvoice/Sale/{uuid}/xml · e-Arşiv: /earchive/Invoices/{uuid}/xml.</summary>
+    Task<byte[]> Xml(HttpClient http, EBelgeBaglami b, string senaryo, Guid ettn, CancellationToken iptal);
     Task Iptal(HttpClient http, EBelgeBaglami b, string senaryo, Guid ettn, CancellationToken iptal);
 }
 
@@ -218,6 +220,18 @@ public sealed class NilveraSaglayici : IEBelgeSaglayici
         var metin = Encoding.UTF8.GetString(g).Trim().Trim('"');
         try { return Convert.FromBase64String(metin); }
         catch (FormatException ex) { throw new EBelgeHatasi($"{Ad} PDF'i okunamadı.", false, ex); }
+    }
+
+    public async Task<byte[]> Xml(HttpClient http, EBelgeBaglami b, string senaryo, Guid ettn, CancellationToken iptal)
+    {
+        var yol = senaryo == EBelgeSenaryolari.EFatura ? $"/einvoice/Sale/{ettn}/xml" : $"/earchive/Invoices/{ettn}/xml";
+        var (d, g) = await Gonder(http, Istek(HttpMethod.Get, b, yol), iptal);
+        if (!((int)d is >= 200 and < 300)) throw Hata(d, g);
+        // Gövde XML ya da base64 metin olabilir (içerik türü OpenAPI'de yazmıyor — TEYİTSİZ) → ikisi de kabul.
+        var metin = Encoding.UTF8.GetString(g).TrimStart('\uFEFF', ' ', '\r', '\n', '\t');
+        if (metin.StartsWith('<')) return g;
+        try { return Convert.FromBase64String(metin.Trim().Trim('"')); }
+        catch (FormatException ex) { throw new EBelgeHatasi($"{Ad} XML'i okunamadı.", false, ex); }
     }
 
     public async Task Iptal(HttpClient http, EBelgeBaglami b, string senaryo, Guid ettn, CancellationToken iptal)

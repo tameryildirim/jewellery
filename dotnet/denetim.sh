@@ -439,7 +439,7 @@ fi
 # D1-03 (18.10): Data/BekleyenFis.cs (bekleyen_fisler — işlem bekletme) 81 -> 82
 # D1-19 (18.10): Data/KvkkKayitlari.cs (kvkk_metinleri + kvkk_kayitlari) 82 -> 84
 # D1-16 (18.10): Data/UrunSeti.cs (urun_setleri + urun_seti_kalemleri) 84 -> 86
-BEKLENEN_VARLIK=96
+BEKLENEN_VARLIK=97
 VARLIK=$(grep -c ": IKiraciVarlik" "$API/Data/Entities.cs" || true)
 EK=$(grep -rl ": IKiraciVarlik" "$API/Data" --include='*.cs' | grep -v Entities.cs | xargs grep -c ": IKiraciVarlik" 2>/dev/null | awk -F: '{t+=$2} END{print t+0}')
 MODUL_VARLIK=$(grep -rn ": IKiraciVarlik" "$API/Modules" --include='*.cs' 2>/dev/null | grep -v '/obj/\|/bin/' | wc -l | tr -d ' ')
@@ -628,11 +628,12 @@ fi
 #    D1-13 (18.10): 11 → 12 — js/imza.js. GEREKÇE: müşteri imzası ekranda (parmak/kalem) alınır; tuvale çizim
 #    işaretçi olaylarını (Pointer Events) tarayıcıda yakalamayı ister, Blazor WASM bunu tek başına taşıyamaz.
 #    Kendi kökümüzden, eval yok, satır içi yok, CSP istisnası yok (imza görseli data: — img-src zaten izinli).
+# PAKET-44 (20.10): js/pwa.js eklendi (12 -> 13) — service worker kaydı, kurulum istemi, ağ durumu; satır içi değil, eval yok.
 BETIK=$(grep -c "<script " "$WEB/wwwroot/index.html" | tr -d ' ')
-if [ "$BETIK" = 12 ]; then
-  printf "  ✓ %-46s %s\n" "index.html <script> sayısı (sabit 12)" "$BETIK"
+if [ "$BETIK" = 13 ]; then
+  printf "  ✓ %-46s %s\n" "index.html <script> sayısı (sabit 13)" "$BETIK"
 else
-  printf "  ✗ %-46s %s (beklenen 12)\n" "index.html <script> sayısı (sabit 12)" "$BETIK"; HATA=1
+  printf "  ✗ %-46s %s (beklenen 13)\n" "index.html <script> sayısı (sabit 13)" "$BETIK"; HATA=1
 fi
 # Satır içi <script> BLOĞU hiç olamaz (CSP'de 'unsafe-inline' yok).
 INLINE_BETIK=$(grep -cE "^[[:space:]]*<script>" "$WEB/wwwroot/index.html" | tr -d ' ')
@@ -771,7 +772,9 @@ SAYFA_SAYISI=$(ls "$WEB"/Pages/*.razor 2>/dev/null | wc -l | tr -d ' ')
 # D1-19 (18.10): Kvkk.razor eklendi (52 -> 53) — işletmenin aydınlatma metni + izin özeti; mevcut bir
 # ekranın sekmesi OLAMAZ: Uyum (MASAK) farklı rol/veri; İşletme ayar sayfası tek kayıtlık işletme kartıdır,
 # sürümlü uzun metin ve müşteri izin özeti oraya ait değildir.
-cirkir "Pages/*.razor dosya sayısı" "$SAYFA_SAYISI" 53
+# PAKET-E-BELGE (20.10): EBelgeler.razor eklendi (53 -> 54) — e-Fatura giden kutusu (durum sayaçları, olay izi,
+# PDF/XML); Faturalar listesinin satır içi durumu bunun özetidir, 200+ kayıtlı giden kutusu listeye sığmaz.
+cirkir "Pages/*.razor dosya sayısı" "$SAYFA_SAYISI" 54
 
 # 8) DoD/4 — SESSİZ FORM YASAĞI: EditForm kullanan sayfada ValidationMessage
 #    (ya da alan altı hata metni) bulunmalı. Bugün Pages/ altında EditForm
@@ -1544,7 +1547,7 @@ echo "═══ P-02 ölçüm kapısı ═══"
 # PAKET EKSIK-KUCUK: 51 → 52 (/vitrin/ekran — kabuksuz dükkân ekranı) — taze ölçüldü:
 #   grep -rhE '^@page' Kuyumcu.Web/Pages --include='*.razor' | wc -l  → 52
 # D1-19 (18.10): 52 → 53 (/kvkk — KVKK aydınlatma metni ve izinler)
-P02_ROTA_BEKLENEN=53
+P02_ROTA_BEKLENEN=54
 P02_ROTA=$(grep -rhE '^@page' "$WEB/Pages" --include='*.razor' 2>/dev/null | wc -l | tr -d ' ')
 P02_HARITA=$(grep -cE '^[[:space:]]*\["/' "$WEB/Layout/RotaBasliklari.cs" 2>/dev/null || true)
 if [ "$P02_ROTA" -eq "$P02_ROTA_BEKLENEN" ] && [ "$P02_HARITA" -eq "$P02_ROTA_BEKLENEN" ]; then

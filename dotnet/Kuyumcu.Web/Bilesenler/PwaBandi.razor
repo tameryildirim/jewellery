@@ -1,0 +1,27 @@
+@using Kuyumcu.Core.I18n
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceProvider Sp
+@inject DilServisi Dil
+@implements IDisposable
+
+@* PAKET-44 Faz B (20.10) — tek bant, iki durum: çevrimdışı (önce, kapatılamaz) · yeni sürüm hazır (+ Şimdi yenile). *@
+@if (Pwa is null) { }
+else if (Pwa.Cevrimdisi)
+{
+    <div class="bant bant-uyari pwa-bant" role="alert" id="pwa-cevrimdisi">@PwaSozlugu.Cevrimdisi(Dil.Dil)</div>
+}
+else if (Pwa.GuncellemeVar)
+{
+    <div class="bant bant-bilgi pwa-bant" role="status" id="pwa-yeni-surum">
+        @PwaSozlugu.YeniSurum(Dil.Dil)
+        <button type="button" class="btn btn-ikincil btn-kucuk" id="pwa-yenile" @onclick="Pwa.YenileAsync">@PwaSozlugu.Yenile(Dil.Dil)</button>
+    </div>
+}
+
+@code {
+    /// <summary>DI'da yoksa (eski yerleşim testleri) bant hiç çizilmez.</summary>
+    private PwaServisi? Pwa => Sp.GetService<PwaServisi>();
+    protected override void OnInitialized() { if (Pwa is { } p) p.Degisti += Yenile; }
+    private void Yenile() => InvokeAsync(StateHasChanged);
+    public void Dispose() { if (Pwa is { } p) p.Degisti -= Yenile; }
+}

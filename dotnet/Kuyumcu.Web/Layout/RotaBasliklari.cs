@@ -57,6 +57,8 @@ public static class RotaBasliklari
             // başlığı taşımak ZORUNDADIR — aksi hâlde "Sayfa bulunamadı" yazar.
             ["/banka/ekstre/{IthalatId}"] = t => t.Banka.EkstreBaslik,
             ["/faturalar"] = t => MenuAdlari.Icin(t).Faturalar.Ad,
+            // 20.10 PAKET-E-BELGE: giden kutusu — menüde değil (Faturalar'dan bağlantı), üst bar başlığı taşır.
+            ["/e-belgeler"] = t => Kuyumcu.Core.I18n.EBelgeSozlugu.KutuBaslik(t.DilKodu),
             ["/gider-pusulalari"] = t => MenuAdlari.Icin(t).GiderPusulalari.Ad,
             ["/gider-pusulalari/{Id}/belge"] = t => t.Nav.PusulaBelgesi,
             ["/raporlar"] = t => MenuAdlari.Icin(t).RaporMerkezi.Ad,

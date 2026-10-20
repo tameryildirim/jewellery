@@ -26,6 +26,7 @@ builder.Services.AddScoped<PosServisi>();     // POS alacak defteri istemcisi (p
 builder.Services.AddScoped<DuzeltmePolitikaServisi>();  // düzeltme politikası haritası (UX-1 Faz A) — oturumda tek çekim
 builder.Services.AddScoped<RaporServisi>();      // rapor seti tiplenmiş istemcisi (paket 34 Faz A)
 builder.Services.AddScoped<SurumServisi>();    // sistem künyesi — oturumda tek çekim (paket T-4a)
+builder.Services.AddScoped<PwaServisi>();      // PAKET-44: service worker, ana ekrana ekle, yeni sürüm / çevrimdışı bandı
 
 var host = builder.Build();
 
@@ -44,6 +45,8 @@ var tema = host.Services.GetRequiredService<TemaServisi>();
 await oturum.YukleAsync();
 await dil.YukleAsync();
 await tema.YukleAsync();
+// PAKET-44: tema/dil ilk boyamayı etkiler, PWA etkilemez → onlardan SONRA.
+await host.Services.GetRequiredService<PwaServisi>().BaslatAsync();
 
 // P-36b — kiracı görünümü. ⚠ Oturum YOKKEN istenmez: /gorunum kimlik ister ve
 // giriş ekranında 401 alıp gereksiz hata üretirdi. Oturum açıldığında (ya da

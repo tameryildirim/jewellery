@@ -133,6 +133,7 @@ public class KuyumcuDbContext : DbContext
     public DbSet<BankaBaglantisi> BankaBaglantilari => Set<BankaBaglantisi>();   // D2-05b
     public DbSet<EBelgeAyari> EBelgeAyarlari => Set<EBelgeAyari>();   // e-belge entegratörü (20.10)
     public DbSet<EBelgeGonderimi> EBelgeGonderimleri => Set<EBelgeGonderimi>();   // e-belge giden kutusu
+    public DbSet<EBelgeOlayi> EBelgeOlaylari => Set<EBelgeOlayi>();   // e-belge olay izi (append-only)
     public DbSet<SadakatPuanKullanimi> SadakatPuanKullanimlari => Set<SadakatPuanKullanimi>();   // D2-12
     public DbSet<KvkkMetni> KvkkMetinleri => Set<KvkkMetni>();       // D1-19
     public DbSet<KvkkKaydi> KvkkKayitlari => Set<KvkkKaydi>();       // D1-19
@@ -543,6 +544,7 @@ public class KuyumcuDbContext : DbContext
         mb.Entity<EBelgeAyari>().HasIndex(a => a.TenantId).IsUnique();
         mb.Entity<EBelgeGonderimi>().HasIndex(g => new { g.TenantId, g.FaturaId }).IsUnique();
         mb.Entity<EBelgeGonderimi>().HasIndex(g => new { g.TenantId, g.Durum, g.SonrakiDeneme });
+        mb.Entity<EBelgeOlayi>().HasIndex(o => new { o.TenantId, o.GonderimId, o.Olusturuldu });
         mb.Entity<SadakatPuanKullanimi>().HasIndex(p => new { p.TenantId, p.CariId });
         mb.Entity<KvkkMetni>().HasIndex(m => new { m.TenantId, m.Surum }).IsUnique();
         mb.Entity<KvkkKaydi>().HasIndex(k => new { k.TenantId, k.CariId, k.Tarih });

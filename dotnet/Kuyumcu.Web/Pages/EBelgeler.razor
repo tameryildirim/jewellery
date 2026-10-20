@@ -1,0 +1,137 @@
+@page "/e-belgeler"
+@using Kuyumcu.Contracts.Sayfalar
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Web.Bilesenler.Grid
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject IJSRuntime JS
+
+@* ═══ PAKET-E-BELGE (20.10) — giden kutusu: kesilen faturaların GİB yolculuğu. Sayaçlar (sırada / gönderildi /
+   onaylandı / gönderilemedi / reddedildi / iptal), süzgeç, satırda yeniden dene · PDF · XML, olay izi (katlanır).
+   Belge DEĞİŞMEZ: PATCH/DELETE yok; düzeltme = yeniden dene ya da fatura iptali (8 gün) / iade faturası. ═══ *@
+<PageTitle>@Marka.SayfaBasligi(EBelgeSozlugu.KutuBaslik(Dil.Dil))</PageTitle>
+
+<SayfaBasi Anahtar="e-belgeler" Baslik="@EBelgeSozlugu.KutuBaslik(Dil.Dil)">
+    <Filtreler>
+        <div class="rozet-satir" id="eb-sayaclar">
+            @foreach (var d in Durumlar)
+            {
+                <button type="button" class="@(durum == d ? "btn btn-ikincil btn-kucuk aktif" : "btn btn-metin btn-kucuk")" id="@($"eb-suz-{d.ToLowerInvariant()}")"
+                        @onclick="() => Suz(d)">@EBelgeSozlugu.DurumAdi(d, Dil.Dil) <strong>@(kutu?.Sayaclar.GetValueOrDefault(d) ?? 0)</strong></button>
+            }
+            @if (durum is not null) { <button type="button" class="btn btn-metin btn-kucuk" id="eb-suz-temizle" @onclick="() => Suz(null)">@EBelgeSozlugu.Tumu(Dil.Dil)</button> }
+        </div>
+    </Filtreler>
+</SayfaBasi>
+
+<HataBandi Mesaj="@hata" Id="eb-liste-hata" />
+@if (yukleniyor) { <Yukleniyor /> }
+else if (kutu is null) { }
+else if (kutu.Satirlar.Count == 0) { <BosDurum Mesaj="@EBelgeSozlugu.KutuBos(Dil.Dil)" /> }
+else
+{
+    <div class="kart">
+        <Izgara T="EBelgeKutuSatiri" Ekran="e-belgeler" GridId="eb-tablo" Kolonlar="@Kolonlar" Ogeler="@kutu.Satirlar"
+                SatirId="@(s => $"eb-satir-{s.Gonderim.FaturaId}")" Baslik="@EBelgeSozlugu.KutuBaslik(Dil.Dil)"
+                YapiskanIlkSutun="false" />
+        @if (acikOlay is { } ao)
+        {
+            <Katlanir Id="eb-olaylar" Baslik="@($"{EBelgeSozlugu.OlayIzi(Dil.Dil)} · {OlayFaturaNo(ao)}")" BaslangictaAcik="true" Sayi="@olaylar?.Count">
+                @if (olaylar is null) { <Yukleniyor /> }
+                else if (olaylar.Count == 0) { <span class="metin-soluk metin-kucuk">—</span> }
+                else
+                {
+                    <ul class="liste-sade metin-kucuk" id="@($"eb-olaylar-{ao}")">
+                        @foreach (var o in olaylar)
+                        {
+                            <li>@Bicim.TarihSaat(o.Zaman) · @EBelgeSozlugu.DurumAdi(o.YeniDurum, Dil.Dil) · @EBelgeSozlugu.Kaynak(o.Kaynak, Dil.Dil)@(o.Mesaj is { } m ? $" · {m}" : "")</li>
+                        }
+                    </ul>
+                }
+            </Katlanir>
+        }
+        @if (kutu.DahaFazlasiVar) { <p class="metin-soluk metin-kucuk" id="eb-daha-fazla">@EBelgeSozlugu.DahaFazla(kutu.Toplam, Dil.Dil)</p> }
+        @* UX-S25: gönderim kaydı DÜZENLENMEZ (yasal belge izi); düzeltme = yeniden dene ya da faturayı iptal/iade. *@
+        <DegismezIpucu Varlik="EBelgeGonderimi" Gerekce="@EBelgeSozlugu.DegismezGerekce(Dil.Dil)" AlternatifYol="/faturalar" />
+    </div>
+}
+
+@code {
+    private const string PdfTur = "pdf", XmlTur = "xml";
+    private static readonly string[] Durumlar = ["KUYRUKTA", "GONDERILDI", "KABUL", "HATA", "RET", "IPTAL"];
+    private EBelgeKutuYaniti? kutu;
+    private List<EBelgeOlayOzet>? olaylar;
+    private string? hata, durum, islemde, acikOlay;
+    private bool yukleniyor = true;
+
+    protected override Task OnInitializedAsync() => Yukle();
+
+    private async Task Yukle()
+    {
+        yukleniyor = true; hata = null;
+        try { kutu = await Api.GetAsync<EBelgeKutuYaniti>("/ebelge/kutu" + (durum is null ? "" : $"?durum={durum}")); }
+        catch (Exception ex) when (ex is ApiHata or System.Text.Json.JsonException) { hata = ex.Message; }   // P-11: liste korunur
+        yukleniyor = false;
+    }
+
+    private async Task Suz(string? d) { durum = d; acikOlay = null; await Yukle(); }
+
+    private static string Renk(string d) => d switch { "KABUL" => "yesil", "HATA" or "RET" => "kirmizi", "IPTAL" => "gri", _ => "mavi" };
+
+    private string OlayFaturaNo(string faturaId) => kutu?.Satirlar.FirstOrDefault(s => s.Gonderim.FaturaId == faturaId)?.FaturaNo ?? "—";
+
+    private IReadOnlyList<IzgaraKolonu<EBelgeKutuSatiri>> Kolonlar =>
+    [
+        new() { Anahtar = "fatura", Baslik = Dil.T.Fatura.FaturaNo, ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu", Deger = s => s.FaturaNo ?? "—",
+                Hucre = s => @<text>@(s.FaturaNo ?? "—")<div class="metin-soluk metin-kucuk">@Bicim.Gun(s.Tarih)</div></text> },
+        new() { Anahtar = "alici", Baslik = EBelgeSozlugu.Alici(Dil.Dil), ZorunluGorunur = true, Deger = s => s.AliciUnvan },
+        new() { Anahtar = "toplam", Baslik = Dil.T.Fatura.Toplam, Tur = IzgaraHucreTuru.Para, ParaBirimi = _ => "TRY",
+                BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = s => s.Toplam },
+        new() { Anahtar = "durum", Baslik = EBelgeSozlugu.Durum(Dil.Dil), ZorunluGorunur = true, Tur = IzgaraHucreTuru.Rozet,
+                Deger = s => EBelgeSozlugu.Durum(s.Gonderim.Durum, s.Gonderim.Senaryo, Dil.Dil),
+                Hucre = s => @<text><Rozet Renk="@Renk(s.Gonderim.Durum)">@EBelgeSozlugu.Durum(s.Gonderim.Durum, s.Gonderim.Senaryo, Dil.Dil)</Rozet>
+                    @if (s.Gonderim.SonHata is { } h) { <div class="metin-kucuk metin-kirmizi" id="@($"eb-hata-{s.Gonderim.FaturaId}")">@h</div> }</text> },
+        new() { Anahtar = "belge-no", Baslik = EBelgeSozlugu.BelgeNo(Dil.Dil), Deger = s => s.Gonderim.BelgeNo ?? "—" },
+        new() { Anahtar = "eylem", Baslik = EBelgeSozlugu.OlayIzi(Dil.Dil), BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true,
+                Tur = IzgaraHucreTuru.Eylem,
+                Hucre = s => @<div class="satir-eylem" id="@($"eb-eylem-{s.Gonderim.FaturaId}")">
+                    @{ var g = s.Gonderim; }
+                    @if (g.Durum == "HATA") { <button type="button" class="btn btn-metin btn-kucuk" id="@($"eb-dene-{g.FaturaId}")" disabled="@(islemde is not null)" @onclick="() => YenidenDene(g.FaturaId)">@EBelgeSozlugu.YenidenDene(Dil.Dil)</button> }
+                    @if (g.Durum is "GONDERILDI" or "KABUL")
+                    {
+                        <button type="button" class="btn btn-metin btn-kucuk" id="@($"eb-pdf-{g.FaturaId}")" disabled="@(islemde is not null)" @onclick="() => Indir(g.FaturaId, PdfTur)">PDF</button>
+                        <button type="button" class="btn btn-metin btn-kucuk" id="@($"eb-xml-{g.FaturaId}")" disabled="@(islemde is not null)" @onclick="() => Indir(g.FaturaId, XmlTur)">XML</button>
+                    }
+                    <button type="button" class="btn btn-metin btn-kucuk" id="@($"eb-olay-{g.FaturaId}")" @onclick="() => OlaylarAc(g.FaturaId)">@EBelgeSozlugu.OlayIzi(Dil.Dil)</button>
+                </div> },
+    ];
+
+    private async Task YenidenDene(string faturaId)
+    {
+        islemde = faturaId; hata = null;
+        try { await Api.PostAsync<EBelgeGonderimOzet>($"/ebelge/faturalar/{Uri.EscapeDataString(faturaId)}/yeniden-dene"); await Yukle(); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { islemde = null; }
+    }
+
+    private async Task Indir(string faturaId, string tur)
+    {
+        islemde = faturaId; hata = null;
+        try
+        {
+            var (veri, ad) = await Api.GetBaytAsync($"/ebelge/faturalar/{Uri.EscapeDataString(faturaId)}/{tur}");
+            await JS.InvokeVoidAsync("kuyumcuIndir", ad ?? $"e-belge.{tur}", Convert.ToBase64String(veri), tur == "pdf" ? "application/pdf" : "application/xml");
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        catch (JSException ex) { hata = ex.Message; }
+        finally { islemde = null; }
+    }
+
+    private async Task OlaylarAc(string faturaId)
+    {
+        if (acikOlay == faturaId) { acikOlay = null; return; }
+        acikOlay = faturaId; olaylar = null;
+        try { olaylar = await Api.GetAsync<List<EBelgeOlayOzet>>($"/ebelge/faturalar/{Uri.EscapeDataString(faturaId)}/olaylar"); }
+        catch (ApiHata ex) { hata = ex.Message; }   // P-11: veri düşürülmez; bant hatayı söyler
+    }
+}

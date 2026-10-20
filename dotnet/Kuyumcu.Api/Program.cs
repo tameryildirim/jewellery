@@ -501,6 +501,8 @@ app.Use(async (baglam, ileri) =>
         "object-src 'none'; " +
         "base-uri 'self'; " +
         "form-action 'self'; " +
+        "manifest-src 'self'; " +   // PAKET-44: manifest + service worker yalnız kendi kökümüzden
+        "worker-src 'self'; " +
         "frame-ancestors 'none'";
     await ileri();
 });

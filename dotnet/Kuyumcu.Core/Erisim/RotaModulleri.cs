@@ -44,6 +44,8 @@ public static class RotaModulleri
             ["/banka"] = "banka",
             ["/banka/ekstre/{IthalatId}"] = "banka",
             ["/faturalar"] = "fatura",
+            // PAKET-E-BELGE (20.10): giden kutusu faturanın türevidir — aynı kapı, yeni anahtar açılmadı.
+            ["/e-belgeler"] = "fatura",
             // PAKET P-19 (Y-11/Y-12): gider + virman. YENİ yetki anahtarı AÇILMADI —
             // gider nakit KASASINDAN çıkar, virman kasa/banka arasında olur;
             // kasayı göremeyen bu ekranı da göremez (kapsam kilidi).

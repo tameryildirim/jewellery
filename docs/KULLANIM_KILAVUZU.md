@@ -449,7 +449,21 @@ Kesilen ve taslak faturalar burada listelenir.
 - **Alıcı bilgisi:** fatura kesildiği anda müşterinin adı/unvanı, kimlik numarası ve adresi faturaya yazılır; müşteri kartı sonradan düzeltilse de kesilmiş fatura değişmez.
 - **Yazdırma:** satırdaki **Yazdır** faturayı açar; üstte **A4** ya da **80 mm fiş** seçilir (fiş yazıcısı için). Kâğıtta "bilgi amaçlı döküm" uyarısı yazar; taslak ve iptal edilmiş faturada bu durum da basılır.
 
-> [!BILGI] Program faturayı kendi içinde üretir ve yazdırır; Gelir İdaresi'ne elektronik iletim bu sürümde yoktur (bkz. [Bu sürümde olmayanlar](#haric)).
+- **e-Fatura giden kutusu:** üstteki **e-Fatura giden kutusu** düğmesi kesilen faturaların Gelir İdaresi yolculuğunu gösterir (bkz. [e-Fatura giden kutusu](#ebelgeler)).
+
+## e-Fatura giden kutusu {#ebelgeler}
+
+<!-- ekran: /e-belgeler -->
+
+Kesilen faturaların e-Fatura / e-Arşiv gönderim durumu burada izlenir. Gönderim arka planda yapılır; satış ekranında beklenmez.
+
+- **Durumlar:** sırada · gönderildi · onaylandı · gönderilemedi · reddedildi · iptal. Üstteki sayaçlara dokununca liste o duruma süzülür.
+- **Gönderilemedi:** sebep satırda yazar; **Yeniden dene** aynı belgeyi (aynı belge kimliğiyle) tekrar gönderir, mükerrer fatura oluşmaz.
+- **PDF / XML:** gönderilmiş belgenin entegratördeki resmi kopyası indirilir; kağıt dökümden farklı olarak bu kopya resmî belgedir.
+- **Olay izi:** her satırın geçmişi (kim, ne zaman, hangi duruma) açılır; bu iz değiştirilemez ve silinmez.
+- **Kurulum:** entegratör anahtarı Ayarlar › E-belge bölümünden girilir; anahtar bir daha ekranda görünmez.
+
+> [!BILGI] Gönderim bir e-belge entegratörü üzerinden yapılır; işletme entegratörle kendisi sözleşme yapar. Hangi faturanın e-Arşiv, hangisinin e-Fatura olacağına alıcının Gelir İdaresi kaydına göre program karar verir.
 
 ## İrsaliyeler {#irsaliyeler}
 

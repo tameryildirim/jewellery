@@ -1,12 +1,15 @@
 @page "/ayarlar"
 @using Kuyumcu.Contracts.Sayfalar.Ayarlar
 @using Kuyumcu.Web.Bilesenler.Grid
+@using Kuyumcu.Core.I18n
+@using Microsoft.Extensions.DependencyInjection
 @inject ApiIstemci Api
 @inject DilServisi Dil
 @inject OturumServisi Oturum
 @inject ArayuzModuServisi Modu
 @inject GorunumServisi Gorunum
 @inject KullaniciGorunumServisi BenimGorunum
+@inject IServiceProvider Sp
 @inject IJSRuntime Js
 @inject SurumServisi Surum
 @inject NavigationManager Nav
@@ -128,6 +131,14 @@
                 </div>
 
                 @* ── Arayüz modu (paket UX-3 Faz A) ── *@
+                @* PAKET-44 Faz B (20.10): Uygulama kartı — ana ekrana ekle (beforeinstallprompt), iOS yönergesi. *@
+                <div class="kart" id="ayar-pwa">
+                    <div class="kart-baslik"><h2>@PwaSozlugu.Uygulama(Dil.Dil)</h2></div>
+                    <div class="kart-govde dikey-bosluk">
+                        <button type="button" class="btn btn-ikincil" id="ayar-pwa-kur" disabled="@(Pwa?.KurulabilirMi != true)" @onclick="PwaKur">@PwaSozlugu.AnaEkranaEkle(Dil.Dil)</button>
+                        <p class="metin-kucuk metin-soluk" id="ayar-pwa-ipucu">@(pwaKuruldu ? PwaSozlugu.Kuruldu(Dil.Dil) : Pwa?.KurulabilirMi == true ? "" : PwaSozlugu.KurulamazSebep(Dil.Dil)) @PwaSozlugu.IosYonerge(Dil.Dil)</p>
+                    </div>
+                </div>
                 <div class="kart" id="ayar-arayuz-modu">
                     <div class="kart-baslik"><h2>@Dil.T.Arayuz.Baslik</h2></div>
                     <div class="kart-govde">
@@ -731,6 +742,11 @@
 </ModalPencere>
 
 @code {
+    private bool pwaKuruldu;
+    /// <summary>PAKET-44: DI'da yoksa (eski testler) kart kurulamaz durumda çizilir; ekran kırılmaz.</summary>
+    private PwaServisi? Pwa => Sp.GetService<PwaServisi>();
+    private async Task PwaKur() { if (Pwa is not null) pwaKuruldu = await Pwa.KurAsync(); }
+
 
     // ── PAKET S1-h — sekmeler ──
     private AyarlarSekmeMetinleri SM => AyarlarSekmeSozlugu.Al(Dil.Dil);
