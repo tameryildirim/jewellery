@@ -94,6 +94,7 @@ public partial class Cariler
                 YeniMusteri = EventCallback.Factory.Create(this, YeniModalAc),
                 Bantlar = YildizBantlar,
                 DigerSuzgecler = YildizDigerSuzgecler,
+                DogumGunleri = dogumGunleri is null && dogumHata is null ? null : YildizDogumGunleri,   // DG-1
             };
         }
     }

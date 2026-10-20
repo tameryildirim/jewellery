@@ -180,6 +180,13 @@ Başkasının satırını değiştirme/silme yok.
 - **D1-20 dene-gör (20.10):** Satış analizi › Prim sekmesinde "Deneyin: bu oranla ne öderdim?" — GET /raporlar/prim?oran=X, dönemin
   primi herkes için o oranla hesaplanır, yanıt SimulasyonOran taşır, ekranda "Deneme — hiçbir şey kaydedilmedi" bandı; kayıtlı
   yüzde değişmez (test). Mutasyon kanıtı: oran yok sayılınca 1000 ≠ 400. Y-10/Y-15 mutasyonları da yakalandı. 12.794 test 0 başarısız.
+- **DG-1 doğum günü listesi (20.10):** GET /cari/dogum-gunleri?gun=30 (aktif + doğum tarihi yazılı; yıl dönümü ≤ N gün; 29 Şubat
+  kuralı), Müşteriler ekranında tuvalin alt notunun altında KAPALI katlanır "Yaklaşan doğum günleri (30 gün)" — ad · tarih ·
+  bugün/yarın/N gün sonra · yaş · WhatsApp (kutlama metni hazır). Mutasyon: pasif cari süzgeci kalkınca test kırmızı.
+  Not: tuval dışı öğe → kurucunun görsel onayı; kapalı katlanır olduğundan ekranın açılış görünümü değişmedi.
+- **Tarayıcı kanıtı (20.10 21:45, 5199 @ 5e8ca25):** İşletme › Ayarlar › "Mali müşavirin hesap kodları" paneli DOM'da (etiket "Satış
+  hesabı (boşsa 600)"), ekran görüntüsü sekme kaydırmasında yakalanamadı — yeniden alınacak; Satış analizi › Prim ve hedef › "Deneyin: bu
+  oranla ne öderdim?" %5 → Toplam prim 46.648,88 ₺ + "Deneme — … hiçbir şey kaydedilmedi" bandı (görüntü alındı).
 - **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
   zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
   müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım

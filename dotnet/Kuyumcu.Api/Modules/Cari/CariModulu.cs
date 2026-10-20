@@ -577,6 +577,34 @@ public sealed class CariServisi(
 
     // ─── Liste ────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// DG-1 (20.10) — yaklaşan doğum günleri: doğum tarihi yazılı AKTİF müşteriler (sistem carisi hariç); bir sonraki doğum günü
+    /// bugünden itibaren ≤ gün ise listede (bugün = 0). Yıl dönümü yerelde hesaplanır; 29 Şubat artık yıl değilse 28 Şubat.
+    /// </summary>
+    public async Task<Kuyumcu.Contracts.Sayfalar.Cariler.DogumGunuListesi> DogumGunleri(int? gun, AktifKullanici islem)
+    {
+        var g = Math.Clamp(gun ?? 30, 1, 366);
+        var bugun = Zaman.YerelBugun();
+        var adaylar = await db.Cariler.AsNoTracking()
+            .Where(c => c.TenantId == islem.TenantId && c.Aktif && !c.SistemCarisi && c.DogumTarihi != null)
+            .Select(c => new { c.Id, c.Ad, c.Telefon, Dogum = c.DogumTarihi!.Value })
+            .Take(5000).ToListAsync();
+        static DateOnly Sonraki(DateOnly dogum, DateOnly bugun)
+        {
+            DateOnly Yilda(int yil) => new(yil, dogum.Month, Math.Min(dogum.Day, DateTime.DaysInMonth(yil, dogum.Month)));
+            var bu = Yilda(bugun.Year);
+            return bu >= bugun ? bu : Yilda(bugun.Year + 1);
+        }
+        var satirlar = adaylar
+            .Select(c => { var s = Sonraki(c.Dogum, bugun); return (c, s, gunSonra: s.DayNumber - bugun.DayNumber); })
+            .Where(x => x.gunSonra <= g)
+            .OrderBy(x => x.gunSonra).ThenBy(x => x.c.Ad)
+            .Select(x => new Kuyumcu.Contracts.Sayfalar.Cariler.DogumGunuSatiri(x.c.Id, x.c.Ad, x.c.Telefon, x.c.Dogum, x.gunSonra, x.s.Year - x.c.Dogum.Year))
+            .ToList();
+        await denetim.ListeOkumaKaydet(islem, Varlik, satirlar.Count, "yaklaşan doğum günleri");
+        return new Kuyumcu.Contracts.Sayfalar.Cariler.DogumGunuListesi(satirlar, g);
+    }
+
     public async Task<object> Listele(
         AktifKullanici islem, string? tur, bool? aktif, string? q, int limit, int offset,
         string? sirala = null, string? yon = null)
@@ -1931,6 +1959,11 @@ public sealed class CariController(CariServisi servis) : ControllerBase
     [HttpGet("sistem-carisi")]
     public Task<Kuyumcu.Contracts.Sayfalar.PesinMusteri.PesinMusteriKarti> SistemCarisiGetir()
         => servis.SistemCarisiGetir(Islem);
+
+    /// <summary>GET /api/v1/cari/dogum-gunleri?gun=30 — DG-1: önümüzdeki N günde doğum günü olan aktif müşteriler (cari listesiyle aynı yüzey).</summary>
+    [HttpGet("dogum-gunleri")]
+    public Task<Kuyumcu.Contracts.Sayfalar.Cariler.DogumGunuListesi> DogumGunleri([FromQuery] int? gun)
+        => servis.DogumGunleri(gun, Islem);
 
     /// <summary>GET /api/v1/cari/{id} — Cari detayı + anlık bakiye (okuma izi düşer)</summary>
     [HttpGet("{id}")]

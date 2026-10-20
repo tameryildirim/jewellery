@@ -31,6 +31,8 @@ public sealed class YildizMusteriBaglami
     public IReadOnlyList<YildizMusteriSatiri> Satirlar { get; init; } = [];
     public IReadOnlyList<YildizSekme> Sekmeler { get; init; } = [];
     public string Arama { get; init; } = "";
+    /// <summary>DG-1 (20.10) — yaklaşan doğum günleri katlanırı (tuvalin alt notunun altında, kapalı); null = çizilmez.</summary>
+    public RenderFragment? DogumGunleri { get; init; }
     public bool Yukleniyor { get; init; }
     /// <summary>İstek başarılı ve hiç cari yok (UX-S28: hata ayrı bant).</summary>
     public bool HicYok { get; init; }

@@ -101,3 +101,7 @@ public sealed record KurVeri(string Id, decimal? UsdTry = null, decimal? EurTry 
 public sealed record CariBagliKayit(
     string CariId, bool Aktif, int HareketSayisi,
     decimal TlBakiye, decimal HasGramBakiye, bool DovizBakiyeVar);
+
+/// <summary>DG-1 (20.10, rakip taraması "doğum günü listesi") — önümüzdeki N günde doğum günü olan aktif müşteriler.</summary>
+public sealed record DogumGunuSatiri(string Id, string Ad, string? Telefon, DateOnly DogumTarihi, int GunSonra, int Yas);
+public sealed record DogumGunuListesi(List<DogumGunuSatiri> Satirlar, int Gun);

@@ -1141,6 +1141,38 @@
                                     @WhatsAppBaglanti(c)
     }
 
+    // ── DG-1 (20.10): yaklaşan doğum günleri — ayrı istek, hatası kendi bandında; tuvalin alt notunun altında KAPALI katlanır. ──
+    private DogumGunuListesi? dogumGunleri;
+    private string? dogumHata;
+    private async Task DogumGunleriYukle()
+    {
+        try { dogumGunleri = await Api.GetAsync<DogumGunuListesi>("/cari/dogum-gunleri?gun=30"); dogumHata = null; }
+        catch (ApiHata ex) { dogumHata = ex.Message; }
+        catch (System.Text.Json.JsonException) { dogumHata = Kuyumcu.Core.I18n.D1Sozlugu.Al(Dil.Dil).BolumOkunamadi; }
+    }
+    private RenderFragment YildizDogumGunleri => @<Katlanir Id="cari-dogum-gunleri" Baslik="@Kuyumcu.Core.I18n.DogumGunuSozlugu.Baslik(dogumGunleri?.Gun ?? 30, Dil.Dil)" Sayi="@dogumGunleri?.Satirlar?.Count">
+        <HataBandi Mesaj="@dogumHata" Id="cari-dogum-hata" />
+        @if (dogumGunleri is { } dg)
+        {
+            @if (dg.Satirlar is null || dg.Satirlar.Count == 0) { <BosDurum Mesaj="@Kuyumcu.Core.I18n.DogumGunuSozlugu.Bos(Dil.Dil)" /> }
+            else
+            {
+                <ul class="liste-sade" id="cari-dogum-liste">
+                    @foreach (var d in dg.Satirlar)
+                    {
+                        <li id="@($"cari-dogum-{d.Id}")">
+                            <strong>@d.Ad</strong> · @Bicim.Gun(d.DogumTarihi) · @Kuyumcu.Core.I18n.DogumGunuSozlugu.NeZaman(d.GunSonra, Dil.Dil) · <span class="metin-soluk">@Kuyumcu.Core.I18n.DogumGunuSozlugu.Yas(d.Yas, Dil.Dil)</span>
+                            @if (Kuyumcu.Core.Domain.WhatsAppBaglantisi.Adres(d.Telefon, Kuyumcu.Core.I18n.DogumGunuSozlugu.Kutla(d.Ad, Dil.Dil)) is { } wa)
+                            {
+                                <a class="btn btn-metin btn-kucuk cari-whatsapp" id="@($"cari-dogum-wa-{d.Id}")" href="@wa" target="_blank" rel="noopener" title="WhatsApp">WhatsApp</a>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        }
+    </Katlanir>;
+
     @* PAKET-06 Faz B (20.10): cep numarasıysa WhatsApp'ı o müşteriyle açan bağlantı (program mesaj göndermez). *@
     private RenderFragment WhatsAppBaglanti(CariVeri c) => @<text>@if (Kuyumcu.Core.Domain.WhatsAppBaglantisi.Adres(c.Telefon) is { } wa)
         {
@@ -2180,6 +2212,7 @@
         // GRID-1 tur 2: kayıtlı sıralama İLK liste isteğinden önce okunur (tek istek, sırasız anlık görüntü yok).
         cariSiralama = await CariTercih.KayitliSiralamaAsync("cariler", "cari-liste", CariKolonlari);
         await Yukle();
+        await DogumGunleriYukle();   // DG-1
         await BaglantiCarisiniAc();
         // Döviz düğmelerinin kilidi kura bağlıdır (UX-S30); kur ilk yüklemede
         // çekilir ki düğme "sebepsiz kapalı" görünmesin.

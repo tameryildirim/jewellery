@@ -282,6 +282,8 @@ Listedeki bir cariye basınca bütün hareketleri TL ve has gram olarak listelen
 
 Müşterinin kartında **IBAN'lar** bölümü vardır; bir müşteri birden çok hesaptan para gönderebilir. **+ IBAN ekle** ile yeni IBAN yazılır, **Kaldır** ile bağ kaldırılır (geçmiş ödemeler etkilenmez). Listedeki bir IBAN'dan para gelince ödeme bu müşteriye kendiliğinden bağlanır. Bir IBAN yalnız bir müşteride kayıtlı olabilir; başka müşterideyse program kimde olduğunu söyler. Bankadan öğrenilen IBAN'ların yanında "bankadan" yazar.
 
+**Yaklaşan doğum günleri:** listenin altındaki **Yaklaşan doğum günleri** bölümü, doğum tarihi yazılı müşterilerden 30 gün içinde doğum günü olanları gösterir; yanındaki **WhatsApp** kutlama mesajı hazır olarak sohbeti açar (program mesaj göndermez). Doğum tarihi müşteri kartına yazılır.
+
 ## Ürünler {#urunler}
 
 <!-- ekran: /urunler -->
