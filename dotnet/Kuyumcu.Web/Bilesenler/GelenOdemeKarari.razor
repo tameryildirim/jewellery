@@ -57,7 +57,7 @@
                                 <li class="go-satis" id="@($"go-satis-{s.Id}-{x.HareketId}")">
                                     <div class="go-satis-sec">
                                         <Onay ElemanId="@($"go-sec-{s.Id}-{x.HareketId}")"
-                                              Etiket="@($"{Bicim.Gun(x.Tarih)}{(x.FisId is null ? "" : " · " + GelenOdemeSozlugu.Fis(Dil.Dil))} · {GelenOdemeSozlugu.Kalan(Bicim.Tl(x.KalanTl), Dil.Dil)}")"
+                                              Etiket="@($"{Bicim.Gun(x.Tarih)}{(x.FaturaNo is { } fno ? " · " + GelenOdemeSozlugu.FaturaNo(fno, Dil.Dil) : x.FisId is null ? "" : " · " + GelenOdemeSozlugu.Fis(Dil.Dil))} · {GelenOdemeSozlugu.Kalan(Bicim.Tl(x.KalanTl), Dil.Dil)}")"
                                               Deger="@sec" DegerChanged="@(v => Isaretle(s, x, v))" />
                                         @if (x.FaturaSuresiGecti) { <span class="rozet rozet-uyari" id="@($"go-fatura-gecti-{x.HareketId}")">@GelenOdemeSozlugu.FaturaGecti(Dil.Dil)</span> }
                                     </div>
@@ -184,10 +184,13 @@
                 ? (s.BorcluSatislar ?? []).Where(x => v.Secili.Contains(x.HareketId) && v.Tutar.GetValueOrDefault(x.HareketId) > 0m)
                     .Select(x => new { borcHareketId = x.HareketId, tutarTl = v.Tutar[x.HareketId] }).ToList()
                 : null;
-            await Api.PostAsync<JsonElement>($"/bankalar/hareketler/{s.Id}/karar", new { karar, mahsuplar });
+            var y = await Api.PostAsync<JsonElement>($"/bankalar/hareketler/{s.Id}/karar", new { karar, mahsuplar });
             bilgi = karar == KararBorc
                 ? GelenOdemeSozlugu.Dusuldu(s.CariAd ?? "", Dil.Dil)
                 : GelenOdemeSozlugu.SatisSayildi(Dil.Dil);
+            // M8 kalanı: borcu tamamen kapanan satışın faturası ödendi sayıldı — kullanıcıya tek satırda.
+            if (y.ValueKind == JsonValueKind.Object && y.TryGetProperty("odenenFaturalar", out var of) && of.ValueKind == JsonValueKind.Array && of.GetArrayLength() > 0)
+                bilgi += " " + GelenOdemeSozlugu.FaturaOdendi(string.Join(", ", of.EnumerateArray().Select(e => e.GetString())), Dil.Dil);
             sonKararId = s.Id;
             secimler.Remove(s.Id);
             await Yenile();

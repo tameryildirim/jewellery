@@ -35,6 +35,8 @@ public static class GelenOdemeSozlugu
     public static string AltinBorcu(string miktar, string dil) => En(dil) ? $"Gold debt {miktar} (not deducted here)" : $"Altın borcu {miktar} (burada düşülmez)";
     public static string FaturaGecti(string dil) => En(dil) ? "No invoice — 7 days passed" : "Faturası yok — 7 gün geçti";
     public static string Fis(string dil) => En(dil) ? "Slip" : "Fiş";
+    public static string FaturaNo(string no, string dil) => En(dil) ? $"Invoice {no}" : $"Fatura {no}";
+    public static string FaturaOdendi(string nolar, string dil) => En(dil) ? $"Invoice {nolar} marked as paid." : $"Fatura {nolar} ödendi olarak işaretlendi.";
     public static string DusulecekTutar(string dil) => En(dil) ? "Amount to deduct" : "Düşülecek tutar";
 
     // ── Dekont sonucu ──

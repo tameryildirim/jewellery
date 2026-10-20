@@ -82,9 +82,12 @@ public sealed class GelenOdemeServisi(
     public const decimal OneriEsigi = 0.5m;
 
     // ── 1) Müşteriyi çöz ─────────────────────────────────────────────────────
-    public async Task<CariCozum> Coz(string? kimlikNo, string? iban, string? ad, string tenantId)
+    public async Task<CariCozum> Coz(string? kimlikNo, string? iban, string? ad, string tenantId, string? aciklama = null)
     {
-        var no = DogalAnahtar.Normalle(kimlikNo);
+        // M8 kalanı (20.10): bankanın açıklamasındaki TC/VKN ve "Gönd: AD SOYAD" yalnız alan boşsa kullanılır.
+        var ipucu = AciklamaAyristirici.Ayristir(aciklama);
+        var no = DogalAnahtar.Normalle(kimlikNo) ?? ipucu.KimlikNo;
+        if (string.IsNullOrWhiteSpace(ad)) ad = ipucu.Ad;
         if (no is not null && KimlikNo.Dogrula(no, KimlikNo.TurTuret(no)) is null)
         {
             var id = await db.Cariler.AsNoTracking()
@@ -141,12 +144,16 @@ public sealed class GelenOdemeServisi(
         var kimlikNo = DogalAnahtar.Normalle(dto.KarsiKimlikNo);
         if (kimlikNo is not null && KimlikNo.Dogrula(kimlikNo, KimlikNo.TurTuret(kimlikNo)) is { } kh)
             throw new BadRequestException(kh).AlanIle("karsiKimlikNo");
+        // M8 kalanı: açıklamadaki kimlik/ad, alan boşsa aynı kanıt sayılır (yeni kart da bununla açılır).
+        var ipucu = AciklamaAyristirici.Ayristir(dto.Aciklama);
+        kimlikNo ??= ipucu.KimlikNo;
+        var karsiAd = string.IsNullOrWhiteSpace(dto.KarsiTarafAd) ? ipucu.Ad : dto.KarsiTarafAd;
 
         var gelen = dto.Yon == HareketYonu.BankaGelen;
         CariCozum cozum = !string.IsNullOrEmpty(dto.CariId)
             ? new(CariCozumYolu.Secildi, dto.CariId, [])
             : gelen
-                ? await Coz(kimlikNo, dto.KarsiIban, dto.KarsiTarafAd, islem.TenantId)
+                ? await Coz(kimlikNo, dto.KarsiIban, karsiAd, islem.TenantId)
                 : new(CariCozumYolu.Yok, null, []);
 
         if (cozum.Yol is CariCozumYolu.Kimlik or CariCozumYolu.Iban or CariCozumYolu.Yeni)
@@ -157,12 +164,12 @@ public sealed class GelenOdemeServisi(
                 var cariId = cozum.CariId ?? await cari.OlusturId(new Cari.CariOlusturDto
                 {
                     Tur = Cari.SistemCarisi.CariTuru,   // "MUSTERI" (tek tanım)
-                    Ad = dto.KarsiTarafAd!.Trim(),
+                    Ad = karsiAd!.Trim(),
                     VergiNo = kimlikNo,
                     Notlar = "Bankadan gelen ödemeyle kendiliğinden açıldı",
                 }, islem);
                 if (!string.IsNullOrWhiteSpace(dto.KarsiIban))
-                    await IbanOgretSessiz(db, cariId, dto.KarsiIban, dto.KarsiTarafAd, islem);
+                    await IbanOgretSessiz(db, cariId, dto.KarsiIban, karsiAd, islem);
                 // 18.10: havale TC taşıyor, bulunan müşterinin kartında TC yoksa yazılır (fatura haddinde kilit çıkmasın).
                 var kimlikYazildi = cozum.Yol == CariCozumYolu.Iban && kimlikNo is not null
                     && (await Cari.CariKimlikTamamlayici.Tamamla(db, islem.TenantId, cariId, kimlikNo)).Durum == Cari.CariKimlikTamamlayici.Yazildi;
@@ -278,7 +285,8 @@ public sealed class GelenOdemeServisi(
 
     /// <summary>Açık (borcu kalan) veresiye satış — karar ekranının listesi.</summary>
     public sealed record BorcluSatis(string HareketId, DateTime Tarih, DateOnly Vade, int GecikmeGun,
-        decimal KalanTl, string? FisId, bool Faturali, bool FaturaSuresiGecti, decimal OneriTl = 0m);
+        decimal KalanTl, string? FisId, bool Faturali, bool FaturaSuresiGecti, decimal OneriTl = 0m,
+        string? FaturaId = null, string? FaturaNo = null);
 
     /// <summary>
     /// Carinin açık TL borçları (VadeKapisi — mahsup + FIFO yürüyüşü) ve fatura durumları.
@@ -290,11 +298,16 @@ public sealed class GelenOdemeServisi(
         var (borclar, _) = await Vade.VadeKapisi.AcikBorclar(db, tenantId, cariId, simdi);
         if (borclar.Count == 0) return [];
         var idler = borclar.Select(b => b.HareketId).ToList();
-        var hareketler = await db.Hareketler.AsNoTracking()
+        var hareketListesi = await db.Hareketler.AsNoTracking()
             .Where(x => x.TenantId == tenantId && idler.Contains(x.Id))
             .OrderBy(x => x.Id).Take(idler.Count)
-            .Select(x => new { x.Id, x.Tur, x.FisId })
-            .ToDictionaryAsync(x => x.Id);
+            .ToListAsync();
+        var hareketler = hareketListesi.ToDictionary(x => x.Id);
+        // M8 kalanı: kesilmiş faturanın numarası ve kimliği (ADR-0018 tek yol) — tek tıkla "ödendi" için.
+        var faturaKumesi = await db.Faturalar.AsNoTracking()
+            .Where(f => f.TenantId == tenantId && f.CariId == cariId && f.Tur == "SATIS" && (f.Durum == "KESILDI" || f.Durum == "ODENDI"))
+            .OrderByDescending(f => f.Tarih).Take(500).ToListAsync();
+        var baglar = await FaturaHareketBagi.Coz(db, tenantId, hareketListesi, faturaKumesi);
         // Fatura bağı TEK YOLDAN (ADR-0018 — FaturaHareketBagi.Bagsiz: kalem otoritesi + eski damga).
         var faturasiz = (await FaturaHareketBagi.Bagsiz(db, tenantId,
                 db.Hareketler.AsNoTracking().Where(x => x.TenantId == tenantId && idler.Contains(x.Id)))
@@ -307,8 +320,9 @@ public sealed class GelenOdemeServisi(
                 var hh = hareketler[b.HareketId];
                 var faturali = !faturasiz.Contains(b.HareketId);
                 var gun = bugun.DayNumber - DateOnly.FromDateTime(Zaman.UtcdenYerele(b.Tarih)).DayNumber;
+                var bag = baglar.GetValueOrDefault(b.HareketId);
                 return new BorcluSatis(b.HareketId, b.Tarih, b.Vade, b.GecikmeGun, b.AcikTutar, hh.FisId,
-                    faturali, !faturali && gun > 7);
+                    faturali, !faturali && gun > 7, FaturaId: bag?.FaturaId, FaturaNo: bag?.FaturaNo);
             })
             .OrderByDescending(b => b.GecikmeGun >= 0)
             .ThenBy(b => b.Vade).ThenBy(b => b.Tarih)];
@@ -347,6 +361,7 @@ public sealed class GelenOdemeServisi(
             .Select(x => new { x.CariKarari }).FirstAsync();
         if (guncel.CariKarari == CariKarari.Borc)
             throw new ConflictException("Bu ödeme zaten borcundan düşüldü.");
+        List<string> odenen = [];
 
         if (dto.Karar == CariKarari.Satis)
         {
@@ -363,6 +378,7 @@ public sealed class GelenOdemeServisi(
                 .OrderByDescending(s => s.Olusturuldu).Select(s => s.Id).FirstOrDefaultAsync()
                 ?? throw new BadRequestException("Önce güncel kur alınmalı (kur ekranı).");
 
+            var once = await BorcluSatislar(h.CariId!, islem.TenantId, now);
             var tahsilatId = Kimlik.Ulid();
             HareketFabrikasi.Ekle(db, OdemeIzi.Etiketten("HAVALE", h.Tutar, vade: null), new Hareket
             {
@@ -389,11 +405,13 @@ public sealed class GelenOdemeServisi(
             h.KararHareketId = tahsilatId;
             denetim.YazmaKaydet(islem, "BankaOdemeKarari", h.Id,
                 $"gelen ödeme borcundan düşüldü · tahsilat: {tahsilatId} · cari: {h.CariId}", hassas: false);
+            await db.SaveChangesAsync();
+            odenen = await KapananFaturalariIsaretle(h, once, islem, now);
         }
 
         await db.SaveChangesAsync();
         if (tx is not null) await tx.CommitAsync();
-        return new { id = h.Id, cariKarari = h.CariKarari, kararHareketId = h.KararHareketId };
+        return new { id = h.Id, cariKarari = h.CariKarari, kararHareketId = h.KararHareketId, odenenFaturalar = odenen };
     }
 
     /// <summary>
@@ -423,6 +441,27 @@ public sealed class GelenOdemeServisi(
         }
     }
 
+    /// <summary>
+    /// M8 kalanı (tek tık): bu ödemeyle borcu TAMAMEN kapanan satışın kesilmiş faturası ÖDENDİ olur ve banka
+    /// hareketine bağlanır. Kısmen kapanan satışın faturası değişmez. Aynı işlemde (cari kilidi altında).
+    /// </summary>
+    private async Task<List<string>> KapananFaturalariIsaretle(BankaHareket h, List<BorcluSatis> once, AktifKullanici islem, DateTime now)
+    {
+        var sonra = (await BorcluSatislar(h.CariId!, islem.TenantId, now)).Select(b => b.HareketId).ToHashSet();
+        var kapananFaturalar = once.Where(b => b.FaturaId is not null && !sonra.Contains(b.HareketId))
+            .Select(b => b.FaturaId!).Distinct().ToList();
+        if (kapananFaturalar.Count == 0) return [];
+        var faturalar = await db.Faturalar
+            .Where(f => f.TenantId == islem.TenantId && kapananFaturalar.Contains(f.Id) && f.Durum == "KESILDI")
+            .OrderBy(f => f.Id).Take(kapananFaturalar.Count).ToListAsync();
+        foreach (var f in faturalar)
+        {
+            f.Durum = "ODENDI"; f.BankaHareketId = h.Id; f.Guncellendi = now;
+            denetim.YazmaKaydet(islem, "Fatura", f.Id, $"gelen banka ödemesiyle ödendi · banka hareketi: {h.Id}", hassas: false);
+        }
+        return faturalar.Select(f => f.FaturaNo ?? f.Id).ToList();
+    }
+
     /// <summary>Borçtan düşmeyi geri alır: TAHSILAT stornolanır (tek storno motoru), karar boşalır.</summary>
     public async Task<object> KararGeriAl(string bankaHareketId, AktifKullanici islem)
     {
@@ -441,6 +480,16 @@ public sealed class GelenOdemeServisi(
         }
         if (h.CariKarari != CariKarari.Borc || h.KararHareketId is null)
             throw new ConflictException("Bu ödeme için verilmiş bir karar yok.");
+        // M8 kalanı: bu ödemeyle "ödendi" olan faturalar geri KESİLDİ olur (ödeme geri geldi).
+        var odenenler = await db.Faturalar
+            .Where(x => x.TenantId == islem.TenantId && x.BankaHareketId == h.Id && x.Durum == "ODENDI")
+            .OrderBy(x => x.Id).Take(100).ToListAsync();
+        foreach (var fx in odenenler)
+        {
+            fx.Durum = "KESILDI"; fx.BankaHareketId = null; fx.Guncellendi = DateTime.UtcNow;
+            denetim.YazmaKaydet(islem, "Fatura", fx.Id, "banka ödemesi kararı geri alındı · fatura yeniden KESİLDİ", hassas: false);
+        }
+        if (odenenler.Count > 0) await db.SaveChangesAsync();
         var kurId = await db.Hareketler.AsNoTracking()
             .Where(x => x.Id == h.KararHareketId && x.TenantId == islem.TenantId)
             .Select(x => x.KurSnapshotId).FirstAsync();

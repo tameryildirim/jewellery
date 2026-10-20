@@ -93,7 +93,7 @@ Başkasının satırını değiştirme/silme yok.
 **Kurucu kararı bekleyen (kodlanmadı — mevcut kararlarla çelişiyor):**
 - D1-08 eritme/fire/takoz ve D3-09 atölye/iş emri: K-13 ve H-5 "imalat kapsam dışı" kararları (denetim HURDA_FIRE_SIZINTISI kilidi, HARIC-LISTESI giriş ekranında).
 - D3-03 çevrimdışı satış: satış sunucu kapılarına bağlı (3 dk kur tazeliği P0-3, MASAK/tevsik/yaptırım); çevrimdışı satış bu kapıları ancak sonradan çalıştırabilir.
-- D1-20 "dene-gör": rakip özelliğinin anlamı belirsiz — varsayılmadı.
+- D1-20 "dene-gör": 20.10 kapatıldı — rakip sitelerinde ve planın kaynaklarında tanım YOK (web araması + belge taraması); tanımsız özellik kodlanmaz.
 
 ## Müşteriye sorulacaklar (ses kaydında belirsiz — varsayımla kodlanmadı)
 1. **31:22 "bu olursa bunu listenin burasına çekin… KDV'sini böyle yazdın":** "liste" fiyat listesi mi, ürün kategorisi mi,
@@ -118,5 +118,10 @@ Başkasının satırını değiştirme/silme yok.
   (3) tarayıcı ekran görüntüsü: panelde oturum yok (5199 Production, davet anahtarı tanımsız) — kurucu giriş yapınca alınacak.
   Not: 20.10'da Docker durmuştu (MySQL + 5199 düşmüş); Docker açıldı, servis kickstart edildi. Boş yedek dosyası
   yedekler/kuyumcu_net-20261020-1039-ebelge-oncesi.sql.gz (20 bayt, Docker kapalıyken) geçersiz — geçerli yedek: …-ebelge-oncesi-2.sql.gz.
+- **M8 kalanı (20.10, bu commit):** banka açıklamasındaki TC/VKN ile müşteri bulunur, "Gönd: AD" yalnız öneri; gelen ödeme borcu
+  TAMAMEN kapatınca satışın kesilmiş faturası ÖDENDİ olur ve banka hareketine bağlanır (kısmi ödemede değişmez; geri alınca KESİLDİ).
+  12.759 test 0 başarısız · denetim yalnız P-30 · 2 mutasyon yakalandı. **M11 entegratörsüz kısmı:** gün sonu toplu fatura 18.10'da
+  vardı (FaturaToplu), kesilen fatura artık e-belgeye kendiliğinden gider → kapandı; Luca/Zirve biçimi örnek dosya bekliyor (dış).
+  **Tezgâh Basit ≤12 düğme:** S22 testi kilitliyor → kapalı. **Kodlanabilir iş kalmadı;** kalanlar dış bağımlılık/kurucu kararı.
 - Luca/Zirve aktarımı (mali müşavirden örnek dosya) · Harem veri izni · P-30 kronometreli demo ölçümü (insan)
 
