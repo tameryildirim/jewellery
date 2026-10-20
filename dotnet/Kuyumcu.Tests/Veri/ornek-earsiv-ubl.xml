@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+         xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+         xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
+  <cbc:ProfileID>EARSIVFATURA</cbc:ProfileID>
+  <cbc:ID>MHK2026000000014</cbc:ID>
+  <cbc:CopyIndicator>false</cbc:CopyIndicator>
+  <cbc:UUID>7d1c2f9e-3a4b-4c5d-8e6f-0a1b2c3d4e5f</cbc:UUID>
+  <cbc:IssueDate>2026-10-20</cbc:IssueDate>
+  <cbc:IssueTime>14:32:05</cbc:IssueTime>
+  <cbc:InvoiceTypeCode>OZELMATRAH</cbc:InvoiceTypeCode>
+  <cbc:Note>Mihenk belge no: FTR-2026-000014</cbc:Note>
+  <cbc:DocumentCurrencyCode>TRY</cbc:DocumentCurrencyCode>
+  <cbc:LineCountNumeric>2</cbc:LineCountNumeric>
+  <cac:AccountingSupplierParty><cac:Party>
+    <cac:PartyIdentification><cbc:ID schemeID="VKN">1234567890</cbc:ID></cac:PartyIdentification>
+    <cac:PartyName><cbc:Name>Altın Çarşı Kuyumculuk Ltd. Şti.</cbc:Name></cac:PartyName>
+    <cac:PostalAddress><cbc:StreetName>Kalpakçılar Cad. No: 41</cbc:StreetName><cbc:CitySubdivisionName>Fatih</cbc:CitySubdivisionName><cbc:CityName>İstanbul</cbc:CityName><cac:Country><cbc:Name>Türkiye</cbc:Name></cac:Country></cac:PostalAddress>
+    <cac:PartyTaxScheme><cac:TaxScheme><cbc:Name>Kapalıçarşı</cbc:Name></cac:TaxScheme></cac:PartyTaxScheme>
+    <cac:Contact><cbc:Telephone>0212 555 00 41</cbc:Telephone></cac:Contact>
+  </cac:Party></cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty><cac:Party>
+    <cac:PartyIdentification><cbc:ID schemeID="TCKN">10000000146</cbc:ID></cac:PartyIdentification>
+    <cac:PostalAddress><cbc:StreetName>Bağdat Cad. 112/4</cbc:StreetName><cbc:CitySubdivisionName>Kadıköy</cbc:CitySubdivisionName><cbc:CityName>İstanbul</cbc:CityName><cac:Country><cbc:Name>Türkiye</cbc:Name></cac:Country></cac:PostalAddress>
+    <cac:Contact><cbc:ElectronicMail>hatice@ornek.com</cbc:ElectronicMail></cac:Contact>
+    <cac:Person><cbc:FirstName>Hatice</cbc:FirstName><cbc:FamilyName>Demirkol</cbc:FamilyName></cac:Person>
+  </cac:Party></cac:AccountingCustomerParty>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="TRY">340.00</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="TRY">1700.00</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="TRY">340.00</cbc:TaxAmount>
+      <cbc:Percent>20</cbc:Percent>
+      <cac:TaxCategory><cbc:TaxExemptionReasonCode>805</cbc:TaxExemptionReasonCode><cbc:TaxExemptionReason>Özel matrah (KDVK md.23)</cbc:TaxExemptionReason>
+        <cac:TaxScheme><cbc:Name>KDV</cbc:Name><cbc:TaxTypeCode>0015</cbc:TaxTypeCode></cac:TaxScheme></cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="TRY">48600.00</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="TRY">48600.00</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="TRY">48940.00</cbc:TaxInclusiveAmount>
+    <cbc:AllowanceTotalAmount currencyID="TRY">0</cbc:AllowanceTotalAmount>
+    <cbc:PayableAmount currencyID="TRY">48940.00</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  <cac:InvoiceLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="C62">1</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="TRY">41200.00</cbc:LineExtensionAmount>
+    <cac:TaxTotal><cbc:TaxAmount currencyID="TRY">240.00</cbc:TaxAmount>
+      <cac:TaxSubtotal><cbc:TaxableAmount currencyID="TRY">1200.00</cbc:TaxableAmount><cbc:TaxAmount currencyID="TRY">240.00</cbc:TaxAmount><cbc:Percent>20</cbc:Percent>
+        <cac:TaxCategory><cac:TaxScheme><cbc:Name>KDV</cbc:Name><cbc:TaxTypeCode>0015</cbc:TaxTypeCode></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal>
+    <cac:Item><cbc:Description>22 ayar · 10,00 g · has 9,1600 g · işçilik 1.200,00 TL</cbc:Description><cbc:Name>Burma bilezik</cbc:Name></cac:Item>
+    <cac:Price><cbc:PriceAmount currencyID="TRY">41200.00</cbc:PriceAmount></cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>2</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="C62">1</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="TRY">7400.00</cbc:LineExtensionAmount>
+    <cac:TaxTotal><cbc:TaxAmount currencyID="TRY">100.00</cbc:TaxAmount>
+      <cac:TaxSubtotal><cbc:TaxableAmount currencyID="TRY">500.00</cbc:TaxableAmount><cbc:TaxAmount currencyID="TRY">100.00</cbc:TaxAmount><cbc:Percent>20</cbc:Percent>
+        <cac:TaxCategory><cac:TaxScheme><cbc:Name>KDV</cbc:Name><cbc:TaxTypeCode>0015</cbc:TaxTypeCode></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal>
+    <cac:Item><cbc:Description>22 ayar · 1,75 g · has 1,6030 g · işçilik 500,00 TL</cbc:Description><cbc:Name>Çeyrek altın (ziynet)</cbc:Name></cac:Item>
+    <cac:Price><cbc:PriceAmount currencyID="TRY">7400.00</cbc:PriceAmount></cac:Price>
+  </cac:InvoiceLine>
+</Invoice>

@@ -15,18 +15,18 @@ namespace Kuyumcu.Api.Modules.EBelge;
 public static class EBelgeKurucu
 {
     public static async Task<EBelgeModeli> Kur(KuyumcuDbContext db, Data.Fatura f, Guid ettn, string senaryo, string? aliciEtiketi,
-        string? seriOnEki, CancellationToken iptal = default)
+        string? seriOnEki, CancellationToken iptal = default, string? sablon = null)
     {
         var isletme = await db.Tenants.AsNoTracking().FirstAsync(t => t.Id == f.TenantId, iptal);
         var kalemler = await db.FaturaKalemleri.AsNoTracking()
             .Where(k => k.TenantId == f.TenantId && k.FaturaId == f.Id).OrderBy(k => k.Sira).Take(1000).ToListAsync(iptal);
         var cari = await db.Cariler.AsNoTracking().Where(c => c.Id == f.CariId && c.TenantId == f.TenantId)
             .Select(c => new { c.Email, c.Telefon }).FirstOrDefaultAsync(iptal);
-        return Kur(f, kalemler, isletme, cari?.Email, cari?.Telefon, ettn, senaryo, aliciEtiketi, seriOnEki);
+        return Kur(f, kalemler, isletme, cari?.Email, cari?.Telefon, ettn, senaryo, aliciEtiketi, seriOnEki, sablon);
     }
 
     public static EBelgeModeli Kur(Data.Fatura f, IReadOnlyList<FaturaKalemi> kalemler, Tenant isletme, string? aliciEposta, string? aliciTelefon,
-        Guid ettn, string senaryo, string? aliciEtiketi, string? seriOnEki)
+        Guid ettn, string senaryo, string? aliciEtiketi, string? seriOnEki, string? sablon = null)
     {
         if (string.IsNullOrWhiteSpace(isletme.VergiNo))
             throw new EBelgeHatasi("İşletmenin vergi numarası eksik. İşletme ayarlarına yazın, sonra yeniden deneyin.", false);
@@ -41,7 +41,7 @@ public static class EBelgeKurucu
                 var net = k.SatirToplam - k.KdvTutar;
                 var ozel = k.KdvTuru == "KUYUM" && k.HasDeger > 0m;
                 satirlar.Add(new(Ad(k.Aciklama, k.TasIbaresi), k.Miktar, Birim(k.Birim), k.Miktar == 0m ? net : Math.Round(net / k.Miktar, 8),
-                    net, Math.Round(k.KdvOran * 100m, 2), k.KdvTutar, ozel ? k.KdvMatrah : null));
+                    net, Math.Round(k.KdvOran * 100m, 2), k.KdvTutar, ozel ? k.KdvMatrah : null, KuyumAyrintisi(k)));
             }
         }
         else
@@ -63,7 +63,26 @@ public static class EBelgeKurucu
         if (!string.IsNullOrWhiteSpace(f.FaturaNo)) notlar.Add($"Mihenk belge no: {f.FaturaNo}");
         return new(ettn, senaryo, ozelVar ? "OZELMATRAH" : "SATIS", Zaman.UtcdenYerele(f.Tarih), f.ParaBirimi == "TL" ? "TRY" : f.ParaBirimi,
             string.IsNullOrWhiteSpace(seriOnEki) ? null : seriOnEki.Trim().ToUpperInvariant(), satici, alici,
-            senaryo == EBelgeSenaryolari.EFatura ? aliciEtiketi : null, satirlar, ozelVar ? f.OzelMatrahKodu : null, notlar);
+            senaryo == EBelgeSenaryolari.EFatura ? aliciEtiketi : null, satirlar, ozelVar ? f.OzelMatrahKodu : null, notlar, sablon);
+    }
+
+    private static readonly System.Globalization.CultureInfo Tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    /// <summary>"22 ayar · 10,00 g · has 9,1600 g · işçilik 1.200,00 TL" — yalnız kalemde dolu olan parçalar; hiçbiri yoksa null.</summary>
+    public static string? KuyumAyrintisi(FaturaKalemi k)
+    {
+        var p = new List<string>();
+        if (!string.IsNullOrWhiteSpace(k.AyarId))
+            p.Add(k.AyarId!.Trim().ToUpperInvariant() switch
+            {
+                "GUMUS" => "Gümüş",
+                var a when a.Length > 1 && a[0] == 'K' && int.TryParse(a[1..], out var n) => $"{n} ayar",
+                var a => a,
+            });
+        if (k.GramAgirlik is { } g && g > 0m) p.Add($"{g.ToString("N2", Tr)} g");
+        if (k.HasGrami is { } h && h > 0m) p.Add($"has {h.ToString("N4", Tr)} g");
+        if (k.IscilikTl is { } i && i > 0m) p.Add($"işçilik {i.ToString("N2", Tr)} TL");
+        return p.Count == 0 ? null : string.Join(" · ", p);
     }
 
     private static string Ad(string aciklama, string? tas) =>

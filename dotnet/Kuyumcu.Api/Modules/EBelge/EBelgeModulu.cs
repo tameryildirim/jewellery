@@ -23,7 +23,7 @@ namespace Kuyumcu.Api.Modules.EBelge;
 // ═════════════════════════════════════════════════════════════════════════════
 
 public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreleyici, IHttpClientFactory httpFabrika,
-    DenetimServisi denetim, ILogger<EBelgeServisi> gunluk)
+    DenetimServisi denetim, ILogger<EBelgeServisi> gunluk, IConfiguration yapilandirma)
 {
     public const string HttpAdi = "ebelge";
     public const int EnCokDeneme = 12;
@@ -198,7 +198,7 @@ public sealed class EBelgeServisi(KuyumcuDbContext db, IAlanSifreleyici sifreley
                 // E-4: alıcı kayıtlı kullanıcıysa e-Fatura, değilse e-Arşiv. Sorgu her gönderim denemesinde yapılır.
                 var m = await saglayici.MukellefSorgula(http, b, f.AliciVergiNo.Trim(), iptal);
                 var senaryo = m.Kayitli ? EBelgeSenaryolari.EFatura : EBelgeSenaryolari.EArsiv;
-                var model = await EBelgeKurucu.Kur(db, f, g.Ettn, senaryo, m.Etiket, a.SeriOnEki, iptal);
+                var model = await EBelgeKurucu.Kur(db, f, g.Ettn, senaryo, m.Etiket, a.SeriOnEki, iptal, EBelgeSablonu.Yapilandirmadan(yapilandirma));
                 g.Senaryo = senaryo;
                 g.BelgeNo = await saglayici.Gonder(http, b, model, iptal) ?? g.BelgeNo;
                 g.Durum = EBelgeDurumlari.Gonderildi; g.Gonderildi ??= simdi; g.SonHata = null; g.DenemeSayisi = 0;

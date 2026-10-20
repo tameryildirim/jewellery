@@ -768,6 +768,11 @@ public sealed class CiktiServisi(
     public const string FaturaYasalUyari =
         "BİLGİ AMAÇLI DÖKÜMDÜR — e-Fatura / e-Arşiv fatura ya da matbaa basımlı fatura yerine geçmez.";
 
+    /// <summary>Entegratöre ulaşmış faturanın dökümü: resmi belgenin türü, numarası ve ETTN'si.</summary>
+    public static string FaturaEBelgeUyari(string? senaryo, string? belgeNo, Guid ettn) =>
+        $"BİLGİ AMAÇLI DÖKÜMDÜR — resmi belge {(senaryo == EBelge.EBelgeSenaryolari.EFatura ? "e-Fatura" : "e-Arşiv fatura")}"
+        + (string.IsNullOrWhiteSpace(belgeNo) ? "" : $" {belgeNo}") + $" · ETTN {ettn}.";
+
     public const string FaturaIptalUyari = "BU FATURA İPTAL EDİLMİŞTİR — geçerli bir belge değildir.";
     public const string FaturaTaslakUyari = "TASLAKTIR — fatura henüz kesilmedi.";
 
@@ -825,11 +830,17 @@ public sealed class CiktiServisi(
         tutarlar.Add(new("KDV", kdv, f.ParaBirimi));
         tutarlar.Add(new("Genel toplam", toplam, f.ParaBirimi, Toplam: true));
 
+        // 20.10: e-belge entegratöre ulaştıysa döküm resmi belgeyi gösterir (numara + ETTN); kâğıt yine bilgi amaçlıdır.
+        var eb = await db.EBelgeGonderimleri.AsNoTracking()
+            .Where(g => g.TenantId == islem.TenantId && g.FaturaId == f.Id
+                     && (g.Durum == EBelge.EBelgeDurumlari.Gonderildi || g.Durum == EBelge.EBelgeDurumlari.Kabul))
+            .Select(g => new { g.Senaryo, g.BelgeNo, g.Ettn }).FirstOrDefaultAsync(iptal);
+        var yasal = eb is null ? FaturaYasalUyari : FaturaEBelgeUyari(eb.Senaryo, eb.BelgeNo, eb.Ettn);
         var uyari = f.Durum switch
         {
-            "IPTAL" => $"{FaturaIptalUyari} {FaturaYasalUyari}",
-            "TASLAK" => $"{FaturaTaslakUyari} {FaturaYasalUyari}",
-            _ => FaturaYasalUyari,
+            "IPTAL" => $"{FaturaIptalUyari} {yasal}",
+            "TASLAK" => $"{FaturaTaslakUyari} {yasal}",
+            _ => yasal,
         };
         var dayanak = kuyum && !string.IsNullOrWhiteSpace(f.OzelMatrahKodu)
             ? $"KDV özel matrah (KDVK md.23) · kod {f.OzelMatrahKodu}"
