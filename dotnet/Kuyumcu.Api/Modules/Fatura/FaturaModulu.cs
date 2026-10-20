@@ -144,7 +144,7 @@ public sealed class DurumGuncelleDto
 
 // ── Servis ───────────────────────────────────────────────────────────────────
 
-public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = null)
+public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = null, EBelge.EBelgeServisi? ebelge = null)
 {
     /// <summary>
     /// KDV oranı ve özel matrah kodu — ADR-0005 (rakam koda gömülmez).
@@ -1844,6 +1844,9 @@ public sealed class FaturaServisi(KuyumcuDbContext db, KdvAyarlari? kdvAyar = nu
             throw new BadRequestException($"{fatura.Durum} durumundan {dto.Durum} durumuna geçilemez");
 
         var oncekiDurum = fatura.Durum;
+        // E-6 (20.10): gönderilmiş e-belge önce entegratörden iptal edilir; edilemezse (e-Fatura / 8 gün geçti) fatura da iptal OLMAZ.
+        if (dto.Durum == "IPTAL" && oncekiDurum != "TASLAK" && ebelge is not null)
+            await ebelge.FaturaIptalOncesi(fatura);
         fatura.Durum = dto.Durum;
         fatura.Guncellendi = DateTime.UtcNow;
 

@@ -48,6 +48,8 @@ public static class ModulKayit
         s.AddScoped<Banka.BankaCekimServisi>();      // M7
         s.AddScoped<Banka.BankaBaglantiCekici>();    // D2-05b gerçek banka bağlantısı
         s.AddScoped<Banka.BankaBaglantiServisi>();
+        s.AddScoped<EBelge.EBelgeServisi>();         // e-belge giden kutusu (20.10)
+        s.AddHttpClient(EBelge.EBelgeServisi.HttpAdi, h => h.Timeout = TimeSpan.FromSeconds(60));
         s.AddHttpClient(Banka.BankaBaglantiCekici.HttpAdi, h => h.Timeout = TimeSpan.FromSeconds(60));
         s.AddScoped<Banka.BankaSaglayiciServisi>();  // M7
         s.AddScoped<Fatura.FaturaTopluServisi>();    // 18.10 toplu fatura

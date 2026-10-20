@@ -91,6 +91,10 @@ public static class AlanSinirlari
     public const int KasaAdi = 100;
     /// <summary>Kasa / gider / emanet / vezne hareket açıklaması.</summary>
     public const int HareketAciklama = 500;
+    /// <summary>e-belge entegratörünün API anahtarı (20.10).</summary>
+    public const int EBelgeAnahtari = 1000;
+    /// <summary>e-belge fatura seri ön eki — GİB numarasının ilk 3 harfi.</summary>
+    public const int EBelgeSeriOnEki = 3;
     /// <summary>Kategori adı (gider kategorisi).</summary>
     public const int KategoriAdi = 100;
     /// <summary>Vezne iptal gerekçesi — kolon varchar(500); alt sınır K30 (20).</summary>

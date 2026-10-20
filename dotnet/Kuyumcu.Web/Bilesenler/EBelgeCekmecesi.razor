@@ -1,0 +1,112 @@
+@using Kuyumcu.Contracts.Sayfalar
+@using Kuyumcu.Core.I18n
+@inject ApiIstemci Api
+@inject DilServisi Dil
+
+@* ═══ E-8 (20.10) — İşletme › e-Fatura bağlantısı (yalnız sahip): entegratör · ortam · API anahtarı → "Kaydet ve dene".
+   Açılışta yalnız zorunlular; seri ön eki ve gönderimi durdurma "Diğer ayarlar"da kapalı. Anahtar bir daha ekrana dönmez.
+   Kaldırma iki adım (onay satırı). ═══ *@
+<Cekmece Acik="Acik" Varlik="ebelge" Baslik="@CekmeceBaslik" Kapat="Kapat" Kaydet="Kaydet" Kaydediliyor="@calisiyor"
+         KaydetElemanId="eb-kaydet" KaydetMetni="@EBelgeSozlugu.KaydetDene(Dil.Dil)" KaydetAktif="@FormTamam" KilitSebebi="@D1Sozlugu.Al(Dil.Dil).ZorunluAlaniDoldurun">
+    <HataBandi Mesaj="@hata" Id="eb-hata" />
+    @if (ayar is not null)
+    {
+        @if (basari is { } b) { <div class="bant bant-basari" role="status" id="eb-basari">@b</div> }
+        @if (ayar.Kayitli && ayar.SonHata is { } sh) { <div class="bant bant-hata" role="alert" id="eb-son-hata">@sh</div> }
+        <div class="form-dikey">
+            <Secim ElemanId="eb-saglayici" Etiket="@EBelgeSozlugu.Entegrator(Dil.Dil)" Zorunlu="true"
+                   Secenekler="@Saglayicilar" Deger="@saglayici" DegerChanged="@(v => saglayici = v)" />
+            <Secim ElemanId="eb-ortam" Etiket="@EBelgeSozlugu.Ortam(Dil.Dil)" Zorunlu="true"
+                   Secenekler="@Ortamlar" Deger="@ortam" DegerChanged="@(v => ortam = v ?? "TEST")" />
+            <Sifre ElemanId="eb-anahtar" Etiket="@EBelgeSozlugu.Anahtar(Dil.Dil)" Zorunlu="@(!AnahtarKayitli)" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.EBelgeAnahtari" OtoTamamla="new-password"
+                   YerTutucu="@(AnahtarKayitli ? EBelgeSozlugu.AnahtarKayitli(Dil.Dil) : null)" Ipucu="@EBelgeSozlugu.AnahtarIpucu(Dil.Dil)"
+                   Deger="@anahtar" DegerChanged="@(v => anahtar = v)" />
+            <details class="metin-kucuk" id="eb-diger">
+                <summary>@EBelgeSozlugu.DigerAyarlar(Dil.Dil)</summary>
+                <div class="form-dikey">
+                    <Metin ElemanId="eb-seri" Etiket="@EBelgeSozlugu.SeriOnEki(Dil.Dil)" EnFazla="@Kuyumcu.Core.Domain.Girdi.AlanSinirlari.EBelgeSeriOnEki" Deger="@seri" DegerChanged="@(v => seri = v)" />
+                    <Onay ElemanId="eb-etkin" Etiket="@EBelgeSozlugu.GonderimAcik(Dil.Dil)" @bind-Deger="etkin" />
+                </div>
+            </details>
+            <details class="metin-kucuk" id="eb-nasil">
+                <summary>@EBelgeSozlugu.NasilBaglanir(Dil.Dil)</summary>
+                <p>@EBelgeSozlugu.NasilMetni(Dil.Dil)</p>
+            </details>
+            @if (ayar.Kayitli)
+            {
+                @if (kaldirOnay)
+                {
+                    <div class="bb-dugmeler" id="eb-kaldir-onay">
+                        <span class="metin-kucuk">@EBelgeSozlugu.KaldirOnay(Dil.Dil)</span>
+                        <button type="button" class="btn btn-ikincil btn-kucuk" id="eb-kaldir-evet" disabled="@calisiyor" @onclick="Kaldir">@EBelgeSozlugu.EvetKaldir(Dil.Dil)</button>
+                        <button type="button" class="btn btn-metin btn-kucuk" id="eb-kaldir-vazgec" @onclick="() => kaldirOnay = false">@YildizKatmanSozlugu.Vazgec(Dil.Dil)</button>
+                    </div>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-metin btn-kucuk" id="eb-kaldir" @onclick="() => kaldirOnay = true">@EBelgeSozlugu.Kaldir(Dil.Dil)</button>
+                }
+            }
+        </div>
+    }
+</Cekmece>
+
+@code {
+    [Parameter] public bool Acik { get; set; }
+    [Parameter] public EventCallback Kapandi { get; set; }
+    [Parameter] public EventCallback<EBelgeAyarOzet> Degisti { get; set; }
+
+    private EBelgeAyarOzet? ayar;
+    private string? saglayici, anahtar, seri, hata, basari;
+    private string ortam = "TEST";
+    private bool etkin = true, calisiyor, acikti, kaldirOnay;
+
+    private string CekmeceBaslik => EBelgeSozlugu.Baslik(Dil.Dil);
+    private bool AnahtarKayitli => ayar?.Kayitli == true && ayar.Saglayici == saglayici;
+    private bool FormTamam => !calisiyor && !string.IsNullOrEmpty(saglayici) && (AnahtarKayitli || !string.IsNullOrWhiteSpace(anahtar));
+    private IReadOnlyList<SecenekOgesi> Saglayicilar => ayar?.Saglayicilar.Select(s => new SecenekOgesi(s.Kod, s.Ad)).ToList() ?? [];
+    private IReadOnlyList<SecenekOgesi> Ortamlar => [new("TEST", EBelgeSozlugu.OrtamTest(Dil.Dil)), new("CANLI", EBelgeSozlugu.OrtamCanli(Dil.Dil))];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Acik && !acikti)
+        {
+            hata = null; basari = null; anahtar = null; kaldirOnay = false;
+            try { Yerlestir(await Api.GetAsync<EBelgeAyarOzet>("/ebelge/ayar")); }
+            catch (ApiHata ex) { hata = ex.Message; }
+            catch (System.Text.Json.JsonException) { hata = D1Sozlugu.Al(Dil.Dil).BolumOkunamadi; }
+        }
+        acikti = Acik;
+    }
+
+    private void Yerlestir(EBelgeAyarOzet a)
+    {
+        ayar = a;
+        saglayici = a.Saglayici ?? (a.Saglayicilar.Count == 1 ? a.Saglayicilar[0].Kod : null);
+        ortam = a.Ortam ?? "TEST"; seri = a.SeriOnEki; etkin = !a.Kayitli || a.Etkin;
+    }
+
+    private async Task Kaydet()
+    {
+        calisiyor = true; hata = null; basari = null;
+        try
+        {
+            var s = await Api.PutAsync<EBelgeAyarKayitSonucu>("/ebelge/ayar", new { saglayici, ortam, anahtar, seriOnEki = seri, etkin });
+            Yerlestir(s.Ayar); anahtar = null;
+            if (s.Basarili) basari = EBelgeSozlugu.Calisiyor(Dil.Dil);
+            await Degisti.InvokeAsync(s.Ayar);
+        }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private async Task Kaldir()
+    {
+        calisiyor = true; hata = null; basari = null;
+        try { Yerlestir(await Api.DeleteAsync<EBelgeAyarOzet>("/ebelge/ayar")); kaldirOnay = false; await Degisti.InvokeAsync(ayar!); }
+        catch (ApiHata ex) { hata = ex.Message; }
+        finally { calisiyor = false; }
+    }
+
+    private Task Kapat() { anahtar = null; return Kapandi.InvokeAsync(); }
+}

@@ -921,6 +921,22 @@
         {
             <span class="hucre-tek-satir" id="@($"fk-no-{f.Id}")">@f.FaturaNo</span>
         }
+        @if (ebelgeler.TryGetValue(f.Id, out var eb))
+        {
+            <span class="zo-alt-satir @EBelgeRenk(eb.Durum)" id="@($"fk-eb-{f.Id}")" title="@eb.SonHata">@EBelgeSozlugu.Durum(eb.Durum, eb.Senaryo, Dil.Dil)@(eb.BelgeNo is { } bn ? $" · {bn}" : "")</span>
+            @if (eb.Durum is "HATA" && eb.SonHata is { } eh)
+            {
+                <span class="zo-alt-satir metin-kucuk" id="@($"fk-eb-sebep-{f.Id}")">@eh</span>
+            }
+            @if (eb.Durum is "HATA")
+            {
+                <button type="button" class="btn btn-metin btn-kucuk" id="@($"fk-eb-dene-{f.Id}")" disabled="@(ebelgeIslemde is not null)" @onclick="() => EBelgeYenidenDene(f.Id)">@EBelgeSozlugu.YenidenDene(Dil.Dil)</button>
+            }
+            else if (eb.Durum is "GONDERILDI" or "KABUL")
+            {
+                <button type="button" class="btn btn-metin btn-kucuk" id="@($"fk-eb-pdf-{f.Id}")" disabled="@(ebelgeIslemde is not null)" @onclick="() => EBelgePdf(f.Id)">@EBelgeSozlugu.Pdf(Dil.Dil)</button>
+            }
+        }
         @if (!Dil.BasitMi)
         {
             @if (!string.IsNullOrEmpty(f.BankaHareketId))
@@ -2116,6 +2132,7 @@
             listeHata = null;
             var yol = string.IsNullOrEmpty(durumFiltre) ? "/faturalar" : $"/faturalar?durum={durumFiltre}";
             faturalar = (await Api.GetAsync<FaturaYaniti>(yol)).Faturalar;
+            await EBelgeYukle();   // 20.10 e-belge durumu
         }
         catch (Exception ex) when (ex is ApiHata or JsonException)
         {

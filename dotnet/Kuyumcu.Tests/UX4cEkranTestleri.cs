@@ -90,6 +90,7 @@ public sealed class UX4cEkranTestleri : BunitContext
                 var y when y.EndsWith("/kasalar") => """[{"id":"ks1","ad":"Merkez Kasa","paraBirimi":"TRY","bakiye":100,"aktif":true}]""",
                 var y when y.EndsWith("/bankalar") => """{"hesaplar":[{"id":"bh1","ad":"Ziraat","iban":"TR11","paraBirimi":"TRY","bakiye":500,"aktif":true}]}""",
                 var y when y.Contains("/bankalar/") => """{"hareketler":[]}""",
+                var y when y.Contains("/ebelge/gonderimler") => "[]",   // 20.10 e-belge durumu
                 var y when y.Contains("/faturalar") => """{"faturalar":[]}""",
                 var y when y.EndsWith("/subeler") => subeler(),
                 var y when y.EndsWith("/kullanicilar") => """
