@@ -213,6 +213,14 @@
                         </div>
                     </div>
                 }
+                @* Y-17 (20.10): son kaydedilen giderin fiş fotoğrafı — kapalı katlanır (zorunlu önce); belge deposu GIDER dalı. *@
+                @if (sonGiderId is { } sgId)
+                {
+                    <Katlanir Id="gd-belge" Baslik="@GiderBelgeSozlugu.Ekle(Dil.Dil)">
+                        <p class="metin-kucuk metin-soluk" id="gd-belge-aciklama">@GiderBelgeSozlugu.Aciklama(Dil.Dil)</p>
+                        <BelgeYukleyici SahipTuru="GIDER" SahipId="@sgId" Turler="@(new[] { "FOTOGRAF", "EK" })" Onek="gd-belge" Kamera="true" Ikincil="true" />
+                    </Katlanir>
+                }
             </div>
         </div>
 
@@ -424,6 +432,14 @@
 }
 
 @* ── Kategori düzenleme ÇEKMECESİ (tek düzenleme kalıbı: çok alanlı → Cekmece) ── *@
+@* Y-17 (20.10): geçmiş giderin fiş fotoğrafı çekmecesi (yalnız yükleme; kasa satırı değişmez). *@
+<Cekmece Acik="belgeGider is not null" Varlik="gider-belge" Baslik="@GiderBelgeSozlugu.Baslik(Dil.Dil)" Kapat="() => belgeGider = null" KaydetGoster="false">
+    @if (belgeGider is { } bg)
+    {
+        <p class="metin-kucuk metin-soluk" id="gd-belge-cekmece-ozet">@(bg.KategoriAdi ?? "—") · @Bicim.Para(Math.Abs(bg.Tutar), bg.ParaBirimi) · @Bicim.Tarih(bg.Tarih, Dil.Dil)</p>
+        <BelgeYukleyici SahipTuru="GIDER" SahipId="@bg.Id" Turler="@(new[] { "FOTOGRAF", "EK" })" Onek="gd-belge-satir" Kamera="true" Ikincil="true" />
+    }
+</Cekmece>
 <Cekmece Acik="duzenleKategori is not null" Varlik="gider-kategori" Baslik="@Dil.T.Gider.KategoriDuzenle"
          Kapat="() => duzenleKategori = null" Kaydet="KategoriGuncelle" Kaydediliyor="@kaydediliyor"
          KaydetAktif="@(!kaydediliyor)">
@@ -523,6 +539,8 @@
     private bool kaydediliyor;
     private string? hata;
     private string? basari;
+    private string? sonGiderId;        // Y-17: son kaydedilen giderin fotoğrafı için
+    private GiderSatiri? belgeGider;   // Y-17: satırdan açılan belge çekmecesi
     private int basariJeton;
     private string? modalHata;
     private string? cekmeceHata;
@@ -578,6 +596,7 @@
                 else
                 {
                     <button id="@($"gd-storno-{g.Id}")" type="button" class="dugme dugme-ikincil dugme-kucuk" @onclick="() => StornoAc(g)">@Dil.T.Gider.Storno</button>
+                    <button id="@($"gd-belge-{g.Id}")" type="button" class="dugme dugme-ikincil dugme-kucuk" @onclick="() => belgeGider = g">@GiderBelgeSozlugu.Belge(Dil.Dil)</button>   @* Y-17 *@
                 }</text> },
     ];
 
@@ -975,6 +994,7 @@
                    + $"{Bicim.Para(s.Tutar, s.ParaBirimi)} · {s.KasaAdi} → {Bicim.Para(s.KasaBakiyesi, s.ParaBirimi)}";
             basariJeton++;
             giderTutar = null; giderAciklama = null; giderNotAcik = false;
+            sonGiderId = s.Id;   // Y-17
             await Yukle();
         }
         catch (ApiHata e) when (YetersizBakiyeReddi(e))

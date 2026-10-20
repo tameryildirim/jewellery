@@ -116,6 +116,13 @@ public sealed class BelgeServisi(KuyumcuDbContext db, BelgeAyarlari? ayarlar = n
                     throw new NotFoundException("Satış bulunamadı");
                 return;
 
+            case BelgeSahipTuru.Gider:
+                // Y-17 (20.10): gider fişinin fotoğrafı. Sahip AYNI KİRACIDAKİ gider satırıdır (kasa_hareketleri, gider kategorili);
+                // başka satır ya da başka kiracı 404. Kasa satırı DEĞİŞMEZ — fotoğraf yanındadır.
+                if (!await db.KasaHareketleri.AnyAsync(x => x.Id == sahipId && x.TenantId == islem.TenantId && x.GiderKategoriId != null))
+                    throw new NotFoundException("Gider kaydı bulunamadı");
+                return;
+
             case BelgeSahipTuru.HurdaAlis:
                 // D1-12 (18.10, rakip eşitleme): hurda alımına fotoğraf. Sahip AYNI KİRACIDAKİ HURDA_ALIS satırıdır;
                 // başka tür ya da başka kiracı 404 (varlık sızdırılmaz). Defter satırı DEĞİŞMEZ — fotoğraf yanındadır.

@@ -74,8 +74,10 @@ public static class BelgeSahipTuru
     public const string KimlikTespit = "KIMLIK_TESPIT";
     /// <summary>D1-13: garanti kartının imzası — sahip SATIS türündeki defter satırı.</summary>
     public const string Satis = "SATIS";
+    /// <summary>Y-17 (20.10, rakip Dezy): gider kaydına fiş/fatura fotoğrafı — sahip kasa_hareketleri satırı (gider kategorili).</summary>
+    public const string Gider = "GIDER";
 
-    public static readonly string[] Tumu = [Urun, Siparis, GiderPusulasi, Isletme, HurdaAlis, KimlikTespit, Satis];
+    public static readonly string[] Tumu = [Urun, Siparis, GiderPusulasi, Isletme, HurdaAlis, KimlikTespit, Satis, Gider];
 }
 
 /// <summary>Belge türü — KAPALI liste (fail-closed).</summary>

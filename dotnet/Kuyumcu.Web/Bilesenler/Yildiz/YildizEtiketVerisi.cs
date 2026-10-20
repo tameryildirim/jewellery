@@ -67,6 +67,8 @@ public sealed class YildizSayimBaglami
     /// <summary>Sağdaki liste önceki sayımlardır (iki sütun ızgarası).</summary>
     public bool Gecmis { get; init; }
     public IReadOnlyList<(string Etiket, string Deger)> Bilgi { get; init; } = [];
+    /// <summary>PAKET-05 (20.10): sayım tutanağı dökümü bağlantısı (/cikti/SAYIM_TUTANAGI/{oturum}); null = çizilmez.</summary>
+    public string? YazdirYolu { get; init; }
     public bool Yukleniyor { get; init; }
     public string? BosMetni { get; init; }
     /// <summary>YILDIZ-5A tur 2: okutma alanları (sayfanın MEVCUT sy-barkod · sy-adet · hareketli onayı) cümlenin altında, tuval .k kalıbında.</summary>

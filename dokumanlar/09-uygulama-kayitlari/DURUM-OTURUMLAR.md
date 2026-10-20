@@ -191,6 +191,11 @@ Başkasının satırını değiştirme/silme yok.
   bilinmeyendir", ara tutanak/iptal uyarısı; Sayım başlığında Yazdır) ve /cikti/GUN_KAPANISI/{kapanış} (defter/sayılan/fark,
   kapatan, açıklama; gün kapanış yanıtı kapanisId taşır, Kasalar'da "Yazdır — Gün kapanışı"). Belge türü 13 → 15. Mutasyon:
   kapanisId düşünce test kırmızı. Müşteriler ekranı DG-1 katlanırı canlıda görüldü (demo: "Bu dönemde doğum günü yok.").
+- **Y-17 gider fiş fotoğrafı (20.10):** belge deposuna GIDER dalı (sahip = gider kategorili kasa satırı; yabancı/olmayan 404),
+  Gider ekranında kayıt sonrası "Fiş fotoğrafı ekle" katlanırı + geçmiş satırda "Belge" çekmecesi (kamera). Mutasyon: gider
+  süzgeci kalkınca test kırmızı. Sayım tutanağı bağlantısı Yıldız sayım bilgi satırına da kondu (klasik başlık Yıldız'da yok).
+  **Kapsandı sayılanlar:** Y-07 kur kaynağı seçimi (ALTINKAYNAK/ANKARA/TRUNCGIL/MANUAL + has/döviz kaynağı), Y-08 hurda
+  pazarlık payı (IslemFiyatKapisi: bant dışı → SAHİP/MÜDÜR onayı + gerekçe), Y-12, Y-13.
 - **Ekip kararı (20.10) — PAKET-46 ince yetkiler/KASIYER-CIRAK ERTELENDİ:** rol×modül matrisi + işletme onay eşikleri (iskonto/tutar/
   zararına) + kişisel iskonto sınırı + kâr-zarar uçlarının MUHASEBE+ kapısı mevcut; yeni rol 4 ekran + 30 teste yayılan değişiklik,
   müşteri talebi yok → satışa hazırlık listesinde değil. Y-12 (kasa eksiye düşemez, sayılmayan satır = null) ve Y-13 (yaptırım

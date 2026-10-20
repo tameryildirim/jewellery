@@ -447,6 +447,8 @@ Hangi gün ne kadar evrak vadesi olduğunu takvim üzerinde gösterir. Bir güne
 - **Gider:** tutar, gider türü ve ödendiği kasa ya da banka seçilir.
 - **Virman:** para bir kasadan ya da bankadan ötekine aktarılır. Virman ciroya girmez: para işletmeden çıkmaz, yer değiştirir. İki taraf aynı anda kaydedilir; biri yazılıp öteki eksik kalmaz.
 
+**Fiş fotoğrafı:** gider kaydedilince altta **Fiş fotoğrafı ekle** bölümü açılır; telefonla çekilen fotoğraf o giderin yanında saklanır. Geçmiş giderlerde satırdaki **Belge** düğmesi aynı pencereyi açar. Fotoğraf kasa satırını değiştirmez.
+
 ## Hurda ve Ramat {#hurda}
 
 <!-- ekran: /hurda -->

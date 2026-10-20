@@ -121,6 +121,7 @@ public partial class Sayim
                         new(s.SayilanAdet is { } sa ? YildizListeBicim.Adet(sa, dil) : "—", YildizHucreTuru.Deger),
                         YildizFarkHucresi(s, dil),
                     ]))],
+                    YazdirYolu = $"/cikti/SAYIM_TUTANAGI/{a.Id}?donus=/sayim",   // PAKET-05
                     Bilgi =
                     [
                         (YildizSayimSozlugu.Baslangic(dil), YildizBaslangic()),
