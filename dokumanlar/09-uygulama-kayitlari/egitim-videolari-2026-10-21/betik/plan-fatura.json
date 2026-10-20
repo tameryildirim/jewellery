@@ -1,0 +1,131 @@
+{
+ "id": "fatura",
+ "baslik": "Faturalar",
+ "alt": "Fişten faturaya tek adım, e-belge arkada",
+ "adimlar": [
+  {
+   "id": "liste",
+   "baslik": "Fatura listesi",
+   "sorun": "Hangi fatura ödendi, hangisi açık; tek listede.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/faturalar"
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Faturalar ekranında kesilen faturalar durumlarıyla listelenir."
+    ],
+    [
+     "S",
+     "Ödendi işaretle düğmesi tahsilatı faturaya bağlar."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 3
+  },
+  {
+   "id": "fisten",
+   "baslik": "Fişten fatura kes",
+   "sorun": "Satış fişi yeniden yazılmaz; faturaya dönüşür.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Fişten Fatura Kes"
+    },
+    {
+     "t": "tik",
+     "sel": "#ff-ac"
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "imlec",
+     "x": 700,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Fişten fatura kes, satış fişini seçtirir."
+    ],
+    [
+     "H",
+     "Kalemler, KDV ve müşteri fişten gelir; yeniden yazmak yok!"
+    ],
+    [
+     "V",
+     "Üründe KDV oranı varsa ürünün oranı, yoksa faturada seçilen oran uygulanır."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 3
+  },
+  {
+   "id": "ebelge",
+   "baslik": "e-Fatura giden kutusu",
+   "sorun": "GİB yolculuğu görünür; gönderilemeyen fatura kesildi sayılmaz.",
+   "eylemler": [
+    {
+     "t": "tus",
+     "key": "Escape"
+    },
+    {
+     "t": "bekle",
+     "ms": 800
+    },
+    {
+     "t": "etiket",
+     "metin": "e-Fatura giden kutusu"
+    },
+    {
+     "t": "tik",
+     "sel": "#fk-ebelgeler"
+    },
+    {
+     "t": "bekle",
+     "ms": 2200
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 350
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "e-Fatura giden kutusu her faturanın gönderim durumunu gösterir."
+    ],
+    [
+     "S",
+     "Sırada, gönderildi, onaylandı ya da hata; hata varsa yeniden dene düğmesi."
+    ],
+    [
+     "V",
+     "Entegratör bağlantısı işletme ayarlarından bir kez kurulur."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 3
+  }
+ ]
+}

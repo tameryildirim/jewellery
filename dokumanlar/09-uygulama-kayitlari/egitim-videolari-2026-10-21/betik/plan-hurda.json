@@ -1,0 +1,132 @@
+{
+ "id": "hurda",
+ "baslik": "Hurda alışı",
+ "alt": "Eski altını al, hurda stoğunu izle",
+ "adimlar": [
+  {
+   "id": "alis",
+   "baslik": "Alış sekmesi",
+   "sorun": "Eski altın alışı da tezgahta; ayrı ekran aranmaz.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/islemler"
+    },
+    {
+     "t": "etiket",
+     "metin": "Alış sekmesi"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-tur-HURDA_ALIS"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 400,
+     "y": 300
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Müşteriden eski altın alışı tezgahtaki alış sekmesinden yapılır."
+    ],
+    [
+     "S",
+     "Maden, ayar ve gram yazılır; has karşılığı kendiliğinden hesaplanır."
+    ],
+    [
+     "V",
+     "Alış fiyatı o günkü kurdan gelir, pazarlık payı ayarlardan sınırlanır."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 3
+  },
+  {
+   "id": "belge",
+   "baslik": "Belge ve kimlik",
+   "sorun": "Gider pusulası ve kimlik tespiti unutulmaz.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Gider pusulası kendiliğinden"
+    },
+    {
+     "t": "imlec",
+     "x": 1100,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Vatandaştan alışta gider pusulası program tarafından kesilir."
+    ],
+    [
+     "S",
+     "Tutar yasal sınırı aşarsa kimlik tespiti istenir; eksik belgeyle kayıt kapanmaz."
+    ],
+    [
+     "V",
+     "Belge sonradan değil, alış anında hazırdır."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 3
+  },
+  {
+   "id": "stok",
+   "baslik": "Hurda ve ramat",
+   "sorun": "Biriken hurdanın has miktarı her an belli.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/hurda"
+    },
+    {
+     "t": "imlec",
+     "x": 500,
+     "y": 330
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "etiket",
+     "metin": "Rafineriye gönder"
+    },
+    {
+     "t": "imlec",
+     "x": 140,
+     "y": 820
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Alınan eski altın hurda stoğunda birikir."
+    ],
+    [
+     "S",
+     "Hurda ekranı toplam has gramı ve fotoğraflı kayıtları gösterir."
+    ],
+    [
+     "V",
+     "Rafineriye gönder düğmesi ramat çıkışını kaydeder; fire hesabı burada tutulur."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 3
+  }
+ ]
+}

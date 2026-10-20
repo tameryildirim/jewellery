@@ -1,0 +1,151 @@
+{
+ "id": "etiket",
+ "baslik": "Etiketler",
+ "alt": "Barkodlu etiket elle yazılmaz",
+ "adimlar": [
+  {
+   "id": "sec",
+   "baslik": "Ürün seç",
+   "sorun": "Etiket listeden seçilir, elle yazılmaz.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/urunler/etiketler"
+    },
+    {
+     "t": "imlec",
+     "x": 400,
+     "y": 300
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "etiket",
+     "metin": "Ürün seçin"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-etiket-urun-deger"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-etiket-ara"
+    },
+    {
+     "t": "yaz",
+     "metin": "çeyrek"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "etiket",
+     "metin": "Ekle"
+    },
+    {
+     "t": "tik",
+     "sel": "[id^=yildiz-etiket-sec-]"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Etiketler ekranında ürün seçilir, adet yazılır."
+    ],
+    [
+     "S",
+     "Arama kutusuna ürün adı ya da kodu yazmak yeter."
+    ],
+    [
+     "V",
+     "Başka ürün ekle ile tek seferde birkaç ürün basılır."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 3
+  },
+  {
+   "id": "sablon",
+   "baslik": "Şablon ve adet",
+   "sorun": "Etiket boyu bir kez ayarlanır.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Adet ve şablon"
+    },
+    {
+     "t": "sec",
+     "sel": "#yildiz-etiket-adet"
+    },
+    {
+     "t": "yaz",
+     "metin": "2"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "imlec",
+     "x": 700,
+     "y": 500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Adet kutusu kaç etiket basılacağını söyler."
+    ],
+    [
+     "S",
+     "Şablonu düzenle ile etiket boyu ve alanları bir kez ayarlanır; her üründe aynı kalır."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 3
+  },
+  {
+   "id": "yazdir",
+   "baslik": "Yazdır",
+   "sorun": "Zebra yazıcıya da normal yazıcıya da uyar.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Yazdır · Zebra (ZPL) indir"
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 780
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Yazdır düğmesi etiketi yazıcıya gönderir."
+    ],
+    [
+     "V",
+     "Zebra yazıcı için ZPL dosyası indirilir; iki adım: seç, yazdır."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 3
+  }
+ ]
+}

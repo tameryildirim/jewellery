@@ -1,0 +1,115 @@
+{
+ "id": "masak",
+ "baslik": "Uyum ve MASAK",
+ "alt": "Kimlik tespiti, şüpheli işlem, nakit sınırı",
+ "adimlar": [
+  {
+   "id": "tespit",
+   "baslik": "Kimlik tespitleri",
+   "sorun": "Yasal eşiği aşan işlemde kimlik tespiti kayda girer.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/uyum"
+    },
+    {
+     "t": "imlec",
+     "x": 500,
+     "y": 350
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Uyum ekranı MASAK yükümlülüklerini tek yerde toplar."
+    ],
+    [
+     "S",
+     "Kimlik tespitleri sekmesinde eşiği aşan işlemlerin kayıtları durur."
+    ],
+    [
+     "V",
+     "Belge numarasıyla arama kutusundan bulunur."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 3
+  },
+  {
+   "id": "supheli",
+   "baslik": "Şüpheli işlemler",
+   "sorun": "Şüphe notu yalnız sahibe görünür.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Şüpheli İşlemler"
+    },
+    {
+     "t": "tik",
+     "sel": "#uy-sekme-supheli"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Şüpheli işlemler sekmesi bildirim hazırlığını tutar."
+    ],
+    [
+     "S",
+     "Yeni bildirim düğmesiyle kayıt açılır; tezgahtar liste adını görmez, yalnız yönetici onayı gerekir yazar."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 3
+  },
+  {
+   "id": "nakit",
+   "baslik": "Nakit sınırı",
+   "sorun": "Nakit sınırı akılda tutulmaz; program sayar.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Nakit sınırı aşımları"
+    },
+    {
+     "t": "tik",
+     "sel": "#uy-sekme-nakit"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Nakit sınırı aşımları sekmesi tevsik sınırını aşan tahsilatları listeler."
+    ],
+    [
+     "V",
+     "Sınır ve süreler yasal sınırlar ekranında yazılıdır; değişince tek yerden güncellenir."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 3
+  }
+ ]
+}

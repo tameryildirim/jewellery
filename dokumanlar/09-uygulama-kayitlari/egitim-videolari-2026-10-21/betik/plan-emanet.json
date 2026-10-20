@@ -1,0 +1,147 @@
+{
+ "id": "emanet",
+ "baslik": "Emanet",
+ "alt": "Müşterinin bıraktığı altın, kayıt altında",
+ "adimlar": [
+  {
+   "id": "liste",
+   "baslik": "Emanet listesi",
+   "sorun": "Kimin ne bıraktığı kagit pusulada kaybolmaz.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/emanet"
+    },
+    {
+     "t": "imlec",
+     "x": 500,
+     "y": 330
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "etiket",
+     "metin": "Sekmeler: Hepsi · Emanette · Geri verildi"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-emanet-sekme-emanette"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Emanet ekranında müşterinin bırakıp sonra alacağı altın kayıtlıdır."
+    ],
+    [
+     "S",
+     "Emanette sekmesi şu an dükkanda duran emanetleri gösterir."
+    ],
+    [
+     "V",
+     "Her satırda müşteri, parça ve has gram yazar."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 3
+  },
+  {
+   "id": "al",
+   "baslik": "Emanet al",
+   "sorun": "Bırakılan parça has gramıyla müşterinin hesabına yazılır.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Emanet al"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-emanet-al"
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "imlec",
+     "x": 500,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "tus",
+     "key": "Escape"
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Emanet al düğmesi müşteri ve parça bilgisini sorar."
+    ],
+    [
+     "H",
+     "Kaydedince emanet müşterinin has hesabına yazılır, makbuzu çıkar!"
+    ],
+    [
+     "S",
+     "Dükkan altını ile müşteri altını hiç karışmaz."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 3
+  },
+  {
+   "id": "geri",
+   "baslik": "Geri ver",
+   "sorun": "İade anında hesap kapanır.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/emanet"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "etiket",
+     "metin": "Geri ver"
+    },
+    {
+     "t": "imlec",
+     "x": 1250,
+     "y": 330
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Müşteri geldiğinde satırdaki geri ver düğmesine basılır."
+    ],
+    [
+     "V",
+     "Emanet kapanır, geçmişte iz olarak kalır; silinmez."
+    ],
+    [
+     "S",
+     "Üç adım: emanet al, listede izle, geri ver."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 3
+  }
+ ]
+}

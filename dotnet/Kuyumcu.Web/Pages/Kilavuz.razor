@@ -1,5 +1,6 @@
 @page "/kilavuz"
 @inject DilServisi Dil
+@inject IJSRuntime JS
 @using Kuyumcu.Core.Kilavuz
 @implements IDisposable
 
@@ -56,6 +57,34 @@
         </div>
     </div>
 
+    @* Y-01 (21.10): EĞİTİM VİDEOLARI — ekran başına 1–2 dk; liste Kuyumcu.Core/Kilavuz/EgitimVideolari.cs'den (üretilmiş) gelir,
+       dosyalar wwwroot/video/. Oynatıcı sayfada (yeni sekme yok); bölüm başlangıçları tıklanınca o saniyeye atlar. *@
+    <div class="kart" id="kl-egitim">
+        <div class="kart-govde">
+            <h2 class="metin-kucuk">@EgitimSozlugu.Baslik(Dil.Dil)</h2>
+            <p id="kl-egitim-aciklama" class="metin-soluk">@EgitimSozlugu.Aciklama(Dil.Dil, EgitimVideolari.Hepsi.Count)</p>
+            <ul id="kl-videolar" class="egitim-video-liste">
+                @foreach (var v in EgitimVideolari.Hepsi)
+                {
+                    <li class="egitim-video" id="@($"kl-video-{v.Kimlik}")">
+                        <video controls preload="metadata" class="egitim-video-oynatici" id="@($"kl-video-oynatici-{v.Kimlik}")" src="@v.Dosya">
+                            @EgitimSozlugu.Desteklenmiyor(Dil.Dil)
+                        </video>
+                        <div class="egitim-video-metin">
+                            <strong>@(Dil.Dil == "en" ? v.BaslikEn : v.Baslik)</strong> <span class="metin-soluk">· @v.Alt · @EgitimVideolari.Sure(v.SureSn)</span>
+                            <div class="metin-kucuk metin-soluk egitim-video-bolumler">
+                                @foreach (var (sn, baslik) in v.Bolumler)
+                                {
+                                    <button type="button" class="btn btn-metin btn-kucuk" @onclick="() => Atla(v.Kimlik, sn)">@EgitimVideolari.Sure(sn) @baslik</button>
+                                }
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+
     @* PAKET P-33 (B-11): EKRAN EKRAN — liste RotaBasliklari.Harita'dan ÜRETİLİR.
        Yeni bir @page eklenince (RotaBasliklari zorunlu satırıyla) buraya
        kendiliğinden gelir; kılavuzdaki karşılığı olmayan rota
@@ -91,6 +120,14 @@
     // ve BolumAdi PRO adı ("Cariler") basar. Mod sonradan çözülünce DilServisi.Degisti
     // tetiklenir (Program.cs: oturum/arayüz modu → ModuDenetle) — abone olunmazsa
     // sayfa yeniden çizilmez. Abonelik + Dispose.
+    /// <summary>Y-01: bölüm düğmesi oynatıcıyı o saniyeye alır ve oynatır (JS yoksa sessizce geçer — bUnit).</summary>
+    private async Task Atla(string kimlik, double sn)
+    {
+        try { await JS.InvokeVoidAsync("kuyumcuVideoAtla", $"kl-video-oynatici-{kimlik}", sn); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
     protected override void OnInitialized() => Dil.Degisti += Yenile;
     private void Yenile() => InvokeAsync(StateHasChanged);
     public void Dispose() => Dil.Degisti -= Yenile;

@@ -1921,7 +1921,9 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-fark-rakam { display: flex; 
 html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-onay { color: var(--basari); stroke-width: 1.6; }
 html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-not { font-size: 15px; }
 html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-acik-hesap { align-self: flex-start; margin-top: 8px; }
-html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-eylemler { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+/* Y-01 tarayıcı bulgusu (21.10): fişte kalem varken dört düğme (Beklet · Fiyat teklifi ver · Vazgeç · Kaydet) 1280/1440 px'de sağ
+   sütunu aşıp "Kaydet ve yazdır" ekran dışına taşıyordu (sağ kenar 1348 > 1280). Satır sarar, birincil düğme sağda son sırada. */
+html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-eylemler { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px 24px; }
 html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-kaydet { flex-grow: 1; }
 /* D1-03 (18.10) — bekleyen fişler: tuval satır dili (ad · soluk ayrıntı · Al / Sil), kutu yok, ince ayraç. */
 html:root[data-sema="yildiz"] .yz-tezgah .yz-bekleyen-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

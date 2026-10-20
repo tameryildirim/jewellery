@@ -1,0 +1,168 @@
+{
+ "id": "kasa-kapanis",
+ "baslik": "Kasa kapanışı",
+ "alt": "Çekmeceyi say, farkı yaz, günü kilitle",
+ "adimlar": [
+  {
+   "id": "kasa",
+   "baslik": "Kasa ekranı",
+   "sorun": "Çekmecedeki nakit ile kart ve havale ayrı satırda.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/kasalar"
+    },
+    {
+     "t": "imlec",
+     "x": 300,
+     "y": 300
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 1000,
+     "y": 600
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Kasalar ekranı çekmecedeki nakdi büyük rakamla gösterir."
+    ],
+    [
+     "S",
+     "Kart ve havale ayrı satırdadır; sayıma yalnız nakit girer."
+    ],
+    [
+     "V",
+     "Geçmiş düğmesi günün hareketlerini açar."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 3
+  },
+  {
+   "id": "kapat",
+   "baslik": "Günü kapat",
+   "sorun": "Sayılan para ile defter karşılaştırılır.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Günü kapat"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-kasalar-b1"
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "imlec",
+     "x": 1200,
+     "y": 240
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "etiket",
+     "metin": "Sayılan nakit yazılıyor"
+    },
+    {
+     "t": "kopyala",
+     "kaynak": "#gun-nakit-defter",
+     "hedef": "#gun-sayilan"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "etiket",
+     "metin": "Günü kapat"
+    },
+    {
+     "t": "tik",
+     "sel": "#gun-kapat-onayla"
+    },
+    {
+     "t": "bekle",
+     "ms": 2500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Günü kapat düğmesi sayım penceresini açar."
+    ],
+    [
+     "S",
+     "Çekmecede sayılan nakit yazılır; program defterdeki nakitle karşılaştırır."
+    ],
+    [
+     "H",
+     "Fark varsa gerekçe zorunludur; kör sayım açıksa beklenen tutar gösterilmez!"
+    ]
+   ],
+   "sira": 2,
+   "toplam": 3
+  },
+  {
+   "id": "fis",
+   "baslik": "Kapanış fişi",
+   "sorun": "İmzalı tutanak elde kalır.",
+   "eylemler": [
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "etiket",
+     "metin": "Tüm ayrıntılar"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-kasalar-ayrinti"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "etiket",
+     "metin": "Yazdır — Gün kapanışı"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#kasa-kapanis-yazdir"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Kapanış kaydedilince gün kilitlenir; o güne yeni hareket yazılamaz."
+    ],
+    [
+     "S",
+     "Yazdır bağlantısı gün sonu kasa fişini verir; kapatan ve onaylayan imzalar."
+    ],
+    [
+     "V",
+     "Üç adım: say, yaz, kilitle."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 3
+  }
+ ]
+}

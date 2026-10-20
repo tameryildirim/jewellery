@@ -1,0 +1,216 @@
+{
+ "id": "satis",
+ "baslik": "Satış",
+ "alt": "Barkoddan fişe, dört adım",
+ "adimlar": [
+  {
+   "id": "tezgah",
+   "baslik": "Tezgah ekranı",
+   "sorun": "Satış için ayrı program, ayrı defter yok; tek ekran.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/islemler"
+    },
+    {
+     "t": "imlec",
+     "x": 300,
+     "y": 130
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Satış tezgah ekranından yapılır."
+    ],
+    [
+     "S",
+     "Üstte satış, alış, iade, tahsilat ve diğer işler yan yana durur."
+    ],
+    [
+     "V",
+     "Satışa başlamak için barkodu okutmak yeter."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 5
+  },
+  {
+   "id": "barkod",
+   "baslik": "Barkodu okut",
+   "sorun": "Fiyat elle hesaplanmaz; o anki kurdan gelir.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Barkod okutuluyor"
+    },
+    {
+     "t": "tik",
+     "sel": "#islem-barkod"
+    },
+    {
+     "t": "yaz",
+     "metin": "K6ED1Z3NA00"
+    },
+    {
+     "t": "tus",
+     "key": "Enter"
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "etiket",
+     "metin": "Ürün ve fiyat satıra geldi"
+    },
+    {
+     "t": "imlec",
+     "x": 520,
+     "y": 360
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Barkodu okutun ya da ürün adını yazın."
+    ],
+    [
+     "H",
+     "Ürün satıra gelir, fiyat o anki kurdan hesaplanır!"
+    ],
+    [
+     "S",
+     "Gram, has ve tutar altta birlikte yazar."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 5
+  },
+  {
+   "id": "odeme",
+   "baslik": "Ödeme",
+   "sorun": "Nakit hazır seçili; kart, havale, indirim bir dokunuş uzakta.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Ödeme: Nakit · Ana Kasa"
+    },
+    {
+     "t": "imlec",
+     "x": 1100,
+     "y": 205
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 1070,
+     "y": 357
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "imlec",
+     "x": 1045,
+     "y": 409
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Ödeme nakit ve ana kasa hazır seçilidir."
+    ],
+    [
+     "S",
+     "Başka ödeme ile kart ya da havale eklenir; para üstü ve indirim ayrı düğmelerde."
+    ],
+    [
+     "V",
+     "Fark sıfır olunca yasal kurallar satırı uygun der."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 5
+  },
+  {
+   "id": "kaydet",
+   "baslik": "Kaydet ve yazdır",
+   "sorun": "Fiş elle yazılmaz; stok düşer, kasa artar.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Kaydet ve yazdır"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-tezgah-kaydet"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#yildiz-belge-hayir"
+    },
+    {
+     "t": "bekle",
+     "ms": 2500
+    },
+    {
+     "t": "etiket",
+     "metin": "Kaydedildi"
+    }
+   ],
+   "cumleler": [
+    [
+     "V",
+     "Kaydet ve yazdır: stok düşer, kasa artar, fiş hazır."
+    ],
+    [
+     "S",
+     "Yanlış fiş silinmez; iade ya da geri alma ile düzeltilir."
+    ]
+   ],
+   "sira": 4,
+   "toplam": 5
+  },
+  {
+   "id": "kisayol",
+   "baslik": "Kısayollar",
+   "sorun": "Fare olmadan da satış biter.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "F2 ürün · F4 müşteri · F8 ödeme · F9 kaydet"
+    },
+    {
+     "t": "imlec",
+     "x": 700,
+     "y": 500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Klavyeden F iki ürün, F dört müşteri, F sekiz ödeme, F dokuz kaydet."
+    ],
+    [
+     "S",
+     "Kontrol K arama kutusunu açar."
+    ],
+    [
+     "V",
+     "Dört adım: barkod, ödeme, kaydet, fiş."
+    ]
+   ],
+   "sira": 5,
+   "toplam": 5
+  }
+ ]
+}

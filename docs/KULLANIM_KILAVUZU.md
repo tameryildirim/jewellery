@@ -160,6 +160,8 @@ Girişten sonra açılan ana ekrandır. Günün satış ve alış toplamları, h
 İşletmedeki alışverişin tamamı bu ekrandan yapılır: satış, alış, hurda alışı, takas, işçilik, iade ve şubeler arası transfer. Her işlem o anki kura bağlanarak kaydedilir.
 
 ### Satış ve otomatik fiyat {#satis}
+**Eğitim videosu:** [Satış — Barkoddan fişe, dört adım (1:10)](#egitim-videolari) — Kılavuz ekranından izlenir.
+
 
 1. **Satış** sekmesini seçin.
 2. Müşteriyi (cariyi) seçin. Kayıtlı olmayan, peşin ödeyen müşteri için "Peşin Müşteri" kullanılabilir. Müşteri aramasına **TC kimlik ya da vergi numarası** yazarsanız o numarayla kayıtlı müşteri kendiliğinden seçilir. Kayıt yoksa adını yazıp **Müşteriyi aç ve seç** düğmesine basın; müşteri bu numarayla kaydedilir ve seçilir (tezgâhtar da açabilir). Numara geçersizse ekran uyarır.
@@ -227,6 +229,8 @@ Kaydedilmiş bir işlem silinmez ve üzerine yazılmaz. Yanlış işlemi **Storn
 ## Emanet {#emanet}
 
 <!-- ekran: /emanet -->
+
+**Eğitim videosu:** [Emanet — Müşterinin bıraktığı altın, kayıt altında (0:48)](#egitim-videolari) — Kılavuz ekranından izlenir.
 
 Müşterinin tamir, ölçü ya da saklama için size bıraktığı altın burada izlenir. Emanet mal sizin malınız değildir: stok değerine katılmaz, yalnız has gram olarak ayrı izlenir.
 
@@ -306,6 +310,8 @@ Kategori ağacı ürün listesini kırılımlı süzmenizi sağlar (örneğin Bi
 
 <!-- ekran: /urunler/etiketler -->
 
+**Eğitim videosu:** [Etiketler — Barkodlu etiket elle yazılmaz (0:41)](#egitim-videolari) — Kılavuz ekranından izlenir.
+
 Ürünler için barkodlu etiket basılır. Basılacak ürünleri seçin, etiket sayısını girin ve yazdırın. Laboratuvar üretimi (sentetik) taş taşıyan ürünlerde bu ibare etikete kendiliğinden gelir.
 
 ## Fiyat Listeleri {#fiyatlandirma}
@@ -358,6 +364,8 @@ Tutar MASAK kimlik eşiğini aşıyorsa ilk **Stoğa al**'da tedarikçinin kimli
 ## Kasalar {#kasalar}
 
 <!-- ekran: /kasalar -->
+
+**Eğitim videosu:** [Kasa kapanışı — Çekmeceyi say, farkı yaz, günü kilitle (0:51)](#egitim-videolari) — Kılavuz ekranından izlenir.
 
 Nakit ve döviz kasalarınız. Her kasanın para birimi ve bakiyesi ayrı tutulur; farklı para birimleri tek toplamda birleştirilmez.
 
@@ -414,6 +422,8 @@ Kartla yapılan her satıştan doğan ve bankanın size yatıracağı alacaklar 
 
 <!-- ekran: /banka -->
 
+**Eğitim videosu:** [Banka — Gelen para, açık hesaba ve satışa bağlanır (0:44)](#egitim-videolari) — Kılavuz ekranından izlenir.
+
 Banka hesaplarınızı ve dekont hareketlerini izlediğiniz ekrandır.
 
 - **Hesap ekleme:** banka adı, hesap adı, hesap sahibi, IBAN ve para birimi girilir. Hesap bilgileri **Düzenle** ile değiştirilir; kapanan hesap pasife alınır ve geri açılabilir.
@@ -469,6 +479,8 @@ Hangi gün ne kadar evrak vadesi olduğunu takvim üzerinde gösterir. Bir güne
 
 <!-- ekran: /hurda -->
 
+**Eğitim videosu:** [Hurda alışı — Eski altını al, hurda stoğunu izle (0:53)](#egitim-videolari) — Kılavuz ekranından izlenir.
+
 İşletmede biriken hurdanın has bakiyesi ve rafineriye (ramatçıya) çıkışı burada izlenir. Bakiye ayrı bir sayıdan değil, hurda alış ve hurda satış kayıtlarından hesaplanır; bu yüzden elle değiştirilmez. Rafineriden gelen tahlil sonucu beklenenden farklıysa fark ayrıca kaydedilir. Hurda alımı satırındaki **Fotoğraf** ile alımın fotoğrafı eklenir ya da görülür.
 
 <!-- grup: Belge ve Uyum -->
@@ -476,6 +488,8 @@ Hangi gün ne kadar evrak vadesi olduğunu takvim üzerinde gösterir. Bir güne
 ## Faturalar {#faturalar}
 
 <!-- ekran: /faturalar -->
+
+**Eğitim videosu:** [Faturalar — Fişten faturaya tek adım, e-belge arkada (0:50)](#egitim-videolari) — Kılavuz ekranından izlenir.
 
 Kesilen ve taslak faturalar burada listelenir.
 
@@ -537,6 +551,8 @@ Listeden bir pusulanın **Belge** bağlantısına basınca yazdırılabilir belg
 
 <!-- ekran: /uyum -->
 
+**Eğitim videosu:** [Uyum ve MASAK — Kimlik tespiti, şüpheli işlem, nakit sınırı (0:47)](#egitim-videolari) — Kılavuz ekranından izlenir.
+
 Yasal yükümlülüklerin izlendiği ekrandır: kimlik tespitleri, şüpheli işlem bildirimleri ve kayıtların saklama süresi.
 
 - **Kimlik tespiti:** yapılandırmadaki eşiği aşan işlemlerde program müşterinin kimlik bilgisini ister ve kaydeder.
@@ -575,6 +591,8 @@ Devletin belirlediği tutar sınırlarını ve süreleri (nakitte günlük sın�
 ## Rapor merkezi {#raporlar}
 
 <!-- ekran: /raporlar -->
+
+**Eğitim videosu:** [Raporlar — Gün sonu için hesap makinesi gerekmez (0:53)](#egitim-videolari) — Kılavuz ekranından izlenir.
 
 İşletmenin durumunu özetleyen rapor merkezidir: aylık özet, gün sonu mutabakatı, cari yaşlandırma ve stok değeri. Dönem seçicisi üsttedir; seçilen dönemden etkilenmeyen kartlar bunu alt metinlerinde yazar. Her raporun kartına basınca ilgili ayrıntılı döküm açılır.
 
@@ -736,6 +754,22 @@ Menüdeki **Kılavuz** ekranı bu kılavuzu yeni sekmede açar ve programdaki he
 
 <!-- grup: Ek -->
 
+## Eğitim videoları {#egitim-videolari}
+
+<!-- egitim-videolari:bas -->
+Her ekran için bir–iki dakikalık sesli eğitim videosu vardır. **Kılavuz** ekranının (Yönetim › Kılavuz) **Eğitim videoları** listesinden izlenir; her videonun altında bölüm başlangıçları yazar, videoda da bölüm işaretleri vardır. Videolar örnek verilerle çekilmiştir; tutarlar örnektir.
+
+- **Satış — Barkoddan fişe, dört adım** (1:10): 0:03 Tezgah ekranı · 0:16 Barkodu okut · 0:28 Ödeme · 0:42 Kaydet ve yazdır · 0:53 Kısayollar
+- **Hurda alışı — Eski altını al, hurda stoğunu izle** (0:00): 0:00 Alış sekmesi · 0:00 Belge ve kimlik · 0:00 Hurda ve ramat
+- **Emanet — Müşterinin bıraktığı altın, kayıt altında** (0:00): 0:00 Emanet listesi · 0:00 Emanet al · 0:00 Geri ver
+- **Banka — Gelen para, açık hesaba ve satışa bağlanır** (0:00): 0:00 Banka hesapları · 0:00 Gelen havale kararı · 0:00 Hareketler ve ekstre
+- **Faturalar — Fişten faturaya tek adım, e-belge arkada** (0:00): 0:00 Fatura listesi · 0:00 Fişten fatura kes · 0:00 e-Fatura giden kutusu
+- **Uyum ve MASAK — Kimlik tespiti, şüpheli işlem, nakit sınırı** (0:00): 0:00 Kimlik tespitleri · 0:00 Şüpheli işlemler · 0:00 Nakit sınırı
+- **Kasa kapanışı — Çekmeceyi say, farkı yaz, günü kilitle** (0:00): 0:00 Kasa ekranı · 0:00 Günü kapat · 0:00 Kapanış fişi
+- **Etiketler — Barkodlu etiket elle yazılmaz** (0:00): 0:00 Ürün seç · 0:00 Şablon ve adet · 0:00 Yazdır
+- **Raporlar — Gün sonu için hesap makinesi gerekmez** (0:00): 0:00 Rapor merkezi · 0:00 Kar zarar · 0:00 İşlem defteri · 0:00 Satış analizi
+
+<!-- egitim-videolari:son -->
 ## Bu sürümde olmayanlar {#haric}
 
 Aşağıdaki liste ürünün kısıt beyanının tek kaynağından (HARİÇ listesi) alınır; kılavuz kendi cümlesini yazmaz.

@@ -26,3 +26,10 @@ window.kuyumcuPanoyaKopyala = async function (metin) {
         return false;
     }
 };
+
+// Y-01 (21.10) — Kılavuz › Eğitim videoları: bölüm düğmesi oynatıcıyı verilen saniyeye alır ve oynatır.
+window.kuyumcuVideoAtla = function (id, sn) {
+    var v = document.getElementById(id); if (!v) return false;
+    try { v.currentTime = sn; v.play(); v.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { return false; }
+    return true;
+};

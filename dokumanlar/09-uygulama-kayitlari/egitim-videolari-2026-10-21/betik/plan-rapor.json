@@ -1,0 +1,147 @@
+{
+ "id": "rapor",
+ "baslik": "Raporlar",
+ "alt": "Gün sonu için hesap makinesi gerekmez",
+ "adimlar": [
+  {
+   "id": "merkez",
+   "baslik": "Rapor merkezi",
+   "sorun": "Günün özeti ve pozisyon tek bakışta.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/raporlar"
+    },
+    {
+     "t": "imlec",
+     "x": 500,
+     "y": 330
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "kaydir",
+     "top": 500
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Rapor merkezi günün satışını, kasayı ve altın pozisyonunu özetler."
+    ],
+    [
+     "S",
+     "Aşağıdaki kartlar günlük, aylık, stok ve cari raporlarına götürür."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 4
+  },
+  {
+   "id": "karzarar",
+   "baslik": "Kar zarar",
+   "sorun": "Lira karı ile altın karı ayrı görülür.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/raporlar/kar-zarar"
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Kar zarar raporu lira karı ile has altın karını ayrı ayrı gösterir."
+    ],
+    [
+     "V",
+     "Ürün bazlı kırılım hangi ürünün kazandırdığını söyler."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 4
+  },
+  {
+   "id": "defter",
+   "baslik": "İşlem defteri",
+   "sorun": "Günün bütün işlemleri tek listede.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/raporlar/islem-defteri"
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "İşlem defteri her satış, alış, tahsilat ve ödemeyi tarih sırasıyla listeler."
+    ],
+    [
+     "S",
+     "Her satırın belge bağlantısı fişi ya da makbuzu açar."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 4
+  },
+  {
+   "id": "analiz",
+   "baslik": "Satış analizi",
+   "sorun": "Kim ne sattı, hangi ödeme aracıyla geldi.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/raporlar/satis-analizi"
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Satış analizi ödeme aracı, personel ve şube kırılımı verir."
+    ],
+    [
+     "V",
+     "Prim ve hedef sekmesi personelin primini ve avansını hesaplar."
+    ],
+    [
+     "S",
+     "Dört rapor: merkez, kar zarar, defter, analiz."
+    ]
+   ],
+   "sira": 4,
+   "toplam": 4
+  }
+ ]
+}

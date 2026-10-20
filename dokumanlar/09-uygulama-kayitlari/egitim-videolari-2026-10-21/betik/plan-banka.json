@@ -1,0 +1,120 @@
+{
+ "id": "banka",
+ "baslik": "Banka",
+ "alt": "Gelen para, açık hesaba ve satışa bağlanır",
+ "adimlar": [
+  {
+   "id": "hesaplar",
+   "baslik": "Banka hesapları",
+   "sorun": "Bakiye ve hareketler tek ekranda.",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/banka"
+    },
+    {
+     "t": "imlec",
+     "x": 500,
+     "y": 300
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Banka ekranında hesaplar ve bakiyeleri görünür."
+    ],
+    [
+     "S",
+     "Hesap ekle ile yeni banka hesabı açılır; bağlantı kurulunca hareketler kendiliğinden gelir."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 3
+  },
+  {
+   "id": "gelen",
+   "baslik": "Gelen havale kararı",
+   "sorun": "Gelen para boşta kalmaz; borca ya da satışa yazılır.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Gelen havale: Borcundan düş · Ürün seç ve sat"
+    },
+    {
+     "t": "imlec",
+     "x": 700,
+     "y": 420
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "imlec",
+     "x": 900,
+     "y": 420
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Gelen havale listede karar bekler."
+    ],
+    [
+     "H",
+     "Borcundan düş ile açık hesap kapanır; ürün seç ve sat ile havaleden satış yapılır!"
+    ],
+    [
+     "V",
+     "Karar verilen havale bir daha sorulmaz."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 3
+  },
+  {
+   "id": "hareket",
+   "baslik": "Hareketler ve ekstre",
+   "sorun": "Banka ekstresi elle yazılmaz; dosyadan eşleşir.",
+   "eylemler": [
+    {
+     "t": "etiket",
+     "metin": "Hareketler"
+    },
+    {
+     "t": "tik",
+     "sel": "[id^=yildiz-banka-hareket-]"
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "imlec",
+     "x": 600,
+     "y": 450
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Hareketler düğmesi hesabın dökümünü açar."
+    ],
+    [
+     "S",
+     "Bankadan indirilen ekstre dosyası yüklenir; satırlar müşterilerle eşleştirilir."
+    ],
+    [
+     "V",
+     "Eşleşmeyen satır kırmızı kalır, unutulmaz."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 3
+  }
+ ]
+}

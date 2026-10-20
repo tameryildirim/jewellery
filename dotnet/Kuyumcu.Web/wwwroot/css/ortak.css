@@ -780,3 +780,11 @@ html[data-mod] .ana-icerik #bildirim-sekme-seridi > .sekmeler-sekme { border-rad
    şeritte seçici yalnız #cari-tur-filtre'dir ve o varken kapalı hiza da flex-end'dir (ortak.css). */
 .sayfa-basi:has(.sayfa-basi-filtre .secici-liste-kap):not(#_) { align-items: flex-end; }
 .sayfa-basi .sayfa-basi-filtre.filtre-yuvasi:has(.secici-liste-kap):not(#_) { align-items: flex-end; }
+
+/* Y-01 (21.10) — Kılavuz › Eğitim videoları: oynatıcı + bölüm düğmeleri (1280'de iki sütun, 375'te tek sütun). */
+.egitim-video-liste { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px 24px; }
+.egitim-video { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.egitim-video-oynatici { width: 100%; aspect-ratio: 16 / 10; background: var(--metin); border-radius: 10px; display: block; }
+.egitim-video-metin { min-width: 0; }
+.egitim-video-bolumler { display: flex; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; }
+.egitim-video-bolumler .btn { padding-left: 0; padding-right: 0; }
