@@ -35,6 +35,7 @@ public static class ModulKayit
         // iki bacaklı atomik yazıcısı. Storno motoru AYRIDIR (Satis.StornoServisi).
         s.AddScoped<Gider.GiderServisi>();
         s.AddScoped<Gider.VirmanServisi>();
+        s.AddScoped<Gise.GiseServisi>();   // Y-03
         // Paket 31 — POS alacak defteri (YAN DEFTER; kasa bakiyesine dokunmaz).
         s.AddScoped<Pos.PosServisi>();
         s.AddScoped<Emanet.EmanetServisi>();

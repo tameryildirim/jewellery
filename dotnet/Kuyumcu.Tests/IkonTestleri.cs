@@ -224,7 +224,7 @@ public sealed class IkonTestleri : BunitContext
             "/fiyatlandirma", "/sayim",
             // ── Para ve Banka ── (⚠ "evrak" modülü bu fikstürde YOK:
             //    /evraklar ve /evraklar/takvim bu yüzden listede değil)
-            "/kasalar", "/vezne", "/pos", "/pos/tahsilatlar", "/banka", "/kur",
+            "/kasalar", "/vezne", "/gise", "/pos", "/pos/tahsilatlar", "/banka", "/kur",
             // ── Belge ve Uyum ── (⚠ /uyum ve /gider-pusulalari rol kapısında)
             "/faturalar",
             // ── Dökümler ──

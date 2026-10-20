@@ -1,0 +1,411 @@
+@page "/gise"
+@using Kuyumcu.Contracts.Sayfalar.Gise
+@using Kuyumcu.Core.Domain.Girdi
+@using Kuyumcu.Core.I18n
+@using Kuyumcu.Web.Bilesenler.Grid
+@using KasaSz = Kuyumcu.Contracts.Sayfalar.Kasalar
+@inject ApiIstemci Api
+@inject DilServisi Dil
+@inject OturumServisi Oturum
+
+@* ═══ Y-03 (20.10, rakip Ariyen "Gişe Kasam") — gişe zimmeti: yönetici sabah ürün + açılış nakdi zimmetler → tezgâhtar kabul
+   eder → gün içi takviye talebi (kendi talebini onaylayamaz) → akşam ürün/nakit sayımı, kalem bazlı fark → sayılan nakit ana
+   kasaya devir. Uçlar: GET/POST /gise · GET /gise/{id} · POST …/kabul · …/takviye · …/takviye/{kalemId}/karar · …/kapat · …/iptal.
+   Ekran açılışta yalnız yapılacak işi gösterir: tezgâhtarın açık zimmeti varsa doğrudan o açılır (zorunlu-önce kuralı). ═══ *@
+<PageTitle>@Marka.SayfaBasligi(GiseSozlugu.Baslik(Dil.Dil))</PageTitle>
+@* ORTAK-1: sayfadaki her Sayi/Para kutusu ortak geçersiz sayı kapısına yazılır. *@
+<CascadingValue Value="sayiKapisi" IsFixed="true">
+
+<SayfaBasi Anahtar="gise" Baslik="@GiseSozlugu.Baslik(Dil.Dil)" Aciklama="@GiseSozlugu.SayfaAciklama(Dil.Dil)" AciklamaKatli="true">
+    <Eylem>
+        @if (detay is not null)
+        {
+            <button type="button" class="btn btn-metin btn-kucuk" id="gs-geri" @onclick="ListeyeDon">← @GiseSozlugu.Geri(Dil.Dil)</button>
+        }
+        else if (liste?.YonetimMi == true && !yeniAcik)
+        {
+            <button type="button" class="btn btn-birincil btn-kucuk" id="gs-yeni" @onclick="() => yeniAcik = true">+ @GiseSozlugu.YeniZimmet(Dil.Dil)</button>
+        }
+    </Eylem>
+</SayfaBasi>
+
+<HataBandi Mesaj="@hata" Id="gs-hata" />
+<BasariBandi Mesaj="@basari" Jeton="@basariJeton" Id="gs-basari" />
+
+@if (yukleniyor) { <Yukleniyor /> }
+else if (detay is { } d)
+{
+    var o = d.Ozet;
+    <div class="kart" id="gs-detay">
+        <div class="kart-baslik satir-arasi">
+            <h2>@o.PersonelAd · @o.KasaAd</h2>
+            <Rozet Renk="@DurumRenk(o.Durum)">@GiseSozlugu.DurumAdi(o.Durum, Dil.Dil)</Rozet>
+        </div>
+        <div class="kart-govde">
+            <p class="metin-kucuk metin-soluk" id="gs-ozet-satir">
+                @GiseSozlugu.AcilisNakdi(Dil.Dil): <strong>@Bicim.Para(o.AcilisNakit, o.ParaBirimi)</strong>
+                @if (d.KaynakKasaAd is { } kka) { <text> · @GiseSozlugu.KaynakKasa(Dil.Dil): @kka</text> }
+                · @Bicim.TarihSaat(o.Olusturuldu)
+                @if (o.KapanisZamani is { } kz) { <text> → @Bicim.TarihSaat(kz)</text> }
+            </p>
+
+            @if (d.Urunler.Count > 0)
+            {
+                <Izgara T="GiseUrunDurumu" Ekran="gise" GridId="gs-urunler" Kolonlar="@UrunKolonlari(d)" Ogeler="@d.Urunler"
+                        SatirId="@(u => $"gs-urun-{u.UrunId}")" Baslik="@GiseSozlugu.Urun(Dil.Dil)" YapiskanIlkSutun="false" />
+            }
+
+            @if (o.Durum == "KABUL")
+            {
+                <p id="gs-nakit" class="metin-kucuk">
+                    @if (d.NakitGizli) { <span class="metin-soluk">@GiseSozlugu.NakitGizli(Dil.Dil)</span> }
+                    else { <text>@GiseSozlugu.BeklenenNakit(Dil.Dil): <strong>@Bicim.Para(d.BeklenenNakit, o.ParaBirimi)</strong></text> }
+                </p>
+            }
+            else if (o.Durum == "KAPANDI")
+            {
+                <p id="gs-kapanis" class="metin-kucuk">
+                    @GiseSozlugu.BeklenenNakit(Dil.Dil) <strong>@Bicim.Para(d.BeklenenNakit, o.ParaBirimi)</strong> ·
+                    @GiseSozlugu.SayilanNakit(Dil.Dil) <strong>@Bicim.Para(d.SayilanNakit ?? 0m, o.ParaBirimi)</strong> ·
+                    @GiseSozlugu.Fark(Dil.Dil) <strong class="@((d.NakitFark ?? 0m) == 0m ? "" : "metin-kirmizi")">@Bicim.Para(d.NakitFark ?? 0m, o.ParaBirimi)</strong>
+                    @if (d.DevirKasaAd is { } dka) { <text> · @GiseSozlugu.DevirKasasi(Dil.Dil): @dka</text> }
+                    @if (d.Aciklama is { } ack) { <div class="metin-soluk">@ack</div> }
+                </p>
+            }
+
+            @if (d.Takviyeler.Count > 0)
+            {
+                <Katlanir Id="gs-takviyeler" Baslik="@GiseSozlugu.Takviyeler(Dil.Dil)" Sayi="@d.Takviyeler.Count" BaslangictaAcik="@(o.BekleyenTakviye > 0)">
+                    <ul class="liste-sade metin-kucuk">
+                        @foreach (var t in d.Takviyeler)
+                        {
+                            <li id="@($"gs-takviye-{t.Id}")">
+                                @(t.NakitTutar is { } nt ? Bicim.Para(nt, o.ParaBirimi) : $"{t.UrunKod} {t.UrunAd} × {t.Adet:0.###}")
+                                · @GiseSozlugu.Isteyen(Dil.Dil): @t.IsteyenAd · <Rozet Renk="@DurumRenk(t.Durum)">@GiseSozlugu.DurumAdi(t.Durum, Dil.Dil)</Rozet>
+                                @if (t.OnaylayanAd is { } oa) { <text> · @oa</text> }
+                                @if (t.Durum == "TALEP" && d.KararVerebilirMi)
+                                {
+                                    @if (t.IsteyenId == Oturum.Kullanici?.Id) { <span class="metin-soluk"> · @GiseSozlugu.KendiTalep(Dil.Dil)</span> }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-metin btn-kucuk" id="@($"gs-red-{t.Id}")" disabled="@kaydediliyor" @onclick="() => Karar(t.Id, false)">@GiseSozlugu.Reddet(Dil.Dil)</button>
+                                        <button type="button" class="btn btn-ikincil btn-kucuk" id="@($"gs-onay-{t.Id}")" disabled="@kaydediliyor" @onclick="() => Karar(t.Id, true)">@GiseSozlugu.Onayla(Dil.Dil)</button>
+                                    }
+                                }
+                            </li>
+                        }
+                    </ul>
+                </Katlanir>
+            }
+
+            @if (d.KabulEdebilir)
+            {
+                <div class="satir-eylem">
+                    @if (d.IptalEdebilir) { <button type="button" class="btn btn-metin" id="gs-iptal" disabled="@kaydediliyor" @onclick="Iptal">@GiseSozlugu.Iptal(Dil.Dil)</button> }
+                    <button type="button" class="btn btn-birincil" id="gs-kabul" disabled="@kaydediliyor" @onclick="Kabul">@GiseSozlugu.Kabul(Dil.Dil)</button>
+                </div>
+            }
+            else if (d.IptalEdebilir)
+            {
+                <div class="satir-eylem"><button type="button" class="btn btn-ikincil" id="gs-iptal" disabled="@kaydediliyor" @onclick="Iptal">@GiseSozlugu.Iptal(Dil.Dil)</button></div>
+            }
+
+            @if (o.Durum == "KABUL")
+            {
+                <Katlanir Id="gs-takviye-form" Baslik="@GiseSozlugu.TakviyeIste(Dil.Dil)">
+                    <div class="form-grid-3">
+                        <div class="alan"><Secici ElemanId="gs-tk-urun" Etiket="@GiseSozlugu.Urun(Dil.Dil)" UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Urun"
+                                UzakSeciliAd="@tkUrunAd" Deger="@tkUrunId" DegerChanged="@(v => tkUrunId = v)" BosSecenekMetni="—" Hata="@takviyeForm.Mesaj("gs-tk-urun")" /></div>
+                        <Sayi ElemanId="gs-tk-adet" Etiket="@GiseSozlugu.Adet(Dil.Dil)" EnAz="0" EnCokOndalik="3" Deger="@tkAdet" DegerChanged="@(v => tkAdet = v)" Durum="takviyeForm" HataAlani="gs-tk-adet" />
+                        <Para ElemanId="gs-tk-nakit" Etiket="@GiseSozlugu.TakviyeNakit(Dil.Dil)" Tur="TutarTuru.Pozitif" ParaBirimi="@o.ParaBirimi" Deger="@tkNakit" DegerChanged="@(v => tkNakit = v)" Durum="takviyeForm" HataAlani="gs-tk-nakit" />
+                    </div>
+                    <div class="satir-eylem"><button type="button" class="btn btn-ikincil" id="gs-tk-gonder" disabled="@kaydediliyor" @onclick="TakviyeGonder">@GiseSozlugu.TalepGonder(Dil.Dil)</button></div>
+                </Katlanir>
+
+                @if (d.KapatabilirMi)
+                {
+                    <Katlanir Id="gs-kapat-form" Baslik="@GiseSozlugu.KapatAc(Dil.Dil)" BaslangictaAcik="@kapatAcik" Degisti="@(v => kapatAcik = v)">
+                        <div class="form-grid-3">
+                            @foreach (var u in d.Urunler)
+                            {
+                                var uid = u.UrunId;
+                                <Sayi ElemanId="@($"gs-say-{uid}")" Etiket="@($"{u.Kod} · {GiseSozlugu.Sayilan(Dil.Dil)}")" EnAz="0" EnCokOndalik="3" Zorunlu="true"
+                                      Deger="@(sayilanlar.GetValueOrDefault(uid))" DegerChanged="@(v => sayilanlar[uid] = v)" Durum="kapatForm" HataAlani="@($"gs-say-{uid}")" />
+                            }
+                            <Para ElemanId="gs-sayilan-nakit" Etiket="@GiseSozlugu.SayilanNakit(Dil.Dil)" Zorunlu="true" Tur="TutarTuru.SifirOlabilir" ParaBirimi="@o.ParaBirimi"
+                                  Deger="@sayilanNakit" DegerChanged="@(v => sayilanNakit = v)" Durum="kapatForm" HataAlani="gs-sayilan-nakit" />
+                            @if (kasalar.Count > 0)
+                            {
+                                <div class="alan"><Secici ElemanId="gs-devir-kasa" Etiket="@GiseSozlugu.DevirKasasi(Dil.Dil)" Secenekler="@DevirSecenekleri(o.KasaId)"
+                                        Deger="@devirKasaId" DegerChanged="@(v => devirKasaId = v)" BosSecenekMetni="—" Hata="@kapatForm.Mesaj("gs-devir-kasa")" /></div>
+                            }
+                        </div>
+                        <GerekceAlani Id="gs-gerekce" Etiket="@GiseSozlugu.Gerekce(Dil.Dil)" Deger="@gerekce" DegerChanged="@(v => gerekce = v)" />
+                        <AlanHatasi Alan="gs-gerekce" Durum="kapatForm" />
+                        <div class="satir-eylem"><button type="button" class="btn btn-birincil" id="gs-kapat" disabled="@kaydediliyor" @onclick="Kapat">@GiseSozlugu.Kapat(Dil.Dil)</button></div>
+                    </Katlanir>
+                }
+                <p class="metin-kucuk metin-soluk" id="gs-vardiya-ipucu">@GiseSozlugu.VardiyaIpucu(Dil.Dil)</p>
+            }
+        </div>
+        <DegismezIpucu Varlik="GiseZimmeti" Gerekce="@GiseSozlugu.DegismezGerekce(Dil.Dil)" AlternatifYol="/kasalar" />
+    </div>
+}
+else if (liste is { } l)
+{
+    @if (l.YonetimMi && yeniAcik)
+    {
+        <div class="kart" id="gs-yeni-form">
+            <div class="kart-baslik"><h2>@GiseSozlugu.YeniZimmet(Dil.Dil)</h2></div>
+            <div class="kart-govde form-grid-3">
+                <div class="alan"><Secici ElemanId="gs-kasa" Etiket="@GiseSozlugu.Kasa(Dil.Dil)" Zorunlu="true" Secenekler="@KasaSecenekleri(null)"
+                        Deger="@yKasaId" DegerChanged="@(v => yKasaId = v)" BosSecenekMetni="—" Hata="@yeniForm.Mesaj("gs-kasa")" /></div>
+                <div class="alan"><Secici ElemanId="gs-personel" Etiket="@GiseSozlugu.Personel(Dil.Dil)" Zorunlu="true" Secenekler="@PersonelSecenekleri"
+                        Deger="@yPersonelId" DegerChanged="@(v => yPersonelId = v)" BosSecenekMetni="—" Hata="@yeniForm.Mesaj("gs-personel")" /></div>
+                <div class="alan"><Secici ElemanId="gs-kaynak" Etiket="@GiseSozlugu.KaynakKasa(Dil.Dil)" Secenekler="@KasaSecenekleri(yKasaId)"
+                        Deger="@yKaynakId" DegerChanged="@(v => yKaynakId = v)" BosSecenekMetni="—" Hata="@yeniForm.Mesaj("gs-kaynak")" /></div>
+                <Para ElemanId="gs-acilis" Etiket="@GiseSozlugu.AcilisNakdi(Dil.Dil)" Tur="TutarTuru.SifirOlabilir" ParaBirimi="@SecilenParaBirimi"
+                      Deger="@yAcilis" DegerChanged="@(v => yAcilis = v)" Durum="yeniForm" HataAlani="gs-acilis" Ipucu="@GiseSozlugu.NakitsizIpucu(Dil.Dil)" />
+            </div>
+            <div class="kart-govde form-grid-3" id="gs-urun-ekle">
+                <div class="alan"><Secici ElemanId="gs-urun" Etiket="@GiseSozlugu.Urun(Dil.Dil)" UzakTur="@Kuyumcu.Contracts.Arama.AramaTurleri.Urun"
+                        UzakSeciliAd="@yUrunAd" Deger="@yUrunId" DegerChanged="@UrunSecildi" BosSecenekMetni="—" Hata="@yeniForm.Mesaj("gs-urun")" /></div>
+                <Sayi ElemanId="gs-adet" Etiket="@GiseSozlugu.Adet(Dil.Dil)" EnAz="0" EnCokOndalik="3" Deger="@yAdet" DegerChanged="@(v => yAdet = v)" Durum="yeniForm" HataAlani="gs-adet" />
+                <div class="alan satir-eylem"><button type="button" class="btn btn-ikincil btn-kucuk" id="gs-urun-ekle-dugme" @onclick="UrunEkle">+ @GiseSozlugu.UrunEkle(Dil.Dil)</button></div>
+            </div>
+            @if (yKalemler.Count == 0) { <p class="metin-kucuk metin-soluk" id="gs-kalem-bos">@GiseSozlugu.UrunListesiBos(Dil.Dil)</p> }
+            else
+            {
+                <ul class="liste-sade metin-kucuk" id="gs-kalemler">
+                    @foreach (var k in yKalemler)
+                    {
+                        <li id="@($"gs-kalem-{k.UrunId}")">@k.Ad × @k.Adet.ToString("0.###")
+                            <button type="button" class="btn btn-metin btn-kucuk" @onclick="() => yKalemler.Remove(k)">@GiseSozlugu.Cikar(Dil.Dil)</button></li>
+                    }
+                </ul>
+            }
+            <div class="satir-eylem">
+                <button type="button" class="btn btn-metin" id="gs-yeni-vazgec" @onclick="() => yeniAcik = false">@Dil.T.Ortak.Iptal</button>
+                <button type="button" class="btn btn-birincil" id="gs-olustur" disabled="@kaydediliyor" @onclick="Olustur">@GiseSozlugu.Olustur(Dil.Dil)</button>
+            </div>
+        </div>
+    }
+
+    @if (l.Acik.Count == 0) { <BosDurum Mesaj="@GiseSozlugu.Bos(Dil.Dil)" /> }
+    else
+    {
+        <div class="kart">
+            <Izgara T="GiseZimmetOzet" Ekran="gise" GridId="gs-acik" Kolonlar="@ZimmetKolonlari" Ogeler="@l.Acik"
+                    SatirId="@(z => $"gs-zimmet-{z.Id}")" Baslik="@GiseSozlugu.Acik(Dil.Dil)" YapiskanIlkSutun="false" />
+        </div>
+    }
+    @if (l.Gecmis.Count > 0)
+    {
+        <Katlanir Id="gs-gecmis" Baslik="@GiseSozlugu.Gecmis(Dil.Dil)" Sayi="@l.Gecmis.Count">
+            <Izgara T="GiseZimmetOzet" Ekran="gise" GridId="gs-gecmis-tablo" Kolonlar="@ZimmetKolonlari" Ogeler="@l.Gecmis"
+                    SatirId="@(z => $"gs-gecmis-{z.Id}")" Baslik="@GiseSozlugu.Gecmis(Dil.Dil)" YapiskanIlkSutun="false" />
+        </Katlanir>
+    }
+}
+</CascadingValue>
+
+@code {
+    private GiseListesi? liste;
+    private GiseZimmetDetay? detay;
+    private List<KasaSz.KasaVeri> kasalar = [];
+    private List<Kuyumcu.Contracts.Sayfalar.SaticiPersonel.SaticiPersonelSatiri> personeller = [];
+    private string? hata, basari;
+    private int basariJeton;
+    private bool yukleniyor = true, kaydediliyor, yeniAcik, kapatAcik;
+    private readonly FormDurumu yeniForm = new(), takviyeForm = new(), kapatForm = new();
+    private GecersizAlanKapisi? _sayiKapisi;
+    private GecersizAlanKapisi sayiKapisi => _sayiKapisi ??= new(() => InvokeAsync(StateHasChanged));
+
+    // yeni zimmet
+    private string? yKasaId, yPersonelId, yKaynakId, yUrunId, yUrunAd;
+    private decimal? yAcilis, yAdet;
+    private readonly List<GiseYeniKalem> yKalemler = [];
+    // takviye
+    private string? tkUrunId, tkUrunAd;
+    private decimal? tkAdet, tkNakit;
+    // kapanış
+    private readonly Dictionary<string, decimal?> sayilanlar = [];
+    private decimal? sayilanNakit;
+    private string? devirKasaId;
+    private string gerekce = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Yukle();
+        // Zorunlu-önce: tezgâhtarın tek açık zimmeti varsa doğrudan o açılır.
+        if (liste is { YonetimMi: false, Acik.Count: 1 }) await Ac(liste.Acik[0].Id);
+    }
+
+    private async Task Yukle()
+    {
+        yukleniyor = true; hata = null;
+        try
+        {
+            liste = await Api.GetAsync<GiseListesi>("/gise");
+            kasalar = (await Api.GetAsync<List<KasaSz.KasaVeri>>("/kasalar")).Where(k => k.Aktif).ToList();
+            if (liste.YonetimMi)
+                personeller = (await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.SaticiPersonel.SaticiPersonelListesi>("/islemler/personeller")).Personeller ?? [];
+        }
+        catch (ApiHata e) { hata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { yukleniyor = false; }
+    }
+
+    private async Task Ac(string id)
+    {
+        hata = null;
+        try
+        {
+            detay = await Api.GetAsync<GiseZimmetDetay>($"/gise/{Uri.EscapeDataString(id)}");
+            sayilanlar.Clear(); sayilanNakit = null; gerekce = ""; devirKasaId = detay.KaynakKasaId; kapatAcik = false;
+        }
+        catch (ApiHata e) { hata = FormDurumu.SunucuMesaji(e, Dil); }
+    }
+
+    private async Task ListeyeDon() { detay = null; await Yukle(); }
+
+    private static string DurumRenk(string d) => d switch { "KABUL" => "yesil", "TEKLIF" or "TALEP" => "amber", "IPTAL" or "RED" => "kirmizi", _ => "gri" };
+
+    private string SecilenParaBirimi => kasalar.FirstOrDefault(k => k.Id == yKasaId)?.ParaBirimi ?? "TRY";
+    private IReadOnlyList<SecenekOgesi> KasaSecenekleri(string? haric) =>
+        [.. kasalar.Where(k => k.Id != haric).Select(k => new SecenekOgesi(k.Id, $"{k.Ad} ({Bicim.ParaIsareti(k.ParaBirimi)})"))];
+    private IReadOnlyList<SecenekOgesi> DevirSecenekleri(string giseKasaId) => KasaSecenekleri(giseKasaId);
+    private IReadOnlyList<SecenekOgesi> PersonelSecenekleri =>
+        [.. personeller.Where(p => p.Id != Oturum.Kullanici?.Id).Select(p => new SecenekOgesi(p.Id, $"{p.Ad} {p.Soyad}".Trim()))];
+
+    private IReadOnlyList<IzgaraKolonu<GiseZimmetOzet>> ZimmetKolonlari =>
+    [
+        new() { Anahtar = "personel", Baslik = GiseSozlugu.Personel(Dil.Dil), ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu", Deger = z => z.PersonelAd },
+        new() { Anahtar = "kasa", Baslik = GiseSozlugu.Kasa(Dil.Dil), Deger = z => z.KasaAd },
+        new() { Anahtar = "durum", Baslik = GiseSozlugu.Durum(Dil.Dil), ZorunluGorunur = true, Tur = IzgaraHucreTuru.Rozet, Deger = z => GiseSozlugu.DurumAdi(z.Durum, Dil.Dil),
+                Hucre = z => @<text><Rozet Renk="@DurumRenk(z.Durum)">@GiseSozlugu.DurumAdi(z.Durum, Dil.Dil)</Rozet>@if (z.BekleyenTakviye > 0) { <span class="metin-kucuk metin-amber"> · @z.BekleyenTakviye</span> }</text> },
+        new() { Anahtar = "acilis", Baslik = GiseSozlugu.AcilisNakdi(Dil.Dil), Tur = IzgaraHucreTuru.Para, ParaBirimi = z => z.ParaBirimi, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = z => z.AcilisNakit },
+        new() { Anahtar = "urun", Baslik = GiseSozlugu.Urun(Dil.Dil), Tur = IzgaraHucreTuru.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = z => z.UrunSayisi },
+        new() { Anahtar = "tarih", Baslik = GiseSozlugu.Tarih(Dil.Dil), Tur = IzgaraHucreTuru.Tarih, Deger = z => z.Olusturuldu },
+        new() { Anahtar = "eylem", Baslik = GiseSozlugu.Ac(Dil.Dil), BaslikGizli = true, ZorunluGorunur = true, Tasinamaz = true, KartEtiketsiz = true, Tur = IzgaraHucreTuru.Eylem,
+                Hucre = z => @<button type="button" class="btn btn-metin btn-kucuk" id="@($"gs-ac-{z.Id}")" @onclick="() => Ac(z.Id)">@GiseSozlugu.Ac(Dil.Dil)</button> },
+    ];
+
+    private IReadOnlyList<IzgaraKolonu<GiseUrunDurumu>> UrunKolonlari(GiseZimmetDetay d)
+    {
+        var kapali = d.Ozet.Durum is "KAPANDI";
+        var k = new List<IzgaraKolonu<GiseUrunDurumu>>
+        {
+            new() { Anahtar = "kod", Baslik = GiseSozlugu.Urun(Dil.Dil), ZorunluGorunur = true, HucreSinif = _ => "hucre-vurgu", Deger = u => u.Kod,
+                    Hucre = u => @<text>@u.Kod<div class="metin-soluk metin-kucuk">@u.Ad</div></text> },
+            new() { Anahtar = "zimmet", Baslik = GiseSozlugu.Zimmet(Dil.Dil), Tur = IzgaraHucreTuru.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.Zimmet },
+            new() { Anahtar = "satilan", Baslik = GiseSozlugu.Satilan(Dil.Dil), Tur = IzgaraHucreTuru.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.Satilan },
+            new() { Anahtar = "beklenen", Baslik = GiseSozlugu.Beklenen(Dil.Dil), ZorunluGorunur = true, Tur = IzgaraHucreTuru.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.Beklenen },
+        };
+        if (kapali)
+        {
+            k.Add(new() { Anahtar = "sayilan", Baslik = GiseSozlugu.Sayilan(Dil.Dil), Tur = IzgaraHucreTuru.Adet, BaslikSinif = "sayi", HucreSinif = _ => "sayi", Deger = u => u.Sayilan ?? 0m });
+            k.Add(new() { Anahtar = "fark", Baslik = GiseSozlugu.Fark(Dil.Dil), ZorunluGorunur = true, Tur = IzgaraHucreTuru.Adet, BaslikSinif = "sayi",
+                          HucreSinif = u => (u.Fark ?? 0m) == 0m ? "sayi" : "sayi metin-kirmizi", Deger = u => u.Fark ?? 0m });
+        }
+        return k;
+    }
+
+    // ── yeni zimmet ──
+    private void UrunSecildi(string? id) { yUrunId = id; }
+
+    private void UrunEkle()
+    {
+        yeniForm.Temizle();
+        yeniForm.Zorunlu("gs-urun", yUrunId, Dil);
+        yeniForm.Pozitif("gs-adet", yAdet, Dil);
+        if (!yeniForm.Gecerli) return;
+        yKalemler.RemoveAll(k => k.UrunId == yUrunId);
+        yKalemler.Add(new GiseYeniKalem(yUrunId!, yUrunAd ?? yUrunId!, yAdet!.Value));
+        yUrunId = null; yUrunAd = null; yAdet = null;
+    }
+
+    private async Task Olustur()
+    {
+        if (sayiKapisi.OnekleVar("gs-")) return;   // ORTAK-1: POST YOK
+        yeniForm.Temizle();
+        yeniForm.Zorunlu("gs-kasa", yKasaId, Dil);
+        yeniForm.Zorunlu("gs-personel", yPersonelId, Dil);
+        if ((yAcilis ?? 0m) > 0m) yeniForm.Zorunlu("gs-kaynak", yKaynakId, Dil);
+        if (!yeniForm.Gecerli) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var d = await Api.PostAsync<GiseZimmetDetay>("/gise", new
+            {
+                kasaId = yKasaId, personelId = yPersonelId, kaynakKasaId = string.IsNullOrEmpty(yKaynakId) ? null : yKaynakId,
+                acilisNakit = yAcilis, kalemler = yKalemler.Select(k => new { urunId = k.UrunId, adet = k.Adet }).ToList(),
+            });
+            basari = GiseSozlugu.Olusturuldu(Dil.Dil); basariJeton++;
+            yeniAcik = false; yKasaId = yPersonelId = yKaynakId = null; yAcilis = null; yKalemler.Clear();
+            detay = d; devirKasaId = d.KaynakKasaId;
+        }
+        catch (ApiHata e) { yeniForm.Sunucudan(e, SunucuEsleme); if (yeniForm.Gecerli) hata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { kaydediliyor = false; }
+    }
+
+    private static readonly Dictionary<string, string> SunucuEsleme = new()
+    {
+        ["kasaId"] = "gs-kasa", ["personelId"] = "gs-personel", ["kaynakKasaId"] = "gs-kaynak", ["acilisNakit"] = "gs-acilis",
+        ["kalemler"] = "gs-urun", ["urunId"] = "gs-urun", ["adet"] = "gs-adet",
+        ["nakitTutar"] = "gs-tk-nakit", ["sayilanNakit"] = "gs-sayilan-nakit", ["satirlar"] = "gs-gerekce", ["aciklama"] = "gs-gerekce", ["devirKasaId"] = "gs-devir-kasa",
+    };
+
+    private async Task Kabul() => await Eylem(() => Api.PostAsync<GiseZimmetDetay>($"/gise/{detay!.Ozet.Id}/kabul"), GiseSozlugu.KabulEdildi(Dil.Dil));
+    private async Task Iptal() => await Eylem(() => Api.PostAsync<GiseZimmetDetay>($"/gise/{detay!.Ozet.Id}/iptal"), GiseSozlugu.IptalEdildi(Dil.Dil));
+    private async Task Karar(string kalemId, bool onay) =>
+        await Eylem(() => Api.PostAsync<GiseZimmetDetay>($"/gise/{detay!.Ozet.Id}/takviye/{kalemId}/karar", new { onay }), GiseSozlugu.KararVerildi(Dil.Dil));
+
+    private async Task TakviyeGonder()
+    {
+        if (sayiKapisi.OnekleVar("gs-tk-")) return;
+        takviyeForm.Temizle();
+        if (string.IsNullOrEmpty(tkUrunId) && (tkNakit ?? 0m) <= 0m) takviyeForm.Zorunlu("gs-tk-urun", null, Dil);
+        if (!string.IsNullOrEmpty(tkUrunId)) takviyeForm.Pozitif("gs-tk-adet", tkAdet, Dil);
+        if (!takviyeForm.Gecerli) return;
+        var ok = await Eylem(() => Api.PostAsync<GiseZimmetDetay>($"/gise/{detay!.Ozet.Id}/takviye",
+            new { urunId = string.IsNullOrEmpty(tkUrunId) ? null : tkUrunId, adet = tkAdet, nakitTutar = string.IsNullOrEmpty(tkUrunId) ? tkNakit : null }),
+            GiseSozlugu.TalepGonderildi(Dil.Dil), takviyeForm);
+        if (ok) { tkUrunId = tkUrunAd = null; tkAdet = tkNakit = null; }
+    }
+
+    private async Task Kapat()
+    {
+        if (sayiKapisi.OnekleVar("gs-say") || sayiKapisi.OnekleVar("gs-sayilan")) return;
+        kapatForm.Temizle();
+        foreach (var u in detay!.Urunler)
+            if (sayilanlar.GetValueOrDefault(u.UrunId) is null) kapatForm.Zorunlu($"gs-say-{u.UrunId}", null, Dil);
+        if (sayilanNakit is null) kapatForm.Zorunlu("gs-sayilan-nakit", null, Dil);
+        if (!kapatForm.Gecerli) return;
+        kaydediliyor = true; hata = null;
+        try
+        {
+            var s = await Api.PostAsync<GiseKapatSonucu>($"/gise/{detay.Ozet.Id}/kapat", new
+            {
+                sayilanNakit, aciklama = string.IsNullOrWhiteSpace(gerekce) ? null : gerekce,
+                devirKasaId = string.IsNullOrEmpty(devirKasaId) ? null : devirKasaId,
+                satirlar = detay.Urunler.Select(u => new { urunId = u.UrunId, sayilanAdet = sayilanlar.GetValueOrDefault(u.UrunId) }).ToList(),
+            });
+            detay = s.Detay;
+            basari = GiseSozlugu.Kapatildi(Bicim.Para(s.DevredilenNakit, s.Detay.Ozet.ParaBirimi), s.DevirKasaAd, Dil.Dil); basariJeton++;
+        }
+        catch (ApiHata e) { kapatForm.Sunucudan(e, SunucuEsleme); if (kapatForm.Gecerli) hata = FormDurumu.SunucuMesaji(e, Dil); }
+        finally { kaydediliyor = false; }
+    }
+
+    private async Task<bool> Eylem(Func<Task<GiseZimmetDetay>> is_, string mesaj, FormDurumu? form = null)
+    {
+        kaydediliyor = true; hata = null;
+        try { detay = await is_(); basari = mesaj; basariJeton++; return true; }
+        catch (ApiHata e)
+        {
+            if (form is not null) { form.Sunucudan(e, SunucuEsleme); if (!form.Gecerli) return false; }
+            hata = FormDurumu.SunucuMesaji(e, Dil); return false;
+        }
+        finally { kaydediliyor = false; }
+    }
+}

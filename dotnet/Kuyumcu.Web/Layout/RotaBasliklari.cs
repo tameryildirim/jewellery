@@ -48,6 +48,7 @@ public static class RotaBasliklari
             ["/pos"] = t => MenuAdlari.Icin(t).PosCihazlari.Ad,
             ["/pos/tahsilatlar"] = t => MenuAdlari.Icin(t).PosAlacaklari.Ad,
             ["/vezne"] = t => MenuAdlari.Icin(t).KasaKuyrugu.Ad,
+            ["/gise"] = t => MenuAdlari.Icin(t).GiseZimmeti.Ad,   // Y-03
             ["/banka"] = t => MenuAdlari.Icin(t).Banka.Ad,
             // PAKET P-19 (Y-11/Y-12) — gider + virman.
             ["/gider"] = t => MenuAdlari.Icin(t).GiderVirman.Ad,

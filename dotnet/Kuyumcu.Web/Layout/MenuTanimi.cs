@@ -126,6 +126,8 @@ public static class MenuTanimi
         // Paket 19 Faz A — vezne kuyruğu: fiş uçlarında ModulYetkisi("islem"),
         // tahsil ucunda ModulYetkisi("kasa"); menüde dar olan kapı aranır.
         new(MenuGrubu.ParaBanka, "/vezne", "kasa", [], Ikonlar.Vezne, m => m.KasaKuyrugu),
+        // Y-03 (20.10): gişe zimmeti — sabah teslim, akşam sayım, ana kasaya devir; tezgâhtar kendi zimmetini görür.
+        new(MenuGrubu.ParaBanka, "/gise", "kasa", [], Ikonlar.Kasalar, m => m.GiseZimmeti),
         // Paket 31 — POS cihazları ve POS hakedişleri.
         new(MenuGrubu.ParaBanka, "/pos", "kasa", [], Ikonlar.Kasalar, m => m.PosCihazlari),
         new(MenuGrubu.ParaBanka, "/pos/tahsilatlar", "kasa", [], Ikonlar.Kasalar, m => m.PosAlacaklari),

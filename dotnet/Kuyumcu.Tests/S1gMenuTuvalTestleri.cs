@@ -118,7 +118,7 @@ public sealed class S1gMenuTuvalTestleri : BunitContext
         ("/cariler", "Müşteriler"), ("/urunler", "Ürünler"), ("/urunler/agac", "Ürün ağacı"),
         ("/urunler/etiketler", "Etiketler"), ("/fiyatlandirma", "Fiyat listeleri"), ("/sayim", "Sayım"),
         ("/satin-alma", "Satın alma"), ("/irsaliyeler", "İrsaliyeler"),   // PAKET EKSIK-B1-SATINALMA
-        ("/kasalar", "Kasalar"), ("/vezne", "Kasa kuyruğu"), ("/pos", "POS cihazları"),
+        ("/kasalar", "Kasalar"), ("/vezne", "Kasa kuyruğu"), ("/gise", "Gişe zimmeti"), ("/pos", "POS cihazları"),
         ("/pos/tahsilatlar", "POS alacakları"), ("/banka", "Banka"), ("/evraklar", "Çek ve senet"),
         ("/evraklar/takvim", "Vade takvimi"), ("/kur", "Kur"), ("/gider", "Gider ve para aktarımı"),
         ("/hurda", "Hurda ve ramat"),

@@ -45,10 +45,11 @@ public sealed class MenuMimarisiTestleri : BunitContext
         // 39 → 41: PAKET EKSIK-B1-SATINALMA /satin-alma (Müşteri ve stok) + /irsaliyeler (Belge ve uyum)
         // bağlantılarını ekledi; rol kapısı SAHIP/MUDUR/MUHASEBE — sunucu [RolGerekli] ile AYNI.
         // 41 → 42: D1-19 /kvkk (Belge ve uyum; SAHIP/MUDUR — PUT /kvkk/metin rol kapısıyla AYNI).
-        Assert.Equal(42, MenuTanimi.Ogeler.Count);
+        // 42 → 43: Y-03 (20.10) /gise gişe zimmeti (Para ve banka; sunucu kapısı "kasa").
+        Assert.Equal(43, MenuTanimi.Ogeler.Count);
         Assert.Equal(2, MenuTanimi.AltBlok.Count);
-        Assert.Equal(44, TumOgeler.Count());
-        Assert.Equal(44, TumOgeler.Select(o => o.Yol).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(45, TumOgeler.Count());
+        Assert.Equal(45, TumOgeler.Select(o => o.Yol).Distinct(StringComparer.Ordinal).Count());
     }
 
     [Fact]

@@ -41,6 +41,8 @@ public static class RotaModulleri
             ["/pos"] = "pos",
             ["/pos/tahsilatlar"] = "pos",
             ["/vezne"] = "vezne",
+            // Y-03 (20.10): gişe zimmeti kasanın türevidir — aynı kapı.
+            ["/gise"] = "kasa",
             ["/banka"] = "banka",
             ["/banka/ekstre/{IthalatId}"] = "banka",
             ["/faturalar"] = "fatura",

@@ -106,7 +106,8 @@ public sealed class RotaBaslikTestleri : BunitContext
         // 52 → 53: D1-19 /kvkk.
         // 53 → 54: 20.10 /e-belgeler (e-Fatura giden kutusu).
         // 54 → 55: 20.10 Y-14 /fiyat/{Anahtar} (oturumsuz canlı fiyat bağlantısı).
-        Assert.Equal(55, rotalar.Count);
+        // 55 → 56: 20.10 Y-03 /gise (gişe zimmeti).
+        Assert.Equal(56, rotalar.Count);
     }
 
     [Theory]

@@ -369,6 +369,20 @@ Nakit ve döviz kasalarınız. Her kasanın para birimi ve bakiyesi ayrı tutulu
 
 **Gün sonu kasa fişi:** gün kapatılınca sayfanın üstünde **Yazdır — Gün kapanışı** bağlantısı çıkar; fişte defter nakit, sayılan nakit, fark, kapatan ve açıklama yazar; kapatan ve onaylayan imzalar.
 
+## Gişe zimmeti {#gise}
+
+<!-- ekran: /gise -->
+
+Sabah yönetici bir tezgâhtara ürün adedi ve açılış nakdi teslim eder; akşam sayılır, fark kalem kalem görünür, sayılan nakit ana kasaya devredilir. Mal şube stoğundan düşmez; zimmet kimin sorumluluğunda olduğunu tutar.
+
+- **Zimmetle (yönetici):** gişe kasası, tezgâhtar, ana kasa ve açılış nakdi seçilir; ürünler **Listeye ekle** ile satır satır yazılır; **Zimmetle** ile teklif tezgâhtara düşer.
+- **Kabul (tezgâhtar):** ekran açılınca kendi zimmeti doğrudan gelir; **Zimmeti kabul et** deyince açılış nakdi ana kasadan gişe kasasına geçer.
+- **Takviye:** gün içinde ürün ya da nakit takviyesi istenir; başka bir yönetici **Onayla / Reddet** der. Kimse kendi talebini onaylayamaz.
+- **Akşam sayımı:** her ürün için sayılan adet ve çekmecedeki nakit yazılır; beklenen = zimmet + takviye − satılan. Fark varsa gerekçe zorunludur. **Günü kapat ve devret** sayılan nakdi devir kasasına aktarır, nakit farkını gişe kasasına sayım farkı olarak yazar.
+- **Vardiya devri:** zimmet sayımla kapatılır, sıradaki tezgâhtara yeni zimmet açılır.
+
+> [!BILGI] Kör sayım açıksa tezgâhtar beklenen nakdi görmez; önce sayar, sonra yazar. Teklif aşamasındaki zimmet iptal edilebilir; kabul edilmiş zimmet yalnız sayımla kapanır.
+
 ## Kasa kuyruğu (vezne) {#vezne}
 
 <!-- ekran: /vezne -->

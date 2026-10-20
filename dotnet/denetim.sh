@@ -439,7 +439,8 @@ fi
 # D1-03 (18.10): Data/BekleyenFis.cs (bekleyen_fisler — işlem bekletme) 81 -> 82
 # D1-19 (18.10): Data/KvkkKayitlari.cs (kvkk_metinleri + kvkk_kayitlari) 82 -> 84
 # D1-16 (18.10): Data/UrunSeti.cs (urun_setleri + urun_seti_kalemleri) 84 -> 86
-BEKLENEN_VARLIK=98
+# Y-03 (20.10): Data/GiseZimmeti.cs (gise_zimmetleri + gise_zimmet_kalemleri) 98 -> 100
+BEKLENEN_VARLIK=100
 VARLIK=$(grep -c ": IKiraciVarlik" "$API/Data/Entities.cs" || true)
 EK=$(grep -rl ": IKiraciVarlik" "$API/Data" --include='*.cs' | grep -v Entities.cs | xargs grep -c ": IKiraciVarlik" 2>/dev/null | awk -F: '{t+=$2} END{print t+0}')
 MODUL_VARLIK=$(grep -rn ": IKiraciVarlik" "$API/Modules" --include='*.cs' 2>/dev/null | grep -v '/obj/\|/bin/' | wc -l | tr -d ' ')
@@ -775,7 +776,8 @@ SAYFA_SAYISI=$(ls "$WEB"/Pages/*.razor 2>/dev/null | wc -l | tr -d ' ')
 # PAKET-E-BELGE (20.10): EBelgeler.razor eklendi (53 -> 54) — e-Fatura giden kutusu (durum sayaçları, olay izi,
 # PDF/XML); Faturalar listesinin satır içi durumu bunun özetidir, 200+ kayıtlı giden kutusu listeye sığmaz.
 # Y-14 (20.10): CanliFiyat.razor eklendi (54 -> 55) — oturumsuz canlı fiyat bağlantısı.
-cirkir "Pages/*.razor dosya sayısı" "$SAYFA_SAYISI" 55
+# Y-03 (20.10): Gise.razor eklendi (55 -> 56) — gişe zimmeti.
+cirkir "Pages/*.razor dosya sayısı" "$SAYFA_SAYISI" 56
 
 # 8) DoD/4 — SESSİZ FORM YASAĞI: EditForm kullanan sayfada ValidationMessage
 #    (ya da alan altı hata metni) bulunmalı. Bugün Pages/ altında EditForm
@@ -1548,7 +1550,7 @@ echo "═══ P-02 ölçüm kapısı ═══"
 # PAKET EKSIK-KUCUK: 51 → 52 (/vitrin/ekran — kabuksuz dükkân ekranı) — taze ölçüldü:
 #   grep -rhE '^@page' Kuyumcu.Web/Pages --include='*.razor' | wc -l  → 52
 # D1-19 (18.10): 52 → 53 (/kvkk — KVKK aydınlatma metni ve izinler)
-P02_ROTA_BEKLENEN=55
+P02_ROTA_BEKLENEN=56
 P02_ROTA=$(grep -rhE '^@page' "$WEB/Pages" --include='*.razor' 2>/dev/null | wc -l | tr -d ' ')
 P02_HARITA=$(grep -cE '^[[:space:]]*\["/' "$WEB/Layout/RotaBasliklari.cs" 2>/dev/null || true)
 if [ "$P02_ROTA" -eq "$P02_ROTA_BEKLENEN" ] && [ "$P02_HARITA" -eq "$P02_ROTA_BEKLENEN" ]; then

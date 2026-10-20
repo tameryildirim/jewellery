@@ -25,6 +25,7 @@ public static class YildizIkonlari
         ["/sayim"] = "M9 5h10M9 12h10M9 19h10M4 5l1 1 2-2M4 12l1 1 2-2M4 19h2",   // Sayım
         ["/kasalar"] = "M4 5h16v14H4zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 9h2M18 9h2",   // Kasalar
         ["/vezne"] = "M4 6h16M4 12h16M4 18h10M17 16l3 2-3 2",   // Kasa kuyruğu
+        ["/gise"] = "M3 7h18v10H3zM3 11h18M8 15h3",   // Gişe zimmeti (çekmece + tutanak satırı)
         ["/pos"] = "M7 2h10v20H7zM9 5h6v4H9zM10 13h.01M14 13h.01M10 17h.01M14 17h.01",   // POS cihazları
         ["/pos/tahsilatlar"] = "M3 6h18v12H3zM3 10h18M15 15h3",   // POS alacakları
         ["/banka"] = "M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18",   // Banka

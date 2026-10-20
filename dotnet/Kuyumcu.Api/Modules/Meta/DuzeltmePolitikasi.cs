@@ -277,7 +277,10 @@ public static class DuzeltmePolitikasi
         // M7: demo bankasının gelen havalesi — sağlayıcı kaydıdır; düzeltme banka hareketinin stornosuyla.
         S("SahteBankaHareketi", GerekceAnahtarlari.Sistem),
         S("EBelgeGonderimi", GerekceAnahtarlari.Sistem, "api/v1/ebelge/faturalar/{id}/yeniden-dene"),
-        S("ServetSnapshot", GerekceAnahtarlari.Sistem),   // Y-04: gün kapanışındaki servet anlık görüntüsü — türetilmiş, elle düzenlenmez; yeni kapanış üzerine yazar
+        S("ServetSnapshot", GerekceAnahtarlari.Sistem),
+        // Y-03: gişe zimmeti sorumluluk kaydıdır — kabul/takviye/sayım/kapanış akışıyla ilerler; teklif aşamasında iptal edilir.
+        S("GiseZimmeti", GerekceAnahtarlari.Sistem, "api/v1/gise/{id}/iptal"),
+        S("GiseZimmetKalemi", GerekceAnahtarlari.Sistem, "api/v1/gise/{id}/takviye/{kalemId}/karar"),   // Y-04: gün kapanışındaki servet anlık görüntüsü — türetilmiş, elle düzenlenmez; yeni kapanış üzerine yazar
         S("EBelgeOlayi", GerekceAnahtarlari.Sistem),   // append-only olay izi: düzenlenmez, silinmez   // giden kutusu kaydı düzenlenmez; hatalı belge yeniden denenir
         // 17.10 mahsup (ödemenin hangi borçlu satışa sayıldığı): append-only; düzeltme = ödemenin stornosu.
         S("CariMahsup", GerekceAnahtarlari.Defter, "api/v1/bankalar/hareketler/{hareketId}/karar/geri-al"),

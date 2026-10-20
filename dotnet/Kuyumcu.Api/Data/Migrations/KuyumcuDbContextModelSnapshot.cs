@@ -2412,6 +2412,191 @@ namespace Kuyumcu.Api.Data.Migrations
                     b.ToTable("gider_pusulalari");
                 });
 
+            modelBuilder.Entity("Kuyumcu.Api.Data.GiseZimmetKalemi", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Adet")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("adet");
+
+                    b.Property<string>("Durum")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("durum");
+
+                    b.Property<decimal?>("Fark")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("fark");
+
+                    b.Property<string>("IsteyenId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("isteyen_id");
+
+                    b.Property<DateTime?>("KararZamani")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("karar_zamani");
+
+                    b.Property<decimal?>("NakitTutar")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("nakit_tutar");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("OnaylayanId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("onaylayan_id");
+
+                    b.Property<decimal?>("SatilanAdet")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("satilan_adet");
+
+                    b.Property<decimal?>("SayilanAdet")
+                        .HasColumnType("decimal(12,3)")
+                        .HasColumnName("sayilan_adet");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Tur")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("tur");
+
+                    b.Property<string>("UrunId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("urun_id");
+
+                    b.Property<string>("ZimmetId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("zimmet_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "ZimmetId");
+
+                    b.ToTable("gise_zimmet_kalemleri");
+                });
+
+            modelBuilder.Entity("Kuyumcu.Api.Data.GiseZimmeti", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Aciklama")
+                        .HasColumnType("text")
+                        .HasColumnName("aciklama");
+
+                    b.Property<decimal>("AcilisNakit")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("acilis_nakit");
+
+                    b.Property<decimal?>("BeklenenNakit")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("beklenen_nakit");
+
+                    b.Property<string>("DevirKasaId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("devir_kasa_id");
+
+                    b.Property<string>("Durum")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("durum");
+
+                    b.Property<DateTime>("Guncellendi")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("guncellendi");
+
+                    b.Property<DateTime?>("KabulZamani")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("kabul_zamani");
+
+                    b.Property<DateTime?>("KapanisZamani")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("kapanis_zamani");
+
+                    b.Property<string>("KapatanId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kapatan_id");
+
+                    b.Property<string>("KasaId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kasa_id");
+
+                    b.Property<string>("KaynakKasaId")
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("kaynak_kasa_id");
+
+                    b.Property<decimal?>("NakitFark")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("nakit_fark");
+
+                    b.Property<string>("OlusturanId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("olusturan_id");
+
+                    b.Property<DateTime>("Olusturuldu")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("olusturuldu");
+
+                    b.Property<string>("PersonelId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("personel_id");
+
+                    b.Property<decimal?>("SayilanNakit")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("sayilan_nakit");
+
+                    b.Property<string>("SubeId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("sube_id");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "KasaId", "Durum");
+
+                    b.HasIndex("TenantId", "PersonelId", "Durum");
+
+                    b.ToTable("gise_zimmetleri");
+                });
+
             modelBuilder.Entity("Kuyumcu.Api.Data.GunKapanisi", b =>
                 {
                     b.Property<string>("Id")

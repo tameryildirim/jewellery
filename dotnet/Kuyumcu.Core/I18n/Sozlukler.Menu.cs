@@ -57,6 +57,7 @@ public sealed record MenuAdlariMetinleri(
     // ── Para ve banka ──
     MenuAdi Kasalar,
     MenuAdi KasaKuyrugu,
+    MenuAdi GiseZimmeti,    // Y-03 (20.10)
     MenuAdi PosCihazlari,
     MenuAdi PosAlacaklari,
     MenuAdi Banka,
@@ -120,6 +121,7 @@ public static class MenuAdlari
         Irsaliyeler: new("İrsaliyeler", "İrsaliyeler", "Sevk irsaliyesi"),
         Kasalar: new("Kasalar", "Kasalar"),
         KasaKuyrugu: new("Kasa kuyruğu", "Vezne", "Vezne"),
+        GiseZimmeti: new("Gişe zimmeti", "Gişe", "Zimmet tezgâhtar kasası vardiya"),
         PosCihazlari: new("POS cihazları", "POS"),
         PosAlacaklari: new("POS alacakları", "POS alacakları", "POS hakedişleri"),
         Banka: new("Banka", "Banka"),
@@ -174,6 +176,7 @@ public static class MenuAdlari
         Irsaliyeler: new("Waybills", "Waybills", "Dispatch notes"),
         Kasalar: new("Cash registers", "Cash registers"),
         KasaKuyrugu: new("Cashier queue", "Cashier", "Cashier desk"),
+        GiseZimmeti: new("Till custody", "Till", "Custody clerk shift"),
         PosCihazlari: new("POS terminals", "POS"),
         PosAlacaklari: new("POS receivables", "POS receivables", "POS settlements"),
         Banka: new("Bank", "Bank"),
