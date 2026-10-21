@@ -91,6 +91,7 @@ Başkasının satırını değiştirme/silme yok.
 | 19.10 01:02 | TEK | 7242eba · 0e7cd72 | D3-11 dış API (anahtar özetle saklanır, KUR/URUN kapsamı, iptal) + canlı kur kanalı /hubs/disa-kur — canlıda uçtan uca: 200 / kapsam dışı 403 / iptal sonrası 401 | 12707/0 · mutasyon yakalandı | d3-11b |
 | 21.10 21:34 | TEK | 990ec75 | Görsel denetim (RAPOR.md) KRİTİK+YÜKSEK kapandı: K-1, Y-1..Y-8, O-16, O-19 — tarayıcı ölçümü 26/26 (dogrula-ky.mjs) | 12.810/12.814 (1 dalgalı Y4A eşzamanlı, tek başına 3/3) · denetim yalnız P-30 | gorsel-ky · 5179 /urunler 1024 çakışma yok |
 | 21.10 22:24 | TEK | 853de63 | Görsel denetim ORTA+DÜŞÜK kapandı (O-1..O-22, D-1..D-14; O-6/O-7/D-7/O-20 tuvalle çelişir → kurucu kararı; O-17 rem uygulama içi yazı ölçeğiyle karşılanıyor; O-22 demo düğmesi yalnız Demo banka sağlayıcısında) — tarayıcı 27/27 (dogrula-od.mjs) | 12.812/12.815 + K1_07b · denetim yalnız P-30 · O-18 mutasyon yakalandı | gorsel-od |
+| 21.10 22:40 | TEK | 414b7ed | Fiyat kalemleri tek kaynak (Core FiyatKalemleri): kur ekranı 22 kalem yeni+eski tam liste, gün farkı sunucudan, ONS $, ayar adları Core, vitrin varsayılanı 11 kalem (yeni+eski) | 12.817/12.820 · denetim yalnız P-30 | kur-tek-kaynak · 5179 /kur 22 kalem, gün farkı ▲ 0,3% |
 
 **Kurucu kararı bekleyen (kodlanmadı — mevcut kararlarla çelişiyor):**
 - D1-08 eritme/fire/takoz ve D3-09 atölye/iş emri: K-13 ve H-5 "imalat kapsam dışı" kararları (denetim HURDA_FIRE_SIZINTISI kilidi, HARIC-LISTESI giriş ekranında).
