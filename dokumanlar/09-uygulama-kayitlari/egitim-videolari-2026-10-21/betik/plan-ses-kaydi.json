@@ -1,0 +1,1532 @@
+{
+ "id": "ses-kaydi",
+ "baslik": "Ses kaydından yapılanlar",
+ "alt": "16 Ekim görüşmesi · 12 konu, kayıt sırasıyla",
+ "acilisUst": "MİHENK · SİZİNLE KONUŞTUKLARIMIZ",
+ "kapanisAlt": "Görüşmedeki 12 konunun hepsi programda",
+ "adimlar": [
+  {
+   "id": "acilis",
+   "baslik": "Ses kaydından yapılanlar",
+   "sorun": "On altı Ekim görüşmesi · otuz beş dakika · on iki konu",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/"
+    },
+    {
+     "t": "imlec",
+     "x": 700,
+     "y": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "On altı Ekimde dükkanınızda yaptığımız görüşmeyi baştan sona yeniden dinledik."
+    ],
+    [
+     "S",
+     "Kayıtta söylediğiniz her konuyu programa işledik."
+    ],
+    [
+     "V",
+     "Şimdi kayıttaki sırayla, on iki konuyu tek tek gösteriyoruz."
+    ]
+   ],
+   "sira": 1,
+   "toplam": 26
+  },
+  {
+   "id": "kaynak-a",
+   "baslik": "Fiyat ürün başına kendi kaynağından",
+   "sorun": "Ses kaydı 00:00: “Tek bir noktadan çekmeyecek… ya da sabit bir fiyat.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 1 / 12 · ses kaydı 00:00",
+     "b": "Fiyat ürün başına kendi kaynağından",
+     "s": "“Tek bir noktadan çekmeyecek… ya da sabit bir fiyat.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Tek bir noktadan çekmeyecek; bunu buradan, şunu oradan çekecek, ya da sabit bir fiyat olacak dediniz."
+    ]
+   ],
+   "sira": 2,
+   "toplam": 26
+  },
+  {
+   "id": "kaynak-b",
+   "baslik": "Fiyat ürün başına kendi kaynağından",
+   "sorun": "Yapılan: ürün kartında altın cinsi ve fiyat farkı",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/urunler"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "etiket",
+     "metin": "22 Ayar Burma Bilezik"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-urun-ad-01M4Z655102026XVZ182YXA1DR"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "tik",
+     "sel": "#d-daha-fazla"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "Altın cinsi: fiyat hangi kalemden gelecek"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#d-parite"
+    },
+    {
+     "t": "bekle",
+     "ms": 2200
+    },
+    {
+     "t": "etiket",
+     "metin": "Fiyat farkı (₺): sabit ekleme ya da indirim"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#d-fiyat-ofset"
+    },
+    {
+     "t": "bekle",
+     "ms": 2200
+    },
+    {
+     "t": "tus",
+     "key": "Escape"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#cekmece-kapat"
+    },
+    {
+     "t": "bekle",
+     "ms": 500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Artık her ürün fiyatını kendi kaleminden alır."
+    ],
+    [
+     "S",
+     "Ürün kartında altın cinsi seçilir; bilezik bilezik fiyatından, çeyrek çeyrek fiyatından gelir."
+    ],
+    [
+     "V",
+     "İsterseniz fiyat farkı alanına sabit bir tutar yazar, fiyatı kendinize göre ayarlarsınız."
+    ]
+   ],
+   "sira": 3,
+   "toplam": 26
+  },
+  {
+   "id": "banka-a",
+   "baslik": "Para düşer düşmez ekranda",
+   "sorun": "Ses kaydı 00:28: “Düştü mü, hemen şak ekranda görüyoruz… şimdilik simülasyon da olur.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 2 / 12 · ses kaydı 00:28",
+     "b": "Para düşer düşmez ekranda",
+     "s": "“Düştü mü, hemen şak ekranda görüyoruz… şimdilik simülasyon da olur.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Bankaya evrak götürdük, entegrasyon sağlandı; para düştü mü hemen ekranda görüyoruz, şimdilik simülasyon da olur dediniz."
+    ]
+   ],
+   "sira": 4,
+   "toplam": 26
+  },
+  {
+   "id": "banka-b",
+   "baslik": "Para düşer düşmez ekranda",
+   "sorun": "Yapılan: sekiz banka bağlantısı, demo bankası ve gelen ödeme kararı",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/banka"
+    },
+    {
+     "t": "bekle",
+     "ms": 800
+    },
+    {
+     "t": "etiket",
+     "metin": "Havale gönder (demo)"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-banka-havale"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "yazSel",
+     "sel": "#sh-tutar",
+     "metin": "2500"
+    },
+    {
+     "t": "yazSel",
+     "sel": "#sh-ad",
+     "metin": "Ayşe Demir"
+    },
+    {
+     "t": "yazSel",
+     "sel": "#sh-kimlik",
+     "metin": "34567891238"
+    },
+    {
+     "t": "bekle",
+     "ms": 500
+    },
+    {
+     "t": "etiket",
+     "metin": "Kaydet: para demo bankasına düşer"
+    },
+    {
+     "t": "tikMetin",
+     "metin": "Kaydet",
+     "kap": "aside button, footer button, [role=dialog] button"
+    },
+    {
+     "t": "bekle",
+     "ms": 3500
+    },
+    {
+     "t": "etiket",
+     "metin": "Ayşe Demir 2.500 ₺ gönderdi"
+    },
+    {
+     "t": "imlecMetin",
+     "metin": "Ayşe Demir"
+    },
+    {
+     "t": "bekle",
+     "ms": 2200
+    },
+    {
+     "t": "etiket",
+     "metin": "Borçlu müşteride: borcundan düşülsün mü?"
+    },
+    {
+     "t": "imlecMetin",
+     "metin": "Bu ödeme borcundan düşülsün mü?"
+    },
+    {
+     "t": "bekle",
+     "ms": 2200
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sekiz banka için bağlantı hazır; Kuveyt Türk ve VakıfBank da aralarında."
+    ],
+    [
+     "S",
+     "Şimdilik demo bankasıyla deniyoruz; havale gönderildi."
+    ],
+    [
+     "H",
+     "Para düştüğü an ekranda... Program göndereni tanır ve borcundan düşülsün mü diye sorar!"
+    ]
+   ],
+   "sira": 5,
+   "toplam": 26
+  },
+  {
+   "id": "esik-a",
+   "baslik": "Sınırı geçen satışta isim",
+   "sorun": "Ses kaydı 02:33: “Otuz bin lirayı geçtiğinde isim koymak gerekiyor.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 3 / 12 · ses kaydı 02:33",
+     "b": "Sınırı geçen satışta isim",
+     "s": "“Otuz bin lirayı geçtiğinde isim koymak gerekiyor.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Otuz bin lirayı geçtiğinde isim koymak gerekiyor, bunların seçilmesi lazım dediniz."
+    ]
+   ],
+   "sira": 6,
+   "toplam": 26
+  },
+  {
+   "id": "esik-b",
+   "baslik": "Sınırı geçen satışta isim",
+   "sorun": "Yapılan: kuyumcu fatura sınırı programın içinde",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/yasal-sinirlar"
+    },
+    {
+     "t": "bekle",
+     "ms": 800
+    },
+    {
+     "t": "etiket",
+     "metin": "Kuyumcu satışında fatura sınırı"
+    },
+    {
+     "t": "imlec",
+     "x": 555,
+     "y": 660
+    },
+    {
+     "t": "bekle",
+     "ms": 2500
+    },
+    {
+     "t": "etiket",
+     "metin": "Kimlik eşiği"
+    },
+    {
+     "t": "imlec",
+     "x": 555,
+     "y": 390
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Bu sınırlar artık programın içinde yazılı."
+    ],
+    [
+     "S",
+     "Kuyumcu satışında fatura sınırı bu yıl otuz altı bin lira; sınırı geçen satışta müşteri adı istenir."
+    ],
+    [
+     "V",
+     "Mevzuat değişince rakam tek yerden güncellenir, siz aklınızda tutmazsınız."
+    ]
+   ],
+   "sira": 7,
+   "toplam": 26
+  },
+  {
+   "id": "maliyet-a",
+   "baslik": "Maliyet milyemi ve sahte kâr",
+   "sorun": "Ses kaydı 04:38: “Kiminin 920’dir, 925’tir… Şimdi benim maliyetim bu.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 4 / 12 · ses kaydı 04:38",
+     "b": "Maliyet milyemi ve sahte kâr",
+     "s": "“Kiminin 920’dir, 925’tir… Şimdi benim maliyetim bu.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Bileziğin maliyeti kiminde dokuz yüz yirmi, kiminde dokuz yüz yirmi beş; sistem bana kar etmediğim parayı kar gösterirse üstüne vergi öderim dediniz."
+    ]
+   ],
+   "sira": 8,
+   "toplam": 26
+  },
+  {
+   "id": "maliyet-b",
+   "baslik": "Maliyet milyemi ve sahte kâr",
+   "sorun": "Yapılan: alış milyemi ve kâr raporunda işçilik ayrımı",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/urunler"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "etiket",
+     "metin": "22 Ayar Burma Bilezik"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-urun-ad-01M4Z655102026XVZ182YXA1DR"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "tik",
+     "sel": "#d-daha-fazla"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "Alış milyemi (maliyet)"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#d-alis-milyemi"
+    },
+    {
+     "t": "bekle",
+     "ms": 2500
+    },
+    {
+     "t": "tus",
+     "key": "Escape"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#cekmece-kapat"
+    },
+    {
+     "t": "bekle",
+     "ms": 500
+    },
+    {
+     "t": "git",
+     "rota": "/raporlar/kar-zarar"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "kaydir",
+     "top": 520
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "İşçilik (makas) kârı · altın fiyat farkı"
+    },
+    {
+     "t": "imlec",
+     "x": 300,
+     "y": 360
+    },
+    {
+     "t": "bekle",
+     "ms": 2000
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Ürün kartına alış milyemi geldi; maliyetiniz dokuz yüz yirmi beşse dokuz yüz yirmi beş yazarsınız."
+    ],
+    [
+     "V",
+     "Kar zarar raporu maliyeti bu milyemden bilir; kar etmediğiniz para kar görünmez."
+    ],
+    [
+     "S",
+     "İşçilik karı ile altın fiyat farkı ayrı satırlarda durur."
+    ]
+   ],
+   "sira": 9,
+   "toplam": 26
+  },
+  {
+   "id": "binde-a",
+   "baslik": "KDV payı fiyatın üstüne",
+   "sorun": "Ses kaydı 04:59: “Bilezik için binde bir gir… bunu bunun üstüne ekle.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 5 / 12 · ses kaydı 04:59",
+     "b": "KDV payı fiyatın üstüne",
+     "s": "“Bilezik için binde bir gir… bunu bunun üstüne ekle.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Bilezik için binde bir gir, KDV sini bunun üstüne ekle, fiyatın içine koy dediniz."
+    ]
+   ],
+   "sira": 10,
+   "toplam": 26
+  },
+  {
+   "id": "binde-b",
+   "baslik": "KDV payı fiyatın üstüne",
+   "sorun": "Yapılan: ürün kartında KDV ye giren pay (binde)",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/urunler"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "etiket",
+     "metin": "22 Ayar Burma Bilezik"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-urun-ad-01M4Z655102026XVZ182YXA1DR"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "tik",
+     "sel": "#d-daha-fazla"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "KDV’ye giren pay (binde)"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#d-kdv-binde"
+    },
+    {
+     "t": "bekle",
+     "ms": 3000
+    },
+    {
+     "t": "tus",
+     "key": "Escape"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#cekmece-kapat"
+    },
+    {
+     "t": "bekle",
+     "ms": 500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Ürün kartında KDV ye giren pay binde olarak yazılır; bu bilezikte binde bir."
+    ],
+    [
+     "V",
+     "Bu pay satış fiyatının üstüne eklenir; her satışta elle hesaplamazsınız."
+    ]
+   ],
+   "sira": 11,
+   "toplam": 26
+  },
+  {
+   "id": "gram-a",
+   "baslik": "Gram ve tutar yan yana",
+   "sorun": "Ses kaydı 07:09: “Ben hem gramını görmem hem değerini görmem lazım.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 6 / 12 · ses kaydı 07:09",
+     "b": "Gram ve tutar yan yana",
+     "s": "“Ben hem gramını görmem hem değerini görmem lazım.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Hepsini has grama çeviremezsin; bileziği bilezik olarak keseceğim, hem gramını hem değerini görmem lazım dediniz."
+    ]
+   ],
+   "sira": 12,
+   "toplam": 26
+  },
+  {
+   "id": "gram-b",
+   "baslik": "Gram ve tutar yan yana",
+   "sorun": "Yapılan: tezgahta gram ve tutar birlikte",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/islemler"
+    },
+    {
+     "t": "bekle",
+     "ms": 700
+    },
+    {
+     "t": "etiket",
+     "metin": "Barkod: 22 ayar eski çeyrek"
+    },
+    {
+     "t": "tik",
+     "sel": "#islem-barkod"
+    },
+    {
+     "t": "yaz",
+     "metin": "K6ED1Z3NA00"
+    },
+    {
+     "t": "tus",
+     "key": "Enter"
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "etiket",
+     "metin": "Adet · gram · has · tutar aynı satırda"
+    },
+    {
+     "t": "imlec",
+     "x": 300,
+     "y": 375
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "imlec",
+     "x": 850,
+     "y": 362
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#yildiz-tezgah-vazgec"
+    },
+    {
+     "t": "bekle",
+     "ms": 800
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#yildiz-tezgah-onay"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Tezgahta her satırda adet, gram ve tutar yan yana durur."
+    ],
+    [
+     "V",
+     "Has karşılığı yalnız ek bilgi olarak yazar; ana rakam gram ve lira."
+    ]
+   ],
+   "sira": 13,
+   "toplam": 26
+  },
+  {
+   "id": "sarrafiye-a",
+   "baslik": "Eski çeyrek, Reşat, Hamit ayrı ürün",
+   "sorun": "Ses kaydı 07:46: “Eski çeyrek de var, yeni çeyrek de var… hepsini tek tek tanımlamak lazım.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 7 / 12 · ses kaydı 07:46",
+     "b": "Eski çeyrek, Reşat, Hamit ayrı ürün",
+     "s": "“Eski çeyrek de var, yeni çeyrek de var… hepsini tek tek tanımlamak lazım.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Eski çeyrek de var, yeni çeyrek de var; eski çeyrek satış fiyatımız farklı, bunların hepsini tek tek tanımlamak lazım dediniz."
+    ]
+   ],
+   "sira": 14,
+   "toplam": 26
+  },
+  {
+   "id": "sarrafiye-b",
+   "baslik": "Eski çeyrek, Reşat, Hamit ayrı ürün",
+   "sorun": "Yapılan: sarrafiye ürünleri ayrı ayrı",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/urunler"
+    },
+    {
+     "t": "bekle",
+     "ms": 700
+    },
+    {
+     "t": "etiket",
+     "metin": "Sarrafiye"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-urun-sekme-01M536W2MMMV9ZAJ0FKMG1Q8MX"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 200,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 200,
+     "y": 600
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-urun-sekme-hepsi"
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sarrafiye sekmesinde eski ve yeni çeyrek, yarım, tam, Ata, Hamit ve Reşat ayrı ürün olarak hazır."
+    ],
+    [
+     "V",
+     "Her birinin fiyatı ayrı gelir; eski çeyreği yeni çeyrek fiyatından satmazsınız."
+    ]
+   ],
+   "sira": 15,
+   "toplam": 26
+  },
+  {
+   "id": "harem-a",
+   "baslik": "Elle müdahale ve Harem kaynağı",
+   "sorun": "Ses kaydı 09:28: “Manuel müdahale edebilmesi lazım… Harem Altından çekeceksin.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 8 / 12 · ses kaydı 09:28",
+     "b": "Elle müdahale ve Harem kaynağı",
+     "s": "“Manuel müdahale edebilmesi lazım… Harem Altından çekeceksin.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Fiyata elle müdahale edebilmem lazım; otomatik gelecekse en uygun yerden, Harem Altından çekeceksin dediniz."
+    ]
+   ],
+   "sira": 16,
+   "toplam": 26
+  },
+  {
+   "id": "harem-b",
+   "baslik": "Elle müdahale ve Harem kaynağı",
+   "sorun": "Yapılan: kur ekranında elle giriş ve kaynak seçimi",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/kur"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "Elle gir: kur o an düzeltilir"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#yildiz-kur-b2"
+    },
+    {
+     "t": "bekle",
+     "ms": 2200
+    },
+    {
+     "t": "etiket",
+     "metin": "Tüm ayrıntılar: kaynak ve pariteler"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-kur-ayrinti"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 500,
+     "y": 400
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Kur ekranında elle gir düğmesiyle fiyatı istediğiniz an düzeltirsiniz; kim ne zaman değiştirdi kayda geçer."
+    ],
+    [
+     "S",
+     "Kaynak listesine Harem eklendi; döviz için ayrı kaynak seçilebilir."
+    ],
+    [
+     "V",
+     "Harem bağlantısı hazır; veri kullanım izni gelince açılacak."
+    ]
+   ],
+   "sira": 17,
+   "toplam": 26
+  },
+  {
+   "id": "milyem-a",
+   "baslik": "Her ürünün milyemi elle",
+   "sorun": "Ses kaydı 10:26: “Bileziğin milyemi, çarpanı burada olacak… 925 ise 925 yazacağım.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 9 / 12 · ses kaydı 10:26",
+     "b": "Her ürünün milyemi elle",
+     "s": "“Bileziğin milyemi, çarpanı burada olacak… 925 ise 925 yazacağım.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Bileziğin milyemi, çarpanı burada olacak, elimle müdahale edeceğim; şarnel, el örgüsü, kilitli bilezik, hepsinin milyemi ayrı dediniz."
+    ]
+   ],
+   "sira": 18,
+   "toplam": 26
+  },
+  {
+   "id": "milyem-b",
+   "baslik": "Her ürünün milyemi elle",
+   "sorun": "Yapılan: ürün kartında satış milyemi",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/urunler"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "etiket",
+     "metin": "22 Ayar Burma Bilezik"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-urun-ad-01M4Z655102026XVZ182YXA1DR"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "tik",
+     "sel": "#d-daha-fazla"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "Satış milyemi: elle yazılır"
+    },
+    {
+     "t": "yazSel",
+     "sel": "#d-satis-milyemi",
+     "metin": "930"
+    },
+    {
+     "t": "bekle",
+     "ms": 2500
+    },
+    {
+     "t": "etiket",
+     "metin": "Vazgeç: deneme kaydedilmedi"
+    },
+    {
+     "t": "tus",
+     "key": "Escape"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#cekmece-kapat"
+    },
+    {
+     "t": "bekle",
+     "ms": 500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Her ürünün satış milyemi kartta elle yazılır."
+    ],
+    [
+     "V",
+     "Fiyat gram çarpı milyem çarpı has fiyatından hesaplanır."
+    ],
+    [
+     "S",
+     "Her bilezik çeşidi kendi milyemini taşır; birini değiştirmek ötekini bozmaz."
+    ]
+   ],
+   "sira": 19,
+   "toplam": 26
+  },
+  {
+   "id": "iscilik-a",
+   "baslik": "İşçilik faturası ve kâr",
+   "sorun": "Ses kaydı 10:53: “Çalıştığın firmadan işçilik faturasını alman lazım.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 10 / 12 · ses kaydı 10:53",
+     "b": "İşçilik faturası ve kâr",
+     "s": "“Çalıştığın firmadan işçilik faturasını alman lazım.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Çalıştığın firmadan işçilik faturasını alman lazım; aradaki masrafı fatura etmezsen o para sana kar gibi görünür dendi."
+    ]
+   ],
+   "sira": 20,
+   "toplam": 26
+  },
+  {
+   "id": "iscilik-b",
+   "baslik": "İşçilik faturası ve kâr",
+   "sorun": "Yapılan: alış işçilik belgeleri ve kâr raporu",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/raporlar/kar-zarar"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "Alış işçilik belgeleri"
+    },
+    {
+     "t": "tik",
+     "sel": "#kz-iscilik-ac"
+    },
+    {
+     "t": "bekle",
+     "ms": 1600
+    },
+    {
+     "t": "imlec",
+     "x": 1150,
+     "y": 190
+    },
+    {
+     "t": "bekle",
+     "ms": 2500
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#cekmece-alis-iscilik-iptal"
+    },
+    {
+     "t": "bekle",
+     "ms": 500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Alışta işçilik belgesi kaydedilir; fatura ya da gider pusulası."
+    ],
+    [
+     "V",
+     "Toptancıya ödenen işçilik ayrı görünür; kar raporu bunu kar saymaz."
+    ],
+    [
+     "S",
+     "Belgesi girilmemiş işçilik için uyarı çıkar."
+    ]
+   ],
+   "sira": 21,
+   "toplam": 26
+  },
+  {
+   "id": "kural-a",
+   "baslik": "Ayarlarda kural, üründe KDV oranı",
+   "sorun": "Ses kaydı 25:58: “Tek tek yapma; bilezik ise şu kadar, kolye ise bu kadar.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 11 / 12 · ses kaydı 25:58",
+     "b": "Ayarlarda kural, üründe KDV oranı",
+     "s": "“Tek tek yapma; bilezik ise şu kadar, kolye ise bu kadar.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Ayarlar bölümünde ben tanımlarım; içinde bilezik geçiyorsa binde bir, kolyeyse şu kadar, tek tek yapma; ürün düzenlede de KDV oranı olsun dediniz."
+    ]
+   ],
+   "sira": 22,
+   "toplam": 26
+  },
+  {
+   "id": "kural-b",
+   "baslik": "Ayarlarda kural, üründe KDV oranı",
+   "sorun": "Yapılan: fiyat kuralları ve ürünün KDV oranı",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/urunler"
+    },
+    {
+     "t": "bekle",
+     "ms": 700
+    },
+    {
+     "t": "etiket",
+     "metin": "Fiyat kuralları"
+    },
+    {
+     "t": "tik",
+     "sel": "#urun-kurallar-ac"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "imlec",
+     "x": 1100,
+     "y": 175
+    },
+    {
+     "t": "bekle",
+     "ms": 2000
+    },
+    {
+     "t": "etiket",
+     "metin": "Önizle: hangi ürünlere uygulanacak"
+    },
+    {
+     "t": "tikMetin",
+     "metin": "Önizle",
+     "kap": "aside button"
+    },
+    {
+     "t": "bekle",
+     "ms": 2500
+    },
+    {
+     "t": "tus",
+     "key": "Escape"
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#cekmece-kapat"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "git",
+     "rota": "/urunler"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "etiket",
+     "metin": "22 Ayar Burma Bilezik"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-urun-ad-01M4Z655102026XVZ182YXA1DR"
+    },
+    {
+     "t": "bekle",
+     "ms": 1200
+    },
+    {
+     "t": "tik",
+     "sel": "#d-daha-fazla"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "KDV oranı (%) — ürünün kendi oranı"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#d-kdv-orani"
+    },
+    {
+     "t": "bekle",
+     "ms": 2200
+    },
+    {
+     "t": "tus",
+     "key": "Escape"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "tikVarsa",
+     "sel": "#cekmece-kapat"
+    },
+    {
+     "t": "bekle",
+     "ms": 500
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Fiyat kurallarında bir kez tanımlarsınız; adında bilezik geçen ürüne alış milyemi ve KDV payı kendiliğinden yazılır."
+    ],
+    [
+     "S",
+     "Önizle ile kuralın hangi ürünlere uygulanacağını görürsünüz."
+    ],
+    [
+     "V",
+     "Ürünün kendi KDV oranı yazılıysa faturada o kullanılır; boşsa faturada seçilen oran."
+    ]
+   ],
+   "sira": 23,
+   "toplam": 26
+  },
+  {
+   "id": "fatura-a",
+   "baslik": "Fiş yerine doğrudan fatura",
+   "sorun": "Ses kaydı 34:55: “Fişe hiç gerek yok… TC’yi yazıp sisteme girdiğim anda fatura kesin.”",
+   "eylemler": [
+    {
+     "t": "kart",
+     "ust": "Konu 12 / 12 · ses kaydı 34:55",
+     "b": "Fiş yerine doğrudan fatura",
+     "s": "“Fişe hiç gerek yok… TC’yi yazıp sisteme girdiğim anda fatura kesin.”"
+    },
+    {
+     "t": "bekle",
+     "ms": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Sizinle konuştuğumuz konu şöyleydi."
+    ],
+    [
+     "V",
+     "Fişe hiç gerek yok; otuzun altında da olsa fark etmez, TC yi yazıp sisteme girdiğim anda fatura kesilsin dediniz."
+    ]
+   ],
+   "sira": 24,
+   "toplam": 26
+  },
+  {
+   "id": "fatura-b",
+   "baslik": "Fiş yerine doğrudan fatura",
+   "sorun": "Yapılan: TC ile müşteri, satışta fatura sorusu, giden kutusu",
+   "eylemler": [
+    {
+     "t": "kartKapat"
+    },
+    {
+     "t": "git",
+     "rota": "/islemler"
+    },
+    {
+     "t": "bekle",
+     "ms": 700
+    },
+    {
+     "t": "etiket",
+     "metin": "Müşteri: TC yazılır"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-tezgah-degistir"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-musteri-ara"
+    },
+    {
+     "t": "yaz",
+     "metin": "99257250986"
+    },
+    {
+     "t": "bekle",
+     "ms": 2000
+    },
+    {
+     "t": "etiket",
+     "metin": "Kayıtlı değil: adı yazılıp açılır"
+    },
+    {
+     "t": "yazSel",
+     "sel": "#yildiz-musteri-yeni input",
+     "metin": "Ayşe Demir"
+    },
+    {
+     "t": "bekle",
+     "ms": 600
+    },
+    {
+     "t": "tikMetin",
+     "metin": "Müşteriyi aç ve seç",
+     "kap": "main button"
+    },
+    {
+     "t": "bekle",
+     "ms": 2000
+    },
+    {
+     "t": "etiket",
+     "metin": "Barkod okutulur"
+    },
+    {
+     "t": "tik",
+     "sel": "#islem-barkod"
+    },
+    {
+     "t": "yaz",
+     "metin": "K6ED1Z3NA00"
+    },
+    {
+     "t": "tus",
+     "key": "Enter"
+    },
+    {
+     "t": "bekle",
+     "ms": 1800
+    },
+    {
+     "t": "etiket",
+     "metin": "Kaydet"
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-tezgah-kaydet"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "etiket",
+     "metin": "Fatura kesilsin mi? — Evet"
+    },
+    {
+     "t": "imlecSel",
+     "sel": "#yildiz-belge-evet"
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "tik",
+     "sel": "#yildiz-belge-evet"
+    },
+    {
+     "t": "bekle",
+     "ms": 3000
+    },
+    {
+     "t": "git",
+     "rota": "/faturalar"
+    },
+    {
+     "t": "bekle",
+     "ms": 900
+    },
+    {
+     "t": "etiket",
+     "metin": "Fatura kesildi"
+    },
+    {
+     "t": "imlec",
+     "x": 300,
+     "y": 540
+    },
+    {
+     "t": "bekle",
+     "ms": 1500
+    },
+    {
+     "t": "etiket",
+     "metin": "e-Fatura giden kutusu"
+    },
+    {
+     "t": "tik",
+     "sel": "#fk-ebelgeler"
+    },
+    {
+     "t": "bekle",
+     "ms": 2000
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Tezgahta müşteri aramasına TC yazılır; kayıtlıysa bulunur, değilse adı yazılıp tek dokunuşla açılır."
+    ],
+    [
+     "H",
+     "Kaydete basınca program fatura kesilsin mi diye sorar; evet dediğiniz an fatura kesilir!"
+    ],
+    [
+     "S",
+     "Entegratör anahtarı girildiğinde fatura arka planda gönderilir; durumu e-Fatura giden kutusunda izlenir."
+    ]
+   ],
+   "sira": 25,
+   "toplam": 26
+  },
+  {
+   "id": "kapanis",
+   "baslik": "On iki konunun hepsi programda",
+   "sorun": "Ses kaydından yapılanlar · Mihenk",
+   "eylemler": [
+    {
+     "t": "git",
+     "rota": "/"
+    },
+    {
+     "t": "imlec",
+     "x": 700,
+     "y": 400
+    }
+   ],
+   "cumleler": [
+    [
+     "S",
+     "Görüşmede söylediğiniz on iki konunun hepsi programda."
+    ],
+    [
+     "V",
+     "Denemek istediğiniz her şeyi birlikte tezgahta deneyebiliriz."
+    ]
+   ],
+   "sira": 26,
+   "toplam": 26
+  }
+ ]
+}

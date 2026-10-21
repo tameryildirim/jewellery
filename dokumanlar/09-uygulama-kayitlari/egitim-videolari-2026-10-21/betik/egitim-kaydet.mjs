@@ -68,12 +68,19 @@ const EYLEM = {
   imlec: e => imlecGit(e.x, e.y, 700),
   imlecSel: async e => { const k = await kutu(e.sel); if (k) { if (k.ust < 60 || k.alt > 860) { await b.ev(`document.querySelector(${JSON.stringify(e.sel)}).scrollIntoView({block:'center'}); 1`); await bek(400); } const k2 = await kutu(e.sel); await imlecGit(k2.x, k2.y, 700); } else sorunlar.push({ tip: 'imlec-bulunamadi', sel: e.sel }); },
   kaydir: e => b.ev(`window.scrollTo({top:${e.top},behavior:'smooth'}); 1`),
+  kart: e => kap('kart', e.ust || '', e.b || '', e.s || ''),
+  imlecMetin: async e => { const sel = await b.ev(`(()=>{const adaylar=[...document.querySelectorAll('main *')].filter(x=>x.children.length===0 && x.getBoundingClientRect().width>0 && x.textContent.includes(${JSON.stringify(e.metin)})); const k=adaylar[0]; if(!k) return null; if(!k.id) k.id='kk-gecici-'+Math.random().toString(36).slice(2,8); return '#'+k.id})()`); if (!sel) { sorunlar.push({ tip: 'metin-bulunamadi', metin: e.metin }); console.log('  METİN YOK', e.metin); return; } await b.ev(`document.querySelector(${JSON.stringify(sel)}).scrollIntoView({block:'center',behavior:'smooth'}); 1`); await bek(700); const k = await kutu(sel); if (k) await imlecGit(k.x, k.y, 700); },
+  kartKapat: () => kap('kart', '', '', ''),
+  tikMetin: async e => { const sel = await b.ev(`(()=>{const k=[...document.querySelectorAll(${JSON.stringify(e.kap || 'button')})].find(x=>x.getBoundingClientRect().width>0 && x.innerText.trim().replace(/\\s+/g,' ')===${JSON.stringify(e.metin)}); if(!k) return null; if(!k.id) k.id='kk-gecici-'+Math.random().toString(36).slice(2,8); return '#'+k.id})()`); if (!sel) { sorunlar.push({ tip: 'metin-bulunamadi', metin: e.metin }); console.log('  METİN YOK', e.metin); return; } await tiklaSel(sel); },
+  yazSel: async e => { await tiklaSel(e.sel); await b.ev(`(()=>{const x=document.querySelector(${JSON.stringify(e.sel)}); if(x&&x.select) x.select(); return 1})()`); await yaz(e.metin); },
 };
 // ---- hazırlık: vekil girişi (localStorage jetonları), açık tema, Profesyonel mod
 await b.git(HEDEF + '/__giris', 6000); await b.ev(KAPLAMA2);
+if (process.env.KAP_ONEK !== undefined) await b.cmd('Page.addScriptToEvaluateOnNewDocument', { source: `window.__kapOnek = ${JSON.stringify(process.env.KAP_ONEK)};` });
+if (process.env.KAP_ONEK !== undefined) await b.ev(`window.__kapOnek = ${JSON.stringify(process.env.KAP_ONEK)}; 1`);
 for (let i = 0; i < 40 && !(await b.ev(`!!document.querySelector('#yildiz-ust')`)); i++) await bek(300);
 console.log('hazırlık: kabuk =', await b.ev(`!!document.querySelector('#yildiz-ust')`), '· yol', await b.ev('location.pathname'));
-await kap('kart', 'MİHENK · EĞİTİM', plan.baslik, plan.alt);
+await kap('kart', plan.acilisUst || 'MİHENK · EĞİTİM', plan.baslik, plan.alt);
 kayitta = true; if (!PROVA) { await b.cmd('Page.startScreencast', { format: 'jpeg', quality: 88, everyNthFrame: 1 }); await bek(500); }
 const T0 = simdi(); const adimlar = []; const bolumler = [{ grup: 'Açılış', bas: 0 }];
 await bek(2600 * H); await kap('kart', '', '', '');
@@ -85,13 +92,15 @@ for (const [i, a] of plan.adimlar.entries()) {
   if (!(await b.ev('!!window.__kap'))) { await b.ev(KAPLAMA2); await kap('altyazi', `${plan.baslik} · ${a.sira}/${a.toplam} — ${a.baslik}`, a.sorun); }
   const zE = simdi() - t0; const kalan = (sure + 1.3 * H) - zE; if (kalan > 0) await bek(kalan * 1000);
   const bant = await b.ev(`(()=>{const x=document.querySelector('#blazor-error-ui');return !!x&&getComputedStyle(x).display!=='none'})()`); if (bant) sorunlar.push({ tip: 'hata-bandi', id: a.id });
+  // Çevrimdışı bandı (PWA): OS ağ olayından gelir; kayıtta görünürse kayıt geçersiz sayılır (uydurma bastırma YOK, yeniden çekilir).
+  if (await b.ev(`!!document.querySelector('#pwa-cevrimdisi')`)) sorunlar.push({ tip: 'cevrimdisi-bandi', id: a.id });
   const yer = await b.ev('location.pathname');
   if (PROVA) await b.foto(`${CIKTI}/${String(i).padStart(2, '0')}-${a.id}.png`);
   adimlar.push({ id: a.id, grup: plan.baslik, sira: a.sira, toplam: a.toplam, baslik: a.baslik, bas: +(t0 - T0).toFixed(2), son: +(simdi() - T0).toFixed(2), klip: +sureler[a.id].toFixed(2), yer, hata });
   console.log(String(i).padStart(2, '0'), a.id.padEnd(10), 'bas', (t0 - T0).toFixed(1).padStart(6), 'süre', (simdi() - t0).toFixed(1).padStart(5), 'klip', sureler[a.id].toFixed(1).padStart(5), yer, hata);
   await kap('etiket', '');
 }
-await kap('altyazi', '', ''); await kap('kart', 'MİHENK · EĞİTİM', plan.baslik, 'Bitti · Kılavuzdan yeniden izleyebilirsiniz'); await bek(3000 * H); await kap('kart', '', '', '');
+await kap('altyazi', '', ''); await kap('kart', plan.acilisUst || 'MİHENK · EĞİTİM', plan.baslik, plan.kapanisAlt || 'Bitti · Kılavuzdan yeniden izleyebilirsiniz'); await bek(3000 * H); await kap('kart', '', '', '');
 const SON = simdi() - T0; if (!PROVA) await b.cmd('Page.stopScreencast'); await bek(400); kayitta = false; clearInterval(bosalt);
 writeFileSync(`${CIKTI}/kayit.json`, JSON.stringify({ T0, sure: +SON.toFixed(2), gercekSure, adimlar, bolumler, kareler, sorunlar }, null, 1));
 console.log('BİTTİ', ID, 'süre', SON.toFixed(1), 'sn · kare', kareler.length, '· sorun', sorunlar.length); for (const s of sorunlar) console.log('  SORUN', JSON.stringify(s));

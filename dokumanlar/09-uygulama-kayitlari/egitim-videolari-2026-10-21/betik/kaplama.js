@@ -14,13 +14,13 @@
   @keyframes kkvur{0%{opacity:.95;scale:1}100%{opacity:0;scale:3.4}}
   #kk-kart{position:fixed;inset:0;z-index:2147483004;pointer-events:none;background:#0b1020;display:none;align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;text-align:center}
   #kk-kart .ust{color:#f2c230;font-size:20px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
-  #kk-kart .b{color:#fff;font-size:58px;font-weight:800;margin:14px 0 10px} #kk-kart .s{color:#aeb9d1;font-size:24px}`;
+  #kk-kart .b{color:#fff;font-size:54px;font-weight:800;margin:14px 0 18px} #kk-kart .s{color:#f6e7a8;font-size:27px;font-style:italic;max-width:1080px;line-height:1.45}`;
   document.documentElement.appendChild(st);
   const el = (id, html = '') => { const d = document.createElement('div'); d.id = id; d.innerHTML = html; document.documentElement.appendChild(d); return d; };
   const alt = el('kk-alt', '<div class="b"></div><div class="s"></div>'), etiket = el('kk-etiket'), imlec = el('kk-imlec'), halka = el('kk-halka'), kart = el('kk-kart', '<div class="ust"></div><div class="b"></div><div class="s"></div>');
   alt.style.display = 'none';
   window.__kap = {
-    altyazi(b, s) { alt.style.display = b ? 'block' : 'none'; alt.querySelector('.b').textContent = b || ''; alt.querySelector('.s').textContent = s ? 'Çözdüğü sorun: ' + s : ''; },
+    altyazi(b, s) { alt.style.display = b ? 'block' : 'none'; alt.querySelector('.b').textContent = b || ''; alt.querySelector('.s').textContent = s ? ((window.__kapOnek ?? 'Çözdüğü sorun: ') + s) : ''; },
     etiket(t) { etiket.style.display = t ? 'block' : 'none'; etiket.textContent = t ? '▸ ' + t : ''; },
     imlec(x, y) { imlec.style.transform = `translate(${x}px,${y}px)`; },
     tik(x, y) { halka.style.transform = `translate(${x}px,${y}px)`; halka.classList.remove('vur'); void halka.offsetWidth; halka.classList.add('vur'); },
