@@ -14,7 +14,8 @@ public sealed record KurVeri(string Id, decimal AltinHasFiyati, decimal? GramAlt
                               bool IptalEdildi = false, string? IptalGerekce = null,
                               DateTime? IptalTarihi = null);
 public sealed record PariteVeri(string Kod, string Ad, decimal? Alis, decimal? Satis, string Birim);
-public sealed record PariteYaniti(string Kaynak, List<PariteVeri>? Pariteler);
+/// <summary>GET /kur/pariteler — OncekiGunHas: önceki işletme gününün son geçerli has fiyatı (gün farkı; yoksa null).</summary>
+public sealed record PariteYaniti(string Kaynak, List<PariteVeri>? Pariteler, decimal? OncekiGunHas = null);
 /// <summary>UX-4d madde 24 — sözleşmesiz kaynak bayrağı ve seçili kaynak.</summary>
 public sealed record KaynakDurumu(
     List<string> Kaynaklar, string? Varsayilan, string? Secili,

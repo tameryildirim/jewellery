@@ -4093,3 +4093,9 @@ html:root[data-sema="yildiz"] input.gorunmez:focus-visible + label:is(.btn, .dug
 /* D-10: Yıldız'ın genel girdi genişliği (width:100%) görsel gizli dosya girdisini 1280 px'e açıyordu — kırpık ama yerleşimde
    yer kaplar; gizli girdi 1×1 kalır. */
 html:root[data-sema="yildiz"] input.gorunmez:not(#_):not(#__) { width: 1px; height: 1px; min-width: 0; padding: 0; margin: 0; border: 0; }
+
+/* 21.10 kur tam liste: 1001–1360 px'te özet sağ sütunu ~400 px'e iner; 160+160 px fiyat sütunları ad sütununu 30 px'e
+   eziyordu ("Has / Altın / (gram)" sözcük sözcük). Fiyat sütunları 104 px (satırlar ayrı ızgara — içerik kadar sütun hizayı bozar; en uzun "232.885 ₺" ≈ 82 px); 1440 tuvali AYNEN. */
+@media (min-width: 1001px) and (max-width: 1360px) {
+  html:root[data-sema="yildiz"] .yz-ozet--kur .yz-liste-sat:not(#_) { grid-template-columns: minmax(0, 1fr) 104px 104px; column-gap: 16px; }
+}

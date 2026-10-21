@@ -130,32 +130,9 @@ public static class PariteKodlari
     public const string Gumus = "GUMUS";
     public const string Ons = "ONS";
 
-    /// <summary>Kod → görünen ad (arayüz etiketleri).</summary>
-    public static readonly IReadOnlyDictionary<string, string> Adlar = new Dictionary<string, string>
-    {
-        [Has] = "Has Altın (gram)",
-        [Gram] = "Gram Altın",
-        [Kulce] = "Külçe Altın",
-        [CeyrekYeni] = "Yeni Çeyrek",
-        [CeyrekEski] = "Eski Çeyrek",
-        [YarimYeni] = "Yeni Yarım",
-        [YarimEski] = "Eski Yarım",
-        [TamYeni] = "Yeni Tam (Teklik)",
-        [TamEski] = "Eski Tam (Teklik)",
-        [AtaYeni] = "Yeni Ata Lira",
-        [AtaEski] = "Eski Ata Lira",
-        [Resat] = "Reşat Altın",
-        [Hamit] = "Hamit Altın",
-        [GremseYeni] = "Yeni Gremse",
-        [GremseEski] = "Eski Gremse",
-        [Besli] = "Ata Beşli",
-        [Bilezik22] = "22 Ayar Bilezik",
-        [Ayar14] = "14 Ayar Altın",
-        [Ayar18] = "18 Ayar Altın",
-        [Hurda22] = "22 Ayar Hurda",
-        [Gumus] = "Gümüş (gram)",
-        [Ons] = "ONS Altın",
-    };
+    /// <summary>Kod → görünen ad (arayüz etiketleri). TEK KAYNAK: Core FiyatKalemleri (21.10).</summary>
+    public static readonly IReadOnlyDictionary<string, string> Adlar =
+        Kuyumcu.Core.Domain.FiyatKalemleri.Tumu.ToDictionary(k => k.Kod, k => k.Tr, StringComparer.Ordinal);
 
     public static string Ad(string kod) => Adlar.TryGetValue(kod, out var a) ? a : kod;
     public static bool Gecerli(string? kod) => !string.IsNullOrEmpty(kod) && Adlar.ContainsKey(kod);
@@ -1053,7 +1030,19 @@ public sealed class KurServisi(
             }
         }
 
-        return new { kaynak = kod, pariteler = liste };
+        // 21.10 (kurucu "eski yeni tam liste"): sıra ve ad TEK KAYNAKTAN (Core FiyatKalemleri) — sağlayıcının sırası değil.
+        var sirali = liste.OrderBy(p => Kuyumcu.Core.Domain.FiyatKalemleri.Sira(p.Kod)).ToList();
+
+        // Gün farkı: önceki İŞLETME gününün son geçerli kaydı (istemci 100 kayıtlık geçmişte arıyordu; kur dakikada bir
+        // çekildiği için dünün kaydı o pencereye hiç girmiyor, ekranda her gün "—" yazıyordu).
+        var bugunBas = Zaman.YerelGunBasiUtc(Zaman.YerelBugun());
+        var oncekiGunHas = await db.KurSnapshots.AsNoTracking()
+            .Where(s => s.TenantId == tenantId && !s.IptalEdildi && s.Olusturuldu < bugunBas && s.AltinHasFiyati > 0m)
+            .OrderByDescending(s => s.Olusturuldu)
+            .Select(s => (decimal?)s.AltinHasFiyati)
+            .FirstOrDefaultAsync();
+
+        return new { kaynak = kod, pariteler = sirali, oncekiGunHas };
     }
 
     /// <summary>Kiracının seçtiği kaynak; seçmemişse varsayılan.</summary>
@@ -1066,16 +1055,14 @@ public sealed class KurServisi(
         return kaynakDefteri.Gecerli(kod) ? kod! : kaynakDefteri.VarsayilanKod;
     }
 
-    /// <summary>TS @kuyum/core ALTIN_AYARLARI ile birebir aynı değerler.</summary>
+    /// <summary>
+    /// Ayar fiyatı satırları — 21.10 TEK KAYNAK: ad ve milyem Core <see cref="Kuyumcu.Core.Domain.Ayarlar.Altin"/>'dan
+    /// (elle yazılmış ikinci kopya "22 Ayar Altın"/"24 Ayar (Has)" adlarıyla ayrışıyordu). Kalem kümesi aynı 6 ayar;
+    /// 995 ticari has ayrı bir saflıktır, ayar fiyatı satırı değildir.
+    /// </summary>
     private static readonly (string Id, string Label, int Milyem)[] AltinAyarlari =
-    [
-        ("K8",  "8 Ayar Altın",  333),
-        ("K14", "14 Ayar Altın", 585),
-        ("K18", "18 Ayar Altın", 750),
-        ("K21", "21 Ayar Altın", 875),
-        ("K22", "22 Ayar Altın", 916),
-        ("K24", "24 Ayar (Has)", 1000),
-    ];
+        [.. new[] { "K8", "K14", "K18", "K21", "K22", "K24" }
+            .Select(id => (id, Kuyumcu.Core.Domain.Ayarlar.Altin[id].Ad, (int)Kuyumcu.Core.Domain.Ayarlar.Altin[id].Milyem))];
 
     // ─── En güncel kur ────────────────────────────────────────────────────────
 

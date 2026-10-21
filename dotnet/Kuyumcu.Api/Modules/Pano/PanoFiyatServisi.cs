@@ -100,19 +100,25 @@ public static class PanoFiyatServisi
     public const int OkunabilirlikUyariEsigi = 12;
 
     /// <summary>
-    /// Varsayılan pano kümesi — 7 kalem (PANO-KARAR §1, ölçüm §7 bulgu #3).
+    /// Varsayılan pano kümesi (PANO-KARAR §1, ölçüm §7 bulgu #3; eski sarrafiye 21.10).
     /// Piyasada "dükkânda gösterilen temel ürün seti" diye adlandırılan kümenin
     /// birebir kendisidir; bizim tahminimiz değildir. USD/EUR kasıtlı olarak
     /// YOK — dükkân setinde geçmiyor, isteyen kuyumcu tek tıkla açar.
     /// </summary>
+    /// 21.10 (kurucu: "eski yeni tam liste gelmesi lazım"): sarrafiyenin ESKİ karşılıkları da varsayılan AÇIK — 11 kalem
+    /// (okunabilirlik eşiği 12'nin altında); sıra Core FiyatKalemleri sırası (yeni hemen ardından eski).
     public static readonly IReadOnlyList<string> VarsayilanKalemler =
     [
         MKur.PariteKodlari.Gram,
-        MKur.PariteKodlari.CeyrekYeni,
-        MKur.PariteKodlari.YarimYeni,
-        MKur.PariteKodlari.TamYeni,
-        MKur.PariteKodlari.AtaYeni,
         MKur.PariteKodlari.Bilezik22,
+        MKur.PariteKodlari.CeyrekYeni,
+        MKur.PariteKodlari.CeyrekEski,
+        MKur.PariteKodlari.YarimYeni,
+        MKur.PariteKodlari.YarimEski,
+        MKur.PariteKodlari.TamYeni,
+        MKur.PariteKodlari.TamEski,
+        MKur.PariteKodlari.AtaYeni,
+        MKur.PariteKodlari.AtaEski,
         MKur.PariteKodlari.Gumus,
     ];
 

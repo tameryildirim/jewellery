@@ -226,25 +226,32 @@ public sealed class PanoFiyatTestleri
     // ── Varsayılan küme — piyasa ölçümü (karar §7 bulgu #3) ──────────────────
 
     [Fact]
-    public void VarsayilanKume7Kalemdir()
+    public void VarsayilanKume11Kalemdir()
     {
-        Assert.Equal(7, MPano.PanoFiyatServisi.VarsayilanKalemler.Count);
+        // 21.10 kurucu: "eski yeni tam liste gelmesi lazım" — dükkân setine sarrafiyenin ESKİ karşılıkları eklendi;
+        // okunabilirlik eşiğinin (12) altında kalır.
+        Assert.Equal(11, MPano.PanoFiyatServisi.VarsayilanKalemler.Count);
+        Assert.True(MPano.PanoFiyatServisi.VarsayilanKalemler.Count < MPano.PanoFiyatServisi.OkunabilirlikUyariEsigi);
     }
 
     [Fact]
-    public void VarsayilanKumeDukkanSetiyleBirebirAynidir()
+    public void VarsayilanKumeDukkanSetiYeniVeEskiSarrafiyeyiTekKaynakSirasiylaTasir()
     {
-        // KuyumAltın'ın "dükkânda gösterilen temel ürün seti": gram, çeyrek,
-        // yarım, tam, cumhuriyet, 22 ayar bilezik, gram gümüş. (§7 bulgu #3)
+        // KuyumAltın'ın "dükkânda gösterilen temel ürün seti" (§7 bulgu #3) + eski çeyrek/yarım/tam/ata (21.10);
+        // sıra Core FiyatKalemleri sırası (yeni hemen ardından eski).
         Assert.Equal(
             new[]
             {
-                MKur.PariteKodlari.Gram, MKur.PariteKodlari.CeyrekYeni,
-                MKur.PariteKodlari.YarimYeni, MKur.PariteKodlari.TamYeni,
-                MKur.PariteKodlari.AtaYeni, MKur.PariteKodlari.Bilezik22,
+                MKur.PariteKodlari.Gram, MKur.PariteKodlari.Bilezik22,
+                MKur.PariteKodlari.CeyrekYeni, MKur.PariteKodlari.CeyrekEski,
+                MKur.PariteKodlari.YarimYeni, MKur.PariteKodlari.YarimEski,
+                MKur.PariteKodlari.TamYeni, MKur.PariteKodlari.TamEski,
+                MKur.PariteKodlari.AtaYeni, MKur.PariteKodlari.AtaEski,
                 MKur.PariteKodlari.Gumus,
             },
             MPano.PanoFiyatServisi.VarsayilanKalemler.ToArray());
+        var siralar = MPano.PanoFiyatServisi.VarsayilanKalemler.Select(Kuyumcu.Core.Domain.FiyatKalemleri.Sira).ToArray();
+        Assert.Equal(siralar.OrderBy(x => x), siralar);
     }
 
     [Fact]

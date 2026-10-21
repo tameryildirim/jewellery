@@ -29,31 +29,9 @@ public static class DilEkranSozlugu
     private static bool En(string dil) => dil == "en";
 
     // ── Kur kalemleri (KurModulu.Adlar ile aynı kodlar) ──────────────────────
-    private static readonly IReadOnlyDictionary<string, string> KurEn = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["HAS"] = "Pure gold (gram)",
-        ["GRAM"] = "Gold (gram)",
-        ["KULCE"] = "Gold bar",
-        ["CEYREK_YENI"] = "New quarter coin",
-        ["CEYREK_ESKI"] = "Old quarter coin",
-        ["YARIM_YENI"] = "New half coin",
-        ["YARIM_ESKI"] = "Old half coin",
-        ["TAM_YENI"] = "New full coin",
-        ["TAM_ESKI"] = "Old full coin",
-        ["ATA_YENI"] = "New Ata coin",
-        ["ATA_ESKI"] = "Old Ata coin",
-        ["RESAT"] = "Resat gold coin",
-        ["HAMIT"] = "Hamit gold coin",
-        ["GREMSE_YENI"] = "New Gremse coin",
-        ["GREMSE_ESKI"] = "Old Gremse coin",
-        ["BESLI"] = "Ata five-coin",
-        ["BILEZIK_22"] = "22-carat bracelet",
-        ["AYAR_14"] = "14-carat gold",
-        ["AYAR_18"] = "18-carat gold",
-        ["HURDA_22"] = "22-carat scrap",
-        ["GUMUS"] = "Silver (gram)",
-        ["ONS"] = "Gold ounce (ONS)",
-    };
+    // 21.10: EN adlar TEK KAYNAKTAN (Core FiyatKalemleri) — ayrı sözlük kopyası kaldırıldı.
+    private static readonly IReadOnlyDictionary<string, string> KurEn =
+        Kuyumcu.Core.Domain.FiyatKalemleri.Tumu.ToDictionary(k => k.Kod, k => k.En, StringComparer.Ordinal);
 
     /// <summary>Kur kaleminin ekran adı; kod tanınmıyorsa sunucunun adı AYNEN.</summary>
     public static string KurAdi(string dil, string? kod, string sunucuAdi) =>

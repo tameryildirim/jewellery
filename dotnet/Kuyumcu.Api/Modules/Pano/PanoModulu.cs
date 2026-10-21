@@ -338,7 +338,7 @@ public sealed class PanoAyarServisi(
         return sonuc;
     }
 
-    /// <summary>Varsayılan kalem ayarı — dükkân setindeki 7 kalem AÇIK, kalanlar kapalı.</summary>
+    /// <summary>Varsayılan kalem ayarı — dükkân setindeki 11 kalem AÇIK, kalanlar kapalı.</summary>
     private static PanoKalemAyari Varsayilan(string kod, int sira)
     {
         var varsayilanSira = PanoFiyatServisi.VarsayilanKalemler.ToList().IndexOf(kod);

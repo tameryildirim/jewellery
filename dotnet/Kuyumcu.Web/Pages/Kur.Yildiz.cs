@@ -27,15 +27,28 @@ public partial class Kur
     /// <summary>Tuval "6.656 ₺" — tam lira (üst şeritle aynı yuvarlama).</summary>
     public static string YildizLira(decimal? n) => n is { } d ? YildizBugunBicim.KurTam(d) + " ₺" : "—";
 
-    /// <summary>Tuval "49,16 ₺" — döviz iki ondalık.</summary>
-    /// <summary>Kur tablosunda kaynaktan gösterilen kalemler (sıra = ekran sırası; has ayrı satırda).</summary>
-    private static readonly string[] YildizKaynakSirasi =
-        ["GRAM", "BILEZIK_22", "HURDA_22", "AYAR_18", "AYAR_14", "CEYREK_YENI", "YARIM_YENI", "TAM_YENI", "ATA_YENI", "GUMUS"];
+    // 21.10 (kurucu: "eski yeni tam liste gelmesi lazım · ürünler birkaç yerde farklı liste geliyor"): kur tablosu artık
+    // 10 kalemlik sabit süzgeç DEĞİL — kaynağın yayınladığı TÜM kalemler, sıra ve ad Core FiyatKalemleri'nden (tek kaynak).
+    // Elle eklenen "22 ayar gram" satırı (has × milyem — dördüncü bir "22 ayar" adı) ve alışı olmayan USD/EUR satırları
+    // tablodan çıktı: 22 ayar satış hesabı üst şeritte, döviz bilgi satırında yazar ("—" alış sütunu kalmadı).
 
     /// <summary>Kaynak fiyatı: 1.000 ₺ altı (gümüş) kuruşlu, üstü tam lira.</summary>
     public static string YildizKaynakFiyat(decimal? n) => n is { } d && d < 1000m ? Bicim.TlKurus(d) : YildizLira(n);
 
+    /// <summary>Kalemin para birimiyle (21.10: ONS ons başına DOLAR — "4.126 ₺" yazıyordu).</summary>
+    public static string YildizKaynakFiyat(decimal? n, string? kod) =>
+        Kuyumcu.Core.Domain.FiyatKalemleri.Para(kod) is "TRY" || n is null ? YildizKaynakFiyat(n) : Bicim.Para(n.Value, Kuyumcu.Core.Domain.FiyatKalemleri.Para(kod));
+
     public static string YildizDoviz(decimal? n) => n is { } d ? Bicim.TlKurus(d) : "—";
+
+    /// <summary>Gün farkı (saf): sunucunun verdiği önceki işletme günü has fiyatına göre yüzde (GET /kur/pariteler).</summary>
+    public static string? YildizGunFarki(decimal? guncelHas, decimal? oncekiGunHas, string dil)
+    {
+        if (guncelHas is not { } g || oncekiGunHas is not { } o || o <= 0m) return null;
+        var y = Math.Round((g - o) / o * 100m, 1, MidpointRounding.AwayFromZero);
+        var ok = y > 0m ? "▲ " : y < 0m ? "▼ " : "";
+        return ok + Math.Abs(y).ToString("0.0", dil == "en" ? CultureInfo.InvariantCulture : YildizTr) + "%";
+    }
 
     /// <summary>Gün farkı (saf): önceki işletme gününün son geçerli kaydına göre yüzde; tuval "▲ 0,3%" · "▼ 0,3%".</summary>
     public static string? YildizGunFarki(KurVeri? guncel, IEnumerable<KurVeri> gecmis, string dil)
@@ -59,8 +72,7 @@ public partial class Kur
             var g = guncel is { IptalEdildi: false } ? guncel : null;
             var saat = g is null ? null : Bicim.IsletmeSaati(g.Olusturuldu);
             var kaynak = g is null ? null : KaynakAdi(g.Kaynak);
-            var has = pariteler.FirstOrDefault(p => p.Kod == "HAS");
-            var g22 = g?.AyarFiyatlari?.FirstOrDefault(a => a.AyarId == Kuyumcu.Web.Layout.UstBar.Ayar22)?.GramFiyati;
+            var hasVar = pariteler.Any(p => p.Kod == "HAS");
             YildizListeSatiri Satir(string id, string ad, string alis, string satis) => new(id,
             [
                 new(ad, YildizHucreTuru.Ad, $"yildiz-kur-ad-{id}"),
@@ -84,21 +96,20 @@ public partial class Kur
                 Sutunlar = [new(YildizKurSozlugu.Birim(dil)), new(YildizKurSozlugu.Alis(dil), Sag: true), new(YildizKurSozlugu.Satis(dil), Sag: true)],
                 Satirlar = g is null ? [] :
                 [
-                    Satir("has", YildizKurSozlugu.HasAltin(dil), YildizLira(has?.Alis), YildizLira(has?.Satis ?? g.AltinHasFiyati)),
-                    Satir("22", YildizKurSozlugu.Ayar22Gram(dil), "—", YildizLira(g22)),
-                    // KURUCU 15.10 "alış fiyatları neden gelmiyor · liste biraz uzun olabilir": kaynağın
-                    // yayınladığı alış/satış (GET /kur/pariteler — salt okunur, hesapta KULLANILMAZ).
-                    .. pariteler.Where(p => YildizKaynakSirasi.Contains(p.Kod))
-                                .OrderBy(p => Array.IndexOf(YildizKaynakSirasi, p.Kod))
-                                .Select(p => Satir(p.Kod.ToLowerInvariant(), p.Ad, YildizKaynakFiyat(p.Alis), YildizKaynakFiyat(p.Satis))),
-                    Satir("usd", "USD", "—", YildizDoviz(g.UsdTry)),
-                    Satir("eur", "EUR", "—", YildizDoviz(g.EurTry)),
+                    // Elle kur (MANUAL) kaynağında kalem listesi yoktur: has satırı güncel kayıttan (alışı yok → yalnız satış).
+                    .. hasVar ? Array.Empty<YildizListeSatiri>() : [Satir("has", Kuyumcu.Core.Domain.FiyatKalemleri.Ad("HAS", dil), "—", YildizLira(g.AltinHasFiyati))],
+                    // KURUCU 15.10 "alış fiyatları neden gelmiyor": kaynağın yayınladığı alış/satış (salt okunur, hesapta KULLANILMAZ).
+                    .. pariteler.OrderBy(p => Kuyumcu.Core.Domain.FiyatKalemleri.Sira(p.Kod))
+                                .Select(p => Satir(p.Kod.ToLowerInvariant(), Kuyumcu.Core.Domain.FiyatKalemleri.Ad(p.Kod, dil, p.Ad),
+                                                   YildizKaynakFiyat(p.Alis, p.Kod), YildizKaynakFiyat(p.Satis, p.Kod))),
                 ],
                 Bilgi = g is null ? [] :
                 [
                     (YildizKurSozlugu.Kaynak(dil), kaynak ?? "—"),
                     (YildizKurSozlugu.SonSorgu(dil), saat ?? "—"),
-                    (YildizKurSozlugu.GunFarki(dil), YildizGunFarki(g, gecmis, dil) ?? "—"),
+                    (YildizKurSozlugu.GunFarki(dil), YildizGunFarki(g.AltinHasFiyati, oncekiGunHas, dil) ?? "—"),
+                    .. g.UsdTry is { } usd ? new[] { ("USD", YildizDoviz(usd)) } : [],
+                    .. g.EurTry is { } eur ? new[] { ("EUR", YildizDoviz(eur)) } : [],
                 ],
                 Bantlar = YildizBant.Ciz(guncelHata ?? pariteHata ?? kaynakHata, basariMesaji, basariJeton, 3000),
                 AyrintiAc = EventCallback.Factory.Create(this, () => yildizAyrinti = true),

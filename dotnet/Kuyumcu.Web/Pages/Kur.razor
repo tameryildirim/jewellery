@@ -527,6 +527,7 @@
     /// <summary>PAKET S1-i: geçmiş listesinde görünen satır sayısı (yeni sorguda sıfırlanır).</summary>
     private int gecmisGorunen = GorselSigmaSozlugu.KurGecmisIlk;
     private List<PariteVeri> pariteler = [];
+    private decimal? oncekiGunHas;
 
     private bool kaydediliyor, manuelAcik;
     private string? guncelHata, gecmisHata, manuelHata, pariteHata;
@@ -633,17 +634,24 @@
                 Tur = IzgaraHucreTuru.Tl, BaslikSinif = "sayi", HucreSinif = _ => "sayi hucre-vurgu", Deger = a => a.GramFiyati },
     ];
 
+    private static string KalemFiyati(decimal? n, string kod) => n is not { } d ? "—"
+        : Kuyumcu.Core.Domain.FiyatKalemleri.Para(kod) is "TRY" ? Bicim.Tl(d) : Bicim.Para(d, Kuyumcu.Core.Domain.FiyatKalemleri.Para(kod));
+
     private IReadOnlyList<IzgaraKolonu<PariteVeri>> PariteKolonlari =>
     [
         new() { Anahtar = "ad", Baslik = Dil.T.Kur.Ad, ZorunluGorunur = true, SunucuSiralamaAdi = "ad", Deger = p => DilEkranSozlugu.KurAdi(Dil.Dil, p.Kod, p.Ad),
                 Hucre = p => @<span class="hucre-vurgu" title="@(Mod.ProfesyonelMi ? p.Kod : null)">@DilEkranSozlugu.KurAdi(Dil.Dil, p.Kod, p.Ad)</span> },
+        // 21.10: fiyat kalemin KENDİ para biriminde (Core FiyatKalemleri) — ONS ons başına dolardır, "₺" basılmaz.
         new() { Anahtar = "alis", Baslik = Dil.T.Kur.Alis, SunucuSiralamaAdi = "alis", Tur = IzgaraHucreTuru.Tl,
-                HucreSinif = _ => "sayi", Deger = p => p.Alis },
+                HucreSinif = _ => "sayi", Deger = p => p.Alis,
+                Hucre = p => @<span>@KalemFiyati(p.Alis, p.Kod)</span> },
         new() { Anahtar = "satis", Baslik = Dil.T.Kur.Satis, SunucuSiralamaAdi = "satis", Tur = IzgaraHucreTuru.Tl,
-                HucreSinif = _ => "sayi", Deger = p => p.Satis },
+                HucreSinif = _ => "sayi", Deger = p => p.Satis,
+                Hucre = p => @<span>@KalemFiyati(p.Satis, p.Kod)</span> },
         // KESIF-P6 (#29): birim sözlükten ("Has gram / Gram / Adet"), ham kod basılmaz.
         new() { Anahtar = "birim", Baslik = Dil.T.Kur.Birim, HucreSinif = _ => "metin-soluk",
-                Deger = p => KesifP6Sozlugu.Birim(p.Birim, Dil.Dil) },
+                Deger = p => Kuyumcu.Core.Domain.FiyatKalemleri.Para(p.Kod) is "TRY" ? KesifP6Sozlugu.Birim(p.Birim, Dil.Dil)
+                           : $"{(Dil.Dil == "en" ? "Ounce" : "Ons")} ({Kuyumcu.Core.Domain.FiyatKalemleri.Para(p.Kod)})" },
     ];
 
     /// <summary>Geçmiş 100 kayıtla sınırlı (limit=100): sınıra değdiyse sıralama kapalı (UX-S29).</summary>
@@ -720,6 +728,7 @@
             pariteHata = null;
             var y = await Api.GetAsync<PariteYaniti>("/kur/pariteler");
             pariteler = y.Pariteler ?? [];
+            oncekiGunHas = y.OncekiGunHas;
         }
         catch (Exception ex) when (ex is ApiHata or JsonException) { pariteHata = ex.Message; }
     }
@@ -731,7 +740,7 @@
         try
         {
             guncel = await Api.PostAsync<KurVeri>("/kur/guncelle");
-            await GecmisYukle();
+            await Task.WhenAll(GecmisYukle(), PariteYukle());   // 21.10: tablo kalemleri de yeni kayıttan
             BasariGoster(Dil.T.Kur.KurGuncellendi);
         }
         catch (ApiHata ex) { guncelHata = FormDurumu.SunucuMesaji(ex, Dil); }
