@@ -134,6 +134,37 @@ public sealed class KurKaynaklariSafTestleri
         Assert.Equal(new DateOnly(2026, 10, 16), v.Gun);
     }
 
+    // ── 21.10 kurucu "döviz alışını da ekle": her kaynak alış kurunu da taşır ──
+
+    [Fact]
+    public void Doviz_alisi_Harem_TCMB_EVDS_ayristiricilarindan_okunur()
+    {
+        var h = HaremAyristirici.Ayristir(HaremGercekYuk);
+        Assert.Equal((49.44m, 55.438m, 65.549m), (h.Alislar!.Usd!.Value, h.Alislar.Eur!.Value, h.Alislar.Gbp!.Value));
+
+        var t = TcmbAyristirici.Ayristir("""
+<Tarih_Date Tarih="16.10.2026" Date="10/16/2026"><Currency Kod="USD"><ForexBuying>49.1</ForexBuying><ForexSelling>49.2</ForexSelling></Currency><Currency Kod="EUR"><ForexSelling>55.3</ForexSelling></Currency></Tarih_Date>
+""");
+        Assert.Equal(49.1m, t.Alislar!.Usd);
+        Assert.Null(t.Alislar.Eur);   // yayımlanmayan alış UYDURULMAZ (satıştan türetilmez)
+
+        var e = EvdsAyristirici.Ayristir("""
+{"items":[{"Tarih":"15-10-2026","TP_DK_USD_S":"49.2345","TP_DK_EUR_S":"55.4","TP_DK_GBP_S":"65.4","TP_DK_USD_A":"49.1500","TP_DK_EUR_A":"55.3","TP_DK_GBP_A":null}]}
+""");
+        Assert.Equal((49.15m, 55.3m, (decimal?)null), (e.Alislar!.Usd!.Value, e.Alislar.Eur!.Value, e.Alislar.Gbp));
+        Assert.Contains("TP.DK.USD.A-TP.DK.EUR.A-TP.DK.GBP.A", EvdsAyristirici.Adres(new DateOnly(2026, 10, 17)));
+    }
+
+    [Fact]
+    public void Birlestir_doviz_alisini_dovizle_AYNI_kaynaktan_tasir_okunamazsa_bos()
+    {
+        var altin = Altin() with { Alislar = new DovizAlislari(39m, 44m, 49m) };
+        Assert.Equal(39m, KurServisi.Birlestir(altin, KurKaynakKodlari.DovizAltinKaynagi, null, null).Alislar!.Usd);
+        var evds = KurServisi.Birlestir(altin, "EVDS", null, new DovizVerisi(49.2m, 55.4m, 65.4m, "EVDS", null, new DovizAlislari(49.1m, null, null)));
+        Assert.Equal((49.1m, (decimal?)null), (evds.Alislar!.Usd!.Value, evds.Alislar.Eur));   // altın kaynağının alışı KARIŞMAZ
+        Assert.Null(KurServisi.Birlestir(altin, "EVDS", null, null).Alislar);
+    }
+
     private static DisKurVerisi Altin() => new(6600m, 6650m, 40m, 45m, 50m, "ALTINKAYNAK");
 
     [Fact]

@@ -4192,9 +4192,17 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(20)")
                         .HasColumnName("doviz_kaynak");
 
+                    b.Property<decimal?>("EurAlis")
+                        .HasColumnType("decimal(15,4)")
+                        .HasColumnName("eur_alis");
+
                     b.Property<decimal?>("EurTry")
                         .HasColumnType("decimal(15,4)")
                         .HasColumnName("eur_try");
+
+                    b.Property<decimal?>("GbpAlis")
+                        .HasColumnType("decimal(15,4)")
+                        .HasColumnName("gbp_alis");
 
                     b.Property<decimal?>("GbpTry")
                         .HasColumnType("decimal(15,4)")
@@ -4232,6 +4240,10 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasMaxLength(36)
                         .HasColumnType("varchar(36)")
                         .HasColumnName("tenant_id");
+
+                    b.Property<decimal?>("UsdAlis")
+                        .HasColumnType("decimal(15,4)")
+                        .HasColumnName("usd_alis");
 
                     b.Property<decimal?>("UsdTry")
                         .HasColumnType("decimal(15,4)")

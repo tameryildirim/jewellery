@@ -370,6 +370,11 @@ public class KurSnapshot : IKiraciVarlik
     [Column("usd_try", TypeName = "decimal(15,4)")] public decimal? UsdTry { get; set; }
     [Column("eur_try", TypeName = "decimal(15,4)")] public decimal? EurTry { get; set; }
     [Column("gbp_try", TypeName = "decimal(15,4)")] public decimal? GbpTry { get; set; }
+    // 21.10 (kurucu "döviz alışını da ekle"): kaynağın döviz ALIŞ kuru — yalnız görüntü/kayıt; işlemler satış kurunu
+    // kullanmaya devam eder. Kaynak alış yayımlamıyorsa (elle giriş) null.
+    [Column("usd_alis", TypeName = "decimal(15,4)")] public decimal? UsdAlis { get; set; }
+    [Column("eur_alis", TypeName = "decimal(15,4)")] public decimal? EurAlis { get; set; }
+    [Column("gbp_alis", TypeName = "decimal(15,4)")] public decimal? GbpAlis { get; set; }
     [Column("kaynak"), MaxLength(20)] public string Kaynak { get; set; } = "MANUAL";
 
     /// <summary>

@@ -29,8 +29,8 @@ public partial class Kur
 
     // 21.10 (kurucu: "eski yeni tam liste gelmesi lazım · ürünler birkaç yerde farklı liste geliyor"): kur tablosu artık
     // 10 kalemlik sabit süzgeç DEĞİL — kaynağın yayınladığı TÜM kalemler, sıra ve ad Core FiyatKalemleri'nden (tek kaynak).
-    // Elle eklenen "22 ayar gram" satırı (has × milyem — dördüncü bir "22 ayar" adı) ve alışı olmayan USD/EUR satırları
-    // tablodan çıktı: 22 ayar satış hesabı üst şeritte, döviz bilgi satırında yazar ("—" alış sütunu kalmadı).
+    // Elle eklenen "22 ayar gram" satırı (has × milyem — dördüncü bir "22 ayar" adı) tablodan çıktı: 22 ayar satış hesabı
+    // üst şeritte yazar. Döviz (USD/EUR/GBP) alış + satışla tablonun SONUNDA (kurucu 21.10 "döviz alışını da ekle").
 
     /// <summary>Kaynak fiyatı: 1.000 ₺ altı (gümüş) kuruşlu, üstü tam lira.</summary>
     public static string YildizKaynakFiyat(decimal? n) => n is { } d && d < 1000m ? Bicim.TlKurus(d) : YildizLira(n);
@@ -102,14 +102,15 @@ public partial class Kur
                     .. pariteler.OrderBy(p => Kuyumcu.Core.Domain.FiyatKalemleri.Sira(p.Kod))
                                 .Select(p => Satir(p.Kod.ToLowerInvariant(), Kuyumcu.Core.Domain.FiyatKalemleri.Ad(p.Kod, dil, p.Ad),
                                                    YildizKaynakFiyat(p.Alis, p.Kod), YildizKaynakFiyat(p.Satis, p.Kod))),
+                    .. new[] { ("usd", "USD", g.UsdAlis, g.UsdTry), ("eur", "EUR", g.EurAlis, g.EurTry), ("gbp", "GBP", g.GbpAlis, g.GbpTry) }
+                        .Where(d => d.Item3 is not null || d.Item4 is not null)
+                        .Select(d => Satir(d.Item1, d.Item2, YildizDoviz(d.Item3), YildizDoviz(d.Item4))),
                 ],
                 Bilgi = g is null ? [] :
                 [
                     (YildizKurSozlugu.Kaynak(dil), kaynak ?? "—"),
                     (YildizKurSozlugu.SonSorgu(dil), saat ?? "—"),
                     (YildizKurSozlugu.GunFarki(dil), YildizGunFarki(g.AltinHasFiyati, oncekiGunHas, dil) ?? "—"),
-                    .. g.UsdTry is { } usd ? new[] { ("USD", YildizDoviz(usd)) } : [],
-                    .. g.EurTry is { } eur ? new[] { ("EUR", YildizDoviz(eur)) } : [],
                 ],
                 Bantlar = YildizBant.Ciz(guncelHata ?? pariteHata ?? kaynakHata, basariMesaji, basariJeton, 3000),
                 AyrintiAc = EventCallback.Factory.Create(this, () => yildizAyrinti = true),

@@ -12,7 +12,9 @@ public sealed record KurVeri(string Id, decimal AltinHasFiyati, decimal? GramAlt
                               string Kaynak, DateTime Olusturuldu,
                               List<AyarFiyatVeri>? AyarFiyatlari,
                               bool IptalEdildi = false, string? IptalGerekce = null,
-                              DateTime? IptalTarihi = null);
+                              DateTime? IptalTarihi = null,
+                              // 21.10: döviz ALIŞ kurları (UsdTry/EurTry/GbpTry satıştır); kaynak yayımlamıyorsa null.
+                              decimal? UsdAlis = null, decimal? EurAlis = null, decimal? GbpAlis = null);
 public sealed record PariteVeri(string Kod, string Ad, decimal? Alis, decimal? Satis, string Birim);
 /// <summary>GET /kur/pariteler — OncekiGunHas: önceki işletme gününün son geçerli has fiyatı (gün farkı; yoksa null).</summary>
 public sealed record PariteYaniti(string Kaynak, List<PariteVeri>? Pariteler, decimal? OncekiGunHas = null);

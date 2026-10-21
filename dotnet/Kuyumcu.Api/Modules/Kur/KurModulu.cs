@@ -96,7 +96,11 @@ public sealed record KurSnapshotCevap(
     string? IptalGerekce = null,
     DateTime? IptalTarihi = null,
     // KUR KAYNAKLARI (17.10): döviz alanlarının kaynağı (null: altın kaynağının kendi kuru / elle).
-    string? DovizKaynak = null);
+    string? DovizKaynak = null,
+    // 21.10: döviz ALIŞ kurları (kaynak yayımlamıyorsa null).
+    decimal? UsdAlis = null,
+    decimal? EurAlis = null,
+    decimal? GbpAlis = null);
 
 // ── Pariteler (sarrafiye kalemleri) ─────────────────────────────────────────
 
@@ -230,7 +234,12 @@ public sealed record DisKurVerisi(
     KaynakKapanisi? Kapanis = null,
     // KUR KAYNAKLARI (17.10): döviz alanlarının GERÇEK kaynağı (altın kaynağından ayrı seçilebilir).
     // null = altın kaynağının kendi döviz kuru (bugünkü davranış).
-    string? DovizKaynak = null);
+    string? DovizKaynak = null,
+    // 21.10: döviz ALIŞ kurları (UsdTry/EurTry/GbpTry SATIŞ); kaynak yayımlamıyorsa null.
+    DovizAlislari? Alislar = null);
+
+/// <summary>Kaynağın yayımladığı döviz alış kurları (TL).</summary>
+public sealed record DovizAlislari(decimal? Usd, decimal? Eur, decimal? Gbp);
 
 /// <summary>Dış kur kaynağı adaptörü — her kaynak bu arayüzü uygular.</summary>
 public interface IKurAdaptoru
@@ -351,8 +360,9 @@ public sealed class TruncgilAdaptoru(IHttpClientFactory httpFactory, ILogger log
         if (usd is null && Satis("EUR") is null && Satis("GBP") is null)
             logger.LogWarning("truncgil: döviz kurları okunamadı, null kaydedilecek");
 
+        decimal? Alis(string k) => ham.TryGetValue(k, out var f) ? f.Alis : null;
         return new DisKurVerisi(has, Satis("gram-altin"), usd, Satis("EUR"), Satis("GBP"), Kod,
-            AdaptorYardim.PariteKur(ham, Esleme));
+            AdaptorYardim.PariteKur(ham, Esleme), Alislar: new DovizAlislari(Alis("USD"), Alis("EUR"), Alis("GBP")));
     }
 }
 
@@ -415,8 +425,11 @@ public sealed class AltinkaynakAdaptoru(IHttpClientFactory httpFactory, ILogger 
         if (usd is null && S(doviz, "EUR") is null && S(doviz, "GBP") is null)
             logger.LogWarning("Altınkaynak: döviz kurları okunamadı, null kaydedilecek");
 
+        decimal? A(Dictionary<string, (decimal? Alis, decimal? Satis)> d, string k) =>
+            d.TryGetValue(k, out var f) ? f.Alis : null;
         return new DisKurVerisi(has, S(altin, "GA"), usd, S(doviz, "EUR"), S(doviz, "GBP"), Kod,
-            AdaptorYardim.PariteKur(altin, Esleme), Kapanis(altinJson));
+            AdaptorYardim.PariteKur(altin, Esleme), Kapanis(altinJson),
+            Alislar: new DovizAlislari(A(doviz, "USD"), A(doviz, "EUR"), A(doviz, "GBP")));
     }
 
     private static async Task<string> Govde(HttpClient http, string url, CancellationToken iptal)
@@ -529,10 +542,10 @@ public sealed class AnkaraAltinBorsasiAdaptoru(IHttpClientFactory httpFactory, I
             ?? throw new InvalidOperationException("Ankara Altın Borsası: has altın fiyatı bulunamadı");
 
         // Döviz bu kaynakta yok → TCMB resmî kuru ile tamamlanır (başarısızsa null)
-        var (usd, eur, gbp) = await TcmbDoviz(http, logger, zamanAsimi.Token);
+        var tcmb = await TcmbDoviz(http, logger, zamanAsimi.Token);
 
-        return new DisKurVerisi(has, S("GRAM-ALTIN"), usd, eur, gbp, Kod,
-            AdaptorYardim.PariteKur(fiyatlar, Esleme));
+        return new DisKurVerisi(has, S("GRAM-ALTIN"), tcmb?.UsdTry, tcmb?.EurTry, tcmb?.GbpTry, Kod,
+            AdaptorYardim.PariteKur(fiyatlar, Esleme), Alislar: tcmb?.Alislar);
     }
 
     private static async Task<Dictionary<string, (decimal? Alis, decimal? Satis)>> AltinFiyatlari(
@@ -573,27 +586,20 @@ public sealed class AnkaraAltinBorsasiAdaptoru(IHttpClientFactory httpFactory, I
     }
 
     /// <summary>TCMB resmî günlük kuru (döviz satış). Erişilemezse üçü de null.</summary>
-    internal static async Task<(decimal? Usd, decimal? Eur, decimal? Gbp)> TcmbDoviz(
+    /// <summary>TCMB today.xml (satış + alış; 21.10) — ayrıştırma TEK yerde (TcmbAyristirici). Okunamazsa null.</summary>
+    internal static async Task<DovizVerisi?> TcmbDoviz(
         HttpClient http, ILogger logger, CancellationToken iptal)
     {
         try
         {
             using var cevap = await http.GetAsync("https://www.tcmb.gov.tr/kurlar/today.xml", iptal);
-            if (!cevap.IsSuccessStatusCode) return (null, null, null);
-
-            var xml = System.Xml.Linq.XDocument.Parse(await cevap.Content.ReadAsStringAsync(iptal));
-            decimal? Kur(string kod)
-            {
-                var oge = xml.Root?.Elements("Currency")
-                    .FirstOrDefault(e => (string?)e.Attribute("Kod") == kod);
-                return AdaptorYardim.Metin((string?)oge?.Element("ForexSelling"), false);
-            }
-            return (Kur("USD"), Kur("EUR"), Kur("GBP"));
+            if (!cevap.IsSuccessStatusCode) return null;
+            return TcmbAyristirici.Ayristir(await cevap.Content.ReadAsStringAsync(iptal));
         }
         catch (Exception ex)
         {
             logger.LogWarning("TCMB döviz kuru alınamadı: {Mesaj}", ex.Message);
-            return (null, null, null);
+            return null;
         }
     }
 }
@@ -974,10 +980,10 @@ public sealed class KurServisi(
         if (dovizKod == KurKaynakKodlari.DovizAltinKaynagi || dovizKod == altin.Kaynak)
             return altin with { DovizKaynak = altin.Kaynak };
         if (dovizAltin is not null)
-            return altin with { UsdTry = dovizAltin.UsdTry, EurTry = dovizAltin.EurTry, GbpTry = dovizAltin.GbpTry, DovizKaynak = dovizKod };
+            return altin with { UsdTry = dovizAltin.UsdTry, EurTry = dovizAltin.EurTry, GbpTry = dovizAltin.GbpTry, Alislar = dovizAltin.Alislar, DovizKaynak = dovizKod };
         if (doviz is not null)
-            return altin with { UsdTry = doviz.UsdTry, EurTry = doviz.EurTry, GbpTry = doviz.GbpTry, DovizKaynak = dovizKod };
-        return altin with { UsdTry = null, EurTry = null, GbpTry = null, DovizKaynak = dovizKod };
+            return altin with { UsdTry = doviz.UsdTry, EurTry = doviz.EurTry, GbpTry = doviz.GbpTry, Alislar = doviz.Alislar, DovizKaynak = dovizKod };
+        return altin with { UsdTry = null, EurTry = null, GbpTry = null, Alislar = null, DovizKaynak = dovizKod };
     }
 
     /// <summary>
@@ -1159,7 +1165,7 @@ public sealed class KurServisi(
         // döviz de her turda boşalıp dolmaz. Döviz kaynağının bayatlığını ekran son çekimden gösterir.
         if (son is not null && veri.DovizKaynak is not null && son.DovizKaynak == veri.DovizKaynak
             && veri.UsdTry is null && veri.EurTry is null && veri.GbpTry is null)
-            veri = veri with { UsdTry = son.UsdTry, EurTry = son.EurTry, GbpTry = son.GbpTry };
+            veri = veri with { UsdTry = son.UsdTry, EurTry = son.EurTry, GbpTry = son.GbpTry, Alislar = new DovizAlislari(son.UsdAlis, son.EurAlis, son.GbpAlis) };
 
         if (son is not null && Ayni(son, veri))
             return (SnapshotZenginlestir(son), false);
@@ -1180,7 +1186,7 @@ public sealed class KurServisi(
         }
 
         var cevap = await SnapshotKaydet(tenantId, veri.AltinHasFiyati, veri.GramAltinFiyati,
-            veri.UsdTry, veri.EurTry, veri.GbpTry, veri.Kaynak, dovizKaynak: veri.DovizKaynak);
+            veri.UsdTry, veri.EurTry, veri.GbpTry, veri.Kaynak, dovizKaynak: veri.DovizKaynak, alislar: veri.Alislar);
         return (cevap, true);
     }
 
@@ -1233,7 +1239,10 @@ public sealed class KurServisi(
         && son.GramAltinFiyati == Yuvarla4(v.GramAltinFiyati)
         && son.UsdTry == Yuvarla4(v.UsdTry)
         && son.EurTry == Yuvarla4(v.EurTry)
-        && son.GbpTry == Yuvarla4(v.GbpTry);
+        && son.GbpTry == Yuvarla4(v.GbpTry)
+        && son.UsdAlis == Yuvarla4(v.Alislar?.Usd)
+        && son.EurAlis == Yuvarla4(v.Alislar?.Eur)
+        && son.GbpAlis == Yuvarla4(v.Alislar?.Gbp);
 
     private static decimal Yuvarla4(decimal d) => Math.Round(d, 4, MidpointRounding.AwayFromZero);
     private static decimal? Yuvarla4(decimal? d) => d is null ? null : Yuvarla4(d.Value);
@@ -1404,7 +1413,8 @@ public sealed class KurServisi(
 
     private async Task<KurSnapshotCevap> SnapshotKaydet(
         string tenantId, decimal altinHasFiyati, decimal? gramAltinFiyati,
-        decimal? usdTry, decimal? eurTry, decimal? gbpTry, string kaynak, string? id = null, string? dovizKaynak = null)
+        decimal? usdTry, decimal? eurTry, decimal? gbpTry, string kaynak, string? id = null, string? dovizKaynak = null,
+        DovizAlislari? alislar = null)
     {
         var snapshot = new KurSnapshot
         {
@@ -1415,6 +1425,9 @@ public sealed class KurServisi(
             UsdTry = usdTry is null ? null : Math.Round(usdTry.Value, 4, MidpointRounding.AwayFromZero),
             EurTry = eurTry is null ? null : Math.Round(eurTry.Value, 4, MidpointRounding.AwayFromZero),
             GbpTry = gbpTry is null ? null : Math.Round(gbpTry.Value, 4, MidpointRounding.AwayFromZero),
+            UsdAlis = Yuvarla4(alislar?.Usd),
+            EurAlis = Yuvarla4(alislar?.Eur),
+            GbpAlis = Yuvarla4(alislar?.Gbp),
             Kaynak = kaynak,
             DovizKaynak = dovizKaynak,
             Olusturuldu = DateTime.UtcNow,
@@ -1449,7 +1462,7 @@ public sealed class KurServisi(
 
         return new KurSnapshotCevap(
             s.Id, s.TenantId, hasFiyati, s.GramAltinFiyati, s.UsdTry, s.EurTry, s.GbpTry, s.Kaynak, s.Olusturuldu, ayarFiyatlari,
-            s.IptalEdildi, s.IptalGerekce, s.IptalTarihi, s.DovizKaynak);
+            s.IptalEdildi, s.IptalGerekce, s.IptalTarihi, s.DovizKaynak, s.UsdAlis, s.EurAlis, s.GbpAlis);
     }
 }
 

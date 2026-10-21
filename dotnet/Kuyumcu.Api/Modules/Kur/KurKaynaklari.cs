@@ -40,7 +40,8 @@ namespace Kuyumcu.Api.Modules.Kur;
 public sealed record KaynakKapanisi(DateOnly Gun, decimal Fiyat, string Dayanak);
 
 /// <summary>Döviz kaynağından gelen kur (satış; değeri olmayan alan null).</summary>
-public sealed record DovizVerisi(decimal? UsdTry, decimal? EurTry, decimal? GbpTry, string Kaynak, DateOnly? Gun = null);
+public sealed record DovizVerisi(decimal? UsdTry, decimal? EurTry, decimal? GbpTry, string Kaynak, DateOnly? Gun = null,
+    DovizAlislari? Alislar = null);   // 21.10: alış kurları (TCMB ForexBuying · EVDS alış serisi)
 
 /// <summary>Altın kaynağından AYRI seçilen döviz kaynağı adaptörü.</summary>
 public interface IDovizAdaptoru
@@ -156,8 +157,10 @@ public static class HaremAyristirici
         decimal? S(string k) => ham.TryGetValue(k, out var f) ? f.Satis : null;
         var has = S("ALTIN") ?? throw new InvalidOperationException("Harem: has altın (ALTIN) satış fiyatı bulunamadı");
 
+        decimal? A(string k) => ham.TryGetValue(k, out var f) ? f.Alis : null;
         return new DisKurVerisi(has, null, S("USDTRY"), S("EURTRY"), S("GBPTRY"), Kod,
-            AdaptorYardim.PariteKur(ham, Esleme), Kapanis(veri, has));
+            AdaptorYardim.PariteKur(ham, Esleme), Kapanis(veri, has),
+            Alislar: new DovizAlislari(A("USDTRY"), A("EURTRY"), A("GBPTRY")));
     }
 
     /// <summary>
@@ -303,6 +306,10 @@ public static class EvdsAyristirici
     public const string UsdSatis = "TP.DK.USD.S";
     public const string EurSatis = "TP.DK.EUR.S";
     public const string GbpSatis = "TP.DK.GBP.S";
+    // 21.10: döviz alış serileri (TCMB döviz alış kuru) — satış serilerinin ARKASINA eklenir.
+    public const string UsdAlis = "TP.DK.USD.A";
+    public const string EurAlis = "TP.DK.EUR.A";
+    public const string GbpAlis = "TP.DK.GBP.A";
 
     public static string Alan(string seri) => seri.Replace('.', '_');
 
@@ -313,6 +320,7 @@ public static class EvdsAyristirici
             throw new InvalidOperationException("EVDS: yanıtta items dizisi yok");
 
         decimal? usd = null, eur = null, gbp = null;
+        DovizAlislari? alis = null;
         DateOnly? gun = null;
         // Satırlar tarih sırasıyla gelir; SONDAN geriye ilk dolu değer alınır (tatil günü boş).
         for (var i = items.GetArrayLength() - 1; i >= 0; i--)
@@ -323,6 +331,8 @@ public static class EvdsAyristirici
             var g = AdaptorYardim.Sayi(s, Alan(GbpSatis), false);
             if (u is null && e is null && g is null) continue;
             usd = u; eur = e; gbp = g;
+            alis = new DovizAlislari(AdaptorYardim.Sayi(s, Alan(UsdAlis), false), AdaptorYardim.Sayi(s, Alan(EurAlis), false),
+                                     AdaptorYardim.Sayi(s, Alan(GbpAlis), false));
             if (s.TryGetProperty("Tarih", out var t) && t.ValueKind == JsonValueKind.String
                 && DateOnly.TryParseExact(t.GetString(), "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
                 gun = d;
@@ -330,12 +340,12 @@ public static class EvdsAyristirici
         }
         if (usd is null && eur is null && gbp is null)
             throw new InvalidOperationException("EVDS: döviz satış kuru bulunamadı");
-        return new DovizVerisi(usd, eur, gbp, KurKaynakKodlari.Evds, gun);
+        return new DovizVerisi(usd, eur, gbp, KurKaynakKodlari.Evds, gun, alis);
     }
 
     /// <summary>İstek adresi (anahtar adreste DEĞİL, "key" başlığındadır — adres loglanabilir).</summary>
     public static string Adres(DateOnly bugun) =>
-        "https://evds3.tcmb.gov.tr/igmevdsms-dis/series=" + string.Join("-", UsdSatis, EurSatis, GbpSatis)
+        "https://evds3.tcmb.gov.tr/igmevdsms-dis/series=" + string.Join("-", UsdSatis, EurSatis, GbpSatis, UsdAlis, EurAlis, GbpAlis)
         + $"&startDate={bugun.AddDays(-10):dd-MM-yyyy}&endDate={bugun:dd-MM-yyyy}&type=json";
 }
 
@@ -364,17 +374,18 @@ public sealed class EvdsDovizAdaptoru(IHttpClientFactory httpFactory, string ana
     }
 }
 
-/// <summary>TCMB kurlar/today.xml ayrıştırıcısı (saf): ForexSelling.</summary>
+/// <summary>TCMB kurlar/today.xml ayrıştırıcısı (saf): ForexSelling (satış) · ForexBuying (alış, 21.10).</summary>
 public static class TcmbAyristirici
 {
     public static DovizVerisi Ayristir(string xml)
     {
         var doc = System.Xml.Linq.XDocument.Parse(xml);
-        decimal? Kur(string kod) => AdaptorYardim.Metin((string?)doc.Root?.Elements("Currency")
-            .FirstOrDefault(e => (string?)e.Attribute("Kod") == kod)?.Element("ForexSelling"), false);
+        decimal? Kur(string kod, string alan = "ForexSelling") => AdaptorYardim.Metin((string?)doc.Root?.Elements("Currency")
+            .FirstOrDefault(e => (string?)e.Attribute("Kod") == kod)?.Element(alan), false);
         DateOnly? gun = DateOnly.TryParseExact((string?)doc.Root?.Attribute("Date"), "MM/dd/yyyy",
             CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
-        var v = new DovizVerisi(Kur("USD"), Kur("EUR"), Kur("GBP"), KurKaynakKodlari.Tcmb, gun);
+        var v = new DovizVerisi(Kur("USD"), Kur("EUR"), Kur("GBP"), KurKaynakKodlari.Tcmb, gun,
+            new DovizAlislari(Kur("USD", "ForexBuying"), Kur("EUR", "ForexBuying"), Kur("GBP", "ForexBuying")));
         if (v.UsdTry is null && v.EurTry is null && v.GbpTry is null)
             throw new InvalidOperationException("TCMB: döviz satış kuru bulunamadı");
         return v;
