@@ -74,7 +74,7 @@ public static class AuthSifirlaSozlugu
         YeniBaglantiIste: "Yeni bağlantı iste",
         BaglantiGecersiz: "Bu bağlantı artık geçerli değil. Aşağıdan yeni bağlantı iste.",
         HizSiniriKalip: "Çok fazla deneme yaptın. {0} dakika sonra yeniden dene.",
-        GirisKapaliYardim: "Parolanı işletme sahibin ya da müdürün Kullanıcılar ekranındaki “Şifre Sıfırla” ile yeniler; "
+        GirisKapaliYardim: "Parolanı işletme sahibin ya da müdürün Kullanıcılar ekranındaki “Parolayı sıfırla” ile yeniler; "
             + "işletme sahibiysen destek hattını ara.",
         GiriseDon: "Girişe dön",
         GonderiliyorKilit: "Gönderiliyor…",

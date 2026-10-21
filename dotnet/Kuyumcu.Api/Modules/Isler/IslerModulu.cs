@@ -109,7 +109,15 @@ public sealed class BildirimServisi(KuyumcuDbContext db, DenetimServisi denetim,
             azamiLimit = AzamiListe,
             kapaliGosterimGun = KapaliGosterimGun,
             dahaFazlasiVar = dahaVar,
-            bildirimler = satirlar,
+            // D-12 (21.10): bildirim metni kayıtta Türkçe durur; istek diline burada çevrilir (eşleşme yoksa AYNEN).
+            bildirimler = satirlar.Select(b => new
+            {
+                b.Id, b.Tur, b.Onem,
+                Baslik = Kuyumcu.Core.I18n.SunucuIletiSozlugu.Cevir(b.Baslik),
+                Govde = Kuyumcu.Core.I18n.SunucuIletiSozlugu.Cevir(b.Govde),
+                b.HedefRota, b.IlgiliVarlikTuru, b.IlgiliVarlikId,
+                b.Olusturuldu, b.Kapatildi, b.KapatanKullaniciId, b.KapatmaNotu,
+            }).ToList(),
         };
     }
 

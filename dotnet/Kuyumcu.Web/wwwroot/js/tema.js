@@ -198,3 +198,13 @@
     // İlk boyamadan önce: tek şema köke yazılır — oturumsuz /giris de Yıldız ile çizilir (FOUC yok).
     sema();
 })();
+
+// Görsel denetim O-14 (21.10): "İçeriğe geç" bağlantısı odağı ana içeriğe taşır. Yakalama evresinde — Blazor'un bağlantı
+// yönlendiricisi "#ana-icerik"i rota sanmasın.
+document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a.icerige-gec') : null;
+    if (!a) return;
+    e.preventDefault(); e.stopPropagation();
+    var m = document.getElementById('ana-icerik');
+    if (m) { m.focus(); m.scrollIntoView({ block: 'start' }); }
+}, true);

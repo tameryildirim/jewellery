@@ -251,6 +251,13 @@ public sealed class DenetimOkumaServisi(KuyumcuDbContext db, DenetimServisi dene
     {
         AralikDogrula(baslangic, bitis, eylem, varlikTuru);
 
+        // GÖRSEL DENETİM O-18 (21.10): kırılımlar ve toplam ayrı sorgular; denetim izi her istekte büyüdüğü için
+        // aralarına yeni satır girince mutabakat (25908 ≠ 25907) 500 fırlatıyordu. Tüm okumalar TEK anlık görüntüden
+        // (InnoDB REPEATABLE READ: görüntü ilk okumada sabitlenir) — kilit almaz, yazanları bekletmez.
+        await using var anlik = db.Database.CurrentTransaction is null
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.RepeatableRead)
+            : null;
+
         // TEK SÜZGEÇ (P-24) — Listele ile birebir aynı nesne.
         var sorgu = new DenetimSuzgeci(islem.TenantId, baslangic, bitis, eylem, varlikTuru,
             varlikId, hassas, kullaniciId, subeId, kasaId, sistemHaric).Uygula(db);

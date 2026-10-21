@@ -35,6 +35,7 @@ public partial class Sayim
     /// ardından "Tüm ayrıntılar" (satır düzeltme, iptal) özgün ekrandır.</summary>
     private bool yildizTumSatir;
     private bool yildizOtoAcildi;
+    private bool yildizIlkYuklendi;
     private string? yildizZamanId;
     private DateTime? yildizAcildi;
 
@@ -97,6 +98,7 @@ public partial class Sayim
                 return new YildizSayimBaglami
                 {
                     Ust = YildizSayimSozlugu.Ust(dil),
+                Yukleniyor = !yildizIlkYuklendi,
                     Baslik = baslik,
                     Rakam = a.Sayilan,
                     RakamEki = $" / {a.ToplamSatir} {YildizSayimSozlugu.Urun(dil)}",
@@ -140,6 +142,7 @@ public partial class Sayim
             return new YildizSayimBaglami
             {
                 Ust = YildizSayimSozlugu.Ust(dil),
+                Yukleniyor = !yildizIlkYuklendi,
                 Baslik = baslik,
                 Cumle = YildizSayimSozlugu.AcikYok(dil),
                 B1Etiket = YildizSayimSozlugu.Yeni(dil),

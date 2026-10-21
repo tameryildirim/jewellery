@@ -207,7 +207,7 @@ public sealed class Toplu4VitrinTestleri : Toplu4Tabani
     public void T4_Vitrin_tavan_notu_kaynak_satirindaki_TEK_ipucunda_sunucu_oneki_yok()
     {
         var e = Ciz(ArayuzModuServisi.Basit);
-        var tavan = e.Find("#vitrin-pano-ipucu > #vitrin-tavan");
+        var tavan = e.Find("#vitrin-pano-bilgi > #vitrin-tavan");
         Assert.Equal(string.Format(Toplu4Sozlugu.Tr.VitrinTavanNotu, 16), tavan.TextContent.Trim());
         Assert.DoesNotContain("Sunucu", e.Markup, StringComparison.Ordinal);
         Assert.NotNull(e.Find("#vitrin-kaynak-satir > #vitrin-kaynak"));

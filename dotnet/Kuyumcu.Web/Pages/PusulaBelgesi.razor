@@ -133,8 +133,8 @@
                     <tbody>
                         <tr>
                             <td>@b.Mal.Cins</td>
-                            <td style="text-align:right">@Bicim.BelgeSayisi(b.Mal.GramAgirlik, Dil.Locale, 3)</td>
-                            <td style="text-align:right">@Bicim.BelgeSayisi(b.Mal.HasGrami, Dil.Locale, 3)</td>
+                            <td style="text-align:right">@Bicim.BelgeSayisi(b.Mal.GramAgirlik, BelgeYerel, 3)</td>
+                            <td style="text-align:right">@Bicim.BelgeSayisi(b.Mal.HasGrami, BelgeYerel, 3)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -208,7 +208,10 @@
 
     private System.Globalization.CultureInfo Kultur => new(Dil.Locale);
     // P-36b: biçim TEK yerden — Servisler/Bicim.cs. Çıktı birebir aynı.
-    private string Para(decimal d) => Bicim.BelgeParasi(d, Dil.Locale);
+    // D-12 (21.10): gider pusulası VUK md.234 belgesidir, başlığı ve yasal metni Türkçe kalır — sayılar da belgenin dilinde
+    // (arayüz İngilizceyken "26,384.92" basılıyordu).
+    private const string BelgeYerel = "tr-TR";
+    private string Para(decimal d) => Bicim.BelgeParasi(d, BelgeYerel);
     private string Tarih(DateTime t) => Bicim.TarihTam(t);
 
     /// <summary>Belgenin VUK md.234 zorunlu düzenleyen alanları eksik mi?</summary>

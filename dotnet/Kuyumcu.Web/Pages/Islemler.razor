@@ -39,7 +39,7 @@
     <FisDigerIslemler Durum="diger" Baglam="DigerBaglami" Basit="Modu.BasitMi" Istek="DigerIstekIsle" EkTurler="ProEkTurler" SeciliTur="@tur" TurSec="TurSecDiger" />
     @if (DigerAcik) { @* S2-6: Diğer paneli fişin YERİNDE çizilir (FisDigerIslemler) — fiş gizli *@ } else if (yukleniyor)
     {
-        <Yukleniyor />
+        @if (YildizTezgahYuklenirken) { <div class="yz yz-tezgah-yukleniyor"><Yukleniyor /></div> } else { <Yukleniyor /> }   @* O-15 *@
     }
     else
     {

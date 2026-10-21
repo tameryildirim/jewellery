@@ -131,6 +131,10 @@
             <span class="metin-kucuk metin-soluk">@SuzgecAltMetni</span>
         </p>
     }
+    else if (ozetHata is not null)
+    {
+        <p class="zo-ozet metin-soluk" id="dz-ozet-hata" role="status" title="@ozetHata">@DenetimOzetSozlugu.Okunamadi(Dil.Dil)</p>
+    }
 
     @if (yukleniyor)
     {
@@ -243,6 +247,7 @@
     private List<Kayit> kayitlar = [];
     private List<string> VarlikTurleri = [];
     private Ozet? ozet;
+    private string? ozetHata;
     private int toplam;
     private bool yukleniyor = true;
     private string? hata;
@@ -404,8 +409,16 @@
                 // hata bandı çıkar, süzgeç tek şube gibi davranmaz.
                 Subeler = await Api.GetAsync<List<SubeOzet>>("/subeler") ?? [];
             }
-            ozet = await Api.GetAsync<Ozet>($"/denetim/ozet{OzetSorgu()}");
-            VarlikTurleri = ozet.Turler.Select(t => t.VarlikTuru).ToList();
+            // O-18: özet okunamazsa liste YİNE gelir; özet satırının yerinde ayrı uyarı (hata bandı listeyi gizlemez).
+            ozet = null;
+            ozetHata = null;
+            try
+            {
+                var okunan = await Api.GetAsync<Ozet>($"/denetim/ozet{OzetSorgu()}");
+                ozet = okunan;
+                VarlikTurleri = okunan.Turler.Select(t => t.VarlikTuru).ToList();
+            }
+            catch (Exception ex) { ozetHata = ex.Message; }
             await Getir(0);
         }
         catch (Exception ex) { hata = ex.Message; sonSorgu = null; }

@@ -3045,7 +3045,7 @@ html:root[data-sema="yildiz"] .yz-etiket .yz-etiket-bosluk { flex-grow: 1; }
 html:root[data-sema="yildiz"] .yz-etiket .yz-etiket-eylem { display: flex; align-items: center; gap: 40px; }
 html:root[data-sema="yildiz"] .yz-etiket .yz-k-etiket .yz-etiket-istege { letter-spacing: 0; text-transform: none; }
 /* Adet: tuvalde "2 etiket" düz metin → girdi içeriği kadar geniş (field-sizing), ok/çerçeve yok, aradaki boşluk bir sözcük boşluğu. */
-html:root[data-sema="yildiz"] .yz-etiket .yz-etiket-adet { field-sizing: content; width: auto; min-width: 1ch; flex-grow: 0; text-align: left; appearance: textfield; -moz-appearance: textfield; }
+html:root[data-sema="yildiz"] .yz-etiket .yz-etiket-adet { field-sizing: content; width: auto; min-width: 3ch; padding: 0 4px; flex-grow: 0; text-align: center; appearance: textfield; -moz-appearance: textfield; }
 html:root[data-sema="yildiz"] .yz-etiket .yz-etiket-adet::-webkit-outer-spin-button,
 html:root[data-sema="yildiz"] .yz-etiket .yz-etiket-adet::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 html:root[data-sema="yildiz"] .yz-etiket .yz-etiket-adet:focus-visible { outline: 1px solid var(--odak-halka); outline-offset: 4px; }
@@ -3995,3 +3995,101 @@ html:root[data-sema="yildiz"] .yildiz-kabuk .ust-bar > #ust-bar-rota-adi:not(#_)
 @media (max-width: 480px) {
   html:root[data-sema="yildiz"] .yildiz-kabuk .ust-bar > #ust-bar-rota-adi:not(#_) { font-size: 28px; }
 }
+
+/* GÖRSEL DENETİM O-1 (21.10): 320 px'te üst şerit 8 px taşıyordu (amblem 176 + menü 44 + kullanıcı 44 + 3×16 ara + 2×16 dolgu = 344).
+   ≤360 px: ara 8, dolgu 12 → 312 px; kullanıcı düğmesi küçülmez (dokunma hedefi 44 px kalır). */
+@media (max-width: 360px) {
+  html:root[data-sema="yildiz"] .yildiz-ust:not(#_) { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  html:root[data-sema="yildiz"] .yildiz-ust .yildiz-kullanici:not(#_) { flex-shrink: 0; }
+}
+
+/* GÖRSEL DENETİM O-2 / O-10 (21.10): 1001–1360 px'te özet sol sütunu ~420 px'e iner; 104 px rakam + ",24 ₺" eki sütundan
+   taşıp sağ tablonun "NE" başlığına biniyordu. Rakam sol sütun genişliğine göre küçülür (cqi); 1440 tuvalinde sütun 631 px →
+   19 cqi = 120 px → 104 px AYNEN. Çok uzun tutar sütuna yine sığmazsa satır kırılır, komşu sütuna binmez. */
+html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-sol { container-type: inline-size; }
+@media (min-width: 1001px) {
+  html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-rakam:not(#_) { font-size: min(104px, 19cqi); overflow-wrap: anywhere; }
+  html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-rakam-ek:not(#_) { font-size: min(52px, 9.5cqi); }
+}
+
+/* GÖRSEL DENETİM O-3 (21.10, WCAG 1.4.11): yazılabilir alanın alt çizgisi --ayrac ile zemine 1,27:1 idi (eşik 3:1); alan
+   sınırı görünmüyordu. Yalnız GİRDİ taşıyan satırlar arama kutusunun çizgisini (--kenarlik, 3,26:1) alır; salt okunur .k
+   satırları ve ayraçlar tuvaldeki gibi --ayrac kalır. */
+html:root[data-sema="yildiz"] .yz .yz-duzen .alan:has(:is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, .secici-tetik)):not(:has(> :is(.alan, .secici-alan))) { border-bottom-color: var(--kenarlik); }
+/* Karanlıkta --kenarlik (C9C6BE) siyah zeminde 12:1 — çizgi bağırır; --metin-soluk (9A9893) daha sakin, eşiği rahat geçer. */
+@media (prefers-color-scheme: dark) {
+  html:root:not([data-tema="aydinlik"])[data-sema="yildiz"] .yz .yz-duzen .alan:has(:is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, .secici-tetik)):not(:has(> :is(.alan, .secici-alan))) { border-bottom-color: var(--metin-soluk); }
+}
+html:root[data-tema="karanlik"][data-sema="yildiz"] .yz .yz-duzen .alan:has(:is(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, .secici-tetik)):not(:has(> :is(.alan, .secici-alan))) { border-bottom-color: var(--metin-soluk); }
+
+/* GÖRSEL DENETİM O-4 (21.10, WCAG 2.4.7): arama kutuları ve form alanlarında klavye odağı görünmüyordu (fark 0). Odakta alt
+   çizgi metin rengine döner ve 2 px kalınlaşır (gölgeyle — yerleşim kaymaz). */
+html:root[data-sema="yildiz"] .yz .yz-alan:has(:is(input, textarea):focus-visible),
+html:root[data-sema="yildiz"] .yz .yz-duzen .alan:has(:is(input, textarea, .secici-tetik):focus-visible):not(:has(> :is(.alan, .secici-alan))) {
+  border-bottom-color: var(--metin) !important;
+  box-shadow: 0 1px 0 var(--metin);
+}
+/* O-5: kılavuz videoları Tab durağı ama odak halkası yoktu. */
+html:root[data-sema="yildiz"] video:focus-visible { outline: 2px solid var(--odak-halka); outline-offset: 3px; }
+
+/* GÖRSEL DENETİM O-9 (21.10): basılı durum hover'dan ayrışmıyordu; birincil düğmede ve sekmelerde hover yoktu. Renk
+   değişmez (tuval tek renk), yalnız saydamlık/çizgi: hover birincil %86, seçili olmayan sekme metni koyulaşır + ince ayraç çizgisi (seçili: --kenarlik); basılıyken tüm Yıldız
+   düğmeleri 1 px aşağı iner ve birincil %72'ye koyulaşır — dokunmatikte "bastım" geri bildirimi. */
+html:root[data-sema="yildiz"] .yz .yz-b1:hover:not(:disabled) { opacity: .86; }
+html:root[data-sema="yildiz"] .yz .yz-b2:hover:not(:disabled) { border-bottom-color: var(--metin); }
+html:root[data-sema="yildiz"] .yz :is(.yz-liste-sekme:not(.yz-liste-sekme--secili), .yz-sekme:not(.yz-sekme--secili)):hover:not(:disabled) { border-bottom-color: var(--ayrac); color: var(--metin); }
+html:root[data-sema="yildiz"] .yz :is(button, a.yz-b1, a.yz-b2, a.yz-b3, a.yz-ekle):active:not(:disabled) { transform: translateY(1px); }
+html:root[data-sema="yildiz"] .yz .yz-b1:active:not(:disabled) { opacity: .72; }
+
+/* O-10 (21.10): panel dev rakamı (112 px) uzun tutarda sağ sütundaki "Seni bekleyen" satırlarına biniyordu. Rakam sol sütun
+   genişliğine göre küçülür (1440 tuvalinde sütun 645 px → 17,4 cqi = 112 px AYNEN); yine sığmazsa sütun içinde kırılır.
+   /cariler ve /urunler: on haneli tutar hücresinden taşıyordu → hücre içinde kırılır. */
+html:root[data-sema="yildiz"] .yildiz-bugun .yildiz-bugun-sol { container-type: inline-size; }
+@media (min-width: 1001px) {
+  html:root[data-sema="yildiz"] .yildiz-bugun .yildiz-bugun-rakam:not(#_) { font-size: min(112px, 17.4cqi); }
+}
+html:root[data-sema="yildiz"] .yildiz-bugun .yildiz-bugun-rakam:not(#_),
+html:root[data-sema="yildiz"] .yz-musteri .yz-musteri-tutar:not(#_),
+html:root[data-sema="yildiz"] .yz .yz-liste-d:not(#_) { overflow-wrap: anywhere; }
+html:root[data-sema="yildiz"] .yildiz-bugun .yildiz-bugun-sat-durum { white-space: nowrap; }   /* "9 gün" iki satıra bölünüyordu */
+
+/* O-14 (WCAG 2.4.1): "İçeriğe geç" — yalnız klavye odağında görünür, ilk Tab durağı. Ana içerik programla odaklanır,
+   kendisi halka çizmez (fare tıklamasında da). */
+html:root[data-sema="yildiz"] .icerige-gec { position: absolute; left: 16px; top: -200px; z-index: 1000; padding: 12px 20px; border-radius: 999px; background: var(--metin); color: var(--yuzey-govde); font-size: 16px; text-decoration: none; }
+html:root[data-sema="yildiz"] .icerige-gec:focus { top: 12px; outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+html:root[data-sema="yildiz"] main#ana-icerik:focus { outline: none; }
+
+/* O-21 (21.10): sunucu aramalı seçicide (Satın alma tedarikçi, İrsaliye cari) açılınca görünen "Aramak için en az 2 karakter"
+   / "Yükleniyor…" satırı 41 px idi; seçenek satırlarıyla aynı yükseklik (44 px) — liste açılıp kapanırken boy zıplamaz. */
+html:root[data-sema="yildiz"] body .secici-liste-kap .secici-bos:not(#_) { display: flex; align-items: center; min-height: 44px; }
+
+/* D-9 + O-15 (21.10): /urunler ve /urunler/agac telefonda sayılar etiketsiz akıyordu ("22 15,20 0 92.772 ₺"); fiyat gelince
+   satır yeniden kırılıp alttaki satırları 29–57 px itiyordu (CLS 0,11). ≤600 px: ad tam genişlik; değerler sabit 3 sütunlu
+   ızgarada, her biri küçük sütun adıyla — içerik uzunluğu satır yapısını değiştirmez. */
+@media (max-width: 600px) {
+  html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat:not(.yz-liste-sat--bas):not(#_) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px; align-items: end; }
+  html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat > :first-child:not(#_) { grid-column: 1 / -1; }
+  html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat > .yz-liste-eylem:not(#_) { grid-column: 1 / -1; justify-self: end; margin: 0; }
+  html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat > [data-etiket]:not(#_) { text-align: left; min-width: 0; overflow-wrap: anywhere; }
+  html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat > [data-etiket]::before { content: attr(data-etiket); display: block; margin-bottom: 2px; font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--metin-soluk); }
+}
+
+/* O-15 (21.10): tek sütunda (≤1000 px) özet ve sayım ekranlarında veri gelince rakam + cümle üstte belirip eylemleri ve sağ
+   sütunu 165–220 px aşağı itiyordu (/raporlar/kasa CLS 0,17 · /sayim 0,21). Yüklenirken yalnız üst satır + başlık görünür;
+   altındakiler veriyle birlikte BİR KEZ yerine oturur (görünür öğe kaymaz). */
+@media (max-width: 1000px) {
+  html:root[data-sema="yildiz"] .yz[aria-busy="true"] :is(.yz-ozet-cumle, .yz-ozet-eylem, .yz-ozet-sag, .yz-sayim-cumle, .yz-sayim-eylem, .yz-sayim-sag) { visibility: hidden; }
+}
+
+/* D-6 (21.10): uzun açıklama paragrafları ve çok satırlı tablo hücreleri 1,2 satır aralığındaydı — gövde metni 1,5. */
+html:root[data-sema="yildiz"] :is(#kl-aciklama, #gk-yazi-notu, .kvkk-metin, .kvkk-metin p, #kvkk-ozet p):not(#_) { line-height: 1.5; }
+html:root[data-sema="yildiz"] main :is(.izgara-tablo, .veri-tablosu) td:not(#_) { line-height: 1.45; }
+/* D-8 (21.10): tek sütunda özet cümlesi ile "Günü kapat" arasında ~4 px kalıyordu (geniş ekranda space-between açıyor). */
+@media (max-width: 1000px) {
+  html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-sol:not(#_) { gap: 24px; }
+}
+/* D-10: görsel gizli dosya girdisi klavyeyle odaklanınca düğmesi (etiket) halkayı taşır. */
+html:root[data-sema="yildiz"] input.gorunmez:focus-visible + label:is(.btn, .dugme) { outline: 2px solid var(--odak-halka); outline-offset: 2px; }
+/* D-10: Yıldız'ın genel girdi genişliği (width:100%) görsel gizli dosya girdisini 1280 px'e açıyordu — kırpık ama yerleşimde
+   yer kaplar; gizli girdi 1×1 kalır. */
+html:root[data-sema="yildiz"] input.gorunmez:not(#_):not(#__) { width: 1px; height: 1px; min-width: 0; padding: 0; margin: 0; border: 0; }

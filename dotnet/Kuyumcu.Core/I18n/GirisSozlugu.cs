@@ -46,7 +46,7 @@ public static class GirisSozlugu
     /// </summary>
     public static string ParolaYardim(string dil) => En(dil)
         ? "Ask your shop owner or manager: they can set a new password for you under Users → Reset password."
-        : "İşletme sahibine ya da müdürüne söyle: Kullanıcılar ekranında “Şifre Sıfırla” ile sana yeni parola verir.";
+        : "İşletme sahibine ya da müdürüne söyle: Kullanıcılar ekranında “Parolayı sıfırla” ile sana yeni parola verir.";
 
     /// <summary>Formun altındaki sağ bağlantı + kayıt formunun başlığı + gönder düğmesi.</summary>
     public static string YeniDukkanKur(string dil) => En(dil) ? "Set up a new shop" : "Yeni işletme kur";

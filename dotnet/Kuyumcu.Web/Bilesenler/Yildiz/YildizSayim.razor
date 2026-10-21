@@ -13,7 +13,7 @@
      bileşenin kimlikleri "yildiz-sayim-*".
    ═════════════════════════════════════════════════════════════════════════════ *@
 
-<div class="@(B.AyrintiAcik ? "yz yz-sayim yz-liste--ayrinti" : "yz yz-sayim")" id="yildiz-sayim">
+<div class="@(B.AyrintiAcik ? "yz yz-sayim yz-liste--ayrinti" : "yz yz-sayim")" id="yildiz-sayim" aria-busy="@(B.Yukleniyor ? "true" : null)">
     @if (B.AyrintiAcik)
     {
         <div class="yz-liste-ana">

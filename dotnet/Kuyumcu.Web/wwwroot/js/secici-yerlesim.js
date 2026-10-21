@@ -140,6 +140,20 @@
         var p = panel.getBoundingClientRect();
         var gorus = window.innerHeight || document.documentElement.clientHeight;
 
+        // Görsel denetim D-14 (21.10): Yıldız formlarında (.yz-duzen) liste AKIŞ İÇİNDEDİR (position: relative — tuval:
+        // açılan liste altındaki alanları iter). Orada yukarı açma uygulanamaz; /gider "Personel" listesi görüş alanının
+        // 52 px altına taşıyordu. Akış içi listede panel en çok görüş alanı boyunda olur ve AÇILDIKTAN SONRA kendisi
+        // görüş alanına kaydırılır (tetik üstte görünür kalır).
+        var konum = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(panel).position : '';
+        if (konum === 'relative' || konum === 'static') {
+            panel.style.setProperty('--secici-azami-boy', Math.max(0, Math.floor(gorus - t.height - 2 * PAY - ARALIK)) + 'px');
+            panel.setAttribute('data-katman-azami', '');
+            window.requestAnimationFrame(function () {
+                if (typeof panel.scrollIntoView === 'function') panel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            });
+            return true;
+        }
+
         var altYer = gorus - t.bottom - PAY;
         var ustYer = t.top - PAY;
 

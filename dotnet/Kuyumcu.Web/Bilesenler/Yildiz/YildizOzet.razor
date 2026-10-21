@@ -12,7 +12,7 @@
    ⚠ Satır içi style YOK: sütun ızgarası tema-yildiz.css'te .yz-ozet--{Tur}.
    ═════════════════════════════════════════════════════════════════════════════ *@
 
-<div class="@($"yz yz-ozet yz-ozet--{B.Tur}{(B.AyrintiAcik ? " yz-liste--ayrinti" : "")}")" id="@B.Kok">
+<div class="@($"yz yz-ozet yz-ozet--{B.Tur}{(B.AyrintiAcik ? " yz-liste--ayrinti" : "")}")" id="@B.Kok" aria-busy="@(B.Yukleniyor ? "true" : null)">
     @if (B.AyrintiAcik)
     {
         <div class="yz-liste-ana">

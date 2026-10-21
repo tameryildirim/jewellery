@@ -398,7 +398,7 @@ public sealed class AuthSifirlaEkranTestleri : BunitContext
         var bag = g.Find("#giris-parola-sifirla-bag");
         Assert.Equal("/sifre-sifirla", bag.GetAttribute("href"));
         Assert.Equal(M.GiristekiBaglanti, bag.TextContent.Trim());
-        Assert.Contains("Şifre Sıfırla", g.Find("#giris-parola-yardim").TextContent);
+        Assert.Contains("Parolayı sıfırla", g.Find("#giris-parola-yardim").TextContent);
         // Yalnız durum SORULUR (GET); hiçbir yazma isteği atılmaz.
         var tek = Assert.Single(istekler);
         Assert.Equal("GET", tek.Metot);
@@ -423,7 +423,7 @@ public sealed class AuthSifirlaEkranTestleri : BunitContext
         var g = GirisYardimAc();
         Assert.Empty(g.FindAll("#giris-parola-sifirla-bag"));
         var yardim = g.Find("#giris-parola-yardim").TextContent;
-        Assert.Contains("Şifre Sıfırla", yardim);
+        Assert.Contains("Parolayı sıfırla", yardim);
         Assert.DoesNotContain(M.KapaliBaslik, yardim);
         Assert.DoesNotContain("Exception", yardim);
     }

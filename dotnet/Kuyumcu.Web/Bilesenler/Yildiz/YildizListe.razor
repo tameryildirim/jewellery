@@ -24,7 +24,7 @@
             </div>
             @if (!B.AyrintiAcik && B.AramaId is { Length: > 0 } aramaId)
             {
-                <div class="yz-alan yz-liste-ara" id="@($"{B.Kok}-ara")">
+                <div class="yz-alan yz-liste-ara" id="@(aramaId == $"{B.Kok}-ara" ? $"{B.Kok}-ara-kutu" : $"{B.Kok}-ara")">   @* D-13: girdinin kimliğiyle çakışmasın *@
                     <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
                     <Kuyumcu.Web.Bilesenler.Form.Arama ElemanId="@aramaId"
                         Etiket="@B.AramaEtiket" YerTutucu="@B.AramaYerTutucu"
@@ -87,7 +87,8 @@
                             }
                             else
                             {
-                                <span class="@sinif" id="@h.Id">@IcMetin(h)</span>
+                                @* D-9 (21.10): sütun adı hücrede taşınır — dar ekranda başlık satırı çizilmediğinde değerin etiketi (CSS ::before). *@
+                                <span class="@sinif" id="@h.Id" data-etiket="@(i < B.Sutunlar.Count && B.Sutunlar[i].Baslik is { Length: > 0 } bb ? bb : null)">@IcMetin(h)</span>
                             }
                         }
                         @if (B.EylemSutunu)

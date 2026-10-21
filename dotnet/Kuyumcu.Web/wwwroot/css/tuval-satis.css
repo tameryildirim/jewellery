@@ -1469,6 +1469,14 @@ html[data-mod] .islem-sayfa #islem-alt-satir > #islem-vazgec {
 .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) > .fis-arama-meta { grid-column: 1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) > .fis-arama-fiyat { grid-column: 2; grid-row: 2; justify-self: end; }
 .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) > .fis-arama-stok { grid-column: 3; grid-row: 2; justify-self: end; }
+/* GÖRSEL DENETİM O-13 (21.10): 375 px'te ayar·gram "22 Ayar…" diye kesiliyordu (4 sonucun 3'ü) — kuyumcu için asıl bilgi.
+   ≤600 px: ayar·gram kendi satırında tam; fiyat ve stok altında. */
+@media (max-width: 600px) {
+  .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) { grid-template-columns: minmax(0, 1fr) auto; }
+  .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) > .fis-arama-meta:not(#_) { grid-column: 1 / -1; grid-row: 2; white-space: normal; overflow: visible; text-overflow: clip; }
+  .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) > .fis-arama-fiyat:not(#_) { grid-column: 1; grid-row: 3; justify-self: start; }
+  .islem-sayfa .fis-arama-oneri:has(> .fis-arama-stok) > .fis-arama-stok:not(#_) { grid-column: 2; grid-row: 3; }
+}
 /* KESIF-P5 t2 (doğrulayıcı DÜŞÜK): kasası olmayan kiracıda ALDIM sütunundaki kasa seçicisi yarım sütunda (124 px)
    "Kasa seçin..." yer tutucusunu iki satıra kırıyordu → seçim bekleyen seçici satırın tamamını alır. */
 .tuval-tezgah .fis-tuval-icerik > .form-grid-2 > .alan:has(> .secici-alan .secici-metin.yer-tutucu) { grid-column: 1 / -1; }

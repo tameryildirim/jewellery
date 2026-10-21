@@ -54,6 +54,10 @@
    HER bileşende gerçekten gizler; aynı sınıf hatanın başka yerdeki
    örneklerini de kapatır. Kilit: S1gMenuTuvalTestleri + denetim.sh S1-g. */
 [hidden] { display: none !important; }
+/* GÖRSEL DENETİM O-11 (21.10): belge numarası (FTR-2026-000009) ortasından bölünmez. */
+.no-bolunmez { white-space: nowrap; }
+/* O-10: uzun ad hücresi en çok iki satır, fazlası "…" (tam ad title ipucunda). */
+.hucre-iki-satir { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 
 html, body { margin: 0; height: 100%; }
 body {
@@ -504,6 +508,11 @@ tr.satir-vurgu { background: var(--vurgu-yuzey); }
 .belge-tarihler { margin-top: 18px; color: color-mix(in srgb, currentColor 70%, transparent); font-size: 8.5pt; }
 .belge .belge-imza { gap: 64px; margin-top: 64px; }
 .belge-imza p { margin-top: 6px; color: color-mix(in srgb, currentColor 62%, transparent); font-size: 8pt; letter-spacing: .12em; text-transform: uppercase; }
+/* GÖRSEL DENETİM D-5 (21.10): ekran önizlemesinde 7,5 pt = 10 px etiketler (DÜZENLEYEN, KALEMLER…) okunmuyordu. Ekranda en az
+   12 px; kâğıtta 7,5 pt aynen (baskı kuralı aşağıda değişmez). */
+@media screen {
+    .belge-no .etiket, .belge h2:not(#_), .belge-tablo th, .belge-imza p { font-size: 12px; }
+}
 @media print {
     /* Yıldız kabuğunun üst şeridi (amblem, menü, kur, kullanıcı) kâğıda çıkmaz — eski kabukla aynı kural. */
     .yildiz-ust, .yildiz-menu-dugme { display: none !important; }

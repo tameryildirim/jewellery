@@ -31,7 +31,11 @@ public partial class Islemler
     internal bool YildizTezgahMi => tur == "SATIS" && !DigerAcik && !yukleniyor;
 
     /// <summary>Sayfa kabının ek sınıfları (CSS: tuvalde olmayan özgün parçalar gizli; müşteri/tür açılınca görünür).</summary>
-    private string YildizSinif => !YildizTezgahMi ? YildizTurSinif   // P-TEZGAH-TUR-KIMLIK: öteki türler (Islemler.TurKimlik.cs)
+    /// <summary>O-15 (21.10): satış yüzü yüklenirken de Yıldız kabı — eski tür ızgarası ve üst bar önce çizilip sonra
+    /// gizleniyordu (375'te 120 px sıçrama, CLS 0,14).</summary>
+    internal bool YildizTezgahYuklenirken => tur == "SATIS" && !DigerAcik && yukleniyor;
+
+    private string YildizSinif => !YildizTezgahMi && !YildizTezgahYuklenirken ? YildizTurSinif   // P-TEZGAH-TUR-KIMLIK: öteki türler (Islemler.TurKimlik.cs)
         : " yz-islem" + (YildizMusteriGorunur ? " yz-musteri-acik" : "") + (yildizTurlerAcik ? " yz-turler-acik" : "");
 
     /// <summary>

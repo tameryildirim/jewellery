@@ -389,6 +389,14 @@
     {
         Dil.Degisti += Yenile;
         await Listele();
+        // O-15 (21.10): açık sayım varsa ilk çizimden ÖNCE açılır (eskiden ilk çizimden sonra açılıyordu → boş yüz çizilip
+        // açık sayım yüzüne geçerken 375'te eylemler 270 px kayıyordu, CLS 0,21). Yüklenene dek Yıldız yüzü aria-busy.
+        if (aktif is null && oturumlar.FirstOrDefault(o => o.Durum == "ACIK") is { } acikSayim)
+        {
+            yildizOtoAcildi = true;
+            await Yukle(acikSayim.Id);
+        }
+        yildizIlkYuklendi = true;
         try
         {
             subeler = await Api.GetAsync<List<Ozet>>("/subeler");

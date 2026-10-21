@@ -496,6 +496,9 @@
     protected override async Task OnInitializedAsync()
     {
         Dil.Degisti += Yenile;
+        // O-15 (21.10): tuval açılışı "Hepsi" — önce "Açık" listesi çizilip ilk çizimden sonra "Hepsi"ye geçiliyordu; araya
+        // giren satırlar listeyi 375'te itiyordu (CLS 0,12). Tek istek, tek çizim.
+        durum = "TUMU"; yildizIlkSekme = true;
         await Yukle();
         await IsleriYukle();
     }

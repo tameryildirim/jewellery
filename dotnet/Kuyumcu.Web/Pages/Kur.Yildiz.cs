@@ -69,7 +69,7 @@ public partial class Kur
             ]);
             return new YildizOzetBaglami
             {
-                Kok = "yildiz-kur", Tur = "kur",
+                Kok = "yildiz-kurlar", Tur = "kur",   // D-13: "yildiz-kur" üst şeridin kimliği — satır kimlikleri (has, 22) çakışıyordu
                 Ust = string.Join(" · ", new[] { YildizParaSozlugu.ParaBanka(dil), kaynak, saat }.Where(x => !string.IsNullOrEmpty(x))),
                 Baslik = baslik,
                 Rakam = g is null ? null : YildizBugunBicim.KurTam(g.AltinHasFiyati),

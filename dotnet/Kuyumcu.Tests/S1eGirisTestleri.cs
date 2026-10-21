@@ -189,7 +189,7 @@ public sealed class S1eGirisTestleri : BunitContext
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#giris-parola-yardim-yukleniyor")));
         var yardim = e.Find("#giris-parola-yardim").TextContent;
         Assert.Contains("Kullanıcılar", yardim);
-        Assert.Contains("Şifre Sıfırla", yardim);
+        Assert.Contains("Parolayı sıfırla", yardim);
         // AUTH-SIFIRLA tur 2: bölme yalnız sıfırlama DURUMUNU sorar (GET); yazma isteği atılmaz.
         Assert.All(istekler, i => Assert.Equal("GET", i.Item1));
         Assert.All(istekler, i => Assert.EndsWith("/auth/parola-sifirlama/durum", i.Item2));

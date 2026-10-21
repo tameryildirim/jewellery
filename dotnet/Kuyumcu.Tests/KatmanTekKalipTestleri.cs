@@ -151,6 +151,23 @@ public sealed class KatmanTekKalipTestleri
         Assert.Equal("min(24rem, var(--secici-azami-boy))", kural.Deger);
     }
 
+    [Fact]
+    public void K1_07b_akis_ici_liste_yukari_acilmaz_kendini_gorus_alanina_kaydirir()
+    {
+        // Görsel denetim D-14 (21.10): Yıldız formunda liste akış içinde (position: relative) — .yukari etkisizdi,
+        // /gider "Personel" listesi görüş alanının 52 px altına taşıyordu. Akış içi panelde yukarı sınıfı konmaz,
+        // azami boy görüş alanı − tetik − 2×PAY − ARALIK olur ve panel açıldıktan sonra kendini görüş alanına kaydırır.
+        var r = SeciciYerlestir(800, 480, 524, 326, "relative");
+        Assert.Equal("", r.Sinif);
+        Assert.Equal("736px", r.Azami);   // 800 − 44 − 16 − 4
+        Assert.True(r.Oznitelik);
+        Assert.True(r.Kaydirildi);
+        // Mutlak konumlu (eski kabuk) panelde eski karar AYNEN: yukarı açılır, kendini kaydırmaz.
+        var m = SeciciYerlestir(812, 530, 574, 60, "absolute");
+        Assert.Equal("yukari", m.Sinif);
+        Assert.False(m.Kaydirildi);
+    }
+
     // ── js/katman.js'in GERÇEK kodu, node + sahte DOM ─────────────────────────
 
     private sealed record Sonuc(string? Ust, string? Sol, string? Azami, string? Katman, string? Yon, bool Odak);
@@ -450,31 +467,34 @@ public sealed class KatmanTekKalipTestleri
             r.GetProperty("ic").GetInt32());
     }
 
-    private sealed record SeciciSonuc(string Sinif, string? Azami, bool Oznitelik);
+    private sealed record SeciciSonuc(string Sinif, string? Azami, bool Oznitelik, bool Kaydirildi);
 
-    private static SeciciSonuc SeciciYerlestir(double gh, double tUst, double tAlt, double panelBoy)
+    private static SeciciSonuc SeciciYerlestir(double gh, double tUst, double tAlt, double panelBoy, string konum = "")
     {
         var yol = CssKaynak.Yol("Kuyumcu.Web", "wwwroot", "js", "secici-yerlesim.js");
         var kosum = """
             const fs = require('fs'); const vm = require('vm');
-            const [yol, gh, tU, tA, pb] = process.argv.slice(2).map((x, i) => i ? Number(x) : x);
+            const [yol, gh, tU, tA, pb] = process.argv.slice(2, 7).map((x, i) => i ? Number(x) : x);
+            const konum = process.argv[7] || ''; let kaydi = false;
             const sinif = new Set(); const props = {}; const attrs = {};
             const panel = { classList: { add: c => sinif.add(c), remove: c => sinif.delete(c), contains: c => sinif.has(c) },
               style: { setProperty: (k, v) => { props[k] = v; }, removeProperty: k => { delete props[k]; } },
               setAttribute: (k, v) => { attrs[k] = v; }, removeAttribute: k => { delete attrs[k]; },
-              getBoundingClientRect: () => ({ left: 10, right: 330, width: 320, top: tA + 4, bottom: tA + 4 + pb, height: pb }) };
+              getBoundingClientRect: () => ({ left: 10, right: 330, width: 320, top: tA + 4, bottom: tA + 4 + pb, height: pb }),
+              scrollIntoView: () => { kaydi = true; } };
             const tetik = { getBoundingClientRect: () => ({ left: 10, right: 330, width: 320, top: tU, bottom: tA, height: tA - tU }), scrollIntoView: () => {} };
             const document = { getElementById: id => id === 'p' ? panel : tetik, documentElement: { clientWidth: 1440, clientHeight: gh } };
             const window = { innerWidth: 1440, innerHeight: gh };
+            if (konum) { window.getComputedStyle = () => ({ position: konum }); window.requestAnimationFrame = f => f(); }
             vm.runInNewContext(fs.readFileSync(yol, 'utf8'), { window, document });
             window.kuyumcuSecici.yerlestir('p', 't');
-            console.log(JSON.stringify({ sinif: [...sinif].filter(c => c === 'yukari').join(''), azami: props['--secici-azami-boy'] ?? null, oz: 'data-katman-azami' in attrs }));
+            console.log(JSON.stringify({ sinif: [...sinif].filter(c => c === 'yukari').join(''), azami: props['--secici-azami-boy'] ?? null, oz: 'data-katman-azami' in attrs, kaydi }));
             """;
-        using var d = JsonDocument.Parse(Node(kosum, yol, gh, tUst, tAlt, panelBoy));
+        using var d = JsonDocument.Parse(Node(kosum, yol, gh, tUst, tAlt, panelBoy, konum));
         var r = d.RootElement;
         return new SeciciSonuc(r.GetProperty("sinif").GetString()!,
             r.GetProperty("azami").ValueKind == JsonValueKind.Null ? null : r.GetProperty("azami").GetString(),
-            r.GetProperty("oz").GetBoolean());
+            r.GetProperty("oz").GetBoolean(), r.GetProperty("kaydi").GetBoolean());
     }
 
     // ── KATMAN-1b: GÖRÜNMEZ (0×0) AÇICI ─────────────────────────────────────────

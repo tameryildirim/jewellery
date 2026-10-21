@@ -37,10 +37,12 @@ else
     <CascadingValue Value="sekmeYuvasi" IsFixed="true">
     <div class="@($"uygulama yildiz-kabuk{(TamEkranRotasi(new Uri(Nav.Uri).AbsolutePath) ? " yildiz-tum-ekranlar" : "")}")" id="yildiz-kabuk">
         <div class="icerik-sutunu">
+            @* O-14: ilk Tab durağı — üst menüyü atlar (js/tema.js odağı main'e taşır; satır içi betik CSP'de yasak). *@
+            <a class="icerige-gec" id="icerige-gec" href="#ana-icerik">@KabukErisimSozlugu.IcerigeGec(Dil.Dil)</a>
             <YildizUstMenu />
             <UstBar />
             <PwaBandi />   @* PAKET-44 Faz B: çevrimdışı / yeni sürüm bandı (giriş sayfasında bu dal çizilmez) *@
-            <main class="ana-icerik">
+            <main class="ana-icerik" id="ana-icerik" tabindex="-1">
                 @if (Oturum.Kullanici?.SaltOkunur == true)
                 {
                     @* D1-14: mali müşavir hesabı — her ekranda kayıt değiştirilemeyeceği söylenir (sunucu da reddeder). *@

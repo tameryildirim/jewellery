@@ -89,6 +89,7 @@ Başkasının satırını değiştirme/silme yok.
 | 19.10 00:21 | TEK | 3e2e56d · 4c0d288 · b7f4a5d | D2-12 yüzük ölçüsü · dilek listesi · sadakat puanı (mali etkisiz) · uykuda müşteriler (Müşteriler sekmesi + Raporlar) · MASAK tatil testi düzeltmesi | 12704/0 · denetim yalnız P-30 | d2-12c |
 | 19.10 00:26 | TEK | 635d216 | D3-01 ana ekrana ekle (manifest, Mihenk amblemi ikonları, iOS etiketleri; Chrome manifesti hatasız okudu) | 12705/0 | d3-01 |
 | 19.10 01:02 | TEK | 7242eba · 0e7cd72 | D3-11 dış API (anahtar özetle saklanır, KUR/URUN kapsamı, iptal) + canlı kur kanalı /hubs/disa-kur — canlıda uçtan uca: 200 / kapsam dışı 403 / iptal sonrası 401 | 12707/0 · mutasyon yakalandı | d3-11b |
+| 21.10 21:34 | TEK | 990ec75 | Görsel denetim (RAPOR.md) KRİTİK+YÜKSEK kapandı: K-1, Y-1..Y-8, O-16, O-19 — tarayıcı ölçümü 26/26 (dogrula-ky.mjs) | 12.810/12.814 (1 dalgalı Y4A eşzamanlı, tek başına 3/3) · denetim yalnız P-30 | gorsel-ky · 5179 /urunler 1024 çakışma yok |
 
 **Kurucu kararı bekleyen (kodlanmadı — mevcut kararlarla çelişiyor):**
 - D1-08 eritme/fire/takoz ve D3-09 atölye/iş emri: K-13 ve H-5 "imalat kapsam dışı" kararları (denetim HURDA_FIRE_SIZINTISI kilidi, HARIC-LISTESI giriş ekranında).

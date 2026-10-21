@@ -138,10 +138,17 @@
 
             <div class="alan">
                 <label for="ia-dosya">@Dil.T.IceAktarim.DosyaSec</label>
-                <InputFile id="ia-dosya" class="girdi" OnChange="DosyaSecildi" accept=".csv,text/csv" />
+                @* D-10 (21.10): tarayıcının ham "Dosya Seç · Dosya seçilmedi" kontrolü yerine BelgeYukleyici'deki özel düğme
+                   (girdi görsel gizli, klavyeyle odaklanır; etiket düğme gibi çizilir). *@
+                <InputFile id="ia-dosya" class="gorunmez" OnChange="DosyaSecildi" accept=".csv,text/csv" />
+                <label for="ia-dosya" id="ia-dosya-dugme" class="btn btn-ikincil">@Dil.T.Belge.DosyaSec</label>
                 @if (dosyaAdi is not null)
                 {
                     <p class="dosya-onizleme" id="ia-dosya-secili">@dosyaAdi — @KbMetni(dosyaBoyut)</p>
+                }
+                else
+                {
+                    <p class="dosya-onizleme metin-soluk" id="ia-dosya-yok">@KesifP4Sozlugu.Al(Dil.Dil).DosyaSecilmedi</p>
                 }
                 @if (dosyaHatasi is not null)
                 {

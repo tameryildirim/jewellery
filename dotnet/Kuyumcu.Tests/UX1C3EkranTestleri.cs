@@ -329,7 +329,7 @@ public sealed class UX1C3EkranTestleri : BunitContext
         var c = Render<Kuyumcu.Web.Pages.Raporlar>();
         c.WaitForAssertion(() => Assert.Contains("Kâr kaynağı", c.Markup, StringComparison.Ordinal));
 
-        Assert.Contains("Kâr-Zarar hesabı", c.Markup, StringComparison.Ordinal);
+        Assert.Contains("Kâr-zarar hesabı", c.Markup, StringComparison.Ordinal);
         // Eski "KÂR (satış − alış)" rakamı artık KENDİ adıyla, ayrı kartta.
         Assert.Contains("Alış-satış nakit farkı", c.Markup, StringComparison.Ordinal);
         Assert.Contains("171.500", c.Markup, StringComparison.Ordinal);
