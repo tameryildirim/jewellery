@@ -587,7 +587,9 @@ public sealed class S31PanelSadeTestleri : BunitContext
     public void TP1_02a_Kar_403_ise_KAR_YAZILMAZ_uydurma_sifir_yok_bant_yok()
     {
         ozel["/raporlar/kar-zarar"] = (HttpStatusCode.Forbidden, """{"hata":"yetki yok"}""");
-        var e = Basit("TEZGAHTAR");
+        // Görsel denetim O-19 (21.10): TEZGAHTAR'da rapor uçlarına istek ATILMAZ (sunucu zaten 403). Kâr ucunun 403'ü artık
+        // rapor rolü olan ama kâr yetkisi daraltılmış kullanıcıda (MUHASEBE) sınanır.
+        var e = Basit("MUHASEBE");
         Bekle(e);
 
         Assert.NotNull(e.Find("#yildiz-bugun-rakam .yildiz-bugun-tam"));

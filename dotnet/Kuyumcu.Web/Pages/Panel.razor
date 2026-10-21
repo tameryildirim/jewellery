@@ -887,12 +887,21 @@
         ? $"{T.KarIpucu}. {string.Format(T.KarEksikIpucu, karMaliyetiBilinmeyen)}"
         : T.KarIpucu;
 
+    /// <summary>Görsel denetim O-19 (21.10): rapor uçları sunucuda SAHIP/MUDUR/MUHASEBE ister; tezgâhtar için istek atılıp
+    /// 403 alınıyor, konsol kirleniyordu. Rol biliniyor ve yetkisizse aynı 403 yolu yerelde çalışır (ekran davranışı aynı).</summary>
+    private void RaporKapisi()
+    {
+        if (Oturum.Kullanici?.Rol is { } rol && rol is not ("SAHIP" or "MUDUR" or "MUHASEBE"))
+            throw new ApiHata(403, "");
+    }
+
     private async Task YukleKar()
     {
         var gun = Bicim.Makine(Bicim.IsletmeBugun);
         string? istenen = null;
         try
         {
+            RaporKapisi();   // Görsel denetim O-19: rapor rolü yoksa istek ATILMAZ (403 yolu yerel)
             await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
             istenen = SubeliSorgu.Sube(Oturum);
             var k = await Api.GetAsync<PanelKarOzeti>(SubeliSorgu.Ekle($"/raporlar/kar-zarar?baslangic={gun}&bitis={gun}", Oturum));
@@ -1144,6 +1153,7 @@
     {
         try
         {
+            RaporKapisi();   // Görsel denetim O-19: rapor rolü yoksa istek ATILMAZ (403 yolu yerel)
             var y = await Api.GetAsync<YaslandirmaSz.YaslandirmaYaniti>(
                 $"/raporlar/cari-yaslandirma?limit={BorcluSinir}");
             acikHesaplar = y.YaslananCariler ?? [];
@@ -1160,6 +1170,7 @@
     {
         try
         {
+            RaporKapisi();   // Görsel denetim O-19: rapor rolü yoksa istek ATILMAZ (403 yolu yerel)
             var y = await Api.GetAsync<VadeSz.Yanit>("/raporlar/vade-takibi");
             vadeler = (y.Cariler ?? []).ToDictionary(c => c.CariId);
         }
@@ -1173,6 +1184,7 @@
     {
         try
         {
+            if (Hizmetler.GetService(typeof(YetkiServisi)) is YetkiServisi ys && ys.Yuklendi && !ys.Erisebilir("bildirim")) throw new ApiHata(403, "");   // O-19
             var y = await Api.GetAsync<BildirimSz.Yanit>($"/bildirimler?durum=ACIK&limit={BildirimSinir}");
             bildirimler = y.Satirlar.Where(b => b.IlgiliVarlikTuru != "TevsikIhlali").ToList(); nakitAyrildi = y.Satirlar.Count - bildirimler.Count;   // YASAL-2 tur 3: nakit sınırı aşımı TEK kaynaktan — üstteki kırmızı şerit (tevsik/ihlaller); burada ikinci kez sayılmaz
             bildirimDahaFazla = y.DahaFazlasiVar;
@@ -1321,6 +1333,7 @@
         string? istenen = null;
         try
         {
+            RaporKapisi();   // Görsel denetim O-19: rapor rolü yoksa istek ATILMAZ (403 yolu yerel)
             await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
             istenen = SubeliSorgu.Sube(Oturum);
             var y = await Api.GetAsync<GunlukOzet>(SubeliSorgu.Ekle($"/raporlar/gunluk?tarih={Bicim.Makine(Bicim.IsletmeBugun)}", Oturum));
@@ -1345,6 +1358,7 @@
         string? istenen = null;
         try
         {
+            RaporKapisi();   // Görsel denetim O-19: rapor rolü yoksa istek ATILMAZ (403 yolu yerel)
             var bugun = DateTime.Today;
             await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
             istenen = SubeliSorgu.Sube(Oturum);
@@ -1448,6 +1462,7 @@
         string? istenen = null;
         try
         {
+            RaporKapisi();   // Görsel denetim O-19: rapor rolü yoksa istek ATILMAZ (403 yolu yerel)
             var bugun = DateOnly.FromDateTime(DateTime.Today);
             await SubeliSorgu.HazirAsync(Oturum);   // ŞUBE-KAPSAM-B: seçili şube
             istenen = SubeliSorgu.Sube(Oturum);

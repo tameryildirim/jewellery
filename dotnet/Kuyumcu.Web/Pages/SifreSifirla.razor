@@ -27,14 +27,13 @@
 
 <PageTitle>@Marka.SayfaBasligi(M.IstekBaslik)</PageTitle>
 
-<div class="giris-sayfa giris-iki-panel" id="sifirla-sayfa">
+@* Görsel denetim Y-5 · D-2 (21.10): giriş ekranıyla AYNI dil — Yıldız amblemi (taş + MİHENK, h1), tek kart, sağ panel yok.
+   Eski kare logo, ayrı marka satırı ve şekilli sağ panel kaldırıldı; form, dil seçici ve akış AYNEN. *@
+<div class="giris-sayfa giris-iki-panel giris-yildiz" id="sifirla-sayfa">
     <main class="giris-sol" id="sifirla-sol">
         <div class="giris-kart" id="sifirla-kart">
             <div class="giris-kart-ust">
-                <div class="giris-marka" id="sifirla-marka">
-                    <span class="giris-marka-rozet" aria-hidden="true"><Ikon Ad="@Ikonlar.Marka" /></span>
-                    <p class="giris-marka-ad">@KabukTuvalSozlugu.MarkaYazimi</p>
-                </div>
+                    <h1 class="giris-amb" id="sifirla-amblem" aria-label="@KabukTuvalSozlugu.MarkaYazimi">@Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemTasi(Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.GirisTasi)<svg class="amb-yz" width="220" height="32" viewBox="0 0 110 16" aria-hidden="true" focusable="false"><text x="57" y="13" text-anchor="middle" fill="url(#giris-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg></h1>
                 <div class="giris-dil" id="sifirla-dil"><DilSecici /></div>
             </div>
 
@@ -124,18 +123,10 @@
         </div>
     </main>
 
-    <aside class="giris-sag" id="sifirla-panel">
-        <div class="giris-sekil giris-sekil-1" aria-hidden="true"></div>
-        <div class="giris-sekil giris-sekil-2" aria-hidden="true"></div>
-        <div class="giris-sekil giris-sekil-3" aria-hidden="true"></div>
-        <div class="giris-sag-icerik">
-            <p class="giris-sag-baslik" id="sifirla-panel-baslik">@GirisSozlugu.PanelBaslik(Dil.Dil)</p>
-            <p class="giris-sag-alt" id="sifirla-panel-alt">@GirisSozlugu.PanelAlt(Dil.Dil)</p>
-        </div>
-    </aside>
 </div>
 
 @code {
+    private static string AmblemHarfleri => Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemHarfleri;
     private AuthSifirlaMetinleri M => AuthSifirlaSozlugu.Al(Dil.Dil);
 
     /// <summary>Bağlantıdaki jeton (yalnız bellekte; depoya yazılmaz). null = istek adımı.</summary>

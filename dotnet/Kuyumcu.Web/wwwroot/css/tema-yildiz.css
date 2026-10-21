@@ -2478,6 +2478,24 @@ html:root[data-sema="yildiz"] .yz .yz-duzen .secici-liste-kap:not(#_) { position
   }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt .yz-tezgah-fark { padding-top: 0; border-top: 0; }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt .yz-tezgah-fark-rakam { font-size: 40px; }
+  /* Görsel denetim Y-2/O-13 (21.10): barkod sonuç listesi yapışkan alt panelin (z 40) ÜSTÜNDE — son satır ("Ürün seç,
+     fiyatı kendin yaz") artık panelin altında kalmaz. */
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-giris .fis-arama-liste { z-index: 41; }
+}
+/* Görsel denetim Y-2 (21.10): dikey telefonda panel ekranın %37'sini kaplıyordu → aralıklar ve Fark rakamı küçülür. */
+@media (max-width: 480px) {
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt { gap: 10px; padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt .yz-tezgah-fark-rakam { font-size: 32px; }
+  /* "FARK" ile tutar aynı satırda (dikey yer ~24 px kazanılır); yasal not küçük yazı. */
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt .yz-tezgah-fark { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; row-gap: 2px; }
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt .yz-tezgah-fark > .yz-ust:not(#_) { margin: 0; display: inline-block; flex: 0 0 auto; width: auto; }
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt .yz-tezgah-fark > :not(.yz-ust):not(.yz-tezgah-fark-rakam) { flex-basis: 100%; }
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt .yz-tezgah-not { font-size: 13px; }
+}
+/* Görsel denetim Y-1 (21.10): yatay telefonda (yükseklik ≤ 500 px) yapışkan panel ekranın %73'ünü kaplayıp barkod alanını ve
+   satış türü sekmelerini örtüyordu → kısa ekranda panel akışta kalır (yapışmaz); Kaydet sayfa sonunda. */
+@media (max-width: 1000px) and (max-height: 500px) {
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt { position: static; }
 }
 
 /* ── Fişin altındaki özgün bildirimler Yıldız'da ekran dışında kalıyordu → Fark bloğunda (YildizTezgah); özgünleri çizilmez ── */
@@ -2999,9 +3017,11 @@ html:root[data-sema="yildiz"] .yz .yz-liste-eylem { display: flex; justify-conte
 html:root[data-sema="yildiz"] .yz .yz-liste-sat--soluk .yz-liste-ad { color: var(--metin-soluk); }
 /* Alt satır (tuval div.s margin-top:auto): not solda; "+ Tüm ayrıntılar" (.ekle kalıbı) aynı satırda sağda. */
 /* Not tuvaldeki gibi tam genişlik blok; "+ Tüm ayrıntılar" aynı satırın sağ ucunda (akış dışı; dar ekranda alt satıra iner). */
-html:root[data-sema="yildiz"] .yz .yz-liste-alt { position: relative; margin-top: auto; }
-html:root[data-sema="yildiz"] .yz .yz-liste-not { font-size: 14px; letter-spacing: .06em; }
-html:root[data-sema="yildiz"] .yz .yz-liste-alt > .yz-ekle { position: absolute; right: 0; bottom: 0; padding: 0; }
+/* Görsel denetim K-1 (21.10): eylemler eskiden hepsi aynı noktaya (absolute right/bottom 0) basılıyordu → "Fiyat kuralları",
+   "Setler", "Havale gönder" masaüstünde tıklanamıyordu. Artık tek akış satırı: not solda esner, eylemler sağda yan yana. */
+html:root[data-sema="yildiz"] .yz .yz-liste-alt { margin-top: auto; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 8px 24px; }
+html:root[data-sema="yildiz"] .yz .yz-liste-not { font-size: 14px; letter-spacing: .06em; flex: 1 1 320px; margin: 0; }
+html:root[data-sema="yildiz"] .yz .yz-liste-alt > .yz-ekle { padding: 0; white-space: nowrap; }
 
 /* Ayrıntı görünümü: kısa başlık + "Listeye dön"; ekranın özgün içeriği altında (data-yz-ozgun), kendi başlığı gizli. */
 html:root[data-sema="yildiz"] .yz.yz-liste--ayrinti { min-height: 0; }
@@ -3086,7 +3106,7 @@ html:root[data-sema="yildiz"] .yz .yz-sayim-ekler :is(.kart, .kart-govde) { bord
   html:root[data-sema="yildiz"] .yz .yz-liste-sek { flex-wrap: wrap; gap: 8px 24px; }
   html:root[data-sema="yildiz"] .yz .yz-liste-sekme { flex-shrink: 0; white-space: nowrap; }
   /* Satır: ad tam genişlik üstte; öteki hücreler altında akar, eylem sağa yaslı. Sütun başlığı satırı ekran okuyucuda kalır. */
-  html:root[data-sema="yildiz"] .yz .yz-liste-alt > .yz-ekle { position: static; margin-top: 16px; }
+  html:root[data-sema="yildiz"] .yz .yz-liste-alt { justify-content: flex-start; margin-top: 16px; }
   html:root[data-sema="yildiz"] .yz .yz-liste-tablo > .yz-liste-sat { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
   html:root[data-sema="yildiz"] .yz .yz-liste-tablo > .yz-liste-sat.yz-liste-sat--bas { display: none; }   /* dar ekranda sütun başlığı çizilmez: satır akar, değerler kendini anlatır (g, tarih, ₺) */
   html:root[data-sema="yildiz"] .yz .yz-liste-tablo > .yz-liste-sat > :first-child { flex-basis: 100%; }
@@ -3421,6 +3441,10 @@ html:root[data-sema="yildiz"] .yildiz-kabuk .ust-bar:has(> #ust-bar-yz-baslik) #
   html:root[data-sema="yildiz"] .yildiz-kabuk .ust-bar:has(> #ust-bar-yz-baslik) { padding-top: 24px; }
   html:root[data-sema="yildiz"] .yz-sayfa-baslik > h1:not(#_) { font-size: 40px; }
 }
+/* Görsel denetim Y-6 (21.10): üst barın dar ekran h1 kuralı (flex: 1 1 128px — yatay satırda GENİŞLİK tabanı) sütun düzenindeki
+   Yıldız başlığına YÜKSEKLİK olarak uygulanıyordu: 40 px başlık 128 px kutuya şişti, arama/yardım/zil satırı ~90 px aşağı düştü
+   (≥ 20 ekran). Sütunda başlık kendi boyunda kalır. */
+html:root[data-sema="yildiz"] .yz-sayfa-baslik > h1:not(#_):not(#__) { flex: 0 0 auto; }
 /* Etiketler: ürün yokken satır değeri seçim listesini açan düğme — tuval .k değeri (22/300/−0,01em, soluk) + b2 alt çizgisi
    (tıklanabilir olduğu görünsün); dolgu/kenar/köşe yok. */
 html:root[data-sema="yildiz"] .yz .yz-k-deger > .yz-etiket-urun-sec:not(#_) {
@@ -3964,3 +3988,10 @@ html:root[data-sema="yildiz"] body .yz-risk-kirmizi:not(#_) { background: var(--
 html:root[data-sema="yildiz"] body .yz-risk-sari:not(#_) { background: transparent; box-shadow: inset 0 0 0 1.5px var(--tehlike); }
 /* D1-02: etiket şablonu eylemleri */
 html:root[data-sema="yildiz"] body .yz-etiket-sablon:not(#_) { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 16px; }
+
+/* Görsel denetim Y-5 (21.10): belge ekranlarında (/cikti, /gider-pusulalari/{Id}/belge) üst bar rota adını eski kabuk boyunda
+   (22/300) yazıyordu. Belgenin kendi <h1>'i kâğıttadır; üst bardaki ad Yıldız özet başlığı ölçüsünde (40/300) — öğe <p> kalır. */
+html:root[data-sema="yildiz"] .yildiz-kabuk .ust-bar > #ust-bar-rota-adi:not(#_) { font-size: 40px; font-weight: 300; line-height: 1; letter-spacing: -0.03em; color: var(--metin); }
+@media (max-width: 480px) {
+  html:root[data-sema="yildiz"] .yildiz-kabuk .ust-bar > #ust-bar-rota-adi:not(#_) { font-size: 28px; }
+}

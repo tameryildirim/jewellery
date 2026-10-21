@@ -165,7 +165,7 @@ public sealed class BasitModMenuTestleri : BunitContext
         Assert.Contains("/cariler", yollar);
         Assert.Contains("/urunler", yollar);
         Assert.Contains("/kasalar", yollar);
-        Assert.Contains("/raporlar", yollar);
+        Assert.DoesNotContain("/raporlar", yollar);   // görsel denetim Y-7 (21.10): rapor uçları sunucuda tezgâhtara kapalı → menüde de yok
         // S1-g: Emanet (Günlük iş) ve Kur (Para ve banka) DURUR — yetki varsa.
         Assert.Contains("/kur", yollar);
         Assert.Contains("/emanet", yollar);

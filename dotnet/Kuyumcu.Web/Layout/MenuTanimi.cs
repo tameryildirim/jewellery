@@ -161,14 +161,17 @@ public static class MenuTanimi
         new(MenuGrubu.BelgeUyum, "/yasal-sinirlar", null, ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.Kilit, m => m.YasalSinirlar),
 
         // ── RAPORLAR ────────────────────────────────────────────────────────
+        // Görsel denetim Y-7 (21.10): rapor uçlarının hepsi sunucuda [RolGerekli(SAHIP, MUDUR, MUHASEBE)] (RaporController,
+        // RaporKatalogu.MuhasebeUstu). Menü satırında rol yoktu → tezgâhtar ekranı açıp denetimleri görüyor, altta kırmızı
+        // "gerekli rol" bandı çıkıyordu. Rol kümesi sunucuyla AYNI; ekran artık tek tip yetki kapısını gösterir.
         // Kalan raporlar menüye girmez; /raporlar'daki Rapor Merkezi kart
         // ızgarasından açılır (paket 34 § riskler: "menü şişmesi" reddi).
-        new(MenuGrubu.Rapor, "/raporlar", "rapor", [], Ikonlar.Raporlar, m => m.RaporMerkezi),
-        new(MenuGrubu.Rapor, "/raporlar/kar-zarar", "rapor", [], Ikonlar.KarZarar, m => m.KarZarar),
-        new(MenuGrubu.Rapor, "/raporlar/vade-takibi", "rapor", [], Ikonlar.VadeTakibi, m => m.VadeTakibi),
-        new(MenuGrubu.Rapor, "/raporlar/islem-defteri", "rapor", [], Ikonlar.Islemler, m => m.IslemDefteri),
-        new(MenuGrubu.Rapor, "/raporlar/satis-analizi", "rapor", [], Ikonlar.Raporlar, m => m.SatisAnalizi),
-        new(MenuGrubu.Rapor, "/raporlar/kasa", "rapor", [], Ikonlar.Kasalar, m => m.KasaRaporu),
+        new(MenuGrubu.Rapor, "/raporlar", "rapor", ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.Raporlar, m => m.RaporMerkezi),
+        new(MenuGrubu.Rapor, "/raporlar/kar-zarar", "rapor", ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.KarZarar, m => m.KarZarar),
+        new(MenuGrubu.Rapor, "/raporlar/vade-takibi", "rapor", ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.VadeTakibi, m => m.VadeTakibi),
+        new(MenuGrubu.Rapor, "/raporlar/islem-defteri", "rapor", ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.Islemler, m => m.IslemDefteri),
+        new(MenuGrubu.Rapor, "/raporlar/satis-analizi", "rapor", ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.Raporlar, m => m.SatisAnalizi),
+        new(MenuGrubu.Rapor, "/raporlar/kasa", "rapor", ["SAHIP", "MUDUR", "MUHASEBE"], Ikonlar.Kasalar, m => m.KasaRaporu),
 
         // ── YÖNETİM ─────────────────────────────────────────────────────────
         new(MenuGrubu.Yonetim, "/kullanicilar", "kullanici", [], Ikonlar.Kullanicilar, m => m.Kullanicilar),

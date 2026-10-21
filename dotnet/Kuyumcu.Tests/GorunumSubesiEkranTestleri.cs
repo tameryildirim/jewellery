@@ -517,9 +517,11 @@ public sealed class GorunumSubesiEkranTestleri : BunitContext
         var s = SeciciHazir();
         Assert.Empty(s.FindAll("#ust-sube-secim"));
         var p = Render<Kuyumcu.Web.Pages.Panel>();
-        p.WaitForAssertion(() => Assert.NotEmpty(Getler("/raporlar/gunluk")), TimeSpan.FromSeconds(10));
+        // Görsel denetim O-19 (21.10): tezgâhtarda rapor uçlarına istek atılmaz → şubeli istek olarak kasa nakit ayrımı izlenir.
+        p.WaitForAssertion(() => Assert.NotEmpty(Getler("/kasalar/nakit-ayrimi")), TimeSpan.FromSeconds(10));
         Assert.Empty(p.FindAll("#gorunum-rozeti"));
-        Assert.All(Getler("/raporlar/gunluk"), y => Assert.DoesNotContain("subeId", y, StringComparison.Ordinal));
+        Assert.Empty(Getler("/raporlar/gunluk"));
+        Assert.All(Getler("/kasalar/nakit-ayrimi"), y => Assert.DoesNotContain("subeId", y, StringComparison.Ordinal));
     }
 
     // ── § 4.4 — kapanmış şube tercihi ────────────────────────────────────────

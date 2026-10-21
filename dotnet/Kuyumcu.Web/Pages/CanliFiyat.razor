@@ -13,6 +13,8 @@
 <PageTitle>@Marka.SayfaBasligi(CanliFiyatSozlugu.Baslik(Dil.Dil))</PageTitle>
 
 <div class="vtam canli-fiyat" id="canli-fiyat">
+    @* Görsel denetim D-2 (21.10): kabuksuz ekranda h1 yoktu (üst bar çizilmez) → ekran okuyucu için tek h1; görünen başlık aynı. *@
+    <h1 class="gorsel-gizli" id="canli-fiyat-h1">@CanliFiyatSozlugu.Baslik(Dil.Dil)</h1>
     <SayfaBasi Anahtar="canli-fiyat" Baslik="@CanliFiyatSozlugu.Baslik(Dil.Dil)" />
     <HataBandi Mesaj="@hata" Id="canli-fiyat-hata" />
     @if (yukleniyor && pano is null) { <Yukleniyor /> }

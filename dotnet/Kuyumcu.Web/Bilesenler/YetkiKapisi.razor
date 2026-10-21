@@ -2,6 +2,7 @@
 @inject OturumServisi Oturum
 @inject NavigationManager Nav
 @inject DilServisi Dil
+@inject IServiceProvider Hizmetler
 @implements IDisposable
 
 @* ═════════════════════════════════════════════════════════════════════════
@@ -21,7 +22,22 @@
      çizilir ve karar sunucuya kalır (tahmin yok — Anayasa md.1).
    ═════════════════════════════════════════════════════════════════════════ *@
 
-@if (GerekenRoller is not { Length: > 0 } roller)
+@* Görsel denetim Y-7 (21.10): modül yetkisi olmayan ekranda (Yetkiler ekranında kapatılmış modül) sayfa çizilip sunucunun
+   "Bu ekran için yetkiniz yok (rapor)" bandı ham modül koduyla görünüyordu → aynı kapı, rolden bağımsız MODÜL koşuluyla da
+   çizilir. Kaynak TEK: menü satırının Modul alanı + YetkiServisi (menüyü süzen aynı liste). Yetkiler yüklenmeden karar yok. *@
+@if (ModulKapali is { } kapaliModul && Oturum.Kullanici is { } mk)
+{
+    <div class="kart" id="yetki-kapisi" role="alert">
+        <div class="kart-govde dikey-bosluk">
+            <h2 id="yetki-kapisi-baslik">@YetkiKapisiSozlugu.ModulBaslik(Dil.Dil)</h2>
+            <p class="metin-soluk" id="yetki-kapisi-aciklama">@string.Format(M.YetkiKapisiAciklama, KesifP1Sozlugu.RolAdi(mk.Rol, Dil.Dil))</p>
+            <div>
+                <a class="btn btn-ikincil" id="yetki-kapisi-panel" href="/">@M.YetkiKapisiPanel</a>
+            </div>
+        </div>
+    </div>
+}
+else if (GerekenRoller is not { Length: > 0 } roller)
 {
     @ChildContent
 }
@@ -60,6 +76,28 @@ else
     /// </summary>
     private string[]? GerekenRoller => Rota(new Uri(Nav.Uri).AbsolutePath);
 
+    /// <summary>Geçerli rotanın modülü kullanıcıya kapalıysa modül anahtarı; yetkiler yüklenmediyse null (karar yok).</summary>
+    /// <summary>Menüyü süzen yetki listesi; DI'da yoksa (eski bileşen testleri) modül kapısı devre dışı — karar sunucuda.</summary>
+    private YetkiServisi? Yetki => Hizmetler.GetService(typeof(YetkiServisi)) as YetkiServisi;
+
+    private string? ModulKapali
+    {
+        get
+        {
+            var modul = Modul(new Uri(Nav.Uri).AbsolutePath);
+            if (modul is null || Yetki is not { Yuklendi: true } y || Oturum.Kullanici is null) return null;
+            return y.Erisebilir(modul) ? null : modul;
+        }
+    }
+
+    /// <summary>Saf yardımcı: yol → menü satırının modül anahtarı (yoksa null).</summary>
+    public static string? Modul(string mutlakYol)
+    {
+        var yol = mutlakYol.Length > 1 ? mutlakYol.TrimEnd('/') : mutlakYol;
+        return MenuTanimi.Ogeler.Concat(MenuTanimi.AltBlok)
+            .FirstOrDefault(o => string.Equals(o.Yol, yol, StringComparison.OrdinalIgnoreCase))?.Modul;
+    }
+
     /// <summary>Saf yardımcı: yol → gereken roller (test edilebilir).</summary>
     public static string[]? Rota(string mutlakYol)
     {
@@ -74,6 +112,7 @@ else
         Nav.LocationChanged += Konum;
         Oturum.Degisti += Yenile;
         Dil.Degisti += Yenile;
+        if (Yetki is { } y) y.Degisti += Yenile;
     }
 
     private void Konum(object? _, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs __) => Yenile();
@@ -85,5 +124,6 @@ else
         Nav.LocationChanged -= Konum;
         Oturum.Degisti -= Yenile;
         Dil.Degisti -= Yenile;
+        if (Yetki is { } y) y.Degisti -= Yenile;
     }
 }

@@ -47,7 +47,7 @@
             @OzelMatrahIcerik
         </div>
     }
-    else if (ozelMatrahKod is null && kuyumFaturaVar)
+    else if (!ozelMatrahYetkiYok && ozelMatrahKod is null && kuyumFaturaVar)
     {
         @* PAKET YASAL-4 / Y4-C: sayfa sonundaki kapalı katlanır KALKTI. Kod KAPALI ve
            kiracıda KUYUM fatura varken başlık altında TEK satır rozet; uzun açıklama
@@ -2089,6 +2089,7 @@
     private string? ozelMatrahKaynak;
     private bool ozelMatrahAralikta = true;
     private string? ozelMatrahHata;
+    private bool ozelMatrahYetkiYok;   // Y-7: 403 → özel matrah satırı çizilmez
     // PAKET YASAL-4 / Y4-C: rozet yalnız kiracıda KUYUM fatura varken (sunucu söyler).
     private bool kuyumFaturaVar;
     private Kuyumcu.Core.I18n.Yasal4Metinleri Y4F => Kuyumcu.Core.I18n.Yasal4Sozlugu.Al(Dil.Dil);
@@ -2116,6 +2117,12 @@
             ozelMatrahAralikta = !a.TryGetProperty("aralikta", out var ar)
                 || ar.ValueKind != JsonValueKind.False;
             kuyumFaturaVar = a.TryGetProperty("kuyumFaturaVar", out var kf) && kf.ValueKind == JsonValueKind.True;
+        }
+        catch (ApiHata ex) when (ex.StatusCode == 403)
+        {
+            // Görsel denetim Y-7 (21.10): tezgâhtar faturaları açabilir ama yönetici ayarı olan özel matrah beyanını okuyamaz →
+            // kırmızı "okunamadı · gerekli rol" bandı yerine bölüm hiç çizilmez (hata değil, yetki sınırı).
+            ozelMatrahYetkiYok = true;   // ozelMatrahHata try başında zaten null
         }
         catch (Exception ex) when (ex is ApiHata or JsonException)
         {

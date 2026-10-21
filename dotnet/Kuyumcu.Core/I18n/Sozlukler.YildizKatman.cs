@@ -24,6 +24,8 @@ public static class YildizSayfaBasligiSozlugu
     private static string Raporlar(string dil) => En(dil) ? "Reports" : "Raporlar";
     private static string Yonetim(string dil) => En(dil) ? "Management" : "Yönetim";
     private static string MusteriStok(string dil) => En(dil) ? "Customers and stock" : "Müşteri ve stok";
+    private static string ParaBanka(string dil) => En(dil) ? "Money and bank" : "Para ve banka";
+    private static string Gunluk(string dil) => En(dil) ? "Daily work" : "Günlük iş";
     private static string Ile(string grup, string ek) => $"{grup} · {ek}";
 
     /// <summary>Rotanın üst satırı; Yıldız başlığı almayan rotada null.</summary>
@@ -49,6 +51,13 @@ public static class YildizSayfaBasligiSozlugu
         "/kilavuz" => Yonetim(dil),
         "/ayarlar" => Yonetim(dil),
         "/satin-alma" => MusteriStok(dil),
+        // Görsel denetim Y-5 (21.10): bu ekranlar eski kabuk başlığında kalıyordu (22/300 + saat + Yardım) → Yıldız başlık deseni.
+        "/gise" => Ile(ParaBanka(dil), En(dil) ? "morning hand-over, evening count" : "sabah teslim, akşam sayım"),
+        "/e-belgeler" => Ile(BelgeUyum(dil), En(dil) ? "invoices on their way to GİB" : "faturaların GİB yolculuğu"),
+        "/kvkk" => Ile(BelgeUyum(dil), En(dil) ? "privacy notice and consents" : "aydınlatma metni ve izinler"),
+        "/vitrin" => Ile(ParaBanka(dil), En(dil) ? "prices for the shop window" : "vitrin için fiyatlar"),
+        _ when yol.StartsWith("/siparisler/", StringComparison.Ordinal) => Ile(Gunluk(dil), En(dil) ? "order details" : "sipariş ayrıntısı"),
+        _ when yol.StartsWith("/banka/ekstre/", StringComparison.Ordinal) => Ile(ParaBanka(dil), En(dil) ? "statement matching" : "ekstre eşleştirme"),
         _ => null,
     };
 

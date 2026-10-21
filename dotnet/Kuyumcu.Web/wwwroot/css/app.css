@@ -15,6 +15,36 @@
    ═════════════════════════════════════════════════════════════════════════ */
 
 * { box-sizing: border-box; }
+/* ═══ Görsel denetim 21.10 — RAPOR ve LİSTE BASKISI (Y-3 · Y-4 · O-16 · D-11) ═════════════════════════════════
+   Y-3: koyu temada baskı siyah zeminli ya da beyaz zeminde açık renk yazılı çıkıyordu → js/tema.js baskı anında
+        açık temayı geçici uygular (beforeprint/afterprint, tercih SAKLANMAZ); burada ayrıca color-scheme açık.
+   Y-4: kâğıtta ekran başlığı ve tarih aralığı yoktu → js/tema.js #baski-baslik satırını içeriğin başına koyar
+        (ekran adı · tarih aralığı · basım zamanı); ızgara A4 genişliğinde kart düzenine düşüyordu → tablo zorlanır.
+   O-16: "Günü kapat", "+ Karşılaştır", sekmeler, "Sütunlar" kâğıda basılıyordu → düğmeler ve araç satırları gizli
+        (katlanır bölüm başlığı düğmesi KALIR: bölüm adıdır).
+   D-11: belgenin altında bej zemin bandı → gövde zemini beyaz. */
+#baski-baslik { display: none; }
+@media print {
+    :root { color-scheme: light; }
+    html, body, .ana-icerik, main { background: white !important; }
+    #baski-baslik { display: block; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid gray; color: black; }
+    #baski-baslik .baski-ad { font-size: 16pt; font-weight: 600; margin: 0; }
+    #baski-baslik .baski-alt { font-size: 9pt; margin: 2px 0 0; color: dimgray; }
+    button:not(.katlanir-baslik), .izgara-arac, [role="tablist"], .yz-ekle, .pwa-bant, .bant-uyari,
+    .yildiz-kullanici, .yildiz-kur, #blazor-error-ui { display: none !important; }
+    .izgara-kap > .tablo-sar { overflow: visible !important; }
+    .izgara-kap > .tablo-sar > .izgara-tablo { display: table !important; width: 100% !important; min-width: 0 !important; }
+    .izgara-kap > .tablo-sar > .izgara-tablo > thead { display: table-header-group !important; }
+    .izgara-kap > .tablo-sar > .izgara-tablo > tbody { display: table-row-group !important; }
+    .izgara-kap > .tablo-sar > .izgara-tablo > * > tr { display: table-row !important; padding: 0 !important; }
+    .izgara-kap > .tablo-sar > .izgara-tablo > * > tr > :is(td, th) { display: table-cell !important; position: static !important; padding: 3px 6px !important; font-size: 9pt; }
+    .izgara-kap > .tablo-sar > .izgara-tablo > tbody > tr > td[data-etiket]::before { content: none !important; }
+    .izgara-kap > .tablo-sar > .izgara-tablo > tbody > tr { break-inside: avoid; }
+    .kart-liste-ipucu, .tablo-sar::before, .tablo-sar::after { display: none !important; }
+    .izgara-kap > .tablo-sar > .izgara-tablo > * > tr > :is(td, th) { box-shadow: none !important; background-image: none !important; }
+    .yildiz-kabuk, .yz, .ana-icerik, .yz-liste-ana, .tablo-sar { background: white !important; min-height: 0 !important; height: auto !important; }
+}
+
 /* ── PAKET S1-g — GENEL [hidden] KURALI (KRİTİK, kurucu bulgusu 24.09) ─────
    UA sayfasının `[hidden]{display:none}` kuralı ÖZGÜLLÜĞÜ en düşük kuraldır;
    `.kenar-satir{display:flex}` gibi HERHANGİ bir sınıf kuralı onu ezer. Canlı

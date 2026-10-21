@@ -56,6 +56,40 @@
     window.kuyumcuTema = { uygula: uygula, oku: oku };
 
     uygula(oku());   // ilk boyamadan önce
+
+    // Görsel denetim 21.10 (Y-3 · Y-4): kâğıt her zaman beyaz. Baskı anında açık tema GEÇİCİ uygulanır (tercih saklanmaz)
+    // ve içeriğin başına ekran adı + tarih aralığı + basım zamanı satırı konur; baskıdan sonra her şey eski hâline döner.
+    var oncekiTema = null, baskida = false;   // iç içe beforeprint (ör. PDF üretimi) önceki temayı EZMESİN
+    function baskiBaslik() {
+        var ana = document.querySelector('main') || document.body;
+        if (!ana || document.getElementById('baski-baslik')) return;
+        var ad = (document.title || '').split(' — ')[0].trim();
+        var tarihler = Array.prototype.slice.call(document.querySelectorAll('main input[placeholder="gg.aa.yyyy"]'))
+            .map(function (g) { return (g.value || '').trim(); }).filter(function (v) { return v; });
+        var simdi = new Date();
+        var iki = function (n) { return (n < 10 ? '0' : '') + n; };
+        var basim = iki(simdi.getDate()) + '.' + iki(simdi.getMonth() + 1) + '.' + simdi.getFullYear() + ' ' + iki(simdi.getHours()) + ':' + iki(simdi.getMinutes());
+        var kutu = document.createElement('div'); kutu.id = 'baski-baslik';
+        var h = document.createElement('p'); h.className = 'baski-ad'; h.textContent = ad;
+        var alt = document.createElement('p'); alt.className = 'baski-alt';
+        alt.textContent = (tarihler.length ? tarihler.join(' – ') + ' · ' : '') + basim;
+        kutu.appendChild(h); kutu.appendChild(alt); ana.insertBefore(kutu, ana.firstChild);
+    }
+    window.addEventListener('beforeprint', function () {
+        var kok = document.documentElement;
+        if (baskida) return;
+        baskida = true;
+        oncekiTema = kok.getAttribute('data-tema');
+        kok.setAttribute('data-tema', 'aydinlik');
+        try { baskiBaslik(); } catch (e) { /* başlık yoksa baskı yine sürer */ }
+    });
+    window.addEventListener('afterprint', function () {
+        var kok = document.documentElement;
+        if (!baskida) return;
+        baskida = false;
+        if (oncekiTema === null) kok.removeAttribute('data-tema'); else kok.setAttribute('data-tema', oncekiTema);
+        var b = document.getElementById('baski-baslik'); if (b) b.remove();
+    });
 })();
 
 // ═══════════════════════════════════════════════════════════════════════════

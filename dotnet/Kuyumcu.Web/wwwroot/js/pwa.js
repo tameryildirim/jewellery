@@ -31,10 +31,28 @@
         navigator.serviceWorker.addEventListener('controllerchange', function () { window.location.reload(); });
         window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); bekleyenIstem = e; bildir('KurulumMumkun', true); });
         window.addEventListener('appinstalled', function () { bekleyenIstem = null; bildir('KurulumMumkun', false); });
-        window.addEventListener('online', function () { bildir('AgDurumu', true); });
-        window.addEventListener('offline', function () { bildir('AgDurumu', false); });
-        if (!navigator.onLine) bildir('AgDurumu', false);
+        // Görsel denetim Y-8 (21.10): "Çevrimdışısınız — kayıt yapılamaz" kararı yalnız navigator.onLine'a dayanıyordu; sunucu
+        // işletmenin yerel ağındayken işletim sisteminin ağ dalgalanması tezgâhtara yanlışlıkla "kayıt yapılamaz" dedirtiyordu.
+        // Artık olay yalnız İPUCU: karar sunucuya kısa yoklamayla verilir (HERHANGİ bir HTTP yanıtı = ulaşılıyor; ağ hatası/
+        // zaman aşımı = ulaşılamıyor). Ulaşılamıyorsa 5 sn arayla yoklanır; ulaşılınca bant kendiliğinden kalkar.
+        window.addEventListener('online', function () { yokla(); });
+        window.addEventListener('offline', function () { yokla(); });
+        if (!navigator.onLine) yokla();
         return true;
+    }
+
+    var yoklamaZamanlayici = null;
+    function yokla() {
+        var iptal = ('AbortController' in window) ? new AbortController() : null;
+        var sure = setTimeout(function () { if (iptal) iptal.abort(); }, 4000);
+        fetch('/api/v1/yoklama?t=' + Date.now(), { method: 'HEAD', cache: 'no-store', credentials: 'omit', signal: iptal ? iptal.signal : undefined })
+            .then(function () { clearTimeout(sure); sonuc(true); })
+            .catch(function () { clearTimeout(sure); sonuc(false); });
+    }
+    function sonuc(ulasiliyor) {
+        bildir('AgDurumu', ulasiliyor);
+        if (yoklamaZamanlayici) { clearTimeout(yoklamaZamanlayici); yoklamaZamanlayici = null; }
+        if (!ulasiliyor) yoklamaZamanlayici = setTimeout(yokla, 5000);
     }
 
     function kur() {
@@ -50,7 +68,7 @@
         return false;
     }
 
-    function cevrimdisiMi() { return !navigator.onLine; }
+    function cevrimdisiMi() { return !navigator.onLine; }   // yalnız ipucu; bant kararı yokla()'dan gelir
 
     window.kuyumcuPwa = { baslat: baslat, kur: kur, yenile: yenile, cevrimdisiMi: cevrimdisiMi };
 })();

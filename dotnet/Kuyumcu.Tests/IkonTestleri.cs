@@ -227,9 +227,8 @@ public sealed class IkonTestleri : BunitContext
             "/kasalar", "/vezne", "/gise", "/pos", "/pos/tahsilatlar", "/banka", "/kur",
             // ── Belge ve Uyum ── (⚠ /uyum ve /gider-pusulalari rol kapısında)
             "/faturalar",
-            // ── Dökümler ──
-            "/raporlar", "/raporlar/kar-zarar", "/raporlar/vade-takibi",
-            "/raporlar/islem-defteri", "/raporlar/satis-analizi", "/raporlar/kasa",
+            // ── Dökümler ── (⚠ görsel denetim Y-7, 21.10: raporlar sunucudaki gibi SAHIP/MUDUR/MUHASEBE rol kapısında;
+            //    bu fikstürün rolü "PATRON" → görünmez)
             // ── Yönetim ── (⚠ /isletme · /yetkiler · /denetim-izi · /kurulum ·
             //    /veri-disa-aktarim · /veri-ice-aktarim · /yedekler rol kapısında)
             "/kullanicilar",
@@ -302,7 +301,7 @@ public sealed class IkonTestleri : BunitContext
         var e = Render<GlobalArama>();
         e.InvokeAsync(() => yetki.HazirlaAsync()).GetAwaiter().GetResult();
         e.Find("#ust-kayit-ara").Click();
-        e.Find("#kabuk-arama-girdi").Input("rapor");
+        e.Find("#kabuk-arama-girdi").Input("kasa");   // Y-7: "rapor" ekranları bu fikstürün rolüne kapalı
         e.WaitForAssertion(() => Assert.NotEmpty(e.FindAll("#kabuk-arama-ekranlar use")));
         return e;
     }
