@@ -34,7 +34,14 @@
             @B.Bantlar
             <div class="yz-takvim-ay">
                 <span class="yz-ince yz-takvim-ay-adi" id="@($"{B.Kok}-ay")">@B.AyAdi</span>
-                <span class="yz-s yz-takvim-gunler" aria-hidden="true">@B.GunAdlari</span>
+            </div>
+            @* Görsel denetim O-20 (kurucu 21.10 — tuvalden bilerek sapma): gün adları ayın yanında tek metin değil, ızgaranın
+               İLK SATIRI — her ad kendi sütununun üstünde (PZT … PAZ). Ekran okuyucu için gün öğeleri zaten tarih taşır. *@
+            <div class="yz-takvim-gunler" id="@($"{B.Kok}-gunler")" aria-hidden="true">
+                @foreach (var ad in B.GunAdlari.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    <span class="yz-s yz-takvim-gun-adi">@ad</span>
+                }
             </div>
             <div class="yz-takvim-izgara" id="@($"{B.Kok}-izgara")" role="list" aria-label="@B.AyAdi">
                 @for (var i = 0; i < B.Bosluk; i++)

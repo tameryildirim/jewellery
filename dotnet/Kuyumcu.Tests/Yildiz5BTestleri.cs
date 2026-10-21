@@ -149,7 +149,8 @@ public sealed class Yildiz5BTestleri : BunitContext
         Assert.Contains("yz-gun--v", v.ClassName);
         Assert.Equal("/evraklar?vadeBas=2026-10-23&vadeBit=2026-10-23", v.GetAttribute("href"));
         Assert.Equal("SPAN", e.Find("#yildiz-v-gun-22").TagName);
-        Assert.Equal("PZT SAL ÇAR PER CUM CMT PAZ", e.Find("#yildiz-v .yz-takvim-gunler").TextContent);
+        // O-20 (kurucu 21.10): gün adları ızgaranın ilk satırı — 7 ayrı hücre, her biri kendi sütununda.
+        Assert.Equal(["PZT", "SAL", "ÇAR", "PER", "CUM", "CMT", "PAZ"], e.FindAll("#yildiz-v .yz-takvim-gunler > .yz-takvim-gun-adi").Select(x => x.TextContent).ToArray());
         Assert.Equal(["GÜN", "KİM", "TUTAR"], e.FindAll("#yildiz-v-liste > div:first-child > span").Select(s => s.TextContent));
     }
 

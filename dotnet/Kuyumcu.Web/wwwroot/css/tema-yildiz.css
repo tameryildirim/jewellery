@@ -4099,3 +4099,55 @@ html:root[data-sema="yildiz"] input.gorunmez:not(#_):not(#__) { width: 1px; heig
 @media (min-width: 1001px) and (max-width: 1360px) {
   html:root[data-sema="yildiz"] .yz-ozet--kur .yz-liste-sat:not(#_) { grid-template-columns: minmax(0, 1fr) 104px 104px; column-gap: 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TİPOGRAFİ SADELEŞTİRME (kurucu 21.10: "tuvalle çelişen dört bulguyu da yap" — görsel denetim O-6 · O-7 · D-7).
+   ⚠ Bu katman ONAYLI TUVALDEN BİLEREK SAPAR (kurucu kararı): tuvalin 64/200 başlığı ve 17/300 gövdesi hedef kitle
+   (yaşça büyük tezgâhtar) için inceydi; 30 ekranda 22 ayrı yazı boyu ölçüldü (tipo-once-1280.json).
+   • O-6 TEK EKRAN BAŞLIĞI: her ekranın h1'i 40 px / 300 (≤480 px: 28 px). Liste kalıbı (64), özet (40), üst bar
+     başlığı ve boş ekran aynı boyda.
+   • O-7 TEK ÖLÇEK 12 · 14 · 16 · 18 · 22 · 28 · 40: ara boylar (13 · 15 · 17 · 19 · 20 · 36) en yakın basamağa çekildi.
+     Büyük tutar rakamları (52–112 px) ölçek dışı "kahraman" sınıfıdır, boyları değişmez.
+   • D-7 AĞIRLIK: gövde 300 → 400; başlık ve kahraman rakam 200 → 300.
+   Hepsi :not(#_):not(#__) — sayfa kurallarının özgüllüğünü yener; !important yalnız kaynağı !important olan yerde.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html:root[data-sema="yildiz"] body { font-weight: 400; }
+/* O-6 — tek başlık */
+html:root[data-sema="yildiz"] body :is(.yz .yz-h1, .yz-ozet .yz-ozet-h1, .yz-sayim .yz-sayim-h1, .yz-bosekran .yz-bosekran-baslik,
+  .yz-sayfa-baslik > h1, .yildiz-kabuk .ust-bar > #ust-bar-rota-adi, .yildiz-kabuk .ust-bar > h1):not(#_):not(#__) {
+  font-size: 40px !important; font-weight: 300 !important; line-height: 1.05; letter-spacing: -0.02em;
+}
+@media (max-width: 480px) {
+  html:root[data-sema="yildiz"] body :is(.yz .yz-h1, .yz-ozet .yz-ozet-h1, .yz-sayim .yz-sayim-h1, .yz-bosekran .yz-bosekran-baslik,
+    .yz-sayfa-baslik > h1, .yildiz-kabuk .ust-bar > #ust-bar-rota-adi, .yildiz-kabuk .ust-bar > h1):not(#_):not(#__) { font-size: 28px !important; }
+}
+/* D-7 — ince (200) başlık/rakam 300 */
+html:root[data-sema="yildiz"] body :is(.yz .yz-ince, .yildiz-bugun .yildiz-bugun-rakam, .yildiz-bugun .yildiz-bugun-kurus,
+  .yz-ozet .yz-ozet-rakam-ek, .yz-sayim .yz-sayim-rakam-ek, .yz-tezgah-tam, .yz-tezgah-kurus):not(#_):not(#__) { font-weight: 300 !important; }
+/* O-7 + D-7 — gövde basamakları */
+html:root[data-sema="yildiz"] body .yz :is(.yz-liste-d, .yz-liste-ad):not(#_):not(#__) { font-size: 18px; font-weight: 400; }
+html:root[data-sema="yildiz"] body .yz :is(.yz-ozet-cumle, .yz-sayim-cumle, .yz-bosekran-metin, .yz-form-not, .yz-etiket-onizleme-metin):not(#_):not(#__) { font-size: 18px; font-weight: 400; }
+html:root[data-sema="yildiz"] body :is(.yz-musteri .yz-musteri-ad, .yz-musteri .yz-musteri-tutar, .yz-tezgah .yz-tezgah-odeme-tutar, .yz-tezgah .yz-tezgah-tutar):not(#_):not(#__) { font-size: 22px; font-weight: 400; }
+html:root[data-sema="yildiz"] body :is(.yz .yz-k-deger, .yz .yz-duzen .alan-tek-secenek, .yz .cekmece-bas h2, .yz .cekmece-bas h3):not(#_):not(#__) { font-weight: 400; }
+html:root[data-sema="yildiz"] body :is(.secici-tetik, .secici-tetik .secici-metin, input.girdi, textarea.girdi, select, .secim, .stat-deger, .karsilama-selam):not(#_):not(#__) { font-weight: 400 !important; }
+html:root[data-sema="yildiz"] body .ana-icerik .panel-soru-sayi:not(#_):not(#__) { font-size: 40px; font-weight: 300 !important; }
+html:root[data-sema="yildiz"] body .yz-tum .yz-kad:not(#_):not(#__) { font-size: 16px; }
+html:root[data-sema="yildiz"] body .ana-icerik :is(table, .izgara-tablo, .veri-tablosu) td:not(#_):not(#__) { font-size: 16px; }
+html:root[data-sema="yildiz"] body .ana-icerik :is(table, .izgara-tablo, .veri-tablosu) th:not(#_):not(#__) { font-size: 12px; }
+html:root[data-sema="yildiz"] body .ana-icerik :is(table, .izgara-tablo, .veri-tablosu) td :is(.metin-kucuk, small):not(#_):not(#__) { font-size: 14px; }
+/* O-20: gün adları ızgarayla aynı 7 sütunda (aynı aralık), her biri sütununun ortasında. */
+html:root[data-sema="yildiz"] .yz-takvim .yz-takvim-gunler:not(#_) { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: -16px; font-size: 12px; letter-spacing: .1em; }
+html:root[data-sema="yildiz"] .yz-takvim .yz-takvim-gun-adi { text-align: center; }
+@media (max-width: 480px) { html:root[data-sema="yildiz"] .yz-takvim .yz-takvim-gunler:not(#_) { gap: 4px; letter-spacing: .04em; } }
+/* O-7 ikinci tur (tipo-sonra ölçümü): kalan ara boylar basamağa. Amblem SVG yazısı (13) logodur — ölçek dışı. */
+html:root[data-sema="yildiz"] body :is(.alan-istege, .alan-ipucu):not(#_):not(#__) { font-size: 14px; }
+html:root[data-sema="yildiz"] body :is(.yz .yz-ekle, .yz .yz-b3, .yz-musteri .yz-musteri-alt):not(#_):not(#__) { font-size: 16px; }
+html:root[data-sema="yildiz"] body :is(.hucre-tek-satir, .gk-mod-ad, .yildiz-b3, .yildiz-bugun .yildiz-bugun-sat-durum, .yz-musteri .yz-musteri-durum):not(#_):not(#__) { font-size: 16px; }
+html:root[data-sema="yildiz"] body :is(.sekmeler-sekme, .yz-takvim .yz-gun, .yz-tur-sekme, .sayfa-basi-bilgi-i, .alan-kaynak):not(#_):not(#__) { font-size: 14px; }
+html:root[data-sema="yildiz"] body .bildirim-sayi:not(#_):not(#__) { font-size: 12px; }
+html:root[data-sema="yildiz"] body #gelen-odeme-karari .go-baslik:not(#_):not(#__) { font-size: 18px; }
+html:root[data-sema="yildiz"] body .yildiz-bugun .yildiz-bugun-cumle:not(#_):not(#__) { font-size: 18px; }
+html:root[data-sema="yildiz"] body .bayrak:not(#_):not(#__) { font-size: 18px; }
+html:root[data-sema="yildiz"] body .ana-icerik .panel-soru-sayi:not(#_):not(#__) { font-size: 40px !important; }
+html:root[data-sema="yildiz"] body :is(.yz-tezgah .yz-tezgah-kasa, .yz-tezgah .yz-tezgah-not, .ana-icerik p.metin-kucuk, .kz-iscilik-bag):not(#_):not(#__) { font-size: 14px; }
+html:root[data-sema="yildiz"] body .ana-icerik .kart > .kart-baslik > h2:not(#_):not(#__) { font-size: 22px; }   /* /ayarlar kart başlıkları 20 → 22 */
