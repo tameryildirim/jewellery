@@ -3250,8 +3250,12 @@ html:root[data-sema="yildiz"] .yz-bosekran .yz-liste-alt { margin-top: -32px; }
 html:root[data-sema="yildiz"] .yz-form .yz-form-sol > .yz-ekle { align-self: stretch; }   /* tuval a.ekle sütun genişliğinde (tıklama alanı) */
 /* 1001–1360 px: iki sütunlu özet sağ sütunu daralır → sabit sütunlar kısalır ki ad sütunu taşmasın (1440'ta tuval AYNEN). */
 @media (min-width: 1001px) and (max-width: 1360px) {
-  html:root[data-sema="yildiz"] .yz-ozet--kasalar .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 70px 150px auto; }
-  html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 44px 56px 84px 100px; gap: 12px; }
+  /* Görsel denetim 2 (23.10, 1024): "Nakit" 36 px sütuna sığmıyor, hurda satırı "Hurda alış · 15 Eki" 3 satıra kırılıyordu,
+     "+ Tüm ayrıntılar" düğmesi iki satıra iniyordu → ad sütunu genişler, eylem satırı sarar, ekle düğmesi tek satır. */
+  html:root[data-sema="yildiz"] .yz-ozet--kasalar .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 44px 130px auto; gap: 12px; }
+  html:root[data-sema="yildiz"] .yz-ozet--hurda .yz-liste-sat { grid-template-columns: minmax(0, 1.4fr) 36px 48px 64px 84px; gap: 10px; }
+  html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-eylem:not(#_) { flex-wrap: wrap; gap: 16px 32px; }
+  html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-eylem > .yz-ekle:not(#_) { white-space: nowrap; }
 }
 /* ≤480 px: büyük rakam ve eki tek satır (kuruş ve ₺ rakamdan kopmaz). */
 @media (max-width: 480px) {
@@ -3297,7 +3301,7 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-govde { display: flex;
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-govde { display: contents; }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag :is(.yz-tezgah-duzen, .bacak-satiri input) { scroll-margin-top: 96px; scroll-margin-bottom: 40vh; }
 }
-@media (min-width: 1001px) and (max-height: 767px) {
+@media (min-width: 1001px) and (max-height: 840px) {
   html:root[data-sema="yildiz"] .yz-tezgah :is(.yz-tezgah-sag, .yz-tezgah-alt, .yz-tezgah-sag > .yz-tezgah-odeme-govde) { gap: 16px; }
 }
 /* TEZGAH-ODEME-3 (sunum 14.10 · hakem KRİTİK "iki ödeme + indirim açıkken 768 px yükseklikte ödeme satırları kabın
@@ -3317,7 +3321,7 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-govde { display: flex;
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag :is(.yz-tezgah-duzen, .bacak-satiri input):not(#_) { scroll-margin-bottom: 240px; }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag .yz-tezgah-ekler > button:not(#_) { scroll-margin-bottom: 260px; }   /* yapışkan Fark/Kaydet bloğu (~240 px) odaklanan/kaydırılan öğeyi örtmesin — hap düğmeleri dahil (sunum 14.10 ölçüm: 1366×768) */
 }
-@media (min-width: 1001px) and (max-height: 767px) {
+@media (min-width: 1001px) and (max-height: 840px) {
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag > .yz-tezgah-bosluk:not(#_) { margin-top: -16px; }
 }
 html:root[data-sema="yildiz"] .yz .yz-tezgah-karma .bacak-satiri { grid-template-columns: minmax(0, 1fr) 150px auto; column-gap: 16px; }
@@ -4151,3 +4155,52 @@ html:root[data-sema="yildiz"] body .bayrak:not(#_):not(#__) { font-size: 18px; }
 html:root[data-sema="yildiz"] body .ana-icerik .panel-soru-sayi:not(#_):not(#__) { font-size: 40px !important; }
 html:root[data-sema="yildiz"] body :is(.yz-tezgah .yz-tezgah-kasa, .yz-tezgah .yz-tezgah-not, .ana-icerik p.metin-kucuk, .kz-iscilik-bag):not(#_):not(#__) { font-size: 14px; }
 html:root[data-sema="yildiz"] body .ana-icerik .kart > .kart-baslik > h2:not(#_):not(#__) { font-size: 22px; }   /* /ayarlar kart başlıkları 20 → 22 */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AÇILIR YÜZEYLERDE DERİNLİK (kurucu 23.10: "sayfa üzerine açılan herhangi bir şeyin gölgesi olsa daha rahat seçer").
+   Kaynaklar: NN/g göz izleme — zayıf işaretli öğeler %22 daha uzun süre, %25 daha çok sabitleme (71 katılımcı, 9 sayfa);
+   Material 3 — menü kabı 3 dp yükselti (düzey 2) ve "surface container" rengi; WCAG 1.4.11 — bileşeni ayıran tek ipucu
+   kenarsa 3:1 kontrast şart (Yıldız'da açık listenin kenarı --ayrac: zemine 1,27:1, yüzeyi zeminle AYNI renkti → liste
+   sayfadan ayırt edilemiyordu). Tuvalden bilerek sapar (kurucu kararı); renk YALNIZ belirteçle.
+   • Açılır liste / arama sonucu / kullanıcı menüsü: kaldırılmış yüzey (--yuzey-acilir), 3:1 kenar (--kenarlik), yumuşak gölge.
+   • Çekmece / pencere: perde (--perde) + geniş gölge — altındaki sayfa kararır, dikkat pencereye.
+   • Seçenek satırı: fare üstünde ve klavyeyle gezilirken zemin (--yuzey-hover) — "neredeyim" belli.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html:root[data-sema="yildiz"] {
+  --yuzey-acilir: color-mix(in srgb, var(--yuzey-govde), white 70%);   /* kaldırılmış yüzey: zeminden açık (ham hex yok) */
+  --golge-acilir: 0 1px 2px rgba(20, 20, 20, .08), 0 8px 24px rgba(20, 20, 20, .14);
+  --golge-katman: 0 16px 48px rgba(20, 20, 20, .22);
+  --perde: rgba(20, 20, 20, .32);
+}
+@media (prefers-color-scheme: dark) {
+  html:root:not([data-tema="aydinlik"])[data-sema="yildiz"] {
+    --yuzey-acilir: var(--yuzey-3);
+    --golge-acilir: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .6);
+    --golge-katman: 0 16px 48px rgba(0, 0, 0, .7);
+    --perde: rgba(0, 0, 0, .6);
+  }
+}
+html:root[data-tema="karanlik"][data-sema="yildiz"] {
+  --yuzey-acilir: var(--yuzey-3);
+  --golge-acilir: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .6);
+  --golge-katman: 0 16px 48px rgba(0, 0, 0, .7);
+  --perde: rgba(0, 0, 0, .6);
+}
+/* Açılır listeler (akış içi .yz-duzen listesi dahil — altındaki alanları iter ama yine de ayrı bir katmandır) */
+html:root[data-sema="yildiz"] body :is(.secici-liste-kap, .fis-arama-liste, .yildiz-kullanici-menu, .fis-elle[open]):not(#_):not(#__) {
+  background: var(--yuzey-acilir); border: 1px solid var(--kenarlik); box-shadow: var(--golge-acilir);
+}
+html:root[data-sema="yildiz"] body .secici-secenek:is(:hover, .etkin):not(#_):not(#__) { background: var(--yuzey-hover); }
+html:root[data-sema="yildiz"] body .fis-arama-oneri:is(:hover, .etkin, [aria-selected="true"]):not(#_):not(#__) { background: var(--yuzey-hover); }
+/* Çekmece ve pencere: perde + gölge */
+html:root[data-sema="yildiz"] body :is(.modal-arka, .cekmece-arka):not(#_):not(#__) { background: var(--perde); }
+html:root[data-sema="yildiz"] body :is(.modal-panel, .cekmece):not(#_):not(#__) { box-shadow: var(--golge-katman); }
+
+/* Görsel denetim 2 (23.10): seçici satırları (.secici-alan) O-3/O-4'ün dışında kalmıştı — alt çizgi 1,27:1, klavye odağında
+   görünür değişiklik yok (/gider Kasa · Kategori · Personel). Girdi satırıyla AYNI çizgi ve odak. */
+html:root[data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik):not(#_):not(#__) { border-bottom-color: var(--kenarlik); }
+@media (prefers-color-scheme: dark) {
+  html:root:not([data-tema="aydinlik"])[data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik):not(#_):not(#__) { border-bottom-color: var(--metin-soluk); }
+}
+html:root[data-tema="karanlik"][data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik):not(#_):not(#__) { border-bottom-color: var(--metin-soluk); }
+html:root[data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik:focus-visible):not(#_):not(#__) { border-bottom-color: var(--metin) !important; box-shadow: 0 1px 0 var(--metin); }

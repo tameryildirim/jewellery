@@ -160,6 +160,7 @@
     private async Task PozisyonYukle()
     {
         pozisyonHata = null;
+        if (!await Oturum.RaporRoluBekle()) { pozisyon = null; return; }   // Görsel denetim 2 (23.10): /pozisyon SAHIP/MUDUR/MUHASEBE — tezgâhtara istek yok
         try
         {
             await SubeliSorgu.HazirAsync(Oturum);

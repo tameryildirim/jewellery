@@ -219,6 +219,12 @@
         if (typeof tetik.scrollIntoView === 'function') {
             tetik.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         }
+        // Görsel denetim 2 (23.10): Yıldız kabuğunda kaydıran kap pencere değil .ana-icerik'tir; sayfanın dibindeki
+        // tetikte (/kurulum "Açılış türü", 1280×900) liste görüş alanının 180 px altında kalıyordu. Panel de en yakın
+        // konuma kaydırılır — liste yukarı açıldıysa tetik, aşağı açıldıysa listenin dibi görünür.
+        if (typeof panel.scrollIntoView === 'function') {
+            panel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
         return true;
     }
 

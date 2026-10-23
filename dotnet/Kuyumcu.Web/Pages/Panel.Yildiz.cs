@@ -32,6 +32,7 @@ public partial class Panel
 
     private async Task YildizGunSonuYukle()
     {
+        if (!await Oturum.RaporRoluBekle()) { yildizDunKasalar = []; return; }   // Görsel denetim 2: rapor rolü yoksa istek yok
         try
         {
             var dun = DateOnly.FromDateTime(Bicim.IsletmeBugun).AddDays(-1);

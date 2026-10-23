@@ -633,9 +633,12 @@ public sealed class Yildiz4CTestleri : BunitContext
         e.Dispose();
         kasaDefteriKod = HttpStatusCode.Forbidden;
         kasaDefteri = """{"message":"yetki yok"}""";
+        int onceki; lock (istekler) onceki = istekler.Count(i => i.Yol.Contains("/raporlar/kasa-defteri"));
         var e2 = Bugun("TEZGAHTAR");
-        e2.WaitForAssertion(() => { lock (istekler) Assert.True(istekler.Count(i => i.Yol.Contains("/raporlar/kasa-defteri")) >= 2); }, TimeSpan.FromSeconds(10));
-        await Task.Delay(400);   // yanıt işlensin (403 → satır da bant da yok)
+        e2.WaitForElement("#yildiz-bugun", TimeSpan.FromSeconds(10));
+        await Task.Delay(600);
+        // Görsel denetim 2 (23.10): rapor rolü olmayan TEZGAHTAR için istek HİÇ atılmaz (403 yolu yerel) — satır da bant da yok.
+        lock (istekler) Assert.Equal(onceki, istekler.Count(i => i.Yol.Contains("/raporlar/kasa-defteri")));
         Assert.Empty(e2.FindAll("#yildiz-bekleyen-gun-sonu-dun, #yildiz-bugun-gunsonu-hata"));
         e2.Dispose();
         kasaDefteriKod = HttpStatusCode.InternalServerError;

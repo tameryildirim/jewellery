@@ -5,6 +5,7 @@
 @using Kuyumcu.Web.Bilesenler.Grid
 @inject ApiIstemci Api
 @inject DilServisi Dil
+@inject OturumServisi Oturum
 @implements IDisposable
 
 @* ═══════════════════════════════════════════════════════════════════════════
@@ -389,6 +390,7 @@
             hata = ex.Message;
         }
 
+        if (!await Oturum.YonetimRoluBekle()) return;   // Görsel denetim 2: SAHIP/MUDUR ucu, tezgâhtara istek yok
         try
         {
             ayarlar = await Api.GetAsync<PanoAyarlariGorunum>("/pano/ayarlar");

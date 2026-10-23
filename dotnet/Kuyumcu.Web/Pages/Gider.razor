@@ -35,10 +35,12 @@
    formunun bileşenleridir (aynı kimlik, kapı ve kilit; özgün form bu görünümde çizilmediği için kimlik tek). Virman,
    geçmiş, kategoriler ve storno yalnız "Virman" / "Ayrıntı ekle" görünümünde (data-yz-ozgun). Öteki 8 şemada AYNEN. *@
     <Kuyumcu.Web.Bilesenler.Yildiz.YildizForm B="@YildizBaglami">
-        @if (kasalar.Count > 1)
+        @* Görsel denetim 2 (23.10, O-15): Kasa ve Personel satırları yüklenirken de çizilir (devre dışı) — veri gelince
+           alanlar 118 px kayıyordu (375'te CLS 0,22–0,29). *@
+        @if (kasalar.Count > 1 || (yukleniyor && kasalar.Count == 0))
         {
             <div class="alan">
-                <Secici ElemanId="gd-kasa" Etiket="@Dil.T.Gider.Kasa" Secenekler="@KasaSecenekleri"
+                <Secici ElemanId="gd-kasa" Etiket="@Dil.T.Gider.Kasa" Secenekler="@KasaSecenekleri" Devredisi="@yukleniyor"
                         @bind-Deger="giderKasaId" Hata="@giderForm.Mesaj("gd-kasa")" BosSecenekMetni="—" />
                 <AlanHatasi Alan="gd-kasa" Durum="giderForm" />
                 @if (GiderKilitAlani == "kasa") { @GiderKilitMesaji }
@@ -64,9 +66,9 @@
         <Metin ElemanId="gd-aciklama" Etiket="@YildizGiderSozlugu.NeIcin(Dil.Dil)" EnFazla="@AlanSinirlari.HareketAciklama"
                @bind-Deger="giderAciklama" />
         @* Y-05 (20.10): personel avansı — isteğe bağlı kişi; prim raporunda düşülür. *@
-        @if (personeller.Count > 0)
+        @if (personeller.Count > 0 || yukleniyor)
         {
-            <Secici ElemanId="gd-personel" Etiket="@PersonelAvansSozlugu.Personel(Dil.Dil)"
+            <Secici ElemanId="gd-personel" Etiket="@PersonelAvansSozlugu.Personel(Dil.Dil)" Devredisi="@yukleniyor"
                     Secenekler="@(personeller.Select(p => new SecenekOgesi(p.Id, $"{p.Ad} {p.Soyad}".Trim())).ToList())"
                     @bind-Deger="giderPersonelId" BosSecenekMetni="—" />
             <p class="metin-kucuk metin-soluk" id="gd-personel-ipucu">@PersonelAvansSozlugu.Ipucu(Dil.Dil)</p>
@@ -90,11 +92,11 @@
     {
         @* seçili olmayan panel boş — tek form/liste görünür *@
     }
-    else if (yukleniyor)
+    else if (yukleniyor && sekme != "GIDER")
     {
         <Yukleniyor />
     }
-    else if (sekme == "GIDER")
+    else if (sekme == "GIDER")   @* Görsel denetim 2 (23.10, O-15): gider formu yüklenirken de çizilir (Kasa alanı devre dışı) — spinner → form geçişi 375'te 0,22 CLS veriyordu *@
     {
         <div class="kart">
             <div class="kart-baslik"><h3>@Dil.T.Gider.YeniGider</h3></div>
@@ -110,13 +112,16 @@
             }
             <div class="form-dikey">
                 @* UX-S22: tek kasa varsa seçici GİZLENİR, değer salt okunur satırdır. *@
-                @if (kasalar.Count > 1)
+                @* Görsel denetim 2 (23.10, O-15): Kasa satırı yüklenirken de çizilir (devre dışı) — veri gelince alan 118 px
+                   aşağı kayıyordu (CLS 0,14–1,1). *@
+                @if (kasalar.Count > 1 || (yukleniyor && kasalar.Count == 0))
                 {
                     <div class="alan">
                         <Secici ElemanId="gd-kasa"
                                 Etiket="@Dil.T.Gider.Kasa"
                                 Secenekler="@KasaSecenekleri"
                                 @bind-Deger="giderKasaId"
+                                Devredisi="@yukleniyor"
                                 Hata="@giderForm.Mesaj("gd-kasa")"
                                 BosSecenekMetni="—" />
                         <AlanHatasi Alan="gd-kasa" Durum="giderForm" />
@@ -753,12 +758,13 @@
 
     /// <summary>Kaydet kilidinin ait olduğu alan: kategori · kasa · tutar (kural ve metin AYNI, yalnız yeri).</summary>
     private string? GiderKilitAlani =>
-        GiderKilidi is not { } k ? null
+        yukleniyor ? "kasa"   // Görsel denetim 2 (23.10, O-15): yüklenirken kilit satırı Kasa altında durur; veri gelince "Kasa seçilmedi" AYNI yere, aynı boyda gelir (375'te 20 px kayma kalkar)
+        : GiderKilidi is not { } k ? null
         : k == Dil.T.Gider.KategoriYok || k == Dil.T.Gider.KilitKategoriSec ? "kategori"
         : k == Dil.T.Gider.KilitKasaSec ? (kasalar.Count > 1 ? "kasa" : "tutar")
         : "tutar";
 
-    private RenderFragment GiderKilitMesaji => @<p class="t6-alan-kilit" id="gd-kaydet-kilit" role="status">@GiderKilidi</p>;
+    private RenderFragment GiderKilitMesaji => @<p class="t6-alan-kilit" id="gd-kaydet-kilit" role="status">@(yukleniyor ? Dil.T.Ortak.Yukleniyor : GiderKilidi)</p>;
 
     /// <summary>Virman kilidinin ait olduğu alan: kaynak · hedef · tutar.</summary>
     private string? VirmanKilitAlani =>

@@ -300,7 +300,7 @@
         try
         {
             // Görsel denetim O-19 (21.10): /pozisyon SAHIP/MUDUR/MUHASEBE ister; tezgâhtarda istek atılmaz, 403 yolu yerelde.
-            if (Oturum.Kullanici?.Rol is { } rol && rol is not ("SAHIP" or "MUDUR" or "MUHASEBE")) throw new ApiHata(403, "");
+            if (!await Oturum.RaporRoluBekle()) throw new ApiHata(403, "");   // 23.10: profil beklenir
             await SubeliSorgu.HazirAsync(Oturum);
             var istenen = SubeliSorgu.Sube(Oturum);
             var gelen = await Api.GetAsync<AltinPozisyonuYaniti>(SubeliSorgu.Ekle("/pozisyon", Oturum));

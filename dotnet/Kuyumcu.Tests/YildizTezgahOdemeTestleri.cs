@@ -322,8 +322,9 @@ public sealed class YildizTezgahOdemeTestleri : BunitContext
         var pay = Kural(dar, $"  {kok} .yz-tezgah-sag :is(.yz-tezgah-duzen, .bacak-satiri input)");
         Assert.Contains("scroll-margin-bottom: 40vh;", pay);
         Assert.Contains("scroll-margin-top: 96px;", pay);
-        // tur 2: kısa ekranda (≤767 px yükseklik) aralıklar daralır — tek ödeme satırı kaptan kırpılmaz.
-        var kisa = b[b.IndexOf("@media (min-width: 1001px) and (max-height: 767px)", StringComparison.Ordinal)..];
+        // tur 2: kısa ekranda aralıklar daralır — tek ödeme satırı kaptan kırpılmaz. Görsel denetim 2 (23.10): eşik 767 → 840 px
+        // (1280×800 ve 1024×768'de 303 px yapışkan blok "+ İndirim" düğmesini 7 px örtüyordu; aralık 16 ile blok 267 px).
+        var kisa = b[b.IndexOf("@media (min-width: 1001px) and (max-height: 840px)", StringComparison.Ordinal)..];
         Assert.Contains("gap: 16px;", Kural(kisa, $"  {kok} :is(.yz-tezgah-sag, .yz-tezgah-alt, .yz-tezgah-sag > .yz-tezgah-odeme-govde)"));
     }
 

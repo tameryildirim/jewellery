@@ -275,6 +275,12 @@
     /// </summary>
     public async Task RozetiYenile()
     {
+        // Görsel denetim 2 (23.10): bildirim modülü bu role kapalıysa (tezgâhtar) her ekranda 403 alan istek ATILMAZ.
+        if (Hizmetler.GetService(typeof(YetkiServisi)) is YetkiServisi yetki)
+        {
+            for (var g = 0; !yetki.Yuklendi && Oturum.GirisYapildi && g < 3000; g += 100) await Task.Delay(100);   // yetkiler profille gelir; oturum varken beklenir
+            if (yetki.Yuklendi && !yetki.Erisebilir("bildirim")) { acikBildirim = 0; enYuksekOnem = null; rozetHata = null; return; }
+        }
         try
         {
             var c = await Api.GetAsync("/bildirimler/sayi");

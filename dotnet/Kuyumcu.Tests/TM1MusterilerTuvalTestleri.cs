@@ -213,7 +213,9 @@ public sealed class TM1MusterilerTuvalTestleri : BunitContext
     {
         ozel["/raporlar/vade-takibi"] = (HttpStatusCode.Forbidden, """{"message":"Yetkiniz yok"}""");
         var e = Ciz(rol: "TEZGAHTAR");
-        e.WaitForAssertion(() => Assert.Contains(istekler, i => i.Yol.Contains("/raporlar/vade-takibi")));
+        e.WaitForAssertion(() => Assert.Equal(4, SatirIdleri(e).Count));
+        // Görsel denetim 2 (23.10): rapor rolü olmayan TEZGAHTAR için vade isteği HİÇ atılmaz (403 yolu yerel).
+        Assert.DoesNotContain(istekler, i => i.Yol.Contains("/raporlar/vade-takibi"));
         // Gecikme bilinmiyor → gün UYDURULMAZ (yalnız yön); yetki hatası bant olarak çıkmaz.
         Assert.Equal(YildizMusteriSozlugu.BizeBorclu("tr"), Durum(e, "c1"));
         Assert.Empty(e.FindAll("#hata-bandi"));

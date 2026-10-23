@@ -711,6 +711,7 @@
     {
         gecmisHata = null;
         gecmisGorunen = GorselSigmaSozlugu.KurGecmisIlk;
+        if (!await Oturum.RaporRoluBekle()) { gecmis = []; return; }   // Görsel denetim 2: MUHASEBE+ ucu, tezgâhtara istek yok
         try
         {
             var sorgu = new List<string> { "limit=100" };

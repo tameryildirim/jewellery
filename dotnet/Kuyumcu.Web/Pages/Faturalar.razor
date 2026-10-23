@@ -6,6 +6,7 @@
 @using Kuyumcu.Core.Domain.Girdi
 @inject ApiIstemci Api
 @inject DilServisi Dil
+@inject OturumServisi Oturum
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @implements IDisposable
@@ -2107,6 +2108,7 @@
     /// </summary>
     private async Task OzelMatrahAyariYukle()
     {
+        if (!await Oturum.RaporRoluBekle()) { ozelMatrahYetkiYok = true; return; }   // Görsel denetim 2: 403 isteği atılmaz
         try
         {
             ozelMatrahHata = null;

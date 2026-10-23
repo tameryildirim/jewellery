@@ -162,10 +162,11 @@ public sealed class KatmanTekKalipTestleri
         Assert.Equal("736px", r.Azami);   // 800 − 44 − 16 − 4
         Assert.True(r.Oznitelik);
         Assert.True(r.Kaydirildi);
-        // Mutlak konumlu (eski kabuk) panelde eski karar AYNEN: yukarı açılır, kendini kaydırmaz.
+        // Mutlak konumlu (eski kabuk) panelde eski karar AYNEN: yukarı açılır; görsel denetim 2 (23.10) sonrası panel de
+        // en yakın konuma kaydırılır (Yıldız kabuğunda kaydıran kap .ana-icerik — sayfa dibindeki liste görüş alanına gelsin).
         var m = SeciciYerlestir(812, 530, 574, 60, "absolute");
         Assert.Equal("yukari", m.Sinif);
-        Assert.False(m.Kaydirildi);
+        Assert.True(m.Kaydirildi);
     }
 
     // ── js/katman.js'in GERÇEK kodu, node + sahte DOM ─────────────────────────

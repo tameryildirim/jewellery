@@ -1450,6 +1450,7 @@
 
     private async Task VadeYukle()
     {
+        if (!await Oturum.RaporRoluBekle()) return;   // Görsel denetim 2: rapor rolü yoksa 403 isteği atılmaz
         try
         {
             var y = await Api.GetAsync<Kuyumcu.Contracts.Sayfalar.VadeTakibi.Yanit>("/raporlar/vade-takibi");

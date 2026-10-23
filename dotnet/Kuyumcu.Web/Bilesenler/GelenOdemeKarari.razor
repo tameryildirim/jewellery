@@ -163,6 +163,7 @@
     /// <summary>Sayfa yeni dekont girince çağırır.</summary>
     public async Task Yenile()
     {
+        if (!await Oturum.RaporRoluBekle()) { satirlar = []; return; }   // Görsel denetim 2: SAHIP/MUDUR/MUHASEBE ucu
         try
         {
             satirlar = await Api.TazeGetAsync<List<GelenOdemeSatiri>>("/bankalar/karar-bekleyen");

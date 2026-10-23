@@ -37,6 +37,13 @@
         </div>
     </div>
 }
+else if (Modul(new Uri(Nav.Uri).AbsolutePath) is not null && Yetki is { } yetkiServisi
+         && ((Oturum.Kullanici is null && !ProfilDenendi) || !yetkiServisi.Yuklendi))
+{
+    @* Görsel denetim 2 (23.10): modül kapısı olan ekran, yetkiler yüklenmeden ÇİZİLMEZ — eskiden sayfa önce çizilip
+       (istekleri 403 alıp) sonra kapıya dönüyordu. Yetkiler yüklenmezse (RolBilinmiyor) sayfa çizilir, karar sunucuda. *@
+    <Yukleniyor />
+}
 else if (GerekenRoller is not { Length: > 0 } roller)
 {
     @ChildContent
