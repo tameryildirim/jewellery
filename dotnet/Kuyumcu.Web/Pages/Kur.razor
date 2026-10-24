@@ -558,6 +558,7 @@
         // PAKET S1-i: sekme listesi moda bağlıdır (kaynak/geçmiş yalnız profesyonel yüzde).
         Mod.Degisti += Yenile;
         await Task.WhenAll(GuncelYukle(), GecmisYukle(), PariteYukle(), KaynakDurumuYukle());
+        YildizYenilemeBaslat();   // kurucu 24.10: her 5 sn güncel kur + kalemler (Kur.Yildiz.cs)
     }
 
 
@@ -748,6 +749,26 @@
         kaydediliyor = false;
     }
 
+    /// <summary>Kurucu 24.10: Yıldız özet yüzündeki KAYNAK seçicisi (yalnız SAHİP; seçici Kur.Yildiz.cs'te çizilir).</summary>
+    private async Task YildizKaynakSecildi(ChangeEventArgs e)
+    {
+        var kod = e.Value?.ToString() ?? "";
+        if (string.IsNullOrWhiteSpace(kod) || kod == kaynakDurumu?.Secili) return;
+        kaynakHata = null;
+        kaynakDegisiyor = true;
+        try
+        {
+            // Yazma yolu MEVCUT uçtur (PATCH /kur/kaynak): sunucu ayarı kaydeder ve yeni kaynaktan anında çeker.
+            await Api.PatchAsync<object>("/kur/kaynak", new { kaynak = kod });
+            Api.Onbellek.Dusur("/kur/kaynaklar");
+            Api.Onbellek.Dusur(ListeOnbellegi.KurYolu);
+            await Task.WhenAll(KaynakDurumuYukle(), GuncelYukle(), GecmisYukle(), PariteYukle());
+            BasariGoster(Dil.T.Kur.KurGuncellendi);
+        }
+        catch (ApiHata ex) { kaynakHata = FormDurumu.SunucuMesaji(ex, Dil); }
+        kaynakDegisiyor = false;
+    }
+
     /// <summary>
     /// UX-S27 — sonuç görünür. UX-4c madde 13: 3 saniyelik gizleme mantığı
     /// BasariBandi bileşenine taşındı; burada yalnız mesaj ve jeton set edilir.
@@ -894,6 +915,7 @@
 
     public void Dispose()
     {
+        YildizYenilemeDurdur();
         Dil.Degisti -= Yenile;
         Oturum.Degisti -= Yenile;
         Mod.Degisti -= Yenile;

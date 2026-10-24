@@ -121,6 +121,42 @@ public sealed class S3eKurKaynagiEkranTestleri : BunitContext
         Assert.DoesNotContain(istekler, i => i.Metot == "PATCH");
     }
 
+    // ── Kurucu 24.10: Yıldız özet yüzünde KAYNAK satırı SAHİP için YERİNDE seçicidir ("kaynağı değiştirmek için
+    //    bilmem kaç ekran değiştirmemeli"); yazma yolu yine MEVCUT uç (PATCH /kur/kaynak, yalnız SAHİP). ───────────
+    [Fact]
+    public void Yildiz_KAYNAK_satiri_SAHIPte_secicidir_secince_PATCH_kur_kaynak_gider()
+    {
+        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        c.WaitForAssertion(() => Assert.NotNull(c.Find("#yildiz-kurlar-bilgi")), TimeSpan.FromSeconds(10));
+        OturumAta("SAHIP");
+        c.WaitForAssertion(() => Assert.NotNull(c.Find("#yildiz-kur-kaynak")), TimeSpan.FromSeconds(10));
+        var sec = c.Find("#yildiz-kur-kaynak");
+        Assert.Equal(3, sec.QuerySelectorAll("option").Length);
+        Assert.Equal("Altınkaynak", sec.QuerySelector("option[selected]")!.TextContent.Trim());   // ham kod değil, ad (UX-S31)
+
+        sec.Change("ANKARA");
+        c.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "PATCH" && i.Yol.EndsWith("/kur/kaynak")), TimeSpan.FromSeconds(10));
+        Assert.Contains("\"kaynak\":\"ANKARA\"", istekler.Single(i => i.Metot == "PATCH").Govde);
+    }
+
+    [Fact]
+    public void Yildiz_KAYNAK_satiri_MUDURde_salt_okunur_secici_YOK()
+    {
+        var c = Render<Kuyumcu.Web.Pages.Kur>();
+        c.WaitForAssertion(() => Assert.NotNull(c.Find("#yildiz-kurlar-bilgi")), TimeSpan.FromSeconds(10));
+        OturumAta("MUDUR");
+        c.WaitForAssertion(() => Assert.Contains("Altınkaynak", c.Find("#yildiz-kurlar-bilgi").TextContent), TimeSpan.FromSeconds(10));
+        Assert.Empty(c.FindAll("#yildiz-kur-kaynak"));
+        Assert.DoesNotContain(istekler, i => i.Metot == "PATCH");
+    }
+
+    [Fact]
+    public void Yildiz_kur_ekrani_her_5_saniyede_guncel_ve_kalemleri_yeniden_okur()
+    {
+        Assert.Equal(TimeSpan.FromSeconds(5), Kuyumcu.Web.Pages.Kur.YildizYenilemeAraligi);
+        Assert.Equal(5, Kuyumcu.Api.Modules.Kur.KurZamanlayici.AltSinirSaniye);
+    }
+
     [Fact]
     public void Kaynak_listesi_BOSSA_secici_KILITLI_ve_sebebi_yazili()
     {

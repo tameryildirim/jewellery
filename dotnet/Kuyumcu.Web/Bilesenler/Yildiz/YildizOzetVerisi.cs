@@ -44,6 +44,8 @@ public sealed class YildizOzetBaglami
     public IReadOnlyList<YildizListeSatiri> Satirlar { get; init; } = [];
     /// <summary>Alt bilgi satırı (tuval "SON KAPANIŞ <b>dün yok</b>"). Etiket büyük harfle yazılır.</summary>
     public IReadOnlyList<(string Etiket, string Deger)> Bilgi { get; init; } = [];
+    /// <summary>Kurucu 24.10: alt bilgi satırının BAŞINA çizilen etkileşimli parça (ör. /kur'da KAYNAK seçicisi).</summary>
+    public RenderFragment? BilgiOnek { get; init; }
 
     public bool Yukleniyor { get; init; }
     /// <summary>İstek BAŞARILI ve sonuç boşken sağda yazılacak tek cümle (UX-S28).</summary>

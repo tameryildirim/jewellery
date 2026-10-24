@@ -3161,6 +3161,13 @@ html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-eylem > .yz-ekle { padding: 0; }
 html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-sag { display: flex; flex-direction: column; justify-content: flex-end; gap: 24px; min-width: 0; }
 html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-bilgi { display: flex; flex-wrap: wrap; gap: 40px; font-size: 14px; letter-spacing: .06em; }
 html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-bilgi b { color: var(--metin); font-weight: 500; }
+/* Kurucu 24.10: /kur alt bilgi satırındaki KAYNAK, SAHİP için yerinde açılır seçicidir — satırın diğer öğeleriyle aynı
+   boy/harf; yalnız alt çizgi ve ok onu "seçilebilir" kılar. */
+html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-bilgi .yz-kaynak-sec select {
+  font: inherit; font-weight: 500; letter-spacing: inherit; color: var(--metin); background: transparent;
+  border: 0; border-bottom: 1px solid var(--kenarlik); border-radius: 0; padding: 0 2px 2px 0; cursor: pointer;
+}
+html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-bilgi .yz-kaynak-sec select:focus-visible { outline: 0; border-bottom-color: var(--metin); }
 html:root[data-sema="yildiz"] .yz-ozet .yz-liste-ana { display: flex; flex-direction: column; gap: 32px; padding: 48px 64px 32px; }
 html:root[data-sema="yildiz"] .yz-ozet--kasalar .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) 100px 170px 140px; }
 html:root[data-sema="yildiz"] .yz-ozet--kur .yz-liste-sat { grid-template-columns: minmax(0, 1fr) 160px 160px; }

@@ -120,12 +120,13 @@ public sealed class P73KurZamanlayiciTestleri(HttpFikstur f)
                 .AddJsonFile(Path.Combine(api, "appsettings.json"))
                 .AddJsonFile(Path.Combine(api, $"appsettings.{ortam}.json"))
                 .Build();
-            Assert.Equal("60", y["Kur:GuncellemeSaniye"]);
-            Assert.Equal(TimeSpan.FromSeconds(60), KurZamanlayici.AraligiOku(y));
+            // Kurucu 24.10: sevk edilen yapılandırma 5 sn ("her 5 saniyede bir veri çekmeli"); kod varsayılanı 60 kalır.
+            Assert.Equal("5", y["Kur:GuncellemeSaniye"]);
+            Assert.Equal(TimeSpan.FromSeconds(5), KurZamanlayici.AraligiOku(y));
         }
         var yalinTaban = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
             .AddJsonFile(Path.Combine(api, "appsettings.json")).Build();
-        Assert.Equal(TimeSpan.FromSeconds(60), KurZamanlayici.AraligiOku(yalinTaban));
+        Assert.Equal(TimeSpan.FromSeconds(5), KurZamanlayici.AraligiOku(yalinTaban));
 
         // (3) Kurulumda kopyalanan .ornek şablonları da aynı varsayılanı taşır
         // (kuran kişi eski 10 sn'yi geri getirmesin).
@@ -133,13 +134,13 @@ public sealed class P73KurZamanlayiciTestleri(HttpFikstur f)
         {
             var y = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
                 .AddJsonStream(new MemoryStream(File.ReadAllBytes(Path.Combine(api, ornek)))).Build();
-            Assert.Equal("60", y["Kur:GuncellemeSaniye"]);
+            Assert.Equal("5", y["Kur:GuncellemeSaniye"]);
         }
     }
 
     [Theory]
-    [InlineData("5")]
-    [InlineData("14")]
+    [InlineData("4")]
+    [InlineData("1")]
     [InlineData("0")]
     [InlineData("-10")]
     [InlineData("3601")]
@@ -150,7 +151,7 @@ public sealed class P73KurZamanlayiciTestleri(HttpFikstur f)
         var hata = Assert.Throws<InvalidOperationException>(() => Zamanlayici(Yapilandirma(deger)));
         Assert.Contains("Kur:GuncellemeSaniye", hata.Message);
         Assert.Contains(deger, hata.Message);
-        Assert.Contains("15", hata.Message);
+        Assert.Contains("5", hata.Message);
         Assert.Contains("3600", hata.Message);
         Assert.Contains("sessizce sıkıştırılmaz", hata.Message);
     }
@@ -168,6 +169,7 @@ public sealed class P73KurZamanlayiciTestleri(HttpFikstur f)
     }
 
     [Theory]
+    [InlineData("5", 5)]
     [InlineData("15", 15)]
     [InlineData("60", 60)]
     [InlineData(" 120 ", 120)]
@@ -181,13 +183,13 @@ public sealed class P73KurZamanlayiciTestleri(HttpFikstur f)
         // Gerçek barındırma yolu: AddHostedService<KurZamanlayici> + StartAsync.
         // Hizmet başlarken çözülür → kurucu atar → host AÇILMAZ.
         var b = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
-        b.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Kur:GuncellemeSaniye"] = "5" });
+        b.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Kur:GuncellemeSaniye"] = "4" });
         b.Services.AddSingleton<SistemKapsami>();
         b.Services.AddHostedService<KurZamanlayici>();
         using var host = b.Build();
         var hata = await Assert.ThrowsAsync<InvalidOperationException>(() => host.StartAsync());
         Assert.Contains("Kur:GuncellemeSaniye", hata.Message);
-        Assert.Contains("= 5 sn", hata.Message);
+        Assert.Contains("= 4 sn", hata.Message);
     }
 
     [Fact]

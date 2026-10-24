@@ -4,6 +4,7 @@ using Kuyumcu.Core.I18n;
 using Kuyumcu.Web.Bilesenler.Yildiz;
 using Kuyumcu.Web.Servisler;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Kuyumcu.Web.Pages;
 
@@ -21,6 +22,78 @@ public partial class Kur
     private bool YildizOzgunCiz => yildizAyrinti;
     private string? YildizOzgunIsaret => "kur";
     private bool yildizAyrinti;
+
+    // ── Kurucu 24.10: "kaynağı KAYNAK yazan yerden elle değiştirebilmeli; kaynağı değiştirmek için bilmem kaç ekran
+    //    değiştirmemeli" — SAHİP için alt bilgi satırındaki KAYNAK bir açılır seçicidir (yazma yolu MEVCUT uç:
+    //    PATCH /kur/kaynak, YALNIZ SAHİP). Diğer roller salt okunur satırı görür. Seçince yeni kaynaktan anında çekilir.
+    // ── "her 5 saniyede bir veri çekmeli" — sunucu zamanlayıcısı 5 sn (Kur:GuncellemeSaniye); ekran da her 5 sn
+    //    güncel kuru ve kalem listesini yeniden okur (yerel API; sekme gizliyken de ucuz). ──────────────────────────
+    public static readonly TimeSpan YildizYenilemeAraligi = TimeSpan.FromSeconds(5);
+    private CancellationTokenSource? yildizYenileme;
+    private bool kaynakDegisiyor;
+
+    private void YildizYenilemeBaslat()
+    {
+        yildizYenileme = new CancellationTokenSource();
+        _ = YildizYenilemeDongusu(yildizYenileme.Token);
+    }
+
+    private async Task YildizYenilemeDongusu(CancellationToken iptal)
+    {
+        try
+        {
+            using var zamanlayici = new PeriodicTimer(YildizYenilemeAraligi);
+            while (await zamanlayici.WaitForNextTickAsync(iptal))
+            {
+                if (kaydediliyor || kaynakDegisiyor) continue;   // kullanıcı işlemi sürerken üstüne yazma
+                await Task.WhenAll(GuncelYukle(), PariteYukle());
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void YildizYenilemeDurdur()
+    {
+        yildizYenileme?.Cancel();
+        yildizYenileme?.Dispose();
+        yildizYenileme = null;
+    }
+
+    /// <summary>SAHİP ve birden çok kaynak varsa KAYNAK satırı seçicidir; yoksa null (salt okunur satır).</summary>
+    private RenderFragment? YildizKaynakSecici
+    {
+        get
+        {
+            if (!SahipMi || kaynakDurumu is not { Kaynaklar.Count: > 1 } kd) return null;
+            var dil = Dil.Dil;
+            var secili = kd.Secili ?? guncel?.Kaynak ?? kd.Varsayilan ?? "";
+            return builder =>
+            {
+                builder.OpenElement(0, "label");
+                builder.AddAttribute(1, "class", "yz-kaynak-sec");
+                builder.AddAttribute(2, "for", "yildiz-kur-kaynak");
+                builder.AddContent(3, YildizListeBicim.Buyuk(YildizKurSozlugu.Kaynak(dil), dil));
+                builder.AddContent(4, " ");
+                builder.OpenElement(5, "select");
+                builder.AddAttribute(6, "id", "yildiz-kur-kaynak");
+                builder.AddAttribute(7, "value", secili);
+                builder.AddAttribute(8, "disabled", kaynakDegisiyor);
+                builder.AddAttribute(9, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, YildizKaynakSecildi));
+                var sira = 10;
+                foreach (var kod in kd.Kaynaklar)
+                {
+                    builder.OpenElement(sira++, "option");
+                    builder.AddAttribute(sira++, "value", kod);
+                    builder.AddAttribute(sira++, "selected", kod == secili);
+                    builder.AddContent(sira++, KaynakAdi(kod));
+                    builder.CloseElement();
+                }
+                builder.CloseElement();
+                builder.CloseElement();
+            };
+        }
+    }
 
     private static readonly CultureInfo YildizTr = CultureInfo.GetCultureInfo("tr-TR");
 
@@ -106,9 +179,10 @@ public partial class Kur
                         .Where(d => d.Item3 is not null || d.Item4 is not null)
                         .Select(d => Satir(d.Item1, d.Item2, YildizDoviz(d.Item3), YildizDoviz(d.Item4))),
                 ],
+                BilgiOnek = g is null ? null : YildizKaynakSecici,
                 Bilgi = g is null ? [] :
                 [
-                    (YildizKurSozlugu.Kaynak(dil), kaynak ?? "—"),
+                    .. YildizKaynakSecici is null ? [(YildizKurSozlugu.Kaynak(dil), kaynak ?? "—")] : Array.Empty<(string, string)>(),
                     (YildizKurSozlugu.SonSorgu(dil), saat ?? "—"),
                     (YildizKurSozlugu.GunFarki(dil), YildizGunFarki(g.AltinHasFiyati, oncekiGunHas, dil) ?? "—"),
                 ],

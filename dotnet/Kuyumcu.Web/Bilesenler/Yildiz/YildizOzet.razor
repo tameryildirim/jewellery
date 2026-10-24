@@ -116,9 +116,10 @@
             {
                 <p class="yz-s yz-bos" id="@($"{B.Kok}-bos")">@bos</p>
             }
-            @if (B.Bilgi.Count > 0)
+            @if (B.Bilgi.Count > 0 || B.BilgiOnek is not null)
             {
                 <div class="yz-sayi yz-s yz-ozet-bilgi" id="@($"{B.Kok}-bilgi")">
+                    @B.BilgiOnek
                     @foreach (var (etiket, deger) in B.Bilgi)
                     {
                         <span>@YildizListeBicim.Buyuk(etiket, Dil.Dil) <b>@deger</b></span>

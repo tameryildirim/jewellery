@@ -1562,7 +1562,7 @@ public sealed class KurController(KurServisi servis, OzelMatrahKapanisServisi ka
 /// <summary>
 /// Kur güncelleme zamanlayıcısı.
 ///   • Varsayılan her 60 SANİYEDE bir dış kaynaktan kur çekilir
-///     (Kur:GuncellemeSaniye ile ayarlanır; 15–3600 sn dışı değer YAPILANDIRMA
+///     (Kur:GuncellemeSaniye ile ayarlanır; 5–3600 sn dışı değer YAPILANDIRMA
 ///     HATASIDIR — sessizce sıkıştırılmaz, uygulama açılışta anlaşılır hatayla durur).
 ///     PAKET P-73: 10 sn'de canlı DB'de kiracı başına saatte ~340 KurSnapshot
 ///     ölçüldü ("değişmedi → yazma" koruması turların çoğunda devreye girmiyor).
@@ -1583,7 +1583,7 @@ public sealed class KurZamanlayici(
     /// <summary>Kur:GuncellemeSaniye anahtarı yoksa kullanılan aralık (sn).</summary>
     public const int VarsayilanAralikSaniye = 60;
     /// <summary>Kabul edilen en küçük aralık (sn); altı yapılandırma hatasıdır.</summary>
-    public const int AltSinirSaniye = 15;
+    public const int AltSinirSaniye = 5;   // kurucu 24.10: "her 5 saniyede bir veri çekmeli" (15 → 5)
     /// <summary>Kabul edilen en büyük aralık (sn); üstü yapılandırma hatasıdır.</summary>
     public const int UstSinirSaniye = 3600;
     public const string AralikAnahtari = "Kur:GuncellemeSaniye";
