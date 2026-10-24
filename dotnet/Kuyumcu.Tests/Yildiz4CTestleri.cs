@@ -735,6 +735,8 @@ public sealed class Yildiz4CTestleri : BunitContext
         var c = Css();
         Assert.Contains("html:root[data-sema=\"yildiz\"] .yildiz-bugun .yildiz-bugun-sol:not(#_) { align-self: start; position: sticky; top: 72px; min-height: calc(100vh - 72px - 72px - 56px); }", c);
         Assert.Contains("html:root[data-sema=\"yildiz\"] .ana-icerik:has(#yildiz-bugun) { overflow-x: clip; overflow-y: visible; }", c);
+        // Kurucu 24.10: Tezgâh yüklenirken dönen halka solda kalmasın — sarmalayıcı satırı doldurur, ortalar.
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-tezgah-yukleniyor { align-self: stretch; width: 100%; justify-content: center; }", c);
     }
 
     [Fact]

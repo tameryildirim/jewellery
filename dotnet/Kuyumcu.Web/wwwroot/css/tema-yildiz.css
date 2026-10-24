@@ -1324,6 +1324,9 @@ html:root[data-sema="yildiz"] body .yildiz-kabuk .ana-icerik:has(#yildiz-bugun) 
 /* Kurucu 24.10 (ikinci görüntü): `.ana-icerik{overflow:auto}` sol sütunun yapışkanlığını kendi içine hapsediyordu (kap kaymıyor,
    pencere kayıyor → yapışkan hiç tutmuyor, düğmeler yukarı kaçıyordu). Tezgâh'taki istisnanın aynısı. */
 html:root[data-sema="yildiz"] .ana-icerik:has(#yildiz-bugun) { overflow-x: clip; overflow-y: visible; }
+/* Kurucu 24.10: Tezgâh yüklenirken dönen halka sol kenarda kalıyordu — `.islem-sayfa{align-items:start}` sarmalayıcıyı 42 px'e
+   büzüyordu. Sarmalayıcı satırı doldurur, halka yatayda ve düşeyde ortada. */
+html:root[data-sema="yildiz"] .yz-tezgah-yukleniyor { align-self: stretch; width: 100%; justify-content: center; }
 /* Şube adı üst satırdadır (tuval "… · MERKEZ ŞUBE"); ikinci rozet satırı çizilmez. */
 html:root[data-sema="yildiz"] .ana-icerik:has(#yildiz-bugun) .gorunum-rozeti { display: none; }
 
