@@ -732,8 +732,10 @@ public sealed class Yildiz4CTestleri : BunitContext
     public void Y4C_42_css_kaydet_ve_bantlar_ekranda_genis_sabit_dar_altta_sabit()
     {
         var b = Blok4C();
-        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-tezgah { height: calc(100vh - 72px); min-height: 0; }", b);
-        Assert.Matches(@"\.yz-tezgah :is\(\.yz-tezgah-kalemler, \.yz-tezgah-duzen\) \{ flex: 0 1 auto; min-height: 0; overflow-y: auto;", b);
+        // Kurucu 24.10: geniş ekranda sütunlar ekran boyuna kilitlenmez, iç kaydırma yok — sayfa kayar; Fark+Kaydet yapışkan.
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-tezgah { min-height: calc(100vh - 72px); }", b);
+        Assert.DoesNotMatch(@"\.yz-tezgah :is\(\.yz-tezgah-kalemler, \.yz-tezgah-duzen\) \{[^}]*overflow-y: auto", b);
+        Assert.DoesNotMatch(@"\.yz-tezgah-sag:not\(#_\) \{ overflow-y: auto", b);
         var i = b.IndexOf("@media (max-width: 1000px)", StringComparison.Ordinal);
         var dar = b[i..];
         var alt = Kural(dar, "  html:root[data-sema=\"yildiz\"] .yz-tezgah .yz-tezgah-alt");

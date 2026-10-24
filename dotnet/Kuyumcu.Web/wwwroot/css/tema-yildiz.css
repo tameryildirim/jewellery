@@ -2444,13 +2444,12 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-alt { display: flex; flex-di
 html:root[data-sema="yildiz"] .yz .yz-duzen #islem-para-ustu-ac:not(#_):not(#__) { display: none; }
 html:root[data-sema="yildiz"] .yz .yz-duzen .secici-liste-kap:not(#_) { position: relative; z-index: 41; top: auto; bottom: auto; left: auto; right: auto; translate: none; width: 100%; max-width: none; }   /* sunum 14.10 (kurucu: "ara kısmına tıklayınca liste kapanıyor"): akışta kalır ama .secici-perde (z 40) ÜSTÜNDE — static iken perde listeyi örtüyor, her tıklama perdeye gidip listeyi kapatıyordu */
 @media (min-width: 1001px) {
-  html:root[data-sema="yildiz"] .yz-tezgah { height: calc(100vh - 72px); min-height: 0; }
-  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-ana { min-height: 0; overflow: hidden; }
-  html:root[data-sema="yildiz"] .yz-tezgah :is(.yz-tezgah-sol, .yz-tezgah-sag) { min-height: 0; }
-  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sol { overflow: hidden; }
-  html:root[data-sema="yildiz"] .yz-tezgah :is(.yz-tezgah-kalemler, .yz-tezgah-duzen) { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  /* Kurucu 24.10: "sağda seçim kısımları kendi içinde scroll çıkıyor; küçücük pencerede aşağı yukarı olmuyor" — sütunlar
+     ekran boyuna KİLİTLENMEZ, iç kaydırma (kalemler/düzen/ödeme) YOK; sayfa bütün olarak kayar. Fark + Kaydet sağ sütunun
+     dibinde yapışkan kalır (aşağıdaki TEZGAH-ODEME-3 bloğu). Eski "sütun = ekran, parça kendi içinde kayar" kuralı kalktı. */
+  html:root[data-sema="yildiz"] .yz-tezgah { min-height: calc(100vh - 72px); }
   html:root[data-sema="yildiz"] .yz-tezgah :is(.yz-tezgah-ust-satir, .yz-tezgah-giris, .yz-tezgah-toplam, .yz-tezgah-sag > .yz-ust, .yz-tezgah-odemeler, .yz-tezgah-ekler) { flex-shrink: 0; }
-  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-bosluk { flex-shrink: 1; min-height: 0; }
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-bosluk { flex: 1 1 auto; min-height: 0; }
 }
 @media (max-width: 1000px) {
   /* YILDIZ-4D (kurucu: "alt şerit içeriğin üstüne binmez, içerik alt şeridin yüksekliği kadar boşluk bırakır"):
@@ -3309,15 +3308,14 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-odeme-govde { display: flex;
    Fark + Kaydet sütunun dibinde yapışkan (sticky) — sütundaki bütün boşluk ödeme satırlarına kalır. Esnek boşluk
    öğesinin iki aralığı (2 × 28 px) tek aralığa iner. */
 @media (min-width: 1001px) {
-  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag:not(#_) { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  /* 24.10: sağ sütun artık kendi başına kaymaz (kurucu); yapışkan blok sayfa kaydırmasına göre dipte durur. */
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag > .yz-tezgah-odeme-govde:not(#_) { flex: 0 0 auto; overflow: visible; background: none; }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag > .yz-tezgah-bosluk:not(#_) { margin-top: -28px; }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag > .yz-tezgah-alt:not(#_) { position: sticky; bottom: 0; z-index: 1; background-color: var(--yuzey-govde); }
   /* "aşağıda daha var" işareti: sütun kayarken yapışkan bloğun üst kenarında ince gölge (içerik altta kalınca görünür). */
-  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag > .yz-tezgah-alt:not(#_)::before { content: ""; position: absolute; left: 0; right: 0; top: -18px; height: 18px; pointer-events: none; background: linear-gradient(transparent, var(--yz-kaydir-golge)); opacity: 0; transition: opacity .2s; }
-  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag:not(#_) { --yz-kaydir-golge: color-mix(in srgb, var(--metin) 14%, transparent); scroll-timeline: --yz-sag-kaydir y; }
-  /* Kaydırma zaman çizelgesi: sütun kayabiliyorsa gölge görünür, en alta inince söner (betik yok; desteklemeyen tarayıcıda gölge yok). */
-  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag > .yz-tezgah-alt:not(#_)::before { animation: amb-kaydir-son linear both; animation-timeline: --yz-sag-kaydir; }
+  /* Yapışkan bloğun üst kenarında ince gölge: altında içerik kaldığında ("aşağıda daha var") görünür — gölge katmanıyla aynı dil. */
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag > .yz-tezgah-alt:not(#_) { box-shadow: 0 -12px 24px -16px var(--yz-kaydir-golge); }
+  html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag:not(#_) { --yz-kaydir-golge: color-mix(in srgb, var(--metin) 30%, transparent); }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag :is(.yz-tezgah-duzen, .bacak-satiri input):not(#_) { scroll-margin-bottom: 240px; }
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tezgah-sag .yz-tezgah-ekler > button:not(#_) { scroll-margin-bottom: 260px; }   /* yapışkan Fark/Kaydet bloğu (~240 px) odaklanan/kaydırılan öğeyi örtmesin — hap düğmeleri dahil (sunum 14.10 ölçüm: 1366×768) */
 }
@@ -4167,21 +4165,21 @@ html:root[data-sema="yildiz"] body .ana-icerik .kart > .kart-baslik > h2:not(#_)
    • Seçenek satırı: fare üstünde ve klavyeyle gezilirken zemin (--yuzey-hover) — "neredeyim" belli.
    ═══════════════════════════════════════════════════════════════════════════ */
 html:root[data-sema="yildiz"] {
-  --yuzey-acilir: color-mix(in srgb, var(--yuzey-govde), white 70%);   /* kaldırılmış yüzey: zeminden açık (ham hex yok) */
+  --yuzey-acilir: var(--yuzey-govde);   /* kurucu 24.10: "beyaz saçma renk olmaz" — yüzey zeminle AYNI, derinliği gölge + 3:1 kenar verir */
   --golge-acilir: 0 1px 2px rgba(20, 20, 20, .08), 0 8px 24px rgba(20, 20, 20, .14);
   --golge-katman: 0 16px 48px rgba(20, 20, 20, .22);
   --perde: rgba(20, 20, 20, .32);
 }
 @media (prefers-color-scheme: dark) {
   html:root:not([data-tema="aydinlik"])[data-sema="yildiz"] {
-    --yuzey-acilir: var(--yuzey-3);
+    --yuzey-acilir: var(--yuzey-govde);
     --golge-acilir: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .6);
     --golge-katman: 0 16px 48px rgba(0, 0, 0, .7);
     --perde: rgba(0, 0, 0, .6);
   }
 }
 html:root[data-tema="karanlik"][data-sema="yildiz"] {
-  --yuzey-acilir: var(--yuzey-3);
+  --yuzey-acilir: var(--yuzey-govde);
   --golge-acilir: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .6);
   --golge-katman: 0 16px 48px rgba(0, 0, 0, .7);
   --perde: rgba(0, 0, 0, .6);
@@ -4204,3 +4202,10 @@ html:root[data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik):not(
 }
 html:root[data-tema="karanlik"][data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik):not(#_):not(#__) { border-bottom-color: var(--metin-soluk); }
 html:root[data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik:focus-visible):not(#_):not(#__) { border-bottom-color: var(--metin) !important; box-shadow: 0 1px 0 var(--metin); }
+
+/* Kurucu 24.10 (Bugün ekranı): "Yeni satış / Günü kapat ekran küçük olunca altta kalıyor" — sol sütun ızgara satırının
+   (sağdaki uzun "Seni bekleyen" listesinin) boyuna uzayıp düğmeleri ekran dışına itiyordu. Sol sütun İLK EKRAN boyundadır
+   (üst şerit 72 + dolgu 72/56 düşülür), satırla uzamaz; düğmeler ekranın dibinde, sayfa kayarken sütun yerinde kalır. */
+@media (min-width: 1001px) {
+  html:root[data-sema="yildiz"] .yildiz-bugun .yildiz-bugun-sol:not(#_) { align-self: start; position: sticky; top: 72px; min-height: calc(100vh - 72px - 72px - 56px); }
+}

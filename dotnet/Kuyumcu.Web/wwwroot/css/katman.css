@@ -181,7 +181,10 @@ html[data-mod] .cekmece .secici-tetik > .secici-metin {
 .gk-ayrinti[open] > .gk-ayrinti-govde {
   max-height: calc(100vh - 2 * var(--katman-pay));
   overflow-y: auto;
-  overscroll-behavior: contain;
+  /* Kurucu 24.10 (/ayarlar?sekme=guvenlik): "aşağıdan yukarıya çıkamıyorum" — contain değeri iç
+     kutunun başına/sonuna gelince tekerleği SAYFAYA geçirmiyordu; kullanıcı kutuda hapsoluyordu. Sayfa içi katlanır
+     gövdede zincir açık kalır (contain yalnız katmanlar/açılır listeler için). */
+  overscroll-behavior: auto;
 }
 
 /* ── (7) 375 px Kasalar kartı: "⋯" (Diğer işlemler açıcısı) tek başına alt satıra düşüyordu

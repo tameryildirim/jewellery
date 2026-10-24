@@ -67,7 +67,7 @@ fieldset.sade-kilitli-form:disabled * { cursor: not-allowed; }
 .sade-ayrinti-govde {
   display: flex; flex-direction: column; gap: var(--bosluk-2);
   /* Açılan ayrıntı sayfayı ekran boyu aşağı itmez: kendi kutusunda kayar. */
-  max-height: 50vh; overflow-y: auto; overscroll-behavior: contain;
+  max-height: 50vh; overflow-y: auto; overscroll-behavior: auto;   /* 24.10: sayfa içi kutu tekerleği hapsetmez (bkz. katman.css (6)) */
 }
 
 /* (5) /kilavuz — kart ızgarası (göz #18): madde işaretli uzun liste yerine. */
@@ -112,7 +112,7 @@ fieldset.sade-kilitli-form:disabled * { cursor: not-allowed; }
        (tur ölçümü: açılan katman ekran dışı). Liste kendi kutusunda kayar; ekranın
        en çok %40'ı kadar yer kaplar, liste SİLİNMEZ. */
 #kl-ekranlar-ayrinti > #kl-ekranlar {
-  max-height: 40vh; overflow-y: auto; overscroll-behavior: contain;
+  max-height: 40vh; overflow-y: auto; overscroll-behavior: auto;   /* 24.10: sayfa içi kutu tekerleği hapsetmez */
   padding-right: 4px;
 }
 
