@@ -1321,6 +1321,9 @@ html:root[data-sema="yildiz"][data-mod] .ana-icerik .katlanir > .katlanir-h > .k
 html:root[data-sema="yildiz"] .yildiz-kabuk:has(#yildiz-bugun) .ust-bar { display: none; }
 html:root[data-sema="yildiz"] .yildiz-kabuk #ust-mod-anahtar { display: none; }
 html:root[data-sema="yildiz"] body .yildiz-kabuk .ana-icerik:has(#yildiz-bugun) { padding: 0; }
+/* Kurucu 24.10 (ikinci görüntü): `.ana-icerik{overflow:auto}` sol sütunun yapışkanlığını kendi içine hapsediyordu (kap kaymıyor,
+   pencere kayıyor → yapışkan hiç tutmuyor, düğmeler yukarı kaçıyordu). Tezgâh'taki istisnanın aynısı. */
+html:root[data-sema="yildiz"] .ana-icerik:has(#yildiz-bugun) { overflow-x: clip; overflow-y: visible; }
 /* Şube adı üst satırdadır (tuval "… · MERKEZ ŞUBE"); ikinci rozet satırı çizilmez. */
 html:root[data-sema="yildiz"] .ana-icerik:has(#yildiz-bugun) .gorunum-rozeti { display: none; }
 

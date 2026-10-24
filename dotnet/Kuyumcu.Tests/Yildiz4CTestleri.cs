@@ -729,6 +729,15 @@ public sealed class Yildiz4CTestleri : BunitContext
     }
 
     [Fact]
+    public void Y4C_44_css_bugun_sol_sutun_yapiskan_ve_ana_icerik_hapsetmez()
+    {
+        // Kurucu 24.10: Bugün sol sütunu ilk ekran boyunda yapışkan; `.ana-icerik{overflow:auto}` yapışkanı hapsetmesin.
+        var c = Css();
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yildiz-bugun .yildiz-bugun-sol:not(#_) { align-self: start; position: sticky; top: 72px; min-height: calc(100vh - 72px - 72px - 56px); }", c);
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .ana-icerik:has(#yildiz-bugun) { overflow-x: clip; overflow-y: visible; }", c);
+    }
+
+    [Fact]
     public void Y4C_42_css_kaydet_ve_bantlar_ekranda_genis_sabit_dar_altta_sabit()
     {
         var b = Blok4C();
