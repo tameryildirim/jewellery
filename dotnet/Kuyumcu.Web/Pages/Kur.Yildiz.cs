@@ -75,12 +75,21 @@ public partial class Kur
                 builder.AddAttribute(2, "for", "yildiz-kur-kaynak");
                 builder.AddContent(3, YildizListeBicim.Buyuk(YildizKurSozlugu.Kaynak(dil), dil));
                 builder.AddContent(4, " ");
-                builder.OpenElement(5, "select");
-                builder.AddAttribute(6, "id", "yildiz-kur-kaynak");
-                builder.AddAttribute(7, "value", secili);
-                builder.AddAttribute(8, "disabled", kaynakDegisiyor);
-                builder.AddAttribute(9, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, YildizKaynakSecildi));
-                var sira = 10;
+                // Kurucu 26.10: seçici satırın öteki öğeleriyle AYNI görünür (soluk etiket + koyu 500 değer), genişliği
+                // uzun seçeneğe değil SEÇİLİ ada göre (gizli ölçü yazısı aynı ızgara hücresinde), sağında küçük ok.
+                builder.OpenElement(5, "span");
+                builder.AddAttribute(6, "class", "yz-kaynak-kutu");
+                builder.OpenElement(7, "b");
+                builder.AddAttribute(8, "class", "yz-kaynak-olcu");
+                builder.AddAttribute(9, "aria-hidden", "true");
+                builder.AddContent(10, KaynakAdi(secili));
+                builder.CloseElement();
+                builder.OpenElement(11, "select");
+                builder.AddAttribute(12, "id", "yildiz-kur-kaynak");
+                builder.AddAttribute(13, "value", secili);
+                builder.AddAttribute(14, "disabled", kaynakDegisiyor);
+                builder.AddAttribute(15, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, YildizKaynakSecildi));
+                var sira = 16;
                 foreach (var kod in kd.Kaynaklar)
                 {
                     builder.OpenElement(sira++, "option");
@@ -89,8 +98,9 @@ public partial class Kur
                     builder.AddContent(sira++, KaynakAdi(kod));
                     builder.CloseElement();
                 }
-                builder.CloseElement();
-                builder.CloseElement();
+                builder.CloseElement();   // select
+                builder.CloseElement();   // span.yz-kaynak-kutu
+                builder.CloseElement();   // label
             };
         }
     }

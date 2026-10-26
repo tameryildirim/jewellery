@@ -133,6 +133,10 @@ public sealed class S3eKurKaynagiEkranTestleri : BunitContext
         var sec = c.Find("#yildiz-kur-kaynak");
         Assert.Equal(3, sec.QuerySelectorAll("option").Length);
         Assert.Equal("Altınkaynak", sec.QuerySelector("option[selected]")!.TextContent.Trim());   // ham kod değil, ad (UX-S31)
+        // Kurucu 26.10: genişlik seçili ada göre — gizli ölçü yazısı seçili adı taşır, select ile aynı kutuda.
+        var kutu = c.Find("#yildiz-kurlar-bilgi .yz-kaynak-sec .yz-kaynak-kutu");
+        Assert.Equal("Altınkaynak", kutu.QuerySelector("b.yz-kaynak-olcu[aria-hidden=true]")!.TextContent.Trim());
+        Assert.NotNull(kutu.QuerySelector("> select#yildiz-kur-kaynak"));
 
         sec.Change("ANKARA");
         c.WaitForAssertion(() => Assert.Contains(istekler, i => i.Metot == "PATCH" && i.Yol.EndsWith("/kur/kaynak")), TimeSpan.FromSeconds(10));

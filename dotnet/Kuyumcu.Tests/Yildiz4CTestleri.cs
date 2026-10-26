@@ -740,6 +740,38 @@ public sealed class Yildiz4CTestleri : BunitContext
     }
 
     [Fact]
+    public void Y4C_45_css_ust_serit_pencere_tepesine_yapisik_zemin_ortulu()
+    {
+        // Kurucu 26.10: MİHENK işareti ve menü sayfa kayınca yerinde durur (tüm ekranlar) — şerit sticky/top 0, zemin kabukla aynı
+        // (altından akan içerik görünmez); katman pencere (50) ve çekmece (40) altında kalır.
+        var k = Kural(Css(), "html:root[data-sema=\"yildiz\"] .yildiz-ust");
+        Assert.Contains("position: sticky;", k);
+        Assert.Contains("top: 0;", k);
+        Assert.Contains("z-index: 30;", k);
+        Assert.Contains("background: var(--yuzey-govde);", k);
+        Assert.DoesNotContain("background: transparent", k);
+    }
+
+    [Fact]
+    public void Y4C_46_css_kur_kaynak_secici_satirla_ayni_gorunur_secili_ad_kadar_genis_ok_var()
+    {
+        // Kurucu 26.10 ("kıdemli frontendci işi mi?"): seçici en uzun seçeneğe göre genişleyip satırı sarıyordu, oku yoktu,
+        // alt çizgisi değerden uzun sarkıyordu; "+ Tüm ayrıntılar" düğme satırının tepesine asılıydı.
+        var c = Css();
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-ozet .yz-ozet-eylem > .yz-ekle { padding: 0; align-self: center; }", c);
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-ozet .yz-ozet-bilgi .yz-kaynak-kutu:not(#_) { position: relative; display: inline-grid; align-items: baseline; padding-right: 16px; color: var(--metin); }", c);
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-ozet .yz-ozet-bilgi .yz-kaynak-kutu:not(#_) > * { grid-area: 1 / 1; }", c);
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-ozet .yz-ozet-bilgi .yz-kaynak-olcu:not(#_) { visibility: hidden; white-space: nowrap; padding-right: 3px; }", c);
+        var sec = Kural(c, "html:root[data-sema=\"yildiz\"] body .yz-ozet .yz-ozet-bilgi .yz-kaynak-kutu > select:not(#_):not(#__):not(#___)");   // 4172. satırdaki genel `select … 400 !important` (2 kimlik) yenilir
+        Assert.Contains("appearance: none;", sec);
+        Assert.Contains("width: 100%;", sec);
+        Assert.Contains("font-weight: 500 !important;", sec);
+        Assert.DoesNotContain("border-bottom: 1px", sec);
+        Assert.Contains("html:root[data-sema=\"yildiz\"] .yz-ozet--kur .yz-ozet-bilgi:not(#_) { gap: 12px 32px; }", c);
+        Assert.Contains("content: \"\";", Kural(c, "html:root[data-sema=\"yildiz\"] .yz-ozet .yz-ozet-bilgi .yz-kaynak-kutu:not(#_)::after"));
+    }
+
+    [Fact]
     public void Y4C_42_css_kaydet_ve_bantlar_ekranda_genis_sabit_dar_altta_sabit()
     {
         var b = Blok4C();
