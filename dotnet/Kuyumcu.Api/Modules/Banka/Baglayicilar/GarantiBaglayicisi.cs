@@ -84,12 +84,13 @@ public sealed class GarantiBaglayicisi : IBankaBaglayicisi
             if (!kok.TryGetProperty("transactions", out var t) || t.ValueKind != JsonValueKind.Array) return (liste, 0);
             foreach (var h in t.EnumerateArray())
             {
-                var yon = Metin(h, "txnCreditDebitIndicator");
+                // Resmi belge (portal, 27.10): örnekler "txnCreditDebitIndicator", şema "txtnCreditDebitIndicator" yazıyor → ikisi de okunur.
+                var yon = Metin(h, "txnCreditDebitIndicator") ?? Metin(h, "txtnCreditDebitIndicator");
                 var tarih = Tarih.Oku(Metin(h, "transactionInstanceId"), "yyyy-MM-ddTHH:mm:ss.FFFFFF")
                             ?? Tarih.Oku(Metin(h, "activityDate"), "yyyy-MM-dd");
                 var tutar = Sayi.Oku(Metin(h, "amount"));
                 if (tarih is null || tutar is null || yon is not ("A" or "B")) continue;
-                string? karsiAd = null, karsiIban = null, detay = null;
+                string? karsiAd = null, karsiIban = null, detay = null, eftAd = null, eftIban = null, eftKimlik = null;
                 if (h.TryGetProperty("enrichmentInformation", out var zen) && zen.ValueKind == JsonValueKind.Array)
                     foreach (var z in zen.EnumerateArray())
                     {
@@ -99,11 +100,20 @@ public sealed class GarantiBaglayicisi : IBankaBaglayicisi
                             case "MUS": karsiAd = Metin(v, "corrNameSurnameText"); break;
                             case "CORRACNT": karsiIban = Metin(v, "corrIBAN"); break;
                             case "DEK": detay = Metin(v, "detailText"); break;
+                            // Başka bankadan EFT: karşı tarafın adı/IBAN'ı/kimliği EFT bloğunda (resmi belge § Enrichment Codes).
+                            // Gelende karşı taraf GÖNDEREN, gidende ALICI. senderVKN yalnız gönderenindir.
+                            case "EFT":
+                                eftAd = Metin(v, yon == "A" ? "senderName" : "receiverName");
+                                eftIban = Metin(v, yon == "A" ? "senderIBANEFT" : "receiverIBANEFT");
+                                eftKimlik = yon == "A" ? Metin(v, "senderVKN") : null;
+                                break;
                         }
                     }
+                karsiAd ??= eftAd;
+                karsiIban ??= eftIban;
                 var aciklama = string.Join(" ", new[] { Metin(h, "explanation"), detay }.Where(x => !string.IsNullOrWhiteSpace(x) && x != "00000"));
                 var temiz = HareketTemizleyici.Temizle(KodSabit, null, tarih.Value, yon == "A", tutar.Value,
-                    karsiAd, karsiIban, Metin(h, "corrVKN") ?? Metin(h, "corrTCKN"), aciklama,
+                    karsiAd, karsiIban, Metin(h, "corrVKN") ?? Metin(h, "corrTCKN") ?? eftKimlik, aciklama,
                     yedekAnahtar: $"{Metin(h, "IBAN") ?? iban}|{Metin(h, "transactionReferenceId")}|{Metin(h, "transactionInstanceId")}");
                 if (temiz is not null) liste.Add(temiz);
             }

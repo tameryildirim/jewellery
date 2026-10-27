@@ -47,6 +47,70 @@ public sealed class D2BankaBaglayiciTestleri
         Assert.Equal(g.Referans, GarantiBaglayicisi.Ayristir(json, Iban).Hareketler[0].Referans);
     }
 
+    // 27.10 — portaldaki resmi belgeyle doğrulama: başka bankadan EFT'de karşı tarafın adı/IBAN'ı/kimliği yalnız
+    // EFT zenginleştirmesinde gelir (MUS/CORRACNT yok, corrVKN null). Gelende GÖNDEREN okunur, gidende ALICI.
+    [Fact]
+    public void Garanti_baska_bankadan_EFT_gonderen_ad_IBAN_kimlik_EFT_blogundan_okunur()
+    {
+        var json = $$"""
+        { "result": { "returnCode": 200, "reasonCode": 1, "messageText": "Başarılı" },
+          "transactions": [
+            { "IBAN": "{{Iban}}", "activityDate": "2026-10-27", "txnCreditDebitIndicator": "A", "amount": 3500,
+              "explanation": "Para Transferi EFT", "corrVKN": null, "corrTCKN": null,
+              "transactionReferenceId": "2026-10-27T14:15:14.008745", "transactionInstanceId": "2026-10-27T14:15:14.440521",
+              "enrichmentInformation": [
+                { "enrichmentCode": "EFT", "enrichmentValue": { "moduleName": "EFT", "msgType": "KRED",
+                  "senderIBANEFT": "{{KarsiIban}}", "receiverIBANEFT": "{{Iban}}", "senderName": "Kemal Ardıç",
+                  "receiverName": "Altın Çarşı", "senderVKN": "{{Tc}}" } } ] },
+            { "IBAN": "{{Iban}}", "activityDate": "2026-10-27", "txtnCreditDebitIndicator": "B", "amount": 560.7,
+              "explanation": "EFT", "transactionReferenceId": "y", "transactionInstanceId": "2026-10-27T15:00:00.000000",
+              "enrichmentInformation": [
+                { "enrichmentCode": "EFT", "enrichmentValue": { "senderIBANEFT": "{{Iban}}", "receiverIBANEFT": "{{KarsiIban}}",
+                  "senderName": "Altın Çarşı", "receiverName": "Tuna Akarsu", "senderVKN": "{{Tc}}" } } ] } ] }
+        """;
+        var (h, ham) = GarantiBaglayicisi.Ayristir(json, Iban);
+        Assert.Equal(2, ham);
+        Assert.Equal(2, h.Count);
+        var g = h[0];
+        Assert.Equal(HareketYonu.BankaGelen, g.Yon);
+        Assert.Equal("Kemal Ardıç", g.KarsiAd);
+        Assert.Equal(KarsiIban, g.KarsiIban);
+        Assert.Equal(Tc, g.KarsiKimlikNo);
+        // Şemadaki yazım ("txtn…") da yön olarak okunur; gidende karşı taraf ALICIDIR, gönderen kimliği alınmaz.
+        var c = h[1];
+        Assert.Equal(HareketYonu.BankaGiden, c.Yon);
+        Assert.Equal("Tuna Akarsu", c.KarsiAd);
+        Assert.Equal(KarsiIban, c.KarsiIban);
+        Assert.Null(c.KarsiKimlikNo);
+    }
+
+    [Fact]
+    public void Garanti_MUS_ve_CORRACNT_varsa_EFT_blogunu_ezmez()
+    {
+        var baska = TestIban.Uret();
+        var json = $$"""
+        { "transactions": [ { "txnCreditDebitIndicator": "A", "amount": 10, "transactionInstanceId": "2026-10-27T10:00:00.000000",
+            "enrichmentInformation": [
+              { "enrichmentCode": "CORRACNT", "enrichmentValue": { "corrIBAN": "{{KarsiIban}}" } },
+              { "enrichmentCode": "MUS", "enrichmentValue": { "corrNameSurnameText": "Hatice Demirkol" } },
+              { "enrichmentCode": "EFT", "enrichmentValue": { "senderIBANEFT": "{{baska}}", "senderName": "Başka Ad" } } ] } ] }
+        """;
+        var g = GarantiBaglayicisi.Ayristir(json, Iban).Hareketler.Single();
+        Assert.Equal("Hatice Demirkol", g.KarsiAd);
+        Assert.Equal(KarsiIban, g.KarsiIban);
+    }
+
+    [Fact]
+    public void Banka_400_JSON_govdesindeki_Turkce_aciklama_kullaniciya_iletilir()
+    {
+        Assert.Equal("Vermiş olduğunuz clientId-consentId bilgileri hatalıdır. (kod 4)", JsonBankaHatasi.Coz(
+            """{ "result": { "returnCode": 400, "reasonCode": 4, "messageText": "Vermiş olduğunuz clientId-consentId bilgileri hatalıdır." } }"""));
+        Assert.Equal("Invalid Credentials", JsonBankaHatasi.Coz("""{ "result": { "code": 401, "info": "Invalid Credentials" } }"""));
+        Assert.Null(JsonBankaHatasi.Coz("<html>404</html>"));
+        Assert.Null(JsonBankaHatasi.Coz("{ bozuk"));
+        Assert.Null(JsonBankaHatasi.Coz("""{ "result": { "returnCode": 400 } }"""));
+    }
+
     [Fact]
     public void Garanti_hata_kodu_sade_mesajla_durur()
     {

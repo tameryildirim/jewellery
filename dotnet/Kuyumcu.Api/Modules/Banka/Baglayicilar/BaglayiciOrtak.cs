@@ -89,6 +89,28 @@ public static class Tarih
     }
 }
 
+/// <summary>REST bankasının (Garanti) JSON hata gövdesi → kullanıcıya sade Türkçe açıklama.</summary>
+public static class JsonBankaHatasi
+{
+    /// <summary>JSON hata gövdesinden sade açıklama: result.messageText (+ reasonCode) ya da result.info. Yoksa null.</summary>
+    public static string? Coz(string metin)
+    {
+        if (!metin.TrimStart().StartsWith('{')) return null;
+        try
+        {
+            using var d = System.Text.Json.JsonDocument.Parse(metin);
+            if (!d.RootElement.TryGetProperty("result", out var r) || r.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+            static string? Al(System.Text.Json.JsonElement e, string ad) =>
+                e.TryGetProperty(ad, out var v) ? (v.ValueKind == System.Text.Json.JsonValueKind.String ? v.GetString()?.Trim() : v.ValueKind == System.Text.Json.JsonValueKind.Number ? v.GetRawText() : null) : null;
+            var mesaj = Al(r, "messageText") ?? Al(r, "info");
+            if (string.IsNullOrEmpty(mesaj)) return null;
+            if (mesaj.Length > 200) mesaj = mesaj[..200];
+            return Al(r, "reasonCode") is { Length: > 0 } kod ? $"{mesaj} (kod {kod})" : mesaj;
+        }
+        catch (System.Text.Json.JsonException) { return null; }
+    }
+}
+
 internal static class Http
 {
     public static async Task<string> Gonder(HttpClient http, HttpRequestMessage istek, string bankaAdi, CancellationToken iptal, Encoding? kodlama = null)
@@ -101,6 +123,9 @@ internal static class Http
         {
             if (metin.Contains("Fault", StringComparison.OrdinalIgnoreCase) && Soap.Hata(metin) is { } f)
                 throw new BankaBaglantiHatasi($"{bankaAdi}: {f}");
+            // REST bankası (Garanti) 400'ü gövdede Türkçe açıklamayla döner: { "result": { "reasonCode": 4, "messageText": "…" } }.
+            if (JsonBankaHatasi.Coz(metin) is { } j)
+                throw new BankaBaglantiHatasi($"{bankaAdi}: {j}");
             throw BankaBaglayicilari.HttpHatasi(yanit.StatusCode, bankaAdi);
         }
         return metin;
