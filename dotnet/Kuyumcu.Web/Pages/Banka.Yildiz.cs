@@ -22,6 +22,8 @@ public partial class Banka
 
     private bool YildizBosMu => !yildizAyrinti && !yukleniyor && listeHata is null && hesaplar.Count == 0;
 
+    private bool BankaBakiyeSutunu => hesaplar.Any(h => h.BankaBakiye is not null);
+
     private async Task YildizHareketler(string id)
     {
         yildizAyrinti = true;
@@ -48,12 +50,15 @@ public partial class Banka
             var dil = Dil.Dil;
             return new YildizListeBaglami
             {
-                Kok = "yildiz-banka", Tur = "banka",
+                Kok = "yildiz-banka", Tur = BankaBakiyeSutunu ? "banka-bankada" : "banka",
                 Ust = YildizBankaSozlugu.Ust(dil),
                 Baslik = YildizListeBicim.EkranAdi("/banka", Dil),
                 B1Etiket = YildizBankaSozlugu.HesapEkle(dil), B1Id = "yildiz-banka-b1",
                 B1Tikla = EventCallback.Factory.Create(this, YeniHesapModalAc),
-                Sutunlar = [new(YildizBankaSozlugu.Hesap(dil)), new(YildizBankaSozlugu.Iban(dil)), new(YildizBankaSozlugu.Bakiye(dil), Sag: true)],
+                // Kurucu 31.10: bankanın KENDİ söylediği bakiye — yalnız bir hesap bile bakiye verdiyse sütun açılır.
+                Sutunlar = BankaBakiyeSutunu
+                    ? [new(YildizBankaSozlugu.Hesap(dil)), new(YildizBankaSozlugu.Iban(dil)), new(YildizBankaSozlugu.Bakiye(dil), Sag: true), new(YildizBankaSozlugu.Bankada(dil), Sag: true)]
+                    : [new(YildizBankaSozlugu.Hesap(dil)), new(YildizBankaSozlugu.Iban(dil)), new(YildizBankaSozlugu.Bakiye(dil), Sag: true)],
                 EylemSutunu = true,
                 Satirlar = [.. hesaplar.Select(h => new YildizListeSatiri(h.Id,
                 [
@@ -61,6 +66,9 @@ public partial class Banka
                     new((h.Aktif ? h.Iban : $"{h.Iban} · {YildizBankaSozlugu.KullanimdaDegil(dil)}")
                         + (h.SaglayiciKodu == "SAHTE" ? $" · {GelenOdemeSozlugu.DemoBanka(dil)}" : "")),
                     new(YildizParaBicim.Tutar(h.Bakiye, h.ParaBirimi), YildizHucreTuru.Deger, $"yildiz-banka-bakiye-{h.Id}"),
+                    .. BankaBakiyeSutunu
+                        ? new YildizHucre[] { new(h.BankaBakiye is { } bb ? YildizParaBicim.Tutar(bb, h.ParaBirimi) : "", YildizHucreTuru.Deger, $"yildiz-banka-bankada-{h.Id}") }
+                        : [],
                 ],
                 new YildizEylem(YildizBankaSozlugu.Hareketler(dil), $"yildiz-banka-hareket-{h.Id}", EventCallback.Factory.Create(this, () => YildizHareketler(h.Id))),
                 Soluk: !h.Aktif))],

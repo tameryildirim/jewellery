@@ -111,6 +111,53 @@ public sealed class D2BankaBaglayiciTestleri
         Assert.Null(JsonBankaHatasi.Coz("""{ "result": { "returnCode": 400 } }"""));
     }
 
+    // ── Kurucu 31.10: Garanti Hesap Bilgisi (bakiye) — resmi belge örnek yanıtı + şemadaki küçük harf yazımı ──
+    [Fact]
+    public void Garanti_bakiye_belgedeki_ornek_yanit_Balance_ve_AvailableBalance_okunur_IBAN_ile_hesap_secilir()
+    {
+        var baska = TestIban.Uret();
+        var json = $$"""
+        { "result": { "returnCode": 200, "reasonCode": 1, "messageText": "Başarılı" },
+          "accounts": [
+            { "balances": [ { "type": "Balance", "Amount": "1.00" } ], "IBAN": "{{baska}}", "currencyCode": "TL " },
+            { "balances": [
+                { "type": "Balance", "Amount": "9995559.34" }, { "type": "BlockedAmount", "Amount": "250.00" },
+                { "type": "AvailableBalance", "Amount": "9995309.34" }, { "type": "CreditLimit", "Amount": "0.00" },
+                { "type": "AvailableBalanceWithCredit", "Amount": "9995309.34" } ],
+              "IBAN": "{{Iban}}", "currencyCode": "TL ", "status": "A" } ] }
+        """;
+        var b = GarantiBaglayicisi.BakiyeAyristir(json, Iban);
+        Assert.NotNull(b);
+        Assert.Equal(9995559.34m, b!.Bakiye);
+        Assert.Equal(9995309.34m, b.Kullanilabilir);
+    }
+
+    [Fact]
+    public void Garanti_bakiye_kucuk_harf_type_amount_ve_sayi_tutar_okunur_tek_hesap_IBANsiz_secilir()
+    {
+        var json = """
+        { "result": { "returnCode": 200 },
+          "accounts": [ { "balances": [ { "type": "balance", "amount": 1250.5 }, { "TYPE": "availableBalance", "AMOUNT": "1000,25" } ] } ] }
+        """;
+        var b = GarantiBaglayicisi.BakiyeAyristir(json, Iban);
+        Assert.Equal(1250.5m, b!.Bakiye);
+        Assert.Equal(1000.25m, b.Kullanilabilir);
+    }
+
+    [Fact]
+    public void Garanti_bakiye_yoksa_null_uydurulmaz_hata_govdesi_sade_mesajla_durur()
+    {
+        Assert.Null(GarantiBaglayicisi.BakiyeAyristir("""{ "result": { "returnCode": 200 }, "accounts": [] }""", Iban));
+        Assert.Null(GarantiBaglayicisi.BakiyeAyristir("""{ "result": { "returnCode": 200 }, "accounts": [ { "balances": [ { "type": "BlockedAmount", "Amount": "5" } ] } ] }""", Iban));
+        // İki hesap, ikisi de bizim IBAN değil → yanlış hesabın bakiyesi YAZILMAZ.
+        Assert.Null(GarantiBaglayicisi.BakiyeAyristir($$"""{ "accounts": [ { "IBAN": "{{KarsiIban}}", "balances": [ { "type": "Balance", "Amount": "5" } ] }, { "IBAN": "{{TestIban.Uret()}}", "balances": [ { "type": "Balance", "Amount": "6" } ] } ] }""", Iban));
+        var ex = Assert.Throws<BankaBaglantiHatasi>(() => GarantiBaglayicisi.BakiyeAyristir(
+            """{ "result": { "returnCode": 400, "reasonCode": 13, "messageText": "Hesap bilgisi ile İban bilgisi uyumsuzdur." } }""", Iban));
+        Assert.Contains("uyumsuz", ex.Message);
+        Assert.Contains("13", ex.Message);
+        Assert.Throws<BankaBaglantiHatasi>(() => GarantiBaglayicisi.BakiyeAyristir("<html/>", Iban));
+    }
+
     [Fact]
     public void Garanti_hata_kodu_sade_mesajla_durur()
     {

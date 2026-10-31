@@ -32,6 +32,18 @@ public interface IBankaBaglayicisi
     Task<IReadOnlyList<SaglayiciHareketi>> Cek(HttpClient http, BankaCekimIstegi istek, CancellationToken iptal);
 }
 
+/// <summary>Bankanın kendi söylediği hesap bakiyesi (kullanılabilir = bloke düşülmüş; vermeyen bankada null).</summary>
+public sealed record BankaBakiyesi(decimal Bakiye, decimal? Kullanilabilir);
+
+/// <summary>
+/// Bakiye de veren bağlayıcı (kurucu 31.10: "hesaba ait bakiye"). İsteğe bağlı: bugün yalnız Garanti
+/// (Hesap Bilgisi servisi). Hareket çekimi başarılı olduktan sonra çağrılır; hatası hareketleri düşürmez.
+/// </summary>
+public interface IBankaBakiyeVeren
+{
+    Task<BankaBakiyesi?> Bakiye(HttpClient http, BankaCekimIstegi istek, CancellationToken iptal);
+}
+
 /// <summary>Bankanın döndüğü, kullanıcıya sade dille söylenecek bağlantı hatası.</summary>
 public sealed class BankaBaglantiHatasi(string sade, Exception? ic = null) : Exception(sade, ic);
 
@@ -98,9 +110,11 @@ public sealed class BankaBaglantiCekici(
             using var zaman = CancellationTokenSource.CreateLinkedTokenSource(iptal);
             zaman.CancelAfter(TimeSpan.FromSeconds(60));
             var http = httpFabrika.CreateClient(HttpAdi);
-            var sonuc = await baglayici.Cek(http, new BankaCekimIstegi(hesap.Iban, hesap.ParaBirimi, kimlik, baslangic, bitis), zaman.Token);
+            var cekimIstegi = new BankaCekimIstegi(hesap.Iban, hesap.ParaBirimi, kimlik, baslangic, bitis);
+            var sonuc = await baglayici.Cek(http, cekimIstegi, zaman.Token);
             bag.SonBasari = DateTime.UtcNow;
             bag.SonHata = null;
+            if (baglayici is IBankaBakiyeVeren bakiyeVeren) await BakiyeYaz(bakiyeVeren, http, cekimIstegi, hesap, zaman.Token);
             await db.SaveChangesAsync(iptal);
             return (true, sonuc, null);
         }
@@ -119,6 +133,27 @@ public sealed class BankaBaglantiCekici(
             bag.SonHata = sade.Length > 300 ? sade[..300] : sade;
             await db.SaveChangesAsync(iptal);
             return (false, null, sade);
+        }
+    }
+
+    /// <summary>
+    /// Bankanın bakiyesini hesaba yazar. Hata hareketleri DÜŞÜRMEZ ve bağlantıyı hatalı göstermez (hareketler geldi);
+    /// eski bakiye zamanıyla yerinde kalır. Kimlik/yanıt günlüğe yazılmaz, yalnız hata türü.
+    /// </summary>
+    private async Task BakiyeYaz(IBankaBakiyeVeren veren, HttpClient http, BankaCekimIstegi istek, BankaHesap hesap, CancellationToken iptal)
+    {
+        try
+        {
+            if (await veren.Bakiye(http, istek, iptal) is not { } b) return;
+            var takip = await db.BankaHesaplari.FirstAsync(h => h.Id == hesap.Id && h.TenantId == hesap.TenantId, iptal);
+            takip.BankaBakiye = b.Bakiye;
+            takip.BankaKullanilabilir = b.Kullanilabilir;
+            takip.BankaBakiyeZamani = DateTime.UtcNow;
+        }
+        // Zaman aşımı dahil her hata yutulur: hareketler zaten alındı, bakiye bir sonraki turda yeniden denenir.
+        catch (Exception ex)
+        {
+            gunluk.LogWarning("[{TenantId}] Banka bakiyesi alınamadı ({Kod}, {Tur})", hesap.TenantId, hesap.SaglayiciKodu, ex.GetType().Name);
         }
     }
 }

@@ -1431,6 +1431,11 @@ public sealed class SozlukBanka
     public required string DekontDuzenle { get; init; }
     public required string DekontKilitliAlanlar { get; init; }
     public required string PasifHesapUyari { get; init; }
+    /// <summary>Kurucu 31.10 — bankanın kendi söylediği bakiye satırı.</summary>
+    public required string BankadakiBakiye { get; init; }
+    public required string BankaBloke { get; init; }
+    /// <summary>{0} = bankadaki bakiye ile Mihenk kaydı arasındaki fark.</summary>
+    public required string BankaBakiyeFarki { get; init; }
     public required string HesapGuncellendi { get; init; }
     public required string HesapGuncellenemedi { get; init; }
     // ── paket 41 — MASAK kapısı banka hareketlerine yayıldı ──
@@ -4535,6 +4540,9 @@ public static class Sozlukler
             DekontDuzenle = "Dekontu düzelt",
             DekontKilitliAlanlar = "Tutar, yön ve para birimi kilitlidir (finansal alan) — düzeltme yolu stornodur.",
             PasifHesapUyari = "Bu hesap pasiftir: yeni dekont girilemez. Geçmişi okunabilir; yeniden kullanmak için önce aktife alın.",
+            BankadakiBakiye = "Bankadaki bakiye",
+            BankaBloke = "bloke",
+            BankaBakiyeFarki = "Mihenk kaydıyla fark: {0}",
             DonusturBasarili = "Fatura oluşturuldu!",
             DonusturBasarisiz = "Faturaya dönüştürülemedi",
             HesabiDuzenle = "Hesabı Düzenle",
@@ -7463,6 +7471,9 @@ public static class Sozlukler
             DekontDuzenle = "Correct entry",
             DekontKilitliAlanlar = "Amount, direction and currency are locked (financial fields) — the correction path is a reversal.",
             PasifHesapUyari = "This account is inactive: no new statement line can be entered. Its history is readable; reactivate it before using it again.",
+            BankadakiBakiye = "Balance at the bank",
+            BankaBloke = "blocked",
+            BankaBakiyeFarki = "Differs from Mihenk records by {0}",
             DonusturBasarili = "Invoice created!",
             DonusturBasarisiz = "Failed to convert to invoice",
             HesabiDuzenle = "Edit Account",

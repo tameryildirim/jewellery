@@ -3214,6 +3214,8 @@ html:root[data-sema="yildiz"] .yz-liste--evrak .yz-liste-sat { grid-template-col
 html:root[data-sema="yildiz"] .yz-liste--pusula .yz-liste-sat { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) 150px 110px; }
 html:root[data-sema="yildiz"] .yz-liste--pos .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 160px 150px 140px; }
 html:root[data-sema="yildiz"] .yz-liste--banka .yz-liste-sat { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 170px 140px; }
+/* Kurucu 31.10: banka kendi bakiyesini verdiyse "Bankada" sütunu (eylem sütunu yine aynı satırda). */
+html:root[data-sema="yildiz"] .yz-liste--banka-bankada .yz-liste-sat { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) 140px 140px 130px; }
 
 /* ── Dar pencere (tuvalde telefon hâli yok → aynı dilde; taşma 0) ── */
 @media (max-width: 1000px) {
@@ -4112,6 +4114,12 @@ html:root[data-sema="yildiz"] body .secici-liste-kap .secici-bos:not(#_) { displ
   html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat > .yz-liste-eylem:not(#_) { grid-column: 1 / -1; justify-self: end; margin: 0; }
   html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat > [data-etiket]:not(#_) { text-align: left; min-width: 0; overflow-wrap: anywhere; }
   html:root[data-sema="yildiz"] :is(.yz-liste--urun, .yz-liste--agac) .yz-liste-tablo > .yz-liste-sat > [data-etiket]::before { content: attr(data-etiket); display: block; margin-bottom: 2px; font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--metin-soluk); }
+}
+
+/* Kurucu 31.10: telefonda "Bakiye" ile "Bankada" yan yana etiketsiz akmasın — iki tutar küçük sütun adıyla (D-9 kalıbı). */
+@media (max-width: 600px) {
+  html:root[data-sema="yildiz"] .yz-liste--banka-bankada .yz-liste-tablo > .yz-liste-sat > :is(:nth-child(3), :nth-child(4))[data-etiket]:not(#_) { text-align: left; }
+  html:root[data-sema="yildiz"] .yz-liste--banka-bankada .yz-liste-tablo > .yz-liste-sat > :is(:nth-child(3), :nth-child(4))[data-etiket]::before { content: attr(data-etiket); display: block; margin-bottom: 2px; font-size: 11px; font-weight: 400; letter-spacing: .14em; text-transform: uppercase; color: var(--metin-soluk); }
 }
 
 /* O-15 (21.10): tek sütunda (≤1000 px) özet ve sayım ekranlarında veri gelince rakam + cümle üstte belirip eylemleri ve sağ

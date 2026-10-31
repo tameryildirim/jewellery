@@ -1234,6 +1234,16 @@ public class BankaHesap : IKiraciVarlik
     [Column("saglayici_kodu"), MaxLength(20)] public string? SaglayiciKodu { get; set; }
     /// <summary>Çekicinin bu hesapta son başarılı turu (UTC).</summary>
     [Column("son_cekim")] public DateTime? SonCekim { get; set; }
+    /// <summary>
+    /// Kurucu 31.10 ("Faturalog'daki gibi hesaba ait bakiye"): bankanın KENDİ söylediği bakiye (Garanti Hesap Bilgisi
+    /// servisi). Mihenk'in dekontlardan hesapladığı <see cref="Bakiye"/>'den ayrıdır; yalnız bağlantı başarılı
+    /// olunca yazılır, bakiye vermeyen bankada null kalır.
+    /// </summary>
+    [Column("banka_bakiye", TypeName = "decimal(15,2)")] public decimal? BankaBakiye { get; set; }
+    /// <summary>Bankanın kullanılabilir bakiyesi (bloke düşülmüş); bloke = BankaBakiye − bu.</summary>
+    [Column("banka_kullanilabilir", TypeName = "decimal(15,2)")] public decimal? BankaKullanilabilir { get; set; }
+    /// <summary>Banka bakiyesinin alındığı an (UTC).</summary>
+    [Column("banka_bakiye_zamani")] public DateTime? BankaBakiyeZamani { get; set; }
     [Column("olusturuldu")] public DateTime Olusturuldu { get; set; }
     [Column("guncellendi")] public DateTime Guncellendi { get; set; }
 }

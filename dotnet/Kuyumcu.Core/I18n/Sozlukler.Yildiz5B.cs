@@ -202,6 +202,8 @@ public static class YildizBankaSozlugu
     public static string Hesap(string dil) => En(dil) ? "Account" : "Hesap";
     public static string Iban(string dil) => En(dil) ? "IBAN" : "IBAN";
     public static string Bakiye(string dil) => En(dil) ? "Balance" : "Bakiye";
+    /// <summary>Kurucu 31.10 — bankanın kendi söylediği bakiye sütunu (kısa başlık, tek satır).</summary>
+    public static string Bankada(string dil) => En(dil) ? "At bank" : "Bankada";
     public static string Hareketler(string dil) => En(dil) ? "Movements" : "Hareketler";
     public static string KullanimdaDegil(string dil) => En(dil) ? "inactive" : "kullanımda değil";
 }

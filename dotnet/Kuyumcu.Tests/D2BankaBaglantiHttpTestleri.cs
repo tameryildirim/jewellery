@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Kuyumcu.Api.Auth;
 using Kuyumcu.Api.Modules.Banka;
+using Kuyumcu.Api.Modules.Banka.Baglayicilar;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,6 +112,96 @@ public sealed class D2BankaBaglantiHttpTestleri(HttpFikstur f)
         var get = await s.GetStringAsync($"/api/v1/bankalar/{hesap}/baglanti");
         Assert.DoesNotContain(Sir, get);
         Assert.DoesNotContain("cons-1", get);   // açık alan da yalnız maskeli özetle döner
+    }
+
+    // ── Kurucu 31.10: bankadaki bakiye + gelen/giden ──
+    private static string GarantiGelenGiden(string iban) => $$"""
+        { "result": { "returnCode": 200, "reasonCode": 1, "messageText": "Başarılı" },
+          "transactions": [
+            { "IBAN": "{{iban}}", "activityDate": "2026-10-30", "txnCreditDebitIndicator": "A", "amount": 1500,
+              "explanation": "havale", "transactionReferenceId": "g1", "transactionInstanceId": "2026-10-30T10:00:00.000001" },
+            { "IBAN": "{{iban}}", "activityDate": "2026-10-30", "txnCreditDebitIndicator": "B", "amount": 300,
+              "explanation": "eft", "transactionReferenceId": "c1", "transactionInstanceId": "2026-10-30T11:00:00.000001" } ] }
+        """;
+
+    private static string GarantiBakiye(string iban) => $$"""
+        { "result": { "returnCode": 200, "reasonCode": 1, "messageText": "Başarılı" },
+          "accounts": [ { "balances": [ { "type": "Balance", "Amount": "8200.00" }, { "type": "AvailableBalance", "Amount": "8000.00" } ],
+            "IBAN": "{{iban}}", "currencyCode": "TL " } ] }
+        """;
+
+    private async Task<(HttpClient S, string Hesap, string Iban, Kiraci K)> GarantiHesabi(WebApplicationFactory<Program> o, string ad)
+    {
+        Kiraci k;
+        using (var db = f.Vt.OlusturSistem()) k = TestKurulum.KiraciKur(db, ad);
+        var s = Istemci(o, k, "SAHIP");
+        var iban = TestIban.Uret();
+        var c = await s.PostAsJsonAsync("/api/v1/bankalar", new { bankaAdi = "Garanti", hesapAdi = "Vadesiz", iban, paraBirimi = "TRY" });
+        return (s, (await c.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!, iban, k);
+    }
+
+    private static Task<HttpResponseMessage> GarantiKaydet(HttpClient s, string hesap) =>
+        s.PutAsJsonAsync($"/api/v1/bankalar/{hesap}/baglanti",
+            new { kod = "GARANTI", alanlar = new Dictionary<string, string> { ["consentId"] = "cons-1", ["clientId"] = "cid-1", ["clientSecret"] = Sir } });
+
+    [Fact]
+    public async Task Garanti_bakiye_hesaba_yazilir_listede_doner_gelen_ve_giden_hareket_yazilir_her_istege_yeni_token()
+    {
+        var (o, banka) = Kur();
+        var (s, hesap, iban, k) = await GarantiHesabi(o, "D2BB-bakiye");
+        banka.Yanit = yol => yol.EndsWith("/token") ? Json("""{"access_token":"tk1"}""")
+            : yol.EndsWith("/getaccountinformation") ? Json(GarantiBakiye(iban)) : Json(GarantiGelenGiden(iban));
+
+        var p = await GarantiKaydet(s, hesap);
+        Assert.True(p.IsSuccessStatusCode, await p.Content.ReadAsStringAsync());
+        Assert.Contains(banka.Istekler, i => i.Yol == GarantiBaglayicisi.BakiyeYolu && i.Govde.Contains("\"consentId\":\"cons-1\"") && i.Govde.Contains(iban));
+        // Token tek kullanımlık: hareket + bakiye = 2 istek → 2 token.
+        Assert.Equal(banka.Istekler.Count(i => !i.Yol.EndsWith("/token")), banka.Istekler.Count(i => i.Yol.EndsWith("/token")));
+
+        var liste = await s.GetFromJsonAsync<JsonElement>("/api/v1/bankalar");
+        var h = liste.GetProperty("hesaplar").EnumerateArray().Single(x => x.GetProperty("id").GetString() == hesap);
+        Assert.Equal(8200m, h.GetProperty("bankaBakiye").GetDecimal());
+        Assert.Equal(8000m, h.GetProperty("bankaKullanilabilir").GetDecimal());
+        Assert.NotEqual(JsonValueKind.Null, h.GetProperty("bankaBakiyeZamani").ValueKind);
+
+        using var db = f.Vt.OlusturSistem();
+        var hareketler = await db.BankaHareketleri.AsNoTracking().Where(x => x.TenantId == k.TenantId).ToListAsync();
+        Assert.Contains(hareketler, x => x.Yon == "GELEN" && x.Tutar == 1500m);
+        Assert.Contains(hareketler, x => x.Yon == "GIDEN" && x.Tutar == 300m);
+    }
+
+    [Fact]
+    public async Task Garanti_bakiye_ucu_hata_verirse_hareketler_yine_yazilir_baglanti_basarili_bakiye_bos_kalir()
+    {
+        var (o, banka) = Kur();
+        var (s, hesap, iban, k) = await GarantiHesabi(o, "D2BB-bakiyehata");
+        banka.Yanit = yol => yol.EndsWith("/token") ? Json("""{"access_token":"tk1"}""")
+            : yol.Contains("/accountinformation/account/") ? Json("""{ "result": { "returnCode": 400, "reasonCode": 13, "messageText": "Hesap bilgisi ile İban bilgisi uyumsuzdur." } }""", HttpStatusCode.BadRequest)
+            : Json(GarantiGelenGiden(iban));
+
+        var y = await (await GarantiKaydet(s, hesap)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(y.GetProperty("deneme").GetProperty("basarili").GetBoolean(), y.ToString());
+        Assert.Equal(2, y.GetProperty("deneme").GetProperty("hareketSayisi").GetInt32());
+        using var db = f.Vt.OlusturSistem();
+        var hs = await db.BankaHesaplari.AsNoTracking().SingleAsync(x => x.Id == hesap);
+        Assert.Null(hs.BankaBakiye);
+        Assert.Null(hs.BankaBakiyeZamani);
+        Assert.Null((await db.BankaBaglantilari.AsNoTracking().SingleAsync(b => b.TenantId == k.TenantId)).SonHata);
+    }
+
+    [Fact]
+    public async Task Garanti_belgedeki_bakiye_yolu_404_ise_swagger_yolu_denenir()
+    {
+        var (o, banka) = Kur();
+        var (s, hesap, iban, _) = await GarantiHesabi(o, "D2BB-bakiye404");
+        banka.Yanit = yol => yol.EndsWith("/token") ? Json("""{"access_token":"tk1"}""")
+            : yol == GarantiBaglayicisi.BakiyeYolu ? new HttpResponseMessage(HttpStatusCode.NotFound)
+            : yol == GarantiBaglayicisi.BakiyeYoluSwagger ? Json(GarantiBakiye(iban)) : Json(GarantiGelenGiden(iban));
+
+        Assert.True((await GarantiKaydet(s, hesap)).IsSuccessStatusCode);
+        Assert.Contains(banka.Istekler, i => i.Yol == GarantiBaglayicisi.BakiyeYoluSwagger);
+        using var db = f.Vt.OlusturSistem();
+        Assert.Equal(8200m, (await db.BankaHesaplari.AsNoTracking().SingleAsync(x => x.Id == hesap)).BankaBakiye);
     }
 
     [Fact]

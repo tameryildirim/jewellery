@@ -465,6 +465,18 @@ namespace Kuyumcu.Api.Data.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("banka_adi");
 
+                    b.Property<decimal?>("BankaBakiye")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("banka_bakiye");
+
+                    b.Property<DateTime?>("BankaBakiyeZamani")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("banka_bakiye_zamani");
+
+                    b.Property<decimal?>("BankaKullanilabilir")
+                        .HasColumnType("decimal(15,2)")
+                        .HasColumnName("banka_kullanilabilir");
+
                     b.Property<DateTime>("Guncellendi")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("guncellendi");

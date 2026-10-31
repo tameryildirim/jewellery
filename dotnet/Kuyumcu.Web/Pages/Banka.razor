@@ -83,6 +83,23 @@
                             </p>
                         }
                         <p class="metin-soluk metin-kucuk sayi kir-uzun">@AktifHesap.Iban</p>
+                        @* Kurucu 31.10 ("Faturalog'daki gibi hesaba ait bakiye"): bankanın KENDİ söylediği bakiye.
+                           Yalnız banka bakiye verdiyse görünür; Mihenk kaydıyla tutmazsa fark yazılır. *@
+                        @if (AktifHesap.BankaBakiye is { } bankaBakiye)
+                        {
+                            var bloke = bankaBakiye - (AktifHesap.BankaKullanilabilir ?? bankaBakiye);
+                            var fark = bankaBakiye - AktifHesap.Bakiye;
+                            <p class="metin-kucuk" id="bh-banka-bakiye">
+                                <span class="metin-soluk">@Dil.T.Banka.BankadakiBakiye:</span>
+                                <span class="hucre-vurgu sayi">@Bicim.Para(bankaBakiye, AktifHesap.ParaBirimi)</span>
+                                @if (bloke > 0m) { <span class="metin-soluk sayi"> · @Dil.T.Banka.BankaBloke @Bicim.Para(bloke, AktifHesap.ParaBirimi)</span> }
+                                @if (AktifHesap.BankaBakiyeZamani is { } bz) { <span class="metin-soluk sayi"> · @Bicim.TarihSaat(bz)</span> }
+                            </p>
+                            @if (fark != 0m)
+                            {
+                                <p class="metin-kucuk metin-kirmizi" id="bh-banka-bakiye-fark">@string.Format(Dil.T.Banka.BankaBakiyeFarki, Bicim.Para(fark, AktifHesap.ParaBirimi))</p>
+                            }
+                        }
                         @if (!AktifHesap.Aktif)
                         {
                             <p class="metin-soluk metin-kucuk" id="bh-pasif-not">@Dil.T.Banka.PasifHesapUyari</p>

@@ -9,7 +9,7 @@ namespace Kuyumcu.Api.Modules.Banka.Baglayicilar;
 /// (bankanın OpenAPI tanımı + çalışan topluluk kodu). Token TEK KULLANIMLIK: her sayfadan önce yeni token.
 /// Aralık en çok 30 gün, sayfa en çok 500. Banka benzersiz hareket no vermez → özet anahtar.
 /// </summary>
-public sealed class GarantiBaglayicisi : IBankaBaglayicisi
+public sealed class GarantiBaglayicisi : IBankaBaglayicisi, IBankaBakiyeVeren
 {
     public const string KodSabit = "GARANTI";
     public const string Taban = "https://apis.garantibbva.com.tr";
@@ -39,6 +39,74 @@ public sealed class GarantiBaglayicisi : IBankaBaglayicisi
         }
         return sonuc;
     }
+
+    // Hesap Bilgisi (Account Information) — resmi belge (portal, 31.10; API 6b902397-0948-4284-a703-f6cc41556e5d).
+    // Belge tablosundaki URI ".../account/v1/getaccountinformation"; swagger'daki yol ".../account/v1/". İkisi çelişiyor:
+    // önce belge URI'si denenir, 404 dönerse swagger yolu. Canlı onay numarası olmadan hangisinin doğru olduğu doğrulanamadı.
+    public const string BakiyeYolu = "/balancesandmovements/accountinformation/account/v1/getaccountinformation";
+    public const string BakiyeYoluSwagger = "/balancesandmovements/accountinformation/account/v1/";
+
+    public async Task<BankaBakiyesi?> Bakiye(HttpClient http, BankaCekimIstegi istek, CancellationToken iptal)
+    {
+        var k = istek.Kimlik;
+        var govde = JsonSerializer.Serialize(new Dictionary<string, object> { ["consentId"] = Giris.Zorunlu(k, "consentId"), ["IBAN"] = istek.Iban });
+        foreach (var yol in new[] { BakiyeYolu, BakiyeYoluSwagger })
+        {
+            var token = await Token(http, k, iptal);   // token tek kullanımlık: her istekte yeni
+            using var m = new HttpRequestMessage(HttpMethod.Post, Taban + yol) { Content = new StringContent(govde, Encoding.UTF8, "application/json") };
+            m.Headers.Authorization = new("Bearer", token);
+            m.Headers.Accept.ParseAdd("application/json");
+            using var yanit = await http.SendAsync(m, iptal);
+            if (yanit.StatusCode == System.Net.HttpStatusCode.NotFound && yol == BakiyeYolu) continue;
+            var metin = await yanit.Content.ReadAsStringAsync(iptal);
+            if (!yanit.IsSuccessStatusCode)
+                throw JsonBankaHatasi.Coz(metin) is { } j ? new BankaBaglantiHatasi($"{Ad}: {j}") : BankaBaglayicilari.HttpHatasi(yanit.StatusCode, Ad);
+            return BakiyeAyristir(metin, istek.Iban);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Hesap Bilgisi yanıtı → bakiye. Örnek yanıt: balances[] = {type: "Balance"|"AvailableBalance"|…, Amount: "9995559.34"};
+    /// şema "amount"/"balance"/"availableBalance" yazıyor → tür ve alan adı HARF DUYARSIZ. Hesap IBAN'la seçilir
+    /// (tek hesap dönerse o). Bakiye bulunamazsa null (uydurulmaz).
+    /// </summary>
+    public static BankaBakiyesi? BakiyeAyristir(string json, string iban)
+    {
+        JsonDocument d;
+        try { d = JsonDocument.Parse(json); }
+        catch (JsonException ex) { throw new BankaBaglantiHatasi($"{Ad} bakiye yanıtı okunamadı.", ex); }
+        using (d)
+        {
+            var kok = d.RootElement;
+            if (kok.TryGetProperty("result", out var r) && r.TryGetProperty("returnCode", out var rc)
+                && Metin(rc) is { } kodMetni && kodMetni != "200")
+                throw new BankaBaglantiHatasi($"{Ad}: {Metin(r, "messageText") ?? "istek reddedildi"} (kod {Metin(r, "reasonCode")}).");
+            if (!kok.TryGetProperty("accounts", out var hs) || hs.ValueKind != JsonValueKind.Array || hs.GetArrayLength() == 0) return null;
+            var aranan = IbanDuz(iban);
+            JsonElement? hesap = hs.GetArrayLength() == 1 ? hs[0] : null;
+            foreach (var h in hs.EnumerateArray())
+                if (IbanDuz(Metin(h, "IBAN")) == aranan) { hesap = h; break; }
+            if (hesap is not { } sec || !sec.TryGetProperty("balances", out var bs) || bs.ValueKind != JsonValueKind.Array) return null;
+            decimal? bakiye = null, kullanilabilir = null;
+            foreach (var b in bs.EnumerateArray())
+            {
+                if (b.ValueKind != JsonValueKind.Object) continue;
+                string? tur = null, tutar = null;
+                foreach (var p in b.EnumerateObject())
+                {
+                    if (p.Name.Equals("type", StringComparison.OrdinalIgnoreCase)) tur = Metin(p.Value);
+                    else if (p.Name.Equals("amount", StringComparison.OrdinalIgnoreCase)) tutar = Metin(p.Value);
+                }
+                if (tur is null || Sayi.Oku(tutar) is not { } t) continue;
+                if (tur.Equals("Balance", StringComparison.OrdinalIgnoreCase)) bakiye = t;
+                else if (tur.Equals("AvailableBalance", StringComparison.OrdinalIgnoreCase)) kullanilabilir = t;
+            }
+            return bakiye is { } v ? new BankaBakiyesi(v, kullanilabilir) : null;
+        }
+    }
+
+    private static string? IbanDuz(string? iban) => iban?.Replace(" ", "").ToUpperInvariant();
 
     private static async Task<string> Token(HttpClient http, IReadOnlyDictionary<string, string?> k, CancellationToken iptal)
     {
