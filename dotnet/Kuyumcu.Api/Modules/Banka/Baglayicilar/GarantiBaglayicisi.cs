@@ -49,7 +49,7 @@ public sealed class GarantiBaglayicisi : IBankaBaglayicisi, IBankaBakiyeVeren
     public async Task<BankaBakiyesi?> Bakiye(HttpClient http, BankaCekimIstegi istek, CancellationToken iptal)
     {
         var k = istek.Kimlik;
-        var govde = JsonSerializer.Serialize(new Dictionary<string, object> { ["consentId"] = Giris.Zorunlu(k, "consentId"), ["IBAN"] = istek.Iban });
+        var govde = BakiyeGovdesi(Giris.Zorunlu(k, "consentId"), istek.Iban);
         foreach (var yol in new[] { BakiyeYolu, BakiyeYoluSwagger })
         {
             var token = await Token(http, k, iptal);   // token tek kullanımlık: her istekte yeni
@@ -127,14 +127,40 @@ public sealed class GarantiBaglayicisi : IBankaBaglayicisi, IBankaBakiyeVeren
         catch (JsonException ex) { throw new BankaBaglantiHatasi($"{Ad} oturum yanıtı okunamadı.", ex); }
     }
 
-    public static string IstekGovdesi(string consentId, string iban, DateTime yerelBas, DateTime yerelBit, int sayfa) =>
-        JsonSerializer.Serialize(new Dictionary<string, object>
-        {
-            ["consentId"] = consentId, ["IBAN"] = iban,
-            ["startDate"] = yerelBas.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture),
-            ["endDate"] = yerelBit.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture),
-            ["transactionId"] = "", ["pageIndex"] = sayfa, ["pageSize"] = SayfaBoyu,
-        });
+    /// <summary>
+    /// Garanti IBAN'ı → (şube no, hesap no). TR + 2 kontrol + 5 banka kodu (00062) + 1 rezerv + 16 hane;
+    /// 16 hanenin ilk 5'i şube, son 11'i hesap. Belge örneği: TR620006200029500006291296 → 295 / 6291296.
+    /// Garanti IBAN'ı değilse null (alanlar yollanmaz; banka IBAN'dan bulur).
+    /// </summary>
+    public static (string Sube, string Hesap)? SubeHesap(string? iban)
+    {
+        var i = IbanDuz(iban);
+        if (i is not { Length: 26 } || !i.StartsWith("TR") || i[4..9] != "00062" || !i[10..].All(char.IsAsciiDigit)) return null;
+        var sube = i[10..15].TrimStart('0');
+        var hesap = i[15..].TrimStart('0');
+        return sube.Length == 0 || hesap.Length == 0 ? null : (sube, hesap);
+    }
+
+    /// <summary>Hesap Bilgisi isteği. Swagger şeması unitNum/accountNum/IBAN'ı ZORUNLU sayar; örnekteki gibi metin yollanır.</summary>
+    public static string BakiyeGovdesi(string consentId, string iban)
+    {
+        var g = new Dictionary<string, object> { ["consentId"] = consentId };
+        if (SubeHesap(iban) is { } sh) { g["unitNum"] = sh.Sube; g["accountNum"] = sh.Hesap; }
+        g["IBAN"] = iban;
+        return JsonSerializer.Serialize(g);
+    }
+
+    /// <summary>Hareket isteği. unitNum/accountNum şemada isteğe bağlı, belge örneğinde var → örnekteki gibi yollanır.</summary>
+    public static string IstekGovdesi(string consentId, string iban, DateTime yerelBas, DateTime yerelBit, int sayfa)
+    {
+        var g = new Dictionary<string, object> { ["consentId"] = consentId };
+        if (SubeHesap(iban) is { } sh) { g["unitNum"] = sh.Sube; g["accountNum"] = sh.Hesap; }
+        g["IBAN"] = iban;
+        g["startDate"] = yerelBas.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture);
+        g["endDate"] = yerelBit.ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture);
+        g["transactionId"] = ""; g["pageIndex"] = sayfa; g["pageSize"] = SayfaBoyu;
+        return JsonSerializer.Serialize(g);
+    }
 
     /// <summary>(hareketler, bankanın döndüğü ham satır sayısı — sayfalama için).</summary>
     public static (List<SaglayiciHareketi> Hareketler, int Ham) Ayristir(string json, string iban)

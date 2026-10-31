@@ -168,6 +168,39 @@ public sealed class D2BankaBaglayiciTestleri
     }
 
     [Fact]
+    public void Garanti_istekleri_belge_ornegindeki_gibi_sube_ve_hesap_no_IBANdan_yollar()
+    {
+        // Belge örneği (Account Information + Account Transactions swagger, 01.11): IBAN TR620006200029500006291296 → unitNum "295", accountNum "6291296".
+        const string belgeIban = "TR620006200029500006291296";
+        Assert.Equal(("295", "6291296"), GarantiBaglayicisi.SubeHesap(belgeIban));
+        Assert.Equal(("295", "6291296"), GarantiBaglayicisi.SubeHesap("tr62 0006 2000 2950 0006 2912 96"));
+
+        using var b = System.Text.Json.JsonDocument.Parse(GarantiBaglayicisi.BakiyeGovdesi("c-1", belgeIban));
+        Assert.Equal("c-1", b.RootElement.GetProperty("consentId").GetString());
+        Assert.Equal("295", b.RootElement.GetProperty("unitNum").GetString());
+        Assert.Equal("6291296", b.RootElement.GetProperty("accountNum").GetString());
+        Assert.Equal(belgeIban, b.RootElement.GetProperty("IBAN").GetString());
+
+        using var h = System.Text.Json.JsonDocument.Parse(GarantiBaglayicisi.IstekGovdesi("c-1", belgeIban, new DateTime(2026, 11, 1, 9, 0, 0), new DateTime(2026, 11, 1, 10, 0, 0), 1));
+        Assert.Equal("295", h.RootElement.GetProperty("unitNum").GetString());
+        Assert.Equal("6291296", h.RootElement.GetProperty("accountNum").GetString());
+        Assert.Equal("2026-11-01T09:00:00.000", h.RootElement.GetProperty("startDate").GetString());
+    }
+
+    [Fact]
+    public void Garanti_IBANi_degilse_sube_hesap_no_uydurulmaz_yalniz_IBAN_yollanir()
+    {
+        var ziraat = TestIban.Tamamla("0001000000000000123456");   // banka kodu 00010 (Garanti değil)
+        Assert.Null(GarantiBaglayicisi.SubeHesap(ziraat));
+        Assert.Null(GarantiBaglayicisi.SubeHesap(null));
+        Assert.Null(GarantiBaglayicisi.SubeHesap("TR62000620"));
+        using var b = System.Text.Json.JsonDocument.Parse(GarantiBaglayicisi.BakiyeGovdesi("c-1", ziraat));
+        Assert.False(b.RootElement.TryGetProperty("unitNum", out _));
+        Assert.False(b.RootElement.TryGetProperty("accountNum", out _));
+        Assert.Equal(ziraat, b.RootElement.GetProperty("IBAN").GetString());
+    }
+
+    [Fact]
     public void VakifBank_GetirHareket_yaniti_Id_referans_Detaylar_karsi_bilgi_ve_hata_kodu()
     {
         string Zarf(string kod) => $"""
