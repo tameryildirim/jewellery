@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><title>Mihenk — Ses kaydı uçtan uca test (01.11.2026)</title>
+<style>
+@page { size: A4; margin: 14mm 13mm; }
+* { box-sizing: border-box; }
+body { font: 10.5pt/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1c1c1c; margin: 0; }
+h1 { font-size: 21pt; margin: 0 0 4px; letter-spacing: .5px; }
+h2 { font-size: 13.5pt; margin: 0 0 6px; padding-top: 2px; border-top: 2px solid #1c1c1c; padding-top: 8px; }
+.alt { color: #666; font-size: 9.5pt; }
+.madde { break-inside: avoid; page-break-inside: avoid; margin: 0 0 16px; }
+.yeni-sayfa { break-before: page; page-break-before: always; }
+blockquote { margin: 6px 0; padding: 6px 10px; background: #f3f0ea; border-left: 3px solid #b8955a; font-style: italic; }
+blockquote .dk { font-style: normal; color: #7a6a4f; font-size: 9pt; }
+.etiket { display: inline-block; font-weight: 700; font-size: 9pt; padding: 1px 8px; border-radius: 10px; margin-right: 6px; }
+.ok { background: #e3f1e5; color: #1e6b2c; }
+.kismi { background: #fff2d6; color: #8a5a00; }
+.yok { background: #fbe3e1; color: #a12a1f; }
+p { margin: 4px 0; }
+img { width: 100%; border: 1px solid #ccc; margin-top: 6px; }
+.iki { display: flex; gap: 8px; } .iki img { width: 50%; }
+.tel { display: flex; gap: 10px; } .tel img { width: 34%; }
+table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 6px 0 10px; }
+th, td { border-bottom: 1px solid #ddd; padding: 4px 6px; text-align: left; vertical-align: top; }
+th { background: #f0f0f0; }
+.kutu { border: 2px solid #a12a1f; padding: 8px 12px; margin: 10px 0; }
+.kutu-y { border: 2px solid #1e6b2c; padding: 8px 12px; margin: 10px 0; }
+ul { margin: 4px 0 4px 18px; padding: 0; }
+</style></head><body>
+
+<h1>MİHENK — Ses kaydındaki isteklerin uçtan uca testi</h1>
+<p class="alt">01.11.2026 · Hazırlayan: Claude (ByGatech) · Kaynak: müşteri görüşmesi ses kaydı 16.10.2026 (35 dk), yazıya dökümü <i>musteri-gorusmesi-2026-10-16.md</i></p>
+<p class="alt">Nasıl test edildi: eğitim kopyasında (ayrı veritabanı <i>kuyumcu_egitim</i>, canlı 5199'a dokunulmadı), gerçek tarayıcıda 1280 px masaüstü + 375 px telefon. Her işlem gerçekten kaydedildi (satış, fatura, havale, alış, hurda, işçilik belgesi); ekran görüntüleri kayıt anında alındı. Alıntılar ses kaydının yazıya dökümünden; konuşma Whisper ile çevrildiği için birkaç kelime hatalı olabilir.</p>
+
+<div class="kutu">
+<b>EN ÖNEMLİ CEVAP — Faturalar GİB'e gidiyor mu? HAYIR.</b><br>
+Mihenk faturayı kesiyor ve numaralıyor (bugün testte FTR-2026-000013…016 kesildi), ama <b>hiçbir fatura GİB'e gönderilmiyor</b>.<br>
+Kanıt: İşletme › Ayarlar ekranı “E-FATURA BAĞLANTISI: <b>Bağlı değil — faturalar gönderilmiyor</b>” diyor; e-Fatura giden kutusu 0; veritabanında entegratör ayarı 0 kayıt, GİB'e gönderim 0 kayıt (hem eğitim kopyasında hem canlıda; canlıda 17 kesilmiş fatura var, gönderilen 0).<br>
+Gerekenler: (1) bir özel entegratörden hesap + API anahtarı (kodda Nilvera bağlayıcısı hazır ama <b>hiç denenmedi</b>), (2) işletmenin gerçek vergi numarası (demo işletmede “0000000000” yazıyor, GİB bunu kabul etmez), (3) test ortamında bir deneme gönderimi. Bunlar olmadan demoda “fatura devlete gidiyor” denmemeli.
+</div>
+
+<h2>Sonuç özeti</h2>
+<table>
+<tr><th>#</th><th>Ses kaydındaki istek</th><th>Sonuç</th></tr>
+<tr><td>1</td><td>Harem'den fiyat, elle müdahale</td><td><span class="etiket ok">ÇALIŞIYOR</span> (Harem izni yok — ekranda “İzinsiz kaynak” yazıyor)</td></tr>
+<tr><td>2</td><td>Eski çeyrek, yarım, tam, Ata, Reşat ürünleri</td><td><span class="etiket ok">ÇALIŞIYOR</span> (Gremse, Ata Beşli: kur var, ürün kartı yok)</td></tr>
+<tr><td>3</td><td>Her bilezik çeşidinin kendi milyemi</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>4</td><td>Ayarlarda “adında bilezik geçiyorsa binde 1” kuralı</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>5</td><td>Gram ve değer birlikte görünsün</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>6</td><td>30 bin üstü isim zorunlu (2026'da sınır 36.000 ₺)</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>7</td><td>TC yazınca fatura kesilsin</td><td><span class="etiket ok">ÇALIŞIYOR</span> — <b>GİB'e gönderim YOK</b></td></tr>
+<tr><td>8</td><td>KDV binde 1 (150 bin → 150 ₺ matrah)</td><td><span class="etiket ok">ÇALIŞIYOR</span> (yasal dayanak mali müşavirde)</td></tr>
+<tr><td>9</td><td>Nakit + kart karışık ödeme</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>10</td><td>Para düştüğü anda ekranda, müşteriyle eşleşsin</td><td><span class="etiket ok">ÇALIŞIYOR</span> (demo banka; gerçek banka bağlı değil)</td></tr>
+<tr><td>11</td><td>Havaleden direkt fatura (Faturalog gibi)</td><td><span class="etiket ok">ÇALIŞIYOR</span> — GİB'e gönderim YOK</td></tr>
+<tr><td>12</td><td>Hesap bakiyesi + gelen/giden</td><td><span class="etiket kismi">KISMEN</span> ekran hazır; Garanti IP onayı bekleniyor</td></tr>
+<tr><td>13</td><td>Toptancı işçilik faturası kayda girsin</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>14</td><td>Has değeri kâr gibi görünmesin, işçilik ayrı</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>15</td><td>Hurda alış (gider pusulası)</td><td><span class="etiket ok">ÇALIŞIYOR</span></td></tr>
+<tr><td>16</td><td>Fişten fatura</td><td><span class="etiket ok">ÇALIŞIYOR</span> (taslak → kes, 2 ek adım)</td></tr>
+<tr><td>17</td><td>Toplu fatura</td><td><span class="etiket ok">ÇALIŞIYOR</span> (ekranda; GİB'e gönderim yok)</td></tr>
+<tr><td>18</td><td>Luca / Zirve aktarımı</td><td><span class="etiket kismi">KISMEN</span> dosya üretiliyor; mali müşavir yüklemesiyle denenmedi</td></tr>
+<tr><td>19</td><td>Telefondan kullanım</td><td><span class="etiket ok">ÇALIŞIYOR</span> (tarayıcıdan; mağaza uygulaması yok)</td></tr>
+<tr><td>20</td><td>Faturanın GİB'e gitmesi</td><td><span class="etiket yok">ÇALIŞMIYOR</span> entegratör bağlı değil</td></tr>
+</table>
+<p>Sayım: 16 çalışıyor · 3 kısmen · 1 çalışmıyor (GİB).</p>
+
+<div class="madde">
+<h2>1. Fiyat kaynağı: Harem + elle müdahale</h2>
+<blockquote>“Kendine göre sosyalleştirdiği bir ekran var, çok veri var gibi görünüyor ama yok.” <span class="dk">(Altınkaynak için, ~09:50)</span><br>Harem Altın “Kapalıçarşı'da genelde uygundur”; otomatik gelse de fiyata elle müdahale edebilmeliyim. <span class="dk">(~09:27–09:40)</span></blockquote>
+<p><b>Yaptığım:</b> Kur ekranında KAYNAK'ı Altınkaynak'tan Harem Altın'a çevirdim, sonra “Elle gir”i açtım.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Has: Altınkaynak 6.281 ₺ → Harem 6.270 ₺; 22 ayar bilezik satış 6.105 → 5.873 ₺. Elle giriş penceresi açılıyor. ⚠ Harem'in resmî veri izni yok; ayarlar ekranı “İzinsiz kaynak” yazıyor. (Test sonunda kaynak Altınkaynak'a geri alındı.)</p>
+<div class="iki"><img src="foto/01-kur.jpg"><img src="foto/02-kur-harem.jpg"></div>
+<img src="foto/03-kur-elle.jpg" style="width:60%">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>2. Eski / yeni sarrafiye ürünleri</h2>
+<blockquote>Eski çeyrek eklenmeli; eski/yeni yarım, tam, Ata, Reşat da yok. <span class="dk">(~07:27–08:32)</span></blockquote>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Ürünler listesinde Yeni/Eski Çeyrek, Yeni/Eski Yarım, Yeni/Eski Tam, Yeni/Eski Ata, Reşat, Hamit ayrı ürün. Gremse ve Ata Beşli'nin kuru var, ürün kartı açılmamış (demodan önce 2 dakikada eklenebilir).</p>
+<img src="foto/04-urunler.jpg">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>3. Her bilezik çeşidinin kendi milyemi</h2>
+<blockquote>“Eğer ben 925'den maliyetim varsa 925 yazacağım, 922 varsa 922.” <span class="dk">(~10:32)</span> CNC bilezik, el örgüsü, kilitli… her birinin milyemi farklı. <span class="dk">(~17:40)</span></blockquote>
+<p><b>Yaptığım:</b> “22 Ayar CNC Bilezik” ürününü yeni açtım: 20 g, alış (maliyet) milyemi 930, KDV payı binde 1, 3 adet stok.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Fiyat kendiliğinden 20 g × 930 × has = <b>116.638 ₺</b> çıktı.</p>
+<img src="foto/05-yeni-urun-milyem.jpg">
+</div>
+
+<div class="madde">
+<h2>4. Ayarlarda ad kuralı: “bilezik geçiyorsa binde 1”</h2>
+<blockquote>Ayarlar'da: içinde bilezik geçiyorsa binde bir… tek tek ürün düzenlemeyelim, “bazen 1.000 işlem oluyor”. <span class="dk">(~24:57–26:31)</span></blockquote>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Ürünler › Fiyat kuralları: “Bilezikler — adında bilezik → alış 925 · KDV payı ‰1”. Önizle: <b>2 ürün uyuyor, 0 ürün değişecek</b>. Yeni CNC bileziğe kendi değeri (930) girildiği için kural onu ezmiyor; ürüne özel değer kuraldan önce geliyor.</p>
+<img src="foto/06-fiyat-kurali-onizle.jpg">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>5–6. Gram ve değer birlikte · 30 bin (2026'da 36 bin) üstü isim zorunlu</h2>
+<blockquote>Ekranda hem gram hem değer görülmeli; “her şeyi hasa çeviremezsin”. <span class="dk">(~07:02)</span><br>30 bin TL üstü satışta müşteri adı/kimlik seçilmeli. <span class="dk">(~02:33)</span></blockquote>
+<p><b>Yaptığım:</b> Tezgâh'ta CNC bileziği okuttum.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Satır: “1 adet · 20,00 g · 18,3200 g has · 116.637,89 ₺”. Ekran “<b>36.000 ₺ üstünde fatura zorunlu</b>” yazdı ve müşteri seçilmeden Kaydet'i kilitledi (“Fatura için müşteri seçin”). Not: müşteri 30 bin dedi; 2026 kuyumcu fatura sınırı 36.000 ₺ (VUK 514 + 2026 tutarı).</p>
+<img src="foto/07-tezgah-gram-has-tl-fatura-zorunlu.jpg">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>7. “TC'yi yazınca fatura kessin”</h2>
+<blockquote>“Fişe hiç gerek yok… direkt fatura.” 30 binin altı da olsa TC'yi yazarım, sisteme girdiğim anda fatura kesilip gönderilsin. <span class="dk">(~34:50–35:04)</span></blockquote>
+<p><b>Yaptığım:</b> Müşteri kutusuna yeni bir TC (28461937550) yazdım → “Bu numarayla kayıtlı müşteri yok” → adını (Mehmet Kaya) yazıp “Müşteriyi aç ve seç”. Kaydet → “Fatura kesilsin mi? Evet”.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Satış kaydedildi, <b>FTR-2026-000013</b> kesildi (116.637,89 ₺). 36 bin altındaki ikinci satışta (eski çeyrek 10.163,40 ₺) TC yazınca müşteri kendiliğinden geldi, <b>FTR-2026-000014</b> kesildi. <span class="etiket yok">“GÖNDERİLSİN” KISMI YOK</span> Fatura GİB'e gitmiyor (bkz. 20).</p>
+<div class="iki"><img src="foto/08-tc-ile-musteri-ac.jpg"><img src="foto/10-fatura-kesilsin-mi.jpg"></div>
+<img src="foto/11-satis-kaydedildi-fatura.jpg" style="width:60%">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>8. KDV: “binde 1” matrah</h2>
+<blockquote>150.000 TL bilezik faturası → matrah binde 1 = 150 TL → %20 KDV = 30 TL. <span class="dk">(~22:12–23:06)</span> “Yaz binde birden… %0,1.” <span class="dk">(~27:56)</span></blockquote>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> FTR-2026-000013 kalemleri: Toplam 116.637,89 ₺ · Has altın bedeli (KDV'ye tabi değil) 116.497,92 ₺ · <b>KDV matrahı 116,64 ₺ (binde 1)</b> · <b>KDV 23,33 ₺</b>. Müşterinin örneğiyle aynı hesap.<br>⚠ Sabit “binde X” payının mevzuatta açık dayanağı bulunamadı (yasada matrah = satış − has bedeli). Ekran da “Özel matrah kodu: mali müşavir onayı bekleniyor” yazıyor. Mali müşavire sorulmadan “yasal” denmemeli.</p>
+<img src="foto/14-fatura-kalemleri-kdv-binde1.jpg">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>9. Nakit + kart karışık ödeme (ve nakit sınırı)</h2>
+<blockquote>Nakit kasa otomatik seçiliyor; kart + nakit karışık ödeme eklenebiliyor. <span class="dk">(~19:16–19:32, demoda beğenildi)</span></blockquote>
+<p><b>Yaptığım:</b> Eski çeyrek satışında “+ Başka ödeme”: 5.000 ₺ nakit + 5.163,40 ₺ kart.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Kaydedildi, fatura FTR-2026-000014. Ek olarak 116 bin ₺'lik bilezikte nakit satırı eklenince sistem “<b>Bu tutarda nakit alınamaz — tamamını kart ya da havaleyle alın</b>” diye durdurdu (30.000 ₺ nakit sınırı); müşteri başına günlük kalan nakit hakkını da yazıyor.</p>
+<div class="iki"><img src="foto/12-karisik-odeme.jpg"><img src="foto/09-nakit-siniri.jpg"></div>
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>10–11. Para düştüğü anda ekranda · havaleden direkt fatura</h2>
+<blockquote>Para düştüğü anda ekranda görünüyor; Kuveyt Türk direkt entegre etti. Şimdilik simülasyon yeterli: “sanki banka entegrasyonu var gibi”. <span class="dk">(~00:28–01:20)</span></blockquote>
+<p><b>Yaptığım:</b> Banka › “Havale gönder (demo)”: Mehmet Kaya, TC 28461937550, 21.000 ₺. Gelen kartta “Ürün seç ve sat” → Yeni Yarım, fiyat 21.000 ₺ → Kaydet.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Havale anında “Karar bekleyen gelen ödemeler”e düştü ve TC'den Mehmet Kaya'yla eşleşti (“Borcu yok. Hesabına alacak mı yazılsın, yoksa yeni alışverişin ödemesi mi?”). Satış kaydedilince ayrıca soru sormadan <b>FTR-2026-000015</b> kesildi; havale listeden düştü (7 → 6).<br>⚠ Fiş toplamı havaleye kuruşu kuruşuna eşit olmalı; ekrandaki indirim yalnız yüzde, bu yüzden fiyatı elle 21.000 yazmak gerekti. Demoda havaleyi ürün fiyatına denk tutarla gönderin. Gerçek banka bağlı değil: bu “demo banka”.</p>
+<div class="iki"><img src="foto/18-havale-gonder-demo.jpg"><img src="foto/19-havale-dustu-karar-karti.jpg"></div>
+<div class="iki"><img src="foto/20-havaleden-satis.jpg"><img src="foto/21-havale-satis-fatura-kesildi.jpg"></div>
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>12. Hesap bakiyesi + gelen / giden (Faturalog gibi)</h2>
+<blockquote>Banka/elle girilen tüm hareketler (satış, hurda alış, tahsilat) aynı ekranda. <span class="dk">(~02:05–02:21)</span></blockquote>
+<p><b>Sonuç:</b> <span class="etiket kismi">KISMEN</span> Ekran hazır: Garanti hesabında “Bankadaki bakiye · bloke · saat” ve “Mihenk kaydıyla fark” (görüntü 31.10 test verisiyle). Garanti'den gerçek veri henüz gelmedi: Garanti test onayı var, istek “IP tanımlı değil” ile dönüyor; IP 151.135.190.195 onaya gönderildi (01.11). Bugün yeni deneme yapılmadı.</p>
+<img src="foto/39-garanti-bakiye-ornek.jpg" style="width:75%">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>13. Toptancı işçilik faturası kayda girsin</h2>
+<blockquote>Aradaki işçilik toptancıdan faturalanmazsa kâr görünür, “başımız patlar”; denetimde “10 kilo altın satmışsın ama hiç işçilikli bilezik almamışsın” denir. <span class="dk">(~10:53–12:11)</span></blockquote>
+<p><b>Yaptığım:</b> Satın alma › “Mal geldi”: Anadolu Döküm Toptan'dan 2 × CNC bilezik, birim 116.500 ₺. Kâr-zarar ekranındaki uyarıdan “Belgeleri gir” → Fatura, no ADT2026000001301, işçilik 3.281,86 ₺.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Mal stoğa girdi (sipariş SAS-2026-00004, irsaliye IRS-2026-00005). 233.000 ₺ olduğu için MASAK kimlik ve işlem amacı istendi. Kâr-zarar ekranı belgesiz işçiliği kendiliğinden yakaladı: “<b>1 alışın işçilik belgesi yok (3.281,86 ₺). Faturası olmayan işçilik incelemede kâr sayılabilir.</b>” Hesap: ödenen 233.000 · has bedeli 229.718,14 · işçilik 3.281,86. Belge girilince satır “Fatura ADT2026000001301” oldu.</p>
+<div class="iki"><img src="foto/23-mal-geldi-toptanci.jpg"><img src="foto/24-masak-kimlik-200bin.jpg"></div>
+<div class="iki"><img src="foto/26-iscilik-belgesi-yok-uyarisi.jpg"><img src="foto/28-iscilik-faturasi-kaydedildi.jpg"></div>
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>14. Has değeri kâr gibi görünmesin · işçilik ayrı</h2>
+<blockquote>“3.600 kâr etmiş görürsem üstüne vergi alır… hiç kâr etmediğim şeyden sürekli KDV öderim.” <span class="dk">(~05:31–05:47)</span> “Bileziği kârsız satıyoruz.” <span class="dk">(~24:00)</span></blockquote>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Kâr-zarar (bugün): Para kârı ayrı, altın (has) kârı ayrı, “İşçilik (makas) kârı” ayrı, “Altın fiyat farkı” ayrı. Maliyetinden satılan CNC bilezik kâr göstermedi (sahte kâr yok). Maliyeti bilinmeyen 1 satış (10.163,40 ₺) kâra katılmadı ve ekranda ayrıca yazıyor.</p>
+<img src="foto/22-kar-zarar-bugun.jpg">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>15. Hurda alış (gider pusulası)</h2>
+<blockquote>Banka/elle tüm hareketler (satış, <b>hurda alış</b>, tahsilat) aynı ekranda. <span class="dk">(~02:05)</span></blockquote>
+<p><b>Yaptığım:</b> Tezgâh › Alış: Mehmet Kaya'dan 10 g 22 ayar eski bilezik, satıcı tipi Vatandaş.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> Tutar 57.429,54 ₺ (9,16 has × kur); 30 bin üstü olduğu için ödeme kendiliğinden Havale seçildi. Müşterinin o günkü toplamı 205.230,83 ₺'yi geçtiği için kimlik + amaç beyanı istendi. Kaydedilince <b>gider pusulası GP-2026-000002</b> kendiliğinden açıldı (“Kimlik ve adres olmadan pusula açılmaz — VUK md. 234”).</p>
+<div class="iki"><img src="foto/29-hurda-alis-form.jpg"><img src="foto/31-gider-pusulasi.jpg"></div>
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>16–17. Fişten fatura · toplu fatura</h2>
+<blockquote>Fişten fatura kesme gösterildi. <span class="dk">(~20:51–21:00)</span></blockquote>
+<p><b>Yaptığım:</b> Kemal Ardıç'a faturasız satış (“Fatura kesilsin mi? Hayır”), sonra Faturalar › Fişten Fatura Kes › işlemi seç › Kuyum KDV %20 › Önizle › Kaydet → taslak → Kes → Onayla.</p>
+<p><b>Sonuç:</b> <span class="etiket ok">ÇALIŞIYOR</span> <b>FTR-2026-000016</b> kesildi. Zaten faturalı fişe ikinci fatura denedim: “Bu fiş zaten faturalandı (FTR-2026-000013)” diye engelledi. Toplu fatura: “Bugünün fişlerine fatura kes” açılıyor; müşterisiz fişi “Peşin Müşteri'ye fatura kesilmez — fişe müşteri bağlayın” diye ayırıyor.<br>⚠ Fişten fatura önce taslak oluşturuyor; “Kes → Onayla” iki adım daha. Müşteri “fişe gerek yok, direkt fatura” dediği için demoda satışta “Evet” yolu gösterilmeli.</p>
+<div class="iki"><img src="foto/33-fisten-fatura-onizle.jpg"><img src="foto/32-fisten-fatura-cift-koruma.jpg"></div>
+<div class="iki"><img src="foto/34-fisten-fatura-kesildi.jpg"><img src="foto/35-toplu-fatura.jpg"></div>
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>18–19. Luca / Zirve aktarımı · telefondan kullanım</h2>
+<p><b>Luca/Zirve:</b> <span class="etiket kismi">KISMEN</span> Veri dışa aktarımında yalnız “Luca fiş dosyası” + “Zirve fatura dosyası” seçildi → “Kaydedildi — 10 satır”, şifreli arşiv ve tek seferlik parola verildi (parola görüntüde gizlendi). Dosyanın Luca/Zirve'ye gerçekten yüklenip yüklenmediği mali müşavirle denenmedi.</p>
+<img src="foto/36-luca-zirve-aktarim.jpg" style="width:80%">
+<p><b>Telefon (375 px):</b> <span class="etiket ok">ÇALIŞIYOR</span> Tezgâh ve Banka ekranlarında yatay taşma yok (sayfa genişliği 375 = ekran 375). Mağaza uygulaması yok, tarayıcıdan açılıyor.</p>
+<div class="tel"><img src="foto/37-telefon-tezgah.jpg"><img src="foto/38-telefon-banka.jpg"></div>
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>20. Faturalar GİB'e gidiyor mu? — HAYIR</h2>
+<blockquote>“Fatura kesilince direkt gönderiyoruz.” <span class="dk">(~20:32)</span> “…sisteme girdiğim anda fatura kesilip gönderilsin.” <span class="dk">(~35:00)</span></blockquote>
+<p><b>Sonuç:</b> <span class="etiket yok">ÇALIŞMIYOR</span></p>
+<ul>
+<li>İşletme › Ayarlar: “E-FATURA BAĞLANTISI — <b>Bağlı değil — faturalar gönderilmiyor</b>”. “Bağla” penceresinde entegratör (Nilvera), ortam (Deneme/Canlı) ve API anahtarı isteniyor; anahtar yok.</li>
+<li>e-Fatura giden kutusu: sırada 0 · gönderildi 0 · onaylandı 0.</li>
+<li>Veritabanı (testten sonra): entegratör ayarı 0, GİB gönderimi 0. Eğitim kopyasında 24, canlıda 17 kesilmiş satış faturası var; hiçbiri gönderilmedi.</li>
+<li>Gönderim kodu var (kesilen faturayı kuyruğa alır, alıcı e-Fatura mükellefiyse e-Fatura, değilse e-Arşiv seçer, GİB sonucunu izler) ama gerçek entegratörle <b>hiç denenmedi</b>.</li>
+<li>Demo işletmenin vergi numarası “0000000000”; gerçek VKN girilmeden GİB kabul etmez.</li>
+</ul>
+<p><b>Çalışması için:</b> (1) entegratör seçimi + test hesabı ve API anahtarı (kurucu), (2) işletmenin gerçek unvan/VKN'si, (3) test ortamında bir e-Arşiv ve bir e-Fatura denemesi, (4) sonra canlı.</p>
+<div class="iki"><img src="foto/16-efatura-bagli-degil.jpg"><img src="foto/15-efatura-giden-kutusu.jpg"></div>
+<img src="foto/17-efatura-bagla-penceresi.jpg" style="width:60%">
+</div>
+
+<div class="madde yeni-sayfa">
+<h2>Demoda söylenmemesi gerekenler</h2>
+<ul>
+<li>“Faturalar GİB'e gidiyor”: gitmiyor (bölüm 20).</li>
+<li>“Bankanızdan para gerçek zamanlı geliyor”: gösterilen demo banka; gerçek bankadan henüz tek hareket gelmedi.</li>
+<li>“Harem fiyatı izinli/resmî”: ekran da “İzinsiz kaynak” diyor.</li>
+<li>“Binde 1 KDV payı yasal”: mali müşavir onayı yok.</li>
+<li>“Luca/Zirve'ye birebir aktarılıyor”: dosya üretiliyor, yüklemeyle denenmedi.</li>
+<li>“1 gram / 5 gram kademeli fiyat”: yok (veri izni bekliyor).</li>
+</ul>
+<h2>Demodan önce yapılabilecek küçük işler</h2>
+<ul>
+<li>Gremse ve Ata Beşli ürün kartlarını açmak (kurları var).</li>
+<li>Demo işletmeye düzgün bir unvan ve vergi numarası yazmak (faturada “0000000000” görünmesin).</li>
+<li>Havale demosunu ürün fiyatına denk tutarla göndermek (küsurat çıkarsa fiyat elle düzeltiliyor).</li>
+<li>Demo verisindeki tekrar eden “Ayşe Demir” kayıtları ve aynı günden 3 havale kartı göze batabilir.</li>
+</ul>
+<h2>Bulgular (kod değiştirilmedi)</h2>
+<ul>
+<li>Havaleden satışta indirim yalnız yüzde; TL indirim olmadığı için küsurat ancak fiyat elle yazılarak eşitleniyor.</li>
+<li>Fişten fatura “taslak → Kes → Onayla” ile 2 ek adım istiyor.</li>
+<li>Fişten Fatura penceresindeki “FİŞ” arama listesi zaten faturalı fişleri de gösteriyor; seçilince engelliyor (yanlış fatura riski yok, ama kafa karıştırabilir).</li>
+<li>Ayarlarda “Faturada has fiyatı: satıştaki kur”. KDV uygulamasında has bedeli için Borsa İstanbul önceki iş günü kapanışı geçiyor; mali müşavire sorulmalı.</li>
+</ul>
+<p class="alt">Test kayıtları yalnız eğitim kopyasında: FTR-2026-000013…016, SAS-2026-00004 / IRS-2026-00005, GP-2026-000002, müşteri “Mehmet Kaya” (deneme TC), ürün “22 Ayar CNC Bilezik”. Canlı veriye (5199) yazılmadı.</p>
+</div>
+
+</body></html>
