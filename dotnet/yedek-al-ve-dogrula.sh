@@ -143,7 +143,7 @@ tatbikat_kos() {
   my "DROP DATABASE IF EXISTS ${YEDEK_TATBIKAT_SEMA}; CREATE DATABASE ${YEDEK_TATBIKAT_SEMA};"
   if ! coz < "$dosya" | gunzip \
         | sed "s/\`${YEDEK_VT}\`/\`${YEDEK_TATBIKAT_SEMA}\`/g" \
-        | grep -v '^CREATE DATABASE' | grep -v '^USE ' \
+        | grep -a -v '^CREATE DATABASE' | grep -a -v '^USE ' \
         | my_akis "$YEDEK_TATBIKAT_SEMA"; then
     hata_ver "Geri yükleme başarısız."
     my "DROP DATABASE IF EXISTS ${YEDEK_TATBIKAT_SEMA};"

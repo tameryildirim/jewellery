@@ -1,0 +1,42 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ByGatech — ÜRETİM MySQL (yalnız veritabanı; uygulama systemd ile çalışır)
+#
+# Neden ayrı dosya: docker-compose.uretim.yml uygulamayı da konteynerde
+# bekler (kuyumcu-erp:uretim imajı). VPS'te uygulama self-contained yayın +
+# deploy/systemd/kuyumcu.service ile çalışır (docs/DEPLOY.md § 4a); veritabanı
+# geliştirmeyle aynı sürüm (mysql:8.4) olsun diye konteynerdedir.
+#   • 3306 YALNIZ 127.0.0.1'e bağlanır — dışarıdan erişim yok (ufw da kapalı).
+#   • parola .env'den (dotnet/kurulum.sh üretir): MYSQL_ROOT_PASSWORD, KUYUMCU_VT
+# Çalıştırma: docker compose --env-file /etc/kuyumcu/.env -f /opt/kuyumcu/deploy/docker-compose.mysql.yml up -d
+# ═══════════════════════════════════════════════════════════════════════════
+name: bygatech-vt
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: bygatech-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD .env dosyasindan gelmelidir}
+      MYSQL_DATABASE: ${KUYUMCU_VT:?KUYUMCU_VT .env dosyasindan gelmelidir}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - bygatech_mysql:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_turkish_ci --innodb-buffer-pool-size=512M
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -u root --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1800m   # 02.11 ölçüm: mysql 8.4 boşta ~1,05 GiB RSS; 1200m sınırı OOM riskiydi
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+volumes:
+  bygatech_mysql:

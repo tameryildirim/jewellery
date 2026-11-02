@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- VPS yedeklerini her gece 04:10'da Mac'e çeker (vps-yedek-cek.sh).
+     Kur (kurucu, bir kez):
+       cp dokumanlar/09-uygulama-kayitlari/betikler/com.bygatech.vps-yedek.plist ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bygatech.vps-yedek.plist
+     Elle çalıştır: launchctl kickstart gui/$(id -u)/com.bygatech.vps-yedek -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.bygatech.vps-yedek</string>
+  <key>ProgramArguments</key><array><string>/bin/zsh</string><string>/Users/ramazanakkocan/ByGatech-yerel/jewellery/dokumanlar/09-uygulama-kayitlari/betikler/vps-yedek-cek.sh</string></array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>10</integer></dict>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>/Users/ramazanakkocan/Library/Logs/bygatech-vps-yedek.log</string>
+  <key>StandardErrorPath</key><string>/Users/ramazanakkocan/Library/Logs/bygatech-vps-yedek.log</string>
+</dict></plist>

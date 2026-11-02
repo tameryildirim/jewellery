@@ -105,13 +105,17 @@ my_akis() {   # $1 = hedef şema
 
 # ── TEK DUMP ÇAĞRI NOKTASI (denetim.sh T3-4: bu dosyada 1, başka yerde 0) ────
 # Çıktı STDOUT'a akar; çağıran boru hattına bağlar. Diske düz .sql YAZILMAZ.
+# --hex-blob (VPS 02.11 ölçümü): longblob (belgeler.icerik) düz kaçışla yazılınca
+# Linux GNU grep geri yükleme borusunda akışı "binary" sayıp o satırları düşürdü;
+# tatbikat belgeler tablosunu GERÇEK uyuşmazlık diye kırmızı verdi. Hex yazım
+# dump'ı salt ASCII tutar; macOS BSD grep'te görünmeyen bu tuzak kapanır.
 dump_akisi() {
   if [ "$YEDEK_DOCKER" = "1" ]; then
     docker exec -i "$YEDEK_KAP" mysqldump "--defaults-extra-file=$YEDEK_KAP_CNF" \
-      --single-transaction --routines --triggers --events --databases "$YEDEK_VT" 2>/dev/null
+      --single-transaction --routines --triggers --events --hex-blob --databases "$YEDEK_VT" 2>/dev/null
   else
     mysqldump "--defaults-extra-file=$YEDEK_CNF" -h "$YEDEK_SUNUCU" -P "$YEDEK_PORT" \
-      --single-transaction --routines --triggers --events --databases "$YEDEK_VT" 2>/dev/null
+      --single-transaction --routines --triggers --events --hex-blob --databases "$YEDEK_VT" 2>/dev/null
   fi
 }
 
