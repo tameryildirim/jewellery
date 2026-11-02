@@ -6,7 +6,7 @@ namespace Kuyumcu.Tests;
 // PAKET P-33 (B-5 · K-26) — KURULUM ADRESİ SORAR, KISAYOLU O ADRESLE ÜRETİR
 //
 // K-26 kararı: adres kısayola GÖMÜLMEZ, kurulumda sorulur (varsayılan
-// http://localhost:5199), .env'de TEK satırda (MIHENK_ADRES) tutulur, adres
+// http://localhost:5199), .env'de TEK satırda (BYGATECH_ADRES) tutulur, adres
 // değişirse kısayol yeniden üretilir. Bu testler dotnet/kurulum.sh'ı GERÇEKTEN
 // çalıştırır (geçici dizinde; sırlar geçici .env'e yazılır ve test sonunda
 // dosya boşaltılır). kurulum.ps1 bu makinede koşturulamaz → metin sözleşmesi.
@@ -65,7 +65,7 @@ public sealed class KurulumAdresKisayolTestleri : IDisposable
             "--kisayol-dizin", Masaustu, "--sahip", "p33-olmayan-kullanici");
         Assert.True(kod == 0, cikti);
 
-        Assert.Equal(["MIHENK_ADRES=http://localhost:5321"], Satirlar("MIHENK_ADRES"));
+        Assert.Equal(["BYGATECH_ADRES=http://localhost:5321"], Satirlar("BYGATECH_ADRES"));
         // Adres bu makineyi gösteriyor → uygulama AYNI portu dinler.
         Assert.Equal(["ASPNETCORE_URLS=http://127.0.0.1:5321"], Satirlar("ASPNETCORE_URLS"));
         // ETKİN anahtar "Urls": appsettings.Production.json'daki "Urls"u yalnız
@@ -86,7 +86,7 @@ public sealed class KurulumAdresKisayolTestleri : IDisposable
     {
         var (kod, cikti) = Kos("--hedef", Env, "--kisayol-dizin", Masaustu, "--sahip", "p33-olmayan-kullanici");
         Assert.True(kod == 0, cikti);
-        Assert.Equal(["MIHENK_ADRES=http://localhost:5199"], Satirlar("MIHENK_ADRES"));
+        Assert.Equal(["BYGATECH_ADRES=http://localhost:5199"], Satirlar("BYGATECH_ADRES"));
         Assert.Contains("varsayılan", cikti, StringComparison.Ordinal);
         Assert.Contains("http://localhost:5199", KisayolMetni());
     }
@@ -102,7 +102,7 @@ public sealed class KurulumAdresKisayolTestleri : IDisposable
             "--kisayol-dizin", Masaustu);
         Assert.True(kod == 0, cikti);
 
-        Assert.Equal(["MIHENK_ADRES=https://dukkan.ornek"], Satirlar("MIHENK_ADRES"));
+        Assert.Equal(["BYGATECH_ADRES=https://dukkan.ornek"], Satirlar("BYGATECH_ADRES"));
         // Başka ana makine → ters vekil arkasındaki iç bağlama noktası.
         Assert.Equal(["ASPNETCORE_URLS=http://127.0.0.1:5000"], Satirlar("ASPNETCORE_URLS"));
         Assert.Equal(["Urls=http://127.0.0.1:5000"], Satirlar("Urls"));
@@ -143,7 +143,7 @@ public sealed class KurulumAdresKisayolTestleri : IDisposable
         var ps = File.ReadAllText(Path.Combine(KilavuzUretimTestleri.DotnetKoku(), "kurulum.ps1"));
         Assert.Contains("[string]$Adres = ''", ps, StringComparison.Ordinal);
         Assert.Contains("$VarsayilanAdres = 'http://localhost:5199'", ps, StringComparison.Ordinal);
-        Assert.Contains("\"MIHENK_ADRES=$Adres\"", ps, StringComparison.Ordinal);
+        Assert.Contains("\"BYGATECH_ADRES=$Adres\"", ps, StringComparison.Ordinal);
         Assert.Contains("[InternetShortcut]", ps, StringComparison.Ordinal);
         Assert.Contains("[switch]$SadeceKisayol", ps, StringComparison.Ordinal);
         Assert.Contains("\"Urls=$(Bag-Adresi $Adres)\"", ps, StringComparison.Ordinal);

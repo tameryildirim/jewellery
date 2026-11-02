@@ -10,7 +10,7 @@ rem  Rehber: docs\DEPLOY.md
 rem  Dosyanin silinmesi kurucunun kararina birakildi.
 rem ============================================================
 rem ============================================================
-rem  MIHENK (.NET / Blazor) - Baslatma
+rem  ByGatech (.NET / Blazor) - Baslatma
 rem  Uygulama: http://localhost:5000
 rem  (ASP.NET Core API + Blazor WASM tek surecte sunulur)
 rem ============================================================
@@ -19,7 +19,7 @@ cd /d "%~dp0"
 
 echo.
 echo  ============================================
-echo   MIHENK baslatiliyor...
+echo   ByGatech baslatiliyor...
 echo  ============================================
 echo.
 
@@ -74,7 +74,7 @@ start http://localhost:5000
 
 echo.
 echo  ============================================
-echo   MIHENK calisiyor!  http://localhost:5000
+echo   ByGatech calisiyor!  http://localhost:5000
 echo   Kapatmak icin stop.bat dosyasini calistirin.
 echo  ============================================
 echo.

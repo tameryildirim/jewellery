@@ -27,13 +27,13 @@
 
 <PageTitle>@Marka.SayfaBasligi(M.IstekBaslik)</PageTitle>
 
-@* Görsel denetim Y-5 · D-2 (21.10): giriş ekranıyla AYNI dil — Yıldız amblemi (taş + MİHENK, h1), tek kart, sağ panel yok.
+@* Görsel denetim Y-5 · D-2 (21.10): giriş ekranıyla AYNI dil — Yıldız amblemi (taş + ByGatech, h1), tek kart, sağ panel yok.
    Eski kare logo, ayrı marka satırı ve şekilli sağ panel kaldırıldı; form, dil seçici ve akış AYNEN. *@
 <div class="giris-sayfa giris-iki-panel giris-yildiz" id="sifirla-sayfa">
     <main class="giris-sol" id="sifirla-sol">
         <div class="giris-kart" id="sifirla-kart">
             <div class="giris-kart-ust">
-                    <h1 class="giris-amb" id="sifirla-amblem" aria-label="@KabukTuvalSozlugu.MarkaYazimi">@Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemTasi(Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.GirisTasi)<svg class="amb-yz" width="220" height="32" viewBox="0 0 110 16" aria-hidden="true" focusable="false"><text x="57" y="13" text-anchor="middle" fill="url(#giris-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg></h1>
+                    <h1 class="giris-amb" id="sifirla-amblem" aria-label="@KabukTuvalSozlugu.MarkaYazimi">@Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemTasi(Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.GirisTasi)<svg class="amb-yz" width="280" height="32" viewBox="0 0 140 16" aria-hidden="true" focusable="false"><text x="72" y="13" text-anchor="middle" fill="url(#giris-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg></h1>
                 <div class="giris-dil" id="sifirla-dil"><DilSecici /></div>
             </div>
 

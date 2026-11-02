@@ -115,7 +115,7 @@ public sealed class S1eGirisTestleri : BunitContext
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 
         var satir = e.Find("#giris-surum").TextContent.Trim();
-        Assert.Equal($"{KabukTuvalSozlugu.MarkaYazimi} {Giris.SurumMetni(bilgi)} · ByGatech", satir);
+        Assert.Equal($"{KabukTuvalSozlugu.MarkaYazimi} {Giris.SurumMetni(bilgi)}", satir);
         Assert.DoesNotContain("—", satir);
     }
 

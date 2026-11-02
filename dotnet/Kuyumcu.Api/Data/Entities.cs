@@ -1236,7 +1236,7 @@ public class BankaHesap : IKiraciVarlik
     [Column("son_cekim")] public DateTime? SonCekim { get; set; }
     /// <summary>
     /// Kurucu 31.10 ("Faturalog'daki gibi hesaba ait bakiye"): bankanın KENDİ söylediği bakiye (Garanti Hesap Bilgisi
-    /// servisi). Mihenk'in dekontlardan hesapladığı <see cref="Bakiye"/>'den ayrıdır; yalnız bağlantı başarılı
+    /// servisi). ByGatech'in dekontlardan hesapladığı <see cref="Bakiye"/>'den ayrıdır; yalnız bağlantı başarılı
     /// olunca yazılır, bakiye vermeyen bankada null kalır.
     /// </summary>
     [Column("banka_bakiye", TypeName = "decimal(15,2)")] public decimal? BankaBakiye { get; set; }

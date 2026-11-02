@@ -1,8 +1,8 @@
-# MİHENK — TEMA SİSTEMİ: 8 RENK ŞEMASI × AYDINLIK/KARANLIK × 3 YAZI BOYUTU
+# BYGATECH — TEMA SİSTEMİ: 8 RENK ŞEMASI × AYDINLIK/KARANLIK × 3 YAZI BOYUTU
 
 > **Tarih:** 23 Eylül 2026 · **Yazan:** Ertuğ (03 Frontend) + Bertan (02 Baş Mimar), Tamer Bey koordinasyonu.
 > **Bağlayıcı kaynak:** `PLAN-SADELESTIRME-PUSULA-2026-09-23.md` § 5A (Görsel yön — "Sakin Lüks") ve § 5B (kullanıcı profili).
-> **Ürün adı:** **MİHENK** (kurucu talimatı, 23 Eylül). Bu belgede ve üretilen CSS'te ürün adı Mihenk'tir.
+> **Ürün adı:** **BYGATECH** (kurucu talimatı, 23 Eylül). Bu belgede ve üretilen CSS'te ürün adı ByGatech'tir.
 > **Çıktı ikizi:** `belirtecler-8sema.css` (aynı klasör) — S-1'in doğrudan taşıyacağı saf CSS.
 > **Durum:** BELGE. Kod yazılmadı. `dotnet/Kuyumcu.Web/wwwroot/css/belirtecler.css` **yalnız okundu** (520 satır), hiçbir `.cs/.razor/.css` üretim dosyasına dokunulmadı.
 
@@ -32,7 +32,7 @@
 | Ç-1 | **§ 8.1 (eski):** "üçten biri: A Altın Klasik / B Platin Mavi / C Zümrüt" ↔ **§ 5A (23 Eylül):** 8 şema, altın/amber yok | **§ 5A kazanır.** "A/B/C" adlandırması ölüdür; 8 ad geçerlidir | § 5A daha yeni ve kurucunun birebir talimatı ("altın/amber beğenilmedi") |
 | Ç-2 | § 5A "Renk" satırı hâlâ "1 marka vurgusu (altın amber, kurucu A/B/C'den seçer)" diyor ↔ aynı § 5A'nın TEMA paragrafı "altın/amber yok" diyor | **TEMA paragrafı kazanır** (aynı bölümün daha sonra yazılmış, daha özel hükmü) | Kurucunun son sözü; tablo satırı güncellenmemiş artık metindir |
 | Ç-3 | Araştırma 3 & 4: **odak halkası şemadan türetilmeli** (Radix adım 8) ↔ **odak halkası nötr olmalı** (Carbon: karanlıkta saf beyaz) | **Şemadan türetilir, ama İKİ PARÇALI halka zorunlu:** içte `--yuzey` renginde 2 px boşluk + dışta `--odak-halka` 2 px | Tek parçalı halka birincil düğmenin üstünde kaybolur. İki parçalı halka WCAG 2.2 SC 1.4.13 "değişim kontrastı"nı da karşılar ve marka kimliğini korur. Her şemada halka **hem `--yuzey` hem `--yuzey-govde`'ye karşı ≥3:1 ölçüldü** (16 ölçüm, 16 geçti) |
-| Ç-4 | Araştırma 1: `--yuzey-hover` / `--yuzey-secili` **eklenmeli** (Radix 4-5) ↔ Araştırma 3: "13-15 belirteçte kal, her yeni belirteç 16 değere çarpılır" | **Eklendi.** Maliyet kabul edildi (16 × 2 = 32 ek değer) | Yoksa 8 şema da hover/seçili durumda ham renge düşer; liste ekranı MİHENK'in en çok kullanılan yüzeyidir |
+| Ç-4 | Araştırma 1: `--yuzey-hover` / `--yuzey-secili` **eklenmeli** (Radix 4-5) ↔ Araştırma 3: "13-15 belirteçte kal, her yeni belirteç 16 değere çarpılır" | **Eklendi.** Maliyet kabul edildi (16 × 2 = 32 ek değer) | Yoksa 8 şema da hover/seçili durumda ham renge düşer; liste ekranı BYGATECH'in en çok kullanılan yüzeyidir |
 | Ç-5 | Araştırma 4: "durum renkleri şemadan **bağımsız** olmalı" ↔ görev metni: "4 durum rengi her şema × tema için" | **İkisi de doğru:** durum renginin *hue/chroma'sı* şemadan bağımsız sabittir (M3 error-paleti kuralı), ama *L'si* her şemanın kendi yüzeyine karşı ayrı ölçülüp ayarlanır | Anlam sabit kalır, kontrast her şemada garanti edilir |
 | Ç-6 | "ALTIN/AMBER YOK" ↔ uyarı semantiği evrensel olarak sarı/kehribardır | **Yasak yalnız MARKA VURGUSU içindir.** `--uyari*` ailesi okra/kehribar kalır | Kurucunun reddettiği şey ürünün kimlik rengiydi, trafik ışığı değil. Objektif test yalnız `--vurgu`, `--vurgu-guclu`, `--odak-halka` üzerinde koşar |
 | Ç-7 | Görev metni: "`data-sema` YOK" ↔ ölçüm: `belirtecler.css` 245-274. satırlarda `[data-sema="kurumsal"]` ve `[data-sema="zumrut"]` ZATEN var | **Ölçüm kazanır.** CSS'te `data-sema` var (P-36b), `TemaServisi.cs`'te yok. İkisi ayrı katman | Doğrudan dosyadan okundu. S-1'in işi: CSS'teki 2 eski şemayı (`kurumsal`, `zumrut`) 8 yeni şemayla değiştirmek ve `data-sema`yı servise bağlamak. `zumrut` adı korunur, değerleri yenilenir; `kurumsal` → `platin-mavi` olarak yeniden adlandırılır (eski ad geriye dönük takma ad olarak bırakılabilir) |
@@ -262,7 +262,7 @@ Kurallar:
 
 ---
 
-## 10. MİHENK satış demosu — ekran sırası (kurucu talimatı, 23 Eylül)
+## 10. BYGATECH satış demosu — ekran sırası (kurucu talimatı, 23 Eylül)
 
 Kurucu: *"demo için hangi ekranlar sırasıyla ne olacak bilemem onu sen Pusula'dan ve diğerlerinden araştır kendin bul."*
 
@@ -271,7 +271,7 @@ Kurucu: *"demo için hangi ekranlar sırasıyla ne olacak bilemem onu sen Pusula
 
 | # | Dakika | Ekran (dosya) | Ne gösterilir | Neden burada |
 |---:|---|---|---|---|
-| 1 | 0:00–0:20 | **Giriş** (`Giris.razor`) | MİHENK markası, tek kart (e-posta/parola/Giriş), sağda sakin görsel + tek cümle | Rakip 0:10'da giriş ekranını gösteriyor; biz pazarlama sloganı yerine tek cümle koyuyoruz (§ 5A) |
+| 1 | 0:00–0:20 | **Giriş** (`Giris.razor`) | BYGATECH markası, tek kart (e-posta/parola/Giriş), sağda sakin görsel + tek cümle | Rakip 0:10'da giriş ekranını gösteriyor; biz pazarlama sloganı yerine tek cümle koyuyoruz (§ 5A) |
 | 2 | 0:20–1:00 | **Panel** (`Panel.razor`) | Sayılar önce, **Açık Pozisyon** kutucuğu, en fazla 1 grafik | Rakibin Ana Ekran'ı 0:20–1:30; Açık Pozisyon patronun sabah baktığı tek sayı (Pusula referans § 2) |
 | 3 | 1:00–1:30 | **Ayarlar → Görünüm** (`Ayarlar.razor`) | **8 şema × aydınlık/karanlık × 3 punto tek tıkla değişir** | **Rakipte yok.** Müşterinin 3. cümlesinin cevabı; demoda erken verilmeli ki geri kalan 9 dakika seçilen şemayla izlensin |
 | 4 | 1:30–3:30 | **Tezgâh fişi** (`Islemler.razor`, basit mod) | Peşin müşteri ön seçili → barkod okut → ödeme bacakları satır satır (nakit / kart / **eski altın** / açık hesap) → **FARK 0,00** → Kaydet | Rakibin en uzun sahnesi (3:30–5:00) ve klasik videonun tamamı (karma ödemeli tek satış); bizim "çevirisizlik" iddiamız burada kanıtlanır |
@@ -281,7 +281,7 @@ Kurucu: *"demo için hangi ekranlar sırasıyla ne olacak bilemem onu sen Pusula
 | 8 | 6:00–7:00 | **Emanet** (`Emanet.razor`), **Siparişler** (`Siparisler.razor`) | Emanet mal takibi, sipariş/tamir akışı | **Rakipte yok.** "Daha fazla iş yapıyor" iddiasının ilk kanıtı |
 | 9 | 7:00–8:00 | **Uyum** (`Uyum.razor`), **Gider pusulası** (`GiderPusulalari.razor`) | Tevsik haddi uyarısı, MASAK kimlik kapısı, hurda alışta gider pusulası | **Rakipte yok ve asıl fark budur** — yasal kapı, sonradan eklenemeyen omurga |
 | 10 | 8:00–9:00 | **Raporlar** (`Raporlar.razor`), **Kâr/Zarar** (`KarZarar.razor`), **Sayım** (`Sayim.razor`) | Kâr/zarar, kasa raporu, sayım oturumu | Rakip 8:30–9:30 raporlar; sayım oturumu rakip müşterisinin şikâyet ettiği açık (referans § 8) |
-| 11 | 9:00–10:00 | **Basit ↔ Profesyonel** (`Islemler.razor` aynı ekran) + kapanış | Aynı ekranın iki yüzü: basit modda 6 düğme, pro modda tümü — "özellik kaybı 0" | MİHENK İLKESİ'nin kapanış cümlesi: ilk bakışta az şey, bir tık altında her şey |
+| 11 | 9:00–10:00 | **Basit ↔ Profesyonel** (`Islemler.razor` aynı ekran) + kapanış | Aynı ekranın iki yüzü: basit modda 6 düğme, pro modda tümü — "özellik kaybı 0" | BYGATECH İLKESİ'nin kapanış cümlesi: ilk bakışta az şey, bir tık altında her şey |
 
 **Demo boyunca sabit kurallar:** her ekranda aynı kabuk, aynı düğme sırası (**Kaydet · Sil/Pasife al · Vazgeç**), ekranda **en çok 3 vurgu öğesi**, hiçbir ekranda ham kod/enum yok, her rakam sağa dayalı ve tabular.
 
@@ -903,7 +903,7 @@ Kurucu: *"demo için hangi ekranlar sırasıyla ne olacak bilemem onu sen Pusula
 5. **Araştırmadaki bazı sayılar birincil kaynaktan doğrulanamadı** (Material `#121212`, `15,8:1`, `%87/%60/%38` opaklıklar; Carbon g90/g100 hex dizisi; Apple'ın hex değerleri; astigmatizma yaygınlığı %30–50 aralığı). Bunların **hiçbiri** bu paletin bir değerine dayanak yapılmadı; yalnız yön verdi.
 6. **"Karanlıkta doygunluk ×0,62" ve "kontrast bandı 12–16:1" bizim türetimimizdir**, alıntılanmış kural değil. M3'ün ton 40→80 eşlemesinin OKLCH karşılığı olarak seçildi. Ekip kararı olarak mühürlenmeli.
 7. **`data-sema` durumu:** CSS'te var (P-36b, 2 şema), `TemaServisi.cs`'te yok. Bu belge ikisini de okuyup çelişkiyi Ç-7'de kaydetti; hangi katmanın "geçerli" sayıldığı **koda dokunmadan** doğrulanamadı — S-1 başlamadan `js/gorunum.js` ile `TemaServisi.cs` arasındaki bağ ölçülmeli.
-8. **Ürün adı "Mihenk"** için marka/ticari unvan müsaitliği, alan adı ve tescil **kontrol edilmedi** — bu ekibin işi değil, Kurucu'nun kalemidir (tescil/imza/dış taahhüt).
+8. **Ürün adı "ByGatech"** için marka/ticari unvan müsaitliği, alan adı ve tescil **kontrol edilmedi** — bu ekibin işi değil, Kurucu'nun kalemidir (tescil/imza/dış taahhüt).
 9. **Mevcut 14 px varsayılanın 16 px'e çıkması** mevcut kiracıların ekranını değiştirecek tek kırılmadır ve bilinçlidir. Migration varsayılanı `null` bırakır ama sistem varsayılanı 16'dır; duyuru gerekir.
 
 ---

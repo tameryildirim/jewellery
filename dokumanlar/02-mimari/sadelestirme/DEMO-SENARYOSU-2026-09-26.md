@@ -1,8 +1,8 @@
-# MİHENK — CUMARTESİ DEMO SENARYOSU (26 Eylül 2026, sabah)
+# BYGATECH — CUMARTESİ DEMO SENARYOSU (26 Eylül 2026, sabah)
 
 > **Kime:** Kurucu (Ramazan Akkocan). Elinde tutup uygulayacağı belge.
 > **Yazan:** Köprü (07 Teslimat) + Eray (08 Satış) + Aşkın (04 QA) merceği, Tamer Bey koordinasyonu.
-> **Ürün adı:** **MİHENK** (kurucu kararı, 23 Eylül). "Kuyumcu ERP" adı ölüdür.
+> **Ürün adı:** **BYGATECH** (kurucu kararı, 23 Eylül). "Kuyumcu ERP" adı ölüdür.
 > **Firma:** ByGatech A.Ş.
 > **Müşteri:** Bizi daha önce görmüş ve üç şey söylemiş kuyumcu: *"çok karışık abi — menüler karışık, ekranlar karışık, renkleri iyi değil; Pusula çok sade ve güzel."*
 > **Bütçe:** 14 dakika 50 saniye ekran + söz. 15 dakikayı aşmaz.
@@ -24,7 +24,7 @@ Bunlar yapılmadan demo yapılmaz. Hepsinin kanıtı bölüm 7'de.
 |---|---|---|
 | Z1 | **Yayın anlık görüntüsünü yeniden üret**, `blazor.boot.json`'daki 66 varlığın her birini HTTP 200 doğrula | QA turu 8'de 2 dosya (`Microsoft.Extensions.Logging.Abstractions.wasm`, `System.ComponentModel.Annotations.wasm`) 404 verdi, **uygulama hiç açılmadı**, 6 rota hiç ölçülemedi. Aynı arıza demo sabahı olursa demo biter. (`ham/qa-turu-8.json`, grup 1) |
 | Z2 | **Panel'deki ölü bağlantıyı düzelt** | `Pages/Panel.razor:273` → `href="/islem-defteri"`. Böyle bir sayfa **yok** (`@page "/raporlar/islem-defteri"`). Ölçüldü: uygulamadaki **tek** ölü iç bağlantı bu, ve **demonun 2. adımındaki ekranda**. Tıklanırsa "Sayfa bulunamadı" çizer. |
-| Z3 | **Ekranda "Kuyumcu ERP" yazısını MİHENK yap** — en az `wwwroot/index.html` (başlık + "yükleniyor" metni) ve `App.razor` `<PageTitle>` | Bugün **43 dosyada** "Kuyumcu ERP" yazıyor, **0 dosyada** "Mihenk" (ölçüldü, 23 Eylül). Müşteri ürünün eski adını tarayıcı sekmesinde ve açılış ekranında görür. |
+| Z3 | **Ekranda "Kuyumcu ERP" yazısını BYGATECH yap** — en az `wwwroot/index.html` (başlık + "yükleniyor" metni) ve `App.razor` `<PageTitle>` | Bugün **43 dosyada** "Kuyumcu ERP" yazıyor, **0 dosyada** "ByGatech" (ölçüldü, 23 Eylül). Müşteri ürünün eski adını tarayıcı sekmesinde ve açılış ekranında görür. |
 | Z4 | **Temiz demo kiracısı kur** (bölüm 3'teki listeyle) | QA kiracısında `QA-TEST G1 T8 Kasa DUZ`, `QA-TEST G2T8 Musteri DUZENLENDI` gibi artıklar var. Ekranda "QA-TEST" yazan tek satır demoyu laboratuvara çevirir. |
 | Z5 | **BASİT MOD açık olsun**, profesyonel mod demoda hiç açılmasın | Profesyonel menüde **40 bağlantı** aynı anda açık duruyor (ölçüldü: `Layout/MenuTanimi.cs`, `new(MenuGrubu…` = 40; Günlük 5 · Müşteri-Stok 6 · Para-Banka 10 · Belge-Uyum 3 · Rapor 6 · Yönetim 10). Müşterinin 1. eleştirisi tam budur. |
 | Z6 | **Renk şemasını önceden seç ve provayı o şemada koş** | Bugün kodda **3 şema** var: varsayılan · kurumsal · zümrüt (`Servisler/GorunumServisi.cs:31`, `belirtecler.css` `data-sema`). Plandaki 8 şema **henüz yazılmadı** — demoda "8 renk" sözü verilmez. |
@@ -106,7 +106,7 @@ Bunlar yapılmadan demo yapılmaz. Hepsinin kanıtı bölüm 7'de.
   3. Ödemeyi **HAVALE**'ye çevirir, **Kaydet**. *(4–5 tık)*
 - **Ne söyler:** *"Kırk beş bin liralık mal, nakit. Bak program ne diyor: bu tutarda nakit almak yasak, banka veya kart olacak. Ben unutsam da program unutmuyor. Havaleye çevirdim, kaydetti."*
 - **Müşteri ne görür:** Kaydet'e basmadan önce çıkan Türkçe uyarı: *"Bu tutar tevsik haddini (30.000 ₺) aşıyor — nakit ödeme reddedilir. HAVALE/EFT veya kart seçin."* Sonra sorunsuz kayıt.
-- **Neden bu sırada:** Bu, MİHENK'in en güçlü tek anı ve **satıştan hemen sonra** gelmeli — müşteri satışın nasıl yapıldığını daha yeni gördü, şimdi neden bu programı seçeceğini görüyor. Yöntem: **önce söyle → göster → ne anlama geldiğini söyle.**
+- **Neden bu sırada:** Bu, BYGATECH'in en güçlü tek anı ve **satıştan hemen sonra** gelmeli — müşteri satışın nasıl yapıldığını daha yeni gördü, şimdi neden bu programı seçeceğini görüyor. Yöntem: **önce söyle → göster → ne anlama geldiğini söyle.**
 - **Bugün hazır mı:** **EVET, ama tek şartla.** Uyarı metni kodda doğrulandı (`Kuyumcu.Core/I18n/Sozlukler.cs:4017`) ve **Kaydet'e basmadan önce** çıkıyor. QA turu 8 ayrıca kanıtladı: nakitle Kaydet denendi → sunucu 400 verdi (doğru davranış), HAVALE'ye geçilince 200.
   ⛔ **KAYDET'E NAKİTLE ASLA BASMA.** Basarsan ekranda kırmızı hata bandı çıkar; anlatı "program beni korudu"dan "program hata verdi"ye döner. Uyarıyı göster, ödemeyi değiştir, öyle kaydet.
 - ⚠ Ekranda **"tevsik haddi"** jargonu yazıyor. Kurucu bunu sesli çevirir: *"tevsik dedikleri şu: 30 bin üstü nakit alınmaz."* Kelimeyi okuma, anlamını söyle.
@@ -276,7 +276,7 @@ Bunlar yapılmadan demo yapılmaz. Hepsinin kanıtı bölüm 7'de.
 | V14 | **Vitrin panosu** | 22 sabit kalem | **7–10 kalem görünür** bırakılacak, etiketler Türkçe | QA'da pano 7 kalem gösteriyordu; 22 kalemin hepsi açıksa vitrin kalabalık görünür |
 | V15 | **Renk şeması + yazı boyutu** | varsayılan | **Seçilmiş ve uygulanmış** olacak (3 şemadan biri) + yazı boyutu orta/büyük | Müşteri ilk saniyeden yeni rengi görsün (bölüm 2, eleştiri 3) |
 | V16 | **"QA-TEST" artığı** | — | **SIFIR.** Hiçbir kayıtta "QA", "TEST", "DUZ", "DUZENLENDI" geçmeyecek | QA kiracısında `QA-TEST G1 T8 Kasa DUZ`, `QA-TEST G2T8 Musteri DUZENLENDI`, `QA-TEST G3 T9 Liste` gibi artıklar var; demo kiracısı bunlardan **türetilmez** (RUNBOOK § 0 kural 1) |
-| V17 | **Ürün adı** | "Kuyumcu ERP" | **MİHENK** (en az sekme başlığı + açılış yazısı) | 43 dosyada "Kuyumcu ERP", 0 dosyada "Mihenk" (ölçüldü) |
+| V17 | **Ürün adı** | "Kuyumcu ERP" | **BYGATECH** (en az sekme başlığı + açılış yazısı) | 43 dosyada "Kuyumcu ERP", 0 dosyada "ByGatech" (ölçüldü) |
 
 ### ⚠ V9 hakkında dürüst uyarı — demoda söylenemeyecek cümle
 Demo tohumlayıcısı **geçmişe tarihli hareket üretemez**: `docs/RUNBOOK-DEMO.md` § 1 → *"Tohumlanan geçmişin takvimi: TEK_GUN … bu sürüm 3 aylık geçmiş üretmez … Tarihi sonradan SQL ile kaydırmak yasaktır."*
@@ -298,7 +298,7 @@ S-3'ün önüne, yalnız demoyu bloke eden kalemler. Hiçbiri tasarım işi değ
 | D-a | Yayın anlık görüntüsü yeniden üretilir; `blazor.boot.json`'daki her varlığın HTTP 200 olduğunu doğrulayan bir kapı adımı eklenir | QA turu 8'i tümüyle boşa çıkaran arıza; demo sabahı tekrarlarsa demo biter |
 | D-b | `Pages/Panel.razor:273` → `/islem-defteri` **→** `/raporlar/islem-defteri` | Uygulamadaki tek ölü iç bağlantı, demonun 2. ekranında |
 | D-c | `betikler/demo-tohumla.js:131` prova tablosundaki `rota: '/vade-takibi'` → `/raporlar/vade-takibi` | Aynı sınıf hata; RUNBOOK § 3.1 bunu 23 Eylül'de yakalamış ama betikte hâlâ duruyor |
-| D-d | `index.html` + `App.razor`: **Kuyumcu ERP → MİHENK** | Müşteri ürünün adını ekranda görür |
+| D-d | `index.html` + `App.razor`: **Kuyumcu ERP → BYGATECH** | Müşteri ürünün adını ekranda görür |
 | D-e | Demo kiracısı bölüm 3'teki listeyle kurulur | P-30 |
 
 ### Sonra: **S-3 revize sırası**
@@ -408,7 +408,7 @@ Altısı da `durum: ENGELLENDI`, görsel 1 / dostu 1. Tek bulgu, birebir: *"UYGU
 | ☐ | A2 | `blazor.boot.json`'daki **66 varlığın hepsi HTTP 200** (curl ile tek tek) | Tek 404 varsa demo yok |
 | ☐ | A3 | 6 ENGELLENDİ rota tek tek tarayıcıda açıldı: `/cikti/{Tur}/{Id}` · `/kasalar` · `/sayim` · `/banka` · `/pos/tahsilatlar` · `/yetkiler` | Her biri **çiziliyor**; çizmiyorsa demoya **konmaz** ve Panel'deki "Kasa Özeti →" bağlantısı demoda tıklanmaz |
 | ☐ | A4 | `Pages/Panel.razor` ölü bağlantısı düzeltildi (`/islem-defteri` → `/raporlar/islem-defteri`) **ya da** demo makinesinde asla tıklanmayacağı kurucuya yazılı bildirildi |
-| ☐ | A5 | Tarayıcı sekmesinde ve açılış ekranında **MİHENK** yazıyor, "Kuyumcu ERP" yazmıyor |
+| ☐ | A5 | Tarayıcı sekmesinde ve açılış ekranında **BYGATECH** yazıyor, "Kuyumcu ERP" yazmıyor |
 | ☐ | A6 | `dotnet/denetim.sh` TEMİZ; `DEMO_ROTA_KRITIK = 0` (son **iki** prova, `kosan` alanları **dolu ve farklı**) |
 
 ### Bölüm B — Veri (bölüm 3'teki listeyle tek tek sayılacak)
@@ -483,7 +483,7 @@ Aşağıdakiler **bilinmiyor**. Demoda bunlara dayanan hiçbir cümle kurulmayac
 ## 9. Tek sayfalık özet — kurucunun cebine koyacağı kart
 
 ```
-MİHENK — CUMARTESİ DEMOSU · 14 dk 50 sn · BASİT MOD
+BYGATECH — CUMARTESİ DEMOSU · 14 dk 50 sn · BASİT MOD
 
  0  0:30  Açılış sözü        "15 dakika. Üç şey: satış, mal, akşam özeti."
  1  0:40  /giris             Kısıt listesini göster, gir

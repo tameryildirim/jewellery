@@ -1,7 +1,7 @@
 # PAKET YASAL-1 — Tarihli program parametreleri tablosu (eşiklerin zaman boyutu)
 
 > Tarih: 2026-09-30 · Hazırlayan: Tamer Bey koordinasyonu (şartname ajanı; KOD YAZILMADI) · Durum: ŞARTNAME — ekip oyu bekliyor
-> Kapattığı çelişki: **(1)** "eşiklerin zaman boyutu yok, program parametreleri tablosu yok; had değişirse geçmiş işlemler yeni hadle yorumlanır" (MIHENK-PLAN-RAPORU-2026-09-28 §3a). Ek olarak **çelişki (7)** kontrol sonucu § 12'dedir.
+> Kapattığı çelişki: **(1)** "eşiklerin zaman boyutu yok, program parametreleri tablosu yok; had değişirse geçmiş işlemler yeni hadle yorumlanır" (BYGATECH-PLAN-RAPORU-2026-09-28 §3a). Ek olarak **çelişki (7)** kontrol sonucu § 12'dedir.
 > Önkoşul: yok. **YASAL-2, YASAL-3, YASAL-4 bu paketin servisini kullanır → önce YASAL-1.**
 
 ---

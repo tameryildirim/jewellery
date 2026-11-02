@@ -140,7 +140,7 @@ Alış için fiş ucu **yok**. Yalnız `POST /islemler/alis` (tek kalem) var. Ye
 | Adım | Beklenen | Gerçek (ağ kaydı + SQL) |
 |---|---|---|
 | BASİT 1440, Peşin, Yüzük 13.354,25 + Kolye 28.711,64, Nakit, "Kaydet ve yazdır" | Tek istek, red, band, 0 hareket | Ağ kaydı: **tek** `POST /api/v1/islemler/satis-fisi → 400`, `/islemler/satis` 0. Müşteri alanının altında "Bu tutarda satış için müşterinin kimliği gerekiyor…" bandı ve [Müşteri seç] [Yeni müşteri] düğmeleri. SQL `SATIS` satır sayısı değişmedi (7 → 7) |
-| Aynı fiş, müşteri Ayse Deneme, ödeme Kart | 200, tek fiş iki kalem, yazdırma açılır | `POST satis-fisi → 200` → `GET /islemler/fis/01M3B5AZHCM0DHMF0M804V8X21 → 200`. Sekme yazdırma sayfasına geçti (başlık "SATIŞ FİŞİ — MİHENK"). SQL: `fis 01M3B5AZ…X21 · 2 kalem · 42065.89 · nakit 0`; `odeme_kalemleri: KART 42065.89` |
+| Aynı fiş, müşteri Ayse Deneme, ödeme Kart | 200, tek fiş iki kalem, yazdırma açılır | `POST satis-fisi → 200` → `GET /islemler/fis/01M3B5AZHCM0DHMF0M804V8X21 → 200`. Sekme yazdırma sayfasına geçti (başlık "SATIŞ FİŞİ — ByGatech"). SQL: `fis 01M3B5AZ…X21 · 2 kalem · 42065.89 · nakit 0`; `odeme_kalemleri: KART 42065.89` |
 | BASİT, Peşin, Küpe 12.000 + Kolye Ucu 9.000, Nakit | 200 tek fiş, yazdırma sekmesi | `POST satis-fisi → 200` (1 istek). `window.open("/cikti/SATIS_FISI/01M3B5RH10QE9EEB1R84N9AQZ9?yazdir=1","_blank","noopener")` çağrıldı. Bant "Fiş yeni sekmede yazdırmaya açıldı…". SQL: iki satır, ortak `fis_id 01M3B5RH0XTC2VQZDR3W0VGPXK`, 12000 + 9000 |
 | BASİT tek kalem (Küpe 7.000) | Eski yol | `POST /islemler/satis → 200`, satis-fisi 0. Yazdırma yine açıldı |
 | PRO, Küpe 8.000 + Kolye Ucu 6.000 | Tek fiş | `POST satis-fisi → 200` (1 istek), fis `01M3B5T3R0XD109WTACTPC03MC` (2 kalem, 14.000) |

@@ -49,7 +49,7 @@ Ortam:
 - `"onek"`: tuvaldeki sabit sözcük (ör. "Toptancı ·") uygulamada yoksa FARK.
 - `"tuvaldeYok"`: tuvalde olmayan öğe uygulamada görünürse FARK (ör. `#cari-suzgec-daha`).
 - `"navKaynak"`: ekran tuvalinin menüsü Amblem tuvalinin menüsüyle değiştirilir; seçili öğe metinle eşlenir.
-  - Gerekçe: kurucu kararı § 2a (amblem ve MİHENK her ekranda). 4. tur ekran tuvalleri bu karardan önce çizildi.
+  - Gerekçe: kurucu kararı § 2a (amblem ve ByGatech her ekranda). 4. tur ekran tuvalleri bu karardan önce çizildi.
   - 4C-2'deki "menü x +124 px" farkı böylece kapandı. Kullanıldığı her tabloda başlıkta yazar.
 - `::metin`: doğrudan metin düğümü yoksa ilk alt metin düğümü ölçülür.
 

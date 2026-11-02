@@ -10,8 +10,9 @@ namespace Kuyumcu.Core.I18n;
 //
 // ⚠ NEDEN AYRI DOSYA: Sozlukler HUB'ına dokunulmaz (dalga kuralı); yeni metin
 //   Sozlukler.<Alan>.cs'e yazılır. İki dil YAN YANA durur.
-// ⚠ Marka adı İKİNCİ KEZ YAZILMAZ: tuvaldeki "Mihenk" yazımı Marka.Ad'dan
-//   (tek kaynak, "MİHENK") Türkçe kültürle TÜRETİLİR (P-D2).
+// ⚠ Marka adı İKİNCİ KEZ YAZILMAZ: tuvaldeki marka yazımı Marka.Ad'dan
+//   (tek kaynak, "ByGatech") okunur (P-D2; 02.11 ad değişikliği: marka kendi
+//   büyük-küçük yazımını taşır, türetme yapılmaz).
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// <summary>Kenar çubuğu ve üst bar tuval metinleri — dil kodu "tr" | "en".</summary>
@@ -22,17 +23,10 @@ public static class KabukTuvalSozlugu
     private static bool En(string dil) => dil == "en";
 
     /// <summary>
-    /// Tuvaldeki marka yazımı ("Mihenk"): Marka.Ad'ın Türkçe küçük harfe
-    /// indirilip ilk harfinin büyütülmüş hâli (İ → i, I → ı kuralları tr-TR).
+    /// Tuvaldeki marka yazımı ("ByGatech"): Marka.Ad'ın kendisi. Marka adı
+    /// kendi büyük-küçük harf düzenini taşır; amblem büyük harfi tr-TR ile türetir.
     /// </summary>
-    public static string MarkaYazimi
-    {
-        get
-        {
-            var kucuk = Marka.Ad.ToLower(Tr);
-            return kucuk.Length == 0 ? kucuk : char.ToUpper(kucuk[0], Tr) + kucuk[1..];
-        }
-    }
+    public static string MarkaYazimi => Marka.Ad;
 
     /// <summary>Menü kutusunun yer tutucusu (tuval: "Ekran ara").</summary>
     public static string EkranAra(string dil) => En(dil) ? "Find screen" : "Ekran ara";

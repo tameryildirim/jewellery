@@ -9,7 +9,7 @@ Yöntem: tuvaldeki ve üründeki kabuğun **her görünür öğesi** başsız Ch
 
 Koda karşı "mevcut durum" (başlangıç ölçümü, `olc-once-*.txt`):
 - Menü 1440×900'de **995 px** (BASİT) / sayfa boyu (PRO, 2152 px) uzunluğundaydı; kullanıcı kartı ekranın dışına (y=893) düşüyordu.
-- Marka "MİHENK" (600), mavi kare yok; TR/EN seçici marka satırındaydı.
+- Marka "BYGATECH" (600), mavi kare yok; TR/EN seçici marka satırındaydı.
 - Arama "Menüde ara" 14 px; "Tüm ekranlar" 16 px ama y=162 (tuval 128).
 - Açık grup başlığında sayı görünüyordu; kapalı grubun önizlemesi **700** kalınlıktaydı (tuval 400), grup aralığı 80 px (tuval 63).
 - PRO menü BASİT görünümündeydi (ikonlu, 17 px, önizlemeli); Favoriler başlığı ve yıldız yoktu.
@@ -19,7 +19,7 @@ Koda karşı "mevcut durum" (başlangıç ölçümü, `olc-once-*.txt`):
 ## 2. Yapılanlar
 | # | Tuval maddesi | Uygulama |
 |---|---|---|
-| 1 | Mavi kare + elmas + "Mihenk" Sora 21/700 | `KenarCubugu`: `.kenar-marka-rozet` (34 px, 9 px yarıçap, `--vurgu`); yazım `KabukTuvalSozlugu.MarkaYazimi` — `Marka.Ad`'dan tr-TR ile **türetilir** (ikinci kaynak yok). TR/EN seçici kart menüsüne taşındı. |
+| 1 | Mavi kare + elmas + "ByGatech" Sora 21/700 | `KenarCubugu`: `.kenar-marka-rozet` (34 px, 9 px yarıçap, `--vurgu`); yazım `KabukTuvalSozlugu.MarkaYazimi` — `Marka.Ad`'dan tr-TR ile **türetilir** (ikinci kaynak yok). TR/EN seçici kart menüsüne taşındı. |
 | 2 | "Ekran ara" (PRO "⌘K") | Yer tutucu "Ekran ara"/"Find screen"; PRO'da `#menu-arama-kisayol` ipucu (title: Ctrl+K/⌘K neyi açar). S1-j menü içi süzme AYNEN (testleri yeşil). Görsel-gizli etiket erişilebilir ad olarak kaldı. |
 | 3 | "Tüm ekranlar (38)" | Ölçüler tuvale çekildi (9/12 px dolgu, 16 px; PRO 7/12, 15 px). |
 | 4 | PRO FAVORİLER | 13 px BÜYÜK HARF başlık; satırlar sarı yıldız (`--amber-400`); favori satırı vurgulanmaz (tek vurgu grup satırında, tuval gibi). |
@@ -53,7 +53,7 @@ Yeni varlık/kayıt türü **yok**. Mevcut kayıtlar: kullanıcı tercihleri (fa
 
 ## 6. Derleme ve testler
 - `dotnet build Kuyumcu.sln`: **0 uyarı 0 hata** (son: `b9.log`). (Arada 1 uyarı görüldü: `EtiketEkranTestleri.cs(145)` xUnit1031 — başka şeridin dosyası, sonraki derlemede kayboldu.)
-- Yeni: `TK2KabukTuvalTestleri` **20 test**, 20/20 yeşil. Güncellenen (tuval metni): `P37RevizyonTestleri` (yer tutucu), `S1jMenuAramaTestleri` (yer tutucu), `MenuKatlamaTestleri` (marka "Mihenk" + Marka.Ad'dan türetme), `S1gMenuTuvalTestleri` ("Ramazan A." + tam ad title), `IkonTestleri` (dişli bağlantısı `/ayarlar`).
+- Yeni: `TK2KabukTuvalTestleri` **20 test**, 20/20 yeşil. Güncellenen (tuval metni): `P37RevizyonTestleri` (yer tutucu), `S1jMenuAramaTestleri` (yer tutucu), `MenuKatlamaTestleri` (marka "ByGatech" + Marka.Ad'dan türetme), `S1gMenuTuvalTestleri` ("Ramazan A." + tam ad title), `IkonTestleri` (dişli bağlantısı `/ayarlar`).
 - Kabuk filtreli koşum (17 sınıf): **0 başarısız** (360 → 361 test).
 - Tam süit (`trx-pT-K2/_Mac_2026-09-24_23_03_30.trx`): **5606 · 5605 geçti · 1 başarısız** — `Dogrulayici.Q102EkranSinirTestleri.DQ102_turkce_giris_1_5_kabul_1_500_belirsiz_red` (Hurda ekranı, Q10-2/Q10-A şeridi; T-K2 dosyası değil). Tek başına koşum: **10/10 geçti** → kararsız, başkasına ait.
 - Ara koşumda `KabukAramaEkranTestleri.Secilen_sube_kabuk_durumuna...` bir kez kırmızı, sonraki iki koşumda yeşil (statik `KabukServisi.Ortak` paylaşımı; test değişmedi, SubeSecici davranışı değişmedi).
@@ -91,7 +91,7 @@ Bölge bölge (ölçüm px, x/y üst-sol; tuval → ürün):
 |---|---|---|---|
 | Menü kutusu | 268×900, dolgu 20/14, #14213d | 268×900, 20/14, `--kenar-yuzey` | AYNI |
 | Marka kare | 34×34 @22,22, 9 px, #2457d6 | 34×34 @22,22, 9 px, `--vurgu` | AYNI |
-| Marka yazı | "Mihenk" Sora 21/700 beyaz | "Mihenk" Sora 21/700 | AYNI |
+| Marka yazı | "ByGatech" Sora 21/700 beyaz | "ByGatech" Sora 21/700 | AYNI |
 | Arama kutusu (BASİT) | 240×46 @14,70, 9 px, "Ekran ara" 16 | 240×46 @14,70, 9 px, "Ekran ara" 16 | AYNI |
 | Arama kutusu (PRO) | 240×43 @14,68, 15 px, "Ekran ara ⌘K" | 240×43 @14,68, 15 px, "Ekran ara" + "Ctrl K" | GEREKÇELİ FARK (§ 3 ⌘K) |
 | Tüm ekranlar | "Tüm ekranlar (38)" metin y≈137, 16 px | y=137, 16 px | AYNI |
@@ -110,7 +110,7 @@ Bölge bölge (ölçüm px, x/y üst-sol; tuval → ürün):
 | Sayfa gövdesi (Satış formu, Müşteriler tablosu, Ayarlar) | tuval | T-SATIS / T-PANEL-MUSTERI / T-K3 şeritleri | Kapsam dışı (başka şerit) |
 
 ## 9. Gerçek tarayıcı ölçümü — `betikler/sikisma-olc.js` (K1–K11 + yatay) + kabuk ek sayaçları
-Araç: başsız Chrome + CDP (`scratchpad/tk2/cek.mjs`, aracın TAMAMI sayfaya yüklenip `__olcTam` koşuldu) — 48 kombinasyon: rota {/, /islemler, /cariler, /ayarlar} × {1440, 1280, 375} × {BASİT, PRO} × {açık, koyu}; ekran görüntüleri `scratchpad/tk2/png/matris/` (48 dosya). Çapraz doğrulama: tarayıcı bölmesinde bu şeridin 5161 sekmesi (`tab-50`; sekme sınırı dolu, yeni sekme açılamadı — "Could not open a new tab"), 1440 BASİT `/`: asideH 900 · headerH 68 · K1 0 · kabuk taşan 0 · TRY 0 · yatay 0 · "Mihenk" · "Ekran ara" · kart altı 880 (başsızla birebir).
+Araç: başsız Chrome + CDP (`scratchpad/tk2/cek.mjs`, aracın TAMAMI sayfaya yüklenip `__olcTam` koşuldu) — 48 kombinasyon: rota {/, /islemler, /cariler, /ayarlar} × {1440, 1280, 375} × {BASİT, PRO} × {açık, koyu}; ekran görüntüleri `scratchpad/tk2/png/matris/` (48 dosya). Çapraz doğrulama: tarayıcı bölmesinde bu şeridin 5161 sekmesi (`tab-50`; sekme sınırı dolu, yeni sekme açılamadı — "Could not open a new tab"), 1440 BASİT `/`: asideH 900 · headerH 68 · K1 0 · kabuk taşan 0 · TRY 0 · yatay 0 · "ByGatech" · "Ekran ara" · kart altı 880 (başsızla birebir).
 
 | Genişlik | Mod | Tema | Rotalar | K1 | K3 taşan/kırık | K5 TRY | K6 dar | K7 | K8 | K9 | K10 | K11 | Yatay | Menü boyu | Üst bar | Kart görünür |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -144,7 +144,7 @@ Temizlik: 5160/5161 durduruldu, `lsof` iki port için boş. `kiraci-temizle.sh �
 ## 13. Koşul karşılama
 | Koşul | Durum | Kanıt |
 |---|---|---|
-| (1) Marka kare+elmas, "Mihenk"; TR/EN tepeden kalkar, taşınır | SAĞLANDI | § 2, § 8, M1/M2 |
+| (1) Marka kare+elmas, "ByGatech"; TR/EN tepeden kalkar, taşınır | SAĞLANDI | § 2, § 8, M1/M2 |
 | (2) "Ekran ara" (PRO ⌘K); S1-j süzme aynen; üst etiket yok | SAĞLANDI (⌘K → "Ctrl K" gerekçeli) | S1j testleri yeşil, M8 |
 | (3) "Tüm ekranlar (38)" | SAĞLANDI | § 8 |
 | (4) PRO Favoriler yıldızlı | SAĞLANDI | § 8, M10 |

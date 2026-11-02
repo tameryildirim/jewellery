@@ -1,7 +1,7 @@
 # PAKET YASAL-4 — Gider pusulası süresi + stopaj borcu · KDV 23/e görünürlüğü · KMTS alanı
 
 > Tarih: 2026-09-30 · Hazırlayan: Tamer Bey koordinasyonu (şartname ajanı; KOD YAZILMADI) · Durum: ŞARTNAME — ekip oyu bekliyor
-> Kapattığı çelişkiler (MIHENK-PLAN-RAPORU §3a): **(2)** 23/e "hariç" beyanı Faturalar sonunda kapalı katlanırda · **(3)** gider pusulasında 7 gün yalnız uyarı, kesilen stopajın vergi dairesine borç kaydı yok · **(6)** KMTS alanı elle ve doğrulamasız. Ek: **(8)**'in 23/e yarısı.
+> Kapattığı çelişkiler (BYGATECH-PLAN-RAPORU §3a): **(2)** 23/e "hariç" beyanı Faturalar sonunda kapalı katlanırda · **(3)** gider pusulasında 7 gün yalnız uyarı, kesilen stopajın vergi dairesine borç kaydı yok · **(6)** KMTS alanı elle ve doğrulamasız. Ek: **(8)**'in 23/e yarısı.
 > Önkoşul: **YASAL-1** (`GIDER_PUSULASI_GUN`, `STOPAJ_*`, `KDV_OZEL_MATRAH_KODU`, `KMTS_KOD_DESENI` anahtarları).
 
 ---

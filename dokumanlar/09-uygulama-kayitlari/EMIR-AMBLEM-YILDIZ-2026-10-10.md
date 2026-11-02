@@ -1,4 +1,4 @@
-# EMİR — Mihenk amblemi: üç boyutlu taş + MİHENK yazısı (Yıldız teması)
+# EMİR — ByGatech amblemi: üç boyutlu taş + BYGATECH yazısı (Yıldız teması)
 
 **Kimden:** Kurucu Ramazan Akkocan · **Tarih:** 10 Ekim 2026
 **Kime:** Ana oturum (Tamer Bey → Ertuğ/Frontend, Aşkın/QA)
@@ -12,7 +12,7 @@ Tuval: https://claude.ai/artifact/2eYLdsE7qXXZyGAaJZVGVo
 Bu dosyalardaki `<span class="amb-parla">…</span>` bloğu ve ilgili CSS **olduğu gibi** alınır. Kurucu bu dosyaları tarayıcı görüntüsüyle onayladı (10 Ekim).
 
 ## 2. Amblem nedir
-Mihenk amblemi bir **pırlanta taş**tır: 8 yüzlü (4 taç + 4 pavyon), üst ve alt yarısı eşit, ekvator tam ortada. Önden bakınca çizim şudur ve bu çizim **değişmez**: dış elmas silueti, ortadan geçen yatay çizgi, tepeden ve dipten yatay çizgiye inen iki iç kesim çizgisi. Bütün çizgiler eşit kalınlıkta, titanyum gri; üstünden ışık geçer.
+ByGatech amblemi bir **pırlanta taş**tır: 8 yüzlü (4 taç + 4 pavyon), üst ve alt yarısı eşit, ekvator tam ortada. Önden bakınca çizim şudur ve bu çizim **değişmez**: dış elmas silueti, ortadan geçen yatay çizgi, tepeden ve dipten yatay çizgiye inen iki iç kesim çizgisi. Bütün çizgiler eşit kalınlıkta, titanyum gri; üstünden ışık geçer.
 
 ## 3. Ölçüler (S = kutu boyu: **kabukta 52 px**, girişte 96 px; 40 px denendi, iç kesim çizgileri karıştı, kurucu reddetti)
 - Ekvator yarıçapı r = 0,44·S · taç ve pavyon yüksekliği h = 0,50·S (toplam yükseklik S)
@@ -26,7 +26,7 @@ Mihenk amblemi bir **pırlanta taş**tır: 8 yüzlü (4 taç + 4 pavyon), üst v
 1. **Dönüş:** taş düşey ekseninde, üst ve alt uç sabit, **28 sn'de bir tam tur**, sabit hız (`rotateY 20° → 380°`, linear, sonsuz). Her 90°'de yine çizimdeki görünüme gelir.
 2. **Işık:** titanyum gradyan (`#6A6A6A → #9A9A9A → #FFFFFF → #9A9A9A → #6A6A6A`) **11 sn'de bir** soldan sağa tek geçiş (SMIL `animateTransform` gradientTransform, `values="-1.2 0;-1.2 0;1.2 0;1.2 0" keyTimes="0;0.06;0.22;1"`). Taş ve yazı aynı gradyanı paylaşır.
 3. **Parlama:** 11 sn döngüsünün %18'inde zirve `drop-shadow(0 0 7px var(--glow))`, sonra söner. Süzgeç **taşın dış sarmalayıcısında** (`.amb-parla`) durur; 3B kutunun kendisine konursa tarayıcı 3B'yi düzleştirir (yaşandı).
-4. **Yazı:** `MİHENK`, Inter 400, büyük harf, harf aralığı 4,4 px (kabukta 13 px, girişte 26 px/ortalı). **Bütün olarak** karanlıktan çıkar: 11 sn döngüde `0–12 % görünmez+4 px bulanık → 24 % net → 82 % net → 91 % karanlık+3 px bulanık`. Harf harf DEĞİL.
+4. **Yazı:** `BYGATECH`, Inter 400, büyük harf, harf aralığı 4,4 px (kabukta 13 px, girişte 26 px/ortalı). **Bütün olarak** karanlıktan çıkar: 11 sn döngüde `0–12 % görünmez+4 px bulanık → 24 % net → 82 % net → 91 % karanlık+3 px bulanık`. Harf harf DEĞİL.
 5. **Taş hiç kaybolmaz.** Yalnız yazı gidip gelir.
 6. `prefers-reduced-motion: reduce` → bütün animasyon kapalı; taş 20°'de, yazı tam opak sabit.
 
@@ -35,7 +35,7 @@ Mihenk amblemi bir **pırlanta taş**tır: 8 yüzlü (4 taç + 4 pavyon), üst v
 - Açık tema: gradyan `#3A3A3A → #5E5E5E → #C9C6BE → #5E5E5E → #3A3A3A`, `--glow: rgba(20,20,20,.25)`
 
 ## 6. Nerede
-- **Kabuk (her ekran):** sol üst, menü şeridinin başında: taş 52 px + 14 px boşluk + `MİHENK`; tek `<a>` içinde, Bugün'e gider.
+- **Kabuk (her ekran):** sol üst, menü şeridinin başında: taş 52 px + 14 px boşluk + `BYGATECH`; tek `<a>` içinde, Bugün'e gider.
 - **Giriş ekranı:** taş 96 px ekranın ortasında, yazı altında ortalı; form 1,6 sn'de belirir, döngüden bağımsız sabit; alanlar animasyon bitmeden de yazılabilir.
 
 ## 7. Kabul (Aşkın)

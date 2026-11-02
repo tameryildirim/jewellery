@@ -1,6 +1,6 @@
 # Runbook — Teslimat (kurulumdan ilk girişe) · PAKET P-33 · Köprü K-7
 
-> **Amaç:** bir dükkâna MİHENK kurulumunu baştan sona, **mevcut betiklerle**,
+> **Amaç:** bir dükkâna BYGATECH kurulumunu baştan sona, **mevcut betiklerle**,
 > tahmin yürütmeden yapmak. Bu belge olmadan **P-35 sürüm mührü atılmaz** (BK-32).
 > Bu belgedeki tatbikat bir **YEREL KAP TATBİKATI**dır; bulut/üretim sunucusunda
 > koşmuş bir kurulum **değildir** ve "üretim kanıtı" **denmez** — K-6 (bulut
@@ -11,7 +11,7 @@
 | # | Adım | Komut / yer | Kanıt |
 |---|---|---|---|
 | 1 | Yayın al | `./dotnet/yayin-al.sh linux-x64` (Windows: `win-x64`) | `dotnet/yayin/<rid>/` + `kuyumcu-migrate` |
-| 2 | Sırları üret + **adresi sor** + kısayolu üret | `sudo ./dotnet/kurulum.sh --hedef /etc/kuyumcu/.env` (Windows: `kurulum.ps1`) | "var/yok" listesi · `MIHENK_ADRES` satırı · masaüstü kısayolu |
+| 2 | Sırları üret + **adresi sor** + kısayolu üret | `sudo ./dotnet/kurulum.sh --hedef /etc/kuyumcu/.env` (Windows: `kurulum.ps1`) | "var/yok" listesi · `BYGATECH_ADRES` satırı · masaüstü kısayolu |
 | 3 | Veritabanı + şema | `kuyumcu-migrate` (bundle) — `docs/RUNBOOK-SEMA-YUKSELTME.md` | `/saglik/hazir` → `{"hazir":true}` |
 | 4 | Servis | `deploy/systemd/kuyumcu.service` · Windows `deploy/kuyumcu-service-kur.ps1` | `/saglik` → 200 |
 | 5 | Ters vekil + TLS (ağ kurulumu) | `deploy/nginx-kuyumcu.conf` · `deploy/iis-web.config` | `docs/DEPLOY.md` § 5 |
@@ -36,9 +36,9 @@ Betikler (hepsi MEVCUT, P-33 yalnız adres/kısayolu ekledi):
 
 - Kurulum betiği adresi **bir kez sorar** (varsayılan `http://localhost:5199`);
   etkileşimsiz koşuda varsayılanı kullanır ve bunu ekrana yazar.
-- Adres `.env`'de **tek satırdır**: `MIHENK_ADRES=<adres>`.
-- Masaüstü kısayolu **o adresle** üretilir (macOS `MİHENK.webloc` · Linux
-  `MIHENK.desktop` · Windows `MİHENK.url`). Adres kısayola **gömülü** değildir.
+- Adres `.env`'de **tek satırdır**: `BYGATECH_ADRES=<adres>`.
+- Masaüstü kısayolu **o adresle** üretilir (macOS `BYGATECH.webloc` · Linux
+  `BYGATECH.desktop` · Windows `BYGATECH.url`). Adres kısayola **gömülü** değildir.
 - Uygulamanın dinlediği nokta adresten türer: adres bu makineyi gösteriyorsa
   (`http://localhost:PORT`) uygulama o portu dinler (`Urls` + `ASPNETCORE_URLS`
   aynı değer); başka bir ana makineyi gösteriyorsa ters vekilin arkasındaki iç
@@ -73,13 +73,13 @@ Betikler (hepsi MEVCUT, P-33 yalnız adres/kısayolu ekledi):
 ## 5. YEREL KAP TATBİKATI — temiz kurulum (2026-09-23)
 
 **Ne yapıldı:** geliştirme makinesinde, mevcut veritabanından TAMAMEN ayrı,
-**boş** bir MySQL 8.4 kabında (`mihenk-tatbikat-mysql`, `127.0.0.1:3317`)
+**boş** bir MySQL 8.4 kabında (`bygatech-tatbikat-mysql`, `127.0.0.1:3317`)
 sıfırdan kurulum. Kap tatbikat sonunda durduruldu ve silindi (`--rm`).
 Sır dosyaları tatbikat bitince boşaltıldı; hiçbir sır ekrana basılmadı.
 
 | Adım | Komut | Sonuç (gerçek çıktı) |
 |---|---|---|
-| Sırlar + adres + kısayol | `kurulum.sh --hedef <geçici>/.env --adres http://localhost:5197 --kisayol-dizin <geçici>/masaustu` | çıkış 0 · 9 anahtar "var" · `MİHENK.webloc → http://localhost:5197` |
+| Sırlar + adres + kısayol | `kurulum.sh --hedef <geçici>/.env --adres http://localhost:5197 --kisayol-dizin <geçici>/masaustu` | çıkış 0 · 9 anahtar "var" · `BYGATECH.webloc → http://localhost:5197` |
 | Boş MySQL | `docker run --rm … --env-file <yalnız MYSQL_ROOT_PASSWORD> mysql:8.4` | 8.4.11 · yalnız sistem şemaları |
 | Şema | `dotnet ef database update --connection …` (build'li) | **70 migration** uygulandı · `__EFMigrationsHistory` = 70 |
 | Uygulama (Production) | `.env` ortamıyla `dotnet run --no-launch-profile` | `/saglik` **200 Healthy** · `/saglik/hazir` **200** `{"hazir":true,"kod":"HAZIR"}` · `/api/v1/yedekler/ozet` oturumsuz **401** |

@@ -1,12 +1,12 @@
-# PAKET P-D2 — ÜRÜN ADI: "Kuyumcu ERP" → **MİHENK**
+# PAKET P-D2 — ÜRÜN ADI: "Kuyumcu ERP" → **BYGATECH**
 
 > **Dalga:** DEMO HAZIRLIK (26 Eylül cumartesi müşteri demosu — zorunlu işler)
 > **Rol:** Taşkın (03 Backend) + Ertuğ (03 Frontend) · Opus uygulayıcı
 > **Tarih:** 23 Eylül 2026, 18:00–18:25
 > **Spesifikasyon:** `dokumanlar/02-mimari/sadelestirme/DEMO-SENARYOSU-2026-09-26.md`
 > § 0 **Z3** · § 3 **V17** · § 4 **D-d** · § 7 Bölüm A **A5**
-> **Kurucu kararı (23 Eylül, birebir):** *"ürünün adı mihenk olacak"*.
-> MİHENK = mihenk taşı — kuyumcunun altının ayarını ölçtüğü taş.
+> **Kurucu kararı (23 Eylül, birebir):** *"ürünün adı bygatech olacak"*.
+> BYGATECH = bygatech taşı — kuyumcunun altının ayarını ölçtüğü taş.
 > **Firma adı ByGatech A.Ş. DEĞİŞMEDİ.**
 
 ---
@@ -22,12 +22,12 @@ ve geri sızmasını kapatan bir **test + denetim sayacı** yazıldı.
 
 | Üye | Değer / davranış | Nerede kullanılıyor |
 |---|---|---|
-| `Marka.Ad` | `"MİHENK"` | PageTitle, sözlük `Auth.UygulamaAdi` (TR+EN) |
-| `Marka.AdAscii` | `"MIHENK"` | otpauth URI yayıncısı (Türkçe'ye özgü harf taşımayan aktarım yüzeyi) |
+| `Marka.Ad` | `"BYGATECH"` | PageTitle, sözlük `Auth.UygulamaAdi` (TR+EN) |
+| `Marka.AdAscii` | `"BYGATECH"` | otpauth URI yayıncısı (Türkçe'ye özgü harf taşımayan aktarım yüzeyi) |
 | `Marka.Ayrac` | `" — "` | sayfa başlığı ayracı |
 | `Marka.KilavuzBasligi` | `Ad + Ayrac + "Kullanım Kılavuzu"` | `kilavuz.html` `<title>` |
 | `Marka.YukleniyorMetni` | `Ad + " yükleniyor…"` | `index.html` açılış ekranı |
-| `Marka.SayfaBasligi(ad)` | `"<sayfa> — MİHENK"`, ad boşsa yalnız `"MİHENK"` | 44 sayfa PageTitle |
+| `Marka.SayfaBasligi(ad)` | `"<sayfa> — BYGATECH"`, ad boşsa yalnız `"BYGATECH"` | 44 sayfa PageTitle |
 
 **Neden ayrı dosya:** görev kuralı — `Sozlukler.cs` 9223 satırlık ORTAK HUB'dır ve
 aynı anda başka şeritler kullanır. Marka metni oraya değil buraya yazıldı; aynı
@@ -39,14 +39,14 @@ namespace olduğu için çağrı yeri değişmedi (`Dil` ile `Marka` yan yana du
 |---|---|---|
 | 44 sayfa `<PageTitle>` | `@Dil.T.X.Baslik — Kuyumcu ERP` | `@Marka.SayfaBasligi(Dil.T.X.Baslik)` |
 | `App.razor` `<NotFound>` | `<PageTitle>Kuyumcu ERP</PageTitle>` | `<PageTitle>@Marka.Ad</PageTitle>` |
-| `wwwroot/index.html` | `<title>Kuyumcu ERP</title>` + "Kuyumcu ERP yükleniyor…" | `<title>MİHENK</title>` + "MİHENK yükleniyor…" |
-| `wwwroot/kilavuz.html` (9 geçiş) | "Kuyumcu ERP …" | "MİHENK …" |
+| `wwwroot/index.html` | `<title>Kuyumcu ERP</title>` + "Kuyumcu ERP yükleniyor…" | `<title>BYGATECH</title>` + "BYGATECH yükleniyor…" |
+| `wwwroot/kilavuz.html` (9 geçiş) | "Kuyumcu ERP …" | "BYGATECH …" |
 | `Sozlukler.cs` `Auth.UygulamaAdi` (TR+EN, 2 satır) | `"Kuyumcu ERP"` | `Marka.Ad` — giriş ekranı kartı ve `© <yıl>` satırı buradan besleniyor |
 | `MfaModulu.cs` `MfaAyarlari.Yayinci` | `"Kuyumcu ERP"` | `Marka.AdAscii` |
-| `Kuyumcu.Api/appsettings.json` `Mfa:Yayinci` | `"Kuyumcu ERP"` | `"MIHENK"` |
-| `app.css` · `belirtecler.css` başlık yorumu | "Kuyumcu ERP — …" | "MİHENK — …" |
-| `kurulum.sh` · `kurulum.ps1` · `yedek-al-ve-dogrula.sh` · `yetim-tara.sh` | başlık/echo metni | "MİHENK" |
-| **`start.bat` · `stop.bat`** (kök) — 7 geçiş | "Kuyumcu ERP baslatiliyor…" | **"MIHENK baslatiliyor…"** (ASCII — § 6 S6) |
+| `Kuyumcu.Api/appsettings.json` `Mfa:Yayinci` | `"Kuyumcu ERP"` | `"BYGATECH"` |
+| `app.css` · `belirtecler.css` başlık yorumu | "Kuyumcu ERP — …" | "BYGATECH — …" |
+| `kurulum.sh` · `kurulum.ps1` · `yedek-al-ve-dogrula.sh` · `yetim-tara.sh` | başlık/echo metni | "BYGATECH" |
+| **`start.bat` · `stop.bat`** (kök) — 7 geçiş | "Kuyumcu ERP baslatiliyor…" | **"BYGATECH baslatiliyor…"** (ASCII — § 6 S6) |
 | `KarZarar.razor` | `<PageTitle>@Dil.T.KarZarar.Baslik</PageTitle>` (marka hiç yoktu) | `@Marka.SayfaBasligi(...)` |
 
 ### 1.3 Kapılar (mekanizma — düzeltme değil)
@@ -86,7 +86,7 @@ konmaz, kaynak sabiti değişir.
 | `Pages/PusulaBelgesi.razor` `<PageTitle>` | Gider pusulası **belge çıktısı** sayfası; tarayıcıdan basılır ve birçok tarayıcı sekme başlığını basılan kâğıdın üst bilgisine yazar. Yazılımın adının yasal belgenin üstüne düşmesi istenmez. Başlığında eski ürün adı da hiç geçmiyordu. **Testte gerekçesiyle beyaz listede** (`Muaf` kümesi) ve liste ölü kalmasın diye testin kendisi o sayfanın varlığını doğruluyor. |
 | **Firma adı ByGatech A.Ş.** | Kurucu kararı: firma adı değişmez. |
 | `dotnet/yayin/linux-x64/**` (yayın anlık görüntüsü, 11 geçiş) | Derleme/yayın çıktısıdır, kaynak değildir. **Z1 gereği yeniden üretilecek**; kaynak temiz olduğu için sonraki yayın da temiz doğar. Hem testte hem denetim sayacında **gerekçesiyle** kapsam dışı. |
-| `dokumanlar/**` ve kök HTML raporları (`devir-raporu.html`, `musteri-raporu.html`, `ham/qa-turu-*.json`, betikler) | **Tarihsel kayıttır.** 16 Eylül'de "Kuyumcu ERP" yazan bir QA raporunu bugün MİHENK yapmak kaydı tahrif etmek olur (Anayasa md.1). Kapının kapsamı `dotnet/` kaynak ağacıdır. |
+| `dokumanlar/**` ve kök HTML raporları (`devir-raporu.html`, `musteri-raporu.html`, `ham/qa-turu-*.json`, betikler) | **Tarihsel kayıttır.** 16 Eylül'de "Kuyumcu ERP" yazan bir QA raporunu bugün BYGATECH yapmak kaydı tahrif etmek olur (Anayasa md.1). Kapının kapsamı `dotnet/` kaynak ağacıdır. |
 | `SONRAKI-OTURUM-PROMPT.md`, `MIMARI-KALAN-PAKETLER-2026-09-15.md`, paket spesifikasyonu | Görev kuralı: dokunulmaz (orkestratör yazar). |
 | `Sozlukler.cs`'in yapısı | Yalnız **2 satırda değer** değişti (`UygulamaAdi = "Kuyumcu ERP",` → `UygulamaAdi = Marka.Ad,`). **SAPMA — § 6'da gerekçelendirildi.** |
 
@@ -135,12 +135,12 @@ Migration sayısı **66** — değişmedi.
 |---|---|---|
 | S1 | Görev "Sozlukler.cs'i DÜZENLEME" diyordu; **2 satırında değer değiştirildi** | Aynı görevin **KAPI koşulu** "kaynak kodda `Kuyumcu ERP` geçmeyecek" diyor. `Sozlukler.cs:3662` ve `:6550`'de `Auth.UygulamaAdi = "Kuyumcu ERP"` duruyordu ve bu değer **giriş ekranının ortasındaki karta ve `©` satırına** basılıyor — demoda müşterinin göreceği ilk ekran. İki koşul çakıştı; **ölçülebilir olan** (ekranda eski ad) seçildi. Risk küçük tutuldu: yapı, satır sayısı, sıra, anahtar kümesi değişmedi; yalnız **iki dizge sabiti `Marka.Ad` referansına** çevrildi. Ortak hub'ta çakışma yüzeyi 2 satır. |
 | S2 | Spesifikasyonun "Birleşik koşullar" bölümü **yok** | `DEMO-SENARYOSU-2026-09-26.md` içinde böyle bir başlık bulunamadı (`grep` → 0). Hedefe sadık kalındı: § 0 **Z3**, § 3 **V17**, § 4 **D-d**, § 7 **A5** koşulları karşılandı. |
-| S3 | Spesifikasyon "**43 dosyada**" diyor; ölçüm **44 dosya** | Depo genelinde ölçüldü (23 Eylül 18:05): `grep -rl "Kuyumcu ERP"` → 44 dosya, `Mihenk` → 0 dosya. Rakam farkı spesifikasyonun hedefini değiştirmiyor. |
-| S4 | `Mfa:Yayinci` **ASCII** yazımla (`MIHENK`) bağlandı | otpauth URI'de `İ` yüzde-kodlanır (`M%C4%B0HENK`) ve bazı doğrulayıcı uygulamalarda bozuk görünür. Ekranda görünen ad `MİHENK` olarak kaldı. |
+| S3 | Spesifikasyon "**43 dosyada**" diyor; ölçüm **44 dosya** | Depo genelinde ölçüldü (23 Eylül 18:05): `grep -rl "Kuyumcu ERP"` → 44 dosya, `ByGatech` → 0 dosya. Rakam farkı spesifikasyonun hedefini değiştirmiyor. |
+| S4 | `Mfa:Yayinci` **ASCII** yazımla (`BYGATECH`) bağlandı | otpauth URI'de `İ` yüzde-kodlanır (`M%C4%B0HENK`) ve bazı doğrulayıcı uygulamalarda bozuk görünür. Ekranda görünen ad `BYGATECH` olarak kaldı. |
 | S5 | `KarZarar.razor` başlığı da değiştirildi (eski ad orada hiç yoktu) | Tek kalıp kuralı: "her sayfa başlığı tek kaynaktan" testi onu kaçak olarak buldu. Marka **eklendi**, silinmedi. |
 
-| S6 | `start.bat`/`stop.bat`'ta ad **ASCII** (`MIHENK`) yazıldı | `.bat` Windows konsolunda cp857/850 kod sayfasıyla çalışır; `İ` orada bozuk çizilir. Ekranda (tarayıcıda) ad `MİHENK`. |
-| S7 | Kapsam görevde "kaynak kod" idi; **kök `start.bat`/`stop.bat`** de kapsama alındı | Demo ADIM 1: *"Programı açar"*. Kılavuz artık "Masaüstündeki **MİHENK** kısayoluna çift tıklayın" diyor; açılan konsol "Kuyumcu ERP baslatiliyor…" deseydi müşteri demonun ilk 30 saniyesinde iki farklı ad görürdü. Denetim sayacı ve test bu iki dosyayı da kapsar. |
+| S6 | `start.bat`/`stop.bat`'ta ad **ASCII** (`BYGATECH`) yazıldı | `.bat` Windows konsolunda cp857/850 kod sayfasıyla çalışır; `İ` orada bozuk çizilir. Ekranda (tarayıcıda) ad `BYGATECH`. |
+| S7 | Kapsam görevde "kaynak kod" idi; **kök `start.bat`/`stop.bat`** de kapsama alındı | Demo ADIM 1: *"Programı açar"*. Kılavuz artık "Masaüstündeki **BYGATECH** kısayoluna çift tıklayın" diyor; açılan konsol "Kuyumcu ERP baslatiliyor…" deseydi müşteri demonun ilk 30 saniyesinde iki farklı ad görürdü. Denetim sayacı ve test bu iki dosyayı da kapsar. |
 
 **Mevzuat hükmü:** bu pakette mevzuat hükmü **yoktur** — mevzuat kuralı yazılmadı,
 eşik/oran/hadde dokunulmadı. Mali müşavir teyidi gerektiren bir şey üretilmedi.
@@ -158,14 +158,14 @@ eşik/oran/hadde dokunulmadı. Mali müşavir teyidi gerektiren bir şey üretil
 | `Kilavuz_basligi_tek_kaynakla_ayni` | `kilavuz.html` `<title>` = `Marka.KilavuzBasligi`. |
 | `Sozluk_uygulama_adi_iki_dilde_de_tek_kaynaktan_gelir` | TR **ve** EN sözlükte `Auth.UygulamaAdi == Marka.Ad`. |
 | `Her_sayfa_basligi_marka_tek_kaynagindan_uretilir` | `Pages/**` içindeki her `<PageTitle>` `Marka.` kullanır (tek muaf: `PusulaBelgesi.razor`, gerekçesi kodda). Muafiyet listesi ölü kalamaz. |
-| `Sayfa_basligi_kalibi_ad_ve_ayraci_dogru_kurar` | `SayfaBasligi("Kasa") == "Kasa — MİHENK"`; `null`/boşlukta boş ayraç basılmaz. |
+| `Sayfa_basligi_kalibi_ad_ve_ayraci_dogru_kurar` | `SayfaBasligi("Kasa") == "Kasa — BYGATECH"`; `null`/boşlukta boş ayraç basılmaz. |
 | `Acilis_betikleri_yeni_adi_tasir` | `start.bat` ve `stop.bat` eski adı taşımaz, `Marka.AdAscii` taşır (**demo ADIM 1**: müşteri programı kısayoldan açar, konsolda adı görür). |
 | `Denetim_betigi_eski_urun_adi_sayacini_tasiyor` | denetim.sh'taki **P02-1d bloğunun** kendisi: atama + `-eq 0` kararı + `p02_ok`/`p02_kir` dalları + oyunlama dalı + `yayin` elemesi + tek kaynak dosya adı. |
 
 ### 7.2 Güçlendirilen mevcut test
 
 `TotpTestleri.Otpauth_uri_anahtari_ve_parametreleri_tasir` — yayıncı artık
-`Marka.AdAscii`'den geliyor; `issuer=MIHENK` ve `DoesNotContain("Kuyumcu")`
+`Marka.AdAscii`'den geliyor; `issuer=BYGATECH` ve `DoesNotContain("Kuyumcu")`
 iddiaları eklendi. **Test sayısı düşmedi, 2 iddia arttı.**
 
 ### 7.3 Koşumlar
@@ -214,13 +214,13 @@ kopyalandı → `cmp` ile birebir aynı olduğu kanıtlandı.
 | Kod | Değişiklik | Kırmızıya dönen test(ler) | Geri alma |
 |---|---|---|---|
 | **M1-1** | `App.razor`: `<PageTitle>@Marka.Ad</PageTitle>` → `<PageTitle>Kuyumcu ERP</PageTitle>` | `Kaynak_agacinda_eski_urun_adi_kalmadi` | `cmp` AYNI |
-| **M1-2** | `Marka.Ad` = `"MIHENK-BOZUK"` | `Acilis_ekrani_…_yeni_adla_yazar` · `Kilavuz_basligi_tek_kaynakla_ayni` | `cmp` AYNI |
+| **M1-2** | `Marka.Ad` = `"BYGATECH-BOZUK"` | `Acilis_ekrani_…_yeni_adla_yazar` · `Kilavuz_basligi_tek_kaynakla_ayni` | `cmp` AYNI |
 | **M1-3** | `Panel.razor`: `@Marka.SayfaBasligi(Dil.T.Nav.Panel)` → `@Dil.T.Nav.Panel` | `Her_sayfa_basligi_marka_tek_kaynagindan_uretilir` | `cmp` AYNI |
 | **M1-4** | `denetim.sh`: `P02_MARKA_N=` ataması `P02_MARKA_NN=` yapıldı (sayaç sessizce ölür) | `Denetim_betigi_eski_urun_adi_sayacini_tasiyor` | `cmp` AYNI |
 | **M1-5** | `SayfaBasligi`: boş-ad dalı silindi (`sayfaAdi + Ayrac + Ad`) | `Sayfa_basligi_kalibi_ad_ve_ayraci_dogru_kurar` | `cmp` AYNI |
 | **M1-6** | `Sozlukler.cs` **EN** sözlük: `UygulamaAdi = Marka.Ad` → `"Jewelry ERP"` | `Sozluk_uygulama_adi_iki_dilde_de_tek_kaynaktan_gelir` | `cmp` AYNI |
 | **M1-7** | `Marka.AdAscii` = `"KuyumcuERP"` | `TotpTestleri.Otpauth_uri_anahtari_ve_parametreleri_tasir` | `cmp` AYNI |
-| **M1-8** | `start.bat`: `echo   MIHENK baslatiliyor` → `echo   Kuyumcu ERP baslatiliyor` | `Acilis_betikleri_yeni_adi_tasir` **ve** denetim sayacı: `✗ ESKI_URUN_ADI 1 ≠ 0 — ../start.bat` | `cmp` AYNI |
+| **M1-8** | `start.bat`: `echo   BYGATECH baslatiliyor` → `echo   Kuyumcu ERP baslatiliyor` | `Acilis_betikleri_yeni_adi_tasir` **ve** denetim sayacı: `✗ ESKI_URUN_ADI 1 ≠ 0 — ../start.bat` | `cmp` AYNI |
 
 ### 8.1 Kapatılan TEST AÇIĞI (dürüst kayıt)
 
@@ -283,11 +283,11 @@ API: `ASPNETCORE_ENVIRONMENT=Development dotnet run --project Kuyumcu.Api --no-b
 | # | Adım | Beklenen | **Gerçek** |
 |---|---|---|---|
 | C1 | `GET http://localhost:5195/` | HTTP 200 | **HTTP 200** |
-| C2 | Gövdede sekme başlığı | `<title>MİHENK</title>` | **satır 8: `<title>MİHENK</title>`** |
-| C3 | Gövdede açılış metni | `MİHENK yükleniyor…` | **satır 22: `<p>MİHENK yükleniyor…</p>`** |
+| C2 | Gövdede sekme başlığı | `<title>BYGATECH</title>` | **satır 8: `<title>BYGATECH</title>`** |
+| C3 | Gövdede açılış metni | `BYGATECH yükleniyor…` | **satır 22: `<p>BYGATECH yükleniyor…</p>`** |
 | C4 | Gövdede eski ad | 0 | **0** (`grep -c "Kuyumcu ERP"`) |
-| C5 | `GET /kilavuz.html` | HTTP 200 + `MİHENK — Kullanım Kılavuzu` | **HTTP 200 · satır 6: `<title>MİHENK — Kullanım Kılavuzu</title>` · eski ad 0** |
-| C6 | `GET /_framework/Kuyumcu.Core.wasm` (istemciye giden gerçek derleme) | yeni ad var, eski ad yok | **HTTP 200 · 1.126.677 bayt · UTF-16LE `MİHENK` = 5 · `Kuyumcu ERP` = 0** |
+| C5 | `GET /kilavuz.html` | HTTP 200 + `BYGATECH — Kullanım Kılavuzu` | **HTTP 200 · satır 6: `<title>BYGATECH — Kullanım Kılavuzu</title>` · eski ad 0** |
+| C6 | `GET /_framework/Kuyumcu.Core.wasm` (istemciye giden gerçek derleme) | yeni ad var, eski ad yok | **HTTP 200 · 1.126.677 bayt · UTF-16LE `BYGATECH` = 5 · `Kuyumcu ERP` = 0** |
 
 C6, adın yalnız statik HTML'de değil **tarayıcıya inen derlenmiş istemci
 paketinde** de yeni olduğunun kanıtıdır (`strings` ASCII aradığı için 0 döner;
@@ -313,8 +313,8 @@ kalıcı fikstürlerine de dokunulmadı. **P-D2'nin kiracı deltası = 0.**
 
 | Koşul | Durum | Kanıt |
 |---|---|---|
-| Z3 / V17 / D-d — ekranda ad MİHENK | ✅ | § 10 C1–C6 |
-| § 7 A5 — sekme başlığı + açılış ekranı MİHENK, eski ad yok | ✅ | C2, C3, C4 |
+| Z3 / V17 / D-d — ekranda ad BYGATECH | ✅ | § 10 C1–C6 |
+| § 7 A5 — sekme başlığı + açılış ekranı BYGATECH, eski ad yok | ✅ | C2, C3, C4 |
 | Marka metni TEK KAYNAKTA | ✅ | `Sozlukler.Marka.cs`; § 1.2 tablosu |
 | `Sozlukler.cs` ortak hub'ı DÜZENLEME | ⚠ **SAPMA** | 2 satırda **değer** değişti; § 6 S1 |
 | Yeni dosya `Kuyumcu.Core/I18n/Sozlukler.Marka.cs`, aynı namespace | ✅ | dosya mevcut, `namespace Kuyumcu.Core.I18n` |
@@ -378,7 +378,7 @@ bu yüzden bu sayfalar başka bir dalgada gerekçesiz tekrar açılabilir sayıl
    güncellenmemeli**.
 3. **Mevcut MFA kayıtları**: doğrulayıcı uygulamalarına daha önce eklenmiş hesaplar
    eski yayıncı etiketini göstermeye devam eder (etiket, gizli anahtarın parçası
-   değildir — kod üretimi **etkilenmez**). Yeni kayıtlar `MIHENK` görür.
+   değildir — kod üretimi **etkilenmez**). Yeni kayıtlar `BYGATECH` görür.
 4. **Ölü kırmızı** `OlcumKapisiTestleri.denetim_sh_HER_CAGRI_DIZININDEN_AYNI_KARARI_VERIR`
    → **P-30b** (§ 7.4). Bu paket dokunmadı.
 5. **Ağaçta artık dosya:** `dotnet/denetim.sh.mutbak` — başka bir şeridin

@@ -30,7 +30,7 @@
 
 <PageTitle>@Marka.SayfaBasligi(EkranlarGirisTuvalSozlugu.GirisYap(Dil.Dil))</PageTitle>
 
-@* PAKET YILDIZ-AMBLEM-2 — tuval Giris4(a) düzeni: amblem 96 px ortada, "MİHENK" altında ortalı; form altında,
+@* PAKET YILDIZ-AMBLEM-2 — tuval Giris4(a) düzeni: amblem 96 px ortada, "BYGATECH" altında ortalı; form altında,
    1,6 sn'de belirir; sağ panel ve başlık çizilmez. Form, MFA (C4_62 kurtarma kodu dahil), kayıt, dil, sürüm,
    P-30 beyanı AYNEN yaşar. Tema temizliği (17.10): tek şema Yıldız — eski iki panelli düzen kaldırıldı. *@
 <div class="giris-sayfa giris-iki-panel giris-yildiz" id="giris-sayfa">
@@ -39,8 +39,8 @@
     <main class="giris-sol" id="giris-sol">
         <div class="giris-kart" id="giris-kart">
             <div class="giris-kart-ust">
-                                    @* Tuval Giris4: taş 96 px + 22 px + "MİHENK" (220×32, viewBox 110×16 → 26 px, ortalı). *@
-                    <h1 class="giris-amb" id="giris-amblem" aria-label="@KabukTuvalSozlugu.MarkaYazimi">@Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemTasi(Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.GirisTasi)<svg class="amb-yz" width="220" height="32" viewBox="0 0 110 16" aria-hidden="true" focusable="false"><text x="57" y="13" text-anchor="middle" fill="url(#giris-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg></h1>
+                                    @* Tuval Giris4: taş 96 px + 22 px + "BYGATECH" (220×32, viewBox 110×16 → 26 px, ortalı). *@
+                    <h1 class="giris-amb" id="giris-amblem" aria-label="@KabukTuvalSozlugu.MarkaYazimi">@Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemTasi(Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.GirisTasi)<svg class="amb-yz" width="280" height="32" viewBox="0 0 140 16" aria-hidden="true" focusable="false"><text x="72" y="13" text-anchor="middle" fill="url(#giris-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg></h1>
                 
                 <div class="giris-dil" id="giris-dil"><DilSecici /></div>
             </div>
@@ -250,7 +250,7 @@
                 }
             </details>;
 
-    /// <summary>YILDIZ-AMBLEM-2: "MİHENK" harfleri — kabukla AYNI kaynak (marka sözlüğü, tr-TR büyük harf).</summary>
+    /// <summary>YILDIZ-AMBLEM-2: "BYGATECH" harfleri — kabukla AYNI kaynak (marka sözlüğü, tr-TR büyük harf).</summary>
     private static string AmblemHarfleri => Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemHarfleri;
 
     // ── veri modelleri (JSON camelCase otomatik eşleşir) ──
@@ -319,7 +319,7 @@
     private static readonly string? IstemciSurumu = typeof(Giris).Assembly
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 
-    /// <summary>"1.0.0+abc" → "1.0" (tuval: "Mihenk 1.0"). Okunamazsa ham metin, yoksa "—".</summary>
+    /// <summary>"1.0.0+abc" → "1.0" (tuval: "ByGatech 1.0"). Okunamazsa ham metin, yoksa "—".</summary>
     public static string SurumMetni(string? bilgi)
     {
         if (string.IsNullOrWhiteSpace(bilgi)) return "—";

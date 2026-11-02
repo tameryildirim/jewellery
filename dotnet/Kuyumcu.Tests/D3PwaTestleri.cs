@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Kuyumcu.Tests;
 
-// D3-01 (19.10) — ana ekrana ekle: manifest geçerli, ikonlar Mihenk amblemi boyutlarında, index.html bağları var.
+// D3-01 (19.10) — ana ekrana ekle: manifest geçerli, ikonlar ByGatech amblemi boyutlarında, index.html bağları var.
 public sealed class D3PwaTestleri
 {
     [Fact]

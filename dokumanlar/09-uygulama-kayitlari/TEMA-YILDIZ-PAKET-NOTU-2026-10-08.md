@@ -22,7 +22,7 @@ Bu bir **yeni şema** olarak eklenecek: `data-sema="yildiz"`. Mevcut 8 şema (pl
 |---|---|
 | Zemin | Koyu: saf siyah `#000`. Açık: kırık beyaz `#F5F4F1`. Doku, degrade, cam yok. |
 | Yüzey/kart | **Kart yok.** Ayrımı boşluk ve 1 px kıl çizgi yapar (`--h`). Kutu, gölge, dolgu yok. |
-| İşaret | Elmas çizgisi, **halkasız ve kutusuz**, menünün solunda, yanında `MİHENK` yazısı; titanyum parıltılı 11 sn döngü. Ayrıntı ve **aynen uygulama talimatı: § 2a**. Mevcut 34 px mavi kare rozet bu şemada gizlenir. |
+| İşaret | Elmas çizgisi, **halkasız ve kutusuz**, menünün solunda, yanında `BYGATECH` yazısı; titanyum parıltılı 11 sn döngü. Ayrıntı ve **aynen uygulama talimatı: § 2a**. Mevcut 34 px mavi kare rozet bu şemada gizlenir. |
 | Rakam | Baş roldür. Büyük sayı 200 ağırlık, sıkı harf aralığı; kuruş ve ₺ soluk ve yarı boy. |
 | Yazı | Inter (değişken, 200–600). **Yeni yazı tipi dosyası gerekir** (OFL, latin + latin-ext, `wwwroot/font/`), CSP `font-src 'self'` korunur; Google Fonts bağlantısı YASAK (bkz. belirtecler.css D9). |
 | Menü | Yan sütun **yok**. Üstte 72 px tek şerit: solda halkasız elmas işareti, yanında beş kelime (BUGÜN · TEZGÂH · MÜŞTERİLER · KASA · TÜM EKRANLAR, 14 px, harf aralıklı, gri; seçili olan beyaz + altında 1 px çizgi), sağda kur (HAS · 22 AYAR · saat) ve kullanıcı adı, altında kıl çizgi. 39 ekranın tamamı ve ekran arama "Tüm ekranlar" kare sayfasındadır. **Kurucu kararı: tasarımda ne varsa tema odur; yan menülü ara sürüm yok.** |
@@ -35,7 +35,7 @@ Bu bir **yeni şema** olarak eklenecek: `data-sema="yildiz"`. Mevcut 8 şema (pl
 
 Kaynak: tuvalde "Amblem" sırası → `Amblem_sol.dc.html` (koyu) ve `Amblem_sol_acik.dc.html` (açık). `Amblem_orta` yalnız karşılaştırmaydı, **uygulanmaz**.
 
-**Yer:** sol üst, menü şeridinin başında. İşaret (40 px halkasız elmas çizgisi) + 14 px boşluk + `MİHENK` yazısı (13 px, 400, harf aralığı 4,4 px, büyük harf). İkisi tek `<a>` içinde, Bugün'e gider. Her ekranda sabit.
+**Yer:** sol üst, menü şeridinin başında. İşaret (40 px halkasız elmas çizgisi) + 14 px boşluk + `BYGATECH` yazısı (13 px, 400, harf aralığı 4,4 px, büyük harf). İkisi tek `<a>` içinde, Bugün'e gider. Her ekranda sabit.
 
 **Malzeme:** işaret ve yazı aynı SVG gradyanla boyanır (`url(#ti)`), tek parça gibi parlar.
 - Koyu: gövde `#6A6A6A` → `#9A9A9A`, parıltı `#FFFFFF`; hale beyaz %16.
@@ -98,7 +98,7 @@ Beş kalıp kullanıldı; uygulamada da beş ortak bileşene karşılık gelir:
 
 - Mevcut 8 şemanın hiçbir değeri değişmez; `--yuzey*`, `--vurgu*` eşlemeleri yalnız `[data-sema="yildiz"]` altında.
 - Kâğıt (`.belge*`, `.urun-etiket*`, `@media print`) dokunulmaz.
-- 3. tur "Mihenk Taşı" (niyet çubuğu, sesli komut, terazi) **bu paketin parçası değil**; ayrı ürün kararı.
+- 3. tur "ByGatech Taşı" (niyet çubuğu, sesli komut, terazi) **bu paketin parçası değil**; ayrı ürün kararı.
 - Veri göçü yok; şema kaydı mevcut `kiraci_ayarlari`/kullanıcı tercihi yoluyla.
 
 ## 7. Bitti sayılma ölçütü

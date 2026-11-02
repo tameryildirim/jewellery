@@ -80,7 +80,7 @@ if (process.env.KAP_ONEK !== undefined) await b.cmd('Page.addScriptToEvaluateOnN
 if (process.env.KAP_ONEK !== undefined) await b.ev(`window.__kapOnek = ${JSON.stringify(process.env.KAP_ONEK)}; 1`);
 for (let i = 0; i < 40 && !(await b.ev(`!!document.querySelector('#yildiz-ust')`)); i++) await bek(300);
 console.log('hazırlık: kabuk =', await b.ev(`!!document.querySelector('#yildiz-ust')`), '· yol', await b.ev('location.pathname'));
-await kap('kart', plan.acilisUst || 'MİHENK · EĞİTİM', plan.baslik, plan.alt);
+await kap('kart', plan.acilisUst || 'ByGatech · EĞİTİM', plan.baslik, plan.alt);
 kayitta = true; if (!PROVA) { await b.cmd('Page.startScreencast', { format: 'jpeg', quality: 88, everyNthFrame: 1 }); await bek(500); }
 const T0 = simdi(); const adimlar = []; const bolumler = [{ grup: 'Açılış', bas: 0 }];
 await bek(2600 * H); await kap('kart', '', '', '');
@@ -100,7 +100,7 @@ for (const [i, a] of plan.adimlar.entries()) {
   console.log(String(i).padStart(2, '0'), a.id.padEnd(10), 'bas', (t0 - T0).toFixed(1).padStart(6), 'süre', (simdi() - t0).toFixed(1).padStart(5), 'klip', sureler[a.id].toFixed(1).padStart(5), yer, hata);
   await kap('etiket', '');
 }
-await kap('altyazi', '', ''); await kap('kart', plan.acilisUst || 'MİHENK · EĞİTİM', plan.baslik, plan.kapanisAlt || 'Bitti · Kılavuzdan yeniden izleyebilirsiniz'); await bek(3000 * H); await kap('kart', '', '', '');
+await kap('altyazi', '', ''); await kap('kart', plan.acilisUst || 'ByGatech · EĞİTİM', plan.baslik, plan.kapanisAlt || 'Bitti · Kılavuzdan yeniden izleyebilirsiniz'); await bek(3000 * H); await kap('kart', '', '', '');
 const SON = simdi() - T0; if (!PROVA) await b.cmd('Page.stopScreencast'); await bek(400); kayitta = false; clearInterval(bosalt);
 writeFileSync(`${CIKTI}/kayit.json`, JSON.stringify({ T0, sure: +SON.toFixed(2), gercekSure, adimlar, bolumler, kareler, sorunlar }, null, 1));
 console.log('BİTTİ', ID, 'süre', SON.toFixed(1), 'sn · kare', kareler.length, '· sorun', sorunlar.length); for (const s of sorunlar) console.log('  SORUN', JSON.stringify(s));

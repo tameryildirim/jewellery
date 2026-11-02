@@ -64,10 +64,10 @@ Tam süit 4541 testte 6 kırmızı verdi. Altısı da başka şeritlerin dosyala
 - **`dotnet/kurulum.sh`** — üç seçenek eklendi: `--adres`, `--kisayol` (yalnız kısayolu yeniden üretir, sırlara dokunmaz), `--kisayol-dizin`.
   - Adres sorulur; varsayılan `http://localhost:5199`. Etkileşimsiz koşuda varsayılan kullanılır ve bu ekrana yazılır.
   - Adres doğrulanır: yol taşıyan ya da şemasız adres 2 koduyla çıkar ve hiçbir dosya yazılmaz.
-  - Adres `.env`'de tek satır olarak tutulur: `MIHENK_ADRES`.
+  - Adres `.env`'de tek satır olarak tutulur: `BYGATECH_ADRES`.
   - Masaüstü kısayolu üretilir: macOS `.webloc`, Linux `.desktop`. Dosya yazıldıktan sonra adresi gerçekten taşıdığı denetlenir; taşımıyorsa betik durur.
   - Bağlama noktası adresten türetilir: `Urls` ve `ASPNETCORE_URLS` (§ 5 bulgu 2).
-- **`dotnet/kurulum.ps1`** — Windows ikizi aynı kurallarla yazıldı (`-Adres`, `-SadeceKisayol`, `-KisayolDizin`, `MİHENK.url`, `Urls`). Bu makinede pwsh yok; yalnız metin sözleşmesi testiyle kilitli.
+- **`dotnet/kurulum.ps1`** — Windows ikizi aynı kurallarla yazıldı (`-Adres`, `-SadeceKisayol`, `-KisayolDizin`, `BYGATECH.url`, `Urls`). Bu makinede pwsh yok; yalnız metin sözleşmesi testiyle kilitli.
 - **`docs/DEPLOY.md`** — § 3a (adres ve kısayol) eklendi. § 8'de tek yedek yolu ve 30 günlük tatbikat kuralı yazıldı. § 10 kabul listesine 3 madde eklendi.
 - **`docs/RUNBOOK-TESLIMAT.md` (YENİ — Köprü K-7 / BK-32)** — içerik:
   - kurulum adımı;
@@ -91,7 +91,7 @@ Tam süit 4541 testte 6 kırmızı verdi. Altısı da başka şeritlerin dosyala
 | Varlık / kayıt | Oluşma | Düzenleme | Pasife alma / silme | Gerekçe |
 |---|---|---|---|---|
 | Yedek tatbikatı (`yedek_tatbikatlari`) | Betik yazar | YOK | YOK | Geri yükleme kanıtıdır; `DuzeltmePolitikasi`'nda S("YedekTatbikati", Denetim) — DEĞİŞMEZ. Ekranda tablo ve kart salt okunur. Doğru düzeltme yolu yeni tatbikat koşmaktır (bayat bandı komutu söyler). |
-| Kurulum adresi (`MIHENK_ADRES`) | `kurulum.sh` / `.ps1` | `--kisayol --adres <yeni>` / `-SadeceKisayol -Adres` (satır güncellenir, kısayol yeniden üretilir) | — | Yapılandırma satırıdır, ekran varlığı değildir. |
+| Kurulum adresi (`BYGATECH_ADRES`) | `kurulum.sh` / `.ps1` | `--kisayol --adres <yeni>` / `-SadeceKisayol -Adres` (satır güncellenir, kısayol yeniden üretilir) | — | Yapılandırma satırıdır, ekran varlığı değildir. |
 | Kılavuz içeriği | `docs/KULLANIM_KILAVUZU.md` | Kaynak düzenlenir, sonra `kilavuz-uret.sh` koşar | — | HTML elle düzenlenmez: test ve sayaç yakalar. |
 
 Yeni veritabanı varlığı açılmadı, bu yüzden PATCH/DELETE ucu da gerekmedi. Mevcut `/yedekler/ozet` ucu `[RolGerekli("SAHIP")]` ile korunuyor (canlıda TEZGAHTAR → 403). Okuma denetim kaydı mevcut `ListeOkumaKaydet` ile yazılıyor.
@@ -116,7 +116,7 @@ Tam süit (trx: `scratchpad/trx-pP-33`): **4541 test · 4535 geçti · 6 başar�
 ## § 5. Tatbikatlar (gerçek koşum)
 
 ### 5a. YEREL KAP TATBİKATI — temiz kurulum (K-6/K-9 yok → "üretim kanıtı" DENMEZ)
-Boş bir MySQL 8.4 kabında (`mihenk-tatbikat-mysql`, `127.0.0.1:3317`, `--rm`) şu sıra koşuldu:
+Boş bir MySQL 8.4 kabında (`bygatech-tatbikat-mysql`, `127.0.0.1:3317`, `--rm`) şu sıra koşuldu:
 1. `kurulum.sh --adres http://localhost:5197` (çıkış 0).
 2. Şema: `dotnet ef database update` → **70 migration**.
 3. Uygulama Production ortamında açıldı: `/saglik` **200 Healthy**, `/saglik/hazir` **200 `{"hazir":true,"kod":"HAZIR"}`**, oturumsuz `/api/v1/yedekler/ozet` **401**.
@@ -202,7 +202,7 @@ Kiracı `PAKETP33-TEST Kuyumculuk` (`01M37Z1VGWDXRGGRH4KAH6GWFR`) sistem davetiy
 | C4 SAHİP `GET /api/v1/yedekler/ozet` | 200, tatbikat taze | **200** `sonBasariliTatbikat=2026-09-23T19:15:07`, `tatbikatYasGun=0`, `tatbikatAzamiGun=30`, `tatbikatBayat=false`, `dogrulama=DOGRULANDI`, `disKopya=KOPYALANDI` |
 | C5 TEZGAHTAR `GET /yedekler/ozet` | 403 | kullanıcı **201** → **403** "Bu işlem için gerekli rol: SAHIP" |
 | C6 oturumsuz `GET /yedekler/ozet` | 401 | **401** "Token bulunamadı" |
-| C7 `GET /kilavuz` (SPA) | 200 | **200** `<title>MİHENK</title>` |
+| C7 `GET /kilavuz` (SPA) | 200 | **200** `<title>BYGATECH</title>` |
 
 SQL kanıtı:
 ```
@@ -256,7 +256,7 @@ Ek not:
 | Temiz kurulum tatbikatı kaydedilir, mevcut betiklerle; K-6/K-9 yok → "YEREL KAP TATBİKATI" | ✓ | RUNBOOK-TESLIMAT § 5 başlığı; "üretim kanıtı denmez" yazılı |
 | Yedek + geri yükleme tatbikatı checksum ile; son tatbikat `/yedekler`'de, 30 günden eski olamaz | ✓ | § 5b SQL; C4; `YEDEK_TATBIKAT_BAYAT 0`; M33-08/09/10/11 |
 | Oturumsuz erişim kararı yazılı; Kilavuz.razor iframe kullanmaz | ✓ | `kilavuz-sablon.html` "OTURUMSUZ ERİŞİM KARARI"; `Kilavuz_BETIK_CERCEVE_ve_veri_cagrisi_TASIMAZ…`; `M14_Kilavuz_sayfasinda_IFRAME_YOKTUR` yeşil; C1 oturumsuz 200 |
-| K-26 → kılavuz kesin yazılır, kurulum adresi sorar, kısayolu üretir, tek satır | ✓ | `Kisayol_adresi_bolumu_KESIN_yazilir_K26`; `KurulumAdresKisayolTestleri`; tatbikat `MİHENK.webloc → http://localhost:5197` |
+| K-26 → kılavuz kesin yazılır, kurulum adresi sorar, kısayolu üretir, tek satır | ✓ | `Kisayol_adresi_bolumu_KESIN_yazilir_K26`; `KurulumAdresKisayolTestleri`; tatbikat `BYGATECH.webloc → http://localhost:5197` |
 | RUNBOOK-TESLIMAT (kurulum, adres/kısayol, destek, yedek anahtarı K-18) | ✓ (destek insan kanalı ve K-18 KURUCU KALEMİ olarak boş satır) | `docs/RUNBOOK-TESLIMAT.md` |
 | Sayaçlar (5) cırcır, taze taban, ölçüm komutu yorumda | ✓ | § 7 |
 | BK-26 HARİÇ gömülür; HARIC_BEYAN_KOPYA | ✓ tavan 2 → 0 | § 1 S7 |

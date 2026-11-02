@@ -1602,9 +1602,9 @@ else
 fi
 
 # ── P02-1d) ESKI_URUN_ADI = 0 (PAKET P-D2 · Z3/V17/D-d · demo kapısı) ───────
-#   KURUCU KARARI (23.09, birebir): "ürünün adı mihenk olacak". MİHENK = mihenk
-#   taşı — kuyumcunun altının ayarını ölçtüğü taş. Firma adı ByGatech A.Ş. DEĞİŞMEZ.
-#   ÖLÇÜLMÜŞ DURUM (23.09, orkestratör): eski ürün adı 44 dosyada, "Mihenk" 0
+#   KURUCU KARARI (23.09): ürün adı tek kaynaktan; 02.11: ürün adı ByGatech
+#   (önceki ad TÜRKPATENT'te başkasına tescilli çıktı, projeden kaldırıldı).
+#   ÖLÇÜLMÜŞ DURUM (23.09, orkestratör): eski ürün adı 44 dosyada, yeni ad 0
 #   dosyada. Cumartesi demosunda müşteri ürünün adını tarayıcı sekmesinde ve
 #   açılış ekranında GÖRÜR (DEMO-SENARYOSU § 0 Z3, § 3 V17, § 7 A5).
 #   Bu sayaç kaynak ağacında eski adın SIFIR olduğunu ölçer; tek kaynak

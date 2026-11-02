@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'mihenk-has-defteri-karari',
+  name: 'bygatech-has-defteri-karari',
   description: 'Eski altinla odeme has defterine mi TL defterine mi islenir: mevzuat + sektor teamulu + rakip davranisi + kendi kodumuz',
   phases: [
     { title: 'Arastirma', detail: 'Mevzuat, sektor teamulu, rakipler, kendi kodumuz — 4 paralel mercek' },
@@ -10,7 +10,7 @@ export const meta = {
 const KOK = '/Users/ramazanakkocan/Desktop/ByGatech/projeler/jewellery'
 const SDIZIN = KOK + '/dokumanlar/02-mimari/sadelestirme'
 
-const ORTAK = `Dil: TÜRKÇE. Ürün MİHENK (ByGatech A.Ş.) — Türkiye'de kuyumcu dükkânı için ERP.
+const ORTAK = `Dil: TÜRKÇE. Ürün BYGATECH (ByGatech A.Ş.) — Türkiye'de kuyumcu dükkânı için ERP.
 
 SORU (tek cümle): **Müşteri satışın bir kısmını eski altınıyla öderse (karma ödeme: nakit + eski altın),
 bu altın bacağı HAS DEFTERİNE mi (gram bazlı has hesabı) yoksa TL DEFTERİNE mi (parasal tutar) işlenir?

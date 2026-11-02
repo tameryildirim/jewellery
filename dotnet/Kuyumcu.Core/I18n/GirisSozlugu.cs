@@ -21,7 +21,7 @@ public static class GirisSozlugu
 {
     private static bool En(string dil) => dil == "en";
 
-    /// <summary>Sol kartın başlığı (tuval: "Mihenk’e hoş geldin"). Ad KabukTuvalSozlugu.MarkaYazimi’dan (Marka.Ad’dan türer — T-K4).</summary>
+    /// <summary>Sol kartın başlığı (tuval: "ByGatech’e hoş geldin"). Ad KabukTuvalSozlugu.MarkaYazimi’dan (Marka.Ad’dan türer — T-K4).</summary>
     public static string HosGeldin(string dil) =>
         En(dil) ? $"Welcome to {KabukTuvalSozlugu.MarkaYazimi}" : $"{KabukTuvalSozlugu.MarkaYazimi}’e hoş geldin";
 
@@ -71,7 +71,7 @@ public static class GirisSozlugu
     /// Sürüm satırı. Sürüm ELLE YAZILMAZ: istemci derlemesinin sürümünden
     /// türer (yayın betiği -p:InformationalVersion ile tek yerden verir).
     /// </summary>
-    public static string SurumSatiri(string dil, string surum) => $"{KabukTuvalSozlugu.MarkaYazimi} {surum} · ByGatech";
+    public static string SurumSatiri(string dil, string surum) => $"{KabukTuvalSozlugu.MarkaYazimi} {surum}";
 
     /// <summary>Sağ panelin büyük cümlesi (tuval birebir).</summary>
     public static string PanelBaslik(string dil) => En(dil)

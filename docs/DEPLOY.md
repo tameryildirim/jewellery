@@ -82,9 +82,9 @@ sudo ./dotnet/kurulum.sh --hedef /etc/kuyumcu/.env --kisayol --adres <yeni-adres
 .\dotnet\kurulum.ps1 -Hedef 'C:\ProgramData\Kuyumcu\.env' -SadeceKisayol -Adres <yeni-adres>
 ```
 
-- Adres `.env`'de **tek satırdır**: `MIHENK_ADRES=<adres>`.
-- Kısayol o adresle üretilir: macOS `MİHENK.webloc`, Linux `MIHENK.desktop`,
-  Windows `MİHENK.url` (masaüstü; `--kisayol-dizin` / `-KisayolDizin` ile değişir).
+- Adres `.env`'de **tek satırdır**: `BYGATECH_ADRES=<adres>`.
+- Kısayol o adresle üretilir: macOS `BYGATECH.webloc`, Linux `BYGATECH.desktop`,
+  Windows `BYGATECH.url` (masaüstü; `--kisayol-dizin` / `-KisayolDizin` ile değişir).
 - Bağlama noktası adresten türer: adres bu makineyi gösteriyorsa
   (`http://localhost:PORT`) uygulama o portu dinler; başka bir ana makineyi
   gösteriyorsa ters vekilin arkasındaki iç noktayı (§ 0) dinler.
@@ -257,7 +257,7 @@ SELECT COUNT(*) AS yeniden_sifrelenmemis
 - [ ] `systemctl kill -s KILL kuyumcu` sonrası süreç kendiliğinden dönüyor
 - [ ] `./dotnet/yedek-al-ve-dogrula.sh` çıkış kodu 0
 - [ ] `/yedekler` ekranında "Son geri yükleme tatbikatı" 30 günden yeni (kırmızı bant yok)
-- [ ] `.env`'de tek `MIHENK_ADRES` satırı var; masaüstü kısayolu bu adresi açıyor
+- [ ] `.env`'de tek `BYGATECH_ADRES` satırı var; masaüstü kısayolu bu adresi açıyor
 - [ ] Teslimat adımları `docs/RUNBOOK-TESLIMAT.md`'ye göre işaretlendi
 - [ ] **45-API (MFA) kapısı:** gerçek müşteri kurulumu MFA tamamlanmadan
       yapılmaz (Mehmet mührü) ve `docs/RUNBOOK-MFA-KURTARMA.md` okunmuştur

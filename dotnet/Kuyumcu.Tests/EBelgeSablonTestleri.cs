@@ -8,7 +8,7 @@ using Kuyumcu.Api.Modules.EBelge;
 
 namespace Kuyumcu.Tests;
 
-// 20.10 — Mihenk e-belge görüntü şablonu (UBL-TR → HTML). .NET XSLT motoruyla işlenir (entegratör motorları XSLT 1.0;
+// 20.10 — ByGatech e-belge görüntü şablonu (UBL-TR → HTML). .NET XSLT motoruyla işlenir (entegratör motorları XSLT 1.0;
 // şablonda uzantı fonksiyonu yok). Örnek: Veri/ornek-earsiv-ubl.xml (kuyum özel matrahlı e-Arşiv).
 public sealed class EBelgeSablonTestleri
 {

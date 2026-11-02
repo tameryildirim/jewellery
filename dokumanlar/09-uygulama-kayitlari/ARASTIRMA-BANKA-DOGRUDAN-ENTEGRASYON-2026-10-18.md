@@ -5,7 +5,7 @@
 2. **Hukuk:** 6493 m.12(1)(g) "onayla, bir veya daha fazla hesaba ilişkin **konsolide** bilgilerin çevrim içi platformda sunulması" = Hesap Bilgisi Hizmeti (HBH), TCMB izni gerektirir. "Müşterinin kendi kanalı" (banka–işletme sözleşmesi, müşteri adına hareket eden yazılım) BDDK yönetmeliğinde açık bankacılık servisi olarak tanımlı. Ancak ERP üreticisinin bu kanalı kullanmasının HBH sayılmadığını açıkça söyleyen bir TCMB metni bulamadım → **TEYİTSİZ, hukuk görüşü şart.**
 3. **Piyasa uygulaması:** Paraşüt 14 banka için resmi kılavuz yayımlıyor (şube formu + bankanın verdiği kullanıcı/şifre). Bankalar Paraşüt'ün IP adreslerini tanımlıyor. Nebim ise aracı (Finrota NetEkstre) üzerinden gidiyor. Lisansız yazılımlar bu modeli yıllardır bankaların bilgisiyle kullanıyor.
 4. **Başlangıç bankaları (öneri):** Garanti BBVA (geliştirici portalı + sandbox), İş Bankası (sandbox portalı + şube web servisi), QNB/Enpara (aynı servis, portal + internet şubesinden başvuru), ardından Akbank ve Ziraat (sandbox yok, şube yolu, ama müşteri tabanı büyük).
-5. **İşletmeden istenecekler:** bankaya imzalı web servis başvurusu, bankanın verdiği servis kimlik bilgileri, IBAN listesi, Mihenk sunucusunun statik IP'sinin bankaya bildirilmesi, banka ücretinin kabulü. İnternet şubesi parolası **asla** istenmez (ekran kazıma yok).
+5. **İşletmeden istenecekler:** bankaya imzalı web servis başvurusu, bankanın verdiği servis kimlik bilgileri, IBAN listesi, ByGatech sunucusunun statik IP'sinin bankaya bildirilmesi, banka ücretinin kabulü. İnternet şubesi parolası **asla** istenmez (ekran kazıma yok).
 
 ---
 
@@ -79,7 +79,7 @@ Not: Sandbox'sız bankalarda test için gerçek bir pilot işletmenin servis kul
 - Bankaya imzalı "hesap hareketleri web servisi" başvurusu (bankanın formu; Garanti'de EHÖ consent, QNB'de internet şubesi).
 - Bankanın verdiği servis kimlik bilgileri (kullanıcı adı/şifre, müşteri no/firma kodu/URF, WSDL ya da client id + consent).
 - Bağlanacak hesapların IBAN ve döviz listesi.
-- Mihenk sunucusunun **sabit çıkış IP'sinin** banka formuna yazılması (Akbank, DenizBank zorunlu).
+- ByGatech sunucusunun **sabit çıkış IP'sinin** banka formuna yazılması (Akbank, DenizBank zorunlu).
 - Banka ücretinin kabulü (ör. İş: hesap başına 25 TL/ay + BSMV).
 - **İstenmeyecek:** internet şubesi giriş parolası, SMS/OTP. Ekran kazıma yok.
 

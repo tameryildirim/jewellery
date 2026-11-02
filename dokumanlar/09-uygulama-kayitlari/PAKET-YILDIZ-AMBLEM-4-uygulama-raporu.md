@@ -55,7 +55,7 @@ Kutular: kabuk tuval = uygulama `64,9.5 176×52`; giriş `610,236 220×150` (DE�
 | 1280 | 0 | 1256 ≤ 1256 | 0 | 24,9.5 176×52 | gizli | görünür |
 | 1024 | 0 | 1000 ≤ 1000 | 0 | 24,9.5 176×52 | gizli | gizli |
 | 375 | 0 | 359 ≤ 359 | 0 | 16,5.5 176×52 | — | — |
-(Her satır BASİT+PRO × koyu+açık için aynı.) **Rotalar** `/`, `/islemler`, `/cariler`, `/kasa`, `/ekranlar` × 1440/1366/1280/1024/375 × koyu/açık × BASİT/PRO = 100 durum: yatay taşma 0, ad iç kenarın içinde 100/100. Görüntüler (Read): `t/ust-375-profesyonel-aydinlik.png` (taş + MİHENK + MENÜ + DK, sığıyor), `t/ust-1366-basit-karanlik.png`.
+(Her satır BASİT+PRO × koyu+açık için aynı.) **Rotalar** `/`, `/islemler`, `/cariler`, `/kasa`, `/ekranlar` × 1440/1366/1280/1024/375 × koyu/açık × BASİT/PRO = 100 durum: yatay taşma 0, ad iç kenarın içinde 100/100. Görüntüler (Read): `t/ust-375-profesyonel-aydinlik.png` (taş + ByGatech + MENÜ + DK, sığıyor), `t/ust-1366-basit-karanlik.png`.
 
 **c) Eşiklerin yeniden ölçümü** (`t/bosluk.mjs`, adın sığacağı en geniş alan, 52 px ↔ aynı sayfada 40 px'e geri zorlanmış hâl):
 | Genişlik | 1440 | 1317 | 1316 | 1305 | 1093 | 1092 | 1081 | 1013 | 1001 |

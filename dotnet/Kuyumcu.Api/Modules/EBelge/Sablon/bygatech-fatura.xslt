@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Mihenk e-Fatura / e-Arşiv fatura görüntü şablonu (UBL-TR 1.2.1 → HTML). 20.10.2026.
+  ByGatech e-Fatura / e-Arşiv fatura görüntü şablonu (UBL-TR 1.2.1 → HTML). 20.10.2026.
   Belgenin yasal aslı XML'dir; bu şablon yalnız görüntüdür. Entegratöre faturayla birlikte gider
   (Nilvera: InvoiceInfo.TemplateBase64String). XSLT 1.0 — entegratör motorlarıyla uyumlu kalsın diye
   uzantı fonksiyonu YOK. Kuyum satırında ayar · gram · has bilgisi kalemin açıklamasından (cbc:Description) gelir.
@@ -242,7 +242,7 @@
             <xsl:if test="$earsiv and normalize-space($f/cac:AccountingCustomerParty/cac:Party/cac:Contact/cbc:ElectronicMail)">
               e-Arşiv izni kapsamında elektronik ortamda iletilmiştir.
             </xsl:if>
-            <span class="imza">Mihenk</span>
+            <span class="imza">ByGatech</span>
           </div>
         </div>
       </body>

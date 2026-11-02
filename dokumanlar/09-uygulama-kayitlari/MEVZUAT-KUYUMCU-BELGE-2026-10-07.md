@@ -6,7 +6,7 @@
 
 Haberdeki "gösterilmesi zorunlu belge" **kimlik belgesidir**. Yeni bir belge türü getirilmedi. Değişen tek şey, kimlik sorma sınırının yükselmesi: kuyumcu dahil bütün yükümlüler, tek seferde ya da birbiriyle bağlantılı işlemlerin toplamında **370.000 TL ve üzeri** işlemde müşterinin kimliğini alıp doğrulayacak. Eski sınır 185.000 TL idi. Düzenleme **bugün (7 Ekim 2026) yürürlüğe girdi**.
 
-Mihenk bu kuralı zaten uyguluyor, ama sınır hâlâ 185.000 TL. Sonuç olarak program bugünden itibaren 185.000–369.999 TL arasındaki işlemlerde **yasanın artık istemediği kimliği** istiyor. Bu bir ceza riski oluşturmuyor, çünkü program yasadan daha sıkı davranıyor. Ama tezgâhta gereksiz bekleme yaratıyor ve gerekmeyen kişisel veri topluyor. Ekranlardaki "185.000 TL" yazısı da artık yanlış. **Entegre edebiliriz; küçük bir iş (S).**
+ByGatech bu kuralı zaten uyguluyor, ama sınır hâlâ 185.000 TL. Sonuç olarak program bugünden itibaren 185.000–369.999 TL arasındaki işlemlerde **yasanın artık istemediği kimliği** istiyor. Bu bir ceza riski oluşturmuyor, çünkü program yasadan daha sıkı davranıyor. Ama tezgâhta gereksiz bekleme yaratıyor ve gerekmeyen kişisel veri topluyor. Ekranlardaki "185.000 TL" yazısı da artık yanlış. **Entegre edebiliriz; küçük bir iş (S).**
 
 ## 2. Resmî dayanak
 
@@ -20,7 +20,7 @@ Mihenk bu kuralı zaten uyguluyor, ama sınır hâlâ 185.000 TL. Sonuç olarak 
   - Denetim raporu (md.38) MASAK'ın kendi işleyişini düzenler.
 - **Kaynaklar:** resmigazete.gov.tr/eskiler/2026/10/20261007-9.pdf ve mevzuat.gov.tr'deki işlenmiş metin (21.5.200713012, dipnot 9: "11845 s. CK md.1"). İki metin de okundu ve doğrulandı.
 
-## 3. Mihenk'te bugün durum
+## 3. ByGatech'te bugün durum
 
 | Konu | Durum | Kanıt |
 |---|---|---|

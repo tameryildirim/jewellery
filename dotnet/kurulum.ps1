@@ -18,8 +18,8 @@
 #
 # ADRES VE KISAYOL (PAKET P-33 · K-26 kararı — kurulum.sh ile AYNI kural):
 #   Adres kısayola gömülmez, KURULUMDA SORULUR (varsayılan
-#   http://localhost:5199); .env'de TEK satırda tutulur (MIHENK_ADRES) ve
-#   masaüstüne "MİHENK.url" kısayolu o adresle üretilir. Adres değişirse
+#   http://localhost:5199); .env'de TEK satırda tutulur (BYGATECH_ADRES) ve
+#   masaüstüne "ByGatech.url" kısayolu o adresle üretilir. Adres değişirse
 #   -SadeceKisayol -Adres <yeni> satırı günceller ve kısayolu yeniden üretir.
 #   Adres bu makineyi gösteriyorsa (localhost/127.0.0.1:PORT) uygulama o
 #   portu dinler; değilse ters vekil arkasında 127.0.0.1:5000'i dinler.
@@ -70,30 +70,30 @@ function Bag-Adresi([string]$a) {
 
 function Kisayol-Uret([string]$a) {
     if (-not (Test-Path $KisayolDizin)) { New-Item -ItemType Directory -Path $KisayolDizin -Force | Out-Null }
-    $dosya = Join-Path $KisayolDizin 'MİHENK.url'
+    $dosya = Join-Path $KisayolDizin 'ByGatech.url'
     Set-Content -Path $dosya -Value @('[InternetShortcut]', "URL=$a") -Encoding UTF8
     if (-not ((Get-Content $dosya) -contains "URL=$a")) { Write-Error "Kısayol adresi taşımıyor: $dosya"; exit 3 }
     Write-Host "  [OK] kısayol: $dosya -> $a"
 }
 
 function Adres-Satirini-Yaz([string]$hedef, [string]$a) {
-    $icerik = @(Get-Content $hedef | Where-Object { $_ -notlike 'MIHENK_ADRES=*' -and $_ -notlike 'ASPNETCORE_URLS=*' -and $_ -notlike 'Urls=*' })
+    $icerik = @(Get-Content $hedef | Where-Object { $_ -notlike 'BYGATECH_ADRES=*' -and $_ -notlike 'ASPNETCORE_URLS=*' -and $_ -notlike 'Urls=*' })
     # "Urls" ETKİN anahtardır (appsettings.Production.json "Urls"unu ezer).
     $icerik += "Urls=$(Bag-Adresi $a)"
     $icerik += "ASPNETCORE_URLS=$(Bag-Adresi $a)"
-    $icerik += "MIHENK_ADRES=$a"
+    $icerik += "BYGATECH_ADRES=$a"
     Set-Content -Path $hedef -Value $icerik -Encoding UTF8
 }
 
 if ($SadeceKisayol) {
     if (-not (Test-Path $Hedef)) { Write-Error "'$Hedef' yok; önce kurulum yapılmalı."; exit 2 }
     if ([string]::IsNullOrWhiteSpace($Adres)) {
-        $Adres = (Get-Content $Hedef | Where-Object { $_ -like 'MIHENK_ADRES=*' } | Select-Object -First 1) -replace '^MIHENK_ADRES=', ''
+        $Adres = (Get-Content $Hedef | Where-Object { $_ -like 'BYGATECH_ADRES=*' } | Select-Object -First 1) -replace '^BYGATECH_ADRES=', ''
     }
     $Adres = Adres-Belirle $Adres
     Adres-Satirini-Yaz $Hedef $Adres
     Kisayol-Uret $Adres
-    Write-Host "KISAYOL ÜRETİLDİ — sırlara dokunulmadı. Adres: $Adres (satır: MIHENK_ADRES)"
+    Write-Host "KISAYOL ÜRETİLDİ — sırlara dokunulmadı. Adres: $Adres (satır: BYGATECH_ADRES)"
     exit 0
 }
 
@@ -132,7 +132,7 @@ if ($sifreleme -eq $yedekAnah) {
 }
 
 $satirlar = @(
-    "# MİHENK üretim sırları — $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+    "# ByGatech üretim sırları — $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
     '# dotnet/kurulum.ps1 üretti. ELLE DÜZENLEMEYİN, KOPYALAMAYIN, PAYLAŞMAYIN.',
     'ASPNETCORE_ENVIRONMENT=Production',
     "KUYUMCU_VT=$Vt",
@@ -144,7 +144,7 @@ $satirlar = @(
     "Uretim__TersVekilArkasinda=$TersVekil",
     "Urls=$(Bag-Adresi $Adres)",
     "ASPNETCORE_URLS=$(Bag-Adresi $Adres)",
-    "MIHENK_ADRES=$Adres"
+    "BYGATECH_ADRES=$Adres"
 )
 Set-Content -Path $Hedef -Value $satirlar -Encoding UTF8
 
@@ -169,13 +169,13 @@ $icerik = Get-Content $Hedef
 foreach ($a in @('ASPNETCORE_ENVIRONMENT','KUYUMCU_VT','MYSQL_ROOT_PASSWORD',
                  'ConnectionStrings__Kuyumcu','Jwt__Secret',
                  'KUYUMCU_SIFRELEME_ANAHTARI','Yedek__SifrelemeAnahtari',
-                 'Uretim__TersVekilArkasinda','MIHENK_ADRES')) {
+                 'Uretim__TersVekilArkasinda','BYGATECH_ADRES')) {
     if ($icerik | Where-Object { $_ -like "$a=*" }) { Write-Host "  [OK]  $a : var" }
     else { Write-Host "  [YOK] $a" }
 }
 Write-Host ''
 Write-Host "Dosya : $Hedef (ACL kalıtımı kırıldı, yalnız SYSTEM/Administrators/servis okur)"
 Kisayol-Uret $Adres
-Write-Host "Adres : $Adres (tek satır: MIHENK_ADRES; değiştirmek için -SadeceKisayol -Adres <yeni>)"
+Write-Host "Adres : $Adres (tek satır: BYGATECH_ADRES; değiştirmek için -SadeceKisayol -Adres <yeni>)"
 Write-Host 'YEDEKLEYİN: KUYUMCU_SIFRELEME_ANAHTARI kaybolursa şifreli kimlik'
 Write-Host 'verileri GERİ OKUNAMAZ (MASAK/KVKK alanları).'

@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'mihenk-demo-akisi',
+  name: 'bygatech-demo-akisi',
   description: 'Cumartesi musteri demosu icin ekran sirasi, anlatim metni, gereken veri ve S-3 oncelik listesi',
   phases: [
     { title: 'Arastirma', detail: 'Pusula referansi, rakip demolari, kuyumcu gunluk akisi, SaaS demo yontemi' },
@@ -10,8 +10,8 @@ export const meta = {
 const KOK = '/Users/ramazanakkocan/Desktop/ByGatech/projeler/jewellery'
 const SDIZIN = KOK + '/dokumanlar/02-mimari/sadelestirme'
 
-const ORTAK = `Dil: TÜRKÇE. Ürün adı **MİHENK** (kurucu kararı 23 Eylül; "Kuyumcu ERP" adı ölüdür,
-belgelerde MİHENK yaz). Firma ByGatech A.Ş.
+const ORTAK = `Dil: TÜRKÇE. Ürün adı **BYGATECH** (kurucu kararı 23 Eylül; "Kuyumcu ERP" adı ölüdür,
+belgelerde BYGATECH yaz). Firma ByGatech A.Ş.
 
 BAĞLAM: Kurucu CUMARTESİ SABAHI GERÇEK BİR MÜŞTERİYE DEMO YAPACAK. Kendi sözleri:
 "ana hatlarıyla sık kullanılan tüm ekranları göstereceğim, sadeleştirilmiş ekranlar ile olacak
@@ -94,7 +94,7 @@ ${JSON.stringify(arastirma, null, 1)}
    hangi cümleyi kursun). Yazılım demosu yöntem araştırmasından türet.
 7. **PROVA LİSTESİ** — cuma akşamı orkestratörün baştan sona tıklayıp doğrulayacağı adımlar.
 
-Ürün adı her yerde MİHENK. Kurucu ilkokul/lise mezunu tezgâhtara satıyor, müşteri de kuyumcu —
+Ürün adı her yerde BYGATECH. Kurucu ilkokul/lise mezunu tezgâhtara satıyor, müşteri de kuyumcu —
 cümleler sade olsun, yazılım jargonu kullanma.`,
   { label: 'demo:senaryo', phase: 'Senaryo', effort: 'high', schema: {
     type: 'object',

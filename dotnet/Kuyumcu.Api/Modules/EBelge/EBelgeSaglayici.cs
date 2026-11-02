@@ -274,7 +274,7 @@ public sealed class NilveraSaglayici : IEBelgeSaglayici
             ["KdvTotal"] = D(b.KdvToplam), ["PayableAmount"] = D(b.Odenecek),
         };
         if (!string.IsNullOrWhiteSpace(b.SeriOnEki)) o["InvoiceSerieOrNumber"] = b.SeriOnEki;
-        // Mihenk görüntü şablonu (XSLT, base64) — alan OpenAPI'de var; entegratörün yorumu test ortamında doğrulanacak.
+        // ByGatech görüntü şablonu (XSLT, base64) — alan OpenAPI'de var; entegratörün yorumu test ortamında doğrulanacak.
         if (!string.IsNullOrWhiteSpace(b.Sablon)) o["TemplateBase64String"] = Convert.ToBase64String(Encoding.UTF8.GetBytes(b.Sablon));
         // Genel KDV toplamları oran kovalarına (şemada 1/8/10/18/20 alanları var).
         foreach (var g in b.Satirlar.GroupBy(s => s.KdvYuzde))

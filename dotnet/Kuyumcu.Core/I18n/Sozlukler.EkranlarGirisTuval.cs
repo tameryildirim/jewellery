@@ -10,7 +10,7 @@ namespace Kuyumcu.Core.I18n;
 //   ortak anahtarlar (Auth.Sifre = "Şifre", Auth.GirisYap = "Giriş Yap",
 //   Pano.Baslik = "Vitrin Panosu") başka ekranlarda aynen kalır; bu iki
 //   ekran tuvalin yazımını buradan okur.
-// ⚠ Marka adı burada YAZILMAZ: "Mihenk" yazımı KabukTuvalSozlugu.MarkaYazimi'dan
+// ⚠ Marka adı burada YAZILMAZ: "ByGatech" yazımı KabukTuvalSozlugu.MarkaYazimi'dan
 //   (Marka.Ad'dan türetilir, P-D2 tek kaynak).
 // ═════════════════════════════════════════════════════════════════════════════
 

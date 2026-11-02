@@ -1,6 +1,6 @@
-# MİHENK — Kullanım Kılavuzu
+# ByGatech — Kullanım Kılavuzu
 
-Kuyumcu işletmenizin satışını, alışını, müşteri hesaplarını, stoğunu, kasasını, bankasını ve faturasını tek programda tutan MİHENK'in adım adım rehberi. Programdaki her ekranın bu kılavuzda kendi bölümü vardır; ekrandayken üst çubuktaki **Yardım** bağlantısı sizi doğrudan o bölüme getirir.
+Kuyumcu işletmenizin satışını, alışını, müşteri hesaplarını, stoğunu, kasasını, bankasını ve faturasını tek programda tutan ByGatech'in adım adım rehberi. Programdaki her ekranın bu kılavuzda kendi bölümü vardır; ekrandayken üst çubuktaki **Yardım** bağlantısı sizi doğrudan o bölüme getirir.
 
 <!--
   ═══════════════════════════════════════════════════════════════════════════
@@ -29,7 +29,7 @@ Kuyumcu işletmenizin satışını, alışını, müşteri hesaplarını, stoğu
 
 ## Tanıtım ve temel kavramlar {#tanitim}
 
-MİHENK her işlemi **hem Türk Lirası hem de has (saf altın) gram** cinsinden kaydeder. Buna *paralel defter* denir: bir müşterinin hem TL bakiyesini hem de size olan gram altın borcunu ya da alacağını aynı anda görürsünüz.
+ByGatech her işlemi **hem Türk Lirası hem de has (saf altın) gram** cinsinden kaydeder. Buna *paralel defter* denir: bir müşterinin hem TL bakiyesini hem de size olan gram altın borcunu ya da alacağını aynı anda görürsünüz.
 
 - **Has gram:** ürünün içindeki saf altın miktarıdır. Program gram, taş ağırlığı ve ayardan kendisi hesaplar; siz yalnız ürünün gramını ve ayarını girersiniz.
 - **Kur anlık görüntüsü:** her işlem, yapıldığı andaki kura bağlanır. Kur sonradan değişse de eski işlemin değeri değişmez.
@@ -40,9 +40,9 @@ Tam tanımlar için [Kavramlar sözlüğü](#sozluk) bölümüne bakın.
 
 ## Programı açma {#baslat}
 
-MİHENK işletmedeki bilgisayarın tarayıcısında açılır. Kurulumu yapan kişi masaüstünüze **MİHENK** adlı bir kısayol bırakır; gün başında yalnız o kısayola çift tıklarsınız.
+ByGatech işletmedeki bilgisayarın tarayıcısında açılır. Kurulumu yapan kişi masaüstünüze **ByGatech** adlı bir kısayol bırakır; gün başında yalnız o kısayola çift tıklarsınız.
 
-1. Masaüstündeki **MİHENK** kısayoluna çift tıklayın.
+1. Masaüstündeki **ByGatech** kısayoluna çift tıklayın.
 2. Tarayıcı açılır ve **Giriş** ekranı gelir.
 3. Size verilen e-posta ve şifreyle giriş yapın (bkz. [Giriş](#giris)).
 

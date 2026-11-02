@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Mihenk inceleme sunucusu (http://localhost:5199) — kurucu 16.10: Claude oturumundan bağımsız, kalıcı.
+<!-- ByGatech inceleme sunucusu (http://localhost:5199) — kurucu 16.10: Claude oturumundan bağımsız, kalıcı.
      qa-sunucu.sh'ı aynen çalıştırır (üretim kipi, TLS köprüsü, sır ve damga kapıları değişmedi).
-     Bilgisayar açılınca başlar, çökerse 20 sn içinde yeniden kalkar. Günlük: ~/Library/Logs/mihenk-sunucu.log
-     Kur:        cp <bu dosya> ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bygatech.mihenk.plist
-     Durdur:     launchctl bootout gui/$(id -u)/com.bygatech.mihenk
-     Yeniden:    launchctl kickstart -k gui/$(id -u)/com.bygatech.mihenk -->
+     Bilgisayar açılınca başlar, çökerse 20 sn içinde yeniden kalkar. Günlük: ~/Library/Logs/bygatech-sunucu.log
+     Kur:        cp <bu dosya> ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bygatech.kuyumcu.plist
+     Durdur:     launchctl bootout gui/$(id -u)/com.bygatech.kuyumcu
+     Yeniden:    launchctl kickstart -k gui/$(id -u)/com.bygatech.kuyumcu -->
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.bygatech.mihenk</string>
+  <key>Label</key><string>com.bygatech.kuyumcu</string>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
@@ -23,7 +23,7 @@
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>20</integer>
-  <key>StandardOutPath</key><string>/Users/ramazanakkocan/Library/Logs/mihenk-sunucu.log</string>
-  <key>StandardErrorPath</key><string>/Users/ramazanakkocan/Library/Logs/mihenk-sunucu.log</string>
+  <key>StandardOutPath</key><string>/Users/ramazanakkocan/Library/Logs/bygatech-sunucu.log</string>
+  <key>StandardErrorPath</key><string>/Users/ramazanakkocan/Library/Logs/bygatech-sunucu.log</string>
 </dict>
 </plist>

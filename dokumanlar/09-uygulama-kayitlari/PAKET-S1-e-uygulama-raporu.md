@@ -23,7 +23,7 @@ Ayrıntılar § 7.3, § 9 ve § 14'te.
 | Izgara | `minmax(0,1fr) minmax(0,1.1fr)`, zemin `#f2f4f7`, gövde 18 px / 1,45 |
 | Sol sütun | 56 px iç boşluk; kart 440 px, öğeler arası 30 px |
 | Marka | 44 px rozet (`#2457d6`, 11 px yarıçap, 22 px elmas) + Sora 24/700 |
-| Başlık | Sora 34/700 "Mihenk’e hoş geldin" + 18 px `#5a6577` "Dükkânın hesabıyla gir." |
+| Başlık | Sora 34/700 "ByGatech’e hoş geldin" + 18 px `#5a6577` "Dükkânın hesabıyla gir." |
 | Form | Aralık 18 px; etiket 15 px `#5a6577`, etiketle alan arası 7 px; kontrol 54 px, 0 16 px iç boşluk, 9 px yarıçap, 18 px; "Göster" kutunun içinde 15 px vurgu rengi |
 | Birincil düğme | 54 px, `#2457d6`, beyaz 18/600 |
 | Bağlantılar | "Parolamı unuttum" (vurgu) / "Yeni dükkân kur" (`#5a6577`), 15 px |
@@ -75,9 +75,9 @@ Ayrıntılar § 7.3, § 9 ve § 14'te.
 
 | # | Tuval | Uygulanan | Gerekçe |
 |---|---|---|---|
-| S1 | "Mihenk" | `Marka.Ad` ("MİHENK"); başlık "MİHENK’e hoş geldin" | Marka tek kaynaktan gelir (S1-b S3, S1-d S2 ile aynı). |
+| S1 | "ByGatech" | `Marka.Ad` ("BYGATECH"); başlık "BYGATECH’e hoş geldin" | Marka tek kaynaktan gelir (S1-b S3, S1-d S2 ile aynı). |
 | S2 | Etiket "E-posta ya da telefon" | "E-posta" (`Dil.T.Auth.Eposta`) | Sunucu yalnız e-posta kabul eder (`GirisDto [EmailAddress]`). Telefon yazan kullanıcı 400 alırdı. Özellik eklemek bu paketin kapsamı dışında. |
-| S3 | "Mihenk 1.0 · ByGatech · …" | `MİHENK 1.0 · ByGatech`; sürüm **derlemeden** türer | Sürüm sabiti yazılmaz (T-4a). `/meta/surum` oturumsuz okunamıyor. Onu anonime açmak ortam ve migration bilgisini sızdırırdı. İstemci derlemesinin `InformationalVersion`'ı kullanıldı; API sürümüyle eşitliği `Istemci_surumu_API_surumuyle_AYNI` testiyle kilitli. |
+| S3 | "ByGatech 1.0 · ByGatech · …" | `BYGATECH 1.0 · ByGatech`; sürüm **derlemeden** türer | Sürüm sabiti yazılmaz (T-4a). `/meta/surum` oturumsuz okunamıyor. Onu anonime açmak ortam ve migration bilgisini sızdırırdı. İstemci derlemesinin `InformationalVersion`'ı kullanıldı; API sürümüyle eşitliği `Istemci_surumu_API_surumuyle_AYNI` testiyle kilitli. |
 | S4 | "Verileriniz Türkiye’de saklanır." | **Yazılmadı** | Ürün müşterinin kendi sunucusunda kuruluyor (`docs/DEPLOY.md`: yerel MySQL). Verinin nerede saklandığı kuruluma bağlı ve koddan doğrulanamaz. Bu bir KVKK beyanı sayılabilir; mevzuat kuralı gereği kaynaksız yazılmaz. Kurucu teyit ederse `GirisSozlugu.SurumSatiri`'na tek satırla eklenir. |
 | S5 | Parola kutusunda 15 px "Göster" | Aynı, 44 px yükseklikte | Plan 1.9: dokunma hedefi ≥ 44 px. |
 | S6 | Bağlantılar düz `<a>` | Bağlantı görünümlü `<button>`, 44 px kutu | "Parolamı unuttum" için gidilecek sayfa yok. Düğme, doğru yolu (SAHİP/MÜDÜR → Kullanıcılar → Şifre Sıfırla) **görünür yazar**; sahte bir sıfırlama ucu açılmadı (DoD EK md.1). "Yeni dükkân kur" kayıt formunu açar. |
@@ -214,7 +214,7 @@ Kiracı **PAKETS1-e-TEST Kuyumculuk** (`01M37RK83CKBJN3RQ41ATKW2GN`). Sistem ana
 
 | # | Adım | Beklenen | Gerçek |
 |---|---|---|---|
-| 1 | `GET /giris` | 200, Blazor kabuğu; CSP `font-src 'self'` | **200**, `<title>MİHENK</title>` + `blazor.webassembly.js`; CSP `font-src 'self'`, `script-src 'self' 'wasm-unsafe-eval'` |
+| 1 | `GET /giris` | 200, Blazor kabuğu; CSP `font-src 'self'` | **200**, `<title>BYGATECH</title>` + `blazor.webassembly.js`; CSP `font-src 'self'`, `script-src 'self' 'wasm-unsafe-eval'` |
 | 2 | `GET /css/app.css` | 200; kaynakla birebir; S1-e bloğu | **200**, `cmp` **AYNI**, "S1-e — GİRİŞ EKRANI: İKİ PANEL" 1 eşleşme |
 | 3 | `GET /font/manrope-latin.woff2`, `/font/sora-latin.woff2` | 200 woff2 | **200** font/woff2 24576 B · **200** 25240 B |
 | 4 | `GET /api/v1/genel/kisitlar` (oturumsuz; katlanır beyanın kaynağı) | 200, 8 satır | **200**, toplam 8, kaynak `docs/HARIC-LISTESI.md`, ilk `H-1` |

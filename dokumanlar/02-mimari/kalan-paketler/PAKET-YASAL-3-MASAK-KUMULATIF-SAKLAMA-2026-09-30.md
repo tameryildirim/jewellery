@@ -1,7 +1,7 @@
 # PAKET YASAL-3 — MASAK: kümülatifte brüt değer · kimliksiz art arda fiş · saklama otomatiği · yaptırım taraması · eşik teyidi
 
 > Tarih: 2026-09-30 · Hazırlayan: Tamer Bey koordinasyonu (şartname ajanı; KOD YAZILMADI) · Durum: ŞARTNAME — ekip oyu bekliyor
-> Kapattığı çelişkiler (MIHENK-PLAN-RAPORU §3a): **(4)** saklama anonimleştirmesi elle, risk skorlama kapalı, yaptırım taraması yok · **(5)** kümülatifte takasta yalnız fark, hurdada stopaj sonrası net, Peşin Müşteri art arda fiş kümülatifi yok · **(8)** MASAK eşiği (S-2) ve 23/e birincil metni teyitsiz (23/e kısmı YASAL-4'te).
+> Kapattığı çelişkiler (BYGATECH-PLAN-RAPORU §3a): **(4)** saklama anonimleştirmesi elle, risk skorlama kapalı, yaptırım taraması yok · **(5)** kümülatifte takasta yalnız fark, hurdada stopaj sonrası net, Peşin Müşteri art arda fiş kümülatifi yok · **(8)** MASAK eşiği (S-2) ve 23/e birincil metni teyitsiz (23/e kısmı YASAL-4'te).
 > Önkoşul: **YASAL-1** (tarihli eşik) · **ŞUBE-KAPSAM ŞK-A** (`MasakKapisi.GunlukIslemToplam` şubeden bağımsız).
 
 ---

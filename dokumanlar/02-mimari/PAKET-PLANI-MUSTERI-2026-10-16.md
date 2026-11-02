@@ -1,6 +1,6 @@
 # Paket planı — Müşteri görüşmesi + Faturalog eşitliği (16.10.2026)
 
-**Kurucu kararı (16.10):** Müşterinin "böyle olacak" dediği her şey olur. Riskli konularda seçenekler kuyumcunun önüne **liste** olarak gelir, kuyumcu onaylayarak seçer. Mihenk = müşterinin iki programı (Faturalog + diğer program) tek yerde.
+**Kurucu kararı (16.10):** Müşterinin "böyle olacak" dediği her şey olur. Riskli konularda seçenekler kuyumcunun önüne **liste** olarak gelir, kuyumcu onaylayarak seçer. ByGatech = müşterinin iki programı (Faturalog + diğer program) tek yerde.
 Girdi: `dokumanlar/01-gereksinimler/musteri-gorusmesi-2026-10-16.md` (görüşme, EK araştırma, EK-2 Faturalog eşitliği, EK-3 muhalif görüşler) + 3 kod haritası (16.10).
 
 **Her paketin kapısı:** etki analizi → kod → hedefli testler (yeni + etkilenen) → `denetim.sh` (yeni kırmızı yok) → gerçek tarayıcı (1280 + 375, etkileşim) → ekran görüntüsü → yerel git kaydı. Tam test takımı günde bir.

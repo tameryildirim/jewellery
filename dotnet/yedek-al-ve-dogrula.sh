@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═════════════════════════════════════════════════════════════════════════════
-# YEDEK AL VE GERİ YÜKLEMEYİ DOĞRULA — MİHENK (paket T-3 Faz A)
+# YEDEK AL VE GERİ YÜKLEMEYİ DOĞRULA — ByGatech (paket T-3 Faz A)
 #
 # NEDEN: "Yedek alınıyor" bir iddia, "geri yüklenebiliyor" bir kanıttır.
 # Bu betik yedeği alır, ŞİFRELER, dış kopyasını çıkarır, AYRI bir veritabanına

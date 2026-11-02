@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═════════════════════════════════════════════════════════════════════════════
-# YETİM KAYIT VE KİRACI SIZINTISI TARAMASI — MİHENK
+# YETİM KAYIT VE KİRACI SIZINTISI TARAMASI — ByGatech
 #
 # ADR-0009'un ÖN ŞARTI. Üç oy birden (Bertan, Mehmet, Aşkın) bu taramanın
 # yabancı anahtar eklenmeden ÖNCE çalıştırılmasını şart koştu.

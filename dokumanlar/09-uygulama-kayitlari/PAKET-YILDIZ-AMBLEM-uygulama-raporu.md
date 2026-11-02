@@ -26,7 +26,7 @@ Tur 1'in tam süitinde amblemin sabit renkli belirteç bloğu önce YILDIZ-4B b�
 |---|---|---|---|---|
 | 1 | Hareket azaltmada SMIL süpürmesi | Chrome `display:none` ile SMIL'i durdurmaz; tuvalde süpürme sürüyor (ölçüldü: tuval 1,5 s ↔ 6 s karesi %3,1 fark) | Duraklar gövde rengine eşitlenir → süpürme görünmez; sabit kare tuvalin 6 s dinlenme karesiyle **piksel AYNI** (fark 0) | Not § 2a "bütün animasyonlar kapalı" açık hükmü; tuvaldeki davranış tarayıcı açığı |
 | 2 | Gradyan kimliği | `id="ti"`, `id="hale"` | `yildiz-amb-ti`, `yildiz-amb-hale` | Proje kimlik kuralı (`<önek>-<alan>`); görünüm aynı (piksel fark 0) |
-| 3 | Dar masaüstü (1001–1365 px) ve 375 px | Tuvalde yalnız 1440 var | Amblem DEĞİŞMEZ; şeridin sağı daralır (22 AYAR <1366, saat <1241 gizlenir; 1001–1160 boşluk daralır; ≤600 kullanıcı adı sol boşluğu 0) | MİHENK yazısı şeride 124 px ekleyince 1001–1354 px'te şerit taşıyordu; 1440'ta hiçbir kural devreye girmez (tuval birebir) |
+| 3 | Dar masaüstü (1001–1365 px) ve 375 px | Tuvalde yalnız 1440 var | Amblem DEĞİŞMEZ; şeridin sağı daralır (22 AYAR <1366, saat <1241 gizlenir; 1001–1160 boşluk daralır; ≤600 kullanıcı adı sol boşluğu 0) | BYGATECH yazısı şeride 124 px ekleyince 1001–1354 px'te şerit taşıyordu; 1440'ta hiçbir kural devreye girmez (tuval birebir) |
 | 4 | İlk 0,56 s'de N ve K görünür | Tuvalde de aynı (`animation-delay` öncesi harf opak) | Aynen bırakıldı | Birebir kuralı; yalnız sayfa ilk açılışında, döngüde tekrarlamaz |
 | 5 | Belirteç bloğunun yeri | — | `tema-yildiz.css` YILDIZ-1 belirteç bölümü ("/* AMBLEM — belirteçler */" başlığı) | 4A/4B/4C bölüm testleri sabit renk yasaklar; kural gövdeleri dosya sonundaki "/* AMBLEM */" bloğunda |
 
@@ -41,7 +41,7 @@ Araç: `/private/tmp/kuyumcu-serit/YILDIZ-AMBLEM/amblem-kiyas.mjs` (tuval-kiyas.
 | PRO | koyu | 0 | 0 | 0 | 0 | AYNI |
 | PRO | açık | 0 | 0 | 0 | 0 | AYNI |
 
-Ölçü tablosu (her iki sayfada aynı işlev): `a` 64,15.5 164×40 · gap 14px · işaret 40×40 · yazı 110×16 · Inter 13px / 400 / 4.4px / uppercase · harfler "MİHENK" · harf x: 118 / 134.2 / 142.1 / 156.1 / 168.3 / 182.5 · duraklar koyu `rgb(106,106,106) / rgb(154,154,154) / rgb(255,255,255)`, hale `rgb(255,255,255)/0.16` · SMIL değer/keyTimes/dur birebir. Amblem dışı çalışan animasyon: **0** (yalnız amblem hareket eder).
+Ölçü tablosu (her iki sayfada aynı işlev): `a` 64,15.5 164×40 · gap 14px · işaret 40×40 · yazı 110×16 · Inter 13px / 400 / 4.4px / uppercase · harfler "BYGATECH" · harf x: 118 / 134.2 / 142.1 / 156.1 / 168.3 / 182.5 · duraklar koyu `rgb(106,106,106) / rgb(154,154,154) / rgb(255,255,255)`, hale `rgb(255,255,255)/0.16` · SMIL değer/keyTimes/dur birebir. Amblem dışı çalışan animasyon: **0** (yalnız amblem hareket eder).
 
 **Hareket azaltma** (koyu + açık, BASİT + PRO): çalışan animasyon 0 · işaret opaklık 1 · 6 harf opaklık 1 · hale 0 · animateTransform display none · uygulama 1,5 s ↔ 6 s farkı 0 · uygulama ↔ tuval 6 s karesi 0.
 
@@ -82,7 +82,7 @@ Yeni test sayısı: 9 (YildizAmblemTestleri). Önce 11960 → sonra 11969.
 | T2-MA-5 | `--amb-govde #3A3A3A` → `#3B3A3A` (taşınan blok) | YA_06_acik_ve_koyu_durak_renkleri_tuvalle_birebir | cmp AYNI |
 | T2-MA-6 | dar masaüstü eşiği 1365 → 1440 | YA_08_dar_genislik_kurallari_amblemi_degil_sagi_daraltir_1440_dokunulmaz | cmp AYNI |
 | T2-MA-7 | hareket azaltmada hale `opacity: 0` → `1` | YA_07_… | cmp AYNI |
-| T2-MA-8 | tspan sınıfı `h h{k}` → `h{k}` | YA_03_MIHENK_harf_harf_tspan_h0_h5_ve_bosluk_dugumu_yok (tr, en) | cmp AYNI |
+| T2-MA-8 | tspan sınıfı `h h{k}` → `h{k}` | YA_03_BYGATECH_harf_harf_tspan_h0_h5_ve_bosluk_dugumu_yok (tr, en) | cmp AYNI |
 | T2-MA-9 | amblem içine `<img src>` | YA_01_tek_baglanti…, YA_04_ek_dosya_gorsel_ve_betik_yok | cmp AYNI |
 
 Son mutasyondan sonra temiz `dotnet build Kuyumcu.sln`: 0 uyarı 0 hata (tam derleme build9: 0 hata, 6 uyarı — hepsi başka şeritlerin test dosyalarında: SonKalanlarTestleri, KesifP2Testleri, Dogrulayici/SUBEKAPSAMASinirTestleri, Yildiz2Testleri (13:41, bu paketten önce); bu paketin dosyalarında uyarı 0).

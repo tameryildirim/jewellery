@@ -99,7 +99,7 @@ public sealed class BankaBaglantiCekici(
         try
         {
             var kimlik = JsonSerializer.Deserialize<Dictionary<string, string?>>(sifreleyici.Coz(bag.KimlikSifreli)) ?? [];
-            // Boş bırakılan isteğe bağlı alan Mihenk'in kendi kaydından gelir (ör. Garanti uygulama kimliği:
+            // Boş bırakılan isteğe bağlı alan ByGatech'in kendi kaydından gelir (ör. Garanti uygulama kimliği:
             // Banka:GARANTI:clientId — ortam değişkeni Banka__GARANTI__clientId; appsettings'e yazılmaz).
             foreach (var a in tanim.Alanlar.Where(a => !a.Zorunlu && string.IsNullOrWhiteSpace(kimlik.GetValueOrDefault(a.Ad))))
                 if (yapilandirma[$"Banka:{tanim.Kod}:{a.Ad}"] is { Length: > 0 } v) kimlik[a.Ad] = v;

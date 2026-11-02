@@ -11,7 +11,7 @@ namespace Kuyumcu.Tests;
 // PAKET YILDIZ-AMBLEM-3 — Yıldız giriş ekranı tuval Giris4 / Giris4a BİREBİR + oturum öncesi şema hatırlama.
 //   • Hakem KRİTİK-1: amblem tuvalde y=236, uygulamada 166 idi; form etiket/alan düzeni tuvalden farklıydı.
 //   • Hakem KRİTİK-2: oturumsuz /giris hep eski (Platin) girişti — şema oturumdan önce bilinmiyordu.
-//   • Ekip oyu: giriş öncesi şema = BU CİHAZDA en son kullanılan şema (tema.js 'mihenk-son-sema'); hiç giriş
+//   • Ekip oyu: giriş öncesi şema = BU CİHAZDA en son kullanılan şema (tema.js '<marka>-son-sema'); hiç giriş
 //     yoksa varsayılan (Platin); çıkışta anahtar kalır; yalnız görünüm.
 // Görsel eşitliğin ASIL kanıtı başsız Chrome'da tuval ↔ uygulama ölçümüdür (rapor). Bu sınıf sözleşmeyi kilitler.
 // ═════════════════════════════════════════════════════════════════════════════
@@ -83,7 +83,7 @@ public sealed class YildizAmblem3Testleri : BunitContext
     private static string TemaJs() => CssKaynak.YorumsuzKod(CssKaynak.Metin("Kuyumcu.Web", "wwwroot", "js", "tema.js"));
 
     // ── YA3-01) Soğuk açılış → tuval Giris4 düzeni; cihaz önbelleği SORULMAZ (TEMA TEMİZLİĞİ 17.10) ─────────
-    // TEMA TEMİZLİĞİ 17.10: tek şema — 'mihenk-son-sema' önbelleği ve kuyumcuGorunum.sonSema kaldırıldı;
+    // TEMA TEMİZLİĞİ 17.10: tek şema — '-son-sema' önbelleği ve kuyumcuGorunum.sonSema kaldırıldı;
     // data-sema="yildiz" ilk boyamadan önce tema.js'te kalıcı yazılır (YA3_09). Giriş hep Yıldız'dır.
     [Fact]
     public void YA3_01_soguk_acilista_son_sema_yildiz_ise_yildiz_girisi_cizilir()
@@ -197,7 +197,7 @@ public sealed class YildizAmblem3Testleri : BunitContext
     }
 
     // ── YA3-09) tema.js: tek şema ilk boyamadan önce KALICI yazılır; son-şema önbelleği YOK (TEMA TEMİZLİĞİ 17.10) ─────────
-    // ESKİ: YA3_09_tema_js_son_semayi_yazar_okur_ilk_boyamada_uygular — 'mihenk-son-sema' localStorage
+    // ESKİ: YA3_09_tema_js_son_semayi_yazar_okur_ilk_boyamada_uygular — '<marka>-son-sema' localStorage
     // anahtarı ve kuyumcuGorunum.sonSema kaldırıldı. Sözleşme: sema() gelen değere bakmadan "yildiz"
     // yazar, dosya yüklenirken (Blazor'dan önce) çağrılır; hiçbir dosya eski anahtara dokunmaz.
     [Fact]
@@ -215,13 +215,13 @@ public sealed class YildizAmblem3Testleri : BunitContext
         Assert.True(js.IndexOf("sema();", i, StringComparison.Ordinal) > i, "tek şema ilk boyamada uygulanmıyor");
         // Son-şema önbelleği tamamen kalktı: ne tema.js'te ne başka bir istemci dosyasında anahtar/okuyucu var.
         Assert.DoesNotContain("SON_SEMA", js);
-        Assert.DoesNotContain("mihenk-son-sema", js);
+        Assert.DoesNotContain("-son-sema", js);
         Assert.DoesNotContain("sonSema", js);
         foreach (var dosya in Directory.GetFiles(CssKaynak.Yol("Kuyumcu.Web"), "*.*", SearchOption.AllDirectories)
                      .Where(d => (d.EndsWith(".cs") || d.EndsWith(".razor") || d.EndsWith(".js")) && !d.Contains("/bin/") && !d.Contains("/obj/")))
         {
             var metin = File.ReadAllText(dosya);
-            Assert.False(Regex.IsMatch(metin, @"mihenk-son-sema|kuyumcuGorunum\.sonSema"), $"{dosya} kaldırılan son-şema önbelleğine dokunuyor");
+            Assert.False(Regex.IsMatch(metin, @"-son-sema|kuyumcuGorunum\.sonSema"), $"{dosya} kaldırılan son-şema önbelleğine dokunuyor");
         }
     }
 

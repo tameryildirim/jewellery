@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================
-rem  MIHENK (.NET / Blazor) - Durdurma
+rem  ByGatech (.NET / Blazor) - Durdurma
 rem  5000 portunu dinleyen islemi ve acilan pencereyi kapatir.
 rem  MySQL konteyneri calismaya devam eder
 rem  (durdurmak icin: docker compose stop mysql).
@@ -9,7 +9,7 @@ setlocal enabledelayedexpansion
 
 echo.
 echo  ============================================
-echo   MIHENK durduruluyor...
+echo   ByGatech durduruluyor...
 echo  ============================================
 echo.
 
@@ -28,9 +28,9 @@ rem --- start.bat ile acilan pencereyi kapat ---
 taskkill /FI "WINDOWTITLE eq kuyumcu-net*" /T /F >nul 2>nul
 
 if "!KAPATILDI!"=="1" (
-    echo [BILGI] MIHENK durduruldu.
+    echo [BILGI] ByGatech durduruldu.
 ) else (
-    echo [BILGI] Calisan MIHENK islemi bulunamadi.
+    echo [BILGI] Calisan ByGatech islemi bulunamadi.
 )
 
 echo [BILGI] MySQL hala calisiyor. Durdurmak icin: docker compose stop mysql

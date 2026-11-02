@@ -111,14 +111,14 @@ Yanıt (OpenAPI `components/schemas/Transaction/example`, birebir; dış sarmal 
 }
 ```
 
-Mihenk alan eşlemesi:
+ByGatech alan eşlemesi:
 
-| Mihenk | Garanti alanı |
+| ByGatech | Garanti alanı |
 |---|---|
 | Tarih | `activityDate` (muhasebe), saat için `transactionInstanceId` (ISO zaman damgası) |
 | Valör | `valueDate` |
 | Tutar | `amount` (hep pozitif) |
-| Yön | `txnCreditDebitIndicator`: `A` = alacak (hesaba giriş), `B` = borç (çıkış). (SAP kodu A/B'yi ters çeviriyor çünkü banka hesabını muhasebe gözüyle tutuyor; Mihenk için ters çevirme yok.) |
+| Yön | `txnCreditDebitIndicator`: `A` = alacak (hesaba giriş), `B` = borç (çıkış). (SAP kodu A/B'yi ters çeviriyor çünkü banka hesabını muhasebe gözüyle tutuyor; ByGatech için ters çevirme yok.) |
 | Açıklama | `explanation` (+ `DEK.detailText`, `DTS.firmOriginalText`) |
 | Karşı taraf adı | `enrichmentInformation[MUS].corrNameSurnameText` ya da `EFT.senderName/receiverName` |
 | Karşı IBAN | `enrichmentInformation[CORRACNT].corrIBAN` |
@@ -194,9 +194,9 @@ Yanıt alanları (Reference.cs, birebir):
 - `DtoEkstreHesap`: `HesapNo, MusteriNo, MusteriUnvani, SubeKodu, SubeAdi, DovizTipi, AcilisBakiye, CariBakiye, KullanilabilirBakiye, KrediliBankomatLimiti, KrediBakiyesi, SonHareketTarihi, VergiKimlikNumarasi, Hareketler[], HesapTipi, VadeBaslangicTarihi, VadeBitisTarihi, VadeSonuBeklenenBakiye, VadeFaizOrani, VadeSonuOdenecekBrutFaizTutari, VadeSonuOdenecekNetFaizTutari, HesapNoIban, HesapDurumu, Stopaj, VadeSonuVergiTutari, HesapTemditTuru, HesapRumuzu, VadeliHesapVirmanHesapNo`
 - `DtoEkstreHareket`: `IslemTarihi, IslemNo, IslemAdi, Tutar (decimal), BorcAlacak, Aciklama, IslemOncesiBakiye, IslemSonrasıBakiye` (**Türkçe ı ile**), `IslemYeri, IslemKanal, KartNo, IslemKodu, Detaylar, IslemTarihZamani, Id (long)`
 
-Mihenk eşlemesi:
+ByGatech eşlemesi:
 
-| Mihenk | VakıfBank |
+| ByGatech | VakıfBank |
 |---|---|
 | Tarih/saat | `IslemTarihi` (SAP `yyyy-MM-dd HH:mm:ss` gibi kesiyor) |
 | Tutar / yön | `Tutar` (eksi olabilir, SAP işaretini atıyor) + `BorcAlacak` (`A`/`B`) |
@@ -253,7 +253,7 @@ Yanıt: `ns:getTransactionInfoResponse` → `return` (`GetExtendedDetailAccountI
 
 > Dikkat: SAP ABAP deposundaki tip `accountInfos` adını kullanıyor, Reference.cs `accountInfoReturnType`. C# topluluk kodu `accountInfos` adını arıyor. Yerel ad **TEYİTSİZ** → ayrıştırıcı her ikisini de kabul etmeli.
 
-Mihenk eşlemesi: tarih `transactionDate` · valör `valueDate` · tutar `transactionAmount` · yön `debitOrCreditCode` (`A`/`B`; SAP "bankada ters çalışıyor" notuyla çeviriyor, Mihenk açısından **TEYİTSİZ**, pilotla doğrulanmalı) · açıklama `transactionDescription` / `eftReturnDescription` / `vheTrxDescription` · karşı IBAN `opponentIBAN` · karşı VKN/TCKN `opponentTAXNoPIDNo` · karşı banka `opponentBank` · bakiye `transactionBalance` · benzersiz `transactionId` (+ `muhasebeFisNo`).
+ByGatech eşlemesi: tarih `transactionDate` · valör `valueDate` · tutar `transactionAmount` · yön `debitOrCreditCode` (`A`/`B`; SAP "bankada ters çalışıyor" notuyla çeviriyor, ByGatech açısından **TEYİTSİZ**, pilotla doğrulanmalı) · açıklama `transactionDescription` / `eftReturnDescription` / `vheTrxDescription` · karşı IBAN `opponentIBAN` · karşı VKN/TCKN `opponentTAXNoPIDNo` · karşı banka `opponentBank` · bakiye `transactionBalance` · benzersiz `transactionId` (+ `muhasebeFisNo`).
 
 Enpara: önceki belgede Paraşüt'ün "3. Şablon"u QNB ile aynı servis diye geçiyor. Enpara'nın aynı uç noktayı kullandığına dair teknik kaynak **bulunamadı (TEYİTSİZ)**.
 
@@ -298,7 +298,7 @@ Yanıt yapısı (SAP tipinden; eleman sırası C# kodunun indeksleriyle **birebi
 - Döviz kodu TL için `YTL` (SAP kodu `TRY`→`YTL` çeviriyor).
 - Ondalık ayırıcı **virgül** (`Tutar`, `SonBakiye`: SAP `,`→`.` çeviriyor).
 
-Mihenk eşlemesi: tarih `IslemTarihi` (`yyyyMMdd`) + saat `TimeStamp[8..14]` · valör `ValorTarihi` · tutar `Tutar` · yön `TutarBorcAlacak` (`+` alacak, `-` borç) · açıklama `Aciklama` + `DekontAlacakAciklama`/`DekontBorcAciklama` · karşı IBAN: girişte `BorcluIBAN`, çıkışta `AlacakliIBAN` · karşı VKN `VKN` (ayrıca `AmirVKN/TCKN`, `LehdarVKN/TCKN`) · bakiye `SonBakiye` · benzersiz `FisNo` (+ `ReferansNo`).
+ByGatech eşlemesi: tarih `IslemTarihi` (`yyyyMMdd`) + saat `TimeStamp[8..14]` · valör `ValorTarihi` · tutar `Tutar` · yön `TutarBorcAlacak` (`+` alacak, `-` borç) · açıklama `Aciklama` + `DekontAlacakAciklama`/`DekontBorcAciklama` · karşı IBAN: girişte `BorcluIBAN`, çıkışta `AlacakliIBAN` · karşı VKN `VKN` (ayrıca `AmirVKN/TCKN`, `LehdarVKN/TCKN`) · bakiye `SonBakiye` · benzersiz `FisNo` (+ `ReferansNo`).
 
 ---
 
@@ -342,7 +342,7 @@ Yanıt (Reference.cs): `GetAccountStatementResponse/GetAccountStatementResult` �
 - `Value/AccountContract`: `AccountAlias, AccountNumber, AccountSuffix, Balance, BalanceDetails[] (BeginAmount, EndAmount, FEC, TranDate), BranchId, BranchName, CredentialError, Details[], DisplayName, FEC, FECLongName, FECName, IBAN, InternalPeriodEnd, LastRenewedDate, LastTranDate, MaturityEnd, OpenDate, ParentProductCode, ProductCode, TCKNorTaxNumber`
 - `Details/TransactionDetailContract`: `Amount, BranchId, BranchName, BusinessKey (decimal), ChannelId, Credit, CurrentBalance, Debit, Description, FEC, FECName, Iban, ReceiverIdentityNumber, ReceiverName, ResourceCode, SenderIdentityNumber, SenderName, SwiftTransactionCode, SystemDate, TranDate, TranRef, TranType, ValueDate`
 
-Mihenk eşlemesi: tarih `TranDate` · valör `ValueDate` · tutar/yön `Credit` > 0 alacak, `Debit` > 0 borç · açıklama `Description` · karşı ad `SenderName`/`ReceiverName` · karşı TCKN/VKN `SenderIdentityNumber`/`ReceiverIdentityNumber` · karşı IBAN `Iban` (anlamı **TEYİTSİZ**: işlem karşı IBAN'ı mı, hesap IBAN'ı mı) · bakiye `CurrentBalance` · benzersiz `BusinessKey` (+ `TranRef`).
+ByGatech eşlemesi: tarih `TranDate` · valör `ValueDate` · tutar/yön `Credit` > 0 alacak, `Debit` > 0 borç · açıklama `Description` · karşı ad `SenderName`/`ReceiverName` · karşı TCKN/VKN `SenderIdentityNumber`/`ReceiverIdentityNumber` · karşı IBAN `Iban` (anlamı **TEYİTSİZ**: işlem karşı IBAN'ı mı, hesap IBAN'ı mı) · bakiye `CurrentBalance` · benzersiz `BusinessKey` (+ `TranRef`).
 
 ---
 
@@ -381,7 +381,7 @@ SOAP zarfı (Reference.cs'e göre: sarmal ve `pId/pIdPass/pParams` `services.alb
 
 Yanıt (Reference.cs): `getHesapHareketleriResponse/responseData` (`hesapHareketleriResponse`, ayrıca `result{code, message}`) → `hesapHareketleri[]` (`hesapHareketleriHesap`: `musteriNo, hesapNo, hesapIban, hesapTcknVkn, hesapHareket[]`) → `hesapHareket`: `tarih, saat, aciklama, borcAlacak, islemTutari, bakiye, karsiHesapIban, karsiHesapTcknVkn, fisNo, Code, SeqNumber, BranchCode, ChannelCode, islemsonrasibakiye, MuhRefNo`. Hesap listesi (`getHesapDetaylari`): `musteriNo, hesapNo, sube, paraCinsi, hesapTipi, blokeBakiye, cekBakiye, senetBakiye, toplamBakiye, kullanabilirBakiye, sonHareketTarihi, vadeBaslangicTarih, vadeBitisTarihi, vadeSuresi, hesapEsnekVade, esnekVadeGunSayisi, iban, tcknVkn`.
 
-Mihenk eşlemesi: tarih `tarih` + `saat` · tutar `islemTutari` · yön `borcAlacak` · açıklama `aciklama` · karşı IBAN `karsiHesapIban` · karşı VKN/TCKN `karsiHesapTcknVkn` · bakiye `islemsonrasibakiye` · benzersiz `fisNo` / `MuhRefNo`.
+ByGatech eşlemesi: tarih `tarih` + `saat` · tutar `islemTutari` · yön `borcAlacak` · açıklama `aciklama` · karşı IBAN `karsiHesapIban` · karşı VKN/TCKN `karsiHesapTcknVkn` · bakiye `islemsonrasibakiye` · benzersiz `fisNo` / `MuhRefNo`.
 
 ---
 
@@ -493,7 +493,7 @@ XMLEXBAT
                    timeStamp*, ParaBirimi*, Kaynak*, IslemTod*, DekontNo*
 (* = C# kodunda birebir XPath olarak geçen ad)
 ```
-Mihenk eşlemesi: tarih `Tarih` + saat (SAP: `HareketSirano[6..12]`) · tutar `Miktar` (borçta başında `-` var, SAP atıyor) · yön `borcAlacak` (`A`/`B`) · açıklama `Aciklama` (+ `MusteriAciklama`) · karşı IBAN `LehdarhIBAN` (**TEYİTSİZ** yazım) · karşı VKN `KarsiHesapVKN` · bakiye `Bakiye` · benzersiz `HareketSirano` (SAP `[12..18]`'i fiş no sayıyor; yoksa `isl_id`) ya da `DekontNo`.
+ByGatech eşlemesi: tarih `Tarih` + saat (SAP: `HareketSirano[6..12]`) · tutar `Miktar` (borçta başında `-` var, SAP atıyor) · yön `borcAlacak` (`A`/`B`) · açıklama `Aciklama` (+ `MusteriAciklama`) · karşı IBAN `LehdarhIBAN` (**TEYİTSİZ** yazım) · karşı VKN `KarsiHesapVKN` · bakiye `Bakiye` · benzersiz `HareketSirano` (SAP `[12..18]`'i fiş no sayıyor; yoksa `isl_id`) ya da `DekontNo`.
 
 ---
 

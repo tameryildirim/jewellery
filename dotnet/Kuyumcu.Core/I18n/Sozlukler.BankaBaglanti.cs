@@ -29,8 +29,8 @@ public static class BankaBaglantiSozlugu
     public static string SunucuAdresi(string ip, string dil) => En(dil)
         ? $"Tell the bank this server address: {ip}" : $"Bankaya bu sunucu adresini bildirin: {ip}";
     public static string SunucuAdresiYok(string dil) => En(dil)
-        ? "The bank asks for a fixed server address; ask Mihenk support for it."
-        : "Banka sabit sunucu adresi ister; adresi Mihenk destekten isteyin.";
+        ? "The bank asks for a fixed server address; ask " + Marka.Ad + " support for it."
+        : "Banka sabit sunucu adresi ister; adresi " + Marka.Ad + " destekten isteyin.";
     public static string SifreUyari(string dil) => En(dil)
         ? "Enter only the service details the bank gives for this program. Never your internet banking password."
         : "Yalnız bankanın bu program için verdiği servis bilgilerini girin. İnternet şubesi şifrenizi asla girmeyin.";

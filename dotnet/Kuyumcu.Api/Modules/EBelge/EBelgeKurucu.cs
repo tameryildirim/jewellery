@@ -60,7 +60,7 @@ public static class EBelgeKurucu
         var alici = new EBelgeTaraf(f.AliciVergiNo!.Trim(), f.AliciUnvan ?? "", null, f.AliciAdres, null, null,
             string.IsNullOrWhiteSpace(aliciEposta) ? null : aliciEposta.Trim(), string.IsNullOrWhiteSpace(aliciTelefon) ? null : aliciTelefon.Trim());
         var notlar = new List<string>();
-        if (!string.IsNullOrWhiteSpace(f.FaturaNo)) notlar.Add($"Mihenk belge no: {f.FaturaNo}");
+        if (!string.IsNullOrWhiteSpace(f.FaturaNo)) notlar.Add($"{Kuyumcu.Core.I18n.Marka.Ad} belge no: {f.FaturaNo}");
         return new(ettn, senaryo, ozelVar ? "OZELMATRAH" : "SATIS", Zaman.UtcdenYerele(f.Tarih), f.ParaBirimi == "TL" ? "TRY" : f.ParaBirimi,
             string.IsNullOrWhiteSpace(seriOnEki) ? null : seriOnEki.Trim().ToUpperInvariant(), satici, alici,
             senaryo == EBelgeSenaryolari.EFatura ? aliciEtiketi : null, satirlar, ozelVar ? f.OzelMatrahKodu : null, notlar, sablon);

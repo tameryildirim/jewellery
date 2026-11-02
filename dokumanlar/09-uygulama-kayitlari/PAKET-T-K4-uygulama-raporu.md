@@ -7,21 +7,21 @@ Durum beyanı: **BITTI**. Paralel şerit kapısının 7 maddesi sağlandı (§ 1
 Tuval: `tuval/project/Ekranlar.dc.html` ve `Giris.dc.html` (satır içi ölçüler). Orkestratörün `ham/TUVAL-png/Ekranlar.png` ve `Giris.png` görüntüleri Read ile açılıp incelendi. Ayrıca iki tuval başsız Chrome'da `file://` ile açıldı ve ürünle aynı ölçüm betiğiyle ölçüldü (`scratchpad/tk4/olc-geo.js`).
 
 Başlangıçtaki ölçüm (`scratchpad/tk4/png/once-*.png`, `once.txt`):
-- **/ekranlar:** Izgara 5 sütundu, app.css `auto-fill minmax(14rem)` kuralından geliyordu (tuval 8 sütun, 163 px). Marka "MİHENK" yazılıyordu, tuval "Mihenk". Arama kutusu 52 px'ti, tuvalde 44 px. İpucu rengi `--menu-baslik` (#8ea2c4), tuvalde #aab7cf. Alt karo "Vitrin Panosu", tuvalde "Vitrin panosu". Yönetim grubu 900 px'in altına taşıyordu.
-- **/giris:** Marka "MİHENK", tuval "Mihenk". Parola etiketi "Şifre", düğme "Giriş Yap". Etiketler yıldızlı ve 500 ağırlıktı. Her alanda boş üçüncü grid satırı 7 px fazla boşluk açıyordu. Bağlantılar 44 px yer kaplıyordu. Dil seçici ve katlı kısıt beyanı kartın akışındaydı, bu yüzden kart tuvaldeki konumundan 80 px yukarıdaydı (marka y=108, tuvalde 188).
+- **/ekranlar:** Izgara 5 sütundu, app.css `auto-fill minmax(14rem)` kuralından geliyordu (tuval 8 sütun, 163 px). Marka "BYGATECH" yazılıyordu, tuval "ByGatech". Arama kutusu 52 px'ti, tuvalde 44 px. İpucu rengi `--menu-baslik` (#8ea2c4), tuvalde #aab7cf. Alt karo "Vitrin Panosu", tuvalde "Vitrin panosu". Yönetim grubu 900 px'in altına taşıyordu.
+- **/giris:** Marka "BYGATECH", tuval "ByGatech". Parola etiketi "Şifre", düğme "Giriş Yap". Etiketler yıldızlı ve 500 ağırlıktı. Her alanda boş üçüncü grid satırı 7 px fazla boşluk açıyordu. Bağlantılar 44 px yer kaplıyordu. Dil seçici ve katlı kısıt beyanı kartın akışındaydı, bu yüzden kart tuvaldeki konumundan 80 px yukarıdaydı (marka y=108, tuvalde 188).
 
 Spesifikasyonun "mevcut durum" varsayımı tuttu: iki sayfa S1-d ve S1-e'de tuvale göre kurulmuştu. Bu paket onları ölçü ve metin düzeyinde tuvalle birebir hâle getirdi. Yeni özellik yok, kaldırılan özellik de yok.
 
 ## 2. Yapılanlar
 | # | Ekran | Madde | Uygulama |
 |---|---|---|---|
-| 1 | Ekranlar | Marka "Mihenk" | `KabukTuvalSozlugu.MarkaYazimi` (T-K2 ile aynı kaynak; Marka.Ad'dan tr-TR ile türer, ikinci kaynak yok) |
+| 1 | Ekranlar | Marka "ByGatech" | `KabukTuvalSozlugu.MarkaYazimi` (T-K2 ile aynı kaynak; Marka.Ad'dan tr-TR ile türer, ikinci kaynak yok) |
 | 2 | Ekranlar | 8 sütun, 163×68 karo | `tuval-kabuk.css` T-K4 (2): ≥1400 px'te 8 sütun. 1024–1399 px'te 6 sütun: 1280 px'te 8 sütun 143 px karo bırakır ve kısa adlar iki satıra iner (K3). Daha dar ekranda app.css kuralı geçerli. |
 | 3 | Ekranlar | Günlük iş ikonlu satırı | Ekranlar.razor: yalnız Günlük grubunun ızgarası `ekranlar-izgara-ikonlu` sınıfını taşır. CSS (3): karo en az bir sütun genişliğinde; yazı sığmazsa yazıya göre genişler, yazı `nowrap`. |
 | 4 | Ekranlar | Yıldız yer ayırmaz | CSS (4), yalnız `(hover: hover) and (min-width: 769px)` için: karo sağ dolgusu 14 px (tuval); yıldız sağ üst köşede 24 px. Dokunmatik ekranda app.css kuralı değişmedi (yıldız her zaman görünür, yeri ayrılır). |
 | 5 | Ekranlar | Arama 360×44, ipucu #aab7cf | CSS: girdi 24 px satır; `--tk-soluk-acik` (kenar-metin ile menu-baslik yarı yarıya karışır, T-K2 kuralı). İpucu `nowrap`. |
 | 6 | Ekranlar | "Vitrin panosu" | `EkranlarGirisTuvalSozlugu.VitrinPanosu` (TR "Vitrin panosu" / EN "Showcase board") |
-| 7 | Giriş | Marka ve başlık | h1 `MarkaYazimi` ("Mihenk"); `GirisSozlugu.HosGeldin` → "Mihenk’e hoş geldin" / "Welcome to Mihenk"; sürüm satırı "Mihenk 1.0 · ByGatech" |
+| 7 | Giriş | Marka ve başlık | h1 `MarkaYazimi` ("ByGatech"); `GirisSozlugu.HosGeldin` → "ByGatech’e hoş geldin" / "Welcome to ByGatech"; sürüm satırı "ByGatech 1.0 · ByGatech" |
 | 8 | Giriş | "Parola", "Giriş yap" | `EkranlarGirisTuvalSozlugu.Parola` / `GirisYap`; kayıt formundaki parola alanı da "Parola" (aynı ekranda tek ad). PageTitle da aynı anahtarı kullanır. |
 | 9 | Giriş | Etiketler 15/400, yıldızsız | CSS (6)(9): `.zorunlu-isaret` gizli (işaret zaten `aria-hidden`; boş gönderimde alan altı mesaj çıkar, § 10). Etiket ağırlığı 400. |
 | 10 | Giriş | Alan arası 18 px | CSS (9): alt satırı boş alanda grid 2 satır (`.alan:not(:has(> .alan-alt > *))`). Hata gelince 3. satır geri döner. |
@@ -67,7 +67,7 @@ Yeni varlık ya da kayıt türü **yok**. Yeni düğme yok. Mevcut düğmelerin 
   - Razor'da satır içi stil ve düz marka metni yok
 - Güncellenen testler (tuval yazımı gereği; sabit metin yerine sözlükten):
   - `S1dEkranlarTestleri`: marka, Vitrin panosu
-  - `S1eGirisTestleri`: marka, "Mihenk’e hoş geldin", "Giriş yap" TR/EN, sürüm satırı
+  - `S1eGirisTestleri`: marka, "ByGatech’e hoş geldin", "Giriş yap" TR/EN, sürüm satırı
   - `UX1C1EkranTestleri`: düğme metni artık `EkranlarGirisTuvalSozlugu.GirisYap`
 - Filtreli koşum (TK4, S1d, S1e, P30, UX1C1, UX1C4, MobilParite, MarkaAdi, P37c, Ikon, MenuKatlama, RotaBaslik, TK2, TK3, GirdiGocu, Tasarim): **374/374**.
 - Tam süit (`trx-pT-K4/_Mac_2026-09-25_02_45_21.trx`): **5845 toplam · 5845 geçti · 0 başarısız**. Yeni kırmızı yok; tam süitte başka şeride ait kırmızı da yok.
@@ -107,7 +107,7 @@ Görüntüler (`ham/TUVAL-KARSILASTIRMA/`):
 | Bölge | Tuvalde | Bizde | Durum |
 |---|---|---|---|
 | Koyu üst şerit | 0,0,1440×68 | 0,0,1440×68 | AYNI |
-| Marka (34 px kare + "Mihenk" 21/700 Sora) | bağlantı 32,17 124×34 | 32,17 124×34 | AYNI |
+| Marka (34 px kare + "ByGatech" 21/700 Sora) | bağlantı 32,17 124×34 | 32,17 124×34 | AYNI |
 | "Tüm ekranlar" 22/600 Sora | 184,19 145×31 | 184,19 145×31 | AYNI (başlangıçta 194) |
 | Arama kabı / girdi | 365,12 360×44 / 405,22 305×24 | 365,12 360×44 / 405,22 305×24 | AYNI (başlangıçta 52 px) |
 | İpucu 15 px | 1098,24 310×21, #aab7cf | 1098,24 310×21, belirteç karışımı | AYNI (renk ±8, § 3) |
@@ -123,7 +123,7 @@ Görüntüler (`ham/TUVAL-KARSILASTIRMA/`):
 | Bölge | Tuvalde | Bizde | Durum |
 |---|---|---|---|
 | Sütunlar 1fr / 1.1fr | 686 / 754 | 686 / 754 | AYNI |
-| Marka satırı ("Mihenk" 24/700) | 179,192 91×35 | 179,192 91×35 | AYNI (başlangıçta y=108) |
+| Marka satırı ("ByGatech" 24/700) | 179,192 91×35 | 179,192 91×35 | AYNI (başlangıçta y=108) |
 | Başlık 34/700 | 123,262 440×41 | 123,262 440×41 | AYNI |
 | Alt cümle 18 | 123,311 | 123,310 | AYNI (±1) |
 | E-posta etiketi / kutu | 367 / 395 440×54 | 367 / 395 440×54 | AYNI konum; metin GEREKÇELİ FARK |
@@ -164,7 +164,7 @@ Kiracı `PAKETT-K4-TEST Kuyumculuk` (`01M3AVETE6QMNR7ABVTQZWPZFQ`), `demo-tohuml
 | Adım | Beklenen | Gerçek |
 |---|---|---|
 | /giris boş "Giriş yap" (başsız Chrome, gerçek tıklama) | istek yok, alan altı Türkçe mesaj + bant | `alan-hata-giris-eposta: Bu alan zorunludur.` · `alan-hata-giris-sifre: Bu alan zorunludur.` · bant "Form eksik ya da hatalı — işaretli alanları düzeltin." · yol /giris |
-| /giris doğru e-posta + parola, "Giriş yap" | POST /auth/giris 200 → Panel | yol `/`, başlık "Panel — MİHENK", üst bar var |
+| /giris doğru e-posta + parola, "Giriş yap" | POST /auth/giris 200 → Panel | yol `/`, başlık "Panel — BYGATECH", üst bar var |
 | `POST /api/v1/auth/giris` (curl, doğru) | 200 | 200; gövde anahtarları `accessToken, kullanici, refreshToken`; rol SAHIP (jeton yazılmadı) |
 | Yanlış parola | 401 | 401 `{"message":"E-posta veya şifre hatalı",…}` |
 | Telefon biçimli kullanıcı adı | 400 (e-posta etiketi gerekçesi) | 400 `{"alanlar":{"email":["Geçerli bir e-posta adresi giriniz"]}}` |
@@ -203,7 +203,7 @@ Ekranlar.razor, tuval-kabuk.css, GirisSozlugu.cs ve EkranlarSozlugu.cs git'te za
 ## 13. Koşul karşılama
 | Koşul | Durum | Kanıt |
 |---|---|---|
-| Ekranlar: koyu şerit (Mihenk, Tüm ekranlar, arama yer tutucusu, sağda ipucu) | SAĞLANDI | § 8, TK4_01/13, S1d |
+| Ekranlar: koyu şerit (ByGatech, Tüm ekranlar, arama yer tutucusu, sağda ipucu) | SAĞLANDI | § 8, TK4_01/13, S1d |
 | Grup başlıkları BÜYÜK HARF, karo genişlik/yükseklik/ikon kuralı | SAĞLANDI (Sipariş karosu K3 gerekçeli) | § 8, TK4_03/10/11 |
 | Alt küçük karolar Kılavuz · Ayarlar · Vitrin panosu | SAĞLANDI | § 8, TK4_02 |
 | Kenar çubuğu yok, geri dönüş yolu üst şeritte | SAĞLANDI | marka bağlantısı `/`, aria "Panele dön" (S1d testi) |

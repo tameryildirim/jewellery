@@ -1,4 +1,4 @@
-# Mihenk otomasyon mimarisi — bağımsız tasarım (Fable 5.1, 17.10.2026)
+# ByGatech otomasyon mimarisi — bağımsız tasarım (Fable 5.1, 17.10.2026)
 
 > Salt okuma turu: hiçbir dosya değişmedi, sunucu başlatılmadı. Okunanlar: araştırma belgesi (tamamı), müşteri görüşmesi + EK'ler, paket planı, ADR-0004/0012/0018, `HareketFabrikasi`, `OdemeKalemFabrikasi`, `GelenOdemeModulu`, `CariEslestirici` (+`DedupeAnahtari`), `BankaModulu` (`HareketEkleIc`, `FaturayaDonustur`, `DekontEslestir` başlığı), `EkstreModulu`/`BankaEkstresi` başlıkları, `StornoServisi` başlığı ve açık metotları, `MasakKapisi` (`GunlukIslemToplam`), `YasalParametre`, `UrunKuraliModulu`, `VadeKapisi.AcikBorclar`, `IZamanlanmisIs`, `IBildirimKanali`, `IKurAdaptoru`, `SatisBelgeAyari`, `BankaHareket`/`Fatura`/`CariBakiye`/`Bildirim` varlıkları, `GelenOdemeKarari.razor`. Mevcut "Karar Merkezi" taslağı **en son** okundu (§ 12).
 > İşaret: **[D]** = koddan/belgeden doğrulanmadı, tasarım varsayımı değil açık soru.
@@ -167,7 +167,7 @@ Ham satır → `ekstre_satirlari` sahnesi (§ 2.4) → `EKSTRE_ONAY` kararı →
 
 Risk (6493 md.28, araştırma § 6.8: web servis yolunun lisans gerektirmediğini söyleyen kaynak yok) — mimari karşılığı:
 1. **Hukuki kapı yazılımın içinde:** `WEBSERVIS_*` sağlayıcıları `Yetenekler.HukukiOnayGerekli=true`; etkinleştirme iki anahtar ister: (a) sistem düzeyinde `BANKA_WEBSERVIS_IZNI` yasal-parametre satırı (dayanak = avukat görüşü tarih/no; `YasalParametre` tablosu kiracı-üstü, append-only, sistem anahtarlı — doğrulandı), (b) kiracı düzeyinde `kiraci_beyanlari` kaydı: "verileri kendi adıma, kendi bankamla imzaladığım sözleşmeyle çektiriyorum" — zaman damgalı, kullanıcı kimlikli. İkisi yoksa sağlayıcı 403.
-2. **Teknik hizmet sınırı kodla kanıtlanır (md.12/2-ğ savunması):** salt okur; ödeme başlatma ucu yok; fon tutulmaz; kimlik bilgisi kiracıya ait ve kiracı başına şifreli; Mihenk kendi adına toplu çekim yapmaz (her çekim kiracı kapsamında `SistemKapsami.Kiraci`).
+2. **Teknik hizmet sınırı kodla kanıtlanır (md.12/2-ğ savunması):** salt okur; ödeme başlatma ucu yok; fon tutulmaz; kimlik bilgisi kiracıya ait ve kiracı başına şifreli; ByGatech kendi adına toplu çekim yapmaz (her çekim kiracı kapsamında `SistemKapsami.Kiraci`).
 3. **Hassas veri yasağı:** internet bankacılığı parolası/OTP alanı **yoktur** (TCMB Yön. md.61/2 ruhu); yalnız kurumsal web servis kullanıcısı/sertifika.
 4. **Değiştirilebilirlik:** lisanslı HBH aracısına geçiş = yeni sağlayıcı sınıfı; akış, sahne, kararlar değişmez.
 5. **Ürün bloke olmaz:** ilk teslim `SIMULASYON` (demo "havale gönder", banka referansı üretir) + `CSV` (var). Müşteri 16.10: "şimdilik simülasyon yeterli".

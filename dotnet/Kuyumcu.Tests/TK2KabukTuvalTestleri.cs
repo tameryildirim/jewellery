@@ -91,10 +91,13 @@ public sealed class TK2KabukTuvalTestleri : BunitContext
     // ── (1) Marka ────────────────────────────────────────────────────────────
 
     [Fact]
-    public void TK2_Marka_yazimi_Mihenk_ve_TEK_KAYNAKTAN_turetilir()
+    public void TK2_Marka_yazimi_ByGatech_ve_TEK_KAYNAKTAN_okunur()
     {
-        Assert.Equal("Mihenk", KabukTuvalSozlugu.MarkaYazimi);
-        Assert.Equal(Marka.Ad, KabukTuvalSozlugu.MarkaYazimi.ToUpper(new System.Globalization.CultureInfo("tr-TR")));
+        Assert.Equal("ByGatech", KabukTuvalSozlugu.MarkaYazimi);
+        Assert.Equal(Marka.Ad, KabukTuvalSozlugu.MarkaYazimi);
+        // 02.11: marka kendi yazımını taşır; amblem büyük harfi tr-TR ile türetir ("BYGATECH", 8 harf).
+        Assert.Equal("BYGATECH", KabukTuvalSozlugu.MarkaYazimi.ToUpper(new System.Globalization.CultureInfo("tr-TR")));
+        Assert.Equal(8, Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemHarfleri.Length);
     }
 
     // ── Bildirimler hapı ─────────────────────────────────────────────────────

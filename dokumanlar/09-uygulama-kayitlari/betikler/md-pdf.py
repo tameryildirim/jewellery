@@ -149,7 +149,7 @@ def uret(md_yolu, pdf_yolu):
         kanvas.saveState()
         kanvas.setFont("Govde", 7.5)
         kanvas.setFillColor(colors.HexColor("#8a94a6"))
-        kanvas.drawString(16 * mm, 10 * mm, "Mihenk · ByGatech A.Ş.")
+        kanvas.drawString(16 * mm, 10 * mm, "ByGatech · ByGatech A.Ş.")
         kanvas.drawRightString(A4[0] - 16 * mm, 10 * mm, "Sayfa %d" % kanvas.getPageNumber())
         kanvas.restoreState()
 

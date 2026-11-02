@@ -742,7 +742,7 @@ public sealed class Yildiz4CTestleri : BunitContext
     [Fact]
     public void Y4C_45_css_ust_serit_pencere_tepesine_yapisik_zemin_ortulu()
     {
-        // Kurucu 26.10: MİHENK işareti ve menü sayfa kayınca yerinde durur (tüm ekranlar) — şerit sticky/top 0, zemin kabukla aynı
+        // Kurucu 26.10: ByGatech işareti ve menü sayfa kayınca yerinde durur (tüm ekranlar) — şerit sticky/top 0, zemin kabukla aynı
         // (altından akan içerik görünmez); katman pencere (50) ve çekmece (40) altında kalır.
         var k = Kural(Css(), "html:root[data-sema=\"yildiz\"] .yildiz-ust");
         Assert.Contains("position: sticky;", k);

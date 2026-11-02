@@ -6,7 +6,7 @@
 //   • Yeni sürüm: install'da yeni önbellek kurulur; sayfa "HEMEN_DEVRAL" mesajı yollayınca skipWaiting.
 self.importScripts('./service-worker-assets.js');
 
-const ONEK = 'mihenk-kabuk-';
+const ONEK = 'bygatech-kabuk-';
 const ONBELLEK = ONEK + self.assetsManifest.version;
 const UZANTILAR = [/\.dll$/, /\.pdb$/, /\.wasm$/, /\.html$/, /\.js$/, /\.css$/, /\.json$/, /\.woff2?$/, /\.png$/, /\.svg$/, /\.ico$/];
 const DISLA = [/^service-worker\.js$/, /^service-worker\.published\.js$/, /appsettings.*\.json$/];
@@ -26,7 +26,8 @@ self.addEventListener('install', function (e) {
 self.addEventListener('activate', function (e) {
     e.waitUntil((async function () {
         const adlar = await caches.keys();
-        await Promise.all(adlar.filter(function (a) { return a.startsWith(ONEK) && a !== ONBELLEK; }).map(function (a) { return caches.delete(a); }));
+        // 02.11 ad değişikliği: eski önekli (önceki ürün adı) kabuk önbellekleri de temizlenir — bu SW kökenin tek sahibi, kendi önbelleği dışındakini tutmaz.
+        await Promise.all(adlar.filter(function (a) { return a !== ONBELLEK; }).map(function (a) { return caches.delete(a); }));
         await self.clients.claim();
     })());
 });

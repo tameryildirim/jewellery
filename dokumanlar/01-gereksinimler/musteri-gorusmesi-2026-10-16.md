@@ -5,7 +5,7 @@ Yerel Whisper (large-v3-turbo) ile yazıya çevrildi; ham döküm depoya ALINMAD
 Kişisel sohbetler (kombi/apartman ısınması ~31:30–34:30, aile, kişisel para transferleri) ayıklandı.
 
 **Katılımcılar:** Kurucu (demo yapan) + kuyumcu işletmesi sahipleri/çalışanları (Osman, Oğuz adları geçiyor; kim olduğu kayıttan kesin değil).
-Ekranda Mihenk demo: Tezgâh satış, ürünler, kur, fiş/fatura.
+Ekranda ByGatech demo: Tezgâh satış, ürünler, kur, fiş/fatura.
 
 > ⚠ Ses tanıma hataları var (ör. "Kuwait" = Kuveyt Türk, "Kezbankası" = Merkez Bankası, "milyen" = milyem).
 > **[?]** işaretli maddeler kayıttan net anlaşılmadı — müşteriye teyit ettirilmeli.
@@ -76,7 +76,7 @@ Müşterinin anlattığı uygulama (**mevzuat teyidi gerekli**, KDV Kanunu kuyum
 
 ---
 
-## Mihenk'e etkisi — ilk triyaj (Tamer Bey)
+## ByGatech'e etkisi — ilk triyaj (Tamer Bey)
 
 | # | Konu | Mevcut durum | Öncelik |
 |---|---|---|---|
@@ -103,7 +103,7 @@ Kesinlik: **K** birincil metin okundu · **O** kısmen/ikincil · **D** doğrula
 - **Kuyumcu tabanı var, kuyumcu özelliği yok:** sitede 11 kuyumcu logosu; has/milyem, özel matrah, sarrafiye, hurda/gider pusulası, ÖKC hiçbiri anlatılmıyor. **O**
 - **Fiyat:** kontör bazlı, kontör başı 1,50–2,50 ₺, kurulum ücretsiz, 10 yıl saklama. **O** — https://faturalog.com/fiyatlandirma
 - **Belirsiz:** ticari unvan, GİB özel entegratör listesinde olup olmadığı, mobil uygulama (mağaza bağlantıları boş).
-- **Çıkarım:** Müşterinin "para düşünce ekranda görünsün" + "fişsiz direkt fatura" istekleri Faturalog alışkanlığından geliyor. Mihenk bu akışı **eşit** sunmazsa geçiş gerekçesi zayıf; üstüne has stok + özel matrah + sarrafiye ile **fark** yaratır. Rakip konumlandırması: "Faturalog'daki banka→fatura hızı + kuyumcunun bütün işi tek yerde."
+- **Çıkarım:** Müşterinin "para düşünce ekranda görünsün" + "fişsiz direkt fatura" istekleri Faturalog alışkanlığından geliyor. ByGatech bu akışı **eşit** sunmazsa geçiş gerekçesi zayıf; üstüne has stok + özel matrah + sarrafiye ile **fark** yaratır. Rakip konumlandırması: "Faturalog'daki banka→fatura hızı + kuyumcunun bütün işi tek yerde."
 
 ## B. Madde 1 — Fiyat kaynağı (tamamlandı)
 
@@ -131,7 +131,7 @@ Kesinlik: **K** birincil metin okundu · **O** kısmen/ikincil · **D** doğrula
 - **"Binde 1 / binde 15" sabit oranı mevzuatta yok.** Gerçekte bu, matrahın (işçilik + marj) satış bedeline oranının **sonucu** olabilir; hesap girdisi olarak kodlanırsa mevzuata aykırı matrah üretir. 150.000 ₺'de 150 ₺ matrah (%0,1) denetimde soru doğurabilecek kadar düşük. **K (hüküm yok) / D (yorum)**
 - **Besleme önerisi:** Müşterinin asıl ihtiyacı (hızlı, ürün başına girilmeyen, otomatik matrah) korunur ama doğru hesapla: matrah satırda **otomatik** = satış − has bedeli; "binde X" yalnız **bilgi/uyarı** göstergesi ("bu satışta matrah %0,1 — denetim riski"). Borsa kapanış fiyatı günlük tablosu gerekir.
 - Pırlanta/taşlı ürün: taş bedeli matrahta kalır (O — özelge teyidi). Fatura tipi "ÖZELMATRAH"/işlem kodu 805 (O — GİB teknik kılavuzdan teyit).
-- **Mevcut kodla karşılaştırma gerekli:** Mihenk'te KDV türü KUYUM var; matrahın borsa kapanışıyla mı yoksa sistem has kuruyla mı hesaplandığı doğrulanacak.
+- **Mevcut kodla karşılaştırma gerekli:** ByGatech'te KDV türü KUYUM var; matrahın borsa kapanışıyla mı yoksa sistem has kuruyla mı hesaplandığı doğrulanacak.
 
 ## E. Madde 5 — Fatura eşiği ve fişsiz e-Arşiv (tamamlandı)
 
@@ -145,8 +145,8 @@ Kesinlik: **K** birincil metin okundu · **O** kısmen/ikincil · **D** doğrula
 - **Müşterinin "evrak götürüyoruz" dediği yol doğrulandı:** bankanın kurumsal web servisi + şubede imzalanan başvuru/talimat formu (Paraşüt'ün yöntemi): form → banka kullanıcı/şifre (bazılarında WSDL, IP tanımı) → programa girilir → "gerçek zamana yakın" hareket. Bazı bankalar ücret alır (İş Bankası hesap başı yıllık ~295 ₺ + BSMV — tarih belirsiz). **K** — https://www.parasut.com/kullanim-kilavuzu/banka-hesaplarinin-baglanmasi
 - **API portalları:** Kuveyt Türk API Market (OAuth onay), Garanti BBVA (sandbox → üretim), İş Bankası (sandbox, hesap hareketleri). Vakıf/Ziraat/Albaraka resmi portalı bulunamadı. **O/D**
 - **Webhook yok görünüyor** → periyodik sorgu (1–5 dk) + ekranda canlı yenileme. MT940/Excel ekstre yedek yol. **O**
-- **Hukuki uyarı:** müşterinin kendi hesabını kendi başvurusuyla çekmek muhtemelen lisans gerektirmez; Mihenk'in birçok müşteri adına toplaması TCMB "Hesap Bilgisi Hizmeti" iznine girebilir → avukat teyidi. **D**
-- **Yol:** (1) sağlayıcı soyutlaması + sahte sağlayıcı (demo "havale gönder" düğmesi, anında düşer, banka referans no = tekilleştirme); (2) eşleştirme motoru IBAN → VKN/TCKN → açıklama kodu → belirsizse onay kuyruğu (otomatik kayıt yok); (3) ilk gerçek bağlantı müşterinin bankası; Mihenk içinden basılabilen talimat formu, kimlik bilgileri şifreli.
+- **Hukuki uyarı:** müşterinin kendi hesabını kendi başvurusuyla çekmek muhtemelen lisans gerektirmez; ByGatech'in birçok müşteri adına toplaması TCMB "Hesap Bilgisi Hizmeti" iznine girebilir → avukat teyidi. **D**
+- **Yol:** (1) sağlayıcı soyutlaması + sahte sağlayıcı (demo "havale gönder" düğmesi, anında düşer, banka referans no = tekilleştirme); (2) eşleştirme motoru IBAN → VKN/TCKN → açıklama kodu → belirsizse onay kuyruğu (otomatik kayıt yok); (3) ilk gerçek bağlantı müşterinin bankası; ByGatech içinden basılabilen talimat formu, kimlik bilgileri şifreli.
 
 ## G. Madde 7 — İşçilik faturası (tamamlandı)
 
@@ -185,7 +185,7 @@ Kaynak raporlarının tamamı bu oturumun araştırma ajanlarından; ham notlar 
 
 ⚠ Faturalog'un özellik listesi yalnız üreticinin pazarlama sitesinden; "tüm özellikler" ancak **demo hesabı veya müşterinin ekranından** kesinleşir (Claude hesap açamaz — kurucu/müşteri talep eder).
 
-| # | Faturalog özelliği (üretici beyanı) | Mihenk bugün | Yapılacak |
+| # | Faturalog özelliği (üretici beyanı) | ByGatech bugün | Yapılacak |
 |---|---|---|---|
 | F1 | Açık bankacılık: çok banka, TL+döviz+kredi kartı hesapları tek panel | Banka modülü var, hareketler **elle** | Sağlayıcı soyutlaması + simülasyon → banka web servisi/API (EK § F) |
 | F2 | Gelen ödeme → cari eşleşir → **otomatik fatura** ("saniyeler içinde", kurala göre) | `hareketler/{id}/eslestir` + `faturaya-donustur` VAR, **elle tetikli** | Eşleştirme motoru + kural ("bu IBAN'dan gelen → e-Arşiv önerisi"), onay kuyruğu |
@@ -193,14 +193,14 @@ Kaynak raporlarının tamamı bu oturumun araştırma ajanlarından; ham notlar 
 | F4 | e-Fatura **giden + gelen** yönetimi | Fatura modülü (giden, fişten fatura, özel matrah) var; gelen fatura kayıtları var; **GİB'e gönderim/alma YOK** | Entegratör (ayrı oturum) |
 | F5 | Alıcı e-Fatura mükellefi mi → otomatik **e-Fatura/e-Arşiv ayrımı** | Yok | Entegratör mükellef sorgusu |
 | F6 | **Toplu fatura** (yüzlerce siparişi tek tuşla) | Yok | Gün sonu toplu e-Arşiv (fişlerden) — kuyumcu için anlamlı biçimi bu |
-| F7 | Ürün yönetimi | Var (kuyumcuya özgü: ayar, has, milyem) | — (Mihenk üstün) |
+| F7 | Ürün yönetimi | Var (kuyumcuya özgü: ayar, has, milyem) | — (ByGatech üstün) |
 | F8 | 10 yıl saklama | Kayıtlar silinmez (append-only defter); belge arşiv süresi tanımı **yok** | Saklama politikası belgesi + entegratör arşivi |
 | F9 | Muhasebe programı entegrasyonu (Luca, Zirve — müşteri yorumu) | **YOK** — genel CSV dışa aktarım var (`DisaAktarimModulu`, fatura + muhasebe fişi); Luca/Zirve biçimi yok (önceki "2 dosyada geçiyor" notu YANLIŞTI: o dosyalar marka görseli "logo") | Luca/Zirve içe aktarım biçimi (mali müşavirden örnek dosya) |
 | F10 | Kontör bazlı fiyat (1,50–2,50 ₺/kontör), kurulum ücretsiz, referans bonusu | Fiyat modeli yok (F-8 birim ekonomi belgesi var) | Mustafa (FinOps): fatura maliyeti + kontör modeli kıyası |
 | F11 | ISO 27001/9001 rozeti, 7/24 destek | Yok | Satış/kurumsal karar |
 | F12 | Mobil uygulama (bağlantılar boş — yayında mı belirsiz) | Web, telefonda Tezgâh düzeni sunum sonrası listesinde | Telefon düzeni (PWA) |
 
-**Mihenk'te olup Faturalog'da görünmeyen (fark):** has/milyem stok, KDV 23/e özel matrah motoru, sarrafiye, hurda alış + gider pusulası, emanet, MASAK kimlik tespiti, tezgâh satış, kasa/POS, kur.
+**ByGatech'te olup Faturalog'da görünmeyen (fark):** has/milyem stok, KDV 23/e özel matrah motoru, sarrafiye, hurda alış + gider pusulası, emanet, MASAK kimlik tespiti, tezgâh satış, kasa/POS, kur.
 
 ---
 
@@ -210,7 +210,7 @@ Amaç: kayıttaki her talebin **zayıf yanını** önceden görmek. Talepler red
 
 1. **"Harem'den çek, daha ucuz" →** Daha ucuz kaynak, kuyumcunun **satış** fiyatını düşürür = marj kaybı. Kuyumcunun maliyeti toptancısının fiyatıdır, Harem'in perakende ekranı değil. Ayrıca tek kaynağa bağımlılık + lisanssız veri riski (resmî API yok). → Kaynak "referans", satış fiyatı kuyumcunun kuralı olmalı.
 2. **"Tek satış milyemi (925) yeter" →** İşçiliği gömer: KDV matrahı ve kâr raporu işçiliği ayrı ister. Milyem işçilik altın yükselince kendiliğinden pahalanır — müşteri TL ile kıyaslar ("geçen ay işçilik 1.500 idi"). Adet ürünlerde (çeyrek) milyem anlamsız. → İkisi birden: kuyumcu tek sayı girer, sistem ayrıştırır; adet ürünlerde TL.
-3. **"Devlet anlık kuru bilemez, işçilik faturası gereksiz" (kayıttaki taraflardan biri) →** Mevzuat bunu zaten kapatmış: has bedeli **önceki işgünü borsa kapanışıyla** sabittir (GUT), yani "anlık kur" savunması geçmez. İncelemede has stok sayımı/randıman farkı re'sen tarhiyata gidebilir. → Mihenk belgesiz işçiliği **kolaylaştırmamalı**; aksi yazılımı vergi kaçırma aracına çevirir (bizim için hukuki risk).
+3. **"Devlet anlık kuru bilemez, işçilik faturası gereksiz" (kayıttaki taraflardan biri) →** Mevzuat bunu zaten kapatmış: has bedeli **önceki işgünü borsa kapanışıyla** sabittir (GUT), yani "anlık kur" savunması geçmez. İncelemede has stok sayımı/randıman farkı re'sen tarhiyata gidebilir. → ByGatech belgesiz işçiliği **kolaylaştırmamalı**; aksi yazılımı vergi kaçırma aracına çevirir (bizim için hukuki risk).
 4. **"Binde 1 KDV oranını ürüne gireyim" →** Sabit oran mevzuatta yok; matrahı yapay düşürür, denetimde "has bedeli şişirilmiş" sorusu doğar. → Oran yalnız uyarı göstergesi.
 5. **"Fiş yok, her satışa doğrudan e-Arşiv" →**
    - **Maliyet:** günde ~1.000 işlem × 1,50–2,50 ₺ kontör = **günde 1.500–2.500 ₺, ayda 45–75 bin ₺** (Faturalog fiyatıyla). Fiş (ÖKC) ise bedava.
@@ -220,7 +220,7 @@ Amaç: kayıttaki her talebin **zayıf yanını** önceden görmek. Talepler red
 6. **"Para düşünce ekrana gelsin" (banka) →** Banka ücretleri (hesap başı), şifrelerin bizde saklanması (güvenlik yükü), yanlış eşleştirme ile paranın yanlış cariye yazılması, çok müşteri adına toplamada TCMB lisansı. Ayrıca her personelin tüm banka akışını görmesi istenmeyebilir. → Rol bazlı görünürlük + onaylı eşleştirme.
 7. **"Ayarlar'da ad kuralı: adında bilezik geçiyorsa…" →** Ad kuralı kırılgandır ("bilezik kutusu", "Bilezik-Set", yazım farkı). → Kategori/çeşit alanı birincil, ad kuralı yalnız öneri; kural önizlemesi zorunlu.
 8. **"Eski çeyrek ayrı ürün" →** Ağırlık/milyem aynı; ayrı ürün stok karmaşası yaratabilir. Ama piyasa fiyatı farklı → ayrı **fiyat kalemi** şart, ayrı stok kartı tartışılır.
-9. **"Faturalog'un tüm özellikleri" →** Hepsini kopyalamak Mihenk'in "sade ve şık / zorunlu önce" ilkesini bozar (pazaryeri toplu faturası, "AI" cari açma kuyumcunun çoğuna gereksiz). → Kuyumcunun **kullandığı** Faturalog akışlarını eşitle (banka→fatura, mükellef sorgusu, gün sonu toplu), gerisini ekleme.
+9. **"Faturalog'un tüm özellikleri" →** Hepsini kopyalamak ByGatech'in "sade ve şık / zorunlu önce" ilkesini bozar (pazaryeri toplu faturası, "AI" cari açma kuyumcunun çoğuna gereksiz). → Kuyumcunun **kullandığı** Faturalog akışlarını eşitle (banka→fatura, mükellef sorgusu, gün sonu toplu), gerisini ekleme.
 10. **Kaynak kısıtı (yöntem itirazı):** Bu görüşme tek işletmenin sözü; Faturalog bilgisi tek kaynaklı; mevzuat yorumları mali müşavirsiz. Tek müşteriye göre ürün şekillendirmek riskli → 2–3 kuyumcuyla teyit.
 
 ---

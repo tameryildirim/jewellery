@@ -1,7 +1,7 @@
 # PAKET YASAL-2 — Tevsik: taksitte her ödeme banka (TB-15) · 5 iş günü kendiliğinden bildirim (TB-16)
 
 > Tarih: 2026-09-30 · Hazırlayan: Tamer Bey koordinasyonu (şartname ajanı; KOD YAZILMADI) · Durum: ŞARTNAME — ekip oyu bekliyor
-> Kapattığı kalemler: **TB-15** (`dokumanlar/08-degerlendirme/teknik-borc-envanteri.md:265-273`, `mevzuat-gereksinimleri.md:55` V-03b) · **TB-16** (`teknik-borc-envanteri.md:277-283`, `mevzuat-gereksinimleri.md:57` V-03d) · MIHENK-PLAN-RAPORU §4c.
+> Kapattığı kalemler: **TB-15** (`dokumanlar/08-degerlendirme/teknik-borc-envanteri.md:265-273`, `mevzuat-gereksinimleri.md:55` V-03b) · **TB-16** (`teknik-borc-envanteri.md:277-283`, `mevzuat-gereksinimleri.md:57` V-03d) · BYGATECH-PLAN-RAPORU §4c.
 > Önkoşul: **YASAL-1** (tarihli had) · **ŞUBE-KAPSAM ŞK-A** (kümülatifin şubeden bağımsız okunması). PAKET-06 Faz A (bildirim + iş çatısı) ağaçta (`Modules/Isler/`).
 
 ---

@@ -126,7 +126,7 @@ public sealed class QnbBaglayicisi : IBankaBaglayicisi
                 var tutar = Sayi.Oku(Al(h, "transactionAmount"));
                 var ba = Al(h, "debitOrCreditCode");
                 if (tarih is null || tutar is null || ba is not ("A" or "B")) continue;
-                // Yön: A = alacak (hesaba giriş). SAP'ın ters çevirmesi Mihenk için TEYİTSİZ → pilotla doğrulanacak.
+                // Yön: A = alacak (hesaba giriş). SAP'ın ters çevirmesi ByGatech için TEYİTSİZ → pilotla doğrulanacak.
                 var t = HareketTemizleyici.Temizle(KodSabit, Al(h, "transactionId") ?? Al(h, "muhasebeFisNo"), tarih.Value, ba == "A", tutar.Value,
                     null, Al(h, "opponentIBAN"), Al(h, "opponentTAXNoPIDNo"),
                     Al(h, "transactionDescription") ?? Al(h, "eftReturnDescription") ?? Al(h, "vheTrxDescription"));

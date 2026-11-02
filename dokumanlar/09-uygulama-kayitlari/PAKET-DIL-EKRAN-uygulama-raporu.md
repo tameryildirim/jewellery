@@ -50,7 +50,7 @@ Not (kendi hatam, kayda): ilk 10 koşumluk matris tarayıcı önbelleğindeki ES
 | TR BASİT 1440 | K8_jargon /isletme 1, K3_kirik /ekranlar 2 ("Gider ve para aktarımı" TR adı; tur öncesinden var) |
 | TR PRO 1440 | K12_ezik /cariler 1, /urunler 1, K3_kirik /ekranlar 2 (aynı önceden var) |
 
-Sınıflama — **veri / bilinçli** (çevrilmez): kullanıcı/cari/ürün/şube adları ("Kemal Ardıç", "22 Ayar Burma Bilezik" ürün ADI), "Peşin Müşteri" (sistem carisi), "Merkez Şube" (kayıtta yazılı varsayılan şube adı), "İstanbul" (hava durumu şehri), "Altınkaynak" (kur kaynağı marka adı), "Türkçe" (dilin kendi adı), "MİHENK" (marka), destek künye satırı, **PRO denetim izi `title` ipuçları** ("liste: 25 kayıt · islem-defteri" — ham defter kaydı, denetçi için BİLİNÇLİ ham; ekranda görünen metin çevrilidir).
+Sınıflama — **veri / bilinçli** (çevrilmez): kullanıcı/cari/ürün/şube adları ("Kemal Ardıç", "22 Ayar Burma Bilezik" ürün ADI), "Peşin Müşteri" (sistem carisi), "Merkez Şube" (kayıtta yazılı varsayılan şube adı), "İstanbul" (hava durumu şehri), "Altınkaynak" (kur kaynağı marka adı), "Türkçe" (dilin kendi adı), "ByGatech" (marka), destek künye satırı, **PRO denetim izi `title` ipuçları** ("liste: 25 kayıt · islem-defteri" — ham defter kaydı, denetçi için BİLİNÇLİ ham; ekranda görünen metin çevrilidir).
 
 ## Ekran görüntüleri (Read 4/4): `/private/tmp/kuyumcu-serit/DIL-EKRAN/t2/foto/`
 1. EN Tüm ekranlar BASİT 1440 (`en-_ekranlar-BASIT-aydinlik-1440.png`): 8 sütun, 39 karo, "Cheques & notes", "Expense vouchers", "Overdue tracking", "Transaction ledger" tek satır.

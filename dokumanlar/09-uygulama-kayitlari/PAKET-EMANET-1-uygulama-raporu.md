@@ -1526,7 +1526,7 @@ Hepsi `ham/TUVAL-KARSILASTIRMA/` altında:
 
 | Bölge | Tuvalde | Bizde | Durum |
 |---|---|---|---|
-| Kabuk (menü, üst bar) | Mihenk kabuğu | Aynı kabuk (KATMAN/ORTAK şeritleri) | AYNI |
+| Kabuk (menü, üst bar) | ByGatech kabuğu | Aynı kabuk (KATMAN/ORTAK şeritleri) | AYNI |
 | Sayfa başlığı ve açıklama | Başlık, tek soluk cümle | "Emanet" + "Müşterinin bırakıp sonra geri alacağı altın." | AYNI dil |
 | Arama / seçici | Tek arama kutusu ("Ad ya da telefon") | Tek müşteri seçici (içinde arama) | GEREKÇELİ FARK: seçim bir kayda bağlanır (S1) |
 | İçerik kartı | 1 px ayraç, 10–12 px köşe, beyaz yüzey | Müşteri kartı 12 px, 1 px ayraç, gölgesiz | AYNI |

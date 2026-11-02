@@ -287,7 +287,7 @@ Bugün'deki 3 YOK, "Dünkü gün sonu" satırının üç öğesi. Sebep: dünkü
 - **K1, K3, K5 (TRY), K10, K12, yatay kaydırma: hepsi 0.**
   - İlk ölçümde 1280'de 9 px, 375'te 32 px yatay taşma çıktı. `tasan.mjs` ile kaynağı bulundu: `#yildiz-kullanici` "HAKAN TUNALI K.".
   - Sebep fikstür verisiydi: ad alanına tam ad yazılmıştı. Ad ve soyad tuvaldeki gibi "Hakan / Tunalı" yapıldı ("HAKAN T.") ve yeniden ölçüldü: 0.
-  - Not: başlığa AMBLEM'in "MİHENK" yazısı eklendikten sonra uzun kullanıcı adıyla 1280'de taşma oluyor. Kabuk 4A/AMBLEM alanında, açık kalanlarda.
+  - Not: başlığa AMBLEM'in "ByGatech" yazısı eklendikten sonra uzun kullanıcı adıyla 1280'de taşma oluyor. Kabuk 4A/AMBLEM alanında, açık kalanlarda.
 - **K8 jargon "r-zarar" (/ekranlar, BASİT): yanlış pozitif.** Tuvaldeki metin birebir "Kâr-zarar". Ölçerin `\b[a-z]+-[a-z]+` deseni "â"dan sonra bölüyor.
 - **K9 üst üste binme (/islemler, 375, BASİT + PRO): gerekçeli.** Dar ekranda Fark ve Kaydet alt çubuğu sabit; kabulün "Kaydet ekranda" maddesi bunu gerektiriyor. Kaydırma 0'dayken "+ Başka ödeme / + Para üstü" hapları çubuğun altında kalıyor. Kaydırınca erişiliyor: `kaydir.mjs` ile önce baska=[647–691], fark=[611–724]; sonra (scrollY 263) baska=[384–428], indirim=[440–484], fark=[611–724] — çakışma yok. Görüntü: `olcum-r2/375-kaydirilmis.png`.
 - **K7 hiza (/cariler üst satırı ±14):** 4B'den kalan, tuvalle AYNI ölçüldü (bilgi).
@@ -336,7 +336,7 @@ Finansal varlıklarda silme yok.
 2. **(Bu paket) "Dünkü gün sonu" satırının bu koşumda canlı yeniden kanıtı.** `kasa_hareketleri` ve `hareketler.tarih` için 1 günlük UPDATE izin sınıflandırıcısınca reddedildi ("Modify Shared Resources"). Kanıt ilk koşumdan (16:31, 17:27) ve Y4C_01/30/31 testlerinden. Kurucu izin verirse aynı senaryo tek komutla kurulup ölçülebilir.
 3. **(Başka şerit) Tam süit kırmızısı** `P26TedarikTestleri.Y30_ikinci_kapora_REDDEDILIR_ve_duzeltme_yolu_yazilidir` — KAPORA-EKRAN / t5.
 4. **(Başka şerit) denetim GIRDI-2** `MASAKESZAMANSinirTestleri.cs:187` — MASAK-ESZAMAN / t5. **P-30** — kapsam dışı.
-5. **(Kabuk, 4A/AMBLEM)** Uzun kullanıcı adında ("HAKAN TUNALI K.") 1280'de başlık 9 px taşıyor; "MİHENK" yazısı eklendikten sonra ortaya çıktı.
+5. **(Kabuk, 4A/AMBLEM)** Uzun kullanıcı adında ("HAKAN TUNALI K.") 1280'de başlık 9 px taşıyor; "ByGatech" yazısı eklendikten sonra ortaya çıktı.
 6. **(Ölçer)** K8 jargon deseni "Kâr-zarar"ı yanlışlıkla "r-zarar" diye yakalıyor (sikisma-olc.js; deseni Unicode harf sınırıyla düzeltmek gerekiyor).
 
 ## 10. Belirsiz eşleşme (orkestratör kurucuya gösterir)

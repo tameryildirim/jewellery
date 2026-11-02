@@ -147,7 +147,7 @@ SON_TATBIKAT: 2026-10-24 · BASARILI · 107/107 tablo · gerçek uyuşmazlık 0 
 | Tarih (UTC) | Veritabanı | Komut | Sonuç | Kanıt |
 |---|---|---|---|---|
 | 2026-09-23 19:14–19:15 | `kuyumcu_net` (kap `kuyumcu-mysql`) | `yedek-al-ve-dogrula.sh` (tam + tatbikat) | **BAŞARILI** — 76/76 tablo CHECKSUM eşleşti; 1 tablo (`yedek_kayitlari`) dump sonrası yazıldığı için "değişken" sayıldı; tatbikat şeması düşürüldü; 36 sn | `yedek_tatbikatlari.id = t202609231915063497` · `yedek_kayitlari.id = y202609231914272146` (DOGRULANDI, şifreli, dış kopya KOPYALANDI) |
-| 2026-09-23 19:29–19:30 | **temiz kurulum** `kuyumcu_net` (boş kap `mihenk-tatbikat-mysql`, 70 migration) | `yedek-al-ve-dogrula.sh` (KUYUMCU_KAP=tatbikat kabı) | **BAŞARILI** — 76/76 tablo; 16 sn; kap tatbikat sonunda silindi | `t202609231929549543` · ayrıntı `docs/RUNBOOK-TESLIMAT.md` § 5 |
+| 2026-09-23 19:29–19:30 | **temiz kurulum** `kuyumcu_net` (boş kap `bygatech-tatbikat-mysql`, 70 migration) | `yedek-al-ve-dogrula.sh` (KUYUMCU_KAP=tatbikat kabı) | **BAŞARILI** — 76/76 tablo; 16 sn; kap tatbikat sonunda silindi | `t202609231929549543` · ayrıntı `docs/RUNBOOK-TESLIMAT.md` § 5 |
 | 2026-10-24 18:18 | `kuyumcu_net` (kap `kuyumcu-mysql`) | `yedek-al-ve-dogrula.sh` (tam + tatbikat) | **BAŞARILI** — 107/107 tablo CHECKSUM eşleşti; 3 tablo (`banka_hesaplari`, `denetim_kayitlari`, `yedek_kayitlari`) dump sonrası yazıldığı için "değişken"; tatbikat şeması düşürüldü; 19 sn | `yedek_tatbikatlari.id = t202610241518561164` |
 
 > ⚠ Bu tatbikat **YEREL KAP TATBİKATI**dır (geliştirme makinesindeki MySQL kabı).

@@ -101,7 +101,7 @@ Test kiracısı **`PAKET50-TEST Kuyumculuk`** (`01M37T52ZSF0S931511SGD22PE`), el
 | 7 | *(SQL, yalnız kendi kiracım)* `UPDATE kasalar SET bakiye=-738298.80` ile fikstür durumu taklit edildi → `GET /kasalar` | 200 + eksi bakiye | **200** | `"bakiye":-738298.80` (ekranın biçimlendirdiği ham sayı) |
 | 8 | `POST /giderler` 1500 (eksi kasa) | 400 + ham invariant sayı | **400** | `… yetersiz: -738298.80 TRY var, 1500.00 TRY isteniyor. …`. **Gider.razor'daki regex bu canlı mesajla eşleşti:** `{ad:'P50 Merkez Kasa', b:'-738298.80', pb:'TRY', i:'1500.00'}` (aynı desen Python `re` ile sınandı). |
 | 9 | Çıkış yolu: eksi kasaya `POST /kasalar/{id}/hareket` GIRIS 1000 | 200 (giriş kapıya tabi değil) | **200** | `bakiye: -737298.80` |
-| 10 | `GET /gider` (Blazor kabuğu) | 200 | **200** | `<title>MİHENK</title>`, `_framework/blazor.webassembly.js` |
+| 10 | `GET /gider` (Blazor kabuğu) | 200 | **200** | `<title>ByGatech</title>`, `_framework/blazor.webassembly.js` |
 
 **SQL kanıtı:** `SELECT bakiye FROM kasalar WHERE id=…` sonucu `-737298.80`. `kasa_hareketleri` sonucu `500.00 "P50 canli giris"`, `-100.00 NULL` (gider), `1000.00 "P50 cikis yolu"`.
 

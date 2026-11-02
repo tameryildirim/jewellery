@@ -532,7 +532,7 @@ iyidir. 10 dakikalık rapor işi (`d6d3426b`) de iptal edildi (ağsız anlamsız
 | PARA | `wf_182fc785-3b1` | `uygula:pP-46` | P-44, P-45 GEÇTİ; P-46 (vezne kuyruğu gerçek tutar) yarım |
 | YAYIN | `wf_ee216158-986` | `uygula:pP-42` | P-41 GEÇTİ; P-42 (yayın dizinini kalıcılaştır) yarım |
 | SERİT A | `wf_a9a1092d-5f7` | `dogrula:pP-52:t1` | P-51 GEÇTİ; P-52 uygulayıcısı **YARIM** demişti, doğrulama yarıda |
-| DEMO | `wf_0ac5dbf4-df7` | `uygula:pP-D2` | P-D1 GEÇTİ; **P-D2 (MİHENK adı, 44 dosya)** yarım |
+| DEMO | `wf_0ac5dbf4-df7` | `uygula:pP-D2` | P-D1 GEÇTİ; **P-D2 (BYGATECH adı, 44 dosya)** yarım |
 | S-1 | `wf_022b6914-88d` | `uygula:pS1-a` | İlk paket; belirteçler (8 şema) yarım |
 | **S-B** | `wf_ce6bdb04-983` | `uygula:pB-1` | **15 kırmızı testin sebebi** — `Ayarlar.razor` yarım yazılmış |
 | **DALGA 7c** | `wf_a95655e1-3e1` | `dogrula:pP-30b:t2` | **denetim.sh testinin sebebi** — P-30b t1'de KALDI almıştı |
@@ -610,7 +610,7 @@ S-1 şeridi S1-b'den yeniden başlatıldı; S1-a'dan devredilen iki iş (Manrope
 şema↔durum rengi çakışması) S1-b'nin koşullarına yazıldı.
 
 **Ayrıca kayda geçti:** (a) `belirtecler.css`'e iki şerit dokundu — P-D2 1. satır yorumunu
-"Kuyumcu ERP" → "MİHENK" yaptı; yalnız yorum, değerler etkilenmedi, testler yeşil kaldı. Çakışma
+"Kuyumcu ERP" → "BYGATECH" yaptı; yalnız yorum, değerler etkilenmedi, testler yeşil kaldı. Çakışma
 riski gerçek, uyarı S1-b'ye verildi. (b) `AlisOdemeAraciEkranTestleri.SATISTAN_ALISA_gecince_
 VERESIYE_secimi_TASINMAZ` **kararsız**: yalıtılmış koşumda 6/6 yeşil, eşzamanlı şerit yükü altında
 bUnit zaman aşımı. Gerileme değil, makine yükü; sessizce geçilmedi.
@@ -906,7 +906,7 @@ alanı; doğrulayıcı geçirirse orkestratör durduracak.** Dalga kapısı bunl
   satırı 74→49-55 px, 1280×800'de 8 satır; /faturalar taşma 1118→962 px. Toplam **60**. `ham/AKTIF-KOSUM` boşaltıldı.
 * **Kurucu önizlemesi (kurucu: "tarayıcıda görme şansım var mı"):** 06:35 ağaç kopyası (`scratchpad/onizleme`,
   bin/obj/mutorj hariç) → build 0/0 → Development kipinde **http://localhost:5181** (5199'a dokunulmadı). Duman: /giris,
-  /, /saglik, /kilavuz.html, blazor.webassembly.js hepsi 200; giriş ekranı MİHENK yeni tasarımla açıldı. Parola kurucuda.
+  /, /saglik, /kilavuz.html, blazor.webassembly.js hepsi 200; giriş ekranı BYGATECH yeni tasarımla açıldı. Parola kurucuda.
   Bilinen: `is_calismalari` benzersiz anahtar çakışması (günlük iş başka sunucuda koşmuş) — hata günlüğe düşüyor ama
   iş zaten yapılmış; backlog: çakışmayı "zaten koştu" olarak sessiz karşıla.
 * **Demo kapısı** gerçek ağaçta başladı (şerit yok): build → tam süit (`kuyumcu_test_o`) → `bash denetim.sh`.
@@ -916,7 +916,7 @@ alanı; doğrulayıcı geçirirse orkestratör durduracak.** Dalga kapısı bunl
 * **Demo kapısı (06:37–06:39, gerçek ağaç, şerit yok): build 0 hata · tam süit 4946/4946 · `bash denetim.sh` TEMİZ.**
   Yayın `demo-kapisi-2026-09-24-0640` → `~/.kuyumcu-yayin` (76 kayıt, bütünlük TEMİZ, damga bbc4ef21c6a1 = ağaç, 0 uyarı 0 hata).
   Eski 5199 (pid 12577/12590, 22.09 yayını) kapatıldı; `qa-sunucu.sh` ile yeni yayın açıldı. Duman: /giris / /kilavuz.html
-  /kilavuz /_framework/blazor.webassembly.js /saglik /ekranlar /islemler hepsi 200, başlık MİHENK; duman-testi.sh 21/0.
+  /kilavuz /_framework/blazor.webassembly.js /saglik /ekranlar /islemler hepsi 200, başlık BYGATECH; duman-testi.sh 21/0.
 * **KURUCU BULGUSU (06:55, "menüyü kontrol et, olmamış") — orkestratör gerçek tarayıcıda ÖLÇTÜ** (parola yazmadan:
   `betikler/inceleme-vekili.py` — test kiracısının jetonu tarayıcıya SUNUCU TARAFINDA verilir, hiçbir çıktıya düşmez):
   (1) **KRİTİK:** PRO modda kapalı grupların 33 satırı `hidden` taşıyor ama **görünüyor** — `.kenar-satir{display:flex}`
@@ -1132,7 +1132,7 @@ Koşan KATALOG paketi eski şablonla bitecek (dokunulmadı). QA turu 10: tarama 
 * **Ölçülen fark (orkestratör, görsel):** yerleşim düzeyinde. Satış: tuvalde üst satır Müşteri·Tarih·Para + geniş barkod + iki sütunlu fiş
   (VERDİM tablosu | ALDIM tablosu, Fark ✓) + sağ sütun 8 düğme/Son 3 satış/uyarı + alt Açıklama·Vazgeç·Kaydet ve yazdır — bizde dikey yığın,
   3,4 ekran. Profesyonel: tür sekmeleri + alan satırı + geniş kalem tablosu + sağ Yasal kapılar/Müşteri kartı/Kısayollar. Panel: kısa eşit
-  kartlar. Müşteriler: sağ çekmece + segment. Ayarlar: sekmeler üst barda. Kabuk: "Mihenk" + "Ekran ara" + kullanıcı kartı/dişli; TR/EN yok.
+  kartlar. Müşteriler: sağ çekmece + segment. Ayarlar: sekmeler üst barda. Kabuk: "ByGatech" + "Ekran ara" + kullanıcı kartı/dişli; TR/EN yok.
   Para: "57.550 ₺" (işaret sonda, sıfır kuruş yok).
 * **Q10-B durduruldu** (Q10-4 hiç dosya yazmamıştı — kayıp yok): Q10-4 maddeleri T-S1/T-P1'e, Q10-5 ayrı şeride.
 * **Çakışma önlemi:** her şeride ayrı CSS (`css/tuval-kabuk.css`, `tuval-satis.css`, `tuval-panel-musteri.css`, `q10.css`; index.html'e
@@ -1374,7 +1374,7 @@ Koşan KATALOG paketi eski şablonla bitecek (dokunulmadı). QA turu 10: tarama 
 * **5199 QA sunucusu açılmadı — bilerek:** `qa-sunucu.sh` exit 7 "YAYIN BAYAT" (yayın 61bc375… ≠ ağaç ba445a1…); fail-closed kural atlatılmadı. Sonraki yayın kapıdan sonra.
 * **18:00 KURUCU: "kota 98" → TÜM ŞERİTLER DURDURULDU** (SATIS-3, ORTAK-1, OLCEK-1, EMANET-1+DUGME-2, ZO-ISLEM-A, ZO-BELGE, KATMAN-1b/2); şerit süreçleri öldürüldü; son 10 dk yarım
   mutasyon yok. Kalan kota demonun çalışır olmasına: ağaçta kapı (build + tam süit + denetim) → yeşilse yayın; kırmızıysa demo 06:28 `demo-0625` yayınıyla.
-  Docker: MİHENK için yalnız `kuyumcu-mysql` (mysql:8.4); bygatech-*/setsec-* başka projeler (kurucu kararı).
+  Docker: BYGATECH için yalnız `kuyumcu-mysql` (mysql:8.4); bygatech-*/setsec-* başka projeler (kurucu kararı).
 * **18:01 kapı (ağaç, şeritler durdurulduktan sonra):** build 0/0 · tam süit 6325/6327 (2 kırmızı EMANET-1 yarım düzeltmesi: yalnız gümüş emanette özet maden adını
   yazmıyordu — Emanet.razor OzetMetni tek maden altın DEĞİLSE kolu `Bicim.Has` yerine `"{MadenAdi} {Has}"`; orkestratör düzeltti) → Emanet 67/67 → **tam süit 6327/6327,
   denetim TEMİZ** → **yayın `aksam-1810` (18:05)** → qa-sunucu.sh → **5199 açık (200; API 401 = oturum ister)**. Yayında: SATIS-2, BICIM-2, SADE-1, ISTEK-1, CUMA-J, CUMA-M,

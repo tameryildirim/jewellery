@@ -150,12 +150,12 @@ konu(12, "fatura", "34:55", "Fiş yerine doğrudan fatura",
    ("H", "Kaydete basınca program fatura kesilsin mi diye sorar; evet dediğiniz an fatura kesilir!"),
    ("S", "Entegratör anahtarı girildiğinde fatura arka planda gönderilir; durumu e-Fatura giden kutusunda izlenir.")])
 
-A.append(dict(id="kapanis", baslik="On iki konunun hepsi programda", sorun="Ses kaydından yapılanlar · Mihenk",
+A.append(dict(id="kapanis", baslik="On iki konunun hepsi programda", sorun="Ses kaydından yapılanlar · ByGatech",
   eylemler=[{"t": "git", "rota": "/"}, {"t": "imlec", "x": 700, "y": 400}],
   cumleler=[("S", "Görüşmede söylediğiniz on iki konunun hepsi programda."),
             ("V", "Denemek istediğiniz her şeyi birlikte tezgahta deneyebiliriz.")]))
 
-plan = dict(id="ses-kaydi", baslik="Ses kaydından yapılanlar", alt="16 Ekim görüşmesi · 12 konu, kayıt sırasıyla", acilisUst="MİHENK · SİZİNLE KONUŞTUKLARIMIZ",
+plan = dict(id="ses-kaydi", baslik="Ses kaydından yapılanlar", alt="16 Ekim görüşmesi · 12 konu, kayıt sırasıyla", acilisUst="BYGATECH · SİZİNLE KONUŞTUKLARIMIZ",
             kapanisAlt="Görüşmedeki 12 konunun hepsi programda", adimlar=A)
 for i, a in enumerate(A): a["sira"] = i + 1; a["toplam"] = len(A)
 json.dump(plan, open(os.path.join(H, "plan-ses-kaydi.json"), "w"), ensure_ascii=False, indent=1)

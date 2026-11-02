@@ -18,8 +18,8 @@ namespace Kuyumcu.Tests;
 //
 // Tek doğruluk kaynağı: tuval/project/Ekranlar.dc.html · Giris.dc.html.
 // Sınanan sözleşme:
-//   (1) Yazımlar tuvalden: marka "Mihenk" (Marka.Ad'dan TÜRER, ikinci kaynak yok),
-//       "Vitrin panosu", "Parola", "Giriş yap", sürüm satırı "Mihenk x.y · ByGatech".
+//   (1) Yazımlar tuvalden: marka "ByGatech" (Marka.Ad'dan OKUNUR, ikinci kaynak yok),
+//       "Vitrin panosu", "Parola", "Giriş yap", sürüm satırı "ByGatech x.y".
 //   (2) Günlük iş satırı ikonlu ızgara sınıfını taşır (K3 — kısa etiket bölünmez).
 //   (3) Mevcut id'ler ve giriş davranışı (POST /auth/giris {email, sifre}) DEĞİŞMEZ.
 //   (4) css/tuval-kabuk.css T-K4 bloğu tuval ölçülerini BELİRTEÇLE taşır
@@ -94,17 +94,17 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
     // ── (1) Yazımlar ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void TK4_01_Marka_tuval_yazimi_Mihenk_ve_Marka_Ad_dan_TURER()
+    public void TK4_01_Marka_tuval_yazimi_ByGatech_ve_Marka_Ad_dan_OKUNUR()
     {
-        Assert.Equal("Mihenk", KabukTuvalSozlugu.MarkaYazimi);
+        // 02.11 ad değişikliği: marka kendi yazımını taşır ("ByGatech"); türetme yok, tek kaynak Marka.Ad.
+        Assert.Equal("ByGatech", KabukTuvalSozlugu.MarkaYazimi);
         var tr = CultureInfo.GetCultureInfo("tr-TR");
-        var kucuk = Marka.Ad.ToLower(tr);
-        Assert.Equal(char.ToUpper(kucuk[0], tr) + kucuk[1..], KabukTuvalSozlugu.MarkaYazimi);
+        Assert.Equal(Marka.Ad, KabukTuvalSozlugu.MarkaYazimi);
 
         // ESKİ: Tüm ekranlar şeridindeki marka adı (#ekranlar-panele-don kaldırıldı). Yıldız'da marka
         // yazımı giriş amblemine (ve üst menü amblemine: YildizAmblem2Testleri.YA2_01) AYNI kaynaktan gelir.
         var e = GirisCiz();
-        Assert.Equal("Mihenk", e.Find("h1#giris-amblem").GetAttribute("aria-label"));
+        Assert.Equal(Marka.Ad, e.Find("h1#giris-amblem").GetAttribute("aria-label"));
         Assert.Equal(Marka.Ad.ToUpper(tr), e.Find("#giris-amblem text").TextContent);
     }
 
@@ -122,18 +122,19 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
     // TEMA TEMİZLİĞİ 17.10: TK4_03_Yalniz_Gunluk_is_izgarasi_IKONLU_sinifi_tasir kaldırıldı — tuval Tum4'te her bölüm aynı ızgaradır ve her karede ikon vardır (Yildiz2Testleri.Y2_20, Yildiz4BTestleri.Y4B_14); .ekranlar-izgara-ikonlu Yıldız yüzünde çizilmez.
 
     [Fact]
-    public void TK4_04_Giris_tuval_yazimlari_Mihenk_Parola_Giris_yap_surum()
+    public void TK4_04_Giris_tuval_yazimlari_marka_Parola_Giris_yap_surum()
     {
         var e = GirisCiz();
-        // ESKİ: h1.giris-marka-ad + #sayfa-basi-giris-baslik "Mihenk’e hoş geldin" — tuval Giris4'te
+        // ESKİ: h1.giris-marka-ad + #sayfa-basi-giris-baslik "<marka>’e hoş geldin" — tuval Giris4'te
         // marka amblemdir ve giriş sekmesinde başlık YOKTUR (YildizAmblem2Testleri.YA2_13/YA2_14).
-        Assert.Equal("Mihenk", e.Find("h1#giris-amblem").GetAttribute("aria-label"));
+        Assert.Equal(Marka.Ad, e.Find("h1#giris-amblem").GetAttribute("aria-label"));
         Assert.Single(e.FindAll("h1"));
         Assert.Empty(e.FindAll("#sayfa-basi-giris-baslik"));
         Assert.Equal("Parola", e.Find("label[for='giris-sifre'] .alan-etiket-metin").TextContent.Trim());
         Assert.Equal("Giriş yap", e.Find("#giris-gonder").TextContent.Trim());
-        Assert.StartsWith("Mihenk ", e.Find("#giris-surum").TextContent.Trim(), StringComparison.Ordinal);
-        Assert.EndsWith(" · ByGatech", e.Find("#giris-surum").TextContent.Trim(), StringComparison.Ordinal);
+        Assert.StartsWith(Marka.Ad + " ", e.Find("#giris-surum").TextContent.Trim(), StringComparison.Ordinal);
+        // 02.11: ürün adı = şirket adı; sürüm satırında ad bir kez yazılır ("ByGatech 1.0"), "· ByGatech" eki kaldırıldı.
+        Assert.DoesNotContain(" · ", e.Find("#giris-surum").TextContent, StringComparison.Ordinal);
         // Parolamı unuttum ile aynı kelime (tek kavram, tek ad).
         Assert.StartsWith(EkranlarGirisTuvalSozlugu.Parola("tr"), GirisSozlugu.ParolamiUnuttum("tr"), StringComparison.Ordinal);
 
@@ -150,7 +151,7 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
         await e.InvokeAsync(() => Services.GetRequiredService<DilServisi>().DegistirAsync("en"));
         e.WaitForAssertion(() => Assert.Equal("Sign in", e.Find("#giris-gonder").TextContent.Trim()));
         Assert.Equal("Password", e.Find("label[for='giris-sifre'] .alan-etiket-metin").TextContent.Trim());
-        // ESKİ: "Welcome to Mihenk" başlığı — Yıldız girişinde giriş sekmesinin başlığı yok; kayıt
+        // ESKİ: "Welcome to <marka>" başlığı — Yıldız girişinde giriş sekmesinin başlığı yok; kayıt
         // sekmesinin başlığı İngilizce sözlükten gelir.
         e.Find("#giris-yeni-dukkan").Click();
         Assert.Equal(GirisSozlugu.YeniDukkanKur("en"), e.Find("#sayfa-basi-giris-baslik").TextContent.Trim());
@@ -283,7 +284,7 @@ public sealed class TK4EkranlarGirisTuvalTestleri : BunitContext
         {
             var kod = CssKaynak.Metin("Kuyumcu.Web", "Pages", sayfa);
             Assert.DoesNotContain("style=\"", kod, StringComparison.Ordinal);
-            Assert.DoesNotContain(">Mihenk<", kod, StringComparison.Ordinal);
+            Assert.DoesNotContain(">" + Marka.Ad + "<", kod, StringComparison.Ordinal);
             Assert.Contains("KabukTuvalSozlugu.MarkaYazimi", kod, StringComparison.Ordinal);
         }
     }

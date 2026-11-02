@@ -337,7 +337,7 @@ public sealed class ParolaSifirlamaServisi(
         await db.SaveChangesAsync(iptal);
 
         foreach (var (alici, govde) in postalar)
-            await posta.Gonder(alici, "Mihenk — parola sıfırlama bağlantınız", govde, iptal);
+            await posta.Gonder(alici, Kuyumcu.Core.I18n.Marka.Ad + " — parola sıfırlama bağlantınız", govde, iptal);
     }
 
     /// <summary>Madde (2): ≥ 32 bayt kriptografik rastgele → base64url; DB'ye SHA-256 hex.</summary>
@@ -357,7 +357,7 @@ public sealed class ParolaSifirlamaServisi(
 
     private string PostaGovdesi(string ad, string duzJeton) =>
         $"Merhaba {ad},\r\n\r\n" +
-        "Mihenk hesabınız için parola sıfırlama isteği aldık. Yeni parola belirlemek için " +
+        Kuyumcu.Core.I18n.Marka.Ad + " hesabınız için parola sıfırlama isteği aldık. Yeni parola belirlemek için " +
         "aşağıdaki bağlantıyı açın:\r\n\r\n" +
         Baglanti(duzJeton) + "\r\n\r\n" +
         $"Bağlantı {JetonOmruDakika} dakika geçerlidir ve yalnız bir kez kullanılabilir.\r\n" +

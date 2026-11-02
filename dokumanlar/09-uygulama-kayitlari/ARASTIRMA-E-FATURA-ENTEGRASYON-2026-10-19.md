@@ -19,7 +19,7 @@
 3. **Bir yazılımın yasal ve gerçekçi tek yolu, GİB izinli bir özel entegratörün API'si.** GİB portalını taklit eden kütüphaneler resmî bir kanal değil ve her imzada SMS onayı istiyor. ByGatech'in kendisinin entegratör olması ise ISO belgeleri, bağımsız denetim, ikinci şehirde felaket merkezi ve bir yıllık test istiyor. Bu yollar uygun değil. ✅
 4. **GİB listesinde bugün 93 entegratör var.** Listede TÜRMOB'a bağlı **TÜRMOB-TESMER (Luca e-Entegratör)** de yer alıyor. Ancak Luca'nın yazılımlara açık bir API belgesi bulunamadı. ✅ liste / ❌ API belgesi
 5. **Belgesi herkese açık, test ortamı olan entegratörler:** Nilvera (REST, `apitest.nilvera.com`) ve BirFatura (REST, Swagger, ücretsiz test hesabı). İzibiz SOAP kullanıyor ve GitHub'da resmî örnek kodu var. Diğerlerinin belgesi sözleşmeden sonra veriliyor. 🟦
-6. **Öneri:** Mihenk'e entegratörden bağımsız bir bağlantı katmanı yazılsın; ilk bağlanacak entegratör Nilvera olsun, İzibiz yedek olsun. Kuyumcu entegratörle kendisi sözleşme yapar; tüzel kişiyse mali mühür, şahıs işletmesiyse e-imza alır ve API anahtarını Mihenk'e girer. Gerisini (kayıtlı mı sorgusu, gönderim, durum takibi, e-posta, iptal) Mihenk arka planda yapar.
+6. **Öneri:** ByGatech'e entegratörden bağımsız bir bağlantı katmanı yazılsın; ilk bağlanacak entegratör Nilvera olsun, İzibiz yedek olsun. Kuyumcu entegratörle kendisi sözleşme yapar; tüzel kişiyse mali mühür, şahıs işletmesiyse e-imza alır ve API anahtarını ByGatech'e girer. Gerisini (kayıtlı mı sorgusu, gönderim, durum takibi, e-posta, iptal) ByGatech arka planda yapar.
 
 ---
 
@@ -76,7 +76,7 @@ Kaynak: [509 Sıra No'lu Tebliğ, güncel hâli (515, 526, 535, 550, 573 işlenm
 | Nihai tüketiciye (bireye) kesilen e-Arşiv'in iptali | Bireyin GİB'de kullanıcısı yok. İptal, e-Arşiv raporundaki `faturaIptal` alanıyla bildiriliyor (Teknik Kılavuz § 3.3.2.24). Bireye kesilen faturada süre ve onay akışı kılavuzda ayrı yazılmamış | Teknik Kılavuz V.1.17 | 🟡 TEYİTSİZ |
 | Süre geçtikten sonra | Uygulamada alıcı iade faturası keser. Bu kural blog kaynaklarından; birincil metinde aranmadı | [parasut.com](https://www.parasut.com/blog/e-fatura-nasil-iptal-edilir) | 🟡 TEYİTSİZ |
 
-**Mihenk için:** "Faturayı iptal et" düğmesi, faturanın iletim tarihinden itibaren **8 gün** açık kalmalı. Sonrasında düğme yerine "İade faturası kes" çıkmalı.
+**ByGatech için:** "Faturayı iptal et" düğmesi, faturanın iletim tarihinden itibaren **8 gün** açık kalmalı. Sonrasında düğme yerine "İade faturası kes" çıkmalı.
 
 ---
 
@@ -88,7 +88,7 @@ Kaynak: [509 Sıra No'lu Tebliğ, güncel hâli (515, 526, 535, 550, 573 işlenm
 - e-Arşiv'i entegratör üzerinden kullanacak mükellefin **GİB'e ayrıca başvurmasına gerek yok** ([ebelge.gib.gov.tr/earsivbasvuru.html](https://ebelge.gib.gov.tr/earsivbasvuru.html)). ✅
 - Mükellef, belgelerinin **entegratörün mali mührü ve zaman damgasıyla** onaylanmasını isteyebilir (509 V.1.2 ve V.9). Böylece her faturada kuyumcunun kart takması gerekmez. ✅
 - Entegratör, müşterisinin ticari sırrını başka amaçla kullanamaz ve üçüncü kişilerle paylaşamaz (509 V.1.2). ✅
-- Mihenk API anahtarıyla faturayı gönderir, durumunu sorgular, PDF'ini alır. Belge biçimi her entegratörde UBL-TR 1.2.1; API'nin şekli ise entegratöre göre değişiyor (§ 4). ✅ biçim / 🟦 API
+- ByGatech API anahtarıyla faturayı gönderir, durumunu sorgular, PDF'ini alır. Belge biçimi her entegratörde UBL-TR 1.2.1; API'nin şekli ise entegratöre göre değişiyor (§ 4). ✅ biçim / 🟦 API
 
 ### (b) GİB e-Arşiv Portal / e-Fatura Portal
 
@@ -120,7 +120,7 @@ Kaynak: [509 Sıra No'lu Tebliğ, güncel hâli (515, 526, 535, 550, 573 işlenm
 | TSE / TÜBİTAK denetimi | Denetim TSE ya da TÜBİTAK tarafından değil, yetkili bağımsız denetim firmasınca yapılıyor. Mali mühür TÜBİTAK Kamu SM'den alınıyor | ÖEBSD · 509 V.9 | ✅ |
 | Maliyet | ISO belgeleri, denetim, ikinci veri merkezi, HSM ve personel maliyeti için birincil bir rakam yok | — | 🟡 TEYİTSİZ (bilinmiyor) |
 
-**Sonuç:** En az 1–2 yıl sürer, kalıcı bir altyapı ve uyum ekibi ister. Mihenk'in satış takvimine uymaz. İleride ölçek oluşursa ayrı bir iş kararı olarak ele alınabilir.
+**Sonuç:** En az 1–2 yıl sürer, kalıcı bir altyapı ve uyum ekibi ister. ByGatech'in satış takvimine uymaz. İleride ölçek oluşursa ayrı bir iş kararı olarak ele alınabilir.
 
 ---
 
@@ -133,7 +133,7 @@ Kaynak: [509 Sıra No'lu Tebliğ, güncel hâli (515, 526, 535, 550, 573 işlenm
   - **Dış yazılımlara açık bir API ya da web servis belgesi bulunamadı.** ❌
   - **Kontör fiyatı bulunamadı.** ❌
   - Bir karşılaştırma sitesi, Luca'nın e-dönüşüm altyapısında İŞNET'in kullanıldığını yazıyor; TÜRMOB–İŞNET iş birliği haberi de var ([dunya.com](https://www.dunya.com/sirketler/turmob-ve-isnet-isbirligi-anlasmasi-imzaladi-haberi-244130)). TESMER'in listede kendi adıyla yer aldığı ise kesin. 🟡 TEYİTSİZ (hangi altyapının hangi dönemde kullanıldığı)
-  - **Mihenk açısından anlamı:** Kuyumcunun mali müşaviri Luca kullanıyorsa faturaların Luca'ya akması önemli bir kolaylık. Ancak bu, gönderim kanalı olarak değil, **muhasebeye aktarım** olarak ele alınmalı. Luca'nın API'si yoksa bunun yolu, kuyumcunun hangi entegratörü kullandığına bakmadan mali müşavirin gelen e-faturaları ve e-Arşiv'leri GİB'den çekmesidir. 🟡
+  - **ByGatech açısından anlamı:** Kuyumcunun mali müşaviri Luca kullanıyorsa faturaların Luca'ya akması önemli bir kolaylık. Ancak bu, gönderim kanalı olarak değil, **muhasebeye aktarım** olarak ele alınmalı. Luca'nın API'si yoksa bunun yolu, kuyumcunun hangi entegratörü kullandığına bakmadan mali müşavirin gelen e-faturaları ve e-Arşiv'leri GİB'den çekmesidir. 🟡
 
 **Listeden bilinen adlar (tam liste GİB sayfasında):** Uyumsoft (2 şirket), Logo, İzibiz, QNB eSolutions, İŞNET, EDM, Sovos (FIT), Turkcell e-Şirket (ePlatform), Superonline, Türk Telekom, Mikro, Kolaysoft, Zirve, Doğan e-Dönüşüm, Avalara (Inposia), Mysoft, BirFatura, Nilvera, Trendyol e-Faturam (DSM), TÜRMOB-TESMER, TÜRKKEP, Sabancı Dx, Veriban, Pavo, Token, Worldline, Toshiba GCS, Hızlı Bilişim, Faturadijital (Cevizsoft) ve diğerleri. ✅
 
@@ -166,14 +166,14 @@ Kaynak: [509 Sıra No'lu Tebliğ, güncel hâli (515, 526, 535, 550, 573 işlenm
 
 ---
 
-## 5. Öneri: Mihenk için en hızlı ve hukuken temiz yol
+## 5. Öneri: ByGatech için en hızlı ve hukuken temiz yol
 
 ### 5.1 Karar
 
-**Yol (a): özel entegratör API'si. Kuyumcu entegratörle kendisi sözleşme yapar, Mihenk API ile gönderir.**
+**Yol (a): özel entegratör API'si. Kuyumcu entegratörle kendisi sözleşme yapar, ByGatech API ile gönderir.**
 
 - **Hukuken temiz:** Fatura 509'da tanımlı bir yolla gider. Raporlama, saklama (10 yıl), mühür ve zaman damgası entegratörde kalır. ByGatech "fatura düzenleyen" ya da "aracı" konumuna girmez; yazılım sağlayıcısı olarak kalır. Kuyumcunun portal şifresi ya da e-imzası ByGatech'te durmaz.
-- **Hızlı:** GİB'e ByGatech adına başvuru yok. Tek iş, Mihenk'te bir bağlantı katmanı yazmak.
+- **Hızlı:** GİB'e ByGatech adına başvuru yok. Tek iş, ByGatech'te bir bağlantı katmanı yazmak.
 - **Entegratör seçimi (ekip oyu: Bertan, Taşkın, Mehmet):**
   1. **Nilvera ilk bağlantı:** REST, açık belge, test adresi, kontör modeli.
   2. **İzibiz ikinci bağlantı:** büyük ve yerleşik, resmî örnek kodu var. Kuyumcu zaten İzibiz kullanıyorsa ona da bağlanılır.
@@ -186,7 +186,7 @@ Kaynak: [509 Sıra No'lu Tebliğ, güncel hâli (515, 526, 535, 550, 573 işlenm
 |---|---|---|---|
 | 1 | Bir entegratörle sözleşme (çoğunda çevrim içi) | Entegratör GİB kaydını yapar; e-Arşiv için GİB'e ayrıca başvuru gerekmez | 509 V.1.4 · earsivbasvuru ✅ |
 | 2 | **Tüzel kişiyse mali mühür** (Kamu SM, 3 yıllık). **Şahıs işletmesiyse e-imza (NES)** | e-Fatura kaydı ve mühür için. Entegratörün mührüyle imzalama da istenebilir; ancak kaydın kendisi için kuyumcunun mührü ya da e-imzası gerekip gerekmediği entegratöre göre değişebilir | 509 V.9 ✅ · ikincil kaynaklar 🟡 |
-| 3 | Entegratör panelinden üretilen **API anahtarı** (ya da kullanıcı ve şifre), Mihenk ayarlarına girilir | Mihenk'in kuyumcu adına gönderebilmesi için | 🟦 |
+| 3 | Entegratör panelinden üretilen **API anahtarı** (ya da kullanıcı ve şifre), ByGatech ayarlarına girilir | ByGatech'in kuyumcu adına gönderebilmesi için | 🟦 |
 | 4 | Mali müşavir teyidi: defter türü (bilanço / işletme / basit usul) ve e-Fatura'ya kayıtlı olup olmadığı | Zorunluluk tarihi buna bağlı (1.1.2026 ya da 1.1.2027) | 509 IV.2.4.3 ✅ |
 | 5 | Fatura numarası ön eki (3 harf) ve logo | Entegratör numaralandırması | 🟡 (önceki araştırma B3.6) |
 

@@ -178,7 +178,7 @@ bash dotnet/denetim.sh  →  RC=0 · DENETİM TEMİZ.
 | Sunucu yeni yoldan kalkar | `/saglik` 200 | ✅ | 5198 TLS, ~2 sn |
 | `/kilavuz.html` | 200 + gerçek gövde | ✅ | `HTTP=200 BAYT=60845`, gövde `<!DOCTYPE html><html lang="tr">…` |
 | **Bugünkü arıza (karşılaştırma)** | — | **404 0** | Koşan 5200 süreci hâlâ eski `…/scratchpad/qa-yayin` dizininden servis ediyor (`lsof -d cwd` ile ölçüldü) — tur 8'de grup 1'in 6 rotasının düşme sebebi |
-| `/kunye` | MİHENK gövdesi | ✅ | `<title>MİHENK</title>` |
+| `/kunye` | ByGatech gövdesi | ✅ | `<title>ByGatech</title>` |
 | Sunucu durduruldu | 5198 boş | ✅ | `lsof -nP -iTCP:5198 -sTCP:LISTEN` boş |
 
 **Kiracı:** P-42 kiracı **oluşturmadı** (kapsamı kabuk hattı).

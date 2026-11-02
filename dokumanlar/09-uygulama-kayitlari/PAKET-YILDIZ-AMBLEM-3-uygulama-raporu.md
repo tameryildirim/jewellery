@@ -5,7 +5,7 @@ Kaynak: `EMIR-AMBLEM-YILDIZ-2026-10-10.md` (tek doğruluk) · tuval `ham/yildiz-
 ## 1. Yapılanlar
 1. **Hakem KRİTİK-2 — oturumsuz /giris Yıldız (ekip oyu kararı uygulandı).**
    - Mevcut şema çözümleme yolu okundu (VARSAYILMADI): `Program.cs` oturum yokken `/gorunum` okumaz (uç kimlik ister — canlıda oturumsuz `GET /api/v1/gorunum` → **401** ölçüldü); `GorunumServisi.Sema` varsayılanı `platin`; `YildizKabuk.Mi` yalnız bellekteki servis değerine bakar. Bu yüzden soğuk açılışta şema bilinemiyordu.
-   - `wwwroot/js/tema.js` (`kuyumcuGorunum` ad alanı, yalnız bu anahtar): sunucudan gelen her şema uygulamasında (`sema()` — oturum açılınca / şema değişince; iki çağıran var: `GorunumServisi`, `KullaniciGorunumServisi`) değer bu cihaza `mihenk-son-sema` olarak **yazılır**; `sonSema()` beyaz listeyle **okur**; dosya sonunda (blazor.webassembly.js'ten önce, ilk boyamadan önce) kök `data-sema` özniteliğine uygulanır. Çıkış yolu anahtara dokunmaz (OturumServisi yalnız jeton anahtarlarını siler) → **çıkışta kalır**. Hiç giriş yapılmamış cihazda anahtar yok → varsayılan şema (Platin).
+   - `wwwroot/js/tema.js` (`kuyumcuGorunum` ad alanı, yalnız bu anahtar): sunucudan gelen her şema uygulamasında (`sema()` — oturum açılınca / şema değişince; iki çağıran var: `GorunumServisi`, `KullaniciGorunumServisi`) değer bu cihaza `bygatech-son-sema` olarak **yazılır**; `sonSema()` beyaz listeyle **okur**; dosya sonunda (blazor.webassembly.js'ten önce, ilk boyamadan önce) kök `data-sema` özniteliğine uygulanır. Çıkış yolu anahtara dokunmaz (OturumServisi yalnız jeton anahtarlarını siler) → **çıkışta kalır**. Hiç giriş yapılmamış cihazda anahtar yok → varsayılan şema (Platin).
    - `Pages/Giris.razor`: `YildizMi` = (görünüm bu sekmede sunucudan okunduysa) `YildizKabuk.Mi` — sunucu esastır; (okunmadıysa) cihazdaki son şema == `yildiz`. Son şema `OnInitialized`'da **eşzamanlı** okunur (`IJSInProcessRuntime`) → ilk çizim doğrudan Yıldız düzeni (FOUC yok, canlıda MutationObserver ile ölçüldü § 3c). JS yoksa/okunamazsa null → varsayılan düzen (uydurulmaz).
    - `index.html` gerekmedi (tema.js zaten blazor'dan önce yükleniyor; yeni `<script>` yok).
 2. **Hakem KRİTİK-1 — Giris4/Giris4a düzeni BİREBİR.** `Giris.razor` yalnız Yıldız dalında: form satırı tuvaldeki gibi tek satır *Parolamı unuttum (b2) | Giriş yap (b1)* (`#giris-yildiz-satir`); yer tutucular `ad@dukkan.com` / `••••••••`. Tuvalde OLMAYAN üç öğe (sürüm satırı, "Yeni dükkân kur", P-30 · BK-47 "Bu kurulumda HARİÇ olanlar (8)") kart akışından çıkıp tuvalin **alt bilgi satırına** (`#giris-alt`, tuvaldeki "TUNALILAR Kuyumculuk · Merkez Şube" yerinde ve kalıbında: alt 40 px, 12 px, .2em, büyük harf, soluk) taşındı — özellik silinmedi; HARİÇ listesi katlı (`details`) açılır. Böylece amblem + form tuvaldeki gibi dikeyde ortalandı: **1440×900 amblem y = 236** (önce 166).
@@ -17,7 +17,7 @@ Kaynak: `EMIR-AMBLEM-YILDIZ-2026-10-10.md` (tek doğruluk) · tuval `ham/yildiz-
 ## 2. Sapmalar / belirsiz eşleşme (gerekçeli)
 | # | Konu | Tuval | Uygulama | Gerekçe |
 |---|---|---|---|---|
-| 1 | Alt bilgi metni | "TUNALILAR Kuyumculuk · Merkez Şube" | "Yeni dükkân kur · MİHENK 1.0 · BYGATECH · Bu kurulumda HARİÇ olanlar (8)" | Oturum öncesi dükkân adı bilinmez (uydurulmaz — AMBLEM-2 § 2 #7). Tuvalde olmayan üç öğe görev metnindeki "tuval kalıbıyla alt bilgi" seçeneğiyle bu satıra alındı; HARİÇ satırı form akışında artık YOK. Öğeler 44 px dokunma hedefi taşıdığından metin tuvaldekinden 13 px yukarıda (yer "kalıp" bilgisi, tuval-kiyas § 3a) |
+| 1 | Alt bilgi metni | "TUNALILAR Kuyumculuk · Merkez Şube" | "Yeni dükkân kur · BYGATECH 1.0 · BYGATECH · Bu kurulumda HARİÇ olanlar (8)" | Oturum öncesi dükkân adı bilinmez (uydurulmaz — AMBLEM-2 § 2 #7). Tuvalde olmayan üç öğe görev metnindeki "tuval kalıbıyla alt bilgi" seçeneğiyle bu satıra alındı; HARİÇ satırı form akışında artık YOK. Öğeler 44 px dokunma hedefi taşıdığından metin tuvaldekinden 13 px yukarıda (yer "kalıp" bilgisi, tuval-kiyas § 3a) |
 | 2 | "Göster" | yok | var (tuval .ust kalıbı) | Parola görünürlüğü özelliği silinmez; piksel farkının TEK kaynağı (§ 3b: bölgedeki fark kutusu yalnız "GÖSTER" yazısı) |
 | 3 | Dil seçici | yok | sağ üst köşe, kutusuz yazı | EN kullanıcı için zorunlu; köşede, akış dışı (amblem/form yerini etkilemez) |
 | 4 | 375 px | tuvalde telefon hâli yok | form 343 px (16 px kenar), alt bilgi akışta (kartın son öğesi) → amblem y 111 | Tuval kabı sabit 1440 px (375'te form −2,5 px'ten başlıyor). Alt bilgi mutlak kalsaydı boş gönderimde hata mesajlarıyla uzayan form alt bilgiye biniyordu (ölçüldü K9 = 2) → akışa alındı, K9 0 |
@@ -31,7 +31,7 @@ Kaynak: `EMIR-AMBLEM-YILDIZ-2026-10-10.md` (tek doğruluk) · tuval `ham/yildiz-
 **Koyu: 14 öğe · tolerans içinde 14 · FARK 0. Açık: 14 öğe · tolerans içinde 14 · FARK 0.** (`tk/karanlik-tablo.md`, `tk/aydinlik-tablo.md`)
 | Öğe | Tuval | Uygulama |
 |---|---|---|
-| amblem (taş + MİHENK) | 610,236 220×150 | 610,236 220×150 |
+| amblem (taş + BYGATECH) | 610,236 220×150 | 610,236 220×150 |
 | form | 530,442 380×222 | 530,442 380×222 |
 | E-POSTA / PAROLA etiketi | 11px/500/.22em/rgb(154,152,147) @530,462.5 86×15.9 / 530,530.5 | aynı |
 | alan satırı (çizgi --p) | 530,442 380×58 · çizgi rgb(201,198,190) | aynı |
@@ -127,13 +127,13 @@ Yeni test: 16 koşum (11 yöntem). Önce (AMBLEM-2 T2 tam süiti): 12275.
 | `GET /api/v1/gorunum` (jetonlu) | 200 sema yildiz | `{"sema":"yildiz","yaziOlcegi":"18","temaModu":"sistem"}` |
 | `GET /api/v1/kullanici/gorunum` | 200, çözülmüş şema yildiz | `"sema":"yildiz","semaKaynagi":"kiraci"` |
 | `GET /api/v1/gorunum` **oturumsuz** | 401 (KRİTİK-2'nin kökü) | 401 `Token bulunamadı` |
-| `GET /js/tema.js` / `GET /css/tema-yildiz.css` | 200, kaynakla aynı | 200 · `cmp` AYNI ×2 · `mihenk-son-sema` 2 kez |
+| `GET /js/tema.js` / `GET /css/tema-yildiz.css` | 200, kaynakla aynı | 200 · `cmp` AYNI ×2 · `bygatech-son-sema` 2 kez |
 | SQL `kiraci_ayarlari` | gorunum_semasi = yildiz | `01M4KBR0C3CVHZ62H0QAQEJVHR · gorunum_semasi · yildiz` · `gorunum_yazi_olcegi · 18` |
 | Tarayıcı localStorage (akış § 3d) | giriş sonrası `yildiz`, çıkışta kalır | `yildiz` / `yildiz` |
 **Temizlik:** API (PID 76292 + çocuk 76305) ve vekil (PID 76777) yalnız kendi PID'leriyle durduruldu; `lsof` 5164/5165 boş; 5199 dokunulmadı (dinliyor). `zsh kiraci-temizle.sh 01M4KBR0C3CVHZ62H0QAQEJVHR --uygula` → 374 satır + tenants 1 satır silindi; doğrulama: tenants 0 · kullanicilar 0 · kiraci_ayarlari 0. **Tenants: başta 23 (tohumdan önce), tohum sonrası ölçümde 23 (eşzamanlı bir şerit bu arada bir kiracı silmiş), sonda 22** — kendi kiracım silindi; QA-TEST-* ve öteki PAKET* kiracılarına dokunulmadı. Fikstür ve giriş yanıtı `printf ''` ile boşaltıldı.
 
 ## 8. DoD sözleşmesi
-Yeni varlık/kayıt türü yok; migration gerekmedi. `mihenk-son-sema` cihaz görünüm önbelleğidir (veri değil): sunucu değeri esastır (YA3_03), beyaz liste dışı değer ne yazılır ne uygulanır; oturum/yetki/güvenlik taşımaz. Giriş formu davranışı (doğrulama, alan altı mesaj, odak, MFA ikinci adımı ve C4_62 kurtarma kodu alanı, kayıt sekmesi, parola yardımı) DEĞİŞMEDİ (YA3_07, YA3_08, YA2_16, Giris* filtreli testler yeşil). Her düğme gerçek eylem taşır (Göster/Unuttum/Giriş/Yeni dükkân/HARİÇ özeti).
+Yeni varlık/kayıt türü yok; migration gerekmedi. `bygatech-son-sema` cihaz görünüm önbelleğidir (veri değil): sunucu değeri esastır (YA3_03), beyaz liste dışı değer ne yazılır ne uygulanır; oturum/yetki/güvenlik taşımaz. Giriş formu davranışı (doğrulama, alan altı mesaj, odak, MFA ikinci adımı ve C4_62 kurtarma kodu alanı, kayıt sekmesi, parola yardımı) DEĞİŞMEDİ (YA3_07, YA3_08, YA2_16, Giris* filtreli testler yeşil). Her düğme gerçek eylem taşır (Göster/Unuttum/Giriş/Yeni dükkân/HARİÇ özeti).
 
 ## 9. Değişen dosyalar (bu paket)
 ```

@@ -175,7 +175,7 @@ internal static class Giris
 }
 
 /// <summary>
-/// Bankanın ham hareketi → Mihenk hareketi. Bankadan gelen geçersiz değer (IBAN, TC/VKN, ad) hareketi
+/// Bankanın ham hareketi → ByGatech hareketi. Bankadan gelen geçersiz değer (IBAN, TC/VKN, ad) hareketi
 /// KİLİTLEMEZ: o alan boş bırakılır (yoksa satır her turda reddedilip sonsuza dek beklerdi).
 /// </summary>
 public static class HareketTemizleyici

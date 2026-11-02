@@ -42,7 +42,7 @@
 //   tuvaldeki sabit sözcük uygulamada yoksa FARK). Üst düzeyde "tuvaldeYok": [{"ad", "uygulama": "<seçici>"} |
 //   {"ad", "metin": "<düzenli ifade>"}] → tuvalde OLMAYAN öğe uygulamada GÖRÜNÜRSE FARK (ör. "+ Süzgeç").
 //   YILDIZ-4D: üst düzeyde "navKaynak": "<Amblem_sol(.._acik).dc.html>" → ekran tuvalinin <nav>'ı amblem tuvalinin
-//   <nav>'ıyla değiştirilir (kurucu kararı 9 Ekim § 2a: amblem + MİHENK HER ekranda menünün başında; 4. tur ekran
+//   <nav>'ıyla değiştirilir (kurucu kararı 9 Ekim § 2a: amblem + ByGatech HER ekranda menünün başında; 4. tur ekran
 //   tuvalleri bu karardan ÖNCE çizildi). Seçili menü öğesi ekran tuvalindekiyle aynı href'e taşınır; amblemin
 //   helmet dışı <style>'ı (animasyon) eklenir. Kullanıldığında tablo başlığına yazılır.
 //   Seçici sonuna "::metin" eklenirse öğenin İLK doğrudan metin düğümünün kutusu

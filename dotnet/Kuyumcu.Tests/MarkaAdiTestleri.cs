@@ -7,8 +7,8 @@ namespace Kuyumcu.Tests;
 // PAKET P-D2 — ÜRÜN ADI KAPISI (demo hazırlık dalgası · Z3 / V17 / D-d)
 //
 // ÖLÇÜLMÜŞ DURUM (23 Eylül 2026, orkestratör): kaynak ağacında eski ürün adı ("Kuyumcu" + boşluk + "ERP")
-// 44 dosyada geçiyordu, "Mihenk" 0 dosyada. Kurucu kararı (23 Eylül, birebir):
-// "ürünün adı mihenk olacak". Cumartesi demosunda müşteri ürünün adını tarayıcı
+// 44 dosyada geçiyordu, "ByGatech" 0 dosyada. Kurucu kararı (23 Eylül, birebir):
+// "ürünün adı bygatech olacak". Cumartesi demosunda müşteri ürünün adını tarayıcı
 // sekmesinde, açılış ekranında ve giriş kartında GÖRÜR.
 //
 // NEDEN TEST: adı elle 44 yerde değiştirmek düzeltmedir, mekanizma değildir —

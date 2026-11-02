@@ -1,4 +1,4 @@
-# Mihenk — Satışa Hazırlık Görsel / Arayüz Denetimi (21.10.2026)
+# ByGatech — Satışa Hazırlık Görsel / Arayüz Denetimi (21.10.2026)
 
 > **HÜKÜM: HAYIR — bugünkü hâliyle satışa hazır değil.** Metin kontrastı, açılır listeler, hata mesajları, hareket azaltma ve sayfa hızı iyi. Ama bir alıcının ilk demoda göreceği görünür kusurlar var: Ürünler ve Banka ekranlarında masaüstünde üst üste basılmış, okunmayan ve fareyle tıklanamayan düğmeler; telefonda (özellikle yatay tutulduğunda) satış ekranının barkod alanını ve ödeme bölümünü örten yapışkan alt panel; koyu temada okunmaz rapor baskısı; aynı üründe iki ayrı tasarım dili. Bu öbekler kapanmadan "satışa hazır" denemez.
 
@@ -612,7 +612,7 @@ Başlangıç değerleri (08:00 civarı, API `/auth/ben` + `/kullanici/gorunum`):
 | sahip-KORU-aydinlik-1280 | /kvkk | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #ust-kur-saat "11:36" |
 | sahip-KORU-aydinlik-1280 | /evraklar | 68 | 5 ['#yildiz-evrak-ara ""'] | 0 [] | 0 | 0 | 0 | #yildiz-evrak-ara "" |
 | sahip-KORU-aydinlik-1280 | /evraklar/takvim | 66 | 0 [] | 0 [] | 0 | 0 | 8 | #yildiz-vade-ayrinti "Tüm  |
-| sahip-KORU-aydinlik-1280 | /siparisler | 68 | 4 ['#yildiz-siparis-arama ""'] | 0 [] | 0 | 0 | 0 | #yildiz-marka "MİHENK" |
+| sahip-KORU-aydinlik-1280 | /siparisler | 68 | 4 ['#yildiz-siparis-arama ""'] | 0 [] | 0 | 0 | 0 | #yildiz-marka "BYGATECH" |
 | sahip-KORU-aydinlik-1280 | /yedekler | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #ust-yardim "YARDIM" |
 | sahip-KORU-aydinlik-1280 | /siparisler/01M4Z6HCVBFGCF65XM | 69 | 0 [] | 3 ['#belge-sec "" ⟂ #belge-sec-dugme "DOSYA SEÇ"'] | 0 | 0 | 6 | #ust-kur-saat "11:39" |
 | sahip-KORU-karanlik-1280 | /islemler | 68 | 3 ['#islem-barkod ""'] | 0 [] | 0 | 0 | 0 | #yildiz-odeme-0 "Nakit · A |
@@ -634,10 +634,10 @@ Başlangıç değerleri (08:00 civarı, API `/auth/ben` + `/kullanici/gorunum`):
 | sahip-basit-KORU-karanlik-1280 | /kvkk | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #ust-kur-saat "12:20" |
 | sahip-basit-KORU-karanlik-1280 | /evraklar | 68 | 5 ['#yildiz-evrak-ara ""'] | 0 [] | 0 | 0 | 0 | #yildiz-evrak-ara "" |
 | sahip-basit-KORU-karanlik-1280 | /evraklar/takvim | 66 | 0 [] | 0 [] | 0 | 0 | 8 | #yildiz-vade-ayrinti "Tüm  |
-| sahip-basit-KORU-karanlik-1280 | /siparisler | 68 | 4 ['#yildiz-siparis-arama ""'] | 0 [] | 0 | 0 | 0 | #yildiz-marka "MİHENK" |
+| sahip-basit-KORU-karanlik-1280 | /siparisler | 68 | 4 ['#yildiz-siparis-arama ""'] | 0 [] | 0 | 0 | 0 | #yildiz-marka "BYGATECH" |
 | sahip-basit-KORU-karanlik-1280 | /yedekler | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #ust-yardim "YARDIM" |
 | sahip-basit-KORU-karanlik-1280 | /siparisler/01M4Z6HCVBFGCF65XM | 69 | 0 [] | 3 ['#belge-sec "" ⟂ #belge-sec-dugme "DOSYA SEÇ"'] | 0 | 0 | 6 | #ust-kur-saat "12:22" |
-| tezgahtar-KORU-aydinlik-1280 | / | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #yildiz-marka "MİHENK" |
+| tezgahtar-KORU-aydinlik-1280 | / | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #yildiz-marka "BYGATECH" |
 | tezgahtar-KORU-aydinlik-1280 | /islemler | 68 | 3 ['#islem-barkod ""'] | 0 [] | 0 | 0 | 0 | #yildiz-odeme-0 "Nakit · A |
 | tezgahtar-KORU-aydinlik-1280 | /cariler | 69 | 4 ['#cari-arama ""'] | 0 [] | 0 | 0 | 3 | #cari-arama "" |
 | tezgahtar-KORU-aydinlik-1280 | /ekranlar | 69 | 3 ['#ekranlar-ara ""'] | 0 [] | 0 | 0 | 2 | #ekranlar-ara "" |
@@ -645,7 +645,7 @@ Başlangıç değerleri (08:00 civarı, API `/auth/ben` + `/kullanici/gorunum`):
 | tezgahtar-KORU-aydinlik-1280 | /emanet | 68 | 4 ['#yildiz-emanet-arama ""'] | 0 [] | 0 | 0 | 0 | #yildiz-emanet-arama "" |
 | tezgahtar-KORU-aydinlik-1280 | /kur | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #yildiz-kur-b1 "Şimdi günc |
 | tezgahtar-KORU-aydinlik-1280 | /gise | 67 | 0 [] | 0 [] | 0 | 0 | 6 | #ust-yardim "Yardım" |
-| tezgahtar-KORU-aydinlik-1280 | /banka | 68 | 0 [] | 5 ['#yildiz-banka-havale "Havale gönder (demo)" ⟂ #yildiz-banka-ayrinti "Tüm ayrıntılar"'] | 0 | 0 | 0 | #yildiz-marka "MİHENK" |
+| tezgahtar-KORU-aydinlik-1280 | /banka | 68 | 0 [] | 5 ['#yildiz-banka-havale "Havale gönder (demo)" ⟂ #yildiz-banka-ayrinti "Tüm ayrıntılar"'] | 0 | 0 | 0 | #yildiz-marka "BYGATECH" |
 | tezgahtar-KORU-aydinlik-1280 | /gider | 66 | 0 [] | 0 [] | 0 | 0 | 7 | #ust-yardim "Yardım" |
 | tezgahtar-KORU-aydinlik-1280 | /hurda | 67 | 0 [] | 0 [] | 0 | 0 | 7 | #ust-yardim "Yardım" |
 | tezgahtar-KORU-aydinlik-1280 | /gider-pusulalari | 67 | 0 [] | 0 [] | 0 | 0 | 7 | #ust-yardim "Yardım" |
@@ -668,7 +668,7 @@ Başlangıç değerleri (08:00 civarı, API `/auth/ben` + `/kullanici/gorunum`):
 | tezgahtar-KORU-aydinlik-1280 | /bildirimler | 67 | 0 [] | 0 [] | 0 | 0 | 7 | #yildiz-bildirim-sekme-tum |
 | tezgahtar-KORU-aydinlik-1280 | /evraklar | 67 | 5 ['#yildiz-evrak-ara ""'] | 0 [] | 0 | 0 | 0 | #yildiz-evrak-ara "" |
 | tezgahtar-KORU-aydinlik-1280 | /evraklar/takvim | 66 | 0 [] | 0 [] | 0 | 0 | 8 | #yildiz-vade-ayrinti "Tüm  |
-| tezgahtar-KORU-aydinlik-1280 | /siparisler | 68 | 4 ['#yildiz-siparis-arama ""'] | 0 [] | 0 | 0 | 0 | #yildiz-marka "MİHENK" |
+| tezgahtar-KORU-aydinlik-1280 | /siparisler | 68 | 4 ['#yildiz-siparis-arama ""'] | 0 [] | 0 | 0 | 0 | #yildiz-marka "BYGATECH" |
 | tezgahtar-KORU-aydinlik-1280 | /yedekler | 67 | 0 [] | 0 [] | 0 | 0 | 7 | #ust-yardim "YARDIM" |
 | tezgahtar-KORU-aydinlik-1280 | /yasal-sinirlar | 66 | 0 [] | 0 [] | 0 | 0 | 7 | #ust-yardim "YARDIM" |
 | tezgahtar-KORU-aydinlik-1280 | /siparisler/01M4Z6HCVBFGCF65XM | 69 | 0 [] | 3 ['#belge-sec "" ⟂ #belge-sec-dugme "DOSYA SEÇ"'] | 0 | 0 | 6 | #ust-yardim "Yardım" |

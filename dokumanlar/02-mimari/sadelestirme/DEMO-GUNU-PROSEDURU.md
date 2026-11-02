@@ -1,4 +1,4 @@
-# MİHENK — DEMO GÜNÜ PROSEDÜRÜ (Cumartesi 26 Eylül 2026)
+# ByGatech — DEMO GÜNÜ PROSEDÜRÜ (Cumartesi 26 Eylül 2026)
 
 > Senaryonun kendisi: `DEMO-SENARYOSU-2026-09-26.md` (12 adım, 14,8 dk).
 > Bu belge **demonun çalışır durumda olması için** yapılacakları sırasıyla yazar.
@@ -18,7 +18,7 @@ ekranda 24 ürün, 12 müşteri, çift adlar olur. **Doğru yol: taze kiracı** 
 hatırlanabilir adres) + eski DEMO kiracısının satırlarını veritabanından silmek (K-1 izni var).
 
 **T3 · 5199 eski yayını sunuyor.** İnceleme sunucusu **22.09 06:05** yayınını sunuyor. O yayında
-yeni görsel dil (S-1), MİHENK adı (P-D2), 8 şema (B-1), altın pozisyonu (B-2) **YOK.**
+yeni görsel dil (S-1), ByGatech adı (P-D2), 8 şema (B-1), altın pozisyonu (B-2) **YOK.**
 Demo 5199'da yapılacaksa **cuma akşamı yeni yayın alınmalı** — şeritler birleşip dalga kapısı
 (tam süit 0 kırmızı + denetim TEMİZ) geçtikten sonra.
 

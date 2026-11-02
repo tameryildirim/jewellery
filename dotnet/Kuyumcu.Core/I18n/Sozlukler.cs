@@ -1434,7 +1434,7 @@ public sealed class SozlukBanka
     /// <summary>Kurucu 31.10 — bankanın kendi söylediği bakiye satırı.</summary>
     public required string BankadakiBakiye { get; init; }
     public required string BankaBloke { get; init; }
-    /// <summary>{0} = bankadaki bakiye ile Mihenk kaydı arasındaki fark.</summary>
+    /// <summary>{0} = bankadaki bakiye ile ByGatech kaydı arasındaki fark.</summary>
     public required string BankaBakiyeFarki { get; init; }
     public required string HesapGuncellendi { get; init; }
     public required string HesapGuncellenemedi { get; init; }
@@ -4542,7 +4542,7 @@ public static class Sozlukler
             PasifHesapUyari = "Bu hesap pasiftir: yeni dekont girilemez. Geçmişi okunabilir; yeniden kullanmak için önce aktife alın.",
             BankadakiBakiye = "Bankadaki bakiye",
             BankaBloke = "bloke",
-            BankaBakiyeFarki = "Mihenk kaydıyla fark: {0}",
+            BankaBakiyeFarki = Marka.Ad + " kaydıyla fark: {0}",
             DonusturBasarili = "Fatura oluşturuldu!",
             DonusturBasarisiz = "Faturaya dönüştürülemedi",
             HesabiDuzenle = "Hesabı Düzenle",
@@ -7473,7 +7473,7 @@ public static class Sozlukler
             PasifHesapUyari = "This account is inactive: no new statement line can be entered. Its history is readable; reactivate it before using it again.",
             BankadakiBakiye = "Balance at the bank",
             BankaBloke = "blocked",
-            BankaBakiyeFarki = "Differs from Mihenk records by {0}",
+            BankaBakiyeFarki = "Differs from " + Marka.Ad + " records by {0}",
             DonusturBasarili = "Invoice created!",
             DonusturBasarisiz = "Failed to convert to invoice",
             HesabiDuzenle = "Edit Account",

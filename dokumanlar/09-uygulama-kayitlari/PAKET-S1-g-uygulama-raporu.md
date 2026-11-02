@@ -119,7 +119,7 @@ Değişen: `dotnet/Kuyumcu.Web/Layout/{MenuTanimi.cs,KenarCubugu.razor,RotaBasli
 
 ## 11. Koşul karşılama ve açık kalanlar
 Kabul (a)–(h) sağlandı (§ 7, § 5, § 6). Açık kalanlar:
-1. **Sayfa GÖVDESİ başlıkları ve tarayıcı sekme başlığı hub adını yazıyor** (ör. /denetim-izi sekmesi "Denetim İzi — MİHENK", /raporlar/islem-defteri gövdesi "Hareket Dökümü"). Menü ve üst bar h1 artık tuval adı; sayfa gövdeleri (`<PageTitle>`, h1) hub `Sozlukler.cs`'ten okuyor. Görev hub'a dokunmayı yasakladığı için bu pakette yapılmadı → sonraki paket (UX-S31).
+1. **Sayfa GÖVDESİ başlıkları ve tarayıcı sekme başlığı hub adını yazıyor** (ör. /denetim-izi sekmesi "Denetim İzi — ByGatech", /raporlar/islem-defteri gövdesi "Hareket Dökümü"). Menü ve üst bar h1 artık tuval adı; sayfa gövdeleri (`<PageTitle>`, h1) hub `Sozlukler.cs`'ten okuyor. Görev hub'a dokunmayı yasakladığı için bu pakette yapılmadı → sonraki paket (UX-S31).
 2. `KabukAramaEkranTestleri.Secilen_sube_kabuk_durumuna_yazilir_ve_arama_ucuna_gecer` bir ara koşumda (filtreli, çok sınıflı) bir kez kırmızı oldu; tek başına 3/3 ve son tam süitte yeşil. `KabukServisi.Ortak` statik durum paylaşımından kaynaklanan kararsızlık olduğu düşünülüyor; mevcut test tasarımı (sahibi P-15).
 3. `EtiketEkranTestleri.cs(145)` xUnit1031 uyarısı bir ara derlemede görüldü (başka şeridin dosyası). Son derlemede 0 uyarı.
 4. PRO kapalı grupta önizleme (tuvalde yok) ve Panel.dc.html açık grup büyük harfi konusundaki kararlar § 3'te; kurucu farklısını isterse CSS/tek koşulla değişir.

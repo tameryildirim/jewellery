@@ -35,7 +35,7 @@ dotnet run --project Kuyumcu.Api
 
 Tek süreç **hem API'yi hem Blazor arayüzünü** sunar; adres `dotnet run`
 çıktısında yazar ve `--urls` ile verilir (Swagger: /swagger). Üretimde adres
-kurulumda sorulur ve tek satırda tutulur (`MIHENK_ADRES`, bkz. `docs/DEPLOY.md`
+kurulumda sorulur ve tek satırda tutulur (`BYGATECH_ADRES`, bkz. `docs/DEPLOY.md`
 § 3a — PAKET P-33 / K-26). Eski Node sürümü kaldırılmıştır.
 
 ## Üretim yayını

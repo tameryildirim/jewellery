@@ -169,7 +169,7 @@ public sealed class DilEkranTestleri : BunitContext
 
         Assert.Equal(mod == ArayuzModuServisi.Basit, dil.BasitMi);
         // Görünen metin + title + aria-label + placeholder: Türkçe harf 0 ("Merkez" gibi veri harfsizdir).
-        // Marka amblemi ("MİHENK") özel addır ve bilerek dilden bağımsızdır (YildizUstMenu.AmblemHarfleri,
+        // Marka amblemi ("ByGatech") özel addır ve bilerek dilden bağımsızdır (YildizUstMenu.AmblemHarfleri,
         // YildizAmblem2Testleri.YA2_04 iki dilde aynı): yalnız o düğüm metinden düşülür, gerisi sınanır.
         var marka = ust.Find("#yildiz-marka").TextContent;
         Assert.Equal(KabukTuvalSozlugu.MarkaYazimi.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("tr-TR")), marka.Trim());

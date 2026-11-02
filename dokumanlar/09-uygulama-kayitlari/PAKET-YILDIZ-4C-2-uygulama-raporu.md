@@ -102,7 +102,7 @@ Eşleme dosyalarında yapılan uyarlamalar. Kopyalar `pYILDIZ-4C-2/esleme/` alt�
 
 Statik ekranlar (`c2s-*`):
 - Tezgâh 35/36, Müşteriler 27/28, Tüm ekranlar 65/67.
-- Tek FARK her ekranda "menü seçili" öğesinin x konumu: tuval 264,8 ↔ uygulama 388,8 (+124 px). Sebep: YILDIZ-AMBLEM başlığa "MİHENK" yazısını (110 px) ekledi. Kabuk bu paketin alanı değil; açık kalanlarda.
+- Tek FARK her ekranda "menü seçili" öğesinin x konumu: tuval 264,8 ↔ uygulama 388,8 (+124 px). Sebep: YILDIZ-AMBLEM başlığa "ByGatech" yazısını (110 px) ekledi. Kabuk bu paketin alanı değil; açık kalanlarda.
 - Tüm ekranlar'da kare sayısı 41/39. Sebep: başka şerit /satin-alma ve /irsaliyeler karelerini ekledi (veri). Bu yüzden `main` boyu da farklı.
 
 ### 2.3 Sıkışma (`sikisma-olc.js`) — `/`, `/islemler`, `/cariler`, `/ekranlar` × 1440/1280/375 × koyu/açık × BASİT/PRO (48 ölçüm)
@@ -263,7 +263,7 @@ Finansal varlıklarda silme yok.
 | Test kiracısı silindi | ✓ | 75 tablo 0 satır |
 
 ## 16. Açık kalanlar
-1. **(Kabuk, YILDIZ-AMBLEM)** "MİHENK" yazısı menüyü tuvale göre 124 px sağa itiyor. Statik ekranlarda tek FARK bu. Kurucu amblemi onayladıysa tuval kıyas eşlemesi güncellenmeli; onaylamadıysa kabuk düzeltilmeli.
+1. **(Kabuk, YILDIZ-AMBLEM)** "ByGatech" yazısı menüyü tuvale göre 124 px sağa itiyor. Statik ekranlarda tek FARK bu. Kurucu amblemi onayladıysa tuval kıyas eşlemesi güncellenmeli; onaylamadıysa kabuk düzeltilmeli.
 2. **(Paylaşılan Fiş girdisi)** Karma tutar girdisi kuruş sıfırsa ",00" göstermiyor ("5.000"). Tuval "15.000,00 ₺" istiyor. Girdi biçimleyicisi ortak bileşen; hasımlı pakete devir önerilir.
 3. **(375 kalem satırı, 4A)** Ad sütunu dar: "22 Ayar / Çeyrek / Altın" üç satıra kırılıyor (K3 kırık 0, ama sıkışık). Tuvalde 375 yok.
 4. **(Başka şerit)** RaporDort `RD_KH01` ve `RD_KH02` kırmızı ("Rapor dönemi en çok 400 gün"). P-11 48/47 (aday `SatinAlma.razor`). GIRDI-2 (t5). P-30.

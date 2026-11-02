@@ -27,7 +27,7 @@
 ### e-Fatura / e-Arşiv
 
 - **En önemli bulgu:** 1 Ocak 2026'dan bu yana e-Fatura'ya kayıtlı olmayan mükellefler de faturalarını **tutarına bakılmaksızın e-Arşiv olarak** düzenlemek zorunda. Basit usul ve işletme hesabı esasına göre defter tutanlar için tarih 1 Ocak 2027. ✅ (metin) / 🟡 (kuyumcuya uygulanışı mali müşavirle teyit edilmeli)
-  - **Okumamız doğruysa, bilanço esasına göre defter tutan bir kuyumcunun Mihenk'te kestiği kâğıt/PDF fatura bugün geçerli bir fatura değil.** Bu durumda e-Fatura bağlantısı "sonra bakarız" değil, **satış için ön koşul** olur.
+  - **Okumamız doğruysa, bilanço esasına göre defter tutan bir kuyumcunun ByGatech'te kestiği kâğıt/PDF fatura bugün geçerli bir fatura değil.** Bu durumda e-Fatura bağlantısı "sonra bakarız" değil, **satış için ön koşul** olur.
 - **e-Fatura'ya geçiş haddi:** yıllık satış 3 milyon TL ve üzeri; internetten satış yapan için 500 bin TL. Kuyuma özel bir geçiş hükmü yok. ✅
 - **Gönderimin üç yolu var:** GİB portalı (elle), özel entegratör, doğrudan entegrasyon. Bizim gibi bir yazılım için gerçekçi yol **özel entegratör**. GİB'in listesinde ~105 firma var. ✅
 - **Kuyum faturasının kendi kodları var:** fatura tipi "ÖZELMATRAH"; 805 = altın ziynet ve sikke, 808 = gümüş, 230 = külçe altın istisnası. ✅
@@ -113,7 +113,7 @@ Ana kaynak, 509 Sıra No'lu VUK Genel Tebliği'nin güncel metni: [mevzuat.gov.t
 4. **Asıl tehlike ceza hukuku.** Program bildirimi kendisi gönderirse ByGatech, bildirimin yapıldığını bilen taraf olur. 5549 md.4/2'deki istisnalar yalnız denetim elemanları ve mahkemeler; yazılım firması ya da hizmet sağlayıcı için istisna yok. Aykırılığın cezası 1–3 yıl hapis (A3.2). *Bu sonuç birincil metne dayalı bizim yorumumuzdur; doğrudan "yazılım firması" diyen bir hüküm yok. Bkz. § 4 hukukçu sorusu.*
 5. **Pazarda kimse yapmıyor.** En agresif rakip Kivi bile "hiçbir bildirim otomatik gönderilmez" diyor (§ 6).
 
-**Doğru yol (bugünkü yöntemin geliştirilmişi):** Mihenk bildirimi MASAK formunun alan sırasıyla hazırlar, kuyumcu kendi e-Devlet'iyle girip **kopyala-yapıştır** ile 5 dakikada gönderir, program süreyi sayar ve referansı saklar. Şifre programa hiç girmez.
+**Doğru yol (bugünkü yöntemin geliştirilmişi):** ByGatech bildirimi MASAK formunun alan sırasıyla hazırlar, kuyumcu kendi e-Devlet'iyle girip **kopyala-yapıştır** ile 5 dakikada gönderir, program süreyi sayar ve referansı saklar. Şifre programa hiç girmez.
 
 > **Not — farklı bir durum:** e-Fatura entegratörünün API anahtarı bundan farklı. O anahtar kuyumcunun entegratörle yaptığı sözleşmeye bağlı bir **uygulama kimliği**; amacı zaten yazılımın kullanmasıdır. Bu anahtarı AES-256 ile şifreleyip saklamak doğru ve olağan bir uygulama (§ 5, E-2).
 
@@ -126,7 +126,7 @@ Ana kaynak, 509 Sıra No'lu VUK Genel Tebliği'nin güncel metni: [mevzuat.gov.t
 | # | Karar | Öneri |
 |---|---|---|
 | **K1** | e-Fatura entegratörü seçilsin mi, hangisi? | **Evet, şimdi.** § 2-B1.3 doğruysa bilanço esasına göre defter tutan kuyumcuya e-Arşiv olmadan satış yapılamaz. Liste: ebelge.gib.gov.tr. Seçim ölçütleri: belgeli API, test ortamı, ÖZELMATRAH desteği, kontör fiyatı, bayi/aracı modeli (bizim adımıza mı, kuyumcunun kendi sözleşmesiyle mi) |
-| **K1a** | Sözleşmeyi kim yapacak: ByGatech mi (aracı) yoksa her kuyumcu kendisi mi? | **Kuyumcu kendisi**, Mihenk yalnız bağlanır. Mali mühür ve sorumluluk mükellefte kalır; bize kontör riski düşmez |
+| **K1a** | Sözleşmeyi kim yapacak: ByGatech mi (aracı) yoksa her kuyumcu kendisi mi? | **Kuyumcu kendisi**, ByGatech yalnız bağlanır. Mali mühür ve sorumluluk mükellefte kalır; bize kontör riski düşmez |
 | **K3** | ŞİB kayıtları sunucuda tutulmaya devam etsin mi? | Tutulsun, ama **ByGatech personeli göremesin**: yalnız işletme sahibi ve kendisinin yetkilendirdiği kişiler görsün. Destek erişiminde ŞİB içeriği gizlensin. 5549 md.4/2 gerekçesi (§ 5, M-3) |
 | **K4** | Satış dili | **"MASAK entegrasyonu" denmesin.** Önerilen: *"MASAK uyumu: kimlik tespiti, şüpheli işlem hazırlığı, süre takibi"*. Rakiplerin kullandığı ifade gerçeği yansıtmıyor (§ 6) |
 | **K5** | 200.000 TL kademesi ne olsun? | Birincil kaynakta yok (A5.1). **Öneri:** mali müşavir/hukukçu "yok" derse kademe kaldırılsın; cevap gelene kadar olduğu gibi kalsın (tutucu) |
@@ -213,7 +213,7 @@ Yasal zorunluluk değiller; sırada M-2 ve E paketlerinin arkasında gelirler.
 - **Pusula'nın 21.09'dan sonraki durumu:** PusulaX iOS 1.6.0 (destek talebi ve kur ekranı); MASAK ya da e-Fatura yeniliği yok.
 - **Başka kuyumcu programları** (Milyem Plus, SarrafPro, hasfiyat): MASAK tarafında kayıt tutma, risk taraması ve yaptırım listesi var; **MASAK Online'a otomatik bildirim gönderen bir kuyumcu programı bulunamadı.**
 
-**Sonuç:** "Pusula aynı işi yapıyor" doğru değil. MASAK tarafında Mihenk'in yöntemi sektörün en ilerisiyle aynı yerde; yaptırım kontrolü bizde de var (liste beslemesi elle). Eksiğimiz NFC ile kimlik okuma ve imzalı kimlik tespit belgesi. e-Fatura tarafında ise rakip önde: bizde gönderimin tek satırı bile yok.
+**Sonuç:** "Pusula aynı işi yapıyor" doğru değil. MASAK tarafında ByGatech'in yöntemi sektörün en ilerisiyle aynı yerde; yaptırım kontrolü bizde de var (liste beslemesi elle). Eksiğimiz NFC ile kimlik okuma ve imzalı kimlik tespit belgesi. e-Fatura tarafında ise rakip önde: bizde gönderimin tek satırı bile yok.
 
 ---
 

@@ -1,3 +1,4 @@
+using Kuyumcu.Core.I18n;
 using System.Text;
 using System.Text.Json.Nodes;
 using Kuyumcu.Api.Data;
@@ -39,7 +40,7 @@ public sealed class EBelgeTestleri
         Assert.Equal((1000m, 200m, 1200m), (m.NetToplam, m.KdvToplam, m.Odenecek));
         Assert.Equal(new DateTime(2026, 10, 20, 12, 30, 0), m.TarihYerel);   // 09:30 UTC = 12:30 TSİ
         Assert.Equal("MHK", m.SeriOnEki);
-        Assert.Contains("Mihenk belge no: FTR-2026-000007", m.Notlar);
+        Assert.Contains(Marka.Ad + " belge no: FTR-2026-000007", m.Notlar);
     }
 
     [Fact]

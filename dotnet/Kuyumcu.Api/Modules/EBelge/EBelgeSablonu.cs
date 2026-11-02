@@ -3,15 +3,15 @@ using System.Security;
 namespace Kuyumcu.Api.Modules.EBelge;
 
 /// <summary>
-/// Mihenk e-belge görüntü şablonu (Sablon/mihenk-fatura.xslt, gömülü kaynak). Yapılandırma:
-///   EBelge:MihenkSablonu (varsayılan true) — false: entegratörün varsayılan şablonu kullanılır.
+/// ByGatech e-belge görüntü şablonu (Sablon/bygatech-fatura.xslt, gömülü kaynak). Yapılandırma:
+///   EBelge:OzelSablon (varsayılan true) — false: entegratörün varsayılan şablonu kullanılır.
 ///   EBelge:GibLogoAdresi — doluysa GİB logosu resim olarak basılır; boşsa idarenin adı yazıyla.
 /// </summary>
 public static class EBelgeSablonu
 {
     private static readonly Lazy<string> Ham = new(() =>
     {
-        using var s = typeof(EBelgeSablonu).Assembly.GetManifestResourceStream("Kuyumcu.Api.EBelge.mihenk-fatura.xslt")
+        using var s = typeof(EBelgeSablonu).Assembly.GetManifestResourceStream("Kuyumcu.Api.EBelge.bygatech-fatura.xslt")
             ?? throw new InvalidOperationException("e-belge şablonu gömülü kaynakta yok");
         using var r = new StreamReader(s);
         return r.ReadToEnd();
@@ -24,5 +24,5 @@ public static class EBelgeSablonu
                 $"<xsl:param name=\"gibLogo\" select=\"'{SecurityElement.Escape(gibLogoAdresi.Trim().Replace("'", ""))}'\"/>");
 
     public static string? Yapilandirmadan(IConfiguration y) =>
-        y.GetValue("EBelge:MihenkSablonu", true) ? Metin(y["EBelge:GibLogoAdresi"]) : null;
+        y.GetValue("EBelge:OzelSablon", true) ? Metin(y["EBelge:GibLogoAdresi"]) : null;
 }

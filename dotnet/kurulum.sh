@@ -24,7 +24,7 @@
 #   Uygulamanın adresi kısayola GÖMÜLMEZ, KURULUMDA SORULUR (varsayılan
 #   http://localhost:5199). Aynı paket hem tek makinede hem ağ üstünde
 #   kurulur; gömülü adres ikinci kurulumda SESSİZCE yanlış yere bakardı.
-#   • Adres .env'de TEK satırda tutulur: MIHENK_ADRES=<adres>
+#   • Adres .env'de TEK satırda tutulur: BYGATECH_ADRES=<adres>
 #   • Masaüstü kısayolu O adresle üretilir (macOS .webloc · Linux .desktop;
 #     Windows'ta kurulum.ps1 .url üretir).
 #   • Adres değişirse: --kisayol --adres <yeni> → satır güncellenir, kısayol
@@ -116,7 +116,7 @@ kisayol_uret() {
   ( umask 022; mkdir -p "$dizin" ) || { echo "HATA: kısayol dizini açılamadı: $dizin" >&2; exit 3; }
   case "$(uname -s)" in
     Darwin)
-      dosya="$dizin/MİHENK.webloc"
+      dosya="$dizin/ByGatech.webloc"
       if ! {
         echo '<?xml version="1.0" encoding="UTF-8"?>'
         echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
@@ -125,11 +125,11 @@ kisayol_uret() {
         echo "HATA: kısayol yazılamadı: $dosya" >&2; exit 3
       fi ;;
     *)
-      dosya="$dizin/MIHENK.desktop"
+      dosya="$dizin/BYGATECH.desktop"
       if ! {
         echo '[Desktop Entry]'
         echo 'Type=Link'
-        echo 'Name=MİHENK'
+        echo 'Name=ByGatech'
         echo "URL=$adres"
         echo 'Icon=web-browser'
       } > "$dosya"; then
@@ -150,10 +150,10 @@ kisayol_uret() {
 adres_satirini_yaz() {
   local hedef="$1" adres="$2" bag
   bag="$(bag_adresi "$adres")"
-  if grep -q '^MIHENK_ADRES=' "$hedef"; then
-    ADRES_YENI="$adres" perl -pi -e 's/^MIHENK_ADRES=.*$/MIHENK_ADRES=$ENV{ADRES_YENI}/' "$hedef"
+  if grep -q '^BYGATECH_ADRES=' "$hedef"; then
+    ADRES_YENI="$adres" perl -pi -e 's/^BYGATECH_ADRES=.*$/BYGATECH_ADRES=$ENV{ADRES_YENI}/' "$hedef"
   else
-    echo "MIHENK_ADRES=$adres" >> "$hedef"
+    echo "BYGATECH_ADRES=$adres" >> "$hedef"
   fi
   # Bağlama noktası adresle AYNI kuraldan türer (bag_adresi) — adres ile
   # uygulamanın dinlediği port hiçbir zaman ayrışmaz. İKİ anahtar da yazılır:
@@ -170,8 +170,8 @@ adres_satirini_yaz() {
     fi
   done
   chmod 600 "$hedef"
-  if [ "$(grep -c '^MIHENK_ADRES=' "$hedef")" != "1" ]; then
-    echo "HATA: $hedef içinde MIHENK_ADRES satırı TEK değil." >&2
+  if [ "$(grep -c '^BYGATECH_ADRES=' "$hedef")" != "1" ]; then
+    echo "HATA: $hedef içinde BYGATECH_ADRES satırı TEK değil." >&2
     exit 3
   fi
 }
@@ -179,12 +179,12 @@ adres_satirini_yaz() {
 if [ "$YALNIZ_KISAYOL" -eq 1 ]; then
   [ -f "$HEDEF" ] || { echo "HATA: '$HEDEF' yok; önce kurulum yapılmalı." >&2; exit 2; }
   if [ -z "$ADRES" ]; then
-    ADRES="$(sed -n 's/^MIHENK_ADRES=//p' "$HEDEF" | head -1)"
+    ADRES="$(sed -n 's/^BYGATECH_ADRES=//p' "$HEDEF" | head -1)"
   fi
   adres_belirle
   adres_satirini_yaz "$HEDEF" "$ADRES"
   kisayol_uret "$ADRES"
-  echo "KISAYOL ÜRETİLDİ — sırlara dokunulmadı. Adres: $ADRES (satır: MIHENK_ADRES)"
+  echo "KISAYOL ÜRETİLDİ — sırlara dokunulmadı. Adres: $ADRES (satır: BYGATECH_ADRES)"
   exit 0
 fi
 
@@ -237,7 +237,7 @@ printf '' > "$HEDEF"
 chmod 600 "$HEDEF"
 
 {
-  echo "# MİHENK üretim sırları — $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "# ByGatech üretim sırları — $(date '+%Y-%m-%d %H:%M:%S')"
   echo "# dotnet/kurulum.sh üretti. ELLE DÜZENLEMEYİN, KOPYALAMAYIN, PAYLAŞMAYIN."
   echo "ASPNETCORE_ENVIRONMENT=Production"
   echo "KUYUMCU_VT=$VT"
@@ -251,7 +251,7 @@ chmod 600 "$HEDEF"
   # ASPNETCORE_URLS aynı değerle uyumluluk için tutulur (bkz. adres_satirini_yaz).
   echo "Urls=$(bag_adresi "$ADRES")"
   echo "ASPNETCORE_URLS=$(bag_adresi "$ADRES")"
-  echo "MIHENK_ADRES=$ADRES"
+  echo "BYGATECH_ADRES=$ADRES"
 } >> "$HEDEF"
 
 if id "$SAHIP" >/dev/null 2>&1; then
@@ -271,13 +271,13 @@ echo
 echo "KURULUM SIRLARI ÜRETİLDİ — hiçbir değer ekrana basılmadı."
 for A in ASPNETCORE_ENVIRONMENT KUYUMCU_VT MYSQL_ROOT_PASSWORD \
          ConnectionStrings__Kuyumcu Jwt__Secret KUYUMCU_SIFRELEME_ANAHTARI \
-         Yedek__SifrelemeAnahtari Uretim__TersVekilArkasinda MIHENK_ADRES; do
+         Yedek__SifrelemeAnahtari Uretim__TersVekilArkasinda BYGATECH_ADRES; do
   if grep -q "^$A=" "$HEDEF"; then echo "  ✓ $A: var"; else echo "  ✗ $A: YOK"; fi
 done
 echo
 echo "Dosya : $HEDEF  (izin $(stat -f '%Lp' "$HEDEF" 2>/dev/null || stat -c '%a' "$HEDEF"))"
 echo
 kisayol_uret "$ADRES"
-echo "Adres  : $ADRES (tek satır: MIHENK_ADRES; değiştirmek için --kisayol --adres <yeni>)"
+echo "Adres  : $ADRES (tek satır: BYGATECH_ADRES; değiştirmek için --kisayol --adres <yeni>)"
 echo "YEDEKLEYİN: KUYUMCU_SIFRELEME_ANAHTARI kaybolursa şifreli kimlik"
 echo "verileri GERİ OKUNAMAZ (MASAK/KVKK alanları). docs/DEPLOY.md § sır rotasyonu."

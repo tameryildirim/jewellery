@@ -84,7 +84,7 @@
                         }
                         <p class="metin-soluk metin-kucuk sayi kir-uzun">@AktifHesap.Iban</p>
                         @* Kurucu 31.10 ("Faturalog'daki gibi hesaba ait bakiye"): bankanın KENDİ söylediği bakiye.
-                           Yalnız banka bakiye verdiyse görünür; Mihenk kaydıyla tutmazsa fark yazılır. *@
+                           Yalnız banka bakiye verdiyse görünür; ByGatech kaydıyla tutmazsa fark yazılır. *@
                         @if (AktifHesap.BankaBakiye is { } bankaBakiye)
                         {
                             var bloke = bankaBakiye - (AktifHesap.BankaKullanilabilir ?? bankaBakiye);

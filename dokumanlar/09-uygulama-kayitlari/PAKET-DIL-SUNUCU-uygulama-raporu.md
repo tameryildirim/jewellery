@@ -91,7 +91,7 @@ Yanıt başlığı `Content-Language: tr|en` (yalnız /api).
 | Ham kod (DIGER, TAM, ELLE, BASARILI, BASARISIZ) — `/raporlar/satis-analizi`, `/yedekler`, BASİT+PRO | 5 tekil kod | **0** (kalan yalnız ISO para kodu USD/EUR/GBP — uluslararası, çevrilmez) |
 | Ayarlar künye satırı (`#ayar-kunye-satir`) | `surum=… · derleme=… (dosya) · ortam=… · migration=…` | `version=1.0.0 · build=… (file) · environment=Development · migrations=91 · last=…` |
 | Accept-Language (sayfanın /api çağrıları) | tarayıcı dili | **`en`** (TR modda `tr`) |
-| Taranan tekil metin (PRO / BASİT) | 102 / 88 | 101 / 88 — kalanın hepsi VERİ/MARKA: müşteri/ürün/şube adları (Kemal Ardıç, 22 Ayar Çeyrek Altın …), seed adları (Peşin Müşteri, Ana Kasa, Merkez Şube → md.17), marka "MİHENK", denetim izi `title` ham kayıt (DIL-EKRAN gerekçeli) |
+| Taranan tekil metin (PRO / BASİT) | 102 / 88 | 101 / 88 — kalanın hepsi VERİ/MARKA: müşteri/ürün/şube adları (Kemal Ardıç, 22 Ayar Çeyrek Altın …), seed adları (Peşin Müşteri, Ana Kasa, Merkez Şube → md.17), marka "ByGatech", denetim izi `title` ham kayıt (DIL-EKRAN gerekçeli) |
 **TR modda İngilizce kalıntı: 0** (PRO+BASİT 1440; yalnız "Open-Meteo (CC BY 4.0)" lisans atfı ve Türkçe "Transfer" sözcüğü).
 
 **Ölçüm (sikisma-olc K1..K12; 5 rota: /raporlar /ayarlar /banka /cariler /kasalar) — her kombinasyonda KAÇ İHLAL:**

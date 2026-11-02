@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'mihenk-s3b',
+  name: 'bygatech-s3b',
   description: 'Bir uygulama dalgasinin paketlerini SERI olarak Opus uygulayici + hasim dogrulayici + duzeltme donguleriyle uygular; kapi gecmeyen paket dalgayi durdurur',
   phases: [
     { title: 'Uygulama', detail: 'Opus uygulayici: spesifikasyon + kosullar + UX sozlesmesi; test, mutasyon, denetim, canli', model: 'opus' },

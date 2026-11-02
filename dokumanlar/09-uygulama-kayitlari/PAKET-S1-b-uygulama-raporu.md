@@ -34,7 +34,7 @@
 ### 2.2 Bu oturumda eklenen / düzeltilen
 | # | Bulgu (tuval/kural karşısında) | Düzeltme |
 |---|---|---|
-| 1 | Marka satırı elle **"Kuyumcu"** yazıyordu (tuval: "Mihenk"; P-D2 tek kaynağı `Marka.Ad`) | `@Marka.Ad` + `id="kenar-marka"`; Sora 21 px (tuval) |
+| 1 | Marka satırı elle **"Kuyumcu"** yazıyordu (tuval: "ByGatech"; P-D2 tek kaynağı `Marka.Ad`) | `@Marka.Ad` + `id="kenar-marka"`; Sora 21 px (tuval) |
 | 2 | Kullanıcı kartı **ham rol kodu** basıyordu ("SAHIP") — UX-S31 ihlali; tuval "Sahip" | `RolEtiket()` sözlükten çevirir (`Dil.T.Kullanici.Rol*`); tanınmayan kod **tahmin edilmez**, boş kalır; `id="kenar-kullanici-rol"` |
 | 3 | "Tüm ekranlar" kilit sebebi kullanıcıya **iç paket kodu** söylüyordu ("… (S1-d) …") — plan § 5B "jargon sıfır" | Metin: "Tüm ekranlar sayfası henüz hazır değil. O güne kadar her ekran aşağıda kendi grubunun altında duruyor — hiçbiri gizlenmedi." (TR+EN) |
 | 4 | Katlama yazılamayınca bant **"sıra kaydedilemedi"** diyordu (yanlış bilgi); `MenuSozlugu.KatlamaKaydedilemedi` hiç kullanılmıyordu | `MenuTercihServisi.HataAnahtari`; bant hangi tercihin kaydedilemediğini söyler (id `#kenar-sira-hatasi` aynı) |
@@ -64,7 +64,7 @@ S1-a'nın ölçtüğü 10 çift (64'ten) için:
 |---|---|---|---|
 | S1 | "Tüm ekranlar (38)" bağlantı | **Kilitli düğme** (`disabled` + sebep title + `aria-describedby`) | Hedef `/ekranlar` S1-d'de açılıyor; bugün bağlantı 404 olurdu, etkisiz düğme de yasak (DoD EK md.1). S1-d `<button disabled>` → `<a href="/ekranlar">` değişimini yapacak |
 | S2 | "(38)" | **(36)** SAHİP için; sayı `MenuTanimi`'den ve **yetki+mod süzgecinden** türer | Ürünün gerçek grup bağlantısı 36'dır (tuvalin 38'i örnek veri). Kural: sayı elle yazılmaz. Tezgâhtarda daha az çıkar — doğru olan budur |
-| S3 | "Mihenk" | "MİHENK" (`Marka.Ad`) | Marka tek kaynağı P-D2'nin (DEMO şeridi, `Sozlukler.Marka.cs` dokunulmaz). Yazım farkı kurucu/DEMO kararı |
+| S3 | "ByGatech" | "BYGATECH" (`Marka.Ad`) | Marka tek kaynağı P-D2'nin (DEMO şeridi, `Sozlukler.Marka.cs` dokunulmaz). Yazım farkı kurucu/DEMO kararı |
 | S4 | Tuvalde Favoriler yok | Favoriler grubu **korundu** (yalnız yıldızlanınca çizilir) | Plan § 3 md.1 "özellik silinmez" |
 | S5 | Tuvalde alt kartta yalnız dişli ikonu | Kılavuz · Ayarlar · Çıkış bağlantıları **korundu** | Özellik silinmez; çıkış yolu kaldırılamaz |
 | S6 | Bildirimler rozeti "3" | Yapılmadı | Kapsam dışı (menü öğesi mevcut; sayaç rozeti ayrı iş) |
@@ -215,7 +215,7 @@ Dokunulmayan şerit dosyaları: Modules/Kasa·Vezne·Maliyet·Rapor, Raporlar/Gi
 1. **Ağaçtaki 2 kırmızı (bu paketin DEĞİL):** `OlcumKapisiTestleri.denetim_sh_HER_CAGRI_DIZININDEN_AYNI_KARARI_VERIR` → **P-30b**; `AltinPozisyonuTestleri.B2_08_cari_kirilimi_yon_sira_sinir_ve_denetim_izi` → **B-2 (S-B şeridi)**, koşumum sırasında yazılıyordu.
 2. **Derleme uyarıları (bu paketin DEĞİL):** `OlcumKapisiTestleri.cs(525)` CS8604 ×2 (P-30b), `PozisyonModulu.cs(52)` CS9113 (B-2).
 3. **S1-d'ye devir:** `#kenar-tum-ekranlar` düğmesini `/ekranlar` bağlantısına çevir, `disabled`/sebep metnini kaldır; `Tum_ekranlar_dugmesi_KILITLI…` testini "bağlantı hedefi /ekranlar" testine dönüştür (id aynı kalmalı).
-4. **Kurucuya (yalnız görsel tercih):** marka yazımı "MİHENK" (tek kaynak) mı, tuvaldeki "Mihenk" mi — DEMO şeridinin `Marka` sabitine ait karar. Bordo şemasında vurgu ile tehlike dolgusu birbirine yakındır (1,36:1); bordo seçen dükkâna bu not düşülmeli.
+4. **Kurucuya (yalnız görsel tercih):** marka yazımı "BYGATECH" (tek kaynak) mı, tuvaldeki "ByGatech" mi — DEMO şeridinin `Marka` sabitine ait karar. Bordo şemasında vurgu ile tehlike dolgusu birbirine yakındır (1,36:1); bordo seçen dükkâna bu not düşülmeli.
 5. **Hasım doğrulayıcıya:** D-S1b-1 kararı uygulayıcı kararıdır; onay/ret sizde.
 6. **Kenar çubuğunun gerçek tarayıcıda görsel kontrolü** oturum açma (parola) gerektirdiği için bu ajanca yapılmadı → 5199 QA turunda bakılmalı.
 7. **`Sozlukler.cs` `OlcekYogunAciklama`/`OlcekOkunakliAciklama`** hâlâ eski punto sayısını yazıyor (S1-a açık kalanı md.3) — ortak hub olduğu için dokunulmadı; B-x ya da S1-f düzeltmeli.

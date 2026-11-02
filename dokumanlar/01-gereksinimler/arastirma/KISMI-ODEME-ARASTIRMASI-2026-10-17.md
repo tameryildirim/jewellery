@@ -1,7 +1,7 @@
 # Kısmi ödeme ve borçlu satış seçimi: araştırma (17.10.2026)
 
 > Salt okuma araştırmasıdır. Dosya değiştirilmedi, commit atılmadı. Kaynaklara erişim tarihi 17.10.2026.
-> Etiketler: **[R]** resmî birincil metin (bu turda okundu) · **[Ü]** üretici beyanı · **[B]** bağımsız ikincil kaynak · **[K]** Mihenk kodu okundu · **[Ç]** çıkarım (doğrulanmış bulgu değil) · **[D]** doğrulanamadı.
+> Etiketler: **[R]** resmî birincil metin (bu turda okundu) · **[Ü]** üretici beyanı · **[B]** bağımsız ikincil kaynak · **[K]** ByGatech kodu okundu · **[Ç]** çıkarım (doğrulanmış bulgu değil) · **[D]** doğrulanamadı.
 > Okunan sayfalarda yapay zekâya yönelik talimat bulunmadı. Zoho sayfasındaki "Open in ChatGPT/Claude" bağlantıları yalnız paylaşım düğmesi; uygulanmadı.
 
 ---
@@ -10,11 +10,11 @@
 
 1. **Borçlu satışı seçmek fatura kesmez.** Fatura teslimden itibaren en geç 7 gün içinde düzenlenir. Süresinde düzenlenmeyen fatura "hiç düzenlenmemiş" sayılır (VUK 231/5) [B1][B2]. Veresiye satışın faturası satış anında kesilir, para geldiğinde değil.
    - Ekranda iki yol ayrı tutulmalı: "Yeni satış" fatura keser; "Borçlu satıştan seç" yalnız tahsilat ve mahsup yapar.
-   - Mihenk faturasız satışları 365 güne kadar listeliyor (`FaturaServisi.FaturalanabilirIslemler`, `gun` 1–365) [K]. Faturası kesilmemiş ve 7 günü geçmiş bir veresiye satış seçilirse ceza riski var; kullanıcı uyarılmalı.
+   - ByGatech faturasız satışları 365 güne kadar listeliyor (`FaturaServisi.FaturalanabilirIslemler`, `gun` 1–365) [K]. Faturası kesilmemiş ve 7 günü geçmiş bir veresiye satış seçilirse ceza riski var; kullanıcı uyarılmalı.
 2. **Paranın hangi borca sayılacağını kanunen borçlu (müşteri) seçer** (TBK 101/1) [R1].
    - Müşteri bildirmezse ödeme, alacaklının makbuzda gösterdiği borca sayılır; müşteri hemen itiraz ederse bu geçmez (101/2).
    - O da yoksa kanuni sıra uygulanır (102): önce vadesi gelmiş borç → önce takibe konan → vadesi önce gelen → vadeleri aynı olanlar arasında orantılı → hiçbiri vadeli değilse güvencesi en az olan.
-   - Sonuç: seçim insanın işidir (SOR). Önerilecek dağıtım TBK 102 sırası olmalı. Mihenk'in bugünkü FIFO'su ise **hareket tarihine** göre yürüyor, vadeye göre değil [K].
+   - Sonuç: seçim insanın işidir (SOR). Önerilecek dağıtım TBK 102 sırası olmalı. ByGatech'in bugünkü FIFO'su ise **hareket tarihine** göre yürüyor, vadeye göre değil [K].
 3. **Kısmi ödemede kalan borç açık kalır; varsayılan budur.**
    - Alacaklı kısmi ödemeyi reddedebilir. Kabul ederse borç kısmen sönmüş olur (TBK 84) [R1].
    - İncelenen her rakipte de varsayılan "kalan açık" [Ü1][Ü3][Ü5]: QuickBooks "Leave as Underpayment", Odoo "Keep open", Paraşüt kısmi tahsilat.
@@ -22,21 +22,21 @@
 4. **Kalanı silmek (sonradan indirim) KDV matrahını değiştirir.**
    - Faturada gösterilmeyen, sonradan yapılan iskonto KDVK 25/a'dan yararlanamaz; düzeltme KDVK 35'e göre yapılır [R2][R3].
    - Tebliğe göre düzeltme belgesini **alıcı** satıcı adına düzenler [R3]. Müşteri nihai tüketiciyse fatura düzenleyemez; nasıl yapılacağı bulunamadı [D]. Mali müşavire sorulmalı.
-   - Mihenk bunu kendiliğinden yapmamalı.
+   - ByGatech bunu kendiliğinden yapmamalı.
 5. **Fazla ödeme müşterinin alacağı olarak saklanmalı.**
    - Rakipler fazlayı hep ayrı bir kalem olarak tutup sonra kullandırıyor ya da iade ediyor [Ü1][Ü3][Ü4][B5]: QuickBooks "credit/unapplied", Xero "overpayment/prepayment", Odoo "Outstanding credits", Zoho "Amount in excess".
    - Paraşüt'te fatura ekranından fatura tutarından fazla tahsilat girilemiyor; fazla tutar müşteri kaydından giriliyor [Ü5].
-   - **Mihenk bugün:** `GelenOdemeServisi.Karar(BORC)` tutara üst sınır koymuyor [K]. Fazlası negatif TL bakiyeye dönüşüyor. `VadeKapisi` negatif bakiyeyi "bizim tedarikçiye borcumuz" diye yorumluyor [K]. Müşterinin bizdeki parası (avans) tedarikçi borcuyla aynı biçimde görünüyor.
+   - **ByGatech bugün:** `GelenOdemeServisi.Karar(BORC)` tutara üst sınır koymuyor [K]. Fazlası negatif TL bakiyeye dönüşüyor. `VadeKapisi` negatif bakiyeyi "bizim tedarikçiye borcumuz" diye yorumluyor [K]. Müşterinin bizdeki parası (avans) tedarikçi borcuyla aynı biçimde görünüyor.
 6. **Gram (has) cinsinden borç para borcu değildir.**
    - Bağımsız bir hukuk yazısına göre altın ne Türk parası ne yabancı paradır; TBK 99 doğrudan uygulanmaz [B6][R1].
    - Bu borcu TL ile kapatmak tarafların anlaşmasına bağlı. Kaç gram düşeceği (alış mı, satış mı, anlaşılan fiyat mı) müşterinin niyetine bağlı, yani SOR [Ç].
    - Satış faturası TL bedelle kesildiyse, sonradan alınan TL ile o bedel arasındaki farkın KDVK 24/c'deki "fiyat farkı" ya da "kur farkı" sayılıp sayılmadığını açıklayan altına özgü bir özelge bulunamadı [D]. Mali müşavire sorulmalı.
-   - **Mihenk bugün:** veresiye satış cariye yalnız TL borç yazıyor (`CariBakiyeGuncelle(..., toplamTl, 0m)`) [K]. Has borç yalnız elle `VeresiyeGir` ile doğuyor. `TahsilatGirHareket` TL ve has'ı ayrı ayrı düşüyor; TL'yi grama çevirme yok [K]. `KararBekleyenler` yalnız TL borcu (`borcTl`) gösteriyor.
-7. **Döviz:** Mihenk USD borcu TL ile kapatmayı bilinçli olarak kapatmış [K]. Gerekçe: bu fiilen döviz satışıdır (32 Sayılı Karar; `DovizTahsilatGir` notu, K27-G). TRY dışındaki havalede karar verilmiyor [K].
+   - **ByGatech bugün:** veresiye satış cariye yalnız TL borç yazıyor (`CariBakiyeGuncelle(..., toplamTl, 0m)`) [K]. Has borç yalnız elle `VeresiyeGir` ile doğuyor. `TahsilatGirHareket` TL ve has'ı ayrı ayrı düşüyor; TL'yi grama çevirme yok [K]. `KararBekleyenler` yalnız TL borcu (`borcTl`) gösteriyor.
+7. **Döviz:** ByGatech USD borcu TL ile kapatmayı bilinçli olarak kapatmış [K]. Gerekçe: bu fiilen döviz satışıdır (32 Sayılı Karar; `DovizTahsilatGir` notu, K27-G). TRY dışındaki havalede karar verilmiyor [K].
    - İkincil kaynaklara göre yurt içinde yerleşik kişiler arasındaki menkul satış sözleşmelerinde bedel döviz cinsinden kararlaştırılamıyor (32 Sayılı Karar 4/g, 2022 değişikliği) [B7]. Döviz cinsinden veresiyenin kendisi müşavire sorulmalı.
 8. **Seçimi kaydedecek yer yok; ekranla defter çelişir.**
    - Rakiplerin hepsi ödeme ile belge arasındaki bağı kalıcı satır olarak tutuyor [Ü1][Ü3][Ü4][B4]: QuickBooks ödeme satırı, Odoo kısmi mutabakat (partial reconcile), Xero tahsis (allocation), Zoho uygulanan/fazla tutar.
-   - Mihenk açık borcu defterden FIFO ile türetiyor; mahsup tablosu yok ve bu bilinçli bir tercih [K]. Bu yüzden kullanıcı yeni satışı seçse bile FIFO yine en eskiyi kapatır.
+   - ByGatech açık borcu defterden FIFO ile türetiyor; mahsup tablosu yok ve bu bilinçli bir tercih [K]. Bu yüzden kullanıcı yeni satışı seçse bile FIFO yine en eskiyi kapatır.
    - En küçük çözüm: **FIFO'yu yalnız sıra bakımından ezen** bir mahsup tablosu (§ 4.3). Bakiyeye dokunmaz; satır yazmayan her ödeme yolu bugünkü gibi FIFO'ya düşer.
 
 ---
@@ -68,10 +68,10 @@
 
 ## 3. Mevzuat
 
-| Konu | Kural | Kaynak | Mihenk'e etkisi |
+| Konu | Kural | Kaynak | ByGatech'e etkisi |
 |---|---|---|---|
 | Fatura zamanı | Teslimden itibaren en geç 7 gün; süresinde düzenlenmeyen fatura "hiç düzenlenmemiş" sayılır. Sürenin teslimi izleyen gün başladığına dair İstanbul VDB özelgesi (17.02.2020) aktarılıyor | VUK 231/5: iki bağımsız ikincil kaynak [B1][B2]; birincil VUK metni bu turda açılmadı | Borçlu satış seçimi fatura doğurmaz. Faturasız ve 7 günü geçmiş satış seçilirse uyarı. Bu sınırı aşan faturaya VUK 353 cezası uygulanıp uygulanamayacağı tartışmalı (Danıştay 2020/1199 E. aktarılıyor) [B2] |
-| Vergiyi doğuran olay | Mal teslimiyle doğar. Fatura teslimden önce verilirse, faturadaki tutarla sınırlı olarak fatura anında doğar | KDVK 10/a, 10/b [R2] | Kapora almak teslim değildir; fatura zorunluluğu doğurmaz [Ç]. Kapora için fatura kesilirse KDV o tutarla doğar [R2]. Mihenk'te kapora bir TAHSILAT hareketi [K]; bu yapıyla uyumlu |
+| Vergiyi doğuran olay | Mal teslimiyle doğar. Fatura teslimden önce verilirse, faturadaki tutarla sınırlı olarak fatura anında doğar | KDVK 10/a, 10/b [R2] | Kapora almak teslim değildir; fatura zorunluluğu doğurmaz [Ç]. Kapora için fatura kesilirse KDV o tutarla doğar [R2]. ByGatech'te kapora bir TAHSILAT hareketi [K]; bu yapıyla uyumlu |
 | Vade farkı | Faturada gösterilen vade farkı matraha girer. Geç ödemeden doğan yeni vade farkı **ayrıca faturalanır**; KDV oranı ilk teslimin oranıdır | KDVK 24/c; KDV GUT III/A-5.2 ve III/B-1.2.1 [R2][R3] | Geç ödemeye "fark" eklemek fatura gerektirir. SOR; kendiliğinden yapılmaz |
 | Kur farkı | Döviz cinsinden ya da dövize endeksli bedel sonradan ödenirse: satıcı lehine farkta satıcı fatura keser; alıcı lehine farkta alıcı fatura düzenler. Dönem sonu değerlemesinden KDV hesaplanmaz | KDVK 24/c; GUT III/A-5.3 [R3] | Gram borcun bu kapsama girip girmediği **bulunamadı** [D] |
 | İskonto | Faturada gösterilen ve ticari teamüle uygun iskonto matraha girmez. Sonradan yapılan iskonto için KDVK 35'e göre düzeltilir; belgeyi alıcı düzenler | KDVK 25/a, 35; GUT III/A-6.1 [R2][R3] | "Kalanı sil" kendiliğinden yapılmamalı. Nihai tüketicide yöntem müşaviredir |
@@ -83,8 +83,8 @@
 | Para borcu | Para borcu Türk parasıyla ödenir; yabancı para borcu ödeme günündeki rayiçle TL ile ödenebilir (aksi kararlaştırılmamışsa) | TBK 99 [R1] | Altın para değildir; 99 doğrudan uygulanmaz [B6] |
 | Taksitle satış | Yazılı şekil zorunlu; peşin bedel, ilave bedel ve taksit bilgileri sözleşmede yazılır | TBK 253 [R1] | Vadeli ve taksitli veresiye bu kapsama girebilir. Tüketici mevzuatı (6502) bu turda araştırılmadı [D] |
 | Fazla ödemenin muhasebesi | 340 Alınan Sipariş Avansları: gelecekteki teslim için peşin alınan tutar; fatura kesilince 120 ile mahsup edilir | İkincil [B8]; Tek Düzen Hesap Planı birincil metni açılmadı [D] | Müşteri avansı ayrı görünmeli (§ 1 madde 5) |
-| Döviz cinsinden sözleşme | Yerleşikler arası menkul satışta döviz cinsinden ya da dövize endeksli bedel kısıtlı (2022 değişikliği) | 32 Sayılı Karar 4/g ve Tebliğ 2008-32/34: ikincil [B7]; birincil metin açılmadı | Mihenk'teki çapraz kapatma yasağı yerinde. Döviz cinsinden veresiyenin kendisi müşavire |
-| Nakit sınırı (459 tevsik) | Mihenk'te mevcut kapı. Havale banka kanalıdır; dekont günü MASAK'a sayılır, kararda `MasakOlcuTl=0` | [K] | Değişmez. Ancak taksit kapısı (TB-15) aynı FIFO'yu okuyor; açık atama bu kapıyı da beslemeli (§ 4.3) |
+| Döviz cinsinden sözleşme | Yerleşikler arası menkul satışta döviz cinsinden ya da dövize endeksli bedel kısıtlı (2022 değişikliği) | 32 Sayılı Karar 4/g ve Tebliğ 2008-32/34: ikincil [B7]; birincil metin açılmadı | ByGatech'teki çapraz kapatma yasağı yerinde. Döviz cinsinden veresiyenin kendisi müşavire |
+| Nakit sınırı (459 tevsik) | ByGatech'te mevcut kapı. Havale banka kanalıdır; dekont günü MASAK'a sayılır, kararda `MasakOlcuTl=0` | [K] | Değişmez. Ancak taksit kapısı (TB-15) aynı FIFO'yu okuyor; açık atama bu kapıyı da beslemeli (§ 4.3) |
 
 ---
 
@@ -97,7 +97,7 @@
 - **Geri alma** dağıtım satırını kaldırır; ödeme ve belge yerinde kalır. Odoo'da "unreconcile" ile ödeme kalır, bağ kopar [Ü3].
 - **Varsayılan dağıtım** kendiliğinden yapılır (QuickBooks en eski, Paraşüt en gecikmiş); kullanıcı elle düzeltebilir.
 
-### 4.2 Mihenk bugün [K]
+### 4.2 ByGatech bugün [K]
 - `Modules/Vade/VadeKapisi.cs` → `DefteriYuru`
   - Cari hareketleri `Tarih, Id` sırasıyla yürür.
   - Borç doğuran satır bir parti açar: veresiye payı, vade, `FisId`.
@@ -143,7 +143,7 @@ cari_mahsuplar (append-only)
 
 ---
 
-## 5. Mihenk önerisi
+## 5. ByGatech önerisi
 
 ### (a) Varsayılan davranış
 - Liste müşterinin **açık satışlarını** gösterir: vadesi en eski olan üstte (TBK 102). Satır başına tarih · fiş/fatura no · kalan TL · "faturası var/yok" rozeti.

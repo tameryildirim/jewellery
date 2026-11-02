@@ -51,7 +51,7 @@
 | # | Tuval / görev | Uygulanan | Gerekçe |
 |---|---|---|---|
 | S1 | Karo adları: "Satış", "Müşteriler", "Kasa kuyruğu", "Kim ne yaptı", "Raporlar" grubu | Adlar **kenar çubuğuyla aynı sözlükten** geliyor (İşlemler, Cariler, Vezne, Denetim İzi, "Dökümler" …) | UX-S31: aynı ekran iki yerde iki ad taşıyamaz. Adların tuvaldekilere çevrilmesi `Sozlukler.cs` ortak hub'ında yapılacak **sözlük göçü** işidir (plan 1.8). Bu pakette hub'a dokunmak yasak. Göç yapılınca karolar kendiliğinden yeni adı alır. |
-| S2 | "Mihenk" | `Marka.Ad` ("MİHENK") | S1-b'deki S3 ile aynı gerekçe: marka tek kaynağı DEMO şeridinde. |
+| S2 | "ByGatech" | `Marka.Ad` ("BYGATECH") | S1-b'deki S3 ile aynı gerekçe: marka tek kaynağı DEMO şeridinde. |
 | S3 | S1-b: sayı = yetki + **mod** süzgeci | Sayı = **yalnız yetki** = sayfadaki karo sayısı | Tuval basit yüzde (Panel.dc.html) de "(38)" yazıyor. Mod süzgeci kalsaydı basit modda bağlantı "(8)" der, sayfa 38 karo açardı. Bu, aynı soruya iki cevap demektir (UX-S22). Menünün kendisi basit modda **yine 8 satır** (test ile kilitli). |
 | S4 | Tuvalde yıldız çizilmemiş, ama ipucu "yıldızla favorine ekle" diyor | Her karoda yıldız var. Dolu yıldız hep görünür; boş yıldız üstüne gelince, odakta ve dokunmatikte görünür. Karo sağ iç boşluğu 14→36 px (dokunmatikte `--dokunma-hedefi`+8 px). | Tam ekran sayfada kenar çubuğu yok, yani ipucunun bahsettiği yıldız başka yerde görünmüyor. Yıldız, kenar çubuğundaki yıldızla aynı kaydı (`menu-favoriler`) yazıyor. İç boşluk, canlı ölçümde 1440 px'te 10 karoda yıldızın uzun adın üstüne bindiğinin görülmesi üzerine açıldı. Düzeltmeden sonra çakışma 0 (§ 10.2). |
 | S5 | Görev: "Panel'den bağlanır" | Bağlantı Panel ekranında da görünen kenar çubuğu girişinden veriliyor. `Panel.razor` açılmadı. | Tuvalde Panel → Ekranlar yolu yalnız `<nav>` satırı. `Panel.razor` ayrıca DEMO şeridinin dosyası. |
@@ -184,7 +184,7 @@ Kiracı **PAKETS1-d-TEST** (`01M37N78G16TPXXF3RP305J0K0`):
 
 | # | Adım | Beklenen | Gerçek |
 |---|---|---|---|
-| 1 | `GET /ekranlar` | 200, Blazor kabuğu | **200**, `<title>MİHENK</title>` + `blazor.webassembly.js` |
+| 1 | `GET /ekranlar` | 200, Blazor kabuğu | **200**, `<title>BYGATECH</title>` + `blazor.webassembly.js` |
 | 2 | `GET /css/app.css` | 200; kaynakla birebir; S1-d bloğu yayında | **200**, `cmp` **AYNI**, "S1-d — TÜM EKRANLAR (KARO MENÜ)" 1 eşleşme |
 | 3 | `GET /auth/ben` | 200, SAHİP | **200**, rol SAHIP, etkin PROFESYONEL |
 | 4 | `GET /yetkiler/benim` (sayfanın tek okuma ucu) | 200, modül listesi | **200**, 22 modül (`kur` dâhil → Vitrin çizilir) |

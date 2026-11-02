@@ -30,14 +30,14 @@
 <header class="yildiz-ust" id="yildiz-ust" @onkeydown="Tus">
     @* PAKET YILDIZ-AMBLEM-2 (EMİR-AMBLEM-YILDIZ-2026-10-10 · kurucu 10.10 "eksiksiz ve aynen"): tuval
        Amblem_sol(.acik).dc.html <a class="amb"> BİREBİR — 3B 8 yüzlü pırlanta taş (52 px, 20° duruş, 28 sn
-       düşey dönüş) + 14 px + "MİHENK" (bütün olarak karanlıktan çıkar, 11 sn). Taş ve yazı AYNI gradyanı
+       düşey dönüş) + 14 px + "BYGATECH" (bütün olarak karanlıktan çıkar, 11 sn; 02.11: 8 harf → yazı kutusu 140 birim). Taş ve yazı AYNI gradyanı
        (url(#yildiz-amb-ti)) paylaşır; SMIL değerleri tuvalin kendisi. Parlama süzgeci DIŞ sarmalayıcıda
        (.amb-parla), 3B kutuda (.tas3d) DEĞİL. Tuvaldeki satır içi stiller tema-yildiz.css "AMBLEM" bloğunda
        sınıf olarak (CSP: satır içi style yok); durak renkleri açık/koyu belirteçten (razor'da sabit renk yok).
        Harfler marka sözlüğünden (çıplak metin yok); tspan'lar arasında BOŞLUK DÜĞÜMÜ YOK. *@
     <a href="/" class="yildiz-marka amb" id="yildiz-marka" aria-label="@KabukTuvalSozlugu.MarkaYazimi">
         @AmblemTasi(KabukTasi)
-        <svg class="amb-yz" width="110" height="16" viewBox="0 0 110 16" aria-hidden="true" focusable="false"><text x="0" y="13" fill="url(#yildiz-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg>
+        <svg class="amb-yz" width="140" height="16" viewBox="0 0 140 16" aria-hidden="true" focusable="false"><text x="0" y="13" fill="url(#yildiz-amb-ti)" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="400" letter-spacing="4.4">@for (var i = 0; i < AmblemHarfleri.Length; i++) { var k = i; <tspan class="@($"h h{k}")">@AmblemHarfleri[k]</tspan> }</text></svg>
     </a>
 
     <button type="button" class="yildiz-menu-dugme" id="yildiz-menu-ac"
@@ -145,7 +145,7 @@
         }
     };
 
-    /// <summary>YILDIZ-AMBLEM: tuval "M İ H E N K" — marka sözlüğünden, tr-TR büyük harf (i → İ); dilden bağımsız (marka adı).</summary>
+    /// <summary>YILDIZ-AMBLEM: tuval "B Y G A T E C H" — marka sözlüğünden, tr-TR büyük harf; dilden bağımsız (marka adı).</summary>
     public static readonly string AmblemHarfleri =
         KabukTuvalSozlugu.MarkaYazimi.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 

@@ -1,6 +1,6 @@
-# MİHENK — MALİ MÜŞAVİRE SORULAR
+# BYGATECH — MALİ MÜŞAVİRE SORULAR
 
-**Firma:** ByGatech A.Ş. · **Ürün:** Mihenk (kuyumcu dükkânı yazılımı)
+**Firma:** ByGatech A.Ş. · **Ürün:** ByGatech (kuyumcu dükkânı yazılımı)
 **Sürüm:** 1 · **Tarih:** 23 Eylül 2026
 **Bu belge canlıdır** — yeni soru çıktıkça numaralanarak eklenir, sürüm numarası artar.
 

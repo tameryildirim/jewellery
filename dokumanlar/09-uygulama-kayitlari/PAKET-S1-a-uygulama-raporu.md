@@ -252,8 +252,8 @@ ihlal bu paketin ürünü olamaz. `P-36b: TEMA_KONTRAST_IHLALI 0 (8 şema, hepsi
 ## 10. Bu turda gözlenen — EŞZAMANLI ŞERİT UYARISI (kurucuya)
 
 `belirtecler.css` bu turun ortasında (**18:02**) benim dışımda değişti: 1. satırdaki başlık
-yorumu `Kuyumcu ERP — TASARIM BELİRTEÇLERİ` → `MİHENK — TASARIM BELİRTEÇLERİ` oldu
-(`diff` = **tek satır**, yalnız yorum). Bu **P-D2 (MİHENK adı, 44 dosya)** şeridinin izidir;
+yorumu `Kuyumcu ERP — TASARIM BELİRTEÇLERİ` → `ByGatech — TASARIM BELİRTEÇLERİ` oldu
+(`diff` = **tek satır**, yalnız yorum). Bu **P-D2 (ByGatech adı, 44 dosya)** şeridinin izidir;
 belirteç değerlerine dokunmadı, 28 testin tamamı bu değişiklikten sonra da yeşil.
 Kayda geçiriyorum çünkü aynı dosyaya iki şerit dokunuyor — çakışma riski var.
 

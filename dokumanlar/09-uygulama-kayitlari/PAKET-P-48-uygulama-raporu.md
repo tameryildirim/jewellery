@@ -60,8 +60,8 @@ Son mutasyondan sonra temiz `dotnet build Kuyumcu.sln`: **0 hata** (2 uyarı MSB
 
 | Kırmızı | Kök neden | Sahibi |
 |---|---|---|
-| `S1eGirisTestleri.Tuval_IKI_PANEL_sol_kart_ve_sag_panel` | beklenen "MİHENK’e hoş geldin", gelen "Hoş geldin" (Giriş sözlüğü) | S-1 şeridi / S1-e (yarım iz) |
-| `S1eGirisTestleri.Sozluk_IKI_DILDE_dolu_ve_farkli` | "Hoş geldin" içinde "MİHENK" yok | S-1 şeridi / S1-e |
+| `S1eGirisTestleri.Tuval_IKI_PANEL_sol_kart_ve_sag_panel` | beklenen "ByGatech’e hoş geldin", gelen "Hoş geldin" (Giriş sözlüğü) | S-1 şeridi / S1-e (yarım iz) |
+| `S1eGirisTestleri.Sozluk_IKI_DILDE_dolu_ve_farkli` | "Hoş geldin" içinde "ByGatech" yok | S-1 şeridi / S1-e |
 | `S1cUstBarTestleri.S1c_CSS_blogu_TUVAL_olculerini_BELIRTECLE_tasir` | CSS'te `position: relative; overflow: hidden; min…` | S-1 şeridi / S1-c |
 
 Hiçbiri İşlem defteri / RaporSeti sözlüğü / SatisRaporlari'nı sınamıyor. **P-48'in ürettiği yeni kırmızı = 0.** P-47 devir notundaki 19 kırmızı bu koşumda yok (kapanmışlar).
@@ -120,7 +120,7 @@ SQL kanıtı (`select tur, tl_tutari, has_grami from hareketler where tenant_id=
 
 ## 10. Açık kalanlar / notlar
 
-1. **UX notu (Ertuğ/kurucu kararı gerekebilir):** kural gereği satış/alış/hurda/iade/takas satırlarının tamamı artık "Karışık" başlığıyla + iki bacak satırıyla görünür (canlı veride 121 satır). Bu doğru ve tahminsizdir, ama sadeleştirme planı (MİHENK, "jargon sıfır") açısından tezgâhtara "Karışık" kelimesi yerine doğrudan "Para giriş · Has çıkış" göstermek daha sade olabilir — P-58/P-62/P-63 bu sayfayı açarken değerlendirilmeli. Kod tek noktada (`YonMetni` + sözlük) değişir.
+1. **UX notu (Ertuğ/kurucu kararı gerekebilir):** kural gereği satış/alış/hurda/iade/takas satırlarının tamamı artık "Karışık" başlığıyla + iki bacak satırıyla görünür (canlı veride 121 satır). Bu doğru ve tahminsizdir, ama sadeleştirme planı (ByGatech, "jargon sıfır") açısından tezgâhtara "Karışık" kelimesi yerine doğrudan "Para giriş · Has çıkış" göstermek daha sade olabilir — P-58/P-62/P-63 bu sayfayı açarken değerlendirilmeli. Kod tek noktada (`YonMetni` + sözlük) değişir.
 2. **İşaret sözleşmesi gözlemi (ölçüldü, dokunulmadı):** canlı veride `TAHSILAT` satırları TL **negatif** (8 satır) → yeni kuralla da "Çıkış" görünür; tahsilatta kasaya para girer. `hareketler.tl_tutari` işaretinin cari perspektifli olduğu (VERESİYE sözleşmesi) anlaşılıyor; bu durumda "Yön" kasanın değil **carinin** yönüdür. Spesifikasyon işaretten türetmeyi emrediyor ve tahmin yasak olduğundan kod bunu değiştirmedi; sütun başlığının anlamı ("kasaya göre mi, cariye göre mi") orkestratör/Bertan kararı olarak açık bırakıldı.
 3. **Başkasına ait kırmızılar (sahibiyle):** S1eGirisTestleri ×2 ve S1cUstBarTestleri ×1 → S-1 şeridi (S1-c/S1-e).
 4. **Ortam:** paralel şeritler aynı `kuyumcu_test` veritabanını yarıştırıyor (bu paketin ilk koşumunda 20 sahte kırmızı). Öneri: her şerit `KUYUMCU_TEST_DB=kuyumcu_test_<şerit>` ile koşsun. Ayrıca `TestOrtami.cs`'de test MySQL parolası için sabit bir varsayılan değer kaynakta duruyor (değeri buraya yazılmadı) — Mehmet'in gündemine.

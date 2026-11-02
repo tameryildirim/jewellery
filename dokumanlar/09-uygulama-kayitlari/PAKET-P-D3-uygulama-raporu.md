@@ -145,7 +145,7 @@ Benim sayaçlarım ✓. Tek ✗ **`Pages/Kurulum.razor`** — YAYIN şeridinin d
 
 | Adım | Uç | HTTP | Okunan değer | Durum |
 |---|---|---|---|---|
-| 1 `/giris` | `/genel/kisitlar` | 200 | 8 hariç kalem; **tarayıcıda** açıldı: MİHENK başlığı + "Bu kurulumda HARİÇ olanlar" listesi çizildi | DOLU |
+| 1 `/giris` | `/genel/kisitlar` | 200 | 8 hariç kalem; **tarayıcıda** açıldı: ByGatech başlığı + "Bu kurulumda HARİÇ olanlar" listesi çizildi | DOLU |
 | 2 Panel günlük satış + Kasa Özeti | `/raporlar/gunluk` | 200 | satış 9 adet 100.537,08 TL · alış 3.840 · Ana Kasa 217.419,20 · net +96.697,08 | DOLU |
 | 2 Panel 7 günlük grafik | `/raporlar/aylik` | 200 | 23 gün satırı, **1 dolu gün** (bugün) | TEK GÜN (bkz. § 9) |
 | 2 Panel kur | `/kur/guncel` | 200 | has 6.744,57 · ALTINKAYNAK | DOLU |

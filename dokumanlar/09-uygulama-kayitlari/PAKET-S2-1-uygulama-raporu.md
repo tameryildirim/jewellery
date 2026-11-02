@@ -117,7 +117,7 @@ Bu şeridi ilgilendiren sayaçların son değerleri: satır içi style 113 (tava
 ## 9. Canlı doğrulama (5192, kuyumcu_net)
 
 **Kurulum.** API, derleme yarışı yüzünden (başka şeridin derlemesi `Kuyumcu.Api` çıktısını geçici olarak siliyordu) `bin/Debug/net8.0`'ın scratchpad kopyasından koşturuldu (`api-bin/`). İçindeki `Kuyumcu.Web.dll` `FisOdemeBacaklari` sınıfını içeriyor (grep ile doğrulandı).
-- `GET /` → 200, `<title>MİHENK`.
+- `GET /` → 200, `<title>ByGatech`.
 - Test kiracısı: `PAKETS2-1-TEST` (davetli kayıt).
 - Gövdeler `Kaydet()`'in kurduğu şekilde gönderildi. Bacak alanları `FisBacagi`'dan, iskonto `FisHesap`'ten geliyor.
 

@@ -1,4 +1,4 @@
-# Mihenk — Kurucudan ve Mali Müşavirden Beklenenler
+# ByGatech — Kurucudan ve Mali Müşavirden Beklenenler
 
 **Tarih:** 1 Ekim 2026 · **Hazırlayan:** Tamer Bey (orkestratör) · **Durum:** kod tarafı sürüyor; aşağıdakiler bizim çözemeyeceğimiz, sizin kararınızı ya da mali müşavirin teyidini bekleyen maddeler.
 

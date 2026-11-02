@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr"><head><meta charset="utf-8"><title>Mihenk — Ses kaydı uçtan uca test (01.11.2026)</title>
+<html lang="tr"><head><meta charset="utf-8"><title>ByGatech — Ses kaydı uçtan uca test (01.11.2026)</title>
 <style>
 @page { size: A4; margin: 14mm 13mm; }
 * { box-sizing: border-box; }
@@ -27,13 +27,13 @@ th { background: #f0f0f0; }
 ul { margin: 4px 0 4px 18px; padding: 0; }
 </style></head><body>
 
-<h1>MİHENK — Ses kaydındaki isteklerin uçtan uca testi</h1>
+<h1>BYGATECH — Ses kaydındaki isteklerin uçtan uca testi</h1>
 <p class="alt">01.11.2026 · Hazırlayan: Claude (ByGatech) · Kaynak: müşteri görüşmesi ses kaydı 16.10.2026 (35 dk), yazıya dökümü <i>musteri-gorusmesi-2026-10-16.md</i></p>
 <p class="alt">Nasıl test edildi: eğitim kopyasında (ayrı veritabanı <i>kuyumcu_egitim</i>, canlı 5199'a dokunulmadı), gerçek tarayıcıda 1280 px masaüstü + 375 px telefon. Her işlem gerçekten kaydedildi (satış, fatura, havale, alış, hurda, işçilik belgesi); ekran görüntüleri kayıt anında alındı. Alıntılar ses kaydının yazıya dökümünden; konuşma Whisper ile çevrildiği için birkaç kelime hatalı olabilir.</p>
 
 <div class="kutu">
 <b>EN ÖNEMLİ CEVAP — Faturalar GİB'e gidiyor mu? HAYIR.</b><br>
-Mihenk faturayı kesiyor ve numaralıyor (bugün testte FTR-2026-000013…016 kesildi), ama <b>hiçbir fatura GİB'e gönderilmiyor</b>.<br>
+ByGatech faturayı kesiyor ve numaralıyor (bugün testte FTR-2026-000013…016 kesildi), ama <b>hiçbir fatura GİB'e gönderilmiyor</b>.<br>
 Kanıt: İşletme › Ayarlar ekranı “E-FATURA BAĞLANTISI: <b>Bağlı değil — faturalar gönderilmiyor</b>” diyor; e-Fatura giden kutusu 0; veritabanında entegratör ayarı 0 kayıt, GİB'e gönderim 0 kayıt (hem eğitim kopyasında hem canlıda; canlıda 17 kesilmiş fatura var, gönderilen 0).<br>
 Gerekenler: (1) bir özel entegratörden hesap + API anahtarı (kodda Nilvera bağlayıcısı hazır ama <b>hiç denenmedi</b>), (2) işletmenin gerçek vergi numarası (demo işletmede “0000000000” yazıyor, GİB bunu kabul etmez), (3) test ortamında bir deneme gönderimi. Bunlar olmadan demoda “fatura devlete gidiyor” denmemeli.
 </div>
@@ -139,7 +139,7 @@ Gerekenler: (1) bir özel entegratörden hesap + API anahtarı (kodda Nilvera ba
 <div class="madde yeni-sayfa">
 <h2>12. Hesap bakiyesi + gelen / giden (Faturalog gibi)</h2>
 <blockquote>Banka/elle girilen tüm hareketler (satış, hurda alış, tahsilat) aynı ekranda. <span class="dk">(~02:05–02:21)</span></blockquote>
-<p><b>Sonuç:</b> <span class="etiket kismi">KISMEN</span> Ekran hazır: Garanti hesabında “Bankadaki bakiye · bloke · saat” ve “Mihenk kaydıyla fark” (görüntü 31.10 test verisiyle). Garanti'den gerçek veri henüz gelmedi: Garanti test onayı var, istek “IP tanımlı değil” ile dönüyor; IP 151.135.190.195 onaya gönderildi (01.11). Bugün yeni deneme yapılmadı.</p>
+<p><b>Sonuç:</b> <span class="etiket kismi">KISMEN</span> Ekran hazır: Garanti hesabında “Bankadaki bakiye · bloke · saat” ve “ByGatech kaydıyla fark” (görüntü 31.10 test verisiyle). Garanti'den gerçek veri henüz gelmedi: Garanti test onayı var, istek “IP tanımlı değil” ile dönüyor; IP 151.135.190.195 onaya gönderildi (01.11). Bugün yeni deneme yapılmadı.</p>
 <img src="foto/39-garanti-bakiye-ornek.jpg" style="width:75%">
 </div>
 

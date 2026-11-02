@@ -168,7 +168,7 @@ API, bu paketin kodunu içeren `bin/Debug/net8.0`'ın scratchpad kopyasından ko
 | 12 | GET /islemler/fis/{böl} | 200 + 2 bacak | 200 | NAKIT:6000, KART:4000 |
 | 13 | GET /islemler/fis/{açık hesap} | 200 + 2 bacak | 200 | NAKIT:6000, VERESIYE:4000 |
 | 14 | GET /cari/{id} (Tahsilat hedefi) | 200 | 200 | ad=S22 Müşteri |
-| 15 | GET /islemler · /emanet · /cariler?cariId=x (kısayol hedefleri) | 200 | 200 ×3 | `<title>MİHENK` |
+| 15 | GET /islemler · /emanet · /cariler?cariId=x (kısayol hedefleri) | 200 | 200 ×3 | `<title>ByGatech` |
 
 **SQL kanıtı** (`pS2-2/canli-sql.txt`):
 ```

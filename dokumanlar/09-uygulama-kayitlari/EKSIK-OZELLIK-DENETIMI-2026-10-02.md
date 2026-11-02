@@ -1,4 +1,4 @@
-# Eksik Özellik Denetimi: Mihenk
+# Eksik Özellik Denetimi: ByGatech
 
 **Tarih:** 02.10.2026 · **Soran:** Kurucu Ramazan Akkocan · **Hazırlayan:** Tamer Bey (salt okuma denetimi)
 
@@ -198,7 +198,7 @@ Kodda zaten var olduğu görülen olağan ihtiyaçlar şunlar: ayar ve has dön�
 
 **Konum farkları:**
 - DEMO-SENARYOSU, 09-uygulama-kayitlari altında değil, `dokumanlar/02-mimari/sadelestirme/` altında bulundu.
-- MIHENK-PLAN-RAPORU-2026-09-28 yalnız PDF olarak var; okunmadı.
+- BYGATECH-PLAN-RAPORU-2026-09-28 yalnız PDF olarak var; okunmadı.
 
 **Bu turda sınırlı kalanlar:**
 - KESIF-BULGULARI'ndaki 91 madde satır satır yoklanmadı; triyaj ve P1–P8 raporlarının "açık kalanlar" bölümünden gidildi.

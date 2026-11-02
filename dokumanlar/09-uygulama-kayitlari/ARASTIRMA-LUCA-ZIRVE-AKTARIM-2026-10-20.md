@@ -7,7 +7,7 @@
 2. **Luca — fatura listesi (Excel Fatura Aktarımı):** CSV `;` ile, sabit şablon yok; mali müşavir Luca içinde kendi "kural tablosu"nu tanımlar (TARİH/FT.NO/AÇIKLAMA/TOPLAM/MATRAH8/KDV8/MATRAH18/KDV18 örneği). **KISMEN.**
 3. **Luca — API / e-Fatura XML:** Luca MMP'ye herkese açık API yok; Luca Net web servisi var ama belge TESMER başvurusu + gizlilik sözleşmesiyle verilir. UBL-TR XML'i doğrudan MMP'ye yükleme ekranı resmi kaynakta yok; e-belgeler TÜRMOB/İşNet entegratör ya da Nettecap/BelgeApp üzerinden "Akıllı Entegrasyon Noktası"na akar. **HAYIR (doğrudan); e-Fatura zaten entegratörden Luca'ya gidiyor.**
 4. **Zirve — fatura Excel (Genel Muhasebe > Fatura Excel):** resmi örnek dosya indirildi ve okundu: `Tarih | Türü | Cari Adı/Açıklama | Evrak Numarası | Vergi/T.C Kimlik No | matrah%18 | kdv%18 | matrah %1 | KDV%1 | Para Birimi | Döviz Tutarı | Stok Kodu | Miktar` (.xls, kolon sırası serbest — kullanıcı F5 tanım tablosunda eşler). **EVET.** Zirve muhasebe fişi (borç/alacak satırlı) Excel aktarımı resmi kaynakta yok; XML fatura aktarımı = **Express Aktarım, UBL-TR e-Fatura/e-Arşiv XML veya ZIP** (sürükle-bırak). **KISMEN** (şema belgelenmemiş ama UBL-TR olduğu birden çok kaynakta).
-5. **Ortak dil:** mali müşavirler fiilen (a) e-Fatura/e-Arşiv **UBL-TR XML'i entegratörden indirip** Express Aktarım / AEN ile muhasebeleştiriyor, (b) Paraşüt'ün ücretsiz **Atlas Aktarım**ı Luca'ya doğrudan, Zirve/Mikro'ya Excel-XML çıktısıyla aktarıyor. GİB e-Defter (XBRL-GL) bir *çıktı* standardıdır, program-arası fiş girişi için kullanılmaz; "muavin Excel" diye ortak bir standart yok. **Mihenk için en sağlam yol: Luca fiş CSV + Zirve fatura Excel + (zaten var olan) e-Fatura UBL-TR XML indirme.**
+5. **Ortak dil:** mali müşavirler fiilen (a) e-Fatura/e-Arşiv **UBL-TR XML'i entegratörden indirip** Express Aktarım / AEN ile muhasebeleştiriyor, (b) Paraşüt'ün ücretsiz **Atlas Aktarım**ı Luca'ya doğrudan, Zirve/Mikro'ya Excel-XML çıktısıyla aktarıyor. GİB e-Defter (XBRL-GL) bir *çıktı* standardıdır, program-arası fiş girişi için kullanılmaz; "muavin Excel" diye ortak bir standart yok. **ByGatech için en sağlam yol: Luca fiş CSV + Zirve fatura Excel + (zaten var olan) e-Fatura UBL-TR XML indirme.**
 
 ---
 
@@ -33,7 +33,7 @@ Fiş No;Fiş Tarihi;Hesap Kodu;Evrak No;Evrak Tarihi;Açıklama;Borç;Alacak;Mik
 1;01.01.2020;120.004;;01.01.2020;AÇILIŞ FİŞİ;4.337,29;0;0;;
 1;01.01.2020;391.018;;01.01.2020;AÇILIŞ FİŞİ;0;646,37;0;;
 ```
-Mihenk satış faturası için (örnek, kendi üretimimiz — kolon kuralı yukarıdaki resmi şablon):
+ByGatech satış faturası için (örnek, kendi üretimimiz — kolon kuralı yukarıdaki resmi şablon):
 ```
 Fiş No;Fiş Tarihi;Hesap Kodu;Evrak No;Evrak Tarihi;Açıklama;Borç;Alacak;Miktar;Döviz;Kur
 1;15.10.2026;120.001;MHK2026000000012;15.10.2026;Satış faturası MHK2026000000012;12.000,00;0;0;;
@@ -71,7 +71,7 @@ Kaynak: *01.02.11 Excel Fatura Aktarımı* — https://lucayazilim.freshdesk.com
 - Hesap belirleme: Sabit / Sezgisel / Hesap kodunu sütundan al / Diğer sütunda belirlenen / **VKN-TCKN ile** (cari alt hesapta kayıtlı VKN eşleşirse otomatik). Ba/Bs işaretleri, belge türü FT-Fatura, stok hareketi seçenekleri var.
 - Hazır örnek şablon listesi: ÜLKER, SELÇUK ECZA, HEDEF ECZA, EDAK ECZA, DİLEK ECZA, AKMAN, **Luca_Gider_Fatura_Listesi, Luca_Gelir_Fatura_Listesi**, EDAK Matrahın İçinde 8-18 KDV, SELÇUK ECZA KDVDEN MATRAHA, BURSA ECZA DEPOSU (hepsi ayraç `;`). "Luca_Gelir_Fatura_Listesi" şablonunun kolonları görüntüde yok → **TEYİTSİZ**.
 
-Mihenk için önerilen gelir listesi CSV (kendi kolon adlarımız; mali müşavir bir kez kural tanımlar):
+ByGatech için önerilen gelir listesi CSV (kendi kolon adlarımız; mali müşavir bir kez kural tanımlar):
 ```
 TARIH;FT.NO;VKN;CARI;ACIKLAMA;MATRAH0;MATRAH1;KDV1;MATRAH10;KDV10;MATRAH20;KDV20;TOPLAM
 15.10.2026;MHK2026000000012;1234567890;AYŞE KUYUMCULUK LTD;22 ayar bilezik;0;0;0;0;0;10.000,00;2.000,00;12.000,00
@@ -84,7 +84,7 @@ TARIH;FT.NO;VKN;CARI;ACIKLAMA;MATRAH0;MATRAH1;KDV1;MATRAH10;KDV10;MATRAH20;KDV20
 - TÜRMOB e-Belge portalı: "Eski entegratörün XML faturaları, en fazla 300 adetlik zip dosyalarıyla portala yüklenebilir" (arşiv amaçlı) — https://lucayazilim.freshdesk.com/support/solutions/articles/67000549601-e-belge-sso
 - Luca Net (KOBİ ticari) tarafında: Gelen e-Fatura → "LucaNet'e Yükle" (entegratör listesinden; dosyadan değil) — https://lucayazilim.freshdesk.com/support/solutions/articles/67000715093-lucanette-gelen-e-fatura
 - Üçüncü taraf iddiası (PDFXMLPro, satıcı): "harici XML dosyaları e-Fatura aktarım ekranından yüklenir" — https://pdfxmlpro.com/luca-e-fatura-xml-aktarma → **TEYİTSİZ** (resmi makaleyle çelişiyor).
-- Pratik sonuç: **Mihenk'in kestiği e-Fatura/e-Arşiv zaten entegratörde (Nilvera vb.)**; mali müşavir Luca AEN'den çeker. Mihenk tarafında ek iş: yok. Entegratör→Luca otomatik köprüsü: Faturaport "Luca entegrasyonu" (yıllık 1.000 TL+KDV, Luca'ya ödenir) — https://faturaport.com/blog/e-donusum/faturaport-a-luca-entegrasyonu-eklendi ; NES/Nettecap "Luca Aktarım Ayarları" — https://nes.com.tr/luca-fatura-aktarimi
+- Pratik sonuç: **ByGatech'in kestiği e-Fatura/e-Arşiv zaten entegratörde (Nilvera vb.)**; mali müşavir Luca AEN'den çeker. ByGatech tarafında ek iş: yok. Entegratör→Luca otomatik köprüsü: Faturaport "Luca entegrasyonu" (yıllık 1.000 TL+KDV, Luca'ya ödenir) — https://faturaport.com/blog/e-donusum/faturaport-a-luca-entegrasyonu-eklendi ; NES/Nettecap "Luca Aktarım Ayarları" — https://nes.com.tr/luca-fatura-aktarimi
 
 ### 1d. Luca API / web servis
 - Luca MMP: herkese açık API dokümanı **yok**. Broşür "Web Servis API Aktarımı" ve "LUCA NET WEB SERVİS AKTARIMLARI: Cari, Stok, Fatura, İrsaliye ve Muhasebe Fişi Aktarımları" diyor (Luca Net KOBİ paketi) — https://www.luca.com.tr/Upload///g8gcvmgB/iEBJ/h0hYcgDT8xmwpIN.pdf
@@ -112,7 +112,7 @@ Tarih       | Türü           | Cari Adı/Açıklama | Evrak Numarası   | Verg
 08.02.2023  | Satış Faturası | Zirve Akademi     | GİB2023000000001 | 11111111111         | 533,60    | 96,05  | 100       | 1     |             |              |           |
 16.02.2023  | Satış Faturası | Zirve Akademi     | GİB2023000000002 | 11111111111         | 524,83    | 94,47  | 100       | 1     |             |              |           |
 ```
-(Dikkat: resmi örnek dosya VKN alanına 11111111111 yazmış — bizim iş kuralı kataloğumuz bunu geçersiz sayar; Mihenk gerçek VKN/TCKN yazar.) Sayfa2 aynı verinin 9 sütunlu kısa hâli: `Tarih | Türü | Cari adı | evrak no | vkn | matrah%18 | kdv%18 | matrah %1 | KDV%1`.
+(Dikkat: resmi örnek dosya VKN alanına 11111111111 yazmış — bizim iş kuralı kataloğumuz bunu geçersiz sayar; ByGatech gerçek VKN/TCKN yazar.) Sayfa2 aynı verinin 9 sütunlu kısa hâli: `Tarih | Türü | Cari adı | evrak no | vkn | matrah%18 | kdv%18 | matrah %1 | KDV%1`.
 
 **Biçim:**
 - Uzantı: **.xls** (resmi örnek). Blog: sayfa adı (ör. Sayfa1) tanım tablosuna yazılır. .xlsx kabulü belirtilmemiş → **TEYİTSİZ** (banka örneği .xlsx olduğundan büyük olasılıkla kabul).
@@ -123,7 +123,7 @@ Tarih       | Türü           | Cari Adı/Açıklama | Evrak Numarası   | Verg
 - Fişe aktarım: Alt+S dosya seç → F3 fişe aktar → F2 kaydet. Fiş kesme biçimi (günlük/aylık tek fiş) ekranda seçilir.
 - Kodlama: ikili Excel (BIFF, cp1254) — CSV değil; UTF-8 sorunu yok.
 
-Mihenk satış için önerilen satır (aynı başlıklar, 2026 KDV oranları için başlıkları `matrah%20 | kdv%20 | matrah%10 | KDV%10 | matrah%0` yapmak serbest — Zirve başlığa değil sıra no'ya bakar):
+ByGatech satış için önerilen satır (aynı başlıklar, 2026 KDV oranları için başlıkları `matrah%20 | kdv%20 | matrah%10 | KDV%10 | matrah%0` yapmak serbest — Zirve başlığa değil sıra no'ya bakar):
 ```
 15.10.2026 | Satış Faturası | AYŞE KUYUMCULUK LTD | MHK2026000000012 | 1234567890 | 10.000,00 | 2.000,00 | 0 | 0 | | | BLZ22-001 | 1
 ```
@@ -139,12 +139,12 @@ Resmi blog/kılavuzda ayrı bir "fiş Excel" ekranı **yok**; Genel Muhasebe kı
 - Ürün sayfası: "XML dosyaları tek tek veya toplu … sıkıştırılmış dosya desteği"; kaynaklar Paraşüt, Bizmu, Bizim Hesap, Zirve Portal, e-Portal, GİB e-Belge (e-Arşiv/e-SMM), Zirve Drive; "hangi entegratörü kullandığınızın önemi yok" — https://www.zirveyazilim.net/express-fatura-aktarim/
 - Modül kılavuzu: Ayarlar > Express Aktarım Ayarları (Bizim Hesap API key, Paraşüt kullanıcı/şifre, GİB e-Belge şifre) · Muhasebeleştirme Ayarları (alış/satış matrah-vergi-tevkifat-iade hesapları, "Akıllı Muhasebe Ayarları": fatura türü/açıklama kelimesine göre otomatik hesap) · Faturaları İndir → Muhasebeleştir → "Fişe Git"; "Diğer İşlemler: XML görüntüleme" — https://blog.zirveyazilim.net/yenilenen-express-aktarim-stoksuz-modulu-nasil-kullanilir
 - XML şeması resmi sayfada adlandırılmamış; kaynakların tamamı e-Fatura/e-Arşiv belgesi olduğundan ve Paraşüt'ün dışa verdiği de "e-Fatura ve e-Arşiv XML" olduğundan **UBL-TR 1.2** olduğu kuvvetle olası (PDFXMLPro satıcı iddiası "Zirve … UBL-TR uyumlu" https://pdfxmlpro.com/ ) → **KISMEN TEYİTLİ**.
-- Mihenk'in Nilvera'dan indirdiği/ürettiği UBL-TR XML'ler (giden e-Arşiv/e-Fatura) ZIP'lenip mali müşavire verilirse Zirve bunu doğrudan muhasebeleştirir.
+- ByGatech'in Nilvera'dan indirdiği/ürettiği UBL-TR XML'ler (giden e-Arşiv/e-Fatura) ZIP'lenip mali müşavire verilirse Zirve bunu doğrudan muhasebeleştirir.
 
 ### 2e. Zirve API / e-fatura entegrasyonu
 - Herkese açık, üretici yayınlı API **bulunamadı** (zirveyazilim.net, blog, GitHub). D'Cloud: "Zirve'nin herkese açık API'si yok; Nova 2.0'daki API Key GİB e-Beyanname anahtarıdır" (üçüncü taraf) → **TEYİTSİZ ama tutarlı**.
 - Piyasa köprüleri: Facit (entegratör portalından çekip Zirve'ye fiş) https://facit.app/zirve/ ; Korkmaz Digital "Online Veri Aktarımı" (Zirve Dönüşüm, EDM vb. entegratörlerden) https://korkmazdigital.com/zirve-donusum-e-faturalarinizi-zirve-veri-aktarimi-yapin/ ; Faturaport Zirve entegrasyonu (yıllık 1.000 TL+KDV) https://faturaport.com/blog/e-donusum/faturaport-a-muhasebe-programlari-entegrasyonu-eklendi
-- Zirve'nin kendi e-Dönüşüm (entegratör) ürünü var; mükellef Zirve Dönüşüm kullanıyorsa Express Aktarım "Zirve Portal" kaynağı ile çekiyor — Mihenk için geçerli değil (entegratör Nilvera).
+- Zirve'nin kendi e-Dönüşüm (entegratör) ürünü var; mükellef Zirve Dönüşüm kullanıyorsa Express Aktarım "Zirve Portal" kaynağı ile çekiyor — ByGatech için geçerli değil (entegratör Nilvera).
 - İşletme defteri (2. sınıf) için: Express Aktarım > e-Arşiv Fatura (İnteraktif) Aktar / İnternet V.D. e-Arşiv Fatura Aktar (GİB'den çeker) — https://halilibrahimyurdunmali.wordpress.com/2023/12/23/zirve-ile-express-aktarim-isletme-defteri/
 
 GitHub: "zirve" muhasebe/XML/Express Aktarım araması → açık kaynak depo **yok**.
@@ -183,7 +183,7 @@ GitHub: "zirve" muhasebe/XML/Express Aktarım araması → açık kaynak depo **
 | **Luca'ya UBL-TR XML** | **HAYIR (gerek de yok)** | Doğrudan yükleme ekranı resmi kaynakta yok; e-belge entegratörden AEN'e akıyor. |
 | **Zirve fatura Excel (.xls)** | **EVET** | Resmi örnek dosya elde; kolon sırası serbest, mali müşavir F5'te eşler. Kalan risk: .xlsx kabulü (xls üretmek en güvenlisi), KDV oranı başlıkları 2026'ya göre. |
 | **Zirve yevmiye fişi Excel** | **HAYIR** | Böyle bir resmi ekran yok; Zirve fişi fatura Excel'inden kendisi üretir. |
-| **Zirve XML (Express Aktarım)** | **KISMEN → fiilen EVET** | Şema adı resmi sayfada yok ama girdiler e-Fatura/e-Arşiv XML; Mihenk'in Nilvera'dan aldığı UBL-TR XML'i ZIP'lemek yeterli. |
+| **Zirve XML (Express Aktarım)** | **KISMEN → fiilen EVET** | Şema adı resmi sayfada yok ama girdiler e-Fatura/e-Arşiv XML; ByGatech'in Nilvera'dan aldığı UBL-TR XML'i ZIP'lemek yeterli. |
 | **Zirve API** | **HAYIR** | Herkese açık API yok. |
 
-**Mihenk için önerilen paket (ekip oyu için):** (1) `Luca fişi (.csv ;)` dışa aktarımı — fatura başına 1 fiş, hesap kodu eşleme tablosu ayarlardan (120/600/391 + kuyum istisnaları), 50 fiş/dosya bölme, UTF-8 BOM ve 1254 seçeneği; (2) `Zirve fatura listesi (.xls)` — resmi başlıklarla, sayfa adı "Sayfa1"; (3) `e-Belge XML ZIP` — dönemin giden UBL-TR XML'leri (Zirve Express Aktarım ve genel amaç); (4) mevcut genel CSV korunur. Doğrulama: Luca/Zirve demo hesabı olmadan son kanıt **mali müşavirin bir kez yüklemesi**; bu, dış bağımlılık olarak açık kalır.
+**ByGatech için önerilen paket (ekip oyu için):** (1) `Luca fişi (.csv ;)` dışa aktarımı — fatura başına 1 fiş, hesap kodu eşleme tablosu ayarlardan (120/600/391 + kuyum istisnaları), 50 fiş/dosya bölme, UTF-8 BOM ve 1254 seçeneği; (2) `Zirve fatura listesi (.xls)` — resmi başlıklarla, sayfa adı "Sayfa1"; (3) `e-Belge XML ZIP` — dönemin giden UBL-TR XML'leri (Zirve Express Aktarım ve genel amaç); (4) mevcut genel CSV korunur. Doğrulama: Luca/Zirve demo hesabı olmadan son kanıt **mali müşavirin bir kez yüklemesi**; bu, dış bağımlılık olarak açık kalır.

@@ -27,4 +27,4 @@
 | 05:18 | 23/26 Ayarlarda kural, üründe KDV oranı | Yapılan: fiyat kuralları ve ürünün KDV oranı |
 | 05:40 | 24/26 Fiş yerine doğrudan fatura | Ses kaydı 34:55: “Fişe hiç gerek yok… TC’yi yazıp sisteme girdiğim anda fatura kesin.” |
 | 05:51 | 25/26 Fiş yerine doğrudan fatura | Yapılan: TC ile müşteri, satışta fatura sorusu, giden kutusu |
-| 06:23 | 26/26 On iki konunun hepsi programda | Ses kaydından yapılanlar · Mihenk |
+| 06:23 | 26/26 On iki konunun hepsi programda | Ses kaydından yapılanlar · ByGatech |

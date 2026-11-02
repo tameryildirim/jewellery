@@ -12,13 +12,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Kuyumcu.Tests;
 
 // ═════════════════════════════════════════════════════════════════════════════
-// PAKET YILDIZ-AMBLEM-2 — Mihenk amblemi v2 (EMİR-AMBLEM-YILDIZ-2026-10-10 · kurucu 10.10 "eksiksiz ve aynen")
+// PAKET YILDIZ-AMBLEM-2 — ByGatech amblemi v2 (EMİR-AMBLEM-YILDIZ-2026-10-10 · kurucu 10.10 "eksiksiz ve aynen")
 // Tuval: ham/yildiz-tuval/kaynak/Amblem_sol(.acik).dc.html (kabuk 52 px; YILDIZ-AMBLEM-4) · Giris4(a).dc.html (giriş 96 px).
 //
 // Görsel eşitliğin ASIL kanıtı başsız Chrome'da tuval ↔ uygulama zaman eşitlenmiş piksel karşılaştırmasıdır
 // (rapor). Bu sınıf o ölçümün dayandığı SÖZLEŞMEYİ kilitler (v1 YildizAmblemTestleri'nin v2 uyarlaması):
 //   • bUnit: 3B 8 yüzlü taş (4 taç kapalı üçgen + 4 pavyon "V"), ölçüler § 3 formülleriyle, gradyan + SMIL,
-//     "MİHENK" bütün yazı (taşla AYNI gradyan), ek görsel/betik/satır içi stil yok; giriş Yıldız dalı.
+//     "ByGatech" bütün yazı (taşla AYNI gradyan), ek görsel/betik/satır içi stil yok; giriş Yıldız dalı.
 //   • CSS: 28 sn dönüş 20°→380° linear, 11 sn ışık/parlama/yazı, süzgeç DIŞ sarmalayıcıda (3B kutuda filter
 //     YOK), harf harf YOK, taş hiç kaybolmaz, açık/koyu renk + --glow, hareket azaltmada sabit.
 // ═════════════════════════════════════════════════════════════════════════════
@@ -140,7 +140,7 @@ public sealed class YildizAmblem2Testleri : BunitContext
         var yazi = cocuk[1];
         Assert.Equal("svg", yazi.TagName, ignoreCase: true);
         Assert.Contains("amb-yz", yazi.ClassList);
-        Assert.Equal(("110", "16", "0 0 110 16"), (yazi.GetAttribute("width"), yazi.GetAttribute("height"), yazi.GetAttribute("viewBox")));
+        Assert.Equal(("140", "16", "0 0 140 16"), (yazi.GetAttribute("width"), yazi.GetAttribute("height"), yazi.GetAttribute("viewBox")));
         // Yapı: .amb-parla > .amb-ik > (svg.amb-tanim, span.tas3d > 42 × svg.amb-yuz)
         var ik = cocuk[0].Children.Single();
         Assert.Equal("amb-ik", ik.ClassName);
@@ -196,18 +196,19 @@ public sealed class YildizAmblem2Testleri : BunitContext
         Assert.Single(e.FindAll("#yildiz-marka linearGradient"));
     }
 
-    // ── YA2-04) Yazı: "MİHENK" bütün metin, Inter 13/400/4,4; tspan'lar arası boşluk yok ─────────
+    // ── YA2-04) Yazı: marka büyük harfle bütün metin, Inter 13/400/4,4; tspan'lar arası boşluk yok ─────────
     [Theory]
     [InlineData("tr")]
     [InlineData("en")]
-    public void YA2_04_MIHENK_tek_metin_Inter_13_400_aralik_4_4_bosluk_yok(string dil)
+    public void YA2_04_marka_buyuk_harf_tek_metin_Inter_13_400_aralik_4_4_bosluk_yok(string dil)
     {
         var e = Menu(dil);
         var t = e.Find("#yildiz-marka .amb-yz text");
         Assert.Equal(("0", "13", "Inter, system-ui, sans-serif", "13", "400", "4.4"),
             (t.GetAttribute("x"), t.GetAttribute("y"), t.GetAttribute("font-family"), t.GetAttribute("font-size"), t.GetAttribute("font-weight"), t.GetAttribute("letter-spacing")));
-        Assert.Equal("MİHENK", t.TextContent);
-        Assert.Equal(6, t.ChildNodes.Length);   // yalnız 6 tspan, boşluk düğümü yok
+        var beklenen = Marka.Ad.ToUpper(CultureInfo.GetCultureInfo("tr-TR"));
+        Assert.Equal(beklenen, t.TextContent);
+        Assert.Equal(beklenen.Length, t.ChildNodes.Length);   // harf başına tek tspan, boşluk düğümü yok
     }
 
     // ── YA2-05) Ek dosya / görsel / betik yok (emir § 8) ─────────
@@ -415,11 +416,11 @@ public sealed class YildizAmblem2Testleri : BunitContext
         Assert.Equal(2, h1.Children.Length);
         Assert.Equal("amb-parla", h1.Children[0].ClassName);
         var yazi = h1.Children[1];
-        Assert.Equal(("220", "32", "0 0 110 16"), (yazi.GetAttribute("width"), yazi.GetAttribute("height"), yazi.GetAttribute("viewBox")));
+        Assert.Equal(("280", "32", "0 0 140 16"), (yazi.GetAttribute("width"), yazi.GetAttribute("height"), yazi.GetAttribute("viewBox")));
         var t = yazi.QuerySelector("text")!;
-        Assert.Equal(("57", "13", "middle", "url(#giris-amb-ti)", "4.4"),
+        Assert.Equal(("72", "13", "middle", "url(#giris-amb-ti)", "4.4"),
             (t.GetAttribute("x"), t.GetAttribute("y"), t.GetAttribute("text-anchor"), t.GetAttribute("fill"), t.GetAttribute("letter-spacing")));
-        Assert.Equal("MİHENK", t.TextContent);
+        Assert.Equal(Marka.Ad.ToUpper(CultureInfo.GetCultureInfo("tr-TR")), t.TextContent);
         Assert.Equal("giris-amb-ti", e.Find("#giris-amblem linearGradient").GetAttribute("id"));
         Assert.Empty(e.FindAll("#giris-panel"));
         Assert.Empty(e.FindAll("#giris-marka"));
