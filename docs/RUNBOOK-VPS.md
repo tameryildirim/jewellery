@@ -77,7 +77,7 @@ Bellek 1,9 / 3,9 GB (uygulama 378 MB, MySQL ~1,05 GB) · disk 7,7 / 38 GB. 8 GB'
 
 ## 8. Kurucuya kalanlar
 
-- Garanti portalı → IPs talebi 02.11 17:42 gönderildi (151.135.190.195 → **5.10.220.150**, Edit Pending Approval) → onay e-postası beklenir; sonra /banka'da Garanti test hesabı + Şimdi dene.
+- Garanti portalı → IPs talebi 02.11 17:42 gönderildi (151.135.190.195 → **5.10.220.150**, Edit Pending Approval) → onay e-postası beklenir. 17:53 sunucudan ilk deneme yapıldı: Garanti test hesabı + bağlantı kayıtlı (kiracı Altın Çarşı), yanıt "Client IP does not exist in provided Portal Application IPs" (beklenen; onay gelince Hesabı Düzenle → Şimdi dene).
 - launchd `com.bygatech.vps-yedek` kurulumu (§ 4).
 - Alan adı satın alma (§ 7). GitHub depo adı.
 - **Sunucuda yalnız demo verisi.** Gerçek müşteri verisi için şirket + KVKK/VERBİS + avukat görüşü.
