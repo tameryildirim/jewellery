@@ -52,6 +52,14 @@ Kapı (değişmez): Mac'te build 0 hata · tam süit · denetim.sh · yayından 
 - Linux tuzağı (02.11 düzeltildi): longblob dump'ı GNU grep'i "binary" moda sokup satır düşürüyordu → `--hex-blob` + `grep -a`.
 - Geri yükleme: `docs/YEDEK-GERI-YUKLEME.md`.
 
+## 4a. Kur kaynakları
+
+Üretim varsayılanı `Kur:SozlesmesizKaynaklarAcik=false` (sözleşmesiz dış kaynak kendiliğinden açılmaz — K13).
+Mac canlısı gibi sunucuda da `.env` satırıyla açıldı: `Kur__SozlesmesizKaynaklarAcik=true` (02.11, kurucu "neden kaynak bağlamadık").
+TRUNCGIL sunucudan ERİŞİLEMİYOR (15 sn zaman aşımı; Mac'ten 200 — veri merkezi IP'lerini engelliyor olabilir) →
+o kaynağı seçen demo kiracı ALTINKAYNAK'a alındı; Altınkaynak ve Harem sunucudan 0,1–0,2 sn'de yanıt veriyor.
+Satışta "fiyat kaynağı izinli" DENMEZ (sözleşme yok).
+
 ## 5. Günlükler
 
 `journalctl -u kuyumcu -f` · `journalctl -u kuyumcu-yedek-tam` · `docker logs bygatech-mysql` · `/var/log/nginx/*.log` · `fail2ban-client status sshd`.
