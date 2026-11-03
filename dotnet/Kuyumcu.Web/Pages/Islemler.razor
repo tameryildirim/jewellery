@@ -1097,7 +1097,7 @@
         kapiSunucudanAcildi = false;
         basarili = false;
         sonFisNo = null; yazdirHata = null; yazdirIdler.Clear(); otoYazdir = SatisTuvali && TekBelge && !FaturaSecili; otoYazdirAcildi = false;   // T-S1: etiket "ve yazdır" diyorsa yazdırma KAYITTAN SONRA açılır · 19.10 kurucu: faturalı satışta çıktı AÇILMAZ (fatura elektronik gider)
-        sonIskontoNotu = null; sonFaturaNotu = null;   // M6
+        sonIskontoNotu = null; sonFaturaNotu = null; tamamPaneliAcik = false;   // M6 · 03.11 perde
         yerlesimUyarisi = null; fisTaksitUyari = null; fisTaksitHata = null;   // YASAL-2 t3
         form.Temizle();
         if (string.IsNullOrEmpty(kurId)) { hata = Dil.T.Islem.BilgiKontrol; return; }
@@ -1355,9 +1355,9 @@
 
         await YazdirKalemiBul(); await OtomatikYazdir();   // S2-5: satis-fisi yalnız fisId döndürür · T-S1: tek belge → kendiliğinden yazdır
         basarili = true;
-        basariJeton++; await FisTaksitUyariYukle(taksitSorgu);   // YASAL-2 t3: sunucu söylerse tek satır
+        if (!YildizTezgahMi) basariJeton++; await FisTaksitUyariYukle(taksitSorgu);   // YASAL-2 t3 · 03.11: Yıldız'da barkod odağı perde kapanınca (TamamKapat)
         // Kaydedilen fiş AYNI EKRANDA görünür olmalı (QA turu 1+2 KRİTİK).
-        await SonSatislariTazele();   // SATIS-2: liste açılmışsa tazelenir
+        await SonSatislariTazele(); KayitSonuBelge();   // SATIS-2: liste tazelenir · 03.11: faturalı → fatura kâğıdı, fişli → perde (Islemler.Belge.cs)
     }
 
     /// <summary>

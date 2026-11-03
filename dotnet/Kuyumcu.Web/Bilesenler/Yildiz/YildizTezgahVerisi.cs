@@ -132,6 +132,14 @@ public sealed class YildizTezgahBaglami
     /// <summary>Kayıttan sonra sunucunun söylediği uyarılar (yerleşim, taksit) — soluk not satırı.</summary>
     public IReadOnlyList<string> Uyarilar { get; init; } = [];
 
+    // ── 03.11 kurucu: kayıt perdesi + "… tamamlandı" paneli (YildizTezgah.razor #yildiz-tezgah-perde) ──
+    /// <summary>Kayıt bitti ve perde "… tamamlandı" başlığıyla açık; null = perde kapalı (Kaydediliyor ayrı bayrak).</summary>
+    public string? TamamBaslik { get; init; }
+    /// <summary>Perdeyi kapatan tek birincil düğmenin yazısı ("Yeni satış").</summary>
+    public string? TamamKapatEtiketi { get; init; }
+    /// <summary>"Yeni satış": perde kapanır (form kayıtta zaten boşalmıştır).</summary>
+    public EventCallback TamamKapat { get; init; }
+
     // ── YILDIZ-4C — etkileşim hâlleri tuval dilinde (eski form/tablo Yıldız'da ÇİZİLMEZ) ──────────────
     /// <summary>PRO mu (kalem düzenlemesinde adet/fiyat/indirim/hediye; müşteri katmanında satıcı/fiyat listesi).</summary>
     public bool Pro { get; init; }

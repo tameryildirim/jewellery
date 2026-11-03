@@ -352,4 +352,15 @@ public static class YildizTezgahSozlugu
     public static string BacakTavan(string dil) => En(dil) ? "At most 5 payment lines." : "En çok 5 ödeme satırı.";
     /// <summary>YILDIZ-4C tur 3: karma ödeme satırını çıkaran .b2 düğmesinin erişilebilir adı.</summary>
     public static string OdemeSatiriCikar(int sira, string dil) => En(dil) ? $"Remove payment line {sira}" : $"{sira}. ödeme satırını çıkar";
+
+    // ── 03.11 kurucu: "Fatura kesilsin mi? Evet → satış tamamlandı uyarısı gelmiyor, sanki kaydetmemiş gibi; tam ekran
+    //    loading + giriş/sol üstteki amblem animasyonu" — kayıt perdesi ve "… tamamlandı" paneli ──
+    /// <summary>Kayıt boyunca tam ekran perdenin yazısı (amblemin altında).</summary>
+    public static string Kaydediliyor(string dil) => En(dil) ? "Saving…" : "Kaydediliyor…";
+    /// <summary>Kayıt bitince perdenin başlığı ("Satış tamamlandı").</summary>
+    public static string Tamamlandi(string turAdi, string dil) => En(dil) ? $"{turAdi} completed" : $"{turAdi} tamamlandı";
+    /// <summary>Perdeyi kapatan tek birincil düğme ("Yeni satış"); form zaten boştur.</summary>
+    public static string Yeni(string turAdi, string dil) => En(dil)
+        ? $"New {turAdi.ToLowerInvariant()}"
+        : $"Yeni {turAdi.ToLower(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))}";
 }

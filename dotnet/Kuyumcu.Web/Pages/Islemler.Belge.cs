@@ -28,6 +28,24 @@ public partial class Islemler
     private bool belgeSonraAcikHesap;
     private decimal? kuyumcuFaturaHaddi;
     private string? sonFaturaNotu;
+    /// <summary>03.11: aynı istekte kesilen faturanın kimliği (fatura kâğıdına geçiş için); yoksa null.</summary>
+    private string? sonFaturaId;
+    /// <summary>03.11 kurucu: Yıldız'da kayıt bitince "… tamamlandı" perdesi açık (yalnız fişli satış; faturalı satış fatura kâğıdına geçer).</summary>
+    private bool tamamPaneliAcik;
+
+    /// <summary>
+    /// 03.11 kurucu ("satış tamamlandı uyarısı gelmiyor, sanki kaydetmemiş gibi; fatura kes dedim, fatura ekranına yönlenmeli";
+    /// müşteri 34:50 "TC'yi yazdığım anda fatura kesilsin"): Yıldız'da faturalı satış doğrudan FATURA KÂĞIDINA geçer
+    /// (yazdırılabilir, "Tezgâh'a dön" ile geri; 19.10 kuralı korunur: çıktı PENCERESİ açılmaz, uygulama içi sayfa).
+    /// Fişli satışta "… tamamlandı" perdesi açılır (YildizTezgah.razor #yildiz-tezgah-perde). Başarılı kayıttan sonra çağrılır.
+    /// </summary>
+    private void KayitSonuBelge()
+    {
+        if (YildizTezgahMi && sonFaturaId is { Length: > 0 } faturaKimligi)
+            Nav.NavigateTo($"/cikti/{Kuyumcu.Contracts.Cikti.BelgeTurleri.Fatura}/{Uri.EscapeDataString(faturaKimligi)}?donus=/islemler");
+        else
+            tamamPaneliAcik = YildizTezgahMi;
+    }
 
     /// <summary>Belge seçimi yalnız satışta (iade/alış/takas… değil).</summary>
     private bool BelgeSecimiGorunur => tur == "SATIS" && !IadeKipi;
@@ -91,6 +109,7 @@ public partial class Islemler
     private JsonElement BelgeYaniti(JsonElement y)
     {
         HavaleKapat();   // 17.10: başarılı satışla havale modu biter
+        sonFaturaId = null;
         if (y.ValueKind != JsonValueKind.Object || !y.TryGetProperty("satis", out var satis))
         {
             if (belgeTuru == "FIS") sonFaturaNotu = SatisBelgeSozlugu.FaturaFissiz(Dil.Dil);   // müşteri "hayır" dedi
@@ -99,10 +118,21 @@ public partial class Islemler
         if (y.TryGetProperty("faturaHata", out var fh) && fh.ValueKind == JsonValueKind.String)
             sonFaturaNotu = SatisBelgeSozlugu.FaturaOlusmadi(fh.GetString()!, Dil.Dil);
         else if (y.TryGetProperty("fatura", out var f) && f.ValueKind == JsonValueKind.Object)
+        {
             sonFaturaNotu = FaturaNo(f) is { Length: > 0 } no
                 ? SatisBelgeSozlugu.FaturaKesildi(no, Dil.Dil)
                 : SatisBelgeSozlugu.FaturaTaslak(Dil.Dil);
+            sonFaturaId = FaturaKimligi(f);
+        }
         return satis;
+    }
+
+    /// <summary>Fatura yanıtındaki kimlik ("Id" ya da "id"); yoksa null (geçiş yapılmaz, perde gösterilir).</summary>
+    private static string? FaturaKimligi(JsonElement f)
+    {
+        foreach (var ad in new[] { "Id", "id" })
+            if (f.TryGetProperty(ad, out var v) && v.ValueKind == JsonValueKind.String && v.GetString() is { Length: > 0 } s) return s;
+        return null;
     }
 
     private static string? FaturaNo(JsonElement f)

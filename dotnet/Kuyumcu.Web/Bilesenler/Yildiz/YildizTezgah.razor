@@ -20,6 +20,38 @@
    ═════════════════════════════════════════════════════════════════════════════ *@
 
 <div class="yz yz-tezgah" id="yildiz-tezgah">
+    @* 03.11 kurucu: "Fatura kesilsin mi? Evet → satış tamamlandı uyarısı gelmiyor, sanki kaydetmemiş gibi" (aynı satışı iki kez
+       yaptı: FTR-2026-000010 + 000011). Kayıt boyunca TAM EKRAN perde (giriş amblemi + "Kaydediliyor…"); fişli satış bitince aynı
+       perde "Satış tamamlandı" + fiş satırı + yazdırma bağlantıları + TEK birincil düğme "Yeni satış". Faturalı satış perdeyi
+       görmez: sayfa fatura kâğıdına geçer (Islemler.razor Kaydet sonu; müşteri 34:50 "TC'yi yazdığım anda fatura kesilsin"). *@
+    @if (B.Kaydediliyor || B.TamamBaslik is not null)
+    {
+        <div class="yz-perde" id="yildiz-tezgah-perde" role="@(B.Kaydediliyor ? "status" : "dialog")" aria-modal="@(B.Kaydediliyor ? null : "true")"
+             aria-busy="@(B.Kaydediliyor ? "true" : null)" aria-labelledby="yildiz-tezgah-perde-baslik" tabindex="-1" @onkeydown="PerdeTus">
+            <div class="yz-perde-govde">
+                <div class="giris-amb yz-perde-amb" aria-hidden="true">@Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.AmblemTasi(Kuyumcu.Web.Bilesenler.Kabuk.YildizUstMenu.GirisTasi)</div>
+                <h2 class="yz-ince yz-perde-baslik" id="yildiz-tezgah-perde-baslik">@(B.Kaydediliyor ? YildizTezgahSozlugu.Kaydediliyor(Dil.Dil) : B.TamamBaslik)</h2>
+                @if (!B.Kaydediliyor)
+                {
+                    @if (B.SonFis is { } perdeFis)
+                    {
+                        <p class="yz-s yz-perde-satir" id="yildiz-tezgah-perde-satir">@perdeFis</p>
+                    }
+                    <div class="yz-perde-eylem">
+                        @for (var pi = 0; pi < B.YazdirAdresleri.Count; pi++)
+                        {
+                            <a class="yz-b2" id="@(pi == 0 ? "yildiz-tezgah-perde-yazdir" : $"yildiz-tezgah-perde-yazdir-{pi + 1}")" href="@B.YazdirAdresleri[pi]" target="_blank" rel="noopener">@(B.YazdirAdresleri.Count == 1 ? FisYazdirSozlugu.Al(Dil.Dil).FisYazdir : string.Format(FisYazdirSozlugu.Al(Dil.Dil).FisYazdirSira, pi + 1, B.YazdirAdresleri.Count))</a>
+                        }
+                        @if (B.UrunBelgesiAdresi is { } perdeUb)
+                        {
+                            <a class="yz-b2" id="yildiz-tezgah-perde-urun-belgesi" href="@perdeUb" target="_blank" rel="noopener">@D1Sozlugu.Al(Dil.Dil).UrunBelgesi</a>
+                        }
+                        <button type="button" class="yz-b1" id="yildiz-tezgah-perde-kapat" @onclick="B.TamamKapat">@B.TamamKapatEtiketi</button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
     <div class="yz-tezgah-ana">
         <section class="yz-tezgah-sol" aria-labelledby="yildiz-tezgah-ust">
             <div class="yz-tezgah-ust-satir">
@@ -389,6 +421,22 @@
 </div>
 
 @code {
+    /// <summary>03.11: "… tamamlandı" perdesinde Escape de kapatır (Kaydediliyor'ken kapatılamaz).</summary>
+    private Task PerdeTus(KeyboardEventArgs e) => e.Key == "Escape" && !B.Kaydediliyor ? B.TamamKapat.InvokeAsync() : Task.CompletedTask;
+
+    private bool perdeOdaklandi;
+
+    /// <summary>03.11: perde "… tamamlandı"ya dönünce odak tek birincil düğmeye gelir (sayfa kayıt sonrası barkodu odaklar; perde
+    /// modal olduğundan Enter/Escape perdeye işlemeli). Perde kapanınca bayrak sıfırlanır. Odak süs: yardımcı yoksa kayıt etkilenmez.</summary>
+    private async Task PerdeyiOdakla()
+    {
+        if (B.TamamBaslik is null || B.Kaydediliyor) { perdeOdaklandi = false; return; }
+        if (perdeOdaklandi) return;
+        perdeOdaklandi = true;
+        try { await Js.InvokeVoidAsync("kuyumcuOdak.alana", "yildiz-tezgah-perde-kapat"); }
+        catch (Microsoft.JSInterop.JSException) { }
+    }
+
     [Parameter, EditorRequired] public YildizTezgahBaglami B { get; set; } = new();
 
     private int? acikKalem;
@@ -437,6 +485,7 @@
     protected override async Task OnAfterRenderAsync(bool ilk)
     {
         await AcilaniGoster(ilk);
+        await PerdeyiOdakla();   // 03.11 perde
         if (B.Hata == odaklananHata) return;
         odaklananHata = B.Hata;
         if (B.Hata is { Length: > 0 })

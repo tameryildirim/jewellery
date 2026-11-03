@@ -4267,3 +4267,27 @@ html:root[data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik:focus
    pencere kayıyor → yapışkan hiç tutmuyordu; 03.11 1280 ölçümü: kaydırmada sol sütun -777 px'e kaçtı). Dikey taşma görünür,
    yatay kırpılır. */
 html:root[data-sema="yildiz"] .ana-icerik:has(.yz-ozet) { overflow-x: clip; overflow-y: visible; }
+
+/* ── 03.11 KAYIT PERDESİ (kurucu: "Fatura kesilsin mi? Evet → satış tamamlandı uyarısı gelmiyor, sanki kaydetmemiş gibi;
+   tam ekran loading + giriş/sol üstteki amblem animasyonu") — Tezgâh kaydı boyunca tam ekran perde; fişli satış bitince aynı
+   perde "… tamamlandı" paneli (YildizTezgah.razor #yildiz-tezgah-perde). Katman: üst menü 30 · müşteri katmanı 30 · alt
+   şerit 40 · pencere 50/60 → perde 70 (hepsinin üstünde). Zemin gövde rengi %94 (altındaki ekran okunmaz, yerinde durur).
+   Amblem giriş ölçüsünde (.giris-amb → .amb-ik 96 px; aynı 3B taş, aynı parıltı). ── */
+html:root[data-sema="yildiz"] .yz-perde {
+  position: fixed; inset: 0; z-index: 70;
+  display: grid; place-items: center; padding: 24px;
+  --yz-perde-zemin: color-mix(in srgb, var(--yuzey-govde) 94%, transparent);   /* belirteç: gövde kuralında sabit renk yok (Y1-10) */
+  background: var(--yz-perde-zemin);
+  animation: amb-form-gel .25s ease-out both;   /* giriş formunun belirme adımı (aynı keyframes; Y1-02 amb-* istisnası) */
+}
+html:root[data-sema="yildiz"] .yz-perde:focus { outline: none; }
+html:root[data-sema="yildiz"] .yz-perde-govde { display: flex; flex-direction: column; align-items: center; gap: 28px; max-width: 560px; text-align: center; }
+html:root[data-sema="yildiz"] .yz-perde .giris-amb { display: flex; margin: 0; }
+html:root[data-sema="yildiz"] .yz-perde-baslik { margin: 0; font-size: 40px; line-height: 1; font-weight: 300; letter-spacing: -0.02em; color: var(--metin); }
+html:root[data-sema="yildiz"] .yz-perde-satir { margin: 0; font-size: 18px; font-weight: 300; line-height: 1.45; color: var(--metin-soluk); }
+html:root[data-sema="yildiz"] .yz-perde-eylem { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 16px 32px; }
+@media (max-width: 480px) {
+  html:root[data-sema="yildiz"] .yz-perde-baslik { font-size: 32px; }
+  html:root[data-sema="yildiz"] .yz-perde-eylem { gap: 12px 20px; }
+}
+@media (prefers-reduced-motion: reduce) { html:root[data-sema="yildiz"] .yz-perde { animation: none; } }

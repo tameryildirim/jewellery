@@ -168,7 +168,13 @@ public sealed class S25YazdirParaUstuEkranTestleri : BunitContext
         e.YildizKalemEkle(beklenenFiyat: "10000");
         Assert.Equal(1, OdakSayisi());   // yazarken odak ÇALINMAZ
         e.YildizKaydet();
+        // 03.11 kurucu: kayıt bitince "Satış tamamlandı" perdesi (modal) — odak perdenin tek birincil düğmesinde, barkoda DEĞİL;
+        // "Yeni satış" perdeyi kapatınca sıradaki müşteri için okutucu hazır (odak barkoda).
+        var kapat = e.WaitForElement("#yildiz-tezgah-perde-kapat");
+        Assert.Equal(1, OdakSayisi());
+        kapat.Click();
         e.WaitForAssertion(() => Assert.Equal(2, OdakSayisi()));   // sıradaki müşteri: okutucu hazır
+        Assert.Empty(e.FindAll("#yildiz-tezgah-perde"));
     }
 
     // ── E-2 ───────────────────────────────────────────────────────────────

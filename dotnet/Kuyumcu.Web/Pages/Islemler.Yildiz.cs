@@ -155,6 +155,10 @@ public partial class Islemler
                 KaydetKilitli = kaydediliyor || !Gonderilebilir,
                 KaydetKilitSebebi = Gonderilebilir ? null : KaydetKilitSebebi,
                 Kaydediliyor = kaydediliyor,
+                // 03.11 kurucu: kayıt perdesi (Kaydediliyor) + fişli satışta "… tamamlandı" paneli; "Yeni satış" perdeyi kapatır.
+                TamamBaslik = tamamPaneliAcik && !kaydediliyor ? YildizTezgahSozlugu.Tamamlandi(SeciliTurAdi, Dil.Dil) : null,
+                TamamKapatEtiketi = YildizTezgahSozlugu.Yeni(SeciliTurAdi, Dil.Dil),
+                TamamKapat = EventCallback.Factory.Create(this, () => { tamamPaneliAcik = false; basariJeton++; }),   // perde kapanır, odak barkoda
                 FisDolu = FisDolu,
                 KalemVar = kalemler.Count > 0,
                 ParaUstuKullanilir = kalemler.Count > 0 && YildizParaUstuNakit > 0m && !NakitBandiVar,   // YILDIZ-4C: karmada NAKİT satırları (özgün karma para üstüyle aynı taban)

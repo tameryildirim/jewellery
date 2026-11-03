@@ -44,7 +44,7 @@ public sealed class FaturaSorusuEkranTestleri : BunitContext
                 var v when v.Contains("/pos/cihazlar") => "[]",
                 // Faturalı satış fiş ucuna gider (gerçek yanıt biçimi: { satis, fatura }); fiş kalemi yazdırma için okunur.
                 var v when v.Contains("/islemler/satis-fisi") && istek.Method == HttpMethod.Post =>
-                    """{"satis":{"fisNo":"F-0002","fisId":"f2"},"fatura":{"faturaNo":"FTR-2026-000001"},"faturaHata":null}""",
+                    """{"satis":{"fisNo":"F-0002","fisId":"f2"},"fatura":{"id":"ft1","faturaNo":"FTR-2026-000001"},"faturaHata":null}""",
                 var v when v.Contains("/islemler/fis/") => """{"fisNo":"F-0002","kalemler":[{"id":"h2","tur":"SATIS"}]}""",
                 var v when v.Contains("/islemler/satis") && istek.Method == HttpMethod.Post => """{"id":"h1","hareketId":"h1","fisNo":"F-0001","fisId":"f1"}""",
                 _ => "{}",
@@ -173,5 +173,31 @@ public sealed class FaturaSorusuEkranTestleri : BunitContext
         h.WaitForElement("#yildiz-belge-hayir").Click();
         Assert.Null((string?)SonSatis()["belgeTuru"]);
         h.WaitForAssertion(() => Assert.Equal(1, AcilanPencere()), TimeSpan.FromSeconds(5));
+    }
+
+    // 03.11 kurucu: "fatura kes dedim, bir fatura düzenlemiyor sanki; ses kaydında direkt fatura ekranına yönlenmesi lazımdı"
+    // (müşteri 34:50 "TC'yi yazdığım anda fatura kesilsin"). Faturalı satış FATURA KÂĞIDINA geçer (uygulama içi, pencere yok);
+    // fişli satışta "Satış tamamlandı" perdesi (sanki kaydetmemiş gibi davranan ekran bitti).
+    [Fact]
+    public void FS_06_Evet_faturali_satis_fatura_kagidina_gecer_Hayirda_Satis_tamamlandi_perdesi()
+    {
+        var e = Tezgah("c1");
+        e.Find("#yildiz-tezgah-kaydet").Click();
+        e.WaitForElement("#yildiz-belge-evet").Click();
+        Assert.Equal("FATURA", (string?)SonSatis()["belgeTuru"]);
+        var nav = Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
+        e.WaitForAssertion(() => Assert.EndsWith("/cikti/FATURA/ft1?donus=/islemler", nav.Uri), TimeSpan.FromSeconds(5));
+        Assert.Empty(e.FindAll("#yildiz-tezgah-perde[role=dialog]"));            // faturalıda panel yok: sayfa fatura kâğıdında
+        Assert.Equal(0, AcilanPencere());                                        // 19.10 kuralı: pencere açılmaz
+
+        var h = Tezgah("c1");
+        h.Find("#yildiz-tezgah-kaydet").Click();
+        h.WaitForElement("#yildiz-belge-hayir").Click();
+        h.WaitForAssertion(() => Assert.Equal("dialog", h.Find("#yildiz-tezgah-perde").GetAttribute("role")), TimeSpan.FromSeconds(5));
+        Assert.Equal("Satış tamamlandı", h.Find("#yildiz-tezgah-perde-baslik").TextContent.Trim());
+        Assert.Contains("Son fiş", h.Find("#yildiz-tezgah-perde-satir").TextContent);
+        Assert.Equal("Yeni satış", h.Find("#yildiz-tezgah-perde-kapat").TextContent.Trim());
+        h.Find("#yildiz-tezgah-perde-kapat").Click();
+        h.WaitForAssertion(() => Assert.Empty(h.FindAll("#yildiz-tezgah-perde")));
     }
 }
