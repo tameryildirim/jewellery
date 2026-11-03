@@ -7,6 +7,7 @@
 @inject IServiceProvider Hizmetler
 @using System.Reflection
 @using Kuyumcu.Contracts.Kisit
+@using Kuyumcu.Contracts.Giris
 @using Kuyumcu.Core.Domain.Girdi
 @implements IDisposable
 
@@ -76,6 +77,28 @@
                         </span>
                     }
                     <button type="button" @onclick="MfaVazgec" class="btn btn-ikincil btn-tam" id="giris-mfa-vazgec">@Dil.T.Yonetim.MfaGirisVazgec</button>
+                </form>
+            }
+            else if (isletmeler is not null)
+            {
+                @* 02.11 — parola doğrulandı, e-posta birden fazla işletmede: işletme seçimi (jargon yok, tek birincil düğme). *@
+                <form class="form-dikey giris-form-alan" novalidate @onsubmit="GirisYap" @onsubmit:preventDefault id="giris-isletme-form">
+                    <h2 class="metin-kucuk" id="giris-isletme-baslik">@Dil.T.Auth.IsletmeSec</h2>
+                    <p class="metin-soluk metin-kucuk" id="giris-isletme-aciklama">@Dil.T.Auth.IsletmeSecAciklama</p>
+                    <Secim ElemanId="giris-isletme" Etiket="@Dil.T.Auth.IsletmeAdi" Zorunlu="true"
+                           Secenekler="@IsletmeSecenekleri"
+                           Deger="@secilenTenantId" DegerChanged="@(v => { secilenTenantId = v; hata = null; })"
+                           Durum="form" HataAlani="giris-isletme" />
+                    <button type="submit" class="btn btn-birincil btn-buyuk btn-tam giris-gonder" id="giris-isletme-devam" disabled="@(yukleniyor || string.IsNullOrEmpty(secilenTenantId))">
+                        @Dil.T.Auth.IsletmeSecDevam
+                    </button>
+                    @if (!yukleniyor && string.IsNullOrEmpty(secilenTenantId))
+                    {
+                        <span id="giris-isletme-kilit" class="metin-soluk metin-kucuk">
+                            @Dil.T.Yonetim.KilitSebebi: @Dil.T.Auth.IsletmeSecEksik
+                        </span>
+                    }
+                    <button type="button" @onclick="IsletmeVazgec" class="btn btn-ikincil btn-tam" id="giris-isletme-vazgec">@Dil.T.Yonetim.MfaGirisVazgec</button>
                 </form>
             }
             else if (sekme == "giris")
@@ -181,7 +204,7 @@
                    kartın akışından çıkar ve tuvalin ALT BİLGİ satırına (Giris4: ekranın dibinde, 12 px, büyük harf,
                    soluk) oturur; böylece amblem + form tuvaldeki gibi dikeyde ortalanır. Özellik silinmedi. *@
                 <div class="giris-alt" id="giris-alt">
-                    @if (sekme == "giris" && mfaToken is null)
+                    @if (sekme == "giris" && mfaToken is null && isletmeler is null)
                     {
                         @YeniDukkanDugmesi
                     }
@@ -262,7 +285,14 @@
     /// </summary>
     private sealed record AuthYaniti(
         string? AccessToken = null, string? RefreshToken = null, OturumKullanici? Kullanici = null,
-        bool MfaGerekli = false, string? MfaToken = null, int GecerlilikDakika = 0);
+        bool MfaGerekli = false, string? MfaToken = null, int GecerlilikDakika = 0,
+        bool IsletmeSecimi = false, List<IsletmeSecenegi>? Isletmeler = null);
+
+    // 02.11: aynı e-posta birden fazla işletmede — sunucu parolayı doğruladıktan sonra yalnız
+    // parolası tutan işletmeleri listeler (Kuyumcu.Contracts.Giris.IsletmeSecenegi); kullanıcı
+    // seçer, istek tenantId ile yinelenir.
+    private List<IsletmeSecenegi>? isletmeler;
+    private string? secilenTenantId;
 
     private string sekme = "giris";
     private bool yukleniyor;
@@ -419,7 +449,16 @@
         yukleniyor = true;
         try
         {
-            var yanit = await Api.PostAsync<AuthYaniti>("/auth/giris", new { email, sifre });
+            var yanit = await Api.PostAsync<AuthYaniti>("/auth/giris", new { email, sifre, tenantId = secilenTenantId });
+            // 02.11: parola doğru ama e-posta birden fazla işletmede → sunucu jeton değil liste verir;
+            // ekran işletme seçtirir ve aynı parolayla tenantId ekleyerek yeniden ister.
+            if (yanit.IsletmeSecimi && yanit.Isletmeler is { Count: > 1 })
+            {
+                isletmeler = yanit.Isletmeler;
+                secilenTenantId = null;
+                yukleniyor = false;
+                return;
+            }
             // 45-UI: MFA açıksa sunucu jeton DEĞİL, kısa ömürlü meydan okuma verir.
             if (yanit.MfaGerekli && yanit.MfaToken is { Length: > 0 })
             {
@@ -431,6 +470,8 @@
             }
             await Oturum.TokenKaydetAsync(yanit.AccessToken!, yanit.RefreshToken!);
             if (yanit.Kullanici is not null) Oturum.KullaniciAta(yanit.Kullanici);
+            isletmeler = null;
+            secilenTenantId = null;
             Nav.NavigateTo("/");
             return; // yönlendirme sırasında buton kilitli kalsın
         }
@@ -438,6 +479,17 @@
         catch { hata = Dil.T.Auth.GirisBasarisiz; }
         yukleniyor = false;
         await OdakIlkHataya();
+    }
+
+    private IReadOnlyList<SecenekOgesi> IsletmeSecenekleri =>
+        (isletmeler ?? []).Select(i => new SecenekOgesi(i.TenantId, i.Ad, i.Rol is { Length: > 0 } r ? KesifP1Sozlugu.RolAdi(r, Dil.Dil) : null)).ToList();
+
+    private void IsletmeVazgec()
+    {
+        isletmeler = null;
+        secilenTenantId = null;
+        sifre = "";
+        hata = null;
     }
 
     /// <summary>Girişin ikinci adımı — POST /auth/mfa/giris (ayrı audience jetonu).</summary>

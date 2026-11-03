@@ -274,7 +274,7 @@ public sealed class AuthServisi(
         if (!string.IsNullOrEmpty(dto.TenantId))
             q = q.Where(k => k.TenantId == dto.TenantId);
 
-        var adaylar = await q.Take(2).ToListAsync();
+        var adaylar = await q.OrderBy(k => k.TenantId).Take(AzamiAdayIsletme).ToListAsync();   // B-8: aynı e-posta en çok bu kadar işletmede aranır
 
         // ── B-35 · P-09: KULLANICI VARLIĞI İFŞA EDİLMEZ ──────────────────────
         // Eskiden burada 404 "Kullanıcı bulunamadı" dönüyordu: saldırgan hangi
@@ -288,12 +288,32 @@ public sealed class AuthServisi(
             BCrypt.Net.BCrypt.Verify(dto.Sifre ?? "", SahteHash);
             throw new UnauthorizedException(GirisHatasi);
         }
-        if (adaylar.Count > 1)
-            throw new UnauthorizedException("Bu e-posta birden fazla işletmede kayıtlı, tenantId belirtiniz");
-        var kullanici = adaylar[0];
 
-        var sifreEslesti = BCrypt.Net.BCrypt.Verify(dto.Sifre, kullanici.SifreHash);
-        if (!sifreEslesti) throw new UnauthorizedException(GirisHatasi);
+        // ── 02.11 (kurucu canlı sunucuda yakaladı): aynı e-posta birden fazla işletmede
+        // kayıtlıysa eskiden "tenantId belirtiniz" diye TEKNİK bir 401 dönüyordu ve ekranda
+        // işletme seçtirme yoktu → kullanıcı hiç giremiyordu. Şimdi parola HER adayda
+        // denetlenir; parolası tutan tek işletme varsa doğrudan girilir, birden fazlaysa
+        // yalnız o işletmelerin listesi döner ve istemci tenantId ile yeniden ister.
+        // ⚠ Liste PAROLA KANITLANMADAN dönmez: yanlış parolayla işletme adı sızmaz
+        //   (e-posta sayımı engeli korunur, yanıt yine generic 401).
+        var eslesenler = adaylar.Where(k => BCrypt.Net.BCrypt.Verify(dto.Sifre, k.SifreHash)).ToList();
+        if (eslesenler.Count == 0) throw new UnauthorizedException(GirisHatasi);
+        if (eslesenler.Count > 1)
+        {
+            var kiraciIdleri = eslesenler.Select(k => k.TenantId).ToList();
+            var kiraciAdlari = await db.Tenants.AsNoTracking()
+                .Where(t => kiraciIdleri.Contains(t.Id)).OrderBy(t => t.Id).Take(AzamiAdayIsletme)
+                .ToDictionaryAsync(t => t.Id, t => t.Ad);
+            return new
+            {
+                isletmeSecimi = true,
+                isletmeler = eslesenler
+                    .Select(k => new Kuyumcu.Contracts.Giris.IsletmeSecenegi(k.TenantId, kiraciAdlari.GetValueOrDefault(k.TenantId, k.TenantId), k.Rol))
+                    .OrderBy(x => x.Ad, StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), true))
+                    .ToList(),
+            };
+        }
+        var kullanici = eslesenler[0];
 
         // ── FAIL-CLOSED 1 (paket 45): MFA ETKİNSE BURADA TOKEN ÜRETİLMEZ ─────
         // Kullanıcı yalnız kısa ömürlü, AYRI AUDIENCE'lı bir meydan okuma jetonu
@@ -493,6 +513,8 @@ public sealed class AuthServisi(
     /// "şifre hatalı" ayrımı YAPILMAZ: ikisi de bu metni alır.
     /// </summary>
     internal const string GirisHatasi = "E-posta veya şifre hatalı";
+    /// <summary>02.11: aynı e-postanın aranacağı en çok işletme sayısı (sınırsız okuma yok — B-8).</summary>
+    internal const int AzamiAdayIsletme = 20;
 
     /// <summary>
     /// Kullanıcı bulunamadığında doğrulanan SAHTE hash — zamanlama yan kanalını

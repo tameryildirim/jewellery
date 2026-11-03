@@ -32,6 +32,11 @@ namespace Kuyumcu.Api.Data;
 //      Ek (PAKET YASAL-PARAM-EKRAN): sistem anahtarlı ÖNİZLEME ucu, değişikliğin
 //      eski–yeni değer bandına düşen AÇIK sipariş SAYISINI (tüm kiracılar, yalnız
 //      COUNT — satır/kişisel veri okunmaz, dönmez) onay penceresine yazar.
+//  11. KullaniciServisi → kiracılar arası e-posta tekilliği (02.11 kurucu kararı:
+//      bir e-posta aynı anda YALNIZ BİR işletmede aktif olabilir) — yalnız VAR/YOK
+//      (parametreli COUNT, EpostaBaskaKiracidaAktifMi), başka kiracının satırı
+//      okunmaz; kullanıcı ekleme / e-posta değiştirme / aktife alma kapıları
+//                                                                 [salt okuma]
 //  10. YASAL KÜMÜLATİF OKUYUCU (tevsik/MASAK) — kiracıya SABİT, şube süzgeçsiz,
 //      SALT OKUMA (PAKET ŞUBE-KAPSAM-A § 2.6; ADR-0002 ek not 2026-09-30)
 //      Yalnız <see cref="YasalKumulatifOku"/> üzerinden; yalnız çağıranın KENDİ
@@ -109,6 +114,20 @@ public sealed class SistemKapsami(IServiceScopeFactory fabrika)
         if (kdb.ChangeTracker.HasChanges())
             throw new InvalidOperationException("Yasal kümülatif okuyucu SALT OKUMADIR; değişiklik izlendi.");
         return sonuc;
+    }
+
+    /// <summary>
+    /// Madde 11 — kiracılar arası e-posta tekilliği: verilen e-posta BAŞKA bir işletmede
+    /// AKTİF mi? Yalnız VAR/YOK döner; başka kiracının satırı okunmaz, döndürülmez.
+    /// Tek yol, parametreli SALT OKUMA sorgusu (kiracı süzgeci bu sınıfın dışında
+    /// aşılmaz; DI'ya bağımlı değildir — doğrudan servis sınamalarında da aynı yol).
+    /// </summary>
+    public static async Task<bool> EpostaBaskaKiracidaAktifMi(KuyumcuDbContext db, string email, string tenantId)
+    {
+        var sayi = await db.Database
+            .SqlQuery<long>($"SELECT COUNT(*) AS `Value` FROM `kullanicilar` WHERE `email` = {email} AND `aktif` = 1 AND `tenant_id` <> {tenantId}")
+            .SingleAsync();
+        return sayi > 0;
     }
 
     private AsyncServiceScope Ac(IKiraciBaglami baglam)

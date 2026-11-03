@@ -497,6 +497,12 @@ public sealed class SozlukAuth
     public required string KayitBasarisiz { get; init; }
     public required string SifrePlaceholder { get; init; }
 
+    // ── 02.11 — aynı e-posta birden fazla işletmede: parola doğrulandıktan sonra işletme seçimi ──
+    public required string IsletmeSec { get; init; }
+    public required string IsletmeSecAciklama { get; init; }
+    public required string IsletmeSecDevam { get; init; }
+    public required string IsletmeSecEksik { get; init; }
+
     // ── paket F-2-min — kayıt davet jetonu ──
     public required string DavetJetonu { get; init; }
     public required string DavetAciklama { get; init; }
@@ -3751,6 +3757,10 @@ public static class Sozlukler
             Rol = "Rol",
             GirisBasarisiz = "Giriş başarısız",
             KayitBasarisiz = "Kayıt başarısız",
+            IsletmeSec = "Hangi işletme?",
+            IsletmeSecAciklama = "Bu e-posta birden fazla işletmede kayıtlı. Girmek istediğiniz işletmeyi seçin.",
+            IsletmeSecDevam = "Devam et",
+            IsletmeSecEksik = "işletme seçilmeli",
             DavetJetonu = "Davet kodu",
             DavetAciklama = "İşletme kaydı yalnız davetle açılır. Kodunuz yoksa satış ekibimizden isteyin.",
             DavetPlaceholder = "Size iletilen davet kodunu yapıştırın",
@@ -6682,6 +6692,10 @@ public static class Sozlukler
             Rol = "Role",
             GirisBasarisiz = "Sign in failed",
             KayitBasarisiz = "Registration failed",
+            IsletmeSec = "Which business?",
+            IsletmeSecAciklama = "This e-mail is registered in more than one business. Choose the one you want to sign in to.",
+            IsletmeSecDevam = "Continue",
+            IsletmeSecEksik = "a business must be selected",
             DavetJetonu = "Invitation code",
             DavetAciklama = "Business registration is invitation-only. Ask our sales team if you do not have a code.",
             DavetPlaceholder = "Paste the invitation code you received",

@@ -176,6 +176,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         var mevcutmu = await db.Kullanicilar.AnyAsync(k =>
             k.Email == dto.Email && k.TenantId == islem.TenantId);
         if (mevcutmu) throw new ConflictException("Bu e-posta adresi zaten kayıtlı");
+        await EpostaBaskaIsletmedeAktifOlmasin(dto.Email, islem.TenantId);   // 02.11 kurucu: aynı e-posta ile ikinci kayıt YOK
 
         // K4 denetimi: kullanıcının şubesi doğrulanmıyordu. Bu, kasa kusurundan
         // AĞIRDIR — subeId JWT'ye girer, sonra satış/alış `islem.SubeId`'yi
@@ -269,6 +270,8 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         if (dto.Aktif is not null)
         {
             // Kapı yukarıda, rütbe kapısından ÖNCE çağrıldı (B-36 sıra kuralı).
+            if (dto.Aktif.Value && !hedef.Aktif)
+                await EpostaBaskaIsletmedeAktifOlmasin(hedef.Email, hedef.TenantId);   // 02.11: aktife alınca da tek işletme
             if (dto.Aktif.Value != hedef.Aktif)
                 denetim.YazmaKaydet(islem, nameof(Data.Kullanici), hedef.Id,
                     dto.Aktif.Value ? "kullanici-aktiflestirildi" : "kullanici-pasife-alindi");
@@ -449,6 +452,7 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
 
         if (hedef.Aktif != aktif)
         {
+            if (aktif) await EpostaBaskaIsletmedeAktifOlmasin(hedef.Email, hedef.TenantId);   // 02.11: aktife alınca da tek işletme
             hedef.Aktif = aktif;
             hedef.Guncellendi = DateTime.UtcNow;
             denetim.YazmaKaydet(islem, nameof(Data.Kullanici), hedef.Id,
@@ -516,7 +520,23 @@ public sealed class KullaniciServisi(KuyumcuDbContext db, DenetimServisi denetim
         var cakisan = await db.Kullanicilar.AnyAsync(k =>
             k.Email == yeniEmail && k.TenantId == tenantId && k.Id != hedef.Id);
         if (cakisan) throw new ConflictException("Bu e-posta adresi zaten kayıtlı");
+        if (hedef.Aktif) await EpostaBaskaIsletmedeAktifOlmasin(yeniEmail, tenantId);   // 02.11
         hedef.Email = yeniEmail;
+    }
+
+    // ─── 02.11 — kurucu kararı: "aynı e-posta ile kayıt yapılamasın" ─────────────
+    // Bir e-posta aynı anda YALNIZ BİR işletmede aktif olabilir. Aksi hâlde giriş ekranı
+    // işletme sormak zorunda kalır (kurucu canlı sunucuda yaşadı). Kapılar: kullanıcı
+    // ekleme, e-posta değiştirme, pasiften aktife alma (burada) + işletme kaydı (AuthServisi.Kayit).
+    // Pasif kayıt engel değildir: ayrılan çalışan başka işletmede çalışabilir.
+    // Kiracılar arası okuma SistemKapsami madde 11 ile (IgnoreQueryFilters YOK, yeni bağlam
+    // kurulmaz); yalnız VAR/YOK sorulur, başka işletmenin satırı okunmaz.
+    public const string EpostaBaskaIsletmedeMesaji = "Bu e-posta başka bir işletmede kullanılıyor; her e-posta tek işletmede olabilir";
+
+    private async Task EpostaBaskaIsletmedeAktifOlmasin(string email, string tenantId)
+    {
+        if (await SistemKapsami.EpostaBaskaKiracidaAktifMi(db, email, tenantId))
+            throw new ConflictException(EpostaBaskaIsletmedeMesaji).AlanIle("email");
     }
 
     /// <summary>

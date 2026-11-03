@@ -141,7 +141,7 @@ public static partial class SunucuIletiSozlugu
         ("Bu dışa aktarım bağlantısı daha önce kullanıldı. Yeni bir talep oluşturun.", "This export link was already used. Create a new request."),
         ("Bu e-posta adresi kayıtlıysa parola sıfırlama bağlantısı gönderildi. Bağlantı 30 dakika geçerlidir; gelen kutunuzu ve istenmeyen klasörünü kontrol edin.", "If this e-mail address is registered, a password reset link has been sent. The link is valid for 30 minutes; check your inbox and spam folder."),
         ("Bu e-posta adresi zaten kayıtlı", "This e-mail address is already registered"),
-        ("Bu e-posta birden fazla işletmede kayıtlı, tenantId belirtiniz", "This e-mail is registered in more than one business, specify tenantId"),
+        ("Bu e-posta başka bir işletmede kullanılıyor; her e-posta tek işletmede olabilir", "This e-mail is in use at another business; each e-mail can belong to only one business"),
         ("Bu emanet hareketi stornolanmıştır; hükümsüz bir kaydın açıklaması değiştirilmez.", "This safekeeping movement has been reversed; the description of a voided record is not changed."),
         ("Bu fiş bir alış fişidir; satış faturası olarak kesilemez", "This receipt is a purchase receipt; it cannot be issued as a sales invoice"),
         ("Bu fiş bir satış fişidir; alış faturası olarak kesilemez", "This receipt is a sales receipt; it cannot be issued as a purchase invoice"),

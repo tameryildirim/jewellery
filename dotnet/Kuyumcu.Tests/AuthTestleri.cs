@@ -105,6 +105,82 @@ public sealed class AuthTestleri(HttpFikstur f)
         Assert.DoesNotContain("$2", govde);
     }
 
+    // ── 02.11 — aynı e-posta birden fazla işletmede (kurucu canlı sunucuda yakaladı) ─────
+    // Eski davranış: tenantId'siz istek "tenantId belirtiniz" diye TEKNİK 401 → ekranda seçim yok,
+    // kullanıcı hiç giremiyordu. Yeni: parola her adayda denetlenir; tutan tek işletme → doğrudan
+    // giriş; birden fazla → yalnız parolası tutan işletmelerin listesi (jeton yok); yanlış parola →
+    // generic 401 (işletme adı SIZMAZ).
+
+    private (Kiraci A, Kiraci B, string Eposta) AyniEpostaIkiIsletme(string ad, string sifreB)
+    {
+        using var db = f.Vt.OlusturSistem();
+        var a = TestKurulum.KiraciKur(db, $"{ad} A");
+        var b = TestKurulum.KiraciKur(db, $"{ad} B");
+        var eposta = $"coklu-{Kimlik.Ulid()}@test.local";
+        foreach (var (k, s) in new[] { (a, Sifre), (b, sifreB) })
+        {
+            var u = db.Kullanicilar.Single(x => x.Id == k.KullaniciId);
+            u.Email = eposta;
+            u.SifreHash = BCrypt.Net.BCrypt.HashPassword(s, 11);
+        }
+        db.SaveChanges();
+        return (a, b, eposta);
+    }
+
+    [Fact]
+    public async Task Giris_ayni_eposta_iki_isletmede_parola_dogruysa_isletme_listesi_doner_sonra_tenantId_ile_girer()
+    {
+        var (a, b, eposta) = AyniEpostaIkiIsletme("Çoklu işletme", Sifre);
+        var c = f.Ortam.AnonimIstemci();
+
+        var ilk = await c.PostJson("/api/v1/auth/giris", new { email = eposta, sifre = Sifre });
+        Assert.Equal(HttpStatusCode.OK, ilk.StatusCode);
+        var json = await ilk.Json();
+        Assert.True(json.GetProperty("isletmeSecimi").GetBoolean());
+        var liste = json.GetProperty("isletmeler").EnumerateArray()
+            .Select(x => (Id: x.GetProperty("tenantId").GetString(), Ad: x.GetProperty("ad").GetString())).ToList();
+        Assert.Equal(2, liste.Count);
+        Assert.Contains(liste, x => x.Id == a.TenantId && x.Ad == "Çoklu işletme A");
+        Assert.Contains(liste, x => x.Id == b.TenantId && x.Ad == "Çoklu işletme B");
+        var govde = await ilk.Metin();
+        Assert.DoesNotContain("accessToken", govde);          // seçim yapılmadan jeton YOK
+        Assert.DoesNotContain("tenantId belirtiniz", govde);  // teknik mesaj kalktı
+
+        var ikinci = await c.PostJson("/api/v1/auth/giris", new { email = eposta, sifre = Sifre, tenantId = b.TenantId });
+        Assert.Equal(HttpStatusCode.OK, ikinci.StatusCode);
+        var j2 = await ikinci.Json();
+        Assert.NotEmpty(j2.GetProperty("accessToken").GetString()!);
+        Assert.Equal(b.TenantId, j2.GetProperty("kullanici").GetProperty("tenantId").GetString());
+    }
+
+    [Fact]
+    public async Task Giris_ayni_eposta_iki_isletmede_parola_yalniz_birinde_tutuyorsa_dogrudan_o_isletmeye_girer()
+    {
+        var (a, _, eposta) = AyniEpostaIkiIsletme("Tek tutan", "BaskaParola456");
+
+        var cevap = await f.Ortam.AnonimIstemci().PostJson("/api/v1/auth/giris", new { email = eposta, sifre = Sifre });
+
+        Assert.Equal(HttpStatusCode.OK, cevap.StatusCode);
+        var json = await cevap.Json();
+        Assert.NotEmpty(json.GetProperty("accessToken").GetString()!);
+        Assert.Equal(a.TenantId, json.GetProperty("kullanici").GetProperty("tenantId").GetString());
+    }
+
+    [Fact]
+    public async Task Giris_ayni_eposta_iki_isletmede_yanlis_parola_generic_401_isletme_adi_sizdirmaz()
+    {
+        var (_, _, eposta) = AyniEpostaIkiIsletme("Sızma yok", Sifre);
+
+        var cevap = await f.Ortam.AnonimIstemci().PostJson("/api/v1/auth/giris", new { email = eposta, sifre = "YanlisSifre999" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, cevap.StatusCode);
+        var json = await cevap.Json();
+        Assert.Equal("E-posta veya şifre hatalı", json.GetProperty("message").GetString());
+        Assert.False(json.TryGetProperty("isletmeler", out _));
+        Assert.DoesNotContain("Sızma yok", json.GetRawText());
+        Assert.DoesNotContain("S\\u0131zma yok", json.GetRawText());
+    }
+
     [Fact]
     public async Task Giris_yanlis_sifreyle_401_doner()
     {
