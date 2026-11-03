@@ -4255,3 +4255,15 @@ html:root[data-sema="yildiz"] .yz .yz-duzen .secici-alan:has(.secici-tetik:focus
 @media (min-width: 1001px) {
   html:root[data-sema="yildiz"] .yildiz-bugun .yildiz-bugun-sol:not(#_) { align-self: start; position: sticky; top: 72px; min-height: calc(100vh - 72px - 72px - 56px); }
 }
+/* Kurucu 03.11 (Kasa/Kur ekranı): "Bugün'deki Yeni satış gibi, sol alttaki düğmeler ve bilgiler kaydırınca yerinde kalsın,
+   üst üste binme olmasın" — özet kalıbının (Kur · Kasalar · Hurda · Kasa raporu) sol sütunu da Bugün ile AYNI kural:
+   ilk ekran boyunda (üst şerit 72 + dolgu 64/48 düşülür), ızgara satırıyla uzamaz, üst şeridin altına yapışır; sağdaki uzun
+   liste kayarken başlık/rakam/cümle ve Şimdi güncelle · Elle gir · Tüm ayrıntılar görünür kalır. Binme yok: sütun kendi
+   ızgara hücresinde, liste ayrı sütunda. ≤1000 px tek sütun (Bugün gibi yapışmaz: telefon ekranını yerdi). */
+@media (min-width: 1001px) {
+  html:root[data-sema="yildiz"] .yz-ozet .yz-ozet-sol:not(#_) { align-self: start; position: sticky; top: 72px; min-height: calc(100vh - 72px - 64px - 48px); }
+}
+/* Bugün/Tezgâh istisnasının aynısı: `.ana-icerik{overflow:auto}` (app.css) yapışkanı kendi içine hapsediyor (kap kaymıyor,
+   pencere kayıyor → yapışkan hiç tutmuyordu; 03.11 1280 ölçümü: kaydırmada sol sütun -777 px'e kaçtı). Dikey taşma görünür,
+   yatay kırpılır. */
+html:root[data-sema="yildiz"] .ana-icerik:has(.yz-ozet) { overflow-x: clip; overflow-y: visible; }
