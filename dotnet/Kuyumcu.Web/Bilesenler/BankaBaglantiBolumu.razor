@@ -142,7 +142,8 @@
     {
         formAcik = true; hata = null; basari = null;
         secilenKod = durum?.Kod ?? secilenKod;
-        alanlar = [];
+        // Kurucu 05.11: gizli olmayan alanlar kayıtlı değeriyle DOLU açılır; gizli alan boş kalır (= aynı kalır).
+        alanlar = durum?.Kod is not null && durum.Degerler is { } d ? new Dictionary<string, string?>(d) : [];
         await FormDurumuDegisti.InvokeAsync();
     }
 

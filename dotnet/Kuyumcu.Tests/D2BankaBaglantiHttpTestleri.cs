@@ -111,7 +111,9 @@ public sealed class D2BankaBaglantiHttpTestleri(HttpFikstur f)
         }
         var get = await s.GetStringAsync($"/api/v1/bankalar/{hesap}/baglanti");
         Assert.DoesNotContain(Sir, get);
-        Assert.DoesNotContain("cons-1", get);   // açık alan da yalnız maskeli özetle döner
+        // Kurucu 05.11: açık alanlar (onay no, uygulama kimliği) "degerler" içinde döner — form dolu açılır; gizli alan yine dönmez.
+        Assert.Contains("\"consentId\":\"cons-1\"", get);
+        Assert.DoesNotContain("clientSecret", get);
     }
 
     // ── Kurucu 31.10: bankadaki bakiye + gelen/giden ──
@@ -296,5 +298,12 @@ public sealed class D2BankaBaglantiHttpTestleri(HttpFikstur f)
         Assert.Contains("kod 4", bag.GetProperty("sonHata").GetString());
         var get = await s.GetFromJsonAsync<JsonElement>($"/api/v1/bankalar/{hesap}/baglanti");
         Assert.NotEqual(JsonValueKind.Null, get.GetProperty("sonDeneme").ValueKind);
+
+        // Kurucu 05.11: gizli olmayan alanlar kayıtlı değeriyle döner (form dolu açılır); gizli alan (şifre) ASLA dönmez.
+        var degerler = get.GetProperty("degerler");
+        Assert.Equal("cons-2", degerler.GetProperty("consentId").GetString());
+        Assert.Equal("cid-1", degerler.GetProperty("clientId").GetString());
+        Assert.False(degerler.TryGetProperty("clientSecret", out _));
+        Assert.DoesNotContain(Sir, await (await s.GetAsync($"/api/v1/bankalar/{hesap}/baglanti")).Content.ReadAsStringAsync());
     }
 }

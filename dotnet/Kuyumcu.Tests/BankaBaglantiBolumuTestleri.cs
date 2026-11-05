@@ -21,7 +21,8 @@ public sealed class BankaBaglantiBolumuTestleri : BunitContext
     private static readonly JsonSerializerOptions J = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private readonly List<(string Metot, string Yol, string Govde)> istekler = [];
     private BankaBaglantiOzet durum = new("GARANTI", "Garanti BBVA", "Onay numarası: 2f•••••• · Uygulama kimliği: l7••••••",
-        new DateTime(2026, 11, 5, 8, 25, 0, DateTimeKind.Utc), null, "Garanti BBVA: Vermiş olduğunuz clientId-consentId bilgileri hatalıdır. (kod 4)");
+        new DateTime(2026, 11, 5, 8, 25, 0, DateTimeKind.Utc), null, "Garanti BBVA: Vermiş olduğunuz clientId-consentId bilgileri hatalıdır. (kod 4)",
+        new Dictionary<string, string?> { ["consentId"] = "2f-onay", ["clientId"] = "l7kimlik" });
 
     private sealed class SahteApi(BankaBaglantiBolumuTestleri t) : HttpMessageHandler
     {
@@ -96,6 +97,10 @@ public sealed class BankaBaglantiBolumuTestleri : BunitContext
             Assert.Equal("false", g.GetAttribute("aria-required"));
             Assert.Equal("Kayıtlı — aynı kalır", g.GetAttribute("placeholder"));
         }
+        // Kurucu 05.11: gizli olmayan alanlar kayıtlı değeriyle DOLU açılır; şifre boş (aynı kalır).
+        Assert.Equal("2f-onay", e.Find("#bb-consentId").GetAttribute("value"));
+        Assert.Equal("l7kimlik", e.Find("#bb-clientId").GetAttribute("value"));
+        Assert.True(string.IsNullOrEmpty(e.Find("#bb-clientSecret").GetAttribute("value")));
         Assert.True(e.Instance.KaydetHazir);   // hiçbir şey yazmadan "Kaydet ve dene" basılabilir
 
         e.Find("#bb-clientId").Input("l7yeni");
@@ -104,8 +109,8 @@ public sealed class BankaBaglantiBolumuTestleri : BunitContext
         using var g2 = JsonDocument.Parse(put.Govde);
         var alanlar = g2.RootElement.GetProperty("alanlar");
         Assert.Equal("l7yeni", alanlar.GetProperty("clientId").GetString());
-        Assert.False(alanlar.TryGetProperty("consentId", out _));
-        Assert.False(alanlar.TryGetProperty("clientSecret", out _));
+        Assert.Equal("2f-onay", alanlar.GetProperty("consentId").GetString());   // dolu geldi, değişmedi, aynen gider
+        Assert.False(alanlar.TryGetProperty("clientSecret", out _));            // şifre gitmez → sunucuda aynı kalır
         e.WaitForAssertion(() => Assert.Empty(e.FindAll("#bb-form")));
     }
 

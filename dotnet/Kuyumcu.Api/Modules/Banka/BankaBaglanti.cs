@@ -249,9 +249,22 @@ public sealed class BankaBaglantiServisi(
         await db.BankaHesaplari.FirstOrDefaultAsync(h => h.Id == hesapId && h.TenantId == islem.TenantId)
         ?? throw new NotFoundException("Banka hesabı bulunamadı");
 
-    private static BankaBaglantiOzet Gorunum(BankaBaglantisi? b) => b is null
-        ? new(null, null, null, null, null, null)
-        : new(b.BaglayiciKodu, BankaBaglayiciKatalogu.Bul(b.BaglayiciKodu)?.BankaAdi, b.Ozet, b.SonDeneme, b.SonBasari, b.SonHata);
+    private BankaBaglantiOzet Gorunum(BankaBaglantisi? b)
+    {
+        if (b is null) return new(null, null, null, null, null, null);
+        var tanim = BankaBaglayiciKatalogu.Bul(b.BaglayiciKodu);
+        IReadOnlyDictionary<string, string?>? degerler = null;
+        if (tanim is not null)
+        {
+            // Kurucu 05.11: gizli OLMAYAN alanlar (onay numarası, uygulama kimliği) "Bilgileri değiştir"de kayıtlı
+            // hâliyle dolu gelir. Gizli alan (uygulama şifresi) ASLA dönmez — boş bırakılırsa aynı kalır.
+            var kimlik = JsonSerializer.Deserialize<Dictionary<string, string?>>(sifreleyici.Coz(b.KimlikSifreli)) ?? [];
+            degerler = tanim.Alanlar
+                .Where(a => !a.Gizli && !string.IsNullOrWhiteSpace(kimlik.GetValueOrDefault(a.Ad)))
+                .ToDictionary(a => a.Ad, a => kimlik[a.Ad]);
+        }
+        return new(b.BaglayiciKodu, tanim?.BankaAdi, b.Ozet, b.SonDeneme, b.SonBasari, b.SonHata, degerler);
+    }
 }
 
 [ApiController]
