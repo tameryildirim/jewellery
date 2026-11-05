@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>StringsTable</key><string>Root</string>
+  <key>PreferenceSpecifiers</key>
+  <array>
+    <dict>
+      <key>Type</key><string>PSGroupSpecifier</string>
+      <key>Title</key><string>Güvenlik</string>
+      <key>FooterText</key><string>Açıkken uygulama her öne gelişinde Face ID / Touch ID (ya da cihaz şifresi) ister.</string>
+    </dict>
+    <dict>
+      <key>Type</key><string>PSToggleSwitchSpecifier</string>
+      <key>Title</key><string>Face ID ile kilitle</string>
+      <key>Key</key><string>faceIdKilit</string>
+      <key>DefaultValue</key><false/>
+    </dict>
+    <dict>
+      <key>Type</key><string>PSGroupSpecifier</string>
+      <key>Title</key><string>Dokunma</string>
+    </dict>
+    <dict>
+      <key>Type</key><string>PSToggleSwitchSpecifier</string>
+      <key>Title</key><string>Dokunma titreşimi</string>
+      <key>Key</key><string>titresim</string>
+      <key>DefaultValue</key><true/>
+    </dict>
+    <dict>
+      <key>Type</key><string>PSGroupSpecifier</string>
+      <key>Title</key><string>Yazı</string>
+      <key>FooterText</key><string>Açıkken yazı boyutu iPhone'un Ayarlar › Ekran ve Parlaklık › Metin Boyutu ayarını izler.</string>
+    </dict>
+    <dict>
+      <key>Type</key><string>PSToggleSwitchSpecifier</string>
+      <key>Title</key><string>Sistem yazı boyutu</string>
+      <key>Key</key><string>sistemYaziBoyutu</string>
+      <key>DefaultValue</key><true/>
+    </dict>
+    <dict>
+      <key>Type</key><string>PSGroupSpecifier</string>
+      <key>Title</key><string>Sunucu</string>
+      <key>FooterText</key><string>Boş bırakılırsa ByGatech sunucusu kullanılır. Değişiklik uygulama yeniden açılınca geçerli olur.</string>
+    </dict>
+    <dict>
+      <key>Type</key><string>PSTextFieldSpecifier</string>
+      <key>Title</key><string>Sunucu adresi</string>
+      <key>Key</key><string>sunucuAdresi</string>
+      <key>DefaultValue</key><string></string>
+      <key>KeyboardType</key><string>URL</string>
+      <key>AutocapitalizationType</key><string>None</string>
+      <key>AutocorrectionType</key><string>No</string>
+    </dict>
+  </array>
+</dict>
+</plist>

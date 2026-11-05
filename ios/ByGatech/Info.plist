@@ -26,8 +26,15 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Ürün fotoğrafı çekmek ve barkod okumak için kamera kullanılır.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID ile giriş yapmak ve uygulamayı kilitlemek için kullanılır.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sesli not ve video için mikrofon kullanılır.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -1,8 +1,22 @@
 # ByGatech iOS — kurulum ve kullanım
 
-Sunucudaki ByGatech'i (`https://5-10-220-150.sslip.io`) açan yerel iOS uygulaması.
-Oturum hatırlanır, kamera/fotoğraf izni verilir, bağlantı yoksa "Yeniden dene" kartı çıkar,
-aşağı çekince yenilenir. Dal: `ios`. Kaynak: `ios/ByGatech/Kod/`.
+Sunucudaki ByGatech'i (`https://5-10-220-150.sslip.io`) açan yerel iOS uygulaması (SwiftUI + WKWebView).
+Dal: `ios`. Kaynak: `ios/ByGatech/Kod/`.
+
+## Apple'a özgü özellikler
+- **SF Pro yazı tipi**: uygulama içinde web yazı tipleri (Inter/Manrope/Sora) yerine Apple'ın sistem yazı tipi (`KabukBetigi.swift` biçemi).
+- **Sistem yazı boyutu**: iPhone Ayarlar › Ekran ve Parlaklık › Metin Boyutu izlenir (0,9–1,25; WebKit `text-size-adjust`, yalnız metin büyür, düzen akar). Kapatılabilir.
+- **Face ID ile giriş**: ilk başarılı web girişinden sonra "kaydedilsin mi?" sorulur; e-posta+parola yalnız bu iPhone'un Anahtar Zinciri'nde, Face ID/Touch ID (yoksa cihaz şifresi) korumalı saklanır (`GirisKasasi.swift`). Giriş ekranında "Face ID ile giriş yap" düğmesi formu doldurup girer. MFA varsa ikinci adım yine sorulur. Parola değişip giriş reddedilirse kayıt silinir, bir sonraki girişte yeniden sorulur.
+- **Face ID ile kilit** (isteğe bağlı): açıkken uygulama her öne gelişinde kimlik ister; içerik buzlu camla örtülür (`Kilit.swift`).
+- **Dokunma titreşimi** (Taptic): düğme hafif, form gönderimi orta, hata/başarı bildirimi (`Titresim.swift`).
+- **iPhone Ayarlar › ByGatech**: Face ID ile kilitle · Dokunma titreşimi · Sistem yazı boyutu · Sunucu adresi (`Settings.bundle`).
+- Oturum/çerez kalıcı, kamera/mikrofon izni, aşağı çek yenile, geri/ileri kaydırma, çevrimdışı "Yeniden dene" kartı, JS uyarıları yerli pencere, dış bağlantılar Safari'de.
+
+## Geliştirme kancaları (yalnız Debug derlemesi; Release'e girmez)
+- `BYGATECH_TEST_GIRIS="eposta<TAB>parola"` ortam değişkeni: giriş formu görünür görünmez doldurup gönderir (simülatör kanıtı).
+- `BYGATECH_TEST_JS="<ifade>"`: sayfa yüklendikten 4 sn sonra çalıştırılır, sonucu sistem günlüğüne `TEST_JS:` ile yazar.
+- Simülatörde sunucu adresi: `xcrun simctl spawn booted defaults write com.bygatech.kuyumcu sunucuAdresi http://localhost:5199`.
+- Simülatörde Face ID: `notifyutil -s com.apple.BiometricKit.enrollmentChanged 1` + `-p …enrollmentChanged`; eşleşme `-p com.apple.BiometricKit_Sim.pearl.match`.
 
 ## Sunucu adresini değiştirmek
 `ios/project.yml` → `SunucuAdresi` (tek nokta). Sonra `xcodegen generate`.

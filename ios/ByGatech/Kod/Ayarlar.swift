@@ -5,11 +5,12 @@ import Foundation
 enum Ayarlar {
     static let varsayilanSunucu = "https://5-10-220-150.sslip.io"
 
+    /// Sıra: iPhone Ayarlar › ByGatech › Sunucu adresi (boş değilse) → Info.plist SunucuAdresi → varsayılan.
     static var sunucu: URL {
-        let metin = (Bundle.main.object(forInfoDictionaryKey: "SunucuAdresi") as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if let metin, let url = URL(string: metin), url.scheme != nil, url.host != nil {
-            return url
+        for aday in [UserDefaults.standard.string(forKey: "sunucuAdresi"),
+                     Bundle.main.object(forInfoDictionaryKey: "SunucuAdresi") as? String] {
+            let metin = (aday ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !metin.isEmpty, let url = URL(string: metin), url.scheme != nil, url.host != nil { return url }
         }
         return URL(string: varsayilanSunucu)!
     }
