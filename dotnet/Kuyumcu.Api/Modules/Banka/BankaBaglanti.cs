@@ -190,11 +190,12 @@ public sealed class BankaBaglantiServisi(
             .ToDictionary(k => k.Key, k => (string?)k.Value!.Trim());
         var hesap = await HesapBul(hesapId, islem);
         var bag = await db.BankaBaglantilari.FirstOrDefaultAsync(b => b.TenantId == islem.TenantId && b.BankaHesapId == hesapId);
-        // Aynı bankada yeniden kayıtta boş bırakılan GİZLİ alan eski değerini korur (şifre yeniden yazılmak zorunda değil).
+        // Aynı bankada yeniden kayıtta boş bırakılan HER alan eski değerini korur (kurucu 05.11: "şifre, kullanıcı adı
+        // dahil her şey sabit kalsın"; yalnız değişen alan yazılır). Başka bankaya geçişte hiçbir alan taşınmaz.
         if (bag is not null && bag.BaglayiciKodu == tanim.Kod)
         {
             var eski = JsonSerializer.Deserialize<Dictionary<string, string?>>(sifreleyici.Coz(bag.KimlikSifreli)) ?? [];
-            foreach (var a in tanim.Alanlar.Where(a => a.Gizli && !alanlar.ContainsKey(a.Ad) && eski.ContainsKey(a.Ad)))
+            foreach (var a in tanim.Alanlar.Where(a => !alanlar.ContainsKey(a.Ad) && eski.ContainsKey(a.Ad)))
                 alanlar[a.Ad] = eski[a.Ad];
         }
         if (BankaBaglayiciKatalogu.Denetle(tanim, alanlar) is { } h) throw new BadRequestException(h.Hata).AlanIle(h.Alan);

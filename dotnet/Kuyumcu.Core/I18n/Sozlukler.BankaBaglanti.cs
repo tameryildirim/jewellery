@@ -22,8 +22,11 @@ public static class BankaBaglantiSozlugu
     public static string Bagli(string banka, string dil) => En(dil) ? $"Connected to {banka}" : $"{banka} bağlı";
     public static string SonAlis(string zaman, string dil) => En(dil) ? $"last received {zaman}" : $"son alış {zaman}";
     public static string HenuzDenenmedi(string dil) => En(dil) ? "not tested yet" : "henüz denenmedi";
+    /// <summary>Kurucu 05.11: başarısız deneme "henüz denenmedi" gibi görünmesin — son deneme zamanı yazılır.</summary>
+    public static string SonDeneme(string zaman, string dil) => En(dil) ? $"last attempt {zaman}, failed" : $"son deneme {zaman}, başarısız";
     public static string DenemeBasarili(int adet, string dil) => En(dil)
         ? $"Connection works. {adet} transactions read." : $"Bağlantı çalışıyor. {adet} hareket okundu.";
+    /// <summary>Kurucu 05.11: bağlıyken HER alan boş bırakılabilir (gizli ya da değil); boş = eski değer kalır.</summary>
     public static string GizliKayitli(string dil) => En(dil) ? "Saved — leave empty to keep" : "Kayıtlı — değiştirmeyecekseniz boş bırakın";
     public static string NasilAlinir(string dil) => En(dil) ? "How to get these details" : "Bu bilgiler nereden alınır";
     public static string SunucuAdresi(string ip, string dil) => En(dil)

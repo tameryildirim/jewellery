@@ -262,4 +262,39 @@ public sealed class D2BankaBaglantiHttpTestleri(HttpFikstur f)
         Assert.Equal(HttpStatusCode.BadRequest, (await s.PutAsJsonAsync($"/api/v1/bankalar/{hesap}/baglanti",
             new { kod = "AKBANK", alanlar = new Dictionary<string, string> { ["kullanici"] = "a", ["sifre"] = "b", ["urf"] = "U1", ["hesapNo"] = new string('9', 501) } })).StatusCode);
     }
+
+    // ── Kurucu 05.11: "Bilgileri değiştir"de her şey baştan girilmesin — boş bırakılan HER alan eskisini korur ──
+    [Fact]
+    public async Task Yeniden_kayitta_bos_birakilan_acik_alan_da_eskisini_korur_bos_govde_yalniz_yeniden_dener_basarisiz_deneme_sonDeneme_yazar()
+    {
+        var (o, banka) = Kur();
+        var (s, hesap, iban, _) = await GarantiHesabi(o, "D2BB-koru");
+        banka.Yanit = yol => yol.EndsWith("/token") ? Json("""{"access_token":"tk1"}""") : Json(GarantiGelenGiden(iban));
+        Assert.True((await GarantiKaydet(s, hesap)).IsSuccessStatusCode);
+
+        // Yalnız onay numarası değişti: clientId + secret eski değerleriyle bankaya gider.
+        banka.Istekler.Clear();
+        var p2 = await s.PutAsJsonAsync($"/api/v1/bankalar/{hesap}/baglanti",
+            new { kod = "GARANTI", alanlar = new Dictionary<string, string> { ["consentId"] = "cons-2" } });
+        Assert.True(p2.IsSuccessStatusCode, await p2.Content.ReadAsStringAsync());
+        Assert.Contains(banka.Istekler, i => i.Yol.EndsWith("/token") && i.Govde.Contains("client_id=cid-1") && i.Govde.Contains("client_secret=" + Uri.EscapeDataString(Sir)));
+        Assert.Contains(banka.Istekler, i => i.Yol.EndsWith("/gettransactions") && i.Govde.Contains("\"consentId\":\"cons-2\""));
+
+        // Hiçbir alan girilmeden kaydet: her şey sabit kalır, yalnız yeniden denenir.
+        banka.Istekler.Clear();
+        var p3 = await s.PutAsJsonAsync($"/api/v1/bankalar/{hesap}/baglanti", new { kod = "GARANTI", alanlar = new Dictionary<string, string>() });
+        Assert.True(p3.IsSuccessStatusCode, await p3.Content.ReadAsStringAsync());
+        Assert.Contains(banka.Istekler, i => i.Yol.EndsWith("/gettransactions") && i.Govde.Contains("\"consentId\":\"cons-2\""));
+        Assert.Contains(banka.Istekler, i => i.Yol.EndsWith("/token") && i.Govde.Contains("client_id=cid-1"));
+
+        // Başarısız deneme: GET'te sonDeneme dolu, sonBasari yok → ekran "son deneme …, başarısız" yazar.
+        banka.Yanit = yol => yol.EndsWith("/token") ? Json("""{"access_token":"tk1"}""")
+            : Json("""{"result":{"returnCode":400,"reasonCode":4,"messageText":"Vermiş olduğunuz clientId-consentId bilgileri hatalıdır. Lütfen kontrol ediniz."}}""", HttpStatusCode.BadRequest);
+        var d = await (await s.PostAsync($"/api/v1/bankalar/{hesap}/baglanti/dene", null)).Content.ReadFromJsonAsync<JsonElement>();
+        var bag = d.GetProperty("baglanti");
+        Assert.NotEqual(JsonValueKind.Null, bag.GetProperty("sonDeneme").ValueKind);
+        Assert.Contains("kod 4", bag.GetProperty("sonHata").GetString());
+        var get = await s.GetFromJsonAsync<JsonElement>($"/api/v1/bankalar/{hesap}/baglanti");
+        Assert.NotEqual(JsonValueKind.Null, get.GetProperty("sonDeneme").ValueKind);
+    }
 }

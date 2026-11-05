@@ -5,7 +5,9 @@
 
 @* ═══ D2-05b (19.10, kurucu: "bankaları önceden bağlayalım") — hesap çekmecesi › banka bağlantısı.
    Açılışta yalnız durum satırı (bağlı / bağlı değil); form "Bankaya bağla" ile açılır (zorunlu önce).
-   Gizli alan (şifre, secret) bir daha ekrana dönmez; yeniden kayıtta boş bırakılırsa eski değer kalır.
+   Gizli alan (şifre, secret) bir daha ekrana dönmez; aynı bankada yeniden kayıtta boş bırakılan HER alan
+   (gizli ya da değil) eski değerini korur — kurucu 05.11: "onca bilgiyi her seferinde giremiyorum".
+   "Şimdi dene" bilgi değiştirmeden dener; başarısız deneme "son deneme <zaman>, başarısız" yazar.
    Kaydet = kaydet + hemen dene; sonuç aynı yerde sade dille. Yalnız SAHİP/MÜDÜR görür (sunucu kapısı).
    Form açıkken çekmecenin TEK birincil düğmesi "Kaydet ve dene" olur (Banka.razor @ref ile bağlar),
    "Vazgeç" formu kapatır — hesabın Kaydet'i banka bilgisini kaydediyor sanılmasın. ═══ *@
@@ -35,17 +37,20 @@
                 @foreach (var a in t.Alanlar)
                 {
                     var ad = a.Ad;
-                    var kayitliGizli = a.Gizli && durum?.Kod == t.Kod;
+                    // Kurucu 05.11: aynı bankaya bağlıyken HER alan boş bırakılabilir (boş = kayıtlı değer kalır);
+                    // yalnız değişen alan yazılır. Sunucu da aynı kuralı uygular.
+                    var kayitli = durum?.Kod == t.Kod;
                     if (a.Gizli)
                     {
-                        <Sifre ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@(a.Zorunlu && !kayitliGizli)" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
-                               OtoTamamla="new-password" YerTutucu="@(kayitliGizli ? BankaBaglantiSozlugu.GizliKayitli(Dil.Dil) : null)" Ipucu="@a.Ipucu"
+                        <Sifre ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@(a.Zorunlu && !kayitli)" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
+                               OtoTamamla="new-password" YerTutucu="@(kayitli ? BankaBaglantiSozlugu.GizliKayitli(Dil.Dil) : null)" Ipucu="@a.Ipucu"
                                Deger="@Deger(ad)" DegerChanged="@(v => AlanDegisti(ad, v))" />
                     }
                     else
                     {
-                        <Metin ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@a.Zorunlu" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
-                               Ipucu="@a.Ipucu" Deger="@Deger(ad)" DegerChanged="@(v => AlanDegisti(ad, v))" />
+                        <Metin ElemanId="@($"bb-{ad}")" Etiket="@a.Etiket" Zorunlu="@(a.Zorunlu && !kayitli)" EnFazla="@Kuyumcu.Core.Domain.BankaBaglayiciKatalogu.AlanEnFazla"
+                               YerTutucu="@(kayitli ? BankaBaglantiSozlugu.GizliKayitli(Dil.Dil) : null)" Ipucu="@a.Ipucu"
+                               Deger="@Deger(ad)" DegerChanged="@(v => AlanDegisti(ad, v))" />
                     }
                 }
             }
@@ -66,7 +71,9 @@
         <span class="metin-kucuk" id="bb-durum">
             <strong>@BankaBaglantiSozlugu.Bagli(durum.BankaAdi ?? durum.Kod, Dil.Dil)</strong>
             @if (durum.Ozet is { } o) { <span class="metin-soluk"> · @o</span> }
-            <span class="metin-soluk"> · @(durum.SonBasari is { } sb ? BankaBaglantiSozlugu.SonAlis(Bicim.TarihSaat(sb), Dil.Dil) : BankaBaglantiSozlugu.HenuzDenenmedi(Dil.Dil))</span>
+            <span class="metin-soluk"> · @(durum.SonBasari is { } sb ? BankaBaglantiSozlugu.SonAlis(Bicim.TarihSaat(sb), Dil.Dil)
+                                            : durum.SonDeneme is { } sd ? BankaBaglantiSozlugu.SonDeneme(Bicim.TarihSaat(sd), Dil.Dil)
+                                            : BankaBaglantiSozlugu.HenuzDenenmedi(Dil.Dil))</span>
         </span>
         @if (durum.SonHata is { } sh) { <div class="metin-kirmizi metin-kucuk" role="alert" id="bb-son-hata">@sh</div> }
         @if (basari is { } b) { <div class="metin-yesil metin-kucuk" role="status" id="bb-basari">@b</div> }
@@ -111,8 +118,8 @@
     private IReadOnlyList<SecenekOgesi> BankaSecenekleri =>
         katalog?.Bankalar.Select(b => new SecenekOgesi(b.Kod, b.BankaAdi)).ToList() ?? [];
     private string? Deger(string ad) => alanlar.TryGetValue(ad, out var d) ? d : null;
-    private bool FormTamam => Secilen is { } t && t.Alanlar.All(a =>
-        !a.Zorunlu || (a.Gizli && durum?.Kod == t.Kod) || !string.IsNullOrWhiteSpace(Deger(a.Ad)));
+    private bool FormTamam => Secilen is { } t && (durum?.Kod == t.Kod || t.Alanlar.All(a =>
+        !a.Zorunlu || !string.IsNullOrWhiteSpace(Deger(a.Ad))));
 
     protected override async Task OnParametersSetAsync()
     {
