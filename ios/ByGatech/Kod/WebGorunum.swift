@@ -18,6 +18,16 @@ final class WebDurumu: ObservableObject {
     var adayGiris: GirisKasasi.Giris?
     /// Bu giriş Face ID ile dolduruldu → başarıda yeniden "kaydedilsin mi?" sorulmaz.
     var faceIdIleDolduruldu = false
+    // Yerli kabuk durumu (web'den okunur): rota, seçili sekme, kur şeridi, kullanıcı kısaltması, dil, görünüm modu, giriş amblemi yeri.
+    @Published var rota = "/"
+    @Published var sekme: String?
+    @Published var kur: String?
+    @Published var kullanici: String?
+    @Published var dil: String?
+    @Published var mod: String?
+    @Published var amblem: CGRect?
+    /// Giriş/şifre ekranları: yerli çubuklar gizli, 3B elmas amblem yerine biner.
+    var girisEkrani: Bool { girisFormuGorunuyor || rota.hasPrefix("/giris") || rota.hasPrefix("/sifre-sifirla") || rota.hasPrefix("/kayit") }
     weak var web: WKWebView?
 
     func yenidenDene() {
@@ -35,10 +45,39 @@ final class WebDurumu: ObservableObject {
         Titresim.ver("secim")
     }
 
+    // MARK: Yerli kabuk → web
+    func git(_ s: Sekme) {
+        web?.evaluateJavaScript("window.__bygatechGit(\(Self.json(s.id)), \(Self.json(s.yol)))")
+        sekme = s.id
+    }
+    func tikla(_ id: String) { web?.evaluateJavaScript("window.__bygatechTikla(\(Self.json(id)))") }
+    func dilSec(_ kod: String) { dil = kod; web?.evaluateJavaScript("window.__bygatechDil(\(Self.json(kod.uppercased())))") }
+    func modSec(_ m: String) { mod = m; tikla(m == "basit" ? "yildiz-mod-basit" : "yildiz-mod-profesyonel") }
+
+    /// Web'den kabuk durumunu okur (rota değişiminde ve periyodik).
+    func durumuOku() {
+        web?.evaluateJavaScript("window.__bygatechDurum ? window.__bygatechDurum() : null") { [weak self] sonuc, _ in
+            guard let self, let metin = sonuc as? String, let veri = metin.data(using: .utf8),
+                  let d = try? JSONSerialization.jsonObject(with: veri) as? [String: Any] else { return }
+            Task { @MainActor in
+                self.kur = d["kur"] as? String
+                self.kullanici = (d["kullanici"] as? String).map { ad in
+                    let p = ad.split(whereSeparator: { $0 == " " || $0 == "." }).filter { !$0.isEmpty }
+                    return p.count >= 2 ? String(p[0].prefix(1) + p[1].prefix(1)).uppercased() : String(ad.prefix(2)).uppercased()
+                }
+                if let s = d["sekme"] as? String { self.sekme = s }
+                if let m = d["mod"] as? String { self.mod = m }
+                if let dl = d["dil"] as? String { self.dil = String(dl.prefix(2)).lowercased() }
+                if let y = d["yol"] as? String { self.rota = y }
+                if let r = d["amblem"] as? [Double], r.count == 4 { self.amblem = CGRect(x: r[0], y: r[1], width: r[2], height: r[3]) } else { self.amblem = nil }
+            }
+        }
+    }
+
     func kaydetOnayla() {
         guard let g = kaydetSorusu else { return }
         kaydetSorusu = nil
-        if GirisKasasi.kaydet(g) { girisKayitli = true; UserDefaults.standard.set(g.eposta, forKey: "faceIdEposta"); Titresim.ver("basari") }
+        if GirisKasasi.kaydet(g) { girisKayitli = true; Titresim.ver("basari") }
         else { bilgi = "Face ID girişi kaydedilemedi." }
     }
 
@@ -46,7 +85,6 @@ final class WebDurumu: ObservableObject {
 
     func kasayiSil() {
         GirisKasasi.sil(); girisKayitli = false
-        UserDefaults.standard.removeObject(forKey: "faceIdEposta")
     }
 
     static func json(_ s: String) -> String {
@@ -99,6 +137,7 @@ struct WebGorunum: UIViewRepresentable {
 
         context.coordinator.web = web
         durum.web = web
+        context.coordinator.zamanlayici = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [durum] _ in durum.durumuOku() }
         web.load(URLRequest(url: Ayarlar.sunucu))
         return web
     }
@@ -111,6 +150,7 @@ struct WebGorunum: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ web: WKWebView, coordinator: Koordinator) {
+        coordinator.zamanlayici?.invalidate()
         web.configuration.userContentController.removeScriptMessageHandler(forName: "kabuk")
         NotificationCenter.default.removeObserver(coordinator)
     }
@@ -119,6 +159,7 @@ struct WebGorunum: UIViewRepresentable {
         let durum: WebDurumu
         weak var web: WKWebView?
         var sonDeneme = 0
+        var zamanlayici: Timer?
         #if DEBUG
         var testGirisiKullanildi = false
         #endif
@@ -167,13 +208,15 @@ struct WebGorunum: UIViewRepresentable {
                     }
                 case "rota":
                     let yol = veri as? String ?? "/"
+                    durum.rota = yol
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [durum] in durum.durumuOku() }
                     if let aday = durum.adayGiris, !yol.hasPrefix("/giris") {
                         durum.adayGiris = nil
                         let faceId = durum.faceIdIleDolduruldu; durum.faceIdIleDolduruldu = false
                         // Face ID ile girildiyse ya da aynı e-posta zaten kayıtlıysa yeniden sorulmaz
                         // (parola değiştiyse Face ID girişi düşer, kasa silinir, bir sonraki girişte sorulur).
                         if faceId { return }
-                        if durum.girisKayitli, UserDefaults.standard.string(forKey: "faceIdEposta")?.lowercased() == aday.eposta.lowercased() { return }
+                        if durum.girisKayitli, GirisKasasi.kayitliEposta?.lowercased() == aday.eposta.lowercased() { return }
                         durum.kaydetSorusu = aday
                     }
                 case "girisBasarisiz":
@@ -195,6 +238,7 @@ struct WebGorunum: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             durum.yukleniyor = false
             durum.hata = nil
+            for g in [0.8, 2.5, 6.0] { DispatchQueue.main.asyncAfter(deadline: .now() + g) { [durum] in durum.durumuOku() } }
             #if DEBUG
             // Yalnız geliştirme: BYGATECH_TEST_JS ortam değişkenindeki ifadeyi 4 sn sonra çalıştırıp stdout'a yazar.
             if let js = ProcessInfo.processInfo.environment["BYGATECH_TEST_JS"] {

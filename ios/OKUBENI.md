@@ -3,6 +3,12 @@
 Sunucudaki ByGatech'i (`https://5-10-220-150.sslip.io`) açan yerel iOS uygulaması (SwiftUI + WKWebView).
 Dal: `ios`. Kaynak: `ios/ByGatech/Kod/`.
 
+## Yerli kabuk (Apple tasarım dili)
+- **Alt sekme çubuğu** (SF Symbols): Bugün · Tezgâh · Müşteriler · Kasa · Tümü — web'in 5 kelimelik üst menüsüyle aynı rotalar (`Kabuk.swift`, `Sekme.hepsi`). Seçili sekme web'den okunur (`#yildiz-menu .aktif`).
+- **Üst çubuk:** 3B amblem · BYGATECH · kur şeridi (HAS/22 ayar) · kullanıcı kısaltması → yerli hesap sayfası (dil, Basit/Profesyonel, iPhone ayarları, Kılavuz, Ayarlar, Çıkış). Web'in kendi üst menüsü uygulama içinde gizlenir (`.ios-yerli`), işlevleri gizli düğmelere köprüyle (`__bygatechTikla`, `__bygatechGit`, `__bygatechDil`, `__bygatechDurum`) sürülür.
+- **3B amblem:** web'deki çizimle BİREBİR aynı taş — `tema-yildiz.css .amb-f0…41` matrix3d şeritlerinden çözülen 11 köşe / 26 kenar / 20 yüzey (`TasVerisi.swift`, üretim: scratchpad amb-geo), SceneKit'te cam yüzeyler (fizik tabanlı, stüdyo ortam yansıması) + web'deki gibi parlayan kenar şeritleri ve 11 sn'lik parlama; giriş ekranında web ambleminin yerine biner (`.amb-ik` kutusu ölçülür), üst çubukta 36 pt.
+- Giriş/şifre ekranlarında yerli çubuklar gizlenir.
+
 ## Apple'a özgü özellikler
 - **SF Pro yazı tipi**: uygulama içinde web yazı tipleri (Inter/Manrope/Sora) yerine Apple'ın sistem yazı tipi (`KabukBetigi.swift` biçemi).
 - **Sistem yazı boyutu**: iPhone Ayarlar › Ekran ve Parlaklık › Metin Boyutu izlenir (0,9–1,25; WebKit `text-size-adjust`, yalnız metin büyür, düzen akar). Kapatılabilir.

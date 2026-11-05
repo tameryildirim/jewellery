@@ -15,6 +15,10 @@ enum KabukBetigi {
     :root.ios-kabuk body, :root.ios-kabuk .belge, :root.ios-kabuk #emanet-sayfa .emanet-ozet-deger { font-family: var(--yazi-ailesi) !important; }
     :root.ios-kabuk :is(input, button, select, textarea) { font-family: inherit; }
     :root.ios-kabuk button, :root.ios-kabuk a { -webkit-touch-callout: none; }
+    /* Yerli kabuk (iOS sekme çubuğu + üst çubuk): web'in kendi üst menüsü gizlenir, işlevleri yerli menüden sürülür. */
+    :root.ios-kabuk.ios-yerli #yildiz-ust, :root.ios-kabuk.ios-yerli .yildiz-ust-bosluk { display: none !important; }
+    /* Giriş amblemi: yeri korunur, üstüne yerli 3B elmas biner. */
+    :root.ios-kabuk.ios-yerli #giris-amblem .amb-parla { visibility: hidden !important; }
     """#
 
     /// `olcek`: sistem yazı boyutu oranı (1,0 = iPhone varsayılanı). Yalnız metin ölçeklenir, düzen akar.
@@ -22,7 +26,7 @@ enum KabukBetigi {
         #"""
         (function () {
           if (window.__bygatechKabuk) return; window.__bygatechKabuk = true;
-          var kok = document.documentElement; kok.classList.add('ios-kabuk');
+          var kok = document.documentElement; kok.classList.add('ios-kabuk'); kok.classList.add('ios-yerli');
           window.__bygatechOlcek = function (o) { kok.style.setProperty('-webkit-text-size-adjust', Math.round(o * 100) + '%', 'important'); };
           window.__bygatechOlcek(\#(olcek));
           var st = document.createElement('style'); st.id = 'ios-kabuk-bicem';
@@ -60,6 +64,27 @@ enum KabukBetigi {
             var em = document.getElementById('giris-eposta'), pw = document.getElementById('giris-sifre');
             if (em && pw && em.value && pw.value) post('girisDenemesi', { eposta: em.value, parola: pw.value });
           }, true);
+
+          // Yerli kabuk köprüleri: sekme geçişi, gizli web menüsündeki düğmeler, kur şeridi, amblem yeri.
+          function tikla(id) { var el = document.getElementById(id); if (!el) return false; el.click(); return true; }
+          window.__bygatechTikla = tikla;
+          window.__bygatechGit = function (kimlik, yol) {
+            if (tikla('yildiz-menu-' + kimlik)) return 'menu';
+            history.pushState({}, '', yol); window.dispatchEvent(new PopStateEvent('popstate', { state: {} })); return 'rota';
+          };
+          window.__bygatechDil = function (kod) {
+            var b = [...document.querySelectorAll('#yildiz-menu-dil button, #giris-dil button')].find(function (x) { return x.textContent.trim().toUpperCase() === kod; });
+            if (b) { b.click(); return true; } return false;
+          };
+          window.__bygatechDurum = function () {
+            var t = function (s) { var e = document.querySelector(s); return e ? e.textContent.replace(/\s+/g, ' ').trim() : null; };
+            var a = document.querySelector('#yildiz-menu .aktif');
+            var r = document.querySelector('#giris-amblem .amb-ik'); var rc = r ? r.getBoundingClientRect() : null;
+            return JSON.stringify({ kur: t('#yildiz-kur'), kullanici: t('#yildiz-kullanici-ac'), sekme: a ? a.id.replace('yildiz-menu-', '') : null,
+              mod: (document.querySelector('#yildiz-mod-profesyonel[aria-pressed="true"]') ? 'profesyonel' : (document.querySelector('#yildiz-mod-basit[aria-pressed="true"]') ? 'basit' : null)),
+              dil: kok.lang || null, yol: location.pathname,
+              amblem: rc ? [rc.left, rc.top, rc.width, rc.height] : null });
+          };
 
           // Face ID ile doldur: alanlara yaz, Blazor'a haber ver, gönder.
           window.__bygatechGiris = function (eposta, parola) {

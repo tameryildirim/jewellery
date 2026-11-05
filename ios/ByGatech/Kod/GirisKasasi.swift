@@ -6,6 +6,8 @@ import LocalAuthentication
 /// biyometri (Face ID / Touch ID; yoksa cihaz şifresi) ile okunabilir. Sunucuya ayrıca bir şey gitmez.
 enum GirisKasasi {
     private static let servis = "com.bygatech.kuyumcu.giris"
+    /// Kayıtlı e-posta (gizli değil): aynı e-postayla yeniden girişte "kaydedilsin mi?" sorulmaz; uygulama silinip kurulsa da kalır.
+    private static let epostaServisi = "com.bygatech.kuyumcu.giris.eposta"
 
     struct Giris: Codable { let eposta: String; let parola: String }
 
@@ -37,7 +39,22 @@ enum GirisKasasi {
             kSecAttrAccessControl as String: erisim,
             kSecValueData as String: veri,
         ]
-        return SecItemAdd(kayit as CFDictionary, nil) == errSecSuccess
+        let tamam = SecItemAdd(kayit as CFDictionary, nil) == errSecSuccess
+        if tamam {
+            let e: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: epostaServisi,
+                                    kSecAttrAccount as String: hesap, kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+                                    kSecValueData as String: Data(g.eposta.utf8)]
+            SecItemAdd(e as CFDictionary, nil)
+        }
+        return tamam
+    }
+
+    static var kayitliEposta: String? {
+        let sorgu: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: epostaServisi,
+                                    kSecAttrAccount as String: hesap, kSecReturnData as String: true]
+        var sonuc: CFTypeRef?
+        guard SecItemCopyMatching(sorgu as CFDictionary, &sonuc) == errSecSuccess, let d = sonuc as? Data else { return nil }
+        return String(data: d, encoding: .utf8)
     }
 
     /// Face ID / Touch ID ister; başarıda girişi döner.
@@ -71,6 +88,7 @@ enum GirisKasasi {
             kSecAttrAccount as String: hesap,
         ]
         let d = SecItemDelete(sorgu as CFDictionary)
+        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: epostaServisi, kSecAttrAccount as String: hesap] as CFDictionary)
         return d == errSecSuccess || d == errSecItemNotFound
     }
 }
