@@ -63,12 +63,7 @@ struct UstCubuk: View {
                 .tracking(4)
                 .foregroundStyle(Color("Marka"))
             Spacer(minLength: 8)
-            if let kur, !kur.isEmpty {
-                Text(kur)
-                    .font(.system(size: 11, weight: .regular)).tracking(1)
-                    .foregroundStyle(Color("MetinSoluk"))
-                    .lineLimit(1).minimumScaleFactor(0.7)
-            }
+            // Kurucu 05.11: kur şeridi (HAS / 22 ayar) üst çubukta gösterilmez.
             // Kurucu 05.11: kısaltma değil, fotoğraf yokken Apple'daki gibi kişi silueti.
             Button(action: kullaniciAc) {
                 Image(systemName: "person.crop.circle")
