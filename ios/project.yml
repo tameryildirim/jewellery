@@ -1,0 +1,63 @@
+# ByGatech iOS — Xcode projesi tanımı (xcodegen ile üretilir: `xcodegen generate`)
+# Uygulama: sunucudaki ByGatech'i (https://5-10-220-150.sslip.io) yerel bir iOS kabuğunda açar;
+# oturum/çerez kalıcıdır, kamera izni verilir, çevrimdışı ekranı ve "yeniden dene" vardır.
+name: ByGatech
+options:
+  bundleIdPrefix: com.bygatech
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: ZCV5H66VR3
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+targets:
+  ByGatech:
+    type: application
+    platform: iOS
+    sources:
+      - path: ByGatech
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bygatech.kuyumcu
+        PRODUCT_NAME: ByGatech
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        ENABLE_PREVIEWS: YES
+    info:
+      path: ByGatech/Info.plist
+      properties:
+        CFBundleDisplayName: ByGatech
+        CFBundleName: ByGatech
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: tr
+        CFBundleLocalizations: [tr]
+        UILaunchScreen:
+          UIColorName: ArkaPlan
+          UIImageName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiresFullScreen: false
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: "Ürün fotoğrafı çekmek ve barkod okumak için kamera kullanılır."
+        NSPhotoLibraryUsageDescription: "Ürün ve belge fotoğrafı seçmek için fotoğraflara erişilir."
+        NSMicrophoneUsageDescription: "Sesli not ve video için mikrofon kullanılır."
+        # Uygulamanın açtığı sunucu — tek ayar noktası.
+        SunucuAdresi: "https://5-10-220-150.sslip.io"

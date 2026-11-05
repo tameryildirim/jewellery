@@ -1,0 +1,345 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		104FF95B35FC53372F668D87 /* ByGatechApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE914F95C5F5A764D494E7D3 /* ByGatechApp.swift */; };
+		28852DF98616DB69E6C1936C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87BE0955571EF8309DEBE513 /* Assets.xcassets */; };
+		8239D9456E15E191D583C75F /* AnaGorunum.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19005DC833095335B6614CC /* AnaGorunum.swift */; };
+		CCD1BAF0BEDB4BF6074EBFB0 /* WebGorunum.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821FD122120DF0A56E2BD6A3 /* WebGorunum.swift */; };
+		E8B2DA8769AB9D451BC50B40 /* Ayarlar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73BA6C997330F7363EF62D1 /* Ayarlar.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		821FD122120DF0A56E2BD6A3 /* WebGorunum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebGorunum.swift; sourceTree = "<group>"; };
+		86900B99B9D951B35AE84F97 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		87BE0955571EF8309DEBE513 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B73BA6C997330F7363EF62D1 /* Ayarlar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ayarlar.swift; sourceTree = "<group>"; };
+		BFF0162C759B3591E247296F /* ByGatech.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ByGatech.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D19005DC833095335B6614CC /* AnaGorunum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnaGorunum.swift; sourceTree = "<group>"; };
+		DE914F95C5F5A764D494E7D3 /* ByGatechApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByGatechApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		520C07E0A31EAC06538DCE10 /* ByGatech */ = {
+			isa = PBXGroup;
+			children = (
+				86900B99B9D951B35AE84F97 /* Info.plist */,
+				BD4DF57C7A26C3608914F1FD /* Kaynaklar */,
+				D19BD9929BEA3AACC250E683 /* Kod */,
+			);
+			path = ByGatech;
+			sourceTree = "<group>";
+		};
+		90673310FDA1C8AEF8CB56C4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BFF0162C759B3591E247296F /* ByGatech.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BD4DF57C7A26C3608914F1FD /* Kaynaklar */ = {
+			isa = PBXGroup;
+			children = (
+				87BE0955571EF8309DEBE513 /* Assets.xcassets */,
+			);
+			path = Kaynaklar;
+			sourceTree = "<group>";
+		};
+		D19BD9929BEA3AACC250E683 /* Kod */ = {
+			isa = PBXGroup;
+			children = (
+				D19005DC833095335B6614CC /* AnaGorunum.swift */,
+				B73BA6C997330F7363EF62D1 /* Ayarlar.swift */,
+				DE914F95C5F5A764D494E7D3 /* ByGatechApp.swift */,
+				821FD122120DF0A56E2BD6A3 /* WebGorunum.swift */,
+			);
+			path = Kod;
+			sourceTree = "<group>";
+		};
+		DA8620443667BC6548C264D5 = {
+			isa = PBXGroup;
+			children = (
+				520C07E0A31EAC06538DCE10 /* ByGatech */,
+				90673310FDA1C8AEF8CB56C4 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8562CCF72CC160B964677F64 /* ByGatech */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BCA56BA1216A5D2139F6B552 /* Build configuration list for PBXNativeTarget "ByGatech" */;
+			buildPhases = (
+				72A0189FA09D35888BA8B4A7 /* Sources */,
+				B68379038974CF546F4EA0FD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ByGatech;
+			packageProductDependencies = (
+			);
+			productName = ByGatech;
+			productReference = BFF0162C759B3591E247296F /* ByGatech.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E8FB25F65639C37C185E8623 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					8562CCF72CC160B964677F64 = {
+						DevelopmentTeam = ZCV5H66VR3;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 10818AE90398247EC660DBFB /* Build configuration list for PBXProject "ByGatech" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DA8620443667BC6548C264D5;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 90673310FDA1C8AEF8CB56C4 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8562CCF72CC160B964677F64 /* ByGatech */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B68379038974CF546F4EA0FD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				28852DF98616DB69E6C1936C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		72A0189FA09D35888BA8B4A7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8239D9456E15E191D583C75F /* AnaGorunum.swift in Sources */,
+				E8B2DA8769AB9D451BC50B40 /* Ayarlar.swift in Sources */,
+				104FF95B35FC53372F668D87 /* ByGatechApp.swift in Sources */,
+				CCD1BAF0BEDB4BF6074EBFB0 /* WebGorunum.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		637D7FDD8658F11AE33CE45C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = ZCV5H66VR3;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		AD4FB62B849B8E787CBEC106 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = ByGatech/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bygatech.kuyumcu;
+				PRODUCT_NAME = ByGatech;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C6D4375D52747196451E6EF8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = ByGatech/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bygatech.kuyumcu;
+				PRODUCT_NAME = ByGatech;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E4466D54B83FFE9C798A5E87 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = ZCV5H66VR3;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		10818AE90398247EC660DBFB /* Build configuration list for PBXProject "ByGatech" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				637D7FDD8658F11AE33CE45C /* Debug */,
+				E4466D54B83FFE9C798A5E87 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BCA56BA1216A5D2139F6B552 /* Build configuration list for PBXNativeTarget "ByGatech" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AD4FB62B849B8E787CBEC106 /* Debug */,
+				C6D4375D52747196451E6EF8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E8FB25F65639C37C185E8623 /* Project object */;
+}
