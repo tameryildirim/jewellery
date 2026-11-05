@@ -27,7 +27,8 @@ public static class BankaBaglantiSozlugu
     public static string DenemeBasarili(int adet, string dil) => En(dil)
         ? $"Connection works. {adet} transactions read." : $"Bağlantı çalışıyor. {adet} hareket okundu.";
     /// <summary>Kurucu 05.11: bağlıyken HER alan boş bırakılabilir (gizli ya da değil); boş = eski değer kalır.</summary>
-    public static string GizliKayitli(string dil) => En(dil) ? "Saved — leave empty to keep" : "Kayıtlı — değiştirmeyecekseniz boş bırakın";
+    /// <summary>Kısa tutulur: 375 px'te girdi genişliğine sığmalı (05.11 kanıt: uzun metin kesiliyordu).</summary>
+    public static string GizliKayitli(string dil) => En(dil) ? "Saved — kept as is" : "Kayıtlı — aynı kalır";
     public static string NasilAlinir(string dil) => En(dil) ? "How to get these details" : "Bu bilgiler nereden alınır";
     public static string SunucuAdresi(string ip, string dil) => En(dil)
         ? $"Tell the bank this server address: {ip}" : $"Bankaya bu sunucu adresini bildirin: {ip}";

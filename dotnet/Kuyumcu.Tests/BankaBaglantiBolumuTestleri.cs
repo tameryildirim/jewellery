@@ -11,7 +11,7 @@ namespace Kuyumcu.Tests;
 // ═════════════════════════════════════════════════════════════════════════════
 // Kurucu 05.11 — banka bağlantısı bölümü (bUnit):
 //   • "Bilgileri değiştir" açılınca bağlı bankanın HER alanı isteğe bağlıdır, yer tutucu
-//     "Kayıtlı — değiştirmeyecekseniz boş bırakın"; hiçbir şey yazmadan Kaydet hazırdır ve
+//     "Kayıtlı — aynı kalır"; hiçbir şey yazmadan Kaydet hazırdır ve
 //     sunucuya yalnız dolu alanlar gider (boş = eski değer kalır).
 //   • "Şimdi dene" bilgi değiştirmeden dener (PUT yok, POST /dene var).
 //   • Başarısız deneme "son deneme <zaman>, başarısız" yazar; "henüz denenmedi" yalnız hiç denenmemişse.
@@ -94,7 +94,7 @@ public sealed class BankaBaglantiBolumuTestleri : BunitContext
         {
             var g = e.Find($"#bb-{ad}");
             Assert.Equal("false", g.GetAttribute("aria-required"));
-            Assert.Equal("Kayıtlı — değiştirmeyecekseniz boş bırakın", g.GetAttribute("placeholder"));
+            Assert.Equal("Kayıtlı — aynı kalır", g.GetAttribute("placeholder"));
         }
         Assert.True(e.Instance.KaydetHazir);   // hiçbir şey yazmadan "Kaydet ve dene" basılabilir
 
