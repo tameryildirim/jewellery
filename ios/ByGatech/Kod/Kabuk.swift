@@ -69,13 +69,14 @@ struct UstCubuk: View {
                     .foregroundStyle(Color("MetinSoluk"))
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
+            // Kurucu 05.11: kısaltma değil, fotoğraf yokken Apple'daki gibi kişi silueti.
             Button(action: kullaniciAc) {
-                Text(kullanici ?? "•")
-                    .font(.system(size: 12, weight: .semibold)).tracking(1)
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 28, weight: .regular))
                     .foregroundStyle(Color("Marka"))
                     .frame(width: 34, height: 34)
-                    .background(Circle().stroke(Color("Kenarlik"), lineWidth: 1))
             }
+            .accessibilityLabel(kullanici ?? "Hesap")
             .accessibilityIdentifier("ust-kullanici")
         }
         .padding(.horizontal, 16)
