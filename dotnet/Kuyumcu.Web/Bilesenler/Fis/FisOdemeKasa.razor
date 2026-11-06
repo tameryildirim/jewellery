@@ -66,7 +66,8 @@
             <Secici ElemanId="islem-odeme"
                     Etiket="@OdemeEtiketi"
                     Secenekler="@(OdemeListesi.Select(_o => new SecenekOgesi(_o.Item1, _o.Item2)).ToList())"
-                    Deger="@OdemeTuru" DegerChanged="@((string? v) => OdemeTuruChanged.InvokeAsync(v))" />
+                    Deger="@OdemeTuru" DegerChanged="@((string? v) => OdemeTuruChanged.InvokeAsync(v))"
+                    Satirli="SecimSatirli" SeciliEtiket="@SatirliSeciliEtiket" />
             @* SATIS-4 (a): tutar nakit sınırını aşınca ödeme kendiliğinden nakit dışına döndü — neden, tek satır (sayı sunucudan). *@
             @if (OtomatikNot is { } otoNot)   @* YASAL-KAPI-3: sayfa yalnız başka yasal mesaj yokken verir (tek yer) *@
             {
@@ -121,7 +122,8 @@
                         Etiket="@Dil.T.Islem.BacakPosCihazi"
                         Secenekler="@(PosCihazlari.Select(_p => new SecenekOgesi(_p.Id, _p.Ad)).ToList())"
                         Deger="@PosCihazId" DegerChanged="@((string? v) => PosCihazIdChanged.InvokeAsync(v))"
-                        BosSecenekMetni="@Dil.T.Islem.BacakPosCihazi" />
+                        BosSecenekMetni="@Dil.T.Islem.BacakPosCihazi"
+                        Satirli="SecimSatirli" SeciliEtiket="@SatirliSeciliEtiket" />
             </div>
         }
         @* ═══ UX-3 Faz B — KASA ═══════════════════════════════
@@ -165,7 +167,8 @@
                     Deger="@KasaId" DegerChanged="@((string? v) => KasaIdChanged.InvokeAsync(v))"
                     Devredisi="@(KasaKilitli || AnaKasaTek)"
                     DevredisiSebebi="@AnaKasaKilitSebebi"
-                    BosSecenekMetni="@Dil.T.Islem.KasaSecin" />
+                    BosSecenekMetni="@Dil.T.Islem.KasaSecin"
+                    Satirli="SecimSatirli" SeciliEtiket="@SatirliSeciliEtiket" />
             @if (AnaKasaTek)
             {
                 @* SATIS-2: sade yüzde seçicinin kilit sebebi zaten yazılı — aynı bilgi ikinci satır olmaz. *@
@@ -223,12 +226,20 @@ else if (Tur != "TRANSFER" && !KarmaAcik)
                 Etiket="@Dil.T.Islem.Kasa"
                 Secenekler="@AnaKasaSecenekleri"
                 Deger="@KasaId" DegerChanged="@((string? v) => KasaIdChanged.InvokeAsync(v))"
-                BosSecenekMetni="@Dil.T.Islem.KasaSecin" />
+                BosSecenekMetni="@Dil.T.Islem.KasaSecin"
+                Satirli="SecimSatirli" SeciliEtiket="@SatirliSeciliEtiket" />
     </div>
     }
 }
 
 @code {
+    /// <summary>
+    /// 06.11 kurucu kararı (ödeme C "yandan çekmece"): Yıldız tezgâhında ödeme türü / kasa / POS seçicileri
+    /// açılır liste değil SATIRLI (Secici.Satirli — hep görünür halka satırları). Diğer kabuklar AYNEN (false).
+    /// </summary>
+    [Parameter] public bool SecimSatirli { get; set; }
+    private string? SatirliSeciliEtiket => SecimSatirli ? Kuyumcu.Core.I18n.YildizTezgahSozlugu.Secili(Dil.Dil) : null;
+
     /// <summary>DEGISIM-2 (hakem DÜŞÜK "BASİT Değişim'de 'Ödeme Türü' büyük harfle"): BASİT Değişim'de cümle düzeni; diğer türler AYNEN.</summary>
     private string OdemeEtiketi => Tur == "TAKAS" && Basit ? DegisimGunSonuSozlugu.Al(Dil.Dil).OdemeTuruSade : Dil.T.Islem.OdemeTuru;
 

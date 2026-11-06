@@ -136,23 +136,39 @@
                 }
             </div>
             }
-            @if (odemeDuzen || B.Karma)
+            @if (B.Karma)
             {
                 @* YILDIZ-4C (hakem 4B tur 2 KRİTİK "ödemeler iki kez"): karmada özet satırları ÇİZİLMEZ — ödeme satırlarının
                    kendisi (sayfanın FisOdemeBacaklari'sı) tuvalin .sat kalıbında düzenlenir (tema-yildiz.css .yz-duzen). *@
-                <div class="@(B.Karma ? "yz-tezgah-duzen yz-duzen yz-tezgah-karma" : "yz-tezgah-duzen yz-duzen")" id="yildiz-tezgah-odeme-duzen">
+                <div class="yz-tezgah-duzen yz-duzen yz-tezgah-karma" id="yildiz-tezgah-odeme-duzen">
                     @if (B.OdemeSecenekleri is { Count: > 0 } secenekler)
                     {
-                        @* Özgün tezgâh fişinin tek ödeme seçicisi (#islem-aldim-odeme — FisVerdimAldim Yıldız'da çizilmez; aynı id, aynı geri çağrı). *@
                         <Secici ElemanId="islem-aldim-odeme" Etiket="@ParaDemo2Sozlugu.Al(Dil.Dil).AldimOdemeEtiket" Secenekler="secenekler"
                                 Deger="@B.OdemeTuru" Devredisi="B.Kaydediliyor" DegerChanged="@((string? v) => B.OdemeTuruSec.InvokeAsync(v ?? "NAKIT"))" />
                     }
                     @B.OdemeDuzen
-                    @if (!B.Karma)
-                    {
-                        <button type="button" class="yz-b2 yz-tezgah-kapat" id="yildiz-tezgah-odeme-tamam" @onclick="() => odemeDuzen = false">@YildizTezgahSozlugu.KalemlerKapat(Dil.Dil)</button>
-                    }
                 </div>
+            }
+            else if (odemeDuzen)
+            {
+                @* 06.11 kurucu kararı — ödeme C "yandan çekmece" (Tezgâh Seçim Tuvali): tek ödemenin türü / kasası / POS'u sağdan
+                   açılan ortak Çekmece'de, SATIRLI seçicilerle (halka · ad · seçili). id'ler AYNEN: #yildiz-tezgah-odeme-duzen gövde,
+                   #islem-aldim-odeme seçici, #yildiz-tezgah-odeme-tamam birincil düğme ("… ile devam et" — kapatır, kayıt yapmaz).
+                   Karma AYNEN satır içi (yukarıdaki dal). *@
+                <Cekmece Acik="true" Varlik="yildiz-odeme" Baslik="@YildizTezgahSozlugu.OdemeSekli(Dil.Dil)"
+                         KaydetMetni="@YildizTezgahSozlugu.OdemeDevam(OdemeOzeti, Dil.Dil)" KaydetElemanId="yildiz-tezgah-odeme-tamam" Kaydet="() => odemeDuzen = false"
+                         IptalMetni="@YildizTezgahSozlugu.MusteriKapat(Dil.Dil)" Kapat="() => odemeDuzen = false">
+                    <div class="yz-tezgah-duzen yz-duzen yz-tezgah-odeme-cekmece" id="yildiz-tezgah-odeme-duzen">
+                        @if (B.OdemeSecenekleri is { Count: > 0 } secenekler)
+                        {
+                            @* Özgün tezgâh fişinin tek ödeme seçicisi (#islem-aldim-odeme — FisVerdimAldim Yıldız'da çizilmez; aynı id, aynı geri çağrı). *@
+                            <Secici ElemanId="islem-aldim-odeme" Etiket="@ParaDemo2Sozlugu.Al(Dil.Dil).AldimOdemeEtiket" Secenekler="secenekler"
+                                    Deger="@B.OdemeTuru" Devredisi="B.Kaydediliyor" DegerChanged="@((string? v) => B.OdemeTuruSec.InvokeAsync(v ?? "NAKIT"))"
+                                    Satirli="true" SeciliEtiket="@YildizTezgahSozlugu.Secili(Dil.Dil)" />
+                        }
+                        @B.OdemeDuzen
+                    </div>
+                </Cekmece>
             }
             @if (paraUstu && B.ParaUstuKullanilir)
             {
@@ -441,6 +457,11 @@
 
     private int? acikKalem;
     private bool odemeDuzen;
+
+    /// <summary>06.11 ödeme çekmecesi: birincil düğmenin özeti ("Kart · Ana Kasa") — tek ödemenin satırı; satır yoksa başlık.</summary>
+    private string OdemeOzeti => B.Odemeler.FirstOrDefault() is { } o
+        ? (o.Kasa is { Length: > 0 } k ? $"{o.Ad} · {k}" : o.Ad)
+        : YildizTezgahSozlugu.Odeme(Dil.Dil);
     private bool paraUstu;
     private bool kimlikAcik;
     private string? odaklananHata;

@@ -4291,3 +4291,80 @@ html:root[data-sema="yildiz"] .yz-perde-eylem { display: flex; flex-wrap: wrap; 
   html:root[data-sema="yildiz"] .yz-perde-eylem { gap: 12px 20px; }
 }
 @media (prefers-reduced-motion: reduce) { html:root[data-sema="yildiz"] .yz-perde { animation: none; } }
+
+/* ═══ 06.11 KURUCU KARARI — SEÇİM YÜZEYLERİ (Tezgâh Seçim Tuvali: müşteri A "çerçeveli kart" · ödeme C "yandan çekmece") ═══
+   Tema, yazı ve renkler AYNEN; yalnız "bir şey seçme" anı değişir. Kurucu: müşteri listesi ve ödeme türü seçimi
+   "belli olmuyor, zor oluyor"; "Değiştir" de fark edilmiyor. Renk yalnız var(); kapsam yine data-sema="yildiz". */
+
+/* ── "Değiştir": altı çizili 14 px yazı yerine kenarlıklı hap + ok (kapalıyken) ─────────────────────────── */
+html:root[data-sema="yildiz"] .yz-tezgah .yz-b2.yz-tezgah-degistir:not(#_) { height: 36px; padding: 0 14px 0 16px; gap: 6px; border: 1px solid var(--kenarlik); border-radius: 999px; font-size: 15px; letter-spacing: .01em; }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-b2.yz-tezgah-degistir[aria-expanded="false"]::after { content: "›"; font-size: 18px; line-height: 1; color: var(--metin-soluk); }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-b2.yz-tezgah-degistir:hover { background: var(--yuzey-hover); }
+
+/* ── Müşteri kartı (YildizMusteriSecici) ───────────────────────────────────────────────────────────────── */
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-sec { gap: 14px; padding: 20px 24px 16px; border: 1px solid var(--ayrac); border-radius: 14px; background: var(--yuzey-2); }
+html:root[data-sema="yildiz"] .yz .yz-kart-baslik { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: 0; color: var(--metin); }
+html:root[data-sema="yildiz"] .yz .yz-alan.yz-tezgah-musteri-ara { height: 52px; gap: 12px; padding: 0 16px; border: 1px solid var(--kenarlik); border-radius: 10px; background: var(--yuzey-govde); }
+html:root[data-sema="yildiz"] .yz .yz-alan.yz-tezgah-musteri-ara:focus-within { border-color: var(--metin); }
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-ara .yz-girdi { font-size: 18px; }
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-liste { gap: 2px; }
+html:root[data-sema="yildiz"] .yz .yz-sat.yz-tezgah-musteri-sat { display: block; padding: 0; border-bottom: 0; }
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-ic {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  width: 100%; min-height: 56px; margin: 0; padding: 0 14px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--metin); font: inherit; font-size: 17px; text-align: left;
+}
+html:root[data-sema="yildiz"] .yz button.yz-tezgah-musteri-ic { cursor: pointer; }
+html:root[data-sema="yildiz"] .yz button.yz-tezgah-musteri-ic:hover:not(:disabled) { background: var(--yuzey-hover); }
+html:root[data-sema="yildiz"] .yz button.yz-tezgah-musteri-ic:focus-visible { outline: 1px solid var(--odak-halka); outline-offset: 2px; }
+html:root[data-sema="yildiz"] .yz button.yz-tezgah-musteri-ic:disabled { opacity: .45; cursor: not-allowed; }
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-sat[aria-current="true"] .yz-tezgah-musteri-ic { background: var(--yuzey-secili); }
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-ad > .yz-s { font-size: 15px; }
+html:root[data-sema="yildiz"] .yz .yz-halka { box-sizing: border-box; width: 22px; height: 22px; border: 1.5px solid var(--kenarlik); border-radius: 50%; display: grid; place-items: center; }
+html:root[data-sema="yildiz"] .yz .yz-halka-secili { border-color: var(--metin); background: var(--metin); color: var(--yuzey-govde); }
+html:root[data-sema="yildiz"] .yz .yz-halka > .yz-ik { stroke-width: 2.4; }
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-durum { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--metin); }
+html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-ok { font-size: 20px; line-height: 1; color: var(--metin-soluk); }
+@media (max-width: 600px) {
+  html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-sec { padding: 16px 14px 12px; }
+  html:root[data-sema="yildiz"] .yz .yz-tezgah-musteri-ic { padding: 0 8px; gap: 10px; }
+}
+
+/* ── Ödeme çekmecesi (Cekmece varlık "yildiz-odeme") ───────────────────────────────────────────────────── */
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme-arka { --yz-odeme-perde: color-mix(in srgb, var(--metin) 38%, transparent); background: var(--yz-odeme-perde); }   /* belirteç: gövdede sabit renk yok (Y1-10) */
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme { width: min(460px, 100vw); }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme .cekmece-bas h2 { font-size: 20px; font-weight: 500; letter-spacing: 0; }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme .cekmece-kapat:not(#_) { width: 36px; height: 36px; padding: 0; border: 1px solid var(--kenarlik); border-radius: 50%; display: grid; place-items: center; font-size: 18px; line-height: 1; color: var(--metin); }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme-iptal { display: none; }   /* tuval C: üstte ×, altta TEK siyah düğme */
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme .cekmece-alt { padding: 16px 28px 24px; border-top: 0; }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme .cekmece-alt .dugme.dugme-birincil:not(#_) {
+  width: 100%; height: 56px; padding: 0 32px; border: 0; border-radius: 999px; justify-content: center;
+  background: var(--metin); color: var(--yuzey-govde); font-size: 16px; font-weight: 500; letter-spacing: .02em;
+}
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme .cekmece-alt .dugme.dugme-birincil:not(#_):hover { background: var(--metin); opacity: .92; }
+/* Satırlı seçici (Secici.Satirli): tetik gizli, liste akışta; satır = halka · ad · SEÇİLİ (tuval A satırıyla aynı kalıp) */
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik.secici-tetik--satirli:not(#_) { display: none; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen :is(#islem-aldim-odeme-sar, #islem-odeme-sar) > label { display: none; }   /* başlık zaten "Ödeme şekli" */
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-alan:has(> .secici-kap > .secici-tetik--satirli) { padding: 10px 0 18px; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap:not(#_) { position: static; z-index: auto; width: 100%; border: 0; background: transparent; box-shadow: none; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-liste { display: flex; flex-direction: column; gap: 2px; max-height: none; margin: 0; padding: 0; list-style: none; overflow: visible; border: 0; background: transparent; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-secenek:not(#_) {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  min-height: 56px; padding: 0 14px; border-radius: 10px; background: transparent; color: var(--metin); font-size: 17px; cursor: pointer; border: 0;
+}
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-secenek:not(#_):is(:hover, .etkin) { background: var(--yuzey-hover); }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-secenek.secili:not(#_) { background: var(--yuzey-secili); }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-secenek.etkin .secici-ad { text-decoration: none; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-secenek.pasif { opacity: .45; cursor: not-allowed; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-ad:not(#_) { font-size: 17px; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-isaret:not(#_) {
+  box-sizing: border-box; width: 22px; height: 22px; min-width: 0; margin: 0; padding: 0;
+  border: 1.5px solid var(--kenarlik); border-radius: 50%; display: grid; place-items: center; color: var(--yuzey-govde); font-size: 0;
+}
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-isaret.secili-isaret:not(#_) { border-color: var(--metin); background: var(--metin); }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-tetik--satirli ~ .secici-liste-kap .secici-isaret .ikon { width: 12px; height: 12px; stroke-width: 2.4; }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-secili-etiket { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--metin); }
+html:root[data-sema="yildiz"] .yz #yildiz-tezgah-odeme-duzen .secici-kilit-sebep { display: block; padding-top: 6px; }
+@media (max-width: 600px) {
+  html:root[data-sema="yildiz"] .yz #cekmece-yildiz-odeme { width: 100vw; }
+}

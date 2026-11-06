@@ -2,6 +2,20 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "kuyumcu-dev-5198",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "/Users/ramazanakkocan/ByGatech-yerel/jewellery/dotnet/Kuyumcu.Api",
+        "--no-build",
+        "--urls",
+        "http://localhost:5198"
+      ],
+      "port": 5198,
+      "not": "06.11: çalışma ağacındaki (yayınlanmamış) kodun canlı doğrulaması — ajan kanıt portu. kuyumcu-api kaydındaki ~/Desktop yolu eski."
+    },
+    {
       "name": "kuyumcu-api",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": [

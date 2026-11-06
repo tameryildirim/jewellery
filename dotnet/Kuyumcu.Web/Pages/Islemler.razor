@@ -423,7 +423,7 @@
                               AnaKasalar="AnaKasalar" KasaKilitli="KasaKilitli" VadeGorunur="VadeGorunur"
                               OdemeKapisiAcik="OdemeKapisiAcik" TevsikOnerisiGerekli="TevsikOnerisiGerekli" Basit="Modu.BasitMi"
                               TevsikHaddi="TevsikHaddi" Toplam="ToplamTl" OtomatikNot="@OdemeOtomatikAlanNotu" YasalBaskaYerde="@YasalMesajVar"
-                              Sade="@(TezgahFisi || ProSatis)" OdemeSatirda="@(BasitOdemeSecenekleri is not null)" KarmaAnahtariGizli="ProSatis" KasaOzette="ProSatis" PesinSecili="@(!string.IsNullOrEmpty(pesinCariId) && cariId == pesinCariId)" PosCihazlari="posCihazlari" DurumGizli="@OdemeDurumuGizli" @bind-PosCihazId="takasPosId" />   @* CUMA-S: basit ALDIM sade durum · SATIS-2: PRO satışta da kısa durum *@
+                              Sade="@(TezgahFisi || ProSatis)" OdemeSatirda="@(BasitOdemeSecenekleri is not null)" KarmaAnahtariGizli="ProSatis" KasaOzette="ProSatis" PesinSecili="@(!string.IsNullOrEmpty(pesinCariId) && cariId == pesinCariId)" PosCihazlari="posCihazlari" DurumGizli="@OdemeDurumuGizli" @bind-PosCihazId="takasPosId" SecimSatirli="YildizTezgahMi" />   @* CUMA-S: basit ALDIM sade durum · SATIS-2: PRO satışta da kısa durum *@
 
                 @* ── Ödeme bacakları (karma) — Bilesenler/Fis/FisOdemeBacaklari (PAKET S2-1) ── *@
                 @if (tur == "SATIS" && karmaOdeme)

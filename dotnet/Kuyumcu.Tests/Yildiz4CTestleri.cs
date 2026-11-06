@@ -380,7 +380,7 @@ public sealed class Yildiz4CTestleri : BunitContext
     {
         var (b, cagri) = Baglam();
         var e = Render<YildizMusteriSecici>(p => p.Add(x => x.B, b));
-        Assert.Equal("Müşteri ara", e.Find("#yildiz-musteri-ara").GetAttribute("placeholder"));
+        Assert.Equal("Ad ya da TC numarası yaz", e.Find("#yildiz-musteri-ara").GetAttribute("placeholder"));   // 06.11 kurucu kararı (müşteri A "çerçeveli kart"): yer tutucu ne yazılacağını söyler; aria-label "Müşteri ara" kaldı
         var satirlar = e.FindAll("#yildiz-musteri-liste > .yz-sat");
         Assert.Equal(3, satirlar.Count);
         Assert.Equal("yildiz-musteri-sat-c1", satirlar[0].Id);                  // seçili ilk sırada

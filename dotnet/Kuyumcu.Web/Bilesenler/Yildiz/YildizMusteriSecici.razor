@@ -14,10 +14,14 @@
      #islem-pesin-esik, #islem-pesin-esik-sec, #islem-pesin-esik-yeni) AYNI.
    ═════════════════════════════════════════════════════════════════════════════ *@
 
+@* 06.11 kurucu kararı — müşteri A "çerçeveli kart" (Tezgâh Seçim Tuvali): katman kenarlıklı kart; başlık; kutulu arama;
+   her satır BAŞTAN SONA dokunulabilir (halka · ad · ›), seçili satır dolu halka + koyu zemin + "seçili".
+   id'ler ve geri çağrılar AYNEN (#yildiz-musteri-ara, #yildiz-musteri-sat-{id}, #yildiz-musteri-sec-{id} → B.MusteriSec). *@
 <div class="yz-tezgah-musteri-sec" id="yildiz-musteri-secici">
+    <h3 class="yz-kart-baslik" id="yildiz-musteri-baslik">@YildizTezgahSozlugu.MusteriSecBaslik(Dil.Dil)</h3>
     <label class="yz-alan yz-tezgah-musteri-ara" for="yildiz-musteri-ara">
         <svg width="22" height="22" viewBox="0 0 24 24" class="yz-ik" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="@YildizIkonlari.Ara"></path></svg>
-        <input type="search" id="yildiz-musteri-ara" class="yz-girdi" placeholder="@YildizTezgahSozlugu.MusteriAra(Dil.Dil)"
+        <input type="search" id="yildiz-musteri-ara" class="yz-girdi" placeholder="@YildizTezgahSozlugu.MusteriAraYerTutucu(Dil.Dil)"
                aria-label="@YildizTezgahSozlugu.MusteriAra(Dil.Dil)" autocomplete="off" value="@arama" @oninput="AramaDegisti" />
     </label>
 
@@ -53,16 +57,22 @@
             {
                 var secili = m.Id == B.MusteriSeciliId;
                 <div class="yz-sat yz-tezgah-musteri-sat" id="@($"yildiz-musteri-sat-{m.Id}")" aria-current="@(secili ? "true" : null)">
-                    <span class="yz-tezgah-musteri-ad">@(m.Durum is null ? m.Ad : m.Ad + " ")@if (m.Durum is { } d) {<span class="yz-s">· @d</span>}</span>
-                    <span class="yz-s yz-tezgah-musteri-durum">@(secili ? YildizTezgahSozlugu.Secili(Dil.Dil) : null)</span>
                     @if (secili)
                     {
-                        <span></span>
+                        <span class="yz-tezgah-musteri-ic">
+                            <span class="yz-halka yz-halka-secili" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" class="yz-ik" focusable="false"><path d="@YildizIkonlari.Onay"></path></svg></span>
+                            <span class="yz-tezgah-musteri-ad">@(m.Durum is null ? m.Ad : m.Ad + " ")@if (m.Durum is { } d) {<span class="yz-s">· @d</span>}</span>
+                            <span class="yz-tezgah-musteri-durum">@YildizTezgahSozlugu.Secili(Dil.Dil)</span>
+                        </span>
                     }
                     else
                     {
-                        <button type="button" class="yz-b3" id="@($"yildiz-musteri-sec-{m.Id}")" disabled="@B.Kaydediliyor"
-                                aria-label="@YildizTezgahSozlugu.MusteriSecAria(m.Ad, Dil.Dil)" @onclick="() => B.MusteriSec.InvokeAsync(m.Id)">@YildizTezgahSozlugu.Sec(Dil.Dil)</button>
+                        <button type="button" class="yz-tezgah-musteri-ic yz-tezgah-musteri-sec" id="@($"yildiz-musteri-sec-{m.Id}")" disabled="@B.Kaydediliyor"
+                                aria-label="@YildizTezgahSozlugu.MusteriSecAria(m.Ad, Dil.Dil)" title="@YildizTezgahSozlugu.Sec(Dil.Dil)" @onclick="() => B.MusteriSec.InvokeAsync(m.Id)">
+                            <span class="yz-halka" aria-hidden="true"></span>
+                            <span class="yz-tezgah-musteri-ad">@(m.Durum is null ? m.Ad : m.Ad + " ")@if (m.Durum is { } d) {<span class="yz-s">· @d</span>}</span>
+                            <span class="yz-tezgah-musteri-ok" aria-hidden="true">›</span>
+                        </button>
                     }
                 </div>
             }

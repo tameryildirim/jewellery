@@ -343,6 +343,16 @@ public static class YildizTezgahSozlugu
     public static string MusteriSinir(int kalan, string dil) => En(dil)
         ? $"{kalan} more — type a name to narrow the list."
         : $"{kalan} müşteri daha — listeyi daraltmak için ad yazın.";
+
+    // ── 06.11 kurucu kararı — seçim yüzeyleri (müşteri A "çerçeveli kart", ödeme C "yandan çekmece") ──
+    /// <summary>Müşteri kartının başlığı.</summary>
+    public static string MusteriSecBaslik(string dil) => En(dil) ? "Choose customer" : "Müşteri seç";
+    /// <summary>Müşteri kartı arama kutusunun yer tutucusu (ad ya da TC/VKN birebir — MusteriSuz).</summary>
+    public static string MusteriAraYerTutucu(string dil) => En(dil) ? "Type a name or ID number" : "Ad ya da TC numarası yaz";
+    /// <summary>Ödeme çekmecesinin başlığı.</summary>
+    public static string OdemeSekli(string dil) => En(dil) ? "Payment method" : "Ödeme şekli";
+    /// <summary>Ödeme çekmecesinin tek birincil düğmesi ("Kart · Ana Kasa ile devam et").</summary>
+    public static string OdemeDevam(string ozet, string dil) => En(dil) ? $"Continue with {ozet}" : $"{ozet} ile devam et";
     /// <summary>PRO: satıcı ve fiyat listesi alanlarını açan .ekle.</summary>
     public static string SaticiListe(string dil) => En(dil) ? "Seller and price list" : "Satıcı ve fiyat listesi";
     /// <summary>Kalem düzenlemesi: kalemi fişten çıkar (tuval .b2).</summary>
