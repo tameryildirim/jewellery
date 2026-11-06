@@ -61,7 +61,7 @@
                        geri çağrı AYNEN) artık "Diğer" — tüm türler + PRO "Diğer ▾". Müşteri/durum aynı satırda, sekmelerden sonra. *@
                     <p class="yz-ust yz-tur-ust" id="yildiz-tezgah-ust"><span class="yz-tur-satir">@B.TurSecici<button type="button" class="yz-tur-sekme yz-tur-diger" id="yildiz-tezgah-tur"
                             aria-expanded="@(B.TurlerAcik ? "true" : "false")" title="@YildizTezgahSozlugu.TurSec(Dil.Dil)"
-                            @onclick="B.TurDegistir">@TurKimlikSozlugu.Al(Dil.Dil).Diger</button></span>@if (UstKalan.StartsWith(" · ") && UstKalan.Length > 3) {<span class="yz-tur-kalan" id="yildiz-tezgah-ust-musteri" title="@UstKalan[3..]">@UstKalan[3..]</span>}</p>
+                            @onclick="B.TurDegistir">@TurKimlikSozlugu.Al(Dil.Dil).Diger</button></span>@if (UstKalan.StartsWith(" · ") && UstKalan.Length > 3) {<span class="yz-tur-kalan yz-musteri-rozet" id="yildiz-tezgah-ust-musteri" title="@UstKalan[3..]"><svg width="20" height="20" viewBox="0 0 24 24" class="yz-ik yz-musteri-rozet-ik" aria-hidden="true" focusable="false"><path d="@YildizIkonlari.Kisi"></path></svg><span class="yz-musteri-rozet-metin"><span class="yz-musteri-rozet-ad">@(B.MusteriAdi ?? "")</span>@if (!string.IsNullOrWhiteSpace(B.MusteriDurumu)) {<span class="yz-s yz-musteri-rozet-durum"> · @B.MusteriDurumu</span>}</span></span>}</p>   @* 06.11 kurucu ("alelade duruyor"): rozet — kişi simgesi + koyu ad + soluk durum; metin (TextContent) AYNEN " · " ayraçlı *@
                 }
                 else
                 {

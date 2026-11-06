@@ -68,6 +68,9 @@ public static class YildizIkonlari
     /// <summary>Tuval Tezgah4 "Fark 0 ₺" onay işareti.</summary>
     public const string Onay = "M5 12.5l4.5 4.5L19 7.5";
 
+    /// <summary>06.11 kurucu: üst satırdaki seçili müşteri rozeti — kişi silueti (baş + omuz; tuvalin ince çizgi dili).</summary>
+    public const string Kisi = "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0";
+
     /// <summary>YILDIZ-4C: tuval ".ekle" kalıbının artısı (Y_Isletme "Logo ekle": M12 5v14M5 12h14).</summary>
     public const string Arti = "M12 5v14M5 12h14";
 
