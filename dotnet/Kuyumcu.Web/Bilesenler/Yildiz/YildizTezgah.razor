@@ -195,23 +195,29 @@
                     }
                     @if (B.SeciliHavaleId is not null)
                     {
-                        <button type="button" class="yz-tur-sekme" id="yildiz-havale-birak" disabled="@B.Kaydediliyor"
+                        <button type="button" class="yz-b2 yz-tezgah-degistir yz-havale-ac" id="yildiz-havale-birak" disabled="@B.Kaydediliyor"
                                 @onclick="() => B.HavaleBirak.InvokeAsync()">@HavaleSozlugu.Birak(Dil.Dil)</button>
                     }
                     else if (B.Havaleler.Count > 0)
                     {
-                        @* 17.10 havaleden satış (kurucu: "tezgâhtar ne sattıysa kendisi seçer") — bekleyen havaleler katlı gelir. *@
-                        <button type="button" class="yz-tur-sekme yz-tur-diger" id="yildiz-havaleler-ac" aria-expanded="@(B.HavalelerAcik ? "true" : "false")"
+                        @* 17.10 havaleden satış (kurucu: "tezgâhtar ne sattıysa kendisi seçer") — bekleyen havaleler katlı gelir.
+                           06.11 kurucu ("gelen ödemeleri de ödemedeki gibi yap, belli olsun"): açıcı = "Değiştir" hapı kalıbı; liste
+                           ödeme çekmecesiyle AYNI ortak Cekmece'de ("yildiz-havale"), satır = halka · ad · soluk tutar/tarih · ›;
+                           satıra dokunmak seçer ve kapatır (sayfanın HavaleSec'i). id'ler AYNEN (#yildiz-havaleler-ac, #yildiz-havaleler, #yildiz-havale-{id}). *@
+                        <button type="button" class="yz-b2 yz-tezgah-degistir yz-havale-ac" id="yildiz-havaleler-ac" aria-expanded="@(B.HavalelerAcik ? "true" : "false")"
                                 aria-controls="yildiz-havaleler" @onclick="() => B.HavalelerAcKapa.InvokeAsync()">@HavaleSozlugu.Bekleyenler(B.Havaleler.Count, Dil.Dil)</button>
                         @if (B.HavalelerAcik)
                         {
-                            <ul class="yz-havaleler" id="yildiz-havaleler">
-                                @foreach (var h in B.Havaleler)
-                                {
-                                    <li><button type="button" class="yz-tur-sekme" id="@($"yildiz-havale-{h.Id}")" disabled="@B.Kaydediliyor"
-                                                @onclick="() => B.HavaleSec.InvokeAsync(h.Id)">@h.Ad · @h.Tutar · @h.Tarih</button></li>
-                                }
-                            </ul>
+                            <Cekmece Acik="true" Varlik="yildiz-havale" Baslik="@HavaleSozlugu.SecBaslik(Dil.Dil)" KaydetGoster="false"
+                                     IptalMetni="@YildizTezgahSozlugu.MusteriKapat(Dil.Dil)" Kapat="() => B.HavalelerAcKapa.InvokeAsync()">
+                                <ul class="yz-havaleler" id="yildiz-havaleler">
+                                    @foreach (var h in B.Havaleler)
+                                    {
+                                        <li><button type="button" class="yz-tezgah-musteri-ic yz-havale-sat" id="@($"yildiz-havale-{h.Id}")" disabled="@B.Kaydediliyor"
+                                                    @onclick="() => B.HavaleSec.InvokeAsync(h.Id)"><span class="yz-halka" aria-hidden="true"></span><span class="yz-tezgah-musteri-ad"><span class="yz-havale-ad">@h.Ad</span> <span class="yz-s">· @h.Tutar · @h.Tarih</span></span><span class="yz-tezgah-musteri-ok" aria-hidden="true">›</span></button></li>
+                                    }
+                                </ul>
+                            </Cekmece>
                         }
                     }
                 </div>

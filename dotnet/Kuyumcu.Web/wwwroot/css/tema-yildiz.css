@@ -4387,3 +4387,45 @@ html:root[data-sema="yildiz"] .yz-tezgah .yz-musteri-rozet-ik { flex-shrink: 0; 
 @media (max-width: 768px) {
   html:root[data-sema="yildiz"] .yz-tezgah .yz-tur-kalan.yz-musteri-rozet { padding: 6px 12px 6px 10px; font-size: 15px; gap: 8px; }
 }
+
+/* ── 06.11 kurucu ("gelen ödemeleri de ödemedeki gibi yap; buna benzer nereler varsa"): ─────────────────────
+   (1) Gelen havaleler: açıcı hap (Değiştir kalıbı) + ortak Çekmece "yildiz-havale"; satırlar kart satırı dili.
+   (2) Yıldız'daki TÜM açılır seçiciler (Secici, satırlı olmayan): panel kart (kenarlık, hap köşe, --yuzey-2),
+       satır = halka · ad · SEÇİLİ; karma ödeme araç/kasa/POS, satıcı/fiyat listesi, öteki ekranlar aynı dili alır. */
+html:root[data-sema="yildiz"] .yz-tezgah .yz-belge { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+html:root[data-sema="yildiz"] .yz-tezgah .yz-b2.yz-havale-ac:not(#_) { margin-top: 2px; }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-havale { width: min(460px, 100vw); }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-havale .cekmece-bas h2 { font-size: 20px; font-weight: 500; letter-spacing: 0; }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-havale .cekmece-kapat:not(#_) { width: 36px; height: 36px; padding: 0; border: 1px solid var(--kenarlik); border-radius: 50%; display: grid; place-items: center; font-size: 18px; line-height: 1; color: var(--metin); }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-havale .yz-havaleler { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-havale .yz-havale-sat .yz-tezgah-musteri-ad { white-space: normal; }
+html:root[data-sema="yildiz"] .yz #cekmece-yildiz-havale .yz-havale-ad { font-weight: 500; }
+@media (max-width: 600px) { html:root[data-sema="yildiz"] .yz #cekmece-yildiz-havale { width: 100vw; } }
+
+/* (2) açılır seçici paneli — satırlı kip (.secici-tetik--satirli) HARİÇ */
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) {
+  padding: 8px; border: 1px solid var(--ayrac); border-bottom: 1px solid var(--ayrac); border-radius: 14px; background: var(--yuzey-2); box-shadow: none;
+}
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-ara-sar { padding: 0 0 8px; border-bottom: 0; }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-ara {
+  width: 100%; height: 44px; padding: 0 14px; border: 1px solid var(--kenarlik); border-radius: 10px; background: var(--yuzey-govde); font-size: 17px; font-weight: 400;
+}
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-ara:focus-visible { outline: 0; border-color: var(--metin); }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-liste { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-secenek {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  min-height: 48px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--metin); font-size: 16px; cursor: pointer;
+}
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-secenek:is(:hover, .etkin) { background: var(--yuzey-hover); }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-secenek.secili { background: var(--yuzey-secili); }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-secenek.etkin .secici-ad { text-decoration: none; }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-secenek.pasif { opacity: .45; cursor: not-allowed; }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-ad { font-size: 16px; }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-isaret {
+  box-sizing: border-box; width: 20px; height: 20px; min-width: 0; margin: 0; padding: 0; border: 1.5px solid var(--kenarlik); border-radius: 50%;
+  display: grid; place-items: center; color: var(--yuzey-govde); font-size: 0;
+}
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-isaret.secili-isaret { border-color: var(--metin); background: var(--metin); }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) .secici-isaret .ikon { width: 11px; height: 11px; stroke-width: 2.4; }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) :is(.secici-alt, .secici-rozet) { font-size: 14px; color: var(--metin-soluk); }
+html:root[data-sema="yildiz"] body .yz .secici-tetik:not(.secici-tetik--satirli) ~ .secici-liste-kap:not(#_):not(#__) :is(.secici-bos, .secici-sinir, .secici-hata) { padding: 10px 12px; }

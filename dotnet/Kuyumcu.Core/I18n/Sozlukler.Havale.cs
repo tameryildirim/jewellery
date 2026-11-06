@@ -13,5 +13,7 @@ public static class HavaleSozlugu
     public static string UrunSecSat(string dil) => En(dil) ? "Choose items and sell" : "Ürün seç ve sat";
     public static string Bekleyenler(int adet, string dil) => En(dil) ? $"Incoming transfers ({adet})" : $"Gelen havaleler ({adet})";
     public static string Birak(string dil) => En(dil) ? "Not from a transfer" : "Havaleden değil";
+    /// <summary>06.11 kurucu ("gelen ödemeleri de ödemedeki gibi yap"): gelen havale çekmecesinin başlığı.</summary>
+    public static string SecBaslik(string dil) => En(dil) ? "Choose the incoming transfer" : "Gelen havaleyi seç";
     public static string SatisGirildi(string dil) => En(dil) ? "Sale already entered" : "Satış zaten girildi";
 }
